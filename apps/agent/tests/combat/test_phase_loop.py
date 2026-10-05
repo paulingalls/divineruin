@@ -1,11 +1,3 @@
-"""Tests for the live phase-loop tools (story-003): declare_phase + resolve_phase.
-
-These drive the deterministic 4-beat engine (combat_phase.advance_combat_phase) from
-the live CombatAgent: declare_phase collects a phase's declarations (DECLARATION ->
-RESOLUTION); resolve_phase resolves the packets, narrates (engine no-op), wraps, and
-either loops to the next declaration beat or fires the end-of-combat handoff.
-"""
-
 import json
 from unittest.mock import AsyncMock, MagicMock
 
@@ -82,10 +74,6 @@ def _declarations():
 
 
 class TestResolvePhaseExhaustionNarration:
-    """M4.3 story-005: resolve_phase surfaces a Beat-3 exhaustion_narration map for the DM to
-    speak, derived from each participant's Exhausted stacks. This is the live caller for the
-    otherwise-dead get_exhaustion_narrative."""
-
     @pytest.mark.asyncio
     async def test_exhausted_participant_gets_flavor_text(self):
         deps = _resolve_deps(damage=3)
@@ -193,8 +181,6 @@ class TestResolvePhaseNonEnding:
         assert result["beat"] == "declaration"
         assert result["round"] == 2
         assert result["death_saves_due"] == []
-        # Two commits per round now (M29, story-016): the ally results, then the held enemy pass
-        # carrying the wrap. Each is a legal resting state; neither is a torn one.
         assert deps["mutations"].save_combat_state.await_count == 2
 
     @pytest.mark.asyncio
@@ -205,14 +191,10 @@ class TestResolvePhaseNonEnding:
 
         await _resolve_round(ctx, **deps)
 
-        # The player's weapon swung this encounter (end_combat reads this for durability).
         assert ctx.userdata.party.primary.weapon_used is True
 
     @pytest.mark.asyncio
     async def test_sets_weapon_used_even_when_player_misses(self):
-        # Regression: a swing arms the per-encounter durability accrual whether it
-        # hits or misses (the old request_attack set this on any swing). Only the
-        # crit-vs-heavy bonus is gated on a landing crit.
         deps = _resolve_deps()
         deps["resolver"] = _miss_resolver()
         ctx = make_context()
@@ -232,7 +214,6 @@ class TestResolvePhaseNonEnding:
         deps = _resolve_deps(damage=3)
         ctx = make_context()
         cs = _resolution_state(enemy_hp=3)
-        # Add a second enemy that targets the first goblin (which the player kills first).
         cs.participants.append(
             CombatParticipant(
                 id="goblin_scout_2",
@@ -256,7 +237,6 @@ class TestResolvePhaseNonEnding:
         result = await _resolve_round(ctx, **deps)
 
         by_actor = {p["actor_id"]: p for p in result["packets"]}
-        # Player (init 15) kills goblin_scout_1 (3-3=0); goblin_scout_2 (init 5) targeted it -> wasted.
         assert by_actor["goblin_scout_2"]["resolved"] is False
         assert "already" in by_actor["goblin_scout_2"]["reason"]
 
@@ -292,8 +272,6 @@ class TestResolvePhaseEnding:
     async def test_victory_ends_and_hands_off(self):
         deps = _resolve_deps(damage=3)
         ctx = make_context()
-        # Player (init 15) strikes the goblin for 3; goblin has 3 HP -> it falls before
-        # it can act (its own declaration is wasted). All enemies down -> victory.
         ctx.userdata.combat_state = _resolution_state(enemy_hp=3)
 
         result = await _resolve_round(ctx, **deps)
@@ -304,9 +282,6 @@ class TestResolvePhaseEnding:
         assert result["outcome"] == "victory"
         assert ctx.userdata.combat_state is None
         deps["mutations"].delete_combat_state.assert_awaited_once()
-        # The ally commit persisted its results and the held enemy turn BEFORE the wrap deleted
-        # the row (M29, story-016) — that durability is exactly AC7's replacement guarantee. The
-        # ENDING commit itself still never saves the state back; it deletes it.
         assert deps["mutations"].save_combat_state.await_count == 1
 
     @pytest.mark.asyncio
@@ -324,8 +299,6 @@ class TestResolvePhaseEnding:
         cs = _resolution_state()
         player = cs.get_participant("player_1")
         assert player is not None
-        # The player has already burned three failed death saves (from prior request_death_save
-        # calls) and is down; this phase's wrap reads that and ends in defeat.
         player.is_fallen = True
         player.hp_current = 0
         player.death_save_failures = 3
@@ -359,7 +332,6 @@ class TestResolvePhaseResonanceDecay:
 
         await _resolve_round(ctx, **deps, **res)
 
-        # WRAP is the canonical combat decay clock: one step per phase.
         assert ctx.userdata.resonance.current == 4
         # The resonance write runs inside the phase transaction, so it carries the conn the
         # db_mod.transaction() context yields (not the implicit None default).
@@ -401,8 +373,6 @@ class TestResolvePhaseResonanceDecay:
 class TestResolvePhaseDefend:
     @pytest.mark.asyncio
     async def test_defend_grants_plus_two_ac_against_attacks_this_phase(self):
-        # Player Defends (init 15, resolves first); the goblin then attacks the player and
-        # must roll against the defended AC (14 base + 2), regardless of initiative order.
         deps = _resolve_deps(damage=3)
         ctx = make_context()
         cs = _resolution_state()  # player ac 14
@@ -415,12 +385,10 @@ class TestResolvePhaseDefend:
         result = await _resolve_round(ctx, **deps)
         summaries = {s["actor_id"]: s for s in result["packets"]}
 
-        # Defend resolves as a no-op stance carrying the +2 bonus (no attack).
         assert summaries["player_1"]["resolved"] is True
         assert summaries["player_1"]["declaration_type"] == "defend"
         assert summaries["player_1"]["ac_bonus"] == 2
 
-        # The goblin's attack resolves against the defended AC (14 + 2 = 16).
         assert summaries["goblin_scout_1"]["target_ac"] == 16
         deps["resolver"].resolve_attack.assert_called_once()
         assert deps["resolver"].resolve_attack.call_args.args[2] == 16

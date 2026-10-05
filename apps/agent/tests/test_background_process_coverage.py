@@ -1,11 +1,3 @@
-"""Tests for background_process.py lifecycle, event handling, guidance, speech.
-
-The run loop (start/stop/drain/timeout), scene-beat-hint guidance, and the
-proactive speech queue. Split from the warm-layer rebuild + PendingSpeech
-ordering tests (test_background_process_warm_layer.py) to stay under the
-500-line cap.
-"""
-
 import asyncio
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -21,11 +13,8 @@ from session_data import CompanionState
 
 
 class TestBackgroundProcessLifecycle:
-    """Test background process start/stop lifecycle."""
-
     @pytest.mark.asyncio
     async def test_start_creates_background_task(self):
-        """start() should create a background task."""
         mock_session = MagicMock()
         mock_sd = MagicMock()
         mock_sd.event_bus = MagicMock()
@@ -39,7 +28,6 @@ class TestBackgroundProcessLifecycle:
             assert bp._task is not None
             assert isinstance(bp._task, asyncio.Task)
 
-            # Clean up
             await bp.stop()
 
     @pytest.mark.asyncio
@@ -72,12 +60,7 @@ class TestBackgroundProcessLifecycle:
 
     @pytest.mark.asyncio
     async def test_livekit_really_dispatches_the_close_handler(self):
-        """The registration above is checked against a MagicMock, which answers to any event
-        name with any handler signature. A real AgentSession does not: ``on`` takes a literal
-        LiveKit publishes, and emit inspects the handler's arity and RE-RAISES a TypeError
-        straight out of ``_aclose_impl``. So register on the real session and hand it the
-        payload the real close path sends, rather than modelling both halves ourselves.
-        """
+        """Construct the installed AgentSession to exercise vendor arity and logger behavior."""
         from livekit.agents import AgentSession
         from livekit.agents.voice.events import CloseEvent, CloseReason
 
@@ -104,12 +87,10 @@ class TestBackgroundProcessLifecycle:
 
     @pytest.mark.asyncio
     async def test_stop_cancels_background_task(self):
-        """stop() should cancel the background task gracefully."""
         mock_session = MagicMock()
         mock_sd = MagicMock()
         mock_sd.event_bus = MagicMock()
 
-        # Create a task that will be cancelled
         async def mock_run():
             await asyncio.sleep(10)
 
@@ -123,7 +104,6 @@ class TestBackgroundProcessLifecycle:
 
     @pytest.mark.asyncio
     async def test_stop_handles_already_cancelled_task(self):
-        """stop() should handle task that's already cancelled."""
         mock_session = MagicMock()
         mock_sd = MagicMock()
 
@@ -137,7 +117,6 @@ class TestBackgroundProcessLifecycle:
     @pytest.mark.asyncio
     @patch("background_process.db_content_queries.get_scene", new_callable=AsyncMock, return_value=None)
     async def test_run_builds_initial_warm_layer(self, _mock_scene):
-        """_run() should build warm layer on startup."""
         mock_session = MagicMock()
         mock_sd = MagicMock()
         mock_sd.event_bus = MagicMock()
@@ -154,17 +133,13 @@ class TestBackgroundProcessLifecycle:
                 except asyncio.CancelledError:
                     pass
 
-                # Should be called at least once for initial build
                 assert mock_rebuild.call_count >= 1
 
 
 class TestEventHandling:
-    """Test event processing and warm layer rebuilding."""
-
     @pytest.mark.asyncio
     @patch("background_process.db_content_queries.get_scene", new_callable=AsyncMock, return_value=None)
     async def test_run_drains_multiple_events(self, _mock_scene):
-        """_run() should drain all pending events from bus."""
         mock_session = MagicMock()
         mock_sd = MagicMock()
         mock_sd.in_combat = False
@@ -190,7 +165,6 @@ class TestEventHandling:
                     except (asyncio.CancelledError, StopIteration):
                         pass
 
-                    # Should handle both events
                     if mock_handle.called:
                         handled_events = mock_handle.call_args[0][0]
                         assert event1 in handled_events
@@ -199,21 +173,18 @@ class TestEventHandling:
     @pytest.mark.asyncio
     @patch("background_process.db_content_queries.get_scene", new_callable=AsyncMock, return_value=None)
     async def test_run_rebuilds_on_timeout(self, _mock_scene):
-        """_run() should rebuild warm layer on event timeout (no events)."""
         mock_session = MagicMock()
         mock_sd = MagicMock()
         mock_sd.in_combat = False
         mock_sd.last_player_speech_time = 0
         mock_sd.event_bus = MagicMock()
 
-        # Return None on first call (timeout), then let it exit
         call_count = [0]
 
         async def mock_get(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] == 1:
                 return None  # Timeout
-            # Second call, stop the loop
             raise asyncio.CancelledError
 
         mock_sd.event_bus.get = mock_get
@@ -230,7 +201,6 @@ class TestEventHandling:
                         except asyncio.CancelledError:
                             pass
 
-                        # Should rebuild twice: initial + after timeout
                         assert mock_rebuild.call_count == 2
 
 
@@ -263,8 +233,6 @@ BEAT_SCENE_CACHE = {
 
 
 class TestGuidanceSystem:
-    """Test scene beat hint delivery (replaced old _check_guidance)."""
-
     def test_skips_if_in_combat(self):
         mock_sd = MagicMock()
         mock_sd.in_combat = True
@@ -350,10 +318,7 @@ class TestGuidanceSystem:
 
 
 class TestSpeechQueue:
-    """Test proactive speech queue and delivery."""
-
     def test_queue_speech_adds_to_queue(self):
-        """_queue_speech should add speech to queue."""
         mock_session = MagicMock()
         mock_sd = MagicMock()
         # in_combat explicitly, because a MagicMock answers TRUTHY to any attribute: these
@@ -371,13 +336,9 @@ class TestSpeechQueue:
 
     @pytest.mark.asyncio
     async def test_deliver_speech_does_nothing_if_queue_empty(self):
-        """_deliver_speech should do nothing if queue is empty."""
         mock_session = MagicMock()
         mock_session.generate_reply = AsyncMock()
         mock_sd = MagicMock()
-        # in_combat explicitly, because a MagicMock answers TRUTHY to any attribute: these
-        # tests are about which queued cue is chosen, and delivery now holds everything but a
-        # combat-safe cue while a fight runs.
         mock_sd.in_combat = False
 
         bp = BackgroundProcess(mock_session, mock_sd)
@@ -389,13 +350,9 @@ class TestSpeechQueue:
 
     @pytest.mark.asyncio
     async def test_deliver_speech_delivers_highest_priority(self):
-        """_deliver_speech should deliver highest priority speech."""
         mock_session = MagicMock()
         mock_session.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
         mock_sd = MagicMock()
-        # in_combat explicitly, because a MagicMock answers TRUTHY to any attribute: these
-        # tests are about which queued cue is chosen, and delivery now holds everything but a
-        # combat-safe cue while a fight runs.
         mock_sd.in_combat = False
         mock_sd.companion = None
 
@@ -413,13 +370,9 @@ class TestSpeechQueue:
 
     @pytest.mark.asyncio
     async def test_deliver_speech_clears_queue_after_delivery(self):
-        """_deliver_speech should clear entire queue after delivering top speech."""
         mock_session = MagicMock()
         mock_session.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
         mock_sd = MagicMock()
-        # in_combat explicitly, because a MagicMock answers TRUTHY to any attribute: these
-        # tests are about which queued cue is chosen, and delivery now holds everything but a
-        # combat-safe cue while a fight runs.
         mock_sd.in_combat = False
         mock_sd.companion = None
 

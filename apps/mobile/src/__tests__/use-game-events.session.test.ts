@@ -8,8 +8,6 @@ import { resetStores } from "./use-game-events.helpers";
 
 beforeEach(resetStores);
 
-// --- handleGameEvent: session_init ---
-
 test("session_init populates character and session stores", () => {
   handleGameEvent({
     type: "session_init",
@@ -80,8 +78,6 @@ test("session_init with null character does not crash", () => {
   ).not.toThrow();
   expect(characterStore.getState().character).toBeNull();
 });
-
-// --- handleGameEvent: session_end ---
 
 test("session_end for another player leaves this player's session untouched", () => {
   handleGameEvent({
@@ -181,8 +177,6 @@ test("session_end without summary sets phase to ended", () => {
   expect(sessionStore.getState().sessionSummary).toBeNull();
 });
 
-// --- Milestone 10.4b: Story moments in session_end ---
-
 test("session_end with story_moments populates storyMoments in summary", () => {
   sessionStore.getState().setPhase("active");
   handleGameEvent({
@@ -231,8 +225,6 @@ test("session_end without story_moments has empty storyMoments array", () => {
   expect(s).not.toBeNull();
   expect(s!.storyMoments).toEqual([]);
 });
-
-// --- AC3 (story-025): a session containing two fights reaches "summary" once, at the end ---
 
 const SUMMARY_EVENT = {
   type: "session_end",

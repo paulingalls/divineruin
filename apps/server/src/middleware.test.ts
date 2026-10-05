@@ -112,7 +112,6 @@ describe("Rate Limiting", () => {
     const blocked = checkRateLimit("10.0.0.1", "/api/livekit/token");
     expect(blocked).not.toBeNull();
 
-    // Different IP should still be allowed
     const allowed = checkRateLimit("10.0.0.2", "/api/livekit/token");
     expect(allowed).toBeNull();
   });
@@ -156,8 +155,6 @@ describe("Rate Limiting", () => {
     expect(blocked).not.toBeNull();
     expect(blocked!.status).toBe(429);
 
-    // Phase 2: env now set (simulating Playwright webServer.env applying
-    // after the server module loaded) → bypass enabled.
     _resetRateLimits();
     process.env.RATE_LIMIT_BYPASS = "1";
     for (let i = 0; i < 50; i++) {
@@ -165,7 +162,6 @@ describe("Rate Limiting", () => {
       expect(result).toBeNull();
     }
 
-    // Phase 3: env unset again → bypass disabled.
     _resetRateLimits();
     delete process.env.RATE_LIMIT_BYPASS;
     for (let i = 0; i < 5; i++) {

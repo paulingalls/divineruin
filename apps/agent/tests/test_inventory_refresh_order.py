@@ -1,5 +1,3 @@
-"""Full owner snapshots follow gameplay and precede the action cue."""
-
 from unittest.mock import AsyncMock
 
 import pytest

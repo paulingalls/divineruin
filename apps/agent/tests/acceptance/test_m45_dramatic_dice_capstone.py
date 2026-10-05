@@ -1,20 +1,4 @@
-"""Capstone: M4.5 dramatic-dice signal end-to-end against a real Postgres testcontainer.
-
-Stories 001-006/008 shipped the pieces: the pure evaluate_dramatic_context catalog (001),
-dramatic+context on the result packets (002/003), combat + out-of-combat DICE_ROLL emission
-(004/005), the client gate (006), and the resolver-file split (008). This capstone proves they
-COMPOSE on ONE seeded testcontainer (auto-marked `acceptance` by tests/acceptance/conftest.py):
-the REAL evaluator's verdict travels evaluator -> result packet -> DICE_ROLL event -> packet
-summary for both combat and out-of-combat rolls, death saves are always dramatic, routine rolls
-never are, and the scarcity bar holds across a representative multi-phase fight.
-
-Determinism: every d20 (skill / save / attack) routes through check_resolution._roll_d20_check,
-which reads the module-global check_resolution.dice_roll. Patching that one seam forces the d20
-while the real resolvers and the real evaluate_dramatic_context run end to end (an honest chain,
-not a hand-built verdict). Attack DAMAGE uses the separate check_resolution_attack.dice_roll
-(left real); kill timing is controlled by setting a participant's hp_current directly. Each test
-uses a distinct player_id / combat_id since the testcontainer DB is shared.
-"""
+"""Pin d20 checks but leave attack damage real; direct HP setup controls kill timing."""
 
 from __future__ import annotations
 
@@ -43,8 +27,6 @@ import db_mutations
 
 
 async def test_combat_nat20_crit_is_dramatic_chain(reset_db_pool: str) -> None:
-    """A natural-20 attack travels the real chain: the DICE_ROLL event AND the resolve packet
-    summary both report dramatic=True with context 'natural_20'."""
     pool = await db.get_pool()
     player_id = "cap_m45_nat20"
     room = make_mock_room()
@@ -71,8 +53,6 @@ async def test_combat_nat20_crit_is_dramatic_chain(reset_db_pool: str) -> None:
 
 
 async def test_combat_killing_blow_is_dramatic(reset_db_pool: str) -> None:
-    """A non-crit hit that drops a (non-last) enemy reports dramatic=True context 'killing_blow' —
-    the intrinsic killing-blow verdict outranks the first_attack/last_enemy promotions."""
     pool = await db.get_pool()
     player_id = "cap_m45_kill"
     room = make_mock_room()
@@ -94,8 +74,6 @@ async def test_combat_killing_blow_is_dramatic(reset_db_pool: str) -> None:
 
 
 async def test_combat_routine_hit_is_not_dramatic(reset_db_pool: str) -> None:
-    """A non-crit, non-killing hit that is neither the first attack nor against the last enemy is
-    NOT dramatic — the bulk of combat rolls earn no dice."""
     pool = await db.get_pool()
     player_id = "cap_m45_routine"
     room = make_mock_room()
@@ -125,8 +103,6 @@ async def test_combat_routine_hit_is_not_dramatic(reset_db_pool: str) -> None:
 
 
 async def test_death_save_is_always_dramatic(reset_db_pool: str) -> None:
-    """Every death save reports dramatic=True context 'death_save', on the DICE_ROLL event and the
-    tool response, regardless of the rolled value."""
     pool = await db.get_pool()
     player_id = "cap_m45_deathsave"
     room = make_mock_room()
@@ -154,8 +130,6 @@ async def test_death_save_is_always_dramatic(reset_db_pool: str) -> None:
 
 
 async def test_out_of_combat_skill_check_dramatic(reset_db_pool: str) -> None:
-    """An out-of-combat nat-20 skill check emits a DICE_ROLL with dramatic=True context
-    'natural_20'; a routine roll emits dramatic=False. Only crits fire out of combat."""
     import check_tools
 
     pool = await db.get_pool()
@@ -183,10 +157,6 @@ async def test_out_of_combat_skill_check_dramatic(reset_db_pool: str) -> None:
 
 
 async def test_scarcity_bar_holds_over_representative_fight(reset_db_pool: str) -> None:
-    """Across a representative 5-phase fight (two enemies, all d20s a forced mid 11), only a small
-    number of attack rolls earn the dice: the first attack of the encounter, and the single
-    killing blow forced on the final phase. The routine middle phases stay non-dramatic, so the
-    dramatic-reveal count stays within the scarcity bar (0-2, death saves excluded)."""
     pool = await db.get_pool()
     player_id = "cap_m45_scarcity"
     room = make_mock_room()

@@ -1,5 +1,3 @@
-"""One-cycle gates see running work beyond the public history limit."""
-
 import json
 import uuid
 from datetime import UTC, datetime, timedelta

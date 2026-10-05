@@ -281,10 +281,6 @@ test("an awaiting mentor-variant cycle preserves waiting state on its own row", 
   });
 });
 
-// Durations must match the spec's Errand Types table
-// (docs/game_mechanics/game_mechanics_core.md L824-829), expressed in seconds.
-// Templates are now DB-loaded from content/errand_templates.json; the fixture
-// loads that same JSON, so this pins the shared source against the spec.
 describe("errand template durations match spec", () => {
   const HOUR = 3600;
   const expected: Record<string, { min: number; max: number }> = {

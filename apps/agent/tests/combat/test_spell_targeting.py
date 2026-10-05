@@ -1,13 +1,4 @@
-"""M11 story-001 — Generalized spell targeting.
-
-cast_spell threads an explicit target_id (corpse/ally/object/area, broader than revival). For a
-revival spell the Hollow-killed gate keys on the TARGET row, not the caster (closing the story-007
-forward-wire). Non-revival targeted casts carry target_id into the packet for narration and do not
-validate the target row (only Revivify branches on the target, assumption eabd919bf1ca).
-
-Mock-conn units for the plumbing + gate reroute; one real-PG e2e (dev DB) proving the rerouted
-refusal reads the targeted corpse's persisted hollow_killed.
-"""
+"""Only revival fetches and validates a target row; other explicit targets may name objects or areas."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock
@@ -94,36 +85,25 @@ async def _cast(spell: Spell, *, caster: dict, target_id: str | None = None, row
 
 
 class TestSelfTargetDefault:
-    """target_id=None preserves today's self-target cast exactly."""
-
     @pytest.mark.asyncio
     async def test_no_target_id_self_targets_single_fetch(self):
         packet, queries = await _cast(_spell("arcane_bolt"), caster=_player())
         assert packet  # resolved
         assert "target_id" not in packet  # self-cast packet shape unchanged (additive only when set)
-        # story-008: the caster is locked via the id-ordered batch (just itself); no get_player fetch.
         assert list(queries.get_players_for_update.await_args.args[0]) == ["caster_1"]
         queries.get_player.assert_not_called()
 
 
 class TestTargetedNonRevival:
-    """A non-revival targeted cast carries target_id into the packet and does NOT fetch the target
-    (covers ally/object/area — mechanically identical plumbing; concern 4683646b034a)."""
-
     @pytest.mark.asyncio
     @pytest.mark.parametrize("target_id", ["ally_2", "altar_object", "blast_area_a3"])
     async def test_packet_carries_target_id_no_target_fetch(self, target_id):
         packet, queries = await _cast(_spell("arcane_bolt"), caster=_player(), target_id=target_id)
         assert packet["target_id"] == target_id
-        # A non-revival cast never validates the target; the caster is locked via the batch (story-008),
-        # so get_player is not called at all.
         queries.get_player.assert_not_called()
 
 
 class TestTargetIdValidation:
-    """target_id is run through the canonical _validate_id guard in the shared _resolve_cast, so an
-    ill-formed id is rejected on BOTH the out-of-combat and in-combat paths (concern 8816cdffb757)."""
-
     @pytest.mark.asyncio
     @pytest.mark.parametrize("bad_target", ["bad id!", "drop;table", "a.b", ""])
     async def test_invalid_target_id_rejected(self, bad_target):
@@ -132,7 +112,6 @@ class TestTargetIdValidation:
 
     @pytest.mark.asyncio
     async def test_object_and_area_ids_accepted(self):
-        # Object/area ids match _ID_RE (alphanumeric + _ -) and pass the guard.
         for tid in ("altar_object", "blast_area_a3", "goblin-1"):
             packet, _gp = await _cast(_spell("arcane_bolt"), caster=_player(), target_id=tid)
             assert packet["target_id"] == tid
@@ -144,12 +123,8 @@ def _revival(spell_id: str = "divine_revivify") -> Spell:
 
 
 class TestRevivifyGateKeysOnTarget:
-    """The Revivify Hollow-killed gate keys on the TARGET row, not the caster (closes story-007's
-    forward-wire; assumption ecc7b803b9b5). revivify_refused stays pure + reused unchanged."""
-
     @pytest.mark.asyncio
     async def test_refused_when_target_hollow_killed_caster_living(self):
-        # Living caster, Hollow-killed corpse target — refused because the gate reads the target.
         corpse = _player("corpse_9", hollow_killed=True)
         with pytest.raises(ToolError, match="Hollow-killed"):
             await _cast(
@@ -158,7 +133,6 @@ class TestRevivifyGateKeysOnTarget:
 
     @pytest.mark.asyncio
     async def test_allowed_when_target_living_caster_hollow_killed(self):
-        # Hollow-killed caster, living ally target — ALLOWED: the refusal moved off the caster.
         ally = _player("ally_3", hollow_killed=False)
         packet, _gp = await _cast(
             _revival(), caster=_player(hollow_killed=True), target_id="ally_3", rows={"ally_3": ally}
@@ -172,7 +146,6 @@ class TestRevivifyGateKeysOnTarget:
 
     @pytest.mark.asyncio
     async def test_self_cast_revival_still_keys_on_caster(self):
-        # No target_id: the caster IS the target — a Hollow-killed self-cast stays refused (back-compat).
         with pytest.raises(ToolError, match="Hollow-killed"):
             await _cast(_revival(), caster=_player(hollow_killed=True))
 
@@ -195,11 +168,6 @@ class TestRevivifyGateKeysOnTarget:
 
 
 class TestRevivifyTargetRerouteE2E:
-    """Real-PG (dev DB) e2e: the rerouted Revivify refusal reads the targeted corpse's PERSISTED
-    hollow_killed — the caster's own flag is irrelevant. Drives the real cast core via
-    _resolve_cast(conn=pool); only get_player touches the DB (the revival spell is focus/resonance
-    0, so no write path runs). Story-001 AC #4."""
-
     @pytest.mark.asyncio
     async def test_revival_refused_on_hollow_killed_target_allowed_on_living(self, dev_db_pool):
         from session_data import SessionData
@@ -218,12 +186,10 @@ class TestRevivifyTargetRerouteE2E:
         spells_mod = MagicMock(get_spell=MagicMock(return_value=_revival()))
         session = SessionData(player_id=caster_id, location_id="accord_guild_hall", room=None)
         try:
-            # Targeting the Hollow-killed corpse — refused via the TARGET's persisted flag.
             with pytest.raises(ToolError, match="Hollow-killed"):
                 await spell_casting._resolve_cast(
                     session, "divine_revivify", conn=pool, target_id=corpse_id, spells_mod=spells_mod
                 )
-            # Targeting a living ally — resolves; the cast packet names the target.
             result = await spell_casting._resolve_cast(
                 session, "divine_revivify", conn=pool, target_id=ally_id, spells_mod=spells_mod
             )

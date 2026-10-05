@@ -1,12 +1,5 @@
-"""Verifies the operator-reset procedure in docs/ops/async-activity-reset.md.
-
-revert_claim preserves the cached outcome/narration for the TTS-retry fast path,
-so a poisoned cache loops forever (concern cc6195d3cc87). The runbook documents
-the SQL an operator runs to clear that cache and force a clean re-resolution.
-This test extracts the EXACT reset block from the runbook and runs it against a
-real testcontainer row, so the documented procedure can't silently rot — editing
-the runbook's SQL re-runs here. Runs under REQUIRE_DOCKER; skips when Docker down.
-"""
+"""Execute the exact runbook reset SQL: poisoned cached narration otherwise repeats forever.
+This is documented-command behavior, not a prose-accuracy pin."""
 
 from __future__ import annotations
 

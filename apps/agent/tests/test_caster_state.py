@@ -1,8 +1,3 @@
-"""Tests for caster state value types (ResonanceTrack, ConcentrationState).
-
-VeilWardState was deleted in M24 story-004: the ward is scope-owned, so no per-caster type exists.
-"""
-
 from dataclasses import asdict
 
 import caster_state as caster_state
@@ -22,7 +17,6 @@ class TestResonanceTrack:
 
     def test_resonance_track_state_property(self):
         track = caster_state.ResonanceTrack(current=0)
-        # state property derives from resonance module
         assert track.state is not None
 
     def test_resonance_track_asdict_roundtrip(self):
@@ -33,7 +27,6 @@ class TestResonanceTrack:
         assert reconstructed.flickering_bonus == original.flickering_bonus
 
     def test_back_compat_session_data_reexport(self):
-        """Back-compat guard: ResonanceTrack imported from session_data is the same class."""
         assert session_data.ResonanceTrack is caster_state.ResonanceTrack
 
 
@@ -62,5 +55,4 @@ class TestConcentrationState:
         assert reconstructed.is_active == original.is_active
 
     def test_back_compat_session_data_reexport(self):
-        """Back-compat guard: ConcentrationState imported from session_data is the same class."""
         assert session_data.ConcentrationState is caster_state.ConcentrationState

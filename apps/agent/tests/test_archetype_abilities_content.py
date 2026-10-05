@@ -1,20 +1,4 @@
-"""Content tests for content/archetype_abilities.json — the M2.2 ability SSOT.
-
-These read the raw JSON file directly (NOT a loader; the loader lives in
-apps/agent/abilities.py, story-002). This module checks the JSON's structure:
-roster coverage (every archetype has at least one core ability), the L4/L8
-elective technique pool sizes, the closed ability_type vocabulary, the cost
-object shape, and id well-formedness. Mirrors test_archetypes_content.py.
-
-Scope (decision m22-core-spells-as-abilities): activatable abilities only —
-core actives + casters' fixed core spells (ability_type=core), core reactions
-(reaction), and L4/L8 elective techniques (elective). Passives, L5/L9
-specialization-variant core spells, and elective spell progression are out of
-M2.2.
-
-Cost is a structured object (decision m22-cost-object-schema):
-{stamina:int>=0, focus:int>=0, scaling:str|None}.
-"""
+"""This catalog holds activatables; passive milestone grants and specialization spells have separate owners."""
 
 import json
 import re
@@ -24,7 +8,6 @@ import pytest
 
 ABILITIES_JSON = Path(__file__).resolve().parents[3] / "content" / "archetype_abilities.json"
 
-# The 18 chassis ids (parity with content/archetypes.json roster).
 ARCHETYPE_IDS = {
     "warrior",
     "guardian",
@@ -46,15 +29,11 @@ ARCHETYPE_IDS = {
     "marshal",
 }
 
-# Martial / support archetypes with elective technique pools at both L4 and L8.
 POOLS_L4_AND_L8 = {"warrior", "guardian", "skirmisher", "rogue", "spy", "diplomat", "marshal"}
-# Single-technique archetypes: one L4 pool only, no L8 technique pool.
 POOLS_L4_ONLY = {"bard", "paladin"}
 
 ABILITY_TYPES = {"core", "reaction", "elective"}
 
-# Closed vocabulary for a reaction ability's trigger window (story-001), mirroring
-# abilities.ReactionWindow.
 REACTION_WINDOWS = {
     "on_hit",
     "on_ally_hit",
@@ -78,15 +57,8 @@ REQUIRED_KEYS = {
     "narration_cue",
 }
 
-# Spell-backed caster CORE rows (Arcane Bolt, Sacred Flame, …) drop their authored
-# `cost` and carry a `spell_id` instead: the Focus cost — the one number shared with
-# the cast path — composes from content/spells.json at load time (Try 2), so it can't
-# drift. effect/level/narration stay authored per-archetype. So these rows REPLACE
-# `cost` with `spell_id` and keep everything else.
 SPELL_BACKED_KEYS = (REQUIRED_KEYS - {"cost"}) | {"spell_id"}
 
-# A REACTION row (story-001) ADDS `window` to the required set — the closed-vocabulary
-# trigger event. Reaction rows are never spell-backed (spell-backed rows are always core).
 REACTION_KEYS = REQUIRED_KEYS | {"window"}
 
 OPTIONAL_KEYS = {"applies_condition", "max_targets", "save", "dc_attribute"}
@@ -135,8 +107,6 @@ def test_elective_pool_sizes(rows):
         l8 = [r for r in by_arch[aid] if r["ability_type"] == "elective" and r["level_requirement"] == 8]
         assert len(l4) == 4, f"{aid} L4 elective pool has {len(l4)} options, expected 4"
         assert len(l8) == 0, f"{aid} should have no L8 technique pool, found {len(l8)}"
-    # The remaining archetypes (casters + whisper) have no elective technique
-    # pools in M2.2 — a stray L4/L8 elective seeded on one must fail loudly.
     no_pool = ARCHETYPE_IDS - POOLS_L4_AND_L8 - POOLS_L4_ONLY
     for aid in no_pool:
         electives = [r for r in by_arch[aid] if r["ability_type"] == "elective"]
@@ -149,12 +119,6 @@ def test_elective_pool_sizes(rows):
 def test_each_row_required_keys_and_enums(rows):
     for row in rows:
         rid = row.get("id", "<no id>")
-        # Exact match modulo the known optional producer field: the row shape is the
-        # cross-language SSOT contract for the story-002 (Python) and story-003 (TS)
-        # parsers, so a stray/typo'd key must fail here rather than surface as a
-        # strict-parse break downstream. applies_condition (story-005) is the one allowed
-        # optional. A spell-backed CORE row REPLACES `cost` with `spell_id` (the Focus cost
-        # composes from the catalog); everything else is identical.
         keys = set(row) - OPTIONAL_KEYS
         if _is_spell_backed(row):
             assert keys == SPELL_BACKED_KEYS, (
@@ -175,7 +139,6 @@ def test_each_row_required_keys_and_enums(rows):
             assert keys == REQUIRED_KEYS, (
                 f"{rid} key mismatch: missing {REQUIRED_KEYS - keys}, extra {keys - REQUIRED_KEYS}"
             )
-        # Common to both shapes — every row authors its own level/effect/name/narration.
         assert isinstance(row["level_requirement"], int) and row["level_requirement"] >= 1, (
             f"{rid} level_requirement must be a positive int"
         )
@@ -193,8 +156,6 @@ def test_each_row_required_keys_and_enums(rows):
 
 
 def test_spell_backed_rows_reference_a_real_catalog_spell(rows):
-    # Cross-file integrity: every spell_id must resolve in content/spells.json, or
-    # the load-time composition fails loud at startup. Catches a typo'd spell_id.
     spells_raw = json.loads(SPELLS_JSON.read_text())
 
     def _spell_ids(obj):

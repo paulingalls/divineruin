@@ -23,7 +23,6 @@ test("renders the eyebrow, title, and lede", () => {
 });
 
 test('renders id="world" — the anchor the capstone re-points Hero\'s CTA to', () => {
-  // Locks the e72ce233ee75 contract here rather than as a broken capstone E2E.
   const html = renderToStaticMarkup(<World />);
   expect(html).toMatch(/<section[^>]*\sid="world"/);
 });
@@ -95,14 +94,11 @@ test("the redacted Hollow tier renders the crossed-out passage", () => {
 });
 
 test("placeStatusVariant maps every actual mockup status to its variant", () => {
-  // All six statuses that appear in WORLD_PLACES — not just the enumerated set —
-  // so an unmapped status fails loud here (assumption 6399e1e9681a).
   expect(placeStatusVariant("Held")).toBe("held");
   expect(placeStatusVariant("Lost")).toBe("lost");
   expect(placeStatusVariant("Bending")).toBe("warn");
   expect(placeStatusVariant("Held, barely")).toBe("warn");
   expect(placeStatusVariant("Contested")).toBe("warn");
-  // Every status present in the data resolves to a known variant.
   for (const p of WORLD_PLACES) {
     expect(["held", "lost", "warn"]).toContain(placeStatusVariant(p.status));
   }

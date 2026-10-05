@@ -1,29 +1,5 @@
-"""Capstone: OOC condition lock-order deadlock-freedom on a real 2-transaction Postgres.
-
-``condition_produce.lock_ooc_caster_and_targets`` pre-locks ``{caster} UNION {party targets}`` in ONE
-``get_players_for_update`` statement (``... WHERE player_id = ANY($1) ORDER BY player_id FOR
-UPDATE``). ``ORDER BY player_id`` is the deadlock-freedom SSOT: every caller takes row locks in the
-same global ascending order, so two overlapping casts can never build a circular wait.
-
-``tests/test_ability_lock_order.py`` proves the ORDERING IDENTITY by construction (role-swapped
-casts compute the same sorted id list, no DB). This file proves the PG SEMANTICS that identity
-relies on, empirically, on a real testcontainer Postgres (risk 5da95d657255):
-
-  * an ordered batch ``FOR UPDATE`` SERIALIZES two concurrent overlapping casts — the loser blocks
-    on the winner's row locks until it commits, rather than deadlocking; and
-  * re-locking a row already locked by the SAME transaction is a NO-OP.
-
-RATIONALE, not an executed case: the retired caster-first ordering (debt 361417d1bea5) locked the
-caster row, then the target row. Alice-on-Bob would hold alice and wait for bob while Bob-on-Alice
-held bob and waited for alice — a circular wait Postgres resolves by aborting one txn with
-``DeadlockDetectedError``. The ascending union order below makes that shape unrepresentable. We do
-NOT execute the reversed order here: the tests drive the REAL helper (which always sorts ascending
-and has no mid-statement seam to barrier), and an enabled test that deadlocks on purpose is a test
-that hangs CI. A production reorder therefore goes red in ``test_ability_lock_order.py``, not here.
-
-Auto-marked ``acceptance`` by tests/acceptance/conftest.py. Distinct player_ids, since the
-testcontainer DB is shared across the session.
-"""
+"""Opposite casts need separate connections to exercise concurrent Postgres transactions.
+Ordered union locks avoid circular waits; intentionally reversing order would deadlock and hang the harness, so that reversal is not executed here."""
 
 from __future__ import annotations
 
@@ -96,11 +72,7 @@ async def _cast(conn: _TxnConn, barrier: asyncio.Barrier, *, caster: str, target
 async def test_swapped_role_concurrent_ooc_casts_serialize_without_deadlock(
     reset_db_pool: str,
 ) -> None:
-    """Alice-on-Bob and Bob-on-Alice, concurrently, in two real transactions: both commit.
-
-    Each txn needs its OWN connection — one pooled connection cannot drive two concurrent txns.
-    Neither may raise ``DeadlockDetectedError``; the loser simply blocks until the winner commits.
-    """
+    """Use separate pooled connections; one connection cannot drive concurrent transactions."""
     pool = await db.get_pool()
     await seed_player(pool, player_id=ALICE)
     await seed_player(pool, player_id=BOB)
@@ -128,12 +100,7 @@ async def test_swapped_role_concurrent_ooc_casts_serialize_without_deadlock(
 
 
 async def test_self_targeted_cast_relocks_caster_row_as_a_no_op(reset_db_pool: str) -> None:
-    """caster in targets: the union dedups, and re-``FOR UPDATE``-ing an already-held row is a no-op.
-
-    This is the specific PG semantic risk 5da95d657255 named. The second helper call in the SAME
-    transaction re-locks the caster row it already holds; Postgres neither blocks nor errors, and
-    the txn commits.
-    """
+    """Re-lock in the same transaction to execute Postgres re-entrant row-lock behavior."""
     pool = await db.get_pool()
     await seed_player(pool, player_id=ALICE)
 

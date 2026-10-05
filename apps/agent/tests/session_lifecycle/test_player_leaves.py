@@ -1,5 +1,3 @@
-"""Guest departure remains scoped to the authenticated member and spoken turn."""
-
 import asyncio
 import json
 import time

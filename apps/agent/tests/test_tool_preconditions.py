@@ -1,5 +1,3 @@
-"""Unit tests for tool_preconditions — Stage-backed Act guards (raise ToolError)."""
-
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -12,7 +10,6 @@ from tool_preconditions import require_npc_present
 async def test_require_npc_present_passes_when_npc_scheduled_here():
     queries = MagicMock()
     queries.get_npcs_at_location = AsyncMock(return_value=[{"id": "guildmaster_torin"}, {"id": "elder_yanna"}])
-    # Present at the location → no raise.
     await require_npc_present("accord_guild_hall", "guildmaster_torin", queries=queries)
     queries.get_npcs_at_location.assert_awaited_once_with("accord_guild_hall")
 

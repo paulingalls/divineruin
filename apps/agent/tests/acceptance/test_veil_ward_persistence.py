@@ -1,20 +1,4 @@
-"""Capstone: M24 scope-owned Veil Ward persistence against a real Postgres testcontainer.
-
-story-003 moved the ward off the per-player row onto the scope. This proves the property
-that move exists to deliver, and that the mocked unit tests structurally cannot: two players
-in one scope are backed by ONE ward row, and neither player row carries ward state (AC4).
-
-story-005 adds the activation end: driving the real tool against a real pool, an encounter ward
-lands on CombatState (never in veil_wards) and only the raiser pays for it.
-
-Distinct from tests/test_db_mutations_veil_ward_db.py, which is the fast-lane single-table
-round-trip of the accessors themselves. This file is the multi-player, post-migration proof:
-it seeds real players through the same seed path production uses, and asserts the absence of
-the legacy players.data.veil_ward key that migration 057 removed.
-
-Auto-marked `acceptance` by tests/acceptance/conftest.py. Each test uses a distinct scope id
-since the testcontainer DB is shared across the session.
-"""
+"""Use distinct scope ids to isolate the shared database; a scope ward must never regain a second player-row home."""
 
 from __future__ import annotations
 
@@ -31,7 +15,6 @@ from veil_ward_tools import _activate_veil_ward_impl
 
 
 async def test_one_row_backs_every_player_in_the_scope(reset_db_pool: str) -> None:
-    """AC4: a ward written once for a scope covers both players, and no player row holds ward state."""
     pool = await db.get_pool()
     scope = WardScope.location("cap_ward_shared_hall")
     await seed_player(pool, player_id="cap_ward_p1")
@@ -56,7 +39,6 @@ async def test_one_row_backs_every_player_in_the_scope(reset_db_pool: str) -> No
 
 
 async def test_scope_ward_round_trips_and_dismisses_for_the_whole_scope(reset_db_pool: str) -> None:
-    """Raise then dismiss: the ward clears for every caster at once, because it was never theirs."""
     pool = await db.get_pool()
     scope = WardScope.location("cap_ward_dismiss_hall")
     await seed_player(pool, player_id="cap_ward_p3")
@@ -71,7 +53,6 @@ async def test_scope_ward_round_trips_and_dismisses_for_the_whole_scope(reset_db
 
 
 async def test_each_ward_source_round_trips_unchanged(reset_db_pool: str) -> None:
-    """Each ward source id survives the round trip; scopes are independent of one another."""
     pool = await db.get_pool()
     for source in ("cleric", "druid", "paladin"):
         scope = WardScope.location(f"cap_ward_src_{source}")
@@ -81,13 +62,7 @@ async def test_each_ward_source_round_trips_unchanged(reset_db_pool: str) -> Non
 
 
 async def test_paladin_raise_in_combat_charges_only_the_raiser(reset_db_pool: str) -> None:
-    """AC9, story-005: the whole activation path against a real pool, no module injection.
-
-    A Paladin's ROUNDS ward is combat-only, so this raise targets the ENCOUNTER scope: the ward
-    round-trips through combat_instances.data carrying its 3-round clock, no veil_wards row is
-    written, and the Focus/Stamina come from the raiser alone even though the ward it buys covers
-    the whole party.
-    """
+    """Raise in combat so the Paladin's round clock belongs to the encounter; only the raiser pays."""
     pool = await db.get_pool()
     location_id = "cap_ward_combat_hall"  # scope ids unique to this test — the container DB is shared
     combat_id = "cap_ward_combat_1"

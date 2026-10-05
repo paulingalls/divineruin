@@ -1,14 +1,4 @@
-"""Temporary Hollowed combat ride-along (M4.4 story-008).
-
-Spec (gm_combat §The Hollowed Death): a Stage-2+ Hollowed player who drops to 0 HP does NOT enter
-Fallen — their corpse rises as a Temporary Hollowed combatant (HP=50% of max, hits add 1d6
-necrotic, immune to Charmed/Frightened/Poisoned) that takes DM turns and blocks combat-end until
-destroyed. On its destruction the character enters normal Mortaen death (story-007): Hollowed
-cleared, hollow_killed recorded.
-
-Unit coverage here (rise at the death site + _wrap end-condition gating); the real-PG end-to-end
-lands in the persistence test class below (AC3).
-"""
+"""A temporary Hollowed echo must block combat end until destroyed; then normal Mortaen death applies."""
 
 from unittest.mock import AsyncMock, MagicMock
 
@@ -85,9 +75,7 @@ class TestRiseAtDeathSite:
         assert player.is_fallen is False
         assert player.is_dead is False
         assert any(c["type"] == "temporary_hollowed" for c in player.conditions)
-        # The Hollowed condition is untouched on the echo — trigger_character_death reads it later.
         assert conditions.hollowed_stage(player.conditions) == 2
-        # The echo's HP is not the player's: no player-HP write on rise.
         mutations.update_player_hp.assert_not_awaited()
 
     @pytest.mark.asyncio
@@ -166,7 +154,6 @@ class TestRiseAtDeathSite:
 
     @pytest.mark.asyncio
     async def test_destroyed_echo_falls(self):
-        # An already-risen echo at 0 HP is destroyed (Fallen) — it does NOT re-rise.
         ctx = make_context()
         cs = _make_combat_state()
         enemy = cs.get_participant("goblin_scout_1")
@@ -192,8 +179,6 @@ class TestRiseAtDeathSite:
 
 
 class TestWrapEchoGating:
-    """The pure Beat-4 wrap: a live echo blocks combat-end; a destroyed echo ends it as defeat."""
-
     def _state_with_echo(self, *, echo_fallen: bool, enemies_fallen: bool):
         cs = _make_combat_state(enemy_fallen=enemies_fallen)
         echo = cs.get_participant("player_1")
@@ -218,7 +203,6 @@ class TestWrapEchoGating:
         assert wrap.outcome == "defeat"
 
     def test_no_echo_combat_behaves_normally(self):
-        # Regression: an ordinary victory (all enemies fallen, no echo) is unaffected.
         cs = _make_combat_state(enemy_fallen=True)
         wrap = combat_phase._wrap(cs)
         assert wrap.combat_ended is True
@@ -257,16 +241,12 @@ class TestWrapEchoGating:
         assert wrap.outcome == "defeat"
 
     def test_destroyed_echo_with_solo_player_still_defeats(self):
-        # Back-compat: no other player participants -> all([]) is True -> defeat, unchanged.
         cs = self._state_with_echo(echo_fallen=True, enemies_fallen=False)
         wrap = combat_phase._wrap(cs)
         assert wrap.combat_ended is True
         assert wrap.outcome == "defeat"
 
     def test_destroyed_echo_mutual_kill_resolves_defeat(self):
-        # story-005 (decision mutual-ko-is-defeat): echoes destroyed + all non-echo players down +
-        # all enemies fallen is a party wipe -> DEFEAT (was victory pre-story-005). The dead
-        # echo-primary is still resurrected by combat_end's dead-life collector.
         cs = self._state_with_echo(echo_fallen=True, enemies_fallen=True)
         self._add_standing_ally(cs, dead=True)
         wrap = combat_phase._wrap(cs)
@@ -283,10 +263,6 @@ class TestWrapEchoGating:
         assert wrap.combat_ended is False
 
     def test_living_echo_with_all_enemies_and_allies_down_defeats_no_hang(self):
-        # story-004/005 finding 3/5: a living echo blocks combat-end, but when all enemies are fallen
-        # AND every non-echo ally is also down, no one is left to destroy the echo -> the party is
-        # wiped -> DEFEAT (no WRAP-beat hang). A solo living echo with all enemies fallen likewise
-        # resolves defeat — see test_solo_living_echo_all_enemies_fallen_resolves_defeat.
         cs = self._state_with_echo(echo_fallen=False, enemies_fallen=True)
         self._add_standing_ally(cs, dead=True)
         wrap = combat_phase._wrap(cs)
@@ -295,12 +271,6 @@ class TestWrapEchoGating:
 
 
 async def test_temporary_hollowed_full_path_e2e(dev_db_pool):
-    """AC3 (real PostgreSQL): a Stage-2 Hollowed player dies -> the echo rises -> is destroyed ->
-    the character enters Mortaen death -> resurrected with Hollowed cleared and hollow_killed
-    recorded. Drives the rise/destroy through the combat engine and routes the echo-fall death
-    through resurrect_on_defeat (M20 story-004: _end_combat_db reaches the same resurrection via its
-    outcome-independent dead-life collector, exercised end-to-end by
-    test_echo_primary_resurrected_on_victory_e2e below)."""
     import json
 
     import db_mutations_resurrection as dmr
@@ -328,7 +298,6 @@ async def test_temporary_hollowed_full_path_e2e(dev_db_pool):
         ),
     )
     try:
-        # --- Engine side: the player drops to 0 HP and rises as a Temporary Hollowed echo. ---
         ctx = make_context()
         cs = _make_combat_state(player_hp=8)
         enemy = cs.get_participant("goblin_scout_1")
@@ -348,10 +317,8 @@ async def test_temporary_hollowed_full_path_e2e(dev_db_pool):
         )
         assert player.type == "temporary_hollowed"
         assert player.is_fallen is False
-        # A live echo blocks combat-end.
         assert combat_phase._wrap(cs).combat_ended is False
 
-        # --- Destroy the echo; the wrap now reports defeat. ---
         await _resolve_attack_packet(
             ctx.userdata,
             enemy,
@@ -364,7 +331,6 @@ async def test_temporary_hollowed_full_path_e2e(dev_db_pool):
         wrap = combat_phase._wrap(cs)
         assert wrap.combat_ended is True and wrap.outcome == "defeat"
 
-        # --- Defeat path (what _end_combat_db runs): Mortaen death keyed on the player row. ---
         combat_cleared = bool([p for p in cs.participants if p.type == "enemy" and p.is_fallen])
         player_row = await db_queries.get_player(player_id, conn=pool)
         assert player_row is not None
@@ -375,7 +341,6 @@ async def test_temporary_hollowed_full_path_e2e(dev_db_pool):
 
         revived = await db_queries.get_player(player_id, conn=pool)
         assert revived is not None
-        # Hollow-killed recorded permanently, Hollowed cleared from the store, revived at the anchor.
         assert await dmr.read_hollow_killed(player_id, conn=pool) is True
         assert all(c["type"] != "hollowed" for c in (revived.get("conditions") or []))
         assert revived["location_id"] == death_ctx["anchor"]
@@ -385,11 +350,6 @@ async def test_temporary_hollowed_full_path_e2e(dev_db_pool):
 
 
 async def test_echo_primary_resurrected_on_victory_e2e(dev_db_pool):
-    """M20 story-004 (real PostgreSQL): a destroyed temporary_hollowed echo-primary + a surviving
-    ally win the fight -> _end_combat_db resolves outcome='victory' yet still Mortaen-resurrects the
-    echo-primary through its outcome-independent dead-life collector (hollow_killed recorded, Hollowed
-    cleared, revived at an anchor). The living ally is untouched (no death recorded). Proves the
-    character-loss fix end-to-end through the real combat-end path — not the defeat-only branch."""
     import json
 
     from sample_fixtures import make_context, make_mock_room
@@ -436,7 +396,6 @@ async def test_echo_primary_resurrected_on_victory_e2e(dev_db_pool):
         cs = CombatState(
             combat_id="s004_victory_combat",
             participants=[
-                # The primary transformed into a Hollowed echo and was then destroyed (a dead player).
                 CombatParticipant(
                     id=primary_id,
                     name="Echo",
@@ -448,7 +407,6 @@ async def test_echo_primary_resurrected_on_victory_e2e(dev_db_pool):
                     is_fallen=True,
                     conditions=[{"type": "hollowed", "duration": None, "source": "veil", "stage": 2}],
                 ),
-                # The ally survived and cleared the last enemy -> victory.
                 CombatParticipant(
                     id=ally_id, name="Ally", type="player", initiative=12, hp_current=18, hp_max=20, ac=14
                 ),
@@ -466,7 +424,6 @@ async def test_echo_primary_resurrected_on_victory_e2e(dev_db_pool):
             session, cs, "victory", mutations=db_mutations, queries=db_queries, conn=pool, sink=EventSink()
         )
 
-        # The echo-primary died and returned via Mortaen despite the VICTORY.
         assert end_data["death_context"] is not None
         revived = await db_queries.get_player(primary_id, conn=pool)
         assert revived is not None
@@ -476,7 +433,6 @@ async def test_echo_primary_resurrected_on_victory_e2e(dev_db_pool):
         assert revived["location_id"] != "off_catalog_wilds"  # revived at a resolved anchor
         assert revived["location_id"] == end_data["death_context"]["anchor"]
 
-        # The surviving ally is untouched — no death recorded.
         ally = await db_queries.get_player(ally_id, conn=pool)
         assert ally is not None and ally["death_history"]["count"] == 0
     finally:

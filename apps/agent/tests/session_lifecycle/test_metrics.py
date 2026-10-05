@@ -1,5 +1,3 @@
-"""Tests for session-metric fields, accumulation across tools, and lifecycle integration."""
-
 import json
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -85,8 +83,6 @@ SAMPLE_QUEST = {
 
 
 class TestSessionMetricsFields:
-    """SessionData has the new metric fields with correct defaults."""
-
     def test_default_metrics(self):
         sd = SessionData(player_id="p1", location_id="loc1")
         assert sd.session_xp_earned == 0
@@ -98,15 +94,9 @@ class TestSessionMetricsFields:
 
 
 class TestMetricsAccumulation:
-    """Mutation tools increment session metrics."""
-
     @pytest.mark.asyncio
     async def test_quest_xp_tracks_metric(self):
-        """Quest XP feeds session_xp_earned, the metric combat exit already feeds.
-
-        Quest XP is granted through the party-wide DISTRIBUTE pass, so the metric takes the
-        PRIMARY's own share — not the undistributed stage total the quest declares.
-        """
+        """Session XP measures the primary player's distributed share rather than the stage total."""
         from quest_tools import _update_quest_impl
 
         quest = {
@@ -143,7 +133,6 @@ class TestMetricsAccumulation:
         )
         assert ctx.userdata.session_xp_earned == 50
 
-        # Completing the final stage accumulates onto the same metric.
         mock_queries.get_player_quest = AsyncMock(return_value={"current_stage": 1})
         await _update_quest_impl(
             ctx,
@@ -186,8 +175,7 @@ class TestMetricsAccumulation:
 
     @pytest.mark.asyncio
     async def test_guest_transact_find_stays_off_the_host_recap(self):
-        """A guest's find is the guest's: the host's mirror list only carries the host's own
-        distinct finds, the same rule combat loot and quest rewards follow."""
+        """A guest's finds must not appear in the host's recap."""
         from inventory_tools import _transact_impl
 
         mock_db = MagicMock()
@@ -276,15 +264,9 @@ class TestMetricsAccumulation:
 
 
 class TestSessionLifecycleIntegration:
-    """Integration tests for session lifecycle features working together."""
-
     @pytest.mark.asyncio
     async def test_metrics_accumulate_across_tools(self):
-        """Session metrics accumulate across multiple tool calls.
-
-        XP now enters the session only through a Resolve, so the XP legs drive update_quest
-        (the quest-completion grant path) rather than the removed award_xp verb.
-        """
+        """Exercise XP through the quest Resolve, not a removed award verb."""
         from inventory_tools import _transact_impl
         from quest_tools import _update_quest_impl
 
@@ -350,7 +332,6 @@ class TestSessionLifecycleIntegration:
 
     @pytest.mark.asyncio
     async def test_end_session_then_summary_uses_metrics(self):
-        """end_session captures metrics, then summary uses them."""
         from session_summary import generate_session_summary
         from session_tools import end_session
 
@@ -380,7 +361,6 @@ class TestSessionLifecycleIntegration:
         assert summary["key_events"] == ["Found the ring"]
 
     def test_cross_session_recap_reflects_saved_summary(self):
-        """A saved summary's key_events and next_hooks appear in the next session's recap."""
         from agent import _build_recap_instruction
 
         saved_summary = {

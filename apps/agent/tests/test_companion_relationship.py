@@ -1,10 +1,3 @@
-"""Tests for the pure companion relationship tier math + gate registry (M6.4 / story-003).
-
-The HYBRID model: session_count -> floor tier (spec bands), affinity nudges up one band, never
-below floor, capped at 5. These tests own the pure contract; DB persistence/query is tested in
-tests/companion/test_relationship_persistence.py.
-"""
-
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -38,19 +31,16 @@ class TestEffectiveRank:
         assert effective_tier_rank(21, 0) == 5
 
     def test_affinity_nudges_one_band_at_threshold(self):
-        # session_count 6 -> floor 3; affinity 3 nudges to 4.
         assert effective_tier_rank(6, AFFINITY_PER_TIER) == 4
         assert effective_tier_rank(6, AFFINITY_PER_TIER - 1) == 3
 
     def test_never_below_floor(self):
-        # low session, high affinity -> still at least the floor, at most +1.
         assert effective_tier_rank(0, 100) == 2  # floor 1 + 1
 
     def test_capped_at_5(self):
         assert effective_tier_rank(21, 100) == 5  # floor 5, nudge can't exceed 5
 
     def test_nudge_is_single_band(self):
-        # affinity never adds more than one band regardless of magnitude.
         assert effective_tier_rank(3, 999) == 3  # floor 2 + 1
 
 
@@ -81,7 +71,6 @@ class TestApplyRelationshipChange:
 
 
 class TestUnlocksUpTo:
-    # Kael-shaped relationship_unlocks (story-001): only trusted/bonded/legendary have reveals.
     UNLOCKS = {
         "trusted": ["first hint of his past"],
         "bonded": ["full secret"],
@@ -130,7 +119,7 @@ class TestAssignedCompanionHydration:
 
     @pytest.mark.asyncio
     async def test_unselectable_archetype_writes_nothing(self):
-        """Drives the REAL selector: mocking it here would only prove a mock re-raises."""
+        """Use the real companion selector rather than a mocked selection."""
         with (
             patch(
                 "db_mutations_companion.insert_companion_relationship_if_absent",

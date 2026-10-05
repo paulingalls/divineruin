@@ -8,12 +8,6 @@ import {
 } from "./mentor_variants.ts";
 import type { MentorVariant } from "@divineruin/shared";
 
-// Drives the production fail-loud parseMentorVariantRow over inline fixtures and
-// pins the accessors, mirroring the Python loader's tests (apps/agent/tests/
-// test_mentor_variants.py). Catalog conformance against content/mentor_variants.json
-// (exact count, every row parses, ability_id/mentor_id cross-refs) lives in
-// mentor_variants-load.test.ts.
-
 const ROW = {
   ability_id: "warrior_cleaving_blow",
   mentor_id: "guildmaster_torin",

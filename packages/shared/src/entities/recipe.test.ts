@@ -1,12 +1,6 @@
 import { test, expect, describe } from "bun:test";
 import type { Recipe, MaterialReq } from "./recipe";
 
-// Tests for the M5.1 Recipe & MaterialReq types (spec §Recipe Schema 114-148).
-// Recipes are fully-specified DB-loaded content, so every field is REQUIRED
-// (unlike the optional M5.0 Item widening). These are compile-time shape
-// conformance tests: if the interface drifts from the spec's 16 fields, the
-// fixtures stop compiling and `bun test` / `tsc --noEmit` go red.
-
 const sampleMaterial: MaterialReq = {
   material_id: "keldaran_steel",
   quantity: 2,

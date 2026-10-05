@@ -1,10 +1,3 @@
-"""Tests for the stateful PlayerAffectAnalyzer + format_affect_context (Phase A).
-
-The analyzer object (latency tracking, affect-vector assembly, async run loop)
-and its warm-prompt formatting — split from the pure-function tests
-(test_affect_analyzer_functions.py) to keep each file under the 500-line cap.
-"""
-
 import asyncio
 import time
 
@@ -15,15 +8,10 @@ from livekit.agents.types import TimedString
 from affect_analyzer import PlayerAffectAnalyzer
 from warm_prompts import format_affect_context
 
-# ---------------------------------------------------------------------------
-# Response latency edge cases
-# ---------------------------------------------------------------------------
-
 
 class TestResponseLatency:
     def test_no_tts_end_recorded(self):
         analyzer = PlayerAffectAnalyzer()
-        # No record_tts_end called → latency should be 0
         event = _make_speech_event("hello there")
         analyzer._process_stt_event(event)
         vec = analyzer.get_current_vector()
@@ -33,7 +21,6 @@ class TestResponseLatency:
     def test_normal_latency(self):
         analyzer = PlayerAffectAnalyzer()
         analyzer.record_tts_end()
-        # Small delay
         time.sleep(0.05)
         event = _make_speech_event("I look around")
         analyzer._process_stt_event(event)
@@ -43,7 +30,6 @@ class TestResponseLatency:
 
     def test_interruption_clamped_to_zero(self):
         analyzer = PlayerAffectAnalyzer()
-        # Set TTS end in the future (simulates interruption)
         analyzer._last_tts_end = time.monotonic() + 10
         event = _make_speech_event("wait stop")
         analyzer._process_stt_event(event)
@@ -53,18 +39,12 @@ class TestResponseLatency:
 
     def test_latency_capped_at_30s(self):
         analyzer = PlayerAffectAnalyzer()
-        # Set TTS end far in the past
         analyzer._last_tts_end = time.monotonic() - 60
         event = _make_speech_event("hello")
         analyzer._process_stt_event(event)
         vec = analyzer.get_current_vector()
         assert vec is not None
         assert vec["response_latency_ms"] == 30_000
-
-
-# ---------------------------------------------------------------------------
-# Affect vector structure
-# ---------------------------------------------------------------------------
 
 
 class TestAffectVector:
@@ -124,11 +104,6 @@ class TestAffectVector:
         assert analyzer.get_current_vector() is None
 
 
-# ---------------------------------------------------------------------------
-# Integration: async _process_stt_event with mock SpeechEvent
-# ---------------------------------------------------------------------------
-
-
 class TestProcessSttEvent:
     def test_final_transcript_updates_vector(self):
         analyzer = PlayerAffectAnalyzer()
@@ -180,7 +155,6 @@ class TestAsyncRun:
     async def test_start_recovers_after_crash(self):
         analyzer = PlayerAffectAnalyzer()
         analyzer.start()
-        # Simulate crash by cancelling
         assert analyzer._task is not None
         analyzer._task.cancel()
         try:
@@ -189,16 +163,10 @@ class TestAsyncRun:
             pass
         assert analyzer._task is not None
         assert analyzer._task.done()
-        # start() should detect done task and create new one
         analyzer.start()
         assert analyzer._task is not None
         assert not analyzer._task.done()
         await analyzer.stop()
-
-
-# ---------------------------------------------------------------------------
-# format_affect_context
-# ---------------------------------------------------------------------------
 
 
 class TestFormatAffectContext:
@@ -280,11 +248,6 @@ class TestFormatAffectContext:
         assert "calibrating" in result.lower() or "low confidence" in result.lower()
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
 def _make_speech_event(
     text: str,
     event_type: SpeechEventType = SpeechEventType.FINAL_TRANSCRIPT,
@@ -292,7 +255,6 @@ def _make_speech_event(
 ) -> SpeechEvent:
     """Create a mock SpeechEvent for testing."""
     if words is None and text.strip():
-        # Generate simple timed words
         word_list = text.strip().split()
         words = []
         t = 0.0

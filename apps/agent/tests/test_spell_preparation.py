@@ -1,20 +1,4 @@
-"""Spell preparation rules — Track 3, on long rest (M8 story-006).
-
-Preparation is a deterministic Resolve (ADR 0007: no new @function_tool). These pure
-gates enforce the Track 3 rules (game_mechanics_archetypes.md L1255-1283):
-  - can only prepare a spell you KNOW (in the library)
-  - can only prepare a tier your ARCHETYPE has level access to (leveling.is_spell_tier_unlocked,
-    keyed by (archetype, tier, level)). This subsumes the Major-tier cap: Paladin/Diplomat/
-    Marshal have no Supreme entry, so Supreme is rejected as "not available" at any level.
-  - within the elective slot limit (core spells are abilities, slot-free, untouched)
-  - Primal casters (Druid/Beastcaller/Warden) may only CHANGE preparation in natural terrain
-
-Both gates fail loud: they raise ValueError with a specific message on violation and
-return None when the preparation is allowed (mirrors rest_mechanics.swap_elective_on_long_rest).
-The async long-rest Resolve (rest_mechanics.prepare_spells_on_long_rest) is exercised lower
-in this file against a stateful mock store; the literal real-Postgres AC4 assertion rides the
-M8 story-007 capstone (ADR 0003: real-DB testcontainer fixtures are unreachable from tests/).
-"""
+"""Core spells are abilities and consume no elective slots; archetype tier access also subsumes hybrid caps."""
 
 import json
 from pathlib import Path
@@ -41,9 +25,6 @@ def _archetypes_by_magic_source() -> dict[str | None, set[str]]:
     return by_source
 
 
-# --- AC2: Primal terrain gate (can_change_preparation, keyed on magic_source) ---
-
-
 def test_primal_source_cannot_change_preparation_outside_natural_terrain():
     with pytest.raises(ValueError, match="natural terrain"):
         spell_preparation.can_change_preparation("primal", in_natural_terrain=False)
@@ -55,11 +36,7 @@ def test_primal_source_can_change_preparation_in_natural_terrain():
 
 @pytest.mark.parametrize("magic_source", ["arcane", "divine", "cross", None])
 def test_non_primal_source_unaffected_by_terrain(magic_source):
-    # Every non-primal source (and pure martials, None) re-prepares anywhere.
     assert spell_preparation.can_change_preparation(magic_source, in_natural_terrain=False) is None
-
-
-# --- AC1: know-it / tier-access / slot gates (can_prepare) ---
 
 
 def _prepare(**overrides: object) -> None:
@@ -91,7 +68,6 @@ def test_can_prepare_unknown_spell_rejected():
 
 
 def test_can_prepare_tier_above_character_level_rejected():
-    # A mage unlocks Standard at L3; a level-2 mage cannot prepare it.
     with pytest.raises(ValueError, match="unlock"):
         _prepare(spell_tier="standard", character_level=2)
 
@@ -102,18 +78,12 @@ def test_can_prepare_no_open_slot_rejected():
 
 
 def test_can_prepare_unknown_tier_fails_loud():
-    # Delegates to is_spell_tier_unlocked, which raises on an unknown tier.
     with pytest.raises(ValueError, match="unknown spell tier"):
         _prepare(spell_tier="legendary", character_level=20, known_spell_ids={"arcane_fireball"})
 
 
-# --- AC3: Major-tier cap for paladin/diplomat/marshal (divine subset) ---
-
-
 @pytest.mark.parametrize("archetype_id", ["paladin", "diplomat", "marshal"])
 def test_major_capped_archetype_cannot_prepare_supreme(archetype_id):
-    # paladin/diplomat/marshal have no Supreme entry in the per-archetype gate, so it is
-    # rejected as "not available" at any level (the gate subsumes the old Major cap).
     with pytest.raises(ValueError, match="not available"):
         _prepare(
             spell_id="divine_judgment",
@@ -126,7 +96,6 @@ def test_major_capped_archetype_cannot_prepare_supreme(archetype_id):
 
 @pytest.mark.parametrize("archetype_id", ["paladin", "diplomat", "marshal"])
 def test_major_capped_archetype_can_prepare_major(archetype_id):
-    # These half-casters unlock Major at L9 (later than a full caster's L5).
     assert (
         _prepare(
             spell_id="divine_smite",
@@ -155,15 +124,7 @@ def test_uncapped_caster_can_prepare_supreme(archetype_id):
     )
 
 
-# --- Parity: the no-Supreme archetypes must stay in sync with content/archetypes.json ---
-# Guards silent drift if a divine archetype is renamed/added in the content SSOT without
-# updating the per-archetype gate. (The primal terrain rule is derived from magic_source,
-# so it needs no parity guard.)
-
-
 def test_supreme_capped_archetypes_are_known_divine_casters():
-    # paladin/diplomat/marshal cap at Major — no "supreme" entry in the per-archetype gate.
-    # They are a STRICT subset of divine casters (cleric/oracle keep Supreme).
     no_supreme = {
         a.id
         for a in archetypes._archetypes.values()
@@ -172,22 +133,12 @@ def test_supreme_capped_archetypes_are_known_divine_casters():
     assert no_supreme == {"paladin", "diplomat", "marshal"}
     divine_in_content = _archetypes_by_magic_source().get("divine", set())
     assert divine_in_content >= no_supreme
-    # ...and a strict superset: at least one divine caster (cleric/oracle) keeps Supreme.
     assert divine_in_content > no_supreme
 
 
 def test_gate_tier_vocab_matches_spell_tier_literal():
-    # The per-archetype gate's tier vocabulary must cover the same closed enum as the
-    # SpellTier Literal, so the two representations cannot silently diverge.
     assert set(get_args(SpellTier)) == leveling.SPELL_TIERS
 
-
-# --- AC1/AC4: the async long-rest Resolve (rest_mechanics.prepare_spells_on_long_rest) ---
-# These drive the full preparation flow against a stateful in-memory store (the persistence
-# seam). The literal real-Postgres single-DB assertion for AC4 rides the M8 story-007 capstone
-# in tests/acceptance/ (ADR 0003: real-DB testcontainer fixtures are unreachable from tests/;
-# decision retro-try-ac4-capstone-placement — story-004/005 defer the same way). Catalog spell
-# ids/tiers are the seeded fixture: arcane cantrip/minor/standard/major, divine supreme, primal cantrip.
 
 _PLAYER = "player_1"
 
@@ -248,7 +199,6 @@ async def test_prepare_marks_loadout_prepared():
 
 
 async def test_prepare_loadout_up_to_slot_limit_persists():
-    # Exactly slot_limit spells is allowed (boundary).
     store = _make_store({"arcane_frost_touch": False, "arcane_magic_missile": False, "arcane_mage_hand": False})
     await _prepare_flow(store, ["arcane_frost_touch", "arcane_magic_missile", "arcane_mage_hand"], slot_limit=3)
     assert _prepared_ids(store) == {"arcane_frost_touch", "arcane_magic_missile", "arcane_mage_hand"}
@@ -269,12 +219,10 @@ async def test_prepare_over_slot_limit_refused_with_no_writes():
             ["arcane_frost_touch", "arcane_magic_missile", "arcane_mage_hand", "arcane_hold_person"],
             slot_limit=3,
         )
-    # All-or-nothing: validation happens before any mutation, so nothing persisted.
     assert _prepared_ids(store) == set()
 
 
 async def test_prepare_unknown_spell_refused_with_no_writes():
-    # arcane_fireball is a real catalog spell but NOT in this character's library.
     store = _make_store({"arcane_frost_touch": False})
     with pytest.raises(ValueError, match="does not know"):
         await _prepare_flow(store, ["arcane_frost_touch", "arcane_fireball"], character_level=7)
@@ -282,7 +230,6 @@ async def test_prepare_unknown_spell_refused_with_no_writes():
 
 
 async def test_prepare_clears_deselected_electives():
-    # arcane_frost_touch was prepared last rest; the new loadout drops it for arcane_magic_missile.
     store = _make_store({"arcane_frost_touch": True, "arcane_magic_missile": False})
     await _prepare_flow(store, ["arcane_magic_missile"])
     assert _prepared_ids(store) == {"arcane_magic_missile"}
@@ -313,8 +260,6 @@ async def test_paladin_supreme_in_loadout_refused():
 
 
 async def test_prepare_duplicate_loadout_refused_with_no_writes():
-    # A loadout is a set of distinct electives; a duplicate is malformed input. It must fail
-    # loud (not silently mis-count a slot or double-write) before any mutation.
     store = _make_store({"arcane_frost_touch": False, "arcane_magic_missile": False})
     with pytest.raises(ValueError, match="duplicate"):
         await _prepare_flow(store, ["arcane_frost_touch", "arcane_frost_touch"], slot_limit=3)
@@ -323,10 +268,7 @@ async def test_prepare_duplicate_loadout_refused_with_no_writes():
 
 
 async def test_prepare_skips_rewrite_of_already_prepared_spell():
-    # Delta-only: a spell already prepared and still in the loadout must NOT be re-written;
-    # only the newly added spell gets a set_prepared(True) call.
     store = _make_store({"arcane_frost_touch": True, "arcane_magic_missile": False})
     await _prepare_flow(store, ["arcane_frost_touch", "arcane_magic_missile"])
     assert _prepared_ids(store) == {"arcane_frost_touch", "arcane_magic_missile"}
-    # Exactly one write: arcane_magic_missile -> True. arcane_frost_touch is untouched.
     store.set_prepared.assert_called_once_with(_PLAYER, "arcane_magic_missile", True, conn=None)

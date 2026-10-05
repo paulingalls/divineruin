@@ -1,25 +1,4 @@
-"""Capstone: Milestone 7 exploration-agent collapse (story-005).
-
-Proves the four M7 stories compose end-to-end — the Definition of Done no single
-per-story test covers whole:
-
-  - AC1: one agent's warm layer sources its REGISTER from the Stage's region_type
-    (city/wilderness/dungeon), and flipping region_type flips the register —
-    region and register can never disagree (story-002);
-  - AC2: the strict-tool ceiling no longer binds — the unified EXPLORATION_TOOLS
-    list has headroom under MAX_STRICT_TOOLS and the per-region agent classes are
-    gone (story-001);
-  - AC3: a region crossing keeps ONE warm agent — set_agent_region updates the
-    live instance in place, no handoff (story-003);
-  - AC4: select resolves in the dispatch context as well as exploration — the same
-    verb object lives in both tool lists (story-004);
-  - AC5: the collapse exposes the former city-superset verbs everywhere, so the
-    Stage-driven NPC-presence guard (story-005) refuses update_npc_disposition for
-    an NPC absent from the player's location, and allows it where the NPC is present.
-
-AC1-AC4 are pure (no DB) and prove the collapse even when Docker is down. AC5 runs
-over the seeded testcontainer DB (`reset_db_pool`) and skips cleanly otherwise.
-"""
+"""AC1-AC4 need no database; NPC-presence refusal uses the seeded Postgres location."""
 
 from __future__ import annotations
 

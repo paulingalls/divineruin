@@ -7,18 +7,8 @@ import {
 } from "./archetypes.ts";
 import type { Archetype } from "@divineruin/shared";
 
-// Drives the production fail-loud parseArchetypeRow (apps/server/src/archetypes.ts)
-// over content/archetypes.json, proving every entry conforms to the shared
-// Archetype contract. parseArchetypeRow is the real TS load boundary (loadArchetypes
-// calls it at startup); this test exercises it against the canonical content, pins
-// its fail-loud behavior on malformed rows, and mirrors the Python loader's
-// agent-side vocab assertions (commit 10e45b6) so the cross-language contract
-// (constraint chassis-row-shape-contract) is enforced on both sides.
-
 const ARCHETYPES_PATH = new URL("../../../content/archetypes.json", import.meta.url);
 
-// The 18 archetypes are a closed set (M2.1). Exact count catches both silent
-// attrition from bad merges AND accidental additions.
 const ARCHETYPE_COUNT = 18;
 
 // Armor is a naturally closed vocabulary (classes + non-metal qualifiers + the
@@ -50,7 +40,6 @@ describe("content/archetypes.json — parseArchetypeRow conformance", () => {
     expect(rows).toHaveLength(ARCHETYPE_COUNT);
     for (const row of rows) {
       const id = typeof row.id === "string" ? row.id : "<no-id>";
-      // Throws with an archetypes[<id>].<field> context on any malformed entry.
       expect(() => parseArchetypeRow(id, row)).not.toThrow();
     }
   });
@@ -85,10 +74,6 @@ describe("content/archetypes.json — parseArchetypeRow conformance", () => {
 });
 
 describe("archetypes accessors — loadArchetypes consumer chain", () => {
-  // loadArchetypes() reads the DB; its accessor chain (setArchetypes ->
-  // getArchetypeChassis/listArchetypes) is the runtime API consumers use after
-  // startup. Drive it against the real parsed content (parseArchetypeRow per row,
-  // exactly as loadArchetypes does) without a live DB.
   async function loadParsedMap(): Promise<Map<string, Archetype>> {
     const rows = await loadArchetypesJson();
     const map = new Map<string, Archetype>();

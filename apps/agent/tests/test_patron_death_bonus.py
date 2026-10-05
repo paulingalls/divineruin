@@ -1,9 +1,3 @@
-"""M4.4 story-004 — Mortaen patron bonus: +2 death saves (AC2) and first-death-free (AC3).
-
-The pure death-save bonus (combat_resolution), the patron hooks (creation_deities, the
-Phase-8 modifier seam), and the live wiring through the death-save tool (combat_death_save).
-"""
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -33,16 +27,12 @@ def _force_roll(value: int):
 
 
 class TestDeathSaveBonus:
-    """resolve_death_save(bonus=...) shifts the success threshold; crits stay on the raw die."""
-
     def test_bonus_flips_a_marginal_failure_to_success(self):
         with _force_roll(8):
             base = combat_resolution.resolve_death_save(0, 0)
             boosted = combat_resolution.resolve_death_save(0, 0, bonus=2)
-        # Raw 8 fails on its own (8 < 10) but a +2 patron bonus clears the bar (10 >= 10).
         assert base.success is False
         assert boosted.success is True
-        # The reported roll stays the raw die for display either way.
         assert base.roll == 8 and boosted.roll == 8
 
     def test_bonus_does_not_change_crit_success_or_failure(self):
@@ -60,8 +50,6 @@ class TestDeathSaveBonus:
 
 
 class TestPatronHooks:
-    """Mortaen patron hooks read only patron_id — the Phase-8 modifier-system stub."""
-
     def test_mortaen_gets_plus_two_death_save_bonus(self):
         assert creation_deities.patron_death_save_bonus("mortaen") == 2
 
@@ -81,8 +69,6 @@ class TestPatronHooks:
 
 
 class TestDeathSaveBonusWiredLive:
-    """combat_death_save passes the patron's +2 through to resolve_death_save (AC2)."""
-
     @pytest.mark.asyncio
     async def test_mortaen_session_applies_plus_two(self):
         ctx = make_context()

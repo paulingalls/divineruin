@@ -1,24 +1,4 @@
-"""Capstone: M17 spell-SFX chain end-to-end (cast -> registry-valid key -> bundled asset).
-
-M17 shipped the spell-audio pipeline across stories 001-004: a machine-playable
-``sound_id`` on every ``content/spells.json`` row (strict Python loader,
-``spells.SPELL_SOUND_KEYS``), the 7-key ``.mp3`` palette committed to
-``apps/mobile/assets/sounds/``, the cross-language sound registry
-(``apps/mobile/src/audio/sound-registry.ts``), and a deterministic
-``PLAY_SOUND(sound_id)`` emit at cast resolution
-(``spell_casting._resolve_cast``, story-004).
-
-This capstone proves those seams hold TOGETHER against a real Postgres
-testcontainer (auto-marked ``acceptance`` by tests/acceptance/conftest.py):
-
-  1. Every seeded catalog spell maps to a registry-valid ``sound_id`` whose
-     bundled ``.mp3`` asset exists on disk (no orphan key, no missing file).
-  2. The TS registry itself resolves every catalog ``sound_id`` to a bundled
-     asset -- run in-band via the story-003 cross-language guard under ``bun``.
-  3. A REAL cast (the entry point ``cast_spell`` delegates to) deterministically
-     emits exactly one ``PLAY_SOUND`` carrying the spell's registry-valid
-     ``sound_id``, with no LLM in the path.
-"""
+"""Resolve the actual TypeScript registry under Bun; the Python key mirror cannot certify bundled asset resolution."""
 
 from __future__ import annotations
 
@@ -85,8 +65,7 @@ async def test_every_spell_maps_to_registry_key_and_bundled_asset(reset_db_pool:
 
 
 def test_registry_resolves_every_catalog_sound_id_via_bun() -> None:
-    """Run the story-003 cross-language guard in-band so the capstone exercises the real
-    TS registry->asset require() resolution, not just the Python SPELL_SOUND_KEYS mirror."""
+    """Execute the TypeScript registry rather than comparing a hand-copied Python model."""
     bun = shutil.which("bun")
     if bun is None:
         pytest.skip("bun not on PATH; the sound-registry.test.ts guard also runs in `bun run test:all`")

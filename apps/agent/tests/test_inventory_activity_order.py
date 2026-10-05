@@ -1,5 +1,3 @@
-"""Material consumption through public activity dispatch before its sound cue."""
-
 import json
 from functools import partial
 from unittest.mock import AsyncMock, patch

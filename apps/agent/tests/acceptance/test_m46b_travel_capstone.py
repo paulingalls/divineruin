@@ -1,22 +1,4 @@
-"""Capstone: M4.6b Travel & Exploration end-to-end against a real Postgres testcontainer.
-
-Stories 001-003 shipped the travel surface in slices: the pure resolver (001), the data
-substrate (migration 055 + location terrain, 002), and the travel tool + apply_arrival reuse
-(003). This capstone proves they COMPOSE on ONE seeded testcontainer (auto-marked `acceptance`),
-driving the REAL travel pipeline against real DB writes across a multi-segment journey:
-
-- AC1: a clean-success segment (established_road) auto-arrives, relocates the player, clears
-  travel_state, and emits LOCATION_CHANGED so the HUD follows the arrival.
-- AC2: a forced-march navigation failure (dense_forest, low roll) is lost — wrong_area, no
-  relocation, travel_state records the failed destination, and forced-march exhaustion accrues.
-- AC3: exhaustion accrues across segments in players.data.conditions and never exceeds the
-  character's Iron-Constitution stack cap (3).
-
-Determinism: the d20 navigation check is forced via an injected rng (FixedRng) — 20 passes,
-1 fails. Exhaustion on the seeded terrains comes from forced march (>8h), since only
-underground/hollow_corrupted self-exhaust on a lost failure. Each test uses a distinct
-player_id (the testcontainer DB is shared).
-"""
+"""On these seeded terrains, forced march supplies exhaustion; navigation failure alone does not."""
 
 from __future__ import annotations
 
@@ -52,7 +34,6 @@ def _exhausted(player: dict) -> dict | None:
 
 
 async def test_m46b_clean_road_segment_arrives_and_clears_travel_state(reset_db_pool: str) -> None:
-    """AC1: an established-road segment auto-succeeds, relocates, clears travel_state, updates the HUD."""
     pool = await db.get_pool()
     player_id = "cap_m46b_road"
     await seed_player(pool, player_id=player_id, class_="skirmisher", location_id=_RUINS)
@@ -78,7 +59,6 @@ async def test_m46b_clean_road_segment_arrives_and_clears_travel_state(reset_db_
 
 
 async def test_m46b_forced_march_failure_is_lost_and_exhausts(reset_db_pool: str) -> None:
-    """AC2: a forced-march nav failure is lost (wrong_area), does not relocate, and exhausts."""
     pool = await db.get_pool()
     player_id = "cap_m46b_lost"
     await seed_player(pool, player_id=player_id, class_="skirmisher", location_id=_RUINS)
@@ -113,7 +93,6 @@ async def test_m46b_forced_march_failure_is_lost_and_exhausts(reset_db_pool: str
 
 
 async def test_m46b_exhaustion_accrues_across_segments_and_respects_iron_cap(reset_db_pool: str) -> None:
-    """AC3 / E2E: forced-march exhaustion accumulates across segments, capped at 3 (Iron Constitution)."""
     pool = await db.get_pool()
     player_id = "cap_m46b_iron"
     await seed_player(pool, player_id=player_id, class_="skirmisher", location_id=_RUINS)

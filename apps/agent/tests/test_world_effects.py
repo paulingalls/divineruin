@@ -1,5 +1,3 @@
-"""Tests for world effects parser, exit requirements, session flow, and god whispers (WU3)."""
-
 import json
 from unittest.mock import AsyncMock, MagicMock
 
@@ -14,9 +12,6 @@ from event_bus import GameEvent
 from movement_tools import _check_exit_requirement
 from quest_tools import _apply_world_effects, _update_quest_impl
 from session_data import CompanionState, SessionData
-
-# --- Helpers ---
-
 
 _mock_conn = MagicMock(name="mock_txn_conn")
 
@@ -53,9 +48,6 @@ def _make_bg(session_data=None):
     session.generate_reply = AsyncMock()
     bg = BackgroundProcess(session=session, session_data=sd)
     return bg, agent, session
-
-
-# --- _apply_world_effects ---
 
 
 class TestApplyWorldEffects:
@@ -123,7 +115,6 @@ class TestApplyWorldEffects:
 
     @pytest.mark.asyncio
     async def test_multiple_effects(self):
-        """Test all effects from quest stage 5 on_complete."""
         mock_queries = MagicMock()
         mock_queries.get_npc_disposition = AsyncMock(return_value="neutral")
         mock_mutations = MagicMock()
@@ -151,9 +142,7 @@ class TestApplyWorldEffects:
         session = _make_session()
         pending: list[tuple[str, dict]] = []
 
-        # Should not raise
         await _apply_world_effects(["this_is_not_a_valid_effect", ""], session, pending)
-        # No events from malformed strings
         assert len(pending) == 0
 
     @pytest.mark.asyncio
@@ -165,9 +154,6 @@ class TestApplyWorldEffects:
         await _apply_world_effects(["greyvale_corruption -1"], session, pending)
 
         assert session.corruption_level == 0
-
-
-# --- _check_exit_requirement ---
 
 
 class TestCheckExitRequirement:
@@ -227,9 +213,6 @@ class TestCheckExitRequirement:
         assert result is True
 
 
-# --- discover_hidden_element sets player flag ---
-
-
 class TestDiscoverSetsFlag:
     @pytest.mark.asyncio
     async def test_successful_discovery_sets_flag(self):
@@ -268,9 +251,6 @@ class TestDiscoverSetsFlag:
 
         if result.get("outcome") == "discovered":
             mock_mutations.set_player_flag.assert_called_once_with("player_1", "test_seal.discovered", True)
-
-
-# --- update_quest calls _apply_world_effects ---
 
 
 QUEST_WITH_EFFECTS = {
@@ -336,9 +316,6 @@ class TestUpdateQuestWorldEffects:
         mock_mutations.set_npc_disposition.assert_called_once()
 
 
-# --- God whisper event triggers CRITICAL speech ---
-
-
 class TestGodWhisper:
     def test_god_whisper_event_triggers_speech(self):
         sd = _make_session(
@@ -400,7 +377,6 @@ class TestGodWhisper:
             )
         ]
         bg._handle_events(events)
-        # 40 - 25 = 15 < 25 cooldown
         assert len(bg._speech_queue) == 0
 
     def test_non_whisper_world_event_no_speech(self):
@@ -410,12 +386,8 @@ class TestGodWhisper:
         assert len(bg._speech_queue) == 0
 
 
-# --- Rider scene trigger ---
-
-
 class TestRiderScene:
     def test_rider_triggers_at_market_without_companion_or_quest(self):
-        """Rider triggers at market when: no quest, no companion."""
         sd = _make_session(location_id="accord_market_square")
         bg, _, _ = _make_bg(session_data=sd)
         bg._quest_cache = []
@@ -424,7 +396,6 @@ class TestRiderScene:
         assert bg._rider_triggered is True
 
     def test_rider_does_not_trigger_with_companion(self):
-        """Rider scene is suppressed when player already has a companion."""
         sd = _make_session(location_id="accord_market_square")
         sd.companion = CompanionState(id="companion_kael", name="Kael")
         bg, _, _ = _make_bg(session_data=sd)
@@ -442,7 +413,6 @@ class TestRiderScene:
         assert bg._rider_triggered is False
 
     def test_rider_uses_scene_cache_when_available(self):
-        """Rider scene uses instructions from scene_cache if scene_rider_arrival is cached."""
         sd = _make_session(location_id="accord_market_square")
         bg, _, _ = _make_bg(session_data=sd)
         bg._quest_cache = []

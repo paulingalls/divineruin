@@ -1,16 +1,4 @@
-"""Tests for veil_anchor_tools.deploy_veil_anchor (story-012, M24).
-
-A crafted Veil Anchor is set down and wards the place it is set down in. The crafting IS the cost,
-so deploying deducts no Focus and no Stamina — which is exactly why this cannot route through
-activate_veil_ward: that tool gates on source.tool_raisable, and artificer is tool_raisable=False on
-purpose (story-005), so a 0-cost class cannot raise a free ward at will.
-
-The two anchors differ, and the difference is data (veil_ward.VEIL_ANCHORS), not a conditional:
-  small -> REAL_TIME 1h, dismissible, CONSUMED on use
-  large -> PERMANENT (expires_at NULL), NOT dismissible, NOT consumed
-
-Drives _deploy_veil_anchor_impl directly with injected mock modules, mirroring test_veil_ward_tools.
-"""
+"""Crafting pays for an anchor; deploying it must not grant artificers a free general-purpose ward activation."""
 
 import json
 import uuid
@@ -52,7 +40,6 @@ def _mocks(*, holds_item=True, covering_ward=None):
     inventory.transact_inventory = AsyncMock(return_value=0)
     ward_mut = MagicMock()
     ward_mut.write_ward = AsyncMock()
-    # The already-warded gate resolves through this leaf; None = nothing covers the scope.
     ward_mut.read_active_ward = AsyncMock(return_value=covering_ward)
     return ctx, mock_db, queries, inventory, ward_mut
 
@@ -83,7 +70,6 @@ class TestDeploySmallAnchor:
         scope, source, expires_at = ward_mut.write_ward.call_args.args
         assert scope == _SCOPE
         assert source == "artificer"
-        # An hour out, give or take the test's own execution time.
         assert timedelta(minutes=59) < expires_at - before < timedelta(minutes=61)
         assert ward_mut.write_ward.call_args.kwargs["dismissible"] is True
 
@@ -93,7 +79,6 @@ class TestDeploySmallAnchor:
         inventory.transact_inventory.assert_awaited_once_with(ctx.userdata.player_id, _SMALL, -1, conn=ANY)
 
     async def test_deducts_no_focus_and_no_stamina(self):
-        # The crafting was the cost. A resource write here would double-charge the player.
         ctx, mock_db, queries, inventory, ward_mut = _mocks()
         result, _pub = await _deploy(ctx, mock_db, queries, inventory, ward_mut, _SMALL)
         assert result["deducted"] == {"focus": 0, "stamina": 0}
@@ -122,7 +107,6 @@ class TestDeployLargeAnchor:
         assert ward_mut.write_ward.call_args.kwargs["dismissible"] is False
 
     async def test_is_not_consumed(self):
-        # "not consumed" per items.json. The monolith stays in the pack; only the ward is laid down.
         ctx, mock_db, queries, inventory, ward_mut = _mocks()
         await _deploy(ctx, mock_db, queries, inventory, ward_mut, _LARGE)
         inventory.transact_inventory.assert_not_awaited()
@@ -143,9 +127,7 @@ class TestDeployRefusals:
         ward_mut.write_ward.assert_not_awaited()
 
     async def test_deploying_into_an_already_warded_scope_is_refused(self):
-        """The large anchor is not consumed, so an ungated redeploy would write unbounded permanent,
-        non-dismissible rows that dismiss_ward can never remove. Mirrors activate_veil_ward's gate:
-        a second ward over a covered party buys nothing."""
+        """A reusable permanent anchor could otherwise create unlimited undismissible wards."""
         covering = {"source": "cleric", "expires_at": None, "dismissible": True}
         ctx, mock_db, queries, inventory, ward_mut = _mocks(covering_ward=covering)
         with pytest.raises(ToolError, match="already active"):
@@ -154,7 +136,6 @@ class TestDeployRefusals:
         inventory.transact_inventory.assert_not_awaited()
 
     async def test_a_failed_deploy_strands_no_ward_in_memory(self):
-        # The phantom-ward lesson (story-005): mirrors sync post-commit, never mid-transaction.
         ctx, mock_db, queries, inventory, ward_mut = _mocks()
         ward_mut.write_ward = AsyncMock(side_effect=RuntimeError("db died mid-write"))
         with pytest.raises(RuntimeError):
@@ -183,7 +164,6 @@ class TestDeployedAnchorsAgainstRealSql:
 
     @pytest.mark.usefixtures("dev_db_pool")
     async def test_a_deployed_large_anchor_survives_dismissal(self):
-        # AC2: its lifecycle belongs to crafting, not to activate_veil_ward.
         pool = await db.get_pool()
         scope = WardScope.location(f"test_loc_{uuid.uuid4().hex}")
         try:

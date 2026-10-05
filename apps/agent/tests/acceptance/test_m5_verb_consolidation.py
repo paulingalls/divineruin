@@ -1,24 +1,3 @@
-"""Capstone: Milestone 5 verb consolidation, system-wide (story-005).
-
-Proves M5's four folds (transact / learn / check / enter_mode) hold across EVERY
-gameplay agent at once — the milestone exit gate the per-story tests can't give
-individually:
-
-  - no removed noun tool survives on any agent's registry;
-  - the consolidated verbs sit on exactly the agents that should hold them;
-  - every agent stays under the Anthropic strict-tool ceiling and keeps strict schema
-    on all its tools;
-  - the message_event surface (Python agent tools) is genuinely green over the seeded
-    testcontainer DB — a learn round-trip and a transact round-trip, two distinct
-    Resolve families, both writing/reading the real database.
-
-The four pre-M5 folds removed TEN noun tools (the story text says "six" — it omits
-the three extra tools the check fold absorbed). This capstone asserts all ten are gone.
-
-Runs under `bun run test:acceptance` (REQUIRE_DOCKER on pre-push); the DB-backed
-section skips cleanly when Docker is down (postgres_container fixture).
-"""
-
 from __future__ import annotations
 
 import json
@@ -78,7 +57,6 @@ def test_patron_action_is_in_verb_presence_registry() -> None:
 
 @pytest.mark.parametrize("name,tools", AGENT_TOOL_LISTS)
 def test_no_removed_noun_tool_survives(name: str, tools: list) -> None:
-    """No retired tool is registered on any agent."""
     leaked = RETIRED_TOOL_REPLACEMENTS.keys() & {t.__name__ for t in tools}
     assert not leaked, f"{name} still registers removed tool(s): {sorted(leaked)}"
 
@@ -88,8 +66,6 @@ def test_no_removed_noun_tool_survives(name: str, tools: list) -> None:
 
 @pytest.mark.parametrize("verb,verb_name,expected_agents", VERB_PRESENCE)
 def test_consolidated_verb_present_where_expected(verb, verb_name: str, expected_agents: set) -> None:
-    """Each consolidated verb is registered on exactly the agents that should hold it
-    — present where expected, absent everywhere else."""
     holders = {name for name, tools in AGENT_TOOL_LISTS if verb in tools}
     assert holders == expected_agents, (
         f"{verb_name} registered on {sorted(holders)}, expected {sorted(expected_agents)}"
@@ -101,11 +77,7 @@ def test_consolidated_verb_present_where_expected(verb, verb_name: str, expected
 
 @pytest.mark.parametrize("name,tools", AGENT_TOOL_LISTS)
 def test_within_strict_ceiling_and_strict_schema(name: str, tools: list) -> None:
-    """Every agent stays under the strict-tool ceiling, and every registered tool is a
-    strict function tool — never a raw-schema one. MAX_STRICT_TOOLS counts STRICT tools
-    (ADR 0004); a RawFunctionTool would opt out of strict schema yet still consume a slot,
-    silently breaking the ceiling reasoning. Per-agent counts are pinned in
-    test_strict_tool_budget; the ceiling assertion here stays thin."""
+    """Construct strict vendor tools; RawFunctionTool would opt out of schema while still occupying a tool slot."""
     assert len(tools) <= MAX_STRICT_TOOLS, f"{name} has {len(tools)} tools (ceiling {MAX_STRICT_TOOLS})"
     for t in tools:
         assert is_function_tool(t) and not is_raw_function_tool(t), (
@@ -126,7 +98,6 @@ async def _seed_clean_player(player_id: str) -> None:
 
 
 async def test_message_event_learn_verb_over_db(reset_db_pool: str) -> None:
-    """The learn verb's recipe path writes the real DB (knowledge Resolve family)."""
     await _seed_clean_player("player_m5_learn")
     ctx = make_context(player_id="player_m5_learn")
 
@@ -144,9 +115,7 @@ async def test_message_event_learn_verb_over_db(reset_db_pool: str) -> None:
 
 
 async def test_message_event_transact_verb_over_db(reset_db_pool: str) -> None:
-    """The transact verb gains then loses an item, round-tripping the real DB
-    (inventory Resolve family — a different write path than learn). The item id is
-    read from the seeded content so the proof isn't coupled to a specific fixture id."""
+    """Read the item id from seeded content rather than pinning a particular fixture id."""
     pool = await db.get_pool()
     item_row = await pool.fetchrow("SELECT id FROM items LIMIT 1")
     assert item_row is not None, "no items seeded in the testcontainer"

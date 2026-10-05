@@ -1,10 +1,4 @@
-"""Content validation for M4.6a social resistance tags (story-003).
-
-Every NPC's authored `resistance_tags` must be canonical personality tags
-(social_resolution.RESISTANCE_TAGS) so they actually gate a Tier-3 argument in the
-resolver instead of silently no-opping. parse_npc_row fail-louds at load; these tests
-lock that guard plus the real content/npcs.json catalog.
-"""
+"""Noncanonical personality tags would silently bypass resistance."""
 
 import pytest
 from npcs_config_fixture import load_fixture_config
@@ -37,7 +31,6 @@ class TestResistanceTagParsing:
         parse_npc_row("npc_ok", _base_npc(resistance_tags=["pragmatic", "greedy"]))
 
     def test_absent_resistance_tags_ok(self):
-        # The field is optional — an NPC with no social profile still parses.
         parse_npc_row("npc_bare", _base_npc())
 
     def test_empty_resistance_tags_ok(self):
@@ -64,7 +57,5 @@ class TestNpcCatalogResistanceTags:
             assert npc["default_disposition"] in DISPOSITIONS
 
     def test_catalog_exercises_the_full_resistance_surface(self):
-        # Every canonical personality tag is used by at least one NPC, so the resolver's
-        # whole Tier-3 vulnerable/resistant surface has live content behind it.
         seen = {tag for npc in load_fixture_config().values() for tag in npc.get("resistance_tags", [])}
         assert seen == set(RESISTANCE_TAGS), f"uncovered tags: {set(RESISTANCE_TAGS) - seen}"

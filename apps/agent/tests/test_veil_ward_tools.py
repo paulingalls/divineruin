@@ -1,24 +1,4 @@
-"""Tests for activate_veil_ward (veil_ward_tools.py, story-003 cut-over, M24).
-
-Drives the tool's _impl directly with a mock RunContext + injected mock
-queries/persistence/ward-mutations mods, mirroring test_ability_tools.py. The tool is
-one polymorphic verb: active=True raises a ward (archetype/level/cost gated), active=False
-dismisses it (free). Every user-facing failure is a ToolError raised before any write, so
-an unaffordable/ineligible activation deducts nothing.
-
-M24 story-003 moves the ward off the caster's row onto the scope. The resource cost stays
-per-caster (gate_pool deducts from the raiser alone); the ward it buys is shared, so "already
-active" is a property of the scope and dismissal is by scope, not by player.
-
-story-005 adds targeting: in combat the ward is the ENCOUNTER's (on CombatState); otherwise the
-LOCATION's (a veil_wards row, expires_at from the source's duration). "Already active" is asked
-of the PARTY via resolve_scope_ward — both scopes OR-ed — not of the scope about to be written.
-
-The published VEIL_WARD_CHANGED payload is {active, scope_kind, scope_id, source} (story-008, no
-raiser id); veil_ward_events.publish_game_event
-is patched to assert the wire shape (the push moved to its own module in story-004 because arrival
-needs it too). story-008 rebuilds the payload as scope-membership.
-"""
+"""The raiser pays individually, but the ward belongs to a scope. Check party coverage across both scopes."""
 
 import json
 from contextlib import nullcontext
@@ -49,14 +29,7 @@ def _payload(active, *, scope_kind=None, scope_id=None, source=None) -> dict:
 
 _COMBAT_ID = "combat_veil_ward_tools"  # scope-unique to this file, so no cross-file scope leak
 
-# conftest's autouse `default_unwarded_scope` monkeypatches ward_resolution.resolve_scope_ward to
-# return None for every mock-conn test — a safe default for suites that don't care about the ward.
-# THIS suite cares: the tool's already-active gate IS a resolve_scope_ward call, and the patch
-# would silently answer "unwarded" forever, making every double-charge test vacuous. Per that
-# fixture's own contract, inject the mod instead. The name is bound at import, before the
-# monkeypatch replaces the module attribute, so this is the real resolver running over the mocked
-# read_active_ward leaf — not a mock of the thing under test. (A MagicMock carrier, not a
-# SimpleNamespace, only so the injected stand-in types as a module substitute.)
+# Inject the real resolver so the already-active gate cannot be answered by a stub.
 _REAL_RESOLUTION = MagicMock()
 _REAL_RESOLUTION.resolve_scope_ward = _real_resolve_scope_ward
 
@@ -90,8 +63,6 @@ def _mocks(player: dict, *, ward_active: bool = False, party_member_ids=None, di
     persistence.update_player_resources = AsyncMock()
     existing = {"source": "cleric", "expires_at": None, "dismissible": True} if ward_active else None
     ward_mut = MagicMock()
-    # The raise path reads once (the already-warded gate). The dismiss path reads once too, but
-    # AFTER deleting, to resolve what still covers the scope (§3) — dismiss tests pass `remaining`.
     ward_mut.read_active_ward = AsyncMock(return_value=existing if remaining is _UNSET else remaining)
     ward_mut.write_ward = AsyncMock()
     ward_mut.dismiss_ward = AsyncMock(return_value=dismissed)
@@ -128,9 +99,6 @@ async def _invoke(ctx, mock_db, queries, persistence, ward_mut, active=True, cas
     return json.loads(raw), pub
 
 
-# --- raise path: eligible casters deduct + write a scope ward + publish ----------
-
-
 async def test_eligible_cleric_raises_ward():
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7, focus=10))
     result, pub = await _invoke(ctx, mock_db, queries, persistence, ward_mut)
@@ -139,9 +107,7 @@ async def test_eligible_cleric_raises_ward():
     assert result["source"] == "cleric"
     assert result["deducted"] == {"focus": 4, "stamina": 0}
     persistence.update_player_resources.assert_awaited_once_with("player_1", stamina=None, focus=6, conn=ANY)
-    # The ward is written to the session's LOCATION scope, not to the caster's row.
     ward_mut.write_ward.assert_awaited_once_with(_SCOPE, "cleric", None, dismissible=True, conn=ANY)
-    # The scope's ward is mirrored on the SESSION, not on the caster.
     assert ctx.userdata.location_ward is not None
     assert ctx.userdata.location_ward["source"] == "cleric"
     pub.assert_awaited_once()
@@ -151,11 +117,7 @@ async def test_eligible_cleric_raises_ward():
 
 
 async def test_raise_writes_no_absolute_expiry_and_stays_dismissible():
-    """A Cleric's ENCOUNTER duration, raised out of combat, has no absolute clock: warded until
-    dismissed (§4). location_expires_at returns None for it, so the row's expires_at is NULL.
-
-    A Paladin cannot stand in for the Cleric here — its ROUNDS duration is refused out of combat.
-    """
+    """Use a Cleric: the Paladin's round duration is refused outside combat."""
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7))
     await _invoke(ctx, mock_db, queries, persistence, ward_mut)
     _scope, _source, expires_at = ward_mut.write_ward.call_args.args
@@ -172,9 +134,6 @@ async def test_paladin_pays_focus_and_stamina():
     persistence.update_player_resources.assert_awaited_once_with("player_1", stamina=7, focus=7, conn=ANY)
 
 
-# --- raise path: rejections deduct nothing + write nothing ----------------------
-
-
 async def test_non_ward_archetype_rejected():
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("mage", level=20))
     with pytest.raises(ToolError, match="mage"):
@@ -184,13 +143,8 @@ async def test_non_ward_archetype_rejected():
 
 
 async def test_tool_raisable_false_source_refused():
-    """An Artificer has a ward source but may not raise one through this tool (story-005).
-
-    The gate is ``source.tool_raisable``, NOT key presence: an artificer's ward is bought with a
-    crafted anchor, and its source costs 0 Focus / 0 Stamina. Were the tool to gate on presence
-    alone, a level-7 artificer would raise a FREE ward — so this test runs against the real
-    WARD_SOURCES table (no ward_mod injection), where the artificer key genuinely exists.
-    """
+    """Artificer sources cost no resources because they require crafted anchors.
+    A key-presence gate would allow a free ward, so use the real source table."""
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("artificer", level=7))
     with pytest.raises(ToolError, match="artificer"):
         await _invoke(ctx, mock_db, queries, persistence, ward_mut)
@@ -199,8 +153,7 @@ async def test_tool_raisable_false_source_refused():
 
 
 async def test_tool_raisable_gate_precedes_the_level_gate():
-    """An artificer ABOVE the source's min_level is still refused — the gate is on the source,
-    not on the player. A level check placed first would mask this with a misleading message."""
+    """Level eligibility must not mask the independent source restriction."""
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("artificer", level=20))
     with pytest.raises(ToolError, match="artificer"):
         await _invoke(ctx, mock_db, queries, persistence, ward_mut)
@@ -236,7 +189,6 @@ async def test_insufficient_stamina_rejected():
 
 
 async def test_already_warded_scope_rejected_no_double_charge():
-    """The ward is scope-owned: a scope already carrying one cannot be warded again."""
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), ward_active=True)
     with pytest.raises(ToolError, match="already active"):
         await _invoke(ctx, mock_db, queries, persistence, ward_mut)
@@ -246,7 +198,6 @@ async def test_already_warded_scope_rejected_no_double_charge():
 
 
 async def test_second_member_cannot_re_raise_a_warded_scope():
-    """A ward raised by one member covers the whole scope; another member's raise is refused free."""
     ctx, mock_db, queries, persistence, ward_mut = _mocks(
         _player("druid", level=9, player_id="player_2"), ward_active=True, party_member_ids=["player_2"]
     )
@@ -256,11 +207,7 @@ async def test_second_member_cannot_re_raise_a_warded_scope():
     ward_mut.write_ward.assert_not_awaited()
 
 
-# --- non-primary caster: the bound speaker pays, not the primary -------------------------
-
-
 async def test_non_primary_member_raises_scope_ward_and_pays_alone():
-    """Cost is per-caster; the ward it buys is scope-owned."""
     player = _player("cleric", level=7, focus=10, player_id="player_2")
     ctx, mock_db, queries, persistence, ward_mut = _mocks(player, party_member_ids=["player_2"])
     result, pub = await _invoke(ctx, mock_db, queries, persistence, ward_mut, caster_id="player_2")
@@ -269,7 +216,6 @@ async def test_non_primary_member_raises_scope_ward_and_pays_alone():
     queries.get_player.assert_awaited_once_with("player_2", conn=ANY, for_update=True)
     persistence.update_player_resources.assert_awaited_once_with("player_2", stamina=None, focus=6, conn=ANY)
     ward_mut.write_ward.assert_awaited_once_with(_SCOPE, "cleric", None, dismissible=True, conn=ANY)
-    # One shared ward on the session — a non-primary raiser does not get a private one.
     assert ctx.userdata.location_ward is not None
     assert pub.call_args.args[2] == _payload(
         True, scope_kind="location", scope_id="accord_guild_hall", source="cleric"

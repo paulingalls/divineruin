@@ -1,16 +1,4 @@
-"""Capstone E2E (story-002, M23): the reputation writer flips a stance-gated encounter from
-hostile to allied, against a real Postgres testcontainer (auto-marked `acceptance`).
-
-Closes risk f3af7b633b44 / debt 6e8c1e79a775: player_reputation had a reader
-(get_player_faction_reputation, consumed by combat_init's stance gate) but no writer, so every
-stance-gated encounter resolved HOSTILE at the neutral-0 default. This proves the full production
-chain — db_mutations_reputation.adjust_player_faction_reputation writes standing, combat_init reads
-it, and resolve_encounter_stance flips the Ashmark Patrol (stance_gate faction=thornwatch,
-allied_at_or_above=friendly, threshold 5) to ALLIED once reputation crosses that threshold.
-
-Two distinct player_ids (the testcontainer DB is shared) isolate the before/after so neither call
-reuses combat state.
-"""
+"""Use distinct players for before/after so no combat state leaks between stance checks."""
 
 from __future__ import annotations
 

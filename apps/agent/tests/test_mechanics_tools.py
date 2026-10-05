@@ -1,5 +1,3 @@
-"""Integration tests for mechanics tools (mocked DB + room)."""
-
 import json
 from unittest.mock import AsyncMock, MagicMock
 
@@ -51,9 +49,6 @@ def _make_mock_room():
     room.local_participant = MagicMock()
     room.local_participant.publish_data = AsyncMock()
     return room
-
-
-# --- mark_skill_breakthrough ---
 
 
 class TestMarkSkillBreakthrough:

@@ -1,22 +1,4 @@
-"""Capstone: Recipe & Material System end-to-end (story-007, sprint-012 M5.1).
-
-Proves the DB-loaded recipe flow composes across BOTH surfaces against one seeded
-testcontainer, catching cross-language seam breaks the per-story tests miss:
-
-  - message_event (Python agent): _learn_recipe_impl + query_recipe_requirements read
-    the DB-loaded recipe via recipes.get_recipe.
-  - http_websocket (TS REST): a spawned `bun src/index.ts` against the SAME DSN
-    serves GET /api/activity-templates (listRecipes) and POST /api/activities
-    crafting (getRecipe) for the SAME recipe id.
-
-The seam assertion: the recipe the Python loader returns is byte-for-byte the one
-the TS REST surface exposes (name, dc, materials, output) for the same id. TS
-writes recipes during resolution; Python reads them every turn — this is where a
-drift between the two parsers would surface.
-
-Runs under `bun run test:acceptance` (REQUIRE_DOCKER on pre-push); skips cleanly
-when Docker is down.
-"""
+"""Compare the same seeded recipe through Python and the real Bun endpoints."""
 
 from __future__ import annotations
 
@@ -67,7 +49,6 @@ async def _seed_clean_player(player_id: str) -> None:
 
 
 async def test_message_event_learn_and_query_over_db_recipe(reset_db_pool: str) -> None:
-    """_learn_recipe_impl + query_recipe_requirements compose over the DB-loaded recipe."""
     await _seed_clean_player("player_capstone_msg")
     ctx = make_context(player_id="player_capstone_msg")
 
@@ -88,7 +69,6 @@ async def test_message_event_learn_and_query_over_db_recipe(reset_db_pool: str) 
 
 
 async def test_http_templates_lists_seeded_recipe(capstone_server: dict[str, str], reset_db_pool: str) -> None:
-    """GET /api/activity-templates lists the seeded recipe via listRecipes."""
     token = mint_server_jwt(player_id="player_capstone_http")
     r = httpx.get(
         f"{capstone_server['base_url']}/api/activity-templates",
@@ -108,7 +88,6 @@ async def test_http_templates_lists_seeded_recipe(capstone_server: dict[str, str
 async def test_http_create_crafting_activity_uses_db_recipe(
     capstone_server: dict[str, str], reset_db_pool: str
 ) -> None:
-    """POST /api/activities crafting resolves recipe params from getRecipe and persists them."""
     player_id = "player_capstone_http"
     await _seed_clean_player(player_id)
     recipe = await recipes.get_recipe(CAPSTONE_RECIPE)
@@ -155,8 +134,6 @@ async def test_http_create_crafting_activity_uses_db_recipe(
 
 
 async def test_cross_language_recipe_is_consistent(capstone_server: dict[str, str], reset_db_pool: str) -> None:
-    """The recipe the Python loader returns matches what the TS REST surface exposes
-    for the same id — the seam both languages read every turn."""
     # Direct DB read (not get_recipe) so the seam is proven against the testcontainer
     # row, never a sibling test's Redis cache. See _recipe_from_db.
     recipe = await _recipe_from_db(CAPSTONE_RECIPE)

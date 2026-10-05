@@ -1,9 +1,4 @@
-"""The session's END — the summary the player hears, fired when the SESSION closes.
-
-Not when an agent exits: an agent's ``on_exit`` runs on every mode handoff
-(``AgentActivity.drain`` awaits it, agent_activity.py:919-932), so session-scoped work
-placed there fires on the way into every fight.
-"""
+"""Vendor on_exit runs on every handoff; session summaries belong to session close."""
 
 import asyncio
 import contextlib
@@ -108,8 +103,6 @@ class _EndModel(llm.LLM):
 
 
 class TestEndSessionReachesTheCloseEmit:
-    """A real ExplorationAgent turn reaches the session close event after the wrap-up."""
-
     @pytest.mark.asyncio
     async def test_last_member_goodbye_closes_the_session(self):
         sd = _session_data()
@@ -136,14 +129,8 @@ class TestEndSessionReachesTheCloseEmit:
 
 
 class TestTheRecapFiresOncePerSession:
-    """AC2. The close event is REAL — a ``CloseEvent`` dispatched by a real ``AgentSession``'s
-    emitter, which is what LiveKit sends and what checks the handler's arity.
-
-    These tests hand-produce that event rather than reaching it through ``aclose()``, so on
-    their own they check registration and dispatch, not the whole path.
-    ``TestEndSessionReachesTheCloseEmit`` above is what proves the event actually arrives;
-    neither substitutes for the other.
-    """
+    """Real CloseEvent dispatch verifies registration and vendor arity.
+    The separate close-path test proves the event actually arrives."""
 
     @pytest.mark.asyncio
     async def test_a_real_close_fires_the_recap_once(self):
@@ -165,15 +152,7 @@ class TestTheRecapFiresOncePerSession:
 
     @pytest.mark.asyncio
     async def test_two_fights_do_not_multiply_the_recap(self):
-        """A handback builds a NEW ExplorationAgent over the SAME SessionData, so anything
-        session-scoped that on_enter rebuilds gets a second registration on the same emitter.
-
-        The mutation this reds against is dropping ``if sd.background is None`` — a fresh
-        ``BackgroundProcess`` per handback, hence a distinct bound ``_on_session_end`` per
-        fight. Re-registering the SAME instance's handler does NOT red here and is not a
-        defect: ``EventEmitter._events`` is a ``Dict[T, Set[Callable]]`` and ``on`` calls
-        ``.add`` (rtc/event_emitter.py:15,165), so an identical bound method collapses to one.
-        """
+        """LiveKit deduplicates the same bound handler, but a new process creates a distinct handler."""
         sd = _session_data()
         session = AgentSession(max_tool_steps=5, userdata=sd)
 
@@ -211,20 +190,12 @@ class TestTheRecapFiresOncePerSession:
 
         (payload,) = _session_end_payloads(sd)
         assert set(payload) >= CLIENT_KEYS, f"missing: {sorted(CLIENT_KEYS - set(payload))}"
-        # The stored row is the same dict the client got — one summary, not two shapes.
         assert mock_save.await_args is not None
         assert mock_save.await_args.args == (sd.player_id, sd.session_id, payload)
 
     @pytest.mark.asyncio
     async def test_the_recap_covers_the_whole_session_not_the_last_agent(self, tmp_path):
-        """Both inputs are read off SessionData, so a handback cannot restart them: the
-        duration is measured from the session's start and the transcript is the session's
-        one file, written to before the first handoff.
-
-        _default_log_path is stubbed to hand out DISTINCT paths: the real one is second-
-        granular, so two agents entering in the same second land on one file anyway and the
-        transcript half of this guard passes without the seam existing (constraint 1).
-        """
+        """Use distinct transcript paths because second-granular defaults can hide agent-local files."""
         minted = iter([str(tmp_path / "first.log"), str(tmp_path / "second.log")])
         sd = _session_data()
         sd.session_start_time = time.time() - 600
@@ -251,6 +222,5 @@ class TestTheRecapFiresOncePerSession:
 
         (payload,) = _session_end_payloads(sd)
         assert payload["duration"] == pytest.approx(600, abs=5)
-        # The pre-fight turn is still in the transcript the recap summarises.
         assert mock_llm.await_args is not None
         assert "I open the crypt door." in mock_llm.await_args.kwargs["transcript_tail"]

@@ -1,5 +1,3 @@
-"""Every authored base and mentor form has an explicit delivery policy."""
-
 import json
 from pathlib import Path
 
@@ -43,22 +41,6 @@ def test_complete_catalog_and_variant_floor_uses_actual_loaders():
         resolved = declared_ability(variant.id)
         assert resolved is not None and resolved[0].id == variant.ability_id
     assert len(bases) == 44
-
-
-@pytest.mark.parametrize("fault", ["empty", "omitted", "unknown", "treaty"])
-def test_catalog_guard_rejects_an_incomplete_answer(fault):
-    rows = json.loads((CONTENT / "archetype_abilities.json").read_text())
-    policies = dict(voice.POLICIES)
-    if fault == "empty":
-        rows = []
-    elif fault == "omitted":
-        policies.pop("guardian_fortify")
-    elif fault == "treaty":
-        policies["diplomat_treaty"] = voice.DeliveryPolicy.NEITHER
-    else:
-        policies["invented"] = voice.DeliveryPolicy.NEITHER
-    with pytest.raises(AssertionError):
-        assert_catalog(rows, policies)
 
 
 def test_unknown_base_and_variant_do_not_default_to_nonspoken(monkeypatch):

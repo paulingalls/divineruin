@@ -1,8 +1,4 @@
-"""An empty ASYNC_AUDIO_DIR, as .env.example ships it, means unset: each reader keeps its default dir.
-
-Each module reads the variable at import, so each case imports it in a fresh interpreter rather than
-reloading a module other tests already hold.
-"""
+"""Each reader captures the environment at import, so use fresh interpreters rather than reload shared modules."""
 
 import ast
 import os

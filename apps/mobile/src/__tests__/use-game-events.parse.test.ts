@@ -12,8 +12,6 @@ import { encode, resetStores } from "./use-game-events.helpers";
 
 beforeEach(resetStores);
 
-// --- parseGameEvent ---
-
 test("parseGameEvent decodes valid JSON with type field", () => {
   const event = parseGameEvent(encode({ type: "play_sound", sound_name: "sword_clash" }));
   expect(event).toEqual({ type: "play_sound", sound_name: "sword_clash" });
@@ -32,8 +30,6 @@ test("parseGameEvent returns null for non-object JSON", () => {
   const payload = new TextEncoder().encode('"just a string"');
   expect(parseGameEvent(payload)).toBeNull();
 });
-
-// --- parseCombatant ---
 
 test("parseCombatant returns valid combatant from well-formed data", () => {
   const result = parseCombatant({
@@ -97,8 +93,6 @@ test("parseCombatant drops malformed conditions and defaults stacks/source", () 
   ]);
 });
 
-// --- Security: payload size limit ---
-
 test("parseGameEvent rejects payload over 1 MB", () => {
   const huge = new Uint8Array(MAX_EVENT_PAYLOAD_BYTES + 1);
   huge.fill(0x20); // spaces
@@ -106,7 +100,6 @@ test("parseGameEvent rejects payload over 1 MB", () => {
 });
 
 test("parseGameEvent accepts payload at exactly 1 MB", () => {
-  // 1 MB payload with valid JSON
   const data = { type: "test", padding: "x".repeat(1_048_500) };
   const encoded = new TextEncoder().encode(JSON.stringify(data));
   // This may or may not be under 1MB after JSON encoding, but if it is, it should parse
@@ -116,8 +109,6 @@ test("parseGameEvent accepts payload at exactly 1 MB", () => {
     expect(result!.type).toBe("test");
   }
 });
-
-// --- Milestone 10.4a: Item art (parseInventoryItems) ---
 
 test("session_init preserves a material inventory row", () => {
   handleGameEvent({

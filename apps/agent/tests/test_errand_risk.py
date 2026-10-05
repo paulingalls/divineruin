@@ -1,10 +1,4 @@
-"""Errand-risk roll + tables, conformance-pinned to the spec.
-
-game_mechanics_core.md §Companion Risk (L887-892) is the oracle. The TS server
-(apps/server/src/errand_risk.ts) keeps a sibling BLOCKED_DANGER_COMBOS pin; both
-languages conform to the same spec doc. Risk is rolled here (Python worker, at
-resolution) — TS no longer rolls it (ADR 0006).
-"""
+"""Python rolls risk at resolution; TypeScript no longer rolls it (ADR 0006)."""
 
 import pytest
 from sample_fixtures import FixedRng
@@ -17,7 +11,6 @@ from errand_risk import (
     roll_errand_risk,
 )
 
-# game_mechanics_core.md §Companion Risk L887-892 — the 12 populated cells.
 SPEC_CELLS = {
     "safe|scout": (0, 0),
     "safe|social": (0, 0),
@@ -87,11 +80,9 @@ class TestRollErrandRisk:
             assert roll_errand_risk("scout", "safe", "companion_kael", FixedRng(roll)) == "none"
 
     def test_blocked_or_absent_cell_is_none(self):
-        # extreme|social is absent from the table (a blocked combo) -> none.
         assert roll_errand_risk("social", "extreme", "companion_lira", FixedRng(1)) == "none"
 
     def test_extreme_scout_boundaries(self):
-        # emergency 15, injury 40 (Lira reduces nothing): 1-15 emergency, 16-55 injured, 56+ none.
         def roll(v):
             return roll_errand_risk("scout", "extreme", "companion_lira", FixedRng(v))
 
@@ -101,7 +92,6 @@ class TestRollErrandRisk:
         assert roll(56) == "none"
 
     def test_reduction_is_read_from_the_companion_row_not_a_kael_table(self):
-        # dangerous|scout: emergency 5, injury 25. Kael's row reduces 5 -> injured band 6-25.
         def roll(cid, v):
             return roll_errand_risk("scout", "dangerous", cid, FixedRng(v))
 
@@ -111,7 +101,6 @@ class TestRollErrandRisk:
         assert roll("companion_kael", 5) == "emergency"  # emergency band unaffected
 
     def test_unknown_companion_id_fails_loud(self):
-        """An id the catalog does not know must raise, not roll unreduced (constraint 4)."""
         with pytest.raises(ValueError, match="companion_x"):
             roll_errand_risk("scout", "dangerous", "companion_x", FixedRng(30))
 

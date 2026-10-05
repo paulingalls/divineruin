@@ -1,5 +1,3 @@
-"""The Focus gate on a cast, plus the two real-catalog end-to-end casts (fixtures: _spell_casting_helpers)."""
-
 from dataclasses import replace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -13,11 +11,9 @@ from spell_casting import _cast_spell_impl
 
 class TestCastSpellFocusGate:
     async def test_insufficient_focus_raises_and_deducts_nothing(self):
-        # AC1: Focus below focus_cost -> ToolError, no Focus write, no resonance write.
         spell = _spell(focus_cost=5)
         with pytest.raises(ToolError):
             await _cast(spell, focus=2)
-        # Re-run capturing the mocks to assert nothing was written.
         ctx = make_context()
         mock_db, _conn = make_db_mod()
         queries = MagicMock()
@@ -85,7 +81,6 @@ class TestCastSpellFocusGate:
         mock_db, _conn = make_db_mod()
         queries = MagicMock()
         queries.get_player = AsyncMock(return_value=_player(focus=10))
-        # story-008: the OOC caster row now comes from the id-ordered get_players_for_update batch.
         queries.get_players_for_update = AsyncMock(
             side_effect=lambda ids, *, conn=None: {i: _player(focus=10) for i in ids}
         )
@@ -106,15 +101,12 @@ class TestCastSpellFocusGate:
                 spells_mod=spells_mod,
                 character_spells_mod=_known(spell.id),
             )
-        # Deducts nothing — the terrain failure precedes the Focus write.
         persistence.update_player_resources.assert_not_called()
         mutations.update_player_resonance.assert_not_called()
 
 
 class TestCastSpellRealCatalog:
     async def test_real_arcane_minor_spell_end_to_end(self):
-        # E2E (AC6): real catalog spell + real resonance, only db mocked.
-        # arcane_shield_spell: focus_cost 1, arcane -> ceil(1*0.6)=1 generated -> stable.
         import spells as spells_mod
 
         packet, ctx, persistence, mutations, events = await _cast(

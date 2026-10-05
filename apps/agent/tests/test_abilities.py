@@ -1,18 +1,4 @@
-"""Tests for abilities.py — the DB-loaded archetype-ability content config (M2.2).
-
-Mirrors the archetypes.py loader contract: parse_ability_row (fail-loud, shared
-by the DB loader and the JSON test fixture), set_abilities (test seam),
-get_ability / get_archetype_abilities (accessors), is_loaded, and the
-build-then-swap load_abilities (a malformed row must not wipe an already-loaded
-map). The row shape is the cross-language SSOT contract (story-001); cost is the
-nested object {stamina:int, focus:int, scaling:str|None}.
-
-The conftest autouse seed_abilities fixture pre-populates the map from content
-before each test, but every test here seeds its own state up front
-(set_abilities / a JSON helper) and so is verifiable independent of that fixture:
-test_is_loaded_reflects_population deliberately clears the pre-seeded map with
-set_abilities({}) to assert the empty case.
-"""
+"""Each test seeds its own catalog so autouse seeding cannot hide empty-input behavior."""
 
 import json
 from pathlib import Path
@@ -86,9 +72,6 @@ def _seed_from_content() -> None:
     set_abilities({row["id"]: parse_ability_row(row["id"], row) for row in raw})
 
 
-# --- parse_ability_row ---------------------------------------------------------
-
-
 def test_parse_ability_row_full_shape():
     a = parse_ability_row(_SMITE_ROW["id"], _SMITE_ROW)
     assert isinstance(a, Ability)
@@ -99,55 +82,12 @@ def test_parse_ability_row_full_shape():
     assert a.effect and a.narration_cue
 
 
-def test_parse_ability_row_fail_loud_names_the_row():
-    bad = {k: v for k, v in _CLEAVE_ROW.items() if k != "cost"}
-    with pytest.raises(ValueError, match="warrior_cleaving_blow"):
-        parse_ability_row("warrior_cleaving_blow", bad)
-
-
-def test_parse_ability_row_rejects_unknown_ability_type():
-    bad = {**_CLEAVE_ROW, "ability_type": "passive"}
-    with pytest.raises(ValueError, match=r"ability_type"):
-        parse_ability_row(_CLEAVE_ROW["id"], bad)
-
-
-def test_parse_ability_row_rejects_malformed_cost_missing_key():
-    bad = {**_CLEAVE_ROW, "cost": {"stamina": 4, "scaling": None}}
-    with pytest.raises(ValueError, match="warrior_cleaving_blow"):
-        parse_ability_row("warrior_cleaving_blow", bad)
-
-
-def test_parse_ability_row_rejects_noninteger_cost():
-    bad = {**_CLEAVE_ROW, "cost": {"stamina": "4", "focus": 0, "scaling": None}}
-    with pytest.raises(ValueError, match=r"cost\.stamina"):
-        parse_ability_row("warrior_cleaving_blow", bad)
-
-
-def test_parse_ability_row_rejects_noninteger_level_requirement():
-    bad = {**_CLEAVE_ROW, "level_requirement": "4"}
-    with pytest.raises(ValueError, match=r"level_requirement"):
-        parse_ability_row(_CLEAVE_ROW["id"], bad)
-
-
-def test_parse_ability_row_rejects_bool_level_requirement():
-    # bool is an int subclass — must be excluded, mirroring _parse_cost (parity with TS).
-    bad = {**_CLEAVE_ROW, "level_requirement": True}
-    with pytest.raises(ValueError, match=r"level_requirement"):
-        parse_ability_row(_CLEAVE_ROW["id"], bad)
-
-
 def test_cost_roundtrip_preserves_scaling():
     a = parse_ability_row(_SMITE_ROW["id"], _SMITE_ROW)
     assert a.cost.focus == 2
     assert a.cost.scaling is not None
 
 
-# --- spell-backed core rows compose their Focus cost from the catalog (Try 2) ---
-
-# A spell-backed core row: the archetype owns its description + narration flavor and
-# carries spell_id, but does NOT author `cost` — the Focus cost (the one number shared
-# with the cast path) composes from content/spells.json so it can't drift. effect,
-# narration_cue, and level stay per-archetype (e.g. the Seeker's reveal-on-hit clause).
 _SPELL_BACKED_SEEKER_ROW = {
     "id": "seeker_arcane_bolt",
     "archetype_id": "seeker",
@@ -165,36 +105,18 @@ def test_spell_backed_row_composes_focus_cost_from_catalog():
 
     spell = spells.get_spell("arcane_bolt")
     a = parse_ability_row(_SPELL_BACKED_SEEKER_ROW["id"], _SPELL_BACKED_SEEKER_ROW)
-    # The Focus cost is single-sourced from the catalog — no second authored copy.
     assert a.cost == Cost(stamina=0, focus=spell.focus_cost, scaling=None)
     assert a.spell_id == "arcane_bolt"
-    # Per-archetype content is KEPT, not flattened to the spell's generic text.
     assert a.effect == _SPELL_BACKED_SEEKER_ROW["effect"]  # the Seeker's reveal clause
     assert a.narration_cue == _SPELL_BACKED_SEEKER_ROW["narration_cue"]
     assert a.level_requirement == 1
     assert (a.name, a.ability_type, a.archetype_id) == ("Arcane Bolt", "core", "seeker")
 
 
-def test_spell_backed_row_fails_loud_on_unknown_spell():
-    bad = {**_SPELL_BACKED_SEEKER_ROW, "spell_id": "no_such_spell"}
-    with pytest.raises(ValueError):
-        parse_ability_row(bad["id"], bad)
-
-
-def test_spell_id_must_be_a_string_when_present():
-    # Parity with the TS loader: a present-but-non-string spell_id fails loud rather than
-    # silently falling back to an authored cost (a malformed row breaks identically on both).
-    bad = {**_SPELL_BACKED_SEEKER_ROW, "spell_id": 123}
-    with pytest.raises(ValueError, match="spell_id"):
-        parse_ability_row(bad["id"], bad)
-
-
 def test_non_spell_row_has_no_spell_id():
     a = parse_ability_row(_CLEAVE_ROW["id"], _CLEAVE_ROW)
     assert a.spell_id is None
 
-
-# --- reaction window (story-001) ------------------------------------------------
 
 _BRACE_ROW = {
     "id": "warrior_brace_for_impact",
@@ -209,24 +131,6 @@ _BRACE_ROW = {
 }
 
 
-def test_parse_ability_row_reaction_requires_window():
-    bad = {k: v for k, v in _BRACE_ROW.items() if k != "window"}
-    with pytest.raises(ValueError, match="window"):
-        parse_ability_row(_BRACE_ROW["id"], bad)
-
-
-def test_parse_ability_row_rejects_unknown_window():
-    bad = {**_BRACE_ROW, "window": "bogus"}
-    with pytest.raises(ValueError, match="window"):
-        parse_ability_row(_BRACE_ROW["id"], bad)
-
-
-def test_parse_ability_row_rejects_window_on_non_reaction_row():
-    bad = {**_CLEAVE_ROW, "window": "on_hit"}
-    with pytest.raises(ValueError, match="window"):
-        parse_ability_row(_CLEAVE_ROW["id"], bad)
-
-
 def test_parse_ability_row_reaction_row_full_shape():
     a = parse_ability_row(_BRACE_ROW["id"], _BRACE_ROW)
     assert a.window == "on_hit"
@@ -238,9 +142,6 @@ def test_non_reaction_row_has_no_window():
     assert a.window is None
 
 
-# --- accessors -----------------------------------------------------------------
-
-
 def test_get_archetype_abilities_filters_by_archetype():
     _seed_from_content()
     warrior = get_archetype_abilities("warrior")
@@ -248,7 +149,6 @@ def test_get_archetype_abilities_filters_by_archetype():
     assert all(a.archetype_id == "warrior" for a in warrior)
     types = {a.ability_type for a in warrior}
     assert {"core", "reaction", "elective"} <= types
-    # A pure caster has core + reaction abilities but no elective techniques (M2.2).
     mage = get_archetype_abilities("mage")
     assert mage and all(a.archetype_id == "mage" for a in mage)
     assert "elective" not in {a.ability_type for a in mage}
@@ -287,9 +187,6 @@ def test_is_loaded_reflects_population():
     assert is_loaded() is True
 
 
-# --- build-then-swap load_abilities (DB path) ----------------------------------
-
-
 class _FakePool:
     def __init__(self, rows):
         self._rows = rows
@@ -299,8 +196,6 @@ class _FakePool:
 
 
 async def test_load_abilities_malformed_row_does_not_wipe_loaded_map(monkeypatch):
-    # Seed a known-good map, then drive load_abilities against a fake pool whose
-    # rows include a malformed one. The load must raise WITHOUT wiping the prior map.
     set_abilities({"paladin_divine_smite": parse_ability_row(_SMITE_ROW["id"], _SMITE_ROW)})
 
     import db
@@ -318,16 +213,9 @@ async def test_load_abilities_malformed_row_does_not_wipe_loaded_map(monkeypatch
     with pytest.raises(ValueError):
         await load_abilities()
 
-    # Prior map survived the failed load.
     assert get_ability("paladin_divine_smite").name == "Divine Smite"
-    # Build-then-swap: the well-formed row that preceded the malformed one in the
-    # batch must NOT have leaked into the live map (an inline-mutate load would
-    # have leaked it before the second row raised).
     with pytest.raises(ValueError, match="warrior_cleaving_blow"):
         get_ability("warrior_cleaving_blow")
-
-
-# --- owns_ability (pure ownership predicate, story-006) ------------------------
 
 
 def _ability(ability_type, archetype_id="warrior"):
@@ -345,7 +233,6 @@ def _ability(ability_type, archetype_id="warrior"):
 
 
 def test_owns_ability_core_owned_when_class_matches_archetype():
-    # Core abilities are always-known for the archetype — no character_abilities row.
     assert owns_ability("warrior", 1, _ability("core", "warrior"), owns_elective=False) is True
 
 
@@ -359,13 +246,9 @@ def test_owns_ability_reaction_follows_the_same_class_rule_as_core():
 
 
 def test_owns_ability_elective_returns_passed_flag_regardless_of_class():
-    # Electives are owned via a character_abilities row; the class is irrelevant
-    # (a player can equip an elective whose archetype_id is their own class only,
-    # but ownership is the row, supplied here as owns_elective).
     elective = _ability("elective", "warrior")
     assert owns_ability("warrior", 1, elective, owns_elective=True) is True
     assert owns_ability("warrior", 1, elective, owns_elective=False) is False
-    # Class never overrides the row result for electives.
     assert owns_ability("mage", 1, elective, owns_elective=True) is True
 
 
@@ -393,3 +276,62 @@ async def test_load_abilities_populates_from_pool(monkeypatch):
     assert is_loaded() is True
     assert get_ability("paladin_divine_smite").cost.focus == 2
     assert get_ability("warrior_cleaving_blow").ability_type == "elective"
+
+
+@pytest.mark.parametrize(
+    "row,message",
+    [
+        pytest.param(
+            {k: v for k, v in _CLEAVE_ROW.items() if k != "cost"},
+            "warrior_cleaving_blow",
+            id="test_parse_ability_row_fail_loud_names_the_row",
+        ),
+        pytest.param(
+            {**_CLEAVE_ROW, "ability_type": "passive"},
+            "ability_type",
+            id="test_parse_ability_row_rejects_unknown_ability_type",
+        ),
+        pytest.param(
+            {**_CLEAVE_ROW, "cost": {"stamina": 4, "scaling": None}},
+            "warrior_cleaving_blow",
+            id="test_parse_ability_row_rejects_malformed_cost_missing_key",
+        ),
+        pytest.param(
+            {**_CLEAVE_ROW, "cost": {"stamina": "4", "focus": 0, "scaling": None}},
+            "cost\\.stamina",
+            id="test_parse_ability_row_rejects_noninteger_cost",
+        ),
+        pytest.param(
+            {**_CLEAVE_ROW, "level_requirement": "4"},
+            "level_requirement",
+            id="test_parse_ability_row_rejects_noninteger_level_requirement",
+        ),
+        pytest.param(
+            {**_CLEAVE_ROW, "level_requirement": True},
+            "level_requirement",
+            id="test_parse_ability_row_rejects_bool_level_requirement",
+        ),
+        pytest.param(
+            {**_SPELL_BACKED_SEEKER_ROW, "spell_id": "no_such_spell"},
+            None,
+            id="test_spell_backed_row_fails_loud_on_unknown_spell",
+        ),
+        pytest.param(
+            {**_SPELL_BACKED_SEEKER_ROW, "spell_id": 123}, "spell_id", id="test_spell_id_must_be_a_string_when_present"
+        ),
+        pytest.param(
+            {k: v for k, v in _BRACE_ROW.items() if k != "window"},
+            "window",
+            id="test_parse_ability_row_reaction_requires_window",
+        ),
+        pytest.param({**_BRACE_ROW, "window": "bogus"}, "window", id="test_parse_ability_row_rejects_unknown_window"),
+        pytest.param(
+            {**_CLEAVE_ROW, "window": "on_hit"},
+            "window",
+            id="test_parse_ability_row_rejects_window_on_non_reaction_row",
+        ),
+    ],
+)
+def test_malformed_rows_are_refused(row, message):
+    with pytest.raises(ValueError, match=message):
+        parse_ability_row(row["id"], row)

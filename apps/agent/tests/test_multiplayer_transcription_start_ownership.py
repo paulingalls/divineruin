@@ -1,5 +1,3 @@
-"""Ownership races while a participant transcription session starts."""
-
 import asyncio
 from dataclasses import dataclass
 from typing import cast

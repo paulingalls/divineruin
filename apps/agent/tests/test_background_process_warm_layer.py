@@ -1,11 +1,3 @@
-"""Tests for background_process.py warm-layer rebuild + PendingSpeech ordering.
-
-_rebuild_warm_layer (build, skip-if-unchanged, fail-soft) and the PendingSpeech
-priority/timestamp dataclass. Split from the lifecycle/event/guidance/speech
-tests (test_background_process_coverage.py) to stay under the 500-line cap; the
-_mock_db_for_warm_layer helper rides here since only the rebuild tests use it.
-"""
-
 import time
 from contextlib import contextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -39,8 +31,6 @@ def _mock_db_for_warm_layer(quests=None, location=None, npcs=None, training=None
 
 
 class TestWarmLayerRebuild:
-    """Test warm layer rebuilding logic."""
-
     @pytest.mark.asyncio
     async def test_handoff_rebuild_queries_new_primary_and_discards_old_cache(self):
         sd = SessionData(player_id="host", location_id="tavern")
@@ -86,7 +76,6 @@ class TestWarmLayerRebuild:
 
     @pytest.mark.asyncio
     async def test_rebuild_warm_layer_updates_agent_instructions(self):
-        """_rebuild_warm_layer should update agent instructions with new warm layer."""
         mock_agent = MagicMock()
         mock_agent.update_instructions = AsyncMock()
         mock_agent._agent_type = "city"
@@ -130,13 +119,11 @@ class TestWarmLayerRebuild:
                     )
                     mock_agent.update_instructions.assert_awaited_once_with("full prompt")
                     assert bp._last_warm_layer == "warm layer content"
-                    # Verify caches were updated
                     assert mock_sd.cached_location_name == "Tavern"
                     assert mock_sd.cached_npc_names == ["Barkeep"]
 
     @pytest.mark.asyncio
     async def test_rebuild_warm_layer_skips_if_unchanged(self):
-        """_rebuild_warm_layer should skip update if warm layer unchanged."""
         mock_agent = MagicMock()
         mock_session = MagicMock()
         mock_session.current_agent = mock_agent
@@ -163,9 +150,7 @@ class TestWarmLayerRebuild:
 
     @pytest.mark.asyncio
     async def test_unchanged_warm_layer_still_reaches_a_new_agent(self):
-        """A handoff hands the floor to an agent whose instructions carry NO warm layer, so the
-        dedupe cannot key on the warm text alone — the fight would run with the combat prompt
-        and nothing else."""
+        """A handoff must not append duplicate warm instructions to the cached prefix."""
         mock_sd = MagicMock()
         mock_sd.location_id = "tavern"
         mock_sd.player_id = "p1"
@@ -194,7 +179,6 @@ class TestWarmLayerRebuild:
 
     @pytest.mark.asyncio
     async def test_rebuild_warm_layer_handles_exception(self):
-        """A transient fetch failure preserves the prior warm layer."""
         mock_session = MagicMock()
         mock_sd = MagicMock()
         mock_sd.location_id = "tavern"
@@ -217,13 +201,7 @@ class TestWarmLayerRebuild:
 
     @pytest.mark.asyncio
     async def test_static_layer_rerenders_when_the_bound_companion_changes(self):
-        """The cached static layer now renders the assigned companion's own name and tag, so
-        the cache key must track companion identity — presence alone would serve Lira's
-        section to a player bound to Tam.
-
-        A real ExplorationAgent, not a mock: the static half is the CURRENT agent's own
-        (BaseGameAgent.static_prompt), so a mock target would certify the mock's return value.
-        """
+        """Use a real agent so companion identity participates in the actual prompt cache."""
         mock_session = MagicMock()
         mock_session.current_agent = ExplorationAgent()
         sd = SessionData(player_id="p1", location_id="tavern")
@@ -247,10 +225,7 @@ class TestWarmLayerRebuild:
 
 
 class TestPendingSpeech:
-    """Test PendingSpeech dataclass ordering."""
-
     def test_pending_speech_orders_by_priority(self):
-        """PendingSpeech should order by priority (higher priority first)."""
         low = PendingSpeech(priority=SpeechPriority.ROUTINE, instructions="low")
         mid = PendingSpeech(priority=SpeechPriority.IMPORTANT, instructions="mid")
         high = PendingSpeech(priority=SpeechPriority.CRITICAL, instructions="high")
@@ -260,7 +235,6 @@ class TestPendingSpeech:
         assert min(speeches) == low
 
     def test_pending_speech_includes_timestamp(self):
-        """PendingSpeech should include creation timestamp."""
         before = time.time()
         speech = PendingSpeech(priority=SpeechPriority.ROUTINE, instructions="test")
         after = time.time()

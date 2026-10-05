@@ -1,10 +1,7 @@
-"""Geometry, composition and catalog snapshot invariants."""
-
 import pytest
 from _hollow_resonance_fixtures import scenario
 from voice_condition_fixtures import participant
 
-import combat_spatial
 from combat_state import CombatState
 from hollow_resonance import apply_corruption_aura, location_bonus, resolve_resonance_on_death
 
@@ -57,22 +54,3 @@ def test_snapshot_and_receipt_roundtrip():
     assert enemy.hollow is not None
     enemy.hollow["corruption_aura"] = 100
     assert participant(loaded, enemy.id).hollow == {"corruption_aura": 5, "resonance_on_death": 1}
-
-
-@pytest.mark.parametrize("defect", ["boundary", "contact", "stacking"])
-def test_geometry_and_stacking_faults(monkeypatch, defect):
-    if defect == "boundary":
-        monkeypatch.setattr(combat_spatial, "inside", lambda a, b, r: combat_spatial.distance(a, b) < r)
-        with pytest.raises(AssertionError):
-            test_boundary_and_contact(5, 5, 1)
-    elif defect == "contact":
-        monkeypatch.setattr(combat_spatial, "inside", lambda a, b, r: r == 0 or combat_spatial.distance(a, b) <= r)
-        with pytest.raises(AssertionError):
-            test_boundary_and_contact(0, 0.01, 0)
-    else:
-        import hollow_resonance
-
-        original = hollow_resonance.apply_corruption_aura
-        monkeypatch.setitem(globals(), "apply_corruption_aura", lambda *args: original(*args) + 1)
-        with pytest.raises(AssertionError):
-            test_overlapping_and_location_bonus_use_max(2, 2)

@@ -1,6 +1,3 @@
-"""Tests for transaction atomicity — events not published on rollback,
-session state unchanged on DB failure, partial rewards not applied."""
-
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock
 
@@ -86,9 +83,6 @@ def _make_failing_db():
     return mock_db
 
 
-# --- move_player: session.location_id unchanged on DB failure ---
-
-
 class TestMovePlayerAtomicity:
     @pytest.mark.asyncio
     async def test_session_location_unchanged_on_db_failure(self):
@@ -102,7 +96,6 @@ class TestMovePlayerAtomicity:
                 db_mod=_make_failing_db(),
                 content=mock_content,
             )
-        # Session location must NOT have been updated
         assert ctx.userdata.location_id == "accord_guild_hall"
 
     @pytest.mark.asyncio
@@ -121,9 +114,6 @@ class TestMovePlayerAtomicity:
         room.local_participant.publish_data.assert_not_called()
 
 
-# --- transact (loss): equipped check + decrement atomic ---
-
-
 class TestRemoveInventoryAtomicity:
     @pytest.mark.asyncio
     async def test_no_events_on_txn_failure(self):
@@ -140,9 +130,6 @@ class TestRemoveInventoryAtomicity:
                 content=mock_content,
             )
         room.local_participant.publish_data.assert_not_called()
-
-
-# --- update_quest: no partial events on mid-txn failure ---
 
 
 class TestUpdateQuestAtomicity:
@@ -179,9 +166,7 @@ class TestUpdateQuestAtomicity:
 
     @pytest.mark.asyncio
     async def test_no_session_xp_metric_when_the_stage_rolls_back(self):
-        """The XP pass RAN and returned a grant, then the stage failed: session_xp_earned must
-        stay at zero, because the database holds no XP either. Distinct from the cases above,
-        which fail before the transaction opens and so never reach the grant at all."""
+        """Fail after the grant, because pre-transaction failures cannot exercise metric rollback."""
 
         @asynccontextmanager
         async def _txn():

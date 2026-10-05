@@ -1,14 +1,4 @@
-"""M11 story-003 — in-combat ABILITY target_id wiring.
-
-story-001 threaded target_id through the out-of-combat cast path; this closes the in-combat seam
-(concern 3fe0ef128425): the in-combat ABILITY caller combat_ability._resolve_ability_packet forwards
-the declaration's optional target_id into the shared _resolve_cast, so an in-combat cast carries
-target_id into the packet and a revival ABILITY keys the Hollow-killed gate on the TARGET (not the
-caster) — matching cast_spell. Companion/non-player revival targets keep the pre-existing
-get_player-based limitation (shared with out-of-combat), unchanged here.
-
-Forwarding is a mock-resolver unit; the revival-gate-on-target behavior is one real-PG e2e (dev DB).
-"""
+"""Revival eligibility belongs to the target, not the caster. Non-player targets retain the get_player limitation."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock
@@ -48,8 +38,6 @@ def _cast_resolver(packet: dict) -> MagicMock:
 
 
 class TestAbilityForwardsTargetId:
-    """The in-combat ABILITY path forwards Declaration.target_id into the shared _resolve_cast."""
-
     @pytest.mark.asyncio
     async def test_forwards_explicit_target_id(self):
         session = make_context(player_id="caster_1").userdata
@@ -95,10 +83,6 @@ class TestAbilityForwardsTargetId:
 
 
 class TestInCombatRevivalGateE2E:
-    """Real-PG (dev DB) e2e: an in-combat revival ABILITY routes the REAL _resolve_cast (real catalog
-    divine_revivify) and keys the Hollow-killed gate on the TARGET ally — through the in-combat path.
-    Story-003 AC #2/#4."""
-
     @staticmethod
     async def _seed(pool, player_id: str, **overrides) -> None:
         data = {"player_id": player_id, "class": "cleric", "level": 5, "focus": {"current": 10, "max": 10}}
@@ -119,7 +103,6 @@ class TestInCombatRevivalGateE2E:
             id=caster_id, name="Lyra", type="player", initiative=15, hp_current=20, hp_max=20, ac=14
         )
         try:
-            # Targeting the Hollow-killed ally — refused via the TARGET's persisted flag (caster living).
             decl_h = Declaration(type=DeclarationType.ABILITY, action="divine_revivify", target_id=hollow_ally)
             with pytest.raises(ToolError, match="Hollow-killed"):
                 await _resolve_ability_packet(
@@ -133,7 +116,6 @@ class TestInCombatRevivalGateE2E:
                     cast_outcome=AbilityCastOutcome(),
                 )
 
-            # Targeting a living ally — resolves; the in-combat cast packet carries target_id.
             decl_l = Declaration(type=DeclarationType.ABILITY, action="divine_revivify", target_id=living_ally)
             summary = await _resolve_ability_packet(
                 session,

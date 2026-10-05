@@ -1,9 +1,3 @@
-"""Unit tests for the pure enhancer policy (M4.2, story-004).
-
-combat_enhancers decides (1) how many/which attack actions one ATTACK declaration
-expands into and (2) which narrated riders attach. Pure — no IO, no state.
-"""
-
 from combat_enhancers import (
     SHIELD_BASH_ACTION,
     attack_sequence,
@@ -30,7 +24,6 @@ class TestAttackSequence:
         assert attack_sequence(["shield_bash"], _WEAPON) == [_WEAPON, SHIELD_BASH_ACTION]
 
     def test_shield_bash_replaces_the_extra_attack_when_both(self) -> None:
-        # gm_combat L120: Shield Bash "replaces one attack if multiattack" — total stays 2.
         assert attack_sequence(["extra_attack", "shield_bash"], _WEAPON) == [_WEAPON, SHIELD_BASH_ACTION]
 
     def test_non_attack_enhancers_do_not_expand_the_sequence(self) -> None:
@@ -55,7 +48,6 @@ class TestDeclarationRiders:
     def test_quick_change_rides_a_social_interact_not_an_attack(self) -> None:
         interact = Declaration(type=DeclarationType.INTERACT, action="charm the guard")
         assert declaration_riders(["quick_change"], interact) == ["quick_change:identity_swap"]
-        # Quick Change does not fire on an ATTACK declaration (wrong host category).
         assert declaration_riders(["quick_change"], _attack()) == []
 
     def test_attack_riders_do_not_fire_on_non_attack(self) -> None:

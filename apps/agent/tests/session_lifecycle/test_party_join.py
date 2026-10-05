@@ -1,19 +1,5 @@
-"""Live participant-join trigger: a SECOND player connecting to the LiveKit room becomes a
-PartyMember (M18 story-001). This is the trigger that makes a >1-member party reachable in
-prod — every session is solo (1 member) until a real 2nd participant joins.
-
-_setup_party_join builds a PartyLifecycle, which registers its own participant_connected and
-participant_disconnected handlers, distinct from _setup_reconnection (whose handler only handles
-the PRIMARY reconnecting). The sync handler stamps a live connection generation, early-returns
-for an already-present member (idempotent), else spawns an async _hydrate_member task that:
-fetches the joiner's players row (log+skip if absent — a stray participant must not fail-loud
-the room), appends a PartyMember IN PLACE (never reassigns session.party), and hydrates all FIVE
-per-member sub-states onto it. `authorize` is the async gate the transcription path asks before
-it opens an STT stream for an identity.
-
-Mirrors test_reconnection.py's MagicMock-room shape, but uses a recording-room stub so the
-registered handler can be invoked directly (a MagicMock decorator return would swallow it).
-"""
+"""Use a recording room: a MagicMock decorator would swallow the registered handler.
+Joining-player authorization runs before an identity gets an STT stream."""
 
 import asyncio
 import logging
@@ -105,12 +91,7 @@ def test_registers_participant_connected_handler():
 
 @pytest.mark.asyncio
 async def test_joining_member_reads_no_ward_of_its_own(monkeypatch):
-    """AC: the ward is scope-owned, so the joining member resolves the party's, reading nothing.
-
-    Before M24 this hydrated a per-member ward from the joiner's own row. That code is gone — a
-    per-member read could only ever disagree with the scope — so participant_lifecycle no longer
-    takes a ward module at all. Patch the DB accessor itself and prove it is never touched.
-    """
+    """Wards are scope-owned; a per-member database read can disagree with actual coverage."""
     read_spy = AsyncMock()
     monkeypatch.setattr(db_mutations_veil_ward, "read_active_ward", read_spy)
 
@@ -222,8 +203,7 @@ async def test_join_mutates_party_in_place():
 
 @pytest.mark.asyncio
 async def test_concurrent_joins_for_same_id_append_once():
-    """Two participant_connected events for the SAME new id both pass the sync contains() check
-    before either task appends; the after-await race guard in _join_member keeps it to one add."""
+    """Pause both joins before append to reach the after-await duplicate race."""
     mods = _make_mods({"player_id": "player_2"})
     room, handlers = _recording_room()
     sd = SessionData(player_id="player_1", location_id="loc")

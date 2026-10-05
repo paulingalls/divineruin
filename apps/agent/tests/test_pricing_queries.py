@@ -1,10 +1,4 @@
-"""Tests for the DB-loaded economic-pricing SSOT (story-011).
-
-Covers get_economy_pricing's cache/fetch/fail-loud paths, plus a cross-language
-parity check: the single content/pricing.json fed through the Python pricing math
-must yield the exact sp values the TS REST quote asserts (apps/server/src/
-repair.test.ts), so the quote == the charge across languages from one source.
-"""
+"""The REST quote and Python charge must agree despite the language boundary."""
 
 import json
 import re
@@ -166,9 +160,6 @@ class TestGetEconomyPricing:
 
 
 class TestCrossLanguageParity:
-    """The same content/pricing.json, fed through Python's pricing math, must produce
-    the sp values apps/server/src/repair.test.ts asserts for the TS REST quote."""
-
     def test_python_charge_matches_ts_quote_values(self):
         eco = _economy_row()
         costs = eco["repair_cost_sp"]
@@ -178,7 +169,6 @@ class TestCrossLanguageParity:
             base = durability.calculate_repair_cost(rarity, cost_table=costs)
             return ws.compute_rental_price(base, disposition, multipliers=mults).price_sp
 
-        # Mirrors repair.test.ts: neutral=flat, friendly 0.8x, trusted 0.6x.
         assert charge_sp("common", "neutral") == 2
         assert charge_sp("rare", "neutral") == 50
         assert charge_sp("legendary", "neutral") == 200

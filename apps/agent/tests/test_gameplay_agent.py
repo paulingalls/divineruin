@@ -1,9 +1,3 @@
-"""ExplorationAgent shared-lifecycle tests — SpecializationTapHandler wiring (story-008).
-
-The single region-agnostic ExplorationAgent (M7 collapse of city/dungeon/wilderness)
-hosts the L5 specialization-tap consumer so a tap resolves where leveling happens.
-"""
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -22,9 +16,7 @@ def _agent_with_session():
 
 
 class TestHotContextReveal:
-    """M6 same-turn reveal: _build_hot_context surfaces freshly-discovered element ids and
-    clears the signal so they don't repeat on the next turn (story-003 consumes story-002's
-    SessionData.recently_revealed_element_ids)."""
+    """Reveal state belongs in the mutable prompt layer."""
 
     def test_surfaces_recently_revealed_then_clears(self):
         agent = ExplorationAgent()
@@ -33,7 +25,6 @@ class TestHotContextReveal:
         hot = agent._build_hot_context(sd)
         assert "veythar_seal_mark" in hot
         assert "ruins_journal_fragment" in hot
-        # Consumed same-turn: cleared so the reveal doesn't echo next turn.
         assert sd.recently_revealed_element_ids == []
 
     def test_no_reveal_part_when_none(self):
@@ -44,12 +35,7 @@ class TestHotContextReveal:
 
 
 class TestHotContextCombat:
-    """The fight reaches the DM as a per-turn hot line on BOTH agents (story-024).
-
-    Pinned here because story-024 deleted TestWarmAndHotAgree along with the warm-layer
-    renderer it compared against, and that was the only guard on the exploration side —
-    dropping this block from _build_hot_context left the whole fast lane green.
-    """
+    """Hot context must not invalidate the cached prefix."""
 
     def test_carries_the_round_and_each_hp_status(self):
         sd = SessionData(player_id="p", location_id="ruins")
@@ -95,15 +81,7 @@ class TestGameplaySpecializationTapWiring:
 
 
 class TestOnExitIsAgentScoped:
-    """AC4: on_exit runs on every HANDOFF (``AgentActivity.drain`` awaits it,
-    agent_activity.py:919-932), so only agent-scoped teardown may live there.
-
-    The session summary, the E.SESSION_END publish and the summary row moved to
-    ``session_end.run_session_end``, fired from the session's own ``close`` event
-    (``BackgroundProcess._on_session_end``). What stays is the specialization tap and the
-    ``super().on_exit()`` chain — the affect analyzer, the agent's background tasks and the
-    transcript handle, all of which belong to THIS agent.
-    """
+    """Vendor on_exit is a handoff boundary, not the end of the session."""
 
     @pytest.mark.asyncio
     async def test_on_exit_does_no_session_end_work(self):
@@ -126,7 +104,6 @@ class TestOnExitIsAgentScoped:
 
         assert [e.event_type for e in sd.event_bus.drain()] == []
         mock_save.assert_not_awaited()
-        # Agent-scoped teardown still runs, and the session's loop outlives the agent.
         agent._spec_tap.stop.assert_called_once()
         background.stop.assert_not_awaited()
         assert sd.background is background

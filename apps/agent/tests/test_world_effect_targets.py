@@ -1,12 +1,4 @@
-"""The world-effect disposition target vocabulary: runtime resolution + authoring-time validation.
-
-Extracted from test_world_effects.py (467 lines against the 500 hard cap, constraint 2) when
-story-013 collapsed three independent copies of the same shorthand map onto one symbol.
-
-The `companion` shorthand is the reason this file exists. At runtime it resolves to the
-player's ASSIGNED companion, never to a literal; at authoring time it cannot be resolved at
-all, so validation is set membership (does any companion exist?), not identity.
-"""
+"""Assigned companions resolve at runtime; authoring validation can only check that a companion exists."""
 
 import json
 from pathlib import Path
@@ -36,8 +28,7 @@ def _mocks():
 
 
 class TestCompanionShorthandResolvesPerPlayer:
-    """AC2. No content row produces a `companion_disposition` effect (debt filed at C3) — these
-    unit tests ARE the pin, and the card says so."""
+    """No authored row produces companion_disposition, so retain direct runtime input coverage."""
 
     @pytest.mark.asyncio
     async def test_companion_disposition_lands_on_the_assigned_companion_not_kael(self):
@@ -84,7 +75,6 @@ class TestEffectNpcMap:
         assert EFFECT_NPC_MAP["emris"] == "scholar_emris"
 
     def test_companion_is_absent_from_the_static_map(self):
-        """It is per-player at runtime; a static entry is exactly the defect story-013 removed."""
         assert "companion" not in EFFECT_NPC_MAP
 
 

@@ -1,9 +1,3 @@
-"""Tests for the pure node-respawn resolver (M16, story-001).
-
-Zero IO / zero RNG — offline unit tests covering each respawn class, the due-boundary,
-already-full no-op, partial-quantity restore, and the fail-loud guards.
-"""
-
 import pytest
 
 from gathering_respawn import NodeRespawn, compute_node_respawn

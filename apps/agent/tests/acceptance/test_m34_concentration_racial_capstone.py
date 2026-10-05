@@ -1,24 +1,4 @@
-"""Capstone: M3.4 Concentration + Racial Resonance end-to-end against a real Postgres testcontainer.
-
-stories 001-006 shipped the M3.4 seam with unit / mock-conn coverage: the racial bonus table +
-loader (001), concentration engine + persistence (002), the resonance / hollow_echo helpers
-(003/004), the Draethar inner_fire tool (005), and the cast keystone that composes them (006).
-This capstone proves they COMPOSE against ONE seeded testcontainer (auto-marked `acceptance` by
-tests/acceptance/conftest.py), catching the loader / JSONB-persistence seams the mocked units
-can't:
-
-- A Korath's primal cast applies the racial -1 to the Resonance that persists into players.data.
-- Casting a concentration spell, then a second, leaves the SECOND as the single active
-  concentration in players.data (the first ended) — single-slot overwrite, persisted.
-- get_racial_resonance_modifier reads the real seeded racial_resonance_bonuses table (the DB
-  loader, not the JSON fixture) and returns every spec value for all six races.
-- A Draethar reaching Overreach then using inner_fire drops persisted Resonance by 3, composing
-  with the persisted concentration without error.
-
-Each test uses a distinct player_id since the testcontainer DB is shared across the session.
-cast_spell gates ONLY Focus (story-004), so a Focus-funded player casts any spell id; the racial
-branch keys on players.data race, seeded per test.
-"""
+"""Read the real seeded racial table rather than the JSON fixture."""
 
 from __future__ import annotations
 
@@ -47,8 +27,6 @@ async def _hp_current(player_id: str) -> int:
 
 
 async def test_korath_primal_reduction_persists(reset_db_pool: str) -> None:
-    """A Korath's primal cast applies the racial -1 to the generated Resonance, and the reduced
-    value (not the unreduced baseline) is what persists into players.data (AC1)."""
     pool = await db.get_pool()
     player_id = "cap_m34_korath_primal"
     await seed_player_with_pools(pool, player_id=player_id, focus_current=18, known_spells=("primal_ice_storm",))
@@ -70,8 +48,6 @@ async def test_korath_primal_reduction_persists(reset_db_pool: str) -> None:
 
 
 async def test_second_concentration_cast_replaces_the_first(reset_db_pool: str) -> None:
-    """Casting a concentration spell, then a second, leaves the SECOND as the single active
-    concentration in players.data — the first ended (single-slot overwrite, persisted) (AC2)."""
     pool = await db.get_pool()
     player_id = "cap_m34_concentration"
     await seed_player_with_pools(
@@ -95,8 +71,6 @@ async def test_second_concentration_cast_replaces_the_first(reset_db_pool: str) 
 
 
 async def test_racial_table_loads_every_race_from_db(reset_db_pool: str) -> None:
-    """The DB loader populates get_racial_resonance_modifier from the seeded
-    racial_resonance_bonuses table, returning every spec value for all six races (AC3)."""
     await racial_resonance.load_racial_resonance()  # read the table FROM THE DB (not a fixture)
 
     get = racial_resonance.get_racial_resonance_modifier
@@ -111,8 +85,6 @@ async def test_racial_table_loads_every_race_from_db(reset_db_pool: str) -> None
 
 
 async def test_draethar_inner_fire_after_overreach_cast_composes(reset_db_pool: str) -> None:
-    """A Draethar casts a concentration spell into Overreach, then uses inner_fire: persisted
-    Resonance drops by 3 and composes with the persisted concentration without error (AC4 E2E)."""
     pool = await db.get_pool()
     player_id = "cap_m34_draethar"
     await seed_player_with_pools(pool, player_id=player_id, focus_current=18, known_spells=("arcane_invisibility",))

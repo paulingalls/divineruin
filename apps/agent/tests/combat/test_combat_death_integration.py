@@ -1,10 +1,4 @@
-"""Companion auto-stabilize + death-save persistence (M4.4 story-002).
-
-Companion auto-stabilize is narrative protection (execution_plan M4.4 design_details): a companion
-never dies outright from the death-save grind — when its failures reach the limit, the pure Beat-4
-wrap clamps it to the stabilized state instead. Death-save tallies already persist via
-CombatState.to_dict/from_dict (JSONB SSOT); the persistence test here is a regression guard (the
-execution_plan's 'reset each encounter' claim was found stale — see decision death-save-persistence)."""
+"""Companion auto-stabilization protects them from the death-save grind."""
 
 from combat._helpers import _make_combat_state
 
@@ -37,7 +31,6 @@ class TestCompanionAutoStabilize:
 
         combat_phase._wrap(cs)
 
-        # Clamped to the stabilized state — not dead, not still failing.
         assert companion.death_save_successes == _STABILIZE_LIMIT
         assert companion.death_save_failures == _DEATH_SAVE_LIMIT - 1
         assert companion.is_dead is False
@@ -51,7 +44,6 @@ class TestCompanionAutoStabilize:
         assert "companion_1" not in wrap.death_saves_due
 
     def test_companion_failures_do_not_end_combat(self):
-        # A downed companion at the failure limit must not trigger defeat (that's player-only).
         cs = _make_combat_state()
         _with_companion(cs, failures=_DEATH_SAVE_LIMIT)
 
@@ -69,9 +61,6 @@ class TestCompanionAutoStabilize:
 
 
 class TestDeathSaveCounterPersistence:
-    """Regression guard: death-save tallies survive a combat-state round-trip (phase->phase
-    persistence) via to_dict/from_dict — they are NOT reset between phases within an encounter."""
-
     def test_counters_survive_to_dict_from_dict_roundtrip(self):
         cs = _make_combat_state()
         player = cs.get_participant("player_1")
@@ -89,10 +78,6 @@ class TestDeathSaveCounterPersistence:
 
 
 class TestInstantDeathE2E:
-    """AC4: through the pure engine entry (advance_combat_phase), an instant-dead player and a
-    companion at the failure limit resolve together in one Beat-4 wrap — player ends combat as
-    defeat (no death-save beat), companion auto-stabilizes."""
-
     def test_wrap_reports_instant_dead_player_and_stabilized_companion(self):
         cs = _make_combat_state()  # enemy still alive (hp 7) so victory does not pre-empt defeat
         player = cs.get_participant("player_1")
@@ -117,13 +102,11 @@ class TestInstantDeathE2E:
         cs.beat = "wrap"
         next_state, advance = advance_combat_phase(cs)
 
-        # Player: instant defeat, no death-save beat.
         assert advance.wrap is not None
         assert advance.wrap.combat_ended is True
         assert advance.wrap.outcome == "defeat"
         assert "player_1" not in advance.wrap.death_saves_due
 
-        # Companion: auto-stabilized on the returned (deep-copied) state, not in death_saves_due.
         stabilized = next_state.get_participant("companion_1")
         assert stabilized is not None
         assert stabilized.death_save_successes == _STABILIZE_LIMIT

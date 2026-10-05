@@ -1,18 +1,5 @@
-"""Tests for the scope-keyed Veil Ward DB layer (db_mutations_veil_ward, story-003, M24).
-
-Pass a mock conn directly (the functions accept conn=) and assert the SQL + params, mirroring
-test_db_mutations_resonance.py. The real-PG round-trip lives in the fast lane at
-tests/test_db_mutations_veil_ward_db.py; the migration key-drop proof is acceptance-lane.
-
-Storage shape: veil_wards rows keyed by a surrogate ward_id, looked up by the NON-unique
-(scope_kind, scope_id) pair. A ward is owned by its scope, never by a caster
-(veil_ward_scope_model.md §1), so nothing here takes a player_id.
-
-Only LOCATION scopes are persisted. ENCOUNTER wards ride CombatState inside
-combat_instances.data — handing one to this module is a programming error, not a silent write,
-so every function fails loud on an encounter scope. That guard is what keeps "one home each,
-no dual state" true.
-"""
+"""Location wards live in veil_wards; encounter wards live in CombatState. Reject dual state.
+Multiple wards may cover the same scope."""
 
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock
@@ -39,7 +26,6 @@ class TestWriteWard:
         await db_mutations_veil_ward.write_ward(_LOCATION, "cleric", expires, dismissible=True, conn=conn)
         sql, *params = conn.execute.call_args.args
         assert "INSERT INTO veil_wards" in sql
-        # ward_id is never supplied — the DB default (gen_random_uuid) generates it.
         assert "ward_id" not in sql
         assert params == ["location", "thornwatch_keep", "cleric", expires, True]
 
@@ -58,7 +44,6 @@ class TestWriteWard:
 
 class TestReadActiveWard:
     async def test_returns_none_when_no_live_ward(self):
-        """An unwarded scope returns no ward — not a default-inactive placeholder (AC1)."""
         conn = AsyncMock()
         conn.fetchrow.return_value = None
         assert await db_mutations_veil_ward.read_active_ward(_LOCATION, conn=conn) is None
@@ -76,12 +61,11 @@ class TestReadActiveWard:
         sql, *params = conn.fetchrow.call_args.args
         assert "FROM veil_wards" in sql
         assert "scope_kind = $1" in sql and "scope_id = $2" in sql
-        # Lazy expiry: NULL never expires, otherwise compare against NOW(). Nothing sweeps.
         assert "expires_at IS NULL OR expires_at > NOW()" in sql
         assert params == ["location", "thornwatch_keep"]
 
     async def test_breaks_ties_by_newest_ward(self):
-        """The scope index is non-unique, so many wards may cover one scope. Pick deterministically."""
+        """Use a stable tie-breaker because this index is non-unique."""
         conn = AsyncMock()
         conn.fetchrow.return_value = None
         await db_mutations_veil_ward.read_active_ward(_LOCATION, conn=conn)
@@ -117,7 +101,6 @@ class TestDismissWard:
         assert await db_mutations_veil_ward.dismiss_ward(_LOCATION, conn=conn) == 2
 
     async def test_returns_zero_when_nothing_dismissible_covers_the_scope(self):
-        """A scope held only by a permanent ward. The caller must be able to refuse, not no-op."""
         conn = AsyncMock()
         conn.fetch.return_value = []
         assert await db_mutations_veil_ward.dismiss_ward(_LOCATION, conn=conn) == 0

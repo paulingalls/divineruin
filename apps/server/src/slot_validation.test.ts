@@ -20,8 +20,6 @@ describe("activityTypeToSlot", () => {
 });
 
 describe("validateSlotAvailability", () => {
-  // A valid result reports `slot` — the slot actually consumed (story-006). The
-  // crafting create path reads it to stamp a training-slot-borrowing craft.
   test("allows crafting when crafting slot is empty", () => {
     const result = validateSlotAvailability({ training: 0, crafting: 0, companion: 0 }, "crafting");
     expect(result).toEqual({ valid: true, error: null, slot: "crafting" });
@@ -69,9 +67,6 @@ describe("validateSlotAvailability", () => {
     expect(result).toEqual({ valid: false, error: "Invalid activity type: unknown" });
   });
 
-  // Artificer exception — wired into production by story-006 (the crafting create
-  // path passes archetype + hasPortableLab). The borrow reports slot:"training" so
-  // the create path can stamp the row against the training slot.
   test("Artificer with portable_lab can craft when crafting slot full but training slot empty", () => {
     const result = validateSlotAvailability(
       { training: 0, crafting: 1, companion: 0 },

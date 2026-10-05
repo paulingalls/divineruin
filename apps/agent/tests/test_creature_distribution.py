@@ -1,5 +1,3 @@
-"""Distribution of the authored natural bestiary."""
-
 import json
 from collections import Counter
 from pathlib import Path

@@ -1,12 +1,3 @@
-"""Diplomat combat de-escalation (M4.6a MVP -> M15 Tier-3 scene).
-
-The _wrap end-condition, the declare-time gate, the group packet resolver, and the
-beneficial-die folding are covered in the sibling test classes below. Every de-escalation
-roll is always-dramatic (M4.5 ability="de_escalate"). The pure per-round resolver lives in
-tests/combat/test_deescalation_scene.py; the multi-round GROUP orchestration in
-tests/combat/test_deescalation_orchestration.py.
-"""
-
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -63,7 +54,6 @@ class TestWrapDeescalationEndCondition:
         return advance.wrap
 
     def test_deescalated_ends_combat_while_enemies_still_stand(self):
-        # Precedence: the enemy is alive (no victory), yet a landed argument ends combat.
         state = _make_combat_state(enemy_fallen=False)
         state.beat = PhaseBeat.WRAP
         state.deescalated = True
@@ -79,7 +69,6 @@ class TestWrapDeescalationEndCondition:
         assert wrap.outcome is None
 
     def test_no_deescalation_still_resolves_victory(self):
-        # Regression: the existing all-enemies-fallen victory path is untouched.
         state = _make_combat_state(enemy_fallen=True)
         state.beat = PhaseBeat.WRAP
         wrap = self._wrap_of(state)
@@ -88,9 +77,6 @@ class TestWrapDeescalationEndCondition:
 
 
 class TestParticipantResistanceTags:
-    """M15 story-002: CombatParticipant carries the per-enemy Tier-3 resistance_tags,
-    loaded at combat init and serialized like enhancers/conditions."""
-
     def test_resistance_tags_round_trip(self):
         state = _make_combat_state()
         enemy = state.get_participant("goblin_scout_1")
@@ -102,8 +88,6 @@ class TestParticipantResistanceTags:
         assert rebuilt_enemy.resistance_tags == ["pragmatic", "suspicious"]
 
     def test_legacy_row_without_field_defaults_empty(self):
-        # A participant row written before the field existed omits it; from_dict rebuilds via
-        # CombatParticipant(**p), so the default_factory covers the missing key.
         state = _make_combat_state()
         data = state.to_dict()
         for p in data["participants"]:
@@ -123,9 +107,6 @@ class TestParticipantResistanceTags:
 
 
 class TestGateDeescalation:
-    """M15 story-002: the once-per-encounter MVP lockout became a per-round cap (MAX 4 rounds);
-    Focus (3) is still gated per round, with NO state writes at declare time."""
-
     def test_round_cap_blocks_further_attempts(self):
         state = _make_combat_state()
         state.deescalation_scene.round_counter = 4  # MAX_DEESCALATION_ROUNDS
@@ -143,12 +124,6 @@ class TestGateDeescalation:
 
 
 class TestResolveDeescalationPacket:
-    """M15 story-002: the packet resolves ONE round of a group argument — spends Focus, rolls one
-    persuasion total, shifts each living enemy independently, advances round_counter, and emits an
-    always-dramatic de_escalate roll. Whole-group surrender (ends_combat True) is covered in
-    tests/combat/test_deescalation_orchestration.py; here a single hostile no-tag enemy needs more
-    than one round, so this round ends_combat False."""
-
     @pytest.mark.asyncio
     async def test_spends_focus_and_emits_dramatic_dice_roll(self):
         session = _deescalation_session()
@@ -180,14 +155,7 @@ class TestResolveDeescalationPacket:
 
 
 class TestDeescalationBeneficialDie:
-    """M4.8 story-011 carried into M15: de_escalate folds an Inspired ally's single-use +1d4 into
-    its ONE per-round persuasion total and must consume it EXACTLY ONCE, sourced from the in-combat
-    SSOT (the participant), not the stale DB row. FixedRng(9) fixes both the d20 AND the d4 to 9:
-    the folded +1d4 lifts the round's argument_total, so the enemy's cumulative_shift is HIGHER with
-    the die than the baseline — the observable proof the die folded and was read from the participant.
-
-    The enemy starts at cumulative_shift 1 so the fold-vs-baseline delta stays observable AFTER the
-    accumulator floors at 0 (finding #1): fold delta 0 -> 1, baseline delta -1 -> 0."""
+    """Start cumulative shift at 1 so flooring at zero cannot hide the bonus-die difference."""
 
     _ENEMY = "goblin_scout_1"
     _BASE_SHIFT = 1  # < SURRENDER_THRESHOLD, so the enemy is still argued this round
@@ -216,8 +184,6 @@ class TestDeescalationBeneficialDie:
 
     @pytest.mark.asyncio
     async def test_inspired_on_participant_folds_and_is_consumed_once(self):
-        # +1d4 lifts the argument_total, so the enemy softens more than baseline (delta 0 vs -1),
-        # AND Inspired is removed from the participant exactly once (no permanent die).
         shift, attacker = await self._run_with(
             participant_conditions=apply_condition([], "inspired"),
             db_row_conditions=[],
@@ -228,8 +194,6 @@ class TestDeescalationBeneficialDie:
 
     @pytest.mark.asyncio
     async def test_no_beneficial_condition_baseline(self):
-        # Same seed, no die: bare argument 12 vs hostile DC 21 -> margin -9 -> -1; base 1 + (-1),
-        # floored, = 0. Conditions untouched.
         shift, attacker = await self._run_with(
             participant_conditions=[],
             db_row_conditions=[],

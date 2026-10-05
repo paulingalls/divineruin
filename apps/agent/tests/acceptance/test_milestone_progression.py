@@ -1,24 +1,4 @@
-"""Real-DB E2E capstone for M4 (Resolve consolidation + select).
-
-Proves the M4 milestone model composes end-to-end on real infra (auto-marked
-`acceptance` by tests/acceptance/conftest.py), across both surfaces:
-
-- **message_event** (Python agent path): against a real Postgres testcontainer
-  seeded from content/archetype_milestones.json, `load_milestones()` loads the
-  catalog and the M4 Resolve runs against the real DB — `_award_xp_core` (reached
-  directly here, and via `update_quest`, exactly as its production callers reach it:
-  inside a transaction, on a FOR UPDATE-locked players row) applies the L10/15/20
-  auto-grants at the single leveling chokepoint and surfaces the L5 specialization
-  fork as a SPECIALIZATION_CHOICE event on level-up WITHOUT persisting; the `select`
-  verb persists the chosen specialization immutably and rejects a second/invalid
-  resolution. resolve_milestone no longer exists. The warrior tiers cover every
-  kind: L5 specialization_fork (not patron-deferred), L10 auto_grant with a combat
-  flag (extra_attack), L15 auto_grant that is narrative-only (flag=null).
-- **http_websocket** (TS server path): the Bun server boots bound to the SAME
-  seeded testcontainer; its startup Promise.all runs loadMilestones() over all
-  milestone rows — a served response proves the TS loader parsed every row without
-  failing boot (a row that crashes parseMilestoneRow crashes boot).
-"""
+"""Reach leveling inside a locked transaction. Successful Bun startup certifies parsing, not an endpoint response."""
 
 from __future__ import annotations
 

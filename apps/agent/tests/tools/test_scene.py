@@ -1,5 +1,3 @@
-"""Tests for enter_location scene assembly and time-of-day overrides."""
-
 import json
 from unittest.mock import AsyncMock, MagicMock
 

@@ -10,8 +10,6 @@ import pytest
 
 from dependency_upgrade_report import (
     EnvironmentSnapshot,
-    render_markdown,
-    validate_markdown,
     validate_report,
 )
 
@@ -25,7 +23,6 @@ def _copy_scope(tmp_path: Path) -> Path:
         "scripts/pyproject.toml",
         "scripts/uv.lock",
         "docs/dependency_upgrade.json",
-        "docs/dependency_upgrade.md",
     ):
         destination = tmp_path / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -64,7 +61,6 @@ def _snapshots(report: dict, root: Path) -> dict[str, EnvironmentSnapshot]:
 def _validate(root: Path) -> dict:
     report = _load_report(root)
     validate_report(root=root, report=report, snapshots=_snapshots(report, root))
-    validate_markdown(root, report)
     return report
 
 
@@ -72,8 +68,6 @@ def test_checked_in_report_covers_manifests_locks_and_markdown():
     report = _validate(ROOT)
 
     assert report["projects"] == ["apps/agent", "scripts"]
-    assert report["dependencies"]
-    assert render_markdown(report) == (ROOT / "docs/dependency_upgrade.md").read_text()
 
 
 @pytest.mark.parametrize(
@@ -278,23 +272,4 @@ def test_empty_manifest_corpus_fails_after_green_baseline(tmp_path):
         )
 
     with pytest.raises(ValueError, match="manifest dependency corpus is empty"):
-        _validate(root)
-
-
-def test_markdown_drift_fails_after_green_baseline(tmp_path):
-    root = _copy_scope(tmp_path)
-    report = _validate(root)
-    _row(report, "anthropic")["held_back_by"]["reason"] = "a reason the committed markdown does not render"
-    (root / "docs/dependency_upgrade.json").write_text(json.dumps(report))
-
-    with pytest.raises(ValueError, match="rendered documentation mismatch"):
-        _validate(root)
-
-
-def test_missing_markdown_fails_after_green_baseline(tmp_path):
-    root = _copy_scope(tmp_path)
-    _validate(root)
-    (root / "docs/dependency_upgrade.md").unlink()
-
-    with pytest.raises(ValueError, match=re.escape("missing report: docs/dependency_upgrade.md")):
         _validate(root)

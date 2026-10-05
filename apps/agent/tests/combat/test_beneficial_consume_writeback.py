@@ -1,10 +1,4 @@
-"""M4.8 story-003: consumer write-back — consume + persist the beneficial die.
-
-The single-use +1d4 (Blessed/Inspired, story-001/002) is now made live: player-initiated rolls
-consume it and persist the removal, while engine-auto saves (Beat-4 tick-clear, concentration-break)
-suppress it via the new bonus_dice_eligible flag (customer decision 6102eca13319). In-combat the die
-is consumed ONCE per multi-swing declaration. Grouped: A) eligibility flag + engine-auto suppression,
-B) in-combat consume-once, C) out-of-combat persist."""
+"""Engine-auto saves suppress bonus dice; a multi-swing declaration consumes its bonus only once."""
 
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -27,11 +21,7 @@ def _player(conditions):
     return {"attributes": _ATTRS, "level": 3, "conditions": conditions}
 
 
-# --- Group A: bonus_dice_eligible flag + engine-auto suppression ---
-
-
 def test_save_eligible_default_folds_and_consumes():
-    # Default (player-initiated) path keeps story-002 behavior: Blessed +1d4 folds + signals consume.
     res = resolve_saving_throw(_player(BLESSED), "wisdom", 12, "x", rng=FixedRng(3))
     base = resolve_saving_throw(_player([]), "wisdom", 12, "x", rng=FixedRng(3))
     assert res.total == base.total + 3
@@ -39,7 +29,6 @@ def test_save_eligible_default_folds_and_consumes():
 
 
 def test_save_eligible_false_skips_fold_and_consume():
-    # Engine-auto saves pass bonus_dice_eligible=False: no +1d4, nothing consumed.
     res = resolve_saving_throw(_player(BLESSED), "wisdom", 12, "x", rng=FixedRng(3), bonus_dice_eligible=False)
     base = resolve_saving_throw(_player([]), "wisdom", 12, "x", rng=FixedRng(3))
     assert res.total == base.total
@@ -47,7 +36,6 @@ def test_save_eligible_false_skips_fold_and_consume():
 
 
 def test_tick_save_loop_passes_eligible_false():
-    # combat_packet._resolve_tick_saves must not let an auto tick-clear save spend the die.
     from combat_packet import _resolve_tick_saves
 
     save_resolver = MagicMock()
@@ -62,13 +50,11 @@ def test_tick_save_loop_passes_eligible_false():
 
     _, kwargs = save_resolver.roll_participant_save.call_args
     assert kwargs.get("bonus_dice_eligible") is False
-    # The tick loop only clears the ticked type on success; blessed is never touched here.
     assert "blessed" in [c["type"] for c in actor.conditions]
 
 
 @pytest.mark.asyncio
 async def test_concentration_break_save_passes_eligible_false():
-    # concentration_break's damage-triggered CON save is engine-auto: it must not spend the die.
     import concentration_break
 
     resolver = MagicMock()
@@ -99,8 +85,6 @@ async def test_concentration_break_save_passes_eligible_false():
     _, kwargs = resolver.resolve_saving_throw.call_args
     assert kwargs.get("bonus_dice_eligible") is False
 
-
-# --- Group B: in-combat consume-once per declaration ---
 
 _WEAPON = {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}
 
@@ -159,8 +143,6 @@ async def test_attack_packet_surfaces_consumed_conditions():
 
 @pytest.mark.asyncio
 async def test_extra_attack_consumes_beneficial_die_once():
-    # A 2-swing declaration must apply + consume the single-use die ONCE: swing-1 signals + removes
-    # it, swing-2 (clean attacker) gets nothing. Uses the REAL attack resolver.
     from combat._helpers import _make_combat_state
     from sample_fixtures import make_context
 
@@ -195,9 +177,6 @@ async def test_extra_attack_consumes_beneficial_die_once():
     assert "blessed" not in [c["type"] for c in player.conditions]
 
 
-# --- Group C: out-of-combat consume + persist ---
-
-
 @pytest.mark.asyncio
 async def test_save_tool_consumes_and_persists():
     from check_tools import _check_save_impl
@@ -210,7 +189,6 @@ async def test_save_tool_consumes_and_persists():
 
     await _check_save_impl(_make_context(), "wisdom", 12, "resist", queries=queries, conditions_mutations=cond_mut)
 
-    # Server-side removal of the spent types (story-013): no read-modify-write of a stale list.
     cond_mut.remove_player_conditions.assert_awaited_once()
     args, _ = cond_mut.remove_player_conditions.call_args
     assert args[1] == ("blessed",)  # (player_id, consumed_types)
@@ -260,9 +238,6 @@ async def test_skill_tool_consumes_and_persists_atomically():
     assert args[1] == ("inspired",)
     # Atomic with the skill-advancement write: both run on the transaction's connection.
     assert kwargs.get("conn") is conn
-
-
-# --- Group C (story-009): the remaining 3 modes — social / discover / gather ---
 
 
 @pytest.mark.asyncio
@@ -412,7 +387,6 @@ async def test_discover_tool_no_condition_does_not_persist(_evt):
         )
 
     cond_mut.remove_player_conditions.assert_not_awaited()
-    # No die to consume -> no tx is opened; the success flag write stays the plain (no-conn) path.
     mutations.set_player_flag.assert_awaited_once()
     assert mutations.set_player_flag.call_args.kwargs.get("conn") is None
 
@@ -439,7 +413,6 @@ async def test_social_tool_consumes_and_persists_atomically():
     cond_mut = MagicMock()
     cond_mut.remove_player_conditions = AsyncMock()
 
-    # FixedRng(18): persuasion success by 5+ shifts neutral -> friendly (a write fires).
     await _check_social_impl(
         _ctx_with_bus(),
         "merchant_1",
@@ -486,6 +459,5 @@ async def test_social_tool_no_condition_does_not_persist():
     )
 
     cond_mut.remove_player_conditions.assert_not_awaited()
-    # No die consumed -> no tx; the disposition shift stays the plain (no-conn) write.
     mutations.set_npc_disposition.assert_awaited_once()
     assert mutations.set_npc_disposition.call_args.kwargs.get("conn") is None

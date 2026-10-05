@@ -1,5 +1,3 @@
-"""Tests for tool_support helpers: knowledge filtering, time conditions, narration, id validation."""
-
 import pytest
 from livekit.agents.llm import ToolError
 
@@ -13,10 +11,6 @@ from tool_support import (
 
 
 class TestDispositionVocabulary:
-    """story-004: NPC content + all disposition writers use the canonical 5-tier ladder
-    (hostile, unfriendly, neutral, friendly, trusted). The legacy 'wary'/'cautious'
-    vocabulary is retired — those values are no longer ranked (no live data emits them)."""
-
     def test_unfriendly_is_canonical_below_neutral(self):
         assert DISPOSITION_TIERS["unfriendly"] < DISPOSITION_TIERS["neutral"]
 
@@ -72,8 +66,6 @@ class TestFilterKnowledge:
         assert filter_knowledge({}, "neutral") == []
 
     def test_unknown_disposition_defaults_neutral(self):
-        # story-004: retired aliases ("wary"/"cautious") and any unknown value all
-        # default to neutral — below the friendly gate, so only "free" knowledge.
         knowledge = {
             "free": ["public"],
             "disposition >= friendly": ["secret"],
@@ -163,7 +155,6 @@ class TestLocationForNarration:
         assert "hidden_elements" not in result
         assert "secret_door" not in str(result)
         assert "hidden passage" not in str(result)
-        # Visible fields still pass through.
         assert result["key_features"] == ["a fallen shelf"]
 
     def test_no_hidden_elements_key(self):

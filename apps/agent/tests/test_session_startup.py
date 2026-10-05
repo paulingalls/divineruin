@@ -1,5 +1,3 @@
-"""Production session construction."""
-
 from unittest.mock import MagicMock, patch
 
 from session_data import SessionData

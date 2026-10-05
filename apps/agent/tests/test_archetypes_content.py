@@ -1,15 +1,3 @@
-"""Content tests for content/archetypes.json — the M2.1 chassis SSOT.
-
-These read the raw JSON file (NOT a loader; the loader lives in archetypes.py).
-HP/resource values are pinned by test_hp_scaling.py / test_rules_pools.py (which
-assert the loaded chassis against the historically-correct numbers); this module
-checks the JSON's structure, roster (still parity-checked against CLASSES ids),
-and the armor/weapon proficiency vocabularies (which have no other automated
-check). Saves/skills are now owned solely by archetypes.json (story-004 dropped
-them from CLASSES), so there is no longer a CLASSES copy of those to assert
-parity against.
-"""
-
 import json
 import re
 from pathlib import Path
@@ -80,7 +68,6 @@ def archetypes() -> dict[str, dict]:
 
 def test_all_18_archetypes_present(archetypes):
     assert set(archetypes) == EXPECTED_IDS
-    # JSON roster agrees with the CLASSES creation-flow roster (same 18 ids).
     assert set(archetypes) == set(CLASSES)
 
 

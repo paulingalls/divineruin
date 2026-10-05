@@ -1,12 +1,4 @@
-"""One mapping case per `declare_phase` variant, plus the vocabulary tie to the engine.
-
-`to_engine_declarations` is the only thing between the LLM's sum-typed argument and
-`combat_phase.advance_combat_phase`, whose participant-keyed dict shape the reshape left
-untouched — so these cases are what say the reshape preserved behaviour. Each mapped dict
-is fed through `declarations.resolve_declaration`, the engine's own classifier, rather
-than only compared to a literal: a variant that satisfies the schema but not the engine
-would otherwise pass here and ValueError on the DM's first call.
-"""
+"""Feed mapped declarations to the real classifier; comparing only literals could certify a shape the engine rejects."""
 
 import ast
 import json
@@ -217,10 +209,7 @@ def test_declare_time_action_check_matches_case_insensitively_like_resolution():
 
 
 def test_an_attack_rider_rides_through_but_an_empty_one_is_dropped():
-    """`rider` is required in the schema (ADR 0008 rule 2 — an optional costs back the
-    union slot the sum type bought), so "" is how the DM says "no rider". The mapper
-    drops it so the engine dict keeps the shape `resolve_declaration` has always
-    received: a `rider` key present means the actor chose one."""
+    """The vendor schema requires rider; an empty string represents absence without spending an optional union slot."""
     with_rider = to_engine_declarations(
         [AttackDecl(kind="attack", actor_id="player_1", action="Dagger", target_id="goblin_1", rider="hide")]
     )
@@ -239,8 +228,7 @@ def test_one_ability_target_becomes_target_id():
 
 
 def test_several_ability_targets_become_target_ids():
-    """target_id XOR target_ids — spells.normalize_target_list refuses both, so the mapper
-    must pick one rather than always setting the singular."""
+    """Choose target_id or target_ids because normalization rejects both together."""
     engine = to_engine_declarations(
         [
             AbilityDecl(
@@ -283,8 +271,7 @@ def test_interact_maneuver_defend_and_retreat_map_to_their_engine_shapes():
 
 
 def test_a_repeated_actor_fails_loud():
-    """The old dict shape made a second declaration for one actor unrepresentable. A list
-    does not — and a last-wins collapse would silently drop a combatant's whole round."""
+    """A declaration list can repeat actors; last-wins collapse would silently discard a combatant's round."""
     with pytest.raises(ValueError, match="declared more than once"):
         to_engine_declarations(
             [
@@ -295,9 +282,6 @@ def test_a_repeated_actor_fails_loud():
 
 
 def test_variant_kinds_match_the_engine_declaration_types():
-    """The schema and the engine share one vocabulary — a dropped or renamed variant reds
-    here rather than becoming an 'unknown declaration type' the DM meets mid-fight. `move` is the
-    one wire-only kind: it lowers to a maneuver carrying action "move"."""
     kinds = {typing.get_args(v.model_fields["kind"].annotation)[0] for v in DECL_VARIANTS}
     assert kinds == {t.value for t in DeclarationType} | {"move"}
 
@@ -320,17 +304,11 @@ def test_a_fully_specified_variant_satisfies_the_engine_classifier(payload):
 
 
 def test_every_variant_has_an_engine_case():
-    """Every variant, with no exception carved out. REACTION was the seventh and was excluded here
-    because its classifier reads the ability catalog; story-017 deleted it, so a variant that
-    slips past the engine classifier can no longer hide behind that carve-out."""
     assert len(_ENGINE_CASES) == len(DECL_VARIANTS)
 
 
 def test_declare_phase_offers_no_reaction_kind():
-    """AC2, against the EMITTED schema rather than the class list — the DM obeys what the plugin
-    compiles, not what this module declares. A reaction is an interrupt now (story-017): a
-    `kind: "reaction"` the DM could still send would be a packet that never activates and burns
-    the actor's whole phase action."""
+    """Inspect the emitted vendor schema: an advertised reaction declaration would consume an action without activating."""
     parsed = ToolContext([combat_turn.declare_phase]).parse_function_tools("anthropic", strict=True)
     schema = next(tool["input_schema"] for tool in parsed if tool["name"] == "declare_phase")
 
@@ -356,8 +334,7 @@ def _kind_consts(node) -> set[str]:
 
 @pytest.mark.parametrize("variant", DECL_VARIANTS)
 def test_no_variant_field_is_optional(variant):
-    """ADR 0008 rule 2: an optional inside a variant is one union slot back, and the
-    walker in test_strict_tool_budget cannot see WHY the number moved."""
+    """ADR 0008: optional variant fields consume union slots."""
     assert all(f.is_required() for f in variant.model_fields.values()), variant.__name__
 
 

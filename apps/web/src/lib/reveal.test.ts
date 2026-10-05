@@ -6,7 +6,6 @@ import { reveal, defaultRevealEnv, REVEALED_CLASS, type RevealEnv } from "./reve
 // an injectable seam (RevealEnv) so every branch is exercised here with plain
 // stubs, exactly as NavBar.test.tsx unit-tests isScrolledPast without a DOM.
 
-// Minimal Element stand-in: only the classList surface reveal() touches.
 function fakeElement() {
   const classes = new Set<string>();
   return {
@@ -59,9 +58,6 @@ test("reveals an element once when it enters view, then unobserves it", () => {
   expect(el.classList.contains(REVEALED_CLASS)).toBe(true);
   expect(calls.unobserved).toEqual([el]);
 
-  // Reveal-once: a second intersection must not re-process the element. This
-  // guards the obs.unobserve() call — dropping it (e.g. a shared observer
-  // refactor) would let the element be unobserved twice here.
   trigger(el);
   expect(calls.unobserved).toEqual([el]);
 });

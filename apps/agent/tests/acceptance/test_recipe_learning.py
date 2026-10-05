@@ -1,11 +1,4 @@
-"""Real-DB acceptance proof for recipe learning (story-006, AC5 E2E).
-
-Migrates a Postgres testcontainer (migration 019) + seeds content, then drives
-_learn_recipe_impl / query_recipe_requirements against it with the real db layer (no
-injected mods). Proves the slot gate + player_known_recipes write work end-to-end
-against the seeded recipe content + recipe_slots caps, not just under mocks. Runs
-on pre-push under REQUIRE_DOCKER; skips cleanly when Docker is down.
-"""
+"""Execute slot capacity and learned-recipe writes against the seeded catalog and migration caps."""
 
 from __future__ import annotations
 

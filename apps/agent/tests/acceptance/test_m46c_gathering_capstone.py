@@ -1,22 +1,4 @@
-"""Capstone: M4.6c Gathering & Resource Discovery end-to-end against a real Postgres testcontainer.
-
-Stories 001-003 shipped gathering in slices: the pure resolver (001), the data layer —
-resource_table content + the gathering_nodes table/seed (002) — and the check(mode='gather')
-tool + live node consumer (003). This capstone proves they COMPOSE on one migrated+seeded
-testcontainer (auto-marked `acceptance`), driving the REAL gather pipeline against real DB writes:
-
-- AC1: an ambient forage at a wilderness location (resource_table, no fixed node) grants the
-  harvested materials into player_inventory and emits a gathering_check DICE_ROLL for the HUD.
-- AC2: a rich find at a location with a fixed node marks the node discovered + depletes its
-  quantity in gathering_nodes and grants the node's resource into player_inventory.
-- AC3 / E2E: node depletion is enforced across gathers — a node drained to 0 is no longer
-  forageable, so a follow-up gather there (no resource_table) raises "Nothing to forage here.".
-
-Determinism: the d20 gather check is forced via an injected rng (FixedRng) — 20 → rich_find.
-Isolation: gathering nodes are GLOBAL world state (unlike per-player travel_state), so node tests
-self-provision a unique node at greyvale_ruins_inner (a seeded dungeon with no seeded node / no
-resource_table) and delete it in finally; inventory state is per-player → distinct player_ids.
-"""
+"""Gathering nodes are global world state. Provision unique nodes at an otherwise empty location and delete them in finally."""
 
 from __future__ import annotations
 
@@ -72,7 +54,6 @@ async def _node_data(pool, node_id: str) -> dict:
 async def test_m46c_ambient_forage_grants_materials_and_emits_dice_roll(
     reset_db_pool: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """AC1: an ambient gather grants resource_table materials to inventory + emits the HUD roll."""
     pool = await db.get_pool()
     player_id = "cap_m46c_ambient"
     await seed_player(pool, player_id=player_id, location_id=_AMBIENT)
@@ -105,7 +86,6 @@ async def test_m46c_ambient_forage_grants_materials_and_emits_dice_roll(
 
 
 async def test_m46c_rich_find_discovers_and_depletes_node(reset_db_pool: str) -> None:
-    """AC2: a rich find reveals + depletes a fixed node and grants its resource to inventory."""
     pool = await db.get_pool()
     player_id = "cap_m46c_node"
     node_id = "cap_m46c_node_salvage"
@@ -131,11 +111,7 @@ async def test_m46c_rich_find_discovers_and_depletes_node(reset_db_pool: str) ->
 
 
 async def test_m46c_node_and_grant_roll_back_together(reset_db_pool: str, monkeypatch: pytest.MonkeyPatch) -> None:
-    """AC3: the node depletion and the material grant share one transaction.
-
-    The injected failure fires *after* a successful add_inventory_item, so only a real
-    rollback leaves the node undiscovered at its original quantity and the item absent.
-    """
+    """Fail after a successful inventory grant so only real rollback can restore the node and remove the item."""
     pool = await db.get_pool()
     player_id = "cap_m46c_rollback"
     node_id = "cap_m46c_rollback_salvage"
@@ -165,7 +141,6 @@ async def test_m46c_node_and_grant_roll_back_together(reset_db_pool: str, monkey
 
 
 async def test_m46c_depleted_node_is_no_longer_forageable(reset_db_pool: str) -> None:
-    """AC3 / E2E: a node drained to 0 is filtered out; a follow-up gather (no resource_table) raises."""
     pool = await db.get_pool()
     player_id = "cap_m46c_deplete"
     node_id = "cap_m46c_deplete_salvage"

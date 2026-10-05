@@ -1,24 +1,5 @@
-"""Capstone-style E2E for the story-005 resolution gates across both languages.
-
-The live TS REST create path (handleCreateActivity) does no recipe-tier / tainted-Expert
-pre-flight: a sub-Expert player can START a craft of a tainted (Hollow-touched) recipe.
-story-006 added a workspace gate to that REST path (so the workspace bypass is closed),
-but NOT a tainted-Expert gate — so resolution remains the chokepoint for tainted work.
-story-005 makes resolve_crafting (Python) re-check the captured crafting_tier and fail
-a sub-Expert tainted craft at completion.
-
-Proven end-to-end against one seeded testcontainer:
-  1. A spawned `bun src/index.ts` serves POST /api/activities for a tainted laboratory
-     recipe to a sub-Expert player who has rented a laboratory (so the story-006 workspace
-     gate passes) — the create succeeds (no tainted gate at the REST layer).
-  2. The persisted activity captures crafting_tier="untrained" + tainted_materials=true.
-  3. resolve_crafting reads those captured params and returns a `failure` outcome with the
-     tainted-Expert gate — the bypass is caught at resolution.
-
-resolve_crafting is called directly (not the full narration worker) so the proof needs
-no LLM. Runs under `bun run test:acceptance` (REQUIRE_DOCKER on pre-push); skips when
-Docker is down.
-"""
+"""The REST producer allows sub-Expert tainted work; completion remains the tainted-material gate.
+Rent a laboratory so workspace refusal cannot hide that gate. Call resolution directly to avoid LLM narration."""
 
 from __future__ import annotations
 

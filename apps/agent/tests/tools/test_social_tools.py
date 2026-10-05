@@ -1,10 +1,4 @@
-"""Tests for the social-check mode of the `check` verb (M4.6a / story-002).
-
-`_check_social_impl` (folded into check via mode="social") reads an NPC's disposition,
-rolls the player's social skill, drives the pure social_resolution engine, persists any
-disposition change, and returns a narration cue. These tests drive the impl directly with
-mocked db seams + a fixed rng; the dispatch wiring on `check` is covered at the bottom.
-"""
+"""Database seams are mocked; dispatch and the social implementation are real."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock
@@ -45,7 +39,6 @@ class TestCheckSocialHappyPath:
 
     @pytest.mark.asyncio
     async def test_dc_includes_disposition_modifier(self):
-        # base moderate DC is 12; a hostile NPC adds +6, a friendly one subtracts 3.
         queries, mutations, content = _social_mocks(recorded="hostile")
         hostile = json.loads(
             await _check_social_impl(
@@ -64,7 +57,6 @@ class TestCheckSocialHappyPath:
 
     @pytest.mark.asyncio
     async def test_new_disposition_is_resolver_delta_applied_to_previous(self):
-        # Wiring check: the tool applies exactly the resolver's clamped shift, no extra math.
         queries, mutations, content = _social_mocks(recorded="neutral")
         r = json.loads(
             await _check_social_impl(
@@ -104,7 +96,6 @@ class TestCheckSocialHappyPath:
 class TestCheckSocialPersistence:
     @pytest.mark.asyncio
     async def test_persists_and_emits_on_shift(self):
-        # persuasion success by 5+ (d20 18, mod -1, dc 12 -> margin 5) shifts neutral -> friendly.
         queries, mutations, content = _social_mocks(recorded="neutral")
         ctx = _ctx_with_bus()
         result = json.loads(
@@ -134,7 +125,6 @@ class TestCheckSocialPersistence:
 
     @pytest.mark.asyncio
     async def test_no_write_or_event_on_zero_shift(self):
-        # persuasion bare success (d20 14, mod -1, dc 12 -> margin 1) is +0: disposition unchanged.
         queries, mutations, content = _social_mocks(recorded="neutral")
         ctx = _ctx_with_bus()
         result = json.loads(
@@ -158,7 +148,6 @@ class TestCheckSocialPersistence:
 class TestCheckSocialFallbackAndValidation:
     @pytest.mark.asyncio
     async def test_falls_back_to_content_default_when_unrecorded(self):
-        # No per-player disposition row -> resolve_disposition reads the NPC's content default.
         queries, mutations, _ = _social_mocks(recorded=None)
         content = MagicMock()
         content.get_npc = AsyncMock(return_value={"id": "elder", "default_disposition": "friendly"})
@@ -223,8 +212,6 @@ class TestCheckSocialFallbackAndValidation:
 
     @pytest.mark.asyncio
     async def test_offladder_disposition_fails_loud_as_toolerror(self):
-        # A corrupt npc_dispositions row (off the canonical ladder) must surface as a
-        # DM-narratable ToolError, not a raw ValueError escaping db_tool's narrow catch.
         queries, mutations, content = _social_mocks(recorded="wary")
         with pytest.raises(ToolError, match="disposition"):
             await _check_social_impl(
@@ -240,7 +227,6 @@ class TestCheckSocialFallbackAndValidation:
 
     @pytest.mark.asyncio
     async def test_malformed_npc_id_fails_loud(self):
-        # npc_id is an entity id, validated like every other id-taking tool (charset guard).
         queries, mutations, content = _social_mocks()
         with pytest.raises(ToolError, match="npc_id"):
             await _check_social_impl(
@@ -274,7 +260,6 @@ class TestCheckSocialFallbackAndValidation:
 class TestCheckSocialDispatch:
     @pytest.mark.asyncio
     async def test_check_mode_social_routes_to_social_impl(self):
-        # The consolidated check verb dispatches mode="social" to _check_social_impl.
         queries, mutations, content = _social_mocks()
         result = json.loads(
             await _check_impl(
@@ -288,7 +273,6 @@ class TestCheckSocialDispatch:
                 content=content,
             )
         )
-        # Social-shaped response (narrative_cue + npc_id) confirms the social branch ran.
         assert result["npc_id"] == "merchant_1"
         assert "narrative_cue" in result
         assert "new_disposition" in result

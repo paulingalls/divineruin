@@ -7,7 +7,6 @@ import sharp from "sharp";
 import { _setInternalSecretForTesting } from "./middleware.ts";
 _setInternalSecretForTesting("test-secret");
 
-// Create a small valid PNG for mock responses
 async function makeFakeBase64Png(): Promise<string> {
   const buf = await sharp({
     create: { width: 64, height: 64, channels: 3, background: { r: 80, g: 80, b: 80 } },
@@ -33,7 +32,6 @@ afterEach(async () => {
   delete process.env.GEMINI_API_KEY;
 });
 
-// Mock @google/genai
 await mock.module("@google/genai", () => ({
   GoogleGenAI: class {
     models = {
@@ -51,7 +49,6 @@ await mock.module("@google/genai", () => ({
   },
 }));
 
-// Mock db to avoid real database connection
 await mock.module("./db.ts", () => ({
   sql: Object.assign(
     (_strings: TemplateStringsArray, ..._values: unknown[]) => Promise.resolve([]),

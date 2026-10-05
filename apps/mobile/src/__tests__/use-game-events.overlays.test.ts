@@ -10,8 +10,6 @@ import { SAMPLE_CHARACTER, captureTimers, resetStores } from "./use-game-events.
 
 beforeEach(resetStores);
 
-// --- handleGameEvent: dice_result ---
-
 test("dice_result pushes overlay to hudStore", () => {
   handleGameEvent({ type: "dice_result", roll: 14, modifier: 2, total: 16, success: true });
   const overlays = hudStore.getState().overlays;
@@ -20,8 +18,6 @@ test("dice_result pushes overlay to hudStore", () => {
   expect(overlays[0].payload.roll).toBe(14);
   expect(overlays[0].payload.success).toBe(true);
 });
-
-// --- handleGameEvent: combat_ui_update ---
 
 test("combat_ui_update sets combat state in hudStore", () => {
   handleGameEvent({
@@ -76,12 +72,6 @@ test("combat_ui_update filters out malformed combatants", () => {
   expect(combat!.combatants[0].id).toBe("c1");
 });
 
-// Regression guard: a payload shaped like the M12 producer's emit (see
-// apps/agent/event_types.py COMBAT_UI_UPDATE docstring + apps/agent/combat_ui_update.py)
-// round-trips through parseCombatant -> hudStore.setCombatState with conditions
-// preserved verbatim ({type, stacks, source}). Pins parseCondition behaviour against
-// accidental tightening; cross-language wire-shape drift is caught by the story-003
-// capstone, not here.
 test("combat_ui_update preserves producer-shaped conditions through parseCombatant", () => {
   handleGameEvent({
     type: "combat_ui_update",
@@ -111,10 +101,6 @@ test("combat_ui_update preserves producer-shaped conditions through parseCombata
   expect(conds[1]).toEqual({ type: "frightened", stacks: 1, source: "shaman_aura" });
 });
 
-// Regression guard: parseCombatant fails soft when a combatant omits isAlly —
-// the row survives with isAlly=false rather than being dropped. Mirrors the
-// fail-soft default at game-event-handler.ts (`typeof c.isAlly === "boolean" ? c.isAlly : false`).
-// A future tightening to reject the row would surface here.
 test("combat_ui_update parseCombatant fails soft when isAlly is missing", () => {
   handleGameEvent({
     type: "combat_ui_update",
@@ -139,8 +125,6 @@ test("combat_ui_update parseCombatant fails soft when isAlly is missing", () => 
   expect(c.isAlly).toBe(false);
   expect(c.hpCurrent).toBe(7);
 });
-
-// --- handleGameEvent: item_acquired ---
 
 test("item_acquired pushes overlay to hudStore", () => {
   handleGameEvent({
@@ -204,8 +188,6 @@ test("item_acquired for the local player's own player_id fires the overlay", () 
 });
 
 test("item_acquired for a different party member's player_id suppresses the overlay", () => {
-  // M20 story-001: the loot HUD leak — a round-robinned drop granted to a teammate must not
-  // show on the local player's HUD.
   characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "p1" });
   handleGameEvent({
     type: "item_acquired",
@@ -227,8 +209,6 @@ test("item_acquired with no player_id fires the overlay (back-compat: solo / non
   });
   expect(hudStore.getState().overlays).toHaveLength(1);
 });
-
-// --- handleGameEvent: quest_update ---
 
 test("quest_update pushes overlay and sets active objective", () => {
   handleGameEvent({
@@ -268,8 +248,6 @@ test("quest_update passes stageName through to overlay payload", () => {
   expect(overlay.payload.stageName).toBe("Discovery");
 });
 
-// --- handleGameEvent: xp_awarded with overlay ---
-
 test("xp_awarded without a level-up pushes xp_toast overlay", () => {
   characterStore.getState().setCharacter(SAMPLE_CHARACTER);
   handleGameEvent({ type: "xp_awarded", new_xp: 525, new_level: 3, amount: 75 });
@@ -307,8 +285,6 @@ test("xp_awarded with leveled_up passes className from character store", () => {
   expect(overlay.payload.className).toBe("warrior");
 });
 
-// --- handleGameEvent: dice_result stinger + TTL ---
-
 test("dice_result schedules success stinger after delay", () => {
   const timers = captureTimers(() =>
     handleGameEvent({ type: "dice_result", roll: 14, total: 16, success: true }),
@@ -335,8 +311,6 @@ test("dice_result uses DICE_ROLL_TTL_MS", () => {
   expect(overlay.ttl).toBe(DICE_ROLL_TTL_MS);
 });
 
-// --- handleGameEvent: status_effect ---
-
 test("status_effect add creates status effect in hudStore", () => {
   handleGameEvent({
     type: "status_effect",
@@ -355,8 +329,6 @@ test("status_effect remove removes from hudStore", () => {
   handleGameEvent({ type: "status_effect", action: "remove", effect_id: "curse-1" });
   expect(hudStore.getState().statusEffects).toHaveLength(0);
 });
-
-// --- handleGameEvent: divine_favor_changed overlay ---
 
 test("divine_favor_changed pushes divine_favor overlay", () => {
   handleGameEvent({

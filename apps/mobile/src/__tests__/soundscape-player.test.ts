@@ -1,7 +1,6 @@
 import { test, expect, beforeEach, mock } from "bun:test";
 import { sessionStore } from "@/stores/session-store";
 
-// Mock expo-audio
 const mockPlayers: { volume: number; loop: boolean; removed: boolean; playing: boolean }[] = [];
 void mock.module("expo-audio", () => ({
   createAudioPlayer: (_asset: number) => {
@@ -85,7 +84,6 @@ test("fadeOutSoundscape transitions to idle", async () => {
 test("setDucking adjusts volume", () => {
   transitionToSoundscape("market_bustle");
   const player = mockPlayers[0];
-  // Complete the fade-in
   player.volume = 0.8;
   setDucking(true);
   // After ducking ramp, volume should decrease
@@ -98,7 +96,6 @@ test("rapid transitions don't leak players", async () => {
   transitionToSoundscape("harbor_quiet");
   transitionToSoundscape("tavern_busy");
 
-  // Should have at most 3 players created, first ones released
   expect(mockPlayers.length).toBe(3);
   expect(mockPlayers[0].removed).toBe(true); // force-completed first crossfade
 

@@ -2,11 +2,6 @@ import { test, expect, describe } from "bun:test";
 import { getRoleArchetype, parseRoleArchetypeRow, setRoleArchetypes } from "./role_archetypes.ts";
 import type { RoleArchetype } from "@divineruin/shared";
 
-// Pins the fail-loud parseRoleArchetypeRow + accessors. The catalog-conformance pass over
-// content/role_archetypes.json lives in role_archetypes-load.test.ts. parseRoleArchetypeRow
-// is the cross-language twin of apps/agent/role_archetypes.py parse_role_archetype_row — the
-// same malformed rows that the Python loader rejects (test_role_archetypes.py) reject here.
-
 const ROOT = new URL("../../../", import.meta.url);
 const ARCHETYPES_PATH = new URL("content/role_archetypes.json", ROOT);
 const RAW = (await Bun.file(ARCHETYPES_PATH).json()) as Record<string, unknown>[];

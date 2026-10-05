@@ -3,14 +3,6 @@ import { parseAbilityRow, getAbility, getArchetypeAbilities, setAbilities } from
 import { parseSpellRow, setSpells } from "./spells.ts";
 import type { Ability, Spell } from "@divineruin/shared";
 
-// Drives the production fail-loud parseAbilityRow (apps/server/src/abilities.ts)
-// over content/archetype_abilities.json, proving every entry conforms to the shared
-// Ability contract. parseAbilityRow is the real TS load boundary (loadAbilities calls
-// it at startup); this test exercises it against the canonical content, pins its
-// fail-loud behavior on malformed rows, and mirrors the Python loader's vocab/cost
-// assertions (apps/agent/abilities.py) so the cross-language contract is enforced on
-// both sides. Cost is a {stamina, focus, scaling} object (decision m22-cost-object-schema).
-
 const ABILITIES_PATH = new URL("../../../content/archetype_abilities.json", import.meta.url);
 const SPELLS_PATH = new URL("../../../content/spells.json", import.meta.url);
 
@@ -27,9 +19,6 @@ beforeAll(async () => {
   setSpells(map);
 });
 
-// content/archetype_abilities.json is a closed set (story-001): 145 abilities across the
-// 18 archetypes. Exact counts catch both silent attrition from bad merges AND accidental
-// additions (assumption ffd661463b5d — move these literals if story-001's content changes).
 const ABILITY_COUNT = 145;
 const ARCHETYPE_COUNT = 18;
 
@@ -45,7 +34,6 @@ describe("content/archetype_abilities.json — parseAbilityRow conformance", () 
     expect(rows).toHaveLength(ABILITY_COUNT);
     for (const row of rows) {
       const id = typeof row.id === "string" ? row.id : "<no-id>";
-      // Throws with the ability id + field context on any malformed entry.
       expect(() => parseAbilityRow(id, row)).not.toThrow();
     }
   });
@@ -78,9 +66,7 @@ describe("content/archetype_abilities.json — parseAbilityRow conformance", () 
     const spell = parseSpellRow("arcane_bolt", arcaneBolt!);
 
     expect(parsed.spell_id).toBe("arcane_bolt");
-    // Focus cost is single-sourced from the catalog.
     expect(parsed.cost).toEqual({ stamina: 0, focus: spell.focus_cost, scaling: null });
-    // Per-archetype content stays authored on the row, not flattened to the spell's text.
     expect(parsed.effect).toBe(bolt!.effect as string);
     expect(parsed.level_requirement).toBe(bolt!.level_requirement as number);
     expect(parsed.narration_cue).toBe(bolt!.narration_cue as string);
@@ -101,10 +87,6 @@ describe("content/archetype_abilities.json — parseAbilityRow conformance", () 
 });
 
 describe("abilities accessors — loadAbilities consumer chain", () => {
-  // loadAbilities() reads the DB; its accessor chain (setAbilities ->
-  // getAbility/getArchetypeAbilities) is the runtime API consumers use after startup.
-  // Drive it against the real parsed content (parseAbilityRow per row, exactly as
-  // loadAbilities does) without a live DB.
   async function loadParsedMap(): Promise<Map<string, Ability>> {
     const rows = await loadAbilitiesJson();
     const map = new Map<string, Ability>();

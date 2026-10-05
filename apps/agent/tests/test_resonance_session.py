@@ -1,20 +1,3 @@
-"""Session wiring for the M3.1 Resonance system (story-003).
-
-Resonance becomes live in a session here: SessionData carries a ResonanceTrack
-whose stable/flickering/overreach STATE is derived (never stored), a short/long
-rest resets it to stable/0 and persists via story-002, and a RESONANCE_CHANGED
-event pushes {state, current, max} to the client over the game_events channel.
-
-The rest reset is M3.1's only live resonance mutation (generation-on-cast is M3.3,
-which reuses publish_resonance_changed). No live rest @function_tool exists yet, so
-these tests drive the building blocks directly and prove them composed end to end —
-mirroring the SessionData(room=None) + patched-publish_game_event style of
-test_combat_durability.py.
-
-Spec: docs/game_mechanics/game_mechanics_magic.md §Resonance States (100-106),
-§Resonance Decay — full reset on rest (130).
-"""
-
 from unittest.mock import AsyncMock, patch
 
 import event_types as E
@@ -50,9 +33,6 @@ def test_resonance_state_derives_from_current_band():
 
 
 def test_resonance_state_applies_flickering_bonus():
-    # The Thessyn Deep Adaptation bonus (story-006) lives on the track, so EVERY reader of .state
-    # (the cast packet, the HUD push) derives the SAME shifted band and cannot diverge. current=9
-    # with bonus 1 classifies as flickering, where the default bonus 0 gives overreach.
     session = _session()
     session.resonance.current = 9
     assert session.resonance.state == "overreach"  # default bonus 0

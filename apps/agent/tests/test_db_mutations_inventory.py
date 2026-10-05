@@ -1,9 +1,3 @@
-"""Tests for inventory item-instance-state writes (db_mutations_inventory).
-
-Pass a mock conn directly (the function accepts conn=) and assert the SQL +
-params. Real SQL is exercised against a testcontainer at the capstone (ADR 0003).
-"""
-
 import json
 from unittest.mock import AsyncMock
 

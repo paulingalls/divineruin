@@ -1,8 +1,4 @@
-"""Content guard for activate_tools._resolve_kind's ordered namespaces.
-
-An id present in two namespaces silently routes to whichever is checked first and leaves the other
-capability unreachable. This pin keeps every routed namespace pairwise disjoint.
-"""
+"""A shared id silently routes to the first namespace and makes the other capability unreachable."""
 
 import json
 from itertools import combinations

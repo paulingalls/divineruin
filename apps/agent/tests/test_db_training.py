@@ -1,11 +1,4 @@
-"""Regression tests for db_training create/update SQL + params.
-
-Pins the transition_at handling that the async worker
-(advance_training_cycles) depends on: a row without transition_at is
-never polled, so both create and update must thread it through to the
-right SQL branch. Both functions accept an injectable conn= so these
-assert the SQL/params directly against a mock connection.
-"""
+"""The worker ignores a training row without transition_at."""
 
 import json
 from unittest.mock import AsyncMock
@@ -33,7 +26,6 @@ class TestCreateTrainingActivity:
         assert activity_id.startswith("train_")
         sql, *args = conn.execute.await_args.args
         assert "INSERT INTO training_activities" in sql
-        # Positional order: id, player_id, activity_type, state, data, transition_at
         assert args[0] == activity_id
         assert args[1] == "player_1"
         assert args[2] == "technique_base"
@@ -76,10 +68,6 @@ class TestUpdateTrainingActivity:
 
 
 class TestUpsertLearningCycle:
-    """The shared engine behind the spell + mentor-variant per-cycle upserts (concern
-    5d7feeae22ae). table is whitelisted -> entity column; the two tracks differ only
-    there. Pins the parametrization + guards directly against a mock connection."""
-
     def _row_conn(self, completed=1, required=3):
         conn = AsyncMock()
         conn.fetchrow = AsyncMock(

@@ -191,9 +191,7 @@ async def test_nonproficient_first_use_stays_untrained(dev_db_pool):
 
 
 async def test_tierless_breakthrough_row_does_not_shadow_proficiency(dev_db_pool):
-    """mark_skill_breakthrough inserts a row carrying only the narrative flag, so its tier is the
-    column DEFAULT `untrained` — a value that claims nothing. A proficient character must still
-    read `trained` after the DM flags one."""
+    """A narrative breakthrough row defaults to untrained and must not shadow proficiency."""
     pool = dev_db_pool
     player_id = "s056_breakthrough_no_row"
     await _seed_player(pool, _player(player_id))

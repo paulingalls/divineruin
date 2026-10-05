@@ -1,5 +1,3 @@
-"""Typed fictional communication and public social routing."""
-
 from typing import cast
 from unittest.mock import patch
 

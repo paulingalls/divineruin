@@ -1,5 +1,3 @@
-"""Tests for the end_session tool, session-ending prompt, LLM error handling, transcript path."""
-
 import asyncio
 import json
 from types import SimpleNamespace
@@ -48,8 +46,6 @@ async def _pilot_chunks(agent, stream, *, interrupted=False, selected_llm=None):
 
 
 class TestEndSessionTool:
-    """Test end_session tool."""
-
     @pytest.mark.asyncio
     async def test_returns_ending_status(self):
         from session_tools import end_session
@@ -93,8 +89,6 @@ class TestEndSessionTool:
 
 
 class TestSessionEndingPrompt:
-    """Test that system prompt includes session ending instructions."""
-
     def test_system_prompt_contains_session_ending(self):
         from system_prompts import build_system_prompt
 
@@ -110,8 +104,6 @@ class TestSessionEndingPrompt:
 
 
 class TestLLMErrorHandling:
-    """Test llm_node retry and fallback."""
-
     @pytest.mark.asyncio
     async def test_fallback_on_repeated_failure(self):
         from creation_agent import CreationAgent
@@ -128,7 +120,6 @@ class TestLLMErrorHandling:
             nonlocal call_count
             call_count += 1
             raise Exception("API timeout")
-            # Make this an async generator
             yield  # pragma: no cover
 
         with patch("base_agent.Agent.default") as mock_default:
@@ -195,7 +186,7 @@ class TestLLMErrorHandling:
 
     @pytest.mark.asyncio
     async def test_mid_stream_failure_does_not_retry(self):
-        """If chunks were already yielded, don't retry (would produce garbled output)."""
+        """Retrying after emitted chunks would produce garbled speech."""
         from creation_agent import CreationAgent
 
         agent = CreationAgent()
@@ -285,7 +276,7 @@ class TestLunaAtomicTurns:
         assert _player_interrupted(cast(Agent, _Detached())) is False
 
     def test_the_speech_state_the_gate_reads_is_livekit_public_api(self):
-        """A rename of `current_speech` would otherwise read as green off the stub above."""
+        """Construct the real vendor API so a renamed property cannot pass against a stub."""
         assert isinstance(AgentSession.current_speech, property)
 
     @pytest.mark.parametrize("preamble", [False, True], ids=["no-preamble", "preamble"])
@@ -408,8 +399,6 @@ class TestLunaAtomicTurns:
 
 
 class TestTranscriptLogPath:
-    """Test transcript.py log_path accessor."""
-
     def test_log_path_returns_path(self):
         from transcript import TranscriptLogger
 

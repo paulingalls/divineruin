@@ -1,13 +1,4 @@
-"""The interrupt loop, end to end: pause -> activate -> the binding story-018 reads (story-017).
-
-Split out of test_beat3_hold.py, which holds the Beat-3 QUEUE (pauses, rolls, the two-commit
-wrap) and hit the 500-line cap. What lives here is the other half of the same window — what the
-DM may do while the machine is paused, and what the engine records when they do it.
-
-Every assertion drives the real ``resolve_phase`` / ``activate`` implementations rather than
-reading a descriptor: ``next.verbs`` is a CLAIM about what the engine accepts, and a test that
-only read the list combat_wrap builds would certify the list, not the engine (constraint 6).
-"""
+"""Execute advertised next.verbs through resolve_phase and activate; reading descriptors alone certifies only the list."""
 
 import pytest
 from combat._helpers import _activate, _call, _ctx_at_resolution, _own_reaction, _resolve_deps
@@ -19,8 +10,6 @@ import reaction_gate
 import reaction_spend
 import reaction_windows
 
-# rogue_uncanny_dodge fires on on_hit — the POST-ROLL window, the pre-damage pause story-018
-# needs. skirmisher_sidestep fires on on_targeted, which only the PRE-ROLL window offers.
 POST_ROLL_REACTION = "rogue_uncanny_dodge"
 PRE_ROLL_REACTION = "skirmisher_sidestep"
 
@@ -104,16 +93,7 @@ class TestReactionTargetPolicy:
 class TestTheInterruptLoop:
     @pytest.mark.asyncio
     async def test_a_reaction_at_a_window_binds_to_the_held_action_and_closes_the_round(self):
-        """AC1 end to end, through the verbs the DM actually calls.
-
-        No declaration was ever made — the pause IS the permission. What the spend records is the
-        ability id AND the held action it answers, because story-018's two wired outcomes both
-        need it ("halve THIS damage", "+2 AC against THIS attack"). A bare bool would say a
-        reaction fired and leave 018 unable to name the blow.
-
-        The second half is the truthiness trap: having spent, the player opens NO further window
-        for the rest of the round, so the post-roll pause does not come back around.
-        """
+        """Bind a spend to ability and held action; a bool cannot identify which blow to modify."""
         ctx = _ctx_at_resolution(reaction_ids=(PRE_ROLL_REACTION,))
         deps = _resolve_deps()
 
@@ -135,15 +115,11 @@ class TestTheInterruptLoop:
             "held_seq": 0,
         }
 
-        # The round runs on: the reaction is spent, so the post-roll window never opens.
         after = await _call(ctx, deps)
         assert after["next"]["waiting_on"] is None
 
     @pytest.mark.asyncio
     async def test_the_engine_accepts_a_reaction_at_the_open_window(self):
-        """The acceptance half of `next.verbs`, EXECUTED. story-016 could only assert the engine
-        REFUSED here (the gate was pinned to the RESOLUTION beat); story-017 rebound it, so this
-        is the assertion that had to move with it."""
         ctx = _ctx_at_resolution(reaction_ids=(PRE_ROLL_REACTION,))
         deps = _resolve_deps()
         await _call(ctx, deps)
@@ -155,8 +131,6 @@ class TestTheInterruptLoop:
 
     @pytest.mark.asyncio
     async def test_a_reaction_for_the_other_stage_is_refused_at_this_window(self):
-        """AC3 on the live loop: on_hit is not on offer before the roll, so Uncanny Dodge cannot
-        be spent at the pre-roll pause — the outcome it answers does not exist yet."""
         ctx = _ctx_at_resolution(reaction_ids=(PRE_ROLL_REACTION,))
         deps = _resolve_deps()
         await _call(ctx, deps)
@@ -168,9 +142,6 @@ class TestTheInterruptLoop:
 
     @pytest.mark.asyncio
     async def test_activate_is_still_not_the_advance_verb(self):
-        """D5: `verbs` names the move that ADVANCES the beat, and only resolve_phase does. The
-        producer for activation is `next.waiting_on.reactions` — listing a
-        non-advancing verb would contradict the "not a whitelist" reading in the same payload."""
         ctx = _ctx_at_resolution(reaction_ids=(PRE_ROLL_REACTION,))
         deps = _resolve_deps()
         await _call(ctx, deps)
@@ -181,12 +152,8 @@ class TestTheInterruptLoop:
 
 
 class TestTheSpendBindsToThePausedBlow:
-    """Spend preflight preserves the binding invariants without mutating the round budget."""
-
     @pytest.mark.asyncio
     async def test_a_spend_off_a_pause_is_refused(self):
-        """The engine's own invariant, not the DM's: with no window and no queue there is no blow
-        to bind to, and a record written anyway would name a held action that never existed."""
         ctx = _ctx_at_resolution()
         deps = _resolve_deps()
         await _call(ctx, deps)
@@ -201,9 +168,6 @@ class TestTheSpendBindsToThePausedBlow:
 
     @pytest.mark.asyncio
     async def test_a_window_that_answers_another_blow_is_refused(self):
-        """The binding is to the QUEUE HEAD, and that is checked rather than assumed — a window
-        naming a different actor means the pump popped past the blow this spend answers, and
-        story-018 would halve the damage of the wrong one."""
         ctx = _ctx_at_resolution(reaction_ids=(PRE_ROLL_REACTION,))
         deps = _resolve_deps()
         await _call(ctx, deps)

@@ -1,10 +1,4 @@
-"""M4.4 story-005 — combat-START condition load (AC1), iron-constitution cap (AC3), E2E (AC4).
-
-Persistent conditions stored out of combat (players.data.conditions) must be re-imported onto the
-player CombatParticipant at combat start so they affect THIS fight's rolls, with Exhausted stacks
-clamped to the iron-constitution cap at the load boundary (the in-scope apply site until a
-forced-march/travel producer ships).
-"""
+"""Import persistent conditions at combat start so they affect this fight."""
 
 from unittest.mock import AsyncMock, MagicMock
 
@@ -84,8 +78,6 @@ async def _run_start(player):
 
 
 class TestCombatStartLoad:
-    """AC1: persisted conditions are loaded onto the player CombatParticipant at combat start."""
-
     @pytest.mark.asyncio
     async def test_persisted_exhausted_loads_onto_participant(self):
         stored = conditions.apply_condition([], "exhausted", source="forced_march")
@@ -110,7 +102,6 @@ class TestCombatStartLoad:
 
     @pytest.mark.asyncio
     async def test_iron_constitution_clamps_loaded_exhausted_to_three(self):
-        # AC3: a stored Exhausted at 5 stacks loads clamped to 3 for an Iron Constitution character.
         stored = [{"type": "exhausted", "duration": None, "source": "march", "stacks": 5}]
         iron_player = _player(stored_conditions=stored, skill_tiers={"endurance": "master"})
         player_part = await _run_start(iron_player)
@@ -134,16 +125,11 @@ class TestCombatStartLoad:
 
 
 class TestCombatStartE2E:
-    """AC4: stored Exhausted out of combat -> enter combat -> the first check carries the penalty."""
-
     @pytest.mark.asyncio
     async def test_loaded_exhausted_penalizes_an_in_combat_check(self):
         stored = conditions.apply_condition([], "exhausted", source="forced_march")  # 1 stack, -1
         player_part = await _run_start(_player(stored_conditions=stored))
 
-        # The in-combat check path builds player_data from the participant's conditions
-        # (combat_turn). Resolve a check both with and without the loaded conditions: the
-        # Exhausted -1/stack penalty must land on the modifier.
         baseline = resolve_skill_check(
             {"attributes": dict(_ATTRS), "level": 5}, "athletics", "moderate", ally_present=False, hearing_only=False
         )
@@ -158,8 +144,6 @@ class TestCombatStartE2E:
 
 
 class TestCapExhaustion:
-    """cap_exhaustion clamps the exhausted entry's stacks to a supplied cap; pure, no-op otherwise."""
-
     def test_clamps_stacks_above_cap(self):
         conds = [{"type": "exhausted", "duration": None, "source": "march", "stacks": 5}]
         out = conditions.cap_exhaustion(conds, 3)
@@ -185,8 +169,6 @@ class TestCapExhaustion:
 
 
 class TestExhaustionStackCap:
-    """exhaustion_stack_cap gives has_iron_constitution a production caller (AC3)."""
-
     def test_iron_constitution_caps_at_three(self):
         assert rules_engine.exhaustion_stack_cap({"skill_tiers": {"endurance": "master"}}) == 3
 

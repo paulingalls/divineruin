@@ -1,5 +1,3 @@
-"""Tests for BackgroundProcess."""
-
 import time
 from contextlib import contextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -196,12 +194,10 @@ class TestCheckSceneBeatHints:
         bg, _, _ = _make_bg(session_data=sd)
         bg._quest_cache = [QUEST_WITH_BEATS]
         bg._scene_cache = SCENE_CACHE_FOR_BEATS
-        # First call delivers hint A1
         bg._check_scene_beat_hints()
         assert len(bg._speech_queue) == 1
         assert "Hint A1" in bg._speech_queue[0].instructions
         bg._speech_queue.clear()
-        # Simulate more silence after first hint
         bg._scene_hint_state["last_hint_time"] = time.time() - 50
         bg._check_scene_beat_hints()
         assert len(bg._speech_queue) == 1
@@ -212,13 +208,11 @@ class TestCheckSceneBeatHints:
         bg, _, _ = _make_bg(session_data=sd)
         bg._quest_cache = [QUEST_WITH_BEATS]
         bg._scene_cache = SCENE_CACHE_FOR_BEATS
-        # Deliver all hints from beat 0
         bg._check_scene_beat_hints()  # Hint A1
         bg._speech_queue.clear()
         bg._scene_hint_state["last_hint_time"] = time.time() - 50
         bg._check_scene_beat_hints()  # Hint A2
         bg._speech_queue.clear()
-        # hint_index is now 2, which is >= len(hints). Next call advances beat.
         bg._check_scene_beat_hints()
         assert bg._scene_hint_state["beat_index"] == 1
         assert bg._scene_hint_state["hint_index"] == 0
@@ -229,7 +223,6 @@ class TestCheckSceneBeatHints:
         bg, _, _ = _make_bg(session_data=sd)
         bg._quest_cache = [QUEST_WITH_BEATS]
         bg._scene_cache = SCENE_CACHE_FOR_BEATS
-        # Exhaust beat 0 (2 hints) + beat 1 (1 hint)
         bg._scene_hint_state = {
             "scene_id": "scene_road",
             "beat_index": 2,  # past all beats
@@ -244,7 +237,6 @@ class TestCheckSceneBeatHints:
         bg, _, _ = _make_bg(session_data=sd)
         bg._quest_cache = [QUEST_WITH_BEATS]
         bg._scene_cache = SCENE_CACHE_FOR_BEATS
-        # Set stale state from a different scene
         bg._scene_hint_state = {
             "scene_id": "old_scene",
             "beat_index": 5,
@@ -252,7 +244,6 @@ class TestCheckSceneBeatHints:
             "last_hint_time": 0.0,
         }
         bg._check_scene_beat_hints()
-        # Should have reset and delivered first hint
         assert bg._scene_hint_state["scene_id"] == "scene_road"
         assert bg._scene_hint_state["beat_index"] == 0
         assert bg._scene_hint_state["hint_index"] == 1  # advanced after delivery
@@ -315,7 +306,6 @@ class TestRebuildWarmLayer:
             agent.update_instructions.reset_mock()
             bg._last_warm_layer = "SAME"
             await bg._rebuild_warm_layer()
-        # Should not have called update_instructions since warm layer is the same
         agent.update_instructions.assert_not_awaited()
 
     @patch("background_process.build_warm_layer", new_callable=AsyncMock)
@@ -333,7 +323,6 @@ class TestRebuildWarmLayer:
 
 class TestGodWhisperFlow:
     def test_divine_favor_triggers_whisper_queue(self):
-        """divine_favor_changed event above threshold queues a CRITICAL god whisper."""
         sd = _make_session_data(patron_id="kaelen")
         bg, _, _ = _make_bg(session_data=sd)
         events = [
@@ -356,7 +345,6 @@ class TestGodWhisperFlow:
         assert "Kaelen" in speech.instructions
 
     def test_divine_favor_below_threshold_no_whisper(self):
-        """divine_favor_changed below threshold does not queue a whisper."""
         sd = _make_session_data(patron_id="kaelen")
         bg, _, _ = _make_bg(session_data=sd)
         events = [
@@ -369,7 +357,6 @@ class TestGodWhisperFlow:
         assert len(bg._speech_queue) == 0
 
     def test_divine_favor_within_cooldown_no_whisper(self):
-        """divine_favor_changed within cooldown of last whisper does not queue."""
         sd = _make_session_data(patron_id="syrath")
         bg, _, _ = _make_bg(session_data=sd)
         events = [
@@ -382,7 +369,6 @@ class TestGodWhisperFlow:
         assert len(bg._speech_queue) == 0
 
     def test_divine_favor_after_cooldown_triggers(self):
-        """divine_favor_changed after cooldown queues a whisper."""
         sd = _make_session_data(patron_id="veythar")
         bg, _, _ = _make_bg(session_data=sd)
         events = [
@@ -396,7 +382,6 @@ class TestGodWhisperFlow:
         assert "Veythar" in bg._speech_queue[0].instructions
 
     def test_world_event_god_whisper_queues(self):
-        """A world_event with god_whisper prefix queues a CRITICAL whisper."""
         sd = _make_session_data(patron_id="kaelen")
         bg, _, _ = _make_bg(session_data=sd)
         events = [
@@ -411,7 +396,6 @@ class TestGodWhisperFlow:
         assert bg._speech_queue[0].stinger_sound == "god_whisper_stinger"
 
     def test_god_whisper_uses_correct_deity_profile(self):
-        """Each deity gets their own personality in the whisper instructions."""
         for deity_id in ["kaelen", "syrath", "veythar"]:
             sd = _make_session_data(patron_id=deity_id)
             bg, _, _ = _make_bg(session_data=sd)
@@ -424,14 +408,10 @@ class TestGodWhisperFlow:
             bg._handle_events(events)
             assert len(bg._speech_queue) == 1
             instructions = bg._speech_queue[0].instructions
-            # Each god's instructions should include their voice character tag
             assert f"GOD_{deity_id.upper()}" in instructions
 
     async def test_deliver_speech_fires_stinger_before_whisper(self):
-        """When delivering a god whisper, the stinger fires before generate_reply, and
-        afterward the favor whisper-level is marked. The favor mocks must bind to the
-        real call sites _deliver_speech uses (db_activity_queries / db_mutations_divine),
-        not a 'db' stand-in — otherwise the write raises, is swallowed, and goes unverified."""
+        """Keep the actual writer bound when mocking the database."""
         sd = _make_session_data(patron_id="kaelen")
         bg, _, session = _make_bg(session_data=sd)
         bg._speech_queue.append(
@@ -465,6 +445,4 @@ class TestGodWhisperFlow:
             await bg._deliver_speech()
 
         assert call_order == ["stinger", "reply"]
-        # Favor whisper-level is marked from the delivered favor (level 25), proving the
-        # post-delivery favor path actually executed (no swallowed exception).
         mock_mark.assert_awaited_once_with("player_1", 25)

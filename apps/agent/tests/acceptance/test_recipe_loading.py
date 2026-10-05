@@ -1,13 +1,4 @@
-"""Real-DB acceptance proof for the Python recipe accessors (story-005, AC4).
-
-Migrates a Postgres testcontainer (migration 019) and seeds content
-(seed_content -> recipes table), then drives the agent's recipes.get_recipe /
-recipes.list_recipes against it via the reset_db_pool fixture. This is the
-end-to-end half of the cross-language read requirement: it proves recipes seeded
-by the TS-authored content load and fail-loud-parse in Python — not just under a
-mocked pool. Runs on pre-push under REQUIRE_DOCKER; skips cleanly when Docker is
-down (see tests/acceptance/conftest.py).
-"""
+"""Use real seeded rows so the Python parser sees the content stored by the other language."""
 
 from __future__ import annotations
 
@@ -26,7 +17,6 @@ def _seeded_recipe_ids() -> list[str]:
 
 
 async def test_list_recipes_loads_all_seeded(reset_db_pool: str) -> None:
-    """Every seeded recipe loads and fail-loud-parses against the real DB."""
     expected_ids = _seeded_recipe_ids()
 
     loaded = await recipes.list_recipes()
@@ -57,7 +47,6 @@ async def test_list_recipes_loads_all_seeded(reset_db_pool: str) -> None:
 
 
 async def test_get_recipe_loads_a_known_recipe(reset_db_pool: str) -> None:
-    """get_recipe returns a parsed recipe for a seeded id, None for an unknown one."""
     known_id = _seeded_recipe_ids()[0]
 
     recipe = await recipes.get_recipe(known_id)

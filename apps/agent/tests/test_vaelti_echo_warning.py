@@ -1,11 +1,3 @@
-"""Tests for the Vaelti Hyper-awareness 1-round advance warning (story-009).
-
-Two halves of the deferred-event hook: the emitter (publish_vaelti_echo_warning puts a
-bus-only VAELTI_ECHO_WARNING event) and the consumer (bg_event_handlers.handle_events
-routes that event to a CRITICAL DM-speech instruction). Together they surface the
-Vaelti's pre-sense to the DM narration path a beat before the Hollow Echo lands.
-"""
-
 from unittest.mock import MagicMock
 
 import event_types as E
@@ -50,7 +42,6 @@ class TestConsumer:
         assert not any(s.instructions == vaelti_echo_warning.WARNING_INSTRUCTION for s in queue)
 
     def test_warning_does_not_trigger_warm_rebuild(self):
-        # One-shot narration — no warm-layer rebuild needed (not in REBUILD_EVENT_TYPES).
         needs_rebuild, _ = handle_events(
             [GameEvent(event_type=E.VAELTI_ECHO_WARNING, payload={})], _sd(), [], False, {}, []
         )

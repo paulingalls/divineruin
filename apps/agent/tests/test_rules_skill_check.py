@@ -1,12 +1,5 @@
-"""Tests for skill-check resolution: resolve_skill_check (tier) + resolve_skill_check_dc (numeric).
-
-Extracted from test_rules_resolution.py (file-size split, debt e69251d2f945) to
-keep that file under the 500-line cap.
-"""
-
 import random
 
-import pytest
 from test_rules_core import SAMPLE_PLAYER
 
 from check_resolution import resolve_skill_check, resolve_skill_check_dc
@@ -14,10 +7,8 @@ from check_resolution import resolve_skill_check, resolve_skill_check_dc
 
 class TestResolveSkillCheck:
     def test_success(self):
-        # Seed that produces d20=15
         rng = random.Random(42)
         test_roll = rng.randint(1, 20)
-        # Reset to same seed for actual call
         rng = random.Random(42)
         result = resolve_skill_check(
             SAMPLE_PLAYER, "athletics", "moderate", rng=rng, ally_present=False, hearing_only=False
@@ -31,32 +22,24 @@ class TestResolveSkillCheck:
 
     def test_nat_20_always_succeeds(self):
         # Find a seed that gives nat 20. Use very_hard (DC 20) to avoid auto-fail for untrained.
-        for seed in range(1000):
-            rng = random.Random(seed)
-            if rng.randint(1, 20) == 20:
-                rng = random.Random(seed)
-                result = resolve_skill_check(
-                    SAMPLE_PLAYER, "persuasion", "very_hard", rng=rng, ally_present=False, hearing_only=False
-                )
-                assert result.success is True
-                assert result.roll == 20
-                assert result.narrative_hint == "critical success"
-                return
-        pytest.fail("Could not find seed for nat 20")
+        seed = 5
+        rng = random.Random(seed)
+        result = resolve_skill_check(
+            SAMPLE_PLAYER, "persuasion", "very_hard", rng=rng, ally_present=False, hearing_only=False
+        )
+        assert result.success is True
+        assert result.roll == 20
+        assert result.narrative_hint == "critical success"
 
     def test_nat_1_always_fails(self):
-        for seed in range(1000):
-            rng = random.Random(seed)
-            if rng.randint(1, 20) == 1:
-                rng = random.Random(seed)
-                result = resolve_skill_check(
-                    SAMPLE_PLAYER, "athletics", "easy", rng=rng, ally_present=False, hearing_only=False
-                )
-                assert result.success is False
-                assert result.roll == 1
-                assert result.narrative_hint == "critical failure"
-                return
-        pytest.fail("Could not find seed for nat 1")
+        seed = 31
+        rng = random.Random(seed)
+        result = resolve_skill_check(
+            SAMPLE_PLAYER, "athletics", "easy", rng=rng, ally_present=False, hearing_only=False
+        )
+        assert result.success is False
+        assert result.roll == 1
+        assert result.narrative_hint == "critical failure"
 
     def test_proficiency_bonus_applied(self):
         rng = random.Random(42)
@@ -67,7 +50,6 @@ class TestResolveSkillCheck:
         unprof_result = resolve_skill_check(
             SAMPLE_PLAYER, "persuasion", "moderate", rng=rng, ally_present=False, hearing_only=False
         )
-        # athletics: STR+2, trained(prof+1, tier+2) = +5; persuasion: CHA-1, untrained = -1
         assert prof_result.modifier == 5
         assert unprof_result.modifier == -1
 
@@ -81,46 +63,28 @@ class TestResolveSkillCheckDc:
         assert result.modifier == 5  # STR +2, trained: prof +1 + tier +2
 
     def test_failure_with_high_dc(self):
-        for seed in range(1000):
-            rng = random.Random(seed)
-            d20 = rng.randint(1, 20)
-            # athletics mod = +4, need total < 25, so d20 < 21 (always true except nat20)
-            if d20 != 20 and d20 + 4 < 25:
-                rng = random.Random(seed)
-                result = resolve_skill_check_dc(
-                    SAMPLE_PLAYER, "athletics", 25, rng=rng, ally_present=False, hearing_only=False
-                )
-                assert result.success is False
-                assert result.dc == 25
-                return
-        pytest.fail("Could not find seed for failure")
+        seed = 0
+        rng = random.Random(seed)
+        result = resolve_skill_check_dc(SAMPLE_PLAYER, "athletics", 25, rng=rng, ally_present=False, hearing_only=False)
+        assert result.success is False
+        assert result.dc == 25
 
     def test_nat_20_always_succeeds(self):
         # Use DC 23 to avoid auto-fail for trained perception (auto-fail at DC 24+)
-        for seed in range(1000):
-            rng = random.Random(seed)
-            if rng.randint(1, 20) == 20:
-                rng = random.Random(seed)
-                result = resolve_skill_check_dc(
-                    SAMPLE_PLAYER, "perception", 23, rng=rng, ally_present=False, hearing_only=False
-                )
-                assert result.success is True
-                assert result.roll == 20
-                return
-        pytest.fail("Could not find seed for nat 20")
+        seed = 5
+        rng = random.Random(seed)
+        result = resolve_skill_check_dc(
+            SAMPLE_PLAYER, "perception", 23, rng=rng, ally_present=False, hearing_only=False
+        )
+        assert result.success is True
+        assert result.roll == 20
 
     def test_nat_1_always_fails(self):
-        for seed in range(1000):
-            rng = random.Random(seed)
-            if rng.randint(1, 20) == 1:
-                rng = random.Random(seed)
-                result = resolve_skill_check_dc(
-                    SAMPLE_PLAYER, "athletics", 1, rng=rng, ally_present=False, hearing_only=False
-                )
-                assert result.success is False
-                assert result.roll == 1
-                return
-        pytest.fail("Could not find seed for nat 1")
+        seed = 31
+        rng = random.Random(seed)
+        result = resolve_skill_check_dc(SAMPLE_PLAYER, "athletics", 1, rng=rng, ally_present=False, hearing_only=False)
+        assert result.success is False
+        assert result.roll == 1
 
     def test_uses_numeric_dc_not_tier(self):
         rng = random.Random(42)
@@ -140,5 +104,4 @@ class TestResolveSkillCheckDc:
         result = resolve_skill_check_dc(
             SAMPLE_PLAYER, "perception", 10, rng=rng, ally_present=False, hearing_only=False
         )
-        # WIS 11 → +0, trained: prof +1 + tier +2 = +3
         assert result.modifier == 3

@@ -181,17 +181,66 @@ def test_catalog_metadata_roundtrips_and_roster_exposes_effects(source):
 
 
 def test_dm_inventory_has_no_false_executables():
-    from test_creature_combat_effect_inventory import assert_effect_inventory, catalog, inventory
-
-    entries = inventory()
-    assert_effect_inventory(catalog(), entries)
+    expected = {
+        "ashmark_sergeant": {("actives", "Accusation"), ("actives", "Rally")},
+        "ashmark_soldier": {("attacks", "Shield Bash")},
+        "bandit": {("actives", "Dirty Fighting")},
+        "bandit_captain": {
+            ("actives", "Dirty Fighting"),
+            ("actives", "Rally"),
+            ("multiattack", "2 attacks with Longsword or 2 Crossbow shots"),
+            ("passives", "Cunning Action"),
+            ("passives", "Leadership Aura"),
+        },
+        "cult_fanatic": {("actives", "Bless")},
+        "cult_leader": {("signature_ability", "Mantle of Ruin"), ("attacks", "Hold Person")},
+        "cultist": set(),
+        "hollow_knight": {
+            ("actives", "Command Lesser"),
+            ("actives", "Dissolution Strike"),
+            ("actives", "Unholy Fortitude"),
+            ("attacks", "Corrupted Blade"),
+            ("attacks", "Shield Slam"),
+            ("hollow", "hollow"),
+            ("multiattack", "2 attacks with Corrupted Blade"),
+            ("passives", "Corrupted Resilience"),
+            ("passives", "Fragment Voice"),
+            ("passives", "Remnant Tactics"),
+        },
+        "hollow_mawling": {
+            ("actives", "Lunge"),
+            ("actives", "Scatter"),
+            ("attacks", "Claw"),
+            ("attacks", "Dissolution Maw"),
+            ("attacks", "Lunge"),
+            ("hollow", "hollow"),
+            ("multiattack", "2 attacks — one Claw and one Dissolution Maw"),
+            ("passives", "Adaptive Learning"),
+            ("passives", "Dissolution Field"),
+            ("passives", "Unsettling Silence"),
+        },
+        "hollow_shadeling": {
+            ("attacks", "Corrosive Touch"),
+            ("hollow", "hollow"),
+            ("passives", "Amorphous"),
+            ("passives", "Corruption Trail"),
+            ("passives", "Sunlight Sensitivity"),
+        },
+        "hollow_warden": {("attacks", "Absorb"), ("hollow", "hollow"), ("signature_ability", "Reality Collapse")},
+        "hollow_wisp": {("hollow", "hollow")},
+        "hollowed_scout": {("hollow", "hollow")},
+    }
     for source in selected():
         enemy = translate(source)
         effects = {(e["group"], e["name"]): e for e in enemy["deferred_effects"]}
-        for entry in entries:
-            if entry["species"] == source["id"] and entry["deferred"] != "none":
-                assert (entry["group"], entry["name"]) in effects
-                assert effects[(entry["group"], entry["name"])]["source"] == entry["source"]
+        assert set(effects) == expected[source["id"]]
+        for (group, name), effect in effects.items():
+            authored = source[group]
+            if isinstance(authored, list):
+                authored = next(entry for entry in authored if entry["name"] == name)
+            elif group == "hollow":
+                authored = {k: v for k, v in authored.items() if k not in {"corruption_aura", "resonance_on_death"}}
+            assert effect["source"] == authored
         if source["id"] == "hollow_mawling":
             assert [a["name"] for a in enemy["action_pool"]].count("Lunge") == 1
         if source["id"] == "bandit_captain":

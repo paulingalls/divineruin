@@ -1,16 +1,4 @@
-"""Content-catalog endpoint round-trips (story-006, M6.2): the validation-only TS content
-loaders now have a production consumer — the auth-gated GET /api/content/<catalog>.
-
-Each loader (archetypes / abilities / milestones) was boot-loaded and fail-loud-parsed at
-startup but never read by non-test TS — boot-green stood in for an endpoint round-trip
-(debt e43ada4fac62). This capstone hits the real endpoint against the seeded testcontainer
-and asserts the served catalog matches the rows Python reads from the SAME database, so the
-endpoint is a genuine cross-language consumer, not a stand-in. (The fourth catalog,
-role-archetypes, is round-tripped by the M6.1 capstone test, closing concern ae5f95ca2156.)
-
-Auto-marked `acceptance` by tests/acceptance/conftest.py. Runs under `bun run test:acceptance`;
-skips cleanly when Docker is down.
-"""
+"""Compare the authenticated endpoint response to Python reads from the same database; boot alone does not certify served content."""
 
 from __future__ import annotations
 

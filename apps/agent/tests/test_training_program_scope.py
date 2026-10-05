@@ -62,9 +62,6 @@ class TestQueryTrainingPrograms:
         catalog = _all_spells()
         checked = set()
         mismatches = []
-        # Constraint 12's floor: content/spells.json is a corpus this walk reads, so an
-        # emptied catalog -- or one tier/source bucket of it -- would agree at [] on both
-        # sides and pass vacuously. Every caster row that reaches its floor must offer choices.
         offered_choices = set()
         expect_studiable = set()
 

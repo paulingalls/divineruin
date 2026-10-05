@@ -1,18 +1,5 @@
-"""Tests for veil_ward_events.publish_veil_ward_changed (story-004, reshaped in story-008; M24).
-
-The ward's client push lives in its own module, mirroring resonance_events.publish_resonance_changed,
-because arrival needs it too: a party that walks out of a warded location must not leave its
-indicator lit.
-
-The payload is {active, scope_kind, scope_id, source} — no raiser id (veil_ward_scope_model.md §6).
-A ward belongs to a scope, so every in-scope client lights up; there is nothing to filter on.
-RESONANCE_CHANGED keeps its caster_id because Resonance is per-caster — the asymmetry is deliberate.
-
-``active`` is the party's RESOLVED warded state, never the toggle of the scope the caller just
-mutated (§3): on combat end the encounter ward dies, but if a location ward still covers the party
-the event must carry active=True. The emitter enforces that structurally — it takes the ward the
-resolver returned, not a bare boolean a caller could compute off the wrong scope.
-"""
+"""Ward pushes apply to every client in the scope; resonance is per-caster.
+Publish resolved party coverage, since ending an encounter ward may leave a location ward active."""
 
 from unittest.mock import AsyncMock, patch
 
@@ -59,8 +46,6 @@ async def test_publishes_an_active_encounter_ward_with_its_scope():
 
 
 async def test_unwarded_publishes_active_false_and_names_no_scope():
-    # There is no scope to name when nothing wards the party; the descriptive keys are null
-    # rather than a stale scope the client might latch onto.
     pub = await _publish(_session(), None, None)
     assert pub.call_args.args[2] == {
         "active": False,
@@ -71,7 +56,7 @@ async def test_unwarded_publishes_active_false_and_names_no_scope():
 
 
 async def test_payload_carries_no_caster_id():
-    """§6: no raiser id. A ward is scope-owned, so no client may filter itself out of it."""
+    """A scope-owned ward must not filter out clients by caster id."""
     pub = await _publish(_session(), _ENCOUNTER_WARD, WardScope.encounter("combat_42"))
     assert "caster_id" not in pub.call_args.args[2]
 

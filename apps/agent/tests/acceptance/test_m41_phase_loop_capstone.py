@@ -1,19 +1,4 @@
-"""Capstone: M4.1 phase-loop full lifecycle end-to-end against a real Postgres testcontainer.
-
-Stories 001-005/007-010 shipped the M4.1 4-beat phase machine with unit / mock-conn / single-table
-real-PG coverage: the pure advance_combat_phase engine (001), persistence read path (002), the live
-CombatAgent phase-loop orchestration (003), the combat prompt (004), crit flags (005), in-combat
-Resonance-decay suppression (007), helper cleanup (008), dead HP-path removal (009), and
-transactional phase resolution (010). This capstone proves they COMPOSE against ONE seeded
-testcontainer (auto-marked `acceptance` by tests/acceptance/conftest.py), exercising the seams the
-mocked units can't: combat_init persistence + initiative, the declare/resolve loop against real
-players/combat_instances, end_combat's XP + state-delete, and save/reload mid-fight.
-
-Dice are made deterministic by injecting a fixed-damage resolver into _resolve_phase_impl (the DI
-seam the unit TestPhaseLoopE2E uses); the real resolve_attack math is unit-tested in
-test_rules_attack/test_rules_resolution. Everything else — mutations, queries, the db.transaction
-wrapper — runs for real. Each test uses a distinct player_id since the testcontainer DB is shared.
-"""
+"""Inject deterministic attack damage, but execute real queries, mutations and transaction wrappers."""
 
 from __future__ import annotations
 
@@ -47,9 +32,6 @@ async def _seed_armed_player(pool, player_id: str) -> None:
 
 
 async def test_full_lifecycle_to_victory_on_real_pg(reset_db_pool: str) -> None:
-    """AC1: idle -> encounter_start -> initiative -> [declaration -> resolution -> wrap]* -> combat_end.
-    A seeded encounter drives to victory on real PG; combat_instances is persisted at start and
-    deleted at end, and XP is awarded."""
     pool = await db.get_pool()
     player_id = "cap_m41_lifecycle"
     await _seed_armed_player(pool, player_id)
@@ -90,8 +72,6 @@ async def test_full_lifecycle_to_victory_on_real_pg(reset_db_pool: str) -> None:
 
 
 async def test_save_and_reload_resumes_mid_phase(reset_db_pool: str) -> None:
-    """AC2: a combat paused mid-phase, saved and reloaded, resumes advance_combat_phase from the
-    saved beat with identical pending_declarations."""
     pool = await db.get_pool()
     combat_id = "combat_cap_m41_resume"
     original = _resolution_state(player_hp=20, enemy_hp=7)  # RESOLUTION beat, pending_declarations populated
@@ -141,8 +121,6 @@ def _crit_resolver():
 
 
 async def test_resolution_packets_carry_dramatic_and_crit_flags(reset_db_pool: str) -> None:
-    """AC3: resolution-beat packets each carry a dramatic-flag field, and the resolve summaries carry
-    critical flags consistent with the AttackResult (post story-008)."""
     # Dramatic flag: the engine's Beat-2 packets carry the placeholder (filled by M4.5).
     _next, adv = combat_phase.advance_combat_phase(_resolution_state())
     assert adv.packets

@@ -1,5 +1,3 @@
-"""COMBAT_UI_UPDATE timing at pause commits, non-terminal wraps, and terminal wraps."""
-
 import json
 from unittest.mock import MagicMock
 
@@ -41,9 +39,6 @@ def _saves_always_resolver():
 
 
 async def test_resolve_phase_emits_combat_ui_update_at_wrap_with_post_tick_conditions(dev_db_pool):
-    """After a Beat-4 wrap save-to-clear removes a Frightened, the emitted
-    COMBAT_UI_UPDATE packet shows the participant WITHOUT that condition.
-    Proves the emit reads the post-tick state, not the pre-tick snapshot."""
     pool = dev_db_pool
     player_id = "m12_s001_post_tick_player"
     enemy_id = "m12_s001_post_tick_enemy"
@@ -85,9 +80,7 @@ async def test_resolve_phase_emits_combat_ui_update_at_wrap_with_post_tick_condi
 
 
 async def test_resolve_phase_skips_combat_ui_update_on_terminal_wrap(dev_db_pool):
-    """When the wrap ends combat (all enemies fallen), no COMBAT_UI_UPDATE is
-    emitted — COMBAT_ENDED + the mobile hudStore.clearCombatState path takes
-    over the HUD teardown, and a same-flush UI_UPDATE would flash state on then off."""
+    """COMBAT_ENDED clears the HUD; a same-flush UI_UPDATE would flash state back on before teardown."""
     pool = dev_db_pool
     player_id = "m12_s001_terminal_player"
     enemy_id = "m12_s001_terminal_enemy"
@@ -97,7 +90,6 @@ async def test_resolve_phase_skips_combat_ui_update_on_terminal_wrap(dev_db_pool
     session = SessionData(player_id=player_id, location_id="accord_guild_hall", room=None)
     ctx = MagicMock()
     ctx.userdata = session
-    # Enemy starts at 1 HP; the player's 5-damage swing drops it -> wrap reports victory.
     session.combat_state = _resolution_state(combat_id=combat_id, player_id=player_id, enemy_id=enemy_id, enemy_hp=1)
 
     # end_combat reads each player's row (XP grant) + inventory (durability accrual); no items

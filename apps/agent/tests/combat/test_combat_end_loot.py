@@ -1,12 +1,4 @@
-"""Real-PG integration: _end_combat_db grants role-scaled loot + currency on victory (M4.7,
-story-002). Proves the end-to-end victory path against the dev Postgres at :55432 (dev_db_pool):
-a defeated enemy's loot table is rolled, items land in player_inventory, currency is added to
-players.data.gold, and the CURRENCY_GAINED + ITEM_ACQUIRED chips are buffered into the sink.
-
-A FakeRng pins the rolls so the grant is exact, and the loot table is injected via a content stub
-(get_loot_table) plus a self-seeded item or material row. Cleanup removes the player, its inventory,
-and the test catalog row in a finally.
-"""
+"""Inject exact loot rolls but execute grants against real Postgres; mocks cannot certify stored inventory or gold."""
 
 from __future__ import annotations
 
@@ -153,8 +145,6 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool, material):
         session = SessionData(player_id=_PLAYER_ID, location_id="loc_test", room=None)
         cs = _victory_state()
         sink = EventSink()
-        # die=4, authored tier=1, humanoid Standard -> 4 sp (formerly 8 sp); converted at the grant boundary to gold
-        # (silver_per_gold=10) -> 0.4 gp; loot drop guaranteed (chance 1.0).
         async with db.transaction() as conn:
             end_data = await _end_combat_db(
                 session,
@@ -172,11 +162,9 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool, material):
         assert snapshots == [await db_queries.get_inventory_snapshot(_PLAYER_ID)]
         assert [e.event_type for e in sink.captured][-3:] == [E.COMBAT_ENDED, E.INVENTORY_UPDATED, E.PLAY_SOUND]
 
-        # Currency converted sp -> gp and added to players.data.gold (5 + 0.4 = 5.4).
         player = await db_queries.get_player(_PLAYER_ID, conn=pool)
         assert player is not None and player["gold"] == pytest.approx(5.4)
 
-        # Loot item granted into inventory at the rolled quantity.
         qty = await pool.fetchval(
             "SELECT (data->>'quantity')::int FROM player_inventory WHERE player_id = $1 AND item_id = $2",
             _PLAYER_ID,
@@ -184,12 +172,9 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool, material):
         )
         assert qty == 1
 
-        # end_data surfaces the primary's own haul for the DM narration / response (solo: the
-        # primary is the only participant, so primary_* equals the whole haul).
         assert end_data["primary_currency_gold"] == pytest.approx(0.4)
         assert end_data["primary_loot"] == [{"item_id": _MATERIAL_ID if material else _ITEM_ID, "quantity": 1}]
 
-        # A single CURRENCY_GAINED chip buffered for the whole haul, plus the ITEM_ACQUIRED chip.
         currency_events = [e for e in sink.captured if e.event_type == E.CURRENCY_GAINED]
         assert len(currency_events) == 1
         payload = currency_events[0].payload
@@ -256,7 +241,6 @@ async def test_mawling_table_changes_item_without_changing_currency(dev_db_pool)
                 content=content,
                 rng=random.Random(1),
             )
-        # The old residue table paid 8 silver under this same seed.
         assert end_data["primary_currency_gold"] == pytest.approx(0.8)
         player = await db_queries.get_player(_PLAYER_ID, conn=pool)
         assert player is not None and player["gold"] == pytest.approx(5.8)
@@ -352,18 +336,12 @@ async def test_minion_only_victory_grants_no_currency(dev_db_pool):
                 rng=FakeRng(die=4),
             )
 
-        # D79: no currency, gold untouched, no CURRENCY_GAINED chip.
         assert end_data["primary_currency_gold"] == 0
         player = await db_queries.get_player(_PLAYER_ID, conn=pool)
         assert player is not None and player["gold"] == 5
         assert not [e for e in sink.captured if e.event_type == E.CURRENCY_GAINED]
     finally:
         await _cleanup(pool)
-
-
-# --- Combat outcome -> faction reputation (story-002 inc 5) ---------------------------
-# Killing an encounter faction's members on victory lowers the player's standing with it,
-# keyed on cs.faction_id (set at combat_init from the stance gate). One aggregate shift.
 
 
 def _faction_victory_state(faction_id):
@@ -417,7 +395,6 @@ async def test_victory_lowers_faction_reputation(dev_db_pool):
         await _run_end(_faction_victory_state("thornwatch"), rep)
         rep.adjust_player_faction_reputation.assert_awaited_once()
         args = rep.adjust_player_faction_reputation.await_args.args
-        # killed_faction_member -> -3, attributed to the encounter faction.
         assert args[0] == _PLAYER_ID and args[1] == "thornwatch" and args[2] == -3
     finally:
         await _cleanup(pool)
@@ -438,7 +415,6 @@ async def test_victory_without_faction_shifts_no_reputation(dev_db_pool):
 
 @pytest.mark.asyncio
 async def test_deescalation_raises_faction_reputation(dev_db_pool):
-    # A peaceful de-escalation of a faction's members raises standing (spared, not slain).
     pool = dev_db_pool
     await _seed_player(pool, gold=0)
     try:

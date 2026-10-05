@@ -13,10 +13,6 @@ import {
   WebSectionTitleClamp,
 } from "./index";
 
-// These assertions pin the exact brand values. Mobile (apps/mobile/src/constants/theme.ts)
-// and web (apps/web/src/theme.css, story-002) both reconstruct their styling from these
-// primitives, so any drift here would silently change rendered output on both targets.
-
 test("BrandColors holds the 16 brand hex values", () => {
   expect(BrandColors).toEqual({
     void: "#0A0A0B",
@@ -105,8 +101,6 @@ test("WebMaxContentWidth is 1280 — the marketing site's wider content containe
 });
 
 test("WebSectionTitleClamp is the mockup's shared section-title clamp", () => {
-  // One source for every web section heading; emitted as --section-title-size so
-  // the 9 section stylesheets reference it instead of duplicating the literal.
   expect(WebSectionTitleClamp).toBe("clamp(37.8px, 5.77vw, 75.6px)");
 });
 

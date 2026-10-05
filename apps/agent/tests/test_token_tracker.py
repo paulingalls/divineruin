@@ -59,8 +59,7 @@ class TestTokenTracker:
         assert tracker.cache_writes == [7000]
 
     def test_per_request_cache_writes_are_kept_in_order(self):
-        """Per request, not aggregate: the claim story-024 measures is that a round does not
-        rewrite the prefix, and a running total cannot tell round 3 from round 1."""
+        """A running total cannot identify which request rewrote the cache prefix."""
         tracker = TokenTracker()
         for write in (7000, 0, 120):
             tracker.on_usage(_usage(cache_write=write))
@@ -70,11 +69,7 @@ class TestTokenTracker:
 
 
 class TestLlmNodeTap:
-    """The seam that actually matters — writer and reader both real.
-
-    A tracker test and an llm_node test that each mocked their own half would agree with each
-    other and with nothing else (feedback_contract_both_sides_mocked).
-    """
+    """Use the real writer and reader; independently mocked halves can agree on a false contract."""
 
     async def test_llm_node_forwards_the_chunk_usage_to_the_session_tracker(self):
         sd = SessionData(player_id="p1", location_id="accord_guild_hall")

@@ -1,13 +1,3 @@
-"""Unit tests for condition_produce — the shared OOC beneficial-condition producer (M4.8 story-007).
-
-The per-target apply -> persist-on-land -> self-row-reuse -> companion-narrate-only logic lives in
-``produce_ooc_condition`` itself (the former per-target ``apply_beneficial_condition_to_player``
-helper was folded in when the party gate + batched write landed). These tests pin the helper's
-contract directly, independent of either caller (spell_casting / ability_tools). The party-gate
-refusal paths (non-party/non-companion target, missing party row, id-ordered batch fetch) live in
-``test_condition_produce_party_gate.py``.
-"""
-
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -83,7 +73,6 @@ async def test_apply_player_target_fetches_and_persists():
 
 @pytest.mark.asyncio
 async def test_apply_companion_target_narrates_without_write():
-    # A companion has no players.data store -> narrate-only, no write, no fetch.
     caster = _row("c1")
     queries, cond_mut = _mods({})
     voiced = await produce_ooc_condition(
@@ -106,7 +95,6 @@ async def test_apply_companion_target_narrates_without_write():
 
 @pytest.mark.asyncio
 async def test_apply_immunity_no_op_omits_target_no_write():
-    # An immunity no-op (apply lands nothing) writes nothing and is NOT voiced.
     caster = _row("c1")
     ally = _row("a1")
     queries, cond_mut = _mods({"a1": ally})
@@ -156,7 +144,6 @@ async def test_produce_multi_target_returns_voiced_ids_in_order():
 
 @pytest.mark.asyncio
 async def test_produce_multi_skips_immunity_no_op_target():
-    # A target whose apply no-ops is omitted from the voiced list (still produces the others).
     caster = _row("c1")
     rows = {"a1": _row("a1"), "a2": _row("a2")}
     queries, cond_mut = _mods(rows)

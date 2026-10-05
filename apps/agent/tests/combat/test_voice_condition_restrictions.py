@@ -1,5 +1,3 @@
-"""Fictional conditions constrain gameplay without suppressing player commands."""
-
 from copy import deepcopy
 from unittest.mock import AsyncMock, MagicMock
 

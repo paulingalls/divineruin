@@ -1,10 +1,3 @@
-"""Unit coverage for the pure encounter-role module (M4.7, story-001).
-
-The module is pure: every test constructs a plain base-enemy dict and asserts on the
-returned derived dict — no DB, no RNG, no combat state. Worked-example numbers come from
-docs/game_mechanics/game_mechanics_encounter_roles.md (Bandit / Grey Wolf / Mawling).
-"""
-
 import pytest
 
 from encounter_roles import (
@@ -14,9 +7,6 @@ from encounter_roles import (
     enhance_abilities,
 )
 
-# --- base fixtures (doc worked examples) -------------------------------------------------
-
-# Bandit (Humanoid, Tier 1): HP 16, AC 13, XP 50, one weapon attack + one active ability.
 BANDIT = {
     "id": "bandit_1",
     "name": "Bandit",
@@ -51,12 +41,8 @@ def _names(action_pool: list[dict]) -> set[str]:
     return {a["name"] for a in action_pool}
 
 
-# --- ROLE_MODIFIERS table ----------------------------------------------------------------
-
-
 def test_all_five_roles_present_in_enum_and_table():
     assert {r.value for r in EncounterRole} == {"minion", "standard", "elite", "boss", "named"}
-    # Modifier table covers the four derivable roles (standard/named short-circuit to identity).
     for role in ("minion", "standard", "elite", "boss"):
         assert role in ROLE_MODIFIERS
 
@@ -82,7 +68,6 @@ def test_bandit_worked_example_hp_ac_xp(role, hp, ac, xp):
     [("minion", 5, 12), ("elite", 17, 37), ("boss", 22, 50)],
 )
 def test_grey_wolf_rounding(role, hp, xp):
-    # Minion floors (5.5->5), Elite rounds up (16.5->17), XP truncates (12.5->12, 37.5->37).
     derived = derive_role_stats(GREY_WOLF, role)
     assert derived["hp"] == hp
     assert derived["xp_value"] == xp
@@ -91,9 +76,6 @@ def test_grey_wolf_rounding(role, hp, xp):
 def test_minion_hp_floors_at_one():
     tiny = {**GREY_WOLF, "hp": 1}
     assert derive_role_stats(tiny, "minion")["hp"] == 1
-
-
-# --- resolver modifier carry -------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -111,9 +93,6 @@ def test_resolver_modifiers_carried(role, attack_mod, dc_mod, damage_mult):
     assert derived["dc_mod"] == dc_mod
     assert derived["damage_mult"] == damage_mult
     assert derived["role"] == role
-
-
-# --- abilities ---------------------------------------------------------------------------
 
 
 def test_minion_strips_active_abilities_keeps_basic_attacks():
@@ -136,9 +115,6 @@ def test_enhance_abilities_tags_each_active():
     assert out[0]["enhanced"] is True
 
 
-# --- boss extras -------------------------------------------------------------------------
-
-
 def test_boss_carries_authored_signature_and_one_legendary():
     derived = derive_role_stats(BANDIT, "boss")
     assert derived["legendary_actions"] == 1
@@ -150,9 +126,6 @@ def test_non_boss_has_no_legendary_and_no_signature():
         derived = derive_role_stats(BANDIT, role)
         assert derived["legendary_actions"] == 0
         assert derived["signature_ability"] is None
-
-
-# --- identity + immutability -------------------------------------------------------------
 
 
 @pytest.mark.parametrize("role", ["standard", "named"])

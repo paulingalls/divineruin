@@ -1,5 +1,3 @@
-"""Tests for party state module (PartyMember, PartyState)."""
-
 import caster_state
 import party_state
 
@@ -139,7 +137,6 @@ class TestPartyStatePrimary:
 
 class TestPartyStateIsolation:
     def test_per_member_isolation(self):
-        """Mutating member B's state does not affect member A."""
         p1 = party_state.PartyMember(
             player_id="p1",
             resonance=caster_state.ResonanceTrack(current=0),
@@ -152,13 +149,11 @@ class TestPartyStateIsolation:
         )
         party = party_state.PartyState([p1, p2])
 
-        # Mutate member B
         member_b = party.member("p2")
         assert member_b is not None
         member_b.resonance.current = 5
         member_b.concentration.spell_id = "spell_x"
 
-        # Member A unchanged
         member_a = party.member("p1")
         assert member_a is not None
         assert member_a.resonance.current == 0
@@ -202,7 +197,6 @@ class TestPartyStateSerialize:
         assert party.members[0].player_id == "p1"
 
     def test_from_dict_reconstructs_instances(self):
-        """from_dict rebuilds nested value-type INSTANCES, not raw dicts."""
         data = {
             "members": [
                 {
@@ -217,11 +211,9 @@ class TestPartyStateSerialize:
         party = party_state.PartyState.from_dict(data)
         member = party.members[0]
 
-        # Check that nested fields are INSTANCES, not dicts
         assert isinstance(member.resonance, caster_state.ResonanceTrack)
         assert isinstance(member.concentration, caster_state.ConcentrationState)
 
-        # Check values
         assert member.resonance.current == 5
         assert member.resonance.flickering_bonus == 1
         assert member.concentration.spell_id == "spell_123"
@@ -248,7 +240,6 @@ class TestPartyStateSerialize:
         assert member_rest.patron_id == member_orig.patron_id
 
     def test_roundtrip_multiple_members_order(self):
-        """Roundtrip preserves member order."""
         p1 = party_state.PartyMember(
             player_id="p1",
             resonance=caster_state.ResonanceTrack(current=1),
@@ -270,10 +261,6 @@ class TestPartyStateSerialize:
 
 
 class TestPartyMemberWeaponFlags:
-    """Per-member weapon-durability flags (M18 story-003): the swing that arms end-of-combat
-    durability accrual is recorded on the SWINGING member, not the session, so a non-primary
-    member's swings accrue their OWN weapon's durability."""
-
     def test_weapon_flags_default_false(self):
         member = party_state.PartyMember(
             player_id="p1",

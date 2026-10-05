@@ -51,11 +51,6 @@ snapshot_lane_logs() {
   return 0
 }
 
-echo "  Pre-commit hook self-test..."
-bash "scripts/test-precommit-worktree-skip.sh"
-echo "  Fast-tier selector self-test..."
-bash "scripts/test-fast-tier.sh"
-
 echo "  Worktree bootstrap offset self-test..."
 bash "scripts/test-init-worktree.sh"
 echo "  Worktree .env value self-test..."

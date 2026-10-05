@@ -1,5 +1,3 @@
-"""Every spend bound to one reaction window reaches resolution."""
-
 import json
 import random
 from unittest.mock import patch

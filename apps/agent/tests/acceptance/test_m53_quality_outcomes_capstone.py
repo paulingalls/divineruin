@@ -1,25 +1,4 @@
-"""Capstone — Milestone 3: Quality Outcomes & Experimentation (sprint-014, story-005).
-
-Cross-cutting real-DB proof that M5.3's surfaces compose end-to-end against ONE seeded
-testcontainer (migrations + content replayed by the acceptance conftest):
-
-- Part A — story-002 (DB-loaded quality_outcomes) + story-003 (pure-margin 4-band
-  resolve_crafting): the production orchestrator crafting_resolution.resolve_crafting_outcome
-  fetches the recipe's category + that category's quality table FROM THE DB and threads it
-  into the resolver. A seeded d20 forces each band; the attached bonus_property/flaw must be
-  a row from the DB-loaded table (not a hardcoded fixture).
-- Part B — story-003 + story-006: a crafting Failure resolves end-to-end THROUGH THE WORKER
-  (async_worker._resolve_single_activity, real DB; only the LLM/TTS boundary mocked) and the
-  player's hidden Crafting skill counter reads +1. Fulfills the deferred story-006 AC#4
-  (decision crafting-counter-ac4-deferred). The tainted+sub-Expert path is a deterministic
-  gate failure (no rng), and we assert the gate reason so a workspace-gate regression can't
-  mask itself (the workspace gate is checked first).
-- Part C — story-004 (experimentation, the message_event surface): experiment_with_materials
-  against the real DB — a no-match consumes materials and records player_failed_experiments
-  (migration 025) with no-match-only dedup, and a discoverable recipe is learned on success.
-
-Runs under REQUIRE_DOCKER; skips cleanly when Docker is down.
-"""
+"""Mock only the worker LLM/TTS boundary. Grant workspace access so its earlier gate cannot mask the tainted-Expert refusal."""
 
 from __future__ import annotations
 
@@ -93,8 +72,6 @@ async def _resolved_activity_data(activity_id: str) -> dict:
 
 
 async def test_four_bands_compose_with_db_quality_tables(reset_db_pool: str) -> None:
-    """story-002 + story-003: each band resolves through the production orchestrator, and
-    exceptional/partial draw their bonus_property/flaw from the testcontainer's quality row."""
     activity = {"activity_type": "crafting", "parameters": _CRAFT_PARAMS}
     # The DB-loaded weapon quality table (story-002) — the orchestrator reads this same row.
     weapon = await get_quality_outcomes("weapon")
@@ -126,9 +103,6 @@ async def test_four_bands_compose_with_db_quality_tables(reset_db_pool: str) -> 
 
 
 async def test_worker_failure_increments_skill_counter_e2e(reset_db_pool: str) -> None:
-    """story-003 + story-006: a crafting Failure resolved through the real worker bumps the
-    hidden counter +1. Tainted materials + a sub-Expert crafter is a deterministic gate
-    failure; workspace access is granted so the FAILURE is the tainted gate, asserted by reason."""
     pool = await db.get_pool()
     player_id = "player_m53_capstone_fail"
     await seed_player(pool, player_id=player_id)
@@ -176,8 +150,6 @@ async def test_worker_failure_increments_skill_counter_e2e(reset_db_pool: str) -
 
 
 async def test_experimentation_no_match_records_and_dedups(reset_db_pool: str) -> None:
-    """story-004: a no-match consumes materials + records player_failed_experiments; an
-    identical retry short-circuits (already_tried) without consuming."""
     pool = await db.get_pool()
     player_id = "player_m53_capstone_exp"
     await seed_player(pool, player_id=player_id)
@@ -211,8 +183,6 @@ async def test_experimentation_no_match_records_and_dedups(reset_db_pool: str) -
 
 
 async def test_experimentation_success_learns_recipe(reset_db_pool: str) -> None:
-    """story-004: discovering an unknown recipe from matching materials learns it
-    (player_known_recipes, learned_via='experimentation')."""
     pool = await db.get_pool()
     player_id = "player_m53_capstone_learn"
     await seed_player(pool, player_id=player_id)

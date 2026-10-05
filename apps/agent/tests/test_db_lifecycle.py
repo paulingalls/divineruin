@@ -1,11 +1,4 @@
-"""Unit tests for the test-session DB lifecycle helper (_db_lifecycle).
-
-The helper lets a bare `pytest` run self-heal when the docker-compose Postgres
-isn't up: it detects reachability, starts `docker compose` if needed, and stops
-ONLY what it started (never `down -v`, so the canonical dev DB survives). These
-tests pin the pure parse + the start/stop decision; the actual docker subprocess
-calls are stubbed so the suite stays hermetic.
-"""
+"""Stub Compose calls so lifecycle tests cannot stop the development database or delete its volume."""
 
 import subprocess
 
@@ -83,7 +76,7 @@ def _write_env(tmp_path, body: str):
 
 
 def test_resolve_database_url_prefers_environment_over_env_file(tmp_path, monkeypatch):
-    """A real env var wins: CI and the acceptance testcontainer both set one."""
+    """Preserve CI environment precedence over local defaults."""
     monkeypatch.setattr(dbl, "_REPO_ROOT", tmp_path)
     _write_env(tmp_path, "DATABASE_URL=postgresql://u:p@localhost:1111/db\n")
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:2222/db")
@@ -92,7 +85,6 @@ def test_resolve_database_url_prefers_environment_over_env_file(tmp_path, monkey
 
 
 def test_resolve_database_url_reads_env_file_when_environment_unset(tmp_path, monkeypatch):
-    """The worktree case: no exported DSN, so .env decides — not the :55432 default."""
     monkeypatch.setattr(dbl, "_REPO_ROOT", tmp_path)
     _write_env(tmp_path, "DATABASE_URL=postgresql://u:p@localhost:63782/divineruin\n")
     monkeypatch.delenv("DATABASE_URL", raising=False)
@@ -101,8 +93,7 @@ def test_resolve_database_url_reads_env_file_when_environment_unset(tmp_path, mo
 
 
 def test_resolve_database_url_strips_surrounding_quotes(tmp_path, monkeypatch):
-    """This repo's .env quote-wraps its values; an unstripped quote yields a DSN
-    asyncpg cannot parse (the same trap that 403s the Inworld key)."""
+    """Unwrap quoted DSNs before passing them to asyncpg."""
     monkeypatch.setattr(dbl, "_REPO_ROOT", tmp_path)
     _write_env(tmp_path, 'DATABASE_URL="postgresql://u:p@localhost:63782/divineruin"\n')
     monkeypatch.delenv("DATABASE_URL", raising=False)
@@ -111,7 +102,6 @@ def test_resolve_database_url_strips_surrounding_quotes(tmp_path, monkeypatch):
 
 
 def test_resolve_database_url_falls_back_to_default_without_env_file(tmp_path, monkeypatch):
-    """No .env at all (a fresh clone) still resolves to the canonical dev DB."""
     monkeypatch.setattr(dbl, "_REPO_ROOT", tmp_path)
     monkeypatch.delenv("DATABASE_URL", raising=False)
 
@@ -120,14 +110,7 @@ def test_resolve_database_url_falls_back_to_default_without_env_file(tmp_path, m
 
 
 def test_stop_if_started_honours_the_dsn_captured_at_session_start(monkeypatch):
-    """sessionstart and sessionfinish must decrement the SAME refcount.
-
-    The acceptance lane's bdd fixture assigns os.environ["DATABASE_URL"] to its
-    testcontainer and never restores it, so a re-resolve at sessionfinish would
-    key the lock/state file on the testcontainer's host:port — leaking the dev
-    DB's count forever and skipping its teardown. Passing the start-time DSN
-    through pins the pair to one state file.
-    """
+    """Capture the assigned DSN so teardown cannot target a later ambient database."""
     dev_dsn = "postgresql://u:p@localhost:55432/divineruin"
     _, state_path = dbl._lockfile_paths("localhost", 55432)
     dbl._write_state(state_path, _owned_state(1))
@@ -144,7 +127,7 @@ def test_stop_if_started_honours_the_dsn_captured_at_session_start(monkeypatch):
 
 
 def test_ensure_db_up_honours_an_explicit_dsn_over_the_environment(monkeypatch):
-    """The DSN sessionstart resolved wins, so the pair keys one host:port."""
+    """Explicit DSNs still share the same owned-resource reference count."""
     dev_dsn = "postgresql://u:p@localhost:55432/divineruin"
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:49173/test")
     monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: True)
@@ -156,7 +139,6 @@ def test_ensure_db_up_honours_an_explicit_dsn_over_the_environment(monkeypatch):
 
 
 def test_resolve_database_url_ignores_comments_blanks_and_other_keys(tmp_path, monkeypatch):
-    """A real .env is mostly other keys and prose comments."""
     monkeypatch.setattr(dbl, "_REPO_ROOT", tmp_path)
     _write_env(
         tmp_path,
@@ -172,7 +154,6 @@ def test_resolve_database_url_ignores_comments_blanks_and_other_keys(tmp_path, m
 
 
 def test_resolve_database_url_falls_back_when_env_file_lacks_the_key(tmp_path, monkeypatch):
-    """A .env that never declares DATABASE_URL must not resolve to empty."""
     monkeypatch.setattr(dbl, "_REPO_ROOT", tmp_path)
     _write_env(tmp_path, "DEEPGRAM_API_KEY=abc\n")
     monkeypatch.delenv("DATABASE_URL", raising=False)
@@ -220,7 +201,7 @@ def test_ownership_refusal_prevents_reachability(monkeypatch):
 
 
 def test_real_authority_accepts_the_checkouts_own_endpoints(tmp_path, monkeypatch):
-    """The floor under the two refusals below: this fixture is not a blanket no."""
+    """A valid ownership control prevents blanket refusal from passing."""
     settings = _owned_checkout(tmp_path, monkeypatch)
     REAL_AUTHORIZE_RUNTIME(settings["DATABASE_URL"], settings["REDIS_URL"])
 
@@ -335,11 +316,7 @@ def test_ci_service_mode_never_starts_compose(monkeypatch):
 
 
 def test_destroy_recheck_ignores_a_stale_ambient_dsn(tmp_path, monkeypatch):
-    """At session END os.environ["DATABASE_URL"] is the acceptance testcontainer's
-    — the bdd fixture assigns it and never restores it — so a destroy recheck that
-    read the ambient value would refuse this checkout's own teardown. The pinned
-    DSN was already authorized when the session started.
-    """
+    """Teardown uses captured checkout authority rather than later ambient settings."""
     settings = _owned_checkout(tmp_path, monkeypatch)
     monkeypatch.setattr(dbl, "_authorize", REAL_AUTHORIZE)
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:49173/test")

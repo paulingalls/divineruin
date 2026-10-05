@@ -1,5 +1,3 @@
-"""Live-loop exception policy tests for BackgroundProcess."""
-
 import asyncio
 import logging
 from contextlib import ExitStack, contextmanager

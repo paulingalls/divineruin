@@ -1,5 +1,3 @@
-"""Tests for god whisper profile data."""
-
 from unittest.mock import patch
 
 import pytest

@@ -1,26 +1,5 @@
-"""Capstone: M4.2 Action Economy — full lifecycle end-to-end against a real Postgres testcontainer.
-
-Milestone 2 shipped its pieces across stories 001-005/007: the typed 6-category declaration model
-(002), declaration enhancers + 1d12 heavy weapons (003/004), transaction-integrity seams (005), and
-in-combat ABILITY resolution through the phase loop (007). This capstone proves they COMPOSE against
-ONE seeded testcontainer (auto-marked `acceptance` by tests/acceptance/conftest.py), exercising the
-seams the mocked units can't: combat_init persistence, the declare/resolve loop driving all six
-declaration categories, enhancer expansion persisted to combat_instances, the real cast path
-deducting Focus in combat, and DB/in-memory agreement across a multi-phase fight.
-
-Test 1 drives the fight with a fixed-damage resolver (the DI seam the unit TestPhaseLoopE2E uses) so
-the multi-phase choreography is deterministic; the ABILITY phase runs the REAL cast (cast_resolver
-defaults to spell_casting), so Focus deduction is exercised for real. Test 2 pins the 1d12 damage
-CONTRACT (AC3) deterministically with a seeded RNG against the real resolve_attack — the exhaustive
-formula coverage lives in tests/combat/test_weapon_damage.py; this is the capstone's AC3 anchor.
-
-AC3 note: the story's original AC3 wording said "+ proficiency"; the shipped contract (story-003
-decision, locked SMM constraint) adds the attribute modifier ONCE and NO proficiency to damage
-(proficiency is the to-hit roll only). The story's AC3 was reworded to match; this test asserts the
-shipped behavior.
-
-Each test uses a distinct player_id since the testcontainer DB is shared.
-"""
+"""The lifecycle injects deterministic damage; the ability phase uses the real cast and resource writes.
+Damage adds the attribute modifier once, with proficiency reserved for to-hit."""
 
 from __future__ import annotations
 
@@ -74,9 +53,6 @@ def _player_packet(result, player_id: str) -> dict:
 
 
 async def test_full_action_economy_lifecycle_on_real_pg(reset_db_pool: str) -> None:
-    """AC1/AC2/AC4 + tx-integrity: a real multi-phase fight where the player cycles through all six
-    declaration categories, an enhancer expands an Attack and persists, the real cast path deducts
-    Focus in combat, and the DB stays consistent with in-memory — driven to victory and cleanup."""
     pool = await db.get_pool()
     player_id = "cap_m42_lifecycle"
     await _seed_capstone_player(pool, player_id)
@@ -202,10 +178,6 @@ def _expected_die_total(seed: int, notation: str, *, crit: bool) -> int:
 
 
 def test_heavy_weapon_damage_contract() -> None:
-    """AC3 (capstone anchor): a wielded 1d12 heavy weapon deals weapon die + attribute modifier
-    (added ONCE, even on a crit; a crit doubles the DICE), and NO proficiency reaches damage —
-    proficiency is the to-hit roll only. Exhaustive formula coverage is in test_weapon_damage.py;
-    this pins the contract the capstone fight relies on, deterministically via a seeded RNG."""
     attacker = {"level": 5, "attributes": {"strength": 16}}  # STR 16 -> +3 mod
     str_mod = weapon_attribute_modifier(attacker, _GREATAXE)
     assert str_mod == 3

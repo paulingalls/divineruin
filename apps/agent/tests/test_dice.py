@@ -1,5 +1,3 @@
-"""Tests for dice notation parser and roller."""
-
 import random
 
 import pytest

@@ -1,5 +1,3 @@
-"""Group arguments affect only hearing-eligible unsurrendered enemies."""
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

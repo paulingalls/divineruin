@@ -1,5 +1,3 @@
-"""Beat-3 window guidance names the reactions offered at each pause."""
-
 from combat_prompts import COMBAT_PROMPT
 from system_prompts import COMBAT_SYSTEM_PROMPT
 

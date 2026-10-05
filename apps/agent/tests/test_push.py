@@ -1,5 +1,3 @@
-"""Tests for push notification helper — URL validation and timeout."""
-
 import os
 from contextlib import asynccontextmanager
 from unittest.mock import MagicMock, patch
@@ -53,7 +51,6 @@ class TestServerUrlValidation:
                 await send_push_notification("player_1", "Test", "Body")
 
     async def test_timeout_is_set(self):
-        """Verify that a timeout is configured on the session."""
         with patch.dict(os.environ, {"SERVER_URL": "http://localhost:3001", "INTERNAL_SECRET": "s"}):
             captured_kwargs: dict = {}
 

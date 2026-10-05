@@ -1,5 +1,3 @@
-"""Tests for query_training_programs + initiate_training_cycle agent tools (M1.5)."""
-
 import json
 from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock
@@ -129,8 +127,6 @@ class TestInitiateTrainingCycle:
 
     @pytest.mark.asyncio
     async def test_invalid_program_id_format_returns_error(self):
-        """Pin _validate_id call — codebase convention is to reject malformed ids
-        before any DB lookup so a bad call never touches the pool."""
         ctx = make_context()
         mock_db, _ = make_db_mod()
         mock_content = MagicMock()
@@ -219,9 +215,7 @@ class TestInitiateTrainingCycle:
 
     @pytest.mark.asyncio
     async def test_writes_transition_at_matching_decision_at(self):
-        """Regression guard: tool must populate transition_at or the worker
-        (async_worker.advance_training_cycles) never picks the row up.
-        Pins the db_training.create_training_activity signature extension."""
+        """The worker polls transition_at; omitting it strands the activity."""
         ctx = make_context()
         mock_db, _ = make_db_mod()
         mock_content = MagicMock()
@@ -386,8 +380,3 @@ class TestSpellTrainingStartWall:
         assert data["spell_id"] == "arcane_hold_person"
         assert data["program_id"] == "arcane_study"
         assert data["skill"] == "arcana"
-
-
-# Training-tool registration moved to DispatchAgent in story-011 (CityAgent
-# decomposition). The wiring is now pinned by tests/test_training_agent.py
-# (TestDispatchAgentRegistration + TestCityToolBudget).

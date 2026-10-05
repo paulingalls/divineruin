@@ -1,10 +1,3 @@
-"""Tests for bg_event_handlers.handle_events — the pure event-dispatch function.
-
-Focuses on the M6 E.HIDDEN_REVEALED handler: a successful discovery's reveal event
-triggers a warm rebuild AND records the revealed element id on SessionData, which
-story-003's hot-layer assembly reads (and clears) to surface the target same-turn.
-"""
-
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -40,7 +33,6 @@ class TestHiddenRevealed:
         assert sd.recently_revealed_element_ids == ["secret_door"]
 
     def test_missing_element_id_records_nothing(self):
-        # A reveal event without an element_id is a no-op for the signal (defensive).
         _, sd = _dispatch([GameEvent(event_type=E.HIDDEN_REVEALED, payload={})])
         assert sd.recently_revealed_element_ids == []
 
@@ -63,11 +55,7 @@ class TestHiddenRevealed:
 
 
 class TestDivineFavorWhisperIsPrimaryOnly:
-    """Quest favor is party-wide (story-002), so one stage publishes a DIVINE_FAVOR_CHANGED per
-    member. The whisper path is NOT party-aware: background_process marks last_whisper_level on
-    sd.player_id whoever crossed, so an ungated handler would let a teammate's crossing take the
-    tick's single CRITICAL speech slot and advance the primary's cadence while never advancing its
-    own. Gate on the recipient (decision b7c3a66f1b74)."""
+    """The primary player is the sole writer of the party divine-whisper cadence."""
 
     _CROSSING = {"new_level": 30, "last_whisper_level": 0, "patron_id": "kaelen", "amount": 5}
 

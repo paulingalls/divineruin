@@ -1,11 +1,3 @@
-"""catalog_parse — shared content-loader parse primitives (loader-dedup chore).
-
-These primitives were copy-pasted across five content loaders (companion_profiles,
-role_archetypes, settlement_templates, npcs, mentor_variants). The shared module is
-the new primitive, so it carries its own behavior test — the loaders' suites exercise
-it only indirectly through their own row shapes.
-"""
-
 import pytest
 
 import catalog_parse as cp
@@ -106,7 +98,6 @@ class TestParseIntDict:
             cp.parse_int_dict(["not", "a", "dict"], "ctx")
 
     def test_rejects_non_int_value_with_key_context(self):
-        # Deep value validation: a stringly-typed value fails loud naming the key.
         with pytest.raises(ValueError, match=r"ctx\[arcane\] is not an int"):
             cp.parse_int_dict({"arcane": "high"}, "ctx")
 

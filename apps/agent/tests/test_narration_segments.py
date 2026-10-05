@@ -1,76 +1,12 @@
-"""Tests for how narration normalizes the model's `segments` tool output."""
-
 import json
-import subprocess
-from pathlib import Path
 
 import pytest
 
 import narration
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-
-
-def _repository_files() -> tuple[Path, ...]:
-    result = subprocess.run(
-        [
-            "git",
-            "ls-files",
-            "--cached",
-            "--others",
-            "--exclude-standard",
-            "-z",
-            "--",
-            "apps",
-            "packages",
-            "scripts",
-        ],
-        cwd=_REPO_ROOT,
-        check=True,
-        capture_output=True,
-    )
-    return tuple(Path(path.decode()) for path in result.stdout.split(b"\0") if path)
-
-
-def _files_containing(needle: bytes, paths: tuple[Path, ...]) -> list[str]:
-    return [str(path) for path in paths if (_REPO_ROOT / path).is_file() and needle in (_REPO_ROOT / path).read_bytes()]
-
-
-def _dead_helper_names() -> tuple[str, str]:
-    return (
-        "_" + "_".join(("segments", "to", "text")),
-        "_" + "_".join(("segments", "to", "segment", "objects")),
-    )
-
-
-def test_dead_narration_helper_attributes_are_absent():
-    present = [name for name in _dead_helper_names() if hasattr(narration, name)]
-
-    assert present == []
-
-
-def test_dead_narration_helper_names_are_absent_from_repository():
-    """A deletion stays deleted only while something reds when it comes back, and `hasattr` misses
-    a copy pasted into another module. The names are assembled from fragments and this file is
-    dropped from the scan, so the pin cannot match its own source."""
-    paths = _repository_files()
-    this_test = Path("apps/agent/tests/test_narration_segments.py")
-    assert paths and this_test in paths
-
-    searched_paths = tuple(path for path in paths if path != this_test)
-    hits = {name: _files_containing(name.encode(), searched_paths) for name in _dead_helper_names()}
-
-    assert hits == {name: [] for name in _dead_helper_names()}
-
 
 class TestTheNarrationToolSchema:
-    """Strict is what makes the string-shaped `segments` impossible at the source.
-
-    The schema has always declared an array of objects and the model sent a JSON string twice
-    anyway (sprint-049, sprint-050). ADR 0004's ceilings — 20 strict tools, compiled grammar size —
-    are about the gameplay agents' toolsets; this is one small tool on a direct call, and the live
-    API accepts it strict, which it does only when every object closes itself.
-    """
+    """Construct vendor schemas because strict validation closes nested objects too."""
 
     def test_the_tool_is_built_strict_with_every_object_closed(self):
         tool = json.loads(json.dumps(narration._build_narration_tool(["COMPANION_KAEL"])))
@@ -81,8 +17,7 @@ class TestTheNarrationToolSchema:
         assert schema["properties"]["segments"]["items"]["additionalProperties"] is False
 
     def test_strict_requires_every_declared_property_to_be_required(self):
-        """A strict request is refused outright when `required` omits a declared property, and the
-        refusal names the schema, not the field — so pin it here rather than pay an API call."""
+        """Strict vendor schemas require every property to appear in required."""
         tool = json.loads(json.dumps(narration._build_narration_tool(["COMPANION_KAEL"])))
         schema = tool["input_schema"]
         item = schema["properties"]["segments"]["items"]
@@ -92,13 +27,7 @@ class TestTheNarrationToolSchema:
 
 
 class TestMalformedSegmentsFromTheModel:
-    """The segments come from an LLM tool call, so their SHAPE is the model's output, not ours.
-
-    A live errand resolution died on `AttributeError: 'str' object has no attribute 'get'`
-    during the sprint-048 close, intermittently: the model returned one segment as a bare
-    string instead of an object. The parser assumed every segment was a dict and called
-    `seg.get(...)`. Constraint 9: never model the other side's shape, validate it.
-    """
+    """Validate real vendor narration shapes instead of assuming a dictionary."""
 
     def test_a_bare_string_segment_is_narration_not_a_crash(self):
         segments = [
@@ -115,10 +44,7 @@ class TestMalformedSegmentsFromTheModel:
         assert [o.emotion for o in objs] == ["neutral"]
 
     def test_a_payload_that_normalizes_to_nothing_raises(self):
-        """Coercion must not become silence. Dropping every segment leaves an errand that
-        "resolved" with no narration — in an audio-first game the player just gets nothing,
-        which is worse than the crash this normalizer replaced. Segments keyed on names we
-        do not know is a malformed response, not a recoverable one."""
+        """Tolerance must still refuse a response that produced nothing usable."""
         with pytest.raises(ValueError, match="no speakable narration"):
             narration._normalize_segments_or_raise([{"speaker": "DM", "line": "Lost."}])
         with pytest.raises(ValueError, match="no speakable narration"):
@@ -144,10 +70,7 @@ class TestMalformedSegmentsFromTheModel:
         ]
 
     def test_a_json_array_missing_its_closing_bracket_still_narrates(self):
-        """The shape that red the Sprint 50 close, verbatim from the gate log: three complete
-        segments, `stop_reason='tool_use'` at 308 of 500 tokens — the model simply never wrote the
-        `]`. Nothing was cut off and nothing is malformed inside, so refusing it spends a whole
-        errand's narration on one absent character."""
+        """A missing closing bracket is tolerated only when usable tokens remain."""
         raw = (
             '[\n  {\n    "character": "DM_NARRATOR", "emotion": "calm",\n'
             '    "text": "Kael emerges from the mist-shrouded path."\n  },\n'

@@ -1,28 +1,5 @@
-"""M22 capstone: the audio-completeness chain, end-to-end.
-
-Proves the full audio pipeline holds together and closes the "ALL game audio is
-generatable" intent. The one completeness hole no other test spans is a
-cross-language mismatch between the four mobile TS registries and the bundled
-assets: a bundled asset wired to no registry (orphan asset), or a registry key
-with no asset (missing file). This capstone enumerates every registry key
-in-band under bun (via scripts/emit-audio-registry-keys.ts) and asserts, per
-family, that the registry key-set — resolved through the combat alias map, since
-a combat wire id is an alias for a stem rather than a filename — exactly equals
-the bundled stem-set, then ties the whole set to the generator PROMPTS SSOT
-(generatable) with no .wav.
-
-Pure filesystem + bun; NO Postgres (AC3 amended — the DB spell-catalog half is
-owned by test_m17_spell_sfx_capstone.py). Lives in the acceptance lane for the
-cross-language bun subprocess + end-to-end roll-up, not a DB.
-
-Not re-asserted here (owned elsewhere, dedup):
-- the reverse orphan-PROMPT direction (a PROMPTS key with no bundled asset)
-  -> apps/agent/tests/test_generate_spell_sfx.py::test_no_prompt_without_a_bundled_asset
-- source==bundled byte-equality -> apps/agent/tests/test_audio_bundle_compressed.py (story-006)
-- per-stem transcode signature (44.1kHz/<=160kbps) -> test_audio_bundle_compressed.py
-- no uncompressed .wav in the bundle
-  -> test_audio_bundle_compressed.py::test_no_wav_files_in_bundled_sounds_dir (fast lane owns it)
-"""
+"""Bun emits actual registry keys; combat aliases resolve to stems before comparison.
+The reverse orphan-prompt and byte/transcode contracts remain in their focused generator and bundle suites."""
 
 from __future__ import annotations
 
@@ -107,13 +84,6 @@ def _load_prompts() -> dict[str, str]:
 
 @pytest.mark.parametrize("family,subdir", _FAMILIES)
 def test_registry_keyset_equals_bundled_stems(family: str, subdir: str) -> None:
-    """The novel cross-language completeness assertion: every family's TS-registry
-
-    key-set, resolved through the combat alias map, exactly equals its bundled
-    <dir>/*.mp3 stem-set. Catches a missing file (registry key playing no asset)
-    AND an orphan asset (bundled file wired to no registry) -- the direction no
-    existing guard spans.
-    """
     keys = _registry_keys()
     registry = set(keys[family])
     assert registry, f"{family}: emitter returned no keys -- enumeration is a no-op"
@@ -135,11 +105,6 @@ def test_registry_keyset_equals_bundled_stems(family: str, subdir: str) -> None:
 
 
 def test_every_bundled_stem_is_generatable() -> None:
-    """Every bundled stem, across all families, has a PROMPT regenerate recipe --
-
-    ties registry -> bundled -> generatable into one chain. (The reverse
-    orphan-PROMPT direction stays owned by test_generate_spell_sfx.py.)
-    """
     prompts = _load_prompts()
     bundled = {p.stem for p in _SOUNDS_DIR.glob("**/*.mp3")}
     ungeneratable = sorted(bundled - set(prompts))

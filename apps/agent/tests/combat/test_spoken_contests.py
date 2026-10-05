@@ -1,5 +1,3 @@
-"""Contested spoken reactions freeze a valid contest and refuse impossible new delivery."""
-
 from unittest.mock import MagicMock
 
 import pytest

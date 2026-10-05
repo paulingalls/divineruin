@@ -1,5 +1,3 @@
-"""Tests for the shared TTS pause constants and text-chunking logic."""
-
 from tts_pauses import (
     PARAGRAPH_PAUSE,
     SENTENCE_END_PAUSE,
@@ -87,7 +85,6 @@ class TestChunkTextWithPauses:
         assert len(sentence_pauses) == 1
 
     def test_prologue_excerpt(self):
-        """Test with actual prologue-style text containing paragraphs and em dashes."""
         text = (
             "Before the breaking, Aethos was whole. "
             "A world shaped by gods.\n\n"
@@ -97,13 +94,9 @@ class TestChunkTextWithPauses:
         texts = [c.text for c in chunks if c.text]
         silences = [c.silence for c in chunks if c.silence]
 
-        # Should have text chunks
         assert len(texts) >= 3
-        # Should have paragraph pause
         assert PARAGRAPH_PAUSE in silences
-        # Should have em dash pause
         assert 0.2 in silences
-        # Should have sentence end pauses
         assert SENTENCE_END_PAUSE in silences
 
     def test_mixed_pause_markers_in_sentence(self):

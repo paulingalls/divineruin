@@ -1,11 +1,4 @@
-"""Tests for db_mutations_conditions.save_many_player_conditions — the batched
-{player_id: conditions_list} write (M4.8 story-007), replacing N per-target save_player_conditions
-round-trips in the OOC condition party gate.
-
-Two-part coverage (mirrors the db_mutations_* family): mock-conn unit asserts the SQL shape
-(unnest + jsonb_set), real-PG fast-lane round-trips prove the batch write lands on every row and
-touches only the requested ones.
-"""
+"""Batch condition writes avoid one database round trip per ally."""
 
 import json
 from unittest.mock import AsyncMock

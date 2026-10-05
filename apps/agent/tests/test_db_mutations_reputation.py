@@ -1,11 +1,4 @@
-"""Tests for the player faction-reputation writer (story-002, M23).
-
-Real-PG round-trip against the shared dev DB at :55432 (fast lane; conftest auto-starts
-docker) — the additive upsert lives in SQL, so real PG is the meaningful coverage. Proves:
-a new row starts at the delta, repeated shifts accrue atomically, a legacy value-less row
-starts from 0 (COALESCE), the reader sees the written value, and reason is stored. Isolates
-via a unique player_id + cleanup. Plus a mock-conn arg-forwarding guard.
-"""
+"""Additive upserts need real Postgres because mocks do not execute their arithmetic."""
 
 import json
 import uuid

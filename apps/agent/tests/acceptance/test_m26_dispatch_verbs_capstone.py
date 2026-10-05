@@ -1,18 +1,3 @@
-"""Capstone: M26 Phase-5 dispatch-verb consolidation, end-to-end.
-
-Sprint-042 folded the DispatchAgent's ten downtime-activity tools into three Act-layer
-core verbs (ADR-0007 core-verb pattern): ``begin_activity(kind)`` / ``resolve_activity(kind,
-id, decision)`` (story-001/story-002/story-003), and ``query_info(kind)`` absorbed three
-dispatch reads (training_programs, workspaces, recipe). Each per-story review passed
-independently; this capstone is the integration net those reviews cannot see — it proves the
-registry invariant holds (the verb is registered where it should be, and nowhere the ten
-folded nouns still are), the tool-count budget holds, and every folded kind routes correctly
-through its real ``_impl`` against one real-PG seeded testcontainer (auto-marked
-``acceptance`` by tests/acceptance/conftest.py).
-
-No production code changes — every symbol here is owned by the merged M26 stories.
-"""
-
 from __future__ import annotations
 
 import json
@@ -64,9 +49,6 @@ _QUERY_INFO_CARRIERS = {"combat", "exploration", "dispatch", "onboarding", "blac
 
 
 def test_dispatch_verbs_registered_and_folded_nouns_gone_everywhere() -> None:
-    """begin_activity/resolve_activity live ONLY on dispatch (unlike M25's activate, which
-    spans combat+exploration); query_info is on its exact carrier set; none of the ten
-    folded nouns may still be registered on ANY of the six agents."""
     assert any(t.__name__ == "begin_activity" for t in DISPATCH_TOOLS)
     assert any(t.__name__ == "resolve_activity" for t in DISPATCH_TOOLS)
 
@@ -86,8 +68,7 @@ def test_dispatch_verbs_registered_and_folded_nouns_gone_everywhere() -> None:
 
 
 def test_tool_budget_holds_exact_count() -> None:
-    """Exact count pins the fold's tool-ceiling win — a regression here silently re-inflates
-    the strict tool budget the fold exists to protect."""
+    """Exact registration counts make a tool addition deliberate even below the vendor ceiling."""
     assert len(DISPATCH_TOOLS) == 9
     assert len(DISPATCH_TOOLS) <= MAX_STRICT_TOOLS
 
@@ -96,8 +77,6 @@ def test_tool_budget_holds_exact_count() -> None:
 
 
 async def test_begin_activity_training_creates_a_real_training_activity_row(reset_db_pool: str) -> None:
-    """kind='training' routes to _initiate_training_cycle_impl -- a real training_activities
-    row lands (mirrors test_activity_tools.TestBeginTrainingAgainstRealSql)."""
     pool = await db.get_pool()
     player_id = "cap_m26_begin_training"
     try:
@@ -117,8 +96,6 @@ async def test_begin_activity_training_creates_a_real_training_activity_row(rese
 
 
 async def test_begin_activity_companion_errand_creates_an_async_activity_row(reset_db_pool: str) -> None:
-    """kind='companion_errand' routes to _dispatch_companion_errand_impl -- an in_progress
-    companion_errand async_activities row lands."""
     pool = await db.get_pool()
     player_id = "cap_m26_begin_errand"
     try:
@@ -147,9 +124,6 @@ async def test_begin_activity_companion_errand_creates_an_async_activity_row(res
 
 
 async def test_begin_activity_crafting_creates_an_in_progress_crafting_activity(reset_db_pool: str) -> None:
-    """kind='crafting' routes to _start_crafting_project_impl -- the player must already
-    know the recipe (player_known_recipes) and have its materials on hand; a real
-    async_activities crafting row lands and materials are consumed."""
     pool = await db.get_pool()
     player_id = "cap_m26_begin_crafting"
     try:
@@ -191,9 +165,6 @@ async def test_begin_activity_crafting_creates_an_in_progress_crafting_activity(
 
 
 async def test_begin_activity_workspace_rents_and_debits_gold(reset_db_pool: str) -> None:
-    """kind='workspace' routes to _rent_workspace_impl -- guildmaster_torin is scheduled at
-    the default accord_guild_hall location, so the co-location gate passes; a real
-    workspace_rentals row lands and the player's gold debits at neutral-disposition price."""
     pool = await db.get_pool()
     player_id = "cap_m26_begin_workspace"
     try:
@@ -229,8 +200,6 @@ async def test_begin_activity_workspace_rents_and_debits_gold(reset_db_pool: str
 
 
 async def test_begin_activity_experiment_records_a_no_match(reset_db_pool: str) -> None:
-    """kind='experiment' routes to _experiment_with_materials_impl -- an unmatched material
-    combo consumes inventory and records a player_failed_experiments row."""
     pool = await db.get_pool()
     player_id = "cap_m26_begin_experiment"
     try:
@@ -269,8 +238,6 @@ async def test_begin_activity_experiment_records_a_no_match(reset_db_pool: str) 
 
 
 async def test_resolve_activity_training_advances_past_the_midpoint(reset_db_pool: str) -> None:
-    """kind='training' routes to _resolve_training_midpoint_impl -- an awaiting_decision row
-    advances to running_second_half once a valid midpoint decision is passed."""
     pool = await db.get_pool()
     player_id = "cap_m26_resolve_training"
     activity_id = "cap_m26_resolve_training_activity"
@@ -293,8 +260,6 @@ async def test_resolve_activity_training_advances_past_the_midpoint(reset_db_poo
 
 
 async def test_resolve_activity_companion_errand_resolves_the_outcome(reset_db_pool: str) -> None:
-    """kind='companion_errand' routes to _resolve_companion_errand_impl -- a past-due
-    in_progress errand resolves and persists its outcome."""
     pool = await db.get_pool()
     player_id = "cap_m26_resolve_errand"
     activity_id = "cap_m26_resolve_errand_activity"
@@ -328,7 +293,6 @@ async def test_resolve_activity_companion_errand_resolves_the_outcome(reset_db_p
 
 
 async def test_query_info_training_programs_scopes_choices_to_the_player(reset_db_pool: str) -> None:
-    """kind='training_programs' returns choices scoped to the current player."""
     pool = await db.get_pool()
     player_id = f"cap_m26_query_training_{uuid.uuid4().hex}"
     known_spell = "arcane_hold_person"
@@ -353,8 +317,6 @@ async def test_query_info_training_programs_scopes_choices_to_the_player(reset_d
 
 
 async def test_query_info_workspaces_reports_field_as_always_accessible(reset_db_pool: str) -> None:
-    """kind='workspaces' (no target_id) routes to _query_available_workspaces_impl -- field
-    is the universal floor, so it must always appear as accessible."""
     raw = await _query_info_impl(make_context(), "workspaces")
     result = json.loads(raw)
     assert "field" in result["accessible"]
@@ -364,8 +326,6 @@ async def test_query_info_workspaces_reports_field_as_always_accessible(reset_db
 
 
 async def test_query_info_recipe_returns_seeded_requirements(reset_db_pool: str) -> None:
-    """kind='recipe', target_id=<recipe id> routes to _query_recipe_requirements_impl,
-    reading the seeded recipe content."""
     raw = await _query_info_impl(make_context(), "recipe", target_id="wooden_club")
     result = json.loads(raw)
     assert result["recipe_id"] == "wooden_club"

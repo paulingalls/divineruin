@@ -1,9 +1,4 @@
-"""M14 story-005 — per-member resurrection anchor engine. `resurrect_party_on_defeat`
-resolves each member's anchor independently (resolve_resurrection_anchor is per-member,
-including each member's own `last_rested_settlement_id`), instead of forcing a single
-`party[0]`-derived anchor onto every member. Tier-3 (last-rested) is where members can
-diverge; tiers 1/2/4 still coincide when members are co-located. Pure injected mutation
-stubs — no real DB (mirrors test_party_wipe.py)."""
+"""Members may have different last-rested anchors even while currently co-located."""
 
 from unittest.mock import AsyncMock, MagicMock
 
@@ -54,8 +49,6 @@ def _death_mutations(counts: dict[str, int]):
 class TestPerMemberAnchor:
     @pytest.mark.asyncio
     async def test_divergent_last_rested_anchors_resolve_per_member(self):
-        """AC1/AC4: members with divergent last-rested anchors revive at their OWN anchor,
-        not a shared party[0]-derived one."""
         death_mut = _death_mutations({"p_a": 0, "p_b": 0})
         res_mut = AsyncMock()
         content = MagicMock(get_all_locations=AsyncMock(return_value=_LOCATIONS))
@@ -75,8 +68,6 @@ class TestPerMemberAnchor:
 
     @pytest.mark.asyncio
     async def test_per_member_death_cost_and_count_independent(self):
-        """AC3: distinct per-player death histories -> each member's record_death / returned
-        death count is per member (unaffected by the per-member anchor change)."""
         death_mut = _death_mutations({"p_a": 0, "p_b": 2})
         res_mut = AsyncMock()
         content = MagicMock(get_all_locations=AsyncMock(return_value=_LOCATIONS))
@@ -98,9 +89,6 @@ class TestPerMemberAnchor:
 class TestSoloPartyParity:
     @pytest.mark.asyncio
     async def test_solo_party_matches_prior_shared_pick(self):
-        """AC2: a 1-member party via resurrect_on_defeat returns the single death context
-        unchanged — per-member resolution on a solo party is identical to the old party[0]
-        shared pick."""
         death_mut = _death_mutations({"p1": 0})
         res_mut = AsyncMock()
         content = MagicMock(get_all_locations=AsyncMock(return_value=_LOCATIONS))

@@ -1,5 +1,3 @@
-"""Tests for completed-task failure logging."""
-
 import asyncio
 import logging
 

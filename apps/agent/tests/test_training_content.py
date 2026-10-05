@@ -1,10 +1,3 @@
-"""Tests for training content JSON files (content/training_*.json).
-
-Verifies the authored content files exist with the expected schema and values,
-matching training_rules.TRAINING_ACTIVITY_CONFIG exactly. The seeding script
-copies these files into the training_activity_types and training_programs tables.
-"""
-
 import json
 from pathlib import Path
 
@@ -71,7 +64,6 @@ class TestTrainingActivityTypesContent:
                 assert "micro_bonus" in opt
 
     def test_matches_python_training_activity_config(self):
-        """Content JSON must match training_rules.TRAINING_ACTIVITY_CONFIG exactly."""
         from training_rules import TRAINING_ACTIVITY_CONFIG
 
         data = _load_json("training_activity_types.json")

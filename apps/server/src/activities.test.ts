@@ -48,7 +48,6 @@ describe("handleListActivities", () => {
   });
 
   test("returns empty list", async () => {
-    // No stub: the list query resolves to [] -> empty activities.
     const req = makeRequest("GET", "/api/activities");
     const res = await handleListActivities(req, "player_1");
     expect(res.status).toBe(200);
@@ -111,7 +110,6 @@ describe("handleListActivities", () => {
     expect(body.activities[0]!.resolving_at).toBeUndefined();
     expect(body.activities[0]!.resolve_attempts).toBeUndefined();
     expect(body.activities[0]!.narration_segments).toBeUndefined();
-    // Client-facing fields survive the strip.
     expect(body.activities[0]!.status).toBe("in_progress");
     expect(body.activities[0]!.resolve_at).toBe("2026-01-01T01:00:00Z");
     expect(body.activities[0]!.narration_text).toBe("You forged a blade.");
@@ -143,7 +141,6 @@ describe("handleGetActivity", () => {
   });
 
   test("returns 404 for non-existent", async () => {
-    // No stub: the lookup resolves to [] -> 404.
     const req = makeRequest("GET", "/api/activities/nonexistent");
     const res = await handleGetActivity(req, "player_1", "nonexistent");
     expect(res.status).toBe(404);
@@ -315,7 +312,6 @@ describe("handleActivityDecision", () => {
   });
 
   test("rejects decision on non-existent activity", async () => {
-    // No stub: the FOR UPDATE lookup resolves to [] -> 404.
     const req = makeRequest("POST", "/api/activities/act_1/decide", { decision_id: "keep" });
     const res = await handleActivityDecision(req, "player_1", "act_1");
     expect(res.status).toBe(404);

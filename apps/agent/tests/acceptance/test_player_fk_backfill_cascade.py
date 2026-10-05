@@ -1,13 +1,4 @@
-"""Real-DB acceptance proof for the systemic player CASCADE-FK backfill (migration 021).
-
-Migrations 008 + 020 added players(player_id) ON DELETE CASCADE FKs to a few
-per-player tables, but ten more added since lacked it, so deleting a player
-orphaned their rows (debt ac2ad5230209). Migration 021 backfills the FK on all
-ten. The testcontainer harness replays every scripts/migrations/*.sql in order,
-so this exercises 021 against the real schema: without it, the DELETE leaves
-orphan rows and the assertion fails (genuine TDD red). Runs under REQUIRE_DOCKER;
-skips clean when Docker is down.
-"""
+"""Execute cascade behavior so deleting players cannot orphan dependent records."""
 
 from __future__ import annotations
 

@@ -1,16 +1,4 @@
-"""Real-DB acceptance proof for migration 044's player-resonance backfill.
-
-Migration 044 seeds `data.resonance.current = 0` on every existing player row that
-lacks the key, so the resonance path is immediately queryable on legacy players
-(read defaults to 0 anyway, but the backfill makes storage consistent). The
-testcontainer harness replays all migrations BEFORE any player is seeded, so 044's
-UPDATE runs against an empty table there — its actual mutation is never exercised by
-the other resonance tests (the story-005 capstone explicitly seeds rows post-migration
-and notes it skips the backfill). This test closes that gap: it applies 044's SQL to a
-hand-crafted pre-state and asserts the backfill behaviour, including the idempotency
-guard (`WHERE NOT (data ? 'resonance')`). Runs under REQUIRE_DOCKER; skips clean when
-Docker is down. Resolves concern ba6a841b6dcd.
-"""
+"""Seed pre-migration state before replaying the exact UPDATE; initial harness migration sees an empty table."""
 
 from __future__ import annotations
 

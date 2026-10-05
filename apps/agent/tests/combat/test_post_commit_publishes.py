@@ -1,5 +1,3 @@
-"""Post-commit isolation, ordering, and one-shot publication for the phase loop."""
-
 import json
 import logging
 from unittest.mock import AsyncMock, MagicMock, create_autospec

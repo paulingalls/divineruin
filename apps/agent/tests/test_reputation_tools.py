@@ -1,11 +1,3 @@
-"""Tests for the adjust_faction_reputation DM tool (story-002, M23).
-
-Mirrors the update_npc_disposition tool tests: validate the faction exists, map the named
-event to a delta via the pure resolver, apply it via the writer, and return a narratable
-JSON payload. Injected content/mutations mocks keep it pure-unit (the real writer is covered
-by test_db_mutations_reputation).
-"""
-
 import json
 from unittest.mock import AsyncMock
 

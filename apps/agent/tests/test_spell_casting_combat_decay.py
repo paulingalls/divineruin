@@ -1,18 +1,4 @@
-"""In-combat suppression of cast-paced Resonance decay (M4.1 story-007).
-
-Decision resonance-decay-phase-canonical: the combat PHASE is the canonical
-Resonance-decay clock — story-001's wrap beat (combat_phase.advance_combat_phase)
-sheds one round per phase. Sprint-017's cast-paced decay (one shed per real cast,
-spell_casting._cast_spell_impl) was a pre-combat stopgap. If BOTH fire in combat,
-Resonance double-decays. So a cast IN combat must only GENERATE, never shed; the
-wrap beat owns decay. Out of combat, cast-paced decay stays exactly as sprint-017.
-
-These tests drive _cast_spell_impl directly with mock db/queries/persistence/
-mutations (the _spell_casting_helpers precedent) and the seeded racial-spec stub, and
-flip session.combat_state to toggle session.in_combat. The invariant: decay fires
-once per context, never both — proven here for the cast path (in-combat suppressed,
-out-of-combat unchanged) regardless of race.
-"""
+"""Combat phases own decay; letting a cast decay too would shed twice. Outside combat, casts remain the clock."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock
@@ -24,8 +10,6 @@ from session_data import CombatState
 from spell_casting import _cast_spell_impl
 from spells import Spell, SpellSource, SpellTier
 
-# The seeded human decay_bonus (content/racial_resonance_bonuses.json) the cast reads via
-# racial_resonance.get_racial_resonance_modifier. Mirrors _spell_casting_helpers._RACIAL_SPEC.
 _RACIAL_SPEC = {
     ("human", "decay_bonus"): 1,
 }
@@ -101,7 +85,6 @@ async def _cast(
     queries = MagicMock()
     _lock_row = _player(race=race)
     queries.get_player = AsyncMock(return_value=_lock_row)
-    # story-008: the OOC caster row now comes from the id-ordered get_players_for_update batch.
     queries.get_players_for_update = AsyncMock(side_effect=lambda ids, *, conn=None: {i: _lock_row for i in ids})
     persistence = MagicMock()
     persistence.update_player_resources = AsyncMock()
@@ -130,20 +113,15 @@ async def _cast(
 
 class TestInCombatSuppressesCastDecay:
     async def test_in_combat_generates_but_does_not_shed(self):
-        # AC1: in combat, a generating cast accrues its Resonance but the cast path does NOT
-        # shed. Race-less start 7, generated 3 -> 10 (out of combat would shed 1 -> 9).
         packet, ctx, mutations = await _cast(
             _spell(source="arcane", focus_cost=3, resonance=3), start_resonance=7, in_combat=True
         )
         assert packet["resonance_generated"] == 3
         assert ctx.userdata.resonance.current == 10  # 7 + 3, no decay shed
-        # The persisted total is the un-shed sum — the cast path wrote no decay (the wrap beat owns it).
         mutations.update_player_resonance.assert_awaited_once()
         assert mutations.update_player_resonance.call_args.args[1] == 10
 
     async def test_in_combat_human_does_not_shed(self):
-        # AC3: suppression applies regardless of race. A Human in combat (decay_bonus 1) still
-        # sheds nothing from the cast — start 7, generated 3 -> 10 (out of combat would be 8).
         packet, ctx, _m = await _cast(
             _spell(source="arcane", focus_cost=3, resonance=3), race="human", start_resonance=7, in_combat=True
         )
@@ -153,16 +131,12 @@ class TestInCombatSuppressesCastDecay:
 
 class TestOutOfCombatDecayUnchanged:
     async def test_out_of_combat_race_less_decays_base_one(self):
-        # AC2: out of combat, cast-paced decay is exactly sprint-017. Race-less base 1:
-        # start 7 -> 6, + 3 generated = 9.
         _packet, ctx, _m = await _cast(
             _spell(source="arcane", focus_cost=3, resonance=3), start_resonance=7, in_combat=False
         )
         assert ctx.userdata.resonance.current == 9
 
     async def test_out_of_combat_human_decays_two(self):
-        # AC2: out of combat a Human sheds base 1 + decay_bonus 1 = 2 before generation:
-        # start 7 -> decay(7, +1) = 5, + 3 = 8.
         _packet, ctx, _m = await _cast(
             _spell(source="arcane", focus_cost=3, resonance=3), race="human", start_resonance=7, in_combat=False
         )

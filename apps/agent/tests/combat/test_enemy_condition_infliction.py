@@ -1,12 +1,4 @@
-"""Tests for the enemy condition-infliction resolve path (M13 story-002).
-
-Homes debt f9a5d1e88432: the temporary_hollowed charmed/frightened/poisoned immunity
-gate in conditions.apply_condition had no live in-combat caller — this is the first one.
-An enemy action_pool entry carrying {applies_condition, save, dc} routes through
-_resolve_one_packet's dispatch to _resolve_enemy_condition_packet — for ATTACK *or* ABILITY
-declarations (the DM declares enemy pool actions as ATTACK, system_prompts.py:235) — which rolls
-the target's save and lands the condition via the immunity-gated apply_condition SSOT.
-"""
+"""Enemy pool actions can be declared as ATTACK or ABILITY; both must reach immunity-gated condition application."""
 
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -111,8 +103,6 @@ class TestResolveEnemyConditionPacket:
         assert not any(c["type"] == "frightened" for c in _get(state, "player_1").conditions)
 
     async def test_immune_target_no_ops_the_gate(self):
-        """Debt f9a5d1e88432 regression guard: temporary_hollowed's charmed/frightened/poisoned
-        immunity, exercised for the first time by a live in-combat caller."""
         state = _state_with_enemy_action(
             _enemy_action(cond_type="poisoned"),
             player_conditions=[{"type": "temporary_hollowed"}],
@@ -137,8 +127,6 @@ class TestResolveEnemyConditionPacket:
         assert not any(c["type"] == "poisoned" for c in _get(state, "player_1").conditions)
 
     async def test_missing_target_id_wastes_and_does_not_self_inflict(self):
-        # An enemy condition action declared without target_id (ABILITY has no target_id validation)
-        # must WASTE — never self-target, which would frighten the enemy itself.
         state = _state_with_enemy_action(_enemy_action())
         attacker = _get(state, "goblin_scout_1")
         decl = Declaration(type=DeclarationType.ABILITY, action="Unnerving Gaze", target_id=None)
@@ -159,8 +147,6 @@ class TestResolveEnemyConditionPacket:
         assert not any(c["type"] == "frightened" for c in attacker.conditions)  # enemy not self-inflicted
 
     async def test_explicit_self_target_id_wastes(self):
-        # allow_self=False must reject an explicit target_id equal to the attacker's OWN id, not just
-        # a None target — a hostile inflict never lands on its own caster.
         state = _state_with_enemy_action(_enemy_action())
         attacker = _get(state, "goblin_scout_1")
         decl = Declaration(type=DeclarationType.ABILITY, action="Unnerving Gaze", target_id="goblin_scout_1")
@@ -305,9 +291,6 @@ class TestEnemyAbilityDispatch:
 
 class TestSaveThreading:
     async def test_resolver_forwards_role_dc_mod_and_passes_target_participant(self):
-        # #3: the attacker's role dc_mod (Boss +2 / Elite +1) must reach the save DC; #4: the
-        # TARGET participant (which carries saving_throw_proficiencies) is what's rolled, so a
-        # proficient target gets its bonus. Both are threaded through roll_participant_save.
         state = _state_with_enemy_action(_enemy_action())
         attacker = _get(state, "goblin_scout_1")
         attacker.dc_mod = 2
@@ -325,8 +308,6 @@ class TestSaveThreading:
         assert call.args[0] is _get(state, "player_1")  # target participant carries the proficiencies
 
     def test_roll_participant_save_honors_dc_mod_and_proficiency(self):
-        # Real save math (no mock): dc_mod raises the effective DC; a proficient target gains the
-        # proficiency bonus. Also exercises the "wis" -> "wisdom" abbreviation expansion.
         import check_resolution_save
 
         prof = CombatParticipant(
@@ -360,8 +341,6 @@ class TestSaveThreading:
         assert r_prof.modifier > r_plain.modifier  # proficiency bonus folded in for the proficient target
 
     def test_include_proficiency_false_preserves_tick_clear_odds(self):
-        # The Beat-4 tick-clear passes include_proficiency=False to preserve pre-M13 clear odds:
-        # a proficient participant gets NO proficiency bonus when the flag is off.
         import check_resolution_save
 
         prof = CombatParticipant(
@@ -387,9 +366,6 @@ class TestSaveThreading:
         assert r_incl.modifier > r_excl.modifier  # proficiency folded in only when include_proficiency=True
 
     def test_uppercase_save_abbrev_does_not_diverge_load_gate_vs_runtime(self):
-        # Regression: is_valid_save_key lowercases, so it accepts "WIS" (the codebase's uppercase
-        # house style) at the load gate; roll_participant_save must expand the same way (lowercase
-        # first) or an uppercase abbrev slips through and crashes mid-fight with "Unknown save type".
         import check_resolution_save
 
         assert check_resolution_save.is_valid_save_key("WIS") is True

@@ -1,11 +1,5 @@
 """AC1/AC2/AC4: the four beat-3/4 vignettes are authored per companion, in the content row.
 
-The prose lives in content/companions.json rather than in onboarding_prompt.py because
-test_no_companion_literal's walker matches the FILE TEXT of every non-allowlisted, non-test
-file: once onboarding_prompt.py comes off that allowlist (AC6), the module may not contain the
-string "Kael" in any shape — not a constant, not a dict key, not a function name. The row the
-renderer already reads is the only home left.
-
 TWO AUTHORING RULES THIS FILE ENFORCES BLUNTLY, because a text guard cannot attribute a word
 to a speaker. Both are stated here so the next author meets them as a rule, not as a red:
 
@@ -120,8 +114,6 @@ class TestVignetteFieldsExist:
 
 
 class TestVignettePronouns:
-    """AC4: every pronoun in the four vignettes agrees with the row's own `gender`."""
-
     def test_no_vignette_uses_another_buckets_gendered_pronoun(self):
         for row in _RAW:
             text = _vignette_text(row)
@@ -132,16 +124,7 @@ class TestVignettePronouns:
                 assert not leaked, f"{row['id']} ({row['gender']}) uses {bucket} pronouns {leaked}"
 
     def test_every_gendered_vignette_carries_its_own_pronouns(self):
-        """Without this, a pronoun-free vignette passes the check above vacuously.
-
-        THE NEUTRAL BUCKET IS EXCLUDED, and excluding it is the honest move rather than the
-        lazy one. they/them is also what this prose calls THE PLAYER, so a word search cannot
-        tell a nonbinary companion's pronoun from the player's: measured, a rewrite of Tam's
-        two fields in which every they/them refers to the player and none to Tam passed this
-        assertion unchanged. A guard that greens on the defect it names is worse than none
-        (constraint 1). A nonbinary row rests on the negative check above, which is not
-        vacuous — a stray "he" or "she" in Tam's scene reds it.
-        """
+        """They/them can refer to the player, so exclude it from positive companion-pronoun checks."""
         for row in _RAW:
             if row["gender"] == NEUTRAL:
                 continue
@@ -150,8 +133,6 @@ class TestVignettePronouns:
 
 
 class TestNonVerbalVignette:
-    """AC2/AC4: Sable's scene carries her without giving her a voice."""
-
     def _non_verbal_rows(self) -> list[dict]:
         rows = [r for r in _RAW if r.get("non_verbal")]
         assert rows, "no non-verbal companion in the catalog — this guard would certify nothing"

@@ -1,23 +1,12 @@
-"""Tests for the pure gathering resolver (M4.6c / story-001).
-
-Pure functions, no DB/RNG/fixtures — the caller supplies the gathering roll_total,
-mirroring test_travel.py / test_social_resolution.py. Spec:
-docs/game_mechanics/game_mechanics_combat.md §Gathering During Travel (L977-1060).
-"""
-
 import pytest
 
 import gathering
 
-# A representative regional resource table: rarity-keyed material id buckets.
-# This dict shape is the interface contract with story-002 (content) / story-003 (tool).
 _TABLE = {
     "common": ("medicinal_herbs", "wood"),
     "uncommon": ("iron_ore", "quality_wood"),
     "rare": ("power_crystal",),
 }
-
-# --- Skill routing (spec L979-988) ---
 
 
 def test_metals_stone_gems_route_to_survival():
@@ -43,9 +32,6 @@ def test_unknown_material_type_fails_loud():
         gathering.gathering_skill("antimatter")
 
 
-# --- Skill-tier access gating (spec L1018-1022) ---
-
-
 def test_untrained_reaches_only_common():
     assert gathering.accessible_rarities("untrained") == ("common",)
 
@@ -67,9 +53,6 @@ def test_unknown_skill_tier_fails_loud():
         gathering.accessible_rarities("legendary")
 
 
-# --- Result tiers (spec L997-1006) ---
-
-
 def test_result_tier_thresholds():
     assert gathering.gathering_result_tier(20, 10, master=False) == "rich_find"  # >= dc+10
     assert gathering.gathering_result_tier(10, 10, master=False) == "success"  # >= dc
@@ -78,17 +61,12 @@ def test_result_tier_thresholds():
 
 
 def test_master_rich_find_threshold_reduced_by_five():
-    # A roll of dc+5 is only "success" untrained but "rich_find" for a master (spec L1022).
     assert gathering.gathering_result_tier(15, 10, master=False) == "success"
     assert gathering.gathering_result_tier(15, 10, master=True) == "rich_find"
 
 
 def test_master_never_returns_nothing():
-    # "Master: always find something" (spec L1021) — floors to partial.
     assert gathering.gathering_result_tier(1, 10, master=True) == "partial"
-
-
-# --- Material selection ---
 
 
 def test_nothing_yields_no_materials():
@@ -117,9 +95,6 @@ def test_empty_bucket_falls_back_to_next_lower_accessible():
     table = {"common": ("wood",), "uncommon": (), "rare": ()}
     mats = gathering.select_materials(table, "rich_find", "master")
     assert mats == ("wood", "wood")  # rare+uncommon empty -> common, still doubled
-
-
-# --- resolve_gathering ---
 
 
 def test_resolve_returns_result_with_materials_and_dc_margin():
@@ -160,9 +135,6 @@ def test_time_cost_per_result_tier():
     assert cost(20) == pytest.approx(2.0)  # rich_find
 
 
-# --- Dramatic verdict (delegated to the M4.5 SSOT) ---
-
-
 def test_natural_twenty_is_dramatic():
     result = gathering.resolve_gathering(
         material_type=None, skill_tier="trained", gathering_dc=10, roll_total=30, resource_table=_TABLE, raw_die=20
@@ -196,9 +168,6 @@ def test_ordinary_clear_pass_is_not_dramatic():
     assert result.context == ""
 
 
-# --- Determinism + fail-loud ---
-
-
 def test_same_inputs_yield_identical_result():
     def resolve():
         return gathering.resolve_gathering(
@@ -227,21 +196,17 @@ def test_resolve_unknown_skill_tier_fails_loud():
         )
 
 
-# --- select_node: match the uncovered fixed node to the rolled skill ---
-
 _ORE = {"id": "ore1", "node_type": "ore_vein"}
 _HERB = {"id": "herb1", "node_type": "herb_garden"}
 _CRYSTAL = {"id": "crys1", "node_type": "crystal_deposit"}
 
 
 def test_select_node_prefers_skill_match():
-    # nature forager surfaces the herb garden, not the listed-first ore vein
     assert gathering.select_node([_ORE, _HERB], "nature") is _HERB
     assert gathering.select_node([_HERB, _CRYSTAL], "arcana") is _CRYSTAL
 
 
 def test_select_node_falls_back_to_first_when_no_match():
-    # arcana roll, only survival/nature nodes present -> still reveal something
     assert gathering.select_node([_ORE, _HERB], "arcana") is _ORE
 
 

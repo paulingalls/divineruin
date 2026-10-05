@@ -1,5 +1,3 @@
-"""Actual reaction offers, activation and benefits require fictional delivery."""
-
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest

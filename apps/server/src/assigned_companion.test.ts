@@ -7,9 +7,6 @@ const { resolveAssignedCompanion } = await import("./assigned_companion.ts");
 
 beforeEach(resetMockDb);
 
-// The error strings are byte-identical to the ones activity_create.ts returned before the
-// extraction. That identity is what makes "activity_create_errand.test.ts still passes against
-// the extracted version" a check rather than a claim — those tests assert on the text.
 describe("resolveAssignedCompanion", () => {
   test("resolves the archetype's complement", async () => {
     setQueryStubs([

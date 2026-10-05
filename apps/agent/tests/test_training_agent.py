@@ -1,10 +1,4 @@
-"""Tests for DispatchAgent + the move_player activity handoff into/out of it.
-
-DispatchAgent exists so CityAgent stays under Anthropic's strict-tool ceiling
-(llm_config.MAX_STRICT_TOOLS; docs/decisions/0004-agent-tool-scaling.md). Players
-reach it by moving into a training-context location; moving out re-resolves to
-the region agent.
-"""
+"""A separate DispatchAgent keeps CityAgent within the strict-tool ceiling."""
 
 from __future__ import annotations
 
@@ -73,8 +67,6 @@ class TestDispatchAgentRegistration:
 
 class TestCityToolBudget:
     def test_training_tools_left_city(self):
-        # Extracting these tools is what keeps City at or under the strict-tool
-        # ceiling (the count pin lives in test_strict_tool_budget.py).
         assert begin_activity not in EXPLORATION_TOOLS
         assert resolve_activity not in EXPLORATION_TOOLS
 

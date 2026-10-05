@@ -1,14 +1,4 @@
-"""In-combat ability resolution through declare_phase/resolve_phase (story-007, M4.2).
-
-A player ABILITY declared into the phase loop resolves via the SHARED cast logic — deducting Focus,
-generating Resonance, and composing that generation with the phase WRAP decay — in initiative order
-alongside attacks (AC1/AC4). cast_spell stays the out-of-combat entry (AC3). Insufficient Focus is
-covered as a unit (test_phase_loop, AC2).
-
-Real-PG against the :55432 dev DB (dev_db_pool), with unique ids + finally-cleanup, mirroring
-test_combat_tx_integrity. The cast runs for REAL (default cast_resolver=spell_casting) so Focus
-deduction + Resonance generation + WRAP decay all exercise real mutations end-to-end.
-"""
+"""Run the real cast resolver and mutations so Focus, generation and wrap decay compose against stored state."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock
@@ -80,8 +70,6 @@ def _ability_vs_attack_state(combat_id: str, player_id: str, enemy_id: str, spel
 
 class TestInCombatAbilityResolution:
     async def test_mixed_attack_and_ability_resolve_with_focus_and_resonance(self, dev_db_pool) -> None:
-        """AC4: a phase mixing an attack + an ability resolves both in initiative order with correct
-        Focus + Resonance accounting (generation composed with the WRAP decay)."""
         pool = dev_db_pool
         player_id = "s007_ability_player"
         enemy_id = "s007_ability_enemy"
@@ -104,12 +92,10 @@ class TestInCombatAbilityResolution:
         session.combat_state = _ability_vs_attack_state(combat_id, player_id, enemy_id, spell_id)
 
         try:
-            # Deterministic enemy attack (3 dmg); the ability runs through the REAL cast_resolver.
             raw = await _resolve_round(ctx, resolver=_damage_resolver(3))
 
             assert not isinstance(raw, tuple)  # combat continues -> JSON (not the end-of-combat handoff)
             packets = raw["packets"]
-            # Initiative order: the player's ability (15) resolves before the enemy's attack (12).
             assert packets[0]["actor_id"] == player_id
             assert packets[0]["declaration_type"] == "ability"
             assert packets[0]["resolved"] is True
@@ -119,7 +105,6 @@ class TestInCombatAbilityResolution:
 
             row = await db_queries.get_player(player_id, conn=pool)
             assert row is not None
-            # Focus deducted by the spell cost (real ability_persistence write).
             assert row["focus"]["current"] == start_focus - spell.focus_cost
             # Resonance composed correctly: standing + generated (the cast) - 1 (the phase WRAP decay).
             # This single value distinguishes the correct ordering from BOTH failure modes —

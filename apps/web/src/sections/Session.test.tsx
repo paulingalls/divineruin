@@ -53,7 +53,6 @@ test("SESSION_LINES is the seven well-formed mockup lines", () => {
 });
 
 test("includes the narrator, player, combat, and god voices", () => {
-  // The section's point: many voices, one continuous scene.
   const variants = new Set(SESSION_LINES.map((l) => l.variant));
   expect(variants.has("")).toBe(true); // narrator (default)
   expect(variants.has("player")).toBe(true);

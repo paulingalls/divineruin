@@ -1,5 +1,3 @@
-"""Unit tests for mentor requirement gates against injectable DB seams."""
-
 import json
 import types
 from pathlib import Path
@@ -11,7 +9,6 @@ import mentor_requirements as mr
 
 _CONTENT = Path(__file__).resolve().parents[3] / "content"
 
-# A mentor binding whose every gate a default player clears.
 _REQS_OPEN = {"disposition": "neutral", "quest": None, "gold": 0, "skill": None}
 
 
@@ -155,9 +152,6 @@ async def test_mentor_skill_gate_uses_effective_player_tier(player, requirement,
     assert (res.met, res.unmet) == expected
 
 
-# --- check_quest_completed --------------------------------------------------
-
-
 async def test_check_quest_completed_complete_is_true():
     # 'completed' is the EXACT status string update_quest writes on the completion transition;
     # the reader must match it or a mentor quest-gate never opens (any drift = permanent refusal).
@@ -166,9 +160,6 @@ async def test_check_quest_completed_complete_is_true():
 
 
 async def test_check_quest_completed_stale_complete_string_is_false():
-    # Guard against the historical mismatch: the writer stores 'completed', never 'complete'.
-    # If someone reintroduces 'complete' on either side this test (plus the writer pin in
-    # test_quest_tools) keeps the two ends aligned.
     q = _queries(get_player_quest=AsyncMock(return_value={"status": "complete"}))
     assert await mr.check_quest_completed("p1", "q1", queries_mod=q) is False
 
@@ -183,9 +174,6 @@ async def test_check_quest_completed_not_started_is_false():
     assert await mr.check_quest_completed("p1", "q1", queries_mod=q) is False
 
 
-# --- _parse_skill_requirement ----------------------------------------------
-
-
 def test_parse_skill_requirement_ok():
     assert mr._parse_skill_requirement("Athletics: Trained") == ("athletics", "trained")
 
@@ -194,9 +182,6 @@ def test_parse_skill_requirement_ok():
 def test_parse_skill_requirement_malformed_raises(bad):
     with pytest.raises(ValueError):
         mr._parse_skill_requirement(bad)
-
-
-# --- fail-loud contract paths ----------------------------------------------
 
 
 async def test_unknown_variant_raises():
@@ -247,8 +232,6 @@ async def test_unknown_mentor_npc_raises():
 
 @pytest.mark.parametrize("requirements", [{"gold": 50}, {"disposition": "friendly"}, {}])
 async def test_requirements_missing_required_key_raises_valueerror(requirements):
-    """A malformed binding missing disposition/gold fails loud with ValueError (not a bare
-    KeyError), so story-003 maps it to ToolError instead of leaking a stack."""
     npc = {"id": "mentor_x", "mentor": {"culture": "X", "training_cycles": 3, "requirements": requirements}}
     with pytest.raises(ValueError):
         await mr.check_mentor_requirements(
@@ -260,9 +243,6 @@ async def test_requirements_missing_required_key_raises_valueerror(requirements)
             variants_mod=_variants(),
             disposition_mod=_disposition("trusted"),
         )
-
-
-# --- real content integration ----------------------------------------------
 
 
 async def _check_real_drathian(player):
@@ -282,8 +262,6 @@ async def _check_real_drathian(player):
 
 
 async def test_real_drathian_binding_skill_gate():
-    """An untrained but friendly, rich player fails on exactly the skill gate —
-    proves the aggregate reads real content."""
     res = await _check_real_drathian({"gold": 1000})
     assert res.met is False
     assert len(res.unmet) == 1
@@ -291,7 +269,5 @@ async def test_real_drathian_binding_skill_gate():
 
 
 async def test_real_drathian_binding_opens_for_athletics_proficient():
-    """The reported defect, against live content: an Athletics-PROFICIENT character with
-    no skill_advancement row was refused training the rules engine already opens."""
     res = await _check_real_drathian({"gold": 1000, "proficiencies": ["athletics"]})
     assert (res.met, res.unmet) == (True, [])

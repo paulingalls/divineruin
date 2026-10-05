@@ -6,7 +6,6 @@ import { joinWaitlist, waitlistApiBase, type JoinOpts } from "./api.ts";
 // E2E (story-006). joinWaitlist must map every server outcome to a handled WaitlistResult and never
 // throw to the UI.
 
-// A fetch stub that records the call and returns a chosen Response.
 function fakeFetch(response: Response | (() => Promise<never>)) {
   const calls: { url: string; init: RequestInit }[] = [];
   const fn = ((url: string, init: RequestInit) => {
@@ -79,8 +78,6 @@ test("waitlistApiBase defaults to the dev/e2e server origin when PUBLIC_API_URL 
 });
 
 test("waitlistApiBase uses PUBLIC_API_URL when set (the deploy gate)", () => {
-  // The prod build inlines PUBLIC_API_URL (e.g. https://divineruin.app) so the
-  // deployed client posts to the real API origin, not the localhost fallback.
   const prev = process.env.PUBLIC_API_URL;
   process.env.PUBLIC_API_URL = "https://divineruin.app";
   try {

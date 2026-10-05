@@ -1,9 +1,3 @@
-"""Tests for training cycle state machine — story-007.
-
-Covers: config validation, start_training_cycle, midpoint decisions,
-resolve_midpoint_decision, complete_training_cycle.
-"""
-
 import random
 from datetime import UTC, datetime
 
@@ -26,9 +20,6 @@ from training_rules import (
     start_training_cycle,
     validate_training_activity_type,
 )
-
-# ── Config validation ──────────────────────────────────────────────────
-
 
 ALL_ACTIVITY_TYPES: list[TrainingActivityType] = [
     "spell_cantrip",
@@ -64,9 +55,6 @@ class TestConfig:
         assert validate_training_activity_type("unknown_thing") is False  # type: ignore[arg-type]
 
 
-# ── start_training_cycle ───────────────────────────────────────────────
-
-
 class TestStartTrainingCycle:
     def test_returns_training_cycle_init(self) -> None:
         now = datetime(2026, 4, 5, 12, 0, 0, tzinfo=UTC)
@@ -82,7 +70,6 @@ class TestStartTrainingCycle:
         assert abs(result.decision_at.timestamp() - expected_decision) < 1
 
     def test_first_half_within_range(self) -> None:
-        """Cantrip first half: 3-5 hours = 10800-18000 seconds."""
         for seed in range(50):
             result = start_training_cycle(
                 "spell_cantrip",
@@ -109,9 +96,6 @@ class TestStartTrainingCycle:
             start_training_cycle("bogus", datetime.now(UTC))  # type: ignore[arg-type]
 
 
-# ── Midpoint decisions ─────────────────────────────────────────────────
-
-
 class TestGetMidpointDecision:
     @pytest.mark.parametrize("atype", ALL_ACTIVITY_TYPES)
     def test_each_type_has_two_options(self, atype: TrainingActivityType) -> None:
@@ -136,9 +120,6 @@ class TestGetMidpointDecision:
             get_midpoint_decision("bogus")  # type: ignore[arg-type]
 
 
-# ── resolve_midpoint_decision ──────────────────────────────────────────
-
-
 class TestResolveMidpointDecision:
     def test_valid_decision_produces_running_second_half(self) -> None:
         decision = get_midpoint_decision("spell_cantrip")
@@ -160,7 +141,6 @@ class TestResolveMidpointDecision:
         assert abs(result.completes_at.timestamp() - expected) < 1
 
     def test_second_half_within_range_cantrip(self) -> None:
-        """Cantrip second half: 2-4 hours = 7200-14400 seconds."""
         decision = get_midpoint_decision("spell_cantrip")
         choice_id = decision.options[0].id
         dt = datetime(2026, 1, 1, tzinfo=UTC)
@@ -192,13 +172,9 @@ class TestResolveMidpointDecision:
         assert r1.second_half_seconds == r2.second_half_seconds
 
 
-# ── complete_training_cycle ────────────────────────────────────────────
-
-
 class TestCompleteTrainingCycle:
     def test_skill_practice_increments_counter(self) -> None:
         decision = get_midpoint_decision("skill_practice")
-        # Both options should give counter >= 1
         for opt in decision.options:
             result = complete_training_cycle("skill_practice", opt.id)
             assert isinstance(result, CompletionResult)
@@ -220,33 +196,23 @@ class TestCompleteTrainingCycle:
 
     def test_micro_bonus_from_decision(self) -> None:
         decision = get_midpoint_decision("spell_standard")
-        # Pick second option
         result = complete_training_cycle("spell_standard", decision.options[1].id)
         assert isinstance(result.micro_bonus, dict)
 
     def test_skill_practice_fundamentals_gives_extra_counter(self) -> None:
-        """Fundamentals option: +2 counter toward advancement."""
         decision = get_midpoint_decision("skill_practice")
-        # Find the fundamentals option
         fund_opt = next(o for o in decision.options if o.micro_bonus.get("type") == "fundamentals")
         result = complete_training_cycle("skill_practice", fund_opt.id)
         assert result.counter_increment == 2
 
     def test_skill_practice_advanced_gives_one_counter(self) -> None:
-        """Advanced option: +1 counter but advantage on next check."""
         decision = get_midpoint_decision("skill_practice")
         adv_opt = next(o for o in decision.options if o.micro_bonus.get("type") == "advanced")
         result = complete_training_cycle("skill_practice", adv_opt.id)
         assert result.counter_increment == 1
 
 
-# ── Duration range integration (all activity types) ───────────────────
-
-
 class TestDurationRanges:
-    """Verify total durations match documented ranges in game_mechanics_core.md."""
-
-    # (type, min_total_seconds, max_total_seconds)
     EXPECTED_RANGES = [
         ("spell_cantrip", 5 * 3600, 9 * 3600),  # 5-9 hours
         ("spell_minor", 6 * 3600, 10 * 3600),  # 6-10 hours
@@ -273,17 +239,7 @@ class TestDurationRanges:
         assert actual_max <= max_total, f"{atype} max total too high"
 
 
-# ── cycles_required (M8 story-004: data-driven tier→cycles) ─────────────
-
-
 class TestCyclesRequired:
-    """get_cycles_required surfaces the data-driven learn-cycle count per spell tier.
-
-    Counts live in content/training_activity_types.json (loaded by the autouse
-    conftest fixture); the spec table is Cantrip 1 / Minor 2 / Standard 3 /
-    Major 5 / Supreme 8.
-    """
-
     @pytest.mark.parametrize(
         "activity_type,expected",
         [
@@ -298,22 +254,16 @@ class TestCyclesRequired:
         assert get_cycles_required(activity_type) == expected
 
     def test_returns_mentor_variant_cycle_count(self) -> None:
-        # M9 story-002: the mentor-variant loop is the first NON-spell type to carry a
-        # cycle count (3 — the "2-3 session" loop), so get_cycles_required serves it too.
         assert get_cycles_required("technique_mentor_variant") == 3
 
     @pytest.mark.parametrize("activity_type", ["technique_base", "skill_practice", "recipe_study"])
     def test_raises_on_non_spell_type(self, activity_type: str) -> None:
-        # Non-spell training carries no cycle count — fail loud, never default.
         with pytest.raises(ValueError, match="cycles_required"):
             get_cycles_required(activity_type)
 
     def test_raises_on_unknown_type(self) -> None:
         with pytest.raises(ValueError, match="Unknown"):
             get_cycles_required("nonexistent")
-
-
-# ── Runtime-loaded config test seam ─────────────────────────────────────
 
 
 class TestTrainingConfigSeam:

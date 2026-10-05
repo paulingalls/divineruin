@@ -1,15 +1,6 @@
 import { test, expect, describe } from "bun:test";
 import type { Ability, Cost, AbilityType } from "./ability";
 
-// Tests for the M2.2 Ability type (content/archetype_abilities.json row shape).
-// Abilities are fully-specified DB-loaded content, so every field is REQUIRED.
-// These are compile-time shape conformance tests: if the interface drifts from
-// the archetype_abilities.json row contract, the fixtures stop compiling and
-// `bun test` / `tsc --noEmit` go red. The type mirrors the nested JSON row and
-// the Python Ability dataclass (apps/agent/abilities.py) for cross-language
-// parity. Cost is a {stamina, focus, scaling} object — decision
-// m22-cost-object-schema; there is NO cost_type discriminator.
-
 const devastatingStrike: Ability = {
   id: "warrior_devastating_strike",
   archetype_id: "warrior",

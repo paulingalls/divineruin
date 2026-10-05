@@ -1,5 +1,3 @@
-"""Charm source identity and positive final damage at the real landing seam."""
-
 import json
 from unittest.mock import AsyncMock, MagicMock
 

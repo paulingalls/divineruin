@@ -1,5 +1,3 @@
-"""Spatial contracts at numeric and persisted boundaries."""
-
 import json
 from copy import deepcopy
 

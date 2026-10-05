@@ -1,21 +1,4 @@
-"""Real-DB E2E capstone for M2.1 Archetype Chassis.
-
-Proves the 18-archetype chassis composes end-to-end on real infra across both
-language surfaces (auto-marked `acceptance` by tests/acceptance/conftest.py):
-
-- **message_event** (Python agent load path): `load_archetypes()` against a real
-  Postgres testcontainer resolves all 18 via `get_archetype_chassis`, and
-  `calculate_max_hp` / `calculate_max_pools` match the spec-anchored
-  `EXPECTED_HP` / `EXPECTED_RESOURCE` tables (incl. oracle's spec-corrected 8/3
-  arcane_shadow — story-005). This is the load-bearing surface: the HP/resource
-  math runs in the agent.
-- **http_websocket** (TS server load path): the Bun server boots bound to the
-  SAME seeded testcontainer. Its startup `Promise.all([... loadArchetypes() ...])`
-  resolving all 18 without throwing IS the server chassis-load proof — a
-  malformed or missing row fails `parseArchetypeRow` and the process exits before
-  `_wait_ready` returns. No archetype REST endpoint exists yet (story-003 built
-  the loader for future consumers; decision archetype-rest-surface-deferred).
-"""
+"""Use one seeded database for both languages. No archetype endpoint exists, so successful Bun startup proves strict loading only."""
 
 from __future__ import annotations
 

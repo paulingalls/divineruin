@@ -7,13 +7,6 @@ import type {
   PoolFormula,
 } from "./archetype";
 
-// Tests for the M2.1 Archetype chassis type (content/archetypes.json row shape).
-// The chassis is fully-specified DB-loaded content, so every field is REQUIRED.
-// These are compile-time shape conformance tests: if the interface drifts from
-// the archetypes.json row contract, the fixtures stop compiling and `bun test` /
-// `tsc --noEmit` go red. The TS type mirrors the nested JSON row (not the
-// flattened Python Chassis dataclass) — decision 8cd054f86efb.
-
 const warrior: Archetype = {
   id: "warrior",
   hp: { base: 12, growth: 5, category: "martial" },

@@ -1,20 +1,11 @@
 import { test, expect, describe } from "bun:test";
 import { parseMentorVariantRow } from "./mentor_variants.ts";
 
-// Drives the production fail-loud parseMentorVariantRow over content/mentor_variants.json,
-// proving every entry conforms to the shared MentorVariant contract and cross-references
-// real base abilities + mentor NPCs. Mirrors spells-load.test.ts. The unit-level parse +
-// accessor behavior is pinned in mentor_variants.test.ts.
-
 const ROOT = new URL("../../../", import.meta.url);
 const VARIANTS_PATH = new URL("content/mentor_variants.json", ROOT);
 const ABILITIES_PATH = new URL("content/archetype_abilities.json", ROOT);
 const NPCS_PATH = new URL("content/npcs.json", ROOT);
 
-// content/mentor_variants.json is a closed set (story-001, extended story-006): the 44
-// martial elective techniques (warrior/guardian/skirmisher/rogue/spy x 8, bard x 4) x 2
-// cultural variants. Exact counts catch silent attrition AND accidental additions (move
-// these if the set changes).
 const VARIANT_COUNT = 88;
 const MARTIAL_ARCHETYPES = new Set(["warrior", "guardian", "skirmisher", "rogue", "spy", "bard"]);
 

@@ -92,9 +92,6 @@ describe("handleDebugPage", () => {
   });
 
   test("the favor-loss button sends a negative amount", () => {
-    // The mobile handler pushes the toast only for a NON-ZERO amount
-    // (game-event-handler.ts DIVINE_FAVOR_CHANGED), so a loss button carrying amount:0 —
-    // what this one shipped with — renders nothing and silently certifies the negative path.
     const amounts = [...html.matchAll(/type:'divine_favor_changed',amount:(-?\d+)/g)].map((m) =>
       Number(m[1]),
     );

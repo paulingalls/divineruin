@@ -1,11 +1,4 @@
-"""Tests for check(mode="discover") — §7 skill/target discovery.
-
-check(skill, target) takes a VISIBLE target; the hidden element's id is the Resolve's
-OUTPUT on success, never an input. M5 scopes the location's hidden_elements room-wide by
-matching discover_skill (the §7 fallback). Covers success/failure, skill-scoping,
-the element-keyed anti-grind gate (skill:element_id), the dc-less event, and the
-lowest-DC tie-break.
-"""
+"""The hidden element id is an output; discovery inputs must name a visible target."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -33,7 +26,6 @@ class TestCheckDiscover:
             )
         assert result["outcome"] == "discovered"
         assert "hidden passage" in result["description"]
-        # The element id surfaces in the RESPONSE only (an output, never an input).
         assert result["element_id"] == "secret_door"
         assert result["target"] == "bookshelf"
         mutations.set_player_flag.assert_called_once_with("player_1", "secret_door.discovered", True)
@@ -41,9 +33,6 @@ class TestCheckDiscover:
     @pytest.mark.asyncio
     @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
     async def test_dice_roll_carries_dramatic_verdict(self, mock_event):
-        # Discover-mode DICE_ROLL must surface the resolver's dramatic verdict (nat-20),
-        # matching the skill/save emission contract (story-005/006). A nat-20 here is
-        # dramatic with context "natural_20"; the client overlay gates on the flag.
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
         with patch("check_resolution.dice_roll", return_value=_roll(20)):
@@ -106,7 +95,6 @@ class TestCheckDiscover:
     @pytest.mark.asyncio
     @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
     async def test_no_candidate_search_is_retryable(self, mock_event):
-        # A cosmetic roll does not lock out a later search.
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
         first = json.loads(
@@ -143,8 +131,6 @@ class TestCheckDiscover:
 
     @pytest.mark.asyncio
     async def test_corrupt_conditions_fail_loud_as_toolerror(self):
-        # M4.4 story-008 (concern 988e3e4f55ea): a corrupt stored conditions row surfaces as a
-        # DM-narratable ToolError before the resolver hits get_condition_effects.
         corrupt_player = {**DISCOVER_PLAYER, "conditions": [{"type": "bogus"}]}
         content, queries, mutations = _make_discover_mocks(player=corrupt_player)
         ctx = _make_context(location_id="test_location")
@@ -156,8 +142,6 @@ class TestCheckDiscover:
     @pytest.mark.asyncio
     @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
     async def test_repeat_search_finds_nothing_new(self, mock_event):
-        # A failed roll exhausts that secret for the session — re-searching the same target
-        # finds nothing new (not_found), rather than re-rolling it.
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
         with patch("check_resolution.dice_roll", return_value=_roll(3)):
@@ -177,8 +161,6 @@ class TestCheckDiscover:
     @pytest.mark.asyncio
     @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
     async def test_reworded_target_cannot_regrind(self, mock_event):
-        # The anti-grind gate keys on the element, not the free-text target: re-searching the
-        # same secret under a different target wording must NOT earn a fresh roll at it.
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
         with patch("check_resolution.dice_roll", return_value=_roll(3)) as mock_dice:
@@ -186,7 +168,6 @@ class TestCheckDiscover:
                 ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
             )
             first_roll_calls = mock_dice.call_count
-            # The secret remains locked out; the second roll is cosmetic.
             result = json.loads(
                 await _check_discover_impl(
                     ctx, "perception", "the shelf", content=content, queries=queries, mutations=mutations
@@ -198,9 +179,6 @@ class TestCheckDiscover:
     @pytest.mark.asyncio
     @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
     async def test_already_discovered_flag_excludes_candidate(self, mock_event):
-        # The permanent (cross-session) guard: an element already flagged discovered on the
-        # player is excluded from the candidate pool, so re-searching finds nothing and never
-        # re-rolls it.
         player = {**DISCOVER_PLAYER, "flags": {"secret_door.discovered": True}}
         content, queries, mutations = _make_discover_mocks(player=player)
         ctx = _make_context(location_id="test_location")

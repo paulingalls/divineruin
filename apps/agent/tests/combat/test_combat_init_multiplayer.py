@@ -1,10 +1,3 @@
-"""Integration coverage: combat init builds one CombatParticipant PER party member (M14
-story-003). Today combat_init always builds a single type="player" participant from
-session.player_id; this suite locks in the multiplayer loop over session.party.member_ids
-while guaranteeing a solo (1-member) party still produces a byte-identical single-player
-build. Models test_combat_init_roles.py — mock mutations/queries/content DI, no real DB.
-"""
-
 import copy
 from unittest.mock import AsyncMock
 
@@ -85,8 +78,6 @@ async def test_two_member_party_builds_two_player_participants():
 
 @pytest.mark.asyncio
 async def test_non_primary_members_fetched_in_one_batched_call():
-    """The non-primary rows load via a SINGLE get_players_for_update(non_primary_ids) call,
-    not a serial get_player per member — and the primary is never re-fetched through the batch."""
     mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
     ctx = make_context()
     _add_second_member(ctx)
@@ -95,7 +86,6 @@ async def test_non_primary_members_fetched_in_one_batched_call():
     await _run(ctx, mock_mutations, mock_queries, mock_content)
 
     mock_queries.get_players_for_update.assert_called_once_with(["player_2"])
-    # player_2 rides the batch; only the primary is fetched via get_player (no serial 2nd query).
     fetched_ids = [call.args[0] for call in mock_queries.get_player.call_args_list]
     assert "player_2" not in fetched_ids
     assert fetched_ids == ["player_1"]
@@ -111,7 +101,6 @@ async def test_solo_party_builds_exactly_one_player_participant():
     assert len(players) == 1
     assert players[0]["id"] == "player_1"
     assert "player_1" in state_dict["initiative_order"]
-    # Byte-identical solo path: an empty non-primary set skips the batch query entirely.
     mock_queries.get_players_for_update.assert_not_called()
 
 
@@ -146,8 +135,6 @@ async def test_combat_started_event_lists_both_players():
 
 @pytest.mark.asyncio
 async def test_combat_init_resets_weapon_flags_for_every_member():
-    # M18 story-003: the per-encounter weapon-flag reset loops EVERY member, so a non-primary
-    # member's stale swing from a prior encounter can't leak into this encounter's accrual.
     mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
     ctx = make_context()
     _add_second_member(ctx)

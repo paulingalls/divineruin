@@ -1,11 +1,4 @@
-"""Tests for the companion profiles loader + scaler (Phase 6 M6.4 / story-002).
-
-The loader mirrors role_archetypes.py: fail-loud parse of content/companions.json into frozen
-Companion dataclasses, a module-global dict with a set_* test seam, and a build-then-swap async
-DB loader. companion_scaling.scale_companion_stats_to_player_level is the pure level-scaler.
-These tests own the parse + accessor + scaling contract; the real-DB load is exercised by the
-story-005 capstone.
-"""
+"""The loader tests isolate parsing and scaling; stored loading needs real Postgres."""
 
 import copy
 import json
@@ -54,9 +47,6 @@ class TestParse:
             assert len(c.save_proficiencies) == 2
 
     def test_ability_bucket_cardinality(self):
-        """M6.4 spec floor/ceiling per companion. The TS twin (companion.test.ts) pins the same
-        numbers, but no test the card's Verify runs did — Sable's second attack could be reverted
-        with the whole Python gate still green."""
         for e in _RAW:
             c = parse_companion_row(e["id"], e)
             assert 2 <= len(c.attacks) <= 4, f"{c.id} attacks"
@@ -65,11 +55,6 @@ class TestParse:
             assert len(c.reactions) <= 1, f"{c.id} reactions"
 
     def test_every_row_declares_errand_injury_reduction(self):
-        """AC4: the errand injury reduction is a companion content field, not a Kael-keyed table.
-
-        game_mechanics_core.md:904 gives Kael "reduced injury risk"; Lira/Tam/Sable have entirely
-        different scouting mechanics and no injury reduction, so they ship 0.
-        """
         parsed = {e["id"]: parse_companion_row(e["id"], e) for e in _RAW}
         assert parsed["companion_kael"].errand_injury_reduction == 5
         assert {c.errand_injury_reduction for cid, c in parsed.items() if cid != "companion_kael"} == {0}
@@ -80,12 +65,7 @@ class TestParse:
             parse_companion_row("companion_lira", row)
 
     def test_every_row_declares_a_known_gender(self):
-        """story-020's pronoun guard reads this field; a row without one has no checkable pronoun.
-
-        Sable shipped without a gender key while every prose source in the repo called her "her",
-        so the guard's `.gender` read was `None` on the one companion whose pronouns are hardest
-        to get right — a silent no-op, not a red.
-        """
+        """Sable selection must not depend on gender."""
         for e in _RAW:
             c = parse_companion_row(e["id"], e)
             assert c.gender in {"male", "female", "nonbinary"}, f"{c.id}.gender {c.gender!r}"
@@ -98,8 +78,6 @@ class TestParse:
     def test_sable_non_verbal(self):
         sable = parse_companion_row("companion_sable", _row("companion_sable"))
         assert sable.non_verbal is True
-        # sound_palette is owned solely by voice_registry.json now (B1, debt eb08ad17f6e2);
-        # the companion entity no longer mirrors it.
         assert not hasattr(sable, "sound_palette")
         assert sable.reactions == ()
 
@@ -136,7 +114,6 @@ class TestParse:
 
 class TestAccessor:
     def test_get_returns_each_companion(self):
-        # autouse fixture seeds the catalog from content
         for cid in _IDS:
             assert get_companion_profile(cid).id == cid
 
@@ -149,7 +126,6 @@ class TestAccessor:
 
 
 class TestScaling:
-    # A representative player line: warrior chassis, CON +2.
     ARCHETYPE = "warrior"
     CON_MOD = 2
     LEVELS = (1, 5, 10, 15, 20)
@@ -173,7 +149,6 @@ class TestScaling:
 
     def test_kael_ac_threshold_steps_at_l10(self):
         kael = get_companion_profile("companion_kael")
-        # Kael: AC 15 base, 17 at L10+.
         assert scale_companion_stats_to_player_level(kael, 100, 1).ac == 15
         assert scale_companion_stats_to_player_level(kael, 100, 9).ac == 15
         assert scale_companion_stats_to_player_level(kael, 100, 10).ac == 17
@@ -186,7 +161,6 @@ class TestScaling:
 
     def test_kael_strength_accumulates(self):
         kael = get_companion_profile("companion_kael")
-        # Base STR 15; +1 at L4, +1 at L12.
         assert scale_companion_stats_to_player_level(kael, 100, 1).attributes["strength"] == 15
         assert scale_companion_stats_to_player_level(kael, 100, 4).attributes["strength"] == 16
         assert scale_companion_stats_to_player_level(kael, 100, 12).attributes["strength"] == 17
@@ -200,12 +174,7 @@ class TestScaling:
 
 class TestVoiceRegistration:
     def test_every_companion_voice_id_registered_in_voices(self):
-        """Every companions.json voice_id must be a key in voices.VOICES (audio-first golden rule).
-
-        get_voice_config does VOICES.get(character, DEFAULT_VOICE), so an unregistered voice_id
-        silently falls back to DM_NARRATOR. This includes Sable's COMPANION_SABLE: she is
-        non-verbal (empty env default), but the key must exist so the invariant holds uniformly.
-        """
+        """An empty registered voice intentionally falls back to the narrator."""
         from voices import VOICES
 
         for cid in _IDS:
@@ -216,17 +185,11 @@ class TestVoiceRegistration:
 
 
 class TestActionPool:
-    """companion_attacks_to_action_pool translates the profile's NARRATIVE attack notation
-    (damage "1d8+STR", hit "STR+prof") into the MECHANICAL action dicts the combat resolver
-    consumes (plain dice + attributes-supply-the-mod). Attacks only — actives/reactions are
-    DM-narrated. The per-attack governing_attribute (derived from the hit field) drives the
-    resolver's hit stat (story-008); ranged:True is still emitted for ranged attacks (range/reach
-    narration) but no longer determines the hit stat."""
+    """Parsed governing attributes drive hit math; ranged delivery retains its range meaning."""
 
     def test_kael_melee_attacks(self):
         kael = get_companion_profile("companion_kael")
         pool = companion_attacks_to_action_pool(kael)
-        # hit "STR+prof" -> governing_attribute strength.
         assert pool == [
             {
                 "name": "Longsword",
@@ -247,9 +210,6 @@ class TestActionPool:
     def test_lira_ranged_attack_sets_ranged_flag(self):
         lira = get_companion_profile("companion_lira")
         pool = companion_attacks_to_action_pool(lira)
-        # Arcane Bolt and Radiant Mote are both type=ranged -> top-level ranged:True.
-        # hit "INT+prof" -> governing INT (the resolver uses INT, NOT the ranged-default
-        # DEX). damage strips +INT.
         assert pool == [
             {
                 "name": "Arcane Bolt",
@@ -276,7 +236,6 @@ class TestActionPool:
         assert by_name["Short Sword"].get("ranged") is None  # melee -> no ranged key
         assert by_name["Shortbow"]["ranged"] is True
         assert by_name["Short Sword"]["damage"] == "1d6"  # +DEX stripped
-        # Both Tam attacks are DEX (hit "DEX+prof"); the melee short sword resolves on DEX, not STR.
         assert by_name["Short Sword"]["governing_attribute"] == "dexterity"
         assert by_name["Shortbow"]["governing_attribute"] == "dexterity"
 
@@ -287,7 +246,6 @@ class TestActionPool:
                 assert action["damage"], f"{cid} {action['name']} lost its dice term"
 
     def test_malformed_damage_without_dice_term_raises(self):
-        # A pure-attribute damage expression has no dice/int term to keep -> fail loud.
         broken = copy.deepcopy(_row("companion_kael"))
         broken["attacks"][0]["damage"] = "STR"
         bad_profile = parse_companion_row("companion_kael", broken)
@@ -295,7 +253,6 @@ class TestActionPool:
             companion_attacks_to_action_pool(bad_profile)
 
     def test_malformed_hit_without_attribute_raises(self):
-        # A hit expression with no recognized attribute token can't yield a governing stat -> fail loud.
         broken = copy.deepcopy(_row("companion_kael"))
         broken["attacks"][0]["hit"] = "prof"
         bad_profile = parse_companion_row("companion_kael", broken)
@@ -305,7 +262,6 @@ class TestActionPool:
 
 class TestLoader:
     async def test_load_does_not_wipe_catalog_on_bad_row(self, monkeypatch):
-        """A malformed DB row fails loud WITHOUT wiping the already-loaded catalog (atomic swap)."""
         import db
 
         class _BadPool:
@@ -319,7 +275,6 @@ class TestLoader:
         assert is_loaded()  # seeded by the autouse fixture
         with pytest.raises(ValueError, match="companion_broken"):
             await load_companion_profiles()
-        # catalog intact — the swap never happened
         assert get_companion_profile("companion_kael").name == "Kael"
 
     async def test_load_populates_from_pool(self, monkeypatch):
@@ -341,12 +296,9 @@ class TestLoader:
         assert {c for c in _IDS} <= set(companion_profiles._companion_profiles.keys())
 
 
-# --- archetype -> companion assignment (story-003) -----------------------------
-
 _ARCHETYPES_PATH = Path(__file__).resolve().parents[3] / "content" / "archetypes.json"
 _ARCHETYPE_IDS = sorted(e["id"] for e in json.loads(_ARCHETYPES_PATH.read_text()))
 
-# Derived from the content, never restated by hand: {archetype_id: companion_id}.
 _EXPECTED = {a: e["id"] for e in _RAW for a in e["complements"]}
 
 
@@ -360,8 +312,6 @@ def _catalog_with(complements_by_id: dict[str, list[str]]) -> dict[str, Companio
 
 class TestSelectCompanionForArchetype:
     def test_complements_partition_the_archetypes(self):
-        # The AC2 content guard: every archetype covered, none covered twice. Reds the day a
-        # 19th archetype ships uncovered, or an id is copied into a second companion.
         listed = [a for e in _RAW for a in e["complements"]]
         assert sorted(listed) == _ARCHETYPE_IDS
         assert len(listed) == len(set(listed))

@@ -8,16 +8,6 @@ import {
 import { DISPOSITION_VALUES, type Attributes } from "./role_archetype";
 import type { Npc } from "./npc";
 
-// Conformance test for content/companions.json (Phase 6 M6.4 / story-001). The JSON row IS
-// the cross-language contract the Python loader (story-002) parses; this test guards the
-// catalog's shape, cardinality, and the scaling contract independent of any loader, and serves
-// as the compile-time shape check for the Companion type (rows are cast to Companion[], so
-// interface drift breaks `bun test`).
-//
-// Scope note: story-001 is additive — Kael is COPIED here, NOT yet removed from npcs.json (his
-// ~15 Python consumers are rewired in story-004). So there is intentionally no "Kael absent
-// from npcs" assertion here; the narrative-fidelity pins below guard the copy instead.
-
 const companions = (await Bun.file(
   new URL("../../../../content/companions.json", import.meta.url),
 ).json()) as Companion[];
@@ -44,7 +34,6 @@ describe("companions.json — cardinality", () => {
     expect([...byId.keys()].sort()).toEqual([...COMPANION_IDS].sort());
   });
 
-  // Value-array unions are the type SSOT; pin the literals so a union change updates the test.
   test("TACTICAL_PREFERENCE_VALUES literal pin", () => {
     expect([...TACTICAL_PREFERENCE_VALUES]).toEqual([
       "aggressive",
@@ -86,26 +75,18 @@ describe("companions.json — row shape", () => {
       expect(Array.isArray(c.complements)).toBe(true);
       expect(c.complements.length).toBeGreaterThan(0);
       expect(typeof c.voice_id).toBe("string");
-      // exactly 2 save proficiencies (spec: companions are proficient in 2 saves)
       expect(c.save_proficiencies.length).toBe(2);
       for (const s of c.save_proficiencies) expect(ATTRIBUTE_KEYS).toContain(s as keyof Attributes);
-      // base attributes complete
       for (const k of ATTRIBUTE_KEYS) expect(typeof c.base_attributes[k]).toBe("number");
     }
   });
 
-  // Constraint 7: the JSON row is a cross-language contract. The Python loader pins the same
-  // field (test_companion_profiles.TestParse.test_every_row_declares_a_known_gender); a guard on
-  // one side certifies nothing about the other.
   test("every companion declares a gender the pronoun map knows", () => {
     for (const c of companions) {
       expect(["male", "female", "nonbinary"]).toContain(c.gender);
     }
   });
 
-  // The beat-3/4 onboarding vignettes are authored per companion and live on the row (the
-  // Python renderer interpolates them). Same cross-language contract as gender above; the
-  // prose itself is guarded in apps/agent/tests/test_companion_vignette_content.py.
   test("every companion declares both onboarding vignette fields", () => {
     for (const c of companions) {
       expect(typeof c.onboarding_meeting).toBe("string");
@@ -189,8 +170,6 @@ describe("companions.json — Sable non-verbal", () => {
     const sable = byId.get("companion_sable")!;
     expect(sable.non_verbal).toBe(true);
     expect(sable.voice_id).toBe("COMPANION_SABLE");
-    // The companion entity no longer mirrors sound_palette (debt eb08ad17f6e2); voice_registry
-    // is the single owner. Cast through any since the field is gone from the Companion type.
     expect((sable as { sound_palette?: unknown }).sound_palette).toBeUndefined();
   });
 
@@ -219,7 +198,6 @@ describe("companions.json — Kael fidelity (copied from npcs.json)", () => {
     expect(k.name).toBe("Kael");
     expect(k.default_disposition).toBe("friendly");
     expect(k.voice_id).toBe("COMPANION_KAEL");
-    // load-bearing narrative strings — a lossy copy fails here
     expect(k.personality).toContain("quietly haunted");
     expect(k.knowledge.free).toContain("caravan routes between major settlements");
     expect(k.knowledge["disposition >= trusted"]).toBeDefined();
@@ -234,7 +212,6 @@ describe("companions.json — Kael fidelity (copied from npcs.json)", () => {
     expect(k.tactical_preference).toBe("protective");
     expect(k.scaling_rules.ac_thresholds[0]!.ac).toBe(15);
     expect(k.base_attributes.strength).toBe(15);
-    // Intercept — the defining Kael reaction
     expect(k.reactions.some((r) => r.name === "Intercept")).toBe(true);
   });
 

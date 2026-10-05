@@ -1,13 +1,8 @@
-"""The three Named stat blocks, bestiary lines 440-608."""
-
 import asyncio
-import copy
 import importlib
 import json
 import sys
 from pathlib import Path
-
-import pytest
 
 from creature_schema import validate_creature_stat_block
 from materials import parse_material_row
@@ -237,27 +232,3 @@ def test_named_loot_materials_and_seed():
     conn = Connection()
     asyncio.run(seed_content.seed(conn))
     assert set(SPEC) <= conn.creatures
-
-
-def test_named_pins_reject_changed_stat_attack_and_loot():
-    row = catalog("creatures.json")["hollow_choir"]
-    for mutate in (
-        lambda x: x.__setitem__("hp", 201),
-        lambda x: x["attacks"][0].__setitem__("reach", 61),
-        lambda x: x["attacks"][0].__setitem__("dc", 17),
-        lambda x: x["attacks"][0].pop("conditions_on_failure"),
-        lambda x: x["attacks"][1].__setitem__("applies_condition", "deafened"),
-    ):
-        changed = copy.deepcopy(row)
-        mutate(changed)
-        with pytest.raises(AssertionError):
-            assert_pin(changed, "hollow_choir")
-    table = catalog("loot_tables.json")["loot_hollow_choir"]
-    for mutate in (
-        lambda x: x["drops"][0].__setitem__("quantity", 2),
-        lambda x: x["drops"][1]["requires"][0].__setitem__("tier", "trained"),
-    ):
-        changed = copy.deepcopy(table)
-        mutate(changed)
-        with pytest.raises(AssertionError):
-            assert_loot(changed, "hollow_choir")

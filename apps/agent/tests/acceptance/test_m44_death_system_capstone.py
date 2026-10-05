@@ -1,21 +1,4 @@
-"""Capstone: M4.4 death/dying/resurrection end-to-end against a real Postgres testcontainer.
-
-Stories 001-008 shipped the pieces: the death-cost tier engine + persisted history (001), the
-instant-death verdict + companion auto-stabilize (002), the resurrection loop + 4-tier anchor
-(003), the party-wipe engine + Mortaen patron bonus/waive (004), the combat-START condition load
-(005), the Hollowed-death clear + hollow_killed flag (007), and the Temporary Hollowed combat
-ride-along (008). This capstone proves they COMPOSE on ONE seeded testcontainer (auto-marked
-`acceptance` by tests/acceptance/conftest.py), driving the REAL entry points — the combat death
-mechanic (combat_support._resolve_attack_packet), the pure Beat-4 wrap (combat_phase._wrap), the
-defeat router (combat_end._end_combat_db), the party-wipe engine (resurrection), and the
-combat-START load (combat_init._start_combat_impl) — against real PostgreSQL.
-
-Determinism: the only seam patched is the d20 (check_resolution.dice_roll). Lethality/overkill is
-forced by injecting an AttackResult through the _resolve_attack_packet(resolver=...) seam and by
-setting hp_current directly — attack DAMAGE rolls go through the separate
-check_resolution_attack.dice_roll, NOT the d20 seam. Each test uses a distinct player_id / combat_id
-since the testcontainer DB is shared.
-"""
+"""Inject lethality through the resolver seam; keep persistence, death and resurrection entry points real."""
 
 from __future__ import annotations
 

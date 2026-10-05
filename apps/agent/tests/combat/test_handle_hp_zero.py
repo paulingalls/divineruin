@@ -1,9 +1,3 @@
-"""_handle_hp_zero and the ABILITY packet path.
-
-Split out of test_resolve_packet.py (M29 story-016) for the 500-line cap: that file grew the
-roll/apply split, and these two classes exercise paths the split does not touch.
-"""
-
 import ast
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
@@ -60,11 +54,6 @@ def _attribute_writers(attr: str) -> set[tuple[str, str]]:
 
 
 class TestResolveAbilityPacket:
-    """story-007: an in-combat ABILITY declaration resolves through the shared cast logic.
-
-    Player-gated (only the player has a Focus pool + resonance track); the CastResult is stashed on
-    the AbilityCastOutcome so the phase loop can commit resonance/concentration/events post-commit."""
-
     def _player(self) -> CombatParticipant:
         return CombatParticipant(
             id="player_1", name="Lyra", type="player", initiative=15, hp_current=20, hp_max=20, ac=14
@@ -109,10 +98,7 @@ class TestResolveAbilityPacket:
         assert summary["declaration_type"] == "ability"
         assert summary["action"] == "arcane_bolt"
         assert summary["cast"] == {"effect": "zap", "state": "stable"}
-        # the CastResult is handed to the loop keyed by the caster's id (in-memory sync is post-commit)
         assert outcome.results["player_1"] is result
-        # routed through the shared cast core with the cast's own RESONANCE_CHANGED suppressed —
-        # in combat the phase WRAP push is the single authoritative HUD update.
         _args, kwargs = cast_resolver._resolve_cast.call_args
         assert kwargs["suppress_resonance_changed"] is True
 
@@ -172,10 +158,6 @@ class TestResolveAbilityPacket:
 
 
 class TestHandleHpZero:
-    """story-007: _handle_hp_zero resolves a target dropped to 0 HP — the fall / instant-death /
-    Stage-2+ Hollowed-rise / companion-KO branch extracted from _resolve_attack_packet. It mutates
-    the target + sounds in place and returns (hp_status, rose_hollowed)."""
-
     def _target(
         self,
         *,
@@ -211,7 +193,6 @@ class TestHandleHpZero:
         assert rose is False
         assert released == []
         assert SOUND_PLAYER_FALLEN in sounds
-        # non-rise path passes the caller's pre-computed hp_status straight through
         assert hp_status == "defeated"
 
     def test_instant_death_when_overkill_ge_hp_max(self):
@@ -265,7 +246,6 @@ class TestHandleHpZero:
         assert rose is True
         assert released == []
         assert SOUND_HOLLOW_RISE in sounds
-        # rise restores HP, so hp_status is recomputed (no longer the caller's "defeated" sentinel)
         assert hp_status != "defeated"
 
     def test_companion_ko_marks_unconscious_and_records_memory(self):
@@ -288,17 +268,10 @@ class TestHandleHpZero:
 
 
 class TestTheDoorIsTheOnlyDoor:
-    """AC 3 (story-026): every production writer of the zero-HP state is named here.
-
-    Bug 16c5f8a0 was an ABSENCE — a writer that drove ``hp_current`` to 0 and knocked on nothing —
-    so no call-graph test could have witnessed it. This census reads the source instead: each site
-    that assigns a participant's ``hp_current`` or ``is_fallen`` is listed with its relation to the
-    door, and a new writer reds until someone says which side of the door it belongs on.
-    """
+    """A writer that never calls the zero-HP door cannot be witnessed by a call-graph test; inventory both sides explicitly."""
 
     def test_every_hp_current_writer_goes_through_the_door_or_is_named(self):
         assert _attribute_writers("hp_current") == {
-            # The blow and the burn: both drive HP down, both knock (story-026).
             ("combat_support.py", "apply_attack_result"),
             ("draethar_inner_fire.py", "_inner_fire_locked"),
             # INSIDE the door — the Hollowed rise, max(1, hp_max // 2), which cannot be 0.
@@ -310,10 +283,6 @@ class TestTheDoorIsTheOnlyDoor:
         }
 
     def test_is_fallen_is_set_in_one_place_and_cleared_in_one_place(self):
-        """The flag's whole lifecycle, which is what makes the HP-derived hot-line token agree
-        with it (AC 4): the door is the only site that raises it, the nat-20 revive the only site
-        that lowers it — and that one restores HP to 1 in the same block, so neither direction can
-        leave HP and the flag disagreeing."""
         assert _attribute_writers("is_fallen") == {
             ("combat_support.py", "_handle_hp_zero"),
             ("combat_death_save.py", "_request_death_save_locked"),

@@ -1,18 +1,7 @@
-"""Tests for recipe acquisition validators (story-006, M5.1).
-
-Pure deterministic functions — plain args, no DB. Slot capacity mirrors the
-migration-019 recipe_slots seed (Untrained=3 per decision d25e04f066a3); material
-checks cover substitution + tier_minimum.
-"""
-
 import pytest
 
 import recipe_validation as rv
 
-# Slot caps as the DB loader (recipe_slots.get_recipe_slots) returns them, mirroring
-# the migration-019 recipe_slots seed. The validator is pure: the caller loads this
-# from the recipe_slots table and injects it, just as check_material_requirements
-# takes its catalog arg — no second hardcoded copy lives in recipe_validation.
 SLOTS = {
     "untrained": {"max_recipe_tier": "basic", "known_recipe_slots": 3},
     "trained": {"max_recipe_tier": "trained", "known_recipe_slots": 8},
@@ -23,7 +12,6 @@ SLOTS = {
 
 class TestValidateRecipeSlotCapacity:
     def test_untrained_allows_basic_under_cap(self):
-        # Untrained: cap 3, max recipe tier 'basic'.
         result = rv.validate_recipe_slot_capacity("untrained", 2, "basic", SLOTS)
         assert result.allowed is True
         assert result.reason == ""
@@ -34,7 +22,6 @@ class TestValidateRecipeSlotCapacity:
         assert "3" in result.reason  # cap surfaced
 
     def test_untrained_rejects_recipe_tier_above_max(self):
-        # Untrained may only learn 'basic'; a 'trained' recipe is ineligible even with slots.
         result = rv.validate_recipe_slot_capacity("untrained", 0, "trained", SLOTS)
         assert result.allowed is False
         assert "trained" in result.reason
@@ -48,14 +35,12 @@ class TestValidateRecipeSlotCapacity:
         assert rv.validate_recipe_slot_capacity("expert", 15, "expert", SLOTS).allowed is False
 
     def test_master_is_unlimited(self):
-        # Master cap is null in the seed — never rejected on capacity.
         assert rv.validate_recipe_slot_capacity("master", 9999, "master", SLOTS).allowed is True
 
     def test_higher_crafting_tier_may_learn_lower_recipe_tier(self):
         assert rv.validate_recipe_slot_capacity("expert", 0, "basic", SLOTS).allowed is True
 
     def test_rejects_crafting_tier_absent_from_slots(self):
-        # The injected slots mapping is the source of truth; an unknown tier fails loud.
         with pytest.raises(ValueError, match="crafting_tier"):
             rv.validate_recipe_slot_capacity("grandmaster", 0, "basic", SLOTS)
 
@@ -64,7 +49,6 @@ class TestValidateRecipeSlotCapacity:
             rv.validate_recipe_slot_capacity("expert", 0, "legendary", SLOTS)
 
 
-# catalog: material_id -> {category, tier}
 CATALOG = {
     "iron_ingot": {"category": "metal", "tier": 1},
     "steel_ingot": {"category": "metal", "tier": 2},
@@ -96,25 +80,21 @@ class TestCheckMaterialRequirements:
 
     def test_non_substitutable_does_not_use_other_materials(self):
         required = [_req("iron_ingot", 2, 1, False)]
-        # Has plenty of a same-category material, but req is not substitutable.
         result = rv.check_material_requirements(required, {"steel_ingot": 5}, CATALOG)
         assert result.satisfied is False
 
     def test_substitute_same_category_meeting_tier_floor_resolves(self):
-        # iron_ingot required but substitutable; steel_ingot (metal, tier 2 >= 1) substitutes.
         required = [_req("iron_ingot", 2, 1, True)]
         result = rv.check_material_requirements(required, {"steel_ingot": 2}, CATALOG)
         assert result.satisfied is True
 
     def test_substitute_below_tier_minimum_rejected(self):
-        # tin_ingot is metal tier 1 but tier_minimum is 2 -> rejected as substitute.
         required = [_req("steel_ingot", 1, 2, True)]
         result = rv.check_material_requirements(required, {"tin_ingot": 5}, CATALOG)
         assert result.satisfied is False
         assert "steel_ingot" in result.reason
 
     def test_substitute_wrong_category_rejected(self):
-        # oak_plank is wood, cannot substitute for a metal requirement.
         required = [_req("iron_ingot", 1, 1, True)]
         result = rv.check_material_requirements(required, {"oak_plank": 5}, CATALOG)
         assert result.satisfied is False
@@ -131,9 +111,7 @@ class TestCheckMaterialRequirements:
 
 
 class TestAllocateMaterials:
-    """allocate_materials picks a real DISJOINT allocation (resolves debt cdce6c6a776d:
-    the greedy check_material_requirements counts shared substitutable units toward
-    multiple requirements; the consume path needs concrete, non-overlapping units)."""
+    """Allocate material requirements disjointly so one item cannot satisfy two costs."""
 
     def test_named_material_only(self):
         result = rv.allocate_materials([_req("iron_ingot", 2, 1, False)], {"iron_ingot": 2}, CATALOG)
@@ -142,7 +120,6 @@ class TestAllocateMaterials:
         assert sorted(result.flat) == ["iron_ingot", "iron_ingot"]
 
     def test_named_preferred_over_substitute(self):
-        # iron present and named — it is spent before any substitute.
         result = rv.allocate_materials([_req("iron_ingot", 1, 1, True)], {"iron_ingot": 1, "steel_ingot": 1}, CATALOG)
         assert result.satisfied is True
         assert result.by_id == {"iron_ingot": 1}
@@ -153,13 +130,11 @@ class TestAllocateMaterials:
         assert result.by_id == {"steel_ingot": 2}
 
     def test_below_tier_substitute_rejected(self):
-        # steel needs metal tier>=2; only tin (metal tier 1) on hand.
         result = rv.allocate_materials([_req("steel_ingot", 1, 2, True)], {"tin_ingot": 5}, CATALOG)
         assert result.satisfied is False
         assert "steel_ingot" in result.reason
 
     def test_overlapping_pool_allocates_disjoint_units(self):
-        # Two substitutable metal reqs (2 each); 2 iron + 2 steel must split disjointly.
         reqs = [_req("iron_ingot", 2, 1, True), _req("iron_ingot", 2, 1, True)]
         result = rv.allocate_materials(reqs, {"iron_ingot": 2, "steel_ingot": 2}, CATALOG)
         assert result.satisfied is True
@@ -167,9 +142,6 @@ class TestAllocateMaterials:
         assert len(result.flat) == 4
 
     def test_overlapping_pool_insufficient_fails_where_greedy_would_pass(self):
-        # THE crux: 2 metal reqs (2 each = 4 needed) but only 3 metal units on hand.
-        # Greedy check_material_requirements passes each req (sees 3>=2); a real
-        # disjoint allocation cannot cover 4 from 3, so allocate must FAIL.
         reqs = [_req("iron_ingot", 2, 1, True), _req("iron_ingot", 2, 1, True)]
         available = {"iron_ingot": 2, "steel_ingot": 1}
         assert rv.check_material_requirements(reqs, available, CATALOG).satisfied is True
@@ -177,8 +149,6 @@ class TestAllocateMaterials:
         assert result.satisfied is False
 
     def test_most_constrained_first_does_not_starve_non_substitutable(self):
-        # A non-sub iron req + a sub metal req; only 1 iron + 1 steel. The non-sub req
-        # must claim the iron first, leaving steel for the substitutable req.
         reqs = [_req("iron_ingot", 1, 1, True), _req("iron_ingot", 1, 1, False)]
         result = rv.allocate_materials(reqs, {"iron_ingot": 1, "steel_ingot": 1}, CATALOG)
         assert result.satisfied is True
@@ -195,12 +165,7 @@ class TestAllocateMaterials:
 
 
 class TestValidateMagicItemCraftTier:
-    """Magic-item craft-tier gate (story-002, M5.4). Rare items require an
-    Expert+ recipe, Legendary require Master; common/uncommon are unconstrained.
-    Pure ordering logic over RECIPE_TIER_ORDER, mirroring validate_recipe_slot_capacity.
-    The gate is keyed on the RECIPE tier vocab (basic/trained/expert/master), not
-    the crafting-skill vocab. Consumed by the content-invariant test that joins
-    magic items to their recipes (story-002 Commit 4)."""
+    """Recipe tiers and skill tiers have different vocabularies."""
 
     def test_rare_allows_expert_recipe(self):
         assert rv.validate_magic_item_craft_tier("rare", "expert").allowed is True
@@ -235,22 +200,8 @@ class TestValidateMagicItemCraftTier:
 
 
 class TestMagicItemContentInvariant:
-    """Content invariant (story-002 c4d): every craftable Rare/Legendary item in
-    content/items.json — i.e. one whose id matches a recipe's output_item — must be
-    produced by a recipe whose tier satisfies validate_magic_item_craft_tier (Rare ->
-    Expert+, Legendary -> Master). This is the gate's production consumer, joining the
-    catalog to recipes. Non-craftable magic items (the unique named finds with no
-    recipe) are intentionally exempt (decision 396b3afd71d2 / concern 12c946b6ffec).
+    """Crafted magic items follow recipe tiers; quest-only items are exempt."""
 
-    The named-item test below closes the vacuousness gap (debt ee6a0bc84153 / concern
-    c70b7db13b1e): it exercises the gate over the 10 named M5.4 magic items SPECIFICALLY,
-    not just whichever pre-existing rares happen to be craftable. The 6 Rare + 3
-    Legendary craftable names must each join a tier-correct recipe; the one quest-only
-    name (Thornridge's Stand, "Cannot be crafted" per game_mechanics_crafting.md) must
-    have NO recipe."""
-
-    # The 10 named M5.4 magic items (the `magic`-tagged set the items-load 6/4 invariant
-    # counts). 9 are spec-craftable; thornridges_stand is quest-only.
     NAMED_RARE_CRAFTABLE = frozenset(
         {
             "blade_of_the_ashmark",
@@ -288,16 +239,10 @@ class TestMagicItemContentInvariant:
                 )
                 checked += 1
 
-        # Non-vacuous: at least one craftable Rare/Legendary item must be covered,
-        # else the join silently asserts nothing (e.g. a future id-divergence regression).
         assert checked > 0, "no craftable Rare/Legendary item joined a recipe — gate untested"
 
     def test_named_magic_items_join_tier_correct_recipes(self):
-        """Non-vacuous over the NAMED set: each of the 9 craftable named magic items
-        must join a recipe at the gate-correct tier. Asserting the named ids directly
-        (not a generic rare/legendary count) is what keeps c70b7db13b1e closed — a
-        pre-existing rare alone could satisfy a count-based check while the named items
-        stayed unauthored."""
+        """Explicit named ids prevent pre-existing rare items from satisfying the craftable inventory."""
         recipes = self._load("recipes.json")
         by_output = {r["output_item"]: r for r in recipes}
 
@@ -316,8 +261,7 @@ class TestMagicItemContentInvariant:
             )
 
     def test_quest_only_named_item_is_not_craftable(self):
-        """Thornridge's Stand is a unique quest find ("Cannot be crafted") — it must
-        have no recipe, or it would wrongly become reproducible."""
+        """A quest-only unique find must not become reproducible."""
         recipes = self._load("recipes.json")
         by_output = {r["output_item"]: r for r in recipes}
         for item_id in self.NAMED_QUEST_ONLY:

@@ -1,21 +1,4 @@
-"""Capstone: M4.3 status conditions end-to-end against a real Postgres testcontainer.
-
-Stories 001-005 shipped the pieces: the pure 21-condition catalog + apply/remove/tick/aggregate
-(001), the Beat-4 wrap tick (002), condition modifiers feeding checks/attacks/saves (003), JSONB
-persistence + combat-end merge (004), and the client icons + Beat-3 exhaustion narration (005).
-This capstone proves they COMPOSE on ONE seeded testcontainer (auto-marked `acceptance` by
-tests/acceptance/conftest.py): a condition's modifier folds into the REAL attack resolver
-(AC1), the Beat-4 wrap ticks conditions — duration expiry + Frightened's save-to-clear — and the
-change persists to the combat SSOT (AC2), and a persists_across_encounters condition survives the
-end of the fight in players.data.conditions (AC3).
-
-Determinism: every d20 (attack / save) routes through check_resolution._roll_d20_check, which reads
-the module-global check_resolution.dice_roll. Patching that one seam forces the d20 while the real
-conditions module, resolvers, and engine run end to end (an honest chain, not a hand-built verdict).
-Attack DAMAGE uses the separate check_resolution_attack.dice_roll (left real); kill timing is
-controlled by setting a participant's hp_current directly. Each test uses a distinct player_id /
-combat_id since the testcontainer DB is shared.
-"""
+"""Pin the shared d20 seam only. Attack damage uses a separate seam; control kill timing via HP."""
 
 from __future__ import annotations
 
@@ -43,9 +26,6 @@ def _player_packet(result: dict) -> dict:
 
 
 async def test_exhausted_modifier_folds_into_real_attack(reset_db_pool: str) -> None:
-    """Exhausted (2 stacks, check_modifier -1/stack) lowers a forced-d20 attack total by EXACTLY 2
-    versus the same attack with no condition — proving the real get_condition_effects ->
-    _apply_condition_modifiers -> attack resolver chain, not a hand-built number."""
     pool = await db.get_pool()
 
     # Clean baseline.
@@ -87,8 +67,6 @@ async def test_exhausted_modifier_folds_into_real_attack(reset_db_pool: str) -> 
 
 
 async def test_beat4_wrap_expires_and_clears_then_persists(reset_db_pool: str) -> None:
-    """A forced-success WIS save clears Frightened at the Beat-4 wrap and Stunned (duration 1) expires;
-    BOTH disappear from the participant AND from the persisted combat_instances SSOT (reloaded from DB)."""
     pool = await db.get_pool()
     player_id = "cap_m43_tick_clear"
     state = _build_state("combat_cap_m43_tick_clear", player_id, [_enemy("goblin_a", hp=100)])
@@ -121,8 +99,6 @@ async def test_beat4_wrap_expires_and_clears_then_persists(reset_db_pool: str) -
 
 
 async def test_beat4_failed_save_keeps_frightened(reset_db_pool: str) -> None:
-    """A forced-failure WIS save leaves Frightened in place (save-to-clear is real, not unconditional),
-    while the duration-1 Stunned still expires — the persisted SSOT reflects exactly that."""
     pool = await db.get_pool()
     player_id = "cap_m43_tick_fail"
     state = _build_state("combat_cap_m43_tick_fail", player_id, [_enemy("goblin_a", hp=100)])
@@ -153,8 +129,6 @@ async def test_beat4_failed_save_keeps_frightened(reset_db_pool: str) -> None:
 
 
 async def test_persistent_condition_survives_combat_end(reset_db_pool: str) -> None:
-    """When the last enemy falls, Exhausted (persists_across_encounters) is written to
-    players.data.conditions and is retrievable afterward; a non-persistent condition (Blinded) is not."""
     pool = await db.get_pool()
     player_id = "cap_m43_persist"
     # Single enemy at 1 HP so a forced hit drops it and combat ends (victory handoff).

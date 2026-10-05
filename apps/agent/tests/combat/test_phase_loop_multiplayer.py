@@ -1,14 +1,4 @@
-"""Multi-player combat phase-loop tests (M14 story-004).
-
-The phase loop resolves N player declarations per phase: each player's ability Focus is
-pre-validated against its OWN for_update row, each cast resolves against the declaring
-member's OWN caster pool, and the WRAP Resonance decay sheds from EACH member's own pool
-(once per phase, never shared, never double). Solo (1-member) parity is guarded by the
-existing tests/combat/test_phase_loop.py — here every party has ≥2 members.
-
-The casts themselves are mocked (cast_resolver._resolve_cast); the wiring/identity/decay is
-under test, not the spell internals (covered by the tests/test_spell_cast_* modules).
-"""
+"""Mock casting to isolate per-member identity and decay; spell internals have separate checks."""
 
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -148,9 +138,6 @@ def _cast_resolver_recording(new_resonance_by_id=None):
 
 
 class TestMultiplayerPrevalidation:
-    """AC1: two players each declare an ability → each is prevalidated against its OWN for_update
-    row (get_player once per id), both resolve, and _resolve_cast is handed the matching caster."""
-
     @pytest.mark.asyncio
     async def test_each_player_ability_prevalidated_and_resolved_against_own_caster(self):
         ctx = make_context(party_member_ids=["player_2"])
@@ -164,18 +151,14 @@ class TestMultiplayerPrevalidation:
         assert not isinstance(raw, tuple)  # combat continues -> JSON, not the end-of-combat tuple
         packets = {p["actor_id"]: p for p in raw["packets"]}
 
-        # Each player's OWN row was locked for_update, once per id.
         locked = [c.args[0] for c in deps["queries"].get_player.await_args_list if c.kwargs.get("for_update")]
         assert sorted(locked) == ["player_1", "player_2"]
-        # Both abilities resolved, each cast handed its matching caster (its own pool).
         assert packets["player_1"]["resolved"] is True
         assert packets["player_2"]["resolved"] is True
         assert sorted(c.player_id for c in seen_casters) == ["player_1", "player_2"]
 
     @pytest.mark.asyncio
     async def test_unaffordable_second_player_raises_before_any_write(self):
-        # NEGATIVE: player_2 cannot afford its ability → the pre-validation fails loud BEFORE the
-        # resolution loop, so no cast runs and player_1 is never written.
         ctx = make_context(party_member_ids=["player_2"])
         ctx.userdata.combat_state = _mp_state()
         deps = _resolve_deps(focus_by_id={"player_2": 0})
@@ -193,7 +176,6 @@ class TestMultiplayerPrevalidation:
         with pytest.raises(ToolError, match="Focus"):
             await _resolve_round(ctx, cast_resolver=cast_resolver, **deps, **res)
 
-        # No packet resolved, no writes, player_1 untouched (the loop never ran).
         cast_resolver._resolve_cast.assert_not_called()
         assert seen_casters == []
         deps["mutations"].save_combat_state.assert_awaited_once()
@@ -205,9 +187,6 @@ class TestMultiplayerPrevalidation:
 
 
 class TestMultiplayerWrapDecay:
-    """AC2: the WRAP decays EACH member's own standing Resonance once per phase — one write + one
-    push per member that actually moved, keyed to that member's pool, never a shared value."""
-
     @pytest.mark.asyncio
     async def test_each_member_decays_own_pool_with_conn_and_pushes(self):
         ctx = make_context(party_member_ids=["player_2"])
@@ -220,20 +199,16 @@ class TestMultiplayerWrapDecay:
         raw = await _resolve_round(ctx, cast_resolver=MagicMock(), **deps, **res)
         assert not isinstance(raw, tuple)
 
-        # Each member decayed one step against its OWN pool: 5->4, 3->2.
         assert ctx.userdata.resonance.current == 4
         assert _member(ctx, "player_2").resonance.current == 2
         writes = res["resonance_mutations"].update_player_resonance.await_args_list
         assert sorted((c.args[0], c.args[1]) for c in writes) == [("player_1", 4), ("player_2", 2)]
         assert all("conn" in c.kwargs for c in writes)  # each write rides the phase tx
-        # Two HUD pushes, each under its own member's caster_id.
         pushes = res["resonance_events_mod"].publish_resonance_changed.await_args_list
         assert sorted(c.kwargs["caster_id"] for c in pushes) == ["player_1", "player_2"]
 
     @pytest.mark.asyncio
     async def test_member_at_zero_is_neither_written_nor_pushed(self):
-        # 0-floor: a member already at 0 doesn't move, so no write and no push for that member —
-        # only the member that actually decayed touches the DB/HUD.
         ctx = make_context(party_member_ids=["player_2"])
         ctx.userdata.resonance.current = 5
         _member(ctx, "player_2").resonance.current = 0
@@ -252,9 +227,6 @@ class TestMultiplayerWrapDecay:
 
 
 class TestSoloRegression:
-    """AC3: the per-member phase loop collapses to exactly ONE write + ONE push for a solo party —
-    byte-identical to the single-player decay path."""
-
     @pytest.mark.asyncio
     async def test_solo_decay_is_one_write_and_one_push(self):
         ctx = make_context()  # 1-member party (player_1 only)
@@ -275,9 +247,6 @@ class TestSoloRegression:
 
 
 class TestMultiplayerGenerationDecayE2E:
-    """AC4: across two rounds, two players each cast a GENERATING ability with a distinct per-caster
-    new_resonance; each member nets generated - decay against its OWN pool with no cross-leak."""
-
     @pytest.mark.asyncio
     async def test_two_rounds_net_per_pool_with_no_cross_leak(self):
         from combat_turn import _declare_phase_impl
@@ -316,15 +285,12 @@ class TestMultiplayerGenerationDecayE2E:
             "goblin_1": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
         }
 
-        # Round 1: p1 3+5=8 -> wrap 7; p2 1+5=6 -> wrap 5.
         await _declare_phase_impl(ctx, decls, mutations=deps["mutations"])
         r1 = await _resolve_round(ctx, cast_resolver=cast_resolver, **deps, **res)
         assert not isinstance(r1, tuple)
         assert ctx.userdata.resonance.current == 7
         assert player_2.resonance.current == 5
 
-        # Round 2: p1 7+5=12 -> wrap 11; p2 5+5=10 -> wrap 9. Each pool advanced on its OWN prior
-        # value — no cross-leak between the two members.
         await _declare_phase_impl(ctx, decls, mutations=deps["mutations"])
         r2 = await _resolve_round(ctx, cast_resolver=cast_resolver, **deps, **res)
         assert not isinstance(r2, tuple)

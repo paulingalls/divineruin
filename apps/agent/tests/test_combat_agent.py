@@ -1,5 +1,3 @@
-"""Tests for CombatAgent — combat-specific agent with focused tools and prompt."""
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from livekit.agents.llm import ChatContext, ChatMessage
@@ -14,8 +12,6 @@ from speaker_context import build_speaker_context
 
 
 class TestCombatAgentConfig:
-    """Test CombatAgent is correctly configured."""
-
     def test_is_subclass_of_base_game_agent(self):
         assert issubclass(CombatAgent, BaseGameAgent)
 
@@ -28,10 +24,6 @@ class TestCombatAgentConfig:
         from query_tools import query_info
         from spell_info_tools import get_spell_info
 
-        # The phase-loop verbs (declare_phase/resolve_phase) replaced the old per-actor
-        # resolve_enemy_turn + request_attack (story-003, unified packet resolution).
-        # Phase 5 (story-002, M25) folded cast_spell/request_ability_activation/
-        # activate_veil_ward/inner_fire into the single polymorphic activate verb.
         expected = {
             declare_phase,
             resolve_phase,
@@ -46,8 +38,6 @@ class TestCombatAgentConfig:
         assert set(COMBAT_AGENT_TOOLS) == expected
 
     def test_activate_and_get_spell_info_registered(self):
-        # story-004 M3: the cast path is callable from the combat agent. Phase 5
-        # (story-002) folded cast_spell into activate.
         from activate_tools import activate
         from spell_info_tools import get_spell_info
 
@@ -55,8 +45,6 @@ class TestCombatAgentConfig:
         assert get_spell_info in COMBAT_AGENT_TOOLS
 
     def test_demoted_capability_wrappers_not_registered(self):
-        # Phase 5 (story-002): the four folded wrappers are no longer @function_tool
-        # entries at all, so checking the registered tool names is sufficient.
         registered_names = {getattr(t, "__name__", None) for t in COMBAT_AGENT_TOOLS}
         for name in (
             "cast_spell",
@@ -86,8 +74,6 @@ class TestCombatAgentConfig:
 
 
 class TestCombatSystemPrompt:
-    """Test COMBAT_SYSTEM_PROMPT content."""
-
     def test_contains_combat_narration_style(self):
         assert "staccato" in COMBAT_SYSTEM_PROMPT
 
@@ -108,10 +94,6 @@ class TestCombatSystemPrompt:
 
 
 class TestCombatBeatContract:
-    """story-004: COMBAT_SYSTEM_PROMPT encodes the 4-beat DM contract for the phase
-    engine — declaration (with hesitation->Defend), silent resolution, narration with
-    reaction windows + dramatic-dice pauses, and wrap. Prompt + contract only."""
-
     def test_names_four_beats_in_order(self):
         p = COMBAT_SYSTEM_PROMPT.lower()
         # Anchor on a unique body phrase from EACH beat (not the single overview line),
@@ -136,55 +118,40 @@ class TestCombatBeatContract:
         assert "defend" in low[start : start + 200], "hesitation instruction does not fall back to defend"
 
     def test_resolution_is_silent_before_narration(self):
-        # Beat 2 resolves silently; the Beat-3 narration instruction comes after.
         p = COMBAT_SYSTEM_PROMPT.lower()
         assert "silent" in p
         assert p.index("silent") < p.index("now narrate")
 
     def test_beat3_teaches_the_dm_to_read_next_rather_than_guess_a_window(self):
-        """constraint 6, the prompt half. `next` is only a producer if the DM is told to read it:
-        an id the engine mints but the prompt never mentions is still a guess. Sprint 45 shipped a
-        gate keyed on a reaction window the DM had to pick among nine, and the prompt's advice then
-        was the opposite of the design — "do not open an undeclared reaction window during Beat 3".
-        M29 story-016 restored the interrupt model; these are the phrases that carry it."""
+        """The prompt must surface reaction windows instead of requiring the DM to guess."""
         low = COMBAT_SYSTEM_PROMPT.lower()
         assert "do not open an undeclared reaction window" not in low, "the reversed model is back"
         assert "next.waiting_on" in low
         assert "window_id" in low and "never invent one" in low
         assert "next.waiting_on.action" in low
         assert low.index("next.waiting_on.action") < low.index("the pause is the mechanic")
-        # The pause is the mechanic, and both stages are named so the DM knows what it may voice.
         assert "the pause is the mechanic" in low
         assert "pre_roll" in low and "post_roll" in low
-        # Reading `next` is taught before Beat 3 needs it.
         assert low.index('every resolve_phase result carries a "next" block') < low.index("next.waiting_on")
 
     def test_next_verbs_is_taught_as_the_advance_verb_not_a_whitelist(self):
-        """`next.verbs` carries the ADVANCE verb only (combat_wrap.next_envelope), so a prompt that
-        called it the complete set of legal calls would contradict Beat 4 in the same breath: the
-        very payload whose next.verbs reads ["declare_phase"] also carries death_saves_due and
-        legendary_available, and neither request_death_save nor consume_legendary_action has a beat
-        gate. An obedient DM would leave a downed player unrolled."""
+        """The next-step affordance must include death saves, not only ordinary phase verbs."""
         low = COMBAT_SYSTEM_PROMPT.lower()
         assert "not a whitelist" in low
         assert "which verb advances the beat" in low
         assert "still call request_death_save when death_saves_due names someone" in low
         assert "only the verbs in next.verbs are legal" not in low, "the whitelist reading is back"
-        # Beat 4 still asks for both verbs `next.verbs` omits — that is what makes the above true.
         assert "call request_death_save" in low
         assert "call consume_legendary_action" in low
 
     def test_beat2_says_the_enemy_blows_are_held(self):
-        """AC1's contract, as the DM sees it: Beat 2 resolves the player's side only. A prompt that
-        still promised "resolves every declaration" would have the DM narrate blows that have not
-        landed."""
+        """The prompt must not imply a held enemy blow has already resolved."""
         low = COMBAT_SYSTEM_PROMPT.lower()
         assert "holds every enemy action back for beat 3" in low
         assert "the enemy blows are held" in low
 
     def test_the_prompt_warns_that_end_combat_is_refused_mid_beat(self):
-        """D7's DM-visible cost: end_combat("fled") raises while enemy actions are held pending, so
-        the prompt says so rather than letting the DM discover it as a tool error."""
+        """The DM needs the refusal state before attempting another declaration."""
         low = COMBAT_SYSTEM_PROMPT.lower()
         assert "refuse while enemy actions are still held" in low
 
@@ -194,8 +161,6 @@ class TestCombatBeatContract:
         assert "pause for the dramatic dice" in COMBAT_SYSTEM_PROMPT.lower()
 
     def test_player_action_must_be_equipped_weapon_name(self):
-        # Concern 4fa8d5aedce6: the player's Attack action is the exact name of an equipped
-        # weapon — so a player turn is never silently wasted on a name mismatch.
         low = COMBAT_SYSTEM_PROMPT.lower()
         attack_kind = low[low.index("attack — action is") : low.index("ability — action is")]
         assert "exact name" in attack_kind and "equipped weapon" in attack_kind
@@ -205,10 +170,6 @@ class TestCombatBeatContract:
         assert "start_combat's participants" not in low and "from their action_pool" not in low
 
     def test_in_combat_ability_is_a_declaration_not_activate(self):
-        # story-007: an in-combat spell/ability is an Ability declaration through declare_phase;
-        # a free cast via activate is the OUT-OF-COMBAT entry only (story-002 folded cast_spell into
-        # activate). The prompt must teach the new shape so the DM routes casting through the phase
-        # loop (Focus/Resonance accounted) instead of a free activate cast.
         prompt = COMBAT_SYSTEM_PROMPT
         assert "ability — action is the EXACT id of a spell" in prompt
         assert "activate" in prompt
@@ -216,9 +177,7 @@ class TestCombatBeatContract:
         assert "never a free cast via activate" in prompt
 
     def test_declare_phase_offers_no_reaction_kind_to_the_dm(self):
-        """AC2's prompt half. The schema stopped accepting `kind: "reaction"` (story-017), so a
-        prompt that still taught it would have the DM spend a tool call on a rejected payload
-        every round — and, worse, believe the reaction was armed."""
+        """A removed reaction must not remain a prompt affordance."""
         prompt = COMBAT_SYSTEM_PROMPT
         low = prompt.lower()
         assert "Supported declarations:" in prompt
@@ -228,11 +187,7 @@ class TestCombatBeatContract:
         assert "declare the reaction during beat 1" not in low
 
     def test_the_dm_activates_a_reaction_at_an_open_window(self):
-        """AC8: the interrupt teaching, at the ONE place the DM meets it — the Beat-3 pause.
-
-        The window is the permission now, and `next.waiting_on.reactions` names the exact ids that
-        fit it. A prompt that sends the DM to `triggers` for the id has it guess one (constraint 6),
-        which is the defect sprint-045 shipped twice."""
+        """Expose producer ids so the DM can invoke the available windows."""
         low = COMBAT_SYSTEM_PROMPT.lower()
         pause = low.index("the pause is the mechanic")
         teaching = low[pause : low.index("when you close a window", pause)]
@@ -243,33 +198,16 @@ class TestCombatBeatContract:
         assert "no pre-declaration" in teaching
 
     def test_the_prompt_says_to_declare_the_active_variant_id(self):
-        """story-051 made a declared variant id resolve in combat, so the prompt now names the id
-        query_info hands the DM (active_variant_id) as the one to declare."""
         low = COMBAT_SYSTEM_PROMPT.lower()
         assert "active_variant_id" in low
         assert "declare that exact variant id" in low
 
     def test_no_reaction_packet_narration_advice_survives(self):
-        """The Beat-3 narration line described combat_packet's REACTION branch, which is deleted:
-        no packet reports a `declaration_type` of "reaction" any more, so the advice describes a
-        packet the DM will never see."""
         assert "narrate a reaction packet as successful" not in COMBAT_SYSTEM_PROMPT.lower()
 
     def test_the_dm_is_told_what_a_reaction_packet_reports(self):
-        """story-018's producer half (constraint 6). A reaction packet exists again — synthesized
-        at window close, not from a declaration — and its `mechanical_effect` is the field that
-        says what the reaction DID. The DM has to be reintroduced to it deliberately: a packet
-        nothing in the prompt names is a capability the DM cannot narrate.
-
-        The null reading is taught too, because null is the honest report for a reaction that was
-        spent and changed nothing mechanical — and a DM who reads the packet's `resolved: true` as
-        the claim would tell the player they were saved when they were not.
-
-        And the cue is demoted in the same breath. `narration_cue` is authored for the ability at
-        full strength, so the packet ships prose that OVERCLAIMS what the engine did: Retaliating
-        Shield's is "the attacker grunts in pain" for wear on a shield and no damage dealt,
-        Sidestep's is "the blade finds only air" for a blow that landed in full. The packet's own
-        honesty (constraint 6) is undone if the DM narrates the cue as the outcome."""
+        """A mechanical reaction cue must not claim an unresolved outcome.
+        Sidestep and Retaliating Shield distinguish activation from the eventual blow."""
         low = COMBAT_SYSTEM_PROMPT.lower()
         assert "mechanical_effect" in low
         effect = low.index("mechanical_effect")
@@ -282,20 +220,12 @@ class TestCombatBeatContract:
         assert "not a report" in teaching
 
     def test_combat_only_capabilities_still_use_activate(self):
-        # M25 fix: Inner Fire and raising/dropping a Veil Ward are combat-only capabilities that
-        # enter through activate (the reserved tokens), so the blanket "never activate in combat"
-        # rule would silently forbid them mid-fight. The prompt must carve out the exception.
         low = COMBAT_SYSTEM_PROMPT.lower()
         assert "draethar_inner_fire" in low
         assert "veil_ward" in low
 
     def test_the_never_activate_rule_carves_out_reactions(self):
-        """story-017 made a REACTION the third activate-in-combat capability, and the Beat-1
-        blanket rule ("an ordinary spell or ability is an Ability declaration ... never a free
-        cast via activate") sits 40 lines above the Beat-3 teaching that tells the DM to call
-        activate. An obedient DM meeting the prohibition first never reaches the window.
-
-        The carve-out has to live AT the prohibition, not only at the pause."""
+        """The narration prohibition must apply alongside its explicit carve-out."""
         low = COMBAT_SYSTEM_PROMPT.lower()
         prohibition = low.index("never a free cast via activate")
         carve_out = low[prohibition : prohibition + 400]
@@ -303,12 +233,7 @@ class TestCombatBeatContract:
 
 
 class TestCombatHotContext:
-    """AC2: the fight reaches the DM as a per-turn MESSAGE, never as instructions.
-
-    The combat block lives after the cache breakpoint or it invalidates the whole prefix
-    every round (debt ce06dd8c) — so these assert on the turn context, and an
-    implementation that reaches for update_instructions reds on assert_not_called.
-    """
+    """Combat changes must not invalidate the cached static prefix."""
 
     @staticmethod
     def _agent_and_session(combat_state):

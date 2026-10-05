@@ -1,10 +1,3 @@
-"""Multiplayer combat-END outcome-scoped stabilize and resurrect (story-005).
-
-Fled abandons, defeat with standing primary, echo resurrection on any outcome, empty seat order.
-
-Fast-lane, mock-DI (no real DB): drives outcome paths with mocked content/pricing/queries.
-"""
-
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
@@ -89,10 +82,6 @@ async def test_multi_swing_held_action_drains_and_flee_succeeds(caplog):
 
 
 async def test_fled_abandons_fallen_ally_to_mortaen(monkeypatch):
-    # M15 story-003 (decision 498f0df12b14): a flee LEAVES a downed ally behind. A savable fallen
-    # ally on a 'fled' end is NOT stabilized to 1 HP for free (fleeing is not winning), but is no
-    # longer stranded at 0 HP — it DIES and returns via Mortaen (resurrect_party_on_defeat), the same
-    # death path as a defeat-fallen. Supersedes the earlier victory-only contract (story-005 finding 2).
     session = _two_pc_session()
     cs = CombatState(
         combat_id="c1",
@@ -121,8 +110,6 @@ async def test_fled_abandons_fallen_ally_to_mortaen(monkeypatch):
 
 
 async def test_defeat_with_standing_primary_still_resurrects_it(monkeypatch):
-    # story-005 finding 4: a DM-declared defeat with the primary still standing must still record the
-    # death + anchor via the standing-primary fallback (restored after story-004 deleted it).
     session = _two_pc_session()  # primary p1
     cs = CombatState(
         combat_id="c1",
@@ -142,8 +129,6 @@ async def test_defeat_with_standing_primary_still_resurrects_it(monkeypatch):
 
 
 async def test_destroyed_echo_primary_resurrected_even_on_fled(monkeypatch):
-    # story-005 (plan-review concern): an echo is a dead player and MUST return via Mortaen on ANY
-    # outcome — a destroyed echo-primary is still resurrected on a 'fled' end, never stranded.
     session = _two_pc_session()  # primary p1
     cs = CombatState(
         combat_id="c1",
@@ -217,7 +202,6 @@ async def test_manual_victory_empty_seat_order_does_not_crash(monkeypatch):
     end_data, _mutations, party, _on_def = await _run_outcome(
         session, cs, "victory", monkeypatch, resurrect_return=[{"anchor": "anchor_x"}]
     )
-    # No crash; nothing distributed to an empty seat_order.
     assert end_data["primary_loot"] == []
     assert end_data["primary_currency_gold"] == 0
     party.assert_awaited_once()  # the echo-primary still returns via Mortaen

@@ -2,21 +2,8 @@ import { test, expect, describe, afterAll } from "bun:test";
 import { parseItemRow, getItem, listItems, setItems } from "./items.ts";
 import type { Item } from "@divineruin/shared";
 
-// Drives the production fail-loud parseItemRow (apps/server/src/items.ts) over
-// content/items.json, proving every entry conforms to the widened Item interface
-// from @divineruin/shared. parseItemRow is the real load boundary (loadItems calls
-// it at startup); this test exercises it against the canonical content + pins its
-// fail-loud behavior on malformed rows (debt aa78e26e81a8 — extracted from the
-// former inline validator into the production loader, mirroring recipes.ts).
-//
-// Per-type structured-field REQUIREMENTS (weapon->damage_dice, armor->ac,
-// equippable->durability_tier) tighten in Commit 4 alongside the content that
-// satisfies them; Commit 2 validates those fields' shape only when present.
-
 const ITEMS_PATH = new URL("../../../content/items.json", import.meta.url);
 
-// Floor for content/items.json size — 90 entries after the M5.4 catalog
-// expansion (story-002). Catches silent attrition from bad merges/rebases.
 const MIN_ITEM_COUNT = 85;
 
 async function loadItemsJson(): Promise<Record<string, unknown>[]> {
@@ -31,7 +18,6 @@ describe("content/items.json — parseItemRow conformance", () => {
     expect(items.length).toBeGreaterThanOrEqual(MIN_ITEM_COUNT);
     for (const item of items) {
       const id = typeof item.id === "string" ? item.id : "<no-id>";
-      // Throws with an items[<id>].<field> context on any malformed entry.
       expect(() => parseItemRow(id, item)).not.toThrow();
     }
   });
@@ -124,10 +110,6 @@ describe("content/items.json — parseItemRow conformance", () => {
 });
 
 describe("items accessors — loadItems consumer chain", () => {
-  // loadItems() reads the DB; its accessor chain (setItems -> getItem/listItems) is the
-  // runtime API every consumer uses after startup. Drive that chain against the real
-  // parsed catalog (parseItemRow per row, exactly as loadItems does) without a live DB —
-  // the live-DB loadItems path is covered by the capstone E2E (concern aaf58ceb904a).
   async function loadParsedMap(): Promise<Map<string, Item>> {
     const items = await loadItemsJson();
     const map = new Map<string, Item>();

@@ -1,5 +1,3 @@
-"""Tests for start_combat: state creation, initiative, durability reset, handoff, errors."""
-
 import json
 from unittest.mock import AsyncMock, MagicMock
 
@@ -72,7 +70,6 @@ def _make_start_combat_mocks():
     return mock_mutations, mock_queries, mock_content
 
 
-# Thornwatch reputation ladder (mirrors content/factions.json) for the stance-gate suite.
 _THORNWATCH = {
     "id": "thornwatch",
     "name": "The Thornwatch",
@@ -88,7 +85,6 @@ _THORNWATCH = {
 
 
 def _gated_encounter():
-    # The real Ashmark Patrol stance gate: allied iff Thornwatch reputation >= friendly (5).
     return {
         **SAMPLE_ENCOUNTER,
         "id": "ashmark_patrol",
@@ -107,10 +103,6 @@ def _stance_mocks(reputation, faction=_THORNWATCH):
 
 
 class TestStartCombatStanceGate:
-    """story-008: _start_combat_impl is resolve_encounter_stance's first production caller.
-    A gated encounter resolves allied (avert combat, narration string) or hostile (combat)
-    from the player's reputation with the gate faction."""
-
     @pytest.mark.asyncio
     async def test_allied_reputation_averts_combat(self):
         mock_mutations, mock_queries, mock_content = _stance_mocks(reputation=8)  # >= friendly(5)
@@ -148,7 +140,6 @@ class TestStartCombatStanceGate:
 
     @pytest.mark.asyncio
     async def test_missing_reputation_defaults_to_neutral_hostile(self):
-        # No player_reputation row -> None -> neutral (0) -> below friendly -> hostile.
         mock_mutations, mock_queries, mock_content = _stance_mocks(reputation=None)
         ctx = make_context()
         result = await _start_combat_impl(
@@ -179,8 +170,6 @@ class TestStartCombatStanceGate:
 
     @pytest.mark.asyncio
     async def test_malformed_gate_missing_faction_fails_loud(self):
-        # A stance gate without a 'faction' key must raise ToolError (fail-loud to LLM),
-        # not an uncaught KeyError.
         mock_mutations, mock_queries, mock_content = _stance_mocks(reputation=8)
         encounter = _gated_encounter()
         encounter["stance_gate"] = {"allied_at_or_above": "friendly"}  # no faction
@@ -265,10 +254,6 @@ class TestStartCombat:
 
     @pytest.mark.asyncio
     async def test_enters_declaration_beat_with_player_action_pool(self):
-        # AC1 (story-003): after initiative the combat is parked at the declaration beat,
-        # and the player participant carries a weapon action_pool synthesized from
-        # equipment so their attack declarations resolve through the same packet path
-        # as enemies/companions.
         mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
         ctx = make_context()
 
@@ -290,10 +275,6 @@ class TestStartCombat:
 
     @pytest.mark.asyncio
     async def test_player_save_proficiencies_loaded_onto_participant(self):
-        # M13 close-fix: the player's save proficiencies (players.data) must ride onto the combat
-        # participant so an enemy-inflicted save-based condition honors them (resolve_saving_throw
-        # adds the proficiency bonus). Without this the participant defaults to [] and a proficient
-        # player resists no better than a non-proficient one.
         mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
         ctx = make_context()
 
@@ -314,8 +295,6 @@ class TestStartCombat:
 
     @pytest.mark.asyncio
     async def test_player_enhancers_populated_from_flags(self):
-        # story-004: the player participant carries the declaration enhancers granted by
-        # players.data.flags, so Extra Attack expands their attack in resolve_phase.
         mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
         mock_queries.get_player = AsyncMock(
             return_value={**SAMPLE_PLAYER, "flags": {"extra_attack": True, "shield_bash": False}}
@@ -336,7 +315,6 @@ class TestStartCombat:
         player = cs.get_participant("player_1")
         assert player is not None
         assert player.enhancers == ["extra_attack"]  # truthy known flags only
-        # Enemies carry no enhancers.
         enemy = cs.get_participant("goblin_scout_1")
         assert enemy is not None
         assert enemy.enhancers == []
@@ -363,8 +341,6 @@ class TestStartCombat:
 
     @pytest.mark.asyncio
     async def test_resets_stale_weapon_durability_flags(self):
-        # A weapon swing outside combat must not leak into this encounter's
-        # end-of-combat durability accrual (concern c3c95fd3af40).
         mock_mutations, mock_queries, mock_content = _make_start_combat_mocks()
         ctx = make_context()
         ctx.userdata.party.primary.weapon_used = True
@@ -397,8 +373,6 @@ class TestStartCombat:
             content=mock_content,
         )
 
-        # Should publish combat_started, combat_ui_update (initial HUD push —
-        # M12 sprint-029 close fix, concern 4045481bfc3e), and play_sound.
         assert room.local_participant.publish_data.call_count == 3
         calls = published_payloads(room)
         types = [c["type"] for c in calls]

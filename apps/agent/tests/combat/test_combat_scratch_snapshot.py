@@ -1,10 +1,3 @@
-"""The phase's event-buffering primitives: the EventSink and the in-loop scratch snapshot.
-
-Split out of test_combat_tx_integrity.py (M29 story-016), which took the two-commit Beat-3 hold
-and the 500-line cap in the same change. These two classes test combat_events directly and never
-drive resolve_phase, so they are the natural seam.
-"""
-
 from unittest.mock import AsyncMock
 
 import combat_events
@@ -13,8 +6,6 @@ from session_data import CompanionState, SessionData
 
 
 class TestEventSink:
-    """EventSink buffers publish_game_event calls and replays them only on flush()."""
-
     async def test_event_sink_buffers_then_flushes_in_order(self, monkeypatch) -> None:
         spy = AsyncMock()
         monkeypatch.setattr(combat_events, "publish_game_event", spy)
@@ -23,7 +14,6 @@ class TestEventSink:
         await sink.emit(None, "DICE_ROLL", {"n": 1})
         await sink.emit(None, "PLAY_SOUND", {"sound_name": "hit"})
 
-        # Buffered, not published.
         assert sink.captured == [
             BufferedEvent(None, "DICE_ROLL", {"n": 1}, None),
             BufferedEvent(None, "PLAY_SOUND", {"sound_name": "hit"}, None),
@@ -32,7 +22,6 @@ class TestEventSink:
 
         await sink.flush()
 
-        # Replayed in order, then cleared.
         assert [c.args[1] for c in spy.await_args_list] == ["DICE_ROLL", "PLAY_SOUND"]
         assert sink.captured == []
 
@@ -43,14 +32,11 @@ class TestEventSink:
 
         await sink.emit(None, "COMBAT_ENDED", {"outcome": "victory"})
 
-        # A sink dropped without flush (the rollback path) must publish nothing.
         spy.assert_not_called()
         assert len(sink.captured) == 1
 
 
 class TestCombatScratchSnapshot:
-    """The pre-tx snapshot reverts in-loop session scratch when the phase rolls back."""
-
     def _session_with_companion(self, memories: list[str]) -> tuple[SessionData, CompanionState]:
         session = SessionData(player_id="p_scratch", location_id="loc", room=None)
         companion = CompanionState(id="c1", name="Brae", session_memories=list(memories))
@@ -61,7 +47,6 @@ class TestCombatScratchSnapshot:
         session, companion = self._session_with_companion(["m0", "m1"])
         snap = _CombatScratchSnapshot.capture(session)
 
-        # Simulate the in-loop mutations the engine makes during a phase.
         session.party.primary.weapon_used = True
         session.party.primary.weapon_crit_vs_heavy = True
         companion.is_conscious = False
@@ -104,8 +89,6 @@ class TestCombatScratchSnapshot:
         assert session.companion is None
 
     def test_restores_concentration_started_in_loop(self) -> None:
-        # story-007: an in-loop ABILITY cast starts a new concentration in memory; a phase rollback
-        # must revert it (the scratch does not otherwise cover session.concentration).
         session = SessionData(player_id="p_conc", location_id="loc", room=None)
         session.concentration.spell_id = "hold_flame"
         snap = _CombatScratchSnapshot.capture(session)
@@ -116,7 +99,6 @@ class TestCombatScratchSnapshot:
         assert session.concentration.spell_id == "hold_flame"
 
     def test_restores_concentration_broken_in_loop(self) -> None:
-        # The break-on-damage path clears concentration in memory mid-loop; a rollback must restore it.
         session = SessionData(player_id="p_conc", location_id="loc", room=None)
         session.concentration.spell_id = "hold_flame"
         snap = _CombatScratchSnapshot.capture(session)
@@ -127,9 +109,6 @@ class TestCombatScratchSnapshot:
         assert session.concentration.spell_id == "hold_flame"
 
     def test_restores_non_primary_member_concentration(self) -> None:
-        # M14 story-004: the in-loop concentration sync moved per-member (caster.concentration), so a
-        # phase rollback must restore EACH member's concentration, not just the primary's — else a
-        # non-primary caster's in-memory concentration diverges from the rolled-back DB row.
         from caster_state import ConcentrationState, ResonanceTrack
         from party_state import PartyMember
 
@@ -152,9 +131,6 @@ class TestCombatScratchSnapshot:
         assert p2.concentration.spell_id == "hold_flame"
 
     def test_restores_non_primary_member_weapon_flags(self) -> None:
-        # M18 story-003: a swing arms the SWINGING member's own weapon flags (combat_packet), so a
-        # phase rollback must revert EACH member's flags, not just the primary's — else a
-        # non-primary member's in-memory weapon_used diverges from the rolled-back combat row.
         from caster_state import ConcentrationState, ResonanceTrack
         from party_state import PartyMember
 

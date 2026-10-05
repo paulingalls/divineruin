@@ -1,11 +1,4 @@
-"""Arrival puts the destination's tags on LOCATION_CHANGED so the client Stage can derive music (M27).
-
-The mobile music engine (inferExplorationState) already derives the exploration/tension/hollow/silence
-track from the pushed location context on every move — but only if it receives the location's tags.
-The live LOCATION_CHANGED handler had hardcoded an empty tag list, so the tag branch was dead. This
-test pins the Python half: apply_arrival must serialize the destination's `tags` onto the payload
-(alongside the existing ambient_sounds/region/time_of_day fields). No LLM audio tool involved.
-"""
+"""The mobile music engine needs destination tags to derive the exploration track."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 

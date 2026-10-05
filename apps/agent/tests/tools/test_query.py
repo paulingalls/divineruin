@@ -1,5 +1,3 @@
-"""Tests for the query_info tools: location, npc, lore, inventory, settlement_population, and dispatch."""
-
 import json
 import random
 from collections import Counter
@@ -55,7 +53,6 @@ class TestQueryLocation:
         ctx = _make_context()
         result = json.loads(await _query_location_impl(ctx, location_id="accord_guild_hall", content=mock_content))
         assert result["name"] == "Guild Hall"
-        # §7: undiscovered hidden elements never reach the DM's location narration.
         assert "hidden_elements" not in result
 
     @pytest.mark.asyncio
@@ -172,8 +169,6 @@ class TestQueryInventory:
 
 
 class TestQueryInfo:
-    """query_info dispatches by kind to the unchanged per-kind impls."""
-
     @pytest.mark.asyncio
     async def test_routes_location(self):
         ctx = _make_context()
@@ -225,12 +220,7 @@ class TestQueryInfo:
 
 
 class TestSettlementPopulation:
-    """query_info[settlement_population] reads a location's settlement_tier + personality and
-    returns the generated NPC role counts (delegating to settlement_generation, story-003).
-    Fail-loud via ToolError on an unknown or non-settlement location — never an empty roster.
-
-    The settlement + archetype catalogs are seeded globally by the autouse fixtures in
-    tests/conftest.py (seed_settlement_templates / seed_role_archetypes), so no local seed."""
+    """Settlement catalogs are already seeded by the autouse conftest fixtures."""
 
     def _content(self, location):
         mod = MagicMock()
@@ -239,7 +229,6 @@ class TestSettlementPopulation:
 
     @pytest.mark.asyncio
     async def test_returns_population_reflecting_tier_and_personality(self):
-        # AC1: faithful delegation — same tier+personality+seed yields generate_settlement_npcs's output.
         ctx = _make_context()
         location = {"id": "accord_market_square", "settlement_tier": "city", "personality": "prosperous"}
         result = json.loads(
@@ -299,7 +288,6 @@ class TestSettlementPopulation:
 
     @pytest.mark.asyncio
     async def test_unknown_location_fails_loud(self):
-        # AC2: missing location -> ToolError, not an empty roster.
         ctx = _make_context()
         with pytest.raises(ToolError):
             await _query_settlement_population_impl(ctx, "nowhere", content=self._content(None))
@@ -314,14 +302,12 @@ class TestSettlementPopulation:
         ],
     )
     async def test_non_settlement_location_fails_loud(self, location):
-        # AC2: a location without BOTH settlement fields is not a settlement -> ToolError.
         ctx = _make_context()
         with pytest.raises(ToolError):
             await _query_settlement_population_impl(ctx, location["id"], content=self._content(location))
 
     @pytest.mark.asyncio
     async def test_e2e_against_seeded_location(self):
-        # AC4: end-to-end against a real seeded settlement from content/locations.json.
         ctx = _make_context()
         settlement = next(loc for loc in _LOCATIONS if loc.get("settlement_tier") and loc.get("personality"))
         result = json.loads(

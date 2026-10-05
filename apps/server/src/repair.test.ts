@@ -1,7 +1,5 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-// --- module mocks (db sql call-sequence + items.getItem) ---------------------
-
 let mockCallHandler: (strings: TemplateStringsArray, ...values: unknown[]) => Promise<unknown[]>;
 let lastQueryValues: unknown[] = [];
 
@@ -52,7 +50,6 @@ function repairReq(itemId: string, npc?: string): Request {
 beforeEach(() => {
   setMockResults();
   mockItem = undefined;
-  // repairQuote reads the DB-loaded pricing singleton; seed it for the unit run.
   setPricing(parsePricingRow(ECONOMY_ROW));
 });
 
@@ -78,7 +75,6 @@ describe("repairQuote", () => {
   });
 
   test("legacy wary/cautious dispositions are retired (throw, non-canonical)", () => {
-    // story-004 dropped the wary/cautious aliases; content + writers emit the canonical ladder.
     expect(() => repairQuote("common", "cautious")).toThrow();
     expect(() => repairQuote("rare", "wary")).toThrow();
   });
@@ -90,7 +86,6 @@ describe("repairQuote", () => {
   });
 
   test("below Neutral refuses (unavailable, no charge)", () => {
-    // story-004: 'unfriendly' is the canonical below-neutral tier.
     for (const disposition of ["unfriendly", "hostile"]) {
       const q = repairQuote("rare", disposition);
       expect(q.available).toBe(false);

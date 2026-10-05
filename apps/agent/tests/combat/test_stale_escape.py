@@ -83,8 +83,6 @@ async def _resolve_disabled_target(*, grappled: bool):
     ):
         await combat_turn._declare_phase_impl(context, declarations, mutations=deps["mutations"])
         assert "maneuver_intent" not in declarations["player_1"]
-        # The gate's stamp is what the resolver reads a beat later, across a JSONB round-trip:
-        # it has to land as a plain string, and land only on the escape.
         persisted = json.loads(json.dumps(context.userdata.combat_state.to_dict()))
         expected_intent = "escape" if grappled else None
         assert persisted["pending_declarations"]["player_1"].get("maneuver_intent") == expected_intent

@@ -1,13 +1,4 @@
-"""Capstone: flickering_bonus persistence end-to-end against a real Postgres testcontainer.
-
-story-001 (M3.5) makes the Thessyn flickering_bonus a PERSISTED field at players.data
-{resonance,flickering_bonus}. The mock-conn units assert the SQL shape; this proves the JSONB
-round-trip on real PG — crucially that update_player_resonance MERGES (COALESCE + ||) into the
-{resonance} object rather than REPLACING it, so a persisted flickering_bonus survives a later
-resonance write (the regression the merge form was introduced to prevent). Auto-marked
-`acceptance` by tests/acceptance/conftest.py; distinct player_id since the testcontainer DB is
-shared across the session.
-"""
+"""A resonance update must merge rather than replace its object or it would erase flickering_bonus."""
 
 from __future__ import annotations
 

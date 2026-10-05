@@ -1,11 +1,4 @@
-"""Starter-zone SSOT guard (story-006).
-
-The tier-4 resurrection anchor and the character-creation default start location must both derive
-from ONE source of truth — the "starting_area" location tag, with a single shared fallback literal.
-These tests prove tier-4 follows the tag (not a hardcoded literal) and that both consumers cross-link
-to the same constant, so a retag can never silently diverge from a stale copy of the literal.
-
-Spec: docs/game_mechanics/game_mechanics_combat.md §Resurrection Location."""
+"""The starter tag is one authority for character creation and tier-4 resurrection; retagging must not leave a stale literal."""
 
 import creation_rules
 from resurrection import resolve_resurrection_anchor
@@ -38,7 +31,6 @@ class TestStarterZoneSSOT:
         assert anchor == retagged
 
     def test_tier4_falls_back_to_literal_only_when_nothing_tagged(self):
-        # No location carries the tag -> the single shared fallback literal.
         locations = {"wild_r3": {"region": "r3", "danger_level": 3}}
         anchor = resolve_resurrection_anchor("wild_r3", locations, {}, combat_cleared=False)
         assert anchor == STARTER_ZONE_ID
@@ -50,5 +42,4 @@ class TestStarterZoneSSOT:
         assert get_starter_zone_id({"wild_r3": {"region": "r3"}}) == STARTER_ZONE_ID
 
     def test_creation_default_start_location_crosslinks_to_ssot(self):
-        # The character-creation default start and the resurrection tier-4 fallback are ONE literal.
         assert creation_rules.DEFAULT_START_LOCATION == STARTER_ZONE_ID

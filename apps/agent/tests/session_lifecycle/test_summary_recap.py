@@ -1,5 +1,3 @@
-"""Tests for session-summary generation, recap, and reconnect instructions."""
-
 import time
 from unittest.mock import AsyncMock, patch
 
@@ -56,8 +54,6 @@ async def test_last_member_after_host_handoff_recaps_only_their_own_earnings():
 
 
 class TestSessionSummary:
-    """Test session_summary.py generation and fallback."""
-
     @pytest.mark.asyncio
     async def test_personal_summary_uses_only_that_players_metrics_and_moments(self):
         from session_summary import generate_session_summary
@@ -146,14 +142,11 @@ class TestSessionSummary:
 
         with patch("session_summary._call_llm_summary", new_callable=AsyncMock, return_value=llm_response) as mock_llm:
             await generate_session_summary(sd, str(transcript), time.time() - 60)
-            # Verify transcript content was passed to LLM
             call_kwargs = mock_llm.call_args[1]
             assert "Line 1" in call_kwargs["transcript_tail"]
 
 
 class TestRecapInstruction:
-    """Test _build_recap_instruction uses structured summary data."""
-
     def test_builds_recap_from_full_summary(self):
         from agent import _build_recap_instruction
 
@@ -185,8 +178,6 @@ class TestRecapInstruction:
 
 
 class TestReconnectInstruction:
-    """Test _build_reconnect_instruction includes location and companion."""
-
     def test_includes_location(self):
         from participant_lifecycle import _build_reconnect_instruction
         from session_data import SessionData

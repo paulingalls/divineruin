@@ -1,5 +1,3 @@
-"""Assigned-companion cues emitted by background and onboarding processes."""
-
 import json
 import re
 import time
@@ -208,7 +206,7 @@ async def test_every_onboarding_nudge_uses_the_assigned_companion(
 @pytest.mark.parametrize("companion_id", COMPANION_IDS)
 @pytest.mark.asyncio
 async def test_delivery_gate_recognizes_a_real_assigned_cue(companion_id: str) -> None:
-    """Reader against the WRITER's own output — a reworded cue must not silently stop matching."""
+    """Exercise the actual writer output rather than a separately modeled payload."""
     companion = _companion(companion_id, last_speech_time=0.0)
     instructions = build_companion_cue(companion, "reacts to the moment.", "steady")
     sd = _session_data(companion)
@@ -235,8 +233,7 @@ async def test_delivery_gate_recognizes_a_real_assigned_cue(companion_id: str) -
 @pytest.mark.parametrize("companion_id", COMPANION_IDS)
 @pytest.mark.asyncio
 async def test_delivery_gate_ignores_narration_that_is_not_a_companion_cue(companion_id: str) -> None:
-    """Narration-only delivery must not reset the idle clock, or it suppresses the next
-    companion beat for a full COMPANION_IDLE_SECS."""
+    """Companion activity must not reset the player narration idle clock."""
     companion = _companion(companion_id, last_speech_time=0.0)
     sd = _session_data(companion)
     background, _ = _background(sd)
@@ -275,8 +272,7 @@ async def test_delivered_god_whisper_publishes_no_companion_cue(companion_id: st
 
 @pytest.mark.parametrize("companion_id", COMPANION_IDS)
 def test_god_whisper_names_the_assigned_companion_and_keeps_it_silent(companion_id: str) -> None:
-    """The whisper is a CRITICAL divine beat: the companion is named but must NOT be cued to
-    speak, so no dialogue tag and no non-verbal vocalization instruction may appear."""
+    """Nonverbal companions still receive divine audio through the player-facing channel."""
     profile = get_companion_profile(companion_id)
     background, _ = _background(_session_data(_companion(companion_id)))
 

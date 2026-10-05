@@ -1,10 +1,3 @@
-"""Tests for the gathering_nodes DB layer (M4.6c, story-003).
-
-Mock-conn tests: pass an AsyncMock conn directly and assert the SQL + params — exercising the
-jsonb_set deplete/discover mutations and the location-scoped node read. Real SQL is exercised
-by tests/test_gathering_nodes_db.py (story-002's round-trip). Mirrors test_db_mutations_veil_ward.
-"""
-
 import json
 from unittest.mock import AsyncMock
 

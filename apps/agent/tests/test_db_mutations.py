@@ -1,9 +1,3 @@
-"""Tests for the story-004 crafting write producers in db_mutations.
-
-Pass a mock conn directly (the functions accept conn=) and assert the SQL +
-params. Real SQL is exercised against a testcontainer at the capstone (ADR 0003).
-"""
-
 import json
 from unittest.mock import AsyncMock
 
@@ -19,7 +13,6 @@ class TestCreateWorkspaceRental:
         assert rid.startswith("rent_")
         sql, *params = conn.execute.call_args.args
         assert "INSERT INTO workspace_rentals" in sql
-        # id, player_id, location_id, workspace_type, source, expires_at
         assert params == [rid, "p1", "millhaven", "forge", "rental", None]
 
 
@@ -71,15 +64,11 @@ class TestCreateAsyncActivityConnSeam:
 
 
 class TestQuantityDeltaExpr:
-    """The single source of the signed quantity-delta jsonb_set write (concern
-    cc7c949af1c9) — shared by add_inventory_item and transact_inventory."""
-
     def test_builds_signed_delta_jsonb_set_for_a_plain_column(self):
         expr = db_mutations.quantity_delta_expr("data", "$3")
         assert expr == "jsonb_set(data, '{quantity}', (COALESCE((data->>'quantity')::int, 0) + $3)::text::jsonb)"
 
     def test_qualifies_the_column_for_the_on_conflict_arm(self):
-        # add_inventory_item's ON CONFLICT references the existing row as player_inventory.data.
         expr = db_mutations.quantity_delta_expr("player_inventory.data", "$4")
         assert "COALESCE((player_inventory.data->>'quantity')::int, 0) + $4" in expr
         assert expr.startswith("jsonb_set(player_inventory.data, '{quantity}',")

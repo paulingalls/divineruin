@@ -1,5 +1,3 @@
-"""Tests for character creation rules — pure functions, deterministic."""
-
 import json
 from datetime import UTC, datetime
 
@@ -41,9 +39,6 @@ def test_creation_rejects_naive_clock():
         _build_character_data("Aric", "human", "warrior", "kaelen", "Test.", created_at=CREATED_AT.replace(tzinfo=None))
 
 
-# --- Race attribute bonuses ---
-
-
 class TestRaceAttributes:
     def test_draethar_bonuses(self):
         attrs = generate_attributes("draethar", "warrior")
@@ -66,7 +61,6 @@ class TestRaceAttributes:
         assert attrs["wisdom"] == BASE_ATTRIBUTE + 1
 
     def test_thessyn_adaptive_bonus_strength(self):
-        """Thessyn gets +1 DEX, +1 CHA from race, +1 to class primary attr."""
         attrs = generate_attributes("thessyn", "warrior")
         assert attrs["dexterity"] == BASE_ATTRIBUTE + 1  # race
         assert attrs["charisma"] == BASE_ATTRIBUTE + 1  # race
@@ -92,13 +86,9 @@ class TestRaceAttributes:
             assert attrs[attr_name] >= BASE_ATTRIBUTE  # bonuses only add
 
 
-# --- Class HP, equipment, proficiencies ---
-
-
 class TestClassMechanics:
     @pytest.mark.parametrize("class_id", list(CLASSES.keys()))
     def test_starting_hp(self, class_id):
-        # Starting HP = chassis level-1 max (hp_base + con_mod), the SSOT — story-004.
         chassis = get_archetype_chassis(class_id)
         hp = calculate_starting_hp(class_id, 10)  # CON 10 = +0 modifier
         assert hp["current"] == chassis.hp_base
@@ -142,9 +132,6 @@ class TestClassMechanics:
             assert p in chassis.skill_options, f"{p} not in {chassis.skill_options}"
 
 
-# --- AC calculation ---
-
-
 class TestACCalculation:
     def test_no_armor(self):
         ac = calculate_ac({"armor": None, "shield": None}, 14)  # DEX 14 = +2
@@ -165,9 +152,6 @@ class TestACCalculation:
     def test_shield_adds_bonus(self):
         ac = calculate_ac({"armor": {"ac_bonus": 13}, "shield": {"ac_bonus": 1}}, 12)
         assert ac == 15  # 13 + 1 (dex) + 1 (shield)
-
-
-# --- build_character_data ---
 
 
 class TestBuildCharacterData:
@@ -287,18 +271,8 @@ class TestBuildCharacterData:
         assert roundtripped == data
 
 
-# --- Chassis routing (story-004) ---
-
-
 class TestChassisRouting:
-    """Saves and skills come from the chassis SSOT, not a ClassData copy.
-
-    The shipped chassis happens to match the old CLASSES values, so equality
-    alone wouldn't prove the read is routed. These tests inject a chassis whose
-    saves/skills differ from anything CLASSES ever held and assert creation
-    follows the injected chassis. The autouse seed_archetypes fixture restores
-    the real chassis before each test, so the mutation doesn't leak.
-    """
+    """Use a distinct chassis save value so the expected result is independent of the fixture."""
 
     def test_saves_route_from_chassis(self):
         from dataclasses import replace
@@ -327,9 +301,6 @@ class TestChassisRouting:
         # The chassis is the SSOT for the skill pool, so an id it does not carry has no pool to
         # draw from — return empty rather than letting the lookup's ValueError escape creation.
         assert get_skill_proficiencies("not_a_real_archetype") == []
-
-
-# --- Culture inference ---
 
 
 class TestCultureInference:
@@ -408,9 +379,6 @@ class TestCultureInference:
             assert c in CULTURE_START_LOCATIONS
 
 
-# --- Starting locations ---
-
-
 class TestStartingLocations:
     @pytest.mark.parametrize("culture_id", list(CULTURE_START_LOCATIONS.keys()))
     def test_all_cultures_have_valid_start(self, culture_id):
@@ -423,9 +391,6 @@ class TestStartingLocations:
         assert loc == "accord_market_square"
 
 
-# --- Data integrity ---
-
-
 class TestDataIntegrity:
     def test_six_races(self):
         assert len(RACES) == 6
@@ -434,7 +399,6 @@ class TestDataIntegrity:
         assert len(CLASSES) == 18
 
     def test_eleven_deities(self):
-        # 10 gods + "none"
         assert len(DEITIES) == 11
 
     def test_all_class_categories(self):
@@ -462,7 +426,6 @@ class TestDataIntegrity:
         [(r, c) for r in RACES for c in CLASSES],
     )
     def test_every_race_class_combo_builds(self, race_id, class_id):
-        """Every race + class combination produces a valid character."""
         data = build_character_data(
             name="TestChar",
             race_id=race_id,

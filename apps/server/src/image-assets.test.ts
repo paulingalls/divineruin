@@ -17,7 +17,6 @@ afterEach(async () => {
 });
 
 test("handleImageAsset returns 400 for invalid ID with special chars", async () => {
-  // Re-import to pick up env change
   const mod = await import("./image-assets.ts");
   const res = await mod.handleImageAsset("../etc/passwd");
   expect(res.status).toBe(400);
@@ -41,7 +40,6 @@ test("an empty ASSET_IMAGE_DIR serves tracked assets from the repo image dir", a
 });
 
 test("handleImageAsset returns PNG with correct headers for valid file", async () => {
-  // Create a test PNG in the tmp dir
   const testId = "img_testvalid1234";
   const pngBuf = await sharp({
     create: { width: 10, height: 10, channels: 3, background: { r: 0, g: 0, b: 0 } },

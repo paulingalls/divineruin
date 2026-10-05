@@ -58,7 +58,6 @@ test("entries are capped at 200", () => {
   }
   const entries = transcriptStore.getState().entries;
   expect(entries).toHaveLength(200);
-  // Oldest entries should have been dropped
   expect(entries[0].text).toBe("Entry 10");
   expect(entries[199].text).toBe("Entry 209");
 });

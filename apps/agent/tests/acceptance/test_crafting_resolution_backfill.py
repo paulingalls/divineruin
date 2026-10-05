@@ -1,18 +1,4 @@
-"""Real-DB acceptance proof for migration 023 (story-005 resolution-gate backfill).
-
-story-005 makes resolve_crafting fail loud (raise) when an in_progress crafting
-activity lacks workspace_required / workspace_access / crafting_tier /
-tainted_materials, and the worker reverts-and-reraises on that exception (infinite
-retry). Activities created before story-005 — by either producer — predate those
-keys, so migration 023 backfills them. This test seeds OLD-shape rows and runs the
-migration's EXACT SQL against a real testcontainer, so the backfill can't silently
-rot: editing 023's SQL re-runs here. Runs under REQUIRE_DOCKER; skips when Docker
-is down.
-
-The harness replays every migration at container init on empty tables (a no-op for
-023), so — like the ops-runbook test — we seed first, then execute the migration
-file's SQL directly to exercise the data transform.
-"""
+"""Seed legacy rows before replaying the migration: normal harness startup runs its UPDATE against an empty table."""
 
 from __future__ import annotations
 
