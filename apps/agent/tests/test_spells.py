@@ -199,25 +199,12 @@ def test_parse_spell_row_strict_requires_each_m33_field(missing):
         parse_spell_row("arcane_fireball", bad)
 
 
-def test_parse_spell_row_rejects_unknown_sound_id():
-    # story-003: sound_id must be one of the frozen 7-key SFX palette (SPELL_SOUND_KEYS).
-    bad = {**_FIREBALL_ROW, "sound_id": "spell_explosion"}
-    with pytest.raises(ValueError, match=r"sound_id"):
-        parse_spell_row(_FIREBALL_ROW["id"], bad)
-
-
 def test_parse_spell_row_accepts_each_palette_sound_id():
     from spells import SPELL_SOUND_KEYS
 
     for key in SPELL_SOUND_KEYS:
         s = parse_spell_row(_FIREBALL_ROW["id"], {**_FIREBALL_ROW, "sound_id": key})
         assert s.sound_id == key
-
-
-def test_parse_spell_row_rejects_nonbool_concentration():
-    bad = {**_FIREBALL_ROW, "concentration": "yes"}
-    with pytest.raises(ValueError, match=r"concentration"):
-        parse_spell_row(_FIREBALL_ROW["id"], bad)
 
 
 @pytest.mark.parametrize("field", ["resonance_by_source", "terrain_effects"])
@@ -257,12 +244,6 @@ def test_spell_defaults_allow_in_code_construction_without_m33_args():
     assert s.concentration is False
 
 
-def test_parse_spell_row_fail_loud_names_the_row():
-    bad = {k: v for k, v in _FIREBALL_ROW.items() if k != "focus_cost"}
-    with pytest.raises(ValueError, match="arcane_fireball"):
-        parse_spell_row("arcane_fireball", bad)
-
-
 @pytest.mark.parametrize("not_a_dict", [None, []])
 def test_parse_spell_row_rejects_non_dict_row(not_a_dict):
     # Parity with the TS loader's asRecord guard (spells-load.test.ts): a non-object
@@ -270,30 +251,6 @@ def test_parse_spell_row_rejects_non_dict_row(not_a_dict):
     # than an explicit dict guard (mirroring abilities.parse_ability_row).
     with pytest.raises(ValueError, match="arcane_fireball"):
         parse_spell_row("arcane_fireball", not_a_dict)
-
-
-def test_parse_spell_row_rejects_unknown_source():
-    bad = {**_FIREBALL_ROW, "source": "shadow"}
-    with pytest.raises(ValueError, match=r"source"):
-        parse_spell_row(_FIREBALL_ROW["id"], bad)
-
-
-def test_parse_spell_row_rejects_unknown_tier():
-    bad = {**_FIREBALL_ROW, "spell_tier": "legendary"}
-    with pytest.raises(ValueError, match=r"spell_tier"):
-        parse_spell_row(_FIREBALL_ROW["id"], bad)
-
-
-def test_parse_spell_row_rejects_noninteger_focus_cost():
-    bad = {**_FIREBALL_ROW, "focus_cost": "5"}
-    with pytest.raises(ValueError, match=r"focus_cost"):
-        parse_spell_row(_FIREBALL_ROW["id"], bad)
-
-
-def test_parse_spell_row_rejects_bool_focus_cost():
-    bad = {**_FIREBALL_ROW, "focus_cost": True}
-    with pytest.raises(ValueError, match=r"focus_cost"):
-        parse_spell_row(_FIREBALL_ROW["id"], bad)
 
 
 # --- accessors -----------------------------------------------------------------
@@ -463,3 +420,38 @@ def test_spell_speech_and_hostility_survive_loading(verbal, hostile):
     row = {**_FIREBALL_ROW, "verbal": verbal, "hostile": hostile}
     spell = parse_spell_row(row["id"], row)
     assert (spell.verbal, spell.hostile) == (verbal, hostile)
+
+
+@pytest.mark.parametrize(
+    "row,message",
+    [
+        pytest.param(
+            {**_FIREBALL_ROW, "sound_id": "spell_explosion"},
+            "sound_id",
+            id="test_parse_spell_row_rejects_unknown_sound_id",
+        ),
+        pytest.param(
+            {**_FIREBALL_ROW, "concentration": "yes"},
+            "concentration",
+            id="test_parse_spell_row_rejects_nonbool_concentration",
+        ),
+        pytest.param(
+            {k: v for k, v in _FIREBALL_ROW.items() if k != "focus_cost"},
+            "arcane_fireball",
+            id="test_parse_spell_row_fail_loud_names_the_row",
+        ),
+        pytest.param({**_FIREBALL_ROW, "source": "shadow"}, "source", id="test_parse_spell_row_rejects_unknown_source"),
+        pytest.param(
+            {**_FIREBALL_ROW, "spell_tier": "legendary"}, "spell_tier", id="test_parse_spell_row_rejects_unknown_tier"
+        ),
+        pytest.param(
+            {**_FIREBALL_ROW, "focus_cost": "5"}, "focus_cost", id="test_parse_spell_row_rejects_noninteger_focus_cost"
+        ),
+        pytest.param(
+            {**_FIREBALL_ROW, "focus_cost": True}, "focus_cost", id="test_parse_spell_row_rejects_bool_focus_cost"
+        ),
+    ],
+)
+def test_malformed_rows_are_refused(row, message):
+    with pytest.raises(ValueError, match=message):
+        parse_spell_row(row["id"], row)

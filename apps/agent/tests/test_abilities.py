@@ -99,43 +99,6 @@ def test_parse_ability_row_full_shape():
     assert a.effect and a.narration_cue
 
 
-def test_parse_ability_row_fail_loud_names_the_row():
-    bad = {k: v for k, v in _CLEAVE_ROW.items() if k != "cost"}
-    with pytest.raises(ValueError, match="warrior_cleaving_blow"):
-        parse_ability_row("warrior_cleaving_blow", bad)
-
-
-def test_parse_ability_row_rejects_unknown_ability_type():
-    bad = {**_CLEAVE_ROW, "ability_type": "passive"}
-    with pytest.raises(ValueError, match=r"ability_type"):
-        parse_ability_row(_CLEAVE_ROW["id"], bad)
-
-
-def test_parse_ability_row_rejects_malformed_cost_missing_key():
-    bad = {**_CLEAVE_ROW, "cost": {"stamina": 4, "scaling": None}}
-    with pytest.raises(ValueError, match="warrior_cleaving_blow"):
-        parse_ability_row("warrior_cleaving_blow", bad)
-
-
-def test_parse_ability_row_rejects_noninteger_cost():
-    bad = {**_CLEAVE_ROW, "cost": {"stamina": "4", "focus": 0, "scaling": None}}
-    with pytest.raises(ValueError, match=r"cost\.stamina"):
-        parse_ability_row("warrior_cleaving_blow", bad)
-
-
-def test_parse_ability_row_rejects_noninteger_level_requirement():
-    bad = {**_CLEAVE_ROW, "level_requirement": "4"}
-    with pytest.raises(ValueError, match=r"level_requirement"):
-        parse_ability_row(_CLEAVE_ROW["id"], bad)
-
-
-def test_parse_ability_row_rejects_bool_level_requirement():
-    # bool is an int subclass — must be excluded, mirroring _parse_cost (parity with TS).
-    bad = {**_CLEAVE_ROW, "level_requirement": True}
-    with pytest.raises(ValueError, match=r"level_requirement"):
-        parse_ability_row(_CLEAVE_ROW["id"], bad)
-
-
 def test_cost_roundtrip_preserves_scaling():
     a = parse_ability_row(_SMITE_ROW["id"], _SMITE_ROW)
     assert a.cost.focus == 2
@@ -175,20 +138,6 @@ def test_spell_backed_row_composes_focus_cost_from_catalog():
     assert (a.name, a.ability_type, a.archetype_id) == ("Arcane Bolt", "core", "seeker")
 
 
-def test_spell_backed_row_fails_loud_on_unknown_spell():
-    bad = {**_SPELL_BACKED_SEEKER_ROW, "spell_id": "no_such_spell"}
-    with pytest.raises(ValueError):
-        parse_ability_row(bad["id"], bad)
-
-
-def test_spell_id_must_be_a_string_when_present():
-    # Parity with the TS loader: a present-but-non-string spell_id fails loud rather than
-    # silently falling back to an authored cost (a malformed row breaks identically on both).
-    bad = {**_SPELL_BACKED_SEEKER_ROW, "spell_id": 123}
-    with pytest.raises(ValueError, match="spell_id"):
-        parse_ability_row(bad["id"], bad)
-
-
 def test_non_spell_row_has_no_spell_id():
     a = parse_ability_row(_CLEAVE_ROW["id"], _CLEAVE_ROW)
     assert a.spell_id is None
@@ -207,24 +156,6 @@ _BRACE_ROW = {
     "narration_cue": "You brace, and the blow lands lighter than it should.",
     "window": "on_hit",
 }
-
-
-def test_parse_ability_row_reaction_requires_window():
-    bad = {k: v for k, v in _BRACE_ROW.items() if k != "window"}
-    with pytest.raises(ValueError, match="window"):
-        parse_ability_row(_BRACE_ROW["id"], bad)
-
-
-def test_parse_ability_row_rejects_unknown_window():
-    bad = {**_BRACE_ROW, "window": "bogus"}
-    with pytest.raises(ValueError, match="window"):
-        parse_ability_row(_BRACE_ROW["id"], bad)
-
-
-def test_parse_ability_row_rejects_window_on_non_reaction_row():
-    bad = {**_CLEAVE_ROW, "window": "on_hit"}
-    with pytest.raises(ValueError, match="window"):
-        parse_ability_row(_CLEAVE_ROW["id"], bad)
 
 
 def test_parse_ability_row_reaction_row_full_shape():
@@ -393,3 +324,62 @@ async def test_load_abilities_populates_from_pool(monkeypatch):
     assert is_loaded() is True
     assert get_ability("paladin_divine_smite").cost.focus == 2
     assert get_ability("warrior_cleaving_blow").ability_type == "elective"
+
+
+@pytest.mark.parametrize(
+    "row,message",
+    [
+        pytest.param(
+            {k: v for k, v in _CLEAVE_ROW.items() if k != "cost"},
+            "warrior_cleaving_blow",
+            id="test_parse_ability_row_fail_loud_names_the_row",
+        ),
+        pytest.param(
+            {**_CLEAVE_ROW, "ability_type": "passive"},
+            "ability_type",
+            id="test_parse_ability_row_rejects_unknown_ability_type",
+        ),
+        pytest.param(
+            {**_CLEAVE_ROW, "cost": {"stamina": 4, "scaling": None}},
+            "warrior_cleaving_blow",
+            id="test_parse_ability_row_rejects_malformed_cost_missing_key",
+        ),
+        pytest.param(
+            {**_CLEAVE_ROW, "cost": {"stamina": "4", "focus": 0, "scaling": None}},
+            "cost\\.stamina",
+            id="test_parse_ability_row_rejects_noninteger_cost",
+        ),
+        pytest.param(
+            {**_CLEAVE_ROW, "level_requirement": "4"},
+            "level_requirement",
+            id="test_parse_ability_row_rejects_noninteger_level_requirement",
+        ),
+        pytest.param(
+            {**_CLEAVE_ROW, "level_requirement": True},
+            "level_requirement",
+            id="test_parse_ability_row_rejects_bool_level_requirement",
+        ),
+        pytest.param(
+            {**_SPELL_BACKED_SEEKER_ROW, "spell_id": "no_such_spell"},
+            None,
+            id="test_spell_backed_row_fails_loud_on_unknown_spell",
+        ),
+        pytest.param(
+            {**_SPELL_BACKED_SEEKER_ROW, "spell_id": 123}, "spell_id", id="test_spell_id_must_be_a_string_when_present"
+        ),
+        pytest.param(
+            {k: v for k, v in _BRACE_ROW.items() if k != "window"},
+            "window",
+            id="test_parse_ability_row_reaction_requires_window",
+        ),
+        pytest.param({**_BRACE_ROW, "window": "bogus"}, "window", id="test_parse_ability_row_rejects_unknown_window"),
+        pytest.param(
+            {**_CLEAVE_ROW, "window": "on_hit"},
+            "window",
+            id="test_parse_ability_row_rejects_window_on_non_reaction_row",
+        ),
+    ],
+)
+def test_malformed_rows_are_refused(row, message):
+    with pytest.raises(ValueError, match=message):
+        parse_ability_row(row["id"], row)
