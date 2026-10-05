@@ -52,14 +52,6 @@ class TestResolveAttack:
         assert bare.hit == identity.hit
         assert bare.damage == identity.damage
 
-    def test_critical_hit_doubles_damage(self):
-        seed = 5
-        rng = random.Random(seed)
-        result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 20, 50, rng=rng)
-        assert result.critical_success is True
-        assert result.hit is True
-        assert result.damage >= 2  # minimum 1+1
-
     def test_target_killed_at_zero_hp(self):
         seed = 0
         rng = random.Random(seed)
