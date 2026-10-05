@@ -1,12 +1,5 @@
-"""Conformance for content/npcs.json mentor{} bindings (sprint-011 / story-001).
-
-Every mentor referenced by content/mentor_variants.json must carry a mentor-level
-training-requirements block on its NPC row. Per decision mentor-binding-shape, the
-binding is a single mentor{} object whose requirements gate *all* of that mentor's
-variants (DRY against mentor_variants.json, which keeps effect/narration/culture).
-Drives the real content so a missing or malformed binding fails loud in CI — there is
-no runtime loader validation for the closed mentor set (story-001 plan).
-"""
+"""Mentor requirements apply to all variants; duplicating them per variant risks drift.
+The closed mentor set has no runtime binding validation."""
 
 import json
 from pathlib import Path

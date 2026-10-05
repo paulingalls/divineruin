@@ -1,18 +1,5 @@
-"""Arrival refreshes the Veil Ward mirror and pushes the HUD only on change (story-004, M24).
-
-Before M24 the ward was a per-player boolean with no location, so walking around could not change
-it. Now it is scope-owned: a party that leaves a warded location is no longer warded, and one that
-walks into a Sacred site is. Nothing else re-reads the ward between casts, so if arrival did not
-refresh, the indicator would keep lying until the next raise or dismiss.
-
-The re-resolve runs INSIDE apply_arrival's transaction, against the DESTINATION — ``conn`` closes
-before ``session.location_id`` is updated, so the session still names the old location at that
-point. Hence ``resolve_scope_ward_with_scope(..., location_id=destination_id)`` — arrival needs the scope
-too, because VEIL_WARD_CHANGED names it (story-008).
-
-VEIL_WARD_CHANGED is appended to pending_events only when the resolved state changed, mirroring the
-corruption block's compute-compare-append shape; it publishes post-commit through the existing loop.
-"""
+"""Resolve against the destination inside the transaction: session.location_id still names the old location.
+Publish only after commit so rolled-back arrival cannot change the HUD."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 

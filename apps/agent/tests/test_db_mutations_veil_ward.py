@@ -1,18 +1,5 @@
-"""Tests for the scope-keyed Veil Ward DB layer (db_mutations_veil_ward, story-003, M24).
-
-Pass a mock conn directly (the functions accept conn=) and assert the SQL + params, mirroring
-test_db_mutations_resonance.py. The real-PG round-trip lives in the fast lane at
-tests/test_db_mutations_veil_ward_db.py; the migration key-drop proof is acceptance-lane.
-
-Storage shape: veil_wards rows keyed by a surrogate ward_id, looked up by the NON-unique
-(scope_kind, scope_id) pair. A ward is owned by its scope, never by a caster
-(veil_ward_scope_model.md §1), so nothing here takes a player_id.
-
-Only LOCATION scopes are persisted. ENCOUNTER wards ride CombatState inside
-combat_instances.data — handing one to this module is a programming error, not a silent write,
-so every function fails loud on an encounter scope. That guard is what keeps "one home each,
-no dual state" true.
-"""
+"""Location wards live in veil_wards; encounter wards live in CombatState. Reject dual state.
+Multiple wards may cover the same scope."""
 
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock

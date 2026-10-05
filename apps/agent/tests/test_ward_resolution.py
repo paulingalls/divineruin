@@ -1,16 +1,4 @@
-"""Tests for ward_resolution.resolve_scope_ward (story-004, M24) — the ONE ward resolver.
-
-veil_ward_scope_model.md §3 is emphatic: "Producers must compute ``active`` from ``is_warded``,
-not from the scope they just mutated." A consumer that keys off a single scope turns the ward
-light off while the party's casts are still halved. So resolution lives in exactly one function
-and every consumer (cast path, tool, movement) calls it.
-
-Resolution is a boolean OR over covering scopes, and the ward's effects do not stack, so the
-first covering scope wins. The encounter scope is checked first because it is in-memory and free.
-
-Mock-conn unit tests: the module takes ``conn`` and an injectable ward_mutations_mod, mirroring
-the db_mutations_veil_ward seam.
-"""
+"""Resolution ORs scopes without stacking effects; check the in-memory encounter first because it is free."""
 
 from unittest.mock import AsyncMock, MagicMock
 

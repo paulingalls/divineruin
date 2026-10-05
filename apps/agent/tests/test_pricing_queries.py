@@ -1,10 +1,4 @@
-"""Tests for the DB-loaded economic-pricing SSOT (story-011).
-
-Covers get_economy_pricing's cache/fetch/fail-loud paths, plus a cross-language
-parity check: the single content/pricing.json fed through the Python pricing math
-must yield the exact sp values the TS REST quote asserts (apps/server/src/
-repair.test.ts), so the quote == the charge across languages from one source.
-"""
+"""The REST quote and Python charge must agree despite the language boundary."""
 
 import json
 import re

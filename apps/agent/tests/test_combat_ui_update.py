@@ -1,11 +1,4 @@
-"""Tests for the COMBAT_UI_UPDATE producer (M12, story-001).
-
-The pure `build_combat_ui_update(state)` builder projects CombatState into the
-wire packet the mobile HUD's `parseCombatant` consumes
-(apps/mobile/src/audio/game-event-handler.ts:93-119). Field names and shapes
-must match exactly — a drift breaks the dead-field render the M4.3 sprint
-shipped (concern 76fc7caa200c).
-"""
+"""The mobile HUD consumes this packet, so Python field names must match its parser."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 

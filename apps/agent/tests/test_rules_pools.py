@@ -1,11 +1,4 @@
-"""Tests for resource pool formulas, archetype chassis resource config, and pool calculations.
-
-PoolFormula/ResourceConfig now live in archetypes.py (the chassis SSOT);
-PoolMaximums + calculate_max_pools stay in rules_engine. The per-archetype
-resource expectations below are hardcoded from the historically-correct values —
-an independent anchor pinning the chassis now that ARCHETYPE_RESOURCE_CONFIG is gone.
-calculate_max_pools resolves the chassis via the autouse seed_archetypes fixture.
-"""
+"""Resource expectations are independent of loaded chassis data so catalog changes cannot certify themselves."""
 
 import pytest
 

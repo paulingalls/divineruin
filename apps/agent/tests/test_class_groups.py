@@ -1,13 +1,4 @@
-"""Tests for the attunement class-token resolver (story-010 AC#5).
-
-Pure deterministic function — no DB. Resolves an item attunement `class` token to
-the concrete player class ids it covers. The token is EITHER a class-GROUP token
-(the catalog's "requires attunement by a caster") OR a concrete class id (the
-artificers_portable_lab's "artificer"), sourcing the class->category map from the
-single creation_classes.CLASSES SSOT (no duplicated table). Enforcement (checking a
-player's class against an item's attunement at equip/use) is DEFERRED — there is no
-equip/use caller in M5.4; this only provides the resolution primitive.
-"""
+"""Attunement resolution does not enforce equip/use eligibility."""
 
 import pytest
 

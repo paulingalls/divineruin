@@ -1,14 +1,5 @@
-"""Guard for the story-002 wav->mp3 transcode helper (M22 compressed-bundle fold).
-
-scripts/audio/generate_spell_sfx_stableaudio.py generates the committed spell-SFX
-palette as .wav (Stable Audio 3.0 has no native mp3 encoder); `transcode_to_mp3`
-shells out to ffmpeg to compress it to the bundle's .mp3 convention. Guarded
-here (imported by file path, same pattern as test_generate_spell_sfx.py) so the
-transcode contract stays under the fast lane without requiring torch.
-
-Skips if ffmpeg isn't on PATH (mirrors the M17 capstone's bun-skip) so an
-ffmpeg-less CI doesn't break the whole fast lane.
-"""
+"""Stable Audio has no MP3 encoder; ffmpeg transcodes its WAV output without requiring torch here.
+The existing cases skip when ffmpeg is unavailable."""
 
 from __future__ import annotations
 

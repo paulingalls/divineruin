@@ -1,11 +1,3 @@
-"""Unit tests for the mentor_variants loader (M9 / story-001).
-
-Drives the production fail-loud parse_mentor_variant_row over inline fixtures and
-pins the accessors. The content-catalog conformance (exact count, every row
-parses, ability_id/mentor_id cross-refs) lives in test_mentor_variants_content.py
-alongside the catalog itself. Mirrors test_spells.py.
-"""
-
 import pytest
 
 from mentor_variants import (

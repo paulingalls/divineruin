@@ -1,21 +1,3 @@
-"""Conformance for the Phase-6 NPC schema migration (M6.1, story-004).
-
-content/npcs.json is migrated onto the expanded Npc schema: every NPC binds a
-role_archetype id from the story-001 catalog, off-ladder dispositions are reconciled
-to the canonical 5-tier ladder, and voice_ids are reconciled to the runtime voices.py
-keys. These tests pin that contract:
-
-- every row parses fail-loud via npcs.parse_npc_row,
-- every role_archetype resolves in the seeded catalog,
-- default_disposition is on the canonical ladder,
-- the disposition remap did NOT change gated knowledge (AC-4),
-- filter_knowledge still resolves the knowledge dicts monotonically.
-
-Mirrors tests/test_mentor_variants_content.py: read the real content JSON, parse every
-row, assert cross-references. The seed_role_archetypes + seed_npcs autouse fixtures
-populate the in-memory catalogs.
-"""
-
 import json
 from pathlib import Path
 

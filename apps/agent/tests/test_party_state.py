@@ -1,5 +1,3 @@
-"""Tests for party state module (PartyMember, PartyState)."""
-
 import caster_state
 import party_state
 

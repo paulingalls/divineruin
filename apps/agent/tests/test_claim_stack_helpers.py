@@ -1,9 +1,4 @@
-"""Behavior tests for the shared CAS claim-lifecycle helper (claim_stack_helpers).
-
-The async-worker/e2e callers exercise this indirectly; these pin the primitive
-itself — entering the patch stack and asserting the wired-up lifecycle every
-caller depends on, so a future edit can't silently change a target or default.
-"""
+"""Callers share the CAS claim patch stack; enter it here to observe the wiring they inherit."""
 
 import pytest
 from claim_stack_helpers import patch_claim_stack

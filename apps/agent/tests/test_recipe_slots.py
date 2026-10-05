@@ -1,11 +1,4 @@
-"""Tests for the Python recipe_slots accessor (M5.1, concern d125d022f084).
-
-Mirrors test_recipes.py's mocked-pool style: patch db._cache_get / _cache_set /
-db.get_pool. recipe_slots is reference data seeded inline by migration 019;
-loading it from the DB (rather than a hardcoded Python dict) keeps the slot caps
-in one canonical place. The real-DB load path is exercised against a testcontainer
-in tests/acceptance/test_recipe_slots_loading.py.
-"""
+"""DB-loaded slot caps avoid a second hardcoded authority."""
 
 import json
 from unittest.mock import AsyncMock, patch

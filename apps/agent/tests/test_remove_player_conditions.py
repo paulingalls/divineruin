@@ -1,14 +1,4 @@
-"""M4.8 story-013: server-side atomic removal of spent beneficial conditions.
-
-The consume side previously read players.data.conditions from a row fetched OUTSIDE the tx,
-removed the spent die in Python, then overwrote the whole list — clobbering a concurrent
-condition write (e.g. a DM-applied Poisoned). db_mutations_conditions.remove_player_conditions
-removes the named types in ONE atomic SQL statement that operates on the LIVE row, so a
-condition added between a stale read and the removal survives.
-
-Two-part coverage (mirrors the db_mutations_* family): mock-conn unit asserts the jsonb_set
-array-filter SQL; real-PG fast-lane round-trips prove the clobber-preservation + null tolerance.
-"""
+"""Filter the live row atomically so a stale consumer cannot clobber concurrently added conditions."""
 
 import json
 from unittest.mock import AsyncMock

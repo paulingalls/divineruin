@@ -1,9 +1,3 @@
-"""Quest reward tests — what a COMPLETED stage pays and records: the party-wide XP share,
-the per-member divine favor grant, and the anti-replay quest markers those payments leave.
-
-Split out of test_quest_tools.py (story-009) so that module keeps stage transitions,
-milestones and world effects; this one owns the reward/ledger side of `on_complete`."""
-
 import json
 from unittest.mock import AsyncMock, MagicMock
 

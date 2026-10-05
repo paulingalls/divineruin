@@ -1,17 +1,4 @@
-"""Guard: no uncommitted .wav bloat, drift-free transcode signature across bundled families (M22).
-
-M22 requires all bundled audio to ship compressed. Debt 4e6fe7870edd: the 7
-spell-cast SFX shipped as uncommitted-compressed 16-bit PCM .wav (~2.4MB,
-committed twice, source + bundled), breaking the ~50-72KB .mp3 convention used
-by every other bundled sound. This guard fails loud if a .wav ever reappears
-under either directory.
-
-Story-006 consolidated the three per-family (legacy/soundscape/texture) hand-
-maintained transcode-signature guards into one directory-driven, parametrized
-guard covering every bundled family (root, music, soundscapes, textures) --
-the stem set is discovered from the bundled directory listing, not a
-hand-maintained tuple, so a new regenerated family auto-extends coverage.
-"""
+"""Compressed takes keep bundled audio small."""
 
 from __future__ import annotations
 

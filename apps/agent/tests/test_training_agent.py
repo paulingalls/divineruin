@@ -1,10 +1,4 @@
-"""Tests for DispatchAgent + the move_player activity handoff into/out of it.
-
-DispatchAgent exists so CityAgent stays under Anthropic's strict-tool ceiling
-(llm_config.MAX_STRICT_TOOLS; docs/decisions/0004-agent-tool-scaling.md). Players
-reach it by moving into a training-context location; moving out re-resolves to
-the region agent.
-"""
+"""A separate DispatchAgent keeps CityAgent within the strict-tool ceiling."""
 
 from __future__ import annotations
 

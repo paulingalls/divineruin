@@ -1,13 +1,4 @@
-"""Tests for the M9 mentor-variant persistence layer (mentor_variant_progress).
-
-Pass a mock conn directly (the functions accept conn=) and assert the SQL +
-params, mirroring test_character_spells.py. Real SQL is exercised against a
-testcontainer at the story-004 capstone (ADR 0003).
-
-character_mentor_variants is the unlocked set; mentor_variant_learning_progress is
-the in-flight multi-session loop counted in discrete cycles. last_activity_id makes
-cycle accrual idempotent under a worker retry (debt b20815f92023).
-"""
+"""last_activity_id makes cycle accrual idempotent under worker retry."""
 
 from unittest.mock import AsyncMock
 

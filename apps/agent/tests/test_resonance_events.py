@@ -1,13 +1,4 @@
-"""Wire-contract tests for the RESONANCE_CHANGED push (story-004 M4).
-
-The HUD renders only the qualitative Resonance state and MUST NOT show a number
-(no-number spec game_mechanics_magic.md:98, concern 05f). So publish_resonance_changed
-narrows its payload to {"state", "caster_id"} — the raw `current` value and the display
-`max` are dropped from the wire. The number still lives in the DB (persistence) and
-in-session (ResonanceTrack.current); it just never crosses to the client. `caster_id`
-(M14 story-004) discriminates WHICH party member the state belongs to so a multi-player
-client updates only its local player's HUD; it defaults to the session primary.
-"""
+"""The audio-first HUD shows qualitative resonance, never its number. caster_id prevents another party member updating it."""
 
 from unittest.mock import AsyncMock, patch
 

@@ -1,10 +1,3 @@
-"""Fault injection for the M29 acceptance guards (story-022): each reds against its own target.
-
-The guards live in ``tests/acceptance/_m29_guards.py`` but are pure, so their falsifiers run HERE —
-in the fast lane, on every push, rather than behind an API key in the tier they were written for.
-A green that comes from an assertion which cannot fail is worse than no assertion (constraint 1).
-"""
-
 from __future__ import annotations
 
 import contextlib

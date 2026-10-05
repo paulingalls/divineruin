@@ -1,5 +1,3 @@
-"""Refcount, locking, and lifecycle state tests for ``_db_lifecycle``."""
-
 import fcntl
 
 import _db_lifecycle as dbl

@@ -1,24 +1,4 @@
-"""Tests for combat durability hit emission (story-003, M5.4).
-
-Combat accrues per-equipment-type durability hits and persists them, applying the
-story-001 durability engine (apply_durability_damage / check_item_condition). The
-rules (docs/game_mechanics/game_mechanics_crafting.md:532-540):
-- Weapon: 1 hit per encounter; crit vs a heavily-armored target = 2.
-- Armor: 1 hit each time the player takes damage.
-- Shield: 1 hit per shield reaction.
-- Hollow corruption zones double every hit.
-- At 0 hits the item is broken (-2 attack / -2 AC / tool unusable).
-
-Decisions exercised here:
-- durability-hollow-zone-threshold: is_hollow_zone = corruption_level >= 2.
-- durability-heavy-armor-proxy: is_heavily_armored = target_ac >= 17 (enemy stats
-  carry only scalar ac).
-- durability-current-hits-lazy-default: a missing current_hits reads as full
-  (max_hits(tier)); never-damaged items start undamaged.
-
-This module's pure helpers (combat_resolution) are fixture-free unit tests; the
-async accrual/wiring tests inject AsyncMock mutations/queries (test_combat_tools style).
-"""
+"""Enemy stats have only scalar AC, so heavy armor uses an AC proxy."""
 
 from unittest.mock import AsyncMock, patch
 

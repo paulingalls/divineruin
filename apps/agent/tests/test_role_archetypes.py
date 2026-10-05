@@ -1,12 +1,3 @@
-"""Tests for the role_archetypes content loader + instantiator (Phase 6 M6.1 / story-002).
-
-The loader mirrors apps/agent/mentor_variants.py: fail-loud parse of the
-content/role_archetypes.json catalog into frozen RoleArchetype dataclasses, a
-module-global dict with a set_* test seam, and a build-then-swap async DB loader.
-create_npc_from_archetype is the pure rules-engine instantiator (tested in the
-companion instantiator suite). These loader tests own the parse + accessor contract.
-"""
-
 import json
 from pathlib import Path
 

@@ -1,11 +1,4 @@
-"""Party-membership gate + batched locked write for produce_ooc_condition (M4.8 story-007).
-
-Debts d2316e2f74af (no party/existence gate — a non-party PC or phantom id silently "lands") and
-b0207c768743 (per-ally N round-trips) both close here. A target must be a caster's party member OR
-their present companion (allowlisted narrate-only, no players.data row) — anything else is refused
-fail-loud, no write. Party targets are fetched + written in ONE batched, id-ordered call each (was
-N per-target round-trips).
-"""
+"""Phantom or foreign targets must not land a condition; batch locking also avoids per-ally round trips."""
 
 from unittest.mock import AsyncMock, MagicMock
 

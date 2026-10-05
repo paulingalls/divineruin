@@ -1,10 +1,4 @@
-"""Errand-risk roll + tables, conformance-pinned to the spec.
-
-game_mechanics_core.md §Companion Risk (L887-892) is the oracle. The TS server
-(apps/server/src/errand_risk.ts) keeps a sibling BLOCKED_DANGER_COMBOS pin; both
-languages conform to the same spec doc. Risk is rolled here (Python worker, at
-resolution) — TS no longer rolls it (ADR 0006).
-"""
+"""Python rolls risk at resolution; TypeScript no longer rolls it (ADR 0006)."""
 
 import pytest
 from sample_fixtures import FixedRng

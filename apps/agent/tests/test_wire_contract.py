@@ -1,13 +1,4 @@
-"""Cross-language wire-contract test (story-007, closes 82fc).
-
-``packages/shared/fixtures/event_wire.json`` is the single source of truth for the
-wire shape both lanes assert against. Here is the Python half: each covered event
-publisher, driven from the fixture's own values, must serialize exactly the fixture's
-``{type, ...payload}`` shape, and the session-init spell-row builder must emit exactly
-the fixture ``spell_row`` keys. A renamed payload key on the Python side fails this
-test; the TS half (``apps/mobile/src/__tests__/wire-contract.test.ts``) asserts the
-mirror, so drift on either side goes red instead of silently rendering a blank value.
-"""
+"""The shared event fixture anchors both languages; neither side may invent the other publisher or parser shape."""
 
 import json
 from pathlib import Path

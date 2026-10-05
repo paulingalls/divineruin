@@ -1,8 +1,4 @@
-"""Tests for BlacksmithAgent — focused NPC-blacksmith repair agent with one prompt.
-
-Split from story-004 (the customer chose a dedicated agent over folding repair into
-DispatchAgent). Mirrors CombatAgent's config-test shape (test_combat_agent.py).
-"""
+"""The customer chose a separate BlacksmithAgent over adding repair to DispatchAgent."""
 
 from base_agent import BaseGameAgent
 from blacksmith_agent import BLACKSMITH_SYSTEM_PROMPT, BLACKSMITH_TOOLS, BlacksmithAgent

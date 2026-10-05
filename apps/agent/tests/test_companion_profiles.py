@@ -1,11 +1,4 @@
-"""Tests for the companion profiles loader + scaler (Phase 6 M6.4 / story-002).
-
-The loader mirrors role_archetypes.py: fail-loud parse of content/companions.json into frozen
-Companion dataclasses, a module-global dict with a set_* test seam, and a build-then-swap async
-DB loader. companion_scaling.scale_companion_stats_to_player_level is the pure level-scaler.
-These tests own the parse + accessor + scaling contract; the real-DB load is exercised by the
-story-005 capstone.
-"""
+"""The loader tests isolate parsing and scaling; stored loading needs real Postgres."""
 
 import copy
 import json

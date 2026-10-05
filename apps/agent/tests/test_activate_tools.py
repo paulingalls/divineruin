@@ -1,12 +1,4 @@
-"""Tests for activate_tools.activate — the polymorphic Phase-5 dispatcher (M25 story-001).
-
-activate(id) is a pure router: it resolves an id to a kind (reserved token, Veil Anchor, spell,
-ability, or mentor variant) and dispatches to the matching pre-existing ``_impl``. No transaction
-of its own — each target ``_impl`` still opens and commits its own. Routing is mostly proven with
-injected stub impls (AsyncMock); each target ``_impl`` already has its own test suite for its own
-behavior. The one exception is the variant namespace, whose id resolution is also pinned against
-the real loaded catalog so mocking both sides cannot hide a content/routing drift.
-"""
+"""Routing uses owned stubs; variant lookup uses the real catalog so both mocked sides cannot hide drift."""
 
 import dataclasses
 from typing import Any

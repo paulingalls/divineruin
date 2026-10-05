@@ -1,12 +1,4 @@
-"""Tests for the experimentation system (story-004, M5.3).
-
-Pure core (resolve_experimentation, find_matching_recipe, make_combination_key) plus
-the experiment_with_materials tool. The tool resolves immediately (decision
-experimentation-immediate): roll d20+crafting-mod vs base_dc+4, consume materials, and
-either teach the matched recipe (success) or record a no-match combo. player_failed_experiments
-records/short-circuits ONLY no-match combos (decision experimentation-dedup-no-match-only);
-a roll-failure on a real recipe is retryable.
-"""
+"""No-match combinations are deduplicated; failed rolls on real recipes remain retryable."""
 
 import json
 import random

@@ -1,5 +1,3 @@
-"""The Hollow Echo a cast provokes and the Resonance wards that soften it (fixtures: _spell_casting_helpers)."""
-
 import json
 from unittest.mock import AsyncMock, MagicMock
 

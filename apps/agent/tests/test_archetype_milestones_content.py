@@ -1,24 +1,4 @@
-"""Content tests for content/archetype_milestones.json — the M2.3 milestone SSOT.
-
-These read the raw JSON file directly (NOT a loader; the loader lives in
-apps/agent/milestones.py, story-002). This module checks the JSON's structure:
-roster coverage (every archetype has one row at each of L5/L10/L15/L20), the
-tier<->level mapping, the L5 specialization-fork shape (exactly 2 options, or a
-patron-deferred stub), the L10/L15/L20 auto-grant shape, and id well-formedness.
-Mirrors test_archetype_abilities_content.py.
-
-Schema (decision 4c0677dae1be — self-contained milestone records):
-each record embeds its granted ability text directly; milestones do NOT FK into
-archetype_abilities (which holds activatables only — these grants are passive
-combat flags / markers consumed by story-004 and Phase-4 combat).
-
-Spec-fidelity decisions (confirmed with customer):
-- Oracle has a concrete L5 fork (Fateseer/Doomcaller, spec L870) — encoded fully.
-  Only Cleric (4 patron domains) and Paladin (4 patron oaths) are patron-deferred
-  stubs pending Phase 8 (risk 5ab73bf3720a).
-- Extra Attack at L10 is assigned only to Warrior, Skirmisher, Paladin (assumption
-  69d9cf96ac16) — not all martials; Guardian etc. get archetype-specific grants.
-"""
+"""Milestones embed passive grants rather than referencing the activatable-ability catalog."""
 
 import json
 import re

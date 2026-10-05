@@ -1,5 +1,3 @@
-"""Tests for CombatAgent — combat-specific agent with focused tools and prompt."""
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from livekit.agents.llm import ChatContext, ChatMessage

@@ -1,14 +1,4 @@
-"""Tests for the M4.4 death-history DB layer (db_mutations_death, story-001).
-
-Two-part coverage, mirroring the db_mutations_* module family: (1) mock-conn unit tests assert
-the jsonb_set('{death_history}', ...) construction + read-side parsing/default; (2) one real-PG
-fast-lane round-trip (single-concern, per the CLAUDE.md test-lane guidance) proves count
-accumulation + the cost ledger against the dev DB at :55432.
-
-Storage shape: players.data.death_history = {"count": int, "costs": [<DeathCost dict>, ...]},
-a top-level JSONB key beside {conditions} and {resonance}. The permanent death count
-never resets; record_death takes a pre-computed DeathCost (count authoritative — no self-increment).
-"""
+"""The caller supplies the authoritative death count; the writer must not increment it again."""
 
 import json
 from dataclasses import asdict

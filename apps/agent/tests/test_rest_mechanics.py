@@ -1,5 +1,3 @@
-"""Tests for rest recovery mechanics — short/long rest restoration + elective swap."""
-
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest

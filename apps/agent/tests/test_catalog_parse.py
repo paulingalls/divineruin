@@ -1,11 +1,3 @@
-"""catalog_parse — shared content-loader parse primitives (loader-dedup chore).
-
-These primitives were copy-pasted across five content loaders (companion_profiles,
-role_archetypes, settlement_templates, npcs, mentor_variants). The shared module is
-the new primitive, so it carries its own behavior test — the loaders' suites exercise
-it only indirectly through their own row shapes.
-"""
-
 import pytest
 
 import catalog_parse as cp

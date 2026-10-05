@@ -1,20 +1,4 @@
-"""Content tests for content/archetype_abilities.json — the M2.2 ability SSOT.
-
-These read the raw JSON file directly (NOT a loader; the loader lives in
-apps/agent/abilities.py, story-002). This module checks the JSON's structure:
-roster coverage (every archetype has at least one core ability), the L4/L8
-elective technique pool sizes, the closed ability_type vocabulary, the cost
-object shape, and id well-formedness. Mirrors test_archetypes_content.py.
-
-Scope (decision m22-core-spells-as-abilities): activatable abilities only —
-core actives + casters' fixed core spells (ability_type=core), core reactions
-(reaction), and L4/L8 elective techniques (elective). Passives, L5/L9
-specialization-variant core spells, and elective spell progression are out of
-M2.2.
-
-Cost is a structured object (decision m22-cost-object-schema):
-{stamina:int>=0, focus:int>=0, scaling:str|None}.
-"""
+"""This catalog holds activatables; passive milestone grants and specialization spells have separate owners."""
 
 import json
 import re

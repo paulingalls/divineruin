@@ -1,16 +1,4 @@
-"""Tests for veil_anchor_tools.deploy_veil_anchor (story-012, M24).
-
-A crafted Veil Anchor is set down and wards the place it is set down in. The crafting IS the cost,
-so deploying deducts no Focus and no Stamina — which is exactly why this cannot route through
-activate_veil_ward: that tool gates on source.tool_raisable, and artificer is tool_raisable=False on
-purpose (story-005), so a 0-cost class cannot raise a free ward at will.
-
-The two anchors differ, and the difference is data (veil_ward.VEIL_ANCHORS), not a conditional:
-  small -> REAL_TIME 1h, dismissible, CONSUMED on use
-  large -> PERMANENT (expires_at NULL), NOT dismissible, NOT consumed
-
-Drives _deploy_veil_anchor_impl directly with injected mock modules, mirroring test_veil_ward_tools.
-"""
+"""Crafting pays for an anchor; deploying it must not grant artificers a free general-purpose ward activation."""
 
 import json
 import uuid

@@ -1,17 +1,3 @@
-"""Tests for the settlement_templates content loader (Phase 6 M6.2 / story-002).
-
-The loader mirrors apps/agent/role_archetypes.py + npcs.py: fail-loud parse of the
-content/settlement_templates.json catalog, one module-global dict per kind (_tiers,
-_personalities, _name_pools) with a set_* test seam, and a build-then-swap async DB loader. The
-catalog is the template SSOT story-003 consumes — get_settlement_tier(size) for role
-counts, get_settlement_personality(trait) for modifiers.
-
-Catalog shape: a flat list of self-contained id/JSONB rows discriminated by `kind`:
-4 tier rows (id == SettlementSize, role_counts of {min,max} ranges) + 8 personality
-rows (role_frequency_modifiers, disposition_modifiers, price_modifier, inventory_modifier,
-description) + 1 name_pool row (given names + surnames for generated rosters).
-"""
-
 import json
 import re
 from pathlib import Path

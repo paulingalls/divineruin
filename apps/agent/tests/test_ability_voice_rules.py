@@ -1,5 +1,3 @@
-"""Every authored base and mentor form has an explicit delivery policy."""
-
 import json
 from pathlib import Path
 

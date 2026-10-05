@@ -1,11 +1,4 @@
-"""Catalog conformance for content/mentor_variants.json (M9 / story-001).
-
-Drives the production fail-loud parse_mentor_variant_row over the real catalog,
-proving every entry conforms to the MentorVariant contract and cross-references a
-real martial elective + an existing mentor NPC. Mirrors the TS conformance test
-(apps/server/src/mentor_variants-load.test.ts); the unit-level parse/accessor
-behavior lives in test_mentor_variants.py.
-"""
+"""Both languages parse the same authored catalog; this lane executes the Python parser."""
 
 import json
 from collections import Counter, defaultdict

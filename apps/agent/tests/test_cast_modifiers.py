@@ -1,14 +1,3 @@
-"""Tests for cast_modifiers — the pure per-cast composition layer (M24 story-006).
-
-These primitives were extracted from spell_casting._resolve_cast, which had grown past the
-500-line cap. Refactor Mode requires a direct behavior test for each new primitive: the
-original caller's tests reach them only through _resolve_cast, so a bug in an edge case no
-cast test happens to drive would pass unnoticed.
-
-Everything here is pure — no conn, no session. The async ward READ stays in _resolve_cast;
-what lives here is what the cast does with the answer.
-"""
-
 import pytest
 
 import cast_modifiers

@@ -1,15 +1,3 @@
-"""Mentor-variant narration carries the cultural attribution (M9 story-003 / AC4).
-
-When a mentor-variant training completes, the DM narration prompt must surface the
-variant's cultural_attribution so the voice attributes the technique to its culture.
-Stat/skill training (no cultural_attribution in the activity data) must be unchanged —
-the attribution line is conditional, never a stray placeholder or empty label.
-
-Two seams are exercised: build_training_completion_outcome copies cultural_attribution
-from the activity data into narrative_context (the bridge), and build_narration_prompt
-renders it into the training prompt (the template).
-"""
-
 from activity_templates import build_narration_prompt
 from async_worker_training import build_training_completion_outcome
 from training_rules import CompletionResult

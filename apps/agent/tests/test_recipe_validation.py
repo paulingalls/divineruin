@@ -1,10 +1,3 @@
-"""Tests for recipe acquisition validators (story-006, M5.1).
-
-Pure deterministic functions — plain args, no DB. Slot capacity mirrors the
-migration-019 recipe_slots seed (Untrained=3 per decision d25e04f066a3); material
-checks cover substitution + tier_minimum.
-"""
-
 import pytest
 
 import recipe_validation as rv

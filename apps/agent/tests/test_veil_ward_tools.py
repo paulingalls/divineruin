@@ -1,24 +1,4 @@
-"""Tests for activate_veil_ward (veil_ward_tools.py, story-003 cut-over, M24).
-
-Drives the tool's _impl directly with a mock RunContext + injected mock
-queries/persistence/ward-mutations mods, mirroring test_ability_tools.py. The tool is
-one polymorphic verb: active=True raises a ward (archetype/level/cost gated), active=False
-dismisses it (free). Every user-facing failure is a ToolError raised before any write, so
-an unaffordable/ineligible activation deducts nothing.
-
-M24 story-003 moves the ward off the caster's row onto the scope. The resource cost stays
-per-caster (gate_pool deducts from the raiser alone); the ward it buys is shared, so "already
-active" is a property of the scope and dismissal is by scope, not by player.
-
-story-005 adds targeting: in combat the ward is the ENCOUNTER's (on CombatState); otherwise the
-LOCATION's (a veil_wards row, expires_at from the source's duration). "Already active" is asked
-of the PARTY via resolve_scope_ward — both scopes OR-ed — not of the scope about to be written.
-
-The published VEIL_WARD_CHANGED payload is {active, scope_kind, scope_id, source} (story-008, no
-raiser id); veil_ward_events.publish_game_event
-is patched to assert the wire shape (the push moved to its own module in story-004 because arrival
-needs it too). story-008 rebuilds the payload as scope-membership.
-"""
+"""The raiser pays individually, but the ward belongs to a scope. Check party coverage across both scopes."""
 
 import json
 from contextlib import nullcontext

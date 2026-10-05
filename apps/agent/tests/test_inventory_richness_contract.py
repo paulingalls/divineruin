@@ -1,15 +1,4 @@
-"""Fast-lane contract guard for the forward-wired `inventory_richness` NPC field (M23 / story-006).
-
-`settlement_generation.instantiate_npc_from_template` stamps
-`npc["inventory_richness"] = pers["inventory_modifier"]` onto every generated settlement NPC,
-but nothing READS `inventory_richness` until the Phase-9 economy lands (SMM risk 477619e6238e —
-close-with-guard). This pins the producer contract so the shape/value a Phase-9 reader will depend
-on cannot drift silently before the consumer exists: the field is emitted, equals the personality's
-inventory_modifier, and an explicit override wins.
-
-Pure fast-lane (no DB, no LLM) — mirrors tests/test_settlement_generation.py's catalog-seeding
-fixture, exercising the shipped content/*.json data rather than hand-rolled stubs.
-"""
+"""inventory_richness is forward-wired: the producer ships before its economy reader."""
 
 from __future__ import annotations
 

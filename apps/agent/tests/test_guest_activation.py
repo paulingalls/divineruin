@@ -1,5 +1,3 @@
-"""A bound turn pays its own activation costs."""
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

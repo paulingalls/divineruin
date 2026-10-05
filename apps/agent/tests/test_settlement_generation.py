@@ -1,11 +1,4 @@
-"""Tests for settlement_generation — the pure NPC-population rules engine (M6.2 / story-003).
-
-generate_settlement_npcs(tier, personality) turns a settlement into concrete role counts;
-instantiate_npc_from_template(role, tier, personality, overrides) layers tier+personality
-modifiers onto M6.1's create_npc_from_archetype output. Both are pure (no LLM, no DB). The
-fixture seeds the real content/*.json catalogs (settlement_templates + role_archetypes) via
-the set_* seams so tests exercise the shipped data, not hand-rolled stubs.
-"""
+"""Seed shipped catalogs rather than hand-built role/template models."""
 
 import json
 import math

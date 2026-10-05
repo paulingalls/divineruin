@@ -1,13 +1,4 @@
-"""Tests for session_hydration.hydrate_session_state (story-004, M3.5).
-
-The composer rehydrates resonance/concentration from players.data onto SessionData and the veil
-ward from the session's location scope (M24: the ward is scope-owned, never on the player row),
-increments the player session_count once (story-002), and sets + persists the session-gated
-Thessyn flickering_bonus (story-003 gate + story-001 persist). Inject mock *_mod modules for the
-DB read/persist/counter (the DI seam); use the REAL racial_resonance for the gate — the autouse
-racial fixture (tests/conftest.py) seeds the table so compute_flickering_bonus resolves the +1.
-The composed real-PG path is proven at the story-006 capstone.
-"""
+"""Inject database seams but use the real seeded racial catalog for the flickering-bonus gate."""
 
 from unittest.mock import AsyncMock, MagicMock
 

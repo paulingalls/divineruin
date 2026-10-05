@@ -1,7 +1,4 @@
-"""story-004: combat sources the companion's stat block from the companions.json profile
-(companion_scaling: level scaler + action_pool translator), NOT from npcs.json get_npc, and the
-block is INDEPENDENT of the relationship inputs (session_count/affinity). Combat is never gated
-by relationship (spec L871, the negative invariant)."""
+"""Companion combat power is independent of relationship rank and affinity."""
 
 from unittest.mock import AsyncMock, MagicMock
 

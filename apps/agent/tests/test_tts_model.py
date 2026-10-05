@@ -1,5 +1,3 @@
-"""Behavior checks for the Inworld model selected by both speech paths."""
-
 import base64
 import json
 from types import SimpleNamespace

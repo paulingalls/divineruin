@@ -1,10 +1,3 @@
-"""Unit tests for db_content_queries.get_faction (story-008 stance-gate read seam).
-
-Mocked cache + pool (like tests/database/): a cache hit returns without a DB read; a miss
-falls through to the factions table and back-fills the cache; a missing row returns None.
-Real SQL correctness is exercised against the testcontainer in the acceptance suite.
-"""
-
 import json
 from unittest.mock import AsyncMock, patch
 

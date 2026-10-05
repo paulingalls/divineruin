@@ -1,18 +1,4 @@
-"""Tests for abilities.py — the DB-loaded archetype-ability content config (M2.2).
-
-Mirrors the archetypes.py loader contract: parse_ability_row (fail-loud, shared
-by the DB loader and the JSON test fixture), set_abilities (test seam),
-get_ability / get_archetype_abilities (accessors), is_loaded, and the
-build-then-swap load_abilities (a malformed row must not wipe an already-loaded
-map). The row shape is the cross-language SSOT contract (story-001); cost is the
-nested object {stamina:int, focus:int, scaling:str|None}.
-
-The conftest autouse seed_abilities fixture pre-populates the map from content
-before each test, but every test here seeds its own state up front
-(set_abilities / a JSON helper) and so is verifiable independent of that fixture:
-test_is_loaded_reflects_population deliberately clears the pre-seeded map with
-set_abilities({}) to assert the empty case.
-"""
+"""Each test seeds its own catalog so autouse seeding cannot hide empty-input behavior."""
 
 import json
 from pathlib import Path

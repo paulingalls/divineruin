@@ -1,10 +1,3 @@
-"""Tests for the Player Affect Analyzer pure functions (Phase A: transcript-only).
-
-The stateless scoring/classification helpers — split from the stateful
-PlayerAffectAnalyzer tests (test_affect_analyzer_analyzer.py) to keep each file
-under the 500-line cap.
-"""
-
 from livekit.agents.types import TimedString
 
 from affect_analyzer import (

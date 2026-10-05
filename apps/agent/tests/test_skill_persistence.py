@@ -1,10 +1,3 @@
-"""Behavior tests for the shared skill-advancement persistence helper.
-
-This is the new primitive extracted from check_tools and async_worker —
-both paths now route through `apply_skill_use_with_persistence` so the
-M1.2 hybrid-counter contract is enforced by construction.
-"""
-
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest

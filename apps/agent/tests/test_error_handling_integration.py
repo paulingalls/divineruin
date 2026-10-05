@@ -1,10 +1,4 @@
-"""Integration tests for the @db_tool decorator's database-error translation.
-
-These pin the DECORATOR, not any one verb: a raw asyncpg/connection failure inside a tool must
-reach the LLM as a spoken-language ToolError rather than a stack trace, and must leave no
-session state behind. They drove award_xp until M28 story-003 removed it from the tool surface;
-update_npc_disposition is the stand-in — any @db_tool-wrapped verb exercises the same path.
-"""
+"""Translate DB failures to ToolError so the model can narrate them."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock, patch

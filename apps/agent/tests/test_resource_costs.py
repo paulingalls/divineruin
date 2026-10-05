@@ -1,6 +1,3 @@
-"""Unit tests for resource_costs.gate_pool — the shared Focus/Stamina pool gate
-extracted from ability_tools, veil_ward_tools, and spell_casting._gate_spell."""
-
 import pytest
 from livekit.agents.llm import ToolError
 

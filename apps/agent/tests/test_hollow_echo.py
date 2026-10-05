@@ -1,21 +1,4 @@
-"""Tests for the pure Hollow Echo resolver (story-001, M3.2).
-
-The Hollow Echo is the deterministic consequence rolled on a d20 when a spell is
-cast at Overreach (Resonance 9+): the Veil tears and something may answer. Like the
-Resonance engine this is a closed-table mechanic (CLAUDE.md golden rule #3) — the
-LLM decides when to cast and narrates the result; this module only maps the roll to
-a band. No IO, so these are plain unit tests with no fixtures or pool.
-
-Spec source: docs/game_mechanics/game_mechanics_magic.md §Hollow Echo Table
-(167-185): d20, at Resonance 12+ subtract 3, at 15+ subtract 6; bands 17-20 Nothing /
-14-16 Whisper / 11-13 Veil scar / 8-10 Sympathetic / 5-7 Hollow attention /
-2-4 Reality fracture / <=1 Breach.
-
-Assumption recorded by this story: the resolver returns the band + a mechanical-effect
-descriptor for the DM to narrate; the secondary mechanical follow-through (1d4 psychic
-for Sympathetic, doubled Focus for Reality fracture, 1-3 creatures for Breach) is
-DM/follow-up, NOT auto-applied here.
-"""
+"""The resolver returns a band and effect descriptor; secondary effects are applied by the DM or follow-up."""
 
 import pytest
 

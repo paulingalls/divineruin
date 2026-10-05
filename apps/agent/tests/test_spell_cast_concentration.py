@@ -1,5 +1,3 @@
-"""Cast-paced Resonance decay and concentration tracking (fixtures: _spell_casting_helpers)."""
-
 from _spell_casting_helpers import _cast, _cast_racial, _spell
 
 

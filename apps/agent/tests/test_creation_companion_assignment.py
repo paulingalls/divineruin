@@ -1,14 +1,4 @@
-"""Tests for companion assignment at character creation (story-003).
-
-The companion stack (profiles, scaling, 5 relationship tiers, affinity, errands, combat)
-was fully built but DARK for a new character: nothing created the first
-`companion_relationships` row. finalize_character now binds the one companion whose
-`complements` lists the character's archetype, mirroring the M8 starting-spell grant —
-after the player is persisted, non-fatal, logged.
-
-Covers the non-overwriting writer (unit + real-PG), and the finalize_character hook.
-The archetype -> companion selection itself is owned by tests/test_companion_profiles.py.
-"""
+"""Create the first relationship only after the player exists, without overwriting an existing assignment."""
 
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch

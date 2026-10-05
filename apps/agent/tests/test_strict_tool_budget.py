@@ -1,10 +1,4 @@
-"""Pin every agent's tool surface under Anthropic's three strict-schema ceilings.
-
-The ceilings live once, in llm_config (MAX_STRICT_TOOLS / MAX_UNION_PARAMS /
-MAX_NULLABLE_PER_OBJECT). A tool addition or a reshape that breaches one should fail
-here as a unit test, not in production as a 400 (ADR 0004 captured the "too many
-strict tools" error; ADR 0008 the union and complexity ones).
-"""
+"""Construct installed vendor schemas because a local model of their limits can pass while requests fail."""
 
 import ast
 import inspect

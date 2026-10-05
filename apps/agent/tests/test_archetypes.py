@@ -1,12 +1,3 @@
-"""Tests for archetypes.py — the DB-loaded chassis content config (M2.1).
-
-Mirrors the training_rules loader contract: parse_archetype_row (fail-loud,
-shared by the DB loader and the JSON test fixture), set_archetypes (test seam),
-get_archetype_chassis (accessor, raises on unknown). The autouse seed_archetypes
-conftest fixture populates the chassis from content/archetypes.json before each
-test, so chassis-fed math resolves without a DB.
-"""
-
 import pytest
 
 from archetypes import (

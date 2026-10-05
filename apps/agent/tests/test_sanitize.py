@@ -1,5 +1,3 @@
-"""Tests for sanitize.py — prompt injection mitigation."""
-
 from sanitize import sanitize_for_prompt
 
 

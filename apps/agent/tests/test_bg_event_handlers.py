@@ -1,10 +1,3 @@
-"""Tests for bg_event_handlers.handle_events — the pure event-dispatch function.
-
-Focuses on the M6 E.HIDDEN_REVEALED handler: a successful discovery's reveal event
-triggers a warm rebuild AND records the revealed element id on SessionData, which
-story-003's hot-layer assembly reads (and clears) to surface the target same-turn.
-"""
-
 from unittest.mock import MagicMock, patch
 
 import pytest

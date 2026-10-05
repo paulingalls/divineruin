@@ -1,20 +1,4 @@
-"""Tests for inner_fire (draethar_inner_fire.py, story-005, M3.4).
-
-Drives the tool's _impl directly with a mock RunContext + injected mock db / queries /
-hp-mutations / resonance-mutations / resonance-events / dice mods, mirroring
-test_veil_ward_tools.py. Inner Fire is the Draethar active racial (spec magic.md 262-268):
-once per encounter, drop Resonance by 3 and take 1d6 unpreventable self fire damage. Every
-user-facing failure is a ToolError raised before any write, so an ineligible use changes nothing.
-
-The -3 / "1d6" values come from the story-001 racial table; the real racial_resonance module is
-used (the autouse seed_racial_resonance conftest fixture populates it), so the test exercises the
-real lookup. dice is injected for a deterministic roll. Inner Fire is combat-scoped, so the
-session carries a CombatState with the Draethar as a participant; HP is written to both the
-participant (in-memory) and persisted via update_player_hp, mirroring combat_turn.py. A burn that
-reaches 0 HP goes through combat_support._handle_hp_zero — the one door every zero-HP transition
-knocks on, so a self-immolating Draethar falls (or, Stage-2+ Hollowed, rises) exactly as a blow
-would leave them (story-026).
-"""
+"""Use the real racial catalog and deterministic dice; self-inflicted zero HP must use the shared death path."""
 
 import asyncio
 import json

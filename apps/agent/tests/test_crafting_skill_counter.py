@@ -1,19 +1,4 @@
-"""Hidden Crafting skill counter (+1 on Failure) — story-006.
-
-Decision crafting-hidden-skill-counter (story-001) ships the spec's failure
-consolation reward (game_mechanics_crafting.md:106): every crafting Failure grants
-+1 toward a per-player hidden Crafting skill counter. The increment is a DB
-mutation on the worker's outcome-application path — distinct from story-003's pure
-resolver.
-
-These are unit tests:
- - the async-worker hook fires increment exactly once on a 'failure'-band crafting
-   outcome, and never on other bands or non-crafting activities;
- - the get/increment SQL helpers issue the expected query shape.
-Real-DB increment round-trip + ON DELETE CASCADE are proven in the acceptance suite
-(tests/acceptance/test_crafting_skill_counter_cascade.py); the full worker E2E is
-covered by the Milestone-3 capstone (story-005).
-"""
+"""A failed craft still rewards practice; the worker owns that increment, not the pure resolver."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 

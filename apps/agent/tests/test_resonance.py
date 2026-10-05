@@ -1,22 +1,5 @@
-"""Tests for the pure Resonance rules engine (story-001, M3.1).
-
-Resonance is a closed-table deterministic mechanic (CLAUDE.md golden rule #3):
-the source multipliers, the primal terrain table, the state thresholds, and the
-per-state damage-die/DC modifiers are code constants, not DB-loaded content (same
-call as the durability rules engine). No IO — every function reads/returns plain
-ints/dicts, so these are plain unit tests with no fixtures or pool.
-
-Spec sources: docs/game_mechanics/game_mechanics_magic.md §Resonance System
-generation pseudocode (110-124), states (100-106), decay (126-131), primal terrain
-table (71-80).
-
-Decisions recorded by this story:
-- resonance-generation-fn-name: canonical name is calculate_resonance_generated
-  (milestone deliverable + M3.3 cast_spell consumer); spec shorthand is resonance_generated.
-- resonance-primal-terrain-routing: source "primal" routes through PRIMAL_TERRAIN_TABLE;
-  "normal" default is non-primal-only; primal fails loud on unknown terrain.
-- resonance-veythar-seam: divine_veythar_post_reveal 0.7 reserved now (Phase-8 patron seam).
-"""
+"""Resonance tables are deterministic code constants rather than DB-loaded content.
+The post-reveal Veythar multiplier is reserved for the patron seam."""
 
 import pytest
 

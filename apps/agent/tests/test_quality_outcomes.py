@@ -1,19 +1,4 @@
-"""Tests for the Python quality-outcome accessors + selector (story-002, M5.3).
-
-quality_outcomes is DB-loaded content (content/quality_outcomes.json, decision
-quality-outcomes-storage) read only by the Python rules engine — mirrors the
-recipes accessor (recipes.py / test_recipes.py): a fail-loud parse_quality_outcome_row
-and a get_quality_outcomes accessor cached quality_outcome:<category>.
-
-apply_quality_outcome is the pure band-keyed selector story-003's resolve_crafting
-calls (decision apply-quality-outcome-signature): exceptional -> a bonus_property,
-partial -> a flaw, success/failure -> None. bonus/flaw entries are narration-only
-{id,name,description} (decision bonus-property-shape).
-
-Unit tests with a mocked pool, like test_recipes. The real-DB seed path (migration
-024 + seed_content -> quality_outcomes table) is exercised by the M5.3 capstone
-(story-005) on the testcontainer lane.
-"""
+"""Quality bonuses and flaws are narration descriptors, not executable modifiers."""
 
 import json
 import random

@@ -1,11 +1,4 @@
-"""Regression tests for db_training create/update SQL + params.
-
-Pins the transition_at handling that the async worker
-(advance_training_cycles) depends on: a row without transition_at is
-never polled, so both create and update must thread it through to the
-right SQL branch. Both functions accept an injectable conn= so these
-assert the SQL/params directly against a mock connection.
-"""
+"""The worker ignores a training row without transition_at."""
 
 import json
 from unittest.mock import AsyncMock

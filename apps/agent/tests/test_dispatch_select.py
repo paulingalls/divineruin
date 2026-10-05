@@ -1,10 +1,4 @@
-"""DispatchAgent select + specialization-tap wiring (M7 story-004).
-
-Leveling also happens mid-training in the dispatch context, so the dispatch agent must
-expose the generic ``select`` verb AND host the L5 ``SpecializationTapHandler`` — the
-same consumer the exploration agents run (story-008) — so an L5 fork resolves (by HUD
-tap or DM voice) without leaving dispatch. Closes debt 15da0e89fa97.
-"""
+"""Leveling can happen during dispatch training, so specialization must work without leaving dispatch."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 

@@ -1,5 +1,3 @@
-"""The acceptance REST server tolerates a port claimed after the free-port probe."""
-
 from __future__ import annotations
 
 from collections.abc import Callable

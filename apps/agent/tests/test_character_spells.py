@@ -1,15 +1,4 @@
-"""Tests for the M8 spell persistence layer (character_spells).
-
-Pass a mock conn directly (the functions accept conn=) and assert the SQL +
-params, mirroring test_ability_persistence.py. Real SQL is exercised against a
-testcontainer at the story-007 capstone (ADR 0003) — the real-DB testcontainer
-fixtures live in tests/acceptance/conftest.py, unreachable from tests/.
-
-character_spells is the known ELECTIVE library (caster core spells stay
-archetype_abilities rows, seam 235ae150c5d3); spell_learning_progress is in-flight
-training counted in discrete cycles. acquisition_track is {training, discovery,
-npc_teaching} — NO core track (story-005 added npc_teaching for mentor-taught spells).
-"""
+"""Mock connections check SQL construction; they do not certify stored results."""
 
 from unittest.mock import AsyncMock
 

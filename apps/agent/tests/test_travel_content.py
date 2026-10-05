@@ -1,14 +1,3 @@
-"""Content conformance + migration shape guard for M4.6b travel (story-002).
-
-Pure-parse, no DB (fast lane), mirroring test_social_content.py / test_content_validation.py.
-Asserts every travel-reachable location (region_type=wilderness or a road/travel tag) carries
-an explicit `terrain` that is a valid travel.NAVIGATION_DC key (travel.py is the SSOT for the
-terrain vocabulary) plus a valid integer danger_level, and that migration 055 follows the
-established idempotent jsonb_set seed pattern (051-053).
-
-Spec: docs/game_mechanics/game_mechanics_combat.md §Travel and Exploration (L852-969).
-"""
-
 import json
 from pathlib import Path
 

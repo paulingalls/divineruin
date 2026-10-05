@@ -1,12 +1,4 @@
-"""Tests for HP scaling — archetype-based HP formula.
-
-calculate_hp is pure math (unchanged). calculate_max_hp now derives base/growth
-from the chassis SSOT via get_archetype_chassis (seeded by the autouse
-seed_archetypes conftest fixture from content/archetypes.json). The per-archetype
-HP expectations below are hardcoded from the historically-correct values — an
-independent anchor pinning the chassis to those numbers now that the legacy
-ARCHETYPE_HP_CONFIG constant is gone.
-"""
+"""Expected HP numbers are independent of loaded chassis data so a catalog change cannot certify itself."""
 
 import pytest
 from sample_fixtures import GUILD_PLAYER, SAMPLE_PLAYER

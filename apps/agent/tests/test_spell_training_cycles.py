@@ -1,12 +1,4 @@
-"""Spell-training cycle accrual + promotion (M8 story-004).
-
-A completed spell-training activity = one cycle toward that spell's
-spell_learning_progress. When the tier's cycle count is reached, the worker
-promotes the spell into the known library (record_learned + clear progress).
-
-Unit tests isolate worker retry and promotion seams. The three-cycle diagnostic
-uses the real begin_activity producer, Postgres rows, progress, and known library.
-"""
+"""Mock retry seams isolate promotion; the three-cycle diagnostic uses the real producer and stored library."""
 
 import json
 import uuid

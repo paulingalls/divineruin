@@ -1,15 +1,3 @@
-"""Tests for starting elective-spell assignment at character creation (M8 story-003).
-
-Caster CORE spells are archetype_abilities rows (seam 235ae150c5d3); story-003
-auto-assigns STARTING ELECTIVE spells (spec L1253: pre-game training) to the 9
-single-source casters — 1 cantrip + 1 minor from the archetype's magic source,
-recorded prepared in character_spells. Martials and cross/hybrid/social casters
-get none at L1.
-
-Covers: select_starting_spells (pure, deterministic), the finalize_character grant
-hook, and the new magic_source chassis field's fail-loud parse.
-"""
-
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 

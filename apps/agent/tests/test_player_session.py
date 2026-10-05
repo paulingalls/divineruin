@@ -1,15 +1,4 @@
-"""Tests for the player session counter (player_session.hydrate_player_session, story-002, M3.5).
-
-Pass a mock conn directly (the function accepts conn=) and assert the SQL + params + the
-returned count + fail-loud — exercising the atomic UPDATE...RETURNING construction. The actual
-increment arithmetic (0 -> 1 -> 2) is proven against a real Postgres testcontainer in
-tests/acceptance/test_player_session_persistence.py, mirroring the db_mutations_resonance
-unit/acceptance split.
-
-Storage shape: players.data.session_count (int) is the authoritative per-player session count —
-a top-level key beside {resonance}, mirroring how companions track session_count. It is
-incremented exactly once per FRESH session (story-004 caller), never on reconnect.
-"""
+"""Mock connections check SQL construction, not increment arithmetic."""
 
 from unittest.mock import AsyncMock, patch
 

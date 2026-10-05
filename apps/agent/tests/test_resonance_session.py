@@ -1,20 +1,3 @@
-"""Session wiring for the M3.1 Resonance system (story-003).
-
-Resonance becomes live in a session here: SessionData carries a ResonanceTrack
-whose stable/flickering/overreach STATE is derived (never stored), a short/long
-rest resets it to stable/0 and persists via story-002, and a RESONANCE_CHANGED
-event pushes {state, current, max} to the client over the game_events channel.
-
-The rest reset is M3.1's only live resonance mutation (generation-on-cast is M3.3,
-which reuses publish_resonance_changed). No live rest @function_tool exists yet, so
-these tests drive the building blocks directly and prove them composed end to end —
-mirroring the SessionData(room=None) + patched-publish_game_event style of
-test_combat_durability.py.
-
-Spec: docs/game_mechanics/game_mechanics_magic.md §Resonance States (100-106),
-§Resonance Decay — full reset on rest (130).
-"""
-
 from unittest.mock import AsyncMock, patch
 
 import event_types as E

@@ -1,14 +1,4 @@
-"""Tests for the repair_item agent tool (story-004, M5.4).
-
-repair_item is the NPC-blacksmith repair execution surface (the REST endpoint owns
-the price quote). It gates, inside one FOR-UPDATE transaction and before any write
-(decision repair-gate-order): locate item by id -> not-repairable -> no-op (already
-full) -> disposition (refuse below Neutral, friendly 0.8 / trusted 0.6) -> skill tier
-(player Crafting tier >= durability repair tier) -> gold -> restore current_hits to
-max + debit. Any refusal raises ToolError (ADR 0002). Pricing reuses
-workspace.compute_rental_price + durability.calculate_repair_cost; the debit applies
-the disposition multiplier ONCE (quote == REST charge).
-"""
+"""Apply the disposition multiplier once so the debit agrees with the REST quote."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock

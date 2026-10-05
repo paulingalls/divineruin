@@ -1,10 +1,4 @@
-"""Content validation for M4.6a social resistance tags (story-003).
-
-Every NPC's authored `resistance_tags` must be canonical personality tags
-(social_resolution.RESISTANCE_TAGS) so they actually gate a Tier-3 argument in the
-resolver instead of silently no-opping. parse_npc_row fail-louds at load; these tests
-lock that guard plus the real content/npcs.json catalog.
-"""
+"""Noncanonical personality tags would silently bypass resistance."""
 
 import pytest
 from npcs_config_fixture import load_fixture_config

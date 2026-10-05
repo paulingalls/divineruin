@@ -1,13 +1,4 @@
-"""Guard for the generator's frozen + full-inventory prompt table (story-001).
-
-The generator lives at scripts/audio/generate_spell_sfx.py — outside the agent
-package — because it is a build-time asset tool, not agent runtime code. It is
-imported here by file path so this guard runs in the collected `test:python`
-lane (which roots at apps/agent/tests/), keeping both the frozen 7-key spell
-contract and the full bundled-asset parity contract from
-docs/audio_sfx_pipeline.md §4 under CI. Pure: importing the module defines the
-prompt table with no network call (generation only happens in main()).
-"""
+"""Import the build-time generator by path; network calls are confined to main."""
 
 import importlib.util
 from pathlib import Path

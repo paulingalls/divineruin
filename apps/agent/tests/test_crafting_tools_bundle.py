@@ -1,17 +1,4 @@
-"""Tests for the Forge + Laboratory bundle rental (story-015, M5.2).
-
-The spec prices Forge + Laboratory together at 12sp/day, offered only where the
-location tags host both workspaces. The bundle is requested as the single token
-`forge_laboratory` but PERSISTS AS TWO workspace_rentals rows, one per granted
-workspace: apps/server/src/workspace.ts parseWorkspaceType re-parses every stored
-workspace_type against a closed four-member vocabulary, so a single
-"forge_laboratory"/"combined" row would hard-fail every later server-side crafting
-gate for that player at that location. Two rows also satisfy "both accessible for
-N days" literally.
-
-Split from test_crafting_tools_workspaces.py to stay under the cap; the
-_content/_pricing/_queries seams are imported from there rather than forked.
-"""
+"""Persist the bundle as two workspace rows: the server accepts only individual workspace types."""
 
 import json
 from pathlib import Path

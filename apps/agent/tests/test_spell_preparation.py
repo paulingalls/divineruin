@@ -1,20 +1,4 @@
-"""Spell preparation rules — Track 3, on long rest (M8 story-006).
-
-Preparation is a deterministic Resolve (ADR 0007: no new @function_tool). These pure
-gates enforce the Track 3 rules (game_mechanics_archetypes.md L1255-1283):
-  - can only prepare a spell you KNOW (in the library)
-  - can only prepare a tier your ARCHETYPE has level access to (leveling.is_spell_tier_unlocked,
-    keyed by (archetype, tier, level)). This subsumes the Major-tier cap: Paladin/Diplomat/
-    Marshal have no Supreme entry, so Supreme is rejected as "not available" at any level.
-  - within the elective slot limit (core spells are abilities, slot-free, untouched)
-  - Primal casters (Druid/Beastcaller/Warden) may only CHANGE preparation in natural terrain
-
-Both gates fail loud: they raise ValueError with a specific message on violation and
-return None when the preparation is allowed (mirrors rest_mechanics.swap_elective_on_long_rest).
-The async long-rest Resolve (rest_mechanics.prepare_spells_on_long_rest) is exercised lower
-in this file against a stateful mock store; the literal real-Postgres AC4 assertion rides the
-M8 story-007 capstone (ADR 0003: real-DB testcontainer fixtures are unreachable from tests/).
-"""
+"""Core spells are abilities and consume no elective slots; archetype tier access also subsumes hybrid caps."""
 
 import json
 from pathlib import Path

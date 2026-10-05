@@ -1,13 +1,3 @@
-"""Tests for the generic select(choice_id, option) verb (M4 story-003).
-
-select resolves a pending player choice; today the only choice is the L5
-specialization fork (absorbed from resolve_milestone's with-choice path). It is
-fail-loud at the boundary: every bad input raises ToolError before the single
-persist, so a rejected call never partially mutates.
-
-Since M28 story-008 the fork can belong to any party member. The authenticated
-speaker resolves only their own fork."""
-
 import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock

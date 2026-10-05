@@ -1,14 +1,4 @@
-"""Tests for explicit base and variant activation.
-
-The activation id selects the payload: the base id always uses the base technique,
-while the active variant id uses its cost, effect, narration cue, and attribution.
-Drives the tool's _impl directly with injected mock
-db/queries/persistence/variants mods, mirroring test_ability_tools.py; the autouse
-seed_abilities fixture supplies the real base-ability map so get_ability resolves.
-
-Base warrior_cleaving_blow costs stamina 4; the Drathian variant costs stamina 5 —
-the cost delta proves the explicit variant path selected its values.
-"""
+"""Different base and variant costs prove selection independently of narration."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock

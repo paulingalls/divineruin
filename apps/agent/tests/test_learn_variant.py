@@ -1,10 +1,4 @@
-"""Tests for learn(kind='variant') initiation — mentor_variant_tools._learn_variant_impl (M9 story-002).
-
-learn(variant, id) does not acquire instantly; it INITIATES a multi-session mentor
-training loop: seeds the cycle-progress row at 0 and creates a
-technique_mentor_variant training activity. cycles_required (3) comes from the
-content config seeded by the autouse conftest fixture.
-"""
+"""Variant learning starts a multi-session loop rather than acquiring the technique immediately."""
 
 import json
 from datetime import timedelta

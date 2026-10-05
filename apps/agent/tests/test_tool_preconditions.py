@@ -1,5 +1,3 @@
-"""Unit tests for tool_preconditions — Stage-backed Act guards (raise ToolError)."""
-
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest

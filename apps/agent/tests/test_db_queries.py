@@ -1,10 +1,3 @@
-"""Tests for the story-004 crafting read producers in db_queries.
-
-Mocked-pool unit tests (like tests/database/): patch db_queries.db, assert the Python
-wrapping (set/dict assembly, FIELD floor, fail-loud parse, FOR UPDATE construction).
-Real SQL correctness is exercised against a testcontainer at the capstone (ADR 0003).
-"""
-
 import json
 from unittest.mock import AsyncMock, patch
 

@@ -1,10 +1,3 @@
-"""Tests for the stateful PlayerAffectAnalyzer + format_affect_context (Phase A).
-
-The analyzer object (latency tracking, affect-vector assembly, async run loop)
-and its warm-prompt formatting — split from the pure-function tests
-(test_affect_analyzer_functions.py) to keep each file under the 500-line cap.
-"""
-
 import asyncio
 import time
 

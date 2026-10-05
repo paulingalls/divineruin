@@ -1,20 +1,4 @@
-"""Tests for racial_resonance.py — the DB-loaded racial Resonance bonus table (M3.4 / story-001).
-
-Mirrors the spells.py loader contract (parse_*_row fail-loud shared by the DB loader
-and the JSON test fixture, set_racial_bonuses test seam, get_racial_resonance_modifier
-accessor, is_loaded, build-then-swap load_racial_resonance). The table is the M3.4
-FOUNDATION: the six racial Resonance interactions (spec game_mechanics_magic.md
-§Racial Resonance Integration, 221-293) live in their own seeded table decoupled from
-RaceData (audit guidance), and downstream stories read get_racial_resonance_modifier
-rather than hardcoding values.
-
-The table is HETEROGENEOUS — each race carries only its own modifier keys, stored in
-the exact param shapes the downstream pure engines expect, so call sites forward the
-looked-up value verbatim (human decay_bonus=1 -> apply_resonance_decay racial_modifier=1;
-vaelti echo_save_advantage=True -> resolve_hollow_echo advantage_roll=<2nd d20>; draethar 3/"1d6").
-get_racial_resonance_modifier fails loud on an unknown race or an unknown modifier_type
-for that race — never a silent default; call sites guard by race.
-"""
+"""Racial modifier rows are heterogeneous; callers forward each race-specific shape without coercion."""
 
 import json
 from pathlib import Path

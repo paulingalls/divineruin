@@ -1,8 +1,3 @@
-"""Unit coverage for conditions.assert_known_condition — the ONE shared applies_condition
-strict-load guard (adopted Try retro-try-assert-condition), extracted from the byte-identical
-inline checks in spells.py / abilities.py / combat_init.py. Behavior-preserving: the ValueError
-message is reproduced verbatim, prefixed by the caller-supplied ``ctx``."""
-
 import pytest
 
 import conditions

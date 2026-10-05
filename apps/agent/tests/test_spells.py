@@ -1,21 +1,4 @@
-"""Tests for spells.py — the DB-loaded ELECTIVE spell catalog (M8 / story-001).
-
-Mirrors the abilities.py loader contract (parse_spell_row fail-loud shared by the
-DB loader and the JSON test fixture, set_spells test seam, get_spell /
-get_spells_by_source accessors, is_loaded, build-then-swap load_spells) — but the
-catalog is SOURCE-keyed (arcane/divine/primal), NOT archetype-keyed: caster CORE
-spells stay archetype_abilities rows (ability_type=core, seam 235ae150c5d3), so
-content/spells.json holds only the elective library. The row shape is the
-cross-language SSOT contract; it borrows M3.3's schema minimally and stays
-forward-compatible with the full Phase-3 Magic catalog.
-
-Tier-unlock ladder (the floor character level at which a tier becomes learnable) is
-PER-ARCHETYPE (content/archetypes.json): full casters reach standard/major/
-supreme at L3/L5/L9. This tier table is the ACTIVE learn/cast gate. (The per-row
-level_requirement / catalog "Level" column was deleted as orphaned non-gating metadata
-with no reader — access is gated by the per-archetype tier tables in
-game_mechanics_archetypes.md, not per-spell level.)
-"""
+"""This elective catalog is source-keyed; core spells stay archetype abilities. Tier access belongs to the archetype, not a spell row."""
 
 import json
 from pathlib import Path

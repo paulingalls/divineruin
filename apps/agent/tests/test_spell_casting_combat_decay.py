@@ -1,18 +1,4 @@
-"""In-combat suppression of cast-paced Resonance decay (M4.1 story-007).
-
-Decision resonance-decay-phase-canonical: the combat PHASE is the canonical
-Resonance-decay clock — story-001's wrap beat (combat_phase.advance_combat_phase)
-sheds one round per phase. Sprint-017's cast-paced decay (one shed per real cast,
-spell_casting._cast_spell_impl) was a pre-combat stopgap. If BOTH fire in combat,
-Resonance double-decays. So a cast IN combat must only GENERATE, never shed; the
-wrap beat owns decay. Out of combat, cast-paced decay stays exactly as sprint-017.
-
-These tests drive _cast_spell_impl directly with mock db/queries/persistence/
-mutations (the _spell_casting_helpers precedent) and the seeded racial-spec stub, and
-flip session.combat_state to toggle session.in_combat. The invariant: decay fires
-once per context, never both — proven here for the cast path (in-combat suppressed,
-out-of-combat unchanged) regardless of race.
-"""
+"""Combat phases own decay; letting a cast decay too would shed twice. Outside combat, casts remain the clock."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock

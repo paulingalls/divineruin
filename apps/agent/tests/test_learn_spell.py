@@ -1,17 +1,4 @@
-"""learn(kind='spell') acquisition + the level→tier unlock gate (M8 story-005).
-
-Spells add ZERO new @function_tools (ADR 0007): scroll/mentor acquisition rides
-the existing learn(kind, id, source) verb via a 'spell' kind dispatched to
-spell_tools. A character may not learn a spell above their archetype's level
-allowance — leveling.is_spell_tier_unlocked, keyed by (archetype, tier, level),
-is the enforced gate (shared with the prepare check). A full caster unlocks
-standard/major/supreme at L3/L5/L9; the per-archetype matrix is in test_leveling.
-
-The literal real-Postgres AC4 (mentor-taught Minor spell -> character_spells with
-acquisition_track for npc_teaching, one DB) rides the M8 story-007 capstone
-(ADR 0003: real-DB testcontainer fixtures are unreachable from tests/); the unit
-tests here cover AC4's behavior with mock seams, consistent with story-004.
-"""
+"""Mock acquisition seams do not certify character_spells persistence."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 

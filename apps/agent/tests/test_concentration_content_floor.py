@@ -1,5 +1,3 @@
-"""Player-authored condition producers cannot silently gain an incapacitating effect."""
-
 import json
 from pathlib import Path
 

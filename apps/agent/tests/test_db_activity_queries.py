@@ -1,11 +1,4 @@
-"""Tests for db_activity_queries slot accounting.
-
-Mocked-pool unit tests (like test_db_queries.py): patch db_activity_queries.db, assert
-the Python wrapping (row->dict mapping) and the SQL parity guard against the TS twin
-(activity_create.ts countActiveBySlot). Real SQL bucketing is exercised against a
-testcontainer at the capstone (story-005, ADR 0003) — the COALESCE/IN semantics can't
-be observed through a mocked fetchrow, so here we assert the query text matches TS.
-"""
+"""A mocked fetchrow cannot execute COALESCE/IN bucketing; SQL text checks are not stored-behavior proof."""
 
 from unittest.mock import AsyncMock, patch
 

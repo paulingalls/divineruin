@@ -1,19 +1,4 @@
-"""Deterministic cross-player caster/target lock-order (M14 story-008, debt 361417d1bea5).
-
-Both OOC condition-producing paths (ability activation + spell cast) used to lock the CASTER row
-first (get_player FOR UPDATE), then the target rows id-sorted inside produce_ooc_condition — so two
-concurrent cross-player casts (alice-on-bob vs bob-on-alice) acquired rows in opposite orders and
-could deadlock. This story imposes a single GLOBAL ascending-player_id lock order over the
-{caster} + {non-caster party targets} union, acquired in ONE get_players_for_update batch before any
-mutation. get_players_for_update issues `... ORDER BY player_id FOR UPDATE`, so the DB acquires the
-row locks in player_id order; produce_ooc_condition then re-locks a held subset (no new lock).
-
-These tests spy get_players_for_update and assert:
-- the FIRST (union) lock call carries the ascending-player_id {caster + targets} set,
-- no separate caster get_player(for_update=True) is issued,
-- role-swapped casts compute the IDENTICAL lock order (deadlock-free by construction),
-- a self / no-target cast locks only the caster row.
-"""
+"""Acquire caster and target rows in one global order so opposite cross-player casts cannot deadlock."""
 
 import json
 from dataclasses import replace

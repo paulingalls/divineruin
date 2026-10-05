@@ -1,20 +1,4 @@
-"""Tests for the pure Veil Ward effects + source table (story-002, M3.2).
-
-A Veil Ward locally reinforces the Veil: while active it halves the Resonance a cast
-generates, grants +4 to Hollow Echo rolls, and applies -1 damage die / -1 DC (spec
-magic.md:189-217). Like the Resonance and Hollow Echo engines this is a closed-table
-deterministic mechanic (CLAUDE.md golden rule #3) — the modifier values and the
-per-archetype ward-source costs are code constants, not DB-loaded content. No IO, so
-these are plain unit tests with no fixtures or pool.
-
-The activation tool (story-003) and the cast-time halving (story-004) consume these
-primitives; the persisted ward state lives in db_mutations_veil_ward (the veil_wards table)
-and on CombatState for the encounter scope.
-
-Spec source: docs/game_mechanics/game_mechanics_magic.md §Veil Ward (189-217):
-generation halved (round down), +4 echo bonus, -1 damage die, -1 DC; sources
-Cleric L7 4F / Druid L9 5F (natural terrain only) / Paladin L10 3F+3S.
-"""
+"""Ward modifiers and source costs are deterministic code constants rather than DB-loaded content."""
 
 from datetime import UTC, datetime, timedelta
 

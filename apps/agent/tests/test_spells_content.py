@@ -1,12 +1,3 @@
-"""Content guard for content/spells.json — the M3.3 87-spell catalog (story-001).
-
-The loader (spells.parse_spell_row) is strict per-row; this guard enforces the
-catalog-wide invariants the loader cannot see: the exact 87-spell count, the
-30/28/29 source partitions, unique ids, and that every authored row carries the
-M3.3 fields and round-trips through the strict loader. It is the presence-enforcer
-the merged story (loader + catalog) relies on — see decision spell-loader-strict-contract.
-"""
-
 import json
 from collections import Counter
 from pathlib import Path

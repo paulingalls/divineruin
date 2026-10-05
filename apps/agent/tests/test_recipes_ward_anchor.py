@@ -1,14 +1,4 @@
-"""Content-code pin for veil-ward anchor recipes — M24 story-007.
-
-Pins the relationship between:
-- content/recipes.json: veil_ward_anchor_small and veil_ward_anchor_large
-- content/items.json: their tool item definitions
-- apps/agent/veil_ward.py: WARD_SOURCES["artificer"] duration constant, and the
-  VEIL_ANCHORS item->ward table (story-012)
-
-These halves must not drift apart. Load strictly — fail loud on a missing file
-rather than skip (pytest.skip would let a moved or deleted file pass silently).
-"""
+"""Fail on missing authored inputs rather than skipping a moved or deleted catalog."""
 
 import json
 from pathlib import Path

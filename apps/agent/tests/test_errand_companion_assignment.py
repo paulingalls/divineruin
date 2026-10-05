@@ -1,10 +1,4 @@
-"""The errand path runs the companion the player's archetype assigns.
-
-Nothing writes players.data["companion"], so every errand used to resolve, narrate and
-score against `{}` — Kael's name, Kael's voice and no affinity write at all, for all
-eighteen archetypes. These pin the derivation (errand_resolution.companion_errand_data)
-and both consumers of it: the async worker and the resolve tool.
-"""
+"""Derive the errand companion from archetype rather than an unwritten players.data companion field."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock, patch

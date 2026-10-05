@@ -1,5 +1,3 @@
-"""Tests for scene/play-tree resolution and transitions (H.6)."""
-
 from __future__ import annotations
 
 import json

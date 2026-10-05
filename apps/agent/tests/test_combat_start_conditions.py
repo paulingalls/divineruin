@@ -1,10 +1,4 @@
-"""M4.4 story-005 — combat-START condition load (AC1), iron-constitution cap (AC3), E2E (AC4).
-
-Persistent conditions stored out of combat (players.data.conditions) must be re-imported onto the
-player CombatParticipant at combat start so they affect THIS fight's rolls, with Exhausted stacks
-clamped to the iron-constitution cap at the load boundary (the in-scope apply site until a
-forced-march/travel producer ships).
-"""
+"""Import persistent conditions at combat start so they affect this fight."""
 
 from unittest.mock import AsyncMock, MagicMock
 

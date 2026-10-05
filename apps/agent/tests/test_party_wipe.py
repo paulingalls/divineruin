@@ -1,11 +1,4 @@
-"""M4.4 story-004 — party wipe (AC1/AC4): each member's death is recorded + costed
-independently, and each member's resurrection anchor is resolved per-member (story-005).
-Also covers the two additive trigger_character_death params (anchor override + waive_cost)
-the engine depends on.
-
-Combat is single-player today, so the multi-member path is forward-wired: prod feeds a
-1-member party via resurrect_on_defeat; these tests drive resurrect_party_on_defeat directly
-with 2 members. Pure injected mutation stubs — no real DB (mirrors story-001/002/003)."""
+"""Injected mutation stubs exercise multi-member resurrection without certifying stored results."""
 
 from unittest.mock import AsyncMock, MagicMock
 

@@ -1,5 +1,3 @@
-"""Integration tests for mechanics tools (mocked DB + room)."""
-
 import json
 from unittest.mock import AsyncMock, MagicMock
 

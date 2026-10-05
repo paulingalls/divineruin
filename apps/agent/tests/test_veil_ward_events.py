@@ -1,18 +1,5 @@
-"""Tests for veil_ward_events.publish_veil_ward_changed (story-004, reshaped in story-008; M24).
-
-The ward's client push lives in its own module, mirroring resonance_events.publish_resonance_changed,
-because arrival needs it too: a party that walks out of a warded location must not leave its
-indicator lit.
-
-The payload is {active, scope_kind, scope_id, source} — no raiser id (veil_ward_scope_model.md §6).
-A ward belongs to a scope, so every in-scope client lights up; there is nothing to filter on.
-RESONANCE_CHANGED keeps its caster_id because Resonance is per-caster — the asymmetry is deliberate.
-
-``active`` is the party's RESOLVED warded state, never the toggle of the scope the caller just
-mutated (§3): on combat end the encounter ward dies, but if a location ward still covers the party
-the event must carry active=True. The emitter enforces that structurally — it takes the ward the
-resolver returned, not a bare boolean a caller could compute off the wrong scope.
-"""
+"""Ward pushes apply to every client in the scope; resonance is per-caster.
+Publish resolved party coverage, since ending an encounter ward may leave a location ward active."""
 
 from unittest.mock import AsyncMock, patch
 

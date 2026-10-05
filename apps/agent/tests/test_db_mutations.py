@@ -1,9 +1,3 @@
-"""Tests for the story-004 crafting write producers in db_mutations.
-
-Pass a mock conn directly (the functions accept conn=) and assert the SQL +
-params. Real SQL is exercised against a testcontainer at the capstone (ADR 0003).
-"""
-
 import json
 from unittest.mock import AsyncMock
 

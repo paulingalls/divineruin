@@ -1,11 +1,4 @@
-"""Unit tests for the test-session DB lifecycle helper (_db_lifecycle).
-
-The helper lets a bare `pytest` run self-heal when the docker-compose Postgres
-isn't up: it detects reachability, starts `docker compose` if needed, and stops
-ONLY what it started (never `down -v`, so the canonical dev DB survives). These
-tests pin the pure parse + the start/stop decision; the actual docker subprocess
-calls are stubbed so the suite stays hermetic.
-"""
+"""Stub Compose calls so lifecycle tests cannot stop the development database or delete its volume."""
 
 import subprocess
 

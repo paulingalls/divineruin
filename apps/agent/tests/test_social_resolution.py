@@ -1,11 +1,3 @@
-"""Tests for social_resolution — the pure 3-tier social-encounter engine (M4.6a / story-001).
-
-resolve_social_check / resolve_contested_social turn an NPC disposition plus a caller-
-supplied skill-check total into a social outcome (success, margin, dramatic verdict,
-disposition shift, narration cue). Zero IO, zero RNG — the caller rolls. Spec:
-docs/game_mechanics/game_mechanics_combat.md §Social Encounter Resolution (L619-844).
-"""
-
 from itertools import pairwise
 
 import pytest

@@ -1,10 +1,3 @@
-"""Tests for SessionData's delegation to a PartyState backing store (story-002).
-
-Covers solo parity (session.resonance/concentration/corruption_level/patron_id
-all resolve through party.primary, byte-for-byte identical to pre-refactor behavior),
-in-place mutation propagation, and 2-member independence.
-"""
-
 from caster_state import ConcentrationState, ResonanceTrack
 from party_state import PartyMember, PartyState
 from session_data import CombatState, CreationState, SessionData

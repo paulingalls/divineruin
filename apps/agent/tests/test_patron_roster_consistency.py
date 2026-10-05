@@ -1,9 +1,4 @@
-"""Roster consistency across the three patron surfaces.
-
-Source of truth: `content/gods.json` (see `docs/decisions/0001-patron-roster-sot.md`).
-This test guards against drift between gods.json, `creation_deities.DEITIES`, and
-`god_whisper_data.GOD_WHISPER_PROFILES`.
-"""
+"""content/gods.json is the patron roster authority (ADR 0001)."""
 
 from __future__ import annotations
 

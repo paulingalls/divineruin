@@ -1,14 +1,4 @@
-"""Tests for the M3.1 Resonance DB layer (db_mutations_resonance, story-002).
-
-Pass a mock conn directly (the functions accept conn=) and assert the SQL +
-params — exercising the jsonb_set construction and the read-side state derivation.
-Real SQL is exercised against a testcontainer at the story-005 M3.1 capstone
-(ADR 0003), mirroring test_ability_persistence.py / test_db_mutations.py.
-
-Storage shape: players.data.resonance.current (int) is the authoritative value;
-the stable/flickering/overreach STATE is always re-derived via
-resonance.get_resonance_state on read (single source of truth, no drift).
-"""
+"""Derive qualitative state from current on read so storage cannot disagree."""
 
 from unittest.mock import AsyncMock
 

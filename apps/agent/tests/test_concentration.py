@@ -1,18 +1,4 @@
-"""Tests for the M3.4 concentration system (story-002).
-
-Two layers, both DB-free:
-- concentration.py — the pure rules engine (no IO, same discipline as resonance.py):
-  check_concentration(damage) returns the save DC; concentration_holds resolves a CON
-  save against that DC, with incapacitation an auto-fail.
-- db_mutations_concentration.py — the persistence seam (mock-conn unit tests asserting the
-  jsonb_set SQL + params, mirroring test_db_mutations_veil_ward.py). Real PG is exercised at
-  tests/acceptance/test_concentration_persistence.py (AC5 roundtrip).
-
-Storage shape: players.data.concentration = {spell_id: str|null}, a top-level JSONB key beside
-{resonance}. The single active concentration spell id; null means not
-concentrating. The cast keystone (story-006) reads spell.concentration, sets this on a
-concentration cast, and ends any prior one (single-concentration enforcement) — not this story.
-"""
+"""Mock connections certify SQL construction; the persistence acceptance test executes it."""
 
 from unittest.mock import AsyncMock
 

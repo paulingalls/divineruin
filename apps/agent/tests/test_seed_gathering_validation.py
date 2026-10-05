@@ -1,13 +1,4 @@
-"""M4.8 story-015: seed-time fail-loud validation for gathering_nodes + resource_table refs.
-
-scripts/seed_content.validate() fails the seed loudly on bad cross-references (loot_tables already
-did; gathering did not). A gathering_node whose location_id / resource_type — or a location's
-resource_table entry — doesn't resolve must surface as a validation error, so a content typo can't
-ship a node that grants a nonexistent material or sits at a nonexistent place.
-
-Unit-tests validate() with a fake conn (no DB), mirroring the loot_tables fail-loud contract.
-scripts/ isn't on the fast-lane pythonpath, so add it the way the acceptance conftest does.
-"""
+"""Add scripts to the import path because it is outside the agent package."""
 
 import json
 import sys

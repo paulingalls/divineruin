@@ -1,9 +1,4 @@
-"""M14 story-005 — per-member resurrection anchor engine. `resurrect_party_on_defeat`
-resolves each member's anchor independently (resolve_resurrection_anchor is per-member,
-including each member's own `last_rested_settlement_id`), instead of forcing a single
-`party[0]`-derived anchor onto every member. Tier-3 (last-rested) is where members can
-diverge; tiers 1/2/4 still coincide when members are co-located. Pure injected mutation
-stubs — no real DB (mirrors test_party_wipe.py)."""
+"""Members may have different last-rested anchors even while currently co-located."""
 
 from unittest.mock import AsyncMock, MagicMock
 

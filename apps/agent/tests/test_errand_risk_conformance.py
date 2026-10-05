@@ -1,12 +1,4 @@
-"""Cross-language conformance guard for BLOCKED_DANGER_COMBOS.
-
-The errand risk spec (game_mechanics_core.md §Companion Risk L887-892) is pinned
-independently in two places — apps/agent/errand_risk.py (Python frozenset) and
-apps/server/src/errand_risk.ts (TS Set) — because the two-language split forbids
-shared code. This guard reads the TS source and asserts its blocked-combo set
-equals the Python one, so a drift on either side fails CI instead of silently
-diverging (closes the dual-hand-maintained-pin gap).
-"""
+"""The language boundary forbids shared code, so the two blocked-combination sets require parity."""
 
 from __future__ import annotations
 

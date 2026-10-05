@@ -1,16 +1,4 @@
-"""Tests for the pure durability rules engine (story-001, M5.4).
-
-durability is a closed-table deterministic mechanic (CLAUDE.md golden rule #3):
-the 4 durability tiers, their max-hits, the repair-skill-tier coupling, and the
-rarity-keyed repair pricing are code constants, not DB-loaded content (same call
-as the workspace-vocab SSOT decision). No IO — every function reads/returns plain
-dicts/ints, so these are plain unit tests with no fixtures or pool.
-
-Conflicts resolved by this story (recorded as decisions):
-- durability-repair-pricing-axis: repair cost keys on item RARITY, not durability.
-- durability-repair-skill-tier: fragile->untrained ... masterwork->master.
-- durability-broken-penalties: weapon -2 attack / armor|shield -2 AC / tool unusable.
-"""
+"""Durability is a fixed deterministic table, not DB-loaded content. Repair price depends on rarity; skill on durability."""
 
 import pytest
 

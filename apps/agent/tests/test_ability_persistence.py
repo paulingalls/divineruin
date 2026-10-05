@@ -1,10 +1,4 @@
-"""Tests for the ability-system DB layer (ability_persistence).
-
-Pass a mock conn directly (the functions accept conn=) and assert the SQL +
-params — exercising the dynamic-SQL construction (esp. update_player_resources'
-partial-pool param indexing). Real SQL is exercised against a testcontainer at
-the story-005 capstone (ADR 0003), mirroring test_db_mutations.py.
-"""
+"""A mock connection checks SQL construction, including partial-pool parameter indexing."""
 
 import json
 from unittest.mock import AsyncMock

@@ -1,14 +1,3 @@
-"""Tests for request_ability_activation (ability_tools.py).
-
-Drives the tool's _impl directly with a mock RunContext + injected mock
-queries/persistence mods (the seed_abilities autouse fixture supplies the real
-ability map from content/archetype_abilities.json, so get_ability resolves).
-
-The FIRST test pins the variable/pool-cost contract (concern 7b34ebf86b57): an
-ability with cost{0,0}+scaling (paladin_lay_on_hands) must NOT be treated as a
-free activation — its scaling rule is surfaced as variable_cost for the DM.
-"""
-
 import copy
 import json
 import re

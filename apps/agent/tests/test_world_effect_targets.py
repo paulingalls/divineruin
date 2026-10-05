@@ -1,12 +1,4 @@
-"""The world-effect disposition target vocabulary: runtime resolution + authoring-time validation.
-
-Extracted from test_world_effects.py (467 lines against the 500 hard cap, constraint 2) when
-story-013 collapsed three independent copies of the same shorthand map onto one symbol.
-
-The `companion` shorthand is the reason this file exists. At runtime it resolves to the
-player's ASSIGNED companion, never to a literal; at authoring time it cannot be resolved at
-all, so validation is set membership (does any companion exist?), not identity.
-"""
+"""Assigned companions resolve at runtime; authoring validation can only check that a companion exists."""
 
 import json
 from pathlib import Path

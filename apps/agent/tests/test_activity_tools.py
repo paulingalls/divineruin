@@ -1,13 +1,4 @@
-"""Tests for activity_tools.begin_activity / resolve_activity -- the Phase-5 downtime-activity
-dispatchers (M26 story-001).
-
-Both are pure routers: begin_activity(kind) validates required params per kind then dispatches to
-the matching pre-existing ``_impl``; resolve_activity(kind, id) does the same for the two resolve
-tools. Routing is proven here with injected stub impls (AsyncMock), not against real DB/content
-state -- each target ``_impl`` already has its own test suite for its own behavior. The exception
-is the real-PG training round-trip (AC4) below, which drives the real training_tools module
-against the shared dev DB to prove the router matches the pre-fold wrapper end-to-end.
-"""
+"""Owned stubs isolate routing; the training round-trip uses real Postgres."""
 
 import json
 import uuid
