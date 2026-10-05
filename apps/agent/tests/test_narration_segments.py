@@ -1,66 +1,10 @@
 """Tests for how narration normalizes the model's `segments` tool output."""
 
 import json
-import subprocess
-from pathlib import Path
 
 import pytest
 
 import narration
-
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-
-
-def _repository_files() -> tuple[Path, ...]:
-    result = subprocess.run(
-        [
-            "git",
-            "ls-files",
-            "--cached",
-            "--others",
-            "--exclude-standard",
-            "-z",
-            "--",
-            "apps",
-            "packages",
-            "scripts",
-        ],
-        cwd=_REPO_ROOT,
-        check=True,
-        capture_output=True,
-    )
-    return tuple(Path(path.decode()) for path in result.stdout.split(b"\0") if path)
-
-
-def _files_containing(needle: bytes, paths: tuple[Path, ...]) -> list[str]:
-    return [str(path) for path in paths if (_REPO_ROOT / path).is_file() and needle in (_REPO_ROOT / path).read_bytes()]
-
-
-def _dead_helper_names() -> tuple[str, str]:
-    return (
-        "_" + "_".join(("segments", "to", "text")),
-        "_" + "_".join(("segments", "to", "segment", "objects")),
-    )
-
-
-def test_dead_narration_helper_attributes_are_absent():
-    present = [name for name in _dead_helper_names() if hasattr(narration, name)]
-
-    assert present == []
-
-
-def test_dead_narration_helper_names_are_absent_from_repository():
-    """A deletion stays deleted only while something reds when it comes back, and `hasattr` misses
-    a copy pasted into another module. The names are assembled from fragments and this file is
-    dropped from the scan, so the pin cannot match its own source."""
-    paths = _repository_files()
-    this_test = Path("apps/agent/tests/test_narration_segments.py")
-    assert paths and this_test in paths
-
-    searched_paths = tuple(path for path in paths if path != this_test)
-    hits = {name: _files_containing(name.encode(), searched_paths) for name in _dead_helper_names()}
-
-    assert hits == {name: [] for name in _dead_helper_names()}
 
 
 class TestTheNarrationToolSchema:

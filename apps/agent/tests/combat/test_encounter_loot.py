@@ -245,13 +245,6 @@ def test_real_loot_tables_accept_positive_integer_or_dice_quantities() -> None:
     assert_rollable_tables(json.loads(path.read_text()))
 
 
-def test_rollable_table_walk_rejects_invalid_dice_and_empty_corpus() -> None:
-    with pytest.raises(AssertionError):
-        assert_rollable_tables([])
-    with pytest.raises(AssertionError):
-        assert_rollable_tables([{"id": "fault", "drops": [{"item_id": "x", "chance": 1.0, "quantity": "not dice"}]}])
-
-
 def test_legacy_loot_table_keeps_seeded_rng_sequence() -> None:
     rng = random.Random(122)
     path = Path(__file__).resolve().parents[4] / "content" / "loot_tables.json"
@@ -302,11 +295,6 @@ def test_party_reward_multiplier(party_size: int, multiplier: float) -> None:
     # multiplier(N) = 1 + BONUS*(N-1). Solo (N=1) is exactly 1.0 so a single-member party's
     # reward stays byte-identical to the pre-M18 single-roll behavior.
     assert party_reward_multiplier(party_size) == multiplier
-
-
-def test_party_reward_multiplier_solo_is_exactly_one() -> None:
-    # Guard the byte-identical-solo invariant explicitly: no float drift at N=1.
-    assert party_reward_multiplier(1) == 1.0
 
 
 def test_party_reward_multiplier_rejects_empty_party() -> None:

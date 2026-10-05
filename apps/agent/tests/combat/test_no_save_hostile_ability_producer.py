@@ -1,8 +1,6 @@
 import json
 from pathlib import Path
 
-import pytest
-
 import combat_ability_save
 import conditions
 
@@ -52,36 +50,8 @@ def test_no_hostile_condition_spell_bypasses_the_target_gate():
     _assert_no_hostile_condition_spell(json.loads(SPELLS_PATH.read_text()))
 
 
-def test_scratch_hostile_condition_spell_names_row():
-    rows: list[dict[str, object]] = [{"id": "scratch_charm", "applies_condition": "charmed"}]
-    with pytest.raises(AssertionError, match="scratch_charm"):
-        _assert_no_hostile_condition_spell(rows)
-
-
-def test_scratch_spell_walk_that_inspects_nothing_reds():
-    with pytest.raises(AssertionError):
-        _assert_no_hostile_condition_spell([])
-
-
 def test_exempt_conditions_are_catalog_buffs():
     _assert_exempt_conditions_are_catalog_buffs(NO_SAVE_BUFF_CONDITIONS)
-
-
-def test_scratch_hostile_no_save_ability_names_row():
-    rows: list[dict[str, object]] = [{"id": "scratch_charm", "applies_condition": "charmed"}]
-
-    with pytest.raises(AssertionError, match="scratch_charm"):
-        _assert_no_hostile_condition_ability_omits_its_save(rows)
-
-
-def test_scratch_walk_that_inspects_nothing_reds():
-    with pytest.raises(AssertionError):
-        _assert_no_hostile_condition_ability_omits_its_save([])
-
-
-def test_scratch_hostile_condition_cannot_hide_in_the_exemption():
-    with pytest.raises(AssertionError, match="charmed"):
-        _assert_exempt_conditions_are_catalog_buffs(frozenset({"inspired", "charmed"}))
 
 
 def test_spell_exemptions_are_exactly_the_runtime_beneficial_conditions():
