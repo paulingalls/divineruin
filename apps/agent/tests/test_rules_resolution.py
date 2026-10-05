@@ -8,8 +8,6 @@ check_resolution_attack / check_resolution_save; the d20 SSOT stays here.
 
 import random
 
-import pytest
-
 from check_resolution import (
     CheckResult,
     D20CheckCore,
@@ -47,52 +45,35 @@ class TestResolveCheck:
         assert result.modifier == 12
 
     def test_success_when_total_meets_dc(self):
-        # Find seed where roll + 5 >= 12 (and not nat 1)
-        for seed in range(1000):
-            rng = random.Random(seed)
-            d20 = rng.randint(1, 20)
-            if d20 != 1 and d20 + 5 >= 12:
-                rng = random.Random(seed)
-                result = resolve_check(14, 1, "trained", 12, rng=rng)
-                assert result.success is True
-                assert result.total == d20 + 5
-                return
-        pytest.fail("Could not find seed for success")
+        seed = 0
+        rng = random.Random(seed)
+        d20 = rng.randint(1, 20)
+        rng = random.Random(seed)
+        result = resolve_check(14, 1, "trained", 12, rng=rng)
+        assert result.success is True
+        assert result.total == d20 + 5
 
     def test_failure_when_total_below_dc(self):
-        for seed in range(1000):
-            rng = random.Random(seed)
-            d20 = rng.randint(1, 20)
-            if d20 != 20 and d20 + 0 < 16:
-                rng = random.Random(seed)
-                result = resolve_check(10, 1, "untrained", 16, rng=rng)
-                assert result.success is False
-                return
-        pytest.fail("Could not find seed for failure")
+        seed = 0
+        rng = random.Random(seed)
+        result = resolve_check(10, 1, "untrained", 16, rng=rng)
+        assert result.success is False
 
     def test_nat_20_always_succeeds(self):
-        for seed in range(1000):
-            rng = random.Random(seed)
-            if rng.randint(1, 20) == 20:
-                rng = random.Random(seed)
-                result = resolve_check(8, 1, "untrained", 20, rng=rng)
-                assert result.success is True
-                assert result.roll == 20
-                assert result.critical_success is True
-                return
-        pytest.fail("Could not find seed for nat 20")
+        seed = 5
+        rng = random.Random(seed)
+        result = resolve_check(8, 1, "untrained", 20, rng=rng)
+        assert result.success is True
+        assert result.roll == 20
+        assert result.critical_success is True
 
     def test_nat_1_always_fails(self):
-        for seed in range(1000):
-            rng = random.Random(seed)
-            if rng.randint(1, 20) == 1:
-                rng = random.Random(seed)
-                result = resolve_check(20, 14, "master", 5, rng=rng)
-                assert result.success is False
-                assert result.roll == 1
-                assert result.critical_failure is True
-                return
-        pytest.fail("Could not find seed for nat 1")
+        seed = 31
+        rng = random.Random(seed)
+        result = resolve_check(20, 14, "master", 5, rng=rng)
+        assert result.success is False
+        assert result.roll == 1
+        assert result.critical_failure is True
 
     def test_auto_fail_untrained_dc24(self):
         result = resolve_check(14, 1, "untrained", 24, rng=random.Random(42))
@@ -119,39 +100,25 @@ class TestResolveCheck:
 
     def test_auto_fail_overrides_nat20(self):
         # Even nat 20 cannot overcome a tier gate
-        for seed in range(1000):
-            rng = random.Random(seed)
-            if rng.randint(1, 20) == 20:
-                rng = random.Random(seed)
-                result = resolve_check(14, 1, "untrained", 24, rng=rng)
-                assert result.auto_fail is True
-                assert result.success is False
-                return
-        pytest.fail("Could not find seed for nat 20")
+        seed = 5
+        rng = random.Random(seed)
+        result = resolve_check(14, 1, "untrained", 24, rng=rng)
+        assert result.auto_fail is True
+        assert result.success is False
 
     def test_margin_calculation(self):
-        for seed in range(1000):
-            rng = random.Random(seed)
-            d20 = rng.randint(1, 20)
-            if 5 <= d20 <= 15:  # avoid crits
-                rng = random.Random(seed)
-                result = resolve_check(14, 1, "trained", 12, rng=rng)
-                assert result.margin == result.total - result.dc
-                return
-        pytest.fail("Could not find suitable seed")
+        seed = 0
+        rng = random.Random(seed)
+        result = resolve_check(14, 1, "trained", 12, rng=rng)
+        assert result.margin == result.total - result.dc
 
     def test_critical_flags(self):
         # Non-crit roll should have both flags False
-        for seed in range(1000):
-            rng = random.Random(seed)
-            d20 = rng.randint(1, 20)
-            if 2 <= d20 <= 19:
-                rng = random.Random(seed)
-                result = resolve_check(14, 1, "trained", 12, rng=rng)
-                assert result.critical_success is False
-                assert result.critical_failure is False
-                return
-        pytest.fail("Could not find non-crit seed")
+        seed = 0
+        rng = random.Random(seed)
+        result = resolve_check(14, 1, "trained", 12, rng=rng)
+        assert result.critical_success is False
+        assert result.critical_failure is False
 
     def test_narrative_hint_present(self):
         result = resolve_check(14, 1, "trained", 12, rng=random.Random(42))
@@ -159,37 +126,25 @@ class TestResolveCheck:
         assert len(result.narrative_hint) > 0
 
     def test_nat_20_is_dramatic(self):
-        for seed in range(1000):
-            rng = random.Random(seed)
-            if rng.randint(1, 20) == 20:
-                rng = random.Random(seed)
-                result = resolve_check(8, 1, "untrained", 12, rng=rng)
-                assert result.dramatic is True
-                assert result.context == "natural_20"
-                return
-        pytest.fail("Could not find seed for nat 20")
+        seed = 5
+        rng = random.Random(seed)
+        result = resolve_check(8, 1, "untrained", 12, rng=rng)
+        assert result.dramatic is True
+        assert result.context == "natural_20"
 
     def test_nat_1_is_dramatic(self):
-        for seed in range(1000):
-            rng = random.Random(seed)
-            if rng.randint(1, 20) == 1:
-                rng = random.Random(seed)
-                result = resolve_check(20, 14, "master", 5, rng=rng)
-                assert result.dramatic is True
-                assert result.context == "natural_1"
-                return
-        pytest.fail("Could not find seed for nat 1")
+        seed = 31
+        rng = random.Random(seed)
+        result = resolve_check(20, 14, "master", 5, rng=rng)
+        assert result.dramatic is True
+        assert result.context == "natural_1"
 
     def test_ordinary_roll_not_dramatic(self):
-        for seed in range(1000):
-            rng = random.Random(seed)
-            if 2 <= rng.randint(1, 20) <= 19:
-                rng = random.Random(seed)
-                result = resolve_check(14, 1, "trained", 12, rng=rng)
-                assert result.dramatic is False
-                assert result.context == ""
-                return
-        pytest.fail("Could not find non-crit seed")
+        seed = 0
+        rng = random.Random(seed)
+        result = resolve_check(14, 1, "trained", 12, rng=rng)
+        assert result.dramatic is False
+        assert result.context == ""
 
     def test_auto_fail_not_dramatic(self):
         # auto_fail early-exit has roll=0 → evaluator returns (False, "").
@@ -225,62 +180,48 @@ class TestRollD20Check:
     def test_normal_roll_success_when_total_ge_dc(self):
         # Find a seed where d20 + 5 >= 12 and not nat-20 (to test the
         # non-critical success path).
-        for seed in range(1000):
-            rng = random.Random(seed)
-            roll = rng.randint(1, 20)
-            if 2 <= roll <= 19 and roll + 5 >= 12:
-                rng = random.Random(seed)
-                result = _roll_d20_check(5, 12, rng=rng)
-                assert result.roll == roll
-                assert result.total == roll + 5
-                assert result.success is True
-                assert result.margin == roll + 5 - 12
-                # narrative_hint is non-empty per rules_engine.narrative_hint
-                assert result.narrative_hint != ""
-                return
-        pytest.fail("Could not find seed for normal success roll")
+        seed = 0
+        rng = random.Random(seed)
+        roll = rng.randint(1, 20)
+        rng = random.Random(seed)
+        result = _roll_d20_check(5, 12, rng=rng)
+        assert result.roll == roll
+        assert result.total == roll + 5
+        assert result.success is True
+        assert result.margin == roll + 5 - 12
+        # narrative_hint is non-empty per rules_engine.narrative_hint
+        assert result.narrative_hint != ""
 
     def test_normal_roll_failure_when_total_lt_dc(self):
-        for seed in range(1000):
-            rng = random.Random(seed)
-            roll = rng.randint(1, 20)
-            if 2 <= roll <= 19 and roll + 0 < 12:
-                rng = random.Random(seed)
-                result = _roll_d20_check(0, 12, rng=rng)
-                assert result.roll == roll
-                assert result.total == roll
-                assert result.success is False
-                assert result.margin == roll - 12
-                return
-        pytest.fail("Could not find seed for normal failure roll")
+        seed = 1
+        rng = random.Random(seed)
+        roll = rng.randint(1, 20)
+        rng = random.Random(seed)
+        result = _roll_d20_check(0, 12, rng=rng)
+        assert result.roll == roll
+        assert result.total == roll
+        assert result.success is False
+        assert result.margin == roll - 12
 
     def test_nat_20_always_succeeds(self):
         # Even with a wildly impossible DC and zero mod, nat-20 wins.
-        for seed in range(1000):
-            rng = random.Random(seed)
-            if rng.randint(1, 20) == 20:
-                rng = random.Random(seed)
-                result = _roll_d20_check(0, 100, rng=rng)
-                assert result.roll == 20
-                assert result.success is True
-                # margin still reflects raw arithmetic, success is rule-based
-                assert result.margin == 20 - 100
-                assert result.critical_success is True
-                assert result.critical_failure is False
-                return
-        pytest.fail("Could not find seed for nat-20")
+        seed = 5
+        rng = random.Random(seed)
+        result = _roll_d20_check(0, 100, rng=rng)
+        assert result.roll == 20
+        assert result.success is True
+        # margin still reflects raw arithmetic, success is rule-based
+        assert result.margin == 20 - 100
+        assert result.critical_success is True
+        assert result.critical_failure is False
 
     def test_nat_1_always_fails(self):
         # Even with a huge positive mod, nat-1 still fails.
-        for seed in range(1000):
-            rng = random.Random(seed)
-            if rng.randint(1, 20) == 1:
-                rng = random.Random(seed)
-                result = _roll_d20_check(50, 5, rng=rng)
-                assert result.roll == 1
-                assert result.success is False
-                assert result.total == 51
-                assert result.critical_failure is True
-                assert result.critical_success is False
-                return
-        pytest.fail("Could not find seed for nat-1")
+        seed = 31
+        rng = random.Random(seed)
+        result = _roll_d20_check(50, 5, rng=rng)
+        assert result.roll == 1
+        assert result.success is False
+        assert result.total == 51
+        assert result.critical_failure is True
+        assert result.critical_success is False
