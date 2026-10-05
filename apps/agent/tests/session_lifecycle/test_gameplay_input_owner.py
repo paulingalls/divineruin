@@ -28,7 +28,7 @@ def test_gameplay_room_options_pin_primary_and_disable_vendor_close() -> None:
 
 
 def test_solo_room_options_keep_the_microphone_the_pre_gameplay_agents_are_the_only_ear_for() -> None:
-    """Creation and onboarding have no MultiParticipantTranscriber; room audio is their only input."""
+    """Creation and onboarding have no transcriber; room audio is their only input."""
     sd = SessionData(player_id="player-one", location_id="loc")
 
     options = solo_room_options(sd)

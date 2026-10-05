@@ -1,11 +1,4 @@
-"""Tests for the gather mode of the `check` verb (M4.6c / story-003).
-
-`_check_gather_impl` (folded into check via mode="gather") reads the player's current location,
-rolls the gating skill, drives the pure gathering engine, grants materials, consumes a fixed
-gathering_node on a rich find, and emits a DICE_ROLL. Drives the impl directly with mocked db
-seams + a fixed rng; the dispatch wiring on `check` is covered at the bottom. Mirrors
-test_social_tools.py.
-"""
+"""Database seams and randomness are controlled; gather implementation and dispatch are real."""
 
 import json
 from contextlib import asynccontextmanager
@@ -150,7 +143,6 @@ class TestNodeConsumer:
         assert result["inventory_updated"] is True
         mocks[3].mark_node_discovered.assert_awaited_once_with("n1", conn=ANY)
         mocks[3].deplete_node_quantity.assert_awaited_once()
-        # node resource granted
         granted = [c.args[1] for c in mocks[1].add_inventory_item.await_args_list]
         assert "sageroot" in granted
         assert "Sageroot" in ctx.userdata.session_items_found
@@ -183,8 +175,6 @@ class TestNodeConsumer:
 
     @pytest.mark.asyncio
     async def test_rich_find_matches_node_to_rolled_skill(self):
-        # location has an ore vein (survival) listed first + an herb garden (nature); foraging for
-        # herbs must surface the herb garden, not the listed-first ore vein.
         ore = {**_NODE, "id": "ore1", "node_type": "ore_vein", "resource_type": "iron_ore"}
         mocks = _gather_mocks(player=_EXPERT, nodes=[ore, _NODE])
         ctx = _ctx_with_bus()
@@ -235,7 +225,6 @@ class TestGuards:
 class TestNodeRevealSignal:
     @pytest.mark.asyncio
     async def test_first_reveal_emits_hidden_revealed(self):
-        """Undiscovered node + rich find should emit HIDDEN_REVEALED alongside DICE_ROLL."""
         mocks = _gather_mocks(player=_EXPERT, nodes=[_NODE])
         ctx = _ctx_with_bus()
         await _run(ctx, mocks, rng_val=20)  # expert + nat20 -> rich_find
@@ -250,7 +239,6 @@ class TestNodeRevealSignal:
 
     @pytest.mark.asyncio
     async def test_already_discovered_omits_hidden_revealed(self):
-        """Already-discovered node should NOT emit HIDDEN_REVEALED (first-reveal-only gate)."""
         discovered_node = {**_NODE, "discovered": True}
         mocks = _gather_mocks(player=_EXPERT, nodes=[discovered_node])
         ctx = _ctx_with_bus()
@@ -263,7 +251,6 @@ class TestNodeRevealSignal:
 
     @pytest.mark.asyncio
     async def test_non_rich_success_omits_hidden_revealed(self):
-        """Non-rich success should emit only DICE_ROLL, no HIDDEN_REVEALED."""
         mocks = _gather_mocks(player=SAMPLE_PLAYER, nodes=[_NODE])  # untrained -> no rich find
         ctx = _ctx_with_bus()
         await _run(ctx, mocks, rng_val=11)
@@ -275,10 +262,7 @@ class TestNodeRevealSignal:
 
     @pytest.mark.asyncio
     async def test_emitted_event_feeds_real_handler_roundtrip(self):
-        """AC#3: the exact event the gather path emits, fed through the REAL bg_event_handlers
-        handler, must trigger a warm rebuild AND land the node id in recently_revealed_element_ids
-        — pinning the emit-side payload against the consume-side contract in one test (mirrors
-        check_discovery.py's mode=discover reveal path)."""
+        """Feed the emitted event to the real consumer so the payload is not checked against a model."""
         mocks = _gather_mocks(player=_EXPERT, nodes=[_NODE])
         ctx = _ctx_with_bus()
         await _run(ctx, mocks, rng_val=20)  # expert + nat20 -> rich_find

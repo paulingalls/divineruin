@@ -1,18 +1,4 @@
-"""Guard the Party.members mutate-in-place invariant (constraint f4f16c93076e,
-decision ce6ca819008c).
-
-Per-member state on SessionData reaches ONE backing store — session.party.members.
-Every per-member write and the live participant-join append must MUTATE that store in
-place, never wholesale-reassign session.party or session.party.members. If it did,
-already-captured references (e.g. a combat_init loop holding session.party, or a
-sibling member reference) would silently point at a stale object.
-
-This suite pins the invariant by identity: writing each per-member facade field and
-appending a joining member both keep id(session.party) and id(session.party.members)
-stable. The invariant is convention-only today; story-001 is the first story to touch
-the party model and adds this guard so a later refactor that reassigns instead of
-mutating goes red here.
-"""
+"""Replacing Party.members would strand references captured by combat and sibling members."""
 
 from caster_state import ConcentrationState, ResonanceTrack
 from party_state import PartyMember
@@ -57,9 +43,7 @@ def test_resonance_in_place_mutation_keeps_party_stable():
 
 
 def test_appending_a_joining_member_mutates_members_in_place():
-    """The live participant-join path appends onto party.members (constraint f4f16c93076e).
-    Both the party AND the members list must stay the same objects, so a reference captured
-    before the join still sees the new member."""
+    """A reference captured before the join must see the appended member."""
     session = _fresh_session()
     party_id, members_id = id(session.party), id(session.party.members)
     members_ref = session.party.members

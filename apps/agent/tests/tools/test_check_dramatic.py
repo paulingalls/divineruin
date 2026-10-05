@@ -1,11 +1,3 @@
-"""Story-005: dramatic+context on out-of-combat DICE_ROLL events.
-
-Skill checks and saving throws emitted by check_tools must surface the pure
-resolver's dramatic verdict (nat-20 / nat-1 only, out of combat) onto the
-client-facing DICE_ROLL payload. Narrative dice stay non-dramatic. Mirrors the
-story-004 combat-emission contract.
-"""
-
 import json
 from types import SimpleNamespace
 
