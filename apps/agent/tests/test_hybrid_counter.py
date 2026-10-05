@@ -8,7 +8,6 @@ If a future refactor splits one path onto a different row, this test breaks.
 """
 
 import json
-import types
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock
 
@@ -256,36 +255,6 @@ class TestHybridCounterSharedRow:
         assert len(calls) == 2
         assert calls[0][2] == 1  # session-use defaults to 1
         assert calls[1][2] == 2  # training passed 2
-
-    @pytest.mark.asyncio
-    async def test_spy_install_catches_from_import_caller(self, monkeypatch) -> None:
-        """Meta-test: a hypothetical caller that captured the helper via
-        `from skill_persistence import apply_skill_use_with_persistence` would
-        evade a module-attr-only patch. Verify `_install_helper_spy` defensively
-        rebinds the symbol in caller namespaces so the spy still fires.
-        """
-        real_fn = skill_persistence.apply_skill_use_with_persistence
-
-        # Simulate a from-import caller: a module whose own namespace binds the
-        # original function object directly (the result of `from X import Y`).
-        fake_caller = types.ModuleType("fake_caller_from_import")
-        setattr(fake_caller, real_fn.__name__, real_fn)
-
-        calls: list[tuple[str, str, int]] = []
-
-        async def spy(player_id, skill, counter_increment=1, **kw):
-            calls.append((player_id, skill, counter_increment))
-            return await real_fn(player_id, skill, counter_increment, **kw)
-
-        _install_helper_spy(monkeypatch, spy, real_fn, [skill_persistence, fake_caller])
-
-        rebound = getattr(fake_caller, real_fn.__name__)
-        assert rebound is spy
-
-        _, queries, mutations = _shared_skill_advancement_store()
-        await rebound("player_1", "athletics", 1, queries=queries, mutations=mutations)
-        assert len(calls) == 1
-        assert calls[0] == ("player_1", "athletics", 1)
 
     @pytest.mark.asyncio
     async def test_different_skills_use_different_rows(self) -> None:

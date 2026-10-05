@@ -1,11 +1,5 @@
 """AC1/AC2/AC4: the four beat-3/4 vignettes are authored per companion, in the content row.
 
-The prose lives in content/companions.json rather than in onboarding_prompt.py because
-test_no_companion_literal's walker matches the FILE TEXT of every non-allowlisted, non-test
-file: once onboarding_prompt.py comes off that allowlist (AC6), the module may not contain the
-string "Kael" in any shape — not a constant, not a dict key, not a function name. The row the
-renderer already reads is the only home left.
-
 TWO AUTHORING RULES THIS FILE ENFORCES BLUNTLY, because a text guard cannot attribute a word
 to a speaker. Both are stated here so the next author meets them as a rule, not as a red:
 

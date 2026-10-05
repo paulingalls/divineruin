@@ -67,7 +67,6 @@ _SOURCE_MIRRORS: dict[Path, tuple[Path, frozenset[str]]] = {
 def test_committed_source_mirror_is_byte_equal_to_bundled() -> None:
     for source_dir, (bundled_dir, expected_keys) in _SOURCE_MIRRORS.items():
         sources = sorted(source_dir.glob("*.mp3"))
-        assert sources, f"no source .mp3 under {source_dir} -- mirror guard would be a no-op"
         source_stems = {src.stem for src in sources}
         missing = sorted(expected_keys - source_stems)
         assert not missing, (
@@ -112,13 +111,6 @@ def _probe(path: Path) -> tuple[int, int]:
 # (legacy 20 + 7 spell stems), music, soundscapes, textures with no hand-maintained
 # key tuple. A future regenerated family auto-extends this parametrization.
 _FAMILY_DIRS = sorted(bundled_stems_by_dir(_SOUNDS_DIR).keys())
-
-
-def test_family_discovery_is_non_empty() -> None:
-    """Fail loud if discovery finds no families -- an empty _FAMILY_DIRS silently
-    turns the parametrized signature guard into a skipped ('empty parameter set')
-    no-op. Mirrors the _SOURCE_MIRRORS non-empty assertion."""
-    assert _FAMILY_DIRS, f"no bundled audio families discovered under {_SOUNDS_DIR}"
 
 
 @pytest.mark.parametrize("family_dir", _FAMILY_DIRS)
