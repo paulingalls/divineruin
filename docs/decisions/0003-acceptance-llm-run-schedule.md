@@ -75,9 +75,11 @@ Both directions of that drift are reversed and tightened past the original sched
 tests (`real_llm`, `openai_real_llm`, `live_voice`) are skipped at collection everywhere —
 pre-push, the sprint full tier, CI and ad-hoc runs — even when keys are present. They run
 only case by case, when a human approves a specific run for a legitimate concern:
-`ALLOW_PAID_TESTS=1 REQUIRE_REAL_LLM=1 uv run pytest <file>`. The hook strips both flags.
-Enforced by `apps/agent/tests/_paid_tests.py` and `tests/test_paid_test_gate.py`, and at the
-hook boundary by `scripts/test-prepush-environment.sh`.
+`ALLOW_PAID_TESTS=1 REQUIRE_REAL_LLM=1 uv run pytest <file>`. The release hook
+`.githooks/sprint` strips approval by exporting both flags empty in all children,
+so explicit env files cannot restore approval. Acceptance unsets only sibling-lane
+`DATABASE_URL` and `REDIS_URL`. Collection is enforced by
+`apps/agent/tests/_paid_tests.py` and `tests/test_paid_test_gate.py`.
 
 ## Addendum (2026-09-22) — GPT-6 Luna gameplay route
 

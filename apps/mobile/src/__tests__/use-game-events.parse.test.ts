@@ -307,9 +307,7 @@ test("committed inventory payloads reach independent consumers", async () => {
       if (event.type === "inventory_updated") snapshots++;
       for (const consumer of consumers) {
         const before = consumer.store.getState().inventory;
-        if (consumer.owner !== process.env.LIVE_MATERIAL_INVENTORY_IGNORE_CONSUMER) {
-          applyInventorySnapshot(event, consumer.owner, consumer.store);
-        }
+        applyInventorySnapshot(event, consumer.owner, consumer.store);
         if (event.type === "inventory_updated" && event.player_id !== consumer.owner) {
           expect(consumer.store.getState().inventory).toEqual(before);
         }

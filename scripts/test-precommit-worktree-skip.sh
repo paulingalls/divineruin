@@ -5,8 +5,7 @@ set -euo pipefail
 # the .env security guard still fires regardless.
 
 # Resolve the hook from this script's location so the test runs correctly
-# regardless of the invoking CWD (e.g. from the pre-push gate). Mirrors the
-# path-resolution pattern in .githooks/test-pre-push.sh.
+# regardless of the invoking CWD (e.g. from the sprint hook).
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 HOOK="$SCRIPT_DIR/../.githooks/pre-commit"
 
