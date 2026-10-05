@@ -89,7 +89,6 @@ class TestTriggerCharacterDeathParams:
 class TestResurrectPartyOnDefeat:
     @pytest.mark.asyncio
     async def test_each_member_records_and_pays_own_tier_at_coincident_anchor(self):
-        """AC1: every member's death is recorded and costed by their OWN running count."""
         death_mut = _death_mutations({"p_a": 0, "p_b": 2})
         res_mut = AsyncMock()
         content = MagicMock(get_all_locations=AsyncMock(return_value=_LOCATIONS))
@@ -111,9 +110,6 @@ class TestResurrectPartyOnDefeat:
 
     @pytest.mark.asyncio
     async def test_mortaen_first_death_free_non_patron_pays(self):
-        """AC4: a Mortaen patron (first-ever death) is waived/un-counted while the non-patron
-        (2nd death) pays the standard moderate cost; both resolve to the same anchor
-        (co-located, no divergent last-rested)."""
         death_mut = _death_mutations({"p_mort": 0, "p_non": 1})
         res_mut = AsyncMock()
         content = MagicMock(get_all_locations=AsyncMock(return_value=_LOCATIONS))
@@ -140,8 +136,6 @@ class TestResurrectPartyOnDefeat:
 class TestResurrectOnDefeatDelegates:
     @pytest.mark.asyncio
     async def test_single_player_path_returns_one_context(self):
-        """resurrect_on_defeat (the live single-player defeat path) delegates to the party
-        engine with a 1-member party and returns the single context dict."""
         death_mut = _death_mutations({"p1": 0})
         res_mut = AsyncMock()
         content = MagicMock(get_all_locations=AsyncMock(return_value=_LOCATIONS))

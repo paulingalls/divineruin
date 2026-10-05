@@ -247,9 +247,7 @@ class TestAttackModifier:
 
 
 class TestNecroticRider:
-    """M4.4 story-008: an attacker carrying the temporary_hollowed condition adds a 1d6 necrotic
-    rider to each hit. The rider rolls AFTER weapon damage with the same rng, so for a given seed
-    the weapon roll is identical with/without the condition — the delta isolates the rider."""
+    """Use the same seed so the damage delta isolates the necrotic rider."""
 
     WEAPON = {"name": "Claw", "damage": "1d6", "damage_type": "slashing", "properties": []}
 

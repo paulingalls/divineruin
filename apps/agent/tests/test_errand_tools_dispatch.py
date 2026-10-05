@@ -167,7 +167,6 @@ class TestDispatchCompanionErrand:
 
     @pytest.mark.asyncio
     async def test_malformed_danger_level_raises_toolerror_not_valueerror(self):
-        """A typo'd danger_level surfaces a clean ToolError, not a raw ValueError."""
         ctx = make_context()
         mutations = _mutations()
         with pytest.raises(ToolError, match="danger level"):
@@ -217,12 +216,7 @@ class TestDispatchToolRegistration:
 
 
 class TestDispatchGatesTheAssignedCompanion:
-    """The block rule is enforced against the companion the errand will actually resolve for.
-
-    Resolution derives the companion from the player's archetype (errand_resolution
-    .companion_errand_data); a caller-named companion that differs used to walk a Sable player
-    past a Sable-only block with no error and an empty errand frame downstream.
-    """
+    """Assignment must resolve each player's companion independently."""
 
     @pytest.mark.asyncio
     async def test_caller_naming_kael_cannot_smuggle_sable_past_a_block(self):
@@ -275,11 +269,7 @@ class TestDispatchGatesTheAssignedCompanion:
 
     @pytest.mark.asyncio
     async def test_archetype_matching_no_companion_is_a_tool_error(self):
-        """A class in no companion's `complements` reaches the LLM as a narratable ToolError.
-
-        `select_companion_for_archetype` raises ValueError, and @db_tool only catches
-        DatabaseError/Timeout/Connection — unwrapped, the raw ValueError escapes the tool.
-        """
+        """A raw ValueError must escape db_tool rather than masquerade as a database failure."""
         ctx = make_context()
         with pytest.raises(ToolError, match="matches 0 companions"):
             await _dispatch_companion_errand_impl(

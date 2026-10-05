@@ -129,16 +129,10 @@ async def _exit_exploration(agent: ExplorationAgent, session: MagicMock) -> None
 
 
 class TestProcessSurvivesTheHandoff:
-    """AC4: the OTHER warm sections still refresh across the handoff, and combat is not one.
-
-    Story-023's value, unchanged — quests, location, NPCs and corruption keep reaching whichever
-    agent holds the floor. What story-024 removes is the ACTIVE COMBAT block, so this drives the
-    live loop with a REBUILD event (a quest advancing) while a real fight is underway.
-    """
+    """Quest changes must reach the active agent during combat without adding combat to the warm layer."""
 
     async def test_the_running_loop_updates_the_combat_agent_mid_fight(self):
-        """Driven through the live loop, not `_process_events`: a stopped process can still be
-        driven by hand, so only the loop can red when the handoff kills it."""
+        """Driving _process_events by hand cannot detect a stopped live loop."""
         sd = SessionData(player_id="p1", location_id="accord_guild_hall", room=MagicMock())
         # Corruption is the one other section AC4 names that is gated on its own branch
         # (`if corruption_level > 0`), so it can be dropped independently of quests and location.
@@ -185,13 +179,8 @@ class TestProcessSurvivesTheHandoff:
 
 
 class TestStartedOnceForTheSession:
-    """The other half of session ownership: one loop, and only on the gameplay path."""
-
     async def test_a_handback_does_not_start_a_second_loop(self):
-        """`end_combat` hands back a NEW ExplorationAgent over the same SessionData, and no
-        agent stops the loop any more — so `on_enter` is the only place that can refuse the
-        second one. Two loops split this queue-backed bus between them and rebuild twice on
-        every fallback."""
+        """Two loops would split the queue and duplicate fallback rebuilds."""
         sd = SessionData(player_id="p1", location_id="accord_guild_hall", room=MagicMock())
         session = MagicMock()
         session.userdata = sd
@@ -210,13 +199,7 @@ class TestStartedOnceForTheSession:
                 await first.stop()
 
     def test_the_gameplay_path_is_the_only_construction_site(self):
-        """AC: a prologue or onboarding session constructs NO background process.
-
-        Structural because that is where the fault injection the card names lives — building
-        one on `agent.py`'s prologue branch. Driving `PrologueAgent.on_enter` would stay green
-        through exactly that change, and the prologue/onboarding warm layer has no combat, no
-        quests and no companion to render.
-        """
+        """PrologueAgent.on_enter cannot detect an extra process constructed by the CLI branch."""
         agent_dir = pathlib.Path(background_process.__file__).parent  # cwd-independent
         sources = sorted(p for p in agent_dir.glob("*.py") if p.name != "background_process.py")
         built_in = {
@@ -241,11 +224,6 @@ DELETED_REFRESH_PATH = (
 
 class TestTheRefreshPathIsGone:
     def test_no_agent_module_still_names_it(self):
-        """AC5: the trigger that rewrote the system prompt every round is deleted, not disabled.
-
-        Top-level modules only — `tests/` is not matched by the glob, so this file may name
-        the strings freely.
-        """
         agent_dir = pathlib.Path(background_process.__file__).parent  # cwd-independent
         survivors = {
             (path.name, name)
@@ -258,7 +236,6 @@ class TestTheRefreshPathIsGone:
 
 class TestTheSystemPromptDoesNotMoveDuringAFight:
     async def test_three_rounds_move_the_system_prompt_zero_times(self):
-        """AC1: the prefix is written at the handoff and never again while the fight runs."""
         cs = sample_combat_state(round_number=1)
         bg, agent = _make_bg(cs)
         with _mock_db():
@@ -280,18 +257,8 @@ class TestTheSystemPromptDoesNotMoveDuringAFight:
         assert agent.update_instructions.await_count == 0
 
     async def test_a_combat_round_issues_no_warm_layer_db_query(self):
-        """AC5's other half, and the half ``update_instructions.await_count == 0`` cannot see.
-
-        Putting ``COMBAT_UI_UPDATE`` back into ``REBUILD_EVENT_TYPES`` leaves every other guard in
-        this file green: the warm layer no longer CONTAINS the fight, so the rebuild recomposes a
-        byte-identical string, ``_apply_warm`` dedupes it, and the system prompt never moves. What
-        it silently restores is the COST — the four concurrent DB queries ``_rebuild_warm_layer``
-        fans out to, once per combat round, for a layer that cannot have changed. So the claim has
-        to be made where it bites: on the query seam, not on the injection.
-
-        story-023 owned this AC while the combat block still lived in the warm layer; story-024
-        deleted the block and the refresh path, and the assertion went with them.
-        """
+        """An identical recomposed prompt hides the cost of needless rebuild queries.
+        Assert the query seam rather than only instruction updates."""
         cs = sample_combat_state(round_number=1)
         bg, _agent = _make_bg(cs)
         with _mock_db() as seams:

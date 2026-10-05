@@ -60,8 +60,6 @@ _CUES = {
 
 @pytest.mark.asyncio
 async def test_threads_recipe_cue_for_resolved_band():
-    """story-005 close: the per-recipe narration_cues[band] (decision crafting-narration-ssot)
-    is threaded into narrative_context.recipe_cue for the resolved band."""
     activity = {"activity_type": "crafting", "parameters": PARAMETERS}
     recipe = {"category": "weapon", "narration_cues": _CUES}
     with patch("crafting_resolution.get_recipe", new_callable=AsyncMock, return_value=recipe):
@@ -76,8 +74,7 @@ async def test_threads_recipe_cue_for_resolved_band():
 
 @pytest.mark.asyncio
 async def test_recipe_cue_omitted_when_band_absent():
-    """narration_cues may carry only success/failure; an exceptional roll then finds no
-    cue and recipe_cue is absent rather than None-keyed or crashing."""
+    """An unavailable crafting cue may legitimately be omitted."""
     activity = {"activity_type": "crafting", "parameters": PARAMETERS}
     recipe = {"category": "weapon", "narration_cues": {"success": "ok", "failure": "ruined"}}
     with patch("crafting_resolution.get_recipe", new_callable=AsyncMock, return_value=recipe):

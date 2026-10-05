@@ -56,7 +56,7 @@ async def test_unwarded_publishes_active_false_and_names_no_scope():
 
 
 async def test_payload_carries_no_caster_id():
-    """§6: no raiser id. A ward is scope-owned, so no client may filter itself out of it."""
+    """A scope-owned ward must not filter out clients by caster id."""
     pub = await _publish(_session(), _ENCOUNTER_WARD, WardScope.encounter("combat_42"))
     assert "caster_id" not in pub.call_args.args[2]
 

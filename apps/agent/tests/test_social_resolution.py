@@ -41,8 +41,6 @@ class TestSocialDcModifier:
 
 
 class TestDispositionShift:
-    """Spec L678-685: shift depends on skill and outcome band (margin = roll_total - dc)."""
-
     def test_persuasion_success_bands(self):
         assert disposition_shift("persuasion", 12) == 2  # success by 10+
         assert disposition_shift("persuasion", 6) == 1  # success by 5+
@@ -80,8 +78,6 @@ class TestDispositionShift:
 
 
 class TestResolveSocialCheckTier1:
-    """Tier 1 (spec L636-687): dc = base_dc + disposition modifier; success = roll >= dc."""
-
     def test_disposition_modifier_adds_to_base_dc(self):
         vs_hostile = resolve_social_check(disposition="hostile", skill="persuasion", roll_total=15, base_dc=12)
         vs_friendly = resolve_social_check(disposition="friendly", skill="persuasion", roll_total=15, base_dc=12)
@@ -122,8 +118,6 @@ class TestResolveSocialCheckTier1:
 
 
 class TestArgumentDcAdjust:
-    """Tier-3 argument categories vs NPC resistance personality (spec L768-791)."""
-
     def test_no_argument_is_neutral(self):
         assert argument_dc_adjust(None, ()) == 0
         assert argument_dc_adjust(None, ("pragmatic",)) == 0
@@ -182,8 +176,6 @@ class TestResolveSocialCheckTier3:
 
 
 class TestResolveContestedSocial:
-    """Tier 2 (spec L689-729): player vs NPC roll, ties to the NPC, always dramatic."""
-
     def test_player_must_beat_npc_to_succeed(self):
         assert resolve_contested_social(skill="deception", player_total=18, npc_total=12).success
         assert not resolve_contested_social(skill="deception", player_total=12, npc_total=18).success

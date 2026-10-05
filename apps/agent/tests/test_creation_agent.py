@@ -48,13 +48,7 @@ class TestCreationAgentInit:
         }
 
     def test_prompt_commands_no_tool_the_agent_lacks(self):
-        """A "Call <tool>" directive naming an unregistered tool is a turn the agent cannot
-        complete — the LLM is told to reach for something absent from its schema.
-
-        Derived from CREATION_TOOLS rather than listing offenders by name, so a tool added to
-        the prompt without being added to the agent reds on its own. The snake_case shape
-        keeps English ("Call BEFORE", "call when") out of the commanded set.
-        """
+        """Match removed tool identifiers, not ordinary English words in narration."""
         from creation_agent import CREATION_TOOLS
 
         commanded = set(re.findall(r"[Cc]all ([a-z]+(?:_[a-z]+)+)", CREATION_SYSTEM_PROMPT))

@@ -97,14 +97,7 @@ _FAMILY_DIRS = sorted(bundled_stems_by_dir(_SOUNDS_DIR).keys())
 
 @pytest.mark.parametrize("family_dir", _FAMILY_DIRS)
 def test_bundled_family_stems_match_pipeline_transcode_signature(family_dir: str) -> None:
-    """Every bundled stem in every family must carry the SA3 pipeline's transcode
-
-    signature -- 44.1kHz, <=160kbps -- which hand-sourced takes did not. Fails if
-    any stem regresses to a non-pipeline (hand-sourced) file.
-
-    Fail-loud on missing ffprobe (no skip): this is an acceptance guard, and a
-    skip would silently drop the provenance enforcement (concern 2c0c3026b0e4).
-    """
+    """Missing ffprobe must fail rather than silently skip audio validation."""
     if shutil.which("ffprobe") is None:
         pytest.fail(
             "ffprobe (ffmpeg) is required to enforce the transcode-signature provenance guard — "

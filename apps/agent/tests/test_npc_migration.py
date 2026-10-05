@@ -69,13 +69,7 @@ def test_persona_field_shapes():
 
 
 def test_disposition_remap_preserves_gated_knowledge():
-    """AC-4: each reconciled NPC resolves the same knowledge at old vs new disposition.
-
-    Both the old and new tier sit below the friendly gate, so each must resolve to
-    exactly the free-only tier — asserted explicitly so the test fails if a future
-    remap (or a vocab change in filter_knowledge) lifts an NPC across the gate, rather
-    than passing vacuously on old == new.
-    """
+    """An explicit free-knowledge control prevents both old and new paths being equally wrong."""
     parsed = _parsed()
     for npc_id, (old, new) in _DISPOSITION_REMAP.items():
         npc = parsed[npc_id]
@@ -107,14 +101,7 @@ def test_get_npc_sync_resolves_seeded_catalog():
 
 
 def test_every_voice_id_registered_in_voices():
-    """Every NPC voice_id must be a key in voices.VOICES (audio-first golden rule).
-
-    get_voice_config does VOICES.get(character, DEFAULT_VOICE), so an unregistered
-    voice_id silently falls back to DM_NARRATOR. The shim consolidation derives an
-    NPC's voice from this record, so a gap here mutes the character. story-004
-    reconciled npcs.json voice_ids to the SCREAMING_CASE runtime keys and registers
-    the previously-missing ones in voices.py.
-    """
+    """Registered empty voices intentionally use the narrator fallback."""
     for npc_id, npc in _parsed().items():
         assert npc["voice_id"] in VOICES, (
             f"{npc_id} voice_id {npc['voice_id']!r} not in voices.VOICES -> would fall back to DM_NARRATOR"

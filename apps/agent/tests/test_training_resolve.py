@@ -212,7 +212,6 @@ class TestResolveTrainingMidpoint:
 
     @pytest.mark.asyncio
     async def test_wrong_state_already_running_second(self):
-        """Idempotency guard: re-resolving an already-resolved row is rejected."""
         ctx = make_context()
         mock_db, _ = make_db_mod()
         mock_training = MagicMock()
@@ -272,9 +271,7 @@ class TestResolveTrainingMidpoint:
 
     @pytest.mark.asyncio
     async def test_writes_transition_at_matching_completes_at(self):
-        """Regression guard: worker (advance_training_cycles) polls on
-        transition_at; without it the resolved row stalls in
-        running_second_half forever. Pins update_training_activity kwarg."""
+        """The worker polls transition_at; omitting it strands the resolved activity."""
         ctx = make_context()
         mock_db, _ = make_db_mod()
         mock_training = MagicMock()

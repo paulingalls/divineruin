@@ -111,9 +111,7 @@ class TestCheckMaterialRequirements:
 
 
 class TestAllocateMaterials:
-    """allocate_materials picks a real DISJOINT allocation (resolves debt cdce6c6a776d:
-    the greedy check_material_requirements counts shared substitutable units toward
-    multiple requirements; the consume path needs concrete, non-overlapping units)."""
+    """Allocate material requirements disjointly so one item cannot satisfy two costs."""
 
     def test_named_material_only(self):
         result = rv.allocate_materials([_req("iron_ingot", 2, 1, False)], {"iron_ingot": 2}, CATALOG)
@@ -167,12 +165,7 @@ class TestAllocateMaterials:
 
 
 class TestValidateMagicItemCraftTier:
-    """Magic-item craft-tier gate (story-002, M5.4). Rare items require an
-    Expert+ recipe, Legendary require Master; common/uncommon are unconstrained.
-    Pure ordering logic over RECIPE_TIER_ORDER, mirroring validate_recipe_slot_capacity.
-    The gate is keyed on the RECIPE tier vocab (basic/trained/expert/master), not
-    the crafting-skill vocab. Consumed by the content-invariant test that joins
-    magic items to their recipes (story-002 Commit 4)."""
+    """Recipe tiers and skill tiers have different vocabularies."""
 
     def test_rare_allows_expert_recipe(self):
         assert rv.validate_magic_item_craft_tier("rare", "expert").allowed is True
@@ -207,19 +200,7 @@ class TestValidateMagicItemCraftTier:
 
 
 class TestMagicItemContentInvariant:
-    """Content invariant (story-002 c4d): every craftable Rare/Legendary item in
-    content/items.json — i.e. one whose id matches a recipe's output_item — must be
-    produced by a recipe whose tier satisfies validate_magic_item_craft_tier (Rare ->
-    Expert+, Legendary -> Master). This is the gate's production consumer, joining the
-    catalog to recipes. Non-craftable magic items (the unique named finds with no
-    recipe) are intentionally exempt (decision 396b3afd71d2 / concern 12c946b6ffec).
-
-    The named-item test below closes the vacuousness gap (debt ee6a0bc84153 / concern
-    c70b7db13b1e): it exercises the gate over the 10 named M5.4 magic items SPECIFICALLY,
-    not just whichever pre-existing rares happen to be craftable. The 6 Rare + 3
-    Legendary craftable names must each join a tier-correct recipe; the one quest-only
-    name (Thornridge's Stand, "Cannot be crafted" per game_mechanics_crafting.md) must
-    have NO recipe."""
+    """Crafted magic items follow recipe tiers; quest-only items are exempt."""
 
     NAMED_RARE_CRAFTABLE = frozenset(
         {
@@ -261,11 +242,7 @@ class TestMagicItemContentInvariant:
         assert checked > 0, "no craftable Rare/Legendary item joined a recipe — gate untested"
 
     def test_named_magic_items_join_tier_correct_recipes(self):
-        """Non-vacuous over the NAMED set: each of the 9 craftable named magic items
-        must join a recipe at the gate-correct tier. Asserting the named ids directly
-        (not a generic rare/legendary count) is what keeps c70b7db13b1e closed — a
-        pre-existing rare alone could satisfy a count-based check while the named items
-        stayed unauthored."""
+        """Explicit named ids prevent pre-existing rare items from satisfying the craftable inventory."""
         recipes = self._load("recipes.json")
         by_output = {r["output_item"]: r for r in recipes}
 
@@ -284,8 +261,7 @@ class TestMagicItemContentInvariant:
             )
 
     def test_quest_only_named_item_is_not_craftable(self):
-        """Thornridge's Stand is a unique quest find ("Cannot be crafted") — it must
-        have no recipe, or it would wrongly become reproducible."""
+        """A quest-only unique find must not become reproducible."""
         recipes = self._load("recipes.json")
         by_output = {r["output_item"]: r for r in recipes}
         for item_id in self.NAMED_QUEST_ONLY:

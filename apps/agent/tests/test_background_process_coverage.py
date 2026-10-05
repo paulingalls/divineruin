@@ -60,12 +60,7 @@ class TestBackgroundProcessLifecycle:
 
     @pytest.mark.asyncio
     async def test_livekit_really_dispatches_the_close_handler(self):
-        """The registration above is checked against a MagicMock, which answers to any event
-        name with any handler signature. A real AgentSession does not: ``on`` takes a literal
-        LiveKit publishes, and emit inspects the handler's arity and RE-RAISES a TypeError
-        straight out of ``_aclose_impl``. So register on the real session and hand it the
-        payload the real close path sends, rather than modelling both halves ourselves.
-        """
+        """Construct the installed AgentSession to exercise vendor arity and logger behavior."""
         from livekit.agents import AgentSession
         from livekit.agents.voice.events import CloseEvent, CloseReason
 

@@ -26,8 +26,6 @@ COMPANION = CompanionState(id="companion_kael", name="Kael")
 class TestNewPlayerHandoffChain:
     @pytest.mark.asyncio
     async def test_city_to_wilderness_to_dungeon_to_city(self):
-        """M7 story-003: city -> wilderness -> dungeon -> city keeps ONE warm
-        ExplorationAgent (no handoff); only its region attribute tracks the Stage."""
         from movement_tools import _move_player_impl
 
         locations = {
@@ -137,8 +135,6 @@ class TestNewPlayerHandoffChain:
 
     @pytest.mark.asyncio
     async def test_companion_persists_across_handoffs(self):
-        """Companion state survives region transitions — trivially, since the same
-        agent (and its SessionData companion) persist with no handoff."""
         from movement_tools import _move_player_impl
 
         locations = {

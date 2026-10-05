@@ -167,13 +167,7 @@ class TestActivation:
             await _call("mage_arcane_bolt", context=ctx)
 
     async def test_every_in_combat_refusal_that_names_declare_phase_is_one_declare_phase_takes(self):
-        """The two story-055 gates are ONE contract: whenever activate refuses with "declare X in the
-        combat phase", advance_combat_phase must ACCEPT X — otherwise the DM bounces between two
-        refusals and the player's turn is spent on nothing.
-
-        Walks the whole loaded ability catalog (the seed_abilities fixture's
-        content/archetype_abilities.json), so a new row that neither gate agrees on reds here.
-        """
+        """Activation and declaration must agree on which authored abilities are usable."""
         catalog = [ability for ability in abilities._abilities.values() if ability.ability_type != "reaction"]
         assert len(catalog) >= 100, f"catalog walk went thin ({len(catalog)}) — abilities did not load"
         compared = 0
@@ -248,10 +242,6 @@ class TestActivation:
         persistence.update_player_resources.assert_not_called()
 
     async def test_mismatched_reaction_window_is_refused_before_resource_write(self):
-        """AC3 at the tool boundary: the refusal names both windows and costs nothing.
-
-        warrior_opportunity_strike fires on on_enemy_move, which the post-roll window never
-        offers — the reaction the player owns simply does not answer this blow."""
         ctx = _reaction_context()
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
@@ -291,7 +281,6 @@ class TestActivation:
         }
 
     async def test_reaction_with_no_open_window_is_refused_before_resource_write(self):
-        """AC4: in combat with no window open, the interrupt has nothing to interrupt."""
         ctx = _reaction_context(window_open=False)
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
@@ -302,11 +291,7 @@ class TestActivation:
         persistence.update_player_resources.assert_not_called()
 
     async def test_reaction_refused_by_cost_does_not_burn_the_round_s_reaction(self):
-        """The spend is recorded only AFTER the activation succeeds, so a refusal costs nothing.
-
-        Ordering-sensitive and otherwise unpinned: recording the spend before the resource gate
-        (which the module docstring once described) leaves a player who could not afford the
-        reaction with no reaction for the round either -- refused AND charged."""
+        """A refused activation must not charge the player."""
         ctx = _reaction_context()
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
@@ -318,9 +303,7 @@ class TestActivation:
         persistence.update_player_resources.assert_not_called()
 
     async def test_reaction_spend_lands_on_the_state_the_session_holds_after_payment(self):
-        """The spend is recorded on the state the session holds after payment, never on the reference
-        read before the await. The persistence seam swaps state mid-payment to exercise that rule; a
-        spend written to the pre-await object is lost, the player paid and live state stays unspent."""
+        """Use post-payment state across the await, so rebinds cannot restore spent resources."""
         ctx = _reaction_context()
         persistence = MagicMock()
 
@@ -335,14 +318,7 @@ class TestActivation:
         assert reaction_spend.is_spent(ctx.userdata.combat_state.reactions_available["player_1"])
 
     async def test_reaction_outside_combat_activates_ungated(self):
-        """OUT OF COMBAT the reaction gate does not apply (lead decision, 2026-09-01).
-
-        An earlier shape refused every reaction whose session had no combat_state, which DELETED
-        shipped behaviour: spy_plausible_deniability ("Reaction when accused/confronted") and
-        diplomat_objection ("when an NPC is about to act against your wishes") fire outside a fight
-        by their own effect text. There is no reaction budget outside combat, so ungated here is the
-        pre-story status quo. Fault-injection: restoring the combat_state guard reds this.
-        """
+        """Spy and diplomat reactions must remain usable outside combat."""
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
         player = _player(class_="warrior")

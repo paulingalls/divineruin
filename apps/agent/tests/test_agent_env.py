@@ -15,10 +15,7 @@ def _base_env() -> dict[str, str]:
 
 
 class TestEnvironmentValidation:
-    """Test environment variable validation."""
-
     def test_validate_env_passes_with_all_vars_set(self):
-        """validate_env should pass when all required vars are set."""
         env = {**_base_env(), "OPENAI_API_KEY": "test_openai"}
         with patch.dict(os.environ, env, clear=True):
             with patch("agent.VOICES", {"narrator": "voice_id", "torin": "voice_id2"}):
@@ -26,7 +23,6 @@ class TestEnvironmentValidation:
                     validate_env()  # Should not raise
 
     def test_validate_env_raises_on_missing_vars(self):
-        """validate_env should raise EnvironmentError if vars missing."""
         env = {var: "test_value" for var in REQUIRED_ENV_VARS[1:]}
         env["OPENAI_API_KEY"] = "test_openai"
         with patch.dict(os.environ, env, clear=True):
@@ -61,7 +57,7 @@ class TestEnvironmentValidation:
                     validate_env()
 
     def test_validate_env_warns_but_serves_on_an_empty_non_role_voice(self):
-        """An empty NON-role voice stays a warning: COMPANION_SABLE is deliberately unset."""
+        """Sable is intentionally nonverbal, so an empty voice is legitimate."""
         env = {**_base_env(), "OPENAI_API_KEY": "test_openai"}
         with patch.dict(os.environ, env, clear=True):
             with patch("agent.VOICES", {"DM_NARRATOR": "Clive", "COMPANION_SABLE": ""}):
@@ -73,12 +69,7 @@ class TestEnvironmentValidation:
                         assert "COMPANION_SABLE" in mock_logger.warning.call_args[0][1]
 
     def test_validate_env_raises_naming_the_role_on_an_empty_role_voice(self):
-        """A role voice registered but EMPTY would serve every guard in the narrator's voice.
-
-        The warning must NOT also name it: a role voice is a hard failure, and logging it
-        beside COMPANION_SABLE would file it under the tolerated empties this gate exists
-        to separate it from.
-        """
+        """Required role voices cannot use the nonverbal-companion exception."""
         env = {**_base_env(), "OPENAI_API_KEY": "test_openai"}
         with patch.dict(os.environ, env, clear=True):
             with patch("agent.VOICES", {"DM_NARRATOR": "Clive", "ROLE_GUARD": ""}):
@@ -91,7 +82,6 @@ class TestEnvironmentValidation:
                     mock_logger.warning.assert_not_called()
 
     def test_validate_env_raises_when_a_role_voice_key_is_absent_entirely(self):
-        """The gate must not be satisfiable by a MISSING key, only by a configured one."""
         env = {**_base_env(), "OPENAI_API_KEY": "test_openai"}
         with patch.dict(os.environ, env, clear=True):
             with patch("agent.VOICES", {"DM_NARRATOR": "Clive"}):
@@ -102,12 +92,7 @@ class TestEnvironmentValidation:
                     assert "ROLE_GUARD" in str(exc_info.value)
 
     def test_validate_env_raises_naming_both_keys_when_two_voices_collide(self):
-        """The EMRIS=Olivia / LIRA=Olivia pair found on the lead's dev checkout at authoring.
-
-        Two characters sharing an Inworld voice id are indistinguishable to the ear, and
-        nothing on the committed files can detect it: .env.example was correct while the live
-        .env, which nothing reads, was not.
-        """
+        """Two configured characters must not become indistinguishable by voice."""
         env = {**_base_env(), "OPENAI_API_KEY": "test_openai"}
         with patch.dict(os.environ, env, clear=True):
             with patch(
@@ -128,10 +113,7 @@ class TestEnvironmentValidation:
         assert "Olivia" in msg
 
     def test_empty_voices_do_not_count_as_a_collision(self):
-        """COMPANION_SABLE and every other unset authored voice are both "" — on a dev
-        checkout VOICES comes back 0-of-51 populated, so a distinctness check that did not
-        skip empties would raise on all 50 of them sharing "".
-        """
+        """Unconfigured voices legitimately share the empty value."""
         env = {**_base_env(), "OPENAI_API_KEY": "test_openai"}
         with patch.dict(os.environ, env, clear=True):
             with patch("agent.VOICES", {"DM_NARRATOR": "Clive", "COMPANION_SABLE": "", "TAVERN_BRYN": ""}):
@@ -163,7 +145,7 @@ async def test_async_worker_main_rejects_a_missing_key_before_startup():
 
 
 def test_agent_entrypoint_rejects_a_missing_key_before_starting_livekit(monkeypatch):
-    """The CLI gate, not validate_env itself: dropping agent.py's call must red here."""
+    """Invoke the actual CLI entry point rather than recreating its validation."""
     import livekit.agents.__main__ as livekit_entry
 
     livekit_start = MagicMock(side_effect=AssertionError("agent started"))

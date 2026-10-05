@@ -19,7 +19,6 @@ def _agent_with_session() -> tuple[DispatchAgent, MagicMock, SessionData]:
 
 
 def test_dispatch_tools_include_select():
-    """The DM can resolve a pending L5 choice from dispatch — select is in the tool list."""
     assert select in DISPATCH_TOOLS
 
 

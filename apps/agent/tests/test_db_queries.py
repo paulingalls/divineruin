@@ -109,10 +109,6 @@ class TestGetAccessibleWorkspaces:
 
 
 class TestGetPlayerFactionReputation:
-    """The stance-gate read seam (story-008): the player's int reputation with a faction,
-    from player_reputation.data["value"], or None when no row (the common case today — no
-    writer ships yet, so the caller defaults to neutral)."""
-
     @patch("db_queries.db")
     async def test_returns_value_from_data(self, mock_db):
         pool = _pool_with_fetchrow({"data": json.dumps({"value": 12})})

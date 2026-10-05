@@ -68,8 +68,6 @@ class TestPerMemberAnchor:
 
     @pytest.mark.asyncio
     async def test_per_member_death_cost_and_count_independent(self):
-        """AC3: distinct per-player death histories -> each member's record_death / returned
-        death count is per member (unaffected by the per-member anchor change)."""
         death_mut = _death_mutations({"p_a": 0, "p_b": 2})
         res_mut = AsyncMock()
         content = MagicMock(get_all_locations=AsyncMock(return_value=_LOCATIONS))
@@ -91,9 +89,6 @@ class TestPerMemberAnchor:
 class TestSoloPartyParity:
     @pytest.mark.asyncio
     async def test_solo_party_matches_prior_shared_pick(self):
-        """AC2: a 1-member party via resurrect_on_defeat returns the single death context
-        unchanged — per-member resolution on a solo party is identical to the old party[0]
-        shared pick."""
         death_mut = _death_mutations({"p1": 0})
         res_mut = AsyncMock()
         content = MagicMock(get_all_locations=AsyncMock(return_value=_LOCATIONS))

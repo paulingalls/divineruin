@@ -74,10 +74,7 @@ class TestRegionTypeWarmLayer:
 
 
 class TestGatedExitEvaluationCount:
-    """Regression pin (retro try d172fa50ba56): the warm-layer affordance loop must
-    evaluate _check_exit_requirement exactly ONCE per GATED exit (exit.requires set)
-    and never for ungated exits — not once per turn. Warm rebuilds are event-driven,
-    so this keeps the per-branch flag read off the hot path."""
+    """Event-driven rebuilds keep gated-exit flag reads off the per-turn path."""
 
     @patch("db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={})
     @patch("movement_tools._check_exit_requirement", new_callable=AsyncMock, return_value=True)
@@ -124,8 +121,6 @@ class TestCombatHotLine:
         assert line == "[COMBAT Round 2: Kael(healthy), Grosh(bloodied)]"
 
     def test_fallen_participant_reads_as_fallen(self):
-        """0 HP with the flag SET — the only state a zero-HP transition can now leave behind,
-        since story-026 routed every writer through combat_support._handle_hp_zero."""
         line = format_combat_hot_line(sample_combat_state(hp_current=0, is_fallen=True))
         assert line is not None
         assert "Grosh(fallen)" in line

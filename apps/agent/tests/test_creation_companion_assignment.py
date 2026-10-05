@@ -52,8 +52,7 @@ class TestInsertIfAbsent:
 
 @pytest.mark.usefixtures("dev_db_pool")
 class TestInsertIfAbsentAgainstPostgres:
-    """The both-sides-real falsifier: a recorded SQL string proves nothing about what the
-    table ends up holding. Single-table round-trip, so the fast lane per apps/agent/CLAUDE.md."""
+    """Use PostgreSQL rather than a model of its SQL semantics."""
 
     async def _row(self, pool, player_id):
         return await pool.fetchrow(
@@ -174,9 +173,7 @@ class TestFinalizeAssignsCompanion:
 
 @pytest.mark.usefixtures("dev_db_pool")
 class TestUnmockedFinalizeWritesNothing:
-    """The grant is wrapped in a broad `except Exception`, so an UNMOCKED test does not fail —
-    it silently performs real I/O into the shared dev DB. The stub is therefore global autouse
-    in tests/conftest.py, not a per-module opt-in a new module can forget."""
+    """Stub external I/O before creation, whose broad error handler can otherwise hide a request."""
 
     @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)

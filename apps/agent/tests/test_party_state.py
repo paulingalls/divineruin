@@ -197,7 +197,6 @@ class TestPartyStateSerialize:
         assert party.members[0].player_id == "p1"
 
     def test_from_dict_reconstructs_instances(self):
-        """from_dict rebuilds nested value-type INSTANCES, not raw dicts."""
         data = {
             "members": [
                 {
@@ -262,10 +261,6 @@ class TestPartyStateSerialize:
 
 
 class TestPartyMemberWeaponFlags:
-    """Per-member weapon-durability flags (M18 story-003): the swing that arms end-of-combat
-    durability accrual is recorded on the SWINGING member, not the session, so a non-primary
-    member's swings accrue their OWN weapon's durability."""
-
     def test_weapon_flags_default_false(self):
         member = party_state.PartyMember(
             player_id="p1",

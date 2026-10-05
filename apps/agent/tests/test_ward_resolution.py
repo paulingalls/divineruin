@@ -49,7 +49,6 @@ async def test_location_ward_covers_the_session():
 
 
 async def test_encounter_ward_wins_and_never_hits_the_db():
-    """The encounter ward lives on CombatState, so resolving it costs no query."""
     mod = _ward_mod(None)
     session = _session(encounter_ward=_ENCOUNTER_WARD)
 
@@ -60,7 +59,7 @@ async def test_encounter_ward_wins_and_never_hits_the_db():
 
 
 async def test_encounter_ward_short_circuits_even_when_a_location_ward_also_covers():
-    """Scopes overlap and ward effects do not stack (§3), so the first covering scope wins."""
+    """Overlapping ward effects do not stack."""
     mod = _ward_mod(_LOCATION_WARD)
     session = _session(encounter_ward=_ENCOUNTER_WARD)
 
@@ -71,7 +70,6 @@ async def test_encounter_ward_short_circuits_even_when_a_location_ward_also_cove
 
 
 async def test_combat_without_a_ward_falls_through_to_the_location():
-    """In an unwarded fight at a warded Sacred site, the party is still warded."""
     mod = _ward_mod(_LOCATION_WARD)
     session = _session(encounter_ward=None)
     session.combat_state = CombatState(combat_id="c1", participants=[], initiative_order=[])
@@ -80,7 +78,7 @@ async def test_combat_without_a_ward_falls_through_to_the_location():
 
 
 async def test_location_id_override_resolves_a_different_scope():
-    """Arrival resolves the DESTINATION from inside its transaction, before session.location_id moves."""
+    """Arrival resolves its destination before session.location_id changes."""
     mod = _ward_mod(_LOCATION_WARD)
 
     await ward_resolution.resolve_scope_ward(
@@ -91,7 +89,7 @@ async def test_location_id_override_resolves_a_different_scope():
 
 
 async def test_fails_loud_on_an_empty_location():
-    """An empty scope id would silently read the wrong rows. WardScope refuses to build one."""
+    """An empty scope id could silently query the wrong rows."""
     mod = _ward_mod(None)
     with pytest.raises(ValueError):
         await ward_resolution.resolve_scope_ward(_session(location_id=""), conn=MagicMock(), ward_mutations_mod=mod)
@@ -99,7 +97,6 @@ async def test_fails_loud_on_an_empty_location():
 
 
 async def test_passes_the_callers_conn_through():
-    """It never opens its own connection — it joins the caller's transaction."""
     mod = _ward_mod(None)
     conn = MagicMock()
     await ward_resolution.resolve_scope_ward(_session(), conn=conn, ward_mutations_mod=mod)
@@ -107,8 +104,7 @@ async def test_passes_the_callers_conn_through():
 
 
 class TestResolveScopeWardWithScope:
-    """The scope-naming sibling (story-008). VEIL_WARD_CHANGED carries scope_kind/scope_id, and a
-    producer that re-derived them would re-derive resolution — the duplication this module prevents."""
+    """Return resolved scope identity so publishers do not duplicate resolution."""
 
     async def test_unwarded_names_no_scope(self):
         ward, scope = await ward_resolution.resolve_scope_ward_with_scope(

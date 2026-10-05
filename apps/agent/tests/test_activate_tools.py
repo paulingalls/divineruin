@@ -272,12 +272,7 @@ class TestUnknownId:
             fn.assert_not_awaited()
 
     async def test_unbound_turn_at_an_open_window_still_gets_the_plain_refusal(self):
-        """The hint is not a spend, so an unbound turn loses the hint, not the refusal.
-
-        A reconnect or card-tap reply drives the DM with no authenticated speaker. Raising the
-        binding's RuntimeError from here would reach the DM as livekit's "An internal error
-        occurred" (llm/utils.py make_function_call_output) instead of the id it got wrong.
-        """
+        """A reconnect can temporarily unbind the turn context; expose a retryable ToolError."""
         mods, fns = _mocks()
         ctx = _two_reactor_window()
 

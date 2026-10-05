@@ -127,8 +127,6 @@ class TestInitiateTrainingCycle:
 
     @pytest.mark.asyncio
     async def test_invalid_program_id_format_returns_error(self):
-        """Pin _validate_id call — codebase convention is to reject malformed ids
-        before any DB lookup so a bad call never touches the pool."""
         ctx = make_context()
         mock_db, _ = make_db_mod()
         mock_content = MagicMock()
@@ -217,9 +215,7 @@ class TestInitiateTrainingCycle:
 
     @pytest.mark.asyncio
     async def test_writes_transition_at_matching_decision_at(self):
-        """Regression guard: tool must populate transition_at or the worker
-        (async_worker.advance_training_cycles) never picks the row up.
-        Pins the db_training.create_training_activity signature extension."""
+        """The worker polls transition_at; omitting it strands the activity."""
         ctx = make_context()
         mock_db, _ = make_db_mod()
         mock_content = MagicMock()

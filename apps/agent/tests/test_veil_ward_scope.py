@@ -15,8 +15,7 @@ from test_veil_ward_tools import (
 
 
 async def test_cleric_in_combat_raises_encounter_ward():
-    """In a fight the ward belongs to the ENCOUNTER, which lives on CombatState — never in
-    veil_wards (write_ward fails loud on an encounter scope by design)."""
+    """Encounter wards live in CombatState; the database writer refuses encounter scopes."""
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7))
     combat = _in_combat(ctx)
     combat_mod = _combat_mod()
@@ -40,8 +39,7 @@ async def test_paladin_in_combat_seeds_the_round_clock():
 
 
 async def test_rounds_source_out_of_combat_refused():
-    """A Paladin's 3 rounds are meaningless where no rounds elapse (§4). Refuse rather than
-    write a ward with no clock — and refuse BEFORE any deduction."""
+    """Round durations have no clock outside combat."""
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("paladin", level=10))
     assert ctx.userdata.combat_state is None
     with pytest.raises(ToolError, match="combat"):
@@ -72,10 +70,7 @@ async def test_already_active_encounter_ward_refused():
 
 
 async def test_in_combat_raise_refused_when_a_location_ward_already_covers():
-    """§3's covering-scope OR, at the activation end: a party standing on a Sacred site is
-    already warded, so an encounter raise buys nothing and must not charge for it. The gate
-    asks "is the party warded?", not "is the scope I am about to write warded?".
-    """
+    """A covering location ward makes another encounter ward unnecessary."""
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7))
     combat = _in_combat(ctx)
     assert combat.veil_ward is None  # the encounter scope itself is unwarded
@@ -108,11 +103,7 @@ async def test_dismiss_active_ward():
 
 
 async def test_dismiss_publishes_resolved_state_when_a_permanent_ward_survives():
-    """§3: dismiss spares a Sacred site, so the party is STILL warded. Say so, or the light lies.
-
-    dismiss_ward deletes only dismissible rows. Publishing active=False here would turn the ward
-    indicator off while every in-scope caster's Resonance is still being halved.
-    """
+    """Publish resolved coverage: a surviving Sacred site still halves Resonance."""
     sacred = {"source": "sacred_site", "expires_at": None, "dismissible": False}
     ctx, mock_db, queries, persistence, ward_mut = _mocks(
         _player("cleric", level=7), ward_active=True, remaining=sacred
@@ -127,19 +118,14 @@ async def test_dismiss_publishes_resolved_state_when_a_permanent_ward_survives()
 
 
 async def test_dismiss_when_no_dismissible_ward_rejected():
-    """Nothing deleted means nothing dismissible covered the scope — fail loud, never silently no-op.
-
-    This also covers a scope held only by a permanent ward (a Sacred site is not the party's to
-    dispel): dismiss_ward deletes 0 rows and the tool refuses.
-    """
+    """A permanent Sacred site is not the party's to dispel."""
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), dismissed=0, remaining=None)
     with pytest.raises(ToolError, match="dismiss"):
         await _invoke(ctx, mock_db, queries, persistence, ward_mut, active=False)
 
 
 async def test_dismiss_in_combat_clears_the_encounter_ward():
-    """The encounter ward's one home is CombatState — dismissal clears it there, never via
-    dismiss_ward (which fails loud on an encounter scope)."""
+    """Encounter dismissal must use CombatState, not the location-ward database writer."""
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), remaining=None)
     combat = _in_combat(ctx)
     combat.veil_ward = {"source": "cleric", "rounds_remaining": None}
@@ -156,8 +142,7 @@ async def test_dismiss_in_combat_clears_the_encounter_ward():
 
 
 async def test_dismiss_in_combat_still_warded_when_a_location_ward_covers():
-    """Dropping the fight's ward does not drop the Sacred site under it. Publish the RESOLVED
-    state (§3), or the ward light goes dark while casts are still being halved."""
+    """Dropping an encounter ward does not drop a covering Sacred site."""
     sacred = {"source": "sacred_site", "expires_at": None, "dismissible": False}
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), remaining=sacred)
     combat = _in_combat(ctx)
@@ -173,9 +158,7 @@ async def test_dismiss_in_combat_still_warded_when_a_location_ward_covers():
 
 
 async def test_dismiss_in_combat_falls_through_to_a_covering_location_ward():
-    """No encounter ward, but a pre-fight location ward still covers the party and still halves
-    every cast. Dismiss the innermost ACTIVE scope: refusing here told the player "No Veil Ward is
-    active" while their HUD was lit and their Resonance was being halved."""
+    """Dismiss the innermost active scope, including a pre-fight location ward."""
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), dismissed=1, remaining=None)
     combat = _in_combat(ctx)
     combat.veil_ward = None  # the fight raised none; the ward predates it
@@ -190,8 +173,7 @@ async def test_dismiss_in_combat_falls_through_to_a_covering_location_ward():
 
 
 async def test_dismiss_refuses_honestly_when_the_surviving_ward_is_undismissable():
-    """A Sacred site is not the party's to dispel — but say THAT, not "no ward is active". The old
-    message denied a ward the player could see lit and feel halving their casts."""
+    """Refuse an undismissible Sacred site without denying that it covers the party."""
     sacred = {"source": "sacred_site", "expires_at": None, "dismissible": False}
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), dismissed=0, remaining=sacred)
     _in_combat(ctx).veil_ward = None
@@ -201,12 +183,8 @@ async def test_dismiss_refuses_honestly_when_the_surviving_ward_is_undismissable
 
 
 async def test_failed_raise_leaves_no_phantom_ward_in_memory():
-    """A raise that dies mid-transaction must not strand a ward the DB never got.
-
-    resolve_scope_ward reads combat.veil_ward from MEMORY first, so a phantom would become the
-    authoritative answer for every later cast — the exact silent lie M24 exists to remove. The
-    ward therefore goes into the save payload, and the live CombatState is synced post-commit.
-    """
+    """A phantom memory ward would become authoritative for later casts.
+    Sync the live state only after its save commits."""
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7))
     combat = _in_combat(ctx)
     combat_mod = _combat_mod()
@@ -219,8 +197,7 @@ async def test_failed_raise_leaves_no_phantom_ward_in_memory():
 
 
 async def test_failed_dismiss_leaves_the_ward_in_memory():
-    """The mirror of the above: a dismiss that dies mid-transaction must not clear a ward the DB
-    still holds, or the party's casts keep being halved while the HUD says otherwise."""
+    """Failed dismissal must preserve the database-backed ward in memory."""
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), remaining=None)
     combat = _in_combat(ctx)
     raised = {"source": "cleric", "rounds_remaining": None}
@@ -235,13 +212,7 @@ async def test_failed_dismiss_leaves_the_ward_in_memory():
 
 
 async def test_dismiss_in_combat_with_no_ward_anywhere_rejected():
-    """In a fight with no encounter ward, the dismiss falls through to the location scope — and when
-    nothing covers that either, it fails loud rather than silently no-opping.
-
-    Supersedes the story-005 rule that a covering location ward "is not the fight's to dismiss":
-    that refused a ward the player could see lit and feel halving their casts, with no way to drop
-    it until combat ended. Falling through is the honest reading of "dismiss the innermost scope".
-    """
+    """Fall through to location coverage; combat must not trap a dismissible pre-fight ward."""
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), dismissed=0, remaining=None)
     combat = _in_combat(ctx)
     assert combat.veil_ward is None

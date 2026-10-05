@@ -103,8 +103,6 @@ class TestOnboardingAgentClass:
 
 
 class TestBeat34NamesTheAssignedCompanion:
-    """AC1: beats 3-4 name and tag the player's OWN companion, not the module's Kael literal."""
-
     @pytest.mark.parametrize(
         "archetype,name,tag",
         [
@@ -126,11 +124,7 @@ class TestBeat34NamesTheAssignedCompanion:
 
     @pytest.mark.parametrize("archetype", ["mage", "warrior", "cleric", "spy"])
     def test_beats_3_4_render_that_companions_authored_vignette(self, archetype):
-        """AC1: the scene is the companion's own prose, read from the row, not re-typed here.
-
-        A copy of the words in the test would rot the moment the content is edited, and would
-        pass while the prompt shipped last sprint's scene.
-        """
+        """The profile must surface text, not merely duplicate it inside tests."""
         from companion_profiles import get_companion_profile, select_companion_for_archetype
         from onboarding_agent import OnboardingAgent
 
@@ -142,12 +136,7 @@ class TestBeat34NamesTheAssignedCompanion:
 
     @pytest.mark.parametrize("archetype", ["mage", "warrior", "cleric", "spy", None])
     def test_beat_3_4_scaffolding_survives_the_authored_prose(self, archetype):
-        """AC1: the beat markers the DM sequences on are the module's, not the content row's.
-
-        Beat 3's heading is the one that goes silently: interpolating the authored scene over
-        the old setup constant drops it while beats 1/2/4/5 keep theirs, and nothing else here
-        would notice.
-        """
+        """Scene beat markers belong to authored scenes rather than a parallel module inventory."""
         from companion_profiles import select_companion_for_archetype
         from onboarding_agent import OnboardingAgent
 
@@ -167,7 +156,7 @@ class TestBeat34NamesTheAssignedCompanion:
         assert "[COMPANION_LIRA," in _instructions_text(agent)
 
     def test_a_non_verbal_companion_is_narrated_never_tagged(self):
-        """Sable cannot self-introduce: a tagged line would send her to TTS she has no voice for."""
+        """Nonverbal characters must not be sent to speech synthesis."""
         from onboarding_agent import OnboardingAgent
 
         agent = OnboardingAgent(onboarding_beat=3, companion_id="companion_sable")
@@ -176,7 +165,7 @@ class TestBeat34NamesTheAssignedCompanion:
         assert "narrate" in instructions.lower()
 
     def test_an_unresolved_companion_renders_the_span_agnostically(self):
-        """creation_tools swallows a failed selection deliberately; the character stays playable."""
+        """A swallowed selector failure can hide a missing playable companion."""
         from onboarding_agent import OnboardingAgent
 
         instructions = _instructions_text(OnboardingAgent(onboarding_beat=3, companion_id=None))
@@ -184,16 +173,7 @@ class TestBeat34NamesTheAssignedCompanion:
             assert cname not in instructions
 
     def test_no_module_level_per_companion_prompt_constants(self):
-        """AC1's maintainability clause: the span renders from the profile, not four constants.
-
-        Zero, not "at most one per constant": four constants that each name a single companion
-        ARE the forbidden shape, so a per-constant budget passes the very defect it guards.
-
-        The AC7 walker now covers onboarding_prompt.py too (story-020 took it off the
-        allowlist), so this scan is no longer the only guard on that module — it is the one
-        that survives a future re-allowlisting, and the only one that reads onboarding_agent.py
-        for the same shape.
-        """
+        """Companion identity must come from the assigned profile rather than fixed constants."""
         import onboarding_agent
         import onboarding_prompt
 

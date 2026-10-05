@@ -57,14 +57,7 @@ def _registered_tool_descriptions() -> dict[str, str]:
 
 
 class TestPromptToolConsistency:
-    """A gameplay agent's assembled prompt must name a tool only when the agent
-    actually holds it — otherwise the DM is told to call an absent tool
-    (concern b1591cb23262). Enforced by construction so the next prompt edit can't
-    silently reintroduce the drift (concern df5cc73b2473)."""
-
     def test_query_info_consolidation_consistency(self):
-        """After collapsing query_* into query_info: a prompt naming query_info must hold
-        it (no absent-tool instruction), and no prompt may name a removed query_* tool."""
         from combat_agent import COMBAT_AGENT_TOOLS
         from dispatch_agent import DISPATCH_TOOLS
         from exploration_agent import EXPLORATION_TOOLS
@@ -90,10 +83,6 @@ class TestPromptToolConsistency:
             )
 
     def test_activity_fold_consistency(self):
-        """M26 Phase-5 story-003: after folding the 10 downtime noun tools into
-        begin_activity/resolve_activity, the DISPATCH prompt must never name a folded
-        tool (prompt-tool drift bit production in M25 story-002), and must name
-        begin_activity/resolve_activity iff DispatchAgent actually holds them."""
         from activity_tools import begin_activity, resolve_activity
         from dispatch_agent import DISPATCH_TOOLS
         from mode_prompts import DISPATCH_SYSTEM_PROMPT
@@ -116,13 +105,7 @@ class TestPromptToolConsistency:
         assert ("resolve_activity" in DISPATCH_SYSTEM_PROMPT) == (resolve_activity in DISPATCH_TOOLS)
 
     def test_dispatch_narrates_all_begin_activity_kinds(self):
-        """Debt 574d0c6e83cd: DispatchAgent can begin 5 activity kinds via begin_activity(kind),
-        but after the M26 fold the dispatch prompt only narrated training/companion_errand —
-        crafting/workspace/experiment had the verb but no when-to-invoke guidance. Every
-        registered kind must be named in the prompt. Kinds are DERIVED from the begin_activity
-        payload variants (not hardcoded) so a future 6th kind fails loud rather than silently
-        uncovered. story-019 moved that vocabulary from a `kind` Literal onto the sum type's
-        variants; the derivation follows it rather than being replaced by a hardcoded list."""
+        """Derive declaration kinds from the registered variants."""
         import typing
 
         from activity_payloads import ACTIVITY_VARIANTS
@@ -136,10 +119,6 @@ class TestPromptToolConsistency:
             assert kind in DISPATCH_SYSTEM_PROMPT, f"dispatch prompt omits begin_activity kind {kind!r}"
 
     def test_audio_tool_fold_consistency(self):
-        """M27 story-003: play_sound/set_music_state were torn out as LLM tools — SFX/music
-        now derive only from deterministic Resolves and the Stage. No gameplay prompt may
-        still instruct the LLM to call either (prompt-tool drift bit production before,
-        concern df5cc73b2473)."""
         from mode_prompts import DISPATCH_SYSTEM_PROMPT
         from system_prompts import COMBAT_SYSTEM_PROMPT
 
@@ -154,16 +133,7 @@ class TestPromptToolConsistency:
                 assert removed not in prompt, f"{name} prompt still names removed tool {removed}"
 
     def test_reward_tool_fold_consistency(self):
-        """M28 story-003: award_xp/award_divine_favor were torn out as LLM tools — XP and
-        divine favor are granted by the combat-exit and quest-completion Resolves instead.
-
-        The system prompts never named either verb, so scanning them alone was green on arrival
-        and would have stayed green through the exact regression it claims to guard: the
-        instruction M28 actually deleted lived in a TOOL DOCSTRING (end_combat's "call award_xp
-        separately with the returned total"), and docstrings are the other half of the surface the
-        LLM reads. So every REGISTERED tool's description is scanned too — restore that sentence
-        and the DM emits a call to a tool no agent holds, erroring out the combat-exit turn.
-        """
+        """Tool descriptions are an LLM-facing surface, so inspect the actual installed tools."""
         from mode_prompts import DISPATCH_SYSTEM_PROMPT
         from system_prompts import COMBAT_SYSTEM_PROMPT
 
@@ -182,16 +152,7 @@ class TestPromptToolConsistency:
                 assert removed not in docstring, f"{agent_name} still names removed tool {removed}"
 
     def test_no_surface_teaches_a_reshaped_verb_a_dead_parameter_shape(self):
-        """story-019 (ADR 0008): `check` and `begin_activity` became sum types, so the
-        parameter names they used to take no longer exist in the schema.
-
-        The existing guards in this class match on TOOL NAMES, and both verbs still exist —
-        so they stay green while a prompt tells the DM to pass a parameter the schema rejects.
-        Nothing else would catch it: the OnboardingAgent's hidden-perception beat is driven by
-        no real-LLM scenario, so its instruction would just silently stop firing in production.
-        Docstrings are scanned too, because that is exactly where the M28 drift lived
-        (concern df5cc73b2473).
-        """
+        """A live tool name can still carry a dead parameter shape."""
         from mode_prompts import DISPATCH_SYSTEM_PROMPT
         from system_prompts import COMBAT_SYSTEM_PROMPT
         from warm_prompts import REGION_REGISTER
@@ -217,15 +178,7 @@ class TestPromptToolConsistency:
                 assert dead not in text, f"{name} still teaches the pre-ADR-0008 shape {dead!r}"
 
     def test_combat_prompt_teaches_every_empty_string_sentinel_field(self):
-        """The mirror of the guard above: a surface must also TEACH a shape the schema requires.
-
-        ADR 0008 rule 2 made every declare_phase variant field required, so `rider` and
-        `argument_type` spell "none" as "" — a convention only the prompt can carry, because the
-        schema cannot say "send this empty". Omit the field instead and pydantic raises before
-        the tool body runs: a burned combat turn, in the one agent no real-LLM scenario drives.
-        The sentinel fields are DERIVED from the variants, so Sprint 48's reshape of this same
-        prompt (M29 Beat-3) reds here rather than silently dropping the instruction.
-        """
+        """Vendor required-string fields need an explicit empty sentinel for absence."""
         from declaration_payloads import DECL_VARIANTS
         from system_prompts import COMBAT_SYSTEM_PROMPT
 

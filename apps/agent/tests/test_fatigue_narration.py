@@ -36,8 +36,6 @@ class TestGetPoolState:
 
 
 class TestGetPoolNarrative:
-    """Narrative cue tests for stamina and focus pools."""
-
     def test_stamina_full(self) -> None:
         assert get_pool_narrative(100, 100, "stamina") == "You feel ready"
 
@@ -70,8 +68,6 @@ class TestGetPoolNarrative:
 
 
 class TestGetExhaustionNarrative:
-    """Tests for exhaustion stack narratives."""
-
     def test_stack_zero_empty_string(self) -> None:
         assert get_exhaustion_narrative(0) == ""
 
@@ -100,9 +96,6 @@ class TestGetExhaustionNarrative:
 
 
 class TestExhaustionNarrativeForConditions:
-    """Beat-3 display layer (M4.3, story-005): read Exhausted stacks out of a participant's
-    condition list and produce the matching flavor, reusing get_exhaustion_narrative."""
-
     def test_no_conditions_empty_string(self) -> None:
         assert exhaustion_narrative_for_conditions([]) == ""
 

@@ -68,10 +68,6 @@ class TestUpdateTrainingActivity:
 
 
 class TestUpsertLearningCycle:
-    """The shared engine behind the spell + mentor-variant per-cycle upserts (concern
-    5d7feeae22ae). table is whitelisted -> entity column; the two tracks differ only
-    there. Pins the parametrization + guards directly against a mock connection."""
-
     def _row_conn(self, completed=1, required=3):
         conn = AsyncMock()
         conn.fetchrow = AsyncMock(

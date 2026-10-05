@@ -191,16 +191,7 @@ class TestHybridCounterSharedRow:
 
     @pytest.mark.asyncio
     async def test_both_paths_call_shared_persistence_helper(self, monkeypatch) -> None:
-        """M1.2 contract enforced by construction: both call sites route through
-        apply_skill_use_with_persistence (single source of truth).
-
-        The spy is installed on the source module *and* on every caller module
-        that has rebound the helper into its own namespace (i.e. via
-        `from skill_persistence import apply_skill_use_with_persistence`).
-        Without that defensive rebind, a future from-import refactor would
-        capture the original function reference at import time and silently
-        bypass a module-attr-only patch.
-        """
+        """Spy on both the source function and its rebound caller namespace."""
         calls: list[tuple[str, str, int]] = []
         real_fn = skill_persistence.apply_skill_use_with_persistence
 

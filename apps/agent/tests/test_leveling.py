@@ -152,11 +152,6 @@ class TestLevelUpE2E:
 
 
 class TestCantripDamageDice:
-    """Numeric cantrip damage scaling — the SSOT cast_spell (story-004) consumes.
-
-    Brackets (03_magic.md L132): 1d6 L1-4, 2d6 L5-10, 3d6 L11-16, 4d6 L17-20.
-    """
-
     def test_bracket_1d6_levels_1_to_4(self) -> None:
         for level in range(1, 5):
             assert cantrip_damage_dice(level) == "1d6", f"L{level} should be 1d6"

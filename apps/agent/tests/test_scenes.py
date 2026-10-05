@@ -322,9 +322,6 @@ def _make_context(player_id="player_1", location_id="accord_guild_hall"):
 class TestUpdateQuestSceneRegionChange:
     @pytest.mark.asyncio
     async def test_scene_graph_region_change_updates_agent_in_place(self):
-        """A quest scene_graph region change updates the persisting ExplorationAgent
-        in place (M7 story-003: no handoff). The transition rides the tool response
-        so the DM can narrate it; the agent's region is kept honest."""
         from exploration_agent import ExplorationAgent
 
         quest = {

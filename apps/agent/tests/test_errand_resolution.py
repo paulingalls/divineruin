@@ -52,11 +52,7 @@ async def test_resolve_errand_outcome_missing_location_defaults_safe():
 
 @pytest.mark.asyncio
 async def test_resolve_errand_outcome_missing_errand_type_fails_closed():
-    """A missing errand_type raises rather than silently defaulting to 'scout'.
-
-    Mirrors numeric_to_danger's fail-closed stance — a malformed errand row must
-    signal, not resolve with the wrong risk band (closes concern 3b79390c55ce).
-    """
+    """A missing errand must not fall back to the wrong scout."""
     parameters = {"destination": "millhaven", "dc": 12}
     with pytest.raises(ValueError, match="errand_type"):
         await errand_resolution.resolve_errand_outcome(

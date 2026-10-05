@@ -78,8 +78,7 @@ def test_invalid_favor_raises_with_the_offending_value(row: dict, message: str) 
 
 @pytest.mark.parametrize("shape", ["absent", "null"])
 def test_absent_or_null_patron_reads_as_unbound(shape: str) -> None:
-    """The rule async_worker's whisper sweep already applies (`patron IS NULL` is skipped
-    alongside `'none'`), so this reader must not be the one that raises on the same row."""
+    """Workers treat a null patron as unbound."""
     row = favor(level=0, max_level=100)
     if shape == "absent":
         del row["patron"]

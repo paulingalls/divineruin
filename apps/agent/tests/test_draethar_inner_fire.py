@@ -118,10 +118,6 @@ async def test_inner_fire_drops_resonance_and_applies_fire_damage():
 
 
 async def test_inner_fire_state_matches_canonical_resonance_state():
-    """The packet "state" derives from the post-cast Resonance. The impl reads the canonical
-    session.resonance.state property; for a Draethar (flickering_bonus always 0) that equals
-    resonance.get_resonance_state(new_resonance) — the pre-refactor expression. Locks that
-    boundary so switching to .state can't silently diverge (review b760cbfcd9cd / 8cb769966bba)."""
     ctx = _combat_ctx(resonance=9, hp_current=20)
     mock_db, queries, hp_mut, res_mut, res_events, dice_mod = _mocks(_player(), roll_total=4)
 
@@ -153,14 +149,7 @@ async def test_hp_floors_at_zero():
 
 
 async def test_burn_to_zero_falls_and_is_death_save_eligible():
-    """Bug 16c5f8a0: the burn drove HP to 0 without knocking on _handle_hp_zero, so `is_fallen`
-    stayed False and the Draethar was invisible to every consumer of that flag — un-downable AND
-    un-stabilizable for the rest of the fight — while the hot line already read "fallen".
-
-    The consumers are asserted against the state the burn REALLY produced, not a hand-built
-    participant: building the 0-HP participant by hand is what let the bug's own recorded
-    falsifier red both before and after the fix.
-    """
+    """Use actual burn state rather than manually constructing its zero-HP consequence."""
     room = make_mock_room()
     ctx = _combat_ctx(hp_current=3, room=room)
     session = ctx.userdata
@@ -179,11 +168,7 @@ async def test_burn_to_zero_falls_and_is_death_save_eligible():
 
 
 async def test_burn_to_zero_raises_a_stage2_hollowed_draethar():
-    """The door's other verdict, reached the same way: a Stage-2+ Hollowed player at 0 HP does NOT
-    fall — their corpse rises as a hostile Temporary Hollowed combatant (M4.4 story-008). Flipping
-    `type` off "player" is what suppresses the players.data HP write and the concentration break,
-    exactly as it does on the attack path — the echo's HP is the monster's, not the player's.
-    """
+    """Echo damage distinguishes monster HP from player HP persistence."""
     room = make_mock_room()
     ctx = _combat_ctx(hp_current=3, room=room, player_conditions=_hollowed(2))
     session = ctx.userdata
@@ -348,16 +333,7 @@ async def test_no_combat_rejected():
 
 
 async def test_inner_fire_at_a_pause_is_not_undone_by_the_held_blow():
-    """Both halves real: the REAL Beat-3 hold, paused on a REAL rolled-but-unapplied enemy blow,
-    with the REAL Inner Fire tool burning HP in the gap.
-
-    This is the seam the two stories left between them. story-016 holds the enemy's blow with an
-    absolute ``target_hp_remaining`` captured at roll time; story-026 routed the burn through the
-    zero-HP door but it still writes ``hp_current`` on the live participant; and the combat prompt
-    tells the DM that Inner Fire is one of exactly three things it may activate mid-fight. Neither
-    story's own tests can see it — 016's never spend a resource at the pause, and 026's never hold
-    a blow — so it needed a test that drives both.
-    """
+    """Reach Inner Fire through an actual held turn."""
     ctx = _ctx_at_resolution(player_hp=20, enemy_hp=20, reaction_ids=("skirmisher_sidestep", "rogue_uncanny_dodge"))
     deps = _resolve_deps(damage=3)
     deps["resonance_mutations"] = MagicMock(update_player_resonance=AsyncMock())
@@ -380,21 +356,8 @@ async def test_inner_fire_at_a_pause_is_not_undone_by_the_held_blow():
 
 
 async def test_inner_fire_serialises_against_the_phase_loop():
-    """Inner Fire writes the LIVE participant, and resolve_phase ADOPTS a deep copy — so the two
-    have to serialise on ``session.combat_state_lock`` or the burn is silently undone.
-
-    resolve_phase copies ``combat_state``, works the copy through its transaction, and rebinds
-    ``session.combat_state`` to it post-commit. An unlocked writer that lands in that gap has
-    everything it wrote erased on adoption. That was one ``hp_current`` assignment until
-    story-026, which routed the burn through ``_handle_hp_zero`` and so widened the loss to
-    ``is_fallen``/``is_dead``/``type``/``conditions`` — a Draethar who burned themselves down and
-    FELL is stood back up with the round's once-per-encounter spend already gone.
-
-    The gate suspends the phase AFTER its deep copy (the copy is taken inside the transaction,
-    before this write), which is the only ordering in which the defect exists: gating the
-    transaction's entry instead lets the burn land before the copy, where it survives for the
-    wrong reason and the guard certifies nothing.
-    """
+    """Pause after the deep copy, not at entry: only then can a concurrent update
+    be lost by the stale snapshot."""
     ctx = _ctx_at_resolution(player_hp=4, enemy_hp=20, room=make_mock_room())
     deps = _resolve_deps(damage=3)
     deps["resonance_mutations"] = MagicMock(update_player_resonance=AsyncMock())

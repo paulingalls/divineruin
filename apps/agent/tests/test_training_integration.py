@@ -197,19 +197,7 @@ class TestCreateAndRetrieve:
 
 
 class TestFullCycleViaFunctionTools:
-    """M1.5 capstone — stitches the full state machine across two @function_tool
-    calls and a simulated worker advance:
-
-        initiate_training_cycle (@function_tool)
-           → running_first_half (row created with transition_at)
-        async_worker.advance_training_cycles (simulated)
-           → awaiting_decision (decision options injected)
-        resolve_training_midpoint (@function_tool)
-           → running_second_half (transition_at advances to completes_at)
-
-    Mocked at the DB layer (honest about test fidelity). The real-LLM +
-    real-Postgres acceptance harness lands in sprint-009 story-008.
-    """
+    """Database I/O and worker advancement are simulated; the function-tool calls are real."""
 
     @pytest.mark.asyncio
     async def test_full_cycle_via_function_tools(self) -> None:

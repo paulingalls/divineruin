@@ -46,14 +46,6 @@ def test_veil_ward_anchor_large_recipe_outputs_self():
 
 
 def test_artificer_ward_source_duration_matches_anchor_small():
-    """Pin the content-code join: the anchor item's advertised duration matches the code constant.
-
-    Each half is guarded by a different assertion, and it is worth being precise about which:
-    the ``seconds == 3600`` pin below catches a drifted CONSTANT, while the derived-substring
-    assertion catches drifted ITEM TEXT (retitle the effect "2 hours" and it goes red, because the
-    expected string is computed from the constant rather than hardcoded). Neither half can move
-    without the other following.
-    """
     artificer_source = WARD_SOURCES["artificer"]
 
     assert artificer_source.duration.kind == WardDurationKind.REAL_TIME, (
@@ -77,13 +69,7 @@ def test_artificer_ward_source_duration_matches_anchor_small():
 
 
 def test_veil_anchors_table_matches_the_item_prose():
-    """Pin the VEIL_ANCHORS code table to what content/items.json promises the player (story-012).
-
-    The item's "consumed on use" / "not consumed" and "1 hour" / "Permanent" contracts live ONLY in
-    free-text effects[].description — there is no consumable field, no duration field. VEIL_ANCHORS
-    is where that prose becomes data, so this is the join that keeps them honest. Retitle the large
-    anchor "Lasts a week" and it goes red; flip its `consumed` and it goes red.
-    """
+    """Duration and consumption exist only in item effect prose; VEIL_ANCHORS translates that contract."""
     items = _load_content("items.json")
 
     small_item = _find_by_id(items, "veil_ward_anchor_small", "items.json")
@@ -108,8 +94,6 @@ def test_veil_anchors_table_matches_the_item_prose():
 
 
 def test_both_anchors_are_sourced_to_the_artificer_who_crafted_them():
-    """A crafted object names its maker. The large anchor shares the Sacred site's permanent
-    REPRESENTATION (expires_at NULL, undismissible) but not its provenance."""
     assert ANCHOR_SOURCE == "artificer"
     assert ANCHOR_SOURCE in WARD_SOURCES
     assert set(VEIL_ANCHORS) == {"veil_ward_anchor_small", "veil_ward_anchor_large"}

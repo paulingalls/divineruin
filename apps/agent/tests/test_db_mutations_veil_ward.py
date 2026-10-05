@@ -65,7 +65,7 @@ class TestReadActiveWard:
         assert params == ["location", "thornwatch_keep"]
 
     async def test_breaks_ties_by_newest_ward(self):
-        """The scope index is non-unique, so many wards may cover one scope. Pick deterministically."""
+        """Use a stable tie-breaker because this index is non-unique."""
         conn = AsyncMock()
         conn.fetchrow.return_value = None
         await db_mutations_veil_ward.read_active_ward(_LOCATION, conn=conn)

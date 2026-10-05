@@ -115,8 +115,6 @@ def _mock_tool_use_response(
 
 
 class TestCraftingQualityNote:
-    """M5.3: the crafting prompt surfaces the bonus_property / flaw description."""
-
     def _outcome(self, tier, *, bonus_property=None, flaw=None):
         return {
             "tier": tier,
@@ -161,9 +159,7 @@ class TestCraftingQualityNote:
 
 
 class TestNarrationPersonaDerivation:
-    """Commit 3: crafting/training personas derive from the canonical NPC record
-    (npcs.get_npc_sync), not a duplicated activity_templates literal. The seed_npcs
-    autouse fixture populates the catalog."""
+    """Read the persisted persona rather than a duplicated activity catalog."""
 
     def _crafting_outcome(self, npc_id):
         return {
@@ -283,9 +279,6 @@ class TestGenerateActivityNarration:
 
     @pytest.mark.asyncio
     async def test_segments_join_into_narration_text_separated(self):
-        """`narration_text` is what the resolved activity stores and speaks, and every other case
-        here sends ONE segment — so nothing caught the separator going away and two sentences
-        running together. Sprint 52: dropping the space from the join left the whole lane green."""
         mock_response = _mock_tool_use_response(
             segments=[
                 {"character": "DM_NARRATOR", "emotion": "neutral", "text": "The forge cools."},

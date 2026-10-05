@@ -119,7 +119,7 @@ class TestAssignedCompanionHydration:
 
     @pytest.mark.asyncio
     async def test_unselectable_archetype_writes_nothing(self):
-        """Drives the REAL selector: mocking it here would only prove a mock re-raises."""
+        """Use the real companion selector rather than a mocked selection."""
         with (
             patch(
                 "db_mutations_companion.insert_companion_relationship_if_absent",

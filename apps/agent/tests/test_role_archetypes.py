@@ -162,9 +162,6 @@ class TestCreateNpcFromArchetype:
 
 
 class TestShiftDisposition:
-    """shift_disposition lives beside the DISPOSITIONS SSOT — settlement generation and
-    social resolution share this one ladder clamp (extracted from settlement_generation)."""
-
     def test_shifts_within_ladder(self):
         assert shift_disposition("neutral", -1) == "unfriendly"
         assert shift_disposition("neutral", 1) == "friendly"
@@ -187,10 +184,7 @@ class TestShiftDisposition:
 
 
 class TestShiftDispositionNeutralMode:
-    """off_ladder='neutral' is the untrusted-live-DB contract (quest world-effects, session
-    npc mutations): a hand-corrupted npc_dispositions value must never 500 live narration, so
-    an off-ladder base is treated as neutral (decision unknown-disposition-contract). This is
-    the leniency formerly owned by quest_tools._clamp_disposition_shift."""
+    """The unknown-disposition-contract decision tolerates corrupt live values as neutral."""
 
     def test_shifts_within_ladder(self):
         assert shift_disposition("neutral", 1, off_ladder="neutral") == "friendly"
@@ -209,13 +203,7 @@ class TestShiftDispositionNeutralMode:
 
 
 class TestVoiceIds:
-    """The per-role VOICES key each row carries (story-014).
-
-    Shape is the loader's job (^ROLE_[A-Z_]+$, fail-loud, mirrored in
-    apps/server/src/role_archetypes.ts); DERIVATION from the row id and membership in the
-    Python VOICES registry are pinned here, so a typo like ROLE_GAURD that the shape check
-    accepts still reds.
-    """
+    """A shape-valid voice id can still be absent from the actual registry."""
 
     def test_every_row_carries_its_derived_role_voice_key(self):
         parsed = [parse_role_archetype_row(e["id"], e) for e in _RAW]

@@ -156,13 +156,7 @@ def _event_types(pending_events):
 
 
 def test_core_result_carries_exactly_its_read_fields():
-    """AwardXpResult carries exactly the fields its callers read — no more.
-
-    A dataclass field with no reader is a standing invitation to build hand-off state on it.
-    The L5 fork reaches the player as the SPECIALIZATION_CHOICE event plus the response's
-    ``specialization_fork`` flag, and select re-derives the fork from the player's OWN
-    committed level and class under FOR UPDATE — never from in-memory state handed across.
-    """
+    """Selection rederives the fork under the row lock rather than trusting handoff state."""
     assert {f.name for f in dataclasses.fields(AwardXpResult)} == {"result", "milestone_grants"}
 
 

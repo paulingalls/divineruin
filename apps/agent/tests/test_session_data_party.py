@@ -108,17 +108,11 @@ def test_player_id_has_no_setter():
 
 
 def test_location_ward_defaults_to_none():
-    """A fresh session mirrors no ward until hydration reads one."""
     assert SessionData(player_id="p1", location_id="loc").location_ward is None
 
 
 def test_location_ward_is_a_plain_mirror_not_a_resolver():
-    """It stores what the last read returned. It does NOT consult combat_state.
-
-    Resolution lives in exactly one place — ward_resolution.resolve_scope_ward — because a
-    synchronous property here could not await the DB, and would go stale the moment a ward's
-    expires_at lapsed: reporting warded while the cast path correctly reads unwarded.
-    """
+    """A synchronous session property cannot await ward expiry from the database."""
     session = SessionData(player_id="p1", location_id="loc")
     session.location_ward = {"source": "cleric", "expires_at": None, "dismissible": True}
 
@@ -142,11 +136,6 @@ def test_combat_state_starts_unwarded():
 
 
 def test_encounter_ward_round_trips_through_to_dict_from_dict():
-    """AC2: the encounter ward survives the trip through combat_instances.data JSONB.
-
-    A plain dict, mirroring CombatParticipant.conditions — JSONB-native, so asdict() serializes it
-    and from_dict passes it straight back.
-    """
     ward = {"source": "paladin", "rounds_remaining": 3}
     state = _combat_state(veil_ward=ward)
 
@@ -158,13 +147,11 @@ def test_encounter_ward_round_trips_through_to_dict_from_dict():
 
 
 def test_encounter_ward_with_no_round_clock_round_trips():
-    """An ENCOUNTER-duration ward carries rounds_remaining None — it dies with the combat row."""
     state = _combat_state(veil_ward={"source": "cleric", "rounds_remaining": None})
     assert CombatState.from_dict(state.to_dict()).veil_ward == {"source": "cleric", "rounds_remaining": None}
 
 
 def test_legacy_row_without_veil_ward_field_falls_back_to_none():
-    """A combat row written before story-004 carries no veil_ward key and must still load."""
     data = _combat_state().to_dict()
     data.pop("veil_ward")
     assert CombatState.from_dict(data).veil_ward is None

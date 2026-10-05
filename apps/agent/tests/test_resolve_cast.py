@@ -5,11 +5,7 @@ from sample_fixtures import make_context, make_db_mod
 
 
 class TestResolveCast:
-    """``_resolve_cast`` is the shared cast core (story-007): transaction-agnostic (takes the
-    caller's ``conn``, opens no tx of its own) and in-memory-PURE — it persists Focus/Resonance/
-    concentration via the conn but never mutates session.resonance / session.concentration, so a
-    rolled-back caller tx leaves the session pristine. The caller syncs those post-commit from the
-    returned ``CastResult`` and flushes its deferred ``events``."""
+    """Keep session mirrors untouched until commit so a rollback leaves them pristine."""
 
     async def test_returns_castresult_without_mutating_session(self):
         from spell_casting import CastResult, _resolve_cast

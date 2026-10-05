@@ -56,8 +56,6 @@ def test_parse_user_defaults_when_absent():
 
 
 def test_stop_if_started_noop_when_not_started_and_no_state_file(monkeypatch):
-    """Fallback path: no refcount state file on disk (e.g. a caller that
-    bypasses ensure_db_up) -> `started` alone decides."""
     calls: list[tuple[str, ...]] = []
     monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args))
     dbl.stop_if_started(False)
@@ -65,7 +63,6 @@ def test_stop_if_started_noop_when_not_started_and_no_state_file(monkeypatch):
 
 
 def test_stop_if_started_downs_when_started_and_no_state_file(monkeypatch):
-    """No-state fallback uses the identity captured by this process at startup."""
     calls: list[tuple[str, ...]] = []
     monkeypatch.setattr(dbl, "_compose", lambda *args: calls.append(args) or _FakeCompleted())
     dbl._started_lifetimes[("localhost", 55432)] = TEST_LIFETIME
@@ -124,11 +121,7 @@ def test_ensure_db_up_raises_when_compose_up_fails(monkeypatch):
 
 
 def test_ensure_db_up_does_not_retry_on_conflict(monkeypatch):
-    """Under Option B (per-worktree stacks, no `container_name`) a name conflict
-    cannot arise — compose auto-names `<project>-postgres-1` per project and
-    restarts a stopped container of the same project. So a failing `up` is NOT
-    special-cased or retried; it raises like any other failure (no `down`+retry
-    self-heal). Pins the removal of that dead branch."""
+    """A failed retry must not tear down resources owned by another caller."""
     calls: list[tuple[str, ...]] = []
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
     monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: False)
@@ -150,8 +143,7 @@ def test_ensure_db_up_does_not_retry_on_conflict(monkeypatch):
 
 
 def test_lockfile_paths_are_keyed_on_host_port():
-    """One host:port is one physical container, so every caller reaching it must
-    share a lock; a different port is a different checkout's stack and must not."""
+    """Physical endpoint identity determines the shared lock."""
     assert dbl._lockfile_paths("localhost", 55432) == dbl._lockfile_paths("localhost", 55432)
     assert dbl._lockfile_paths("localhost", 55432) != dbl._lockfile_paths("localhost", 56852)
 
@@ -209,8 +201,7 @@ def test_replaced_service_state_removed_without_down(monkeypatch):
 
 
 def test_ensure_db_up_resets_stale_count_when_db_unreachable(monkeypatch):
-    """A leaked count from a SIGKILLed prior run must not survive once the DB
-    is actually observed to be down."""
+    """A killed owner must not strand a stale reference count."""
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
     _, state_path = dbl._lockfile_paths("localhost", 55432)
     dbl._write_state(state_path, _owned_state(5))
@@ -223,8 +214,6 @@ def test_ensure_db_up_resets_stale_count_when_db_unreachable(monkeypatch):
 
 
 def test_ensure_db_up_holds_lock_during_start(monkeypatch):
-    """`_start_compose`'s `up` must run while the exclusive lock is held, so no
-    other run can be mid-startup concurrently (Race A)."""
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
     monkeypatch.setattr(dbl, "is_reachable", lambda host, port, timeout=1.0: False)
     monkeypatch.setattr(dbl, "is_accepting_queries", lambda user: True)
@@ -243,8 +232,6 @@ def test_ensure_db_up_holds_lock_during_start(monkeypatch):
 
 
 def test_stop_if_started_refcount_teardown(monkeypatch):
-    """AC3: two joiners -> the first to finish doesn't tear down; the last
-    (hitting count 0) does, and only when the harness started it."""
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
     _, state_path = dbl._lockfile_paths("localhost", 55432)
     dbl._write_state(state_path, _owned_state(2))
@@ -361,8 +348,7 @@ def test_stop_if_started_ci_service_mode_never_invokes_compose(monkeypatch):
 
 
 def test_stop_if_started_never_downs_when_harness_did_not_start(monkeypatch):
-    """AC4: a DB a developer started by hand (harness_started False) is never
-    torn down, at any count, regardless of `started`."""
+    """Developer-owned resources must survive test teardown."""
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@localhost:55432/divineruin")
     _, state_path = dbl._lockfile_paths("localhost", 55432)
     dbl._write_state(state_path, {"count": 1, "harness_started": False})
@@ -376,9 +362,6 @@ def test_stop_if_started_never_downs_when_harness_did_not_start(monkeypatch):
 
 
 def test_ensure_db_up_concurrent_callers_race_unreachable(monkeypatch):
-    """AC5 e2e: two threads race ensure_db_up against an unreachable DB ->
-    compose `up` runs exactly once, both callers return, and the refcount
-    lands at 2."""
     import threading
     import time as time_module
 

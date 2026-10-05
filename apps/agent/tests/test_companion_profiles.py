@@ -47,9 +47,6 @@ class TestParse:
             assert len(c.save_proficiencies) == 2
 
     def test_ability_bucket_cardinality(self):
-        """M6.4 spec floor/ceiling per companion. The TS twin (companion.test.ts) pins the same
-        numbers, but no test the card's Verify runs did — Sable's second attack could be reverted
-        with the whole Python gate still green."""
         for e in _RAW:
             c = parse_companion_row(e["id"], e)
             assert 2 <= len(c.attacks) <= 4, f"{c.id} attacks"
@@ -58,11 +55,6 @@ class TestParse:
             assert len(c.reactions) <= 1, f"{c.id} reactions"
 
     def test_every_row_declares_errand_injury_reduction(self):
-        """AC4: the errand injury reduction is a companion content field, not a Kael-keyed table.
-
-        game_mechanics_core.md:904 gives Kael "reduced injury risk"; Lira/Tam/Sable have entirely
-        different scouting mechanics and no injury reduction, so they ship 0.
-        """
         parsed = {e["id"]: parse_companion_row(e["id"], e) for e in _RAW}
         assert parsed["companion_kael"].errand_injury_reduction == 5
         assert {c.errand_injury_reduction for cid, c in parsed.items() if cid != "companion_kael"} == {0}
@@ -73,12 +65,7 @@ class TestParse:
             parse_companion_row("companion_lira", row)
 
     def test_every_row_declares_a_known_gender(self):
-        """story-020's pronoun guard reads this field; a row without one has no checkable pronoun.
-
-        Sable shipped without a gender key while every prose source in the repo called her "her",
-        so the guard's `.gender` read was `None` on the one companion whose pronouns are hardest
-        to get right — a silent no-op, not a red.
-        """
+        """Sable selection must not depend on gender."""
         for e in _RAW:
             c = parse_companion_row(e["id"], e)
             assert c.gender in {"male", "female", "nonbinary"}, f"{c.id}.gender {c.gender!r}"
@@ -187,12 +174,7 @@ class TestScaling:
 
 class TestVoiceRegistration:
     def test_every_companion_voice_id_registered_in_voices(self):
-        """Every companions.json voice_id must be a key in voices.VOICES (audio-first golden rule).
-
-        get_voice_config does VOICES.get(character, DEFAULT_VOICE), so an unregistered voice_id
-        silently falls back to DM_NARRATOR. This includes Sable's COMPANION_SABLE: she is
-        non-verbal (empty env default), but the key must exist so the invariant holds uniformly.
-        """
+        """An empty registered voice intentionally falls back to the narrator."""
         from voices import VOICES
 
         for cid in _IDS:
@@ -203,12 +185,7 @@ class TestVoiceRegistration:
 
 
 class TestActionPool:
-    """companion_attacks_to_action_pool translates the profile's NARRATIVE attack notation
-    (damage "1d8+STR", hit "STR+prof") into the MECHANICAL action dicts the combat resolver
-    consumes (plain dice + attributes-supply-the-mod). Attacks only — actives/reactions are
-    DM-narrated. The per-attack governing_attribute (derived from the hit field) drives the
-    resolver's hit stat (story-008); ranged:True is still emitted for ranged attacks (range/reach
-    narration) but no longer determines the hit stat."""
+    """Parsed governing attributes drive hit math; ranged delivery retains its range meaning."""
 
     def test_kael_melee_attacks(self):
         kael = get_companion_profile("companion_kael")

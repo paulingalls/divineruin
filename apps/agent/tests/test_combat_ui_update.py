@@ -78,9 +78,6 @@ def test_packet_round_reflects_post_advance_state():
 
 
 def test_is_ally_property_player_companion_true_enemy_hollowed_false():
-    """CombatParticipant.is_ally is the canonical ally/enemy classifier — all
-    consumers (HUD producer, future role logic) read this instead of re-encoding
-    the type taxonomy. Pinned here so a future type rename surfaces in one place."""
     assert _participant("p1", p_type="player").is_ally is True
     assert _participant("c1", p_type="companion").is_ally is True
     assert _participant("e1", p_type="enemy").is_ally is False
@@ -114,9 +111,6 @@ def test_isAlly_false_for_enemy_and_temporary_hollowed():
 
 
 def test_isActive_marks_initiative_head_only():
-    """At Beat-4 emit, the wrap has reset current_turn_index=0 — the participant
-    whose id is initiative_order[0] is the next-up actor and gets isActive=True;
-    every other participant is False."""
     state = _state(
         [
             _participant("p1", p_type="player", initiative=15),
@@ -134,9 +128,6 @@ def test_isActive_marks_initiative_head_only():
 
 
 def test_isActive_handles_mid_round_index():
-    """Defensive: if the emit ever runs with current_turn_index>0 (a future
-    mid-round caller), only the actor at that index lights up. Pins the
-    semantic so a refactor can't silently break it."""
     state = _state(
         [
             _participant("p1", p_type="player"),
@@ -152,7 +143,6 @@ def test_isActive_handles_mid_round_index():
 
 
 def test_isActive_all_false_when_initiative_order_empty():
-    """Pre-initiative or degenerate state: no isActive flag fires."""
     state = _state(
         [_participant("p1")],
         initiative_order=[],
@@ -163,9 +153,7 @@ def test_isActive_all_false_when_initiative_order_empty():
 
 
 def test_isActive_skips_fallen_actor_at_initiative_head():
-    """An enemy at the top of initiative_order who fell last round is NOT the
-    next-up actor — the HUD must highlight the next LIVE participant in the
-    order. Nothing prunes initiative_order on death, so the producer must skip."""
+    """Do not prune a fallen participant from the authoritative roster."""
     p1 = _participant("p1", p_type="player", initiative=10)
     e1 = _participant("e1", p_type="enemy", initiative=20)
     e1.is_fallen = True  # fell last phase
@@ -285,10 +273,6 @@ _START_ENCOUNTER = {
 @patch("combat_init.publish_game_event", new_callable=AsyncMock)
 @patch("combat_init._publish_sounds", new_callable=AsyncMock)
 async def test_start_combat_emits_combat_ui_update_for_hud_init(_mock_sounds, mock_event):
-    """Without an emit at combat_start, the HUD's combat-tracker stays empty for
-    round 1 (COMBAT_UI_UPDATE only fired at the Beat-4 wrap before this fix).
-    Resolves concern 4045481bfc3e — initial state push so icons/chips render
-    from frame one, not after the first wrap."""
     mutations = MagicMock(save_combat_state=AsyncMock())
     queries = MagicMock(
         get_player=AsyncMock(return_value=_start_combat_player()),
@@ -325,9 +309,7 @@ async def test_start_combat_emits_combat_ui_update_for_hud_init(_mock_sounds, mo
 @patch("combat_init.publish_game_event", new_callable=AsyncMock)
 @patch("combat_init._publish_sounds", new_callable=AsyncMock)
 async def test_start_combat_ui_update_fires_after_combat_started(_mock_sounds, mock_event):
-    """Event ordering: COMBAT_STARTED must reach the client before
-    COMBAT_UI_UPDATE so the mobile session.setCombat(true) gate latches before
-    the tracker tries to render."""
+    """The client latches the initial HUD state, so publish it in order."""
     mutations = MagicMock(save_combat_state=AsyncMock())
     queries = MagicMock(
         get_player=AsyncMock(return_value=_start_combat_player()),

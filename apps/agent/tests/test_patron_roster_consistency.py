@@ -44,11 +44,6 @@ def test_god_whisper_profiles_has_all_ten_patrons():
 
 
 def test_short_name_agrees_across_all_three_surfaces():
-    """All 3 surfaces must carry the same authored short_name for each patron.
-
-    Primary name = bare name, e.g. "Veythar" — not the full "Veythar, the Lorekeeper".
-    Each surface reads short_name as an authored field; no derivation by string split.
-    """
     for patron_id in EXPECTED_PATRON_IDS:
         gods_short = GODS_BY_ID[patron_id]["short_name"]
         deity_short = DEITIES[patron_id].name
@@ -71,10 +66,6 @@ def test_gods_json_name_matches_creation_deities_full_title():
 
 
 def test_personality_prompt_embeds_canonical_short_name_and_title():
-    """Every whisper personality_prompt must embed the canonical short_name AND
-    title so the LLM pronounces the same identity the HUD shows. Audio-first
-    invariant — drift here ships into the voice path.
-    """
     for entry in GODS_ENTRIES:
         short_name = entry["short_name"]
         title = entry["title"]
@@ -88,8 +79,7 @@ def test_personality_prompt_embeds_canonical_short_name_and_title():
 
 
 def test_gods_json_does_not_contain_unbound_entry():
-    """Unbound (god_id='none') must not appear in gods.json — it is synthesized
-    in creation_deities so it doesn't seed god_agent_state. ADR 0001 invariant."""
+    """An unbound player must not acquire god-agent state."""
     assert "none" not in GODS_BY_ID, "content/gods.json must not contain god_id='none' — see ADR 0001"
 
 
@@ -122,11 +112,7 @@ def test_load_deities_rejects_none_god_id_in_gods_json(tmp_path, monkeypatch):
 
 
 def test_layer_2_through_4_placeholders_exist_and_are_null():
-    """Phase 8 mechanical layers are reserved as null placeholders per ADR 0001.
-
-    This test pins the contract that future Phase 8 sprints populate these slots —
-    until then they must be present and null so authoring has one canonical place.
-    """
+    """ADR 0001 reserves null patron slots without introducing another authority."""
     placeholders = (
         "layer_2_resonance",
         "layer_3_tier_abilities",

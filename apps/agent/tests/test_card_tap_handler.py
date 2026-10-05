@@ -283,10 +283,7 @@ class TestSpecializationTapHandler:
 
 
 class TestSpecializationTapActor:
-    """The tap binds its LiveKit-verified sender as the DM turn's actor, or dispatches nothing.
-
-    ``DataPacket.participant.identity`` IS the player_id (participant_lifecycle compares it
-    directly), and it is never rendered into the DM instruction (decision 5829eecd76eb)."""
+    """Authenticated sender metadata must never become DM instructions."""
 
     def _actor_seen_by_reply(self, handler, session) -> list[str]:
         seen: list[str] = []

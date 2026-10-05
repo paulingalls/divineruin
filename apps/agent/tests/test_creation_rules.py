@@ -272,14 +272,7 @@ class TestBuildCharacterData:
 
 
 class TestChassisRouting:
-    """Saves and skills come from the chassis SSOT, not a ClassData copy.
-
-    The shipped chassis happens to match the old CLASSES values, so equality
-    alone wouldn't prove the read is routed. These tests inject a chassis whose
-    saves/skills differ from anything CLASSES ever held and assert creation
-    follows the injected chassis. The autouse seed_archetypes fixture restores
-    the real chassis before each test, so the mutation doesn't leak.
-    """
+    """Use a distinct chassis save value so the expected result is independent of the fixture."""
 
     def test_saves_route_from_chassis(self):
         from dataclasses import replace
@@ -433,7 +426,6 @@ class TestDataIntegrity:
         [(r, c) for r in RACES for c in CLASSES],
     )
     def test_every_race_class_combo_builds(self, race_id, class_id):
-        """Every race + class combination produces a valid character."""
         data = build_character_data(
             name="TestChar",
             race_id=race_id,

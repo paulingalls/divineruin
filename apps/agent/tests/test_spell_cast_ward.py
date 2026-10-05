@@ -45,19 +45,7 @@ class TestCastSpellHollowEcho:
 
 
 class TestCastSpellWardThroughRealResolver:
-    """Non-vacuity proof: the ward gate fires on the PRODUCTION default path.
-
-    The sibling TestCastSpellWard suite injects its own ``ward_resolution_mod``, so it
-    never exercises the resolver the cast path actually reaches for. These tests inject
-    nothing: the real ``ward_resolution.resolve_scope_ward`` runs, reading the encounter
-    ward from memory and, for a location scope, the one stubbed I/O leaf
-    (``db_mutations_veil_ward.read_active_ward``).
-
-    Against the previous fixture — which stubbed ``resolve_scope_ward`` itself to return
-    None — every assertion here fails: the gate is answered "unwarded" no matter what
-    ``combat_state`` holds. That silent answer is concern ec9d730b899d; these tests are
-    what make it impossible to reintroduce.
-    """
+    """Stub only the database leaf; replacing the resolver itself would hide the ward gate."""
 
     _WARD = {"source": "cleric", "rounds_remaining": None}
 
@@ -120,12 +108,7 @@ class TestCastSpellWardThroughRealResolver:
 
 
 class TestCastUnderADeployedVeilAnchor:
-    """AC4 (story-012): a caster standing in a deployed anchor's scope is halved exactly as under a
-    Cleric ward. The anchor writes an ordinary location ward, so nothing in the cast path knows or
-    cares that an item put it there — which is the property worth pinning.
-
-    Only the DB leaf is stubbed; the real ward_resolution.resolve_scope_ward runs and finds the row.
-    """
+    """An anchor writes an ordinary location ward; use the real scope resolver."""
 
     _ANCHOR_WARD = {"source": "artificer", "expires_at": None, "dismissible": False}
     _CLERIC_WARD = {"source": "cleric", "expires_at": None, "dismissible": True}
@@ -150,16 +133,8 @@ class TestCastUnderADeployedVeilAnchor:
 
 
 class TestPartyWideWardedEncounter:
-    """AC5 capstone: a two-member party in a warded encounter, ward expiring mid-combat.
-
-    Wires the two halves of story-006 together against real code: the WRAP beat's round clock
-    (combat_phase._wrap) and the cast path's ward read (the real ward_resolution.resolve_scope_ward,
-    no resolver injected). Both members are halved while the Paladin's 3-round ward stands, and
-    neither is halved on the round after it expires.
-
-    The ward is ONE object on the encounter scope; Resonance stays per-caster, each member
-    accruing into their own ResonanceTrack. That asymmetry is the milestone's whole rule.
-    """
+    """Exercise the actual WRAP clock and ward resolver together.
+    The ward is encounter-owned while Resonance remains per caster."""
 
     _MEMBERS = ("player_1", "player_2")
 

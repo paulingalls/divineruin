@@ -56,9 +56,7 @@ class TestValidateConditionDict:
 
 
 class TestReadPlayerConditionsValidation:
-    """read_player_conditions runs the validator at the boundary: fail-loud on a corrupt stored
-    row, validated passthrough on a good one. Validation is pure-Python post-fetch, so a mock conn
-    exercises it (mirrors test_db_mutations_death's mock-conn unit tests)."""
+    """Mock the fetch leaf while exercising the actual post-fetch validator."""
 
     @pytest.mark.asyncio
     async def test_good_row_returns_validated_list(self):
@@ -99,9 +97,7 @@ class TestReadPlayerConditionsValidation:
 
 
 class TestResolversTolerateJsonNullConditions:
-    """M4.4 story-008 (concern 0f475c961261): players.data.conditions can be stored JSON null.
-    A reader using ``get('conditions', [])`` gets ``None`` (the key IS present, just null) and
-    crashes iterating it. Each condition-reading resolver must treat a null value as no conditions."""
+    """JSON null differs from an absent key with a default."""
 
     _ATTRS = {"strength": 12, "dexterity": 12, "constitution": 12, "wisdom": 12, "intelligence": 12, "charisma": 12}
 

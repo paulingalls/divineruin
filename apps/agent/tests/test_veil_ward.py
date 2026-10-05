@@ -233,7 +233,6 @@ def test_halve_generation_unchanged_by_m24(generated, expected):
 
 
 def test_ward_scope_kinds():
-    """Exactly two scope kinds; their values are the strings persisted in veil_wards.scope_kind."""
     assert WardScopeKind.ENCOUNTER == "encounter"
     assert WardScopeKind.LOCATION == "location"
     assert len(list(WardScopeKind)) == 2
@@ -271,11 +270,7 @@ def test_ward_scope_kind_participates_in_identity():
 
 @pytest.mark.parametrize("bad_id", ["", None])
 def test_ward_scope_fails_loud_on_empty_id(bad_id):
-    """A scope with no id would silently read/write the wrong rows — fail at construction.
-
-    Guards the cut-over sites, where a null session.location_id would otherwise build a
-    malformed scope and quietly return "unwarded" forever.
-    """
+    """An empty scope id can silently resolve the wrong rows as unwarded."""
     with pytest.raises(ValueError):
         WardScope.location(bad_id)
     with pytest.raises(ValueError):
@@ -283,15 +278,8 @@ def test_ward_scope_fails_loud_on_empty_id(bad_id):
 
 
 class TestVeilAnchors:
-    """The item -> ward join. Both anchors are sourced to the artificer; their DURATIONS differ.
-
-    WARD_SOURCES["artificer"] carries exactly one duration, REAL_TIME 3600s, and that is the SMALL
-    anchor's hour. The large anchor is permanent, so its duration cannot come from the source row —
-    location_expires_at on REAL_TIME returns an hour from now, never None. It comes from here.
-
-    "consumed on use" / "not consumed" lives only in each item's free-text effects[].description in
-    content/items.json; there is no consumable field. This table is where that contract becomes data.
-    """
+    """The large anchor is permanent, so its duration cannot come from the timed Artificer source.
+    Consumption exists only in item effect prose and is translated by this table."""
 
     def test_both_anchors_are_sourced_to_the_artificer(self):
         assert veil_ward.ANCHOR_SOURCE == "artificer"

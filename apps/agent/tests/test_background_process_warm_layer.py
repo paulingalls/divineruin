@@ -150,9 +150,7 @@ class TestWarmLayerRebuild:
 
     @pytest.mark.asyncio
     async def test_unchanged_warm_layer_still_reaches_a_new_agent(self):
-        """A handoff hands the floor to an agent whose instructions carry NO warm layer, so the
-        dedupe cannot key on the warm text alone — the fight would run with the combat prompt
-        and nothing else."""
+        """A handoff must not append duplicate warm instructions to the cached prefix."""
         mock_sd = MagicMock()
         mock_sd.location_id = "tavern"
         mock_sd.player_id = "p1"
@@ -181,7 +179,6 @@ class TestWarmLayerRebuild:
 
     @pytest.mark.asyncio
     async def test_rebuild_warm_layer_handles_exception(self):
-        """A transient fetch failure preserves the prior warm layer."""
         mock_session = MagicMock()
         mock_sd = MagicMock()
         mock_sd.location_id = "tavern"
@@ -204,13 +201,7 @@ class TestWarmLayerRebuild:
 
     @pytest.mark.asyncio
     async def test_static_layer_rerenders_when_the_bound_companion_changes(self):
-        """The cached static layer now renders the assigned companion's own name and tag, so
-        the cache key must track companion identity — presence alone would serve Lira's
-        section to a player bound to Tam.
-
-        A real ExplorationAgent, not a mock: the static half is the CURRENT agent's own
-        (BaseGameAgent.static_prompt), so a mock target would certify the mock's return value.
-        """
+        """Use a real agent so companion identity participates in the actual prompt cache."""
         mock_session = MagicMock()
         mock_session.current_agent = ExplorationAgent()
         sd = SessionData(player_id="p1", location_id="tavern")

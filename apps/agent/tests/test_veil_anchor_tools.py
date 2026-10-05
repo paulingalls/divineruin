@@ -127,9 +127,7 @@ class TestDeployRefusals:
         ward_mut.write_ward.assert_not_awaited()
 
     async def test_deploying_into_an_already_warded_scope_is_refused(self):
-        """The large anchor is not consumed, so an ungated redeploy would write unbounded permanent,
-        non-dismissible rows that dismiss_ward can never remove. Mirrors activate_veil_ward's gate:
-        a second ward over a covered party buys nothing."""
+        """A reusable permanent anchor could otherwise create unlimited undismissible wards."""
         covering = {"source": "cleric", "expires_at": None, "dismissible": True}
         ctx, mock_db, queries, inventory, ward_mut = _mocks(covering_ward=covering)
         with pytest.raises(ToolError, match="already active"):

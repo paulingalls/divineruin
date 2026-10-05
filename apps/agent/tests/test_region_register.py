@@ -39,8 +39,7 @@ async def _warm(location: dict, *, npcs_raw=None, scene_cache=None) -> str:
 
 
 class TestSystemPromptRegionAgnostic:
-    """AC1: build_system_prompt no longer varies by region — region flavor has moved
-    to the warm-layer Stage register, so the cached static layer survives region moves."""
+    """Region flavor stays in the warm Stage register to preserve the cached static prefix."""
 
     def test_no_region_type_param(self):
         assert "region_type" not in inspect.signature(build_system_prompt).parameters
@@ -78,8 +77,7 @@ class TestWarmLayerRegionRegister:
         assert "training hall" in result
 
     async def test_register_precedes_scene_register(self, _disp):
-        """Region is the ambient register; the quest scene register refines it and
-        must land AFTER, so the more-specific guidance reads as the final word."""
+        """Put specific scene guidance after ambient region guidance so it has the final word."""
         quest = {
             "quest_id": "q",
             "quest_name": "Q",
@@ -104,9 +102,6 @@ class TestWarmLayerRegionRegister:
         assert result.index("REGISTER — Region: Dungeon") < result.index("REGISTER — Hushed Vault")
 
     async def test_region_and_address_gate_share_one_source(self, _disp):
-        """Single source of truth: BOTH the region REGISTER and the address (NPC commerce)
-        gate read the Stage's region_type. On a dungeon Stage, NPCs present must NOT
-        surface as `address:` affordances — the gate and the register can never disagree."""
         npc = {"id": "npc_1", "name": "Lost Miner", "role": "miner", "default_disposition": "neutral"}
         result = await _warm(_location(REGION_DUNGEON), npcs_raw=[npc])
         assert "REGISTER — Region: Dungeon" in result

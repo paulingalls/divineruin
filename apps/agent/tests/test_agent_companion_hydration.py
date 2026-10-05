@@ -191,7 +191,6 @@ class TestFirstMeetingCompanion:
 
     @pytest.mark.asyncio
     async def test_gameplay_handoff_without_a_companion_fails_loud(self):
-        """The beat-5 guard: reached only if beat 3 persisted the advance but not the companion."""
         from onboarding_tools import advance_onboarding_beat
 
         ctx = MagicMock()
@@ -214,7 +213,6 @@ class TestFirstMeetingCompanion:
 
     @pytest.mark.asyncio
     async def test_beat_three_failure_leaves_the_beat_unadvanced(self):
-        """The assignment precedes the beat write, so a failed one stays replayable at beat 3."""
         from onboarding_tools import advance_onboarding_beat
 
         ctx = MagicMock()

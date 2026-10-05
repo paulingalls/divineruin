@@ -2,10 +2,6 @@ from _spell_casting_helpers import _cast, _cast_racial, _spell
 
 
 class TestCastSpellDecay:
-    """Per-round (cast-paced) Resonance decay (story-010): a real cast sheds one round of
-    standing Resonance — base 1/round, +1 for a Human (Adaptive Resonance) -> 2/round —
-    before this cast's generation lands. apply_resonance_decay floors at 0."""
-
     async def test_human_decays_two_before_generation(self):
         _packet, ctx, _m, _c, _e = await _cast_racial(
             _spell(source="arcane", focus_cost=3, resonance=3), race="human", start_resonance=7

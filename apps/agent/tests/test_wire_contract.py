@@ -137,8 +137,7 @@ async def test_veil_ward_changed_serializes_to_fixture() -> None:
 
 
 def test_veil_ward_fixture_carries_no_caster_id() -> None:
-    """The asymmetry, pinned in the fixture itself: RESONANCE_CHANGED filters per-caster; the ward
-    does not. A reader who 'restores consistency' by adding caster_id back fails here."""
+    """Resonance is per caster; wards are scope-owned."""
     assert "caster_id" not in FIXTURE["events"]["veil_ward_changed"]
     assert "caster_id" in FIXTURE["events"]["resonance_changed"]
 
@@ -244,14 +243,7 @@ async def test_divine_favor_changed_serializes_to_fixture() -> None:
 
 @pytest.mark.asyncio
 async def test_item_acquired_serializes_to_fixture() -> None:
-    """The COMBAT-LOOT path is the one this pins.
-
-    The client's item card is built from name/description/rarity; combat loot published only
-    item_id/quantity/source/player_id, so every drop rendered a blank card while the inventory
-    path (which sends the full shape) looked fine — a second writer against a reader nobody
-    re-checked. Both writers now build the payload with tool_support.build_item_acquired_payload,
-    and this asserts the wire object the combat pass actually emits.
-    """
+    """Exercise the combat-loot writer because its payload builds the client item card."""
     expected = FIXTURE["events"]["item_acquired"]
     content = MagicMock()
     content.get_item = AsyncMock(

@@ -186,10 +186,6 @@ class TestBreakConcentrationOnDamage:
 
 
 class TestBreakResolvesAgainstDamagedMember:
-    """M18 story-004: the break must key off the DAMAGED member (``damaged_player_id``), not the
-    primary — a non-primary caster's spell breaks on their own damage, and the primary's
-    concentration is untouched by a hit on someone else."""
-
     async def test_non_primary_break_leaves_primary_untouched(self):
         session = _two_pc_session(primary_spell_id="divine_bless", member_spell_id="arcane_fly")
         queries, resolver, cm = _deps(save_total=1)  # fails -> breaks
@@ -245,10 +241,6 @@ class TestBreakResolvesAgainstDamagedMember:
 
 
 class TestBreakRemovesLinkedCondition:
-    """M4.8 story-006 (risk 0899a89ef0da): a concentration spell that grants a beneficial condition
-    (Bless -> blessed) must drop that condition when its concentration breaks, so the +1d4 does not
-    outlive the broken spell. Removal targets the in-combat participants the buff is on."""
-
     def _bless(self):
         return SimpleNamespace(applies_condition="blessed", concentration=True)
 
@@ -274,13 +266,7 @@ class TestBreakRemovesLinkedCondition:
         return conditions.has_condition(ally.conditions, "blessed")
 
     async def test_a_second_caster_still_concentrating_keeps_the_buff_alive(self):
-        """Two members concentrate on Bless. One breaks; the other still holds it, so the allies
-        stay blessed.
-
-        The strip removes the condition BY TYPE from every participant, and a condition carries its
-        spell as `source` but never its caster -- two Bless casts are indistinguishable. So A's
-        break silently negated B's still-active spell. Nothing may be stripped while another member
-        sustains a spell that grants it."""
+        """Condition source alone does not identify the caster for a multi-target Bless."""
         session = _two_pc_session("bless", "bless")  # both concentrating on Bless
         state = _make_combat_state()
         ally = state.get_participant("player_1")

@@ -117,11 +117,7 @@ async def test_eligible_cleric_raises_ward():
 
 
 async def test_raise_writes_no_absolute_expiry_and_stays_dismissible():
-    """A Cleric's ENCOUNTER duration, raised out of combat, has no absolute clock: warded until
-    dismissed (§4). location_expires_at returns None for it, so the row's expires_at is NULL.
-
-    A Paladin cannot stand in for the Cleric here — its ROUNDS duration is refused out of combat.
-    """
+    """Use a Cleric: the Paladin's round duration is refused outside combat."""
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7))
     await _invoke(ctx, mock_db, queries, persistence, ward_mut)
     _scope, _source, expires_at = ward_mut.write_ward.call_args.args
@@ -147,13 +143,8 @@ async def test_non_ward_archetype_rejected():
 
 
 async def test_tool_raisable_false_source_refused():
-    """An Artificer has a ward source but may not raise one through this tool (story-005).
-
-    The gate is ``source.tool_raisable``, NOT key presence: an artificer's ward is bought with a
-    crafted anchor, and its source costs 0 Focus / 0 Stamina. Were the tool to gate on presence
-    alone, a level-7 artificer would raise a FREE ward — so this test runs against the real
-    WARD_SOURCES table (no ward_mod injection), where the artificer key genuinely exists.
-    """
+    """Artificer sources cost no resources because they require crafted anchors.
+    A key-presence gate would allow a free ward, so use the real source table."""
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("artificer", level=7))
     with pytest.raises(ToolError, match="artificer"):
         await _invoke(ctx, mock_db, queries, persistence, ward_mut)
@@ -162,8 +153,7 @@ async def test_tool_raisable_false_source_refused():
 
 
 async def test_tool_raisable_gate_precedes_the_level_gate():
-    """An artificer ABOVE the source's min_level is still refused — the gate is on the source,
-    not on the player. A level check placed first would mask this with a misleading message."""
+    """Level eligibility must not mask the independent source restriction."""
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("artificer", level=20))
     with pytest.raises(ToolError, match="artificer"):
         await _invoke(ctx, mock_db, queries, persistence, ward_mut)

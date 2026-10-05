@@ -40,7 +40,6 @@ async def test_write_then_read_round_trips_the_ward():
 
 
 async def test_expired_ward_is_not_returned_without_any_sweeper():
-    """Lazy expiry: nothing sweeps veil_wards; the read simply compares expires_at to NOW()."""
     pool = await db.get_pool()
     scope = _unique_location()
     past = datetime.now(UTC) - timedelta(hours=1)
@@ -58,12 +57,7 @@ async def test_expired_ward_is_not_returned_without_any_sweeper():
 
 
 async def test_a_short_ward_never_clobbers_a_permanent_one():
-    """The (scope_kind, scope_id) index is non-unique on purpose.
-
-    A 1-hour Artificer anchor deployed at a Sacred site must coexist with the permanent ward.
-    Were the scope unique, the anchor would overwrite it and the site would silently fall an
-    hour later (decision 4e126734aebe).
-    """
+    """Sacred-site wards can coexist with other sources in the same scope."""
     pool = await db.get_pool()
     scope = _unique_location()
     soon = datetime.now(UTC) + timedelta(hours=1)
@@ -104,7 +98,6 @@ async def test_dismiss_removes_dismissible_wards_and_spares_permanent_ones():
 
 
 async def test_two_players_in_one_scope_are_backed_by_a_single_row():
-    """AC4: the ward is scope-owned. One row backs every caster in the scope."""
     pool = await db.get_pool()
     scope = _unique_location()
     try:

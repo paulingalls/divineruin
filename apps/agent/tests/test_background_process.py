@@ -411,10 +411,7 @@ class TestGodWhisperFlow:
             assert f"GOD_{deity_id.upper()}" in instructions
 
     async def test_deliver_speech_fires_stinger_before_whisper(self):
-        """When delivering a god whisper, the stinger fires before generate_reply, and
-        afterward the favor whisper-level is marked. The favor mocks must bind to the
-        real call sites _deliver_speech uses (db_activity_queries / db_mutations_divine),
-        not a 'db' stand-in — otherwise the write raises, is swallowed, and goes unverified."""
+        """Keep the actual writer bound when mocking the database."""
         sd = _make_session_data(patron_id="kaelen")
         bg, _, session = _make_bg(session_data=sd)
         bg._speech_queue.append(

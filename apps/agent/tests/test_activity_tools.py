@@ -264,10 +264,7 @@ _VARIANT_CASES = [
 
 
 class TestSumTypeVariantsSatisfyTheRouter:
-    """The schema and the router are two halves of one contract (ADR 0008 §5 step 2 keeps
-    the per-kind `requires X` checks as the wall for non-LLM callers). A variant that omits
-    a field its kind requires would pass every mapping test above and then raise ToolError
-    on the DM's first call — so each variant is driven through the real router here."""
+    """Use the real router to reach the variant implementation."""
 
     @pytest.mark.parametrize("payload,dispatched", _VARIANT_CASES)
     async def test_a_fully_specified_variant_reaches_its_impl(self, payload, dispatched):

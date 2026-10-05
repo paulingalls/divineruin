@@ -49,8 +49,6 @@ class TestCompanionErrandData:
 class TestWorkerPath:
     @pytest.mark.asyncio
     async def test_worker_scores_affinity_against_the_assigned_companion(self):
-        """The nudge used to be skipped outright (its `if companion_id` guard never held), so
-        no errand has ever moved companion_relationships.affinity."""
         errand = {**SAMPLE_ACTIVITY, "activity_type": "companion_errand", "parameters": _ERRAND_PARAMS}
         _conn, txn_p, get_p, claim_p, revert_p = patch_claim_stack(errand)
 

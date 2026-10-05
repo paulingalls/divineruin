@@ -40,8 +40,7 @@ def test_companion_prompt_lists_only_gains_reached_by_the_player():
 
 
 def test_companion_prompt_omits_the_progression_header_before_the_first_gain():
-    """Lira's first gain is L5, so a level-1 player would otherwise get a labelled section with
-    nothing under it — which reads as "this companion has no progression"."""
+    """An empty progression must not announce a nonexistent unlock."""
     profile = get_companion_profile("companion_lira")
 
     prompt_1 = build_system_prompt("accord_guild_hall", CompanionState(id=profile.id, name=profile.name))
@@ -99,9 +98,6 @@ async def test_l20_resolve_names_the_assigned_companion_gain_once():
 
 @pytest.mark.asyncio
 async def test_levels_below_20_grant_no_legendary_companion():
-    """Fault-injects the `lvl == 20` gate. A level-up that stops short of 20 — and a nine-level
-    jump that crosses 2..10 — must produce ZERO companion grants; loosening the gate to any
-    other level makes the DM announce the legendary unlock on every level-up."""
     with patch("progression_tools.milestone_tools.apply_milestone_grant", new_callable=AsyncMock):
         one_level = await _award_from_level(18, 9300, 950)  # 18 -> 19
         big_jump = await _award_from_level(1, 0, 3450)  # 1 -> 10
@@ -120,9 +116,7 @@ async def test_multi_level_jump_across_20_grants_the_legendary_exactly_once():
 
 @pytest.mark.asyncio
 async def test_legendary_names_the_archetype_s_own_companion_not_a_fixed_one():
-    """Fault-injects `select_companion_for_archetype`: a beastcaller's legendary is SABLE's, and
-    because Sable is non-verbal the cue must say Narrate — her voice id is registered, so a
-    "Voice Sable" cue would have TTS speak a companion whose whole design is silence."""
+    """Sable is intentionally nonverbal."""
     with patch("progression_tools.milestone_tools.apply_milestone_grant", new_callable=AsyncMock):
         result = await _award_from_level(19, 10250, 1000, archetype="beastcaller")
 

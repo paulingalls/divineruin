@@ -160,9 +160,6 @@ class TestGetEconomyPricing:
 
 
 class TestCrossLanguageParity:
-    """The same content/pricing.json, fed through Python's pricing math, must produce
-    the sp values apps/server/src/repair.test.ts asserts for the TS REST quote."""
-
     def test_python_charge_matches_ts_quote_values(self):
         eco = _economy_row()
         costs = eco["repair_cost_sp"]

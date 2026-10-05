@@ -261,18 +261,7 @@ class TestNavigationPromptIncluded:
 
 class TestTrainingMidpointNarration:
     def test_prompt_names_the_state_the_training_resolve_really_returns(self):
-        """The resolve_activity result is the DM's only in-turn signal that the midpoint
-        choice took effect (the warm layer carries the state only from the NEXT turn on), so
-        the dispatch prompt has to name it — otherwise the DM narrates the feel of the work
-        and a player with their eyes closed cannot tell the cycle resumed. The only other
-        lane that notices is the m1_5 judged criterion "Tells the player their training
-        continues into its second half", which costs an API call and runs at pre-push.
-
-        The expected state is DERIVED from the producer, not spelled here (constraint 9):
-        `resolve_midpoint_decision().state` is verbatim what `_resolve_training_midpoint_impl`
-        puts in the tool's JSON. A literal grep stays GREEN when that value is renamed —
-        measured — leaving the prompt teaching a token production no longer emits.
-        """
+        """Derive midpoint feedback from the same turn result the player receives."""
         decision = get_midpoint_decision("technique_base")
         result = resolve_midpoint_decision("technique_base", decision.options[0].id, datetime(2026, 1, 1, tzinfo=UTC))
         assert result.state, "the producer returned an empty state — the assertion below would be vacuous"
@@ -321,11 +310,7 @@ _EXPECTED_AVAILABLE = [
 
 
 class TestRoleVoicesAreNotEnumerated:
-    """The 19 ROLE_* keys have a producer: query_info(kind="settlement_population") returns a
-    roster whose every entry carries the exact voice_id, and query_tools already tells the DM
-    to speak entries with that tag. Listing the keys invites tagging [ROLE_GUARD] directly,
-    skipping the lookup that supplies the townsfolk's name and personality.
-    """
+    """Resolve voice ids through the registered producer, not a guessed role name."""
 
     def test_no_role_key_appears_in_either_prompt(self):
         for name, prompt in (

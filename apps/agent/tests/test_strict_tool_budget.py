@@ -16,12 +16,7 @@ from llm_config import MAX_NULLABLE_PER_OBJECT, MAX_STRICT_TOOLS, MAX_UNION_PARA
 
 
 def test_every_agent_module_registers_its_tool_list():
-    """The one place a new gameplay agent is declared to the registry walks.
-
-    `AGENT_TOOL_LISTS` is discovered, so every walk parametrized on it widens to a new
-    agent on its own; this pins the set so ADDING or DROPPING one is a deliberate edit
-    rather than a silently narrower corpus underneath three absence guards.
-    """
+    """Agent registration controls the scope of every discovered tool walk."""
     assert {
         "exploration",
         "combat",
@@ -61,13 +56,7 @@ def _agent_schema_facts(tools) -> dict[str, SchemaFacts]:
 
 @pytest.mark.parametrize("name,tools", AGENT_TOOL_LISTS)
 def test_agent_within_strict_schema_budget(name, tools):
-    """The three limits ADR 0008 measured, walked rather than hand-counted.
-
-    Walked, not pinned by number, because Sprint 48's 016/017 reshape declare_phase
-    again: a hand-count would go stale, the walk stays true. No "warn at 12" union
-    mechanism (ADR 0008 decision 2): the exact per-agent pin below fires strictly
-    earlier, and a warning in a test lane is either a failure or noise.
-    """
+    """ADR 0008 requires measured strict-schema limits rather than stale hand counts."""
     facts = _agent_schema_facts(tools)
     unions = [path for tool, f in facts.items() for path in f.unions]
     assert len(unions) <= MAX_UNION_PARAMS, f"{name} sends {len(unions)} union-typed params: {unions}"
@@ -146,28 +135,9 @@ def test_agent_session_matcher_distinguishes_constructor_from_chained_calls():
 
 
 def test_every_agent_session_chooses_its_max_tool_steps():
-    """The tool-chain ceiling is chosen here, never inherited from the plugin default.
-
-    livekit permits `max_tool_steps + 1` consecutive steps and, on reaching the cap, does
-    NOT raise: it logs and regenerates with tool_choice="none" (agent_activity.py:3073).
-    The agent silently stops calling tools and narrates anyway, so a dropped death save
-    reaches the player as a plausible sentence — constraint 4 fail-quiet, from inside a
-    vendor library, which is exactly why the number must be deliberate.
-
-    5 permits six steps, and the arithmetic is RE-DERIVED here rather than left to read as
-    still-true: the restored Beat-3 loop (M29, story-016) shipped TWO reaction windows per enemy
-    attack, which adds resolve_phase calls to a round. Per TURN it still fits, because each pause
-    ENDS the turn — the DM narrates up to the blow and stops. The longest single turn with a pause
-    is `activate -> resolve_phase -> request_death_save` = 3. The longest turn with NO pause at all
-    (nobody holds a reaction, so the held pass runs straight through) is `declare_phase ->
-    resolve_phase (allies) -> resolve_phase (held enemies) -> request_death_save` = 4. Both fit
-    under six with headroom. The previous estimate of five priced a SINGLE-window model and went
-    stale the moment the second window landed; truncation is silent, so the number is stated as a
-    measurement, not an intuition. Scanning EVERY site, not just
-    agent.py, is what keeps the acceptance harnesses on production's ceiling — a harness
-    left on the default would truncate somewhere else and certify nothing about the real
-    session. Supersedes bug 50fd0838, whose arithmetic missed the +1.
-    """
+    """LiveKit permits max_tool_steps + 1 calls, then silently narrates with tool_choice="none".
+    Reaction pauses end turns; the longest uninterrupted turn uses four calls.
+    Keep every production and acceptance session on the deliberate ceiling."""
     sites = _agent_session_sites()
     assert sites, "no AgentSession construction found — the walk is broken, not the code"
     for where, call in sites:
@@ -181,16 +151,7 @@ def test_every_agent_session_chooses_its_max_tool_steps():
 
 
 def test_every_anthropic_acceptance_session_runs_strict_tool_schema_off():
-    """The Anthropic acceptance harnesses stay aligned with the rollback provider.
-
-    ADR 0008's sum types fixed the two limits the design pass measured (16 union-typed
-    parameters, the additionalProperties object), but Anthropic still rejected the larger
-    agents in the 2026-09-05 live probe. The Anthropic rollback therefore remains strict-off.
-
-    A harness left on the plugin default 400s on every dispatch turn, so the one tier that
-    reaches the API tests nothing. Production delegates its provider choice to the factory;
-    the four inline harnesses remain explicit and are the entire corpus this walk protects.
-    """
+    """Anthropic rejected the larger strict agents in the live probe; ADR 0008 keeps rollback strict-off."""
     sites = _agent_session_llm_calls()
     expected = {
         "tests/acceptance/test_combat_cache_prefix.py",
@@ -243,12 +204,7 @@ async def test_gameplay_factory_strict_direction(monkeypatch, selection, expecte
 
 
 def test_plugin_still_accepts_the_interim_strict_kwarg_and_defaults_on():
-    """The interim rides a PRIVATE plugin kwarg whose default is True. A plugin upgrade that
-    renames or drops it raises TypeError at session start; one that flips the default to False
-    would make the interim invisible rather than deliberate. Nothing in the fast lane constructs
-    an LLM (an API key is required), so the source pin above would stay green through either.
-    Pin the signature.
-    """
+    """The interim strict switch is a private vendor kwarg whose signature can change on upgrade."""
     from livekit.plugins import anthropic
 
     param = inspect.signature(anthropic.LLM.__init__).parameters["_strict_tool_schema"]

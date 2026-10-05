@@ -232,8 +232,6 @@ async def test_unknown_mentor_npc_raises():
 
 @pytest.mark.parametrize("requirements", [{"gold": 50}, {"disposition": "friendly"}, {}])
 async def test_requirements_missing_required_key_raises_valueerror(requirements):
-    """A malformed binding missing disposition/gold fails loud with ValueError (not a bare
-    KeyError), so story-003 maps it to ToolError instead of leaking a stack."""
     npc = {"id": "mentor_x", "mentor": {"culture": "X", "training_cycles": 3, "requirements": requirements}}
     with pytest.raises(ValueError):
         await mr.check_mentor_requirements(
@@ -264,8 +262,6 @@ async def _check_real_drathian(player):
 
 
 async def test_real_drathian_binding_skill_gate():
-    """An untrained but friendly, rich player fails on exactly the skill gate —
-    proves the aggregate reads real content."""
     res = await _check_real_drathian({"gold": 1000})
     assert res.met is False
     assert len(res.unmet) == 1
@@ -273,7 +269,5 @@ async def test_real_drathian_binding_skill_gate():
 
 
 async def test_real_drathian_binding_opens_for_athletics_proficient():
-    """The reported defect, against live content: an Athletics-PROFICIENT character with
-    no skill_advancement row was refused training the rules engine already opens."""
     res = await _check_real_drathian({"gold": 1000, "proficiencies": ["athletics"]})
     assert (res.met, res.unmet) == (True, [])

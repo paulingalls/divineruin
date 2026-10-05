@@ -105,8 +105,7 @@ class TestContentCrossReferences:
                         )
 
     def test_the_shared_validator_rejects_an_unknown_disposition_target(self):
-        """Constraint 1: the walk above is all-positive — no content row has a bad target, so it
-        cannot red against a validator that returns True unconditionally. This is the guard."""
+        """Unknown positive inputs must be refused rather than accepted by a default branch."""
         npc_ids, companion_ids = _load_ids("npcs.json"), _load_ids("companions.json")
         assert not is_valid_disposition_target("guildmaster_toren", npc_ids, companion_ids)
         assert is_valid_disposition_target("companion", npc_ids, companion_ids)

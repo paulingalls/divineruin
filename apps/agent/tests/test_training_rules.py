@@ -200,14 +200,12 @@ class TestCompleteTrainingCycle:
         assert isinstance(result.micro_bonus, dict)
 
     def test_skill_practice_fundamentals_gives_extra_counter(self) -> None:
-        """Fundamentals option: +2 counter toward advancement."""
         decision = get_midpoint_decision("skill_practice")
         fund_opt = next(o for o in decision.options if o.micro_bonus.get("type") == "fundamentals")
         result = complete_training_cycle("skill_practice", fund_opt.id)
         assert result.counter_increment == 2
 
     def test_skill_practice_advanced_gives_one_counter(self) -> None:
-        """Advanced option: +1 counter but advantage on next check."""
         decision = get_midpoint_decision("skill_practice")
         adv_opt = next(o for o in decision.options if o.micro_bonus.get("type") == "advanced")
         result = complete_training_cycle("skill_practice", adv_opt.id)
@@ -242,13 +240,6 @@ class TestDurationRanges:
 
 
 class TestCyclesRequired:
-    """get_cycles_required surfaces the data-driven learn-cycle count per spell tier.
-
-    Counts live in content/training_activity_types.json (loaded by the autouse
-    conftest fixture); the spec table is Cantrip 1 / Minor 2 / Standard 3 /
-    Major 5 / Supreme 8.
-    """
-
     @pytest.mark.parametrize(
         "activity_type,expected",
         [

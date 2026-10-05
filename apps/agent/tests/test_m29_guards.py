@@ -25,14 +25,7 @@ def test_the_declaration_union_rejects_a_malformed_variant():
 
 
 def test_the_warning_sink_reads_livekits_own_logger_and_livekits_own_words():
-    """The truncation arm's only SILENT failure mode, moved off the API key.
-
-    If the logger name drifts or livekit rewords the line, `warnings` stays empty forever and
-    the arm certifies instead of checking — and nothing else in this lane would say so: the
-    test above hands `assert_within_ceiling` a list it built itself. Both halves are read off
-    the vendor rather than modelled (constraint 9): the logger is livekit's own object, and the
-    constant is matched against the module that emits it.
-    """
+    """Use the installed logger so a wording mismatch cannot silently empty the evidence."""
     assert TRUNCATION_WARNING in inspect.getsource(agent_activity), (
         "livekit no longer logs these words — the truncation arm now matches nothing"
     )

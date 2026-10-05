@@ -224,8 +224,6 @@ class TestFinalizeCharacter:
 
 
 class TestPushCreationMusic:
-    """push_creation_music emits the mood as a deterministic Resolve, not an LLM tool."""
-
     async def test_emits_set_music_state_on_event_bus(self):
         bus = EventBus()
 
@@ -238,16 +236,12 @@ class TestPushCreationMusic:
 
 
 class TestCreationPromptDropsMusicTools:
-    """The creation prompt no longer instructs the LLM to call audio tools (M27)."""
-
     def test_no_play_sound_or_set_music_state_bullets(self):
         assert "play_sound" not in CREATION_SYSTEM_PROMPT
         assert "set_music_state" not in CREATION_SYSTEM_PROMPT
 
 
 class TestFullCreationFlow:
-    """End-to-end flow through the creation tools."""
-
     @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
     async def test_complete_flow(self, mock_create_player, mock_get_payload):

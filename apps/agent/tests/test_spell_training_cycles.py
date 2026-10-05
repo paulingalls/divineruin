@@ -231,12 +231,7 @@ class TestSpellTrainingAccrual:
 
     @pytest.mark.asyncio
     async def test_cached_narration_does_not_re_accrue(self):
-        """On a TTS retry the worker reuses cached narration and skips the non-cached
-        else block, so advance_learning_cycle does NOT re-run. A narration failure
-        BEFORE the cache write re-enters this block but is now safe: the progress row
-        is still present (delete is deferred until after the cache write), so advance
-        re-runs as a no-op via last_activity_id rather than re-INSERTing a phantom row —
-        see test_narration_failure_preserves_progress (debt b20815f92023, resolved)."""
+        """Cached narration must not re-accrue training on a TTS retry."""
         cached_activity = {
             **SAMPLE_SPELL_ACTIVITY,
             "data": {
@@ -269,14 +264,8 @@ class TestSpellTrainingAccrual:
 
     @pytest.mark.asyncio
     async def test_narration_failure_preserves_progress(self):
-        """A completed spell whose narration fails must NOT delete the progress row.
-
-        delete_learning_progress is deferred until after the narration is cached. If it
-        ran before narration, a narration-failure retry would find no progress row and
-        advance_learning_cycle would re-INSERT a phantom 1/5 row for the already-learned
-        spell (the last_activity_id guard can only protect a row that still exists) —
-        debt b20815f92023. record_learned still runs pre-narration (ON CONFLICT DO
-        NOTHING makes it idempotent); only the delete must wait."""
+        """Keep progress until narration is cached so a retry cannot insert a phantom learning row.
+        The learned-record insert is independently idempotent."""
         advance = AsyncMock(
             return_value={
                 "cycles_completed": 5,
