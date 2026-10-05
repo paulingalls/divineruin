@@ -268,7 +268,3 @@ frozen installs above before pushing: the python lane's workspace-report test
 reds on "installed package is missing". A story worktree cut before a
 worktree-validator change tears down with its old scripts and fails; run
 `bun run worktree:teardown --sweep` from the primary checkout afterwards.
-
-**Worktree bootstrap**: `bash scripts/init-worktree.sh`
-
-**Worktree teardown**: `bash scripts/teardown-worktree.sh`

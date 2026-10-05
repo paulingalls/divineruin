@@ -12,9 +12,9 @@ if [ "${1:-}" = __prepush_harness__ ] && [ "${2:-}" = __prepush_harness__ ]; the
     docs|lanes) PREPUSH_TEST_MODE="$3" ;;
   esac
 fi
-FULL_TIER=false
-if [ "${1:-}" = __xp_full_tier__ ] && [ "$#" -eq 1 ]; then FULL_TIER=true; fi
-if [ "$PREPUSH_TEST_MODE" = docs ] && [ "${4:-}" = full ]; then FULL_TIER=true; fi
+RELEASE_SUITE=false
+if [ "${1:-}" = __release_suite__ ] && [ "$#" -eq 1 ]; then RELEASE_SUITE=true; fi
+if [ "$PREPUSH_TEST_MODE" = docs ] && [ "${4:-}" = full ]; then RELEASE_SUITE=true; fi
 
 if [ "$PREPUSH_TEST_MODE" = production ]; then
   for name in BASH_TEST BASH_TEST_DIFF BASH_TEST_MASK_ENV BASH_TEST_LINT_FAIL PREPUSH_LANE_DRIVER PREPUSH_TEST_ENV_SOURCE PREPUSH_ART_DIR PREPUSH_E2E_DIR; do
@@ -24,6 +24,20 @@ if [ "$PREPUSH_TEST_MODE" = production ]; then
       exit 1
     fi
   done
+fi
+
+# Secret scan of the pushed range only, so history already on the remote is not
+# re-judged. It refuses when gitleaks is missing. The ref list is buffered so the
+# routing below still reads it from stdin. The harness modes feed fake shas and
+# the release suite has no refs, so only a real push is scanned.
+if [ "$PREPUSH_TEST_MODE" = production ] && [ "$RELEASE_SUITE" = false ]; then
+  # shellcheck source=.githooks/hook-lib.sh
+  . "$(dirname "$0")/hook-lib.sh"
+  push_refs=$(mktemp)
+  cat > "$push_refs"
+  if ! secrets_scan_push "${1:-}" < "$push_refs"; then rm -f "$push_refs"; exit 1; fi
+  exec < "$push_refs"
+  rm -f "$push_refs"
 fi
 
 # Env vars to strip from unit tests so missing mocks are caught locally.
@@ -312,7 +326,7 @@ else
   }
 fi
 
-if [ "$FULL_TIER" = true ]; then
+if [ "$RELEASE_SUITE" = true ]; then
   _run_tests
   exit 0
 fi

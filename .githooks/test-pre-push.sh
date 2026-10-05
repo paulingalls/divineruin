@@ -358,6 +358,7 @@ if python3 - "$HOOK" <<'PYHOOK'
 import os,pathlib,shutil,subprocess,sys,tempfile
 with tempfile.TemporaryDirectory(prefix='dr-hook-sweep-') as tmp:
     repo=pathlib.Path(tmp); (repo/'bin').mkdir(); hook=repo/'pre-push'; shutil.copy(sys.argv[1],hook)
+    shutil.copy(pathlib.Path(sys.argv[1]).with_name('hook-lib.sh'),repo/'hook-lib.sh')
     subprocess.run(['git','init','-q',str(repo)],check=True)
     bash=shutil.which('bash')
     (repo/'bin/bash').write_text(r"""#!/usr/bin/env python3
