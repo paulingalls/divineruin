@@ -14,9 +14,6 @@ import { HOLLOW_ECHO_RESULT, VEIL_WARD_CHANGED } from "@/audio/event-types";
 import { handleGameEvent } from "@/audio/game-event-handler";
 import { VALID_HOLLOW_ECHO_BANDS } from "@/audio/game-event-parsing";
 
-// The 7 Hollow Echo bands, mirroring the agent's hollow_echo._BANDS ids. The HUD
-// flashes the band name when an Overreach cast tears the Veil (story-004 publishes
-// HOLLOW_ECHO_RESULT {band}); only the band crosses the wire, never the raw d20.
 const HOLLOW_ECHO_BANDS: HollowEchoBand[] = [
   "nothing",
   "whisper",
@@ -31,11 +28,6 @@ beforeEach(() => {
   hudStore.getState().reset();
 });
 
-// --- HUD_ANCHORS: single source of truth for bottom-anchored HUD insets (Try-1) ---
-// The XP/divine-favor toasts and the combat tracker all anchor at the same bottom
-// inset; before this they each hard-coded bottom:80, so a layout shift meant editing
-// four places. HUD_ANCHORS centralizes the value (closes concern 61cae1d5).
-
 test("HUD_ANCHORS.bottomToast is the shared 80px bottom inset", () => {
   expect(HUD_ANCHORS.bottomToast).toBe(80);
 });
@@ -43,8 +35,6 @@ test("HUD_ANCHORS.bottomToast is the shared 80px bottom inset", () => {
 test("RESONANCE_TRACKER_BOTTOM_DEFAULT is sourced from HUD_ANCHORS (no drift)", () => {
   expect(RESONANCE_TRACKER_BOTTOM_DEFAULT).toBe(HUD_ANCHORS.bottomToast);
 });
-
-// --- HOLLOW_ECHO_DISPLAY: band -> dramatic label + accent color (story-005 M2) ---
 
 test("HOLLOW_ECHO_DISPLAY resolves every band to a non-empty label and color (no gaps)", () => {
   for (const band of HOLLOW_ECHO_BANDS) {
@@ -58,8 +48,6 @@ test("HOLLOW_ECHO_DISPLAY resolves every band to a non-empty label and color (no
 test("HOLLOW_ECHO_DISPLAY has no entries beyond the 7 canonical bands", () => {
   expect(Object.keys(HOLLOW_ECHO_DISPLAY).sort()).toEqual([...HOLLOW_ECHO_BANDS].sort());
 });
-
-// --- Veil Ward zone state (story-005 M2) ---
 
 test("veilWardActive defaults to false (no ward indicator)", () => {
   expect(hudStore.getState().veilWardActive).toBe(false);
@@ -77,8 +65,6 @@ test("reset() clears veilWardActive", () => {
   hudStore.getState().reset();
   expect(hudStore.getState().veilWardActive).toBe(false);
 });
-
-// --- Event dispatch: HOLLOW_ECHO_RESULT + VEIL_WARD_CHANGED (story-005 M3) ---
 
 test("HOLLOW_ECHO_RESULT / VEIL_WARD_CHANGED mirror the agent wire values", () => {
   expect(HOLLOW_ECHO_RESULT).toBe("hollow_echo_result");
@@ -125,11 +111,8 @@ test("veil_ward_changed reflects the active toggle in the store (AC2)", () => {
 test("veil_ward_changed with a non-boolean active is ignored (fail-safe)", () => {
   hudStore.getState().setVeilWardActive(true);
   handleGameEvent({ type: "veil_ward_changed", active: "yes" });
-  // Unchanged — a malformed payload must not corrupt the ward state.
   expect(hudStore.getState().veilWardActive).toBe(true);
 });
-
-// --- pushOverlay ---
 
 test("pushOverlay adds entry with generated id", () => {
   const id = hudStore.getState().pushOverlay("dice_result", { roll: 14 });
@@ -173,8 +156,6 @@ test("pushOverlay accepts custom TTL", () => {
   expect(hudStore.getState().overlays[0].ttl).toBe(5000);
 });
 
-// --- dismissOverlay ---
-
 test("dismissOverlay removes by id", () => {
   const id = hudStore.getState().pushOverlay("dice_result", {});
   hudStore.getState().dismissOverlay(id);
@@ -187,15 +168,11 @@ test("dismissOverlay with unknown id is no-op", () => {
   expect(hudStore.getState().overlays).toHaveLength(1);
 });
 
-// --- dismissAllOverlays ---
-
 test("dismissAllOverlays clears all", () => {
   hudStore.getState().pushOverlay("dice_result", {});
   hudStore.getState().dismissAllOverlays();
   expect(hudStore.getState().overlays).toHaveLength(0);
 });
-
-// --- Status effects ---
 
 test("addStatusEffect adds effect", () => {
   const effect: StatusEffect = { id: "buff-1", name: "Blessed", category: "buff" };
@@ -228,8 +205,6 @@ test("setStatusEffects replaces all", () => {
   expect(hudStore.getState().statusEffects[0].id).toBe("e2");
 });
 
-// --- Quest objective ---
-
 test("setActiveObjective sets objective and makes visible", () => {
   hudStore.getState().setActiveObjective({
     questName: "Guild Initiation",
@@ -250,8 +225,6 @@ test("setQuestObjectiveVisible toggles visibility", () => {
   hudStore.getState().setQuestObjectiveVisible(false);
   expect(hudStore.getState().questObjectiveVisible).toBe(false);
 });
-
-// --- Combat state ---
 
 test("setCombatState sets combat tracker", () => {
   const combat: CombatTrackerState = {
@@ -283,8 +256,6 @@ test("clearCombatState clears combat", () => {
   expect(hudStore.getState().combatState).toBeNull();
 });
 
-// --- Creation cards ---
-
 test("setCreationCards sets cards and clears selection", () => {
   const cards: CreationCard[] = [
     { id: "c1", title: "Warrior", description: "Strong fighter", category: "class" },
@@ -313,8 +284,6 @@ test("clearCreationCards clears cards and selection", () => {
   expect(hudStore.getState().selectedCreationCard).toBeNull();
 });
 
-// --- overlay type exhaustiveness ---
-
 test("all OverlayType values can be pushed to store", () => {
   // Keep in sync with OverlayType union in hud-store.ts.
   // If you add a new type, also add a renderer case in OverlayContent (overlay-manager.tsx).
@@ -336,8 +305,6 @@ test("all OverlayType values can be pushed to store", () => {
     expect(overlay.type).toBe(type);
   }
 });
-
-// --- reset ---
 
 test("reset clears everything", () => {
   hudStore.getState().pushOverlay("dice_result", {});

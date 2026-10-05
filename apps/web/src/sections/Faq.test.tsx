@@ -46,7 +46,6 @@ test("first item is open, the rest collapsed (aria-expanded reflects state)", ()
   const closed = html.match(/aria-expanded="false"/g) ?? [];
   expect(open.length).toBe(1);
   expect(closed.length).toBe(FAQ_ITEMS.length - 1);
-  // Exactly one item carries the open modifier.
   expect((html.match(/faq__item--open/g) ?? []).length).toBe(1);
 });
 
@@ -60,7 +59,6 @@ test("each question button links to its answer panel via aria-controls", () => {
   const html = renderToStaticMarkup(<Faq />);
   const controls = html.match(/aria-controls="/g) ?? [];
   expect(controls.length).toBe(FAQ_ITEMS.length);
-  // The decorative toggle glyph is hidden from assistive tech.
   expect(html).toContain('aria-hidden="true"');
 });
 
@@ -68,10 +66,8 @@ test("each answer region is named by its question button (WAI-ARIA accordion)", 
   const html = renderToStaticMarkup(<Faq />);
   const regions = html.match(/role="region"/g) ?? [];
   const named = html.match(/aria-labelledby="/g) ?? [];
-  // Every region carries an accessible name (no unnamed duplicate landmarks).
   expect(regions.length).toBe(FAQ_ITEMS.length);
   expect(named.length).toBe(FAQ_ITEMS.length);
-  // Each labelledby points at an id that an actual question button declares.
   const labelIds = [...html.matchAll(/aria-labelledby="([^"]+)"/g)].map((m) => m[1]);
   for (const id of labelIds) {
     expect(html).toContain(`id="${id}"`);

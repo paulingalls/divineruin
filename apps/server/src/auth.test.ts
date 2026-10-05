@@ -8,7 +8,6 @@ process.env.JWT_SECRET = "48d10d0851017d6e6d6f40ae66e6e15071a7caa782cb343c5c8dad
 process.env.RESEND_API_KEY = "test_key_must_not_leak_to_resend";
 process.env.RESEND_FROM_EMAIL = "test-sender@example.com";
 
-// Mock the database with a call-sequence approach
 let mockCallHandler: (strings: TemplateStringsArray, ...values: unknown[]) => Promise<unknown[]>;
 
 function setMockResults(...results: unknown[][]) {
@@ -68,8 +67,6 @@ afterEach(() => {
   globalThis.fetch = ORIGINAL_FETCH;
 });
 
-// --- JWT ---
-
 describe("signJwt / verifyJwt", () => {
   test("round-trips a valid token", async () => {
     const token = await signJwt({ accountId: "acc-123", playerId: "player_abc" });
@@ -90,8 +87,6 @@ describe("signJwt / verifyJwt", () => {
     expect(result).toBeNull();
   });
 });
-
-// --- requireAuth ---
 
 describe("requireAuth", () => {
   test("returns 401 without Authorization header", async () => {
@@ -120,8 +115,6 @@ describe("requireAuth", () => {
   });
 });
 
-// --- handleRequestCode ---
-
 describe("handleRequestCode", () => {
   test("rejects missing email", async () => {
     const res = await handleRequestCode(jsonReq("/api/auth/request-code", {}));
@@ -136,7 +129,6 @@ describe("handleRequestCode", () => {
   });
 
   test("returns ok for valid email", async () => {
-    // Calls: INSERT account, SELECT account, UPDATE old codes, INSERT new code
     setMockResults(
       [], // INSERT ... ON CONFLICT
       [{ id: "acc-uuid-123" }], // SELECT id FROM accounts
@@ -151,7 +143,6 @@ describe("handleRequestCode", () => {
     expect(body.ok).toBe(true);
   });
 
-  // Resolves concern 763274472fc8 (live Resend leak in tests).
   test("does NOT call api.resend.com under bun:test even with RESEND_API_KEY set", async () => {
     setMockResults([], [{ id: "acc-uuid-resend-guard" }], [], []);
     const res = await handleRequestCode(
@@ -165,9 +156,6 @@ describe("handleRequestCode", () => {
     expect(resendCalls.length).toBe(0);
   });
 
-  // Resolves concern 15cb783cf387: AC2 positive side — the dev-code log fallback
-  // (now emitted by the email seam) still fires under test env when the Resend
-  // branch is mocked.
   test("logs DEV CODE fallback under bun:test instead of calling Resend", async () => {
     setMockResults([], [{ id: "acc-uuid-devlog" }], [], []);
     const logSpy = mock(() => {});
@@ -190,8 +178,6 @@ describe("handleRequestCode", () => {
   });
 });
 
-// --- handleVerifyCode ---
-
 describe("handleVerifyCode", () => {
   test("rejects missing email/code", async () => {
     const res = await handleVerifyCode(jsonReq("/api/auth/verify-code", {}));
@@ -210,7 +196,6 @@ describe("handleVerifyCode", () => {
   });
 
   test("returns token on valid verification", async () => {
-    // Calls: find account, find code, mark used, update login, find player
     setMockResults(
       [{ id: "acc-uuid-abc" }], // SELECT account by email
       [{ id: "code-uuid-1", code: "123456", failed_attempts: 0 }], // SELECT active code
@@ -237,7 +222,6 @@ describe("handleVerifyCode", () => {
   });
 
   test("creates player on first login", async () => {
-    // Calls: find account, find code, mark used, update login, find player (empty), insert player
     setMockResults(
       [{ id: "acc-uuid-new" }], // SELECT account
       [{ id: "code-uuid-2", code: "654321", failed_attempts: 0 }], // SELECT active code
@@ -262,7 +246,6 @@ describe("handleVerifyCode", () => {
   });
 
   test("wrong code increments failed_attempts", async () => {
-    // Calls: find account, find code (attempts=0), update failed_attempts
     setMockResults(
       [{ id: "acc-uuid-abc" }],
       [{ id: "code-uuid-1", code: "123456", failed_attempts: 0 }],
@@ -279,7 +262,6 @@ describe("handleVerifyCode", () => {
   });
 
   test("5th wrong attempt invalidates the code", async () => {
-    // Calls: find account, find code (attempts=4), update used+failed_attempts
     setMockResults(
       [{ id: "acc-uuid-abc" }],
       [{ id: "code-uuid-1", code: "123456", failed_attempts: 4 }],
@@ -296,7 +278,6 @@ describe("handleVerifyCode", () => {
   });
 
   test("locked-out code rejects even correct input", async () => {
-    // Calls: find account, find code (attempts=5), update used
     setMockResults(
       [{ id: "acc-uuid-abc" }],
       [{ id: "code-uuid-1", code: "123456", failed_attempts: 5 }],
@@ -312,8 +293,6 @@ describe("handleVerifyCode", () => {
     expect(res.status).toBe(401);
   });
 });
-
-// --- handleGetMe ---
 
 describe("handleGetMe", () => {
   test("returns 401 without auth", async () => {
@@ -335,11 +314,8 @@ describe("handleGetMe", () => {
   });
 });
 
-// --- Timing-safe code comparison ---
-
 describe("Timing-safe code comparison", () => {
   test("rejects code with different length without timing leak", async () => {
-    // Code in DB is 6 digits; submitted code is 3 digits — length mismatch fast path
     setMockResults(
       [{ id: "acc-uuid-abc" }],
       [{ id: "code-uuid-1", code: "123456", failed_attempts: 0 }],
@@ -355,8 +331,6 @@ describe("Timing-safe code comparison", () => {
     expect(res.status).toBe(401);
   });
 });
-
-// --- Content-Type validation ---
 
 describe("Content-Type validation", () => {
   test("handleRequestCode rejects missing Content-Type", async () => {
@@ -397,8 +371,6 @@ describe("Content-Type validation", () => {
     expect(result).toEqual({ key: "value" });
   });
 });
-
-// --- Tightened email regex ---
 
 describe("Email validation", () => {
   test("rejects email without proper TLD", async () => {

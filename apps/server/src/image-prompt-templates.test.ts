@@ -61,7 +61,6 @@ test("all templates have consistent structure", () => {
     expect(t.id).toBe(id);
     expect(t.promptText.length).toBeGreaterThan(50);
     expect(["3:4", "16:9", "1:1", "2:3", "9:16"]).toContain(t.aspectRatio);
-    // Every variable slot must appear in the prompt text
     for (const slot of t.variableSlots) {
       expect(t.promptText).toContain(`{{${slot}}}`);
     }

@@ -32,8 +32,6 @@ beforeEach(resetStores);
 const EVENTS = FIXTURE.events;
 const SPELL_ROW = FIXTURE.spell_row;
 
-// --- Type-string parity: the fixture pins to the TS constants (mirrors the Python pin) ---
-
 test("fixture event types match the TS wire constants", () => {
   expect(EVENTS.session_end_guest.type).toBe(E.SESSION_END);
   expect(EVENTS.session_end_cancelled.type).toBe(E.SESSION_END);
@@ -111,10 +109,7 @@ test("fixture hollow_echo_bands match the mobile HollowEchoBand vocabulary", () 
   expect(new Set(FIXTURE.hollow_echo_bands)).toEqual(new Set(Object.keys(HOLLOW_ECHO_DISPLAY)));
 });
 
-// --- The canonical fixtured payloads must be consumed by the TS handlers/parser ---
-
 test("resonance_changed fixture drives the resonance state into the store", () => {
-  // The fixture's caster_id is the local player, so the push updates the tracker.
   characterStore
     .getState()
     .setCharacter({ ...SAMPLE_CHARACTER, playerId: EVENTS.resonance_changed.caster_id });
@@ -123,8 +118,6 @@ test("resonance_changed fixture drives the resonance state into the store", () =
 });
 
 test("resonance_changed for another party member does NOT touch the local tracker", () => {
-  // M14 story-004: a push carrying a DIFFERENT caster_id is ignored — the single global tracker
-  // belongs to the local player, so a teammate's resonance never overwrites the local HUD.
   characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "someone_else" });
   handleGameEvent({ ...EVENTS.resonance_changed });
   expect(hudStore.getState().resonanceState).toBeNull();
@@ -143,7 +136,6 @@ test("veil_ward_changed fixture toggles the ward state", () => {
 });
 
 test("veil_ward_changed lights the indicator on a client that did NOT raise it", () => {
-  // Story-008 (scope_model.md §6): the ward is scope-owned, so it lights EVERY in-scope client.
   characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "someone_else" });
   handleGameEvent({ ...EVENTS.veil_ward_changed });
   expect(hudStore.getState().veilWardActive).toBe(true);
@@ -175,12 +167,6 @@ test("resonance_changed for another party member is still filtered out", () => {
   expect(hudStore.getState().resonanceState).toBe(before);
 });
 
-// --- xp_awarded / specialization_choice: the Python key names ARE the contract (story-001) ---
-//
-// The handler read `xp_gained`/`level_up` while every Python emitter published `amount`/
-// `leveled_up`, so a real agent award rendered "+0 XP" and never fired the level-up overlay.
-// Both lanes now assert this fixture, so the next rename goes red instead of silent.
-
 test("xp_awarded fixture drives the character store and the level-up overlay", () => {
   characterStore
     .getState()
@@ -196,8 +182,6 @@ test("xp_awarded fixture drives the character store and the level-up overlay", (
 });
 
 test("xp_awarded without a level-up toasts the fixture's real amount", () => {
-  // The +0 XP bug lived here: the handler defaulted a missing `xp_gained` to 0, so the
-  // toast rendered "+0 XP" for every real award. Pin the toast to `amount`.
   characterStore
     .getState()
     .setCharacter({ ...SAMPLE_CHARACTER, playerId: EVENTS.xp_awarded.player_id });
@@ -253,10 +237,7 @@ test("spell_row fixture parses with its spell_tier intact (not blanked)", () => 
   expect(row.is_prepared).toBe(SPELL_ROW.is_prepared);
 });
 
-// --- Drift demonstration: the contract catches a cross-language key rename (E2E) ---
-
 test("a renamed resonance key is dropped by the handler (drift would blank the HUD)", () => {
-  // If a publisher renamed `state`, the handler reads event.state -> undefined -> no-op.
   handleGameEvent({ type: EVENTS.resonance_changed.type, stat: EVENTS.resonance_changed.state });
   expect(hudStore.getState().resonanceState).toBeNull();
 });
@@ -272,13 +253,6 @@ test("a spell row missing spell_tier coerces to '' (the silent blank 82fc guards
   ]);
   expect(row.spell_tier).toBe("");
 });
-
-// --- divine_favor_changed: the favor bar's denominator and its recipient (story-002) ---
-//
-// The handler reads `max` for the bar's denominator, falling back to 100 — but no Python
-// publisher ever sent it, so the scale was fabricated on every real event. Same both-sides-
-// mocked shape as xp_awarded above: each lane's own tests passed a payload the other never
-// produced. Quest favor is party-wide, so the fixture also carries the recipient.
 
 test("divine_favor_changed fixture drives the favor level AND its real max", () => {
   characterStore
@@ -302,14 +276,6 @@ test("a teammate's divine_favor_changed does NOT move the local favor bar", () =
   expect(characterStore.getState().divineFavorLevel).toBe(before);
   expect(hudStore.getState().overlays).toHaveLength(0);
 });
-
-// --- item_acquired: the item card's three fields (combat loot vs inventory) ---
-//
-// The overlay renders name/description/rarity and nothing else. The combat-loot pass published
-// only item_id/quantity/source/player_id, so every drop drew a blank card while the inventory
-// path looked fine — two writers, one reader, and each lane's own tests mocked its own half.
-// Both writers now build the payload from one shared builder, and the fixture is what both
-// lanes assert against.
 
 test("item_acquired fixture fills the item card, not a blank overlay", () => {
   characterStore

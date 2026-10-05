@@ -17,7 +17,6 @@ const catalog = (await Bun.file(
 
 const byId = new Map(catalog.map((a) => [a.id, a]));
 
-// The 12 base archetype categories (Merchant is represented by its 7 subtypes, below).
 const BASE_ARCHETYPES = [
   "blacksmith",
   "innkeeper",
@@ -43,7 +42,6 @@ const MERCHANT_SUBTYPES = [
   "merchant_black_market",
 ];
 
-// Combat-bearing archetypes carry a combat_stats block; pure non-combatants are null.
 const COMBATANTS = ["guard", "soldier_ashmark", "assassin_rogue", "mage", "priest"];
 const NON_COMBATANTS = ["scholar_sage", "stablemaster"];
 
@@ -94,9 +92,7 @@ describe("role_archetypes.json — row shape", () => {
       for (const trait of a.personality_traits) expect(trait.trim().length).toBeGreaterThan(0);
       expect(Array.isArray(a.services)).toBe(true);
       expect(typeof a.price_modifier).toBe("number");
-      // inventory_pool is a pool id or explicitly null.
       expect(a.inventory_pool === null || typeof a.inventory_pool === "string").toBe(true);
-      // combat_stats is a block or explicitly null (no undefined — the contract is total).
       expect(a.combat_stats === null || typeof a.combat_stats === "object").toBe(true);
     }
   });

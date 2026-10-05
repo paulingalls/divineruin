@@ -9,12 +9,6 @@ import {
   craftingDurationSeconds,
 } from "./recipes.ts";
 
-// Unit tests for the M5.1 recipe loader (story-003). parseRecipeRow is the
-// production canonical validator (parseXRow fail-loud per the DB-loaded
-// content-config convention); the accessors mirror activity_templates training
-// programs. loadRecipes() (the SELECT) is exercised against a real DB by the
-// acceptance harness + story-007 capstone, so the bun lane stays DB-free here.
-
 function validRecipeData(): Record<string, unknown> {
   return {
     name: "Steel Longsword",
@@ -119,7 +113,6 @@ describe("parseRecipeRow — fail-loud validation", () => {
     expect(() => parseRecipeRow("x", { ...validRecipeData(), output_quantity: 0 })).toThrow();
     expect(() => parseRecipeRow("x", { ...validRecipeData(), crafting_dc: 12.5 })).toThrow();
     expect(() => parseRecipeRow("x", { ...validRecipeData(), study_cost: -2 })).toThrow();
-    // async_cycles=0 (instant field recipe) and study_cost=0 stay valid.
     expect(() =>
       parseRecipeRow("x", { ...validRecipeData(), async_cycles: 0, study_cost: 0 }),
     ).not.toThrow();
@@ -254,7 +247,6 @@ describe("parseRecipeRow accepts all shipped content (closes AC4 / concern 55289
     for (const entry of raw) {
       const id = (entry as { id?: unknown }).id;
       if (typeof id !== "string") throw new Error("recipe entry has no string id");
-      // Must not throw — the production parser accepts all shipped recipes.
       parseRecipeRow(id, entry);
     }
     expect(raw.length).toBeGreaterThanOrEqual(70);
@@ -267,7 +259,6 @@ describe("parseRecipeRow accepts all shipped content (closes AC4 / concern 55289
 // CRAFT_FLOOR — is caught here rather than discovered in play. The async_cycles->duration
 // FUNCTION is pinned above; this pins the CONTENT against that function.
 describe("craftingDurationSeconds — content wait-window parity", () => {
-  // min seconds expected per tier (max is always 2x min). expert spans 3-4 cycles.
   const EXACT_MIN: Record<string, number> = {
     basic: 900, // field-craft floor, fast by design
     trained: 14400, // 1 cycle
@@ -282,7 +273,6 @@ describe("craftingDurationSeconds — content wait-window parity", () => {
       const recipe = parseRecipeRow(entry.id, entry);
       const { min, max } = craftingDurationSeconds(recipe);
       expect(max).toBe(min * 2);
-      // A non-basic recipe must never floor to the 15-min CRAFT_FLOOR — that's the drift.
       if (recipe.tier !== "basic") {
         expect(min).toBeGreaterThan(900);
       }

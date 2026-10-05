@@ -1,10 +1,5 @@
 import { test, expect, describe, mock, beforeEach } from "bun:test";
 
-// Mock db.ts before importing the handler — the real db.ts throws at import
-// without DATABASE_URL, so every DB-touching server test mocks it (auth.test.ts
-// pattern). We record each sql`` call's values so a test can assert the INSERT
-// received the normalized email + source. The real-Postgres insert and the
-// ON CONFLICT dedupe are proven end-to-end by story-006's running-server E2E.
 interface SqlCall {
   values: unknown[];
 }
@@ -41,13 +36,11 @@ describe("handleJoinWaitlist", () => {
     const res = await handleJoinWaitlist(jsonReq({ email: "  New.User@Example.COM " }));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
-    // One INSERT, carrying the trimmed/lowercased email and a null source.
     expect(sqlCalls.length).toBe(1);
     expect(sqlCalls[0]!.values).toEqual(["new.user@example.com", null]);
   });
 
   test("is idempotent on a duplicate email (ON CONFLICT DO NOTHING) — still 200", async () => {
-    // The mock returns [] like ON CONFLICT DO NOTHING on an existing row.
     const res = await handleJoinWaitlist(jsonReq({ email: "dup@example.com" }));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });

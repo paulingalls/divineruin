@@ -146,7 +146,6 @@ describe("handleGetCatchUpFeed", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { items: { id: string; type: string }[] };
 
-    // pending_decision should come first, then in_progress
     expect(body.items[0]!.type).toBe("pending_decision");
     expect(body.items[1]!.type).toBe("in_progress");
   });
@@ -236,7 +235,6 @@ describe("handleGetCatchUpFeed", () => {
     const res = await handleGetCatchUpFeed(req, "player_1");
     expect(res.status).toBe(200);
     const body = (await res.json()) as { items: { type: string }[] };
-    // Only companion idle should remain
     expect(body.items).toHaveLength(1);
     expect(body.items[0]!.type).toBe("companion_idle");
   });

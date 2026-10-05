@@ -69,6 +69,5 @@ describe("formatCurrencyChip", () => {
   });
 });
 
-// Type-level guard: CurrencyKind is the union CURRENCY_UNITS is keyed on.
 const _typeGuard: CurrencyKind = "silver";
 void _typeGuard;

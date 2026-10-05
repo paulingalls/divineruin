@@ -47,8 +47,6 @@ describe("handleCreateActivity — companion errands", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { activity_id: string; status: string };
     expect(body.status).toBe("in_progress");
-    // Errands stamp slot='companion' (the ActivitySlot value, not 'companion_errand');
-    // countActiveBySlot's companion bucket matches both forms.
     const insert = getCapturedQueries().find((q) => q.sql.includes("INSERT INTO async_activities"));
     expect((insert!.values[2] as { slot: string }).slot).toBe("companion");
   });
@@ -88,8 +86,6 @@ describe("handleCreateActivity — companion errands", () => {
   });
 
   test("a caller naming Kael cannot smuggle a Sable player past the social block", async () => {
-    // The old default (companion_id || "companion_kael") checked the block against Kael and
-    // let this through; resolution then ran as Sable with an empty errand frame.
     setQueryStubs([playerBeastcaller, companionSable, slotsEmpty]);
     const req = makeRequest("POST", "/api/activities", {
       type: "companion_errand",

@@ -48,8 +48,6 @@ beforeEach(() => {
 
 describe("handleCreateActivity", () => {
   test("creates crafting activity", async () => {
-    // iron_sword needs 1 iron_ingot + 1 leather_strip; player owns exactly 1 each,
-    // so both stacks deplete to 0 and are deleted.
     setQueryStubs([
       playerWarrior,
       forgeRental,
@@ -78,7 +76,6 @@ describe("handleCreateActivity", () => {
     expect(body.activity_id).toStartWith("activity_");
     expect(body.status).toBe("in_progress");
     expect(body.resolve_at_estimate).toBeTruthy();
-    // A normal craft stamps its natural slot so countActiveBySlot buckets it as crafting.
     const insert = getCapturedQueries().find((q) => q.sql.includes("INSERT INTO async_activities"));
     expect((insert!.values[2] as { slot: string }).slot).toBe("crafting");
   });
@@ -314,8 +311,6 @@ describe("handleCreateActivity", () => {
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string };
     expect(body.error).toContain("no access to a forge workspace");
-    // Rejected before the txn: no FOR UPDATE locks (activity/material), no material
-    // consumption, no insert. (The lab-ownership SELECT is a pre-txn read and is fine.)
     expect(getCapturedQueries().some((q) => q.sql.includes("FOR UPDATE"))).toBe(false);
     expect(getCapturedQueries().some((q) => q.sql.includes("INSERT INTO async_activities"))).toBe(
       false,
@@ -362,7 +357,6 @@ describe("handleCreateActivity", () => {
   test("Artificer WITHOUT a Portable Lab with a full crafting slot is rejected (AC#2)", async () => {
     setQueryStubs([
       { match: "FROM players", result: [{ location_id: "millhaven", class: "artificer" }] },
-      // no lab stub — the exception does not apply
       slotsCraftingFull,
     ]);
     const req = makeRequest("POST", "/api/activities", {
@@ -375,7 +369,6 @@ describe("handleCreateActivity", () => {
   });
 
   test("rejects missing materials", async () => {
-    // material check returns no rows -> none owned (no "AS quantity" stub).
     setQueryStubs([playerWarrior, forgeRental, skillExpert, slotsEmpty]);
 
     const req = makeRequest("POST", "/api/activities", {
@@ -389,7 +382,6 @@ describe("handleCreateActivity", () => {
   });
 
   test("rejects when owned quantity is below the required quantity", async () => {
-    // reinforced_shield needs 2 iron_ingot; player owns only 1.
     setQueryStubs([
       playerWarrior,
       forgeRental,
@@ -415,8 +407,6 @@ describe("handleCreateActivity", () => {
   });
 
   test("consumes materials by quantity — decrements a surplus stack, deletes a depleted one", async () => {
-    // reinforced_shield needs 2 iron_ingot + 1 leather_strip; player owns 3 iron, 1 leather.
-    // iron: 3-2=1 remaining -> UPDATE; leather: 1-1=0 -> DELETE.
     setQueryStubs([
       playerWarrior,
       forgeRental,
@@ -454,7 +444,6 @@ describe("handleCreateActivity", () => {
       (q) => q.sql.includes("DELETE FROM player_inventory") && q.values.includes("leather_strip"),
     );
     expect(leatherDelete).toBeDefined();
-    // The depleted stack must NOT be UPDATEd (no zero-quantity ghost row left behind).
     const leatherUpdate = getCapturedQueries().find(
       (q) => q.sql.includes("UPDATE player_inventory") && q.values.includes("leather_strip"),
     );

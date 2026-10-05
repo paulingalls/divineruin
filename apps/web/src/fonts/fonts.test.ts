@@ -5,8 +5,6 @@ import { FontTokens } from "@divineruin/design-tokens";
 const fontsDir = import.meta.dir;
 const css = await Bun.file(join(fontsDir, "fonts.css")).text();
 
-// The three distinct brand families, derived from the token stacks
-// (FontTokens.<role>.web = "'Cormorant Garamond', serif" -> "Cormorant Garamond").
 const families = [...new Set(Object.values(FontTokens).map((t) => t.web))].map((stack) => {
   const m = stack.match(/'([^']+)'/);
   if (!m?.[1]) throw new Error(`no quoted family in stack: ${stack}`);
@@ -19,7 +17,6 @@ test("derives exactly the three brand families from the tokens", () => {
 
 test("every brand family has at least one self-hosted woff2 @font-face with font-display:swap", () => {
   for (const family of families) {
-    // Find each @font-face block naming this family (exact, not the Fallback face).
     const blocks = [...css.matchAll(/@font-face\s*\{([^}]*)\}/g)].map((m) => m[1] ?? "");
     const faces = blocks.filter((b) => b.includes(`font-family: "${family}";`));
     expect(faces.length).toBeGreaterThan(0);
@@ -40,10 +37,6 @@ test("every brand family has a metric-adjusted fallback face (CLS overrides set)
     expect(fallback!).toMatch(/line-gap-override:\s*[\d.]+%/);
   }
 });
-
-// The --font-* stacks that reference each "<family> Fallback" face now live in
-// theme.css (gen-theme.ts is the sole owner); that assertion moved to
-// gen-theme.test.ts. fonts.css only declares the @font-face faces.
 
 test("every src url() points at a woff2 that exists on disk", async () => {
   const urls = [...css.matchAll(/url\("(\.\/[^"]+\.woff2)"\)/g)].map((m) => m[1] ?? "");

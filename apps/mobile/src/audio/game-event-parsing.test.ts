@@ -11,8 +11,6 @@ function encode(data: object): Uint8Array {
   return new TextEncoder().encode(JSON.stringify(data));
 }
 
-// --- parseGameEvent ---
-
 test("parseGameEvent rejects an oversize payload", () => {
   const oversized = new Uint8Array(MAX_EVENT_PAYLOAD_BYTES + 1);
   expect(parseGameEvent(oversized)).toBeNull();
@@ -28,8 +26,6 @@ test("parseGameEvent parses a valid payload", () => {
   expect(event!.type).toBe("dice_roll");
   expect(event!.roll).toBe(15);
 });
-
-// --- parseCombatant ---
 
 test("parseCombatant rejects null and malformed input", () => {
   expect(parseCombatant(null)).toBeNull();
@@ -48,8 +44,6 @@ test("parseCombatant fills fail-soft defaults for missing optional fields", () =
   expect(combatant!.conditions).toEqual([]);
   expect(combatant!.isActive).toBe(false);
 });
-
-// --- parseInventoryItems / parseRarity ---
 
 test("parseInventoryItems shapes raw items with defaults", () => {
   const items = parseInventoryItems([

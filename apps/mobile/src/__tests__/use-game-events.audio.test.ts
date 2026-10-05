@@ -57,8 +57,6 @@ beforeEach(() => {
   resetStores();
 });
 
-// --- handleGameEvent: play_sound / dice_roll ---
-
 function expectEventPlays(soundName: string) {
   const source = lookupSound(soundName);
   if (source === null) throw new Error(`Missing registry entry for ${soundName}`);
@@ -242,24 +240,13 @@ test.each(["nonexistent", "toString", "constructor", "__proto__"])(
   },
 );
 
-// --- Milestone 8.1: Music system events ---
-
 test("set_music_state with valid string does not crash", () => {
   handleGameEvent({ type: "set_music_state", music_state: "wonder" });
-  // Verifying no error thrown — overrideMusicState is called
 });
 
 test("set_music_state ignores non-string", () => {
   handleGameEvent({ type: "set_music_state", music_state: 42 });
-  // No crash, no-op
 });
-
-// --- M27 story-001: location tags reach the Stage ---
-// The client music engine (inferExplorationState) derives the exploration/tension/hollow/silence
-// track from the pushed location context on every move — but only if it receives the location's
-// tags. The live LOCATION_CHANGED handler used to hardcode tags:[], so the tag branch was dead
-// (music-from-the-Stage worked only at session-init). These tests pin the fix: the handler routes
-// event.tags into locationContext so the engine can read them.
 
 test("location_changed routes event.tags into locationContext", () => {
   handleGameEvent({

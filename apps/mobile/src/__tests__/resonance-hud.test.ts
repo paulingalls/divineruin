@@ -20,8 +20,6 @@ beforeEach(resetStores);
 // Canonical list, sourced from the handler's validation set — no redefinition.
 const STATES: ResonanceState[] = [...VALID_RESONANCE_STATES];
 
-// --- Display map: qualitative label + distinct color, never a number ---
-
 test("RESONANCE_DISPLAY maps each state to its qualitative label", () => {
   expect(RESONANCE_DISPLAY.stable.label).toBe("Stable");
   expect(RESONANCE_DISPLAY.flickering.label).toBe("Flickering");
@@ -39,8 +37,6 @@ test("RESONANCE_DISPLAY gives each state a distinct color", () => {
   expect(new Set(colors).size).toBe(STATES.length);
 });
 
-// --- Store slice ---
-
 test("resonanceState defaults to null (tracker hidden)", () => {
   expect(hudStore.getState().resonanceState).toBeNull();
 });
@@ -56,8 +52,6 @@ test("reset() clears resonanceState", () => {
   expect(hudStore.getState().resonanceState).toBeNull();
 });
 
-// --- Tracker vertical offset: clears the combat tracker during combat (843b) ---
-
 test("resonanceTrackerBottom keeps the default anchor when no combat is active", () => {
   expect(resonanceTrackerBottom(false)).toBe(RESONANCE_TRACKER_BOTTOM_DEFAULT);
   expect(RESONANCE_TRACKER_BOTTOM_DEFAULT).toBe(80);
@@ -68,9 +62,6 @@ test("resonanceTrackerBottom lifts the pill above the combat tracker during comb
   // The combat tracker anchors at bottom:80, so the in-combat offset must clear it.
   expect(RESONANCE_TRACKER_BOTTOM_IN_COMBAT).toBeGreaterThan(RESONANCE_TRACKER_BOTTOM_DEFAULT);
 });
-
-// --- Measured anchor (debt b52a56bc): a tall (many-combatant) tracker can exceed the
-// fixed 140 lift, so once the tracker reports its real height the pill clears it ---
 
 test("resonanceTrackerBottom falls back to the fixed in-combat lift before the tracker is measured", () => {
   // Unmeasured (height 0) during combat → the conservative fixed fallback.
@@ -88,8 +79,6 @@ test("resonanceTrackerBottom clears the measured tracker height plus a gap", () 
 test("resonanceTrackerBottom ignores the measured height when no combat is active", () => {
   expect(resonanceTrackerBottom(false, 260)).toBe(RESONANCE_TRACKER_BOTTOM_DEFAULT);
 });
-
-// --- combatTrackerHeight store field: set by CombatTracker.onLayout, cleared on exit ---
 
 test("combatTrackerHeight defaults to 0 (unmeasured)", () => {
   expect(hudStore.getState().combatTrackerHeight).toBe(0);
@@ -112,8 +101,6 @@ test("reset() clears the measured tracker height", () => {
   expect(hudStore.getState().combatTrackerHeight).toBe(0);
 });
 
-// --- Event dispatch ---
-
 test("RESONANCE_CHANGED mirror const matches the agent wire value", () => {
   expect(RESONANCE_CHANGED).toBe("resonance_changed");
 });
@@ -130,8 +117,6 @@ test("dispatch accepts every valid state, ignoring current/max", () => {
     expect(hudStore.getState().resonanceState).toBe(state);
   }
 });
-
-// --- Fail-safe: unrecognized payloads leave the store untouched ---
 
 test("handleGameEvent ignores an unknown resonance state", () => {
   handleGameEvent({ type: "resonance_changed", state: "bogus", current: 0, max: 9 });

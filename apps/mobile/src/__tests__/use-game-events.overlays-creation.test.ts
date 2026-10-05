@@ -5,8 +5,6 @@ import { resetStores } from "./use-game-events.helpers";
 
 beforeEach(resetStores);
 
-// --- handleGameEvent: creation_cards ---
-
 test("creation_cards sets cards in hudStore", () => {
   handleGameEvent({
     type: "creation_cards",
@@ -19,8 +17,6 @@ test("creation_cards sets cards in hudStore", () => {
   expect(hudStore.getState().creationCards[0].title).toBe("Warrior");
 });
 
-// --- handleGameEvent: creation_card_selected ---
-
 test("creation_card_selected sets selection in hudStore", () => {
   hudStore
     .getState()
@@ -28,8 +24,6 @@ test("creation_card_selected sets selection in hudStore", () => {
   handleGameEvent({ type: "creation_card_selected", card_id: "c1" });
   expect(hudStore.getState().selectedCreationCard).toBe("c1");
 });
-
-// --- Creation cards with image_url ---
 
 test("creation_cards maps image_url to imageUrl", () => {
   handleGameEvent({

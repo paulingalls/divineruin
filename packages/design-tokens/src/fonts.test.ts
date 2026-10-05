@@ -2,8 +2,6 @@ import { test, expect } from "bun:test";
 import { FontTokens } from "./index";
 import { SHIP_FACES, FONT_FALLBACKS, shippedFontFiles } from "./fonts";
 
-// The three distinct brand families, derived from the token stacks the same way
-// apps/web/src/fonts/fonts.test.ts does (FontTokens.<role>.web = "'Family', generic").
 const brandFamily = (stack: string): string => {
   const m = stack.match(/'([^']+)'/);
   if (!m?.[1]) throw new Error(`no quoted family in stack: ${stack}`);
@@ -24,7 +22,6 @@ const BRAND_FAMILIES = [...new Set(Object.values(FontTokens).map((t) => brandFam
 test("SHIP_FACES lists the 9 self-hosted faces with portable identity only", () => {
   expect(SHIP_FACES).toHaveLength(9);
   for (const face of SHIP_FACES) {
-    // No node_modules / build coupling leaks into the shared token package.
     expect(Object.keys(face).sort()).toEqual(["family", "file", "style", "weight"]);
   }
 });
