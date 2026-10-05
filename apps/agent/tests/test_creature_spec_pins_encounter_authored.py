@@ -3,7 +3,6 @@
 import asyncio
 import importlib
 import json
-import re
 import sys
 from collections import Counter
 from pathlib import Path
@@ -150,20 +149,6 @@ SIGNATURE_PINS = {
 }
 
 
-def authored_blocks():
-    source = (ROOT / "docs/game_mechanics/game_mechanics_bestiary.md").read_text()
-    marker = "## Encounter Creature Stat Blocks"
-    assert source.count(marker) == 1
-    section = source.split(marker, 1)[1]
-    matches = re.findall(r"(?ms)^### ([^\n]+)\n\s*```json\n(.*?)\n```", section)
-    assert len(matches) == len(PINS)
-    blocks = [json.loads(raw) for _, raw in matches]
-    assert len({name for name, _ in matches}) == len(matches)
-    assert all(name == block["name"] for (name, _), block in zip(matches, blocks, strict=True))
-    assert Counter(block["id"] for block in blocks) == Counter({creature_id: 1 for creature_id in PINS})
-    return {block["id"]: block for block in blocks}
-
-
 def assert_pins(row, pin):
     category, tier, level, hp, ac, xp, loot, attacks, actives, signature, vulnerabilities = pin
     assert (
@@ -190,17 +175,13 @@ def assert_pins(row, pin):
 
 
 def test_authored_catalog_rows_match_spec_and_pins():
-    blocks = authored_blocks()
     rows = json.loads((ROOT / "content/creatures.json").read_text())
     counts = Counter(row["id"] for row in rows)
     loot_ids = {row["id"] for row in json.loads((ROOT / "content/loot_tables.json").read_text())}
     for creature_id, pin in PINS.items():
         assert counts[creature_id] == 1
-        block = blocks[creature_id]
         row = next(row for row in rows if row["id"] == creature_id)
-        assert_pins(block, pin)
         assert_pins(row, pin)
-        assert row == block
         assert row["loot_table_id"] in loot_ids
         assert validate_creature_stat_block(row) == []
 

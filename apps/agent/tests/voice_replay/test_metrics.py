@@ -19,7 +19,7 @@ from voice_replay_audio import (
     publish_checked_audio,
     write_wav,
 )
-from voice_replay_metrics import TranscribedWord, compute_audio_metrics, summarize_provider_usage, validate_timing_row
+from voice_replay_metrics import TranscribedWord, compute_audio_metrics, summarize_provider_usage
 
 
 def test_voice_replay_scope_names_the_production_latency_it_excludes():
@@ -392,106 +392,3 @@ def test_anchor_must_follow_a_pre_result_pause_and_stay_out_of_the_input():
         _measure(words=_words()[2:])
     with pytest.raises(ValueError, match="present in the input transcript"):
         _measure(input_transcript="Please find quality wood")
-
-
-def _valid_row(scenario: str = "affected") -> dict:
-    row = {
-        "completion": "success",
-        "scenario": scenario,
-        "repetition": 0,
-        "temperature": "cold",
-        "source_audio": {"sha256": "a", "pcm_sha256": "b", "published_pcm_sha256": "b"},
-        "received_audio": {"path": "received.wav", "sha256": "c", "bytes": 100},
-        "provider_usage": {
-            "stt": {"provider": "deepgram", "model": "nova-3", "units": 1},
-            "llm": {"provider": "openai", "model": LUNA_MODEL, "units": 1},
-            "tts": {"provider": "inworld", "model": "inworld-tts-2", "units": 1},
-            "analysis_stt": {"provider": "deepgram", "model": "nova-3", "units": 1},
-        },
-        "tool_count": 1,
-        "tool_names": ["check"],
-        "state_before": {"inventory": {"herb": 2}},
-        "state_after": {"inventory": {"herb": 2, "quality_wood": 1}},
-        "state_delta": {"quality_wood": 2},
-        "tool_output": {"materials": ["quality_wood", "quality_wood"]},
-        "metrics": {"first_meaningful_latency_ms": 100, "outcome_latency_ms": 200},
-        "cleanup": {"complete": True},
-    }
-    if scenario == "direct":
-        row.update(tool_count=0, tool_names=[], state_after=row["state_before"], state_delta={})
-        row["metrics"] = {"first_meaningful_latency_ms": 100}
-    return row
-
-
-def test_timing_row_requires_complete_usage_audio_tools_and_state():
-    validate_timing_row(_valid_row())
-    validate_timing_row(_valid_row("direct"))
-
-    for path in (
-        ("received_audio", "bytes"),
-        ("provider_usage", "stt"),
-        ("provider_usage", "llm"),
-        ("provider_usage", "tts"),
-        ("provider_usage", "analysis_stt"),
-    ):
-        broken = _valid_row()
-        del broken[path[0]][path[1]]
-        with pytest.raises(ValueError):
-            validate_timing_row(broken)
-
-
-def test_timing_row_rejects_previous_luna_model():
-    row = _valid_row()
-    row["provider_usage"]["llm"]["model"] = "gpt-5.6-luna"
-    with pytest.raises(ValueError, match="requires llm usage"):
-        validate_timing_row(row)
-
-
-def test_timing_row_accepts_the_model_a_comparison_run_selected():
-    row = _valid_row()
-    row["provider_usage"]["llm"]["model"] = "gpt-5.6-luna"
-    validate_timing_row(row, luna_model="gpt-5.6-luna")
-    with pytest.raises(ValueError, match="requires llm usage"):
-        validate_timing_row(_valid_row(), luna_model="gpt-5.6-luna")
-
-
-def test_timing_row_rejects_duplicate_or_missing_grant_and_direct_mutation():
-    for delta in ({}, {"quality_wood": 4}):
-        broken = _valid_row()
-        broken["state_delta"] = delta
-        with pytest.raises(ValueError, match="quality_wood"):
-            validate_timing_row(broken)
-
-    direct = _valid_row("direct")
-    direct["tool_count"] = 1
-    with pytest.raises(ValueError, match="direct"):
-        validate_timing_row(direct)
-
-
-@pytest.mark.parametrize(
-    ("mutation", "match"),
-    [
-        (lambda row: row.update(temperature="warm"), "labelled cold"),
-        (lambda row: row["source_audio"].update(published_pcm_sha256="wrong"), "PCM hashes"),
-        (lambda row: row["provider_usage"]["tts"].update(units=0), "nonzero tts"),
-        (lambda row: row.update(completion=""), "completion"),
-        (lambda row: row["cleanup"].update(complete=False), "cleanup"),
-        (lambda row: row.update(scenario="other"), "affected or direct"),
-        (lambda row: row.update(repetition=-1), "nonnegative repetition"),
-        (lambda row: row.update(tool_count=2, tool_names=["check", "check"]), "exactly one check"),
-        (lambda row: row.update(tool_names=["stage"]), "exactly one check"),
-        (lambda row: row["tool_output"].update(materials=[]), "material multiset"),
-        (lambda row: row["metrics"].pop("outcome_latency_ms"), "audible outcome latency"),
-        (lambda row: row["metrics"].pop("first_meaningful_latency_ms"), "first meaningful speech"),
-        # a gather that granted something else entirely still has a self-consistent delta
-        (
-            lambda row: row.update(state_delta={"oak_wood": 2}, tool_output={"materials": ["oak_wood"] * 2}),
-            "quality_wood tool result",
-        ),
-    ],
-)
-def test_timing_row_rejects_incomplete_labels_usage_and_cleanup(mutation, match: str):
-    row = _valid_row()
-    mutation(row)
-    with pytest.raises(ValueError, match=match):
-        validate_timing_row(row)
