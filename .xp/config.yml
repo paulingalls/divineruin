@@ -10,12 +10,23 @@ codex_sandbox: danger-full-access  # Codex only: workspace-write | danger-full-a
 #                    # (scripts/init-worktree.sh); workspace-write blocks the testcontainer lanes
 #                    # by denying ALL outbound network — DNS, loopback, the docker socket.
 
-roles:
-  lead: codex/gpt-6.1-sol/medium
-  planner: codex/gpt-6.1-sol/low
-  executor: codex/gpt-6.1-sol/low
-  reviewer: codex/gpt-6-astra/medium
-  plan-reviewer: codex/gpt-6-astra/medium
+roles:               # harness/model[/effort]; a card's Executor: line overrides
+  # THE DIVERSITY ARGUMENT: a reviewer sharing the implementer's priors agrees with them for
+  # the same reasons, so each leg that argues with work sits in the other family from the
+  # leg that wrote it.
+  # Model split: the judgment seats (planner, slate-reviewer, angle-reviewer) run on codex's
+  # frontier model; the long multi-step seats (executor, fixer) stay on the cheaper workhorse
+  # at medium, because low effort there cuts corners that surface only at land.
+  lead: claude/claude-opus-5-5
+  planner: codex/gpt-6-astra/medium
+  executor: codex/gpt-6.1-sol/medium
+  # claude, so the story diff review is the cross-family look at a codex executor.
+  reviewer: claude/claude-opus-5-5/medium
+  # /high: a plan review is cheap relative to a story built on a plan nobody argued with.
+  plan-reviewer: claude/claude-opus-5-5/high
+  # codex: the lead authors the slate on claude.
   slate-reviewer: codex/gpt-6-astra/medium
-  angle-reviewer: codex/gpt-6-astra/low
-  fixer: codex/gpt-6.1-sol/low
+  # Both read the whole sprint diff; codex's input limit is 1,048,576 characters. If either
+  # dies on input size, that limit is the first suspect.
+  angle-reviewer: codex/gpt-6-astra/medium
+  fixer: codex/gpt-6.1-sol/medium
