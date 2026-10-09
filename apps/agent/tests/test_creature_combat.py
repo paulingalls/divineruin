@@ -176,7 +176,10 @@ def test_catalog_metadata_roundtrips_and_roster_exposes_effects(source):
         assert summary[key] == enemy[key]
     assert summary["catalog_narration"] == source["narration"]
     assert summary["catalog_audio"] == source["audio"]
-    assert {a["name"] for a in summary["executable_actions"]} == {a["name"] for a in enemy["action_pool"]}
+    expected = {a["name"] for a in enemy["action_pool"]}
+    if enemy["multiattack_sequence"]:
+        expected.add(enemy["multiattack_sequence"]["name"])
+    assert {a["name"] for a in summary["executable_actions"]} == expected
     assert all(a["kind"] in ("command", "accusation") for a in summary["mark_actions"])
 
 
@@ -214,7 +217,6 @@ def test_dm_inventory_has_no_false_executables():
             ("attacks", "Dissolution Maw"),
             ("attacks", "Lunge"),
             ("hollow", "hollow"),
-            ("multiattack", "2 attacks — one Claw and one Dissolution Maw"),
             ("passives", "Adaptive Learning"),
             ("passives", "Dissolution Field"),
             ("passives", "Unsettling Silence"),

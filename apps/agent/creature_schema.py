@@ -125,6 +125,27 @@ def validate_creature_stat_block(creature: object) -> list[str]:
             if len(problems) == before:
                 combat_entry(attack, path)
     field(creature, "multiattack", "", "string", True)
+    if "multiattack_sequence" in creature:
+        sequence = field(creature, "multiattack_sequence", "", "object")
+        if isinstance(sequence, dict):
+            name = field(sequence, "name", "multiattack_sequence", "string")
+            refs = field(sequence, "attacks", "multiattack_sequence", "array")
+            entries = [a for a in (attacks or []) if isinstance(a, dict)]
+            names = [a["name"].casefold() for a in entries if isinstance(a.get("name"), str)]
+            actives = creature.get("actives")
+            all_names = names + [
+                a["name"].casefold()
+                for a in (actives if isinstance(actives, list) else [])
+                if isinstance(a, dict) and isinstance(a.get("name"), str)
+            ]
+            if not isinstance(name, str) or not name.strip() or name.casefold() in all_names:
+                problems.append("multiattack_sequence.name: empty or colliding action name")
+            if isinstance(refs, list):
+                if not refs:
+                    problems.append("multiattack_sequence.attacks: expected non-empty array")
+                for ref in refs:
+                    if not isinstance(ref, str) or names.count(ref.casefold()) != 1:
+                        problems.append("multiattack_sequence.attacks: expected unambiguous attack reference")
     for group in ("passives", "actives", "reactions"):
         abilities = field(creature, group, "", "array")
         if isinstance(abilities, list):

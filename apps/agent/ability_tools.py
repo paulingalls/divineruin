@@ -16,6 +16,7 @@ held-action binding, then activates the resource transaction, then installs the 
 A refusal must deduct neither resources nor the round's reaction (test_reaction_refused_by_cost_*).
 """
 
+import copy
 import json
 import logging
 
@@ -30,6 +31,7 @@ import condition_produce
 import condition_voice_rules
 import conditions
 import db
+import db_mutations
 import db_mutations_conditions
 import db_queries
 import mentor_variants
@@ -78,7 +80,7 @@ async def _request_ability_activation_impl(
         declared_id = ability.spell_id or variant_id or ability_id
         raise ToolError(f"{ability.name} cannot be activated in combat — declare {declared_id} in the combat phase.")
 
-    async def activate_unlocked() -> str:
+    async def activate_unlocked(prepared_spend=None) -> str:
         return await _request_ability_activation_unlocked(
             context,
             ability_id,
@@ -95,6 +97,7 @@ async def _request_ability_activation_impl(
             condition_produce_mod=condition_produce_mod,
             player_id=player_id,
             reaction_actor=reaction_actor,
+            prepared_spend=prepared_spend,
         )
 
     if ability.ability_type != "reaction":
@@ -116,7 +119,7 @@ async def _request_ability_activation_impl(
         except ValueError as e:
             raise ToolError(str(e)) from e
 
-        result = await activate_unlocked()
+        result = await activate_unlocked(spend)
         # The live state, not `state`: a reference taken before an await cannot see a replacement made
         # during it. combat_state_lock orders this process's writers; it is not a substitute for that rule.
         combat_hold.record_spend(session.combat_state, player_id, spend)
@@ -140,6 +143,7 @@ async def _request_ability_activation_unlocked(
     condition_produce_mod=condition_produce,
     player_id: str | None = None,
     reaction_actor: AuthenticatedActor | None = None,
+    prepared_spend: dict | None = None,
 ) -> str:
     context.disallow_interruptions()
     _validate_id(ability_id, "ability_id")
@@ -258,6 +262,13 @@ async def _request_ability_activation_unlocked(
         if new_stamina is not None or new_focus is not None:
             session.validate_acting_player(player_id)
             await persistence_mod.update_player_resources(player_id, stamina=new_stamina, focus=new_focus, conn=conn)
+
+        if prepared_spend is not None:
+            if session.combat_state is None:
+                raise ValueError("reaction combat disappeared before checkpoint")
+            persisted_state = copy.deepcopy(session.combat_state)
+            combat_hold.record_spend(persisted_state, player_id, prepared_spend)
+            await db_mutations.save_combat_state(persisted_state.combat_id, persisted_state.to_dict(), conn=conn)
 
         # Beneficial-condition PRODUCER (M4.8 story-005), out-of-combat half. An ability carrying
         # applies_condition lands it on the target's players.data SSOT — applied AFTER the resource

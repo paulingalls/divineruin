@@ -114,6 +114,8 @@ async def _resolve_one_packet(
     for a held attack whose DICE_ROLL was already announced at its POST_ROLL pause."""
     attacker = state.get_participant(packet.actor_id)
     decl = packet.declaration
+    if decl.type is DeclarationType.MULTIATTACK:
+        raise ValueError("multiattack must expand into held strikes before resolution")
     # This actor's own pre-validated for_update row (M14 story-004): the ability branches below thread
     # it to the cast/deduct so a non-primary caster's Focus/Resonance land on ITS pool. None for a
     # non-caster packet (attack/defend) or an actor with no player ability — those branches ignore it.

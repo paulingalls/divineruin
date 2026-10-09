@@ -23,6 +23,8 @@ An action in Combatants[].mark_actions with kind `command` still uses its exact 
 target_id is the foe the commander's band will focus, not someone the commander strikes. \
 An action with kind `accusation` follows the same mark-action flow, but target_id is the accused \
 the accuser names for their band to focus. \
+multiattack — action names the surfaced composite id. Supply strikes with each ordered action id and \
+its target_id upfront; use one declaration for the actor. Each strike has its own ordinary held reaction windows. \
 ability — action is the EXACT id of a spell or ability the caster knows (for example \
 "arcane_bolt"). Name in targets whoever it is aimed at — a fallen ally's id for a \
 revival, several allies for a spell that blesses a group; leave targets empty for a \

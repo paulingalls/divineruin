@@ -48,6 +48,7 @@ async def _call(
     """
     ctx = context or make_context()
     mock_db, _conn = make_db_mod()
+    _conn.execute = AsyncMock()
     queries = MagicMock()
     default_player = _player(stamina, focus, class_=ability_id.split("_")[0])
     row = default_player if player is None else player
@@ -228,7 +229,7 @@ class TestActivation:
             "stage": "post_roll",
             "held_seq": 0,
         }
-        save_combat_state.assert_not_called()
+        save_combat_state.assert_awaited_once()
 
     async def test_second_reaction_is_refused_before_resource_write(self):
         ctx = _reaction_context()

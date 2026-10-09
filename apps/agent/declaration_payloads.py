@@ -38,6 +38,22 @@ class AttackDecl(BaseModel):
     )
 
 
+class StrikeSelection(BaseModel):
+    model_config = {"extra": "forbid"}
+    action: str
+    target_id: str
+
+
+class MultiattackDecl(BaseModel):
+    """One catalog composite; choose all ordered strike targets upfront."""
+
+    model_config = {"extra": "forbid"}
+    kind: Literal["multiattack"]
+    actor_id: str
+    action: str
+    strikes: list[StrikeSelection]
+
+
 class AbilityDecl(BaseModel):
     """Cast a spell or use an ability. This is how a caster acts IN COMBAT."""
 
@@ -100,11 +116,14 @@ class RetreatDecl(BaseModel):
     actor_id: str = Field(description="The participant declaring this action.")
 
 
-DeclVariant = Union[AttackDecl, AbilityDecl, InteractDecl, ManeuverDecl, MoveDecl, DefendDecl, RetreatDecl]
+DeclVariant = Union[
+    MultiattackDecl, AttackDecl, AbilityDecl, InteractDecl, ManeuverDecl, MoveDecl, DefendDecl, RetreatDecl
+]
 DeclPayload = Annotated[DeclVariant, Field(discriminator="kind")]
 
 DECL_VARIANTS: tuple[type[BaseModel], ...] = (
     AttackDecl,
+    MultiattackDecl,
     AbilityDecl,
     InteractDecl,
     ManeuverDecl,
@@ -115,6 +134,8 @@ DECL_VARIANTS: tuple[type[BaseModel], ...] = (
 
 
 def _raw(decl: DeclVariant) -> dict:
+    if isinstance(decl, MultiattackDecl):
+        return {"type": "multiattack", "action": decl.action, "strikes": [s.model_dump() for s in decl.strikes]}
     if isinstance(decl, AttackDecl):
         raw = {"type": "attack", "action": decl.action, "target_id": decl.target_id}
         if decl.rider:
