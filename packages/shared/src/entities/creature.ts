@@ -89,6 +89,7 @@ export interface Attack {
 }
 
 export interface Ability {
+  turn_start_damage?: { trigger: "grappled_by_source"; damage: "1d6"; damage_type: "necrotic" };
   name: string;
   description: string;
   narration_cue: string;
@@ -284,6 +285,18 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
     if (Array.isArray(abilities))
       abilities.forEach((ability, i) => {
         const path = `${group}[${i}]`;
+        if (isObject(ability) && "turn_start_damage" in ability) {
+          const effect = ability.turn_start_damage;
+          if (
+            group !== "passives" ||
+            !isObject(effect) ||
+            Object.keys(effect).length !== 3 ||
+            effect.trigger !== "grappled_by_source" ||
+            effect.damage !== "1d6" ||
+            effect.damage_type !== "necrotic"
+          )
+            problems.push(`${path}.turn_start_damage: invalid automatic damage`);
+        }
         const before = problems.length;
         if (!isObject(ability)) {
           problems.push(`${path}: expected object`);

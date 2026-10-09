@@ -151,6 +151,20 @@ def validate_creature_stat_block(creature: object) -> list[str]:
         if isinstance(abilities, list):
             for i, ability in enumerate(abilities):
                 path = f"{group}[{i}]"
+                if (
+                    isinstance(ability, dict)
+                    and "turn_start_damage" in ability
+                    and (
+                        group != "passives"
+                        or ability["turn_start_damage"]
+                        != {
+                            "trigger": "grappled_by_source",
+                            "damage": "1d6",
+                            "damage_type": "necrotic",
+                        }
+                    )
+                ):
+                    problems.append(f"{path}.turn_start_damage: invalid automatic damage")
                 before = len(problems)
                 if not isinstance(ability, dict):
                     problems.append(f"{path}: expected object")

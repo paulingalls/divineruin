@@ -142,16 +142,16 @@ async def _resolve_one_packet(
     from choir_effects import approach
 
     forced_move = approach(state, attacker)
-    if combat_spatial_declarations.is_move(decl) and forced_move is not None:
-        return forced_move
-    if combat_spatial_declarations.is_move(decl):
-        return combat_spatial_declarations.apply_move(state, attacker, decl)
-
     if attacker is None or attacker.is_fallen:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": "actor unavailable"}
     if blocked := cannot_act(attacker.conditions):
         reason = f"{attacker.name} is {blocked[0]} and loses the phase"
         return {"actor_id": packet.actor_id, "resolved": False, "reason": reason}
+
+    if combat_spatial_declarations.is_move(decl) and forced_move is not None:
+        return forced_move
+    if combat_spatial_declarations.is_move(decl):
+        return combat_spatial_declarations.apply_move(state, attacker, decl)
 
     if stale is not None:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": stale}

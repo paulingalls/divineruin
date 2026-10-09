@@ -414,6 +414,7 @@ async def test_choir_end_rollback_preserves_scene_owner_and_rewards(started, mon
 
 
 async def test_choir_lethal_action_rollback_restores_core_and_death_receipt(started, monkeypatch):
+    monkeypatch.setattr("check_resolution_attack.dice_roll", lambda *a, **kw: _d20(12))
     import db_queries
 
     ctx, _ = await started("hollow_choir", player_class="mage")

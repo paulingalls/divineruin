@@ -25,6 +25,7 @@ class CombatParticipant:
     death_save_failures: int = 0
     action_pool: list[dict] = field(default_factory=list)
     multiattack_sequence: dict | None = None
+    turn_start_damage: dict | None = None
     action_ledger: dict[str, dict] = field(default_factory=dict)
     last_action_execution: dict | None = None
     pending_preparation: dict | None = None

@@ -2234,6 +2234,11 @@
       },
       {
         "name": "Dissolution Field",
+        "turn_start_damage": {
+          "trigger": "grappled_by_source",
+          "damage": "1d6",
+          "damage_type": "necrotic"
+        },
         "description": "Creatures starting turn grappled by a mawling take 1d6 necrotic automatically.",
         "narration_cue": "",
         "recharge": null,
