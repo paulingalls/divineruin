@@ -264,6 +264,8 @@ async def _request_ability_activation_unlocked(
             await persistence_mod.update_player_resources(player_id, stamina=new_stamina, focus=new_focus, conn=conn)
 
         if prepared_spend is not None:
+            if not session.combat_state_lock.locked():
+                raise RuntimeError("reaction checkpoint requires combat_state_lock")
             if session.combat_state is None:
                 raise ValueError("reaction combat disappeared before checkpoint")
             persisted_state = copy.deepcopy(session.combat_state)

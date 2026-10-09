@@ -19,7 +19,11 @@ from session_data import CombatState
 
 _AGENT_ROOT = Path(__file__).resolve().parents[2]
 _REPO_ROOT = _AGENT_ROOT.parents[1]
-EXEMPT_FULL_STATE_SAVES: frozenset[tuple[str, str]] = frozenset()
+# The reaction checkpoint shares the unlocked activation body; only the locked reaction branch
+# passes prepared_spend, and the save raises at runtime unless combat_state_lock is held.
+EXEMPT_FULL_STATE_SAVES: frozenset[tuple[str, str]] = frozenset(
+    {("ability_tools.py", "_request_ability_activation_unlocked")}
+)
 
 
 def _repository_files() -> tuple[Path, ...]:
@@ -240,6 +244,7 @@ def test_full_state_save_sites_match_the_inventory():
             ("combat_wrap.py", "wrap_phase", "call"): 1,
             ("combat_death_save.py", "_request_death_save_locked", "call"): 1,
             ("draethar_inner_fire.py", "_inner_fire_locked", "call"): 1,
+            ("ability_tools.py", "_request_ability_activation_unlocked", "call"): 1,
         }
     )
     assert _save_references() == expected
