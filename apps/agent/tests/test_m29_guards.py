@@ -13,7 +13,14 @@ from livekit.agents.log import logger as livekit_logger
 from livekit.agents.voice import agent_activity
 from pydantic import ValidationError
 
-_GOOD_DECL = {"kind": "attack", "actor_id": "m29_rogue", "action": "Longsword", "target_id": "mawling_1", "rider": ""}
+_GOOD_DECL = {
+    "kind": "attack",
+    "actor_id": "m29_rogue",
+    "action": "Longsword",
+    "target_id": "mawling_1",
+    "held_item_id": "",
+    "rider": "",
+}
 
 
 def test_the_declaration_union_rejects_a_malformed_variant():

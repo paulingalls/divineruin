@@ -65,6 +65,7 @@ def test_declare_phase_binds_raw_json_declarations_to_the_engine_dict():
                     "actor_id": "player_1",
                     "action": "Longsword",
                     "target_id": "goblin_1",
+                    "held_item_id": "",
                     "rider": "",
                 },
                 {"kind": "defend", "actor_id": "goblin_1"},

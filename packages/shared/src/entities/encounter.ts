@@ -2,6 +2,7 @@ import {
   validateActionExtensions,
   type ActionExtensions,
   type Recharge,
+  type DurabilityRider,
   type ChoirEffect,
 } from "./action_contracts";
 
@@ -73,6 +74,7 @@ interface EncounterActionBase {
 
 // An attack deals `damage`; condition and half-damage fields select its post-hit or save-only shape.
 export interface EncounterAttackAction extends EncounterActionBase {
+  durability_rider?: DurabilityRider;
   resolution?: "save" | "hit_then_save";
   save_success_damage?: "none" | "half";
   conditions_on_failure?: { applies_condition: string; duration: number }[];

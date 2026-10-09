@@ -33,6 +33,7 @@ from combat_deescalation import (
 )
 from combat_enemy_action import resolve_enemy_strike
 from combat_enemy_active import resolve_active
+from combat_item_rider import resolve_rider
 from combat_packet_gate import _prevalidate_ability_focus as _prevalidate_ability_focus
 from combat_support import _resolve_attack_packet
 from condition_restrictions import cannot_act
@@ -364,6 +365,19 @@ async def _resolve_one_packet(
             sink=sink,
             publish_roll=publish_roll,
         )
+        if "durability_rider" in act:
+            await resolve_rider(
+                session,
+                attacker,
+                target,
+                act,
+                decl,
+                sub,
+                queries=queries,
+                conn=conn,
+                sink=sink,
+                reaction_save_advantage=reaction_save_advantage,
+            )
         attack_summaries.append(sub)
         # Remove attack-spent conditions before the next swing in an expanded declaration. The
         # first consuming swing leaves later consumed_conditions empty. Persistence rides the

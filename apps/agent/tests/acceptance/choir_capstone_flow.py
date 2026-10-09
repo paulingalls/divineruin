@@ -192,6 +192,7 @@ class ChoirCapstoneFlow:
                 "actor_id": self.owner,
                 "action": "Dissonant Chord",
                 "target_id": pid,
+                "held_item_id": "",
                 "rider": "",
             }
         )

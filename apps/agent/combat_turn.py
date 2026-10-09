@@ -18,6 +18,7 @@ import check_resolution_save
 import choir_encounter
 import combat_hold
 import combat_hollow_resonance
+import combat_item_rider
 import combat_phase
 import combat_spatial
 import combat_spatial_declarations
@@ -99,6 +100,7 @@ async def _declare_phase_locked(
     try:
         combat_spatial_declarations.preflight_state(cs)
         next_state, _adv = combat_phase.advance_combat_phase(cs, declarations=declarations)
+        await combat_item_rider.preflight(session, next_state)
     except ValueError as e:
         raise ToolError(str(e)) from e
 

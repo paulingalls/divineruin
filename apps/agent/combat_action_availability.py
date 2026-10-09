@@ -17,6 +17,17 @@ def available_actions(actor):
     ]
 
 
+def item_rider_facts(action):
+    return (
+        {
+            "durability_rider": action["durability_rider"],
+            "held_item_id": "Choose from target eligible_held_item_ids; empty if none or companion",
+        }
+        if "durability_rider" in action
+        else {}
+    )
+
+
 def action_summary(actor):
     actions = available_actions(actor)
     summary = {
@@ -43,6 +54,7 @@ def action_summary(actor):
                 if a not in actions
                 else None,
             }
+            | item_rider_facts(a)
             for a in actor.action_pool
         ],
         "automatic_reactions": []
@@ -78,7 +90,9 @@ def action_summary(actor):
                 "declaration_type": "multiattack",
                 "available": ready,
                 "reason": None if ready else "unavailable",
-                "strikes": [{"action": strike["name"]} for strike in strikes if strike is not None],
+                "strikes": [
+                    {"action": strike["name"], **item_rider_facts(strike)} for strike in strikes if strike is not None
+                ],
             }
         )
         if ready:

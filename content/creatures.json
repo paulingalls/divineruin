@@ -2184,6 +2184,12 @@
       },
       {
         "name": "Dissolution Maw",
+        "durability_rider": {
+          "save": "CON",
+          "dc": 13,
+          "dice": "1d4",
+          "target": "selected_player_held_item"
+        },
         "type": "melee",
         "reach": 5,
         "to_hit": 5,

@@ -20,7 +20,7 @@ from session_data import SessionData
 
 
 class MawlingHarness:
-    async def start(self, reactions=False):
+    async def start(self, reactions=False, gear=False):
         self.pool = await db.get_pool()
         await reseed_choir_content(self.pool)
         self.players = [f"maw147_{uuid4().hex}" for _ in range(2)]
@@ -28,7 +28,15 @@ class MawlingHarness:
             await seed_player_with_pools(
                 self.pool,
                 player_id=pid,
-                class_=("rogue" if index == 0 else "guardian" if reactions == "isolation" else "cleric")
+                class_=(
+                    "guardian"
+                    if index == 0 and reactions == "shield"
+                    else "rogue"
+                    if index == 0
+                    else "guardian"
+                    if reactions == "isolation"
+                    else "cleric"
+                )
                 if reactions
                 else "mage",
             )
@@ -36,6 +44,25 @@ class MawlingHarness:
             assert row is not None
             row.update(hp={"current": 100, "max": 100}, level=8)
             await self.pool.execute("UPDATE players SET data=$2::jsonb WHERE player_id=$1", pid, json.dumps(row))
+        if gear:
+            for pid in self.players:
+                for item_id, equipped in (
+                    ("shortsword_basic", True),
+                    ("veil_ward_anchor_large", True),
+                    ("chain_mail", True),
+                    ("club_wooden", False),
+                ):
+                    await self.pool.execute(
+                        "INSERT INTO player_inventory (player_id, item_id, data) VALUES ($1,$2,$3::jsonb)",
+                        pid,
+                        item_id,
+                        json.dumps(
+                            {
+                                "equipped": equipped,
+                                "current_hits": {"shortsword_basic": 10, "club_wooden": 3}.get(item_id, 25),
+                            }
+                        ),
+                    )
         self.sd = SessionData(player_id=self.players[0], location_id="accord_guild_hall", room=make_mock_room())
         self.sd.party.members.append(PartyMember(self.players[1], ResonanceTrack(), ConcentrationState()))
         self.model = ScenarioModel([])
@@ -63,7 +90,8 @@ class MawlingHarness:
             "actor_id": actor["id"],
             "action": action["id"],
             "strikes": [
-                {"action": s["action"], "target_id": t} for s, t in zip(action["strikes"], targets, strict=True)
+                {"action": s["action"], "target_id": t, "held_item_id": ""}
+                for s, t in zip(action["strikes"], targets, strict=True)
             ],
         }
 

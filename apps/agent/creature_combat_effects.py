@@ -20,6 +20,8 @@ def deferred_effects(row, *, composite=False):
                 continue
             if row["id"] == "hollow_choir" and source.get("kind") == "charm":
                 source = {"name": source["name"], "description": "The DM speaks in the stolen voice."}
+            if "durability_rider" in source:
+                continue
             if not text:
                 continue
             effects.append(

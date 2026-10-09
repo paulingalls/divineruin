@@ -91,7 +91,16 @@ async def test_catalog_condition_action_is_invocable_from_the_produced_name():
         enemy.action_pool = [action]
         produced_name = _participant_roster(state.participants)[1]["actions"][0]
         mapped = to_engine_declarations(
-            [AttackDecl(kind="attack", actor_id=enemy.id, action=produced_name, target_id="player_1", rider="")]
+            [
+                AttackDecl(
+                    kind="attack",
+                    actor_id=enemy.id,
+                    action=produced_name,
+                    target_id="player_1",
+                    held_item_id="",
+                    rider="",
+                )
+            ]
         )
         packet = ResolutionPacket(enemy.id, resolve_declaration(mapped[enemy.id]), enemy.initiative)
 
@@ -117,7 +126,11 @@ async def test_catalog_condition_action_is_invocable_from_the_produced_name():
 
 def test_attack_maps_to_the_engine_attack_shape():
     engine = to_engine_declarations(
-        [AttackDecl(kind="attack", actor_id="player_1", action="Longsword", target_id="goblin_1", rider="")]
+        [
+            AttackDecl(
+                kind="attack", actor_id="player_1", action="Longsword", target_id="goblin_1", held_item_id="", rider=""
+            )
+        ]
     )
     assert engine == {"player_1": {"type": "attack", "action": "Longsword", "target_id": "goblin_1"}}
 
@@ -131,6 +144,7 @@ def test_mapped_unknown_attack_action_fails_at_the_engine_boundary():
                 actor_id="goblin_scout_1",
                 action="Claw",
                 target_id="player_1",
+                held_item_id="",
                 rider="",
             )
         ]
@@ -145,7 +159,9 @@ def test_mapped_unknown_attack_action_fails_at_the_engine_boundary():
 @pytest.mark.parametrize(
     "decl",
     [
-        AttackDecl(kind="attack", actor_id="goblin_1", action="Scimitar", target_id="player_1", rider=""),
+        AttackDecl(
+            kind="attack", actor_id="goblin_1", action="Scimitar", target_id="player_1", held_item_id="", rider=""
+        ),
         DefendDecl(kind="defend", actor_id="goblin_1"),
     ],
 )
@@ -200,7 +216,16 @@ def test_an_enemy_ability_naming_its_condition_action_is_accepted():
 
 def test_declare_time_action_check_matches_case_insensitively_like_resolution():
     engine = to_engine_declarations(
-        [AttackDecl(kind="attack", actor_id="goblin_scout_1", action="sCiMiTaR", target_id="player_1", rider="")]
+        [
+            AttackDecl(
+                kind="attack",
+                actor_id="goblin_scout_1",
+                action="sCiMiTaR",
+                target_id="player_1",
+                held_item_id="",
+                rider="",
+            )
+        ]
     )
 
     next_state, _ = advance_combat_phase(_make_combat_state(), engine)
@@ -211,11 +236,19 @@ def test_declare_time_action_check_matches_case_insensitively_like_resolution():
 def test_an_attack_rider_rides_through_but_an_empty_one_is_dropped():
     """The vendor schema requires rider; an empty string represents absence without spending an optional union slot."""
     with_rider = to_engine_declarations(
-        [AttackDecl(kind="attack", actor_id="player_1", action="Dagger", target_id="goblin_1", rider="hide")]
+        [
+            AttackDecl(
+                kind="attack", actor_id="player_1", action="Dagger", target_id="goblin_1", held_item_id="", rider="hide"
+            )
+        ]
     )
     assert with_rider["player_1"]["rider"] == "hide"
     without = to_engine_declarations(
-        [AttackDecl(kind="attack", actor_id="player_1", action="Dagger", target_id="goblin_1", rider="")]
+        [
+            AttackDecl(
+                kind="attack", actor_id="player_1", action="Dagger", target_id="goblin_1", held_item_id="", rider=""
+            )
+        ]
     )
     assert "rider" not in without["player_1"]
 
@@ -276,7 +309,14 @@ def test_a_repeated_actor_fails_loud():
         to_engine_declarations(
             [
                 DefendDecl(kind="defend", actor_id="player_1"),
-                AttackDecl(kind="attack", actor_id="player_1", action="Longsword", target_id="goblin_1", rider=""),
+                AttackDecl(
+                    kind="attack",
+                    actor_id="player_1",
+                    action="Longsword",
+                    target_id="goblin_1",
+                    held_item_id="",
+                    rider="",
+                ),
             ]
         )
 
@@ -287,7 +327,7 @@ def test_variant_kinds_match_the_engine_declaration_types():
 
 
 _ENGINE_CASES = [
-    AttackDecl(kind="attack", actor_id="a", action="Longsword", target_id="goblin_1", rider=""),
+    AttackDecl(kind="attack", actor_id="a", action="Longsword", target_id="goblin_1", held_item_id="", rider=""),
     AbilityDecl(kind="ability", actor_id="a", action="arcane_bolt", targets=["goblin_1"], argument_type=""),
     InteractDecl(kind="interact", actor_id="a", action="lever"),
     ManeuverDecl(kind="maneuver", actor_id="a", target_id="goblin_1"),
