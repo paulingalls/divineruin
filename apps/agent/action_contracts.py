@@ -39,6 +39,7 @@ def validate_recharge(value: object, path: str) -> None:
 
 def validate_action_extensions(action: dict, path: str) -> None:
     kind = action.get("kind", "attack")
+    validate_durability_rider(action, path)
     validate_resolution(action, path)
     if kind not in ("charm", "silence", "spell_redirect") and any(key in action for key in CHOIR_EFFECT_FIELDS):
         invalid(f"{path}.kind")
@@ -210,3 +211,22 @@ def validate_choir_effect(action, path):
         invalid(f"{path}.recharge")
     if "recharge" in action and not (kind == "spell_redirect" and action["recharge"] is None):
         validate_recharge(action["recharge"], f"{path}.recharge")
+
+
+def validate_durability_rider(action, path):
+    if "durability_rider" not in action:
+        return
+    rider = action["durability_rider"]
+    path = f"{path}.durability_rider"
+    if action.get("kind", "attack") != "attack" or action.get("resolution") == "save" or action.get("half_on_success"):
+        invalid(path)
+    if not isinstance(rider, dict) or set(rider) != {"save", "dc", "dice", "target"}:
+        invalid(path)
+    if rider["save"] not in ("STR", "DEX", "CON", "INT", "WIS", "CHA"):
+        invalid(f"{path}.save")
+    if not positive_integer(rider["dc"]):
+        invalid(f"{path}.dc")
+    if not isinstance(rider["dice"], str) or not re.fullmatch(r"[1-9][0-9]*d[1-9][0-9]*", rider["dice"]):
+        invalid(f"{path}.dice")
+    if rider["target"] != "selected_player_held_item":
+        invalid(f"{path}.target")

@@ -2,6 +2,7 @@ import {
   validateActionExtensions,
   validateRecharge,
   type Recharge,
+  type DurabilityRider,
   type ChoirEffect,
 } from "./action_contracts";
 import lootTables from "../../../../content/loot_tables.json";
@@ -61,6 +62,7 @@ export interface CreatureStatBlock {
 }
 
 export interface Attack {
+  durability_rider?: DurabilityRider;
   resolution?: "save" | "hit_then_save";
   save_success_damage?: "none" | "half";
   conditions_on_failure?: { applies_condition: string; duration: number }[];

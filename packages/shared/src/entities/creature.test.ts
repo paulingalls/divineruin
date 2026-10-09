@@ -350,3 +350,35 @@ test("case-insensitive ambiguous attack references are refused", async () => {
   expect(validateCreatureStatBlock(bad).length).toBeGreaterThan(0);
   expect(validateCreatureJson(JSON.stringify([bad])).length).toBeGreaterThan(0);
 });
+
+test("Maw durability rider is authored and validated", async () => {
+  const rows = (await Bun.file(
+    new URL("../../../../content/creatures.json", import.meta.url),
+  ).json()) as {
+    id: string;
+    attacks: Record<string, unknown>[];
+    actives: Record<string, unknown>[];
+  }[];
+  const maw = rows.find((r) => r.id === "hollow_mawling")!;
+  const rider = { save: "CON", dc: 13, dice: "1d4", target: "selected_player_held_item" };
+  expect(maw.attacks[1]!.durability_rider).toEqual(rider);
+  expect(validateCreatureStatBlock(maw)).toEqual([]);
+  for (const bad of [
+    null,
+    {},
+    { ...rider, save: "bad" },
+    { ...rider, dc: true },
+    { ...rider, dc: 0 },
+    { ...rider, dice: "bad" },
+    { ...rider, target: "armor" },
+    { ...rider, extra: 1 },
+    { save: "CON", dc: 13, target: rider.target },
+  ]) {
+    const source = structuredClone(maw);
+    source.attacks[1]!.durability_rider = bad;
+    expect(validateCreatureStatBlock(source).length).toBeGreaterThan(0);
+  }
+  const source = structuredClone(maw);
+  source.actives[0] = { ...source.actives[0], kind: "prepare_attack", durability_rider: rider };
+  expect(validateCreatureStatBlock(source).length).toBeGreaterThan(0);
+});

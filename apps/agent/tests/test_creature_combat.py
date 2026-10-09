@@ -214,7 +214,6 @@ def test_dm_inventory_has_no_false_executables():
             ("actives", "Lunge"),
             ("actives", "Scatter"),
             ("attacks", "Claw"),
-            ("attacks", "Dissolution Maw"),
             ("attacks", "Lunge"),
             ("hollow", "hollow"),
             ("passives", "Adaptive Learning"),
@@ -275,3 +274,45 @@ def test_catalog_flat_damage_reaches_real_dice_consumer(species, damage):
     assert result.hit and not result.critical_success
     assert result.damage == int(source["attacks"][0]["damage"])
     assert source == before
+
+
+RIDER = {"save": "CON", "dc": 13, "dice": "1d4", "target": "selected_player_held_item"}
+
+
+def test_maw_durability_contract_survives_translation():
+    from creature_schema import validate_creature_stat_block
+
+    source = row("hollow_mawling")
+    assert validate_creature_stat_block(source) == []
+    attack = next(a for a in translate(source)["action_pool"] if a["name"] == "Dissolution Maw")
+    assert attack["durability_rider"] == RIDER
+
+
+@pytest.mark.parametrize(
+    "rider",
+    [
+        None,
+        {},
+        {**RIDER, "save": "bad"},
+        {**RIDER, "dc": True},
+        {**RIDER, "dc": 0},
+        {**RIDER, "dice": "bad"},
+        {**RIDER, "target": "armor"},
+        {**RIDER, "extra": 1},
+        {k: v for k, v in RIDER.items() if k != "dice"},
+    ],
+)
+def test_maw_rejects_invalid_durability_contract(rider):
+    from creature_schema import validate_creature_stat_block
+
+    source = copy.deepcopy(row("hollow_mawling"))
+    source["attacks"][1]["durability_rider"] = rider
+    assert validate_creature_stat_block(source)
+
+
+def test_maw_rejects_rider_on_nonattack():
+    from creature_schema import validate_creature_stat_block
+
+    source = copy.deepcopy(row("hollow_mawling"))
+    source["actives"][0].update(kind="prepare_attack", durability_rider=RIDER)
+    assert validate_creature_stat_block(source)
