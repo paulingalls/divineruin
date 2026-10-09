@@ -158,6 +158,13 @@ async def test_bad_selection_refused_before_mutation(maw, events, form, bad):
 @pytest.mark.parametrize("hollow", [False, True])
 async def test_selected_guest_item_receives_one_doubled_roll(maw, rolls, form, hollow):
     guest, item, _ = await facts(maw)
+    state = maw.sd.combat_state
+    target = state.get_participant(guest)
+    target.attributes.update(constitution=10, wisdom=18)
+    target.saving_throw_proficiencies = []
+    rolls.save_roll = 11
+    await db_mutations.save_combat_state(state.combat_id, state.to_dict())
+    await maw.reload()
     maw.sd.corruption_level = 4 if hollow else 0
     events = []
 
@@ -176,6 +183,9 @@ async def test_selected_guest_item_receives_one_doubled_roll(maw, rolls, form, h
     attack = next(p for p in packets if p.get("action") == "Dissolution Maw")
     assert attack["damage"] == 12
     assert attack["durability_rider"]["save_dc"] == 13
+    assert attack["durability_rider"]["save_type"] == "constitution"
+    assert attack["durability_rider"]["save_total"] == 11
+    assert not attack["durability_rider"]["save_success"]
     assert attack["durability_rider"]["base_hits"] == 3
     rolls.rider.assert_called_once_with("1d4")
     inventory = await db_queries.get_player_inventory(guest)
