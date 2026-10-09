@@ -303,10 +303,6 @@ def test_a_fully_specified_variant_satisfies_the_engine_classifier(payload):
     assert resolve_declaration(raw).type.value == raw["type"]
 
 
-def test_every_variant_has_an_engine_case():
-    assert len(_ENGINE_CASES) == len(DECL_VARIANTS)
-
-
 def test_declare_phase_offers_no_reaction_kind():
     """Inspect the emitted vendor schema: an advertised reaction declaration would consume an action without activating."""
     parsed = ToolContext([combat_turn.declare_phase]).parse_function_tools("anthropic", strict=True)

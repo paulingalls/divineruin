@@ -71,6 +71,7 @@ async def test_every_encounter_starts_from_catalog(started, template, cold_catal
         expected = translate_creature(row, encounter_id=template["id"], enemy_id=ref["id"], role=ref["role"])
         for field in (
             "action_pool",
+            "multiattack_sequence",
             "attributes",
             "saving_throw_proficiencies",
             "category",
@@ -83,7 +84,10 @@ async def test_every_encounter_starts_from_catalog(started, template, cold_catal
             assert getattr(enemy, field) == expected[field]
         assert enemy.creature_id == ref["creature_id"]
         assert roster[enemy.id]["name"] == row["name"]
-        assert roster[enemy.id]["actions"] == [a["name"] for a in enemy.action_pool]
+        actions = [a["name"] for a in enemy.action_pool]
+        if enemy.multiattack_sequence is not None:
+            actions.append(enemy.multiattack_sequence["name"])
+        assert roster[enemy.id]["actions"] == actions
         view = next(p for p in hud["combatants"] if p["id"] == enemy.id)
         assert view["hpMax"] == enemy.hp_max
         assert view["hpCurrent"] == enemy.hp_current

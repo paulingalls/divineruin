@@ -2214,6 +2214,10 @@
       }
     ],
     "multiattack": "2 attacks \u2014 one Claw and one Dissolution Maw",
+    "multiattack_sequence": {
+      "name": "Multiattack",
+      "attacks": ["Claw", "Dissolution Maw"]
+    },
     "passives": [
       {
         "name": "Unsettling Silence",

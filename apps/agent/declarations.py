@@ -33,6 +33,7 @@ class DeclarationType(StrEnum):
     compare equal to their wire strings."""
 
     ATTACK = "attack"
+    MULTIATTACK = "multiattack"
     ABILITY = "ability"
     INTERACT = "interact"
     MANEUVER = "maneuver"
@@ -74,6 +75,7 @@ class Declaration:
     # can set it — it has the actor and the state this pure classifier does not — and resolution
     # reads it instead of re-deriving it there, where the hold may already have ended.
     maneuver_intent: ManeuverIntent | None = None
+    strikes: list[dict] | None = None
 
 
 def resolve_declaration(raw: dict) -> Declaration:
@@ -95,6 +97,17 @@ def resolve_declaration(raw: dict) -> Declaration:
     action = raw.get("action")
     target_id = raw.get("target_id")
 
+    if decl_type is DeclarationType.MULTIATTACK:
+        strikes = raw.get("strikes")
+        if not isinstance(action, str) or not action or not isinstance(strikes, list) or not strikes:
+            raise ValueError("multiattack requires action and nonempty strikes")
+        for strike in strikes:
+            if (
+                not isinstance(strike, dict)
+                or set(strike) != {"action", "target_id"}
+                or not all(isinstance(value, str) and value for value in strike.values())
+            ):
+                raise ValueError("multiattack strikes require only action and target_id")
     if decl_type is DeclarationType.ATTACK:
         if not action:
             raise ValueError("attack declaration requires an 'action'")
@@ -117,6 +130,7 @@ def resolve_declaration(raw: dict) -> Declaration:
     maneuver_intent = ManeuverIntent(raw_maneuver_intent) if raw_maneuver_intent is not None else None
     return Declaration(
         type=decl_type,
+        strikes=raw.get("strikes"),
         destination=raw.get("destination"),
         action=action,
         target_id=target_id,

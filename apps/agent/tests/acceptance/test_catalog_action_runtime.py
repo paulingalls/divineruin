@@ -57,6 +57,8 @@ async def runtime(reset_db_pool):
             attacks, actives = deepcopy(row["attacks"]), deepcopy(row["actives"])
         catalog_row["attacks"] = attacks or [row["attacks"][0]]
         catalog_row["actives"] = actives
+        if actions is not None:
+            catalog_row.pop("multiattack_sequence", None)
         assert not validate_creature_stat_block(catalog_row)
         await pool.execute(
             "UPDATE creatures SET data = $2::jsonb WHERE id = $1", catalog_row["id"], json.dumps(catalog_row)

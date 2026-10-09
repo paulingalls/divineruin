@@ -325,6 +325,7 @@ async def _start_combat_locked(
                 catalog_narration=derived["catalog_narration"],
                 catalog_audio=derived["catalog_audio"],
                 deferred_effects=derived["deferred_effects"],
+                multiattack_sequence=derived.get("multiattack_sequence"),
                 condition_immunities=derived["condition_immunities"],
                 choir_reaction=derived.get("choir_reaction"),
                 hollow=derived["hollow"],

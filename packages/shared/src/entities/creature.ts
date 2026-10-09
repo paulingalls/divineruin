@@ -34,6 +34,7 @@ export interface CreatureStatBlock {
   save_proficiencies: string[];
   attacks: Attack[];
   multiattack: string | null;
+  multiattack_sequence?: { name: string; attacks: string[] };
   passives: Ability[];
   actives: ActiveAbility[];
   signature_ability?: CatalogSignatureAbility;
@@ -246,6 +247,36 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
       if (problems.length === before) combatEntry(attack, path);
     });
   field(creature, "multiattack", "", "string", true);
+  if ("multiattack_sequence" in creature) {
+    const sequence = field(creature, "multiattack_sequence", "", "object");
+    if (sequence && typeof sequence === "object" && !Array.isArray(sequence)) {
+      const seq = sequence as Record<string, unknown>;
+      const name = field(seq, "name", "multiattack_sequence", "string");
+      const refs = field(seq, "attacks", "multiattack_sequence", "array");
+      const names = Array.isArray(attacks)
+        ? attacks.flatMap((a: unknown) =>
+            isObject(a) && typeof a.name === "string" ? [a.name.toLowerCase()] : [],
+          )
+        : [];
+      const activeNames = Array.isArray(creature.actives)
+        ? creature.actives.flatMap((a: unknown) =>
+            isObject(a) && typeof a.name === "string" ? [a.name.toLowerCase()] : [],
+          )
+        : [];
+      if (
+        typeof name !== "string" ||
+        !name.trim() ||
+        [...names, ...activeNames].includes(name.toLowerCase())
+      )
+        problems.push("multiattack_sequence.name: empty or colliding action name");
+      if (Array.isArray(refs)) {
+        if (!refs.length) problems.push("multiattack_sequence.attacks: expected non-empty array");
+        for (const ref of refs)
+          if (typeof ref !== "string" || names.filter((n) => n === ref.toLowerCase()).length !== 1)
+            problems.push("multiattack_sequence.attacks: expected unambiguous attack reference");
+      }
+    }
+  }
   for (const group of ["passives", "actives", "reactions"]) {
     const abilities = field(creature, group, "", "array");
     if (Array.isArray(abilities))

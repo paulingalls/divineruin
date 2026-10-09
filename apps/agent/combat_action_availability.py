@@ -19,7 +19,7 @@ def available_actions(actor):
 
 def action_summary(actor):
     actions = available_actions(actor)
-    return {
+    summary = {
         "actions": [a["name"] for a in actions],
         "mark_actions": [
             {"name": a["name"], "kind": action_kind(a)} for a in actions if action_kind(a) in ("command", "accusation")
@@ -59,6 +59,31 @@ def action_summary(actor):
             }
         ],
     }
+
+    sequence = actor.multiattack_sequence
+    if sequence is not None:
+        from combat_ability import _find_action
+
+        strikes = [_find_action(actor, ref) for ref in sequence["attacks"]]
+        if any(strike is None for strike in strikes):
+            raise ValueError(f"{actor.id}: multiattack references an unknown catalog action")
+        ready = (
+            all(strike in actions for strike in strikes) and not actor.is_fallen and not cannot_act(actor.conditions)
+        )
+        summary["executable_actions"].append(
+            {
+                "id": sequence["name"],
+                "name": sequence["name"],
+                "kind": "multiattack",
+                "declaration_type": "multiattack",
+                "available": ready,
+                "reason": None if ready else "unavailable",
+                "strikes": [{"action": strike["name"]} for strike in strikes if strike is not None],
+            }
+        )
+        if ready:
+            summary["actions"].append(sequence["name"])
+    return summary
 
 
 def require_available(actor, action):

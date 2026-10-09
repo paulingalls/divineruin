@@ -302,3 +302,51 @@ test("catalog runtime extensions use the public creature boundary", () => {
     );
   }
 });
+
+test("structured multiattack references are checked by both public validators", async () => {
+  const rows = (await Bun.file(
+    new URL("../../../../content/creatures.json", import.meta.url),
+  ).json()) as Record<string, unknown>[];
+  const maw = rows.find((r) => r.id === "hollow_mawling")!;
+  const typed = { name: "Multiattack", attacks: ["Claw", "Dissolution Maw"] } satisfies NonNullable<
+    import("./creature").CreatureStatBlock["multiattack_sequence"]
+  >;
+  expect(maw.multiattack_sequence).toEqual(typed);
+  expect(
+    validateCreatureStatBlock({
+      ...maw,
+      multiattack_sequence: { name: "Multiattack", attacks: ["claw", "CLAW"] },
+    }),
+  ).toEqual([]);
+  expect(maw.multiattack_sequence).toEqual({
+    name: "Multiattack",
+    attacks: ["Claw", "Dissolution Maw"],
+  });
+  for (const sequence of [
+    { name: "Multiattack", attacks: ["Scatter"] },
+    { name: "Scatter", attacks: ["Claw"] },
+    { name: "Multiattack", attacks: "Claw" },
+    null,
+    {},
+    { name: "", attacks: ["Claw"] },
+    { name: "Claw", attacks: ["Claw"] },
+    { name: "Multiattack", attacks: [] },
+    { name: "Multiattack", attacks: ["unknown"] },
+    { name: "Multiattack", attacks: [3] },
+  ]) {
+    const bad = { ...maw, multiattack_sequence: sequence };
+    expect(validateCreatureStatBlock(bad).length).toBeGreaterThan(0);
+    expect(validateCreatureJson(JSON.stringify([bad])).length).toBeGreaterThan(0);
+  }
+});
+
+test("case-insensitive ambiguous attack references are refused", async () => {
+  const rows = (await Bun.file(
+    new URL("../../../../content/creatures.json", import.meta.url),
+  ).json()) as Record<string, unknown>[];
+  const maw = rows.find((r) => r.id === "hollow_mawling")!;
+  const attacks = maw.attacks as Record<string, unknown>[];
+  const bad = { ...maw, attacks: [...attacks, { ...attacks[0], name: "cLAW" }] };
+  expect(validateCreatureStatBlock(bad).length).toBeGreaterThan(0);
+  expect(validateCreatureJson(JSON.stringify([bad])).length).toBeGreaterThan(0);
+});

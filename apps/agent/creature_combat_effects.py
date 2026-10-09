@@ -3,7 +3,7 @@
 from copy import deepcopy
 
 
-def deferred_effects(row):
+def deferred_effects(row, *, composite=False):
     effects = []
     for group in ("attacks", "actives", "passives", "reactions"):
         for source in row[group]:
@@ -31,6 +31,8 @@ def deferred_effects(row):
                 }
             )
     for group in ("multiattack", "signature_ability", "hollow"):
+        if group == "multiattack" and composite and row.get("multiattack_sequence"):
+            continue
         source = deepcopy(row.get(group))
         if (
             group == "hollow"
