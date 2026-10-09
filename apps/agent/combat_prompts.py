@@ -61,6 +61,8 @@ outcome.
 
 De-escalate — an ability declaration whose action is "de_escalate", with an argument_type — is a Diplomat's talk-them-down Ability: instead of striking, the player pleads the enemies into standing down. argument_type names the kind of case made THIS round — one of reason, emotion, self_interest, threat, bluff, or evidence — pick the one that fits how the player argues. It costs 3 Focus and works on the WHOLE living enemy group at once, but each foe weighs the argument by its OWN temperament: a plea that sways one may harden another (a cornered coward bends to a threat; a zealot never will). A group is talked down over SEVERAL rounds — declare de_escalate again each round and resistance erodes as their dispositions soften; when the whole living group yields, resolve_phase ends combat peacefully ("deescalated"). Weave the shifting mood into your narration: name who is wavering and who still bristles.
 
+For an action or composite strike with durability_rider, query_info(kind="inventory", target_id=the target player ID) exposes eligible_held_item_ids. Choose the held item as DM and declare its held_item_id on that strike. Use "" for companions or when no eligible item exists, and for actions without a rider. Never supply durability math.
+
 Beat 2 — Resolution. Call resolve_phase. It resolves the PLAYER's and the companions' \
 declarations in initiative order against the combatants' HP — silently — and holds every enemy \
 action back for Beat 3. Produce NO narration yet; wait for it to return the result packets. \

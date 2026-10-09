@@ -379,6 +379,16 @@ test("Maw durability rider is authored and validated", async () => {
     expect(validateCreatureStatBlock(source).length).toBeGreaterThan(0);
   }
   const source = structuredClone(maw);
-  source.actives[0] = { ...source.actives[0], kind: "prepare_attack", durability_rider: rider };
+  source.actives[0] = {
+    name: "Preparation",
+    description: "Prepare a strike.",
+    narration_cue: "It braces.",
+    audio: null,
+    kind: "prepare_attack",
+    advantage: true,
+    on_hit: { applies_condition: "prone", duration: 1 },
+  };
+  expect(validateCreatureStatBlock(source)).toEqual([]);
+  source.actives[0].durability_rider = rider;
   expect(validateCreatureStatBlock(source).length).toBeGreaterThan(0);
 });

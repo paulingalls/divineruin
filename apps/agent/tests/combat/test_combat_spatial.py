@@ -101,7 +101,7 @@ def test_move_schema_reaches_engine():
     assert to_engine_declarations([payload]) == {"a": move()}
     with pytest.raises(ValueError, match="more than once"):
         to_engine_declarations(
-            [payload, AttackDecl(kind="attack", actor_id="a", action="Sword", target_id="b", rider="")]
+            [payload, AttackDecl(kind="attack", actor_id="a", action="Sword", target_id="b", held_item_id="", rider="")]
         )
 
 

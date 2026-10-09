@@ -314,5 +314,15 @@ def test_maw_rejects_rider_on_nonattack():
     from creature_schema import validate_creature_stat_block
 
     source = copy.deepcopy(row("hollow_mawling"))
-    source["actives"][0].update(kind="prepare_attack", durability_rider=RIDER)
+    source["actives"][0] = {
+        "name": "Preparation",
+        "description": "Prepare a strike.",
+        "narration_cue": "It braces.",
+        "audio": None,
+        "kind": "prepare_attack",
+        "advantage": True,
+        "on_hit": {"applies_condition": "prone", "duration": 1},
+    }
+    assert validate_creature_stat_block(source) == []
+    source["actives"][0]["durability_rider"] = RIDER
     assert validate_creature_stat_block(source)

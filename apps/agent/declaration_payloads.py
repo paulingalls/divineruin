@@ -32,6 +32,9 @@ class AttackDecl(BaseModel):
     actor_id: str = Field(description="The participant declaring this action.")
     action: str = Field(description='The EXACT name of one of the actor\'s equipped weapons, e.g. "Longsword".')
     target_id: str = Field(description="The participant being struck.")
+    held_item_id: str = Field(
+        description="Selected target inventory ID for a durability rider; empty when none applies."
+    )
     rider: str = Field(
         description='For a Cunning Action attacker, the movement rider: "dash", "disengage" or "hide". '
         "Empty string for every other attacker."
@@ -42,6 +45,7 @@ class StrikeSelection(BaseModel):
     model_config = {"extra": "forbid"}
     action: str
     target_id: str
+    held_item_id: str
 
 
 class MultiattackDecl(BaseModel):
@@ -135,9 +139,15 @@ DECL_VARIANTS: tuple[type[BaseModel], ...] = (
 
 def _raw(decl: DeclVariant) -> dict:
     if isinstance(decl, MultiattackDecl):
-        return {"type": "multiattack", "action": decl.action, "strikes": [s.model_dump() for s in decl.strikes]}
+        return {
+            "type": "multiattack",
+            "action": decl.action,
+            "strikes": [{k: v for k, v in s.model_dump().items() if k != "held_item_id" or v} for s in decl.strikes],
+        }
     if isinstance(decl, AttackDecl):
         raw = {"type": "attack", "action": decl.action, "target_id": decl.target_id}
+        if decl.held_item_id:
+            raw["held_item_id"] = decl.held_item_id
         if decl.rider:
             raw["rider"] = decl.rider
         return raw
