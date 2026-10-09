@@ -380,3 +380,15 @@ async def test_public_source_kill_releases_grapple(maw, field_dice):
     assert state.get_participant(owner.id).is_fallen, packets
     assert not any(c["type"] == "grappled" for c in state.get_participant(victim.id).conditions)
     assert not any(p.get("automatic") for p in await next_round(maw))
+
+
+async def test_tick_fall_voids_declared_defend_bonus(maw, field_dice):
+    victim = await grapple(maw)
+    victim.hp_current = 1
+    await persist(maw)
+    await maw.command("declare_phase", {"declarations": [{"kind": "defend", "actor_id": victim.id}]})
+    first = await maw.command("resolve_phase", {})
+    assert any(p.get("automatic") for p in first["packets"])
+    state = await maw.reload()
+    assert state.get_participant(victim.id).is_fallen
+    assert victim.id not in state.ac_modifiers  # held enemy strikes must not see the fallen defender's +AC
