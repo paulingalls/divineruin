@@ -69,7 +69,7 @@ async def turn_start(session, state, victim, *, conn, sink, mutations, queries, 
         sink=sink,
         publish_roll=False,
     )
-    if victim.is_fallen or cannot_act(victim.conditions):
+    if not victim.is_ally or victim.is_fallen or cannot_act(victim.conditions):
         state.ac_modifiers.pop(victim.id, None)
     return {
         **summary,

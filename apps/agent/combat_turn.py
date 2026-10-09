@@ -276,6 +276,9 @@ async def _resolve_phase_locked(
                         packet_summaries.append(summary)
                 if packet is None:
                     continue
+                if actor is not None and not actor.is_ally:
+                    packet_summaries.append({"actor_id": actor.id, "resolved": False, "reason": "actor became hostile"})
+                    continue
                 packet_summaries.append(
                     await _resolve_one_packet(
                         session,

@@ -392,3 +392,30 @@ async def test_tick_fall_voids_declared_defend_bonus(maw, field_dice):
     state = await maw.reload()
     assert state.get_participant(victim.id).is_fallen
     assert victim.id not in state.ac_modifiers  # held enemy strikes must not see the fallen defender's +AC
+
+
+@pytest.mark.parametrize("maw", [{"gear": True}], indirect=True)
+@pytest.mark.parametrize("kind", ["attack", "defend"])
+async def test_hollowed_rise_cancels_living_ally_intent(maw, field_dice, kind):
+    victim = await grapple(maw)
+    victim.hp_current = 1
+    victim.conditions.append({"type": "hollowed", "stage": 2, "duration": None})
+    await persist(maw)
+    target_id = maw.enemies[1]
+    target_hp = maw.sd.combat_state.get_participant(target_id).hp_current
+    declaration = {"kind": kind, "actor_id": victim.id}
+    if kind == "attack":
+        declaration.update(action="Shortsword", target_id=target_id, held_item_id="", rider="")
+    await maw.command("declare_phase", {"declarations": [declaration]})
+    first = await maw.command("resolve_phase", {})
+    tick = next(p for p in first["packets"] if p.get("automatic"))
+    assert tick["target_rose_hollowed"]
+    action = next(p for p in first["packets"] if p.get("actor_id") == victim.id)
+    assert not action["resolved"] and action["reason"] == "actor became hostile"
+    state = await maw.reload()
+    assert state.get_participant(victim.id).type == "temporary_hollowed"
+    assert state.get_participant(target_id).hp_current == target_hp
+    assert victim.id not in state.ac_modifiers
+    await drain(maw)
+    packets = await next_round(maw, {"kind": "defend", "actor_id": victim.id})
+    assert any(p.get("actor_id") == victim.id and p["resolved"] for p in packets)
