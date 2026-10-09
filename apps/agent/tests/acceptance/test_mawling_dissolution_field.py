@@ -361,6 +361,8 @@ async def test_public_source_kill_releases_grapple(maw, field_dice):
     victim = await grapple(maw)
     owner = maw.sd.combat_state.get_participant(maw.enemies[0])
     owner.hp_current = 1
+    victim.initiative = 100
+    maw.sd.combat_state.get_participant(maw.sd.companion.id).initiative = -100
     await persist(maw)
     packets = await next_round(
         maw,
