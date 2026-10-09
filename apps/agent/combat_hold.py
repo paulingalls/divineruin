@@ -83,6 +83,8 @@ def preflight_spend(state, actor_id: str, ability_id: str) -> dict:
     Separate from ``record_spend`` so every refusal happens before the resource write. The head of
     ``held_actions`` IS the paused action by construction of ``pump`` — checked rather than
     assumed, because a spend bound to the wrong blow is a defect story-018 would silently inherit.
+    Composite sibling strikes share an actor id, so the actor match alone cannot tell them apart;
+    it suffices because ``_open`` only ever opens the current head's window.
     """
     if state.open_window is None or not state.held_actions:
         raise ValueError(
