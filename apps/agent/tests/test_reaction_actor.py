@@ -65,6 +65,7 @@ def _context():
 
 def _deps(rows: dict[str, dict]):
     db_mod, conn = make_db_mod()
+    conn.execute = AsyncMock()
     queries = MagicMock()
 
     async def lock(ids, *, conn):
