@@ -17,9 +17,20 @@ def available_actions(actor):
     ]
 
 
+def item_rider_facts(action):
+    return (
+        {
+            "durability_rider": action["durability_rider"],
+            "held_item_id": "Choose from target eligible_held_item_ids; empty if none or companion",
+        }
+        if "durability_rider" in action
+        else {}
+    )
+
+
 def action_summary(actor):
     actions = available_actions(actor)
-    return {
+    summary = {
         "actions": [a["name"] for a in actions],
         "mark_actions": [
             {"name": a["name"], "kind": action_kind(a)} for a in actions if action_kind(a) in ("command", "accusation")
@@ -43,6 +54,7 @@ def action_summary(actor):
                 if a not in actions
                 else None,
             }
+            | item_rider_facts(a)
             for a in actor.action_pool
         ],
         "automatic_reactions": []
@@ -59,6 +71,33 @@ def action_summary(actor):
             }
         ],
     }
+
+    sequence = actor.multiattack_sequence
+    if sequence is not None:
+        from combat_ability import _find_action
+
+        strikes = [_find_action(actor, ref) for ref in sequence["attacks"]]
+        if any(strike is None for strike in strikes):
+            raise ValueError(f"{actor.id}: multiattack references an unknown catalog action")
+        ready = (
+            all(strike in actions for strike in strikes) and not actor.is_fallen and not cannot_act(actor.conditions)
+        )
+        summary["executable_actions"].append(
+            {
+                "id": sequence["name"],
+                "name": sequence["name"],
+                "kind": "multiattack",
+                "declaration_type": "multiattack",
+                "available": ready,
+                "reason": None if ready else "unavailable",
+                "strikes": [
+                    {"action": strike["name"], **item_rider_facts(strike)} for strike in strikes if strike is not None
+                ],
+            }
+        )
+        if ready:
+            summary["actions"].append(sequence["name"])
+    return summary
 
 
 def require_available(actor, action):

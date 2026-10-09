@@ -220,12 +220,21 @@ class SaveDamageResult:
     context: str
 
 
+@dataclass(frozen=True)
+class AutomaticDamageResult:
+    damage: int
+    damage_type: str
+    narrative_hint: str = "Automatic damage"
+    dramatic: bool = False
+    context: str = "turn_start"
+
+
 async def apply_attack_result(
     session: SessionData,
     attacker,
     action: dict,
     target,
-    attack_result: check_resolution_attack.AttackResult | SaveDamageResult,
+    attack_result: check_resolution_attack.AttackResult | SaveDamageResult | AutomaticDamageResult,
     effective_ac: int,
     *,
     shield_reaction: str | None = None,
@@ -253,7 +262,8 @@ async def apply_attack_result(
         allowed = choir_encounter.damage(target, attack_result.damage - bonus, attack_result.damage_type)
         allowed += choir_encounter.damage(target, bonus, getattr(attack_result, "bonus_damage_type", None))
         attack_result = replace(attack_result, damage=allowed)
-    save_damage = isinstance(attack_result, SaveDamageResult)
+    automatic = isinstance(attack_result, AutomaticDamageResult)
+    save_damage = isinstance(attack_result, (SaveDamageResult, AutomaticDamageResult))
     if save_damage and publish_roll:
         raise ValueError("save damage cannot publish an attack roll")
 
@@ -276,6 +286,13 @@ async def apply_attack_result(
     hp_before = target.hp_current
     overkill = max(0, attack_result.damage - hp_before)
     target.hp_current = max(0, hp_before - attack_result.damage)
+    if (
+        was_fallen
+        and attack_result.damage > 0
+        and not target.is_dead
+        and (target.type == "companion" or target.death_save_failures < 3)
+    ):
+        target.death_save_failures += 1
     gift_triggered = trigger_iron_resolve(session, target, hp_before)
 
     target.conditions = condition_sources.clear_charm_from_damage(target.conditions, attacker.id, attack_result.damage)
@@ -387,7 +404,12 @@ async def apply_attack_result(
     }
     if gift_triggered:
         response["gift_triggered"] = gift_triggered
-    if save_damage:
+    if automatic:
+        log_outcome = "automatic damage"
+        session.record_event(
+            f"{attacker.name} uses {action.get('name', '')} on {target.name}: {attack_result.damage} automatic damage"
+        )
+    elif isinstance(attack_result, SaveDamageResult):
         save_outcome = "succeeded" if attack_result.save_success else "failed"
         session.record_event(
             f"{attacker.name} uses {action.get('name', '')} on {target.name}: "
@@ -411,7 +433,7 @@ async def apply_attack_result(
     if action.get("self_heal") == "damage_dealt":
         response["self_healed"] = self_healed
         response["attacker_hp_status"] = combat_resolution.hp_threshold_status(attacker.hp_current, attacker.hp_max)
-    if combat_state is not None:
+    if combat_state is not None and not automatic:
         apply_prepared_hit(combat_state, attacker, target, action, response)
     if released_from_grapple:
         response["released_from_grapple"] = released_from_grapple

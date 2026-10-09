@@ -2184,6 +2184,12 @@
       },
       {
         "name": "Dissolution Maw",
+        "durability_rider": {
+          "save": "CON",
+          "dc": 13,
+          "dice": "1d4",
+          "target": "selected_player_held_item"
+        },
         "type": "melee",
         "reach": 5,
         "to_hit": 5,
@@ -2214,6 +2220,10 @@
       }
     ],
     "multiattack": "2 attacks \u2014 one Claw and one Dissolution Maw",
+    "multiattack_sequence": {
+      "name": "Multiattack",
+      "attacks": ["Claw", "Dissolution Maw"]
+    },
     "passives": [
       {
         "name": "Unsettling Silence",
@@ -2224,6 +2234,11 @@
       },
       {
         "name": "Dissolution Field",
+        "turn_start_damage": {
+          "trigger": "grappled_by_source",
+          "damage": "1d6",
+          "damage_type": "necrotic"
+        },
         "description": "Creatures starting turn grappled by a mawling take 1d6 necrotic automatically.",
         "narration_cue": "",
         "recharge": null,

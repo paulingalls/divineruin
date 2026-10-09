@@ -176,7 +176,10 @@ def test_catalog_metadata_roundtrips_and_roster_exposes_effects(source):
         assert summary[key] == enemy[key]
     assert summary["catalog_narration"] == source["narration"]
     assert summary["catalog_audio"] == source["audio"]
-    assert {a["name"] for a in summary["executable_actions"]} == {a["name"] for a in enemy["action_pool"]}
+    expected = {a["name"] for a in enemy["action_pool"]}
+    if enemy["multiattack_sequence"]:
+        expected.add(enemy["multiattack_sequence"]["name"])
+    assert {a["name"] for a in summary["executable_actions"]} == expected
     assert all(a["kind"] in ("command", "accusation") for a in summary["mark_actions"])
 
 
@@ -211,12 +214,9 @@ def test_dm_inventory_has_no_false_executables():
             ("actives", "Lunge"),
             ("actives", "Scatter"),
             ("attacks", "Claw"),
-            ("attacks", "Dissolution Maw"),
             ("attacks", "Lunge"),
             ("hollow", "hollow"),
-            ("multiattack", "2 attacks — one Claw and one Dissolution Maw"),
             ("passives", "Adaptive Learning"),
-            ("passives", "Dissolution Field"),
             ("passives", "Unsettling Silence"),
         },
         "hollow_shadeling": {
@@ -273,3 +273,64 @@ def test_catalog_flat_damage_reaches_real_dice_consumer(species, damage):
     assert result.hit and not result.critical_success
     assert result.damage == int(source["attacks"][0]["damage"])
     assert source == before
+
+
+RIDER = {"save": "CON", "dc": 13, "dice": "1d4", "target": "selected_player_held_item"}
+
+
+def test_maw_durability_contract_survives_translation():
+    from creature_schema import validate_creature_stat_block
+
+    source = row("hollow_mawling")
+    assert validate_creature_stat_block(source) == []
+    attack = next(a for a in translate(source)["action_pool"] if a["name"] == "Dissolution Maw")
+    assert attack["durability_rider"] == RIDER
+
+
+@pytest.mark.parametrize(
+    "rider",
+    [
+        None,
+        {},
+        {**RIDER, "save": "bad"},
+        {**RIDER, "dc": True},
+        {**RIDER, "dc": 0},
+        {**RIDER, "dice": "bad"},
+        {**RIDER, "target": "armor"},
+        {**RIDER, "extra": 1},
+        {k: v for k, v in RIDER.items() if k != "dice"},
+    ],
+)
+def test_maw_rejects_invalid_durability_contract(rider):
+    from creature_schema import validate_creature_stat_block
+
+    source = copy.deepcopy(row("hollow_mawling"))
+    source["attacks"][1]["durability_rider"] = rider
+    assert validate_creature_stat_block(source)
+
+
+def test_maw_rejects_rider_on_nonattack():
+    from creature_schema import validate_creature_stat_block
+
+    source = copy.deepcopy(row("hollow_mawling"))
+    source["actives"][0] = {
+        "name": "Preparation",
+        "description": "Prepare a strike.",
+        "narration_cue": "It braces.",
+        "audio": None,
+        "kind": "prepare_attack",
+        "advantage": True,
+        "on_hit": {"applies_condition": "prone", "duration": 1},
+    }
+    assert validate_creature_stat_block(source) == []
+    source["actives"][0]["durability_rider"] = RIDER
+    assert validate_creature_stat_block(source)
+
+
+@pytest.mark.parametrize("name", ["Memory Scream", "Dissonant Chord"])
+def test_rider_rejected_on_save_resolved_attack(name):
+    from creature_schema import validate_creature_stat_block
+
+    source = next(r for r in catalog() if r["id"] == "hollow_choir")
+    next(a for a in source["attacks"] if a["name"] == name)["durability_rider"] = RIDER
+    assert any("durability_rider" in error for error in validate_creature_stat_block(source))

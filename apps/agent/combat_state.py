@@ -121,6 +121,10 @@ class CombatState:
         for participant in data["participants"]:
             if "tier" not in participant:
                 raise ValueError(f"participant {participant.get('id', '?')} missing tier")
+        from combat_turn_start import validate_turn_start_damage
+
+        validate_turn_start_damage(data)
+
         state = cls(
             encounter_id=data.get("encounter_id", ""),
             choir_encounter=data.get("choir_encounter"),

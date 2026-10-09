@@ -33,6 +33,7 @@ from combat_deescalation import (
 )
 from combat_enemy_action import resolve_enemy_strike
 from combat_enemy_active import resolve_active
+from combat_item_rider import resolve_rider
 from combat_packet_gate import _prevalidate_ability_focus as _prevalidate_ability_focus
 from combat_support import _resolve_attack_packet
 from condition_restrictions import cannot_act
@@ -114,6 +115,8 @@ async def _resolve_one_packet(
     for a held attack whose DICE_ROLL was already announced at its POST_ROLL pause."""
     attacker = state.get_participant(packet.actor_id)
     decl = packet.declaration
+    if decl.type is DeclarationType.MULTIATTACK:
+        raise ValueError("multiattack must expand into held strikes before resolution")
     # This actor's own pre-validated for_update row (M14 story-004): the ability branches below thread
     # it to the cast/deduct so a non-primary caster's Focus/Resonance land on ITS pool. None for a
     # non-caster packet (attack/defend) or an actor with no player ability — those branches ignore it.
@@ -139,16 +142,16 @@ async def _resolve_one_packet(
     from choir_effects import approach
 
     forced_move = approach(state, attacker)
-    if combat_spatial_declarations.is_move(decl) and forced_move is not None:
-        return forced_move
-    if combat_spatial_declarations.is_move(decl):
-        return combat_spatial_declarations.apply_move(state, attacker, decl)
-
     if attacker is None or attacker.is_fallen:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": "actor unavailable"}
     if blocked := cannot_act(attacker.conditions):
         reason = f"{attacker.name} is {blocked[0]} and loses the phase"
         return {"actor_id": packet.actor_id, "resolved": False, "reason": reason}
+
+    if combat_spatial_declarations.is_move(decl) and forced_move is not None:
+        return forced_move
+    if combat_spatial_declarations.is_move(decl):
+        return combat_spatial_declarations.apply_move(state, attacker, decl)
 
     if stale is not None:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": stale}
@@ -362,6 +365,19 @@ async def _resolve_one_packet(
             sink=sink,
             publish_roll=publish_roll,
         )
+        if "durability_rider" in act:
+            await resolve_rider(
+                session,
+                attacker,
+                target,
+                act,
+                decl,
+                sub,
+                queries=queries,
+                conn=conn,
+                sink=sink,
+                reaction_save_advantage=reaction_save_advantage,
+            )
         attack_summaries.append(sub)
         # Remove attack-spent conditions before the next swing in an expanded declaration. The
         # first consuming swing leaves later consumed_conditions empty. Persistence rides the

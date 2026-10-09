@@ -302,3 +302,134 @@ test("catalog runtime extensions use the public creature boundary", () => {
     );
   }
 });
+
+test("structured multiattack references are checked by both public validators", async () => {
+  const rows = (await Bun.file(
+    new URL("../../../../content/creatures.json", import.meta.url),
+  ).json()) as Record<string, unknown>[];
+  const maw = rows.find((r) => r.id === "hollow_mawling")!;
+  const typed = { name: "Multiattack", attacks: ["Claw", "Dissolution Maw"] } satisfies NonNullable<
+    import("./creature").CreatureStatBlock["multiattack_sequence"]
+  >;
+  expect(maw.multiattack_sequence).toEqual(typed);
+  expect(
+    validateCreatureStatBlock({
+      ...maw,
+      multiattack_sequence: { name: "Multiattack", attacks: ["claw", "CLAW"] },
+    }),
+  ).toEqual([]);
+  expect(maw.multiattack_sequence).toEqual({
+    name: "Multiattack",
+    attacks: ["Claw", "Dissolution Maw"],
+  });
+  for (const sequence of [
+    { name: "Multiattack", attacks: ["Scatter"] },
+    { name: "Scatter", attacks: ["Claw"] },
+    { name: "Multiattack", attacks: "Claw" },
+    null,
+    {},
+    { name: "", attacks: ["Claw"] },
+    { name: "Claw", attacks: ["Claw"] },
+    { name: "Multiattack", attacks: [] },
+    { name: "Multiattack", attacks: ["unknown"] },
+    { name: "Multiattack", attacks: [3] },
+  ]) {
+    const bad = { ...maw, multiattack_sequence: sequence };
+    expect(validateCreatureStatBlock(bad).length).toBeGreaterThan(0);
+    expect(validateCreatureJson(JSON.stringify([bad])).length).toBeGreaterThan(0);
+  }
+});
+
+test("case-insensitive ambiguous attack references are refused", async () => {
+  const rows = (await Bun.file(
+    new URL("../../../../content/creatures.json", import.meta.url),
+  ).json()) as Record<string, unknown>[];
+  const maw = rows.find((r) => r.id === "hollow_mawling")!;
+  const attacks = maw.attacks as Record<string, unknown>[];
+  const bad = { ...maw, attacks: [...attacks, { ...attacks[0], name: "cLAW" }] };
+  expect(validateCreatureStatBlock(bad).length).toBeGreaterThan(0);
+  expect(validateCreatureJson(JSON.stringify([bad])).length).toBeGreaterThan(0);
+});
+
+test("Maw durability rider is authored and validated", async () => {
+  const rows = (await Bun.file(
+    new URL("../../../../content/creatures.json", import.meta.url),
+  ).json()) as {
+    id: string;
+    attacks: Record<string, unknown>[];
+    actives: Record<string, unknown>[];
+  }[];
+  const maw = rows.find((r) => r.id === "hollow_mawling")!;
+  const rider = { save: "CON", dc: 13, dice: "1d4", target: "selected_player_held_item" };
+  expect(maw.attacks[1]!.durability_rider).toEqual(rider);
+  expect(validateCreatureStatBlock(maw)).toEqual([]);
+  for (const bad of [
+    null,
+    {},
+    { ...rider, save: "bad" },
+    { ...rider, dc: true },
+    { ...rider, dc: 0 },
+    { ...rider, dice: "bad" },
+    { ...rider, target: "armor" },
+    { ...rider, extra: 1 },
+    { save: "CON", dc: 13, target: rider.target },
+  ]) {
+    const source = structuredClone(maw);
+    source.attacks[1]!.durability_rider = bad;
+    expect(validateCreatureStatBlock(source).length).toBeGreaterThan(0);
+  }
+  const source = structuredClone(maw);
+  source.actives[0] = {
+    name: "Preparation",
+    description: "Prepare a strike.",
+    narration_cue: "It braces.",
+    audio: null,
+    kind: "prepare_attack",
+    advantage: true,
+    on_hit: { applies_condition: "prone", duration: 1 },
+  };
+  expect(validateCreatureStatBlock(source)).toEqual([]);
+  source.actives[0].durability_rider = rider;
+  expect(validateCreatureStatBlock(source).length).toBeGreaterThan(0);
+  const choir = rows.find((r) => r.id === "hollow_choir")!;
+  for (const name of ["Memory Scream", "Dissonant Chord"]) {
+    const saved = structuredClone(choir);
+    saved.attacks.find((a) => a.name === name)!.durability_rider = rider;
+    expect(validateCreatureStatBlock(saved).some((e) => e.includes("durability_rider"))).toBe(true);
+  }
+});
+
+test("Mawling field accepts only the authored automatic damage contract", async () => {
+  const rows = (await Bun.file(
+    new URL("../../../../content/creatures.json", import.meta.url),
+  ).json()) as { id: string; passives: { name: string; turn_start_damage?: unknown }[] }[];
+  const row = rows.find((r) => r.id === "hollow_mawling")!;
+  const field = { trigger: "grappled_by_source", damage: "1d6", damage_type: "necrotic" };
+  const invalid = [
+    null,
+    [],
+    1,
+    true,
+    {},
+    { ...field, extra: true },
+    ...Object.keys(field).map((key) =>
+      Object.fromEntries(Object.entries(field).filter(([k]) => k !== key)),
+    ),
+    ...[
+      ["trigger", "turn"],
+      ["damage", "2d6"],
+      ["damage_type", "fire"],
+      ["damage", 6],
+      ["trigger", true],
+    ].map(([key, value]) => ({ ...field, [key as string]: value })),
+  ];
+  for (const effect of invalid) {
+    const modified = structuredClone(row);
+    modified.passives[0]!.turn_start_damage = effect;
+    expect(validateCreatureStatBlock(modified).length).toBeGreaterThan(0);
+  }
+  expect(row.passives.find((p) => p.name === "Dissolution Field")!.turn_start_damage).toEqual(
+    field,
+  );
+  expect(validateCreatureStatBlock(row)).toEqual([]);
+});

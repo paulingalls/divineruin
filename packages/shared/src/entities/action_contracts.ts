@@ -2,7 +2,14 @@ import { CONDITION_NAMES } from "./encounter";
 
 export type Recharge =
   { kind: "roll"; die: 6; threshold: number } | { kind: "encounter" | "round"; uses: number };
+export type DurabilityRider = {
+  save: "STR" | "DEX" | "CON" | "INT" | "WIS" | "CHA";
+  dc: number;
+  dice: string;
+  target: "selected_player_held_item";
+};
 export type ActionExtensions = {
+  durability_rider?: unknown;
   duration_dice?: unknown;
   movement?: unknown;
   radius_ft?: unknown;
@@ -55,6 +62,7 @@ export function validateRecharge(value: unknown, path: string): void {
 
 export function validateActionExtensions(action: ActionExtensions, path: string): void {
   const kind = action.kind === undefined ? "attack" : action.kind;
+  validateDurabilityRider(action, path);
   validateResolution(action, path);
   if (
     !["charm", "silence", "spell_redirect"].includes(kind as string) &&
@@ -283,4 +291,25 @@ function validateChoirEffect(action: ActionExtensions, path: string): void {
     invalid(`${path}.recharge`);
   if ("recharge" in action && !(kind === "spell_redirect" && action.recharge === null))
     validateRecharge(action.recharge, `${path}.recharge`);
+}
+
+function validateDurabilityRider(action: ActionExtensions, path: string): void {
+  if (!("durability_rider" in action)) return;
+  const rider = action.durability_rider;
+  path += ".durability_rider";
+  if (
+    (action.kind ?? "attack") !== "attack" ||
+    "resolution" in action ||
+    "applies_condition" in action ||
+    action.half_on_success
+  )
+    invalid(path);
+  if (!object(rider) || Object.keys(rider).sort().join(",") !== "dc,dice,save,target")
+    invalid(path);
+  if (!["STR", "DEX", "CON", "INT", "WIS", "CHA"].includes(rider.save as string))
+    invalid(`${path}.save`);
+  if (!positive(rider.dc)) invalid(`${path}.dc`);
+  if (typeof rider.dice !== "string" || !/^[1-9][0-9]*d[1-9][0-9]*$/.test(rider.dice))
+    invalid(`${path}.dice`);
+  if (rider.target !== "selected_player_held_item") invalid(`${path}.target`);
 }

@@ -1,4 +1,5 @@
 import copy
+import dataclasses
 import json
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -159,6 +160,7 @@ async def test_a_later_seizing_grab_keeps_the_prior_source_and_reports_grapple_h
     enemy = state.get_participant("mawling_1")
     player = state.get_participant("player_1")
     assert enemy is not None and player is not None
+    state.participants.append(dataclasses.replace(enemy, id="mawling_1"))
     enemy.id = "mawling_2"
     place_actors(state)
     state.initiative_order[-1] = enemy.id

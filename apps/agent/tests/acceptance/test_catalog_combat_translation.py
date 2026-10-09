@@ -64,7 +64,7 @@ async def declare(ctx, pid, eid, name):
     if advertised["declaration_type"] == "ability":
         payload = AbilityDecl(kind="ability", actor_id=eid, action=name, targets=[], argument_type="")
     else:
-        payload = AttackDecl(kind="attack", actor_id=eid, action=name, target_id=pid, rider="")
+        payload = AttackDecl(kind="attack", actor_id=eid, action=name, target_id=pid, held_item_id="", rider="")
     response = json.loads(await combat_turn.declare_phase(ctx, [DefendDecl(kind="defend", actor_id=pid), payload]))
     assert eid in response["accepted_actors"]
     return response
@@ -291,8 +291,10 @@ async def test_command_focus_bonus_reaches_attack(runtime):
         ctx,
         [
             DefendDecl(kind="defend", actor_id=pid),
-            AttackDecl(kind="attack", actor_id=eid, action="Rally", target_id=pid, rider=""),
-            AttackDecl(kind="attack", actor_id="soldier137", action="Longsword", target_id=pid, rider=""),
+            AttackDecl(kind="attack", actor_id=eid, action="Rally", target_id=pid, held_item_id="", rider=""),
+            AttackDecl(
+                kind="attack", actor_id="soldier137", action="Longsword", target_id=pid, held_item_id="", rider=""
+            ),
         ],
     )
     result = await resolve(ctx)

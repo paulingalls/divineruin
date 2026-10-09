@@ -102,7 +102,11 @@ def _translate(row, encounter_id, enemy_id, role):
         signature_ability=deepcopy(row.get("signature_ability")),
         catalog_narration=deepcopy(row["narration"]),
         catalog_audio=deepcopy(row["audio"]),
-        deferred_effects=deferred_effects(row),
+        deferred_effects=deferred_effects(row, composite=role != "minion"),
+        turn_start_damage=deepcopy(
+            next((p["turn_start_damage"] for p in row["passives"] if "turn_start_damage" in p), None)
+        ),
+        multiattack_sequence=deepcopy(row.get("multiattack_sequence")) if role != "minion" else None,
         condition_immunities={"grappled": "No Physical Form", "restrained": "No Physical Form"} if choir else {},
         choir_reaction=deepcopy(row["reactions"][0]) if choir else None,
         hollow=(

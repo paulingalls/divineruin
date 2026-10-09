@@ -307,6 +307,7 @@ async def _activate(ctx, ability_id: str, *, player_class: str, stamina: int = 1
     what stands in for the transcript consumer these tests do not run.
     """
     db_mod, _conn = make_db_mod()
+    _conn.execute = AsyncMock()
     queries = MagicMock()
     queries.get_players_for_update = AsyncMock(
         return_value={

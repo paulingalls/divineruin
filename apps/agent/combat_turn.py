@@ -18,6 +18,7 @@ import check_resolution_save
 import choir_encounter
 import combat_hold
 import combat_hollow_resonance
+import combat_item_rider
 import combat_phase
 import combat_spatial
 import combat_spatial_declarations
@@ -99,6 +100,7 @@ async def _declare_phase_locked(
     try:
         combat_spatial_declarations.preflight_state(cs)
         next_state, _adv = combat_phase.advance_combat_phase(cs, declarations=declarations)
+        await combat_item_rider.preflight(session, next_state)
     except ValueError as e:
         raise ToolError(str(e)) from e
 
@@ -265,7 +267,18 @@ async def _resolve_phase_locked(
             # windows (AC1). Initiative still orders within each band — what ends is cross-band
             # pre-emption, where a higher-initiative enemy dropped the player before their swing landed.
             ally_packets, enemy_packets = combat_phase.partition_packets(state, adv.packets)
-            for packet in ally_packets:
+            from combat_turn_start import ally_turns, turn_start
+
+            for actor, packet in ally_turns(state, ally_packets):
+                if actor is not None:
+                    summary = await turn_start(session, state, actor, conn=conn, sink=sink, **packet_deps)
+                    if summary is not None:
+                        packet_summaries.append(summary)
+                if packet is None:
+                    continue
+                if actor is not None and not actor.is_ally:
+                    packet_summaries.append({"actor_id": actor.id, "resolved": False, "reason": "actor became hostile"})
+                    continue
                 packet_summaries.append(
                     await _resolve_one_packet(
                         session,

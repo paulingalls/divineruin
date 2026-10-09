@@ -31,6 +31,7 @@ import reaction_windows
 from combat_ability import _find_action
 from combat_action_availability import begin_execution, replay_valid
 from combat_enemy_action import is_combined_attack_action, is_save_damage_action
+from combat_multiattack import held_declarations, strike_summary
 from combat_packet import _resolve_one_packet
 from combat_support import build_attack_dice_roll_payload, deserialize_roll, roll_attack, serialize_roll
 from condition_restrictions import cannot_act
@@ -57,19 +58,23 @@ def hold_enemy_packets(state, packets: list) -> list[dict]:
     Each entry is JSONB-native so it round-trips through CombatState.to_dict/from_dict untouched:
     a crash between commits reloads to a paused combat, never to a deleted enemy turn (AC7).
     """
-    return [
-        {
-            "seq": seq,
-            "execution_id": uuid4().hex,
-            "actor_id": packet.actor_id,
-            "initiative": packet.initiative,
-            "declaration": dict(state.pending_declarations.get(packet.actor_id, {})),
-            "roll": None,
-            "roll_published": False,
-            "opened": [],
-        }
-        for seq, packet in enumerate(packets)
-    ]
+    queue = []
+    for packet in packets:
+        for declaration, provenance in held_declarations(state, packet):
+            queue.append(
+                {
+                    "seq": len(queue),
+                    "execution_id": uuid4().hex,
+                    "actor_id": packet.actor_id,
+                    "initiative": packet.initiative,
+                    "declaration": declaration,
+                    "roll": None,
+                    "roll_published": False,
+                    "opened": [],
+                    **provenance,
+                }
+            )
+    return queue
 
 
 def preflight_spend(state, actor_id: str, ability_id: str) -> dict:
@@ -78,9 +83,8 @@ def preflight_spend(state, actor_id: str, ability_id: str) -> dict:
     Separate from ``record_spend`` so every refusal happens before the resource write. The head of
     ``held_actions`` IS the paused action by construction of ``pump`` — checked rather than
     assumed, because a spend bound to the wrong blow is a defect story-018 would silently inherit.
-    The check is an actor-id match, not a parse of the window id's ``r<round>-<seq>-<stage>``
-    format: one declaration per actor per phase makes the actor unique, and parsing the id would
-    make its format a contract reaction_spend deliberately refused to give it.
+    Composite sibling strikes share an actor id, so the actor match alone cannot tell them apart;
+    it suffices because ``_open`` only ever opens the current head's window.
     """
     if state.open_window is None or not state.held_actions:
         raise ValueError(
@@ -233,12 +237,15 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
         hesitation_reason = combat_reaction_contest.hesitation_reason(reacted)
         if hesitation_reason is not None:
             summaries.append(
-                {
-                    "actor_id": reacted["actor_id"],
-                    "resolved": False,
-                    "hesitated": True,
-                    "reason": hesitation_reason,
-                }
+                strike_summary(
+                    reacted,
+                    {
+                        "actor_id": reacted["actor_id"],
+                        "resolved": False,
+                        "hesitated": True,
+                        "reason": hesitation_reason,
+                    },
+                )
             )
             state.held_actions.pop(0)
 
@@ -308,7 +315,7 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
         except HeldActionUnresolvable as exc:
             summary = {"actor_id": head["actor_id"], "resolved": False, "reason": str(exc)}
             logger.error("beat 3: held action for %s unresolved: %s", head["actor_id"], exc)
-            summaries.append(summary)
+            summaries.append(strike_summary(head, summary))
             _assert_iteration_progress(state, head, summaries, summary_start)
             state.held_actions.pop(0)
             continue
@@ -316,7 +323,7 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
         if head is reacted:
             combat_reaction_effect.record_shield_wear(reaction_packets, state, head, summary)
             combat_reaction_effect.record_save_advantage(reaction_packets, summary)
-        summaries.append(summary)
+        summaries.append(strike_summary(head, summary))
         state.held_actions.pop(0)
         _assert_iteration_progress(state, head, summaries, summary_start)
 

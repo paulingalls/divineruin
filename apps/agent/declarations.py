@@ -33,6 +33,7 @@ class DeclarationType(StrEnum):
     compare equal to their wire strings."""
 
     ATTACK = "attack"
+    MULTIATTACK = "multiattack"
     ABILITY = "ability"
     INTERACT = "interact"
     MANEUVER = "maneuver"
@@ -74,6 +75,8 @@ class Declaration:
     # can set it — it has the actor and the state this pure classifier does not — and resolution
     # reads it instead of re-deriving it there, where the hold may already have ended.
     maneuver_intent: ManeuverIntent | None = None
+    strikes: list[dict] | None = None
+    held_item_id: str | None = None
 
 
 def resolve_declaration(raw: dict) -> Declaration:
@@ -95,6 +98,17 @@ def resolve_declaration(raw: dict) -> Declaration:
     action = raw.get("action")
     target_id = raw.get("target_id")
 
+    if decl_type is DeclarationType.MULTIATTACK:
+        strikes = raw.get("strikes")
+        if not isinstance(action, str) or not action or not isinstance(strikes, list) or not strikes:
+            raise ValueError("multiattack requires action and nonempty strikes")
+        for strike in strikes:
+            if (
+                not isinstance(strike, dict)
+                or not {"action", "target_id"} <= set(strike) <= {"action", "target_id", "held_item_id"}
+                or not all(isinstance(value, str) and value for value in strike.values())
+            ):
+                raise ValueError("multiattack strikes require action and target_id, with optional held_item_id")
     if decl_type is DeclarationType.ATTACK:
         if not action:
             raise ValueError("attack declaration requires an 'action'")
@@ -112,11 +126,17 @@ def resolve_declaration(raw: dict) -> Declaration:
         point(raw.get("destination"))
     elif "destination" in raw:
         raise ValueError("destination is only valid for move")
+    if "held_item_id" in raw and (
+        not isinstance(raw["held_item_id"], str) or not raw["held_item_id"] or decl_type is not DeclarationType.ATTACK
+    ):
+        raise ValueError("held_item_id requires an attack and a nonempty string")
     ac_bonus = DEFEND_AC_BONUS if decl_type is DeclarationType.DEFEND else 0
     raw_maneuver_intent = raw.get("maneuver_intent")
     maneuver_intent = ManeuverIntent(raw_maneuver_intent) if raw_maneuver_intent is not None else None
     return Declaration(
         type=decl_type,
+        strikes=raw.get("strikes"),
+        held_item_id=raw.get("held_item_id"),
         destination=raw.get("destination"),
         action=action,
         target_id=target_id,

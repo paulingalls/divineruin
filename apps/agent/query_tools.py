@@ -69,7 +69,7 @@ async def query_info(
     - kind="location", target_id=<location id>: scene details, atmosphere, exits.
     - kind="npc", target_id=<npc id>: personality, speech style, relationship-filtered knowledge.
     - kind="lore", target_id=<topic keyword>: history, gods, the Hollow, races, cultures.
-    - kind="inventory": the current player's carried items (no target_id needed).
+    - kind="inventory": target party player inventory IDs and eligible_held_item_ids; omit target_id for the acting player.
     - kind="settlement_population", target_id=<location id>: how many of each NPC role staff a
       settlement, scaled by its size (tier) and character (personality), plus a `roster` of
       those NPCs with a name, personality traits, and a `voice_id` each — use it to voice an
@@ -115,7 +115,7 @@ async def _query_info_impl(
         except ValueError as error:
             raise ToolError(str(error)) from error
     if kind == "inventory":
-        return await _query_inventory_impl(context)
+        return await _query_inventory_impl(context, target_id) if target_id else await _query_inventory_impl(context)
     if kind == "training_programs":
         return await training_mod._query_training_programs_impl(context)
     if kind == "workspaces":
@@ -368,15 +368,26 @@ async def _query_lore_impl(
 
 async def _query_inventory_impl(
     context: RunContext[SessionData],
+    target_id: str | None = None,
     *,
     queries=db_queries,
 ) -> str:
     session: SessionData = context.userdata
-    player_id = session.acting_player_id
+    from combat_item_rider import eligible_items, party_player
+
+    player_id = target_id or session.acting_player_id
+    if target_id and not party_player(session, player_id):
+        raise ToolError('held-item riders apply to party players only; declare held_item_id "" for companions')
     logger.info("query_info[inventory] called: player_id=%s", player_id)
     items = await queries.get_player_inventory(player_id)
+    facts = {
+        "target_id": player_id,
+        "eligible_held_item_ids": [i["id"] for i in eligible_items(session, player_id, items)],
+    }
     if not items:
-        return json.dumps({"note": "This player's inventory is empty. They carry nothing of note."})
+        return json.dumps(
+            {**facts, "items": [], "note": "This player's inventory is empty. They carry nothing of note."}
+        )
 
     results = []
     for item in items:
@@ -384,6 +395,7 @@ async def _query_inventory_impl(
             {
                 "name": item.get("name"),
                 "type": item.get("type"),
+                "id": item.get("id"),
                 "quantity": item.get("slot_info", {}).get("quantity", 1),
                 "description": item.get("description"),
                 "rarity": item.get("rarity"),
@@ -391,4 +403,4 @@ async def _query_inventory_impl(
                 "lore": item.get("lore"),
             }
         )
-    return json.dumps({"items": results})
+    return json.dumps({**facts, "items": results})
