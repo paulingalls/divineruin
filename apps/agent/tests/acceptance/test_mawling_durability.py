@@ -218,6 +218,8 @@ async def test_nonapplication_preserves_hp_and_independent_armor_wear(maw, rolls
         rolls.attack_roll = 1
     if case == "save":
         rolls.save_roll = 20
+        state.get_participant(maw.enemies[0]).dc_mod = -1
+        await db_mutations.save_combat_state(state.combat_id, state.to_dict())
     await declare(maw, payload(maw, "standalone", guest, item))
     await maw.command("resolve_phase", {})
     await maw.reload()
@@ -238,6 +240,8 @@ async def test_nonapplication_preserves_hp_and_independent_armor_wear(maw, rolls
     if case != "companion":
         player = await db_queries.get_player(guest)
         assert player is not None and player["hp"]["current"] == remaining
+    if case == "save":
+        assert attack["durability_rider"]["save_dc"] == 12
     if case == "fallen":
         assert attack["target_fallen"] and attack["durability_rider"]["applied"]
         rolls.rider.assert_called_once_with("1d4")

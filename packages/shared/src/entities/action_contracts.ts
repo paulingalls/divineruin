@@ -299,7 +299,8 @@ function validateDurabilityRider(action: ActionExtensions, path: string): void {
   path += ".durability_rider";
   if (
     (action.kind ?? "attack") !== "attack" ||
-    action.resolution === "save" ||
+    "resolution" in action ||
+    "applies_condition" in action ||
     action.half_on_success
   )
     invalid(path);

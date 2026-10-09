@@ -391,4 +391,10 @@ test("Maw durability rider is authored and validated", async () => {
   expect(validateCreatureStatBlock(source)).toEqual([]);
   source.actives[0].durability_rider = rider;
   expect(validateCreatureStatBlock(source).length).toBeGreaterThan(0);
+  const choir = rows.find((r) => r.id === "hollow_choir")!;
+  for (const name of ["Memory Scream", "Dissonant Chord"]) {
+    const saved = structuredClone(choir);
+    saved.attacks.find((a) => a.name === name)!.durability_rider = rider;
+    expect(validateCreatureStatBlock(saved).some((e) => e.includes("durability_rider"))).toBe(true);
+  }
 });

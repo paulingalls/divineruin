@@ -326,3 +326,12 @@ def test_maw_rejects_rider_on_nonattack():
     assert validate_creature_stat_block(source) == []
     source["actives"][0]["durability_rider"] = RIDER
     assert validate_creature_stat_block(source)
+
+
+@pytest.mark.parametrize("name", ["Memory Scream", "Dissonant Chord"])
+def test_rider_rejected_on_save_resolved_attack(name):
+    from creature_schema import validate_creature_stat_block
+
+    source = next(r for r in catalog() if r["id"] == "hollow_choir")
+    next(a for a in source["attacks"] if a["name"] == name)["durability_rider"] = RIDER
+    assert any("durability_rider" in error for error in validate_creature_stat_block(source))

@@ -218,7 +218,12 @@ def validate_durability_rider(action, path):
         return
     rider = action["durability_rider"]
     path = f"{path}.durability_rider"
-    if action.get("kind", "attack") != "attack" or action.get("resolution") == "save" or action.get("half_on_success"):
+    if (
+        action.get("kind", "attack") != "attack"
+        or "resolution" in action
+        or "applies_condition" in action
+        or action.get("half_on_success")
+    ):
         invalid(path)
     if not isinstance(rider, dict) or set(rider) != {"save", "dc", "dice", "target"}:
         invalid(path)

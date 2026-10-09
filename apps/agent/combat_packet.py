@@ -256,19 +256,6 @@ async def _resolve_one_packet(
             publish_roll=publish_roll,
         )
         if enemy_summary is not None:
-            if "durability_rider" in action and enemy_summary.get("resolved"):
-                await resolve_rider(
-                    session,
-                    attacker,
-                    state.get_participant(decl.target_id),
-                    action,
-                    decl,
-                    enemy_summary,
-                    queries=queries,
-                    conn=conn,
-                    sink=sink,
-                    reaction_save_advantage=reaction_save_advantage,
-                )
             return enemy_summary
 
     if decl.type is DeclarationType.ABILITY:
