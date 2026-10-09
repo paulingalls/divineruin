@@ -9,14 +9,7 @@ from condition_restrictions import cannot_act
 from dice import roll as dice_roll
 
 
-def validate_receipts(data):
-    receipts = data.get("turn_start_receipts", {})
-    ids = {p["id"] for p in data["participants"]}
-    if not isinstance(receipts, dict) or any(
-        pid not in ids or type(round_) is not int or not 1 <= round_ <= data.get("round_number", 1)
-        for pid, round_ in receipts.items()
-    ):
-        raise ValueError("invalid turn-start receipts")
+def validate_turn_start_damage(data):
     for participant in data["participants"]:
         effect = participant.get("turn_start_damage")
         if effect is not None and effect != {
@@ -25,7 +18,6 @@ def validate_receipts(data):
             "damage_type": "necrotic",
         }:
             raise ValueError(f"invalid turn-start damage for {participant['id']}")
-    return receipts
 
 
 def ally_turns(state, packets):
@@ -39,9 +31,8 @@ def ally_turns(state, packets):
 
 
 async def turn_start(session, state, victim, *, conn, sink, mutations, queries, concentration_break_mod, **unused):
-    if state.turn_start_receipts.get(victim.id) == state.round_number:
-        return None
-    state.turn_start_receipts[victim.id] = state.round_number
+    # Once per round comes from the beat machine: Beat 2 commits with the move to NARRATION,
+    # and Beat-3 pauses and reloads re-enter only combat_hold.pump, never this boundary.
     # A Hollowed echo is an already-dead player-life, outside the ally band.
     if not victim.is_ally or victim.is_dead or (victim.type == "player" and combat_phase.is_terminally_down(victim)):
         return None

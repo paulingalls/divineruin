@@ -242,7 +242,6 @@ async def test_omitted_ally_boundary_does_not_invoke_choir_aura(started):
     with patch("check_resolution.dice_roll", return_value=_d20(20)):
         await combat_turn.resolve_phase(ctx)
     state = await reload(ctx)
-    assert state.turn_start_receipts[companion] == state.round_number
     assert state.choir_encounter is not None
     receipts = state.choir_encounter["aura_receipts"]
     assert receipts[pid] == state.round_number and companion not in receipts

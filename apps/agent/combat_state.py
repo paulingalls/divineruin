@@ -90,7 +90,6 @@ class CombatState:
     # See reaction_windows.open_window_for for the shape.
     open_window: dict | None = None
 
-    turn_start_receipts: dict[str, int] = field(default_factory=dict)
     encounter_id: str = ""
     choir_encounter: dict | None = None
     choir_silences: dict = field(default_factory=dict)
@@ -122,10 +121,11 @@ class CombatState:
         for participant in data["participants"]:
             if "tier" not in participant:
                 raise ValueError(f"participant {participant.get('id', '?')} missing tier")
-        from combat_turn_start import validate_receipts
+        from combat_turn_start import validate_turn_start_damage
+
+        validate_turn_start_damage(data)
 
         state = cls(
-            turn_start_receipts=validate_receipts(data),
             encounter_id=data.get("encounter_id", ""),
             choir_encounter=data.get("choir_encounter"),
             choir_silences=choir_effects.validate_data(data),

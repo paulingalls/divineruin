@@ -274,8 +274,6 @@ async def _resolve_phase_locked(
                     summary = await turn_start(session, state, actor, conn=conn, sink=sink, **packet_deps)
                     if summary is not None:
                         packet_summaries.append(summary)
-                    if summary is not None and actor.id in players_by_id:
-                        players_by_id[actor.id] = await queries.get_player(actor.id, conn=conn)
                 if packet is None:
                     continue
                 packet_summaries.append(

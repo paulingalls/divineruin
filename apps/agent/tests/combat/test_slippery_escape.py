@@ -1,4 +1,5 @@
 import copy
+import dataclasses
 import logging
 
 import pytest
@@ -82,6 +83,8 @@ async def test_slippery_blocks_a_second_grab_without_removing_the_existing_one()
     state = _state()
     player = state.get_participant("player_1")
     assert player is not None
+    state.participants.append(dataclasses.replace(state.get_participant("mawling_1"), id="mawling_0"))
+    place_actors(state)
     player.conditions = conditions.apply_condition([], "grappled", source="mawling_0")
     ctx = _ctx_at_resolution(state=state)
     deps = _resolve_deps(damage=2)

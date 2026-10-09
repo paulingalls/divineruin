@@ -72,7 +72,6 @@ async def test_failure_after_state_write_rolls_back_and_retries_once(maw, field_
     first = await maw.command("resolve_phase", {})
     assert sum(p.get("automatic", False) for p in first["packets"]) == 2
     state = await maw.reload()
-    assert state.turn_start_receipts[victim.id] == state.round_number
     assert state.get_participant(victim.id).hp_current == 0
     row = await db_queries.get_player(victim.id)
     assert row is not None and row["hp"]["current"] == 0
