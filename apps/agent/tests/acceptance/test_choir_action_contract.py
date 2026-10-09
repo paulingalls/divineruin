@@ -230,3 +230,20 @@ async def test_choir_concurrent_searches_preserve_first_discovery(started):
         assert saved.choir_encounter["phase"] == "exposed"
     finally:
         await pool.execute("DELETE FROM players WHERE player_id = $1", other)
+
+
+async def test_omitted_ally_boundary_does_not_invoke_choir_aura(started):
+    ctx, _ = await started("hollow_choir", companion="companion_kael")
+    state = ctx.userdata.combat_state
+    pid = ctx.userdata.player_id
+    companion = ctx.userdata.companion.id
+    await combat_turn.declare_phase(ctx, [DefendDecl(kind="defend", actor_id=pid)])
+    await reload(ctx)
+    with patch("check_resolution.dice_roll", return_value=_d20(20)):
+        await combat_turn.resolve_phase(ctx)
+    state = await reload(ctx)
+    assert state.choir_encounter is not None
+    receipts = state.choir_encounter["aura_receipts"]
+    assert receipts[pid] == state.round_number and companion not in receipts
+    events = [json.loads(call.args[0]) for call in ctx.userdata.room.local_participant.publish_data.call_args_list]
+    assert sum(e.get("roll_type") == "choir_aura" for e in events) == 1

@@ -398,3 +398,38 @@ test("Maw durability rider is authored and validated", async () => {
     expect(validateCreatureStatBlock(saved).some((e) => e.includes("durability_rider"))).toBe(true);
   }
 });
+
+test("Mawling field accepts only the authored automatic damage contract", async () => {
+  const rows = (await Bun.file(
+    new URL("../../../../content/creatures.json", import.meta.url),
+  ).json()) as { id: string; passives: { name: string; turn_start_damage?: unknown }[] }[];
+  const row = rows.find((r) => r.id === "hollow_mawling")!;
+  const field = { trigger: "grappled_by_source", damage: "1d6", damage_type: "necrotic" };
+  const invalid = [
+    null,
+    [],
+    1,
+    true,
+    {},
+    { ...field, extra: true },
+    ...Object.keys(field).map((key) =>
+      Object.fromEntries(Object.entries(field).filter(([k]) => k !== key)),
+    ),
+    ...[
+      ["trigger", "turn"],
+      ["damage", "2d6"],
+      ["damage_type", "fire"],
+      ["damage", 6],
+      ["trigger", true],
+    ].map(([key, value]) => ({ ...field, [key as string]: value })),
+  ];
+  for (const effect of invalid) {
+    const modified = structuredClone(row);
+    modified.passives[0]!.turn_start_damage = effect;
+    expect(validateCreatureStatBlock(modified).length).toBeGreaterThan(0);
+  }
+  expect(row.passives.find((p) => p.name === "Dissolution Field")!.turn_start_damage).toEqual(
+    field,
+  );
+  expect(validateCreatureStatBlock(row)).toEqual([]);
+});

@@ -16,11 +16,11 @@ from caster_state import ConcentrationState, ResonanceTrack
 from combat_agent import CombatAgent
 from mode_tools import enter_mode
 from party_state import PartyMember
-from session_data import SessionData
+from session_data import CompanionState, SessionData
 
 
 class MawlingHarness:
-    async def start(self, reactions=False, gear=False):
+    async def start(self, reactions=False, gear=False, companion=False):
         self.pool = await db.get_pool()
         await reseed_choir_content(self.pool)
         self.players = [f"maw147_{uuid4().hex}" for _ in range(2)]
@@ -28,6 +28,7 @@ class MawlingHarness:
             await seed_player_with_pools(
                 self.pool,
                 player_id=pid,
+                known_spells=("arcane_bolt",),
                 class_=(
                     "guardian"
                     if index == 0 and reactions == "shield"
@@ -63,7 +64,21 @@ class MawlingHarness:
                             }
                         ),
                     )
+                weapon = json.loads(await self.pool.fetchval("SELECT data FROM items WHERE id='shortsword_basic'"))
+                row = await db_queries.get_player(pid)
+                assert row is not None
+                row["equipment"] = {
+                    "main_hand": {
+                        "name": weapon["name"],
+                        "damage": weapon["damage_dice"],
+                        "damage_type": weapon["effects"][0]["damage_type"],
+                        "properties": weapon["properties"],
+                    }
+                }
+                await self.pool.execute("UPDATE players SET data=$2::jsonb WHERE player_id=$1", pid, json.dumps(row))
         self.sd = SessionData(player_id=self.players[0], location_id="accord_guild_hall", room=make_mock_room())
+        if companion:
+            self.sd.companion = CompanionState(id="companion_kael", name="Kael", player_level=8)
         self.sd.party.members.append(PartyMember(self.players[1], ResonanceTrack(), ConcentrationState()))
         self.model = ScenarioModel([])
         self.session = AgentSession(llm=self.model, max_tool_steps=5, userdata=self.sd)

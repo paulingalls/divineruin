@@ -217,7 +217,6 @@ def test_dm_inventory_has_no_false_executables():
             ("attacks", "Lunge"),
             ("hollow", "hollow"),
             ("passives", "Adaptive Learning"),
-            ("passives", "Dissolution Field"),
             ("passives", "Unsettling Silence"),
         },
         "hollow_shadeling": {

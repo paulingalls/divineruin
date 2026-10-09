@@ -267,7 +267,15 @@ async def _resolve_phase_locked(
             # windows (AC1). Initiative still orders within each band — what ends is cross-band
             # pre-emption, where a higher-initiative enemy dropped the player before their swing landed.
             ally_packets, enemy_packets = combat_phase.partition_packets(state, adv.packets)
-            for packet in ally_packets:
+            from combat_turn_start import ally_turns, turn_start
+
+            for actor, packet in ally_turns(state, ally_packets):
+                if actor is not None:
+                    summary = await turn_start(session, state, actor, conn=conn, sink=sink, **packet_deps)
+                    if summary is not None:
+                        packet_summaries.append(summary)
+                if packet is None:
+                    continue
                 packet_summaries.append(
                     await _resolve_one_packet(
                         session,

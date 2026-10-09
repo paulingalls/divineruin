@@ -233,6 +233,12 @@ def consume_legendary_action(state: CombatState, boss_id: str) -> CombatState:
     return next_state
 
 
+def resolution_sort_key(p: CombatParticipant | None) -> tuple[int, int, int]:
+    if p is None:
+        return (0, 0, 0)
+    return (p.initiative, -_TYPE_PRIORITY.get(p.type, 9), p.attributes.get("dexterity", 10))
+
+
 def _resolve_packets(state: CombatState) -> list[ResolutionPacket]:
     """Order pending declarations by initiative (desc; tie: player > companion >
     enemy, then higher DEX) and wrap each into a ResolutionPacket. No narration.
@@ -246,14 +252,9 @@ def _resolve_packets(state: CombatState) -> list[ResolutionPacket]:
     """
     by_id = {p.id: p for p in state.participants}
 
-    def sort_key(actor_id: str) -> tuple[int, int, int]:
-        p = by_id.get(actor_id)
-        if p is None:
-            return (0, 0, 0)
-        dex = p.attributes.get("dexterity", 10)
-        return (p.initiative, -_TYPE_PRIORITY.get(p.type, 9), dex)
-
-    ordered_ids = sorted(state.pending_declarations, key=sort_key, reverse=True)
+    ordered_ids = sorted(
+        state.pending_declarations, key=lambda actor_id: resolution_sort_key(by_id.get(actor_id)), reverse=True
+    )
     return [
         ResolutionPacket(
             actor_id=actor_id,
