@@ -74,6 +74,7 @@ async def turn_start(session, state, victim, *, conn, sink, mutations, queries, 
     return {
         **summary,
         "automatic": True,
+        "actor_id": owner.id,
         "source_id": owner.id,
         "target_id": victim.id,
         "round": state.round_number,
