@@ -99,7 +99,7 @@ async def test_lunge_field_rounds(maw, omitted):
     with (
         patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=15)),
         patch("check_resolution_attack.dice_roll", return_value=SimpleNamespace(total=4)),
-        patch("combat_turn_start.dice_roll", return_value=SimpleNamespace(total=4)),
+        patch("combat_turn_start.dice_roll", return_value=SimpleNamespace(total=4)) as field,
     ):
         victim = await grapple(maw)
         hp = victim.hp_current
@@ -110,7 +110,10 @@ async def test_lunge_field_rounds(maw, omitted):
             await maw.command("declare_phase", {"declarations": declarations})
             packets = await drain(maw)
             ticks = [p for p in packets if p.get("automatic")]
+            field.assert_called_once_with("1d6")
+            field.reset_mock()
             assert len(ticks) == 1 and ticks[0]["damage"] == 4
+            assert ticks[0]["damage_type"] == "necrotic"
             assert ticks[0]["target_id"] == victim.id
             state = await maw.reload()
             assert state.get_participant(victim.id).hp_current == hp - 4 * (round_index + 1)
