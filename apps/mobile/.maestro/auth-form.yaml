@@ -5,9 +5,17 @@ appId: com.divineruin.app
 # /auth/request-code, so without the backend the final extendedWaitUntil
 # times out and the flow fails. Gated behind REQUIRE_BACKEND=1 in
 # scripts/maestro-acceptance.ts.
-- launchApp:
-    clearState: true
+# Clear state without launching, then let the link cold-start the app.
+# On Android the Expo dev launcher drops a link that arrives while it is
+# still starting, leaving it on its server list instead of the app.
+- clearState
 - openLink: ${APP_LAUNCH_URL}
+# Wait out the first bundle load (slow on Intel emulators) so the tap
+# reaches the dev-menu tutorial instead of timing out before it appears.
+- extendedWaitUntil:
+    visible: "Continue"
+    timeout: 60000
+    optional: true
 - tapOn:
     text: "Continue"
     optional: true

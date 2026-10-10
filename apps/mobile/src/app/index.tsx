@@ -74,7 +74,7 @@ export default function HomeScreen() {
     return (
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
-          <View style={styles.scrollContent}>
+          <View style={[styles.scrollContent, styles.gateContent]}>
             <TitleBar />
             <View style={styles.gateContainer}>
               <ThemedText style={styles.gateMessage}>Your story is about to begin.</ThemedText>
@@ -215,6 +215,11 @@ const styles = StyleSheet.create({
   landscapeRight: {
     flex: 1,
     justifyContent: "center",
+  },
+  // The gate's flex:1 container needs a parent with height. Without it, Android
+  // collapses the container to zero and clips its text; iOS draws the overflow.
+  gateContent: {
+    flex: 1,
   },
   gateContainer: {
     flex: 1,
