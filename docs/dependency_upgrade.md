@@ -1,7 +1,7 @@
 # Dependency upgrade
 
 Registry snapshot: 2026-09-19  
-Toolchain: CPython 3.14.7; uv 0.10.6; Bun 1.4.2
+Toolchain: CPython 3.14.7; uv 0.12.21; Bun 1.4.2
 Execution evidence: historical record accepted at 795cec97832a7fe2d7567b36d0343e476e236b76 on 2026-09-19T14:14:59Z.
 
 ## Python environments
@@ -198,8 +198,8 @@ Compatibility exceptions:
 |---|---|---|
 | bun install --frozen-lockfile | passed | Bun 1.4.2 accepted the root frozen lock without changes. |
 | bun install --cwd e2e --frozen-lockfile | passed | Bun 1.4.2 accepted the independent e2e frozen lock without changes. |
-| uv sync --project apps/agent --frozen | passed | uv 0.10.6 installed the agent lock under CPython 3.14.7. |
-| uv sync --project scripts --frozen | passed | uv 0.10.6 installed the scripts lock under CPython 3.14.7. |
+| uv sync --project apps/agent --frozen | passed | uv 0.12.21 installed the agent lock under CPython 3.14.7. |
+| uv sync --project scripts --frozen | passed | uv 0.12.21 installed the scripts lock under CPython 3.14.7. |
 | dependency report --scope all | passed | All nine manifests, four locks, installed trees, CI, and rendered Markdown validated. |
 | dependency report tests | passed | Fault suite passed, including named YAML steps and missing e2e inputs. |
 | worktree bootstrap tests | passed | Tool pins, frozen installs, Chromium, seed ordering, and Docker ownership faults passed. |

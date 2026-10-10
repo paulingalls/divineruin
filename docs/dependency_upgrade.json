@@ -8,7 +8,7 @@
   },
   "registry_snapshot_date": "2026-09-19",
   "python_version": "3.14.7",
-  "uv_version": "0.10.6",
+  "uv_version": "0.12.21",
   "projects": [
     "apps/agent",
     "scripts"
@@ -1475,12 +1475,12 @@
     {
       "lane": "uv sync --project apps/agent --frozen",
       "status": "passed",
-      "evidence": "uv 0.10.6 installed the agent lock under CPython 3.14.7."
+      "evidence": "uv 0.12.21 installed the agent lock under CPython 3.14.7."
     },
     {
       "lane": "uv sync --project scripts --frozen",
       "status": "passed",
-      "evidence": "uv 0.10.6 installed the scripts lock under CPython 3.14.7."
+      "evidence": "uv 0.12.21 installed the scripts lock under CPython 3.14.7."
     },
     {
       "lane": "dependency report --scope all",
