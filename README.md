@@ -413,6 +413,47 @@ lk dispatch create \
 
 The DM agent joins, calls `enter_location` for the starting scene, and begins narrating. Speak into your microphone to interact.
 
+### Android development build
+
+Android builds also work on Macs that can't run the Xcode version Expo SDK 57 requires.
+
+**Prerequisites:**
+
+| Tool | Notes |
+|------|-------|
+| [Android Studio](https://developer.android.com/studio) | Provides the SDK, emulator, and platform-tools. Gradle installs the NDK, CMake, and the missing SDK platforms on the first build. |
+| JDK 17 | Use 17 (React Native's supported JDK). Android Studio bundles Java 24+, whose native-access warnings fail the CMake configure step for `react-native-screens` and `react-native-worklets`. Install [Temurin 17](https://adoptium.net/temurin/releases/?version=17) or any JDK 17. |
+
+Add to your shell profile:
+
+```bash
+export ANDROID_HOME=$HOME/Library/Android/sdk
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+```
+
+**Emulator:** create an AVD in Android Studio's Device Manager with at least 4 GB of RAM. Choose a Google APIs image without the Play Store, for the host's architecture (x86_64 on Intel, arm64 on Apple Silicon). The app compiles against API 36. With 2 GB, newer images report that System UI isn't responding.
+
+**Build and run:**
+
+```bash
+emulator -avd <avd-name> &              # or start it from Android Studio
+bun run dev:mobile:android -- --device <avd-name>
+```
+
+The first build takes 10–20 minutes. Later builds reuse the Gradle cache. The dev client loads JavaScript from Metro on port 8081 and reaches the API server at the Metro host's LAN IP on port 3001.
+
+**Signing in:** leave `RESEND_API_KEY` empty in `.env`. The server then prints each code to its console as `[email] DEV CODE for <email>: <code>`. A placeholder value counts as a real key, so the server tries to send real email and no code appears.
+
+**Maestro on Android:** install the [Maestro CLI](https://docs.maestro.dev/getting-started/installing-maestro), boot the emulator, then point the flows at Metro:
+
+```bash
+MAESTRO_APP_LAUNCH_URL='exp+divineruin://expo-development-client/?url=http%3A%2F%2F<lan-ip>%3A8081' \
+  REQUIRE_BACKEND=1 bun run --cwd apps/mobile test:e2e:mobile
+```
+
+The runner selects the first device `adb devices` reports as ready. See `apps/mobile/.maestro/README.md`.
+
 ### Running tests
 
 ```bash
