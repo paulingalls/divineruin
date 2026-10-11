@@ -38,6 +38,8 @@ test("all eleven templates", async () => {
   for (const row of rows) validateEncounterReferences(row, ids);
 });
 
+// Runs the TypeScript compiler in a child process: ~2s alone, past Bun's 5s default when the
+// sprint hook's lanes share a 4-core machine.
 test("EncounterEnemy compiler rejects flat entries and missing required fields", () => {
   const directory = mkdtempSync(join(tmpdir(), "encounter-types-"));
   const path = join(directory, "contract.ts");
@@ -95,4 +97,4 @@ test("EncounterEnemy compiler rejects flat entries and missing required fields",
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
-});
+}, 30_000);

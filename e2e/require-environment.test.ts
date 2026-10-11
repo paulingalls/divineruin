@@ -22,6 +22,10 @@ async function withFault(relativePath: string, check: (path: string) => void) {
   }
 }
 
+// Each fault test spawns two Bun children; under the sprint hook's parallel lanes on a 4-core
+// machine the pair exceeds Bun's 5s default.
+const CHILD_PAIR_TIMEOUT_MS = 30_000;
+
 function runChild(source: string, databaseUrl?: string) {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
@@ -96,33 +100,41 @@ describe("required e2e environment", () => {
     expect(output(result)).not.toContain("56379");
   });
 
-  test("removing only the auth guard exposes the auth module", async () => {
-    await withFault("fixtures/auth.ts", (faultPath) => {
-      const fault = runChild(
-        `await import(${JSON.stringify(faultPath)}); console.log("REACHED_SENTINEL");`,
-      );
-      expect(fault.exitCode).toBe(0);
-      expect(output(fault)).toContain("REACHED_SENTINEL");
-      const config = runChild(
-        `await import(${JSON.stringify(resolve(e2eRoot, "playwright.config.ts"))}); console.log("REACHED_SENTINEL");`,
-      );
-      expectDatabaseGuard(config);
-    });
-  });
+  test(
+    "removing only the auth guard exposes the auth module",
+    async () => {
+      await withFault("fixtures/auth.ts", (faultPath) => {
+        const fault = runChild(
+          `await import(${JSON.stringify(faultPath)}); console.log("REACHED_SENTINEL");`,
+        );
+        expect(fault.exitCode).toBe(0);
+        expect(output(fault)).toContain("REACHED_SENTINEL");
+        const config = runChild(
+          `await import(${JSON.stringify(resolve(e2eRoot, "playwright.config.ts"))}); console.log("REACHED_SENTINEL");`,
+        );
+        expectDatabaseGuard(config);
+      });
+    },
+    CHILD_PAIR_TIMEOUT_MS,
+  );
 
-  test("removing only the config guard exposes the config module", async () => {
-    await withFault("playwright.config.ts", (faultPath) => {
-      const fault = runChild(
-        `await import(${JSON.stringify(faultPath)}); console.log("REACHED_SENTINEL");`,
-      );
-      expect(fault.exitCode).toBe(0);
-      expect(output(fault)).toContain("REACHED_SENTINEL");
-      const auth = runChild(
-        `await import(${JSON.stringify(resolve(e2eRoot, "fixtures/auth.ts"))}); console.log("REACHED_SENTINEL");`,
-      );
-      expectDatabaseGuard(auth);
-    });
-  });
+  test(
+    "removing only the config guard exposes the config module",
+    async () => {
+      await withFault("playwright.config.ts", (faultPath) => {
+        const fault = runChild(
+          `await import(${JSON.stringify(faultPath)}); console.log("REACHED_SENTINEL");`,
+        );
+        expect(fault.exitCode).toBe(0);
+        expect(output(fault)).toContain("REACHED_SENTINEL");
+        const auth = runChild(
+          `await import(${JSON.stringify(resolve(e2eRoot, "fixtures/auth.ts"))}); console.log("REACHED_SENTINEL");`,
+        );
+        expectDatabaseGuard(auth);
+      });
+    },
+    CHILD_PAIR_TIMEOUT_MS,
+  );
 
   test("the Playwright server receives a valid fixed test JWT key", () => {
     const config = resolve(e2eRoot, "playwright.config.ts");
