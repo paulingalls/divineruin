@@ -9,6 +9,7 @@ from voice_condition_fixtures import place_actors
 
 import character_spells
 import combat_phase
+import combat_resolve_phase
 import combat_turn
 import db_mutations
 import db_queries
@@ -208,7 +209,7 @@ async def test_packet_tool_error_after_prevalidation_does_not_reopen(monkeypatch
     context = make_context(player_id="reset_late")
     context.userdata.combat_state = state
     mutations = MagicMock(save_combat_state=AsyncMock())
-    monkeypatch.setattr(combat_turn, "_resolve_one_packet", AsyncMock(side_effect=ToolError("packet failed")))
+    monkeypatch.setattr(combat_resolve_phase, "_resolve_one_packet", AsyncMock(side_effect=ToolError("packet failed")))
 
     with pytest.raises(ToolError, match="packet failed"):
         await combat_turn._resolve_phase_impl(

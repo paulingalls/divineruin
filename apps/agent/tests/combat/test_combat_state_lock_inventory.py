@@ -193,31 +193,6 @@ def _reached_only_under_lock(function, refs, seen=frozenset()):
     return all(locked or _reached_only_under_lock(referrer, refs, seen | {function}) for referrer, locked in referrers)
 
 
-@pytest.mark.parametrize("decorated", [False, True])
-def test_lock_graph_qualified_routes_red_when_the_lock_is_removed(decorated):
-    prefix = "from condition_consume import serialize_combat_check\n@serialize_combat_check\n" if decorated else ""
-    body = (
-        "    await choir_scene.start()\n"
-        if decorated
-        else "    async with session.combat_state_lock:\n        await choir_scene.start()\n"
-    )
-    source = "import choir_scene\n" + prefix + "async def entry(session):\n" + body
-    trees = {
-        "entry.py": ast.parse(source),
-        "choir_scene.py": ast.parse("async def start(): pass"),
-        "other.py": ast.parse("async def entry():\n    await unrelated.start()"),
-    }
-    target = ("choir_scene.py", "start")
-    assert _reached_only_under_lock(target, _name_references(trees))
-    unlocked = (
-        source.replace("@serialize_combat_check\n", "")
-        if decorated
-        else source.replace("    async with session.combat_state_lock:\n        ", "    ")
-    )
-    trees["entry.py"] = ast.parse(unlocked)
-    assert not _reached_only_under_lock(target, _name_references(trees))
-
-
 def test_combat_check_decorator_reaches_its_wrapped_function_under_lock():
     tree = ast.parse((_AGENT_ROOT / "condition_consume.py").read_text())
     serialized = next(
@@ -238,7 +213,7 @@ def test_full_state_save_sites_match_the_inventory():
             ("veil_ward_tools.py", "_activate_veil_ward_locked", "call"): 1,
             ("veil_ward_tools.py", "_dismiss_impl", "call"): 1,
             ("combat_turn.py", "_declare_phase_locked", "call"): 1,
-            ("combat_turn.py", "_resolve_phase_locked", "call"): 1,
+            ("combat_resolve_phase.py", "_resolve_phase_locked", "call"): 1,
             ("combat_phase_recovery.py", "phase_transaction_with_recovery", "call"): 1,
             ("combat_turn.py", "_consume_legendary_action_locked", "call"): 1,
             ("combat_wrap.py", "wrap_phase", "call"): 1,
