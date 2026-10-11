@@ -57,18 +57,6 @@ async def maw(reset_db_pool, request):
             await harness.close()
 
 
-async def drain(maw):
-    packets = []
-    round_number = maw.sd.combat_state.round_number
-    for _ in range(12):
-        result = await maw.command("resolve_phase", {})
-        packets.extend(result["packets"])
-        state = await maw.reload()
-        if state.round_number != round_number:
-            return packets
-    pytest.fail("round did not finish")
-
-
 async def grapple(maw, target=None):
     target = target or maw.players[0]
     await maw.command(
@@ -87,7 +75,7 @@ async def grapple(maw, target=None):
             ]
         },
     )
-    packets = await drain(maw)
+    packets = await maw.drain()
     assert not any(p.get("automatic") for p in packets)
     victim = maw.sd.combat_state.get_participant(target)
     assert any(c.get("source") == maw.enemies[0] and c["type"] == "grappled" for c in victim.conditions)
@@ -108,7 +96,7 @@ async def test_lunge_field_rounds(maw, omitted):
             if not omitted:
                 declarations.append({"kind": "defend", "actor_id": victim.id})
             await maw.command("declare_phase", {"declarations": declarations})
-            packets = await drain(maw)
+            packets = await maw.drain()
             ticks = [p for p in packets if p.get("automatic")]
             field.assert_called_once_with("1d6")
             field.reset_mock()
@@ -120,17 +108,6 @@ async def test_lunge_field_rounds(maw, omitted):
             row = await db_queries.get_player(victim.id)
             assert row is not None
             assert row["hp"]["current"] == hp - 4 * (round_index + 1)
-
-
-async def persist(maw):
-    import db_mutations
-
-    state = maw.sd.combat_state
-    await db_mutations.save_combat_state(state.combat_id, state.to_dict())
-    for p in state.participants:
-        if p.type == "player":
-            await db_mutations.update_player_hp(p.id, p.hp_current)
-    return await maw.reload()
 
 
 @pytest.mark.parametrize("status", ["omitted", "stunned", "fallen"])
@@ -147,11 +124,11 @@ async def test_omitted_victim_continues(maw, status):
             victim.hp_current = 0
             victim.is_fallen = True
             victim.death_save_successes = 3
-        await persist(maw)
+        await maw.persist()
         hp = victim.hp_current
         for round_index in range(2):
             await maw.command("declare_phase", {"declarations": [{"kind": "defend", "actor_id": maw.players[1]}]})
-            ticks = [p for p in await drain(maw) if p.get("automatic")]
+            ticks = [p for p in await maw.drain() if p.get("automatic")]
             assert len(ticks) == 1
             victim = maw.sd.combat_state.get_participant(victim.id)
             if status == "fallen":
@@ -175,7 +152,7 @@ async def next_round(maw, declaration=None):
         "declare_phase",
         {"declarations": [{"kind": "defend", "actor_id": maw.players[1]}, *([declaration] if declaration else [])]},
     )
-    return await drain(maw)
+    return await maw.drain()
 
 
 async def test_snapshot_field_and_deferred_inventory(maw):
@@ -218,7 +195,7 @@ async def test_field_ineligible(maw, field_dice, case):
         victim.hp_current = 0
     else:
         next(c for c in victim.conditions if c["type"] == "grappled").pop("source")
-    await persist(maw)
+    await maw.persist()
     hp = victim.hp_current
     assert not any(p.get("automatic") for p in await next_round(maw))
     assert field_dice[0].call_count == 0
@@ -228,7 +205,7 @@ async def test_field_ineligible(maw, field_dice, case):
 async def test_missing_source_rolls_back(maw, field_dice):
     victim = await grapple(maw)
     next(c for c in victim.conditions if c["type"] == "grappled")["source"] = "absent"
-    await persist(maw)
+    await maw.persist()
     await maw.command("declare_phase", {"declarations": [{"kind": "defend", "actor_id": maw.players[1]}]})
     before = await maw.snapshot()
     error = await maw.command("resolve_phase", {}, error=True)
@@ -253,7 +230,7 @@ async def test_tick_fall_cancels_queued_action(maw, field_dice):
     target = maw.sd.companion.id if maw.sd.companion else maw.players[0]
     victim = await grapple(maw, target)
     victim.hp_current = 1
-    await persist(maw)
+    await maw.persist()
     inventory_before = [await db_queries.get_player_inventory(pid) for pid in maw.players]
     position = copy.deepcopy(maw.sd.combat_state.spatial["positions"][target])
     attack_name = maw.sd.combat_state.get_participant(target).action_pool[0]["name"]
@@ -294,7 +271,7 @@ async def test_fallen_companion_clamps_and_keeps_ticking(maw, field_dice):
     victim.is_fallen = True
     victim.death_save_successes = 3
     victim.death_save_failures = 2
-    await persist(maw)
+    await maw.persist()
     for _ in range(2):
         packets = await next_round(maw)
         tick = next(p for p in packets if p.get("automatic"))
@@ -309,7 +286,7 @@ async def test_fallen_player_dies_and_stops(maw, field_dice):
     victim.hp_current = 0
     victim.is_fallen = True
     victim.death_save_successes = 3
-    await persist(maw)
+    await maw.persist()
     for failures in range(1, 4):
         packets = await next_round(maw)
         tick = next(p for p in packets if p.get("automatic"))
@@ -329,7 +306,7 @@ async def test_concentration_tick_and_queued_cast(maw, field_dice, holds):
     await db_mutations_concentration.update_player_concentration(victim.id, "divine_bless")
     state = await maw.reload()
     state.get_participant(victim.id).conditions.append({"type": "blessed", "duration": None, "source": "divine_bless"})
-    await persist(maw)
+    await maw.persist()
     field_dice[1].return_value = SimpleNamespace(total=20 if holds else 1)
     packets = await next_round(
         maw,
@@ -352,7 +329,7 @@ async def test_concentration_tick_and_queued_cast(maw, field_dice, holds):
 async def test_stunned_declaration_refused_but_boundary_runs(maw, field_dice):
     victim = await grapple(maw)
     victim.conditions.append({"type": "stunned", "duration": 10})
-    await persist(maw)
+    await maw.persist()
     before = await maw.snapshot()
     await maw.command("declare_phase", {"declarations": [{"kind": "defend", "actor_id": victim.id}]}, error=True)
     assert await maw.snapshot() == before
@@ -366,7 +343,7 @@ async def test_public_source_kill_releases_grapple(maw, field_dice):
     owner.hp_current = 1
     victim.initiative = 100
     maw.sd.combat_state.get_participant(maw.sd.companion.id).initiative = -100
-    await persist(maw)
+    await maw.persist()
     packets = await next_round(
         maw,
         {
@@ -388,7 +365,7 @@ async def test_public_source_kill_releases_grapple(maw, field_dice):
 async def test_tick_fall_voids_declared_defend_bonus(maw, field_dice):
     victim = await grapple(maw)
     victim.hp_current = 1
-    await persist(maw)
+    await maw.persist()
     await maw.command("declare_phase", {"declarations": [{"kind": "defend", "actor_id": victim.id}]})
     first = await maw.command("resolve_phase", {})
     assert any(p.get("automatic") for p in first["packets"])
@@ -403,7 +380,7 @@ async def test_hollowed_rise_cancels_living_ally_intent(maw, field_dice, kind):
     victim = await grapple(maw)
     victim.hp_current = 1
     victim.conditions.append({"type": "hollowed", "stage": 2, "duration": None})
-    await persist(maw)
+    await maw.persist()
     target_id = maw.enemies[1]
     target_hp = maw.sd.combat_state.get_participant(target_id).hp_current
     declaration = {"kind": kind, "actor_id": victim.id}
@@ -419,6 +396,6 @@ async def test_hollowed_rise_cancels_living_ally_intent(maw, field_dice, kind):
     assert state.get_participant(victim.id).type == "temporary_hollowed"
     assert state.get_participant(target_id).hp_current == target_hp
     assert victim.id not in state.ac_modifiers
-    await drain(maw)
+    await maw.drain()
     packets = await next_round(maw, {"kind": "defend", "actor_id": victim.id})
     assert any(p.get("actor_id") == victim.id and p["resolved"] for p in packets)

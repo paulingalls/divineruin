@@ -307,9 +307,11 @@ async def test_fallen_first_target_does_not_cancel_other_target(maw, dice, same)
     strikes = blows(packets)
     assert len(strikes) == 2 and strikes[0]["damage"] == 8
     if same:
-        assert strikes[1]["resolved"] is False and "fell" in strikes[1]["reason"]
+        assert strikes[1]["resolved"] and strikes[1]["hit"]
+        assert strikes[1]["damage"] == 12
+        assert (await maw.reload()).get_participant(maw.players[0]).death_save_failures == 2
         assert strikes[1]["target_id"] == maw.players[0]
-        assert dice[0] == ["1d8+2"]
+        assert dice[0] == ["1d8+2", "2d6+2"]
     else:
         assert strikes[1]["damage"] == 12
     await assert_hp(maw, [0, 100 if same else 88])

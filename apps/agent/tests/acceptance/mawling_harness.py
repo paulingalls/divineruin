@@ -144,6 +144,29 @@ class MawlingHarness:
         self.sd.combat_state = persisted
         return persisted
 
+    async def persist(self):
+        state = self.sd.combat_state
+        assert state is not None
+        await db_mutations.save_combat_state(state.combat_id, state.to_dict())
+        for p in state.participants:
+            if p.type == "player":
+                await db_mutations.update_player_hp(p.id, p.hp_current)
+        return await self.reload()
+
+    async def drain(self):
+        packets = []
+        state = self.sd.combat_state
+        assert state is not None
+        round_number = state.round_number
+        for _ in range(12):
+            result = await self.command("resolve_phase", {})
+            packets.extend(result["packets"])
+            state = await self.reload()
+            if state.round_number != round_number:
+                self.last_result = result
+                return packets
+        raise AssertionError("round did not finish")
+
     async def snapshot(self):
         state = await self.reload()
         return state.to_dict(), [await db_queries.get_player(p) for p in self.players]

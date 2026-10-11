@@ -5,13 +5,11 @@ from unittest.mock import patch
 
 import pytest
 from acceptance.test_mawling_dissolution_field import (
-    drain,
-    grapple,
-    next_round,
-    persist,
+    field_dice as field_dice,
 )
 from acceptance.test_mawling_dissolution_field import (
-    field_dice as field_dice,
+    grapple,
+    next_round,
 )
 from acceptance.test_mawling_dissolution_field import (
     maw as maw,
@@ -43,7 +41,7 @@ async def test_failure_after_state_write_rolls_back_and_retries_once(maw, field_
             ]
         },
     )
-    await drain(maw)
+    await maw.drain()
     victim = maw.sd.combat_state.get_participant(maw.players[0])
     victim.hp_current = 1
     maw.sd.combat_state.get_participant(companion.id).hp_current = 1
@@ -51,7 +49,7 @@ async def test_failure_after_state_write_rolls_back_and_retries_once(maw, field_
 
     maw.sd.member_state(victim.id).concentration.spell_id = "divine_bless"
     await db_mutations_concentration.update_player_concentration(victim.id, "divine_bless")
-    await persist(maw)
+    await maw.persist()
     await maw.command("declare_phase", {"declarations": [{"kind": "defend", "actor_id": maw.players[1]}]})
     before = await maw.snapshot()
     events = maw.sd.room.local_participant.publish_data.call_count
@@ -75,7 +73,7 @@ async def test_failure_after_state_write_rolls_back_and_retries_once(maw, field_
     assert state.get_participant(victim.id).hp_current == 0
     row = await db_queries.get_player(victim.id)
     assert row is not None and row["hp"]["current"] == 0
-    assert not any(p.get("automatic") for p in await drain(maw))
+    assert not any(p.get("automatic") for p in await maw.drain())
     assert await db_queries.get_player_inventory(victim.id) != inventory
     assert not maw.sd.companion.is_conscious
     assert maw.sd.member_state(victim.id).concentration.spell_id is None
@@ -94,7 +92,7 @@ async def test_multiattack_reloads_do_not_repeat_field(maw, field_dice):
     assert paused["next"]["waiting_on"] is not None
     assert not any(p.get("automatic") for p in paused["packets"])
     await maw.reload()
-    assert not any(p.get("automatic") for p in await drain(maw))
+    assert not any(p.get("automatic") for p in await maw.drain())
     assert maw.sd.combat_state.get_participant(victim.id).hp_current == before - 12
     assert sum(p.get("automatic", False) for p in await next_round(maw)) == 1
     assert field_dice[0].call_count == 2

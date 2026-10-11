@@ -219,8 +219,9 @@ async def test_save_damage_refuses_to_publish_an_attack_roll():
         await apply_attack_result(session, attacker, {}, target, result, target.ac)
 
 
-async def test_held_combined_ability_wastes_before_windows_when_target_fell():
+async def test_held_combined_ability_wastes_before_windows_when_target_dead():
     state = _make_combat_state(player_fallen=True)
+    _participant(state, "player_1").is_dead = True
     enemy = _participant(state, "goblin_scout_1")
     enemy.action_pool = [ACTIONS["valid_combined_bite"]]
     player = _participant(state, "player_1")
