@@ -8,6 +8,7 @@ import pytest
 
 _TESTS = Path(__file__).parent
 _PROBE = """
+import asyncio
 import aiohttp
 import anthropic
 import httpcore
@@ -45,7 +46,15 @@ async def summary():
         with patch.object(session_summary, "_client", client):
             assert await session_summary._call_llm_summary(0, "", "", "", 1, "") is None
 
-async def test_summary():
+@pytest.fixture(scope="session")
+def closing_worker():
+    yield
+    with patch.object(httpcore.AsyncConnectionPool, "handle_async_request", async_stop):
+        attempts.clear()
+        asyncio.run(summary())
+        assert not attempts, attempts
+
+async def test_summary(closing_worker):
     await summary()
 
 @pytest.fixture
@@ -125,6 +134,7 @@ def test_paid_transport_refusal_survives_swallowed_errors_and_fixture_teardown(a
         assert "3 skipped" in output, output
     for provider in ("Anthropic", "OpenAI", "Deepgram", "Inworld"):
         assert f"Blocked paid provider {provider}" in output, output
+    assert "! Blocked paid provider Anthropic" in output, output
     assert "session_summary.py" in output and "_call_llm_summary" in output, output
     assert "FAILED " not in output, output
     assert "AssertionError" not in output, output
