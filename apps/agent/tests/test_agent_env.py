@@ -56,8 +56,8 @@ class TestEnvironmentValidation:
                 with patch("agent.ROLE_VOICE_KEYS", ()):
                     validate_env()
 
-    def test_validate_env_warns_but_serves_on_an_empty_non_role_voice(self):
-        """Sable is intentionally nonverbal, so an empty voice is legitimate."""
+    def test_validate_env_is_silent_about_an_empty_nonverbal_voice(self):
+        """Sable is intentionally nonverbal, so her empty voice is expected, not worth a warning."""
         env = {**_base_env(), "OPENAI_API_KEY": "test_openai"}
         with patch.dict(os.environ, env, clear=True):
             with patch("agent.VOICES", {"DM_NARRATOR": "Clive", "COMPANION_SABLE": ""}):
@@ -65,8 +65,20 @@ class TestEnvironmentValidation:
                     with patch("agent.logger") as mock_logger:
                         validate_env()  # Should not raise
 
+                        mock_logger.warning.assert_not_called()
+
+    def test_validate_env_warns_but_serves_on_an_empty_speaking_voice(self):
+        """A speaking character without a voice falls back to the narrator: serve, but say so."""
+        env = {**_base_env(), "OPENAI_API_KEY": "test_openai"}
+        voices = {"DM_NARRATOR": "Clive", "COMPANION_SABLE": "", "ELDER_YANNA": ""}
+        with patch.dict(os.environ, env, clear=True):
+            with patch("agent.VOICES", voices):
+                with patch("agent.ROLE_VOICE_KEYS", ()):
+                    with patch("agent.logger") as mock_logger:
+                        validate_env()  # Should not raise
+
                         mock_logger.warning.assert_called_once()
-                        assert "COMPANION_SABLE" in mock_logger.warning.call_args[0][1]
+                        assert mock_logger.warning.call_args[0][1] == "ELDER_YANNA"
 
     def test_validate_env_raises_naming_the_role_on_an_empty_role_voice(self):
         """Required role voices cannot use the nonverbal-companion exception."""

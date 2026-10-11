@@ -21,7 +21,7 @@ from region_types import REGION_CITY
 from session_data import CreationState, SessionData
 from session_startup import _make_agent_session, solo_room_options, start_gameplay_session
 from speech_delivery import deliver_speech
-from voices import ROLE_VOICE_KEYS, VOICES
+from voices import NONVERBAL_VOICE_KEYS, ROLE_VOICE_KEYS, VOICES
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("divineruin.dm")
@@ -58,8 +58,8 @@ def validate_env() -> None:
         raise OSError(str(exc)) from exc
     required = dict.fromkeys((*REQUIRED_ENV_VARS, provider_api_key))
     missing = [v for v in required if not os.getenv(v)]
-    role_keys = set(ROLE_VOICE_KEYS)
-    empty_voices = [k for k, v in VOICES.items() if not v and k not in role_keys]
+    unwarned = set(ROLE_VOICE_KEYS) | NONVERBAL_VOICE_KEYS
+    empty_voices = [k for k, v in VOICES.items() if not v and k not in unwarned]
     if empty_voices:
         logger.warning("Voice IDs not set for: %s", ", ".join(empty_voices))
     if missing:
