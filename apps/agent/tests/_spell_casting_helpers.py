@@ -56,7 +56,6 @@ def _spell(
         narration_cue="A surge of raw power snaps outward.",
         audio_cue="SFX-001",
         resonance_by_source={source: resonance},
-        terrain_effects={},
         concentration=concentration,
     )
 
@@ -108,6 +107,7 @@ async def _cast(
         spell.id,
         db_mod=mock_db,
         queries_mod=queries,
+        content_mod=MagicMock(get_location_terrain=AsyncMock(return_value="forest")),
         persistence_mod=persistence,
         resonance_mutations_mod=mutations,
         resonance_events_mod=events,
@@ -171,6 +171,7 @@ async def _cast_echo(
         spell.id,
         db_mod=mock_db,
         queries_mod=queries,
+        content_mod=MagicMock(get_location_terrain=AsyncMock(return_value="forest")),
         persistence_mod=persistence,
         resonance_mutations_mod=mutations,
         resonance_events_mod=events,
@@ -271,6 +272,7 @@ async def _cast_racial(
             spell.id,
             db_mod=mock_db,
             queries_mod=queries,
+            content_mod=MagicMock(get_location_terrain=AsyncMock(return_value="forest")),
             persistence_mod=persistence,
             resonance_mutations_mod=mutations,
             resonance_events_mod=events,

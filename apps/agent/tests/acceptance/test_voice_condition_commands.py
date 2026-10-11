@@ -1,30 +1,17 @@
 """Fictional hearing/speech restrictions leave real microphone commands and DM receipts active."""
 
-import asyncio
 import json
-from types import SimpleNamespace
-from typing import cast
-from unittest.mock import patch
 
 import pytest
-from acceptance._livekit_client import register_data_packet_collector, wait_for_audio_track
-from acceptance.multiplayer_voice._harness import PLAYER_TWO_SPEECH, MultiplayerVoiceHarness
-from acceptance.multiplayer_voice.test_guest_leaves import ToneTTS
-from acceptance.multiplayer_voice.test_host_handoff import LocalSTT
+from acceptance.multiplayer_voice._harness import MultiplayerVoiceHarness
 from acceptance.seeds import seed_player_with_pools
-from acceptance.voice_condition_harness import ScenarioModel, assert_hud_floor, assert_receipt_floor
-from livekit import rtc
-from livekit.agents import AgentSession
-from livekit.agents.testing import fake_job_context
+from acceptance.voice_condition_harness import ScenarioModel, assert_hud_floor, assert_receipt_floor, run_voice_commands
 
 import db
 import db_mutations
 import db_queries
 from combat_agent import CombatAgent
-from multiplayer_input import MultiplayerInput
-from participant_lifecycle import PartyLifecycle, _setup_party_join
 from session_data import CombatParticipant, CombatState, SessionData
-from session_startup import GameplayInputOwner, gameplay_room_options
 
 CASES = ("deafened_sight", "silenced_cast", "silenced_legal", "outside_cast", "guest_sight", "silenced_social")
 
@@ -115,107 +102,33 @@ async def test_microphone_reaches_real_gameplay_verb_and_dm_receipt(case, liveki
     sd.combat_state = await db_mutations.load_combat_state(state.combat_id)
     assert sd.combat_state is not None and sd.combat_state.spatial == state.spatial
     model = ScenarioModel(commands(case, host))
-    session = AgentSession(llm=model, tts=ToneTTS(), max_tool_steps=5, userdata=sd)
-    lifecycle: PartyLifecycle | None = None
-    multiplayer = None
-    stream: rtc.AudioStream | None = None
-    audio_task = None
-    received_audio = []
-    transcripts = []
-    events = asyncio.Queue()
-
-    async def prepare(room):
-        nonlocal lifecycle
-        sd.room = room
-        lifecycle = _setup_party_join(room, sd)
-        sd.multiplayer_owner = cast(GameplayInputOwner, SimpleNamespace(lifecycle=lifecycle))
-        with fake_job_context(room=room):
-            await session.start(room=room, agent=CombatAgent(), room_options=gameplay_room_options(sd))
-        return lifecycle.authorize
-
-    async def capture_audio():
-        assert stream is not None
-        async for event in stream:
-            if max(abs(sample) for sample in event.frame.data) > 500:
-                received_audio.append(event.frame.duration)
-
-    with patch("base_agent._make_tts", return_value=ToneTTS()):
-        try:
-            await harness.start(prepare, transcribe=True, stt=LocalSTT())
-            assert (
-                lifecycle is not None
-                and harness.manager is not None
-                and harness.player_two is not None
-                and harness.listener is not None
-            )
-            active_lifecycle = cast(PartyLifecycle, lifecycle)
-            assert await active_lifecycle.authorize(guest) is not None
-            register_data_packet_collector(harness.player_two, topic="game_events", queue=events)
-            track = await wait_for_audio_track(harness.player_two, identity=harness.listener.local_participant.identity)
-            stream = rtc.AudioStream(track)
-            audio_task = asyncio.create_task(capture_audio())
-            receive = harness.manager.receive
-
-            async def record_receive():
-                heard = await receive()
-                transcripts.append(heard)
-                return heard
-
-            monkeypatch.setattr(harness.manager, "receive", record_receive)
-            multiplayer = MultiplayerInput(harness.manager, active_lifecycle, session, sd)
-            multiplayer.start()
-            assert not model.calls, "gameplay command executed before microphone input"
-            speaker = guest if case == "guest_sight" else host
-            await harness.play(speaker, PLAYER_TWO_SPEECH)
-            try:
-                async with asyncio.timeout(25):
-                    while not model.narrated or sum(received_audio) < 0.2:
-                        await asyncio.sleep(0.02)
-            except TimeoutError as error:
-                raise AssertionError("microphone command produced no complete gameplay/DM/audio receipt") from error
-            assert any(turn.participant_identity == speaker and turn.text == "continue second" for turn in transcripts)
-            assert_receipt_floor(model)
-            outputs = list(model.receipts.values())
-            if case == "silenced_social":
-                refusal, legal = outputs
-                assert refusal.name == "check" and refusal.is_error and "silenced" in refusal.output
-                assert legal.name == "check" and not legal.is_error
-                assert "cannot speak" in model.narration
-            elif case == "silenced_cast":
-                refusal = next(output for output in outputs if output.name == "declare_phase")
-                assert refusal.is_error and "silenced" in refusal.output
-                assert "cannot speak" in model.narration
-                assert sd.combat_state.pending_declarations == {}
-                row = await db_queries.get_player(host)
-                assert row is not None and row["focus"]["current"] == 0
-            else:
-                assert all(not output.is_error for output in outputs)
-            if case == "guest_sight":
-                assert (await db_queries.get_single_skill_advancement(guest, "perception"))["use_counter"] == 1
-                assert (await db_queries.get_single_skill_advancement(host, "perception"))["use_counter"] == 0
-            hud = []
-            async with asyncio.timeout(5):
-                if events.empty():
-                    data, identity = await events.get()
-                    assert identity == harness.listener.local_participant.identity
-                    hud.append(json.loads(data))
-            while not events.empty():
-                data, identity = events.get_nowait()
-                assert identity == harness.listener.local_participant.identity
-                hud.append(json.loads(data))
-            assert_hud_floor(hud)
-        finally:
-            if multiplayer is not None:
-                await multiplayer.aclose()
-            if audio_task is not None:
-                audio_task.cancel()
-                await asyncio.gather(audio_task, return_exceptions=True)
-            if stream is not None:
-                await stream.aclose()
-            await session.aclose()
-            if lifecycle is not None:
-                await cast(PartyLifecycle, lifecycle).aclose()
-            await harness.aclose()
+    hud = await run_voice_commands(
+        harness,
+        sd,
+        model,
+        CombatAgent(),
+        monkeypatch,
+        speaker=guest if case == "guest_sight" else host,
+    )
+    outputs = list(model.receipts.values())
+    if case == "silenced_social":
+        refusal, legal = outputs
+        assert refusal.name == "check" and refusal.is_error and "silenced" in refusal.output
+        assert legal.name == "check" and not legal.is_error
+        assert "cannot speak" in model.narration
+    elif case == "silenced_cast":
+        refusal = next(output for output in outputs if output.name == "declare_phase")
+        assert refusal.is_error and "silenced" in refusal.output
+        assert "cannot speak" in model.narration
+        assert sd.combat_state.pending_declarations == {}
+        row = await db_queries.get_player(host)
+        assert row is not None and row["focus"]["current"] == 0
+    else:
+        assert all(not output.is_error for output in outputs)
+    if case == "guest_sight":
+        assert (await db_queries.get_single_skill_advancement(guest, "perception"))["use_counter"] == 1
+        assert (await db_queries.get_single_skill_advancement(host, "perception"))["use_counter"] == 0
+    assert_hud_floor(hud)
 
 
 def test_command_receipt_and_hud_floors_fault_loudly():

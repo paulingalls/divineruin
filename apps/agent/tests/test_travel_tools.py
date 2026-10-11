@@ -39,8 +39,8 @@ def _travel_mocks(player=None):
     )
 
 
-def _location(terrain: str):
-    return {"id": "dest", "name": "Destination", "terrain": terrain}
+def _location(navigation: str):
+    return {"id": "dest", "name": "Destination", "navigation": navigation}
 
 
 def _ctx_with_bus():
@@ -218,10 +218,10 @@ async def test_unknown_mode_raises_tool_error():
 
 
 @pytest.mark.asyncio
-async def test_destination_without_terrain_raises_tool_error():
+async def test_destination_without_navigation_raises_tool_error():
     m = _travel_mocks()
-    m.content.get_location = AsyncMock(return_value={"id": "dest", "name": "No Terrain"})
-    with pytest.raises(ToolError):
+    m.content.get_location = AsyncMock(return_value={"id": "dest", "name": "No Navigation", "terrain": "dense_forest"})
+    with pytest.raises(ToolError, match=r"^Destination 'dest' has no navigation — not a travel-reachable location\.$"):
         await _run(_ctx_with_bus(), m)
 
 

@@ -10,7 +10,6 @@
     "resonance_by_source": {
       "arcane": 0
     },
-    "terrain_effects": {},
     "audio_cue": "CMB-007",
     "concentration": false,
     "sound_id": "spell_ice",
@@ -28,7 +27,6 @@
     "resonance_by_source": {
       "arcane": 0
     },
-    "terrain_effects": {},
     "audio_cue": "CMB-008",
     "concentration": false,
     "sound_id": "spell_arcane_force",
@@ -46,7 +44,6 @@
     "resonance_by_source": {
       "arcane": 0
     },
-    "terrain_effects": {},
     "audio_cue": "CMB-008 variant",
     "concentration": false,
     "sound_id": "spell_arcane_force",
@@ -64,7 +61,6 @@
     "resonance_by_source": {
       "arcane": 0
     },
-    "terrain_effects": {},
     "audio_cue": "Faint shimmer + soft chime",
     "concentration": false,
     "sound_id": "spell_generic",
@@ -82,7 +78,6 @@
     "resonance_by_source": {
       "arcane": 0
     },
-    "terrain_effects": {},
     "audio_cue": "Soft chime",
     "concentration": false,
     "sound_id": "spell_generic",
@@ -100,7 +95,6 @@
     "resonance_by_source": {
       "arcane": 1
     },
-    "terrain_effects": {},
     "audio_cue": "CMB-008 (soft)",
     "concentration": false,
     "sound_id": "spell_arcane_force",
@@ -118,7 +112,6 @@
     "resonance_by_source": {
       "arcane": 1
     },
-    "terrain_effects": {},
     "audio_cue": "Subtle shimmer",
     "concentration": true,
     "sound_id": "spell_generic",
@@ -136,7 +129,6 @@
     "resonance_by_source": {
       "arcane": 1
     },
-    "terrain_effects": {},
     "audio_cue": "Soft hum",
     "concentration": false,
     "sound_id": "spell_generic",
@@ -154,7 +146,6 @@
     "resonance_by_source": {
       "arcane": 1
     },
-    "terrain_effects": {},
     "audio_cue": "CMB-008 (triple)",
     "concentration": false,
     "sound_id": "spell_arcane_force",
@@ -172,7 +163,6 @@
     "resonance_by_source": {
       "arcane": 2
     },
-    "terrain_effects": {},
     "audio_cue": "Displacement whoosh",
     "concentration": false,
     "sound_id": "spell_generic",
@@ -190,7 +180,6 @@
     "resonance_by_source": {
       "arcane": 1
     },
-    "terrain_effects": {},
     "audio_cue": "Lock + magic hum",
     "concentration": false,
     "sound_id": "spell_generic",
@@ -208,7 +197,6 @@
     "resonance_by_source": {
       "arcane": 2
     },
-    "terrain_effects": {},
     "audio_cue": "CMB-006/7/8",
     "concentration": false,
     "sound_id": "spell_arcane_force",
@@ -226,7 +214,6 @@
     "resonance_by_source": {
       "arcane": 2
     },
-    "terrain_effects": {},
     "audio_cue": "Low thrum + lock",
     "concentration": true,
     "sound_id": "spell_generic",
@@ -244,7 +231,6 @@
     "resonance_by_source": {
       "arcane": 2
     },
-    "terrain_effects": {},
     "audio_cue": "Sharp crack + silence",
     "concentration": false,
     "sound_id": "spell_generic",
@@ -262,7 +248,6 @@
     "resonance_by_source": {
       "arcane": 2
     },
-    "terrain_effects": {},
     "audio_cue": "Reverse shimmer",
     "concentration": false,
     "sound_id": "spell_generic",
@@ -280,7 +265,6 @@
     "resonance_by_source": {
       "arcane": 2
     },
-    "terrain_effects": {},
     "audio_cue": "Rising wind",
     "concentration": true,
     "sound_id": "spell_generic",
@@ -298,7 +282,6 @@
     "resonance_by_source": {
       "arcane": 2
     },
-    "terrain_effects": {},
     "audio_cue": "Displacement hiss",
     "concentration": true,
     "sound_id": "spell_generic",
@@ -316,7 +299,6 @@
     "resonance_by_source": {
       "arcane": 3
     },
-    "terrain_effects": {},
     "audio_cue": "CMB-006 (powerful)",
     "concentration": false,
     "sound_id": "spell_fire",
@@ -334,7 +316,6 @@
     "resonance_by_source": {
       "arcane": 3
     },
-    "terrain_effects": {},
     "audio_cue": "CMB-008 (sustained)",
     "concentration": false,
     "sound_id": "spell_arcane_force",
@@ -352,7 +333,6 @@
     "resonance_by_source": {
       "arcane": 4
     },
-    "terrain_effects": {},
     "audio_cue": "Deep resonant hum",
     "concentration": true,
     "sound_id": "spell_arcane_force",
@@ -370,7 +350,6 @@
     "resonance_by_source": {
       "arcane": 3
     },
-    "terrain_effects": {},
     "audio_cue": "Accelerating pulse",
     "concentration": true,
     "sound_id": "spell_generic",
@@ -388,7 +367,6 @@
     "resonance_by_source": {
       "arcane": 3
     },
-    "terrain_effects": {},
     "audio_cue": "Decelerating tone",
     "concentration": true,
     "sound_id": "spell_generic",
@@ -406,7 +384,6 @@
     "resonance_by_source": {
       "arcane": 2
     },
-    "terrain_effects": {},
     "audio_cue": "Soft hum",
     "concentration": true,
     "sound_id": "spell_generic",
@@ -424,7 +401,6 @@
     "resonance_by_source": {
       "arcane": 5
     },
-    "terrain_effects": {},
     "audio_cue": "CMB-008 + arcs",
     "concentration": false,
     "sound_id": "spell_arcane_force",
@@ -442,7 +418,6 @@
     "resonance_by_source": {
       "arcane": 5
     },
-    "terrain_effects": {},
     "audio_cue": "Charge then silence",
     "concentration": false,
     "sound_id": "spell_generic",
@@ -460,7 +435,6 @@
     "resonance_by_source": {
       "arcane": 5
     },
-    "terrain_effects": {},
     "audio_cue": "Reality bending",
     "concentration": false,
     "sound_id": "spell_generic",
@@ -478,7 +452,6 @@
     "resonance_by_source": {
       "arcane": 4
     },
-    "terrain_effects": {},
     "audio_cue": "Subsonic pulse",
     "concentration": false,
     "sound_id": "spell_generic",
@@ -496,7 +469,6 @@
     "resonance_by_source": {
       "arcane": 4
     },
-    "terrain_effects": {},
     "audio_cue": "Spatial distortion",
     "concentration": true,
     "sound_id": "spell_generic",
@@ -514,7 +486,6 @@
     "resonance_by_source": {
       "arcane": 6
     },
-    "terrain_effects": {},
     "audio_cue": "Whistle then quad detonation",
     "concentration": false,
     "sound_id": "spell_fire",
@@ -532,7 +503,6 @@
     "resonance_by_source": {
       "arcane": 6
     },
-    "terrain_effects": {},
     "audio_cue": "All sound ceases then heartbeat",
     "concentration": false,
     "sound_id": "spell_generic",
@@ -550,7 +520,6 @@
     "resonance_by_source": {
       "divine": 0
     },
-    "terrain_effects": {},
     "audio_cue": "CMB-009 variant (offensive radiance)",
     "concentration": false,
     "sound_id": "spell_radiant",
@@ -568,7 +537,6 @@
     "resonance_by_source": {
       "divine": 0
     },
-    "terrain_effects": {},
     "audio_cue": "Soft radiant chime",
     "concentration": false,
     "sound_id": "spell_radiant",
@@ -586,7 +554,6 @@
     "resonance_by_source": {
       "divine": 0
     },
-    "terrain_effects": {},
     "audio_cue": "Quiet crystalline tone",
     "concentration": false,
     "sound_id": "spell_generic",
@@ -604,7 +571,6 @@
     "resonance_by_source": {
       "divine": 0
     },
-    "terrain_effects": {},
     "audio_cue": "Resonant spoken tone + radiant pulse",
     "concentration": false,
     "sound_id": "spell_radiant",
@@ -622,7 +588,6 @@
     "resonance_by_source": {
       "divine": 1
     },
-    "terrain_effects": {},
     "audio_cue": "CMB-009 (healing)",
     "concentration": false,
     "sound_id": "spell_heal",
@@ -640,7 +605,6 @@
     "resonance_by_source": {
       "divine": 1
     },
-    "terrain_effects": {},
     "audio_cue": "CMB-009 variant + deflection",
     "concentration": false,
     "sound_id": "spell_radiant",
@@ -658,7 +622,6 @@
     "resonance_by_source": {
       "divine": 1
     },
-    "terrain_effects": {},
     "audio_cue": "Ascending choral tone",
     "concentration": true,
     "applies_condition": "blessed",
@@ -678,7 +641,6 @@
     "resonance_by_source": {
       "divine": 1
     },
-    "terrain_effects": {},
     "audio_cue": "Soft bell tone",
     "concentration": false,
     "sound_id": "spell_generic",
@@ -696,7 +658,6 @@
     "resonance_by_source": {
       "divine": 0
     },
-    "terrain_effects": {},
     "audio_cue": "Low harmonic drone",
     "concentration": true,
     "sound_id": "spell_generic",
@@ -714,7 +675,6 @@
     "resonance_by_source": {
       "divine": 1
     },
-    "terrain_effects": {},
     "audio_cue": "Resonant authoritative tone",
     "concentration": false,
     "sound_id": "spell_radiant",
@@ -732,7 +692,6 @@
     "resonance_by_source": {
       "divine": 1
     },
-    "terrain_effects": {},
     "audio_cue": "Radiant surge + creature recoil",
     "concentration": false,
     "sound_id": "spell_radiant",
@@ -750,7 +709,6 @@
     "resonance_by_source": {
       "divine": 2
     },
-    "terrain_effects": {},
     "audio_cue": "Weapon SFX + radiant shimmer",
     "concentration": false,
     "sound_id": "spell_radiant",
@@ -768,7 +726,6 @@
     "resonance_by_source": {
       "divine": 1
     },
-    "terrain_effects": {},
     "audio_cue": "Reverse Hollow audio — wrongness unwinding",
     "concentration": false,
     "sound_id": "spell_generic",
@@ -786,7 +743,6 @@
     "resonance_by_source": {
       "divine": 1
     },
-    "terrain_effects": {},
     "audio_cue": "Subtle bell + low harmonic",
     "concentration": false,
     "sound_id": "spell_generic",
@@ -804,7 +760,6 @@
     "resonance_by_source": {
       "divine": 1
     },
-    "terrain_effects": {},
     "audio_cue": "Extended gentle choral tone",
     "concentration": false,
     "sound_id": "spell_heal",
@@ -822,7 +777,6 @@
     "resonance_by_source": {
       "divine": 1
     },
-    "terrain_effects": {},
     "audio_cue": "Warm sustained tone",
     "concentration": true,
     "sound_id": "spell_radiant",
@@ -840,7 +794,6 @@
     "resonance_by_source": {
       "divine": 2
     },
-    "terrain_effects": {},
     "audio_cue": "CMB-009 (powerful, wide)",
     "concentration": false,
     "sound_id": "spell_heal",
@@ -858,7 +811,6 @@
     "resonance_by_source": {
       "divine": 2
     },
-    "terrain_effects": {},
     "audio_cue": "Heavy radiant impact absorption",
     "concentration": false,
     "sound_id": "spell_radiant",
@@ -876,7 +828,6 @@
     "resonance_by_source": {
       "divine": 2
     },
-    "terrain_effects": {},
     "audio_cue": "Descending fire + radiant harmonic",
     "concentration": false,
     "sound_id": "spell_fire",
@@ -894,7 +845,6 @@
     "resonance_by_source": {
       "divine": 1
     },
-    "terrain_effects": {},
     "audio_cue": "Deep stabilizing harmonic",
     "concentration": false,
     "sound_id": "spell_generic",
@@ -912,7 +862,6 @@
     "resonance_by_source": {
       "divine": 2
     },
-    "terrain_effects": {},
     "audio_cue": "Silence then heartbeat then breath",
     "concentration": false,
     "sound_id": "spell_generic",
@@ -930,7 +879,6 @@
     "resonance_by_source": {
       "divine": 2
     },
-    "terrain_effects": {},
     "audio_cue": "STG-006 (god whisper) + deity voice",
     "concentration": false,
     "sound_id": "spell_generic",
@@ -948,7 +896,6 @@
     "resonance_by_source": {
       "divine": 3
     },
-    "terrain_effects": {},
     "audio_cue": "Veil tearing (controlled)",
     "concentration": true,
     "sound_id": "spell_generic",
@@ -966,7 +913,6 @@
     "resonance_by_source": {
       "divine": 3
     },
-    "terrain_effects": {},
     "audio_cue": "Deep healing tone + radiant surge",
     "concentration": false,
     "sound_id": "spell_heal",
@@ -984,7 +930,6 @@
     "resonance_by_source": {
       "divine": 3
     },
-    "terrain_effects": {},
     "audio_cue": "Silence then STG-006 (Mortaen) then heartbeat",
     "concentration": false,
     "sound_id": "spell_generic",
@@ -1002,7 +947,6 @@
     "resonance_by_source": {
       "divine": 3
     },
-    "terrain_effects": {},
     "audio_cue": "Sustained radiant harmonic",
     "concentration": true,
     "sound_id": "spell_radiant",
@@ -1020,7 +964,6 @@
     "resonance_by_source": {
       "divine": 3
     },
-    "terrain_effects": {},
     "audio_cue": "STG-006 (patron) then radiant detonation",
     "concentration": false,
     "sound_id": "spell_radiant",
@@ -1038,7 +981,6 @@
     "resonance_by_source": {
       "divine": 4
     },
-    "terrain_effects": {},
     "audio_cue": "Full STG-006 then deity audio then effect audio",
     "concentration": false,
     "sound_id": "spell_generic",
@@ -1056,7 +998,6 @@
     "resonance_by_source": {
       "primal": 0
     },
-    "terrain_effects": {},
     "audio_cue": "Whip crack + organic tearing",
     "concentration": false,
     "sound_id": "spell_nature",
@@ -1074,7 +1015,6 @@
     "resonance_by_source": {
       "primal": 0
     },
-    "terrain_effects": {},
     "audio_cue": "Soft rustle + gentle nature whisper",
     "concentration": false,
     "sound_id": "spell_nature",
@@ -1092,7 +1032,6 @@
     "resonance_by_source": {
       "primal": 0
     },
-    "terrain_effects": {},
     "audio_cue": "Soft ignition + crackling",
     "concentration": false,
     "sound_id": "spell_fire",
@@ -1110,7 +1049,6 @@
     "resonance_by_source": {
       "primal": 0
     },
-    "terrain_effects": {},
     "audio_cue": "Wood resonance hum",
     "concentration": false,
     "sound_id": "spell_nature",
@@ -1128,7 +1066,6 @@
     "resonance_by_source": {
       "primal": 0
     },
-    "terrain_effects": {},
     "audio_cue": "Sharp wind gust",
     "concentration": false,
     "sound_id": "spell_nature",
@@ -1146,7 +1083,6 @@
     "resonance_by_source": {
       "primal": 1
     },
-    "terrain_effects": {},
     "audio_cue": "CMB-009 variant (organic)",
     "concentration": false,
     "sound_id": "spell_heal",
@@ -1164,7 +1100,6 @@
     "resonance_by_source": {
       "primal": 1
     },
-    "terrain_effects": {},
     "audio_cue": "Crackling organic armor",
     "concentration": false,
     "sound_id": "spell_nature",
@@ -1181,10 +1116,6 @@
     "narration_cue": "The ground opens and vines pour upward — thick, thorned, grasping.",
     "resonance_by_source": {
       "primal": 0
-    },
-    "terrain_effects": {
-      "ancient_forest": 0,
-      "large_city": 2
     },
     "audio_cue": "Erupting vegetation",
     "concentration": true,
@@ -1203,7 +1134,6 @@
     "resonance_by_source": {
       "primal": 0
     },
-    "terrain_effects": {},
     "audio_cue": "Nature ambient shift",
     "concentration": false,
     "sound_id": "spell_nature",
@@ -1221,7 +1151,6 @@
     "resonance_by_source": {
       "primal": 0
     },
-    "terrain_effects": {},
     "audio_cue": "Soft organic growth chime",
     "concentration": false,
     "sound_id": "spell_nature",
@@ -1238,11 +1167,6 @@
     "narration_cue": "Drifting motes of cold light cling to everything, outlining bodies in eerie luminescence.",
     "resonance_by_source": {
       "primal": 1
-    },
-    "terrain_effects": {
-      "ancient_forest": 0,
-      "village": 1,
-      "large_city": 1
     },
     "audio_cue": "Shimmering bioluminescent hum",
     "concentration": true,
@@ -1261,10 +1185,6 @@
     "resonance_by_source": {
       "primal": 1
     },
-    "terrain_effects": {
-      "healthy_natural": 1,
-      "large_city": 3
-    },
     "audio_cue": "Atmospheric charge then targeted strike",
     "concentration": true,
     "sound_id": "spell_arcane_force",
@@ -1281,9 +1201,6 @@
     "narration_cue": "The forest surges. Every vine thickens, every root rises. The land becomes its own fortress.",
     "resonance_by_source": {
       "primal": 0
-    },
-    "terrain_effects": {
-      "large_city": 1
     },
     "audio_cue": "Deep organic growth rumble",
     "concentration": false,
@@ -1302,7 +1219,6 @@
     "resonance_by_source": {
       "primal": 2
     },
-    "terrain_effects": {},
     "audio_cue": "Animal calls (species-appropriate)",
     "concentration": true,
     "sound_id": "spell_nature",
@@ -1320,7 +1236,6 @@
     "resonance_by_source": {
       "primal": 0
     },
-    "terrain_effects": {},
     "audio_cue": "Stabilizing hum + Hollow receding",
     "concentration": true,
     "sound_id": "spell_generic",
@@ -1338,7 +1253,6 @@
     "resonance_by_source": {
       "primal": 1
     },
-    "terrain_effects": {},
     "audio_cue": "Water bubble + breath shift",
     "concentration": false,
     "sound_id": "spell_nature",
@@ -1355,9 +1269,6 @@
     "narration_cue": "The ground reaches up and grabs — with the patient, absolute grip of ancient roots.",
     "resonance_by_source": {
       "primal": 0
-    },
-    "terrain_effects": {
-      "large_city": 1
     },
     "audio_cue": "Sudden root eruption",
     "concentration": false,
@@ -1376,9 +1287,6 @@
     "resonance_by_source": {
       "primal": 1
     },
-    "terrain_effects": {
-      "large_city": 2
-    },
     "audio_cue": "Organic transformation",
     "concentration": false,
     "sound_id": "spell_nature",
@@ -1395,10 +1303,6 @@
     "narration_cue": "A hedge of thorns thick as your arm, higher than a house, absolutely impassable.",
     "resonance_by_source": {
       "primal": 1
-    },
-    "terrain_effects": {
-      "ancient_forest": 1,
-      "large_city": 3
     },
     "audio_cue": "Rapid violent plant growth",
     "concentration": true,
@@ -1417,7 +1321,6 @@
     "resonance_by_source": {
       "primal": 0
     },
-    "terrain_effects": {},
     "audio_cue": "Deep earth resonance",
     "concentration": false,
     "sound_id": "spell_nature",
@@ -1434,9 +1337,6 @@
     "narration_cue": "You reach for the opposite of growth. The target withers — color draining, life pulled out like thread.",
     "resonance_by_source": {
       "primal": 2
-    },
-    "terrain_effects": {
-      "hollow_corrupted": 4
     },
     "audio_cue": "Organic decay — drying, cracking",
     "concentration": false,
@@ -1455,9 +1355,6 @@
     "resonance_by_source": {
       "primal": 1
     },
-    "terrain_effects": {
-      "large_city": 2
-    },
     "audio_cue": "Organic transformation (by form)",
     "concentration": true,
     "sound_id": "spell_nature",
@@ -1474,10 +1371,6 @@
     "narration_cue": "The temperature drops. Fist-sized hail hammers everything below.",
     "resonance_by_source": {
       "primal": 2
-    },
-    "terrain_effects": {
-      "healthy_natural": 2,
-      "large_city": 3
     },
     "audio_cue": "CMB-007 variant + hail impact",
     "concentration": false,
@@ -1496,9 +1389,6 @@
     "resonance_by_source": {
       "primal": 3
     },
-    "terrain_effects": {
-      "large_city": 5
-    },
     "audio_cue": "Deep seismic rumble then cracking",
     "concentration": true,
     "sound_id": "spell_nature",
@@ -1515,9 +1405,6 @@
     "narration_cue": "The ocean rises. Not a wave — a wall. It hangs, then comes for everything.",
     "resonance_by_source": {
       "primal": 3
-    },
-    "terrain_effects": {
-      "large_city": 5
     },
     "audio_cue": "Building roar then crashing impact",
     "concentration": true,
@@ -1536,7 +1423,6 @@
     "resonance_by_source": {
       "primal": 2
     },
-    "terrain_effects": {},
     "audio_cue": "Sustained organic healing tone",
     "concentration": false,
     "sound_id": "spell_heal",
@@ -1554,7 +1440,6 @@
     "resonance_by_source": {
       "primal": 3
     },
-    "terrain_effects": {},
     "audio_cue": "Cascading organic transformations",
     "concentration": true,
     "sound_id": "spell_nature",
@@ -1572,7 +1457,6 @@
     "resonance_by_source": {
       "primal": 4
     },
-    "terrain_effects": {},
     "audio_cue": "Psychic collapse",
     "concentration": false,
     "sound_id": "spell_generic",
@@ -1590,7 +1474,6 @@
     "resonance_by_source": {
       "primal": 5
     },
-    "terrain_effects": {},
     "audio_cue": "Building storm: wind, rain, thunder, hail, blizzard",
     "concentration": true,
     "sound_id": "spell_nature",

@@ -1,67 +1,33 @@
-"""Pure per-cast composition: what a cast generates, and what the Veil Ward does to it.
-
-Extracted from ``spell_casting._resolve_cast`` (M24 story-006), which had grown past the
-500-line cap. Nothing here touches a ``conn`` or a ``session``: the async ward READ stays in
-``_resolve_cast`` (it needs both), and what lives here is what the cast does with the answer.
-Every function takes the caller's already-injected engine modules, so ``_resolve_cast``'s
-DI seams flow straight through and its existing mocks still reach this code.
-
-Framework-free, like ``veil_ward`` / ``hollow_echo`` / ``resonance``: these raise ``ValueError``
-and the tool layer converts to ``ToolError`` at the call site.
-
-The engines are reused, never reimplemented — ``veil_ward.halve_generation`` and the three
-ward effect constants are the SSOT for ward cast-time effects, and ``hollow_echo`` remains a
-narrow single-mechanic resolver that knows nothing of races, dice, or wards. This module is
-the cross-engine composition layer that wires them together for one cast.
-
-M3.4 racial Resonance: the cast reads the caster's race (players.data) and composes three
-prior pure primitives — Korath -1 primal generation (``resonance.apply_primal_reduction``),
-the Thessyn +1 Flickering threshold (``get_resonance_state`` flickering_bonus, applied by the
-caller), and the Vaelti Hollow Echo advantage (``resolve_hollow_echo`` advantage_roll). The
-engines stay untouched; this is pure composition.
-
-Terrain note: every catalog spell (primal included) carries a designed ``resonance_by_source``
-baseline, so casts no longer depend on terrain. The fallback formula
-(``calculate_resonance_generated``) only reaches the terrain lookup for an in-code primal build
-carrying no ``resonance_by_source`` entry, and since no runtime location->terrain map exists yet
-(terrain defaults to "normal"), that one path still fails loud until terrain wiring lands. The
-same missing map means the Korath -1 (spec gates it on earth/stone contact) applies on
-race+source alone — terrain gating is deferred, not modelled here.
-"""
+"""Pure per-cast composition of catalog/formula generation, racial contact and wards."""
 
 from __future__ import annotations
 
+from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING
 
 from spells import Spell
+from terrain import is_earth_or_stone, resonance_base
 
 if TYPE_CHECKING:
     from hollow_echo import HollowEchoResult
 
-# Default terrain for resonance generation. Only consulted for PRIMAL non-cantrips
-# (see module docstring); a real location->terrain map is M3.4 work.
-_DEFAULT_TERRAIN = "normal"
 
+def compute_generated_resonance(spell: Spell, race: str | None, *, terrain: str | None, resonance, racial_mod) -> int:
+    """Scale primal catalog generation by terrain, then apply Korath before ward halving.
 
-def compute_generated_resonance(spell: Spell, race: str | None, *, resonance, racial_mod) -> int:
-    """Resonance this cast generates: the catalog's designed value, else the formula, then Korath.
-
-    The catalog's per-spell ``resonance_by_source`` is the SSOT (decision resonance-by-source-ssot):
-    a subset of spells intentionally deviate from the source*focus formula — power spells tear the
-    Veil harder, gentle ones less. The formula is the fallback only when a spell carries no entry
-    for its source (in-code builds; every catalog row has one), which is also where a
-    primal-without-terrain build fails loud.
-
-    Korath Earth-anchored (spec 254-260): a Korath's primal cast generates -1 Resonance (floor 0),
-    the earth absorbing the Veil disturbance. Applied to the BASE generation — before the ward
-    halving, which the caller applies after resolving the ward — and before accrual, so a floored 0
-    flows through the caller's ``generated > 0`` write/publish gates (no resonance write, no HUD push).
+    Catalog values preserve spell-specific tuning; the Focus formula serves in-code builds
+    without a catalog entry. Decimal arithmetic preserves half-up ties such as farmland's 1.5.
     """
+    base = resonance_base(terrain) if spell.source == "primal" else None  # type: ignore[arg-type]
     generated = spell.resonance_by_source.get(spell.source)
     if generated is None:
-        generated = resonance.calculate_resonance_generated(spell.focus_cost, spell.source, terrain=_DEFAULT_TERRAIN)
+        generated = resonance.calculate_resonance_generated(spell.focus_cost, spell.source, terrain=terrain)
+    elif base is not None:
+        generated = int(
+            (Decimal(generated) * Decimal(str(base)) / Decimal("0.2")).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+        )
 
-    if race == "korath" and spell.source == "primal" and generated > 0:
+    if race == "korath" and spell.source == "primal" and is_earth_or_stone(terrain) and generated > 0:  # type: ignore[arg-type]
         reduction = racial_mod.get_racial_resonance_modifier("korath", "primal_reduction")
         generated = resonance.apply_primal_reduction(generated, reduction)
     return generated

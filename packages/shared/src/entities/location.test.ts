@@ -7,11 +7,26 @@ import { SETTLEMENT_SIZE_VALUES, SETTLEMENT_PERSONALITY_VALUES, type Location } 
 // scaled, personality-flavored NPC populations (stories 002-004). The fields are
 // agent-consumed: the TS parseLocationRow loader is an allowlist-copy parser that drops
 // unknown keys, so this raw-JSON test — not the loader — guards the backfill, mirroring
-// role_archetype.test.ts. Rows are cast to Location, so interface drift breaks `bun test`.
+// role_archetype.test.ts.
 //
 // settlement_tier is orthogonal to region_type (city/wilderness/dungeon): region_type picks
 // the ExplorationAgent; settlement_tier sizes the population. Only populated settlements
 // carry the two fields — dungeon/wilderness locations omit both.
+
+test("navigation is an optional string", () => {
+  const navigation: Location["navigation"] = "dense_forest";
+  const absent: Location["navigation"] = undefined;
+  const optional = {} satisfies Pick<Location, "navigation">;
+  const acceptsString: string extends Location["navigation"] ? true : false = true;
+  const onlyOptionalString: Location["navigation"] extends string | undefined ? true : false = true;
+  expect([navigation, absent, optional, acceptsString, onlyOptionalString]).toEqual([
+    "dense_forest",
+    undefined,
+    {},
+    true,
+    true,
+  ]);
+});
 
 const catalog = (await Bun.file(
   new URL("../../../../content/locations.json", import.meta.url),
@@ -38,6 +53,10 @@ const WILDERNESS_IDS = [
   "greyvale_ruins_exterior",
   "greyvale_wilderness_north",
   "greyvale_south_road",
+  "thornveld_old_growth_grove",
+  "keldaran_southern_pass",
+  "sunward_tidal_shore",
+  "sunward_reed_marsh",
 ];
 
 const DUNGEON_IDS = ["greyvale_ruins_entrance", "greyvale_ruins_inner", "hollow_incursion_site"];
@@ -47,8 +66,8 @@ const NON_SETTLEMENT_IDS = [...DUNGEON_IDS, ...WILDERNESS_IDS];
 const RESOURCE_RARITIES = ["common", "uncommon", "rare"];
 
 describe("locations.json — catalog cardinality", () => {
-  test("19 rows total", () => {
-    expect(catalog.length).toBe(19);
+  test("23 rows total", () => {
+    expect(catalog.length).toBe(23);
   });
 
   test("ids are unique", () => {
@@ -164,4 +183,10 @@ describe("locations.json — no data loss", () => {
       expect(typeof l.exits).toBe("object");
     }
   });
+});
+
+test("terrain is required and closed", () => {
+  const required: Record<never, never> extends Pick<Location, "terrain"> ? false : true = true;
+  const closed: string extends Location["terrain"] ? false : true = true;
+  expect([required, closed]).toEqual([true, true]);
 });

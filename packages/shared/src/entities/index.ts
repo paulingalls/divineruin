@@ -80,3 +80,5 @@ export type { CreatureStatBlock, Attack, Hollow, Ability as CreatureAbility } fr
 export { validateCreatureStatBlock } from "./creature";
 export { REGION_IDS } from "./region";
 export type { RegionId } from "./region";
+
+export * from "./terrain";

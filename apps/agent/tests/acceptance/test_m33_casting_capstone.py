@@ -14,9 +14,7 @@ import resonance
 import spells
 from spell_casting import _cast_spell_impl
 
-# The 4 M3.3 cast-time fields the loader is strict on after story-008 deleted the
-# orphaned per-row level_requirement (decision spell-loader-strict-contract, 5->4).
-_M33_FIELDS = ("resonance_by_source", "terrain_effects", "audio_cue", "concentration")
+_M33_FIELDS = ("resonance_by_source", "audio_cue", "concentration")
 
 # An affordable arcane spell: ceil(5 * 0.6) = 3 Resonance per cast. Three casts walk
 # the spec bands stable(3) -> flickering(6) -> overreach(9). Focus-only gate (story-004).

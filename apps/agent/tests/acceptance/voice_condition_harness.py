@@ -1,23 +1,80 @@
 """Deterministic owned speech/model seams over the real LiveKit transport."""
 
+import asyncio
 import json
 import uuid
+from types import SimpleNamespace
+from typing import cast
+from unittest.mock import AsyncMock, patch
 
-from livekit.agents import llm
+from acceptance._livekit_client import register_data_packet_collector, wait_for_audio_track
+from acceptance.multiplayer_voice._harness import PLAYER_TWO_SPEECH
+from acceptance.multiplayer_voice.test_guest_leaves import ToneTTS
+from acceptance.multiplayer_voice.test_host_handoff import LocalSTT
+from livekit import rtc
+from livekit.agents import AgentSession, llm, stt
+from livekit.agents.language import LanguageCode
+from livekit.agents.testing import fake_job_context
 from livekit.agents.types import DEFAULT_API_CONNECT_OPTIONS
+
+from multiplayer_input import MultiplayerInput
+from participant_lifecycle import PartyLifecycle, _setup_party_join
+from session_startup import GameplayInputOwner, gameplay_room_options
+
+
+class CommandSpeechStream(stt.RecognizeStream):
+    async def _run(self):
+        engine = cast(CommandSTT, self._stt)
+        epoch, samples, emitted = engine.epoch, 0, False
+        async for frame in self._input_ch:
+            if epoch != engine.epoch:
+                epoch, samples, emitted = engine.epoch, 0, False
+            if emitted or not isinstance(frame, rtc.AudioFrame) or max(abs(s) for s in frame.data) < 500:
+                continue
+            samples += frame.samples_per_channel
+            if samples < 12000:
+                continue
+            emitted = True
+            self._event_ch.send_nowait(stt.SpeechEvent(type=stt.SpeechEventType.START_OF_SPEECH))
+            self._event_ch.send_nowait(
+                stt.SpeechEvent(
+                    type=stt.SpeechEventType.FINAL_TRANSCRIPT,
+                    request_id=uuid.uuid4().hex,
+                    alternatives=[stt.SpeechData(language=LanguageCode("en"), text="continue second")],
+                )
+            )
+            self._event_ch.send_nowait(stt.SpeechEvent(type=stt.SpeechEventType.END_OF_SPEECH))
+
+
+class CommandSTT(LocalSTT):
+    epoch = 0
+
+    def stream(self, *, language="en", conn_options=DEFAULT_API_CONNECT_OPTIONS):
+        return CommandSpeechStream(stt=self, conn_options=conn_options)
 
 
 class ScenarioStream(llm.LLMStream):
-    def __init__(self, model, **kwargs):
+    def __init__(self, model, *, no_tools=False, **kwargs):
         super().__init__(model, **kwargs)
         self.model = model
+        self.no_tools = no_tools
 
     async def _run(self):
         model = self.model
         for item in self._chat_ctx.items:
             if isinstance(item, llm.FunctionCallOutput) and item.call_id in model.calls:
                 model.receipts[item.call_id] = item
-        if len(model.calls) < len(model.commands):
+        if model.checkpoint and len(model.receipts) > model.checked:
+            model.checked = len(model.receipts)
+            try:
+                await model.checkpoint(model.checked, list(model.receipts.values())[-1])
+            except Exception as error:
+                model.failure = error
+                raise
+        if self.no_tools and len(model.calls) < len(model.commands):
+            model.awaiting_turn = True
+            delta = llm.ChoiceDelta(role="assistant", content="Combat begins.")
+        elif len(model.calls) < len(model.commands):
             name, arguments = model.commands[len(model.calls)]
             call_id = uuid.uuid4().hex
             model.calls[call_id] = name
@@ -41,16 +98,22 @@ class ScenarioStream(llm.LLMStream):
 
 
 class ScenarioModel(llm.LLM):
-    def __init__(self, commands):
+    def __init__(self, commands, *, checkpoint=None):
         super().__init__()
         self.commands = commands
+        self.checkpoint = checkpoint
+        self.checked = 0
+        self.failure = None
+        self.awaiting_turn = False
         self.calls = {}
         self.receipts = {}
         self.narrated = False
         self.narration = ""
 
-    def chat(self, *, chat_ctx, tools=None, conn_options=DEFAULT_API_CONNECT_OPTIONS, **_kwargs):
-        return ScenarioStream(self, chat_ctx=chat_ctx, tools=tools or [], conn_options=conn_options)
+    def chat(self, *, chat_ctx, tools=None, conn_options=DEFAULT_API_CONNECT_OPTIONS, tool_choice=None, **_kwargs):
+        return ScenarioStream(
+            self, no_tools=tool_choice == "none", chat_ctx=chat_ctx, tools=tools or [], conn_options=conn_options
+        )
 
 
 def assert_receipt_floor(model):
@@ -78,3 +141,108 @@ def assert_hud_floor(events):
 
     for event in events:
         walk(event)
+
+
+async def run_voice_commands(harness, sd, model, agent, monkeypatch, *, speaker=None, require_hud=True):
+    host, guest = harness.player_one_identity, harness.player_two_identity
+    session = AgentSession(llm=model, tts=ToneTTS(), max_tool_steps=13, userdata=sd)
+    lifecycle: PartyLifecycle | None = None
+    multiplayer = None
+    stream: rtc.AudioStream | None = None
+    audio_task = None
+    received_audio = []
+    transcripts = []
+    command_stt = CommandSTT()
+    events = asyncio.Queue()
+
+    async def prepare(room):
+        nonlocal lifecycle
+        sd.room = room
+        lifecycle = _setup_party_join(room, sd)
+        sd.multiplayer_owner = cast(GameplayInputOwner, SimpleNamespace(lifecycle=lifecycle))
+        with fake_job_context(room=room):
+            await session.start(room=room, agent=agent, room_options=gameplay_room_options(sd))
+        return lifecycle.authorize
+
+    async def capture_audio():
+        assert stream is not None
+        async for event in stream:
+            if max(abs(sample) for sample in event.frame.data) > 500:
+                received_audio.append(event.frame.duration)
+
+    # Session teardown writes a recap; keep its provider call out of this unpaid lane.
+    with (
+        patch("base_agent._make_tts", return_value=ToneTTS()),
+        patch("session_summary._call_llm_summary", new_callable=AsyncMock, return_value=None),
+    ):
+        try:
+            await harness.start(prepare, transcribe=True, stt=command_stt)
+            assert (
+                lifecycle is not None
+                and harness.manager is not None
+                and harness.player_two is not None
+                and harness.listener is not None
+            )
+            active_lifecycle = cast(PartyLifecycle, lifecycle)
+            assert await active_lifecycle.authorize(guest) is not None
+            register_data_packet_collector(harness.player_two, topic="game_events", queue=events)
+            track = await wait_for_audio_track(harness.player_two, identity=harness.listener.local_participant.identity)
+            stream = rtc.AudioStream(track)
+            audio_task = asyncio.create_task(capture_audio())
+            receive = harness.manager.receive
+
+            async def record_receive():
+                heard = await receive()
+                transcripts.append(heard)
+                return heard
+
+            monkeypatch.setattr(harness.manager, "receive", record_receive)
+            multiplayer = MultiplayerInput(harness.manager, active_lifecycle, session, sd)
+            multiplayer.start()
+            assert not model.calls, "gameplay command executed before microphone input"
+            speaker = speaker or host
+            await harness.play(speaker, PLAYER_TWO_SPEECH)
+            try:
+                async with asyncio.timeout(max(25, len(model.commands) * 5)):
+                    while not model.narrated or sum(received_audio) < 0.2:
+                        if model.failure is not None:
+                            raise model.failure
+                        if model.awaiting_turn:
+                            model.awaiting_turn = False
+                            await asyncio.sleep(1)
+                            command_stt.epoch += 1
+                            await harness.play(speaker, PLAYER_TWO_SPEECH)
+                        await asyncio.sleep(0.02)
+            except TimeoutError as error:
+                raise AssertionError(
+                    f"microphone command incomplete: {len(model.calls)} calls, "
+                    f"{len(model.receipts)} receipts, {len(transcripts)} spoken turns"
+                ) from error
+            assert any(turn.participant_identity == speaker and turn.text == "continue second" for turn in transcripts)
+            assert_receipt_floor(model)
+            hud = []
+            async with asyncio.timeout(5):
+                if require_hud and events.empty():
+                    data, identity = await events.get()
+                    assert identity == harness.listener.local_participant.identity
+                    hud.append(json.loads(data))
+            while not events.empty():
+                data, identity = events.get_nowait()
+                assert identity == harness.listener.local_participant.identity
+                hud.append(json.loads(data))
+            return hud
+        finally:
+            if multiplayer is not None:
+                await multiplayer.aclose()
+            if audio_task is not None:
+                audio_task.cancel()
+                await asyncio.gather(audio_task, return_exceptions=True)
+            if stream is not None:
+                await stream.aclose()
+            await session.aclose()
+            for task in (sd.session_end_task, sd.multiplayer_close_task):
+                if task is not None:
+                    await task
+            if lifecycle is not None:
+                await cast(PartyLifecycle, lifecycle).aclose()
+            await harness.aclose()

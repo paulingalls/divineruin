@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.29.0 — 2026-10-11
+
+- Every location carries a physical terrain from one closed ten-value list (Decisions 129–132), mirrored in Python and TypeScript. Seeding and server startup refuse a missing or unknown terrain, or one that does not fit the location's region type. The travel-difficulty field formerly named `terrain` is now `navigation`.
+- Primal magic draws on the land: a cast generates its catalog Resonance scaled by the terrain's base (healthy wilds are the baseline), so ancient forest is gentler than a city. Per-spell terrain overrides and the stale "normal" default are gone.
+- Korath's earth-anchored −1 primal Resonance applies only on earth or stone, not coast or wetland. The Druid's Veil Ward is refused off natural terrain and costs 3 Focus instead of 5 in ancient forest.
+- Combat resolves its terrain once at the start and keeps it with the fight; casts and wards mid-combat never look the location up again. A combat at a location without terrain refuses to start.
+- Four new wilderness locations give every terrain a real place: the Old-Growth Grove (Thornveld), Keldaran Southern Pass, the Tidal Shore and the Reed Marsh (Sunward Coast). `world_data_simulation.md` gains an "Authoring a Location" guide.
+- Free test lanes can no longer bill a paid provider: an unapproved request to Anthropic, OpenAI, Deepgram or Inworld is refused and fails the test, even when the calling code swallows the error.
+- The agent dev-command boot check allows a loaded four-core machine time to start.
+
 ## 0.28.0 — 2026-10-08
 
 - Mawlings declare their authored Claw then Dissolution Maw multiattack as one declaration with per-strike targets. Each strike keeps its own held reaction window across pauses and reloads; an unavailable strike drains unresolved, with no retargeting. Minion Mawlings keep a single attack.

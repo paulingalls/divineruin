@@ -31,6 +31,8 @@ describe.skipIf(!hasDb)("loadLocations — DB row-fetch path", () => {
       tier: 1,
       district: "test_district",
       region: "test_region",
+      region_type: "city",
+      terrain: "city",
       atmosphere: "cold stone",
       tags: ["test"],
       exits: { out: { destination: "test_load_beta" } },
@@ -41,6 +43,8 @@ describe.skipIf(!hasDb)("loadLocations — DB row-fetch path", () => {
       tier: 1,
       district: "test_district",
       region: "test_region",
+      region_type: "city",
+      terrain: "city",
       atmosphere: "warm hearth",
       tags: ["test"],
       // A gated exit + a per-condition danger override — exercises the loader on the

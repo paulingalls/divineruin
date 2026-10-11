@@ -259,7 +259,7 @@ async def test_public_roll_producers_carry_current_combat_spoken_eligibility(pro
     location = {
         "region": "greyvale",
         "resource_table": {"common": ["oak_wood"]},
-        "terrain": "known_trail",
+        "navigation": "known_trail",
         "hidden_elements": [{"id": "secret", "discover_skill": "perception", "dc": 8}]
         if producer == "discover_candidate"
         else [],

@@ -49,7 +49,7 @@ async def test_generated_resonance_persists_and_derives_state(reset_db_pool: str
     await seed_player(pool, player_id=player_id)
 
     # arcane: ceil(10 * 0.6) = 6 -> flickering
-    arcane = resonance.calculate_resonance_generated(focus_cost=10, source="arcane")
+    arcane = resonance.calculate_resonance_generated(focus_cost=10, source="arcane", terrain=None)
     assert arcane == 6
     await db_mutations_resonance.update_player_resonance(player_id, arcane, conn=pool)
     assert await db_mutations_resonance.read_player_resonance(player_id, conn=pool) == {
@@ -58,12 +58,12 @@ async def test_generated_resonance_persists_and_derives_state(reset_db_pool: str
         "state": "flickering",
     }
 
-    # primal in hollow-corrupted terrain: ceil(10 * 0.8) = 8 -> flickering (band edge)
-    primal = resonance.calculate_resonance_generated(focus_cost=10, source="primal", terrain="hollow_corrupted")
-    assert primal == 8
+    # primal in city: ceil(10 * 0.5) = 5 -> flickering
+    primal = resonance.calculate_resonance_generated(focus_cost=10, source="primal", terrain="city")
+    assert primal == 5
     await db_mutations_resonance.update_player_resonance(player_id, primal, conn=pool)
     assert await db_mutations_resonance.read_player_resonance(player_id, conn=pool) == {
-        "current": 8,
+        "current": 5,
         "flickering_bonus": 0,
         "state": "flickering",
     }

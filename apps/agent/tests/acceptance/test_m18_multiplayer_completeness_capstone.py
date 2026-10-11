@@ -53,6 +53,23 @@ async def _seed_pc(pool, player_id: str, *, location_id: str, last_rested: str |
     (default 3 so one forced 3-damage enemy hit drops it). For the wipe scenario pass an off-catalog
     ``location_id`` + a distinct in-catalog ``last_rested`` so each member resurrects at its OWN
     tier-3 anchor. Purpose-built for the low-HP wipe drive — not the M14 capstone's 28-HP helper."""
+    await pool.execute(
+        "INSERT INTO locations (id, data) VALUES ('off_catalog_wilds', $1::jsonb) ON CONFLICT (id) DO NOTHING",
+        json.dumps(
+            {
+                "id": "off_catalog_wilds",
+                "name": "Wilds",
+                "terrain": "forest",
+                "region_type": "wilderness",
+                "region": "off_catalog",
+                "tier": 1,
+                "district": "wilds",
+                "atmosphere": "Quiet trees.",
+                "tags": [],
+                "exits": {},
+            }
+        ),
+    )
     await seed_player(pool, player_id=player_id, location_id=location_id)
     await pool.execute(
         "UPDATE players SET data = jsonb_set(jsonb_set(data, '{equipment}', $2::jsonb), "

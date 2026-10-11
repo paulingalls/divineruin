@@ -163,6 +163,7 @@ def _start_mocks(player_class, player_level=6):
     )
     content = MagicMock(
         load_creature_enemy=load_test_creature,
+        get_location_terrain=AsyncMock(return_value="forest"),
         get_encounter_template=AsyncMock(
             return_value={
                 "scene_placement": {

@@ -4,7 +4,7 @@ import type { Location } from "@divineruin/shared";
 
 const LOCATIONS_PATH = new URL("../../../content/locations.json", import.meta.url);
 
-const LOCATION_COUNT = 19;
+const LOCATION_COUNT = 23;
 
 async function loadLocationsJson(): Promise<Record<string, unknown>[]> {
   const raw: unknown = await Bun.file(LOCATIONS_PATH).json();
@@ -95,6 +95,8 @@ describe("parseLocationRow — fail-loud validation", () => {
     tier: 1,
     district: "test_district",
     region: "test_region",
+    region_type: "city",
+    terrain: "city",
     tags: ["test"],
     atmosphere: "test atmosphere",
     exits: { north: { destination: "other_location" } },
@@ -103,6 +105,20 @@ describe("parseLocationRow — fail-loud validation", () => {
   test("accepts a valid minimal location", () => {
     expect(() => parseLocationRow("test_location", base)).not.toThrow();
   });
+
+  test("projects valid navigation", () => {
+    expect(parseLocationRow("x", { ...base, navigation: "dense_forest" }).navigation).toBe(
+      "dense_forest",
+    );
+  });
+
+  for (const navigation of [null, 42, false, [], {}, ""]) {
+    test(`rejects invalid navigation ${JSON.stringify(navigation)}`, () => {
+      expect(() => parseLocationRow("x", { ...base, navigation })).toThrow(
+        /locations\[x\]\.navigation/,
+      );
+    });
+  }
 
   test("rejects a non-object row", () => {
     expect(() => parseLocationRow("x", null)).toThrow(/locations\[x\]/);

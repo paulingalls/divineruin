@@ -5,7 +5,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from _db_lifecycle import ensure_db_up, resolve_database_url, stop_if_started
-from _paid_tests import paid_skip_reason
+from _paid_tests import (
+    authorize_paid_calls,
+    finish_paid_calls,
+    install_paid_call_guard,
+    paid_skip_reason,
+)
 from archetype_abilities_config_fixture import setup_archetype_abilities_config_fixture
 from archetype_milestones_config_fixture import setup_archetype_milestones_config_fixture
 from archetypes_config_fixture import setup_archetypes_config_fixture
@@ -31,6 +36,10 @@ _db_url: str | None = None
 def _is_xdist_worker(config: pytest.Config) -> bool:
     """True on an xdist worker subprocess; False on the controller / serial run."""
     return hasattr(config, "workerinput")
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    install_paid_call_guard()
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:
@@ -61,6 +70,14 @@ def pytest_sessionfinish(session: pytest.Session) -> None:
     Runs only on the controller / serial run, mirroring pytest_sessionstart, so
     the dev DB is preserved and workers never tear it down mid-run.
     """
+    attempts = finish_paid_calls()
+    if attempts:
+        session.exitstatus = pytest.ExitCode.TESTS_FAILED
+        if _is_xdist_worker(session.config):
+            vars(session.config)["workeroutput"]["shouldfail"] = "\n".join(attempts)
+        reporter = session.config.pluginmanager.get_plugin("terminalreporter")
+        if reporter is not None:
+            reporter.write_sep("!", "\n".join(attempts))
     if _is_xdist_worker(session.config):
         return
     stop_if_started(_started_db, _db_url)
@@ -72,6 +89,15 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         reason = paid_skip_reason((mark.name for mark in item.iter_markers()), os.environ)
         if reason is not None:
             item.add_marker(pytest.mark.skip(reason=reason))
+
+
+@pytest.fixture(autouse=True)
+def _paid_call_guard(request: pytest.FixtureRequest):
+    authorize_paid_calls((mark.name for mark in request.node.iter_markers()), os.environ)
+    yield
+    attempts = finish_paid_calls()
+    if attempts:
+        pytest.fail("\n".join(attempts), pytrace=False)
 
 
 @pytest.fixture(autouse=True)

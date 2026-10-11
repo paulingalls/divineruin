@@ -61,8 +61,8 @@ async def travel(
     """Resolve a journey to a travel-reachable wilderness/road location. `mode` is one of
     'compressed' (safe montage), 'scenic' (narrated journey), or 'dangerous' (full gameplay) —
     pick from the player's intent ('quickly'/'a careful trip'/'push through the wilds'). Rolls a
-    Survival navigation check against the destination's terrain, may cost time or get the party
-    lost, accrues Exhaustion on a forced march or a bad miss in harsh terrain, and on a successful
+    Survival navigation check against the destination's navigation, may cost time or get the party
+    lost, accrues Exhaustion on a forced march or a bad miss in harsh conditions, and on a successful
     journey moves the party to the destination. Pass `forced_march=True` (and an `hours` estimate)
     when the party pushes on without rest."""
     return await _travel_impl(context, destination_id, mode, hours=hours, forced_march=forced_march)
@@ -108,13 +108,13 @@ async def _travel_impl(
     destination = await content.get_location(destination_id)
     if destination is None:
         raise ToolError(f"Destination '{destination_id}' not found.")
-    terrain = destination.get("terrain")
-    if not terrain:
-        raise ToolError(f"Destination '{destination_id}' has no terrain — not a travel-reachable location.")
+    navigation = destination.get("navigation")
+    if not navigation:
+        raise ToolError(f"Destination '{destination_id}' has no navigation — not a travel-reachable location.")
 
-    # navigation_dc fail-louds on an unknown terrain key (content drift); narrate it.
+    # navigation_dc fail-louds on an unknown navigation key (content drift); narrate it.
     try:
-        dc = travel_engine.navigation_dc(terrain)
+        dc = travel_engine.navigation_dc(navigation)
     except ValueError as e:
         raise ToolError(str(e)) from e
 
@@ -131,7 +131,7 @@ async def _travel_impl(
 
     result = travel_engine.resolve_travel_segment(
         mode=mode_lower,
-        terrain=terrain,
+        navigation=navigation,
         roll_total=roll.total if roll else 0,
         base_hours=hours,
         forced_march=forced_march,

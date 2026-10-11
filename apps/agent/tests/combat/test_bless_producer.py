@@ -19,7 +19,7 @@ from session_data import CombatParticipant, CombatState, SessionData
 from spells import Spell, parse_spell_row
 
 # A divine_bless-shaped catalog row carrying the new structured producer field. Mirrors the
-# strict M3.3 row shape (resonance_by_source/terrain_effects/audio_cue/concentration required).
+# strict M3.3 row shape (resonance_by_source/audio_cue/concentration required).
 _BLESS_ROW = {
     "id": "divine_bless",
     "name": "Bless",
@@ -31,7 +31,6 @@ _BLESS_ROW = {
     "mechanics": "An ally gains +1d4 on attacks and saves. Concentration.",
     "narration_cue": "You speak their name and your patron hears — warmth settling into bones.",
     "resonance_by_source": {"divine": 1},
-    "terrain_effects": {},
     "audio_cue": "",
     "concentration": True,
     "sound_id": "spell_radiant",
@@ -71,7 +70,6 @@ def _bless_spell(applies_condition: str | None = "blessed", *, focus_cost: int =
         narration_cue="Warmth settling into bones.",
         audio_cue="",
         resonance_by_source={"divine": 0},
-        terrain_effects={},
         concentration=False,
         applies_condition=applies_condition,
     )

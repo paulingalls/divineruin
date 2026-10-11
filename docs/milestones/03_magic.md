@@ -36,7 +36,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
   - Veil Fracture event at 15+ (`magic.md:134`) — narrative-scale consequence.
   - Resonance Sensing tiers for Non-Elari via Arcana ladder (`magic.md:280-293`) — Untrained/Trained/Expert/Master.
   - Druid preparation constraint ("only change spell preparation in natural terrain", `magic.md:458`).
-  - Veil Ward per-archetype sources table (`magic.md:204-210`) — Cleric/Druid/Artificer/Paladin/Sacred sites with distinct costs, levels, durations. **→ M24 (execution_plan.json) OWNS this.** M24 shipped the location/encounter-scoped, party-wide, duration-bound, multi-source ward model (`057_veil_ward_scope.sql`), including the Cleric/Druid/Paladin source durations and Artificer Veil Anchor. Phase 10 owns the Druid terrain gate; Phase 11 owns ambient and Sacred-site world wards.
+  - Veil Ward per-archetype sources table (`magic.md:204-210`) — Cleric/Druid/Artificer/Paladin/Sacred sites with distinct costs, levels, durations. **→ M24 (execution_plan.json) OWNS this.** M24 shipped the location/encounter-scoped, party-wide, duration-bound, multi-source ward model (`057_veil_ward_scope.sql`), including the Cleric/Druid/Paladin source durations and Artificer Veil Anchor. Phase 10 M10.2 supplies the Druid natural-terrain gate and 3/5 Focus cost; Phase 11 owns ambient and Sacred-site world wards.
 
 ### Cross-doc dependencies
 
@@ -56,17 +56,17 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
 
 **Deliverables:**
 - Pure functions in rules engine:
-  - `calculate_resonance_generated(focus_cost, source, terrain=None)` — applies source multiplier (Arcane 0.6x, Divine 0.3x, Primal 0.1-0.8x terrain-dependent)
+  - `calculate_resonance_generated(focus_cost, source, terrain)` — applies source multiplier (Arcane 0.6x, Divine 0.3x, Primal 0.1-0.5x terrain-dependent; see Phase 10 M10.2)
   - `get_resonance_state(current_resonance)` — returns Stable (0-4), Flickering (5-8), or Overreach (9+)
   - `apply_resonance_decay(current_resonance, racial_modifier=0)` — decrements by 1/round (or 2/round for Human racial)
 - Resonance state modifiers: Flickering grants +1 damage die; Overreach grants +2 damage dice and +2 DC
 - Escalating modifiers at high Resonance: additional effects at 12+ and 15+
 - DB: `character_resonance` tracking (current value, current state) — either new table or column on character state
 - Client: Resonance tracker visual with distinct styling for Stable, Flickering, and Overreach states
-- Resonance formula: `resonance = ceil(focus_cost * source_multiplier)`
+- Formula fallback: `resonance = ceil(focus_cost * source_multiplier)`. Phase 10 M10.2 scales primal catalog values by `resonance_base(terrain) / 0.2` with half-up rounding. Corruption bands remain a documentation-only seam.
 
 **Acceptance criteria:**
-- [x] `calculate_resonance_generated()` returns correct values for each source: Arcane at 0.6x, Divine at 0.3x, Primal at terrain-dependent 0.1-0.8x
+- [x] `calculate_resonance_generated()` returns correct values for each source: Arcane at 0.6x, Divine at 0.3x, Primal at terrain-dependent 0.1-0.5x (Phase 10 M10.2)
 - [x] `get_resonance_state()` returns Stable for 0-4, Flickering for 5-8, Overreach for 9+
 - [x] `apply_resonance_decay()` reduces Resonance by 1 per round by default, 2 for Human racial modifier
 - [x] Resonance never goes below 0
@@ -95,6 +95,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
 - Hollow Echo trigger: automatic d20 roll when a character is at Overreach state
 - Veil Ward system:
   - `activate_veil_ward(character_id)` — establishes local area reinforcement The current DM verb is `activate`.
+  - Druid raises require natural terrain; cost 3 Focus in ancient_forest, otherwise 5 (Phase 10 M10.2).
   - Ward effect: halves Resonance generation while active
   - Ward penalty: -1 damage die, -1 DC while active
   - Ward bonus: +4 to Hollow Echo roll (shifts results toward safety)
@@ -127,7 +128,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
 
 **Deliverables:**
 - Content file `content/spells.json` with all 87 spell entries: Arcane (30), Divine (28), Primal (29)
-- Each spell entry contains: name, source (Arcane/Divine/Primal), focus_cost, resonance_by_source, terrain_effects (for Primal), spell_tier, mechanics, narration_cue, audio_cue, concentration (boolean). (Per-spell level_requirement was dropped in story-008 as orphaned non-gating metadata — access is gated by per-archetype tier tables + leveling.MIN_LEVEL_BY_SPELL_TIER, not per-spell level.)
+- Each spell entry contains: name, source (Arcane/Divine/Primal), focus_cost, resonance_by_source, spell_tier, mechanics, narration_cue, audio_cue, concentration (boolean). (Per-spell level_requirement was dropped in story-008 as orphaned non-gating metadata — access is gated by per-archetype tier tables + leveling.MIN_LEVEL_BY_SPELL_TIER, not per-spell level.)
 - `spell_catalog` DB table seeded from `content/spells.json`
 - Cantrip scaling formula: 1d6 (L1-4), 2d6 (L5-10), 3d6 (L11-16), 4d6 (L17-20)
 - Agent tool `get_spell_info` — looks up spell details for DM narration
@@ -167,7 +168,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
   - Elari: Veil-sense — passive ability to feel ambient Resonance levels
   - Human: Adaptive decay — Resonance decays at -2/round instead of -1
   - Vaelti: Hyper-awareness — 1-round advance warning before Hollow Echo triggers
-  - Korath: Earth-anchored — -1 Primal Resonance generation
+  - Korath: Earth-anchored — -1 Primal Resonance generation on earth/stone terrain (Phase 10 M10.2)
   - Draethar: Inner Fire — once per encounter, −3 Resonance + 1d6 unpreventable self fire damage
   - Thessyn: Deep Adaptation — permanent Resonance handling improvement accrued over 10+ sessions
 - `racial_resonance_bonuses` DB configuration table
@@ -179,7 +180,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
 - [x] Casting a Concentration spell while one is active ends the previous spell
 - [x] Incapacitated characters automatically lose concentration
 - [x] Human racial modifier applies -2 decay per round (verified via `apply_resonance_decay`)
-- [x] Korath racial modifier reduces Primal Resonance generation by 1 (verified via `calculate_resonance_generated`)
+- [x] Korath racial modifier reduces Primal Resonance generation by 1 on earth/stone terrain (Phase 10 M10.2 command acceptance)
 - [x] Draethar can dump Resonance via pressure valve at a defined cost
 - [x] Vaelti receive advance warning before Hollow Echo (integrated with `resolve_hollow_echo` from M3.2)
 - [x] `racial_resonance_bonuses` table is seeded with all 6 racial entries

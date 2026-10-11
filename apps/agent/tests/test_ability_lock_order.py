@@ -159,7 +159,6 @@ def _bless_spell() -> Spell:
         mechanics="Bless an ally.",
         narration_cue="A warm light settles.",
         resonance_by_source={"arcane": 6},
-        terrain_effects={},
         audio_cue="SFX-002",
         concentration=False,
         applies_condition="blessed",

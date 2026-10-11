@@ -17,6 +17,7 @@ import combat_voice_rules
 import condition_produce
 import conditions
 import db
+import db_content_queries
 import db_mutations_concentration
 import db_mutations_conditions
 import db_mutations_resonance
@@ -34,6 +35,7 @@ import spells
 import vaelti_echo_warning
 import veil_ward as veil_ward_mod
 import ward_resolution
+from combat_terrain import resolve_terrain
 from game_events import publish_game_event
 from party_state import PartyMember
 from resource_costs import gate_pool
@@ -119,6 +121,7 @@ async def _cast_spell_impl(
     target_ids: list[str] | None = None,
     db_mod=db,
     queries_mod=db_queries,
+    content_mod=db_content_queries,
     persistence_mod=ability_persistence,
     resonance_mutations_mod=db_mutations_resonance,
     resonance_events_mod=resonance_events,
@@ -158,6 +161,7 @@ async def _cast_spell_impl(
             target_id=target_id,
             target_ids=target_ids,
             queries_mod=queries_mod,
+            content_mod=content_mod,
             persistence_mod=persistence_mod,
             resonance_mutations_mod=resonance_mutations_mod,
             resonance_events_mod=resonance_events_mod,
@@ -202,6 +206,7 @@ async def _resolve_cast(
     combat_state: CombatState | None = None,
     suppress_resonance_changed: bool = False,
     queries_mod=db_queries,
+    content_mod=db_content_queries,
     persistence_mod=ability_persistence,
     resonance_mutations_mod=db_mutations_resonance,
     resonance_events_mod=resonance_events,
@@ -319,10 +324,15 @@ async def _resolve_cast(
             raise ToolError(str(e)) from e
     current_focus = (player.get("focus") or {}).get("current", 0)
 
-    # Catalog SSOT, else the source*focus formula, then the Korath -1 primal reduction — all pure
-    # (cast_modifiers). A primal build carrying no catalog entry still fails loud, Focus untouched.
     try:
-        generated = cast_modifiers.compute_generated_resonance(spell, race, resonance=resonance, racial_mod=racial_mod)
+        terrain = (
+            await resolve_terrain(session, combat_state=combat_state, content_mod=content_mod)
+            if spell.source == "primal"
+            else None
+        )
+        generated = cast_modifiers.compute_generated_resonance(
+            spell, race, terrain=terrain, resonance=resonance, racial_mod=racial_mod
+        )
     except ValueError as e:
         raise ToolError(f"Cannot cast {spell.name}: {e}") from e
 
