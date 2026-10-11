@@ -7,11 +7,26 @@ import { SETTLEMENT_SIZE_VALUES, SETTLEMENT_PERSONALITY_VALUES, type Location } 
 // scaled, personality-flavored NPC populations (stories 002-004). The fields are
 // agent-consumed: the TS parseLocationRow loader is an allowlist-copy parser that drops
 // unknown keys, so this raw-JSON test — not the loader — guards the backfill, mirroring
-// role_archetype.test.ts. Rows are cast to Location, so interface drift breaks `bun test`.
+// role_archetype.test.ts.
 //
 // settlement_tier is orthogonal to region_type (city/wilderness/dungeon): region_type picks
 // the ExplorationAgent; settlement_tier sizes the population. Only populated settlements
 // carry the two fields — dungeon/wilderness locations omit both.
+
+test("navigation is an optional string", () => {
+  const navigation: Location["navigation"] = "dense_forest";
+  const absent: Location["navigation"] = undefined;
+  const optional = {} satisfies Pick<Location, "navigation">;
+  const acceptsString: string extends Location["navigation"] ? true : false = true;
+  const onlyOptionalString: Location["navigation"] extends string | undefined ? true : false = true;
+  expect([navigation, absent, optional, acceptsString, onlyOptionalString]).toEqual([
+    "dense_forest",
+    undefined,
+    {},
+    true,
+    true,
+  ]);
+});
 
 const catalog = (await Bun.file(
   new URL("../../../../content/locations.json", import.meta.url),

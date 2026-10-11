@@ -29,13 +29,13 @@ def _ctx():
     return ctx
 
 
-def _mocks(*, terrain="established_road", requires=None, players=None):
+def _mocks(*, navigation="established_road", requires=None, players=None):
     start = {
         "id": START,
         "name": "Guild Hall",
         "exits": {"north": {"destination": DEST, **({"requires": requires} if requires else {})}},
     }
-    dest = {"id": DEST, "name": "Ruins", "terrain": terrain, "exits": {"south": START}}
+    dest = {"id": DEST, "name": "Ruins", "navigation": navigation, "exits": {"south": START}}
     locations = {START: start, DEST: dest}
     db_mod = MagicMock()
     conn = MagicMock()
@@ -179,7 +179,7 @@ async def test_travel_arrival_clears_every_members_state(speaker):
 
 @pytest.mark.parametrize("speaker", IDS)
 async def test_lost_travel_records_every_members_state(speaker):
-    ctx, m = _ctx(), _mocks(terrain="unmarked_wilderness")
+    ctx, m = _ctx(), _mocks(navigation="unmarked_wilderness")
     with ctx.userdata._bind_authenticated_actor(speaker, 4, lambda *_: None):
         result = await _travel(ctx, m, rng=1)
     assert result["arrived"] is False
@@ -207,7 +207,7 @@ async def test_forced_march_uses_each_members_rules(speaker):
             "proficiencies": [],
         },
     }
-    ctx, m = _ctx(), _mocks(terrain="underground", players=players)
+    ctx, m = _ctx(), _mocks(navigation="underground", players=players)
     with ctx.userdata._bind_authenticated_actor(speaker, 4, lambda *_: None):
         result = await _travel(ctx, m, mode="dangerous", hours=12, forced_march=True, rng=1)
     assert result["arrived"] is False
@@ -221,7 +221,7 @@ async def test_forced_march_uses_each_members_rules(speaker):
 
 
 async def test_forced_march_fails_loud_on_missing_member_row():
-    ctx, m = _ctx(), _mocks(terrain="underground")
+    ctx, m = _ctx(), _mocks(navigation="underground")
 
     async def get_player(pid, *, for_update=False, **_):
         return (
@@ -279,7 +279,7 @@ async def test_only_the_speakers_inspired_die_is_spent(speaker, forced_march):
         pid: {"player_id": pid, "conditions": inspired, "attributes": {"wisdom": 12}, "proficiencies": []}
         for pid in IDS
     }
-    ctx, m = _ctx(), _mocks(terrain="unmarked_wilderness", players=players)
+    ctx, m = _ctx(), _mocks(navigation="unmarked_wilderness", players=players)
     with ctx.userdata._bind_authenticated_actor(speaker, 4, lambda *_: None):
         await _travel(ctx, m, hours=12, forced_march=forced_march, rng=20)
     saved = {
@@ -291,12 +291,12 @@ async def test_only_the_speakers_inspired_die_is_spent(speaker, forced_march):
 
 
 @pytest.mark.parametrize(
-    ("terrain", "forced_march"),
+    ("navigation", "forced_march"),
     [("established_road", False), ("unmarked_wilderness", False), ("underground", True)],
     ids=["arrival", "lost", "forced-march"],
 )
-async def test_revoked_guest_cannot_travel_party(terrain, forced_march):
-    ctx, m = _ctx(), _mocks(terrain=terrain)
+async def test_revoked_guest_cannot_travel_party(navigation, forced_march):
+    ctx, m = _ctx(), _mocks(navigation=navigation)
     revoked = False
     locations = m.content.get_location.side_effect
 

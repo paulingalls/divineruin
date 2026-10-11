@@ -74,13 +74,13 @@ def assert_committed_cue(ctx, log, expected):
     assert log.index(("commit", None)) < log.index(("cue", expected))
 
 
-def arrival_mocks(log, *, exit=True, requires=None, terrain="established_road"):
+def arrival_mocks(log, *, exit=True, requires=None, navigation="established_road"):
     db, conn = db_with_commit(log)
     start = {
         "id": "accord_guild_hall",
         "exits": {"north": {"destination": "dest", **({"requires": requires} if requires else {})}} if exit else {},
     }
-    dest = {"id": "dest", "name": "Destination", "terrain": terrain, "exits": {}}
+    dest = {"id": "dest", "name": "Destination", "navigation": navigation, "exits": {}}
     content = MagicMock(get_location=AsyncMock(side_effect=lambda id: {"accord_guild_hall": start, "dest": dest}[id]))
     mutations = MagicMock(update_player_location=AsyncMock(), upsert_map_progress=AsyncMock())
     travel = MagicMock(update_player_travel_state=AsyncMock())
@@ -140,7 +140,7 @@ async def test_travel_cue_follows_arrival_commit_and_survives_later_failure():
 
 async def test_rolled_travel_arrival_publishes_no_action_cue():
     ctx, log = recorded_context()
-    m = arrival_mocks(log, terrain="known_trail")
+    m = arrival_mocks(log, navigation="known_trail")
     result = json.loads(await travel(ctx, m, roll=20))
     assert result["arrived"] is True
     m.mutations.update_player_location.assert_awaited_once()
