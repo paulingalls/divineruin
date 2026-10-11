@@ -138,3 +138,42 @@ def test_paid_transport_refusal_survives_swallowed_errors_and_fixture_teardown(a
     assert "session_summary.py" in output and "_call_llm_summary" in output, output
     assert "FAILED " not in output, output
     assert "AssertionError" not in output, output
+
+
+def test_background_provider_attempt_survives_diagnostic_drain(monkeypatch):
+    from threading import Event, Thread
+    from unittest.mock import patch
+
+    import _paid_tests
+    import httpcore
+    import httpx
+
+    completed = Event()
+
+    def request():
+        try:
+            with httpx.Client() as client:
+                client.get("https://api.anthropic.com/v1/messages")
+        except ConnectionRefusedError:
+            pass
+        finally:
+            completed.set()
+
+    worker = Thread(target=request)
+
+    class ConcurrentAttempts(list):
+        def clear(self):
+            if worker.ident is None:
+                worker.start()
+                completed.wait(0.5)
+            super().clear()
+
+    monkeypatch.setattr(_paid_tests, "_attempts", ConcurrentAttempts())
+    with patch.object(httpcore.ConnectionPool, "handle_request", side_effect=AssertionError("network reached")):
+        current = _paid_tests.finish_paid_calls()
+        worker.join(timeout=5)
+        assert not worker.is_alive()
+        following = _paid_tests.finish_paid_calls()
+    monkeypatch.setattr(_paid_tests, "_attempts", [])
+    assert len(current + following) == 1
+    assert "Blocked paid provider Anthropic" in (current + following)[0]

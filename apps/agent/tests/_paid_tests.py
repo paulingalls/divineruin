@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from pathlib import Path
+from threading import Lock
 
 APPROVAL_VAR = "ALLOW_PAID_TESTS"
 PAID_MARKERS = frozenset({"real_llm", "openai_real_llm", "live_voice"})
@@ -32,6 +33,7 @@ def paid_skip_reason(marker_names: Iterable[str], env: Mapping[str, str]) -> str
 # Shared across background event-loop threads as well as pytest's main thread.
 _authorized = False
 _attempts: list[str] = []
+_attempts_lock = Lock()
 _installed = False
 _AGENT_ROOT = str(Path(__file__).resolve().parents[1]) + "/"
 
@@ -61,7 +63,8 @@ def _refuse_paid_request(host: str) -> None:
             diagnostic = (
                 f"Blocked paid provider {provider} ({host}) at {caller.filename}:{caller.lineno} in {caller.name}"
             )
-            _attempts.append(diagnostic)
+            with _attempts_lock:
+                _attempts.append(diagnostic)
             raise ConnectionRefusedError(diagnostic)
 
 
@@ -104,6 +107,7 @@ def authorize_paid_calls(marker_names: Iterable[str], env: Mapping[str, str]) ->
 def finish_paid_calls() -> list[str]:
     global _authorized
     _authorized = False
-    attempts = _attempts[:]
-    _attempts.clear()
+    with _attempts_lock:
+        attempts = _attempts[:]
+        _attempts.clear()
     return attempts
