@@ -24,6 +24,15 @@ def gameplay_llm_api_key() -> str:
     return PROVIDER_API_KEYS[gameplay_llm_selection()]
 
 
+def create_luna_llm() -> llm.LLM:
+    return openai.LLM(
+        model=LUNA_MODEL,
+        reasoning_effort="none",
+        _strict_tool_schema=True,
+        max_retries=0,
+    )
+
+
 def create_gameplay_llm(anthropic_model: str) -> llm.LLM:
     selection = gameplay_llm_selection()
     if selection == "anthropic":
@@ -36,11 +45,7 @@ def create_gameplay_llm(anthropic_model: str) -> llm.LLM:
             _strict_tool_schema=False,
         )
     if selection == "openai-luna":
-        return openai.LLM(
-            model=LUNA_MODEL,
-            reasoning_effort="none",
-            _strict_tool_schema=True,
-        )
+        return create_luna_llm()
     raise AssertionError(f"Unhandled GAMEPLAY_LLM selection: {selection!r}")
 
 

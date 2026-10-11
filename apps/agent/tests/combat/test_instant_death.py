@@ -6,6 +6,7 @@ import pytest
 from combat._helpers import _make_combat_state
 from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import make_context
+from voice_condition_fixtures import place_actors
 
 import combat_phase
 from check_resolution_attack import AttackResult
@@ -95,7 +96,7 @@ class TestInstantDeathVerdict:
         # ALREADY at 0 (Fallen) is the separate "damage while Fallen" mechanic (L369), not
         # instant death — even though overkill = damage - 0 = damage trivially exceeds max HP.
         ctx = make_context()
-        cs = _make_combat_state()
+        cs = place_actors(_make_combat_state())
         attacker, target, action = _attacker_target_action(cs)
         target.hp_current = 0
         target.is_fallen = True
@@ -109,6 +110,7 @@ class TestInstantDeathVerdict:
             mutations=mutations,
             queries=queries,
             resolver=_resolver(damage=target.hp_max * 3, hp_remaining=0, overkill=target.hp_max * 3),
+            combat_state=cs,
         )
 
         assert target.is_fallen is True

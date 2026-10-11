@@ -308,20 +308,18 @@ test("structured multiattack references are checked by both public validators", 
     new URL("../../../../content/creatures.json", import.meta.url),
   ).json()) as Record<string, unknown>[];
   const maw = rows.find((r) => r.id === "hollow_mawling")!;
-  const typed = { name: "Multiattack", attacks: ["Claw", "Dissolution Maw"] } satisfies NonNullable<
-    import("./creature").CreatureStatBlock["multiattack_sequence"]
-  >;
-  expect(maw.multiattack_sequence).toEqual(typed);
+  const typed = {
+    name: "Multiattack",
+    attacks: ["Claw", "Dissolution Maw"],
+    attacks_by_role: { elite: ["Claw", "Dissolution Maw", "Claw"], boss: ["Claw"] },
+  } satisfies NonNullable<import("./creature").CreatureStatBlock["multiattack_sequence"]>;
+  expect(validateCreatureStatBlock({ ...maw, multiattack_sequence: typed })).toEqual([]);
   expect(
     validateCreatureStatBlock({
       ...maw,
       multiattack_sequence: { name: "Multiattack", attacks: ["claw", "CLAW"] },
     }),
   ).toEqual([]);
-  expect(maw.multiattack_sequence).toEqual({
-    name: "Multiattack",
-    attacks: ["Claw", "Dissolution Maw"],
-  });
   for (const sequence of [
     { name: "Multiattack", attacks: ["Scatter"] },
     { name: "Scatter", attacks: ["Claw"] },
@@ -338,6 +336,28 @@ test("structured multiattack references are checked by both public validators", 
     expect(validateCreatureStatBlock(bad).length).toBeGreaterThan(0);
     expect(validateCreatureJson(JSON.stringify([bad])).length).toBeGreaterThan(0);
   }
+  const cases: [unknown, string | null][] = [
+    [{ elite: ["claw", "CLAW"], boss: ["Claw"] }, null],
+    [{}, null],
+    ...["bogus", "minion", "standard", "named"].map((role): [unknown, string] => [
+      { [role]: ["Claw"] },
+      `.${role}: unknown role`,
+    ]),
+    ...[null, [], "elite"].map((v): [unknown, string] => [v, ": expected object"]),
+    ...[null, "Claw"].map((v): [unknown, string] => [{ elite: v }, ".elite: expected array"]),
+    [{ elite: [] }, ".elite: expected non-empty array"],
+    ...[3, "unknown", "Scatter"].map((ref): [unknown, string] => [
+      { elite: [ref] },
+      ".elite: expected unambiguous attack reference",
+    ]),
+  ];
+  for (const [attacks_by_role, diagnostic] of cases) {
+    const block = { ...maw, multiattack_sequence: { ...typed, attacks_by_role } };
+    const expected =
+      diagnostic === null ? [] : [`multiattack_sequence.attacks_by_role${diagnostic}`];
+    expect(validateCreatureStatBlock(block)).toEqual(expected);
+    expect(validateCreatureJson(JSON.stringify([block]))).toEqual(expected);
+  }
 });
 
 test("case-insensitive ambiguous attack references are refused", async () => {
@@ -346,9 +366,18 @@ test("case-insensitive ambiguous attack references are refused", async () => {
   ).json()) as Record<string, unknown>[];
   const maw = rows.find((r) => r.id === "hollow_mawling")!;
   const attacks = maw.attacks as Record<string, unknown>[];
-  const bad = { ...maw, attacks: [...attacks, { ...attacks[0], name: "cLAW" }] };
-  expect(validateCreatureStatBlock(bad).length).toBeGreaterThan(0);
-  expect(validateCreatureJson(JSON.stringify([bad])).length).toBeGreaterThan(0);
+  for (const multiattack_sequence of [
+    maw.multiattack_sequence,
+    { name: "Multiattack", attacks: ["Dissolution Maw"], attacks_by_role: { elite: ["claw"] } },
+  ]) {
+    const bad = {
+      ...maw,
+      multiattack_sequence,
+      attacks: [...attacks, { ...attacks[0], name: "cLAW" }],
+    };
+    expect(validateCreatureStatBlock(bad).length).toBeGreaterThan(0);
+    expect(validateCreatureJson(JSON.stringify([bad]))).toEqual(validateCreatureStatBlock(bad));
+  }
 });
 
 test("Maw durability rider is authored and validated", async () => {

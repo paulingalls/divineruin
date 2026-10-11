@@ -2,6 +2,7 @@
 
 import ast
 import inspect
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -91,14 +92,19 @@ def test_agent_union_counts_are_pinned(name, tools):
     assert sum(spend.values()) == EXPECTED_UNION_SPEND[name], f"{name} union spend changed: {spend}"
 
 
+def _tracked_python_paths(root: Path) -> list[Path]:
+    result = subprocess.run(
+        ["git", "ls-files", "-z", "--", "*.py"], cwd=root, check=True, capture_output=True, text=True
+    )
+    return [root / name for name in result.stdout.split("\0") if name]
+
+
 def _agent_session_llm_calls() -> list[tuple[str, ast.Call]]:
     """Every inline `AgentSession(llm=...LLM(...))` construction under apps/agent."""
     root = Path(__file__).resolve().parents[1]
     sites: list[tuple[str, ast.Call]] = []
-    for path in sorted(root.rglob("*.py")):
-        if ".venv" in path.parts:
-            continue
-        for node in ast.walk(ast.parse(path.read_text())):
+    for path in _tracked_python_paths(root):
+        for node in ast.walk(ast.parse(path.read_text(), filename=str(path))):
             if not isinstance(node, ast.Call) or not _is_agent_session_call(node):
                 continue
             for kw in node.keywords:
@@ -118,20 +124,11 @@ def _agent_session_sites() -> list[tuple[str, ast.Call]]:
     """Every `AgentSession(...)` construction under apps/agent, as AST."""
     root = Path(__file__).resolve().parents[1]
     sites: list[tuple[str, ast.Call]] = []
-    for path in sorted(root.rglob("*.py")):
-        if ".venv" in path.parts:
-            continue
-        for node in ast.walk(ast.parse(path.read_text())):
+    for path in _tracked_python_paths(root):
+        for node in ast.walk(ast.parse(path.read_text(), filename=str(path))):
             if isinstance(node, ast.Call) and _is_agent_session_call(node):
                 sites.append((str(path.relative_to(root)), node))
     return sites
-
-
-def test_agent_session_matcher_distinguishes_constructor_from_chained_calls():
-    tree = ast.parse("AgentSession().options.endpointing.get('min_delay')")
-    calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)]
-
-    assert [ast.unparse(call) for call in calls if _is_agent_session_call(call)] == ["AgentSession()"]
 
 
 def test_every_agent_session_chooses_its_max_tool_steps():

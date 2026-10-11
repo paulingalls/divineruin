@@ -1,7 +1,7 @@
 """Death, resurrection, and stabilization during combat settlement."""
 
 import resurrection
-from combat_phase import is_terminally_down
+from combat_down import is_terminally_down
 from session_data import CombatState
 
 

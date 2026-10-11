@@ -1,5 +1,17 @@
-#!/bin/sh
+#!/usr/bin/env bash
 set -e
 cd "$(git rev-parse --show-toplevel)"
 . .githooks/hook-lib.sh
 secrets_scan_index
+
+# Git's checkout variables would redirect fixture repositories into this tree.
+for git_var in $(git rev-parse --local-env-vars); do
+  unset "$git_var"
+done
+
+# Empty exports prevent explicit env files from restoring paid approval.
+export ALLOW_PAID_TESTS= REQUIRE_REAL_LLM=
+# xp land keeps only the last line of a refusing hook; the full lane output lands here.
+mkdir -p flake-artifacts
+set -o pipefail
+bun run test:all 2>&1 | tee flake-artifacts/last-pre-merge-commit.log

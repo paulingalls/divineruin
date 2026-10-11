@@ -23,6 +23,7 @@ def test_default_uses_strict_luna_without_anthropic_options(monkeypatch):
         model=LUNA_MODEL,
         reasoning_effort="none",
         _strict_tool_schema=True,
+        max_retries=0,
     )
 
 

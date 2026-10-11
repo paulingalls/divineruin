@@ -1,24 +1,23 @@
-"""Ask the live Anthropic API whether each agent's strict tool schemas are accepted.
+"""Probe provider strict compilation; every paid run needs explicit human approval.
 
-Not a test — it spends real API calls, and it is the ONLY way to see the two ceilings that
-are not computable from a schema: "The compiled grammar is too large" and "Schema is too
-complex." `tests/test_strict_tool_budget.py` walks the three that ARE computable and was
-green on all six agents while the API refused three of them (story-019, 2026-09-05). Run
-this before ever flipping `_strict_tool_schema` back on, and after any change that adds a
-tool or grows a payload:
+Default Anthropic mode probes all six agents. Luna mode sends one request through
+production's LiveKit OpenAI factory, with both retry layers disabled:
 
-    cd apps/agent && uv run --env-file ../../.env python probe_strict_limits.py
+    uv run python probe_strict_limits.py --provider openai-luna --agent combat
 
-Exits 0 iff every agent is accepted, so it doubles as the falsifier on story-019's
-strict-still-off debt. See ADR 0008, "Not yet attainable".
+Use OPENAI_BASE_URL and a dummy OPENAI_API_KEY for local construction checks.
+A local stub proves request construction, not provider compilation. Paid runs
+belong to the lead. See docs/agent_strict_mode.md for reproduction and limits.
 """
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import sys
 
 import anthropic
+from livekit.agents import APIConnectOptions, APIError, llm
 from livekit.agents.llm import ToolContext
 
 from blacksmith_agent import BLACKSMITH_TOOLS
@@ -26,6 +25,7 @@ from combat_agent import COMBAT_AGENT_TOOLS
 from creation_agent import CREATION_TOOLS
 from dispatch_agent import DISPATCH_TOOLS
 from exploration_agent import EXPLORATION_TOOLS
+from gameplay_llm import create_luna_llm
 from llm_config import MODEL
 from onboarding_agent import ONBOARDING_TOOLS
 
@@ -39,7 +39,7 @@ AGENTS = [
 ]
 
 
-async def main() -> int:
+async def probe_anthropic() -> int:
     client = anthropic.AsyncAnthropic()
     refused = []
     for name, tools in AGENTS:
@@ -61,5 +61,36 @@ async def main() -> int:
     return 1 if refused else 0
 
 
+async def probe_luna(agent: str) -> int:
+    tools = dict(AGENTS)[agent]
+    selected = create_luna_llm()
+    try:
+        context = llm.ChatContext(items=[llm.ChatMessage(role="user", content=["hi"])])
+        async with selected.chat(chat_ctx=context, tools=tools, conn_options=APIConnectOptions(max_retry=0)) as stream:
+            async for _ in stream:
+                pass
+        print(f"{agent:12} {len(tools):2} tools  ACCEPTED")
+        return 0
+    except APIError as error:
+        print(f"{agent:12} {len(tools):2} tools  REFUSED: {error}")
+        return 1
+    finally:
+        await selected.aclose()
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--provider", choices=("anthropic", "openai-luna"), default="anthropic")
+    parser.add_argument("--agent", choices=[name for name, _ in AGENTS])
+    args = parser.parse_args()
+    if args.provider == "openai-luna":
+        if args.agent is None:
+            parser.error("--provider openai-luna requires --agent")
+        return asyncio.run(probe_luna(args.agent))
+    if args.agent is not None:
+        parser.error("--agent requires --provider openai-luna")
+    return asyncio.run(probe_anthropic())
+
+
 if __name__ == "__main__":
-    sys.exit(asyncio.run(main()))
+    sys.exit(main())

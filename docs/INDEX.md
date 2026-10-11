@@ -52,7 +52,7 @@ Shipped agent flow, mode handoffs, scene context, and H.1–H.8 history.
 
 ---
 
-## agent_strict_mode.md (494 lines)
+## agent_strict_mode.md (522 lines)
 
 Proposed continuation of ADR 0008: retain verbs and typed nouns, and generate selected
 complex arguments in separate strict requests. Live provider and LiveKit feasibility
@@ -70,10 +70,10 @@ Additional topics: Luna evidence and production route: Seeded 27-case Luna matri
 | 6. Cache, latency, and cost | 244-295 | Measured preliminary timings, warmup, paired voice benchmark, go/no-go conditions |
 | 7. Verification and rollout | 296-357 | Fault injections, implementation sequence, strict-off inventory, rollback |
 | 8. Alternatives and boundaries | 358-376 | Rejected approaches, reproduction procedure, limits of the evidence |
-| 9. Reproducing the research | 377-407 | Commands to rerun the probe and the request partition |
-| 10. Seeded Luna gameplay evidence | 408-448 | 27-case seeded Luna acceptance run, 2026-09-20, and its results |
-| 11. Production decision | 449-467 | On 2026-09-20 the human approved GPT-5.6 Luna for the current production rollout. |
-| 12. GPT-6 Luna route (2026-09-22) | 468-494 | Default route moves to gpt-6-luna; rates and paid acceptance results |
+| 9. Reproducing the research | 377-435 | Commands to rerun the probe and the request partition |
+| 10. Seeded Luna gameplay evidence | 436-476 | 27-case seeded Luna acceptance run, 2026-09-20, and its results |
+| 11. Production decision | 477-495 | On 2026-09-20 the human approved GPT-5.6 Luna for the current production rollout. |
+| 12. GPT-6 Luna route (2026-09-22) | 496-522 | Default route moves to gpt-6-luna; rates and paid acceptance results |
 
 ---
 

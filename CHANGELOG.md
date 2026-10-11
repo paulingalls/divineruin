@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.30.0 — 2026-10-11
+
+- Elite and Boss Mawlings attack Claw, Dissolution Maw, Claw. The per-role sequence is authored on the catalog row, and both validators reject unknown role keys and unresolvable attack references. Standard Mawlings keep Claw then Dissolution Maw.
+- A melee hit from within 5 ft on a Fallen character adds two death-save failures. Ranged hits, save damage and the Dissolution Field tick still add one. A queued strike continues onto a target who fell earlier in the same phase; only damage reaches a Fallen ally, so a hostile mark aimed at one is wasted.
+- Story land runs the fast lane (`bun run test:all`) on the merged tree before the merge commits, and keeps the full output in `flake-artifacts/last-pre-merge-commit.log`. Acceptance stays at sprint close.
+- `probe_strict_limits.py --provider openai-luna --agent <name>` sends one strict-compile request for one agent with retries off. The combat agent's 9 tools were accepted strict.
+- Split `combat_turn.py` into the tool shells and `combat_resolve_phase.py`, and move the down-target rules into `combat_down.py`, which breaks an import cycle through `combat_ability`.
+- Source walks in the strict-budget and line-cap tests read tracked files only, ending an intermittent fast-lane failure under parallel runs. Meta-tests of test helpers were deleted; constraint 3 now keeps tests of tests, hooks and tools out of regular runs, and new constraint 13 makes wall clock a quality budget.
+
 ## 0.29.0 — 2026-10-11
 
 - Every location carries a physical terrain from one closed ten-value list (Decisions 129–132), mirrored in Python and TypeScript. Seeding and server startup refuse a missing or unknown terrain, or one that does not fit the location's region type. The travel-difficulty field formerly named `terrain` is now `navigation`.

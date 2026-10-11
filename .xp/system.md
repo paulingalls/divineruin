@@ -195,6 +195,14 @@ item number, not this section.
   (`parents[4]` -> `parents[3]`); story-080's repo-wide line cap was vacuous
   against its own relocation, because `os.walk` over a missing directory yields
   nothing.
+- **3, amended 2026-10-10.** Sprint 67's slate asked for a committed test of
+  the land hook and of the Luna probe script; both would have run on every push.
+  Human: tests of tests are fine while building them, not in the regular runs.
+  Three meta-tests in the line-cap and strict-budget files were deleted (869e5222).
+- **13 — wall clock.** Same day: story land gained the fast lane (~45 s) while
+  acceptance stayed at sprint close, because land wall clock bounds the sprint.
+  Human: efficient tests, harness and tiering keep wall clock down without
+  lowering the bar.
 
 **Handback contract** — what a story owes before it is handed back. Sprint 54
 lost review rounds to both halves of this, five times.

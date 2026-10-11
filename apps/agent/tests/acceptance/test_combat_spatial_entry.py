@@ -12,6 +12,7 @@ from acceptance._spatial_helpers import spatial_entry as spatial_entry
 from livekit.agents.llm import ToolError
 from sample_fixtures import CONTENT_ROOT
 
+import combat_resolve_phase
 import combat_turn
 import db
 import db_content_queries
@@ -235,7 +236,7 @@ async def test_failed_phase_restores_positions_and_zones(spatial_entry, failure)
     before = deepcopy(state.to_dict())
     player_before = await db_queries.get_player(pid)
     calls = ctx.userdata.room.local_participant.publish_data.call_count
-    original_packet = combat_turn._resolve_one_packet
+    original_packet = combat_resolve_phase._resolve_one_packet
     original_save = db_mutations.save_combat_state
 
     async def fail_packet(session, working, *args, **kwargs):
@@ -249,7 +250,7 @@ async def test_failed_phase_restores_positions_and_zones(spatial_entry, failure)
         assert data["spatial"]["positions"][pid] == pos(30)
         raise RuntimeError("injected after save")
 
-    target = "combat_turn._resolve_one_packet" if failure == "after_move" else "db_mutations.save_combat_state"
+    target = "combat_resolve_phase._resolve_one_packet" if failure == "after_move" else "db_mutations.save_combat_state"
     with patch(target, side_effect=fail_packet if failure == "after_move" else fail_save):
         with pytest.raises(RuntimeError, match="injected"):
             await combat_turn._resolve_phase_impl(ctx)
