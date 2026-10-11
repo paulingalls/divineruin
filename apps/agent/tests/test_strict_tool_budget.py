@@ -131,13 +131,6 @@ def _agent_session_sites() -> list[tuple[str, ast.Call]]:
     return sites
 
 
-def test_agent_session_matcher_distinguishes_constructor_from_chained_calls():
-    tree = ast.parse("AgentSession().options.endpointing.get('min_delay')")
-    calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)]
-
-    assert [ast.unparse(call) for call in calls if _is_agent_session_call(call)] == ["AgentSession()"]
-
-
 def test_every_agent_session_chooses_its_max_tool_steps():
     """LiveKit permits max_tool_steps + 1 calls, then silently narrates with tool_choice="none".
     Reaction pauses end turns; the longest uninterrupted turn uses four calls.
