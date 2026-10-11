@@ -60,7 +60,7 @@ def test_every_travel_location_has_integer_danger_level():
     assert not offenders, f"travel locations with missing/non-int danger_level: {offenders}"
 
 
-# One authored exemplar per terrain the original catalog lacked, and the existing rows they hang off.
+# The terrain exemplars the location-authoring guide names as copyable, and the existing rows they hang off.
 _TERRAIN_EXEMPLARS = {
     "thornveld_old_growth_grove": ("ancient_forest", "thornveld"),
     "keldaran_southern_pass": ("mountain", "keldaran_mountains"),
