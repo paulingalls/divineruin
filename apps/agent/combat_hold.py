@@ -30,6 +30,7 @@ import reaction_spend
 import reaction_windows
 from combat_ability import _find_action
 from combat_action_availability import begin_execution, replay_valid
+from combat_down import target_unavailable
 from combat_enemy_action import is_combined_attack_action, is_save_damage_action
 from combat_multiattack import held_declarations, strike_summary
 from combat_packet import _resolve_one_packet
@@ -134,7 +135,7 @@ def _is_wasted(state, head: dict) -> bool:
     if declaration.target_id is None:
         return False
     target = state.get_participant(declaration.target_id)
-    return target is None or target.is_fallen
+    return target is None or target_unavailable(target, action)
 
 
 def _opens_windows(state, head: dict) -> bool:

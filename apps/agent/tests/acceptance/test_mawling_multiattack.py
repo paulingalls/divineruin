@@ -293,26 +293,39 @@ async def test_first_strike_reaction_spend_cannot_leak_to_second(maw, dice):
     await assert_hp(maw, [70, 100])
 
 
+@pytest.mark.parametrize("maw", [{"role": "standard"}, {"role": "elite"}, {"role": "boss"}], indirect=True)
 @pytest.mark.parametrize("same", [False, True])
 async def test_fallen_first_target_does_not_cancel_other_target(maw, dice, same):
     state = maw.sd.combat_state
     state.get_participant(maw.players[0]).hp_current = 5
+    state.spatial["positions"][maw.enemies[0]] = {"x": 5, "y": 0, "z": 0}
+    claw, maw_damage = {"standard": (8, 12), "elite": (10, 15), "boss": (12, 18)}[
+        state.get_participant(maw.enemies[0]).role
+    ]
     await maw.pool.execute(
         "UPDATE players SET data=jsonb_set(data,'{hp,current}','5') WHERE player_id=$1", maw.players[0]
     )
     await db_mutations.save_combat_state(state.combat_id, state.to_dict())
     await maw.reload()
-    await maw.declare([maw.players[0], maw.players[0] if same else maw.players[1]])
+    elite = state.get_participant(maw.enemies[0]).role in ("elite", "boss")
+    targets = [maw.players[0], maw.players[0] if same else maw.players[1]]
+    if elite:
+        targets.append(maw.players[0])
+    await maw.declare(targets)
     packets, _ = await drain(maw)
     strikes = blows(packets)
-    assert len(strikes) == 2 and strikes[0]["damage"] == 8
+    assert len(strikes) == len(targets) and strikes[0]["damage"] == claw
     if same:
-        assert strikes[1]["resolved"] is False and "fell" in strikes[1]["reason"]
+        assert strikes[1]["resolved"] and strikes[1]["hit"]
+        assert strikes[1]["damage"] == maw_damage
+        assert (await maw.reload()).get_participant(maw.players[0]).death_save_failures == (3 if elite else 2)
         assert strikes[1]["target_id"] == maw.players[0]
-        assert dice[0] == ["1d8+2"]
+        assert dice[0] == (["1d8+2", "2d6+2", "1d8+2"] if elite else ["1d8+2", "2d6+2"])
     else:
-        assert strikes[1]["damage"] == 12
-    await assert_hp(maw, [0, 100 if same else 88])
+        assert strikes[1]["damage"] == maw_damage
+    if elite:
+        assert strikes[2]["hit"] and strikes[2]["damage"] == claw
+    await assert_hp(maw, [0, 100 if same else 100 - maw_damage])
 
 
 @pytest.mark.parametrize("unavailable", ["first_target", "second_target", "actor_fallen", "actor_disabled"])
@@ -340,6 +353,7 @@ async def test_unavailable_strikes_drain_independently_after_reload(maw, dice, u
         actor = state.get_participant(pid)
         actor.hp_current = 0
         actor.is_fallen = True
+        actor.death_save_failures = 3
         await maw.pool.execute("UPDATE players SET data=jsonb_set(data,'{hp,current}','0') WHERE player_id=$1", pid)
     await db_mutations.save_combat_state(state.combat_id, state.to_dict())
     await maw.reload()

@@ -5,6 +5,7 @@ from livekit.agents.llm import ToolError
 import combat_grapple
 import combat_phase
 import combat_support
+from combat_down import is_terminally_down
 from condition_restrictions import cannot_act
 from dice import roll as dice_roll
 
@@ -34,7 +35,7 @@ async def turn_start(session, state, victim, *, conn, sink, mutations, queries, 
     # Once per round comes from the beat machine: Beat 2 commits with the move to NARRATION,
     # and Beat-3 pauses and reloads re-enter only combat_hold.pump, never this boundary.
     # A Hollowed echo is an already-dead player-life, outside the ally band.
-    if not victim.is_ally or victim.is_dead or (victim.type == "player" and combat_phase.is_terminally_down(victim)):
+    if not victim.is_ally or victim.is_dead or (victim.type == "player" and is_terminally_down(victim)):
         return None
     owner_id = combat_grapple.grappler_id(victim.conditions)
     if owner_id is None:
@@ -47,7 +48,7 @@ async def turn_start(session, state, victim, *, conn, sink, mutations, queries, 
         or owner.turn_start_damage is None
         or owner.hp_current <= 0
         or owner.is_fallen
-        or combat_phase.is_terminally_down(owner)
+        or is_terminally_down(owner)
         or cannot_act(owner.conditions)
     ):
         return None
@@ -78,5 +79,4 @@ async def turn_start(session, state, victim, *, conn, sink, mutations, queries, 
         "source_id": owner.id,
         "target_id": victim.id,
         "round": state.round_number,
-        "death_save_failures": victim.death_save_failures,
     }
