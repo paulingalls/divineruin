@@ -310,6 +310,9 @@
     "exits": {
       "north": {
         "destination": "accord_market_square"
+      },
+      "east": {
+        "destination": "sunward_tidal_shore"
       }
     },
     "conditions": {
@@ -463,6 +466,9 @@
       },
       "south": {
         "destination": "accord_market_square"
+      },
+      "west": {
+        "destination": "keldaran_southern_pass"
       }
     },
     "ambient_sounds": "rural_town_uneasy",
@@ -606,5 +612,280 @@
       }
     },
     "ambient_sounds": "forge_hammering"
+  },
+  {
+    "id": "thornveld_old_growth_grove",
+    "name": "The Old-Growth Grove",
+    "tier": 1,
+    "district": "thornveld_eaves",
+    "region": "thornveld",
+    "region_type": "wilderness",
+    "terrain": "ancient_forest",
+    "tags": [
+      "wilderness",
+      "forest",
+      "ancient",
+      "sacred",
+      "druidic",
+      "outdoor"
+    ],
+    "description": "Birdsong pours down from a canopy too high to see, and the great trunks creak like ship timbers in a slow wind. The air smells of wet moss, crushed fern and old rain. Roots as thick as a horse's back knot the ground, and every step sinks into soft, deep loam. This forest is old, and it is listening.",
+    "atmosphere": "alive, immense, watchful and protective",
+    "key_features": [
+      "a ring of standing stones swallowed by roots, older than any kingdom, their carvings worn smooth under your fingers",
+      "rope ladders and woven platforms high in the canopy, where Thyra's druids keep watch",
+      "a shrine to Thyra in the hollow of a living trunk, where travelers leave seed and water",
+      "thorn thickets along the northern edge that grow thicker and sharper toward the Ashmark"
+    ],
+    "hidden_elements": [
+      {
+        "id": "grove_stone_pulse",
+        "discover_skill": "arcana",
+        "dc": 14,
+        "description": "the standing stones hum under your palm with a slow pulse \u2014 the forest's resistance to the Hollow is rooted here, deliberate and very old",
+        "attaches_to": "stones"
+      },
+      {
+        "id": "grove_watch_cords",
+        "discover_skill": "perception",
+        "dc": 12,
+        "description": "knotted cords tied to the ladder rungs \u2014 the druids' tally of the days since the thorns last had to push the Hollow back",
+        "attaches_to": "ladders"
+      }
+    ],
+    "exits": {
+      "east": {
+        "destination": "keldaran_southern_pass"
+      }
+    },
+    "conditions": {
+      "time_night": {
+        "description_override": "Night in the grove is louder, not quieter. Frogs and crickets fill the dark, and something large moves through the ferns without hurry. High above, a druid's lantern sways on its platform, the only light for miles.",
+        "atmosphere": "thick dark, a chorus of night creatures, watched over"
+      }
+    },
+    "ambient_sounds": "wind_ruins",
+    "danger_level": 2,
+    "navigation": "dense_forest",
+    "resource_table": {
+      "common": [
+        "medicinal_herb",
+        "oak_wood",
+        "plant_fiber"
+      ],
+      "uncommon": [
+        "ironwood_bark",
+        "sageroot"
+      ],
+      "rare": [
+        "thornveld_ironwood",
+        "thornveld_amber"
+      ]
+    }
+  },
+  {
+    "id": "keldaran_southern_pass",
+    "name": "Keldaran Southern Pass",
+    "tier": 1,
+    "district": "keldaran_south",
+    "region": "keldaran_mountains",
+    "region_type": "wilderness",
+    "terrain": "mountain",
+    "tags": [
+      "wilderness",
+      "mountain",
+      "pass",
+      "mining",
+      "outdoor"
+    ],
+    "description": "Wind howls through the pass and throws your footsteps back at you off bare stone. Somewhere below, a pickaxe rings in a steady rhythm, and the cold air tastes of iron and snowmelt. The trail climbs west between grey cliffs toward the Thornveld, marked by cairns of stacked stone.",
+    "atmosphere": "cold, exposed, echoing, hard-working",
+    "key_features": [
+      "stone cairns marking the trail every few hundred paces, each topped with a scrap of red cloth",
+      "the mouth of a working mine in the cliff face, where carts rattle out on iron rails",
+      "a waystation shrine shared by Aelora and Kaelen, a hearth-niche set beside a carved shield",
+      "a narrow ledge where the trail crosses a rockslide, loose scree shifting underfoot"
+    ],
+    "hidden_elements": [
+      {
+        "id": "pass_grey_cloth",
+        "discover_skill": "perception",
+        "dc": 12,
+        "description": "one cairn wears grey cloth instead of red \u2014 the miners' sign that something wrong was heard on the trail ahead, and that no one should camp past it",
+        "attaches_to": "cairns"
+      },
+      {
+        "id": "pass_cut_slide",
+        "discover_skill": "investigation",
+        "dc": 15,
+        "description": "chisel marks on the freshly broken stone of the rockslide \u2014 the slope was cut loose on purpose, and recently",
+        "attaches_to": "rockslide"
+      }
+    ],
+    "exits": {
+      "east": {
+        "destination": "greyvale_south_road"
+      },
+      "west": {
+        "destination": "thornveld_old_growth_grove"
+      }
+    },
+    "conditions": {
+      "time_night": {
+        "description_override": "At night the wind drops to a low moan and the mine falls silent. Water drips somewhere in the rock, loud in the stillness. The only warmth is the waystation's hearth-niche, where someone has left a coal burning.",
+        "atmosphere": "cold stillness, echoing drips, a single ember of welcome"
+      }
+    },
+    "ambient_sounds": "wind_ruins",
+    "danger_level": 1,
+    "navigation": "known_trail",
+    "resource_table": {
+      "common": [
+        "iron_ore",
+        "whetstone",
+        "pine_wood"
+      ],
+      "uncommon": [
+        "cave_gemstone",
+        "sageroot"
+      ],
+      "rare": [
+        "enchanted_stone"
+      ]
+    }
+  },
+  {
+    "id": "sunward_tidal_shore",
+    "name": "The Tidal Shore",
+    "tier": 1,
+    "district": "sunward_shore",
+    "region": "sunward_coast",
+    "region_type": "wilderness",
+    "terrain": "coast",
+    "tags": [
+      "wilderness",
+      "coast",
+      "shore",
+      "outdoor"
+    ],
+    "description": "Gulls cry overhead, and surf breaks in long, hissing rushes over the shingle. The wind smells of salt, kelp and wet rope. Behind you the Accord's harbor bells ring faintly across the water, and ahead the shore curves north to where the rivers bleed into the sea.",
+    "atmosphere": "open, salt-bright, the peaceful edge of the city",
+    "key_features": [
+      "a tide line strewn with driftwood, kelp and broken crates washed out from the harbor",
+      "rock pools at the low-water mark, cold and full of scuttling things",
+      "a stone beacon tower where the harbor watch keeps a fire for ships at night",
+      "a fishers' shrine to Aelora, a cairn of white shells left for those lost at sea"
+    ],
+    "hidden_elements": [
+      {
+        "id": "shore_driftwood_tally",
+        "discover_skill": "investigation",
+        "dc": 13,
+        "description": "notches cut into a driftwood log above the tide line \u2014 a smugglers' count of crates run past the harbor watch",
+        "attaches_to": "driftwood"
+      },
+      {
+        "id": "shore_beacon_ledger",
+        "discover_skill": "perception",
+        "dc": 11,
+        "description": "a damp watch ledger jammed into the beacon's base, its last entry complaining of oars heard rowing out on a night with no boat to row to",
+        "attaches_to": "beacon"
+      }
+    ],
+    "exits": {
+      "west": {
+        "destination": "accord_dockside"
+      },
+      "north": {
+        "destination": "sunward_reed_marsh"
+      }
+    },
+    "conditions": {
+      "time_night": {
+        "description_override": "The surf sounds closer in the dark, each wave dragging the shingle back with a long rattle. The beacon fire crackles on its tower and sends a smell of pitch down the beach. Out on the black water, a bell buoy clangs with the swell.",
+        "atmosphere": "dark water, rattling shingle, a lonely fire"
+      }
+    },
+    "ambient_sounds": "harbor_quiet",
+    "danger_level": 0,
+    "navigation": "known_trail",
+    "resource_table": {
+      "common": [
+        "plant_fiber",
+        "oak_wood",
+        "whetstone"
+      ],
+      "uncommon": [
+        "alchemical_reagent"
+      ],
+      "rare": []
+    }
+  },
+  {
+    "id": "sunward_reed_marsh",
+    "name": "The Reed Marsh",
+    "tier": 1,
+    "district": "sunward_wetlands",
+    "region": "sunward_coast",
+    "region_type": "wilderness",
+    "terrain": "wetland",
+    "tags": [
+      "wilderness",
+      "marsh",
+      "wetland",
+      "fog",
+      "outdoor",
+      "secretive"
+    ],
+    "description": "Water drips, laps and gurgles on every side, and insects whine in the reeds just out of reach. The air smells of rot and river silt, thick enough to taste. Fog sits low on the channels and muffles your footsteps until they sound like someone else's.",
+    "atmosphere": "muffled, damp, uncertain, quietly unsettling",
+    "key_features": [
+      "a maze of reed channels where the firm ground shifts with every tide",
+      "a stilt-house on the far bank, shutters closed, peat smoke drifting from its roof",
+      "the stone lip of a sunken building just under the black water, carved steps leading down into silt",
+      "a heron-post where marsh folk hang small bells to mark the safe crossing"
+    ],
+    "hidden_elements": [
+      {
+        "id": "marsh_sunken_marks",
+        "discover_skill": "arcana",
+        "dc": 15,
+        "description": "carvings on the sunken steps, felt more than seen beneath the silt \u2014 an old Aelindran library mark, and cut above it the sigil of Syrath's watchers, claiming the place as kept",
+        "attaches_to": "steps"
+      },
+      {
+        "id": "marsh_flat_bell",
+        "discover_skill": "perception",
+        "dc": 13,
+        "description": "one bell on the heron-post rings a half-tone flat \u2014 the marsh folk's warning that this crossing has been moved, and is not safe for strangers",
+        "attaches_to": "bells"
+      }
+    ],
+    "exits": {
+      "south": {
+        "destination": "sunward_tidal_shore"
+      }
+    },
+    "conditions": {
+      "time_night": {
+        "description_override": "At night the marsh fills with frogsong, a wall of croaking that stops all at once when you move. Something splashes in a channel and does not surface. Far off, the heron-post bells ring once, though there is no wind.",
+        "atmosphere": "loud then silent, unseen movement, uncanny"
+      }
+    },
+    "ambient_sounds": "harbor_quiet",
+    "danger_level": 1,
+    "navigation": "unmarked_wilderness",
+    "resource_table": {
+      "common": [
+        "plant_fiber",
+        "medicinal_herb",
+        "herb_bundle"
+      ],
+      "uncommon": [
+        "nightshade",
+        "alchemical_reagent"
+      ],
+      "rare": []
+    }
   }
 ]

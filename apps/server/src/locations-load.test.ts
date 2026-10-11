@@ -4,7 +4,7 @@ import type { Location } from "@divineruin/shared";
 
 const LOCATIONS_PATH = new URL("../../../content/locations.json", import.meta.url);
 
-const LOCATION_COUNT = 19;
+const LOCATION_COUNT = 23;
 
 async function loadLocationsJson(): Promise<Record<string, unknown>[]> {
   const raw: unknown = await Bun.file(LOCATIONS_PATH).json();

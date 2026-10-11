@@ -53,6 +53,10 @@ const WILDERNESS_IDS = [
   "greyvale_ruins_exterior",
   "greyvale_wilderness_north",
   "greyvale_south_road",
+  "thornveld_old_growth_grove",
+  "keldaran_southern_pass",
+  "sunward_tidal_shore",
+  "sunward_reed_marsh",
 ];
 
 const DUNGEON_IDS = ["greyvale_ruins_entrance", "greyvale_ruins_inner", "hollow_incursion_site"];
@@ -62,8 +66,8 @@ const NON_SETTLEMENT_IDS = [...DUNGEON_IDS, ...WILDERNESS_IDS];
 const RESOURCE_RARITIES = ["common", "uncommon", "rare"];
 
 describe("locations.json — catalog cardinality", () => {
-  test("19 rows total", () => {
-    expect(catalog.length).toBe(19);
+  test("23 rows total", () => {
+    expect(catalog.length).toBe(23);
   });
 
   test("ids are unique", () => {

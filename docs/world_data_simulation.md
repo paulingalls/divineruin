@@ -20,6 +20,53 @@ All game content is authored in JSON. The schemas are designed for machine gener
 
 **Tier 2 (generated):** Minor locations, ambient NPCs, common items. These have tags and attributes only — no authored prose. The DM improvises descriptions from the structured data. Can be generated on demand when a player enters an undefined area, then persisted for consistency on return visits.
 
+### Authoring a Location
+
+A checklist for adding a row to `content/locations.json`. The schema examples under Entity Schemas are illustrative and will not seed: they omit `terrain` and `region_type`. Copy one of the four terrain exemplars instead: `thornveld_old_growth_grove` (ancient_forest), `keldaran_southern_pass` (mountain), `sunward_tidal_shore` (coast), `sunward_reed_marsh` (wetland).
+
+**Read first.** In [aethos_lore.md](aethos_lore.md): The Geography of Aethos, especially your region's section and its *Audio landscape*, and Divine Influence and Regional Culture, so the place carries its god's culture. In this doc: Content Style Guide → Writing Location Descriptions and General Principles. Read every description and night override aloud before committing.
+
+**Fields.** The TS loader (`apps/server/src/locations.ts` `parseLocationRow`) requires only `name`, `tier`, `district`, `region`, `region_type`, `terrain`, `tags`, `atmosphere` and `exits`. A Tier 1 row authors all of these, plus:
+- `description`: 2-4 sentences. The first sentence leads with a sound or a smell.
+- `key_features`: concrete things the DM reveals when the player investigates.
+- `hidden_elements`: `{id, discover_skill, dc, description, attaches_to}`. The id is a local discovery name, not an item id. `attaches_to` is a word that appears whole in one of the `key_features`, so the discovery surfaces when the player examines that feature.
+- `conditions.time_night`: `description_override` and `atmosphere`, the two keys `tool_support.apply_time_conditions` reads. A condition-level `danger_level` or `danger_level_add` widens the errand danger band, and `apps/server/src/errand_risk.test.ts` pins which rows may do that.
+- `ambient_sounds` (optional `ambient_sounds_night`) and `danger_level` (integer 0-3).
+- Wilderness rows: `navigation` and a `resource_table` of `common`/`uncommon`/`rare` lists of `content/materials_catalog.json` ids. Gathering takes the first id of a bucket, so put the most typical material first.
+- Settlement rows (`region_type: city`) carry `settlement_tier` and `personality`; dungeon and wilderness rows omit both.
+
+**Terrain and region_type** ([Decision 130](game_mechanics/game_mechanics_decisions.md#terrain-decisions-129-132)). `terrain` is one of ten values. Decision 130 derives primal Resonance, the Druid ward, Korath's earth-or-stone reduction and Thyra's natural-terrain bonuses from it. Both loaders reject a terrain whose owning `region_type` differs from the row's:
+
+| region_type | terrain |
+|---|---|
+| `wilderness` | `ancient_forest`, `forest`, `grassland`, `mountain`, `coast`, `wetland`, `farmland` |
+| `city` | `city`, `village` |
+| `dungeon` | `underground` |
+
+**Navigation is not terrain.** `navigation` describes the route a traveller takes to reach the row. `terrain` describes the place itself. Navigation keys and their DCs come from `travel.NAVIGATION_DC`: `established_road` (no check), `known_trail`, `unmarked_wilderness`, `dense_forest`, `underground`, `hollow_corrupted`. Every wilderness or road/travel-tagged row needs one. A forest grove reached by a trail has terrain `forest` and navigation `known_trail`. Never use a biome as a navigation key.
+
+**Region.** `region` must be one of `apps/agent/world_regions.py` `REGION_IDS`: `greyvale`, `thornveld`, `drathian_steppe`, `sunward_coast`, `keldaran_mountains`, `ashmark`, `underground`. Nothing validates a location's region at seed, so check it by hand. Adding a region is a design change, not content.
+
+**Exits.** Exits are directed. They are routes, not adjacent rooms: `greyvale_south_road` → `keldaran_southern_pass` is a road into the mountains, not a doorway. Give each new row an entry from an existing location, and give every exit a matching return exit on its destination. Match destinations, not opposite compass words: `up`/`down`, `out` and `deeper` are all used. If the geography gives the place no plausible connection to today's graph, stop and ask rather than ship an island.
+
+**References.** Seed validates terrain/region_type, exit destinations, gathering-node refs and `resource_table` materials. It does not validate `ambient_sounds`. Check each bed against `SoundscapeName` in `apps/mobile/src/audio/soundscape-registry.ts`; an unknown bed plays silence. Every NPC, item or scene id you name must already exist in its `content/*.json`.
+
+**Catalog pins a new row turns red.** Update all three in the same commit:
+- `LOCATION_COUNT` in `apps/server/src/locations-load.test.ts`.
+- The row count and the id groups (`ACCORD_IDS`, `MILLHAVEN_IDS`, `WILDERNESS_IDS`, `DUNGEON_IDS`) in `packages/shared/src/entities/location.test.ts`.
+- The id → navigation map in `apps/agent/tests/test_travel_content.py`, for any row with `navigation`.
+
+**Seed and validate**, from the repository root:
+
+```sh
+bun run seed
+bun --env-file=.env run --cwd apps/agent uv run pytest tests/test_content_validation.py tests/test_seed_content.py tests/test_travel_content.py tests/test_terrain.py tests/test_gathering_content.py tests/acceptance/test_seed_atomic.py -q
+bun --env-file=.env test --cwd apps/server src/locations-load.test.ts src/errand_risk.test.ts
+bun test --cwd packages/shared src/entities/location.test.ts
+```
+
+`content/*.json` changes need a reseed, or the strict loaders fail server startup.
+
 ### Entity Schemas
 
 #### Locations
