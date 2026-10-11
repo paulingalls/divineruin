@@ -1,3 +1,4 @@
+import contextlib
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -157,6 +158,7 @@ class TestDMSession:
     async def test_dm_session_creates_session_data(self):
         mock_ctx = MagicMock()
         mock_ctx.room = MagicMock()
+        mock_ctx.connect = AsyncMock()
         mock_player = {"name": "Test", "location_id": "accord_guild_hall"}
 
         with patch("agent.SessionData") as MockSD:
@@ -205,10 +207,52 @@ class TestDMSession:
                 )
 
     @pytest.mark.asyncio
+    async def test_dm_session_connects_room_before_starting_session(self):
+        """RoomOptions names the primary player, so RoomIO reads room.local_participant while
+        AgentSession.start sets up. LiveKit auto-connects only after that, so dm_session must
+        connect first or every real voice session crashes before the DM speaks."""
+        calls: list[str] = []
+        mock_ctx = MagicMock()
+        mock_ctx.room = MagicMock()
+        mock_ctx.connect = AsyncMock(side_effect=lambda *_a, **_k: calls.append("connect"))
+        mock_player = {"name": "Test", "location_id": "accord_guild_hall"}
+
+        with contextlib.ExitStack() as stack:
+            MockSD = stack.enter_context(patch("agent.SessionData"))
+            MockSD.return_value.companion = None
+            MockSD.return_value.favor_loss = None
+            MockSD.return_value.player_id = "player_1"
+            MockSD.return_value.primary_player_id = "player_1"
+            MockSession = stack.enter_context(patch("session_startup.AgentSession"))
+            MockSession.return_value.start = AsyncMock(side_effect=lambda *_a, **_k: calls.append("start"))
+            MockSession.return_value.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())
+            for target in (
+                "session_startup.deepgram.STT",
+                "session_startup.create_gameplay_llm",
+                "session_startup._make_tts",
+                "session_startup.inference.VAD",
+                "session_startup.inference.TurnDetector",
+            ):
+                stack.enter_context(patch(target))
+            for target, value in (
+                ("agent.db_queries.get_player", mock_player),
+                ("agent.db_queries.get_last_session_summary", None),
+                ("agent.db_queries.get_player_flag", False),
+                ("agent.db_content_queries.get_location", {"region_type": "city"}),
+            ):
+                stack.enter_context(patch(target, new_callable=AsyncMock, return_value=value))
+            from agent import dm_session
+
+            await dm_session(mock_ctx)
+
+        assert calls[:2] == ["connect", "start"]
+
+    @pytest.mark.asyncio
     async def test_dm_session_hydrates_session_state_once_for_returning_player(self, _stub_session_hydration):
         mock_hydrate = _stub_session_hydration
         mock_ctx = MagicMock()
         mock_ctx.room = MagicMock()
+        mock_ctx.connect = AsyncMock()
         mock_player = {"name": "Test", "location_id": "accord_guild_hall"}
 
         with patch("agent.SessionData") as MockSD:
@@ -257,6 +301,7 @@ class TestDMSession:
     async def test_dm_session_starts_agent_session_with_city_agent(self):
         mock_ctx = MagicMock()
         mock_ctx.room = MagicMock()
+        mock_ctx.connect = AsyncMock()
         mock_player = {"name": "Test", "location_id": "accord_guild_hall"}
 
         with patch("agent.SessionData") as MockSD:
@@ -314,6 +359,7 @@ class TestDMSession:
     async def test_dm_session_generates_initial_greeting(self):
         mock_ctx = MagicMock()
         mock_ctx.room = MagicMock()
+        mock_ctx.connect = AsyncMock()
         mock_player = {"name": "Test", "location_id": "accord_guild_hall"}
 
         with patch("agent.SessionData") as MockSD:

@@ -25,6 +25,7 @@ async def _run_dm_session(player: dict) -> tuple[MagicMock, AsyncMock, SessionDa
     ctx = MagicMock()
     ctx.job = None
     ctx.room = MagicMock()
+    ctx.connect = AsyncMock()
     session = MagicMock()
     session.start = AsyncMock()
     session.generate_reply = MagicMock(side_effect=lambda **_kwargs: completed_handle())

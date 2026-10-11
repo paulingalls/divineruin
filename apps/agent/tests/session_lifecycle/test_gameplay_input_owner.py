@@ -45,6 +45,7 @@ async def test_prologue_start_installs_primary_room_options() -> None:
     ctx = MagicMock()
     ctx.job = None
     ctx.room = MagicMock()
+    ctx.connect = AsyncMock()
     session = MagicMock()
     session.start = AsyncMock()
     with (

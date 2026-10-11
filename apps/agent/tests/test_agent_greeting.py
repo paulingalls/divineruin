@@ -29,6 +29,7 @@ async def _run_gameplay_greeting(last_summary, generate_reply, favor_loss=None, 
     ctx = MagicMock()
     ctx.job = None
     ctx.room = MagicMock()
+    ctx.connect = AsyncMock()
     session = MagicMock()
     session.start = AsyncMock()
     session.generate_reply = generate_reply

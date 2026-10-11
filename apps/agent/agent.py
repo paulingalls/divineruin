@@ -278,6 +278,10 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
     needs_creation = player is None or not player.get("name")
 
+    # Both paths link RoomIO to the primary player, which reads room.local_participant while
+    # session.start sets up — before LiveKit's own auto-connect. Connect first.
+    await ctx.connect()
+
     if needs_creation:
         # --- Character creation mode ---
         # PrologueAgent plays audio, hands off to CreationAgent,
