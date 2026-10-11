@@ -135,7 +135,9 @@ def test_dev_command_discovers_and_starts_the_agent_server():
     selector = selectors.DefaultSelector()
     selector.register(process.stdout, selectors.EVENT_READ)
     output = ""
-    deadline = time.monotonic() + 15
+    # A cold `import agent` takes ~5s idle and well over 15s on a 4-core laptop running the
+    # fast lane at -n 8; the loop still returns on the first "starting worker" line.
+    deadline = time.monotonic() + 60
     try:
         while time.monotonic() < deadline and "starting worker" not in output and process.poll() is None:
             if selector.select(timeout=0.2):
