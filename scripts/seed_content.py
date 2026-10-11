@@ -21,6 +21,7 @@ from creature_schema import validate_creature_stat_block
 from dice import roll
 from encounter_references import validate_encounter_references
 from rules_engine import SKILL_TIER_ORDER, SKILLS
+from terrain import region_type as terrain_region_type
 from world_effect_targets import is_valid_disposition_target
 
 CONTENT_DIR = Path(__file__).parent.parent / "content"
@@ -220,6 +221,19 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
 
     for row in rows:
         data = json.loads(row["data"])
+        terrain = data.get("terrain")
+        if not isinstance(terrain, str):
+            errors.append(f"Location '{row['id']}' terrain must be a string, got {terrain!r}")
+        else:
+            try:
+                owner = terrain_region_type(terrain)
+                if data.get("region_type") != owner:
+                    errors.append(
+                        f"Location '{row['id']}' terrain {terrain!r} requires region_type "
+                        f"{owner!r}, got {data.get('region_type')!r}"
+                    )
+            except ValueError as error:
+                errors.append(f"Location '{row['id']}': {error}")
         exits = data.get("exits", {})
         for direction, exit_info in exits.items():
             dest = exit_info.get("destination") if isinstance(exit_info, dict) else exit_info

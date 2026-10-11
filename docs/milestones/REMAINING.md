@@ -5,7 +5,7 @@ seven-agent audit covering all 13 phase docs. This is the high-level view;
 per-AC detail (with `<!-- verified -->` comments naming file, symbol and
 RED-capable test) lives in each phase doc.
 
-**Position: 313 / 538 acceptance criteria — 58%** (the sum of the per-phase counts in
+**Position: 320 / 538 acceptance criteria — 59%** (the sum of the per-phase counts in
 `README.md`). Phases 1, 2, 4, 5 and 6 have their recorded criteria delivered. M33 remains partial despite its checked catalog/infrastructure criteria: deferred spell effects remain. M7.3 remains partial: Still, Architect and remaining troop/Tier3 effects remain open; Choir native encounter certification remains pending. Sprints 001–044 delivered 28 milestones across five execution plans;
 all 28 are `delivered` and nothing is carried.
 
@@ -124,14 +124,14 @@ test. Phase 7 still needs to choose the `build_encounter` signature in M7.4.
 
 ---
 
-## 5. Incomplete phases (33 milestones, 239 open ACs)
+## 5. Incomplete phases (32 milestones, 232 open ACs)
 
 | Phase | Milestones | ACs | Blocked by | Size | Substrate that already exists |
 |---|---|---|---|---|---|
 | **7 · Bestiary** | 7.1–7.4 | 33 | nothing | ~2 sprints | `encounter_roles.py` (roles, `ROLE_MODIFIERS`, `derive_role_stats` incl. signature/legendary), `encounter_loot.py`, `encounter_budget.py`, `encounter.ts` (which names this refactor as pending), **`encounter_templates.json`: 10 templates / 15 distinct stat blocks**, `content/creatures.json` has two Tier 1 Hollow exemplars, backed by the indexed `creatures` table and Python/TypeScript validation |
 | **8 · Patrons** | 8.1–8.3 | 34 | nothing (but hard **forward** dep on Phase 2 archetype detail) | ~2-3 sprints | `gods.json` 10/10 with 4 typed `null` slots; `favor_actions`/`values`/`opposed_values` authored but unused; write path `_award_divine_favor_core` (M28 Resolve); **full client leg done** (event types → handlers → `hud-store` favor slot) |
 | **9 · Economy** | 9.1–9.10 | 75 | **Phase 7** (material sell values) | large | `pricing` table + `pricing.json` read cross-language w/ Redis cache; reputation pipeline live end-to-end; repair table exact-to-spec; **new price axis**: `role_archetypes.json` `price_modifier` × settlement personality modifier |
-| **10 · Terrain** | 10.1–10.3 | 17 | nothing | ~1-1.5 sprints | `resonance.py`, `cast_modifiers.py:47-66`, the ward stack, `region_types.py`, the `location.ts`+`locations.ts` strict-loader pair |
+| **10 · Terrain** | 10.2–10.3 | 10 | nothing | ~1-1.5 sprints | `resonance.py`, `cast_modifiers.py:47-66`, the ward stack, `region_types.py`, the `location.ts`+`locations.ts` strict-loader pair |
 | **11 · World Loop** | 11.1–11.6 | 46 | 5 open design decisions; M11.4 on Phase 9, M11.6 on Phase 8 | ~4-6 sprints | Layer-1 consumption fully built (only the clock missing); worker template `async_worker.py`; **tables already migrated in 001**: `region_state`, `npc_state`, `world_events_log`, `god_agent_state`, `world_flags`; depth-0 effect applier `quest_world_effects.py:42-124` |
 | **12 · Story Content** | 12.1–12.7 | 34 | **Phase 11** | ~5-7 sprints | `scenes` (mig 013) + `scenes.json` carrying `beats[]` + `scene_tools.py`; seeded-generator precedent `settlement_generation.py`; proto-agendas in `gods.json` `world_state.secret_agenda`; `story_moments` (mig 012) |
 
@@ -140,11 +140,10 @@ test. Phase 7 still needs to choose the `build_encounter` signature in M7.4.
 - **Phase 7 — creature tiers are authored:** The four bestiary player bands are
   mirrored in Python and TypeScript. Encounter budget's five player bands remain
   difficulty ceilings, a separate calculation.
-- **Phase 10 — the name `terrain` is already taken by a different axis.**
-  `location.ts:73-77` has `terrain?: string`, shape-validated only, values from
-  `travel.py:59-66 NAVIGATION_DC`, present on **3 of 24 locations**. M10.1's
-  "required `terrain: TerrainType`" is an unrecorded collision. Three overlapping
-  terrain tables must be reconciled, not duplicated.
+- **Phase 10 — navigation and physical terrain are distinct.** Travel uses optional
+  `navigation`; all 19 locations carry required closed-enum `terrain`, checked
+  against `region_type` at seed time and server startup. M10.2 wires the magic
+  consumers; M10.3 adds combat caching.
 - **Phase 12 — vocabulary collision:** its "beat" vocabulary must be reconciled
   with the shipped scenes/`beats[]` stack. Currently unbudgeted.
 - **`content/materials_catalog.json` has no value field at all** on 58 materials —

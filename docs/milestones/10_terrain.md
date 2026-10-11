@@ -14,18 +14,18 @@ Reconciled against `game_mechanics_decisions.md` Decisions 129–132 and the ter
 
 | Milestone | Confirmed | Partial | NOT_SHIPPED |
 | --- | --- | --- | --- |
-| M10.1 — Terrain Enum & Location Field (7 criteria) | 0 | 0 | 7 |
+| M10.1 — Terrain Enum & Location Field (7 criteria) | 7 | 0 | 0 |
 | M10.2 — Terrain-Gated Magic Rules (6 criteria) | 0 | 1 | 5 |
 | M10.3 — Combat Terrain Resolution & Caching (4 criteria) | 0 | 0 | 4 |
 
-**Headline:** The terrain *data model* is 0% built — no `terrain` field on `Location` (`packages/shared/src/entities/location.ts`) or on `CombatState` (`apps/agent/session_data.py`). The *consuming* code is built (Phase 3 Magic shipped: `resonance.py`, `spell_casting.py`, `veil_ward.py` are live), so M10.2 is **edits to existing functions, not new build**. The one runtime-ready path — `resonance.py:75-99` primal-terrain routing — is architected and fails-loud on unknown terrain, but is currently **dead** (bypassed by catalog baselines, `spell_casting.py:36-44`), so geographically-dependent primal magic is presently inert.
+**Headline:** The location terrain data model is shipped: required `Location.terrain`, matching Python/TypeScript property tables, strict seed/startup validation and all 19 locations backfilled. CombatState terrain caching remains M10.3. The *consuming* code is built (Phase 3 Magic shipped: `resonance.py`, `spell_casting.py`, `veil_ward.py` are live), so M10.2 is **edits to existing functions, not new build**. The one runtime-ready path — `resonance.py:75-99` primal-terrain routing — is architected and fails-loud on unknown terrain, but is currently **dead** (bypassed by catalog baselines, `spell_casting.py:36-44`), so geographically-dependent primal magic is presently inert.
 
 > **Code line cites are from `terrain-map-scoping.md` (2026-06-17).** The modules are confirmed built, but re-verify exact line numbers against current `HEAD` before editing.
 
 ### Material gaps
 
-- **`region_type` ↔ terrain reconciliation (decision gap).** A coarse `region_type` enum `{city, wilderness, dungeon}` already exists (`apps/agent/region_types.py:1-9`) and is load-bearing for tool scoping (`city_agent.py`). Decision 130 defined the terrain enum as if `Location` had no terrain axis. **Resolution: terrain *refines* `region_type`, never replaces it** (`dungeon`→`underground`; `city`→`{city, village}`; `wilderness`→ the seven nature values). The loader must reject a terrain inconsistent with its `region_type`. Recommend a one-line amendment to Decision 130 recording this relationship.
-- **Content backfill is concrete: 18 locations.** Every `content/locations.json` entry needs a `terrain` value; the strict loader rejects missing once the field is required.
+- **`region_type` ↔ terrain reconciliation.** A coarse `region_type` enum `{city, wilderness, dungeon}` already exists (`apps/agent/region_types.py:1-9`) and is load-bearing for tool scoping (`city_agent.py`). Decision 130 defined the terrain enum as if `Location` had no terrain axis. **Resolution: terrain *refines* `region_type`, never replaces it** (`dungeon`→`underground`; `city`→`{city, village}`; `wilderness`→ the seven nature values). The loader must reject a terrain inconsistent with its `region_type`. Decision 130 records this relationship; both loaders enforce it.
+- **Content backfill is concrete: 19 locations.** Every `content/locations.json` entry needs a `terrain` value; the strict loader rejects missing once the field is required.
 - **`PRIMAL_TERRAIN_TABLE` must be decomposed, not deleted** (`resonance.py:50-63`). Its bottom 5 bands become `resonance_base` values on the terrain enum; its top 3 (damaged / hollow-adjacent / hollow-corrupted) become *corruption levels* on the deferred dynamic axis (Decision 131). Re-home, don't drop.
 - **`_DEFAULT_TERRAIN = "normal"` is a latent bug** (`spell_casting.py:76-77`). `"normal"` is not a key in `PRIMAL_TERRAIN_TABLE`; only the dead routing path masks the KeyError. Remove it — a closed enum plus mandatory backfill means there is nothing to default to.
 
@@ -60,19 +60,19 @@ Reconciled against `game_mechanics_decisions.md` Decisions 129–132 and the ter
   | `village` | 0.4 | no | no | city |
   | `city` | 0.5 | no | no | city |
 
-- `terrain: TerrainType` field on `location.ts` (and the Python mirror), required.
+- Required `terrain: TerrainType` on `location.ts`; Python raw location dictionaries are validated at seed time and read through pure runtime terrain accessors.
 - Strict-loader validation: fail-loud on unknown terrain; reject terrain inconsistent with the entry's `region_type` (per the table above), consistent with the `resonance.py` fail-loud precedent.
-- Content backfill: assign `terrain` to all 18 `content/locations.json` entries (Thornveld → `forest`/`ancient_forest`, Keldaran → `mountain`, Sunward Coast → `coast`/`wetland`, Umbral Deep → `underground`, Drathian Steppe → `grassland`, Accord cities → `city`/`village`).
+- Content backfill: assign `terrain` to all 19 `content/locations.json` entries (Accord → `city`; Millhaven and Yanna’s farmhouse → `village`; the three dungeon entries → `underground`; ruins exterior → `grassland`; northern wilderness → `forest`; south road → `farmland`).
 - Pure accessors: `is_natural(terrain)`, `is_earth_or_stone(terrain)`, `resonance_base(terrain)`.
 
 **Acceptance criteria:**
-- [ ] `TerrainType` enum exists with exactly the 10 values; no `"normal"` member.
-- [ ] Each value resolves the correct `resonance_base`, `is_natural`, `is_earth_or_stone` per the table.
-- [ ] `location.ts` (+ Python mirror) carries a required `terrain` field.
-- [ ] Loader fails loud on an unknown terrain value.
-- [ ] Loader rejects a `terrain` whose `region_type` does not match the table (e.g. `region_type=city` with `terrain=mountain`).
-- [ ] All 18 `content/locations.json` entries have a valid `terrain`; a content test asserts none are missing.
-- [ ] Unit tests cover all 10 values' derived properties and the region_type-consistency rule.
+- [x] `TerrainType` enum exists with exactly the 10 values; no `"normal"` member.
+- [x] Each value resolves the correct `resonance_base`, `is_natural`, `is_earth_or_stone` per the table.
+- [x] `location.ts` carries required `terrain`; Python seed validation requires it on raw location dictionaries.
+- [x] Loader fails loud on an unknown terrain value.
+- [x] Loader rejects a `terrain` whose `region_type` does not match the table (e.g. `region_type=city` with `terrain=mountain`).
+- [x] All 19 `content/locations.json` entries have a valid `terrain`; a content test asserts none are missing.
+- [x] Seed/startup boundary tests cover required terrain and region consistency; accessor tests cover all 10 properties, unknown scalar inputs and actual cross-language export parity.
 
 **Key references:** *Decisions 129, 130*; `terrain-map-scoping.md` (data-model inventory).
 

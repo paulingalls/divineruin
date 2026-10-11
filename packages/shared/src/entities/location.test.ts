@@ -180,3 +180,9 @@ describe("locations.json — no data loss", () => {
     }
   });
 });
+
+test("terrain is required and closed", () => {
+  const required: Record<never, never> extends Pick<Location, "terrain"> ? false : true = true;
+  const closed: string extends Location["terrain"] ? false : true = true;
+  expect([required, closed]).toEqual([true, true]);
+});

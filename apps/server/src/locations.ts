@@ -1,3 +1,4 @@
+import { terrainProperties, type TerrainType } from "@divineruin/shared";
 import type { Location, HiddenElement, LocationExit } from "@divineruin/shared";
 import { sql } from "./db.ts";
 import { asRecord, parseStringArray } from "./parse-helpers.ts";
@@ -81,7 +82,23 @@ export function parseLocationRow(id: string, raw: unknown): Location {
   if (typeof data.region !== "string") throw new Error(`${ctx}.region is not a string`);
   if (typeof data.atmosphere !== "string") throw new Error(`${ctx}.atmosphere is not a string`);
 
+  if (typeof data.terrain !== "string") {
+    throw new Error(`${ctx}.terrain must be a string, got ${String(data.terrain)}`);
+  }
+  let owner: string;
+  try {
+    owner = terrainProperties(data.terrain).region_type;
+  } catch (error) {
+    throw new Error(`${ctx}: ${String(error)}`, { cause: error });
+  }
+  if (data.region_type !== owner) {
+    throw new Error(
+      `${ctx} terrain ${data.terrain} requires region_type ${owner}, got ${String(data.region_type)}`,
+    );
+  }
+
   const location: Location = {
+    terrain: data.terrain as TerrainType,
     id,
     name: data.name,
     tier: data.tier,
