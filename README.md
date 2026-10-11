@@ -439,7 +439,7 @@ export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
 bun run android:emulator
 ```
 
-The first run installs the API 36 Google APIs system image (x86_64 on Intel, arm64 on Apple Silicon) and creates `divineruin-api36`. Every run then reapplies its settings (4 GB of RAM, 4 cores, hardware graphics, no Play Store), boots it if needed, waits for boot to finish, and turns off animations. Hand edits made in Android Studio are reset on the next run. Android Studio's 2 GB defaults leave System UI hanging. The settings live in `scripts/android-emulator.ts`.
+The first run installs the API 36 Google APIs system image (x86_64 on Intel, arm64 on Apple Silicon) and creates `divineruin-api36`. Every run then reapplies its settings (4 GB of RAM, 4 cores, hardware graphics, no Play Store), boots it if needed, waits for boot to finish, turns off animations, and connects the emulator's microphone to your Mac's. The emulator turns the host mic off on every boot, which is why the script turns it back on each run. macOS asks for microphone permission for the app that launched the emulator; if you hear the DM but it never hears you, allow that app in System Settings → Privacy & Security → Microphone. Hand edits made in Android Studio are reset on the next run. Android Studio's 2 GB defaults leave System UI hanging. The settings live in `scripts/android-emulator.ts`.
 
 **Build and run:**
 
