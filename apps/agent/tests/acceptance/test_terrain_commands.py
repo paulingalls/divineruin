@@ -231,7 +231,7 @@ async def test_combat_terrain_commands(terrain, livekit_server, reset_db_pool, m
             assert persisted["current"] == (1 if expected == "narration" else 0)
             if expected == "narration":
                 packet = next(p for p in payload["packets"] if p["actor_id"] == pid)
-                assert packet["resonance_generated"] == 1
+                assert packet["cast"]["resonance_generated"] == 1
             if step == 7:
                 sd.combat_state = saved
         elif receipt.name == "activate":

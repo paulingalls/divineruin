@@ -33,6 +33,7 @@ class CombatState:
     round_number: int = 1
     current_turn_index: int = 0
     location_id: str = ""
+    terrain: str | None = None
     # Encounter faction (story-002 inc 5): the faction the enemies belong to, sourced at
     # combat_init from the encounter's stance_gate.faction (or an explicit encounter faction).
     # Read at combat_end to attribute the outcome to faction reputation — killing its members
@@ -140,6 +141,7 @@ class CombatState:
             round_number=data.get("round_number", 1),
             current_turn_index=data.get("current_turn_index", 0),
             location_id=data.get("location_id", ""),
+            terrain=data.get("terrain"),
             faction_id=data.get("faction_id"),
             beat=data.get("beat", "declaration"),
             # A row written before story-017 can carry a REACTION pre-declaration, whose type
