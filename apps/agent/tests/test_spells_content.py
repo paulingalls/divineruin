@@ -21,7 +21,6 @@ _REQUIRED_FIELDS = (
     "verbal",
     "hostile",
     "resonance_by_source",
-    "terrain_effects",
     "audio_cue",
     "concentration",
     "sound_id",
@@ -65,12 +64,6 @@ def test_every_row_has_a_nonempty_audio_cue(row):
 @pytest.mark.parametrize("row", _RAW, ids=[r["id"] for r in _RAW])
 def test_resonance_is_keyed_by_the_rows_own_source(row):
     assert row["source"] in row["resonance_by_source"]
-
-
-@pytest.mark.parametrize("row", _RAW, ids=[r["id"] for r in _RAW])
-def test_terrain_effects_nonempty_only_for_primal(row):
-    if row["source"] != "primal":
-        assert row["terrain_effects"] == {}, f"{row['id']} is {row['source']} but has terrain_effects"
 
 
 @pytest.mark.parametrize("row", _RAW, ids=[r["id"] for r in _RAW])

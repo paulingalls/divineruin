@@ -39,7 +39,6 @@ _FIREBALL_ROW = {
     "mechanics": "A bead of flame detonates in a 20 ft sphere. DEX save, half on success.",
     "narration_cue": "A bead of light detonates — heat, light, the roar of air consumed.",
     "resonance_by_source": {"arcane": 3},
-    "terrain_effects": {},
     "audio_cue": "CMB-006 (powerful)",
     "concentration": False,
     "sound_id": "spell_fire",
@@ -56,13 +55,12 @@ _BLESS_ROW = {
     "mechanics": "Up to 3 allies gain +1d4 on attacks and saves. Concentration.",
     "narration_cue": "You speak their names and your patron hears — warmth settling into bones.",
     "resonance_by_source": {"divine": 1},
-    "terrain_effects": {},
     "audio_cue": "",
     "concentration": True,
     "sound_id": "spell_radiant",
 }
 
-_M33_FIELDS = ("resonance_by_source", "terrain_effects", "audio_cue", "concentration")
+_M33_FIELDS = ("resonance_by_source", "audio_cue", "concentration")
 
 _M33_FIELDS_WITH_SOUND_ID = (*_M33_FIELDS, "sound_id")
 
@@ -84,7 +82,6 @@ def test_parse_spell_row_full_shape():
 def test_parse_spell_row_exposes_m33_fields():
     s = parse_spell_row(_FIREBALL_ROW["id"], _FIREBALL_ROW)
     assert s.resonance_by_source == {"arcane": 3}
-    assert s.terrain_effects == {}
     assert s.audio_cue == "CMB-006 (powerful)"
     assert s.concentration is False
     conc = parse_spell_row(_BLESS_ROW["id"], _BLESS_ROW)
@@ -178,14 +175,14 @@ def test_parse_spell_row_accepts_each_palette_sound_id():
         assert s.sound_id == key
 
 
-@pytest.mark.parametrize("field", ["resonance_by_source", "terrain_effects"])
+@pytest.mark.parametrize("field", ["resonance_by_source"])
 def test_parse_spell_row_rejects_non_dict_dict_fields(field):
     bad = {**_FIREBALL_ROW, field: ["not", "a", "dict"]}
     with pytest.raises(ValueError, match=field):
         parse_spell_row(_FIREBALL_ROW["id"], bad)
 
 
-@pytest.mark.parametrize("field", ["resonance_by_source", "terrain_effects"])
+@pytest.mark.parametrize("field", ["resonance_by_source"])
 def test_parse_spell_row_rejects_non_int_dict_value(field):
     bad = {**_FIREBALL_ROW, field: {"arcane": "high"}}
     with pytest.raises(ValueError, match=field):
@@ -208,7 +205,6 @@ def test_spell_defaults_allow_in_code_construction_without_m33_args():
         narration_cue="n",
     )
     assert s.resonance_by_source == {}
-    assert s.terrain_effects == {}
     assert s.audio_cue == ""
     assert s.concentration is False
 

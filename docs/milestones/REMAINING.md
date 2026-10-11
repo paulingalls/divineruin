@@ -5,7 +5,7 @@ seven-agent audit covering all 13 phase docs. This is the high-level view;
 per-AC detail (with `<!-- verified -->` comments naming file, symbol and
 RED-capable test) lives in each phase doc.
 
-**Position: 320 / 538 acceptance criteria — 59%** (the sum of the per-phase counts in
+**Position: 326 / 538 acceptance criteria — 61%** (the sum of the per-phase counts in
 `README.md`). Phases 1, 2, 4, 5 and 6 have their recorded criteria delivered. M33 remains partial despite its checked catalog/infrastructure criteria: deferred spell effects remain. M7.3 remains partial: Still, Architect and remaining troop/Tier3 effects remain open; Choir native encounter certification remains pending. Sprints 001–044 delivered 28 milestones across five execution plans;
 all 28 are `delivered` and nothing is carried.
 
@@ -44,7 +44,7 @@ Six boxes flipped, but the count understates it — four findings move dependenc
 4. **M24's veil ward is done** (sprint-040, migration `057_veil_ward_scope.sql`),
    with per-source durations pinned by `test_ward_sources_durations` and the
    legacy boolean proven gone by an acceptance test. The `†` dagger in README.md
-   now covers only the Phase 10 and Phase 11 halves.
+   now covers the shipped Phase 10 gate and remaining Phase 11 world wards.
 
 The one item that moved *backwards*: Phase 0's INDEX.md line-range drift
 **widened** from 1 doc to 2, which is what an unenforced doc invariant does.
@@ -73,18 +73,9 @@ open Beat-3 window (the REACTION declaration sprint-045 shipped is deleted).
 These pass their ACs but do not work at runtime. They are the most valuable thing
 the audit found, because a green phase doc conceals them.
 
-- **Terrain → Primal resonance is unreachable.** `resonance.py:75` and
-  `PRIMAL_TERRAIN_TABLE` satisfy `03_magic.md:69,:76` as tested pure functions,
-  but `cast_modifiers.py:42` hardcodes `_DEFAULT_TERRAIN="normal"` and every
-  catalog spell's `resonance_by_source` short-circuits the formula. Primal routing
-  is bypassed at `cast_modifiers.py:60-62`. The same missing location→terrain map
-  leaves the Korath earth/stone gate ungated. The code blames "M3.4 work"; M3.4 is
-  Delivered and this never landed. → **Phase 10.**
 - **Sacred-site world wards have zero producers.** `veil_ward.py:163` models the
   source and migration 057 reserves the row shape; nothing ever writes one. The
   code comment says so: *"Phase 11 supplies the entities — M24 constructs none."*
-- **Druid ward ships ungated.** `veil_ward.py:132-133` states the natural-terrain
-  restriction is omitted because no location→terrain map exists. → **Phase 10.**
 - **`compute_node_respawn` has zero live callers** — resource respawn is built and
   never runs, because there is no world clock to call it.
 - **The world clock is a frozen constant:** `session_data.py:267 world_time =
@@ -124,14 +115,14 @@ test. Phase 7 still needs to choose the `build_encounter` signature in M7.4.
 
 ---
 
-## 5. Incomplete phases (32 milestones, 232 open ACs)
+## 5. Incomplete phases (31 milestones, 226 open ACs)
 
 | Phase | Milestones | ACs | Blocked by | Size | Substrate that already exists |
 |---|---|---|---|---|---|
 | **7 · Bestiary** | 7.1–7.4 | 33 | nothing | ~2 sprints | `encounter_roles.py` (roles, `ROLE_MODIFIERS`, `derive_role_stats` incl. signature/legendary), `encounter_loot.py`, `encounter_budget.py`, `encounter.ts` (which names this refactor as pending), **`encounter_templates.json`: 10 templates / 15 distinct stat blocks**, `content/creatures.json` has two Tier 1 Hollow exemplars, backed by the indexed `creatures` table and Python/TypeScript validation |
 | **8 · Patrons** | 8.1–8.3 | 34 | nothing (but hard **forward** dep on Phase 2 archetype detail) | ~2-3 sprints | `gods.json` 10/10 with 4 typed `null` slots; `favor_actions`/`values`/`opposed_values` authored but unused; write path `_award_divine_favor_core` (M28 Resolve); **full client leg done** (event types → handlers → `hud-store` favor slot) |
 | **9 · Economy** | 9.1–9.10 | 75 | **Phase 7** (material sell values) | large | `pricing` table + `pricing.json` read cross-language w/ Redis cache; reputation pipeline live end-to-end; repair table exact-to-spec; **new price axis**: `role_archetypes.json` `price_modifier` × settlement personality modifier |
-| **10 · Terrain** | 10.2–10.3 | 10 | nothing | ~1-1.5 sprints | `resonance.py`, `cast_modifiers.py:47-66`, the ward stack, `region_types.py`, the `location.ts`+`locations.ts` strict-loader pair |
+| **10 · Terrain** | 10.3 | 4 | nothing | <1 sprint | Required location terrain and primal/Korath/Druid command gates; shared terrain reader ready for combat caching |
 | **11 · World Loop** | 11.1–11.6 | 46 | 5 open design decisions; M11.4 on Phase 9, M11.6 on Phase 8 | ~4-6 sprints | Layer-1 consumption fully built (only the clock missing); worker template `async_worker.py`; **tables already migrated in 001**: `region_state`, `npc_state`, `world_events_log`, `god_agent_state`, `world_flags`; depth-0 effect applier `quest_world_effects.py:42-124` |
 | **12 · Story Content** | 12.1–12.7 | 34 | **Phase 11** | ~5-7 sprints | `scenes` (mig 013) + `scenes.json` carrying `beats[]` + `scene_tools.py`; seeded-generator precedent `settlement_generation.py`; proto-agendas in `gods.json` `world_state.secret_agenda`; `story_moments` (mig 012) |
 
@@ -142,8 +133,7 @@ test. Phase 7 still needs to choose the `build_encounter` signature in M7.4.
   difficulty ceilings, a separate calculation.
 - **Phase 10 — navigation and physical terrain are distinct.** Travel uses optional
   `navigation`; all 19 locations carry required closed-enum `terrain`, checked
-  against `region_type` at seed time and server startup. M10.2 wires the magic
-  consumers; M10.3 adds combat caching.
+  against `region_type` at seed time and server startup. M10.2 magic consumers are shipped; M10.3 adds combat caching.
 - **Phase 12 — vocabulary collision:** its "beat" vocabulary must be reconciled
   with the shipped scenes/`beats[]` stack. Currently unbudgeted.
 - **`content/materials_catalog.json` has no value field at all** on 58 materials —
@@ -166,17 +156,11 @@ Only three phases are startable today: **7, 8 and 10.**
   layers: the pantheon narrates but does nothing. The whole client leg is already
   built. But it has a hard **forward** dependency on Phase 2 archetype detail, and
   its ~30 abilities need two new verbs — budget for an ADR-0004 tool-ceiling fight.
-- **Phase 10 (Terrain) — the cheap move, and the auditor's own recommendation.**
-  One sprint, closes concerns `6967abf41dbc` and `d5702aa05bd0`, and un-deads a
-  shipped-but-inert code path (the terrain→Primal resonance defect in §3). The
-  auditor further suggests pairing it with M11.1 (the world clock), which is also
-  small and would give `compute_node_respawn` its missing caller — making an
-  already-built day/night system actually move.
+- **Phase 10 (Terrain) — combat caching remains.** M10.1 supplies location terrain and M10.2 ships primal generation, Korath contact and Druid ward gates. M10.3 resolves once at combat start and preserves the cached terrain across persistence.
 
 **Recorded disagreement:** the Phase-10/11/12 auditor recommended Phase 10 as the
 best next phase; this plan takes Phase 7 first on unblocking grounds. Both are
-defensible. Phase 10's argument is that it repairs live defects rather than adding
-surface; Phase 7's is that Phase 9 stays blocked until it lands.
+defensible. Phase 10's original argument was repairing live terrain defects; those magic gates now ship in M10.2. Phase 7's is that Phase 9 stays blocked until it lands.
 
 ---
 

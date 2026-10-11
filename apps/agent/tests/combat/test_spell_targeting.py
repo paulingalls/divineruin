@@ -28,7 +28,6 @@ def _spell(spell_id: str, *, source: SpellSource = "arcane") -> Spell:
         narration_cue="A cue.",
         audio_cue="SFX-TST",
         resonance_by_source={source: 0},
-        terrain_effects={},
         concentration=False,
     )
 

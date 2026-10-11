@@ -18,7 +18,7 @@ import resonance
     ],
 )
 def test_generation_per_source(focus, source, expected):
-    assert resonance.calculate_resonance_generated(focus, source) == expected
+    assert resonance.calculate_resonance_generated(focus, source, None) == expected
 
 
 @pytest.mark.parametrize("source", ["arcane", "divine", "bard", "primal"])
@@ -28,42 +28,40 @@ def test_cantrip_generates_zero_for_every_source(source):
 
 def test_generation_unknown_source_fails_loud():
     with pytest.raises(ValueError):
-        resonance.calculate_resonance_generated(5, "psionic")
+        resonance.calculate_resonance_generated(5, "psionic", None)
 
 
 def test_generation_negative_focus_fails_loud():
     # A negative focus_cost would yield negative Resonance (ceil(-5 * 0.6) = -3),
     # violating the Resonance >= 0 invariant — fail loud like durability's negative hits.
     with pytest.raises(ValueError):
-        resonance.calculate_resonance_generated(-5, "arcane")
+        resonance.calculate_resonance_generated(-5, "arcane", None)
 
 
 @pytest.mark.parametrize(
     "terrain,expected",
     [
         ("ancient_forest", 1),  # ceil(5 * 0.1) = 1
-        ("sacred_grove", 1),  # ceil(5 * 0.1) = 1
-        ("healthy_natural", 1),  # ceil(5 * 0.2) = 1
-        ("farmland", 2),  # ceil(5 * 0.3) = 2
-        ("village", 2),  # ceil(5 * 0.4) = 2
-        ("large_city", 3),  # ceil(5 * 0.5) = 3
-        ("damaged", 3),  # ceil(5 * 0.6) = 3
-        ("hollow_adjacent", 4),  # ceil(5 * 0.7) = 4
-        ("hollow_corrupted", 4),  # ceil(5 * 0.8) = 4
+        ("forest", 1),
+        ("farmland", 2),
+        ("village", 2),
+        ("city", 3),
     ],
 )
 def test_primal_generation_by_terrain(terrain, expected):
     assert resonance.calculate_resonance_generated(5, "primal", terrain) == expected
 
 
-def test_primal_unknown_terrain_fails_loud():
-    with pytest.raises(ValueError):
-        resonance.calculate_resonance_generated(5, "primal", "moon")
+@pytest.mark.parametrize("terrain", ["unknown_terrain", None])
+@pytest.mark.parametrize("focus", [0, 5])
+def test_primal_unknown_terrain_fails_loud(terrain, focus):
+    with pytest.raises(ValueError, match=str(terrain)):
+        resonance.calculate_resonance_generated(focus, "primal", terrain)
 
 
-def test_primal_default_normal_terrain_fails_loud():
-    with pytest.raises(ValueError):
-        resonance.calculate_resonance_generated(5, "primal")
+def test_required_terrain_cannot_be_omitted():
+    with pytest.raises(TypeError, match="terrain"):
+        resonance.calculate_resonance_generated(5, "primal")  # type: ignore[call-arg]
 
 
 @pytest.mark.parametrize(

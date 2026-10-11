@@ -34,7 +34,7 @@ def test_invalid_content_rolls_back_every_table(fresh_migrated_db, tmp_path, mon
         rows = json.loads(path.read_text())
         invalid_rows = [row for row in rows if row["region_type"] == "city"][:5]
         invalid_rows[0].pop("terrain", None)
-        for row, value in zip(invalid_rows[1:], ["normal", "mountain", None, 42], strict=True):
+        for row, value in zip(invalid_rows[1:], ["unknown_terrain", "mountain", None, 42], strict=True):
             row["terrain"] = value
         path.write_text(json.dumps(rows))
         expected = invalid_rows[0]["id"]
@@ -54,7 +54,7 @@ def test_invalid_content_rolls_back_every_table(fresh_migrated_db, tmp_path, mon
             invalid_rows,
             [
                 ("terrain", "None"),
-                ("normal",),
+                ("unknown_terrain",),
                 ("mountain", "city", "wilderness"),
                 ("terrain", "None"),
                 ("terrain", "42"),

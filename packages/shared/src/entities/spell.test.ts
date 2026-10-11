@@ -31,7 +31,6 @@ const OMITTED_M33_FIELDS: ReadonlyArray<{ field: string; reason: string }> = [
     field: "resonance_by_source",
     reason: "cast-resolution internal; consumed by the Python rules engine, no TS reader",
   },
-  { field: "terrain_effects", reason: "Primal cast-resolution internal; no TS reader" },
   {
     field: "audio_cue",
     reason:
@@ -65,15 +64,9 @@ describe("Spell — content/spells.json row shape (reader-gated TS mirror)", () 
     expect(Object.keys(arcaneBolt).sort()).toEqual(Object.keys(SPELL_FIELDS).sort());
   });
 
-  test("the 5 M3.3/M17 fields are intentionally omitted for lack of a TS reader", () => {
+  test("the 4 M3.3/M17 fields are intentionally omitted for lack of a TS reader", () => {
     const omitted = OMITTED_M33_FIELDS.map((o) => o.field);
-    expect(omitted).toEqual([
-      "resonance_by_source",
-      "terrain_effects",
-      "audio_cue",
-      "concentration",
-      "sound_id",
-    ]);
+    expect(omitted).toEqual(["resonance_by_source", "audio_cue", "concentration", "sound_id"]);
     for (const field of omitted) {
       expect(Object.keys(arcaneBolt)).not.toContain(field);
     }

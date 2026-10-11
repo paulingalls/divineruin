@@ -59,14 +59,6 @@ class TestCastSpellResonance:
         packet, _ctx, _p, _m, _ev = await _cast(spell, start_resonance=0)
         assert packet["resonance_generated"] == 6  # ceil(10 * 0.6)
 
-    async def test_primal_casts_via_catalog_baseline_resonance(self):
-        packet, ctx, _p, mutations, _ev = await _cast(
-            _spell(source="primal", tier="standard", focus_cost=3, resonance=2), start_resonance=0
-        )
-        assert packet["resonance_generated"] == 2
-        assert ctx.userdata.resonance.current == 2
-        mutations.update_player_resonance.assert_awaited_once()
-
 
 def test_racial_spec_stub_matches_seeded_content():
     # Bind the cast tests' _RACIAL_SPEC stub to the REAL seeded table
@@ -78,26 +70,8 @@ def test_racial_spec_stub_matches_seeded_content():
 
 
 class TestCastSpellRacialResonance:
-    async def test_korath_primal_reduces_generation(self):
-        packet, ctx, _m, _c, _e = await _cast_racial(_spell(source="primal", focus_cost=3, resonance=3), race="korath")
-        assert packet["resonance_generated"] == 2
-        assert ctx.userdata.resonance.current == 2
-        assert packet["state"] == "stable"
-
-    async def test_korath_primal_floors_at_zero_and_writes_nothing(self):
-        packet, ctx, mutations, _c, _e = await _cast_racial(
-            _spell(source="primal", focus_cost=3, resonance=1), race="korath"
-        )
-        assert packet["resonance_generated"] == 0
-        assert ctx.userdata.resonance.current == 0
-        mutations.update_player_resonance.assert_not_called()
-
     async def test_korath_arcane_is_not_reduced(self):
         packet, _ctx, _m, _c, _e = await _cast_racial(_spell(source="arcane", focus_cost=3, resonance=3), race="korath")
-        assert packet["resonance_generated"] == 3
-
-    async def test_non_korath_primal_is_not_reduced(self):
-        packet, _ctx, _m, _c, _e = await _cast_racial(_spell(source="primal", focus_cost=3, resonance=3), race="human")
         assert packet["resonance_generated"] == 3
 
     async def test_thessyn_cast_honors_hydrated_flickering_bonus(self):
