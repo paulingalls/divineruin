@@ -127,3 +127,4 @@ def test_paid_transport_refusal_survives_swallowed_errors_and_fixture_teardown(a
         assert f"Blocked paid provider {provider}" in output, output
     assert "session_summary.py" in output and "_call_llm_summary" in output, output
     assert "FAILED " not in output, output
+    assert "AssertionError" not in output, output
