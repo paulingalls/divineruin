@@ -4,6 +4,7 @@ import asyncio
 import json
 import uuid
 from typing import Any
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from acceptance.multiplayer_voice._harness import MultiplayerVoiceHarness
@@ -295,7 +296,11 @@ async def test_guest_verbs_reach_persisted_party_rows(
         if multiplayer_input is not None:
             await multiplayer_input.aclose()
         if dm_session is not None:
-            await dm_session.aclose()
+            with patch("session_summary._call_llm_summary", new_callable=AsyncMock, return_value=None):
+                await dm_session.aclose()
+                for task in (userdata.session_end_task, userdata.multiplayer_close_task):
+                    if task is not None:
+                        await task
         if lifecycle is not None:
             await lifecycle.aclose()
         await harness.aclose()

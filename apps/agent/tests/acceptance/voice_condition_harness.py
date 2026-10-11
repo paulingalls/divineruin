@@ -145,7 +145,7 @@ def assert_hud_floor(events):
 
 async def run_voice_commands(harness, sd, model, agent, monkeypatch, *, speaker=None, require_hud=True):
     host, guest = harness.player_one_identity, harness.player_two_identity
-    session = AgentSession(llm=model, tts=ToneTTS(), max_tool_steps=max(5, len(model.commands) + 2), userdata=sd)
+    session = AgentSession(llm=model, tts=ToneTTS(), max_tool_steps=13, userdata=sd)
     lifecycle: PartyLifecycle | None = None
     multiplayer = None
     stream: rtc.AudioStream | None = None
@@ -240,6 +240,9 @@ async def run_voice_commands(harness, sd, model, agent, monkeypatch, *, speaker=
             if stream is not None:
                 await stream.aclose()
             await session.aclose()
+            for task in (sd.session_end_task, sd.multiplayer_close_task):
+                if task is not None:
+                    await task
             if lifecycle is not None:
                 await cast(PartyLifecycle, lifecycle).aclose()
             await harness.aclose()

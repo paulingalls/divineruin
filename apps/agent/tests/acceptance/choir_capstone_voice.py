@@ -5,7 +5,7 @@ import json
 import uuid
 from types import SimpleNamespace
 from typing import Any, cast
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from acceptance.multiplayer_voice._harness import PLAYER_TWO_SPEECH, SpeechFixture
 from acceptance.multiplayer_voice.test_guest_leaves import ToneTTS
@@ -208,7 +208,11 @@ class ChoirVoiceDiagnostic:
         finally:
             try:
                 if self.session is not None:
-                    await self.session.aclose()
+                    with patch("session_summary._call_llm_summary", new_callable=AsyncMock, return_value=None):
+                        await self.session.aclose()
+                        for task in (self.sd.session_end_task, self.sd.multiplayer_close_task):
+                            if task is not None:
+                                await task
             finally:
                 self.tts_patch.stop()
                 if self.lifecycle is not None:
