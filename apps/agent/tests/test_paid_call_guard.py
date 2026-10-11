@@ -90,8 +90,7 @@ async def test_approved(marker):
 """
 
 
-@pytest.mark.parametrize("approved", [False, True])
-def test_paid_transport_refusal_survives_swallowed_errors_and_fixture_teardown(approved):
+def _run_probe(probe, *, approved=False, extra_args=()):
     env = dict(os.environ)
     env.update(
         ALLOW_PAID_TESTS="1" if approved else "",
@@ -104,7 +103,7 @@ def test_paid_transport_refusal_survives_swallowed_errors_and_fixture_teardown(a
     env["PYTHONPATH"] = os.pathsep.join([str(_TESTS), env.get("PYTHONPATH", "")])
     with TemporaryDirectory(prefix="paid_guard_probe_") as directory:
         module = Path(directory) / "test_probe.py"
-        module.write_text(_PROBE)
+        module.write_text(probe)
         result = subprocess.run(
             [
                 sys.executable,
@@ -119,6 +118,7 @@ def test_paid_transport_refusal_survives_swallowed_errors_and_fixture_teardown(a
                 "-rA",
                 "-p",
                 "no:cacheprovider",
+                *extra_args,
             ],
             cwd=_TESTS.parent,
             env=env,
@@ -126,6 +126,12 @@ def test_paid_transport_refusal_survives_swallowed_errors_and_fixture_teardown(a
             text=True,
             timeout=45,
         )
+    return result
+
+
+@pytest.mark.parametrize("approved", [False, True])
+def test_paid_transport_refusal_survives_swallowed_errors_and_fixture_teardown(approved):
+    result = _run_probe(_PROBE, approved=approved)
     output = result.stdout + result.stderr
     assert result.returncode == 1, output
     assert "5 errors" in output, output
@@ -177,3 +183,15 @@ def test_background_provider_attempt_survives_diagnostic_drain(monkeypatch):
     monkeypatch.setattr(_paid_tests, "_attempts", [])
     assert len(current + following) == 1
     assert "Blocked paid provider Anthropic" in (current + following)[0]
+
+
+def test_paid_session_finalizer_fails_xdist_controller():
+    probe = _PROBE.split("\nasync def test_summary")[0] + "\nasync def test_body(closing_worker):\n    pass\n"
+    result = _run_probe(probe, extra_args=("-n", "2"))
+    output = result.stdout + result.stderr
+    assert result.returncode != 0, output
+    assert "1 passed" in output, output
+    assert "Blocked paid provider Anthropic" in output, output
+    assert "session_summary.py" in output and "_call_llm_summary" in output, output
+    assert "ERROR " not in output and "FAILED " not in output, output
+    assert "AssertionError" not in output, output
