@@ -104,6 +104,20 @@ describe("parseLocationRow — fail-loud validation", () => {
     expect(() => parseLocationRow("test_location", base)).not.toThrow();
   });
 
+  test("projects valid navigation", () => {
+    expect(parseLocationRow("x", { ...base, navigation: "dense_forest" }).navigation).toBe(
+      "dense_forest",
+    );
+  });
+
+  for (const navigation of [null, 42, false, [], {}, ""]) {
+    test(`rejects invalid navigation ${JSON.stringify(navigation)}`, () => {
+      expect(() => parseLocationRow("x", { ...base, navigation })).toThrow(
+        /locations\[x\]\.navigation/,
+      );
+    });
+  }
+
   test("rejects a non-object row", () => {
     expect(() => parseLocationRow("x", null)).toThrow(/locations\[x\]/);
     expect(() => parseLocationRow("x", [])).toThrow(/locations\[x\]/);

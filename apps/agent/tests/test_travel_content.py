@@ -23,18 +23,24 @@ def _travel_locations() -> list[dict]:
     return out
 
 
-def test_travel_locations_exist():
-    assert _travel_locations(), "no travel-reachable locations matched the selector"
+def test_navigation_preserves_travel_location_values():
+    assert {loc["id"]: loc["navigation"] for loc in _load_locations() if "navigation" in loc} == {
+        "greyvale_ruins_exterior": "unmarked_wilderness",
+        "greyvale_wilderness_north": "dense_forest",
+        "greyvale_south_road": "established_road",
+    }
 
 
-def test_every_travel_location_has_a_canonical_terrain():
+def test_every_travel_location_has_a_canonical_navigation():
+    locations = _travel_locations()
+    assert locations, "no travel-reachable locations matched the selector"
     offenders = []
-    for loc in _travel_locations():
-        terrain = loc.get("terrain")
-        if terrain not in travel.NAVIGATION_DC:
-            offenders.append((loc.get("id"), terrain))
+    for loc in locations:
+        navigation = loc.get("navigation")
+        if navigation not in travel.NAVIGATION_DC:
+            offenders.append((loc.get("id"), navigation))
     assert not offenders, (
-        f"travel locations with missing/unknown terrain (expected one of {tuple(travel.NAVIGATION_DC)}): {offenders}"
+        f"travel locations with missing/unknown navigation (expected one of {tuple(travel.NAVIGATION_DC)}): {offenders}"
     )
 
 
@@ -45,14 +51,6 @@ def test_every_travel_location_has_integer_danger_level():
         if not isinstance(loc.get("danger_level"), int)
     ]
     assert not offenders, f"travel locations with missing/non-int danger_level: {offenders}"
-
-
-def test_non_travel_locations_need_no_terrain():
-    # The field is optional off the travel surface — assert at least one city location omits it,
-    # so the terrain requirement stays scoped to travel-reachable locations (not a blanket field).
-    travel_ids = {loc.get("id") for loc in _travel_locations()}
-    non_travel = [loc for loc in _load_locations() if loc.get("id") not in travel_ids]
-    assert any("terrain" not in loc for loc in non_travel)
 
 
 def test_migration_055_exists():

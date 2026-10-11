@@ -1,7 +1,7 @@
 """Travel & exploration resolution — pure engine (M4.6b / story-001). Zero IO, zero RNG.
 
-Turns a travel mode plus a terrain and a caller-supplied navigation roll into a travel
-outcome: a navigation success/failure (DC by terrain), the time the segment costs, whether
+Turns a travel mode plus a navigation category and a caller-supplied navigation roll into a travel
+outcome: a navigation success/failure (DC by navigation), the time the segment costs, whether
 the party got lost (wrong_area), an exhaustion delta (forced march + a bad lost-failure), the
 mode's encounter rate and foraging availability, a dramatic-dice verdict (routed through the
 M4.5 dramatic.py SSOT), and a narration cue. The caller rolls the d20 + Survival modifier and
@@ -54,8 +54,8 @@ def travel_mode_params(mode: str) -> TravelModeParams:
         raise ValueError(f"unknown travel mode {mode!r}; expected one of {TRAVEL_MODE_NAMES}") from None
 
 
-# Navigation DC by terrain (spec L922-929). `established_road` is auto-success (no roll). The
-# rest are rolled against; navigation only matters in wilderness/underground/corrupted terrain.
+# Navigation DC by route category (spec L922-929). `established_road` is auto-success (no roll). The
+# rest are rolled against; navigation only matters in wilderness/underground/corrupted routes.
 NAVIGATION_DC: dict[str, int | None] = {
     "established_road": None,
     "known_trail": 8,
@@ -66,18 +66,18 @@ NAVIGATION_DC: dict[str, int | None] = {
 }
 
 
-def navigation_dc(terrain: str) -> int | None:
-    """Return the navigation DC for `terrain`, or None for auto-success (established road).
-    Fail loud off-catalog — an unknown terrain is a content/caller bug."""
+def navigation_dc(navigation: str) -> int | None:
+    """Return the navigation DC for `navigation`, or None for auto-success (established road).
+    Fail loud off-catalog — an unknown navigation category is a content/caller bug."""
     try:
-        return NAVIGATION_DC[terrain]
+        return NAVIGATION_DC[navigation]
     except KeyError:
-        raise ValueError(f"unknown terrain {terrain!r}; expected one of {tuple(NAVIGATION_DC)}") from None
+        raise ValueError(f"unknown navigation {navigation!r}; expected one of {tuple(NAVIGATION_DC)}") from None
 
 
 @dataclass(frozen=True)
-class _TerrainFailure:
-    """The consequence of a failed navigation check in a given terrain (spec L922-929):
+class _NavigationFailure:
+    """The consequence of a failed navigation check in a given navigation category (spec L922-929):
     extra travel time, whether the party is genuinely lost (wrong_area) vs a minor detour,
     and whether being lost costs an exhaustion stack (rations spent / corruption exposure)."""
 
@@ -86,16 +86,16 @@ class _TerrainFailure:
     exhausts: bool
 
 
-# Failure consequences by terrain (spec L925-929). A known-trail miss is a minor detour (not
+# Failure consequences by navigation (spec L925-929). A known-trail miss is a minor detour (not
 # lost); unmarked/forest are lost; underground (exhaust a ration) and hollow-corrupted (drawn
 # toward corruption / Hollowed exposure) are lost AND cost an exhaustion stack. Time penalties
 # use a fixed representative value of the spec's ranges so the resolver stays pure (no RNG).
-_NAV_FAILURE: dict[str, _TerrainFailure] = {
-    "known_trail": _TerrainFailure(time_penalty=2.0, wrong_area=False, exhausts=False),
-    "unmarked_wilderness": _TerrainFailure(time_penalty=4.0, wrong_area=True, exhausts=False),
-    "dense_forest": _TerrainFailure(time_penalty=2.0, wrong_area=True, exhausts=False),
-    "underground": _TerrainFailure(time_penalty=4.0, wrong_area=True, exhausts=True),
-    "hollow_corrupted": _TerrainFailure(time_penalty=4.0, wrong_area=True, exhausts=True),
+_NAV_FAILURE: dict[str, _NavigationFailure] = {
+    "known_trail": _NavigationFailure(time_penalty=2.0, wrong_area=False, exhausts=False),
+    "unmarked_wilderness": _NavigationFailure(time_penalty=4.0, wrong_area=True, exhausts=False),
+    "dense_forest": _NavigationFailure(time_penalty=2.0, wrong_area=True, exhausts=False),
+    "underground": _NavigationFailure(time_penalty=4.0, wrong_area=True, exhausts=True),
+    "hollow_corrupted": _NavigationFailure(time_penalty=4.0, wrong_area=True, exhausts=True),
 }
 
 
@@ -143,7 +143,7 @@ class TravelResult:
 def resolve_travel_segment(
     *,
     mode: str,
-    terrain: str,
+    navigation: str,
     roll_total: int = 0,
     base_hours: int = 4,
     forced_march: bool = False,
@@ -151,18 +151,18 @@ def resolve_travel_segment(
 ) -> TravelResult:
     """Resolve one travel segment (spec L852-951). Pure: the caller supplies `roll_total`
     (d20 + Survival modifier) and the segment's `base_hours`; the mode scales time and carries
-    the encounter/foraging signals, the terrain sets the navigation DC.
+    the encounter/foraging signals, the navigation category sets the DC.
 
     `established_road` (DC None) auto-succeeds with no roll and no chance of getting lost. Other
-    terrain rolls `roll_total` against the terrain DC: a miss costs extra time, marks `wrong_area`
+    routes roll `roll_total` against the navigation DC: a miss costs extra time, marks `wrong_area`
     when the party is genuinely lost, and may add an exhaustion stack (underground/corrupted).
     `forced_march` adds forced-march exhaustion from `base_hours` (spec L944). The dramatic verdict
     and its label are delegated to dramatic.evaluate_dramatic_context (M4.5 SSOT) via the margin
     and the optional `raw_die` — travel is not inherently dramatic. Raises ValueError for an
-    unknown mode or terrain.
+    unknown mode or navigation.
     """
     params = travel_mode_params(mode)
-    dc = navigation_dc(terrain)  # None => auto-success (established road)
+    dc = navigation_dc(navigation)  # None => auto-success (established road)
 
     # Defaults shared by the auto-success and rolled branches; a rolled failure mutates them below.
     time_cost = base_hours * params.time_multiplier
@@ -179,7 +179,7 @@ def resolve_travel_segment(
         if success:
             cue = _CUE_ON_COURSE
         else:
-            failure = _NAV_FAILURE[terrain]
+            failure = _NAV_FAILURE[navigation]
             time_cost += failure.time_penalty
             wrong_area = failure.wrong_area
             if failure.exhausts:

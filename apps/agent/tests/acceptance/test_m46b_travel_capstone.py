@@ -1,4 +1,4 @@
-"""On these seeded terrains, forced march supplies exhaustion; navigation failure alone does not."""
+"""On these seeded navigation categories, forced march supplies exhaustion; navigation failure alone does not."""
 
 from __future__ import annotations
 
@@ -12,10 +12,9 @@ import db_queries
 import event_types as E
 import travel_tools
 
-# Travel-reachable locations seeded with terrain by story-002 (content/locations.json).
-_ROAD = "greyvale_south_road"  # terrain: established_road (auto-success, no roll)
-_DENSE = "greyvale_wilderness_north"  # terrain: dense_forest (nav DC 14)
-_RUINS = "greyvale_ruins_exterior"  # terrain: unmarked_wilderness (start)
+_ROAD = "greyvale_south_road"
+_DENSE = "greyvale_wilderness_north"
+_RUINS = "greyvale_ruins_exterior"
 
 
 async def _set_endurance_master(pool, player_id: str) -> None:
@@ -68,6 +67,7 @@ async def test_m46b_forced_march_failure_is_lost_and_exhausts(reset_db_pool: str
         await travel_tools._travel_impl(ctx, _DENSE, "dangerous", hours=12, forced_march=True, rng=FixedRng(1))
     )
 
+    assert result["dc"] == 14
     assert result["outcome"] == "failure"
     assert result["wrong_area"] is True
     assert result["arrived"] is False
