@@ -95,6 +95,8 @@ describe("parseLocationRow — fail-loud validation", () => {
     tier: 1,
     district: "test_district",
     region: "test_region",
+    region_type: "city",
+    terrain: "city",
     tags: ["test"],
     atmosphere: "test atmosphere",
     exits: { north: { destination: "other_location" } },

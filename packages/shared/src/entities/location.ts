@@ -1,3 +1,5 @@
+import type { TerrainType } from "./terrain";
+
 export interface HiddenElement {
   id: string;
   discover_skill: string;
@@ -55,6 +57,7 @@ export const SETTLEMENT_PERSONALITY_VALUES = [
 export type SettlementPersonality = (typeof SETTLEMENT_PERSONALITY_VALUES)[number];
 
 export interface Location {
+  terrain: TerrainType;
   id: string;
   name: string;
   tier: 1 | 2;
