@@ -50,6 +50,11 @@ async def _seed_player(pool, player_id: str, **overrides) -> None:
                 "terrain": "forest",
                 "region_type": "wilderness",
                 "region": "off_catalog",
+                "tier": 1,
+                "district": "wilds",
+                "atmosphere": "Quiet trees.",
+                "tags": [],
+                "exits": {},
             }
         ),
     )

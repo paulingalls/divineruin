@@ -71,6 +71,11 @@ async def _seed_pc(
                 "terrain": "forest",
                 "region_type": "wilderness",
                 "region": "off_catalog",
+                "tier": 1,
+                "district": "wilds",
+                "atmosphere": "Quiet trees.",
+                "tags": [],
+                "exits": {},
             }
         ),
     )

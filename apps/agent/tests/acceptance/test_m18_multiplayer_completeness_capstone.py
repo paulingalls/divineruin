@@ -62,6 +62,11 @@ async def _seed_pc(pool, player_id: str, *, location_id: str, last_rested: str |
                 "terrain": "forest",
                 "region_type": "wilderness",
                 "region": "off_catalog",
+                "tier": 1,
+                "district": "wilds",
+                "atmosphere": "Quiet trees.",
+                "tags": [],
+                "exits": {},
             }
         ),
     )
