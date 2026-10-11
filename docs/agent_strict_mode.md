@@ -376,11 +376,39 @@ the producer requirement and keeping game rules in deterministic code.
 
 ## 9. Reproducing the research
 
-The current baseline is the existing command, run from `apps/agent`:
+The default Anthropic probe sends one request for each of the six agent profiles,
+continuing after schema refusals. Run from `apps/agent`:
 
 ```sh
 uv run --env-file ../../.env python probe_strict_limits.py
 ```
+
+The Luna mode sends exactly one request for one named agent through the same
+LiveKit OpenAI factory as gameplay (`gpt-6-luna`, reasoning off, strict tools):
+
+```sh
+uv run --env-file ../../.env python probe_strict_limits.py --provider openai-luna --agent combat
+```
+
+Available agents: exploration, combat, dispatch, onboarding, blacksmith, creation.
+Luna disables retries in both the OpenAI SDK client and the LiveKit stream.
+Exit 0 prints the agent, tool count and `ACCEPTED`; provider errors print their
+message and exit 1. Invalid CLI arguments exit 2 before making a request.
+The default Anthropic mode exits 1 if any profile is refused, otherwise 0.
+
+Each paid run requires separate explicit human approval and belongs to the lead.
+Executors use a local stub only. With an accepting HTTP stub listening on port
+8000 and serving `/v1/chat/completions`, construction can be checked without a key:
+
+```sh
+env -u ALLOW_PAID_TESTS -u REQUIRE_REAL_LLM OPENAI_API_KEY=local-dummy \
+  OPENAI_BASE_URL=http://127.0.0.1:8000/v1 \
+  uv run python probe_strict_limits.py --provider openai-luna --agent combat
+```
+
+`OPENAI_BASE_URL` is the SDK endpoint override. A stub acceptance proves request
+construction only; a paid provider acceptance proves strict compilation, not
+gameplay quality. `--help` makes no requests.
 
 To reproduce the partition independently, import `AGENTS` from that module, emit
 each tool list with `ToolContext(...).parse_function_tools("anthropic", strict=True)`,
