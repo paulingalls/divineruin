@@ -103,7 +103,7 @@ async def test_other_damage_and_miss(maw, dice, mode):
             action["properties"] = ["ranged"]
     elif mode == "area":
         row = next(r for r in catalog() if r["id"] == "deepstone_guardian")
-        action = _action(next(a for a in row["actions"] if a["name"] == "Guardian Pulse"))
+        action = _action(next(a for a in row["attacks"] if a["name"] == "Guardian Pulse"))
     elif mode == "save":
         shapes = json.loads(
             (Path(__file__).parents[4] / "packages/shared/fixtures/enemy_action_shapes.json").read_text()
@@ -113,6 +113,8 @@ async def test_other_damage_and_miss(maw, dice, mode):
     else:
         dice.return_value = SimpleNamespace(total=1)
     actor.action_pool = [action]
+    actor.action_ledger = {}
+    actor.multiattack_sequence = None
     await maw.persist()
     packet = await strike(maw, maw.players[0], action["name"])
     if mode == "save":

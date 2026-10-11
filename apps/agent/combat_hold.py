@@ -20,6 +20,7 @@ from uuid import uuid4
 
 import combat_enhancers
 import combat_marks as combat_marks
+import combat_phase
 import combat_reaction_contest
 import combat_reaction_effect
 import combat_recharge
@@ -30,7 +31,7 @@ import reaction_spend
 import reaction_windows
 from combat_ability import _find_action
 from combat_action_availability import begin_execution, replay_valid
-from combat_enemy_action import is_combined_attack_action, is_save_damage_action
+from combat_enemy_action import has_damage, is_combined_attack_action, is_save_damage_action
 from combat_multiattack import held_declarations, strike_summary
 from combat_packet import _resolve_one_packet
 from combat_support import build_attack_dice_roll_payload, deserialize_roll, roll_attack, serialize_roll
@@ -134,7 +135,11 @@ def _is_wasted(state, head: dict) -> bool:
     if declaration.target_id is None:
         return False
     target = state.get_participant(declaration.target_id)
-    return target is None or target.is_fallen
+    return (
+        target is None
+        or combat_phase.damage_target_unavailable(target)
+        or (target.is_fallen and (action is None or not has_damage(action)))
+    )
 
 
 def _opens_windows(state, head: dict) -> bool:

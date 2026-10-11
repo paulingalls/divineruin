@@ -10,6 +10,7 @@ import combat_ability
 import combat_grapple
 import combat_hollow_death
 import combat_resolution
+import combat_spatial
 import concentration_break
 import condition_sources
 import conditions
@@ -292,7 +293,21 @@ async def apply_attack_result(
         and not target.is_dead
         and (target.type == "companion" or target.death_save_failures < 3)
     ):
-        target.death_save_failures += 1
+        failures = 1
+        if (
+            isinstance(attack_result, check_resolution_attack.AttackResult)
+            and attack_result.hit
+            and not check_resolution_attack._is_ranged(action)
+            and "aoe" not in action.get("properties", [])
+        ):
+            spatial = combat_spatial.require_spatial(combat_state)
+            if combat_spatial.inside(
+                combat_spatial.position(spatial, attacker.id), combat_spatial.position(spatial, target.id), 5
+            ):
+                failures = 2
+        target.death_save_failures += failures
+        if target.type == "player":
+            target.death_save_failures = min(3, target.death_save_failures)
     gift_triggered = trigger_iron_resolve(session, target, hp_before)
 
     target.conditions = condition_sources.clear_charm_from_damage(target.conditions, attacker.id, attack_result.damage)
@@ -402,6 +417,8 @@ async def apply_attack_result(
         "context": attack_result.context,
         "target_rose_hollowed": rose_hollowed,
     }
+    if was_fallen:
+        response["death_save_failures"] = target.death_save_failures
     if gift_triggered:
         response["gift_triggered"] = gift_triggered
     if automatic:

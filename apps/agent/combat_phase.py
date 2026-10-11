@@ -294,6 +294,10 @@ def is_terminally_down(p: CombatParticipant) -> bool:
     return p.is_dead or p.death_save_failures >= _DEATH_SAVE_LIMIT
 
 
+def damage_target_unavailable(p: CombatParticipant) -> bool:
+    return p.is_dead or (p.is_fallen and (not p.is_ally or is_terminally_down(p)))
+
+
 def _wrap(state: CombatState) -> WrapOutcome:
     """Compute Beat-4 effect signals and the end-condition.
 

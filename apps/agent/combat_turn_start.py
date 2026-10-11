@@ -78,5 +78,4 @@ async def turn_start(session, state, victim, *, conn, sink, mutations, queries, 
         "source_id": owner.id,
         "target_id": victim.id,
         "round": state.round_number,
-        "death_save_failures": victim.death_save_failures,
     }

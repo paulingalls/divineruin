@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING
 
 import check_resolution_save
+import combat_phase
 import concentration_break
 import conditions
 import event_types as E
@@ -213,7 +214,9 @@ async def resolve_save_damage_action(
     sink,
     reaction_save_advantage: bool,
 ) -> dict:
-    target, waste = _resolve_condition_target(state, attacker, decl, allow_self=action.get("resolution") == "save")
+    target, waste = _resolve_condition_target(
+        state, attacker, decl, allow_self=action.get("resolution") == "save", damage=True
+    )
     if waste is not None:
         return waste
     assert target is not None
@@ -340,7 +343,7 @@ async def resolve_enemy_strike(
         target = state.get_participant(decl.target_id) if decl.target_id else None
         if target is None:
             return {"actor_id": packet.actor_id, "resolved": False, "reason": f"target '{decl.target_id}' not found"}
-        if target.is_fallen:
+        if combat_phase.damage_target_unavailable(target):
             return {"actor_id": packet.actor_id, "resolved": False, "reason": f"{target.name} already fell"}
         summary = await resolve_combined_attack_action(
             session,

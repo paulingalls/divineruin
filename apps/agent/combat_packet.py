@@ -12,6 +12,7 @@ state and write through injected mutation/query modules, but own no transaction.
 import combat_enhancers
 import combat_maneuver
 import combat_marks
+import combat_phase
 import combat_recharge
 import combat_resolution
 import combat_spatial_declarations
@@ -31,7 +32,7 @@ from combat_action_availability import begin_execution, replay_valid
 from combat_deescalation import (
     _resolve_deescalation_packet,
 )
-from combat_enemy_action import resolve_enemy_strike
+from combat_enemy_action import has_damage, resolve_enemy_strike
 from combat_enemy_active import resolve_active
 from combat_item_rider import resolve_rider
 from combat_packet_gate import _prevalidate_ability_focus as _prevalidate_ability_focus
@@ -205,7 +206,8 @@ async def _resolve_one_packet(
             action = _held_head["executed_action"]
         elif (
             target is not None
-            and not target.is_fallen
+            and not combat_phase.damage_target_unavailable(target)
+            and (not target.is_fallen or has_damage(action))
             and not (action.get("resolution") == "save" and action.get("type") == "area")
             and (
                 decl.type is DeclarationType.ATTACK
@@ -313,7 +315,7 @@ async def _resolve_one_packet(
     # `action` was resolved once above (the single _find_action for this packet).
     if target is None:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": f"target '{decl.target_id}' not found"}
-    if target.is_fallen:
+    if combat_phase.damage_target_unavailable(target):
         return {"actor_id": packet.actor_id, "resolved": False, "reason": f"{target.name} already fell"}
     if action is None:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": f"action '{decl.action}' not found"}
@@ -399,8 +401,7 @@ async def _resolve_one_packet(
                 member.weapon_used = True
                 if sub["hit"] and sub["critical"] and combat_resolution.is_heavily_armored(target.ac):
                     member.weapon_crit_vs_heavy = True
-        # An expanded sequence stops once the target drops — no swinging at a fallen foe.
-        if target.is_fallen:
+        if combat_phase.damage_target_unavailable(target):
             break
 
     # The first attack of the combat has now resolved; flips the combat-scoped flag so a
