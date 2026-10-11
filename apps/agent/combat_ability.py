@@ -13,12 +13,12 @@ import ability_persistence
 import combat_ability_save
 import combat_enhancers
 import combat_hollow_resonance
-import combat_phase
 import combat_voice_rules
 import condition_voice_rules
 import spell_casting
 from combat_ability_gate import DeclaredAbility
 from combat_condition_landing import _land_condition_on_one
+from combat_down import damage_target_unavailable
 from condition_produce import resolve_effective_targets
 from mentor_variants import MentorVariant
 from resource_costs import gate_pool
@@ -230,7 +230,7 @@ def _resolve_condition_target(
             "declaration_type": str(decl.type),
             "reason": f"target '{decl.target_id}' not found",
         }
-    if combat_phase.damage_target_unavailable(target) if damage else target.is_fallen:
+    if damage_target_unavailable(target) if damage else target.is_fallen:
         return None, {
             "actor_id": attacker.id,
             "resolved": False,

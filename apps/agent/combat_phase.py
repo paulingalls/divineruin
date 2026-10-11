@@ -20,6 +20,7 @@ from enum import StrEnum
 import choir_effects
 import reaction_spend
 from combat_declaration_validation import validate_declaration
+from combat_down import DEATH_SAVE_LIMIT, is_terminally_down
 from condition_restrictions import cannot_act
 from conditions import tick_conditions
 from declarations import Declaration, resolve_declaration
@@ -32,9 +33,8 @@ from veil_ward import tick_ward_rounds, ward_rounds_expired
 # resonance-decay-phase-canonical and story-007 (suppress cast-paced decay in combat).
 _RESONANCE_DECAY_PER_PHASE = 1
 
-# Death is three failed death saves; stabilization is three successes
-# (see combat_resolution.resolve_death_save).
-_DEATH_SAVE_LIMIT = 3
+# Stabilization is three successes (see combat_resolution.resolve_death_save).
+_DEATH_SAVE_LIMIT = DEATH_SAVE_LIMIT
 _STABILIZE_LIMIT = 3
 
 # Initiative tie-break: player before companion before enemy, then higher DEX
@@ -284,18 +284,6 @@ def partition_packets(
         actor = state.get_participant(packet.actor_id)
         (enemies if actor is not None and not actor.is_ally else allies).append(packet)
     return allies, enemies
-
-
-def is_terminally_down(p: CombatParticipant) -> bool:
-    """A player-life is terminally down when it can no longer act or be saved: instant-death
-    (``is_dead``, overkill) OR three failed death saves (``death_save_failures >= _DEATH_SAVE_LIMIT``,
-    where the 2-flag death model leaves ``is_dead`` False). Shared with ``combat_end``'s dead-life
-    partition so the phase gate and the resurrection collector never disagree on who is dead."""
-    return p.is_dead or p.death_save_failures >= _DEATH_SAVE_LIMIT
-
-
-def damage_target_unavailable(p: CombatParticipant) -> bool:
-    return p.is_dead or (p.is_fallen and (not p.is_ally or is_terminally_down(p)))
 
 
 def _wrap(state: CombatState) -> WrapOutcome:

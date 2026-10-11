@@ -10,7 +10,7 @@ import pytest
 from acceptance.mawling_harness import MawlingHarness
 from acceptance.test_mawling_multiattack import catalog
 
-from combat_phase import is_terminally_down
+from combat_down import is_terminally_down
 from creature_combat import _action
 
 
