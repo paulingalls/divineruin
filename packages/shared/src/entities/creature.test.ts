@@ -308,9 +308,11 @@ test("structured multiattack references are checked by both public validators", 
     new URL("../../../../content/creatures.json", import.meta.url),
   ).json()) as Record<string, unknown>[];
   const maw = rows.find((r) => r.id === "hollow_mawling")!;
-  const typed = { name: "Multiattack", attacks: ["Claw", "Dissolution Maw"] } satisfies NonNullable<
-    import("./creature").CreatureStatBlock["multiattack_sequence"]
-  >;
+  const typed = {
+    name: "Multiattack",
+    attacks: ["Claw", "Dissolution Maw"],
+    attacks_by_role: { elite: ["Claw", "Dissolution Maw", "Claw"], boss: ["Claw"] },
+  } satisfies NonNullable<import("./creature").CreatureStatBlock["multiattack_sequence"]>;
   expect(validateCreatureStatBlock({ ...maw, multiattack_sequence: typed })).toEqual([]);
   expect(
     validateCreatureStatBlock({

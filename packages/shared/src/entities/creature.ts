@@ -35,7 +35,11 @@ export interface CreatureStatBlock {
   save_proficiencies: string[];
   attacks: Attack[];
   multiattack: string | null;
-  multiattack_sequence?: { name: string; attacks: string[] };
+  multiattack_sequence?: {
+    name: string;
+    attacks: string[];
+    attacks_by_role?: Partial<Record<"elite" | "boss", string[]>>;
+  };
   passives: Ability[];
   actives: ActiveAbility[];
   signature_ability?: CatalogSignatureAbility;
@@ -255,7 +259,6 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
     if (sequence && typeof sequence === "object" && !Array.isArray(sequence)) {
       const seq = sequence as Record<string, unknown>;
       const name = field(seq, "name", "multiattack_sequence", "string");
-      const refs = field(seq, "attacks", "multiattack_sequence", "array");
       const names = Array.isArray(attacks)
         ? attacks.flatMap((a: unknown) =>
             isObject(a) && typeof a.name === "string" ? [a.name.toLowerCase()] : [],
@@ -272,11 +275,27 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
         [...names, ...activeNames].includes(name.toLowerCase())
       )
         problems.push("multiattack_sequence.name: empty or colliding action name");
-      if (Array.isArray(refs)) {
-        if (!refs.length) problems.push("multiattack_sequence.attacks: expected non-empty array");
-        for (const ref of refs)
-          if (typeof ref !== "string" || names.filter((n) => n === ref.toLowerCase()).length !== 1)
-            problems.push("multiattack_sequence.attacks: expected unambiguous attack reference");
+      const references = (obj: Record<string, unknown>, key: string, path: string) => {
+        const refs = field(obj, key, path, "array");
+        if (Array.isArray(refs)) {
+          if (!refs.length) problems.push(`${path}.${key}: expected non-empty array`);
+          for (const ref of refs)
+            if (
+              typeof ref !== "string" ||
+              names.filter((n) => n === ref.toLowerCase()).length !== 1
+            )
+              problems.push(`${path}.${key}: expected unambiguous attack reference`);
+        }
+      };
+      references(seq, "attacks", "multiattack_sequence");
+      if ("attacks_by_role" in seq) {
+        const path = "multiattack_sequence.attacks_by_role";
+        const overrides = field(seq, "attacks_by_role", "multiattack_sequence", "object");
+        if (isObject(overrides))
+          for (const role of Object.keys(overrides)) {
+            if (role !== "elite" && role !== "boss") problems.push(`${path}.${role}: unknown role`);
+            else references(overrides, role, path);
+          }
       }
     }
   }

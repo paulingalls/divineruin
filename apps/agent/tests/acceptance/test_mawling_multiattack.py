@@ -273,6 +273,8 @@ async def test_first_strike_reaction_spend_cannot_leak_to_second(maw, dice):
     assert len(set(identities.values())) == 3
     first = await maw.command("resolve_phase", {})
     state = await maw.reload()
+    assert first["next"]["waiting_on"]["action"] == "Dissolution Maw"
+    assert first["next"]["waiting_on"]["stage"] == "post_roll"
     assert state.get_participant(maw.players[0]).hp_current == 95
     assert {h["strike_index"]: (h["seq"], h["execution_id"]) for h in state.held_actions if "strike_index" in h} == {
         i: identities[i] for i in (1, 2)
@@ -280,6 +282,7 @@ async def test_first_strike_reaction_spend_cannot_leak_to_second(maw, dice):
     assert state.reactions_available[maw.players[0]] == spend
     packets, windows = await drain(maw)
     packets = first["packets"] + packets
+    windows = [first["next"]["waiting_on"], *windows]
     assert [s["damage"] for s in blows(packets)] == [5, 15, 10]
     assert [(w["action"], w["stage"]) for w in windows] == [("Dissolution Maw", "post_roll"), ("Claw", "post_roll")]
     assert [s["strike_index"] for s in blows(packets)] == [0, 1, 2]

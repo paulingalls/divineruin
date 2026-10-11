@@ -88,6 +88,13 @@ def _translate(row, encounter_id, enemy_id, role):
         if "kind" in source:
             actions.append(_action(source))
             names.add(source["name"])
+    sequence = row.get("multiattack_sequence")
+    selected_sequence = None
+    if sequence is not None and role != "minion":
+        selected_sequence = {
+            "name": sequence["name"],
+            "attacks": deepcopy(sequence.get("attacks_by_role", {}).get(role, sequence["attacks"])),
+        }
     enemy = {key: deepcopy(row[key]) for key in ("name", "hp", "ac", "level", "tier", "loot_table_id", "speed")}
     enemy.update(
         id=enemy_id,
@@ -106,7 +113,7 @@ def _translate(row, encounter_id, enemy_id, role):
         turn_start_damage=deepcopy(
             next((p["turn_start_damage"] for p in row["passives"] if "turn_start_damage" in p), None)
         ),
-        multiattack_sequence=deepcopy(row.get("multiattack_sequence")) if role != "minion" else None,
+        multiattack_sequence=selected_sequence,
         condition_immunities={"grappled": "No Physical Form", "restrained": "No Physical Form"} if choir else {},
         choir_reaction=deepcopy(row["reactions"][0]) if choir else None,
         hollow=(
