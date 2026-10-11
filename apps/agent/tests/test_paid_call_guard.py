@@ -92,11 +92,25 @@ def test_paid_transport_refusal_survives_swallowed_errors_and_fixture_teardown(a
         DEEPGRAM_API_KEY="fake",
         INWORLD_API_KEY="fake",
     )
-    with TemporaryDirectory(prefix="paid_guard_probe_", dir=_TESTS) as directory:
+    env["PYTHONPATH"] = os.pathsep.join([str(_TESTS), env.get("PYTHONPATH", "")])
+    with TemporaryDirectory(prefix="paid_guard_probe_") as directory:
         module = Path(directory) / "test_probe.py"
         module.write_text(_PROBE)
         result = subprocess.run(
-            [sys.executable, "-m", "pytest", str(module), "-q", "-rA", "-p", "no:cacheprovider"],
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                "-c",
+                str(_TESTS.parent / "pyproject.toml"),
+                "-p",
+                "conftest",
+                str(module),
+                "-q",
+                "-rA",
+                "-p",
+                "no:cacheprovider",
+            ],
             cwd=_TESTS.parent,
             env=env,
             capture_output=True,
