@@ -45,6 +45,7 @@ from livekit.agents.voice import RunContext
 
 import ability_persistence
 import db
+import db_content_queries
 import db_mutations
 import db_mutations_veil_ward
 import db_queries
@@ -54,6 +55,7 @@ import ward_resolution
 from action_sound_content import publish_action_sound
 from resource_costs import gate_pool
 from session_data import SessionData
+from terrain import is_natural
 from veil_ward import WardDurationKind
 
 logger = logging.getLogger("divineruin.tools")
@@ -66,6 +68,7 @@ async def _activate_veil_ward_impl(
     caster_id: str | None = None,
     db_mod=db,
     queries_mod=db_queries,
+    content_mod=db_content_queries,
     persistence_mod=ability_persistence,
     ward_mutations_mod=db_mutations_veil_ward,
     ward_mod=veil_ward,
@@ -81,6 +84,7 @@ async def _activate_veil_ward_impl(
             caster_id=caster_id,
             db_mod=db_mod,
             queries_mod=queries_mod,
+            content_mod=content_mod,
             persistence_mod=persistence_mod,
             ward_mutations_mod=ward_mutations_mod,
             ward_mod=ward_mod,
@@ -96,6 +100,7 @@ async def _activate_veil_ward_locked(
     caster_id: str | None,
     db_mod,
     queries_mod,
+    content_mod,
     persistence_mod,
     ward_mutations_mod,
     ward_mod,
@@ -148,6 +153,16 @@ async def _activate_veil_ward_locked(
         if level < source.min_level:
             raise ToolError(f"A Veil Ward requires level {source.min_level}; you are level {level}.")
 
+        focus_cost = source.focus
+        if archetype == "druid":
+            try:
+                terrain = await content_mod.get_location_terrain(session.location_id)
+                if not is_natural(terrain):
+                    raise ToolError("A Druid Veil Ward requires natural terrain.")
+            except ValueError as error:
+                raise ToolError(str(error)) from error
+            focus_cost = 3 if terrain == "ancient_forest" else source.focus
+
         # A ROUNDS ward is combat-only: 3 rounds are meaningless where no rounds elapse (§4).
         # This must precede the write — location_expires_at RAISES on a ROUNDS duration, so
         # without this gate an out-of-combat Paladin gets a crash instead of a narratable refusal.
@@ -166,7 +181,7 @@ async def _activate_veil_ward_locked(
 
         # Gate Focus then Stamina (fail-loud, pure); each returns the post-deduct
         # value or None when its cost is 0. One write below applies both.
-        new_focus = gate_pool(player, "focus", source.focus, label="a Veil Ward")
+        new_focus = gate_pool(player, "focus", focus_cost, label="a Veil Ward")
         new_stamina = gate_pool(player, "stamina", source.stamina, label="a Veil Ward")
         if new_focus is not None or new_stamina is not None:
             session.validate_acting_player(pid)
@@ -205,7 +220,7 @@ async def _activate_veil_ward_locked(
             "active": True,
             "source": archetype,
             "scope": scope.kind.value,
-            "deducted": {"focus": source.focus, "stamina": source.stamina},
+            "deducted": {"focus": focus_cost, "stamina": source.stamina},
         }
     )
 

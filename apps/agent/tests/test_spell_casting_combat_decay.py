@@ -63,7 +63,6 @@ def _spell(
         narration_cue="A surge of raw power snaps outward.",
         audio_cue="SFX-001",
         resonance_by_source={source: resonance},
-        terrain_effects={},
         concentration=False,
     )
 

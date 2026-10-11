@@ -16,7 +16,7 @@ the JSON test fixture, and sync accessors.
 
 The catalog is SOURCE-keyed, not archetype-keyed: get_spells_by_source filters by
 the magic source, the analogue of abilities.get_archetype_abilities. The row shape
-carries the full M3.3 cast-time schema (resonance_by_source, terrain_effects,
+carries the full M3.3 cast-time schema (resonance_by_source,
 audio_cue, concentration); parse_spell_row is STRICT on these
 (decision spell-loader-strict-contract) while still ignoring genuinely-unknown extra
 fields for forward compatibility. Downstream stories consume get_spell /
@@ -72,19 +72,8 @@ class Spell:
     narration_cue: str
     verbal: bool
     hostile: bool
-    # M3.3 cast-time fields. Defaults keep in-code Spell(...) builds (tests/fixtures)
-    # working without supplying them; parse_spell_row REQUIRES them in raw rows (strict,
-    # decision spell-loader-strict-contract). resonance_by_source maps the spell's magic
-    # source to its catalog Resonance value (magic.md Spell-to-Resonance Map); terrain_effects
-    # holds the Primal terrain->Resonance overrides ({} for non-Primal); audio_cue is a free-text
-    # DM audio-direction cue voiced/directed on cast (returned in the cast packet, spell_casting.py)
-    # — NOT a literal client SFX code, nothing maps it to real SFX yet; codes like "CMB-008" are
-    # shorthand within that free text. Required + non-empty per row (test_spells_content guards it,
-    # concern e3af222251df); concentration gates M3.4. (The catalog "Level"
-    # column / per-row level_requirement was deleted in story-008: orphaned non-gating metadata
-    # with no reader — access is gated by the per-archetype tier tables, not per-spell level.)
+    # Raw catalog rows require these fields; defaults support in-code builds.
     resonance_by_source: dict[str, int] = field(default_factory=dict)
-    terrain_effects: dict[str, int] = field(default_factory=dict)
     audio_cue: str = ""
     concentration: bool = False
     # M4.8 story-004: the beneficial condition this spell PRODUCES on its target (e.g. "blessed"),
@@ -115,7 +104,7 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
     the underlying error with the row id for context; owns fail-loud validation of the
     source/spell_tier enums and the typed fields.
 
-    STRICT on the four known M3.3 fields (resonance_by_source, terrain_effects, audio_cue,
+    STRICT on the three known M3.3 fields (resonance_by_source, audio_cue,
     concentration) — a missing or malformed one fails loud naming the
     row (decision spell-loader-strict-contract). Genuinely-unknown extra fields are still
     ignored, so the loader stays forward-compatible for future schema additions. Generic
@@ -160,7 +149,6 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
             verbal=data["verbal"],
             hostile=data["hostile"],
             resonance_by_source=parse_int_dict(data["resonance_by_source"], f"spell {spell_id!r} resonance_by_source"),
-            terrain_effects=parse_int_dict(data["terrain_effects"], f"spell {spell_id!r} terrain_effects"),
             audio_cue=parse_str(data["audio_cue"], f"spell {spell_id!r} audio_cue"),
             concentration=concentration,
             applies_condition=applies_condition,

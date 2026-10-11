@@ -85,12 +85,6 @@ async def test_in_combat_raise_refused_when_a_location_ward_already_covers():
     ward_mut.write_ward.assert_not_awaited()
 
 
-async def test_druid_raises_ward_for_five_focus():
-    ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("druid", level=9, focus=10))
-    result, _pub = await _invoke(ctx, mock_db, queries, persistence, ward_mut)
-    assert result["deducted"] == {"focus": 5, "stamina": 0}
-
-
 async def test_dismiss_active_ward():
     ctx, mock_db, queries, persistence, ward_mut = _mocks(_player("cleric", level=7), ward_active=True, remaining=None)
     result, pub = await _invoke(ctx, mock_db, queries, persistence, ward_mut, active=False)

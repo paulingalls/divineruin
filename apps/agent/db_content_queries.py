@@ -29,6 +29,14 @@ async def get_location(location_id: str) -> dict | None:
     return data
 
 
+async def get_location_terrain(location_id: str) -> str:
+    """Read required terrain without a fallback; name the location on malformed content."""
+    location = await get_location(location_id)
+    if location is None or not isinstance(location.get("terrain"), str) or not location["terrain"]:
+        raise ValueError(f"Location {location_id!r} has missing terrain")
+    return location["terrain"]
+
+
 async def get_all_locations() -> dict[str, dict]:
     """Return every location keyed by id ({id: data}). Used by the resurrection anchor resolver
     (M4.4) which needs the catalog to find same-region settlements + the starter zone. Cache-backed

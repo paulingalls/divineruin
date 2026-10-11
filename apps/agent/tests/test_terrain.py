@@ -27,5 +27,5 @@ def test_decision_130():
 
 @pytest.mark.parametrize("accessor", [resonance_base, is_natural, is_earth_or_stone])
 def test_unknown_scalar_terrain(accessor):
-    with pytest.raises(ValueError, match="normal"):
-        accessor("normal")
+    with pytest.raises(ValueError, match="unknown_terrain"):
+        accessor("unknown_terrain")

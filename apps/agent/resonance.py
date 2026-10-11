@@ -29,6 +29,8 @@ def calculate_resonance_generated(focus_cost: int, source: str, terrain: str | N
     """Return ceil(Focus * multiplier); primal requires a supported location terrain."""
     if focus_cost < 0:
         raise ValueError(f"focus_cost must be non-negative, got {focus_cost}")
+    if focus_cost == 0 and source != "primal":
+        return 0
     if source == "primal":
         multiplier = resonance_base(terrain)  # type: ignore[arg-type]
     else:

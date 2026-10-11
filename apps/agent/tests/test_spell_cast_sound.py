@@ -23,7 +23,6 @@ def _spell(*, spell_id: str = "test_spell", sound_id: str = "impact_arcane") -> 
         narration_cue="A surge of raw power snaps outward.",
         audio_cue="SFX-001",
         resonance_by_source={"arcane": 6},
-        terrain_effects={},
         sound_id=sound_id,
     )
 

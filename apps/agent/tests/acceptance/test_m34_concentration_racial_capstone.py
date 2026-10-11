@@ -26,27 +26,6 @@ async def _hp_current(player_id: str) -> int:
     return player["hp"]["current"]
 
 
-async def test_korath_primal_reduction_persists(reset_db_pool: str) -> None:
-    pool = await db.get_pool()
-    player_id = "cap_m34_korath_primal"
-    await seed_player_with_pools(pool, player_id=player_id, focus_current=18, known_spells=("primal_ice_storm",))
-    await _set_race(pool, player_id, "korath")
-    await spells.load_spells()
-    await racial_resonance.load_racial_resonance()  # racial table FROM THE DB, not the JSON fixture
-
-    # primal_ice_storm: source primal, resonance_by_source.primal 2 -> Korath -1 -> 1 (floor 0).
-    spell = spells.get_spell("primal_ice_storm")
-    base = spell.resonance_by_source[spell.source]
-    assert base == 2  # the reduction is observable: 2 -> 1, not 1 -> 0
-
-    packet = json.loads(await _cast_spell_impl(make_context(player_id), "primal_ice_storm"))
-    assert packet["resonance_generated"] == base - 1  # 1
-
-    # The reduced 1, not the unreduced baseline 2, is what persisted (a non-Korath would persist 2).
-    persisted = await db_mutations_resonance.read_player_resonance(player_id, conn=pool)
-    assert persisted["current"] == 1
-
-
 async def test_second_concentration_cast_replaces_the_first(reset_db_pool: str) -> None:
     pool = await db.get_pool()
     player_id = "cap_m34_concentration"

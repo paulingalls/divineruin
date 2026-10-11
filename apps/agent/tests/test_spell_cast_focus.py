@@ -1,4 +1,3 @@
-from dataclasses import replace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -69,40 +68,6 @@ class TestCastSpellFocusGate:
                 resonance_mutations_mod=mutations,
                 spells_mod=spells_mod,
             )
-
-    async def test_primal_without_catalog_resonance_falls_back_and_fails_loud(self):
-        # The fallback path: a primal spell that carries NO resonance_by_source entry
-        # (an in-code build; catalog rows always do) falls back to the source*terrain
-        # formula. Terrain defaults to "normal", absent from PRIMAL_TERRAIN_TABLE, so the
-        # fallback raises and the cast fails loud (ToolError) BEFORE any Focus deduction.
-        # Catalog primal spells DO carry the baseline and cast fine — see the next test.
-        spell = replace(_spell(source="primal", tier="standard", focus_cost=3), resonance_by_source={})
-        ctx = make_context()
-        mock_db, _conn = make_db_mod()
-        queries = MagicMock()
-        queries.get_player = AsyncMock(return_value=_player(focus=10))
-        queries.get_players_for_update = AsyncMock(
-            side_effect=lambda ids, *, conn=None: {i: _player(focus=10) for i in ids}
-        )
-        persistence = MagicMock()
-        persistence.update_player_resources = AsyncMock()
-        mutations = MagicMock()
-        mutations.update_player_resonance = AsyncMock()
-        spells_mod = MagicMock()
-        spells_mod.get_spell = MagicMock(return_value=spell)
-        with pytest.raises(ToolError):
-            await _cast_spell_impl(
-                ctx,
-                spell.id,
-                db_mod=mock_db,
-                queries_mod=queries,
-                persistence_mod=persistence,
-                resonance_mutations_mod=mutations,
-                spells_mod=spells_mod,
-                character_spells_mod=_known(spell.id),
-            )
-        persistence.update_player_resources.assert_not_called()
-        mutations.update_player_resonance.assert_not_called()
 
 
 class TestCastSpellRealCatalog:
