@@ -13,6 +13,7 @@
     "dev:mobile": "bun run --cwd apps/mobile start",
     "dev:mobile:ios": "bun run --cwd apps/mobile ios",
     "dev:mobile:android": "bun run --cwd apps/mobile android",
+    "android:emulator": "bun run scripts/android-emulator.ts",
     "migrate": "bun --env-file=.env run scripts/migrate.ts",
     "seed": "bun --env-file=.env run uv run --project scripts --frozen python scripts/seed_content.py",
     "dev:agent": "bun --env-file=../../.env run --cwd apps/agent uv run python agent.py dev",

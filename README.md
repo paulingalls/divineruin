@@ -422,6 +422,7 @@ Android builds also work on Macs that can't run the Xcode version Expo SDK 57 re
 | Tool | Notes |
 |------|-------|
 | [Android Studio](https://developer.android.com/studio) | Provides the SDK, emulator, and platform-tools. Gradle installs the NDK, CMake, and the missing SDK platforms on the first build. |
+| Android SDK Command-line Tools | Android Studio → Settings → Languages & Frameworks → Android SDK → SDK Tools → **Android SDK Command-line Tools (latest)**. `bun run android:emulator` uses them to create the emulator. |
 | JDK 17 | Use 17 (React Native's supported JDK). Android Studio bundles Java 24+, whose native-access warnings fail the CMake configure step for `react-native-screens` and `react-native-worklets`. Install [Temurin 17](https://adoptium.net/temurin/releases/?version=17) or any JDK 17. |
 
 Add to your shell profile:
@@ -432,13 +433,19 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
 ```
 
-**Emulator:** create an AVD in Android Studio's Device Manager with at least 4 GB of RAM. Choose a Google APIs image without the Play Store, for the host's architecture (x86_64 on Intel, arm64 on Apple Silicon). The app compiles against API 36. With 2 GB, newer images report that System UI isn't responding.
+**Emulator:** use the project's standard emulator rather than one you made yourself:
+
+```bash
+bun run android:emulator
+```
+
+The first run installs the API 36 Google APIs system image (x86_64 on Intel, arm64 on Apple Silicon) and creates `divineruin-api36`. Every run then reapplies its settings (4 GB of RAM, 4 cores, hardware graphics, no Play Store), boots it if needed, waits for boot to finish, and turns off animations. Hand edits made in Android Studio are reset on the next run. Android Studio's 2 GB defaults leave System UI hanging. The settings live in `scripts/android-emulator.ts`.
 
 **Build and run:**
 
 ```bash
-emulator -avd <avd-name> &              # or start it from Android Studio
-bun run dev:mobile:android -- --device <avd-name>
+bun run android:emulator
+bun run dev:mobile:android -- --device divineruin-api36
 ```
 
 The first build takes 10–20 minutes. Later builds reuse the Gradle cache. The dev client loads JavaScript from Metro on port 8081 and reaches the API server at the Metro host's LAN IP on port 3001.
