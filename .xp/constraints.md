@@ -11,10 +11,11 @@ Constraint case law.
 2. **Tests cost what code costs.** Test lines stay at or below twice the lines
    they test. The commit hook finishes in under a minute; everything slower runs at
    push, at sprint close, or nightly. A slow test is a defect in the test.
-3. **A guard is fault-injected once, when it is added, in its own test file,
-   and only if its failure would be silent or corrupting.** No tests of tests,
-   no meta-tests of gates, no proof that a check's corpus is non-empty. A loud
-   failure needs no guard at all.
+3. **A product guard is fault-injected once, when it is added, in its own test
+   file, and only if its failure would be silent or corrupting.** A test of a
+   test, a hook, a gate or a dev tool is build-time scaffolding: record its red
+   and green in the handback, never commit it into a regular run. Delete
+   meta-tests on sight. A loud failure needs no guard at all.
 4. **Small files: target 300 lines, hard cap 500 — tests included, because
    tests ARE production code**: same review bar, never skipped for tests.
    Over-cap means extract, not scroll. CODE ONLY (human 2026-09-04): authored
@@ -45,3 +46,8 @@ Constraint case law.
 12. **A failure that RECURS is a defect, not variance.** Fix what produces it,
    never the guard that caught it. A note naming an owner is not a schedule: if
    it must be fixed, it is a card.
+13. **Wall clock is a quality budget.** Each check runs once, in the cheapest
+   tier that catches its failure: commit (under a minute), story land (fast
+   lane), push, sprint close (acceptance, Playwright), nightly. No tier re-proves
+   what a lower tier proved on the same tree. Harness cost — containers, seeding,
+   process spawns — is test cost: share it, never pay it per test.
