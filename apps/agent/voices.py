@@ -89,6 +89,10 @@ VOICE_ENV_VARS: dict[str, str] = {
 
 VOICES: dict[str, str] = {key: os.getenv(var, "") for key, var in VOICE_ENV_VARS.items()}
 
+# Registered so their voice_id resolves, but never spoken: the DM narrates their sounds instead,
+# so an empty voice is expected and startup does not warn about it.
+NONVERBAL_VOICE_KEYS: frozenset[str] = frozenset({"COMPANION_SABLE"})
+
 DEFAULT_VOICE = "DM_NARRATOR"
 
 # Pinned explicitly on BOTH speech paths (base_agent's LiveKit plugin and tts_prerender's
