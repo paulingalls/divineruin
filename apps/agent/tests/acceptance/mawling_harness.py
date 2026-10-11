@@ -1,6 +1,8 @@
 """Roomless deterministic commands through the real LiveKit tool boundary."""
 
 import json
+import os
+from typing import Any
 from uuid import uuid4
 
 from acceptance.choir_capstone_harness import reseed_choir_content
@@ -20,9 +22,22 @@ from session_data import CompanionState, SessionData
 
 
 class MawlingHarness:
-    async def start(self, reactions=False, gear=False, companion=False):
+    async def start(self, reactions=False, gear=False, companion=False, role: Any = "standard"):
         self.pool = await db.get_pool()
         await reseed_choir_content(self.pool)
+        self.encounter_id = "ruins_mawling_pair"
+        if role != "standard":
+            template = json.loads(
+                await self.pool.fetchval("SELECT data FROM encounter_templates WHERE id=$1", self.encounter_id)
+            )
+            self.encounter_id = f"maw153_{uuid4().hex}"
+            template["id"] = self.encounter_id
+            template["enemies"][0]["role"] = role
+            await self.pool.execute(
+                "INSERT INTO encounter_templates (id, data) VALUES ($1,$2::jsonb)",
+                self.encounter_id,
+                json.dumps(template),
+            )
         self.players = [f"maw147_{uuid4().hex}" for _ in range(2)]
         for index, pid in enumerate(self.players):
             await seed_player_with_pools(
@@ -83,7 +98,7 @@ class MawlingHarness:
         self.model = ScenarioModel([])
         self.session = AgentSession(llm=self.model, max_tool_steps=5, userdata=self.sd)
         await self.session.start(Agent(instructions="Execute the command.", tools=[enter_mode]))
-        result = await self.command("enter_mode", {"mode": "combat", "encounter_id": "ruins_mawling_pair"})
+        result = await self.command("enter_mode", {"mode": "combat", "encounter_id": self.encounter_id})
         assert isinstance(self.session.current_agent, CombatAgent)
         self.roster = result["participants"]
         self.enemies = [p["id"] for p in self.roster if p["type"] == "enemy"]
@@ -134,6 +149,12 @@ class MawlingHarness:
         return state.to_dict(), [await db_queries.get_player(p) for p in self.players]
 
     async def close(self):
+        if self.encounter_id != "ruins_mawling_pair":
+            await self.pool.execute("DELETE FROM encounter_templates WHERE id=$1", self.encounter_id)
+            if os.environ.get("REDIS_URL"):
+                await (await db.get_redis()).delete(f"encounter:{self.encounter_id}")
+        if not hasattr(self, "session"):
+            return
         await self.session.aclose()
         if self.sd.background is not None:
             await self.sd.background.stop()

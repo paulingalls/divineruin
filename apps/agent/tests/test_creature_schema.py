@@ -90,3 +90,79 @@ def test_catalog_runtime_extensions_use_creature_public_boundary(field, value):
     assert validate_creature_stat_block(block) == []
     attack[field] = value
     assert any(field in problem for problem in validate_creature_stat_block(block))
+
+
+def catalog():
+    return json.loads((ROOT / "content/creatures.json").read_text())
+
+
+@pytest.mark.parametrize(
+    "sequence",
+    [
+        None,
+        {},
+        {"name": "", "attacks": ["Claw"]},
+        {"name": "Claw", "attacks": ["Claw"]},
+        {"name": "Multiattack", "attacks": []},
+        {"name": "Multiattack", "attacks": ["unknown"]},
+        {"name": "Multiattack", "attacks": [3]},
+    ],
+)
+def test_python_rejects_invalid_catalog_sequence(sequence):
+    row = copy.deepcopy(next(r for r in catalog() if r["id"] == "hollow_mawling"))
+    row["multiattack_sequence"] = sequence
+    assert validate_creature_stat_block(row)
+
+
+@pytest.mark.parametrize("change", ["active_only", "ambiguous", "malformed", "name_collision"])
+def test_python_rejects_unresolvable_sequence(change):
+    row = copy.deepcopy(next(r for r in catalog() if r["id"] == "hollow_mawling"))
+    if change == "active_only":
+        row["multiattack_sequence"]["attacks"] = [row["actives"][1]["name"]]
+    elif change == "ambiguous":
+        row["attacks"].append({**row["attacks"][0], "name": "cLAW"})
+    elif change == "malformed":
+        row["multiattack_sequence"]["attacks"] = "Claw"
+    else:
+        row["multiattack_sequence"]["name"] = row["actives"][1]["name"]
+    assert validate_creature_stat_block(row)
+
+
+def test_authored_mawling_sequence_validates():
+    mawling = next(r for r in catalog() if r["id"] == "hollow_mawling")
+    assert validate_creature_stat_block(mawling) == []
+    repeated = copy.deepcopy(mawling)
+    repeated["multiattack_sequence"]["attacks"] = ["claw", "CLAW"]
+    assert validate_creature_stat_block(repeated) == []
+
+
+@pytest.mark.parametrize(
+    "overrides,diagnostic",
+    [
+        ({"elite": ["claw", "CLAW"], "boss": ["Claw"]}, None),
+        ({}, None),
+        *[({role: ["Claw"]}, f".{role}: unknown role") for role in ("bogus", "minion", "standard", "named")],
+        *[(value, ": expected object") for value in (None, [], "elite")],
+        *[({"elite": value}, ".elite: expected array") for value in (None, "Claw")],
+        ({"elite": []}, ".elite: expected non-empty array"),
+        *[({"elite": [ref]}, ".elite: expected unambiguous attack reference") for ref in (3, "unknown", "Scatter")],
+    ],
+)
+def test_role_sequence_schema(overrides, diagnostic):
+    row = copy.deepcopy(next(r for r in catalog() if r["id"] == "hollow_mawling"))
+    row["multiattack_sequence"]["attacks_by_role"] = overrides
+    expected = [] if diagnostic is None else ["multiattack_sequence.attacks_by_role" + diagnostic]
+    assert validate_creature_stat_block(row) == expected
+
+
+def test_role_sequence_rejects_ambiguous_reference():
+    row = copy.deepcopy(next(r for r in catalog() if r["id"] == "hollow_mawling"))
+    row["multiattack_sequence"] = {
+        "name": "Multiattack",
+        "attacks": ["Dissolution Maw"],
+        "attacks_by_role": {"elite": ["claw"]},
+    }
+    row["attacks"].append({**row["attacks"][0], "name": "cLAW"})
+    assert validate_creature_stat_block(row) == [
+        "multiattack_sequence.attacks_by_role.elite: expected unambiguous attack reference"
+    ]
