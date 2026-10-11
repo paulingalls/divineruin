@@ -31,6 +31,13 @@ class ScenarioStream(llm.LLMStream):
         for item in self._chat_ctx.items:
             if isinstance(item, llm.FunctionCallOutput) and item.call_id in model.calls:
                 model.receipts[item.call_id] = item
+        if model.checkpoint and len(model.receipts) > model.checked:
+            model.checked = len(model.receipts)
+            try:
+                await model.checkpoint(model.checked, list(model.receipts.values())[-1])
+            except Exception as error:
+                model.failure = error
+                raise
         if len(model.calls) < len(model.commands):
             name, arguments = model.commands[len(model.calls)]
             call_id = uuid.uuid4().hex
@@ -55,9 +62,12 @@ class ScenarioStream(llm.LLMStream):
 
 
 class ScenarioModel(llm.LLM):
-    def __init__(self, commands):
+    def __init__(self, commands, *, checkpoint=None):
         super().__init__()
         self.commands = commands
+        self.checkpoint = checkpoint
+        self.checked = 0
+        self.failure = None
         self.calls = {}
         self.receipts = {}
         self.narrated = False
@@ -96,7 +106,7 @@ def assert_hud_floor(events):
 
 async def run_voice_commands(harness, sd, model, agent, monkeypatch, *, speaker=None, require_hud=True):
     host, guest = harness.player_one_identity, harness.player_two_identity
-    session = AgentSession(llm=model, tts=ToneTTS(), max_tool_steps=5, userdata=sd)
+    session = AgentSession(llm=model, tts=ToneTTS(), max_tool_steps=max(5, len(model.commands) + 2), userdata=sd)
     lifecycle: PartyLifecycle | None = None
     multiplayer = None
     stream: rtc.AudioStream | None = None
@@ -153,8 +163,10 @@ async def run_voice_commands(harness, sd, model, agent, monkeypatch, *, speaker=
             speaker = speaker or host
             await harness.play(speaker, PLAYER_TWO_SPEECH)
             try:
-                async with asyncio.timeout(25):
+                async with asyncio.timeout(max(25, len(model.commands) * 5)):
                     while not model.narrated or sum(received_audio) < 0.2:
+                        if model.failure is not None:
+                            raise model.failure
                         await asyncio.sleep(0.02)
             except TimeoutError as error:
                 raise AssertionError("microphone command produced no complete gameplay/DM/audio receipt") from error
