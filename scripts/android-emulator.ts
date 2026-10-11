@@ -3,8 +3,9 @@
 // One lightweight AVD for everyone: API 36 (the app's compileSdk), Google APIs
 // without the Play Store, 4 GB RAM. The settings are re-applied on every run,
 // so hand edits in Android Studio can't drift it back to the 2 GB defaults
-// that leave System UI unresponsive. Animations are switched off after boot,
-// which speeds the emulator up and steadies Maestro.
+// that leave System UI unresponsive. After boot, animations are switched off
+// (faster, steadier Maestro) and the virtual mic is wired to the host's
+// microphone so you can talk to the DM. The emulator resets that on every boot.
 //
 //   bun run android:emulator
 import { existsSync } from "node:fs";
@@ -24,6 +25,7 @@ export const AVD_SETTINGS: Record<string, string> = {
   "hw.keyboard": "yes",
   "PlayStore.enabled": "false",
   "disk.dataPartition.size": "6G",
+  "hw.audioInput": "yes",
 };
 
 const ANIMATION_SCALES = [
@@ -156,7 +158,8 @@ async function main(): Promise<void> {
   for (const scale of ANIMATION_SCALES) {
     await run([tools.adb, "-s", serial, "shell", "settings", "put", "global", scale, "0"]);
   }
-  console.log(`${AVD_NAME} is ready on ${serial} (animations off).`);
+  await run([tools.adb, "-s", serial, "emu", "avd", "hostmicon"]);
+  console.log(`${AVD_NAME} is ready on ${serial} (animations off, host mic on).`);
 }
 
 if (import.meta.main) {

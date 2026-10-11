@@ -30,6 +30,7 @@ describe("AVD_SETTINGS", () => {
       "hw.gpu.enabled": "yes",
       "hw.gpu.mode": "host",
       "PlayStore.enabled": "false",
+      "hw.audioInput": "yes",
     });
   });
 });
