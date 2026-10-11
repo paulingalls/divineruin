@@ -25,7 +25,7 @@ class _FakeConn:
 
 
 def _loc(loc_id: str, *, resource_table=None) -> dict:
-    data: dict = {"id": loc_id, "exits": {}}
+    data: dict = {"id": loc_id, "exits": {}, "region_type": "wilderness", "terrain": "forest"}
     if resource_table is not None:
         data["resource_table"] = resource_table
     return {"id": loc_id, "data": json.dumps(data)}

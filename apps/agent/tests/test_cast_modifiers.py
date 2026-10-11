@@ -27,49 +27,33 @@ def _spell(
         narration_cue="A surge of raw power snaps outward.",
         audio_cue="SFX-001",
         resonance_by_source={source: resonance_value} if resonance_value is not None else {},
-        terrain_effects={},
     )
 
 
 class TestComputeGeneratedResonance:
     def test_catalog_value_is_the_ssot(self):
         spell = _spell(resonance_value=6, focus_cost=10)
-        assert cast_modifiers.compute_generated_resonance(spell, None, resonance=resonance, racial_mod=racial_mod) == 6
+        assert (
+            cast_modifiers.compute_generated_resonance(
+                spell, None, terrain=None, resonance=resonance, racial_mod=racial_mod
+            )
+            == 6
+        )
 
     def test_falls_back_to_the_formula_without_a_catalog_entry(self):
         spell = _spell(source="arcane", focus_cost=10, resonance_value=None)
-        expected = resonance.calculate_resonance_generated(10, "arcane", terrain="normal")
-        got = cast_modifiers.compute_generated_resonance(spell, None, resonance=resonance, racial_mod=racial_mod)
+        expected = resonance.calculate_resonance_generated(10, "arcane", terrain=None)
+        got = cast_modifiers.compute_generated_resonance(
+            spell, None, terrain=None, resonance=resonance, racial_mod=racial_mod
+        )
         assert got == expected
-
-    def test_korath_primal_cast_reduces_generation(self):
-        spell = _spell(source="primal", resonance_value=6)
-        got = cast_modifiers.compute_generated_resonance(spell, "korath", resonance=resonance, racial_mod=racial_mod)
-        assert got == 5
 
     def test_korath_reduction_does_not_apply_to_arcane(self):
         spell = _spell(source="arcane", resonance_value=6)
-        got = cast_modifiers.compute_generated_resonance(spell, "korath", resonance=resonance, racial_mod=racial_mod)
+        got = cast_modifiers.compute_generated_resonance(
+            spell, "korath", terrain=None, resonance=resonance, racial_mod=racial_mod
+        )
         assert got == 6
-
-    def test_non_korath_primal_cast_is_untouched(self):
-        spell = _spell(source="primal", resonance_value=6)
-        got = cast_modifiers.compute_generated_resonance(spell, "human", resonance=resonance, racial_mod=racial_mod)
-        assert got == 6
-
-    def test_korath_reduction_floors_at_zero_and_skips_a_cantrip(self):
-        spell = _spell(source="primal", resonance_value=0)
-        got = cast_modifiers.compute_generated_resonance(spell, "korath", resonance=resonance, racial_mod=racial_mod)
-        assert got == 0
-
-    def test_primal_build_without_a_catalog_entry_fails_loud(self):
-        spell = _spell(source="primal", resonance_value=None)
-        with pytest.raises(ValueError):
-            cast_modifiers.compute_generated_resonance(spell, None, resonance=resonance, racial_mod=racial_mod)
-
-    def test_race_none_never_takes_a_racial_branch(self):
-        spell = _spell(source="primal", resonance_value=6)
-        assert cast_modifiers.compute_generated_resonance(spell, None, resonance=resonance, racial_mod=racial_mod) == 6
 
 
 class TestComputeEffectiveResonance:

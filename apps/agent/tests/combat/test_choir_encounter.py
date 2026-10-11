@@ -11,6 +11,7 @@ from tests.combat.test_start_combat import _make_start_combat_mocks
 async def start_choir():
     mutations, queries, content = _make_start_combat_mocks()
     mutations.set_player_flag = AsyncMock()
+    content.get_location_terrain = AsyncMock(return_value="forest")
     content.get_encounter_template = AsyncMock(
         return_value=next(
             row
@@ -266,6 +267,7 @@ async def test_named_entry_rejects_unsupported_before_effects(species, role, moc
         if row["id"] == "hollow_choir"
     )
     template["enemies"][0].update(creature_id=species, role=role)
+    content.get_location_terrain = AsyncMock(return_value="forest")
     content.get_encounter_template = AsyncMock(return_value=template)
 
     async def load(_id, **kwargs):

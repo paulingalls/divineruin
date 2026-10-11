@@ -136,7 +136,9 @@ def test_native_probe_requires_service_and_cannot_write_success_without_docker(t
         env={**os.environ, "DOCKER_HOST": "unix:///tmp/divineruin-choir-missing-docker.sock", "REQUIRE_DOCKER": "0"},
         capture_output=True,
         text=True,
-        timeout=20,
+        # The probe imports the agent and then fails on Docker: ~12s alone on a 4-core laptop,
+        # over 20s while the sprint hook's acceptance, Playwright and Docker lanes share it.
+        timeout=60,
     )
     assert failed.returncode != 0
     assert "Docker is required for acceptance tests but is unavailable" in failed.stderr

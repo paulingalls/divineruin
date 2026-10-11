@@ -14,7 +14,7 @@ The activation tool and the cast-time halving compose these primitives.
 
 Spec source: docs/game_mechanics/game_mechanics_magic.md §Veil Ward (189-217):
 generation halved (round down), +4 echo, -1 damage die, -1 DC; sources Cleric L7 4F /
-Druid L9 5F (natural terrain only) / Paladin L10 3F+3S, plus Artificer item and Sacred
+Druid L9 5F (3F in ancient_forest; natural terrain only) / Paladin L10 3F+3S, plus Artificer item and Sacred
 sites. story-005 completes WARD_SOURCES with the last two: the Artificer item and the
 Sacred-site passive entity, both ``tool_raisable=False`` — modeled, but not raisable at will.
 
@@ -128,10 +128,6 @@ class WardSource:
     tool_raisable: bool = False
 
 
-# Source id -> ward source (spec 204-210). Only the enforceable cost fields are
-# modeled: Druid's "natural terrain only" restriction is NOT a column because no runtime
-# location->terrain map exists yet (an unenforced flag would be forward-wired dead state).
-#
 # The first three keys are archetypes a player casts as, and the DM tool may raise them. The
 # last two are NOT raisable through the tool (``tool_raisable=False``) and the tool gates on
 # that flag, never on key presence: "artificer" is a real playable class whose ward costs 0

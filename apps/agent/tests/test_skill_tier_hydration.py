@@ -75,6 +75,7 @@ def _combat_dependencies(pool) -> tuple[MagicMock, Any, MagicMock]:
     mutations.save_combat_state = AsyncMock()
     content = MagicMock()
     content.load_creature_enemy = load_test_creature
+    content.get_location_terrain = AsyncMock(return_value="forest")
     content.get_encounter_template = AsyncMock(return_value=_ashmark_patrol())
     content.get_faction = AsyncMock(
         return_value={

@@ -15,7 +15,7 @@ async def row_counts(dsn):
         await conn.close()
 
 
-@pytest.mark.parametrize("kind", ["creature", "gathering_node"])
+@pytest.mark.parametrize("kind", ["creature", "gathering_node", "location_terrain"])
 def test_invalid_content_rolls_back_every_table(fresh_migrated_db, tmp_path, monkeypatch, capsys, kind):
     monkeypatch.setenv("DATABASE_URL", fresh_migrated_db)
     monkeypatch.setattr(seed_content, "CONTENT_DIR", tmp_path)
@@ -29,6 +29,15 @@ def test_invalid_content_rolls_back_every_table(fresh_migrated_db, tmp_path, mon
         rows[0]["level"] = 8.0
         path.write_text(json.dumps(rows))
         expected = "hollow_shadeling: level: expected integer"
+    elif kind == "location_terrain":
+        path = tmp_path / "locations.json"
+        rows = json.loads(path.read_text())
+        invalid_rows = [row for row in rows if row["region_type"] == "city"][:5]
+        invalid_rows[0].pop("terrain", None)
+        for row, value in zip(invalid_rows[1:], ["unknown_terrain", "mountain", None, 42], strict=True):
+            row["terrain"] = value
+        path.write_text(json.dumps(rows))
+        expected = invalid_rows[0]["id"]
     else:
         path = tmp_path / "gathering_nodes.json"
         rows = json.loads(path.read_text())
@@ -38,7 +47,24 @@ def test_invalid_content_rolls_back_every_table(fresh_migrated_db, tmp_path, mon
     with pytest.raises(SystemExit) as exit_info:
         asyncio.run(seed_content.main())
     assert exit_info.value.code != 0
-    assert expected in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert expected in output
+    if kind == "location_terrain":
+        for row, fragments in zip(
+            invalid_rows,
+            [
+                ("terrain", "None"),
+                ("unknown_terrain",),
+                ("mountain", "city", "wilderness"),
+                ("terrain", "None"),
+                ("terrain", "42"),
+            ],
+            strict=True,
+        ):
+            diagnostic = next(
+                line for line in output.splitlines() if row["id"] in line and all(part in line for part in fragments)
+            )
+            assert diagnostic
     assert all(count == 0 for count in asyncio.run(row_counts(fresh_migrated_db)).values())
 
 
@@ -66,3 +92,16 @@ def test_valid_seed_commits_creatures_and_map(fresh_migrated_db, monkeypatch):
         "corrupted_treant",
     }
     assert counts["player_map_progress"] > 0
+
+    async def seeded_locations():
+        conn = await asyncpg.connect(fresh_migrated_db)
+        try:
+            return {
+                row["id"]: json.loads(row["data"])["terrain"]
+                for row in await conn.fetch("SELECT id, data FROM locations")
+            }
+        finally:
+            await conn.close()
+
+    expected = {row["id"]: row["terrain"] for row in json.loads((ROOT / "content/locations.json").read_text())}
+    assert asyncio.run(seeded_locations()) == expected

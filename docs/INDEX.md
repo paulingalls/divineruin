@@ -404,21 +404,21 @@ Worktree bootstrap design brief and measured implementation outcome.
 
 ---
 
-## world_data_simulation.md (950 lines)
+## world_data_simulation.md (997 lines)
 
 DB schemas, JSON entity formats, world sim rules, content style guide.
 
-Additional topics: Location Schema: Full JSON: conditions, hidden elements, exits, ambient sounds; NPC Schema: Personality, speech style, knowledge gating, schedules, voice mapping; Item Schema: Mechanical effects, economic properties; Quest Schema: State machine: stages, branches, completion conditions, world effects; Event/Trigger Schema: Trigger conditions, probability, cooldown, priority; Faction Schema: Reputation tiers with gameplay effects, relationships
+Additional topics: Authoring a Location: required fields, terrain/region_type rule, navigation vs terrain, region ids, exits and return exits, reference checks, catalog pins, seed and validation commands, lore to read first; Location Schema: Full JSON: conditions, hidden elements, exits, ambient sounds; NPC Schema: Personality, speech style, knowledge gating, schedules, voice mapping; Item Schema: Mechanical effects, economic properties; Quest Schema: State machine: stages, branches, completion conditions, world effects; Event/Trigger Schema: Trigger conditions, probability, cooldown, priority; Faction Schema: Reputation tiers with gameplay effects, relationships
 
 | Section | Lines | What's There |
 |---|---|---|
 | Purpose | 3-10 | Content authoring format, world simulation rules, and data model; sparse data, DM narrates |
-| Content Authoring Format | 11-461 | JSON schemas, Tier 1 (authored) vs Tier 2 (generated) |
-| Content Style Guide | 462-621 | Write for the ear, description limits, NPC content, Hollow wrongness |
-| World Simulation Rules | 622-811 | World clock (1:1), 4 simulation layers (per-minute through event-driven) |
-| Data Model | 812-909 | PostgreSQL + Redis: 10 content tables, 12 state tables, 7 Redis patterns |
-| MVP Content Scope | 910-938 | ~20 locations, ~25 NPCs, ~40 items, ~5 quests, ~18 events |
-| Cross-References | 939-950 | Where these schemas and rules connect to the other design docs |
+| Content Authoring Format | 11-508 | JSON schemas, Tier 1 (authored) vs Tier 2 (generated) |
+| Content Style Guide | 509-668 | Write for the ear, description limits, NPC content, Hollow wrongness |
+| World Simulation Rules | 669-858 | World clock (1:1), 4 simulation layers (per-minute through event-driven) |
+| Data Model | 859-956 | PostgreSQL + Redis: 10 content tables, 12 state tables, 7 Redis patterns |
+| MVP Content Scope | 957-985 | ~20 locations, ~25 NPCs, ~40 items, ~5 quests, ~18 events |
+| Cross-References | 986-997 | Where these schemas and rules connect to the other design docs |
 
 ---
 
@@ -892,7 +892,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/03_magic.md (191 lines)
+## milestones/03_magic.md (192 lines)
 
 ---
 
@@ -920,7 +920,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/10_terrain.md (129 lines)
+## milestones/10_terrain.md (125 lines)
 
 ---
 
@@ -936,7 +936,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/REMAINING.md (217 lines)
+## milestones/REMAINING.md (198 lines)
 
 ---
 

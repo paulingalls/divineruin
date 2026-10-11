@@ -12,7 +12,7 @@ import { asRecord } from "./parse-helpers.ts";
 // spell-catalog-full-casting-ssot), superseding the M8 elective-only seam (235ae150c5d3):
 // caster core spells now live in the catalog too (archetype_abilities `core` rows stay as
 // the access grant). This TS loader stays lenient — the M3.3 fields (resonance_by_source,
-// terrain_effects, ...) are still ignored here; mirroring Python's strict-require +
+// audio_cue, concentration) are still ignored here; mirroring Python's strict-require +
 // int-value validation is tracked as concern 26ab12def2a3.
 
 const SPELL_SOURCES = new Set<SpellSource>(["arcane", "divine", "primal"]);

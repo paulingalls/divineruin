@@ -56,6 +56,7 @@ async def test_start_combat_hands_each_command_to_the_dm_as_a_mark_action(
     )
     content = MagicMock(
         load_creature_enemy=load_test_creature,
+        get_location_terrain=AsyncMock(return_value="forest"),
         get_encounter_template=AsyncMock(return_value=encounter),
         get_faction=AsyncMock(return_value=_THORNWATCH),
     )

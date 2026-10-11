@@ -380,6 +380,9 @@ async def _start_combat_locked(
     for participant in participants:
         initialize(participant)
 
+    from combat_terrain import resolve_terrain
+
+    terrain = await resolve_terrain(session, content_mod=content)
     combat_id = f"combat_{uuid.uuid4().hex[:8]}"
     combat_state = CombatState(
         encounter_id=encounter_id,
@@ -389,6 +392,7 @@ async def _start_combat_locked(
         round_number=1,
         current_turn_index=0,
         location_id=session.location_id,
+        terrain=terrain,
         faction_id=combat_faction_id,
         spatial=spatial,
     )

@@ -91,6 +91,7 @@ async def _invoke(ctx, mock_db, queries, persistence, ward_mut, active=True, cas
             caster_id=caster_id,
             db_mod=mock_db,
             queries_mod=queries,
+            content_mod=MagicMock(get_location_terrain=AsyncMock(return_value="forest")),
             persistence_mod=persistence,
             ward_mutations_mod=ward_mut,
             combat_mod=combat_mod or _combat_mod(),

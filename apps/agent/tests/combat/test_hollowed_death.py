@@ -26,7 +26,6 @@ def _revival_spell(spell_id: str = "divine_revivify") -> Spell:
         narration_cue="A thread of life, rewoven.",
         audio_cue="SFX-REV",
         resonance_by_source={"divine": 0},
-        terrain_effects={},
         concentration=False,
     )
 

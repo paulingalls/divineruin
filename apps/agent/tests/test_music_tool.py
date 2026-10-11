@@ -22,6 +22,7 @@ class TestStartCombatDifficulty:
     async def test_combat_started_includes_difficulty(self, mock_sounds, mock_event):
         mock_content = MagicMock()
         mock_content.load_creature_enemy = load_test_creature
+        mock_content.get_location_terrain = AsyncMock(return_value="forest")
         mock_content.get_encounter_template = AsyncMock(
             return_value={
                 "scene_placement": {
@@ -81,6 +82,7 @@ class TestStartCombatDifficulty:
     async def test_combat_started_defaults_to_moderate(self, mock_sounds, mock_event):
         mock_content = MagicMock()
         mock_content.load_creature_enemy = load_test_creature
+        mock_content.get_location_terrain = AsyncMock(return_value="forest")
         mock_content.get_encounter_template = AsyncMock(
             return_value={
                 "scene_placement": {

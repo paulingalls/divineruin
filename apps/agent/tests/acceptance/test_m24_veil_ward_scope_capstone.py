@@ -21,6 +21,17 @@ import veil_ward_tools
 
 _WEAPON = {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}
 _SPELL_ID = "arcane_fireball"
+_HALL_LOCATION = {
+    "name": "Hall",
+    "terrain": "city",
+    "region_type": "city",
+    "tier": 1,
+    "district": "hall",
+    "region": "off_catalog",
+    "atmosphere": "Quiet hall.",
+    "tags": [],
+    "exits": {},
+}
 
 
 def _ward_events(room) -> list[dict]:
@@ -52,6 +63,11 @@ async def test_ward_raised_by_one_member_halves_every_caster_in_the_encounter(re
     pool = await db.get_pool()
     a, b = "cap_m24_ac1_cleric", "cap_m24_ac1_mage"
     location = "cap_m24_ac1_hall"
+    await pool.execute(
+        "INSERT INTO locations (id, data) VALUES ($1, $2::jsonb) ON CONFLICT (id) DO NOTHING",
+        location,
+        json.dumps({"id": location, **_HALL_LOCATION}),
+    )
     await seed_player_with_pools(pool, player_id=a, class_="cleric", focus_current=20, known_spells=(_SPELL_ID,))
     await _bump_level(pool, a, 7)
     await seed_player_with_pools(pool, player_id=b, class_="mage", focus_current=20, known_spells=(_SPELL_ID,))
@@ -113,6 +129,11 @@ async def test_encounter_ward_dies_with_the_combat_and_the_next_cast_is_unhalved
     pool = await db.get_pool()
     player_id = "cap_m24_ac2_cleric"
     location = "cap_m24_ac2_hall"
+    await pool.execute(
+        "INSERT INTO locations (id, data) VALUES ($1, $2::jsonb) ON CONFLICT (id) DO NOTHING",
+        location,
+        json.dumps({"id": location, **_HALL_LOCATION}),
+    )
     await seed_player_with_pools(
         pool, player_id=player_id, class_="cleric", focus_current=20, known_spells=(_SPELL_ID,)
     )
@@ -162,6 +183,11 @@ async def test_no_player_row_carries_legacy_ward_state(reset_db_pool: str) -> No
     pool = await db.get_pool()
     player_id = "cap_m24_ac3_cleric"
     location = "cap_m24_ac3_hall"
+    await pool.execute(
+        "INSERT INTO locations (id, data) VALUES ($1, $2::jsonb) ON CONFLICT (id) DO NOTHING",
+        location,
+        json.dumps({"id": location, **_HALL_LOCATION}),
+    )
     await seed_player_with_pools(pool, player_id=player_id, class_="cleric", focus_current=20)
     await _bump_level(pool, player_id, 7)
 
@@ -185,6 +211,11 @@ async def test_paladin_rounds_ward_expires_on_the_third_wrap(reset_db_pool: str)
     pool = await db.get_pool()
     player_id = "cap_m24_ac4_paladin"
     location = "cap_m24_ac4_paladin_hall"
+    await pool.execute(
+        "INSERT INTO locations (id, data) VALUES ($1, $2::jsonb) ON CONFLICT (id) DO NOTHING",
+        location,
+        json.dumps({"id": location, **_HALL_LOCATION}),
+    )
     await seed_player_with_pools(pool, player_id=player_id, class_="paladin", focus_current=10, stamina_current=10)
     await _bump_level(pool, player_id, 10)
     await _equip_weapon(pool, player_id)
@@ -231,6 +262,11 @@ async def test_anchor_survives_wrap_beats_and_expires_on_the_world_clock(reset_d
     pool = await db.get_pool()
     player_id = "cap_m24_ac4_anchor"
     location = "cap_m24_ac4_anchor_hall"
+    await pool.execute(
+        "INSERT INTO locations (id, data) VALUES ($1, $2::jsonb) ON CONFLICT (id) DO NOTHING",
+        location,
+        json.dumps({"id": location, **_HALL_LOCATION}),
+    )
     await seed_player_with_pools(pool, player_id=player_id, class_="mage", focus_current=20, known_spells=(_SPELL_ID,))
     await _equip_weapon(pool, player_id)
     await db_mutations.add_inventory_item(player_id, "veil_ward_anchor_small", 1, conn=pool)

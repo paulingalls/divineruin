@@ -63,7 +63,7 @@ async def test_luna_pilot_emits_every_tool_as_strict(monkeypatch, profile, tools
         )
 
     http_client = httpx.AsyncClient(transport=httpx.MockTransport(respond))
-    sdk_client = openai_sdk.AsyncOpenAI(api_key="test", http_client=http_client)
+    sdk_client = openai_sdk.AsyncOpenAI(api_key="test", base_url="http://localhost/v1", http_client=http_client)
     monkeypatch.delenv("GAMEPLAY_LLM", raising=False)
     monkeypatch.setenv("OPENAI_API_KEY", "test")
     selected = create_gameplay_llm("unused-anthropic-model")
