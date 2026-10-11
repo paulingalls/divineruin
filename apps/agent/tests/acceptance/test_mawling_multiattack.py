@@ -1,6 +1,5 @@
 """The authored Mawling sequence reaches the DM through public commands."""
 
-import copy
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -12,7 +11,6 @@ from acceptance.mawling_harness import MawlingHarness
 import db_mutations
 import db_queries
 from creature_combat import translate_creature
-from creature_schema import validate_creature_stat_block
 
 
 @pytest.fixture
@@ -24,20 +22,39 @@ def mock_combat_agent_factory():
 async def maw(reset_db_pool, request):
     harness = MawlingHarness()
     try:
-        await harness.start(reactions=getattr(request, "param", False))
+        param = getattr(request, "param", False)
+        await harness.start(**param if isinstance(param, dict) else {"reactions": param})
         yield harness
     finally:
-        if hasattr(harness, "session"):
+        if hasattr(harness, "encounter_id"):
             await harness.close()
 
 
-async def test_catalog_composite_is_public_and_survives_reload(maw):
+@pytest.mark.parametrize(
+    "maw,names",
+    [
+        ({"role": "standard"}, ["Claw", "Dissolution Maw"]),
+        ({"role": "elite"}, ["Claw", "Dissolution Maw", "Claw"]),
+        ({"role": "boss"}, ["Claw", "Dissolution Maw", "Claw"]),
+        ({"role": "minion"}, []),
+    ],
+    indirect=["maw"],
+)
+async def test_catalog_composite_is_public_and_survives_reload(maw, names):
     actor = next(p for p in maw.roster if p["id"] == maw.enemies[0])
-    assert actor["actions"] == ["Claw", "Dissolution Maw", "Lunge", "Multiattack"]
-    composite = maw.composite(maw.players)
-    assert [s["action"] for s in composite["strikes"]] == ["Claw", "Dissolution Maw"]
+    composites = [a for a in actor["executable_actions"] if a["kind"] == "multiattack"]
+    assert [s["action"] for a in composites for s in a["strikes"]] == names
+    assert ("Multiattack" in actor["actions"]) is bool(names)
     await maw.reload()
-    result = await maw.declare(maw.players)
+    if names:
+        assert not any(
+            e["group"] == "multiattack" for e in maw.sd.combat_state.get_participant(actor["id"]).deferred_effects
+        )
+        result = await maw.declare([maw.players[0]] * len(names))
+    else:
+        result = await maw.command(
+            "declare_phase", {"declarations": [{"kind": "defend", "actor_id": p} for p in [*maw.players, *maw.enemies]]}
+        )
     reloaded = next(p for p in result["participants"] if p["id"] == actor["id"])
     assert reloaded["executable_actions"] == actor["executable_actions"]
 
@@ -46,54 +63,17 @@ def catalog():
     return json.loads((Path(__file__).resolve().parents[4] / "content/creatures.json").read_text())
 
 
-@pytest.mark.parametrize(
-    "sequence",
-    [
-        None,
-        {},
-        {"name": "", "attacks": ["Claw"]},
-        {"name": "Claw", "attacks": ["Claw"]},
-        {"name": "Multiattack", "attacks": []},
-        {"name": "Multiattack", "attacks": ["unknown"]},
-        {"name": "Multiattack", "attacks": [3]},
-    ],
-)
-def test_python_rejects_invalid_catalog_sequence(sequence):
-    row = copy.deepcopy(next(r for r in catalog() if r["id"] == "hollow_mawling"))
-    row["multiattack_sequence"] = sequence
-    assert validate_creature_stat_block(row)
-
-
-@pytest.mark.parametrize("change", ["active_only", "ambiguous", "malformed", "name_collision"])
-def test_python_rejects_unresolvable_sequence(change):
-    row = copy.deepcopy(next(r for r in catalog() if r["id"] == "hollow_mawling"))
-    if change == "active_only":
-        row["multiattack_sequence"]["attacks"] = [row["actives"][1]["name"]]
-    elif change == "ambiguous":
-        row["attacks"].append({**row["attacks"][0], "name": "cLAW"})
-    elif change == "malformed":
-        row["multiattack_sequence"]["attacks"] = "Claw"
-    else:
-        row["multiattack_sequence"]["name"] = row["actives"][1]["name"]
-    assert validate_creature_stat_block(row)
-
-
-def test_catalog_roles_and_other_multiattacks():
-    rows = catalog()
-    mawling = next(r for r in rows if r["id"] == "hollow_mawling")
-    assert mawling["multiattack_sequence"] == {"name": "Multiattack", "attacks": ["Claw", "Dissolution Maw"]}
-    assert validate_creature_stat_block(mawling) == []
-    repeated = copy.deepcopy(mawling)
-    repeated["multiattack_sequence"]["attacks"] = ["claw", "CLAW"]
-    assert validate_creature_stat_block(repeated) == []
-    for row in rows:
+def test_other_multiattacks_remain_deferred():
+    for row in catalog():
+        if row["id"] == "hollow_mawling":
+            continue
+        assert "multiattack_sequence" not in row
         if row["multiattack"] is None:
             continue
         for role in ("standard", "elite", "boss", "minion"):
             enemy = translate_creature(row, encounter_id="test", enemy_id="test", role=role)
-            executes = row["id"] == "hollow_mawling" and role != "minion"
-            assert bool(enemy.get("multiattack_sequence")) is executes
-            assert any(e["group"] == "multiattack" for e in enemy["deferred_effects"]) is not executes
+            assert not enemy.get("multiattack_sequence")
+            assert any(e["group"] == "multiattack" for e in enemy["deferred_effects"])
 
 
 @pytest.fixture
@@ -114,7 +94,19 @@ def dice():
 async def drain(maw, *, checkpoints=None):
     packets = []
     windows = []
-    for _ in range(8):
+    for _ in range(
+        2
+        + 2
+        * len(
+            next(
+                a
+                for p in maw.roster
+                if p["id"] == maw.enemies[0]
+                for a in p["executable_actions"]
+                if a["kind"] == "multiattack"
+            )["strikes"]
+        )
+    ):
         result = await maw.command("resolve_phase", {})
         packets.extend(result["packets"])
         state = await maw.reload()
@@ -143,56 +135,76 @@ async def assert_hp(maw, expected):
         assert row is not None and row["hp"]["current"] == hp
 
 
+@pytest.mark.parametrize("maw", [{"role": "standard"}, {"role": "elite"}], indirect=True)
 @pytest.mark.parametrize("same,miss", [(False, False), (True, False), (False, True)])
 async def test_public_selection_resolves_authored_math(maw, dice, same, miss):
     expressions, d20 = dice
     if miss:
         d20.return_value = SimpleNamespace(total=1)
     targets = [maw.players[0], maw.players[0] if same else maw.players[1]]
+    elite = maw.sd.combat_state.get_participant(maw.enemies[0]).role == "elite"
+    if elite:
+        targets.append(maw.players[0])
+    count = len(targets)
     await maw.declare(targets)
     assert len(maw.sd.combat_state.pending_declarations) == 4
     assert maw.sd.combat_state.pending_declarations[maw.enemies[0]]["type"] == "multiattack"
     packets, _ = await drain(maw)
     strikes = blows(packets)
-    assert [s["action"] for s in strikes] == ["Claw", "Dissolution Maw"]
+    assert [s["action"] for s in strikes] == (
+        ["Claw", "Dissolution Maw", "Claw"] if elite else ["Claw", "Dissolution Maw"]
+    )
     assert [s["target_id"] for s in strikes] == targets
-    assert [s["strike_index"] for s in strikes] == [0, 1]
-    assert len({s["held_seq"] for s in strikes}) == len({s["execution_id"] for s in strikes}) == 2
-    assert [s["hit"] for s in strikes] == [not miss, not miss]
-    assert [s["damage"] for s in strikes] == ([0, 0] if miss else [8, 12])
-    assert [s["damage_type"] for s in strikes] == ["slashing", "necrotic"]
-    assert expressions == ([] if miss else ["1d8+2", "2d6+2"])
-    assert [s["attack_total"] for s in strikes] == ([6, 6] if miss else [20, 20])
-    await assert_hp(maw, [100, 100] if miss else [80, 100] if same else [92, 88])
+    assert [s["strike_index"] for s in strikes] == list(range(count))
+    assert len({s["held_seq"] for s in strikes}) == len({s["execution_id"] for s in strikes}) == count
+    assert [s["hit"] for s in strikes] == [not miss] * count
+    assert [s["damage"] for s in strikes] == ([0] * count if miss else [10, 15, 10] if elite else [8, 12])
+    assert [s["damage_type"] for s in strikes] == (
+        ["slashing", "necrotic", "slashing"] if elite else ["slashing", "necrotic"]
+    )
+    assert expressions == ([] if miss else ["1d8+2", "2d6+2", "1d8+2"] if elite else ["1d8+2", "2d6+2"])
+    assert [s["attack_total"] for s in strikes] == ([7 if miss else 21] * 3 if elite else [6 if miss else 20] * 2)
+    await assert_hp(
+        maw, [100, 100] if miss else ([65, 100] if same else [80, 85]) if elite else [80, 100] if same else [92, 88]
+    )
 
 
 @pytest.mark.parametrize(
-    "defect",
+    "maw,defect",
     [
-        "missing_target",
-        "zero",
-        "one",
-        "three",
-        "unknown_action",
-        "reverse",
-        "unknown_target",
-        "friendly",
-        "self",
-        "no_sequence",
-        "injected_math",
+        *[
+            ({"role": "standard"}, defect)
+            for defect in (
+                "missing_target",
+                "zero",
+                "one",
+                "three",
+                "unknown_action",
+                "reverse",
+                "unknown_target",
+                "friendly",
+                "self",
+                "no_sequence",
+                "injected_math",
+            )
+        ],
+        ({"role": "elite"}, "one"),
+        ({"role": "elite"}, "three"),
     ],
+    indirect=["maw"],
 )
 async def test_public_invalid_composite_is_atomic(maw, defect):
-    payload = maw.composite(maw.players)
+    count = 3 if maw.sd.combat_state.get_participant(maw.enemies[0]).role == "elite" else 2
+    payload = maw.composite([maw.players[i % 2] for i in range(count)])
     strikes = payload["strikes"]
     if defect == "missing_target":
         strikes[1].pop("target_id")
     elif defect in ("zero", "one", "three"):
-        payload["strikes"] = (strikes * 2)[: {"zero": 0, "one": 1, "three": 3}[defect]]
+        payload["strikes"] = (strikes * 2)[: {"zero": 0, "one": count - 1, "three": count + 1}[defect]]
     elif defect == "unknown_action":
         strikes[1]["action"] = "unknown"
     elif defect == "reverse":
-        strikes.reverse()
+        strikes[0], strikes[1] = strikes[1], strikes[0]
     elif defect in ("unknown_target", "friendly", "self"):
         strikes[1]["target_id"] = {"unknown_target": "unknown", "friendly": maw.enemies[1], "self": maw.enemies[0]}[
             defect
@@ -206,16 +218,27 @@ async def test_public_invalid_composite_is_atomic(maw, defect):
     assert await maw.snapshot() == before
 
 
-@pytest.mark.parametrize("maw", [True], indirect=True)
+@pytest.mark.parametrize("maw", [{"reactions": True}, {"reactions": True, "role": "elite"}], indirect=True)
 async def test_every_strike_pause_reloads_without_reroll(maw, dice):
-    await maw.declare([maw.players[0]] * 2)
+    names = [
+        s["action"]
+        for a in next(p for p in maw.roster if p["id"] == maw.enemies[0])["executable_actions"]
+        if a["kind"] == "multiattack"
+        for s in a["strikes"]
+    ]
+    elite = maw.sd.combat_state.get_participant(maw.enemies[0]).role == "elite"
+    assert len(names) == (3 if elite else 2)
+    await maw.declare([maw.players[0]] * len(names))
     ids = {}
 
     async def checkpoint(state, window):
         head = state.held_actions[0]
         assert window["target_id"] == maw.players[0]
-        assert window["action"] == ["Claw", "Dissolution Maw"][head["strike_index"]]
-        assert state.get_participant(maw.players[0]).hp_current == (100 if head["strike_index"] == 0 else 92)
+        assert window["action"] == names[head["strike_index"]]
+        assert (
+            state.get_participant(maw.players[0]).hp_current
+            == ([100, 90, 75] if elite else [100, 92])[head["strike_index"]]
+        )
         for held in state.held_actions:
             if "strike_index" in held:
                 identity = held["seq"], held["execution_id"]
@@ -224,16 +247,17 @@ async def test_every_strike_pause_reloads_without_reroll(maw, dice):
 
     packets, windows = await drain(maw, checkpoints=checkpoint)
     assert [(w["action"], w["stage"]) for w in windows] == [
-        (a, stage) for a in ("Claw", "Dissolution Maw") for stage in ("pre_roll", "post_roll")
+        (a, stage) for a in names for stage in ("pre_roll", "post_roll")
     ]
-    assert len(ids) == 2 and ids[0] != ids[1]
-    assert len(blows(packets)) == 2
-    await assert_hp(maw, [80, 100])
+    assert len(ids) == len(names) and len(set(ids.values())) == len(names)
+    assert [s["strike_index"] for s in blows(packets)] == list(range(len(names)))
+    assert dice[0] == (["1d8+2", "2d6+2", "1d8+2"] if elite else ["1d8+2", "2d6+2"])
+    await assert_hp(maw, [65 if elite else 80, 100])
 
 
-@pytest.mark.parametrize("maw", ["isolation"], indirect=True)
+@pytest.mark.parametrize("maw", [{"reactions": "isolation", "role": "elite"}], indirect=True)
 async def test_first_strike_reaction_spend_cannot_leak_to_second(maw, dice):
-    await maw.declare([maw.players[0]] * 2)
+    await maw.declare([maw.players[0]] * 3)
     await maw.command("resolve_phase", {})
     paused = await maw.command("resolve_phase", {})
     window = paused["next"]["waiting_on"]
@@ -248,10 +272,25 @@ async def test_first_strike_reaction_spend_cannot_leak_to_second(maw, dice):
     before = await maw.snapshot()
     await maw.command("activate", {"id": "rogue_uncanny_dodge"}, error=True)
     assert await maw.snapshot() == before
+    identities = {h["strike_index"]: (h["seq"], h["execution_id"]) for h in state.held_actions if "strike_index" in h}
+    assert len(set(identities.values())) == 3
+    first = await maw.command("resolve_phase", {})
+    state = await maw.reload()
+    assert first["next"]["waiting_on"]["action"] == "Dissolution Maw"
+    assert first["next"]["waiting_on"]["stage"] == "post_roll"
+    assert state.get_participant(maw.players[0]).hp_current == 95
+    assert {h["strike_index"]: (h["seq"], h["execution_id"]) for h in state.held_actions if "strike_index" in h} == {
+        i: identities[i] for i in (1, 2)
+    }
+    assert state.reactions_available[maw.players[0]] == spend
     packets, windows = await drain(maw)
-    assert [s["damage"] for s in blows(packets)] == [4, 12]
-    assert [(w["action"], w["stage"]) for w in windows] == [("Dissolution Maw", "post_roll")]
-    await assert_hp(maw, [84, 100])
+    packets = first["packets"] + packets
+    windows = [first["next"]["waiting_on"], *windows]
+    assert [s["damage"] for s in blows(packets)] == [5, 15, 10]
+    assert [(w["action"], w["stage"]) for w in windows] == [("Dissolution Maw", "post_roll"), ("Claw", "post_roll")]
+    assert [s["strike_index"] for s in blows(packets)] == [0, 1, 2]
+    assert dice[0] == ["1d8+2", "2d6+2", "1d8+2"]
+    await assert_hp(maw, [70, 100])
 
 
 @pytest.mark.parametrize("same", [False, True])

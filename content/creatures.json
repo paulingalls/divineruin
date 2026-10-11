@@ -2222,7 +2222,11 @@
     "multiattack": "2 attacks \u2014 one Claw and one Dissolution Maw",
     "multiattack_sequence": {
       "name": "Multiattack",
-      "attacks": ["Claw", "Dissolution Maw"]
+      "attacks": ["Claw", "Dissolution Maw"],
+      "attacks_by_role": {
+        "elite": ["Claw", "Dissolution Maw", "Claw"],
+        "boss": ["Claw", "Dissolution Maw", "Claw"]
+      }
     },
     "passives": [
       {
