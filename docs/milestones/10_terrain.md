@@ -16,13 +16,12 @@ Reconciled against `game_mechanics_decisions.md` Decisions 129–132 and the ter
 | --- | --- | --- | --- |
 | M10.1 — Terrain Enum & Location Field (7 criteria) | 7 | 0 | 0 |
 | M10.2 — Terrain-Gated Magic Rules (6 criteria) | 6 | 0 | 0 |
-| M10.3 — Combat Terrain Resolution & Caching (4 criteria) | 0 | 0 | 4 |
+| M10.3 — Combat Terrain Resolution & Caching (4 criteria) | 4 | 0 | 0 |
 
-**Headline:** M10.1 and M10.2 are shipped. All 19 locations have required terrain with strict seed/startup validation. Primal casts scale their catalog generation by terrain, Korath requires earth/stone contact, and Druid wards require natural terrain with a 3-Focus ancient-forest cost. M10.3 combat caching remains.
+**Headline:** M10.1–M10.3 are shipped (17/17 ACs). All 19 locations have required terrain with strict seed/startup validation. Primal casts scale their catalog generation by terrain, Korath requires earth/stone contact, and Druid wards require natural terrain with a 3-Focus ancient-forest cost. Combat caches terrain once at entry and preserves it through persistence, restored phases and encounter ward saves.
 
 ### Material gaps
 
-- **Combat caching.** Casts and Druid ward raises currently resolve the party's current location terrain per command. M10.3 caches terrain at combat start.
 - **Corruption seam.** The former damaged (0.6), hollow_adjacent (0.7), and hollow_corrupted (0.8) bands document a future dynamic world-state axis. They are not terrain values or runtime parameters (Decision 131).
 
 ### Cross-doc dependencies
@@ -84,7 +83,7 @@ Reconciled against `game_mechanics_decisions.md` Decisions 129–132 and the ter
 - **Primal Resonance** — catalog generation is `round_half_up(catalog_primal * resonance_base(terrain) / 0.2)`. The formula fallback requires terrain and returns `ceil(Focus * resonance_base(terrain))`. Both validate terrain even at zero generation. The retired override field and default/table are removed.
 - **Druid Veil Ward** — `activate(id="veil_ward")` requires `is_natural(terrain)` for the Druid source. The effective Focus cost is 3 in `ancient_forest`, otherwise 5, used for affordability, persistence and the receipt. The M24 ward remains party-wide, scope-owned and duration-bound. Terrain properties are derived from `Location.terrain`, never authored separately.
 - **Korath earth-anchored** — primal generation is reduced by 1 only on `is_earth_or_stone(terrain)`, before ward halving; `coast` and `wetland` are excluded.
-- **Terrain resolution** — cast and ward share `db_content_queries.get_location_terrain(session.location_id)`; missing terrain names the location and fails before resource writes. M10.3 owns the combat cache.
+- **Terrain resolution** — cast and ward share `combat_terrain.resolve_terrain`: combat reads its cached terrain; exploration uses `db_content_queries.get_location_terrain(session.location_id)`. Missing or invalid terrain names the location and fails before resource writes.
 
 **Acceptance criteria:**
 - [x] A primal cast in `ancient_forest` (0.1) generates strictly less Resonance than the identical cast in `city` (0.5); the routing path is live, not bypassed.
@@ -106,16 +105,16 @@ Reconciled against `game_mechanics_decisions.md` Decisions 129–132 and the ter
 **Inputs:** M10.1, M10.2, Phase 4 (Combat).
 
 **Deliverables:**
-- At combat start, resolve `CombatState.location_id` → `Location.terrain` and cache it as a **derived** field on `CombatState` (`session_data.py`) — not authored, to avoid drift.
+- At combat start, resolve `CombatState.location_id` → `Location.terrain` and cache it as a **derived** field on `CombatState` (`combat_state.py`) — not authored, to avoid drift.
 - Per-cast Resonance resolution reads the cached `CombatState.terrain`; world / exploration systems read `Location.terrain` directly.
 
 **Acceptance criteria:**
-- [ ] Terrain is resolved exactly once per encounter (at start), not per cast.
-- [ ] `CombatState` exposes the cached terrain as a derived field; no second authored terrain source exists.
-- [ ] Per-cast primal Resonance uses the cached value (no mid-combat location lookup).
-- [ ] A combat whose `location_id` has no resolvable terrain fails loud at encounter start (consistent with the strict loader).
+- [x] Terrain is resolved exactly once per encounter (at start), not per cast.
+- [x] `CombatState` exposes the cached terrain as a derived field; no second authored terrain source exists.
+- [x] Per-cast primal Resonance uses the cached value (no mid-combat location lookup).
+- [x] A combat whose `location_id` has no resolvable terrain fails loud at encounter start (consistent with the strict loader).
 
-**Key references:** *Decision 132*; `session_data.py:108-130`.
+**Key references:** *Decision 132*; `combat_state.py`.
 
 ---
 
