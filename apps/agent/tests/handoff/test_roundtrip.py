@@ -35,6 +35,7 @@ class TestRoundTrip:
         mock_queries.get_inventory_snapshot = snapshot_query([])
         mock_content = MagicMock()
         mock_content.load_creature_enemy = load_test_creature
+        mock_content.get_location_terrain = AsyncMock(return_value="forest")
         mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
 
         ctx = _make_context(location_id="greyvale_south_road")
@@ -95,6 +96,7 @@ class TestRoundTrip:
         mock_queries.get_inventory_snapshot = snapshot_query([])
         mock_content = MagicMock()
         mock_content.load_creature_enemy = load_test_creature
+        mock_content.get_location_terrain = AsyncMock(return_value="forest")
         mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
 
         room = MagicMock()

@@ -63,6 +63,7 @@ def _make_start_combat_mocks():
     mock_queries.get_player_inventory = AsyncMock(return_value=[])
 
     mock_content = MagicMock()
+    mock_content.get_location_terrain = AsyncMock(return_value="forest")
     mock_content.load_creature_enemy = load_test_creature
     mock_content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
     mock_content.get_npc = AsyncMock(return_value=None)

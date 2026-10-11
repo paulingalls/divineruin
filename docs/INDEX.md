@@ -920,7 +920,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/10_terrain.md (126 lines)
+## milestones/10_terrain.md (125 lines)
 
 ---
 
@@ -936,7 +936,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/REMAINING.md (200 lines)
+## milestones/REMAINING.md (198 lines)
 
 ---
 

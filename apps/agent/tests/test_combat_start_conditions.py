@@ -60,6 +60,7 @@ async def _run_start(player):
     )
     content = MagicMock(
         load_creature_enemy=load_test_creature,
+        get_location_terrain=AsyncMock(return_value="forest"),
         get_encounter_template=AsyncMock(return_value=_ENCOUNTER),
         get_npc=AsyncMock(return_value=None),
     )

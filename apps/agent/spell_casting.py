@@ -35,6 +35,7 @@ import spells
 import vaelti_echo_warning
 import veil_ward as veil_ward_mod
 import ward_resolution
+from combat_terrain import resolve_terrain
 from game_events import publish_game_event
 from party_state import PartyMember
 from resource_costs import gate_pool
@@ -324,7 +325,11 @@ async def _resolve_cast(
     current_focus = (player.get("focus") or {}).get("current", 0)
 
     try:
-        terrain = await content_mod.get_location_terrain(session.location_id) if spell.source == "primal" else None
+        terrain = (
+            await resolve_terrain(session, combat_state=combat_state, content_mod=content_mod)
+            if spell.source == "primal"
+            else None
+        )
         generated = cast_modifiers.compute_generated_resonance(
             spell, race, terrain=terrain, resonance=resonance, racial_mod=racial_mod
         )

@@ -53,6 +53,7 @@ import veil_ward
 import veil_ward_events
 import ward_resolution
 from action_sound_content import publish_action_sound
+from combat_terrain import resolve_terrain
 from resource_costs import gate_pool
 from session_data import SessionData
 from terrain import is_natural
@@ -156,7 +157,7 @@ async def _activate_veil_ward_locked(
         focus_cost = source.focus
         if archetype == "druid":
             try:
-                terrain = await content_mod.get_location_terrain(session.location_id)
+                terrain = await resolve_terrain(session, content_mod=content_mod)
                 if not is_natural(terrain):
                     raise ToolError("A Druid Veil Ward requires natural terrain.")
             except ValueError as error:

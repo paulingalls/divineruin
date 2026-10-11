@@ -122,7 +122,6 @@ test. Phase 7 still needs to choose the `build_encounter` signature in M7.4.
 | **7 · Bestiary** | 7.1–7.4 | 33 | nothing | ~2 sprints | `encounter_roles.py` (roles, `ROLE_MODIFIERS`, `derive_role_stats` incl. signature/legendary), `encounter_loot.py`, `encounter_budget.py`, `encounter.ts` (which names this refactor as pending), **`encounter_templates.json`: 10 templates / 15 distinct stat blocks**, `content/creatures.json` has two Tier 1 Hollow exemplars, backed by the indexed `creatures` table and Python/TypeScript validation |
 | **8 · Patrons** | 8.1–8.3 | 34 | nothing (but hard **forward** dep on Phase 2 archetype detail) | ~2-3 sprints | `gods.json` 10/10 with 4 typed `null` slots; `favor_actions`/`values`/`opposed_values` authored but unused; write path `_award_divine_favor_core` (M28 Resolve); **full client leg done** (event types → handlers → `hud-store` favor slot) |
 | **9 · Economy** | 9.1–9.10 | 75 | **Phase 7** (material sell values) | large | `pricing` table + `pricing.json` read cross-language w/ Redis cache; reputation pipeline live end-to-end; repair table exact-to-spec; **new price axis**: `role_archetypes.json` `price_modifier` × settlement personality modifier |
-| **10 · Terrain** | 10.3 | 4 | nothing | <1 sprint | Required location terrain and primal/Korath/Druid command gates; shared terrain reader ready for combat caching |
 | **11 · World Loop** | 11.1–11.6 | 46 | 5 open design decisions; M11.4 on Phase 9, M11.6 on Phase 8 | ~4-6 sprints | Layer-1 consumption fully built (only the clock missing); worker template `async_worker.py`; **tables already migrated in 001**: `region_state`, `npc_state`, `world_events_log`, `god_agent_state`, `world_flags`; depth-0 effect applier `quest_world_effects.py:42-124` |
 | **12 · Story Content** | 12.1–12.7 | 34 | **Phase 11** | ~5-7 sprints | `scenes` (mig 013) + `scenes.json` carrying `beats[]` + `scene_tools.py`; seeded-generator precedent `settlement_generation.py`; proto-agendas in `gods.json` `world_state.secret_agenda`; `story_moments` (mig 012) |
 
@@ -133,7 +132,7 @@ test. Phase 7 still needs to choose the `build_encounter` signature in M7.4.
   difficulty ceilings, a separate calculation.
 - **Phase 10 — navigation and physical terrain are distinct.** Travel uses optional
   `navigation`; all 19 locations carry required closed-enum `terrain`, checked
-  against `region_type` at seed time and server startup. M10.2 magic consumers are shipped; M10.3 adds combat caching.
+  against `region_type` at seed time and server startup. Terrain magic and combat caching are shipped; dynamic corruption remains a Phase 11 boundary.
 - **Phase 12 — vocabulary collision:** its "beat" vocabulary must be reconciled
   with the shipped scenes/`beats[]` stack. Currently unbudgeted.
 - **`content/materials_catalog.json` has no value field at all** on 58 materials —
@@ -145,7 +144,7 @@ test. Phase 7 still needs to choose the `build_encounter` signature in M7.4.
 
 ## 6. The dependency-ordered read
 
-Only three phases are startable today: **7, 8 and 10.**
+Two unfinished phases are startable today: **7 and 8.**
 
 - **Phase 7 (Bestiary) — the unblocking move.** The last hard gate on Phase 9,
   where five phases fan in. `encounter_roles.py` already overlays one base stat
@@ -156,11 +155,10 @@ Only three phases are startable today: **7, 8 and 10.**
   layers: the pantheon narrates but does nothing. The whole client leg is already
   built. But it has a hard **forward** dependency on Phase 2 archetype detail, and
   its ~30 abilities need two new verbs — budget for an ADR-0004 tool-ceiling fight.
-- **Phase 10 (Terrain) — combat caching remains.** M10.1 supplies location terrain and M10.2 ships primal generation, Korath contact and Druid ward gates. M10.3 resolves once at combat start and preserves the cached terrain across persistence.
 
 **Recorded disagreement:** the Phase-10/11/12 auditor recommended Phase 10 as the
 best next phase; this plan takes Phase 7 first on unblocking grounds. Both are
-defensible. Phase 10's original argument was repairing live terrain defects; those magic gates now ship in M10.2. Phase 7's is that Phase 9 stays blocked until it lands.
+defensible. Phase 10's original argument was repairing live terrain defects; terrain magic and combat caching are now complete. Phase 7's is that Phase 9 stays blocked until it lands.
 
 ---
 

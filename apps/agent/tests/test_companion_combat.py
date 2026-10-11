@@ -23,6 +23,7 @@ def _mocks():
     queries.get_player_inventory = AsyncMock(return_value=[])
     content = MagicMock()
     content.load_creature_enemy = load_test_creature
+    content.get_location_terrain = AsyncMock(return_value="forest")
     content.get_encounter_template = AsyncMock(return_value=SAMPLE_ENCOUNTER)
     content.get_npc = AsyncMock(return_value=None)
     return mutations, queries, content

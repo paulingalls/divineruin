@@ -280,6 +280,7 @@ async def test_start_combat_emits_combat_ui_update_for_hud_init(_mock_sounds, mo
     )
     content = MagicMock(
         load_creature_enemy=load_test_creature,
+        get_location_terrain=AsyncMock(return_value="forest"),
         get_encounter_template=AsyncMock(return_value=_START_ENCOUNTER),
         get_npc=AsyncMock(return_value=None),
     )
@@ -317,6 +318,7 @@ async def test_start_combat_ui_update_fires_after_combat_started(_mock_sounds, m
     )
     content = MagicMock(
         load_creature_enemy=load_test_creature,
+        get_location_terrain=AsyncMock(return_value="forest"),
         get_encounter_template=AsyncMock(return_value=_START_ENCOUNTER),
         get_npc=AsyncMock(return_value=None),
     )

@@ -30,7 +30,7 @@ _ATTRS = {
     "charisma": 8,  # the lowest attribute — where a "lowest"-target death cost lands
 }
 
-# Players die at the off-catalog `off_catalog_wilds` (absent from the seeded locations), so the
+# The terrain-only `off_catalog_wilds` has no settlement or matching region, so the
 # resurrection anchor falls all the way through to tier-4: the seeded `starting_area`-tagged
 # location. Pin the concrete id so a future catalog retag can't silently shift the anchor and have
 # these tests still pass on the looser `== dc["anchor"]` self-consistency check.
@@ -41,6 +41,18 @@ async def _seed_player(pool, player_id: str, **overrides) -> None:
     """Upsert a fully-specified players.data row (the default seed_player lacks death_history /
     conditions / divine_favor). Off-catalog location so the resurrection anchor falls to the
     deterministic starter zone (tier-4)."""
+    await pool.execute(
+        "INSERT INTO locations (id, data) VALUES ('off_catalog_wilds', $1::jsonb) ON CONFLICT (id) DO NOTHING",
+        json.dumps(
+            {
+                "id": "off_catalog_wilds",
+                "name": "Wilds",
+                "terrain": "forest",
+                "region_type": "wilderness",
+                "region": "off_catalog",
+            }
+        ),
+    )
     data = {
         "player_id": player_id,
         "class": "warrior",
