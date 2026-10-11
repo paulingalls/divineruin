@@ -25,6 +25,7 @@ def test_gameplay_room_options_pin_primary_and_disable_vendor_close() -> None:
     assert options.text_input is False
     assert options.get_audio_input_options() is None
     assert options.get_text_input_options() is None
+    assert options.get_text_output_options() is None
 
 
 def test_solo_room_options_keep_the_microphone_the_pre_gameplay_agents_are_the_only_ear_for() -> None:
@@ -37,6 +38,7 @@ def test_solo_room_options_keep_the_microphone_the_pre_gameplay_agents_are_the_o
     assert options.participant_identity == "player-one"
     assert options.close_on_disconnect is False
     assert options.get_audio_input_options() is not None
+    assert options.get_text_output_options() is None
 
 
 async def test_prologue_start_installs_primary_room_options() -> None:

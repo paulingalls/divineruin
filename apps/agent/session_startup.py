@@ -16,11 +16,16 @@ from session_data import SessionData
 
 
 def _primary_room_options(userdata: SessionData, *, audio_input: bool) -> room_io.RoomOptions:
-    """Link RoomIO to the primary player and leave a drop to _setup_reconnection's grace."""
+    """Link RoomIO to the primary player and leave a drop to _setup_reconnection's grace.
+
+    No text output: no client reads the DM's transcript, and syncing one runs a per-frame STFT
+    on the audio loop that stalls playback into audible pops on slower hosts.
+    """
     return room_io.RoomOptions(
         participant_identity=userdata.primary_player_id,
         audio_input=audio_input,
         text_input=False,
+        text_output=False,
         close_on_disconnect=False,
     )
 
