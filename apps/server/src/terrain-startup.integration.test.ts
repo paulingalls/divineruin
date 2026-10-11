@@ -58,7 +58,7 @@ describe.skipIf(!hasDb)("terrain startup", () => {
     });
   });
 
-  for (const terrain of [undefined, "normal", "mountain", null, 42, "__proto__"]) {
+  for (const terrain of [undefined, "normal", "mountain", null, 42, "__proto__", ["city"]]) {
     test(`startup refuses city terrain ${String(terrain)}`, async () => {
       const id = "test_terrain_invalid";
       await withRows([{ ...base, id, region_type: "city", terrain }], async () => {
