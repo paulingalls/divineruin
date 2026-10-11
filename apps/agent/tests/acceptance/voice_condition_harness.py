@@ -5,7 +5,7 @@ import json
 import uuid
 from types import SimpleNamespace
 from typing import cast
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from acceptance._livekit_client import register_data_packet_collector, wait_for_audio_track
 from acceptance.multiplayer_voice._harness import PLAYER_TWO_SPEECH
@@ -120,7 +120,11 @@ async def run_voice_commands(harness, sd, model, agent, monkeypatch, *, speaker=
             if max(abs(sample) for sample in event.frame.data) > 500:
                 received_audio.append(event.frame.duration)
 
-    with patch("base_agent._make_tts", return_value=ToneTTS()):
+    # Session teardown writes a recap; keep its provider call out of this unpaid lane.
+    with (
+        patch("base_agent._make_tts", return_value=ToneTTS()),
+        patch("session_summary._call_llm_summary", new_callable=AsyncMock, return_value=None),
+    ):
         try:
             await harness.start(prepare, transcribe=True, stt=LocalSTT())
             assert (
