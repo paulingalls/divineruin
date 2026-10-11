@@ -65,7 +65,10 @@ def catalog():
 
 def test_other_multiattacks_remain_deferred():
     for row in catalog():
-        if row["multiattack"] is None or row["id"] == "hollow_mawling":
+        if row["id"] == "hollow_mawling":
+            continue
+        assert "multiattack_sequence" not in row
+        if row["multiattack"] is None:
             continue
         for role in ("standard", "elite", "boss", "minion"):
             enemy = translate_creature(row, encounter_id="test", enemy_id="test", role=role)
