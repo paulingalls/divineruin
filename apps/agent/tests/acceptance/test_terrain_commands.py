@@ -64,8 +64,11 @@ async def test_terrain_commands(terrain, race, generated, ward_cost, livekit_ser
     poor = race == "poor_druid"
     goodberry = terrain == "city" or invalid
     cast_ids = [] if poor else ["primal_healing_touch"] + (["primal_goodberry"] if goodberry else [])
+    catalog_two = terrain == "forest" and race == "human"
+    if catalog_two:
+        cast_ids.append("primal_ice_storm")
     ward = race != "korath"
-    focus = 2 if poor else sum(2 if sid == "primal_healing_touch" else 1 for sid in cast_ids) + (ward_cost or 5)
+    focus = 2 if poor else sum(spells.get_spell(sid).focus_cost for sid in cast_ids) + (ward_cost or 5)
     await seed_player_with_pools(pool, player_id=pid, class_="druid", focus_current=focus, known_spells=tuple(cast_ids))
     await seed_player_with_pools(pool, player_id=guest, class_="druid")
     await pool.execute(
@@ -111,11 +114,13 @@ async def test_terrain_commands(terrain, race, generated, ward_cost, livekit_ser
     casts = [json.loads(output.output) for output in outputs[: len(cast_ids)]]
     assert all(not output.is_error for output in outputs[: len(cast_ids)])
     assert casts[0]["resonance_generated"] == generated
-    assert persisted["current"] == generated
-    assert resonance_writes.await_count == (1 if generated else 0)
+    assert persisted["current"] == (2 if catalog_two else generated)
+    assert resonance_writes.await_count == (1 if generated else 0) + int(catalog_two)
+    if catalog_two:
+        assert casts[1]["resonance_generated"] == 2
     if goodberry:
         assert casts[1]["resonance_generated"] == 0
-    cast_cost = 2 + int(goodberry)
+    cast_cost = sum(spells.get_spell(sid).focus_cost for sid in cast_ids)
     if ward:
         receipt = outputs[-1]
         if ward_cost is None:
