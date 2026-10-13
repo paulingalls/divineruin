@@ -2,10 +2,6 @@
 set -e
 cd "$(git rev-parse --show-toplevel)"
 
-# Git's checkout variables would redirect fixture repositories into this tree.
-while IFS= read -r git_var; do unset "$git_var"; done \
-  < <(git rev-parse --local-env-vars)
-
 # Empty exports prevent explicit env files from restoring paid approval.
 export ALLOW_PAID_TESTS= REQUIRE_REAL_LLM=
 
