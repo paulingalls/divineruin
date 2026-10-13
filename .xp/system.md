@@ -22,55 +22,67 @@ checks and Bun/Python non-acceptance suites. Sprint close owns deterministic
 acceptance and Playwright; CI repeats them for free-patch coverage without
 predecessor-result caching. Push scans outgoing secrets only.
 
-**Check ownership and cost (story-157, 2026-10-13).** Recorded local code tree:
-`7e88d33f0bfa9181482693a9b02de6c4958af2b5` (`8929fcdf`). Seconds below
-are real elapsed times on this macOS host with installed frozen graphs, cached
-Docker images and running checkout-owned services. The host was contended by
-other work; the baseline acceptance run overlapped commit/land measurements.
-The authorized draft PR will supply the recorded merge tree and CI timings;
-historical PR 605 is not a substitute. This table is an incomplete measurement record, not AC sign-off.
+**Check ownership and cost (story-157, 2026-10-13).** Recorded PR #607 merge:
+`67fe361ebe813e55d14a8892faa34728b95491b9`, tree
+`e5c271ad1c1e13daba826d4a5e1e376591f74ac6`, identical to story head
+`38fd2366`. CI run `38485112895` checks this merge. Local timings use the
+same files and frozen graphs on macOS, cached Docker images and running
+checkout-owned services. Other clone work and local land/sprint overlapped.
+CI uses separate Ubuntu runners; its step timestamps have one-second precision
+(`0` means below that resolution). Costs below name their measurement site.
 
 | Owning tier | Leaf check / setup | Measured seconds | Explicit repeat and reason |
 |---|---|---:|---|
-| Commit | Staged env refusal, partial-stage refusal, shell `bash -n`, dispatch | Included in 0.62 overhead | Refusals inspect the index/worktree; not runtime tests |
-| Commit | Index gitleaks scan | 0.048 | Land scans its merge index, a different input |
-| Commit | Staged ESLint | 1.845 | CI full-project ESLint is clean-machine validation |
-| Commit | Affected root / mobile / server / web `tsc` | 0.897 / 2.649 / 1.121 / 0.801 | CI checks every project, including deps-less and bypassed commits |
-| Commit | Staged Prettier | 0.189 | CI checks all supported files on a clean machine |
-| Commit | Agent Ruff check / format | 0.128 / 0.034 | CI full-project clean-machine validation |
-| Commit | Whole-agent pyright | 21.647 | CI clean-machine validation |
-| Commit | Other Python Ruff check / format | 0.058 / 0.057 | No whole-repo Python lint lane; staged paths own it |
-| Push | Outgoing-history gitleaks | Included in 0.08 hook | Index scans cover a different input; no services or test children |
-| PR CI | Full root/mobile/server/web typechecks, ESLint, Prettier (`lint:ts`) | Pending CI | Commit's affected-project/staged checks provide early feedback |
-| PR CI | e2e `tsc`, ESLint (`lint:e2e`) | Pending CI | First typecheck for e2e; commit does not install its graph |
-| PR CI | Full agent Ruff check, format, pyright (`lint-python`) | Pending CI | Commit repeats for early local feedback |
-| PR CI | Scripts (`bun --env-file=.env test ./scripts`) | 0.033 at land | Human-required land fast lane; CI covers free patches |
-| PR CI | Shared / design tokens | 0.499 / 0.012 at land | Human-required land fast lane; CI covers free patches |
-| PR CI | Server bulk | 0.499 at land | Human-required land fast lane; isolated from real DB module |
-| PR CI | Server DB / location / terrain / invite-store | 0.020 / 0.026 / 0.130 / 1.123 at land | Human-required land fast lane; preserve mock-isolation processes |
-| PR CI | Mobile / web | 9.655 / 0.570 at land | Human-required land fast lane; CI covers free patches |
-| PR CI | Python non-acceptance (`test:python`, eight workers) | 46.280 at land | Human-required land fast lane; CI covers free patches |
-| Sprint close | Deterministic acceptance (`test:acceptance`) | 615.605 | CI is the only full acceptance for free patches; no predecessor cache |
-| Sprint close | Playwright | 119.511 | CI covers free patches; no predecessor cache |
+| Commit | Staged env refusal, partial-stage refusal, shell `bash -n`, dispatch | Included in 0.56 overhead | Refusals inspect the index/worktree; not runtime tests |
+| Commit | Index gitleaks scan | 0.039 | Land scans its merge index (0.059 s), a different input |
+| Commit | Staged ESLint | 1.302 | CI full-project ESLint is clean-machine validation |
+| Commit | Affected root / mobile / server / web `tsc` | 0.932 / 2.802 / 1.313 / 0.940 | CI checks every project, including deps-less and bypassed commits |
+| Commit | Staged Prettier | 0.162 | CI checks all supported files on a clean machine |
+| Commit | Agent Ruff check / format | 0.115 / 0.033 | CI full-project clean-machine validation |
+| Commit | Whole-agent pyright | 13.289 | CI clean-machine validation |
+| Commit | Other Python Ruff check / format | 0.035 / 0.030 | No whole-repo Python lint lane; staged paths own it |
+| Push | Outgoing-history gitleaks | Included in 0.10 hook | Index scans cover a different input; no services or test children |
+| PR CI | Full root/mobile/server/web typechecks, ESLint, Prettier (`lint:ts`) | 40 CI | Commit's affected-project/staged checks provide early feedback |
+| PR CI | e2e `tsc`, ESLint (`lint:e2e`) | 5 CI | First typecheck for e2e; commit does not install its graph |
+| PR CI | Full agent Ruff check, format, pyright (`lint-python`) | 0 / 0 / 28 CI | Commit repeats for early local feedback |
+| PR CI | Scripts (`bun --env-file=.env test ./scripts`) | 0.570 land; 0 CI | Human-required land fast lane; CI covers free patches |
+| PR CI | Shared / design tokens | 3.647 / 0.031 land; 2 / 0 CI | Human-required land fast lane; CI covers free patches |
+| PR CI | Server bulk | 2.273 land; included in 2 CI server total | Human-required land fast lane; isolated from real DB module |
+| PR CI | Server DB / location / terrain / invite-store | 0.275 / 0.245 / 1.768 / 2.384 land; included in 2 CI server total | Human-required land fast lane; preserve mock-isolation processes |
+| PR CI | Mobile / web | 26.936 / 0.954 land; 16 / 0 CI | Human-required land fast lane; CI covers free patches |
+| PR CI | Python non-acceptance (`test:python`, eight workers) | 88.571 land; 144 CI | Human-required land fast lane; CI covers free patches |
+| Sprint close | Deterministic acceptance (`test:acceptance`) | 657.676 local; 660 CI | CI is the only full acceptance for free patches; no predecessor cache |
+| Sprint close | Playwright | 160.286 local; 317 CI | CI covers free patches; no predecessor cache |
 | Explicit approval | Paid acceptance / speech recognition | Not measured; approval empty | No automatic tier enables it |
 | Setup | Root/e2e frozen Bun graphs, cached browser | 1.470 / 0.441 / 0.505 | Each isolated CI job installs its own required graph |
 | Setup | Agent/scripts frozen uv graphs | 0.498 / 0.020 | Each isolated CI job installs its own required graph |
 | Setup | Route generation, checkout authority and owned stack readiness | Included in fresh 14.50 total | CI generates mobile routes; separate job containers cannot share checkout ownership |
 | Setup | Checkout migration / content seed | 0.472 / 0.844 | CI's isolated service jobs each migrate/seed; acceptance databases replay migrations for isolation |
-| Setup | CI checkout/toolchain, service provisioning, ffmpeg/browser install, artifact upload | Pending CI | Different clean runners and job services; setup is included in job totals |
+| Setup | CI lint-and-typecheck checkout/install/services/post-job | 22 CI | Separate runner input; steps in DATA |
+| Setup | CI test-python (python) checkout/install/services/post-job | 64 CI | Separate runner input; steps in DATA |
+| Setup | CI test-bun checkout/install/services/post-job | 46 CI | Separate runner input; steps in DATA |
+| Setup | CI lint-python checkout/install/services/post-job | 16 CI | Separate runner input; steps in DATA |
+| Setup | CI test-python (acceptance) checkout/install/services/post-job | 78 CI | Separate runner input; steps in DATA |
+| Setup | CI test-e2e checkout/install/services/post-job | 66 CI | Separate runner input; steps in DATA |
 
-Tier totals: representative commit 30.09 s; actual implementation commit 19.72 s;
-land 50.23 s; push 0.08 s; sprint 620.29 s. CI job totals remain pending:
-lint-and-typecheck, lint-python, test-bun, test-python and test-e2e. The failed land
-probe (58.50 s) is excluded: instrumentation required an environment variable
-that a mobile test deliberately removes. The repaired probe is the successful
-measurement. Child costs overlap and must not be summed into parallel tier totals.
-Commit staged paths, index tree and skipped branches live in story DATA's
-`evidence/representative-commit-input.json`; deletions are ignored by staged
-language checks. The actual commit input is recorded separately. An empty-index
-land scan is not a measurement of staged-language checks.
+Tier totals on the recorded tree: representative commit 21.55 s; land
+96.54 s; push 0.10 s; sprint 660.77 s. CI job totals: lint/typecheck 70 s,
+lint-python 47 s, Bun 71 s,
+non-acceptance Python 212 s, acceptance 743 s, Playwright 388 s.
+The representative commit's exact four staged paths, older HEAD, index tree,
+generated Expo declarations and frozen dependency graph are in story DATA's
+`evidence/final-commit-input.json`. It covers shared TS (all four project
+checks), agent Python, other Python and shell; HTML/CSS-only, deps-less and
+refusal branches are not timed. Its first disposable probe omitted generated
+`expo-env.d.ts` and failed loudly (18.03 s); that is not a completed tier timing.
+Child costs overlap and must not be summed into parallel tier totals.
+The earlier local tree `7e88d33f` and superseded PR tree `52f0b0e1` remain
+separate evidence, not this tree's measurements. The earlier sprint probe
+stopped without a completion status; its partial log is not a pass.
 
 Fresh registered checkout setup: 14.50 s with cached images; warm setup: 8.67 s.
+These setup costs are reconciled to this tree: ownership scripts, manifests,
+locks and generated-type inputs are unchanged from their measured tree.
 Ownership checks and teardown remain in `worktree-common.sh`. Focused acceptance
 before/after: 64 passed in 63.53/21.05 s including startup; Postgres starts 9/1,
 migration replays 9/7, full seed calls 9/7. Each mutating case still gets an
@@ -78,7 +90,7 @@ unseeded database; seed rollback and catalog mutation tests keep their own seed.
 Read-only signature parameters use the session seed. Migration and seed costs
 are retained to prove isolation and product seeding behavior.
 
-The recorded-tree sprint run passed: 636 acceptance cases, 47 paid skips and
+The final recorded-tree sprint run passed: 636 acceptance cases, 47 paid skips and
 88 Playwright cases. Its JUnit results include all 64 card-focused cases
 (seed_atomic 4, creature_catalog 4, catalog_encounter_cutover 56); those results
 are reused, not rerun. Complete-lane startup counts before/after: Postgres 11/3,
@@ -88,15 +100,23 @@ mandatory-service prerequisite policy; they are session costs, not per-case
 starts. The full baseline command used direct uv without the env-file dispatcher
 and ended with two missing-REDIS_URL failures: 638.53 s, 634 passed, 47 skipped.
 It supplies observed startup counts, not a successful tier measurement.
-The sprint's separate E2E setup adds one Postgres and one Valkey start, a
-0.372 s migration and 0.610 s seed dispatcher; those resources are torn down.
-CI still needs a current-tree run to establish missing-env tolerance there
-and split-Python duration against its 20-minute timeout. An ad-hoc Bun probe
-confirmed a missing explicit env file is tolerated by the installed version.
-Historical run 38164153205 checked out `5bed29d7`, tree
-`e8c15ffb0df2b30530b49a61271ae6a24fec1a07`: jobs 69/54/75/1151/408 s
-(lint-and-typecheck/lint-python/test-bun/test-python/test-e2e), a different tree.
-
+The sprint's separate E2E setup adds one Postgres and one Valkey start;
+those resources are torn down. Setup child durations are retained in DATA.
+CI's non-acceptance Python matrix job passed `bun run test:python` with no
+checkout `.env`, confirming the dispatcher's missing-file tolerance. Python
+and acceptance have separate runners and independent 20-minute timeouts per
+the human's card answer (2026-10-13, lead commit `38fd2366`). The Python
+job uses 212/1200 s; acceptance uses 743/1200 s (457 s headroom), including
+setup. Acceptance passed 636 cases with 47 paid skips. The six successful CI
+jobs span 743 s in parallel and sum to 1531 runner-seconds; queue time is
+separate. All checkout logs identify `67fe361e`. Runners use Ubuntu 24.04,
+cached Bun and uv downloads, newly installed graphs and fresh service containers.
+CI job/step outcomes, checkout proof, runner/cache details and setup costs are in story
+DATA's `evidence/final-ci-*`; every checkout/install/service/post-job step
+is included in its job total, not a separate behavioral check owner. Setup
+rows sum step durations; job totals also include transitions between steps.
+Historical PR 605 run `38164153205` used tree `e8c15ffb`: jobs
+69/54/75/1151/408 s, a different tree, retained only as context.
 
 Aliases `test`, `test:all`, `lint`, and workspace scripts expand to the leaf
 checks above; they are dispatchers, not additional owners. Nonautomatic dev,
@@ -105,7 +125,8 @@ these tiers; the complete package-script/CI-step inventory is in story DATA's
 `evidence/inventory.json`. Product tests are retained; developer hook/runner
 scaffolding is one-off evidence and never enters a regular test run. CI skips
 documentation-only PRs. e2e type errors, deps-less commits and bypassed hooks
-first receive full static validation at PR CI. The card records the human answer (2026-10-13): “Nightly tier — DROP it;
+first receive full static validation at PR CI. The card records the human
+answer (2026-10-13): “Nightly tier — DROP it;
 edit constraints 2 and 13 to remove the nightly tier (tiers: commit, story land,
 push, sprint close, PR CI).” Constraints 2 and 13 match that decision.
 
