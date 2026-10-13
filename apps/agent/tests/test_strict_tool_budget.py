@@ -121,10 +121,9 @@ def test_every_agent_session_chooses_its_max_tool_steps():
     """LiveKit permits max_tool_steps + 1 calls, then silently narrates with tool_choice="none".
     Reaction pauses end turns; the longest uninterrupted turn uses four calls.
     Keep every production session on the deliberate ceiling."""
-    sites = _agent_session_sites()
+    sites = [(where, call) for where, call in _agent_session_sites() if not where.startswith("tests/")]
+    assert sites, "no production AgentSession construction found — the walk is broken, not the code"
     for where, call in sites:
-        if where.startswith("tests/"):
-            continue
         steps = next((kw for kw in call.keywords if kw.arg == "max_tool_steps"), None)
         assert steps is not None, f"{where}: AgentSession inherits the plugin's max_tool_steps default"
         assert isinstance(steps.value, ast.Constant), f"{where}: max_tool_steps must be a literal"

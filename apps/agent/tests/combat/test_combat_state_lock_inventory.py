@@ -56,6 +56,8 @@ def _files_containing(needle: bytes, paths: tuple[Path, ...]) -> list[str]:
 
 def test_old_lock_name_is_absent_from_repository():
     paths = _repository_files()
+    this_test = Path("apps/agent/tests/combat/test_combat_state_lock_inventory.py")
+    assert paths and this_test in paths
 
     old_name = "_".join(("combat", "end", "lock")).encode()
     assert _files_containing(old_name, paths) == []

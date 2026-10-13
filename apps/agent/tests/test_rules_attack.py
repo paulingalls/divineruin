@@ -119,6 +119,8 @@ class TestResolveAttack:
         # label and the mechanical target_killed flag never disagree. The crit
         # path is excluded because natural_20/natural_1 outrank killing_blow in
         # the catalog, so the label is "natural_*" even on a crit kill.
+        checked_kill = False
+        checked_survive = False
         for seed in range(2000):
             rng = random.Random(seed)
             if not (2 <= rng.randint(1, 20) <= 19):
@@ -126,6 +128,12 @@ class TestResolveAttack:
             rng = random.Random(seed)
             result = resolve_attack(SAMPLE_PLAYER, self.WEAPON, 8, 5, rng=rng)
             assert (result.context == "killing_blow") == result.target_killed
+            if result.hit and result.target_killed:
+                checked_kill = True
+            elif result.hit:
+                checked_survive = True
+        assert checked_kill, "no killing-blow seed exercised the invariant"
+        assert checked_survive, "no surviving-hit seed exercised the invariant"
 
     def test_returns_attack_result(self):
         from check_resolution_attack import AttackResult

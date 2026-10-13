@@ -190,6 +190,7 @@ class TestPromptToolConsistency:
                 if "empty string" in (field.description or "").lower()
             }
         )
+        assert sentinels, "no ''-means-none variant field found — the guard would be vacuous"
         for name in sentinels:
             assert name in COMBAT_SYSTEM_PROMPT, f"combat prompt never names the ''-sentinel field {name!r}"
         assert "empty string" in COMBAT_SYSTEM_PROMPT.lower(), (

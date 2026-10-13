@@ -228,6 +228,7 @@ class TestMagicItemContentInvariant:
         recipes = self._load("recipes.json")
         by_output = {r["output_item"]: r for r in recipes}
 
+        checked = 0
         for it in items:
             if it["rarity"] in ("rare", "legendary") and it["id"] in by_output:
                 recipe = by_output[it["id"]]
@@ -236,6 +237,9 @@ class TestMagicItemContentInvariant:
                     f"{it['id']} ({it['rarity']}) is craftable at {recipe['tier']} "
                     f"but violates the magic-tier gate: {result.reason}"
                 )
+                checked += 1
+
+        assert checked > 0, "no craftable Rare/Legendary item joined a recipe — gate untested"
 
     def test_named_magic_items_join_tier_correct_recipes(self):
         """Explicit named ids prevent pre-existing rare items from satisfying the craftable inventory."""
