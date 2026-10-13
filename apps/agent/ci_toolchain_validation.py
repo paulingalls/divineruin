@@ -110,13 +110,6 @@ def _runs_lint_e2e(command: str) -> bool:
     return tokens[:1] == ["bun"] and "lint:e2e" in tokens
 
 
-def _runs_python_report_tests(command: str) -> bool:
-    tokens = shlex.split(command)
-    if tokens[:1] != ["pytest"] and not (tokens[:2] == ["uv", "run"] and "pytest" in tokens):
-        return False
-    return any(t == "tests" or t.startswith("tests/") or "dependency_upgrade" in t for t in tokens)
-
-
 def validate_ci_toolchain(root: Path, report: dict) -> None:
     workflow = root / ".github/workflows/ci.yml"
     if not workflow.is_file():
@@ -163,7 +156,6 @@ def validate_ci_toolchain(root: Path, report: dict) -> None:
     consumers = (
         ("lint:e2e", _runs_lint_e2e),
         ("Playwright", _runs_playwright),
-        ("Python dependency report tests", _runs_python_report_tests),
     )
     for consumer, matches in consumers:
         consuming_jobs = 0

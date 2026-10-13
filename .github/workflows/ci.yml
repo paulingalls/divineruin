@@ -44,6 +44,7 @@ jobs:
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
+      - run: bun install --cwd e2e --frozen-lockfile
       # lint:ts typechecks apps/mobile, whose tsconfig includes the gitignored
       # generated types. This runs the same guarded generator verify:upgrade uses,
       # which fails when router.d.ts comes back missing, empty or a directory --
@@ -127,7 +128,12 @@ jobs:
   test-python:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Parallel tracks: the serial whole-tree run took 19m11s of this job's 20 (PR 605).
     # Non-acceptance uses the parallel fast lane; acceptance owns its containers.
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [python, acceptance]
     services:
       postgres:
         image: postgres:16-alpine
@@ -179,11 +185,9 @@ jobs:
       - run: bun run scripts/migrate.ts
       - run: uv sync --project scripts --frozen && bun run seed
       - run: uv sync --project apps/agent --frozen
-      - run: bun install --cwd e2e --frozen-lockfile
-      - run: bun run test:python
-      - run: bun run test:acceptance
+      - run: bun run test:${{ matrix.lane }}
         env:
-          REQUIRE_DOCKER: "1"
+          REQUIRE_DOCKER: ${{ matrix.lane == 'acceptance' && '1' || '' }}
 
   test-e2e:
     runs-on: ubuntu-latest
