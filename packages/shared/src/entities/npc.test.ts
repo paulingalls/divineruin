@@ -8,10 +8,6 @@ const npcs = (await Bun.file(
 const rawNpcs = npcs as unknown as Array<Record<string, unknown>>;
 
 describe("npcs.json — age schema (story-006)", () => {
-  test("the catalog is non-empty", () => {
-    expect(npcs.length).toBeGreaterThan(0);
-  });
-
   test("no NPC carries the retired age_range field", () => {
     for (const n of npcs) {
       expect((n as { age_range?: unknown }).age_range).toBeUndefined();

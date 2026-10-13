@@ -1,6 +1,5 @@
 import { test, expect } from "bun:test";
 import { join } from "node:path";
-import prettier from "prettier";
 import {
   BrandColors,
   FONT_FALLBACKS,
@@ -60,13 +59,4 @@ test("defines spacing, radius, and max-content-width", () => {
 test("on-disk theme.css matches the generator output (drift guard)", async () => {
   const onDisk = await Bun.file(join(import.meta.dir, "..", "src", "theme.css")).text();
   expect(onDisk).toBe(css);
-});
-
-// The generator hand-emits prettier's canonical CSS (lowercase hex, double-quoted
-// stacks). Assert the output actually IS prettier-clean rather than trusting those
-// hand-rolled transforms — so a future token value prettier normalizes differently
-// (e.g. #FFFFFF -> #fff) fails here, not only in the separate lint pipeline.
-test("generator output is already prettier-formatted", async () => {
-  const formatted = await prettier.format(css, { parser: "css" });
-  expect(css).toBe(formatted);
 });

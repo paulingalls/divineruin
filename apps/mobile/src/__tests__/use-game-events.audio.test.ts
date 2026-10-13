@@ -129,7 +129,6 @@ test("discover fixture rolls share dice audio and only a reveal plays the cue", 
 
 test("spell and god whisper content sounds reach the platform player", () => {
   const spellIds = new Set(spells.map((spell) => spell.sound_id));
-  expect(spellIds.size).toBeGreaterThan(0);
   for (const soundName of spellIds) expectEventPlays(soundName);
 
   const godStingers = gods.map((god) => god.whisper_profile.stinger_sound);

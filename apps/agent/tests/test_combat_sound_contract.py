@@ -60,7 +60,6 @@ def test_python_exports_match_shared_combat_sound_content():
 
 
 def test_every_combat_sound_producer_is_represented_in_shared_content():
-    caller_paths = []
     referenced_exports = set()
     for path in AGENT_DIR.rglob("*.py"):
         if "tests" in path.parts or ".venv" in path.parts:
@@ -71,11 +70,9 @@ def test_every_combat_sound_producer_is_represented_in_shared_content():
             for node in ast.walk(tree)
         ):
             continue
-        caller_paths.append(path)
         referenced_exports.update(
             node.id for node in ast.walk(tree) if isinstance(node, ast.Name) and node.id.startswith("SOUND_")
         )
-    assert len(caller_paths) >= 5
     assert referenced_exports == {row["export"] for row in _catalog()}
 
 

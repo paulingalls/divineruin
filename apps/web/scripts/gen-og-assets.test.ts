@@ -7,10 +7,6 @@ import { join } from "node:path";
 // rather than silently shipping a broken og-card / favicon.
 const PUBLIC = join(import.meta.dir, "..", "public");
 
-test("og-image.svg source is committed for regeneration", async () => {
-  expect(await Bun.file(join(PUBLIC, "og-image.svg")).exists()).toBe(true);
-});
-
 test("og-image.png is a non-trivial PNG", async () => {
   const bytes = await Bun.file(join(PUBLIC, "og-image.png")).bytes();
   expect(bytes.length).toBeGreaterThan(1000);

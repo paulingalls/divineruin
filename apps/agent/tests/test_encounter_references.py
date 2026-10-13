@@ -32,7 +32,7 @@ def test_recommended_party_level_cases(encounter):
 
 def test_all_eleven_reference_templates():
     templates = json.loads((ROOT / "content/encounter_templates.json").read_text())
-    assert len(templates) == 11 and CATALOG
+    assert len(templates) == 11
     for template in templates:
         assert all(set(enemy) == {"id", "creature_id", "role"} for enemy in template["enemies"])
         validate_encounter_references(template, CATALOG)

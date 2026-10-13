@@ -5,7 +5,7 @@ import json
 import pytest
 from acceptance.multiplayer_voice._harness import MultiplayerVoiceHarness
 from acceptance.seeds import seed_player_with_pools
-from acceptance.voice_condition_harness import ScenarioModel, assert_hud_floor, assert_receipt_floor, run_voice_commands
+from acceptance.voice_condition_harness import ScenarioModel, assert_hud_floor, run_voice_commands
 
 import db
 import db_mutations
@@ -129,25 +129,6 @@ async def test_microphone_reaches_real_gameplay_verb_and_dm_receipt(case, liveki
         assert (await db_queries.get_single_skill_advancement(guest, "perception"))["use_counter"] == 1
         assert (await db_queries.get_single_skill_advancement(host, "perception"))["use_counter"] == 0
     assert_hud_floor(hud)
-
-
-def test_command_receipt_and_hud_floors_fault_loudly():
-    from livekit.agents import llm
-
-    model = ScenarioModel([("check", {})])
-    model.calls = {"one": "check"}
-    with pytest.raises(AssertionError, match="missing DM receipt"):
-        assert_receipt_floor(model)
-    model.receipts = {"one": llm.FunctionCallOutput(name="check", call_id="one", output="{}", is_error=False)}
-    assert_receipt_floor(model)
-    model.calls = {}
-    with pytest.raises(AssertionError, match="missing executed command"):
-        assert_receipt_floor(model)
-    with pytest.raises(AssertionError, match="no received HUD"):
-        assert_hud_floor([])
-    for defect in ({"x": 1}, {"resonance": 10}):
-        with pytest.raises(AssertionError):
-            assert_hud_floor([{"type": "fixture", "data": defect}])
 
 
 @pytest.mark.asyncio

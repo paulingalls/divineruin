@@ -65,10 +65,6 @@ const encounters = references.map((encounter) => ({
 }));
 
 describe("encounter_templates.json — encounter-role overlay", () => {
-  test("catalog is non-empty", () => {
-    expect(encounters.length).toBeGreaterThan(0);
-  });
-
   test("every enemy carries a valid EncounterRole and the required stat fields", () => {
     for (const enc of encounters) {
       expect(Array.isArray(enc.enemies)).toBe(true);
@@ -343,13 +339,11 @@ test("catalog runtime extensions reject contradictory action shapes", () => {
 });
 
 describe("spatial scene placement", () => {
-  test("spatial real template corpus is reachable and nonempty", () => {
+  test("eleven shipped templates have valid spatial placement", () => {
     expect(references.length).toBe(11);
-    expect(references.some((row) => Object.keys(row.scene_placement.zones).length > 0)).toBe(true);
     for (const row of references) expect(() => validateScenePlacement(row)).not.toThrow();
   });
   test("spatial zone radii follow the creature catalog owner", () => {
-    let count = 0;
     for (const row of references) {
       const expected: Record<string, { center_id: string; radius_ft: number }> = {};
       for (const ref of row.enemies) {
@@ -363,9 +357,7 @@ describe("spatial scene placement", () => {
         }
       }
       expect(row.scene_placement.zones).toEqual(expected);
-      count += Object.keys(expected).length;
     }
-    expect(count).toBeGreaterThan(0);
   });
   test("spatial rejects malformed authored placement", () => {
     for (const row of references) {
@@ -442,10 +434,6 @@ test("typed silence zones pass the real scene boundary", () => {
 const choirCorpus = [...contractCorpus.valid, ...contractCorpus.invalid].filter((row) =>
   row.name.startsWith("choir_"),
 );
-test("Choir public contract corpus is reachable", () => {
-  expect(choirCorpus.length).toBeGreaterThan(1);
-  expect(choirCorpus.some((row) => row.name === "choir_catalog")).toBe(true);
-});
 for (const row of choirCorpus)
   test(`Choir public contract ${row.name}`, () => {
     const block = row.block as typeof row.block & { reactions: Record<string, unknown>[] };

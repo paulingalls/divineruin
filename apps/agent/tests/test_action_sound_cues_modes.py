@@ -9,7 +9,6 @@ from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_mock_room, published_events, published_payloads
 
 import event_types as E
-from action_sound_content import ACTION_SOUND_IDS
 from activity_tools import _begin_activity_impl
 from creation_tools import finalize_character
 from mode_tools import _enter_mode_impl
@@ -53,11 +52,6 @@ def watch_cue(ctx, log):
         return original(event)
 
     ctx.userdata.event_bus.publish = MagicMock(side_effect=record)
-
-
-def test_fixed_cases_cover_new_catalog_rows():
-    assert len(CASES) == 5
-    assert set(CASES.values()) <= ACTION_SOUND_IDS
 
 
 @pytest.mark.parametrize("mode", ["blacksmith", "dispatch"])

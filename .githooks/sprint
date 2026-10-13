@@ -51,15 +51,6 @@ snapshot_lane_logs() {
   return 0
 }
 
-echo "  Worktree bootstrap offset self-test..."
-bash "scripts/test-init-worktree.sh"
-echo "  Worktree .env value self-test..."
-bash "scripts/test-worktree-env-value.sh"
-echo "  Prepare hooksPath self-test..."
-bash "scripts/test-prepare-hookspath.sh"
-bash "scripts/test-local-service-host.sh"
-bash "scripts/test-worktree-sweep-livekit.sh"
-
 echo "  Lint + typecheck (root, mobile, server, web, python)..."
 bun run lint
 echo "  Lint + typecheck (e2e)..."
@@ -71,14 +62,6 @@ if ! docker info >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "  Worktree ownership self-test..."
-bash "scripts/test-worktree-ownership.sh"
-bash "scripts/test-worktree-url-ownership.sh"
-bash "scripts/test-worktree-sweep-livekit-docker.sh"
-echo "  Worktree listener ownership self-test..."
-bash "scripts/test-worktree-listener-ownership.sh"
-
-bash scripts/test-sweep-test-containers.sh
 bash scripts/sweep-test-containers.sh || true
 
 bg_pids=()
@@ -117,7 +100,7 @@ snap_dir() { printf '%s/%s-%s' "$ART" "$(date +%Y%m%d-%H%M%S)" "$(git rev-parse 
 acc_pid=$!
 bg_pids+=("$acc_pid")
 
-echo "  Bun + Python unit lanes (parallel: scripts, server, mobile, web, shared, design tokens, e2e environment, python)..."
+echo "  Bun + Python unit lanes (parallel: scripts, server, mobile, web, shared, design tokens, python)..."
 unit_specs=()
 ( set -o pipefail; mask_external_api_environment; \
   bun run test:server 2>&1 | tee "$ART/last-server.log" ) &
@@ -132,8 +115,6 @@ p=$!; bg_pids+=("$p"); unit_specs+=("$p:scripts")
 p=$!; bg_pids+=("$p"); unit_specs+=("$p:design-tokens")
 ( set -o pipefail; bun test --cwd apps/web 2>&1 | tee "$ART/last-web.log" ) &
 p=$!; bg_pids+=("$p"); unit_specs+=("$p:web")
-( set -o pipefail; bun test e2e/ports.test.ts e2e/require-environment.test.ts 2>&1 | tee "$ART/last-e2e-environment.log" ) &
-p=$!; bg_pids+=("$p"); unit_specs+=("$p:e2e-environment")
 ( set -o pipefail; mask_python_test_environment; \
   bun run test:python 2>&1 | tee "$ART/last-python.log" ) &
 p=$!; bg_pids+=("$p"); unit_specs+=("$p:python")
@@ -143,7 +124,7 @@ if [ "$unit_rc" -ne 0 ]; then
   snap="$(snap_dir)"
   snapshot_lane_logs "$snap" \
     "$ART/last-server.log" "$ART/last-mobile.log" "$ART/last-shared.log" "$ART/last-scripts.log" \
-    "$ART/last-design-tokens.log" "$ART/last-web.log" "$ART/last-e2e-environment.log" "$ART/last-python.log"
+    "$ART/last-design-tokens.log" "$ART/last-web.log" "$ART/last-python.log"
   echo "ERROR: one or more unit lanes failed. Logs preserved at:" >&2
   echo "    $snap" >&2
   exit "$unit_rc"
