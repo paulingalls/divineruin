@@ -6,13 +6,13 @@ import argparse
 import re
 from pathlib import Path
 
-ENTRY = re.compile(r"^## ([\w./-]+\.md)(?: \([^\n]*\))?$", re.M)
-ROW = re.compile(r"^\| (.*?) \| (.*?) \| (.*?) \|$", re.M)
+ENTRY = re.compile(r"^## ([\w./-]+\.md)(?: \([^\n]*\))?$", re.MULTILINE)
+ROW = re.compile(r"^\| (.*?) \| (.*?) \| (.*?) \|$", re.MULTILINE)
 LIST_DIRS = {"decisions", "ideas", "milestones", "mockups"}
 HEADER = """# Documentation Index
 
-Run `uv run python scripts/doc_index.py --write` after editing docs. The test compares
-this file with the regenerated result. Scope: every regular `docs/**/*.md` file,
+Run `python3 scripts/doc_index.py --write` after editing docs. Validate with
+`python3 scripts/doc_index.py`. Scope: every regular `docs/**/*.md` file,
 including nested directories; `docs/INDEX.md` is explicitly excluded. Non-Markdown
 assets and source files are excluded. `decisions/`, `ideas/`, `milestones/` and
 `mockups/` are listed by path and line count only; every other doc gets a section

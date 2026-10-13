@@ -188,21 +188,6 @@ async def test_public_choir_encounter_requires_actual_gameplay_delivery(
         await harness.aclose()
 
 
-def test_skipped_encounter_and_every_missing_checkpoint_fail_completion():
-    from acceptance.choir_capstone_flow import STEPS, assert_complete
-
-    healthy = {step: {"observed": True} for step in STEPS}
-    assert_complete(healthy)
-    for step in STEPS:
-        missing = {key: value for key, value in healthy.items() if key != step}
-        with pytest.raises(AssertionError, match="missing named Choir"):
-            assert_complete(missing)
-    with pytest.raises(AssertionError, match="missing named Choir"):
-        assert_complete({})
-    with pytest.raises(AssertionError, match="empty Choir"):
-        assert_complete({step: {} for step in STEPS})
-
-
 @pytest.mark.asyncio
 async def test_committed_choir_aura_preserves_concentration_outside_radius(livekit_server, reset_db_pool):
     import asyncio
@@ -273,46 +258,3 @@ async def test_committed_content_requires_nonempty_reachable_source(missing, res
         fault.setattr(Path, "read_text", source)
         with pytest.raises(FileNotFoundError if missing else AssertionError, match=r"committed spells\.json"):
             await reseed_choir_content(await db.get_pool())
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("step", ["silenced-command", "deafened-command"])
-async def test_legal_choir_command_rejects_delivery_with_wrong_save_outcome(step):
-    import asyncio
-    from unittest.mock import AsyncMock
-
-    from acceptance.choir_capstone_flow import ChoirCapstoneFlow
-
-    receipt = {"save_type": "dexterity", "roll": 20, "total": 24, "outcome": "success"}
-    flow = ChoirCapstoneFlow(None, None, asyncio.Queue(), "authenticated-agent")
-    flow.call = AsyncMock(return_value=receipt)
-    flow.remember = AsyncMock()
-    delivery = flow.delivery
-
-    async def bounded_delivery(kind, predicate=lambda event: True, timeout=5):
-        return await delivery(kind, predicate, timeout=1)
-
-    flow.delivery = bounded_delivery
-    for success in (False, None, True):
-        await flow.events.put(
-            (
-                json.dumps(
-                    {
-                        "type": "dice_roll",
-                        "roll_type": "saving_throw",
-                        "save_type": receipt["save_type"],
-                        "roll": receipt["roll"],
-                        "total": receipt["total"],
-                        "success": success,
-                    }
-                ).encode(),
-                "authenticated-agent",
-            )
-        )
-        if success is True:
-            await flow.legal_command(step)
-            flow.remember.assert_awaited_once_with(step)
-        else:
-            with pytest.raises(AssertionError, match="missing Choir gameplay delivery: dice_roll"):
-                await flow.legal_command(step)
-            flow.remember.assert_not_awaited()

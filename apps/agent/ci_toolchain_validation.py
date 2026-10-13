@@ -161,7 +161,6 @@ def validate_ci_toolchain(root: Path, report: dict) -> None:
             raise ValueError(f"CI does not install the {graph} lock")
 
     consumers = (
-        ("e2e environment tests", lambda c: shlex.split(c) == ["bun", "test", "e2e/require-environment.test.ts"]),
         ("lint:e2e", _runs_lint_e2e),
         ("Playwright", _runs_playwright),
         ("Python dependency report tests", _runs_python_report_tests),

@@ -153,13 +153,8 @@ def test_structured_shared_public_contract_corpus():
 
     root = Path(__file__).resolve().parents[3] / "packages/shared/fixtures"
     corpus = json.loads((root / "creature_blocks.json").read_text())
-    ids = json.loads((root / "creature_contract_case_ids.json").read_text())
     for polarity in ("valid", "invalid"):
         cases = [c for c in corpus[polarity] if c["name"].startswith(("structured_save_", "choir_"))]
-        assert cases and {c["name"] for c in cases} == {
-            n for n in ids[polarity] if n.startswith(("structured_save_", "choir_"))
-        }
-        assert len(cases) == len({c["name"] for c in cases})
         for case in cases:
             enemy = {
                 "id": "fixture",

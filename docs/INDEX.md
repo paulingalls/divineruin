@@ -1,7 +1,7 @@
 # Documentation Index
 
-Run `uv run python scripts/doc_index.py --write` after editing docs. The test compares
-this file with the regenerated result. Scope: every regular `docs/**/*.md` file,
+Run `python3 scripts/doc_index.py --write` after editing docs. Validate with
+`python3 scripts/doc_index.py`. Scope: every regular `docs/**/*.md` file,
 including nested directories; `docs/INDEX.md` is explicitly excluded. Non-Markdown
 assets and source files are excluded. `decisions/`, `ideas/`, `milestones/` and
 `mockups/` are listed by path and line count only; every other doc gets a section
@@ -170,7 +170,7 @@ Investigation of Stable Audio 3 noise-only outputs and the resolved production p
 
 ---
 
-## audio_sfx_pipeline.md (547 lines)
+## audio_sfx_pipeline.md (546 lines)
 
 Sound-effect generation, asset keys, regeneration, and integration guidance.
 
@@ -182,7 +182,7 @@ Sound-effect generation, asset keys, regeneration, and integration guidance.
 | 3. Recommendation | 171-252 | Quality gates the choice; bake-off and SA3-medium spike findings |
 | 4. Keying Scheme (FROZEN CONTRACT for stories 002/003) | 253-392 | sound_id keyed by effect family; 7-key MVP palette; all 87 spells mapped |
 | 5. Regenerate Recipe | 393-507 | Recommended Stable Audio path, ElevenLabs secondary, procedural fallback |
-| 6. Integration Notes for Stories 002/003 | 508-547 | Asset SSOT location, bundling, family coverage matrix |
+| 6. Integration Notes for Stories 002/003 | 508-546 | Asset SSOT location, bundling, family coverage matrix |
 
 ---
 

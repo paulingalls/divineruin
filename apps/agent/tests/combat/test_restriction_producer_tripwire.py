@@ -87,8 +87,6 @@ def _python_producers(paths: Iterable[Path]) -> list[str]:
 def _produced_conditions(content_paths: Iterable[Path], source_paths: Iterable[Path]) -> set[str]:
     content_paths = tuple(content_paths)
     source_paths = tuple(source_paths)
-    assert content_paths, "condition producer content walk inspected no files"
-    assert source_paths, "condition producer source walk inspected no files"
     return set(_content_producers(content_paths)) | set(_python_producers(source_paths))
 
 

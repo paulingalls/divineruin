@@ -1,10 +1,4 @@
-"""The pure guards the M29 real-LLM combat scenarios assert through (story-022).
-
-Split from ``tests/acceptance/test_m29_combat_reactions.py`` so each has one job: that module
-drives a live Haiku session, this one holds the assertions it leans on — which are pure, and whose
-own fault injection therefore belongs in the fast lane (``tests/test_m29_guards.py``) rather than
-behind an API key. A guard that cannot red against its target defect certifies (constraint 1).
-"""
+"""Assertions used by the M29 real-LLM combat scenarios."""
 
 from __future__ import annotations
 

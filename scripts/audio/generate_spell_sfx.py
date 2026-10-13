@@ -1,9 +1,7 @@
-#!/usr/bin/env python3
 """Generate the full non-spell + spell audio inventory via ElevenLabs Text-to-Sound.
 
 PROMPTS is the single prompt SSOT for every bundled sound in
-apps/mobile/assets/sounds/ (SFX, spell SFX, music, soundscapes, textures),
-guarded by apps/agent/tests/test_generate_spell_sfx.py for full asset parity.
+apps/mobile/assets/sounds/ (SFX, spell SFX, music, soundscapes, textures).
 The original 7-key spell-cast palette (M17, story-002) is frozen within this
 table — see docs/audio_sfx_pipeline.md §4. This is the ElevenLabs (.mp3)
 bake-off generator, and it owns the shared PROMPTS table + _out_path helper
@@ -281,15 +279,9 @@ PROMPTS: dict[str, str] = {
         "layered ambient bed."
     ),
     # --- TEXTURES (textures/, short dry foley one-shots) ---
-    "bird_call_01": (
-        "A single bright songbird call in a forest, a short clear chirping trill. Short, dry, no music."
-    ),
-    "bird_call_02": (
-        "A single distinct songbird call, a short warbling two-note whistle. Short, dry, no music."
-    ),
-    "bird_call_03": (
-        "A single distant songbird call, a short soft fluting chirp. Short, dry, no music."
-    ),
+    "bird_call_01": ("A single bright songbird call in a forest, a short clear chirping trill. Short, dry, no music."),
+    "bird_call_02": ("A single distinct songbird call, a short warbling two-note whistle. Short, dry, no music."),
+    "bird_call_03": ("A single distant songbird call, a short soft fluting chirp. Short, dry, no music."),
     "cart_wheel": (
         "A wooden cart wheel creaking and rolling over a rutted dirt road, a rhythmic "
         "wood and axle groan. Short, dry, no music."
@@ -298,9 +290,7 @@ PROMPTS: dict[str, str] = {
         "A single water droplet falling and landing in a still pool, a small clear "
         "plink with a faint echo. Short, dry, no music."
     ),
-    "footstep_stone": (
-        "A single footstep on a hard stone floor, a crisp solid footfall tap. Short, dry, no music."
-    ),
+    "footstep_stone": ("A single footstep on a hard stone floor, a crisp solid footfall tap. Short, dry, no music."),
     "wind_gust": (
         "A sudden gust of wind sweeping past, a short rushing air whoosh rising and fading. Short, dry, no music."
     ),
@@ -313,9 +303,7 @@ PROMPTS: dict[str, str] = {
     "fire_crackle": (
         "A small campfire crackling, a short burst of wood pops and a soft crackling hiss. Short, dry, no music."
     ),
-    "branch_crack": (
-        "A dry tree branch snapping underfoot, a single sharp brittle wood crack. Short, dry, no music."
-    ),
+    "branch_crack": ("A dry tree branch snapping underfoot, a single sharp brittle wood crack. Short, dry, no music."),
 }
 
 _API_URL = "https://api.elevenlabs.io/v1/sound-generation"
@@ -327,15 +315,11 @@ _ENV_KEY = "ELEVEN_LABS_API_KEY"
 def _require_api_key() -> str:
     key = os.environ.get(_ENV_KEY, "").strip()
     if not key:
-        sys.exit(
-            f"{_ENV_KEY} is not set. `source ~/.zprofile` (or export it) before running."
-        )
+        sys.exit(f"{_ENV_KEY} is not set. `source ~/.zprofile` (or export it) before running.")
     return key
 
 
-def _generate_one(
-    text: str, *, duration: float, prompt_influence: float, loop: bool, api_key: str
-) -> bytes:
+def _generate_one(text: str, *, duration: float, prompt_influence: float, loop: bool, api_key: str) -> bytes:
     """POST one prompt to ElevenLabs and return the MP3 bytes. Fail-loud on any HTTP error."""
     body = json.dumps(
         {
@@ -364,9 +348,7 @@ def _generate_one(
         sys.exit(f"ElevenLabs HTTP {e.code} for prompt: {text[:60]!r}...\n{detail}")
 
 
-def out_path(
-    out_dir: Path, key: str, variant: int, total_variants: int, ext: str = ".mp3"
-) -> Path:
+def out_path(out_dir: Path, key: str, variant: int, total_variants: int, ext: str = ".mp3") -> Path:
     """Shared palette-file namer. ext is the output format (.mp3 for both engines; the SA3 generator renders .wav then transcodes to .mp3)."""
     name = f"{key}{ext}" if total_variants == 1 else f"{key}_v{variant}{ext}"
     return out_dir / name
@@ -406,9 +388,7 @@ def generate(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Generate the full bundled audio prompt inventory."
-    )
+    parser = argparse.ArgumentParser(description="Generate the full bundled audio prompt inventory.")
     parser.add_argument("--out-dir", required=True, type=Path)
     parser.add_argument(
         "--keys",
@@ -416,9 +396,7 @@ def main(argv: list[str] | None = None) -> int:
         default=sorted(PROMPTS),
         help=f"subset of palette keys (default: all {len(PROMPTS)})",
     )
-    parser.add_argument(
-        "--variants", type=int, default=1, help="takes per key (default 1)"
-    )
+    parser.add_argument("--variants", type=int, default=1, help="takes per key (default 1)")
     parser.add_argument("--duration", type=float, default=2.0, help="seconds, 0.5-30")
     parser.add_argument("--prompt-influence", type=float, default=0.5)
     parser.add_argument("--loop", action="store_true", help="request a seamless loop")
