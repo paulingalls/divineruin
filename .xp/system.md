@@ -27,8 +27,8 @@ predecessor-result caching. Push scans outgoing secrets only.
 are real elapsed times on this macOS host with installed frozen graphs, cached
 Docker images and running checkout-owned services. The host was contended by
 other work; the baseline acceptance run overlapped commit/land measurements.
-CI on this tree is pending publication authorization; historical PR 605 is
-not a substitute. This table is an incomplete measurement record, not AC sign-off.
+The authorized draft PR will supply the recorded merge tree and CI timings;
+historical PR 605 is not a substitute. This table is an incomplete measurement record, not AC sign-off.
 
 | Owning tier | Leaf check / setup | Measured seconds | Explicit repeat and reason |
 |---|---|---:|---|
@@ -105,8 +105,9 @@ these tiers; the complete package-script/CI-step inventory is in story DATA's
 `evidence/inventory.json`. Product tests are retained; developer hook/runner
 scaffolding is one-off evidence and never enters a regular test run. CI skips
 documentation-only PRs. e2e type errors, deps-less commits and bypassed hooks
-first receive full static validation at PR CI. The human nightly decision is
-pending; constraints 2 and 13 remain unchanged.
+first receive full static validation at PR CI. The card records the human answer (2026-10-13): “Nightly tier — DROP it;
+edit constraints 2 and 13 to remove the nightly tier (tiers: commit, story land,
+push, sprint close, PR CI).” Constraints 2 and 13 match that decision.
 
 **Surfaces & acceptance**: five surfaces, each with a harness that drives it at
 its boundary.
