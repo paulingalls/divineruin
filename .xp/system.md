@@ -38,13 +38,12 @@ CI uses separate Ubuntu runners; its step timestamps have one-second precision
 | Commit | Staged ESLint | 1.302 | CI full-project ESLint is clean-machine validation |
 | Commit | Affected root / mobile / server / web `tsc` | 0.932 / 2.802 / 1.313 / 0.940 | CI checks every project, including deps-less and bypassed commits |
 | Commit | Staged Prettier | 0.162 | CI checks all supported files on a clean machine |
-| Commit | Agent Ruff check / format | 0.115 / 0.033 | CI full-project clean-machine validation |
-| Commit | Whole-agent pyright | 13.289 | CI clean-machine validation |
+| Commit | Agent Ruff check / format | 0.115 / 0.033 | CI `lint-python` (0 / 0 CI): clean-machine repeat; first run for deps-less or bypassed commits |
+| Commit | Whole-agent pyright | 13.289 | CI `lint-python` (28 CI): clean-machine repeat; first run for deps-less or bypassed commits |
 | Commit | Other Python Ruff check / format | 0.035 / 0.030 | No whole-repo Python lint lane; staged paths own it |
 | Push | Outgoing-history gitleaks | Included in 0.10 hook | Index scans cover a different input; no services or test children |
 | PR CI | Full root/mobile/server/web typechecks, ESLint, Prettier (`lint:ts`) | 40 CI | Commit's affected-project/staged checks provide early feedback |
 | PR CI | e2e `tsc`, ESLint (`lint:e2e`) | 5 CI | First typecheck for e2e; commit does not install its graph |
-| PR CI | Full agent Ruff check, format, pyright (`lint-python`) | 0 / 0 / 28 CI | Commit repeats for early local feedback |
 | PR CI | Scripts (`bun --env-file=.env test ./scripts`) | 0.570 land; 0 CI | Human-required land fast lane; CI covers free patches |
 | PR CI | Shared / design tokens | 3.647 / 0.031 land; 2 / 0 CI | Human-required land fast lane; CI covers free patches |
 | PR CI | Server bulk | 2.273 land; included in 2 CI server total | Human-required land fast lane; isolated from real DB module |
