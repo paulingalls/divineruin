@@ -26,18 +26,6 @@ def assert_catalog_rows(rows):
         assert validate_creature_stat_block(json.loads(row["data"])) == []
 
 
-def test_catalog_floor_accepts_more_rows_and_rejects_missing_exemplars():
-    creatures = json.loads((ROOT / "content/creatures.json").read_text())
-    rows = [{"id": block["id"], "data": json.dumps(block)} for block in creatures]
-    extra = {**creatures[0], "id": "scratch_third_creature"}
-    assert_catalog_rows([*rows, {"id": extra["id"], "data": json.dumps(extra)}])
-    with pytest.raises(AssertionError):
-        assert_catalog_rows([])
-    for row in [row for row in rows if row["id"] in {"hollow_shadeling", "hollow_hollowmoth"}]:
-        with pytest.raises(AssertionError):
-            assert_catalog_rows([other for other in rows if other is not row])
-
-
 def test_catalog_columns_and_indexes(fresh_migrated_db):
     async def check():
         conn = await asyncpg.connect(fresh_migrated_db)

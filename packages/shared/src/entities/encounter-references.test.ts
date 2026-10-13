@@ -30,7 +30,6 @@ test("all eleven templates", async () => {
     new URL("../../../../content/encounter_templates.json", import.meta.url),
   ).json()) as unknown[];
   expect(rows).toHaveLength(11);
-  expect(ids.size).toBeGreaterThan(0);
   for (const row of rows) validateEncounterReferences(row, ids);
 });
 

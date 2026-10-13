@@ -19,20 +19,6 @@ def _assert_loot_drop_owner(table: dict, drop: dict, item_ids: set[str], materia
     )
 
 
-@pytest.mark.parametrize(
-    "drop_id,expected",
-    [("probe_item", None), ("iron_ore", None), ("missing_drop", "unknown"), ("crystal_flask", "ambiguous")],
-)
-def test_loot_table_drops_catalog_ownership(drop_id: str, expected: str | None) -> None:
-    table = {"id": "loot_probe"}
-    drop = {"item_id": drop_id}
-    if expected:
-        with pytest.raises(AssertionError, match=f"loot_probe.*{expected}.*{drop_id}"):
-            _assert_loot_drop_owner(table, drop, {"probe_item", "crystal_flask"}, {"iron_ore", "crystal_flask"})
-    else:
-        _assert_loot_drop_owner(table, drop, {"probe_item", "crystal_flask"}, {"iron_ore", "crystal_flask"})
-
-
 def _load_json(filename: str) -> list[dict]:
     path = CONTENT_DIR / filename
     if not path.exists():

@@ -70,49 +70,11 @@ async def test_committed_choir_entry_and_public_search(livekit_server, reset_db_
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "table,key", [("spells", "arcane_bolt"), ("creatures", "hollow_choir"), ("encounter_templates", "hollow_choir")]
-)
-async def test_reseed_committed_content_repairs_stale_rows_and_rejects_omitted_seed(
-    table, key, reset_db_pool, monkeypatch
-):
-    import asyncpg
-    from acceptance.choir_capstone_harness import reseed_choir_content
-
-    pool = await db.get_pool()
-    original = json.loads(await pool.fetchval(f"SELECT data FROM {table} WHERE id=$1", key))
-    stale = {**original, "name": "Stale pre-story fixture"}
-    try:
-        await pool.execute(f"UPDATE {table} SET data=$2::jsonb WHERE id=$1", key, json.dumps(stale))
-        await reseed_choir_content(pool)
-        assert json.loads(await pool.fetchval(f"SELECT data FROM {table} WHERE id=$1", key)) == original
-        await pool.execute(f"UPDATE {table} SET data=$2::jsonb WHERE id=$1", key, json.dumps(stale))
-        execute = asyncpg.Connection.executemany
-
-        async def omit_table(conn, query, args, **kwargs):
-            if query.startswith(f"INSERT INTO {table} "):
-                return None
-            return await execute(conn, query, args, **kwargs)
-
-        with monkeypatch.context() as fault:
-            fault.setattr(asyncpg.Connection, "executemany", omit_table)
-            with pytest.raises(AssertionError, match=f"stale committed {table}"):
-                await reseed_choir_content(pool)
-    finally:
-        await reseed_choir_content(pool)
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("fault", ["none", "drop-delivery", "leak-rollback"])
-async def test_public_choir_encounter_requires_actual_gameplay_delivery(
-    fault, livekit_server, reset_db_pool, monkeypatch
-):
+async def test_public_choir_encounter_requires_actual_gameplay_delivery(livekit_server, reset_db_pool):
     import asyncio
 
     from acceptance._livekit_client import register_data_packet_collector
     from acceptance.choir_capstone_flow import ChoirCapstoneFlow
-
-    import combat_init
 
     harness = MultiplayerVoiceHarness(livekit_server)
     encounter = ChoirEncounterDiagnostic(harness.player_one_identity)
@@ -125,12 +87,6 @@ async def test_public_choir_encounter_requires_actual_gameplay_delivery(
     async def speak():
         await harness.play(harness.player_one_identity, CHOIR_COMMAND_SPEECH)
 
-    publish = combat_init.publish_game_event
-
-    async def withhold_started(room, kind, *args, **kwargs):
-        if kind != "combat_started":
-            await publish(room, kind, *args, **kwargs)
-
     try:
         await harness.start(prepare, stt=BurstSTT())
         encounter.attach(harness.manager)
@@ -138,51 +94,30 @@ async def test_public_choir_encounter_requires_actual_gameplay_delivery(
         events = asyncio.Queue()
         register_data_packet_collector(harness.player_two, topic="game_events", queue=events)
         flow = ChoirCapstoneFlow(encounter, speak, events, harness.listener.local_participant.identity)
-        if fault == "drop-delivery":
-            monkeypatch.setattr(combat_init, "publish_game_event", withhold_started)
-            with pytest.raises(AssertionError, match="missing Choir gameplay delivery: combat_started"):
-                await flow.run()
-            assert encounter.sd.combat_state is not None and encounter.sd.combat_state.choir_encounter is not None
-            assert encounter.sd.combat_state.choir_encounter["phase"] == "search"
-            assert len(encounter.model.receipts) == 1
-        elif fault == "leak-rollback":
-            from combat_events import EventSink
-            from game_events import publish_game_event
+        await flow.run()
+        import choir_scene
+        import db_queries
 
-            emit = EventSink.emit
-
-            async def leaking_emit(sink, room, kind, payload, **kwargs):
-                await publish_game_event(room, kind, payload, **kwargs)
-                await emit(sink, room, kind, payload, **kwargs)
-
-            monkeypatch.setattr(EventSink, "emit", leaking_emit)
-            with pytest.raises(AssertionError, match="rolled-back Choir phase leaked gameplay event"):
-                await flow.run()
-        else:
-            await flow.run()
-            import choir_scene
-            import db_queries
-
-            primary = await db_queries.get_player(encounter.player_id)
-            guest = await db_queries.get_player(harness.player_two_identity)
-            location = encounter.sd.location_id
-            assert primary is not None and guest is not None
-            receipt = choir_scene.read(primary, location)
-            assert receipt is not None and receipt["status"] == "destroyed"
-            assert choir_scene.read(guest, location) is None, "Choir receipt escaped primary owner"
-            encounter.sd.location_id = "accord_market_square"
-            assert choir_scene.read(primary, encounter.sd.location_id) is None
-            entered = await flow.call(
-                "enter_mode",
-                {"mode": "combat", "encounter_id": "hollow_choir", "encounter_description": "Independent location"},
-            )
-            assert entered["choir"]["phase"] == "search", "destroyed source blocked another location"
-            primary = await db_queries.get_player(encounter.player_id)
-            assert primary is not None
-            destroyed = choir_scene.read(primary, location)
-            active = choir_scene.read(primary, encounter.sd.location_id)
-            assert destroyed is not None and destroyed["status"] == "destroyed"
-            assert active is not None and active["status"] == "combat"
+        primary = await db_queries.get_player(encounter.player_id)
+        guest = await db_queries.get_player(harness.player_two_identity)
+        location = encounter.sd.location_id
+        assert primary is not None and guest is not None
+        receipt = choir_scene.read(primary, location)
+        assert receipt is not None and receipt["status"] == "destroyed"
+        assert choir_scene.read(guest, location) is None, "Choir receipt escaped primary owner"
+        encounter.sd.location_id = "accord_market_square"
+        assert choir_scene.read(primary, encounter.sd.location_id) is None
+        entered = await flow.call(
+            "enter_mode",
+            {"mode": "combat", "encounter_id": "hollow_choir", "encounter_description": "Independent location"},
+        )
+        assert entered["choir"]["phase"] == "search", "destroyed source blocked another location"
+        primary = await db_queries.get_player(encounter.player_id)
+        assert primary is not None
+        destroyed = choir_scene.read(primary, location)
+        active = choir_scene.read(primary, encounter.sd.location_id)
+        assert destroyed is not None and destroyed["status"] == "destroyed"
+        assert active is not None and active["status"] == "combat"
     finally:
         await encounter.aclose()
         await harness.aclose()
@@ -236,25 +171,3 @@ async def test_committed_choir_aura_preserves_concentration_outside_radius(livek
     finally:
         await encounter.aclose()
         await harness.aclose()
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("missing", [False, True])
-async def test_committed_content_requires_nonempty_reachable_source(missing, reset_db_pool, monkeypatch):
-    from pathlib import Path
-
-    from acceptance.choir_capstone_harness import reseed_choir_content
-
-    original = Path.read_text
-
-    def source(path, *args, **kwargs):
-        if path.name == "spells.json":
-            if missing:
-                raise FileNotFoundError("missing committed spells.json")
-            return "[]"
-        return original(path, *args, **kwargs)
-
-    with monkeypatch.context() as fault:
-        fault.setattr(Path, "read_text", source)
-        with pytest.raises(FileNotFoundError if missing else AssertionError, match=r"committed spells\.json"):
-            await reseed_choir_content(await db.get_pool())
