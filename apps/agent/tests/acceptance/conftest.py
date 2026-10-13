@@ -1,8 +1,8 @@
 """LiveKit acceptance fixture — reuses a persistent docker-managed dev server.
 
 The container is named and left running across runs (no testcontainers ryuk
-reaper), so repeated local pushes skip the boot cost. Set REQUIRE_DOCKER=1 to
-hard-fail when Docker is down (pre-push gate); otherwise tests skip cleanly.
+reaper), so repeated acceptance runs skip the boot cost. Set REQUIRE_DOCKER=1 to
+hard-fail when Docker is down (sprint close and PR CI); otherwise tests skip cleanly.
 Set ACCEPTANCE_NO_REUSE=1 to tear the container down after the session.
 """
 

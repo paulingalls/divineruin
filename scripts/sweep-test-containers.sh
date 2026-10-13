@@ -13,7 +13,7 @@
 # makes us conservatively SKIP a real orphan — a missed reap, never a wrong kill.
 # The next sweep once that PID frees catches it.)
 #
-# Idempotent and safe to run anytime: pre-push runs it at gate start, test-env.sh
+# Idempotent and safe to run anytime: sprint runs it at gate start, test-env.sh
 # runs it before provisioning, and `bun run docker:sweep` runs it by hand.
 #
 # Matches BOTH the current `divineruin-test-` prefix and the legacy `dr-test-`

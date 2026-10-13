@@ -14,7 +14,7 @@ import { sql } from "./db.ts";
 // isolated like db.test.ts: live-DB tests sharing the lazy `sql` client and the
 // process-global locations registry cannot coexist with the multi-file batch (the
 // shared client/state breaks across files). It runs only when DATABASE_URL is set
-// (the pre-push / CI server lane); the unit lane skips it cleanly.
+// (the story-land / CI server lane); the unit lane skips it cleanly.
 const hasDb = Boolean(process.env.DATABASE_URL);
 
 // Anti-silent-skip sentinel: the server lane sets REQUIRE_DB=1, so a DATABASE_URL

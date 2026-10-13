@@ -10,8 +10,8 @@ import { sql } from "./db.ts";
 // `await sql` / Promise probes never force construction (or read the env).
 // A Bun SQL upgrade could silently break trap forwarding or the guard, so
 // this regression test exercises both traps live. The live queries skip when
-// DATABASE_URL is unset, keeping the env-free unit lane green; the pre-push
-// server lane provisions DATABASE_URL (scripts/test-env.sh) so they run there.
+// DATABASE_URL is unset, keeping the env-free unit lane green; the story-land and CI
+// server lanes provide DATABASE_URL so they run there.
 const hasDb = Boolean(process.env.DATABASE_URL);
 
 // Anti-silent-skip sentinel: the server lane sets REQUIRE_DB=1, so a DATABASE_URL
