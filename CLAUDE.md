@@ -79,7 +79,7 @@ Commit checks staged languages and affected projects. Story land retains `bun ru
 
 Rules engine must be exhaustively tested (pure functions, deterministic).
 
-**Run the full Python fast lane via the package script — `bun run test:python` (parallel `-n 8`, ~6.5s), not a bare `uv run pytest -m "not acceptance"` (serial, ~3x slower).** `bun run test:all` runs both the TS and Python fast lanes. Reserve targeted `cd apps/agent && uv run pytest tests/<path>` for the inner TDD loop (sub-2s); use the script for any full-lane check so you exercise the same command CI and story land use.
+**Run the full Python fast lane via the package script — `bun run test:python` (parallel `-n 8`), not a bare `uv run pytest -m "not acceptance"` (serial).** `bun run test:all` runs both the TS and Python fast lanes. Reserve targeted `cd apps/agent && uv run pytest tests/<path>` for the inner TDD loop; use the script for any full-lane check so you exercise the same command CI and story land use.
 
 ## Settled Decisions
 

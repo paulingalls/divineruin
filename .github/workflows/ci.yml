@@ -5,7 +5,7 @@ name: CI
 #   1. `pull_request` already builds refs/pull/N/merge, so a main-push run re-tests
 #      a tree byte-identical to what the PR just proved.
 #   2. main has no required PR/status check, so none depended on that run.
-#   3. Sprint close runs the complete local release suite on the integration tree.
+#   3. Sprint close runs acceptance and Playwright on the integration tree.
 #      Push scans outgoing secrets; CI supplies
 #      the normal PR checks, including for focused free patches.
 # Measured before the change: sprint-044 burned 7 runs (6 PR + 1 main push) at
