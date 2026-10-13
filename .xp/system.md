@@ -17,8 +17,10 @@ REST API, Expo/expo-router mobile client, Bun-SSR web. Bun-native APIs only
 Tests: `bun test` (bun:test) for TS, `pytest` + `pytest-asyncio` for Python.
 Commit fast tier: `bash scripts/test-fast.sh` checks staged language files.
 Story Verify runs the card’s focused behavioral checks.
-Story tier: `bun run lint` (static checks). Broad regression runs only in the
-full tier once at sprint close.
+Story land retains `bun run test:all` before merge. PR CI owns full static
+checks and Bun/Python non-acceptance suites. Sprint close owns deterministic
+acceptance and Playwright; CI repeats them for free-patch coverage without
+predecessor-result caching. Push scans outgoing secrets only.
 
 **Surfaces & acceptance**: five surfaces, each with a harness that drives it at
 its boundary.
@@ -29,7 +31,7 @@ its boundary.
 | Automation | Expo/React Native mobile app | Maestro — `apps/mobile/.maestro/` flows + `scripts/maestro-acceptance.ts` |
 | HTTP/WebSocket | `apps/server` Bun.serve REST; LiveKit token + data-channel endpoints | bun:test server suites |
 | Message-event | Valkey/Redis `async_worker.py` polling loop | pytest — `test_ops_async_reset_runbook.py` |
-| CLI | `agent.py dev`, `async_worker.py` LiveKit process entry points | pytest |
+| CLI | Product: `agent.py dev`, `async_worker.py`; developer: pre-commit, pre-merge-commit, pre-push, sprint, test-fast.sh, test-all.ts | Product pytest; developer entry points use disposable dispatch/failure scaffolding, recorded then removed (constraint 3) |
 
 A story's ACs must be executed by the surface-driving test named in its Verify.
 The real-LLM acceptance lane is deliberately excluded from `test:all` (ADR 0003,
@@ -121,11 +123,11 @@ without certifying paid speech-recognition accuracy.
   CONVENTION the xp release model enforces, not one the host enforces; don't cite
   "protected" as the reason for it. Work lands as first-parent merges of
   `paulingalls/sprint-*` / `story-*` / `free-*` branches. `.githooks/pre-push`
-  scans outgoing secrets, runs lint/typechecks and service-free Bun suites for
-  every ref. Push starts no services. `.githooks/sprint` owns the complete local
-  release suite at sprint close on the trial-merged integration tree, including
-  service-backed server/Python, acceptance and Playwright. Free patches run fast
-  push checks plus focused card Acceptance at the affected behavior/integration
+  scans outgoing secrets for every ref without starting services. Story land
+  runs the fast lane before merge. PR CI owns static and non-acceptance checks;
+  `.githooks/sprint` runs acceptance and Playwright at sprint close on the
+  trial-merged integration tree. Free patches run the outgoing secret scan
+  plus focused card Acceptance at the affected behavior/integration
   boundary on the trial-merged tree, then normal PR CI before merge. The lead
   adds broader free-patch acceptance only when the changed behavior warrants it;
   there is no automatic full local release suite for each free patch. Direct

@@ -6,7 +6,7 @@ name: CI
 #      a tree byte-identical to what the PR just proved.
 #   2. main has no required PR/status check, so none depended on that run.
 #   3. Sprint close runs the complete local release suite on the integration tree.
-#      Push runs secrets, static checks and service-free Bun suites; CI supplies
+#      Push scans outgoing secrets; CI supplies
 #      the normal PR checks, including for focused free patches.
 # Measured before the change: sprint-044 burned 7 runs (6 PR + 1 main push) at
 # ~12 billed minutes each, and 5 of the 6 PR runs were testing superseded commits.
@@ -16,16 +16,20 @@ on:
     branches: [main]
     # Documentation-only PRs do not need the runtime CI jobs.
     paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - '.claude/**'
-      - 'memory/**'
+      - "**.md"
+      - "docs/**"
+      - ".claude/**"
+      - "memory/**"
 
 # Supersede in-flight runs for the same ref: pushing again to an open PR should
 # cancel the run testing the commit you just replaced, not race it to completion.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  ALLOW_PAID_TESTS: ""
+  REQUIRE_REAL_LLM: ""
 
 permissions:
   contents: read
@@ -40,7 +44,6 @@ jobs:
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
-      - run: bun install --cwd e2e --frozen-lockfile
       # lint:ts typechecks apps/mobile, whose tsconfig includes the gitignored
       # generated types. This runs the same guarded generator verify:upgrade uses,
       # which fails when router.d.ts comes back missing, empty or a directory --
@@ -124,11 +127,7 @@ jobs:
   test-python:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # `pytest tests/` runs the full tree. The acceptance lane self-provisions
-    # per-run testcontainers, but the fast-lane real-PG tests connect to the
-    # shared dev DB at :55432 (conftest's ensure_db_up()); provide it here as a
-    # migrated service so those round-trip tests find their tables. Mirrors
-    # test-bun / test-e2e.
+    # Non-acceptance uses the parallel fast lane; acceptance owns its containers.
     services:
       postgres:
         image: postgres:16-alpine
@@ -181,7 +180,10 @@ jobs:
       - run: uv sync --project scripts --frozen && bun run seed
       - run: uv sync --project apps/agent --frozen
       - run: bun install --cwd e2e --frozen-lockfile
-      - run: cd apps/agent && uv run pytest tests/ -q
+      - run: bun run test:python
+      - run: bun run test:acceptance
+        env:
+          REQUIRE_DOCKER: "1"
 
   test-e2e:
     runs-on: ubuntu-latest

@@ -116,11 +116,10 @@ def test_internal_catalog_queries_use_regions_tier_and_named_missing_error(fresh
 
 
 @pytest.mark.parametrize("creature_id", list(SIGNATURE_PINS))
-def test_signature_survives_real_seed_and_query(fresh_migrated_db, monkeypatch, creature_id):
+def test_signature_survives_real_seed_and_query(migrated_db, monkeypatch, creature_id):
     async def check():
-        conn = await asyncpg.connect(fresh_migrated_db)
+        conn = await asyncpg.connect(migrated_db)
         try:
-            await seed_content.seed(conn)
             raw = await conn.fetchval("SELECT data FROM creatures WHERE id = $1", creature_id)
             assert json.loads(raw)["signature_ability"] == SIGNATURE_PINS[creature_id]
 
