@@ -6,26 +6,24 @@ These milestones define the deep game mechanics implementation, building on the 
 
 ## Phase Completion Status
 
-*Reflects delivery as of **sprint-044**, reconciled against the codebase by the
-2026-09-01 audit pass (every flipped box carries an inline `<!-- verified -->`
-evidence comment naming the file, symbol and RED-capable test). Per-milestone
-detail lives in each phase doc; the remaining work is summarised in
-[REMAINING.md](REMAINING.md).*
+*Reconciled against the codebase on **2026-10-13**, during **Sprint 68**
+(story-158). Fractions count the phase-doc checkboxes. Status caveats and
+remaining-work evidence live in [REMAINING.md](REMAINING.md).*
 
 | Phase | Doc | Status | Delivered | Notes |
 |---|---|---|---|---|
-| 0 · Doc Updates | [00_doc_updates.md](00_doc_updates.md) | ✅ Delivered | 21/23 ACs | Doc-update backlog. M0.4 no-deletion discharged against baseline commit `f946ab6`. The two `gp`→`gc` notation ACs closed 2026-09-01 (zero `gp` left in `game_mechanics_magic.md` / `economy/game_mechanics_p2p_trade.md`). Residuals: INDEX.md line-range drift has WIDENED to 2 docs, and the "Key docs" AC is a decision, not work. |
-| 1 · Core Systems | [01_core_systems.md](01_core_systems.md) | ✅ **Complete** | 43/43 ACs | Core resolution/rules engine. The ADR-0005 Artificer training-slot deferral is DISCHARGED (Portable Lab shipped; debt `95de7fa141df` closed). |
-| 2 · Archetypes | [02_archetypes.md](02_archetypes.md) | ✅ **Complete** | 34/34 ACs | The three residuals this row carried are all closed and the doc's boxes match: reactions are INTERRUPTS, not declarations (sprint-048 story-017): a reaction is activated against an OPEN Beat-3 window with no pre-declaration, gated by `combat_phase.validate_reaction_activation` against `CombatState.open_window`; windows surfaced by `query_info(kind="abilities")` (sprint-046 story-007) and, at the pause, by `resolve_phase`'s `next.waiting_on.triggers`, with the exact reaction ids that fit named in `next.waiting_on.reactions`; variant supplement closed by M9 story-004 (`activate` routes variant ids as a fourth namespace); L20 legendary companion closed sprint-046 story-009 (the assigned companion's L20 gain rides the XP Resolve). |
-| 3 · Magic | [03_magic.md](03_magic.md) | 🟡 Partial | 34/34 ACs | M33 remains partial: catalog and casting infrastructure ship; deferred spell effects remain. m31–m34 capstones (resonance, hollow-echo/wards, spell catalog, concentration/racial). **†Veil Ward** |
-| 4 · Combat | [04_combat.md](04_combat.md) | ✅ Delivered | 73/73 ACs | m41–m48 capstones + M11–M20 extensions. M4.7 and M4.8 criteria now record their shipped behavior. |
-| 5 · Crafting | [05_crafting.md](05_crafting.md) | ✅ Delivered | 45/45 ACs | m52 workspace + m53 quality-pass capstones. Trusted disposition rents workspaces free via `workspace.compute_workspace_rental_price`; the shared generic price applies disposition and rounds repair and rental quotes half up to whole silver before any term multiplication. **†Veil Ward** |
-| 6 · NPCs & Companions | [06_npcs.md](06_npcs.md) | ✅ **Complete** | 34/34 ACs | m62/m64 capstones. Settlement rosters have unique names and role-constrained personality variation; the Capital tier was amended away under D-1. **Caveat: two of the 34 checked boxes are false as written pending decisions D-4/D-5** — Sable's `hp_factor` is 0.50 against an AC claiming 75%, and `06_npcs.md:229` inverts Sable and Lira (see `REMAINING.md`). |
-| 7 · Bestiary | [07_bestiary.md](07_bestiary.md) | 🟡 Partial | 22/41 ACs | The tier table, validators, all 9 spec-authored Hollow creatures, and all 19 spec-authored natural creatures ship; The public combat query surfaces Choir facts; creature-catalog lookup remains open; M7.3 remains partial with Still, Architect, troop/Tier3 effects and generated encounters open. Choir native encounter certification remains pending. |
-| 8 · Patrons | [08_patrons.md](08_patrons.md) | 🟡 Partial | 2/34 ACs | Confirmed: all 10 gods have the 4 mechanical layers = `null`; narrative layers populated; full client leg already built. **Unblocked** by shipped Phase 3 Resonance. Note: `test_patron_roster_consistency.py:131` ENFORCES the nulls per ADR 0001 and must be deleted when this phase builds. Hard *forward* dep on Phase 2. |
-| 9 · Economy | [09_economy.md](09_economy.md) | 🟡 Partial | 5/80 ACs | Was under-counted. Byproducts found: workspace rental pricing (Phase 5), `player_reputation` read/write (M23), Location tier+personality (M6.2 — shipped as `settlement_tier`, a naming divergence M9.6 must reconcile). Integration sink; still blocks on Phase 7. |
+| 0 · Doc Updates | [00_doc_updates.md](00_doc_updates.md) | ✅ Delivered | 22/23 ACs | One documentation criterion remains open; see [REMAINING.md](REMAINING.md). |
+| 1 · Core Systems | [01_core_systems.md](01_core_systems.md) | ✅ **Complete** | 43/43 ACs | Complete recorded criteria; Artificer-slot evidence in [REMAINING.md](REMAINING.md). |
+| 2 · Archetypes | [02_archetypes.md](02_archetypes.md) | ✅ **Complete** | 34/34 ACs | Complete recorded criteria; reaction mechanics and spoken-pause limits in [REMAINING.md](REMAINING.md). |
+| 3 · Magic | [03_magic.md](03_magic.md) | 🟡 Partial | 34/34 ACs | Casting infrastructure ships; exhaustive deterministic effect coverage remains unverified. See [REMAINING.md](REMAINING.md). **†Veil Ward** |
+| 4 · Combat | [04_combat.md](04_combat.md) | ✅ Delivered | 73/73 ACs | Complete recorded criteria; focused encounter-role and beneficial-condition evidence in [REMAINING.md](REMAINING.md). |
+| 5 · Crafting | [05_crafting.md](05_crafting.md) | ✅ Delivered | 45/45 ACs | Complete recorded criteria. **†Veil Ward** |
+| 6 · NPCs & Companions | [06_npcs.md](06_npcs.md) | ✅ **Complete** | 34/34 ACs | D-4/D-5 are recorded; M6.1 retains the lead’s “where applicable” reading. See [REMAINING.md](REMAINING.md). |
+| 7 · Bestiary | [07_bestiary.md](07_bestiary.md) | 🟡 Partial | 22/41 ACs | Catalog and encounter cutover exercised; remaining M7.3 effects, generated encounters and native Choir certification remain open. See [REMAINING.md](REMAINING.md). |
+| 8 · Patrons | [08_patrons.md](08_patrons.md) | 🟡 Partial | 2/34 ACs | Favor substrate and Layer-1 gift content ship; Layers 2–4 remain placeholders. See [REMAINING.md](REMAINING.md). |
+| 9 · Economy | [09_economy.md](09_economy.md) | 🟡 Partial | 5/80 ACs | Pricing, reputation and inventory substrate; Phase 7 integration remains. See [REMAINING.md](REMAINING.md). |
 | 10 · Terrain | [10_terrain.md](10_terrain.md) | ✅ Complete (sprint-1001) | 17/17 ACs | Required terrain, primal/Korath/Druid gates and persisted combat caching shipped. **†Veil Ward** |
-| 11 · World Loop | [11_world_loop.md](11_world_loop.md) | ⬜ Not started | 0/46 ACs | Confirmed: no world clock (`session_data.py:267 world_time` is the frozen constant `"evening"`), no tick worker, no cascade. **M23 did NOT land loop code** — it was design reconciliation. Layer-1 *consumption* is fully built; only the clock is missing. Tables `region_state`/`npc_state`/`world_events_log`/`god_agent_state`/`world_flags` migrated back in 001. **†Veil Ward** |
+| 11 · World Loop | [11_world_loop.md](11_world_loop.md) | ⬜ Not started | 0/46 ACs | Clock/scheduler/cascade criteria remain open; bounded consumer and worker evidence in [REMAINING.md](REMAINING.md). **†Veil Ward** |
 | 12 · Story Content | [12_story_content.md](12_story_content.md) | ⬜ Not started | 0/34 ACs | Planned. |
 
 > **† Veil Ward.** M24 shipped the location/encounter-scoped, party-wide, duration-bound, multi-source ward model in sprint-040 (`057_veil_ward_scope.sql`), including the Phase 3 source durations and Phase 5 Artificer Veil Anchor recipe. Phase 10 M10.2 ships the Druid terrain gate and ancient-forest discount; Phase 11 owns ambient and Sacred-site world wards.
