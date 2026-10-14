@@ -102,7 +102,7 @@ def _is_frozen_uv_sync(command: str, project: str) -> bool:
 # text of a run block accepts `echo "bun run lint:e2e"` as the lane itself, so a
 # deleted consumer keeps its corpus non-empty and the floor certifies nothing.
 def _runs_playwright(command: str) -> bool:
-    return shlex.split(command)[:2] == ["bunx", "playwright"]
+    return shlex.split(command)[:3] == ["bunx", "playwright", "test"]
 
 
 def _runs_lint_e2e(command: str) -> bool:
