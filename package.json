@@ -1,6 +1,6 @@
 {
   "name": "divineruin",
-  "version": "0.30.0",
+  "version": "0.31.0",
   "type": "module",
   "private": true,
   "packageManager": "bun@1.4.2",
