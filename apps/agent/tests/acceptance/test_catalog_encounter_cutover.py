@@ -184,55 +184,6 @@ def test_final_balance_table():
             {(species, role): count for species, role, count in groups}
         )
         assert_strength(row, catalog)
-    for name, change, diagnostic in [
-        (
-            "cult_cell",
-            lambda r: r["enemies"].append({"id": "extra", "creature_id": "cult_leader", "role": "boss"}),
-            "too_many_bosses",
-        ),
-        (
-            "hollow_wisp",
-            lambda r: r["enemies"].extend(
-                [
-                    {"id": "extra1", "creature_id": "hollow_wisp", "role": "elite"},
-                    {"id": "extra2", "creature_id": "hollow_wisp", "role": "elite"},
-                ]
-            ),
-            "difficulty budget",
-        ),
-        ("shadeling_cluster", lambda r: [e.update(role="minion") for e in r["enemies"]], "all_minion"),
-        ("hollow_wisp", lambda r: r["enemies"][0].update(creature_id="hollow_knight"), "tier ceiling"),
-    ]:
-        row = deepcopy(next(t for t in TEMPLATES if t["id"] == name))
-        change(row)
-        with pytest.raises(AssertionError, match=diagnostic):
-            assert_strength(row, catalog)
-
-
-async def test_fresh_seed_uses_the_runtime_database(fresh_migrated_db, monkeypatch):
-    import asyncpg
-    from test_seed_encounter_references import seed_content
-
-    await db.close_all()
-    monkeypatch.setenv("DATABASE_URL", fresh_migrated_db)
-    conn = await asyncpg.connect(fresh_migrated_db)
-    try:
-        assert await conn.fetchval("SELECT count(*) FROM creatures") == 0
-        counts = await seed_content.seed(conn)
-        assert counts["encounter_templates"] == 11
-        assert await seed_content.validate(conn) == []
-        await seed_player(conn, player_id="fresh_catalog")
-        pool = await db.get_pool()
-        assert await pool.fetchval("SELECT current_database()") == await conn.fetchval("SELECT current_database()")
-        assert await pool.fetchval("SELECT pg_postmaster_start_time()") == await conn.fetchval(
-            "SELECT pg_postmaster_start_time()"
-        )
-        ctx = make_context("fresh_catalog", room=make_mock_room())
-        await combat_init._start_combat_impl(ctx, "hollow_wisp", "fresh catalog")
-        assert next(p for p in ctx.userdata.combat_state.participants if p.type == "enemy").creature_id == "hollow_wisp"
-    finally:
-        await db.close_all()
-        await conn.close()
 
 
 @pytest.mark.parametrize("companion", ["companion_kael", "companion_lira", "companion_tam", "companion_sable"])

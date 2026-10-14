@@ -17,11 +17,11 @@ fi
 secrets_scan_index
 
 # The staged language checks below need installed deps.
-# A fresh worktree has no node_modules. The pre-push gate checks full lint and
-# typechecks before code reaches a shared branch.
+# A fresh worktree has no node_modules. PR CI checks full lint and
+# typechecks, including commits made without local dependencies.
 if [ ! -d node_modules ]; then
   echo "  [pre-commit] node_modules absent (fresh worktree) — skipping staged language checks."
-  echo "  [pre-commit] Full lint is provided by the pre-push gate and CI."
+  echo "  [pre-commit] Full lint is provided by PR CI."
   exit 0
 fi
 

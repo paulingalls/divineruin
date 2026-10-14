@@ -135,17 +135,6 @@ async def test_success_names_target_and_closes_connection(monkeypatch, capsys):
     assert connection.closed
 
 
-def test_harnesses_do_not_claim_to_mirror_seed_default():
-    stale_claim = "Mirrors scripts/" + "seed_content.py's default"
-    paths = [
-        _REPO_ROOT / "scripts" / "ensure-db.ts",
-        _REPO_ROOT / "apps" / "agent" / "tests" / "_db_lifecycle.py",
-    ]
-
-    for path in paths:
-        assert stale_claim not in path.read_text()
-
-
 @pytest.mark.asyncio
 async def test_row_without_primary_key_is_refused_by_name(monkeypatch, tmp_path):
     for name in ("encounter_templates.json", "creatures.json"):

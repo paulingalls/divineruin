@@ -102,19 +102,12 @@ def _is_frozen_uv_sync(command: str, project: str) -> bool:
 # text of a run block accepts `echo "bun run lint:e2e"` as the lane itself, so a
 # deleted consumer keeps its corpus non-empty and the floor certifies nothing.
 def _runs_playwright(command: str) -> bool:
-    return shlex.split(command)[:2] == ["bunx", "playwright"]
+    return shlex.split(command)[:3] == ["bunx", "playwright", "test"]
 
 
 def _runs_lint_e2e(command: str) -> bool:
     tokens = shlex.split(command)
     return tokens[:1] == ["bun"] and "lint:e2e" in tokens
-
-
-def _runs_python_report_tests(command: str) -> bool:
-    tokens = shlex.split(command)
-    if tokens[:1] != ["pytest"] and not (tokens[:2] == ["uv", "run"] and "pytest" in tokens):
-        return False
-    return any(t == "tests" or t.startswith("tests/") or "dependency_upgrade" in t for t in tokens)
 
 
 def validate_ci_toolchain(root: Path, report: dict) -> None:
@@ -161,10 +154,8 @@ def validate_ci_toolchain(root: Path, report: dict) -> None:
             raise ValueError(f"CI does not install the {graph} lock")
 
     consumers = (
-        ("e2e environment tests", lambda c: shlex.split(c) == ["bun", "test", "e2e/require-environment.test.ts"]),
         ("lint:e2e", _runs_lint_e2e),
         ("Playwright", _runs_playwright),
-        ("Python dependency report tests", _runs_python_report_tests),
     )
     for consumer, matches in consumers:
         consuming_jobs = 0

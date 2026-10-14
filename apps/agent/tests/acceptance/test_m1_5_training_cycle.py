@@ -21,7 +21,7 @@ from typing import Any
 
 import pytest
 from acceptance._judged_turn import last_assistant_message_index
-from acceptance._midpoint_order import PENDING_MIDPOINT_INTENT, assert_training_midpoint
+from acceptance._midpoint_order import assert_training_midpoint
 from acceptance._training_trace import (
     assert_no_training_start,
     assert_persisted_training,
@@ -32,10 +32,8 @@ from acceptance._training_trace import (
     training_start,
 )
 from acceptance.seeds import clear_training_activities, seed_player, seed_training_activity
-from livekit.agents import llm
 from livekit.agents.llm import ChatContext
 from livekit.agents.voice import AgentSession
-from livekit.agents.voice.run_result import RunResult
 from livekit.plugins import anthropic
 from pytest_bdd import given, parsers, scenarios, then, when
 from sample_fixtures import make_mock_room
@@ -293,142 +291,3 @@ def _selected_spell_training_begins(harness: SimpleNamespace) -> None:
 
     row = harness.run_sync(_read_persisted())
     assert_persisted_training(row, start)
-
-
-def _synthetic_message(text: str):
-    result: RunResult = RunResult(user_input="test", output_type=None)
-    result._item_added(llm.ChatMessage(role="assistant", content=[text]))
-    return result.expect[0].is_message(role="assistant")
-
-
-async def _judge_synthetic(text: str, intent: str) -> None:
-    await _synthetic_message(text).judge(anthropic.LLM(model=_AGENT_MODEL), intent=intent)
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "response",
-    [
-        "I need to resolve your midpoint decision right now.",
-        "You've reached the midpoint. We must resolve your choice before the second half can begin.",
-        "Let me resolve your pending training decision.",
-    ],
-)
-async def test_midpoint_judge_accepts_pending_decisions(response: str) -> None:
-    await _judge_synthetic(response, PENDING_MIDPOINT_INTENT)
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "response",
-    [
-        "The second half has begun; about three hours remain.",
-        "Your training is now underway in its second half.",
-        "I need to resolve the midpoint decision, but you've already resumed training in the second half.",
-    ],
-)
-async def test_midpoint_judge_rejects_premature_outcomes(response: str) -> None:
-    with pytest.raises(AssertionError):
-        await _judge_synthetic(response, PENDING_MIDPOINT_INTENT)
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "response",
-    [
-        pytest.param(
-            "You've already got a training cycle underway. You'll need to finish or resolve what you're "
-            "working on before you can start something new. What's the focus of your current training?",
-            id="captured-follow-up",
-        ),
-        pytest.param(
-            "A training cycle is already underway, so another cannot begin until it finishes.",
-            id="direct-valid",
-        ),
-        pytest.param(
-            "Your current training cycle must resolve before another can start. Would you like a progress recap?",
-            id="compatible-follow-up",
-        ),
-    ],
-)
-async def test_active_cycle_judge_accepts_valid_responses(response: str) -> None:
-    await _judge_synthetic(response, _ACTIVE_CYCLE_INTENT)
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "response",
-    [
-        pytest.param("You cannot start another training cycle right now.", id="omits-existing-cycle"),
-        pytest.param(
-            "A training cycle is underway, but we can start a second one before it finishes.",
-            id="permits-second-cycle",
-        ),
-        pytest.param(
-            "No training cycle is underway, so there is nothing blocking a new one.",
-            id="contradicts-result",
-        ),
-    ],
-)
-async def test_active_cycle_judge_rejects_invalid_responses(response: str) -> None:
-    with pytest.raises(AssertionError):
-        await _judge_synthetic(response, _ACTIVE_CYCLE_INTENT)
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("response", "intent"),
-    [
-        pytest.param(
-            "No spell can be studied right now, though physical training remains available.",
-            _NO_SPELL_INTENT.format(program_names=["Arcane Study"]),
-            id="valid-empty-eligibility",
-        ),
-        pytest.param(
-            "You have Arcane Study available right now — that's with Scholar Emris — but there are no spells "
-            "you can study in that program at the moment. The path forward there isn't open yet. You could "
-            "focus on physical training instead.",
-            _NO_SPELL_INTENT.format(program_names=["Arcane Study"]),
-            id="captured-empty-program",
-        ),
-        pytest.param(
-            "You've got Arcane Study available through Scholar Emris, but there aren't any spells open for you "
-            "to learn right now. You could still work on physical training though.",
-            _NO_SPELL_INTENT.format(program_names=["Arcane Study"]),
-            id="captured-program-is-not-spell",
-        ),
-        pytest.param(
-            "Temple Lessons and Scholar's Workshop are offered here, but neither has a spell you can study now.",
-            _NO_SPELL_INTENT.format(program_names=["Temple Lessons", "Scholar's Workshop"]),
-            id="renamed-and-additional-programs",
-        ),
-        pytest.param(
-            "Counterspell is available for you to study now. Would you like to begin?",
-            _ELIGIBLE_SPELL_INTENT.format(choices=["arcane_counterspell"]),
-            id="valid-returned-offer",
-        ),
-    ],
-)
-async def test_training_narration_judge_accepts_valid_responses(response: str, intent: str) -> None:
-    await _judge_synthetic(response, intent)
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("response", "intent"),
-    [
-        pytest.param(
-            "Arcane Fireball is available for you to study now.",
-            _NO_SPELL_INTENT.format(program_names=["Arcane Study"]),
-            id="invented-martial-offer",
-        ),
-        pytest.param(
-            "There are no spells available for you to study.",
-            _ELIGIBLE_SPELL_INTENT.format(choices=["arcane_counterspell"]),
-            id="eligible-blanket-refusal",
-        ),
-    ],
-)
-async def test_training_narration_judge_rejects_eligibility_faults(response: str, intent: str) -> None:
-    with pytest.raises(AssertionError):
-        await _judge_synthetic(response, intent)

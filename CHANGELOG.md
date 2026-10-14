@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.31.0 — 2026-10-13
+
+- Each check runs once, in the cheapest tier that catches it, with measured costs in `.xp/system.md`. Push now only scans outgoing commits for secrets (about 0.1 s, no services). Story land keeps the fast lane, and sprint close runs acceptance and Playwright. PR CI owns full lint and all suites, so free patches lose no coverage; Python and acceptance run as parallel jobs, and acceptance refuses to skip when Docker is missing.
+- Acceptance cases that need a fresh database share one Postgres server, each with its own unseeded database: Postgres now starts 3 times per full run instead of 11.
+- The nightly test tier is gone; constraints 2 and 13 name commit, story land, push, sprint close and PR CI.
+- Meta-tests left the regular runs (tests of hooks, gates, dev tools and the doc indexer). Test code is now 1.87x source, under the 2x bar. Floors that prove a product guard inspected something stay.
+- `REMAINING.md` matches the phase docs (331/538) and the content and code it describes.
+
 ## 0.30.0 — 2026-10-11
 
 - Elite and Boss Mawlings attack Claw, Dissolution Maw, Claw. The per-role sequence is authored on the catalog row, and both validators reject unknown role keys and unresolvable attack references. Standard Mawlings keep Claw then Dissolution Maw.

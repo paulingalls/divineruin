@@ -337,7 +337,7 @@ install_locked_dependencies() {
   ( cd "$REPO_ROOT" && bun install --frozen-lockfile )
   # e2e/ is NOT a workspace member (root package.json lists only apps/* and
   # packages/*) and carries its own lockfile, so the root install reaches none of
-  # its deps: without this, `bun run lint:e2e`, the pre-push Playwright lane and
+  # its deps: without this, `bun run lint:e2e`, the sprint Playwright lane and
   # the installed-tree dependency report all die in a fresh worktree.
   ( cd "$REPO_ROOT/e2e" && bun install --frozen-lockfile )
   ( cd "$REPO_ROOT/e2e" && bunx playwright install chromium )

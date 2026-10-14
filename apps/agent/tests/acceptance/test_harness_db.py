@@ -2,7 +2,7 @@
 
 Proves the testcontainer migrates, content seeds, db.get_pool() targets the
 container (reset_db_pool), and db_training round-trips — all without an Anthropic
-key, so it runs on pre-push under REQUIRE_DOCKER while the LLM scenarios skip.
+key, so it runs on sprint close and PR CI under REQUIRE_DOCKER while the LLM scenarios skip.
 """
 
 from __future__ import annotations

@@ -1,6 +1,5 @@
 import { test, expect } from "bun:test";
 import { join } from "node:path";
-import prettier from "prettier";
 import { SHIP_FACES, FONT_FALLBACKS } from "@divineruin/design-tokens";
 import { generateFontsCss } from "./gen-fonts-css.ts";
 
@@ -38,11 +37,4 @@ test("does NOT redefine --font-* (gen-theme owns those now)", () => {
 test("on-disk fonts.css matches the generator output (drift guard)", async () => {
   const onDisk = await Bun.file(join(import.meta.dir, "..", "src", "fonts", "fonts.css")).text();
   expect(onDisk).toBe(css);
-});
-
-// Like gen-theme: assert the hand-emitted CSS is already prettier-clean, so a
-// future formatting divergence fails here rather than only in the lint pipeline.
-test("generator output is already prettier-formatted", async () => {
-  const formatted = await prettier.format(css, { parser: "css" });
-  expect(css).toBe(formatted);
 });

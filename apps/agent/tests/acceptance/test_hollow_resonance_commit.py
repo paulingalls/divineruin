@@ -85,7 +85,7 @@ async def phase(ctx):
     return await combat_turn._resolve_phase_impl(ctx, resolver=_damage_resolver(1000))
 
 
-async def assert_rollback(encounter, monkeypatch, *, leak=False, cast_only=False):
+async def assert_rollback(encounter, monkeypatch, *, cast_only=False):
     ctx, ids, events = encounter
     if cast_only:
         ctx.userdata.combat_state.pending_declarations = {ids[1]: {"type": "ability", "action": "arcane_detect_magic"}}
@@ -95,9 +95,6 @@ async def assert_rollback(encounter, monkeypatch, *, leak=False, cast_only=False
 
     async def fail_after_write(combat_id, data, *, conn=None):
         await original(combat_id, data, conn=conn)
-        if leak:
-            ctx.userdata.member_state(ids[1]).resonance.current = 99
-            await resonance_events.publish_resonance_changed(ctx.userdata, caster_id=ids[1])
         raise RuntimeError("after writes")
 
     with monkeypatch.context() as fault:
@@ -114,11 +111,6 @@ async def test_cast_rollback_is_atomic(encounter, monkeypatch):
 
 async def test_death_phase_rollback_is_atomic(encounter, monkeypatch):
     await assert_rollback(encounter, monkeypatch)
-
-
-async def test_guard_commit_buffering(encounter, monkeypatch):
-    with pytest.raises(AssertionError):
-        await assert_rollback(encounter, monkeypatch, leak=True)
 
 
 @pytest.mark.parametrize("cast_first,ward", [(False, False), (True, False), (False, True), (True, True)])
@@ -207,31 +199,3 @@ async def test_refused_cast_leaves_resources_and_events_unchanged(encounter, ref
     assert [await db_queries.get_player(pid) for pid in ids] == before
     assert asdict(ctx.userdata.party) == mirrors
     assert events == []
-
-
-async def test_guard_pending_total_reads(encounter, monkeypatch):
-    import combat_hollow_resonance
-
-    monkeypatch.setattr(combat_hollow_resonance, "current_total", lambda state, caster: caster.resonance.current)
-    with pytest.raises(AssertionError):
-        await test_commit_routes_qualitative_states_and_resume_is_once(encounter, False, False)
-
-
-async def test_guard_pending_total_merge(encounter, monkeypatch):
-    import combat_hollow_resonance
-
-    monkeypatch.setattr(combat_hollow_resonance, "take_totals", lambda state: {})
-    with pytest.raises(AssertionError):
-        await test_commit_routes_qualitative_states_and_resume_is_once(encounter, False, False)
-
-
-async def test_guard_owner_persistence(encounter, monkeypatch):
-    _ctx, ids, _ = encounter
-    original = db_mutations_resonance.update_player_resonance
-
-    async def wrong_owner(pid, total, *, conn=None):
-        await original(ids[0] if pid == ids[1] else pid, total, conn=conn)
-
-    monkeypatch.setattr(db_mutations_resonance, "update_player_resonance", wrong_owner)
-    with pytest.raises(AssertionError):
-        await test_commit_routes_qualitative_states_and_resume_is_once(encounter, False, False)

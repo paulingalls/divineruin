@@ -1,9 +1,4 @@
-"""Shared helper for the bundled-audio guard tests (not a test module itself).
-
-Both test_audio_bundle_compressed.py and test_generate_spell_sfx.py discover the
-bundled stem-set per family directory; this is the single implementation both
-import (importable by name because apps/agent/tests is on the pytest pythonpath).
-"""
+"""Discover bundled stem sets for the compressed-audio product checks."""
 
 from __future__ import annotations
 

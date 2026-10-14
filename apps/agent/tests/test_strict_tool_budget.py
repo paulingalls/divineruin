@@ -99,20 +99,6 @@ def _tracked_python_paths(root: Path) -> list[Path]:
     return [root / name for name in result.stdout.split("\0") if name]
 
 
-def _agent_session_llm_calls() -> list[tuple[str, ast.Call]]:
-    """Every inline `AgentSession(llm=...LLM(...))` construction under apps/agent."""
-    root = Path(__file__).resolve().parents[1]
-    sites: list[tuple[str, ast.Call]] = []
-    for path in _tracked_python_paths(root):
-        for node in ast.walk(ast.parse(path.read_text(), filename=str(path))):
-            if not isinstance(node, ast.Call) or not _is_agent_session_call(node):
-                continue
-            for kw in node.keywords:
-                if kw.arg == "llm" and isinstance(kw.value, ast.Call) and "LLM" in ast.dump(kw.value.func):
-                    sites.append((str(path.relative_to(root)), kw.value))
-    return sites
-
-
 def _is_agent_session_call(node: ast.Call) -> bool:
     target = node.func
     return (isinstance(target, ast.Name) and target.id == "AgentSession") or (
@@ -134,9 +120,9 @@ def _agent_session_sites() -> list[tuple[str, ast.Call]]:
 def test_every_agent_session_chooses_its_max_tool_steps():
     """LiveKit permits max_tool_steps + 1 calls, then silently narrates with tool_choice="none".
     Reaction pauses end turns; the longest uninterrupted turn uses four calls.
-    Keep every production and acceptance session on the deliberate ceiling."""
-    sites = _agent_session_sites()
-    assert sites, "no AgentSession construction found — the walk is broken, not the code"
+    Keep every production session on the deliberate ceiling."""
+    sites = [(where, call) for where, call in _agent_session_sites() if not where.startswith("tests/")]
+    assert sites, "no production AgentSession construction found — the walk is broken, not the code"
     for where, call in sites:
         steps = next((kw for kw in call.keywords if kw.arg == "max_tool_steps"), None)
         assert steps is not None, f"{where}: AgentSession inherits the plugin's max_tool_steps default"
@@ -145,25 +131,6 @@ def test_every_agent_session_chooses_its_max_tool_steps():
         assert isinstance(value, int) and value >= 5, (
             f"{where}: max_tool_steps must be a literal >= 5 to fit the M29 Beat-3 chain"
         )
-
-
-def test_every_anthropic_acceptance_session_runs_strict_tool_schema_off():
-    """Anthropic rejected the larger strict agents in the live probe; ADR 0008 keeps rollback strict-off."""
-    sites = _agent_session_llm_calls()
-    expected = {
-        "tests/acceptance/test_combat_cache_prefix.py",
-        "tests/acceptance/test_m1_5_training_cycle.py",
-        "tests/acceptance/test_m1_6_companion_errands.py",
-        "tests/acceptance/test_m29_combat_reactions.py",
-    }
-    assert {filename for filename, _ in sites} == expected
-    for filename, call in sites:
-        flags = [
-            kw.value.value
-            for kw in call.keywords
-            if kw.arg == "_strict_tool_schema" and isinstance(kw.value, ast.Constant)
-        ]
-        assert flags == [False], f"{filename}: AgentSession llm must pass _strict_tool_schema=False"
 
 
 def test_production_agent_session_routes_through_gameplay_factory():

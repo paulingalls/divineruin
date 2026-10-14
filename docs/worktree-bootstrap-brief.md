@@ -68,10 +68,8 @@ problem does **not** gate the hook. Restoring commit-time lint in worktrees cost
 decision is only needed for the *declared test command* (`bun run test:all`). Two different bars;
 don't let the harder one hold up the cheaper one.
 
-A caveat the hook itself raises: its skip notice justifies degrading by saying "the pre-push gate
-(run from a deps-installed checkout) re-runs the full typecheck + tests, so nothing reaches a
-shared branch unchecked." Once worktrees are provisioned, that fallback stops being load-bearing at
-commit time — which is the point.
+A deps-less commit skips staged language checks. PR CI supplies full lint and typechecks;
+provisioning worktrees restores that feedback at commit time.
 
 ### 2.2 This repo already knows how to isolate containers per run
 

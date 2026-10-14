@@ -7,6 +7,7 @@ import os
 import sys
 from collections.abc import Iterator
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 from uuid import uuid4
 
 import asyncpg
@@ -74,19 +75,37 @@ def migrated_db(postgres_container: str) -> str:
 
 
 @pytest.fixture
-def fresh_migrated_db() -> Iterator[str]:
-    """Unlike the session-wide `migrated_db`, this database is never seeded: each case
-    measures exactly what its own seed run writes."""
-    _require_docker_or_skip()
-    with _owned_postgres_container() as pg:
-        dsn = pg.get_connection_url().replace("postgresql+psycopg2://", "postgresql://")
+def fresh_migrated_db(postgres_container: str) -> Iterator[str]:
+    """Yield a separately migrated, unseeded database for each case."""
+    name = f"acceptance_{uuid4().hex}"
+    url = urlsplit(postgres_container)
+    dsn = urlunsplit(url._replace(path=f"/{name}"))
 
-        async def migrate():
-            conn = await asyncpg.connect(dsn)
-            try:
-                await _apply_migrations(conn)
-            finally:
-                await conn.close()
+    async def create() -> None:
+        admin = await asyncpg.connect(postgres_container)
+        try:
+            await admin.execute(f'CREATE DATABASE "{name}"')
+        finally:
+            await admin.close()
 
+    async def migrate() -> None:
+        conn = await asyncpg.connect(dsn)
+        try:
+            await _apply_migrations(conn)
+        finally:
+            await conn.close()
+
+    async def drop() -> None:
+        admin = await asyncpg.connect(postgres_container)
+        try:
+            # A failed seed may leave a connection open; retain the case's failure.
+            await admin.execute(f'DROP DATABASE "{name}" WITH (FORCE)')
+        finally:
+            await admin.close()
+
+    asyncio.run(create())
+    try:
         asyncio.run(migrate())
         yield dsn
+    finally:
+        asyncio.run(drop())

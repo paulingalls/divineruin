@@ -40,7 +40,7 @@ const runsWeb = selected.length === 0 || selected.some((p) => WEB_PROJECTS.inclu
 // this line; selecting only a web project skips the slow mobile-expo boot.
 const runsNonWeb = selected.length === 0 || selected.some((p) => !WEB_PROJECTS.includes(p));
 
-// reuseExistingServer is false everywhere (not !CI): two overlapping pre-push
+// reuseExistingServer is false everywhere (not !CI): two overlapping sprint
 // runs must never collapse onto one shared webServer — the first run's teardown
 // would kill the second mid-test (the documented cross-kill flake). false makes
 // an overlap fail loud on a port conflict instead of silently corrupting a run.
@@ -53,7 +53,7 @@ const serverWebServer = {
   reuseExistingServer: false,
   // Pipe the API server's stdout into the run output (Playwright IGNORES
   // webServer stdout by default — only stderr is piped). Without this the
-  // E2E_DIAG `[diag]` lines (console.log) never reach the teed pre-push log, so
+  // E2E_DIAG `[diag]` lines (console.log) never reach the teed sprint log, so
   // the whole point of the server diagnostic is lost. logError uses stderr, so
   // it was already captured.
   stdout: "pipe" as const,
@@ -103,7 +103,7 @@ const webWebServer = {
   cwd: "../",
   // Wait on an HTTP probe of the served page, not a bare TCP port: the command
   // prerenders the dist (`build`) BEFORE the server binds (`start`), and under
-  // the pre-push gate's concurrent load (Docker acceptance + unit lanes) that
+  // the sprint hook's concurrent acceptance load that
   // build is CPU-starved. A `port` probe can race the build; `url` polls for a
   // real 200 from the prod server, so Playwright only starts specs once dist is
   // actually served. timeout gives the build headroom under contention.
@@ -137,7 +137,7 @@ export default defineConfig({
   // (apps/server/src/middleware.ts), workers=4 is green.
   workers: 4,
   retries: CI ? 2 : 0,
-  // Sized for a contended machine (pre-push lanes, other checkouts, other projects'
+  // Sized for a contended machine (sprint acceptance, other checkouts, other projects'
   // builds): under load a spec must run slower, not fail. Dev-mode Metro rebundles
   // on every page load, and that cost grows with load. A real hang still fails.
   timeout: 120_000,
@@ -145,10 +145,10 @@ export default defineConfig({
   reporter: CI ? [["html"], ["github"]] : [["html"], ["list"]],
   use: {
     baseURL: APP_ORIGIN,
-    // retain-on-failure (not on-first-retry): the local pre-push gate runs with
+    // retain-on-failure (not on-first-retry): the local sprint gate runs with
     // retries:0, so on-first-retry records NOTHING on a local flake. retain-on-
     // failure keeps a full trace + video for every failed test even at 0 retries
-    // — the durable evidence a recurring flake needs (see .githooks/pre-push,
+    // — the durable evidence a recurring flake needs (see .githooks/sprint,
     // which snapshots these out of test-results/ before the next push wipes it).
     trace: "retain-on-failure",
     video: "retain-on-failure",

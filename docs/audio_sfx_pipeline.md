@@ -529,17 +529,16 @@ produces `.wav`. Both drop straight into `apps/mobile/assets/sounds/` as-is.
 
 ### Family Coverage Matrix (story-006)
 
-Every bundled audio family is covered by a signature guard and a PROMPT-parity
-guard; a family with a committed source mirror adds a third byte-equality guard
-(only Spell SFX today). Each guard has a single owner — no duplicated enforcement:
+Every bundled audio family is covered by a signature guard. A family with a
+committed source mirror adds a byte-equality guard (only Spell SFX today).
 
-| Family | Count | Bundled dir | Source mirror? | Signature guard | PROMPT parity | Byte-equal |
-|---|---|---|---|---|---|---|
-| Spell SFX | 7 | `apps/mobile/assets/sounds/` (root) | Yes — `apps/audio/spell_sfx/` | `test_audio_bundle_compressed.py::test_bundled_family_stems_match_pipeline_transcode_signature[.]` | `test_generate_spell_sfx.py` | `test_audio_bundle_compressed.py::test_committed_source_mirror_is_byte_equal_to_bundled` |
-| Legacy SFX | 20 | `apps/mobile/assets/sounds/` (root) | No | same `[.]` case as above | `test_generate_spell_sfx.py` | — |
-| Music | 8 | `apps/mobile/assets/sounds/music/` | No | `...transcode_signature[music]` | `test_generate_spell_sfx.py` | — |
-| Soundscapes | 11 | `apps/mobile/assets/sounds/soundscapes/` | No | `...transcode_signature[soundscapes]` | `test_generate_spell_sfx.py` | — |
-| Textures | 11 | `apps/mobile/assets/sounds/textures/` | No | `...transcode_signature[textures]` | `test_generate_spell_sfx.py` | — |
+| Family | Count | Bundled dir | Source mirror? | Signature guard | Byte-equal |
+|---|---|---|---|---|---|
+| Spell SFX | 7 | `apps/mobile/assets/sounds/` (root) | Yes — `apps/audio/spell_sfx/` | `test_audio_bundle_compressed.py::test_bundled_family_stems_match_pipeline_transcode_signature[.]` | `test_audio_bundle_compressed.py::test_committed_source_mirror_is_byte_equal_to_bundled` |
+| Legacy SFX | 20 | `apps/mobile/assets/sounds/` (root) | No | same `[.]` case as above | — |
+| Music | 8 | `apps/mobile/assets/sounds/music/` | No | `...transcode_signature[music]` | — |
+| Soundscapes | 11 | `apps/mobile/assets/sounds/soundscapes/` | No | `...transcode_signature[soundscapes]` | — |
+| Textures | 11 | `apps/mobile/assets/sounds/textures/` | No | `...transcode_signature[textures]` | — |
 
 The signature guard's family/stem sets are discovered from the bundled directory
 listing (not a hand-maintained key list), so a newly regenerated family or stem

@@ -1,7 +1,7 @@
 # Documentation Index
 
-Run `uv run python scripts/doc_index.py --write` after editing docs. The test compares
-this file with the regenerated result. Scope: every regular `docs/**/*.md` file,
+Run `python3 scripts/doc_index.py --write` after editing docs. Validate with
+`python3 scripts/doc_index.py`. Scope: every regular `docs/**/*.md` file,
 including nested directories; `docs/INDEX.md` is explicitly excluded. Non-Markdown
 assets and source files are excluded. `decisions/`, `ideas/`, `milestones/` and
 `mockups/` are listed by path and line count only; every other doc gets a section
@@ -170,7 +170,7 @@ Investigation of Stable Audio 3 noise-only outputs and the resolved production p
 
 ---
 
-## audio_sfx_pipeline.md (547 lines)
+## audio_sfx_pipeline.md (546 lines)
 
 Sound-effect generation, asset keys, regeneration, and integration guidance.
 
@@ -182,7 +182,7 @@ Sound-effect generation, asset keys, regeneration, and integration guidance.
 | 3. Recommendation | 171-252 | Quality gates the choice; bake-off and SA3-medium spike findings |
 | 4. Keying Scheme (FROZEN CONTRACT for stories 002/003) | 253-392 | sound_id keyed by effect family; 7-key MVP palette; all 87 spells mapped |
 | 5. Regenerate Recipe | 393-507 | Recommended Stable Audio path, ElevenLabs secondary, procedural fallback |
-| 6. Integration Notes for Stories 002/003 | 508-547 | Asset SSOT location, bundling, family coverage matrix |
+| 6. Integration Notes for Stories 002/003 | 508-546 | Asset SSOT location, bundling, family coverage matrix |
 
 ---
 
@@ -387,20 +387,20 @@ Additional topics: Transport (LiveKit): SFU model, room capacity, multiple agent
 
 ---
 
-## worktree-bootstrap-brief.md (280 lines)
+## worktree-bootstrap-brief.md (278 lines)
 
 Worktree bootstrap design brief and measured implementation outcome.
 
 | Section | Lines | What's There |
 |---|---|---|
 | 1. What this is for | 10-28 | Why teammate worktrees need a declared bootstrap command |
-| 2. What is already true here — read this before writing anything | 29-96 | Three things already exist. Do not reinvent them. |
-| 3. The measured blockers | 97-142 | node_modules, the agent .venv, and global Docker container names |
-| 4. The decision you have to make (deliberately not made for you) | 143-166 | Two viable designs. Both are defensible; they differ in isolation vs cost. |
-| 5. What to write | 167-194 | Requirements for an idempotent, fail-loud scripts/init-worktree.sh |
-| 6. How to know it worked — verify, don't assume | 195-226 | Verify per artifact, not by the bootstrap's exit code |
-| 7. Measured vs not | 227-245 | Which claims in this brief were measured and which were not |
-| 8. Resolution (implemented 2026-07-17, story-005) | 246-280 | Per-worktree stack chosen; corrections found by re-measuring |
+| 2. What is already true here — read this before writing anything | 29-94 | Three things already exist. Do not reinvent them. |
+| 3. The measured blockers | 95-140 | node_modules, the agent .venv, and global Docker container names |
+| 4. The decision you have to make (deliberately not made for you) | 141-164 | Two viable designs. Both are defensible; they differ in isolation vs cost. |
+| 5. What to write | 165-192 | Requirements for an idempotent, fail-loud scripts/init-worktree.sh |
+| 6. How to know it worked — verify, don't assume | 193-224 | Verify per artifact, not by the bootstrap's exit code |
+| 7. Measured vs not | 225-243 | Which claims in this brief were measured and which were not |
+| 8. Resolution (implemented 2026-07-17, story-005) | 244-278 | Per-worktree stack chosen; corrections found by re-measuring |
 
 ---
 
@@ -932,11 +932,11 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/README.md (168 lines)
+## milestones/README.md (166 lines)
 
 ---
 
-## milestones/REMAINING.md (198 lines)
+## milestones/REMAINING.md (183 lines)
 
 ---
 

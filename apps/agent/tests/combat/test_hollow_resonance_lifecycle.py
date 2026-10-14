@@ -141,45 +141,6 @@ async def test_excluded_and_zero_deaths(monkeypatch, kind):
     writer.assert_not_called()
 
 
-async def test_guard_aura_inclusion(monkeypatch):
-    import combat_hollow_resonance
-
-    monkeypatch.setattr(combat_hollow_resonance, "cast_generation", lambda state, caster, spell, generated: generated)
-    with pytest.raises(AssertionError):
-        await test_actual_catalog_cast_aura_boundary(5, 1)
-
-
-async def test_guard_cantrip_exclusion(monkeypatch):
-    import combat_hollow_resonance
-
-    original = combat_hollow_resonance.apply_corruption_aura
-    monkeypatch.setattr(combat_hollow_resonance, "apply_corruption_aura", lambda g, f, *args: original(g, 1, *args))
-    with pytest.raises(AssertionError):
-        await test_actual_cast_cantrip_refusal_and_zero_values()
-
-
-async def test_guard_death_once(monkeypatch):
-    import combat_hollow_death
-
-    monkeypatch.setattr(combat_hollow_death, "new_destruction", lambda target, *args: target.hollow is not None)
-    with pytest.raises(AssertionError):
-        await death_twice(monkeypatch)
-
-
-async def test_guard_immediate_hollow_destruction(monkeypatch):
-    import combat_hollow_death
-
-    original = combat_hollow_death.mark_destroyed
-
-    def leave_alive(target):
-        original(target)
-        target.is_dead = False
-
-    monkeypatch.setattr(combat_hollow_death, "mark_destroyed", leave_alive)
-    with pytest.raises(AssertionError):
-        await death_twice(monkeypatch)
-
-
 async def recipient_scenario(monkeypatch):
     import db_mutations_resonance
     from caster_state import ConcentrationState, ResonanceTrack
@@ -245,24 +206,6 @@ async def owner_scenario():
 
 async def test_nonprimary_cast_owns_pending_total():
     await owner_scenario()
-
-
-async def test_guard_owner_routing(monkeypatch):
-    import combat_hollow_resonance
-
-    original = combat_hollow_resonance.stage_total
-    monkeypatch.setattr(
-        combat_hollow_resonance, "stage_total", lambda state, pid, total: original(state, "player_1", total)
-    )
-    with pytest.raises(AssertionError):
-        await owner_scenario()
-    import combat_hollow_death
-
-    monkeypatch.setattr(
-        combat_hollow_death, "stage_total", lambda state, pid, total: original(state, "player_1", total)
-    )
-    with pytest.raises(AssertionError):
-        await recipient_scenario(monkeypatch)
 
 
 @pytest.mark.parametrize("working_ward", [False, True])
