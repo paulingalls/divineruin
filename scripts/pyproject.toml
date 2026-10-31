@@ -5,3 +5,7 @@ requires-python = ">=3.11"
 dependencies = [
     "asyncpg>=0.31.0",
 ]
+
+[tool.uv]
+# Same 7-day cooldown as npm and bun.
+exclude-newer = "7 days"
