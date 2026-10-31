@@ -8,7 +8,7 @@
     ".": "./src/index.ts"
   },
   "devDependencies": {
-    "@types/bun": "1.4.2"
+    "@types/bun": "1.4.4"
   },
   "peerDependencies": {
     "typescript": ">=5.9 <6.1"

@@ -1,7 +1,7 @@
 # Dependency upgrade
 
 Registry snapshot: 2026-09-19  
-Toolchain: CPython 3.14.7; uv 0.12.21; Bun 1.4.2
+Toolchain: CPython 3.14.7; uv 0.12.21; Bun 1.4.4
 Execution evidence: historical record accepted at 795cec97832a7fe2d7567b36d0343e476e236b76 on 2026-09-19T14:14:59Z.
 
 ## Python environments
@@ -20,7 +20,7 @@ Execution evidence: historical record accepted at 795cec97832a7fe2d7567b36d0343e
 | runtime | anthropic | `>=0.125.0,<1` | 0.125.0 / 0.125.0 | 1.7.0 | livekit-plugins-anthropic==1.8.2 requires anthropic<1,>=0.41: Anthropic 1.7.0 is outside the plugin's published constraint; the project mirrors the same <1 cap. |
 | runtime | httpx | `>=0.28.1` | 0.28.1 / 0.28.1 | 0.28.1 | — |
 | dev | docker | `>=7.2.0` | 7.2.0 / 7.2.0 | 7.2.0 | — |
-| dev | pillow | `>=12.3.0` | 12.3.0 / 12.3.0 | 12.3.0 | — |
+| dev | pillow | `>=13.0.0` | 13.0.0 / 13.0.0 | 13.0.0 | — |
 | dev | pyright | `>=1.1.414` | 1.1.414 / 1.1.414 | 1.1.414 | — |
 | dev | pytest | `>=9.1.1` | 9.1.1 / 9.1.1 | 9.1.1 | — |
 | dev | pytest-asyncio | `>=1.4.0` | 1.4.0 / 1.4.0 | 1.4.0 | — |
@@ -43,7 +43,7 @@ Release age policy: 604800 seconds.
 | Project | Group | Dependency | Requested | Locked / installed | Candidate | Registry latest | Decision |
 |---|---|---|---|---|---|---|---|
 | . | devDependencies | @eslint/js | `^10.0.1` | 10.0.1 / 10.0.1 | 10.0.1 | 10.0.1 | Current |
-| . | devDependencies | @types/bun | `1.4.2` | 1.4.2 / 1.4.2 | 1.4.2 | 1.4.2 | Current |
+| . | devDependencies | @types/bun | `1.4.4` | 1.4.4 / 1.4.4 | 1.4.4 | 1.4.4 | Current |
 | . | devDependencies | eslint | `^10.10.0` | 10.10.0 / 10.10.0 | 10.10.0 | 10.11.0 | Registry latest is inside the unchanged seven-day minimum release age; the candidate is the newest eligible stable release. |
 | . | devDependencies | eslint-config-prettier | `^10.1.8` | 10.1.8 / 10.1.8 | 10.1.8 | 10.1.8 | Current |
 | . | devDependencies | eslint-plugin-react-hooks | `^7.1.1` | 7.1.1 / 7.1.1 | 7.1.1 | 7.1.1 | Current |
@@ -112,16 +112,16 @@ Release age policy: 604800 seconds.
 | apps/server | dependencies | jose | `^6.2.12` | 6.2.12 / 6.2.12 | 6.2.12 | 6.2.12 | Current |
 | apps/server | dependencies | livekit-server-sdk | `^2.19.0` | 2.19.0 / 2.19.0 | 2.19.0 | 2.19.0 | Current |
 | apps/server | dependencies | sharp | `^0.35.4` | 0.35.4 / 0.35.4 | 0.35.4 | 0.35.4 | Current |
-| apps/server | devDependencies | @types/bun | `1.4.2` | 1.4.2 / 1.4.2 | 1.4.2 | 1.4.2 | Current |
+| apps/server | devDependencies | @types/bun | `1.4.4` | 1.4.4 / 1.4.4 | 1.4.4 | 1.4.4 | Current |
 | apps/web | dependencies | @divineruin/design-tokens | `workspace:*` | workspace:packages/design-tokens / workspace:packages/design-tokens | workspace:packages/design-tokens | workspace:packages/design-tokens | Current |
 | apps/web | dependencies | react | `19.2.6` | 19.2.6 / 19.2.6 | 19.2.6 | 19.3.0 | Held by react-native@0.86.3 and the shared web runtime: React 19.2.6 is the SDK 57-supported React 19.2 cohort and stays identical across mobile and web; typechecks, tests, exports, and the native build pass. |
 | apps/web | dependencies | react-dom | `19.2.6` | 19.2.6 / 19.2.6 | 19.2.6 | 19.3.0 | Held by react-native@0.86.3 and the shared web runtime: React 19.2.6 is the SDK 57-supported React 19.2 cohort and stays identical across mobile and web; typechecks, tests, exports, and the native build pass. |
-| apps/web | devDependencies | @types/bun | `1.4.2` | 1.4.2 / 1.4.2 | 1.4.2 | 1.4.2 | Current |
+| apps/web | devDependencies | @types/bun | `1.4.4` | 1.4.4 / 1.4.4 | 1.4.4 | 1.4.4 | Current |
 | apps/web | devDependencies | @types/react | `~19.2.2` | 19.2.14 / 19.2.14 | 19.2.14 | 19.3.0 | Held by react@19.2.6 shared cohort: React type packages stay on the React 19.2 line shared by mobile and web. |
 | apps/web | devDependencies | @types/react-dom | `~19.2.1` | 19.2.3 / 19.2.3 | 19.2.3 | 19.3.0 | Held by react@19.2.6 shared cohort: React type packages stay on the React 19.2 line shared by mobile and web. |
-| packages/design-tokens | devDependencies | @types/bun | `1.4.2` | 1.4.2 / 1.4.2 | 1.4.2 | 1.4.2 | Current |
+| packages/design-tokens | devDependencies | @types/bun | `1.4.4` | 1.4.4 / 1.4.4 | 1.4.4 | 1.4.4 | Current |
 | packages/design-tokens | peerDependencies | typescript | `>=5.9 <6.1` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | TypeScript 7.0.2 exceeds typescript-eslint 8.70.0 peer range >=4.8.4 <6.1.0; 6.0.3 is the newest compatible stable release. |
-| packages/shared | devDependencies | @types/bun | `1.4.2` | 1.4.2 / 1.4.2 | 1.4.2 | 1.4.2 | Current |
+| packages/shared | devDependencies | @types/bun | `1.4.4` | 1.4.4 / 1.4.4 | 1.4.4 | 1.4.4 | Current |
 | packages/shared | peerDependencies | typescript | `>=5.9 <6.1` | 6.0.3 / 6.0.3 | 6.0.3 | 7.0.2 | TypeScript 7.0.2 exceeds typescript-eslint 8.70.0 peer range >=4.8.4 <6.1.0; 6.0.3 is the newest compatible stable release. |
 
 ## Independent browser toolchain
@@ -130,8 +130,8 @@ Release age policy: 604800 seconds.
 |---|---|---|---|---|---|---|
 | devDependencies | @axe-core/playwright | `^4.13.0` | 4.13.0 / 4.13.0 | 4.13.0 | 4.13.0 | Current |
 | devDependencies | @eslint/js | `^10.0.1` | 10.0.1 / 10.0.1 | 10.0.1 | 10.0.1 | Current |
-| devDependencies | @playwright/test | `^1.63.0` | 1.63.0 / 1.63.0 | 1.63.0 | 1.63.0 | Current |
-| devDependencies | @types/bun | `1.4.2` | 1.4.2 / 1.4.2 | 1.4.2 | 1.4.2 | Current |
+| devDependencies | @playwright/test | `^1.64.1` | 1.64.1 / 1.64.1 | 1.64.1 | 1.64.1 | Current |
+| devDependencies | @types/bun | `1.4.4` | 1.4.4 / 1.4.4 | 1.4.4 | 1.4.4 | Current |
 | devDependencies | @types/pg | `^8.23.1` | 8.23.1 / 8.23.1 | 8.23.1 | 8.23.1 | Current |
 | devDependencies | eslint | `^10.11.0` | 10.11.0 / 10.11.0 | 10.11.0 | 10.11.0 | Current |
 | devDependencies | eslint-config-prettier | `^10.1.8` | 10.1.8 / 10.1.8 | 10.1.8 | 10.1.8 | Current |
@@ -196,8 +196,8 @@ Compatibility exceptions:
 
 | Lane | Recorded outcome | Evidence |
 |---|---|---|
-| bun install --frozen-lockfile | passed | Bun 1.4.2 accepted the root frozen lock without changes. |
-| bun install --cwd e2e --frozen-lockfile | passed | Bun 1.4.2 accepted the independent e2e frozen lock without changes. |
+| bun install --frozen-lockfile | passed | Bun 1.4.4 accepted the root frozen lock without changes. |
+| bun install --cwd e2e --frozen-lockfile | passed | Bun 1.4.4 accepted the independent e2e frozen lock without changes. |
 | uv sync --project apps/agent --frozen | passed | uv 0.12.21 installed the agent lock under CPython 3.14.7. |
 | uv sync --project scripts --frozen | passed | uv 0.12.21 installed the scripts lock under CPython 3.14.7. |
 | dependency report --scope all | passed | All nine manifests, four locks, installed trees, CI, and rendered Markdown validated. |
