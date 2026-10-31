@@ -146,8 +146,8 @@ async def test_opposite_owner_transfers_serialize_without_lost_revision(owners):
     await pool.execute(
         "INSERT INTO player_inventory(player_id,item_id,data) VALUES($1,'wolf_pelt','{\"quantity\":2}')", two
     )
-    async with pool.acquire() as first, pool.acquire() as second:
-        tx1, tx2 = first.transaction(), second.transaction()
+    async with pool.acquire() as first, pool.acquire() as second, pool.acquire() as gate:
+        tx1, tx2, gate_tx = first.transaction(), second.transaction(), gate.transaction()
         await tx1.start()
         await tx2.start()
         await first.fetch("SELECT * FROM player_inventory WHERE player_id=$1 FOR UPDATE", one)
@@ -161,7 +161,15 @@ async def test_opposite_owner_transfers_serialize_without_lost_revision(owners):
                 await tx.rollback()
                 raise
 
-        await asyncio.wait_for(asyncio.gather(transfer(first, tx1, one, two), transfer(second, tx2, two, one)), 5)
+        # Both UPDATEs must hold their snapshots before either commits: a later snapshot
+        # would also see the row just moved in, and move it back.
+        await gate_tx.start()
+        await gate.fetch("SELECT 1 FROM players WHERE player_id=$1 FOR NO KEY UPDATE", min(one, two))
+        transfers = asyncio.gather(transfer(first, tx1, one, two), transfer(second, tx2, two, one))
+        await wait_for_lock(pool, first.get_server_pid())
+        await wait_for_lock(pool, second.get_server_pid())
+        await gate_tx.commit()
+        await asyncio.wait_for(transfers, 5)
     result1, result2 = await inventory_payload(one), await inventory_payload(two)
     assert result1["inventory_revision"] == result2["inventory_revision"] == "3"
     assert result1["inventory"][0]["id"] == "wolf_pelt"
