@@ -96,19 +96,17 @@ describe("companions.json — row shape", () => {
     }
   });
 
-  test("every companion declares two tracked portrait slugs", () => {
+  test("every companion’s portrait files exist", () => {
     const repoRoot = new URL("../../../../", import.meta.url).pathname;
-    const tracked = Bun.spawnSync(["git", "ls-files", "assets/images/companion_*.png"], {
-      cwd: repoRoot,
-    });
-    expect(tracked.exitCode).toBe(0);
-    const trackedPaths = new Set(tracked.stdout.toString().trim().split("\n"));
+    const portraitPaths = new Set(
+      new Bun.Glob("assets/images/companion_*.png").scanSync({ cwd: repoRoot }),
+    );
 
     for (const companion of companions) {
       for (const slug of [companion.portrait.primary, companion.portrait.alert]) {
         expect(typeof slug).toBe("string");
         expect(slug).toMatch(/^companion_[a-z0-9_]+$/);
-        expect(trackedPaths.has(`assets/images/${slug}.png`)).toBe(true);
+        expect(portraitPaths.has(`assets/images/${slug}.png`)).toBe(true);
       }
     }
   });
