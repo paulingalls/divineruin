@@ -320,7 +320,7 @@ tasks:
       - imports-of: "scripts/migrate.ts"
       - imports-of: "apps/server/src/index.ts"
       - "apps/mobile/app.json"
-      - "apps/mobile/assets/images/**"
+      - "apps/mobile/assets/images/{icon,splash}.png"
       - "apps/server/bunfig.toml"
   bun-web:
     run: "bun test --cwd apps/web"
@@ -369,3 +369,4 @@ tasks:
       - "apps/web/src/**/*.css"
       - "apps/web/src/audio/**"
       - "apps/web/public/*.{png,ico}"
+      - imports-of: "apps/web/src/client.tsx"
