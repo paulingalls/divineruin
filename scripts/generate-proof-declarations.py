@@ -136,7 +136,10 @@ def main():
             inputs.append("docs/ops/async-activity-reset.md")
         for target in ("use-game-events.parse.test.ts", "sound-registry.test.ts"):
             if target in closure_text:
-                inputs.append({"imports-of": f"apps/mobile/src/__tests__/{target}"})
+                inputs += [
+                    {"imports-of": f"apps/mobile/src/__tests__/{target}"},
+                    {"imports-of": "apps/mobile/test-preload.ts"},
+                ]
         if "inventory-db-bridge" in closure_text or "_inventory_bridge" in closure_text:
             inputs += [
                 {"imports-of": "apps/mobile/scripts/inventory-db-bridge.ts"},
