@@ -117,8 +117,11 @@ async def test_transact_selects_clean_through_exhaustion(reset_db_pool):
         await h.close()
 
 
-@pytest.mark.parametrize("allow", [False, True])
-async def test_craft_recipe_stack_policy(reset_db_pool, allow):
+@pytest.mark.parametrize(
+    "allow,clean,tainted,expected",
+    [(False, 0, 3, None), (False, 3, 2, [(True, 2)]), (True, 2, 2, [(False, 1)])],
+)
+async def test_craft_recipe_stack_policy(reset_db_pool, allow, clean, tainted, expected):
     import recipes
 
     h = await InventoryHarness().start_inventory()
@@ -139,16 +142,16 @@ async def test_craft_recipe_stack_policy(reset_db_pool, allow):
             pid,
             recipe_id,
         )
-        await seed_stack(h.pool, pid, "oak_wood", 2 if allow else 3, True)
-        if allow:
-            await seed_stack(h.pool, pid, "oak_wood", 2, False)
+        await seed_stack(h.pool, pid, "oak_wood", tainted, True)
+        if clean:
+            await seed_stack(h.pool, pid, "oak_wood", clean, False)
         before = await get_inventory_snapshot(pid)
         result = await h.command(
-            "begin_activity", {"activity": {"kind": "crafting", "recipe_id": recipe_id}}, error=not allow
+            "begin_activity", {"activity": {"kind": "crafting", "recipe_id": recipe_id}}, error=expected is None
         )
-        if allow:
+        if expected:
             actual = await rows(h.pool, pid)
-            assert [(r["tainted"], json.loads(r["data"])["quantity"]) for r in actual] == [(False, 1)]
+            assert [(r["tainted"], json.loads(r["data"])["quantity"]) for r in actual] == expected
             assert result["activity_id"]
             await assert_published(h)
         else:

@@ -132,7 +132,6 @@ async def get_player(
     *,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
     for_update: bool = False,
-    tainted: bool = False,
 ) -> dict | None:
     _conn = conn or await db.get_pool()
     sql = "SELECT data FROM players WHERE player_id = $1"
@@ -381,7 +380,6 @@ async def get_player_quest(
     *,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
     for_update: bool = False,
-    tainted: bool = False,
 ) -> dict | None:
     _conn = conn or await db.get_pool()
     sql = "SELECT data FROM player_quests WHERE player_id = $1 AND quest_id = $2"
