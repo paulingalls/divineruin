@@ -161,14 +161,14 @@ The catalog includes all nine spec Hollow creatures, including the three Tier 4 
 
 ### Milestone 7.4 — Loot Tables, Harvesting & Encounter Builder
 
-**Goal:** Implement the loot generation system with skill-gated harvesting and the encounter builder that assembles balanced combat encounters from the creature catalog. Current loot tables carry optional skill requirements and a Hollow residue flag as data; M34 must enforce requirements when harvesting. `derive_role_loot` does not gate drops by player skill.
+**Goal:** Implement the loot generation system with skill-gated harvesting and the encounter builder that assembles balanced combat encounters from the creature catalog. Loot generation enforces every authored skill requirement against the best tier per skill among player combat participants; different participants may supply different skills. Hollow residue remains a data flag.
 
 **Inputs:** M7.1-M7.3 (creature catalog), Phase 1 (Core — skill tiers for harvesting gates), Phase 5 (Crafting — for material-to-recipe pipeline integration).
 
 The Warden's spec block (Encounter Creature Stat Blocks) names `loot_hollow_warden` and authors no drops of its own. The table's residue flag and Crafting:Expert harvest gate follow the rend table's residue precedent; they do not imply a spec drop for the Warden.
 
 **Deliverables:**
-- Loot generation: `generate_loot(creature, player_skills)` returning guaranteed drops plus probabilistic rolls
+- Loot generation: `generate_loot(loot_table, role, party_tiers, rng)` returning guaranteed drops plus probabilistic rolls
 - Skill-gated harvesting tiers:
   - Survival:Trained — basic materials (pelts, bones, common herbs)
   - Crafting:Expert — refined materials (sinew, treated hide, alchemical reagents)
@@ -182,9 +182,9 @@ The Warden's spec block (Encounter Creature Stat Blocks) names `loot_hollow_ward
 - Agent tools: `resolve_harvesting(creature_id, player_skills)` returning available materials, `generate_encounter(region, tier, difficulty)` returning encounter specification
 
 **Acceptance criteria:**
-- [ ] `generate_loot` returns guaranteed drops always and probabilistic drops at correct rates
+- [x] `generate_loot` returns guaranteed drops always and probabilistic drops at correct rates
 - [ ] Harvesting requires correct skill tier: Survival:Trained, Crafting:Expert, Arcana:Expert
-- [ ] Player without required skill tier gets no harvesting option (not a failed roll — gated out entirely)
+- [x] Party without a required skill tier gets no harvesting drop (gated out before rolling)
 - [ ] All Hollow creature loot is flagged tainted; non-Hollow loot is not
 - [ ] Purification via Dispel Corruption clears taint flag; async purification tracks activity timer
 - [ ] `build_encounter` selects creatures matching requested tier and scales to combatant count

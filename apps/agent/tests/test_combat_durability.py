@@ -320,6 +320,7 @@ import combat_end  # noqa: E402
 async def _run_end_combat(ctx, inventory, *, outcome="victory"):
     mutations = AsyncMock()
     queries = AsyncMock()
+    queries.get_player = AsyncMock(return_value={})
     queries.get_player_inventory = AsyncMock(return_value=inventory)
     queries.get_inventory_snapshot = snapshot_query(inventory)
     with patch.object(

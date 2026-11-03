@@ -10,7 +10,10 @@ from check_resolution_attack import resolve_attack
 from combat_state import CombatState
 from combat_support import _participant_roster
 from creature_combat import translate_creature
-from encounter_loot import calculate_currency_drop, derive_role_loot
+from encounter_loot import calculate_currency_drop, generate_loot
+from rules_engine import SKILLS, SkillTier
+
+PARTY_TIERS: dict[str, SkillTier] = {skill: "master" for skill in SKILLS}
 
 
 def translate(source, role="standard"):
@@ -161,7 +164,7 @@ def test_translated_categories_and_loot_use_catalog(source):
         for d in table["drops"]
         if d["chance"] > 0
     ]
-    assert derive_role_loot(table, enemy["role"], FixedRandom()) == expected
+    assert generate_loot(table, enemy["role"], PARTY_TIERS, FixedRandom()) == expected
     assert calculate_currency_drop("named", 3, "boss", FixedRandom()) == 0
 
 

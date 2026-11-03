@@ -19,7 +19,7 @@ remaining-work evidence live in [REMAINING.md](REMAINING.md).*
 | 4 · Combat | [04_combat.md](04_combat.md) | ✅ Delivered | 73/73 ACs | Complete recorded criteria; focused encounter-role and beneficial-condition evidence in [REMAINING.md](REMAINING.md). |
 | 5 · Crafting | [05_crafting.md](05_crafting.md) | ✅ Delivered | 45/45 ACs | Complete recorded criteria. **†Veil Ward** |
 | 6 · NPCs & Companions | [06_npcs.md](06_npcs.md) | ✅ **Complete** | 34/34 ACs | D-4/D-5 are recorded; M6.1 retains the lead’s “where applicable” reading. See [REMAINING.md](REMAINING.md). |
-| 7 · Bestiary | [07_bestiary.md](07_bestiary.md) | 🟡 Partial | 22/41 ACs | Catalog and encounter cutover exercised; remaining M7.3 effects, generated encounters and native Choir certification remain open. See [REMAINING.md](REMAINING.md). |
+| 7 · Bestiary | [07_bestiary.md](07_bestiary.md) | 🟡 Partial | 24/41 ACs | Catalog, encounter cutover, guaranteed loot and party skill gates exercised; remaining M7.3 effects, generated encounters and native Choir certification remain open. See [REMAINING.md](REMAINING.md). |
 | 8 · Patrons | [08_patrons.md](08_patrons.md) | 🟡 Partial | 2/34 ACs | Favor substrate and Layer-1 gift content ship; Layers 2–4 remain placeholders. See [REMAINING.md](REMAINING.md). |
 | 9 · Economy | [09_economy.md](09_economy.md) | 🟡 Partial | 5/80 ACs | Pricing, reputation and inventory substrate; Phase 7 integration remains. See [REMAINING.md](REMAINING.md). |
 | 10 · Terrain | [10_terrain.md](10_terrain.md) | ✅ Complete (sprint-1001) | 17/17 ACs | Required terrain, primal/Korath/Druid gates and persisted combat caching shipped. **†Veil Ward** |

@@ -12,7 +12,7 @@ module-global reach-through — so the caller owns the transaction and the event
 Two invariants the passes share; neither may drift:
 
   - ROLL is fully upstream of DISTRIBUTE. Distribution consumes no RNG, so the roll sequence stays
-    byte-identical to the pre-M18 per-enemy path and a seeded run reproduces exactly.
+    unchanged when every skill gate passes and no authored guaranteed row is encountered.
   - Every distribution walks ``seat_order`` — ascending player_id. It is both the round-robin order
     and the FOR UPDATE lock order (deadlock-free SSOT 5da95d657255). On the COMBAT path the caller
     builds it from the player PARTICIPANTS who fought, so a mid-combat room joiner cannot dilute or
@@ -26,6 +26,7 @@ Two invariants the passes share; neither may drift:
 
 import logging
 import random
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -34,8 +35,10 @@ import combat_resolution
 import encounter_loot
 import event_types as E
 import progression_tools
+import rules_engine
 from asset_utils import compute_item_image_url
 from combat_events import EventSink, emit_or_publish
+from rules_engine import SkillTier
 from tool_support import build_item_acquired_payload
 
 if TYPE_CHECKING:
@@ -99,11 +102,14 @@ def seat_order_for(participants) -> list[str]:
     return sorted(p.id for p in participants if p.type == "player")
 
 
-async def _roll_enemy_loot(p, rng: random.Random, *, content) -> tuple[int, list[dict]]:
+async def _roll_enemy_loot(
+    p, rng: random.Random, *, party_tiers: Mapping[str, SkillTier], content
+) -> tuple[int, list[dict]]:
     """Roll ONE defeated enemy's role-scaled currency + loot drops WITHOUT granting them.
 
     Returns (silver, drops). Currency is rolled BEFORE loot, preserving the pre-M18 per-enemy RNG
-    consumption order so a seeded run is byte-identical — the caller distributes the returned drops
+    consumption order. With every gate met and no authored guaranteed rows, seeded rewards stay
+    identical to the previous generator. The caller distributes the returned drops
     across the party (M18 story-003), which consumes no RNG. Currency is 0 for a Minion (D79).
     Untagged/legacy enemies (no category / loot_table_id) are inert — the empty-string defaults mean
     pre-story-002 content drops nothing rather than crashing."""
@@ -116,17 +122,18 @@ async def _roll_enemy_loot(p, rng: random.Random, *, content) -> tuple[int, list
     if p.loot_table_id:
         table = await content.get_loot_table(p.loot_table_id)
         if table is not None:
-            drops = encounter_loot.derive_role_loot(table, p.role, rng)
+            drops = encounter_loot.generate_loot(table, p.role, party_tiers, rng)
     return currency, drops
 
 
-async def roll_encounter_spoils(participants, rng: random.Random, *, content) -> EncounterSpoils:
+async def roll_encounter_spoils(
+    participants, rng: random.Random, *, party_tiers: Mapping[str, SkillTier], content
+) -> EncounterSpoils:
     """ROLL pass (M18 story-003): walk the defeated enemies in participant order, rolling each one's
     currency + loot into a SHARED pool and summing the encounter XP.
 
-    Rolling is kept fully upstream of distribution so the RNG consumption sequence is byte-identical
-    to the pre-M18 per-enemy path. Each enemy's xp_value is ALREADY role-scaled at combat init, so
-    calculate_combat_xp only sums — it must not re-apply the role multiplier."""
+    Distribution consumes no RNG. Each enemy's xp_value is already role-scaled at combat init,
+    so calculate_combat_xp only sums — it must not re-apply the role multiplier."""
     spoils = EncounterSpoils()
     enemy_dicts = []
     for p in participants:
@@ -134,7 +141,7 @@ async def roll_encounter_spoils(participants, rng: random.Random, *, content) ->
             continue
         enemy_dicts.append({"xp_value": p.xp_value})
         spoils.defeated_enemies.append(p.name)
-        enemy_silver, enemy_drops = await _roll_enemy_loot(p, rng, content=content)
+        enemy_silver, enemy_drops = await _roll_enemy_loot(p, rng, party_tiers=party_tiers, content=content)
         spoils.currency_silver += enemy_silver
         spoils.loot_pool.extend(enemy_drops)
     spoils.xp_total = combat_resolution.calculate_combat_xp(enemy_dicts)
@@ -345,15 +352,24 @@ async def grant_victory_rewards(
     hand out items, coin and XP along ``seat_order``.
 
     The single ROLL is the RNG boundary — every distribution below consumes none, so a seeded run
-    stays byte-identical to the pre-M18 per-enemy path however the passes are ordered. XP still runs
+    reproduces when every gate passes and no authored guaranteed rows are encountered. XP still runs
     last so its XP_AWARDED / LEVEL_UP land after the haul on the wire, the order the DM narrates in.
     Each pass is awaited as its own statement: the sequence is the contract, not an argument list
     whose evaluation order a cosmetic reorder could silently change.
 
     Everything runs in the caller's transaction and buffers into ``channel``.
     """
-    spoils = await roll_encounter_spoils(participants, rng, content=content)
     seat_order = seat_order_for(participants)
+    party_tiers: dict[str, SkillTier] = {skill: "untrained" for skill in rules_engine.SKILLS}
+    for pid in seat_order:
+        player = await queries.get_player(pid, conn=conn)
+        if player is None:
+            continue
+        for skill in party_tiers:
+            tier = rules_engine._get_skill_tier(player, skill)
+            if rules_engine.SKILL_TIER_ORDER.index(tier) > rules_engine.SKILL_TIER_ORDER.index(party_tiers[skill]):
+                party_tiers[skill] = tier
+    spoils = await roll_encounter_spoils(participants, rng, party_tiers=party_tiers, content=content)
     item_recipients: list[tuple[str, str]] = []
     primary_loot = await distribute_loot(
         spoils.loot_pool,

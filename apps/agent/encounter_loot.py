@@ -1,20 +1,16 @@
 """Pure loot & currency overlay for the 5-role encounter system (M4.7, story-002).
 
-A base creature's loot table plus its assigned encounter role yields the actual drops: a
-throwaway Minion sheds half its loot and no coin, while a Boss drops everything it carries plus a
-guaranteed currency bonus. This module is the deterministic source for *what a role does to a loot
-table and a currency roll* — two pure functions that read only their arguments and a seeded RNG,
-never touching IO/DB. combat_end wires them on victory; the role/category/tier all ride the
-defeated enemy's CombatParticipant.
+Loot generation combines authored drops, encounter role and the party's best skill tiers.
+Currency uses the enemy's category, tier and role. Both are pure and use the caller's RNG;
+combat_rewards wires them into victory rewards.
 
-Numbers come from docs/game_mechanics/game_mechanics_encounter_roles.md — the Loot Modifier Table
-(L130-136), the Currency Drop Rules (L142-159), and decisions D78 (sell < craft) / D79 (Minions
-drop no currency). The role enum is the shared SSOT in encounter_roles; the loot/currency
-modifiers live here because they are this story's concern, not the stat-block overlay's.
+The Loot Modifier Table and Currency Drop Rules in
+docs/game_mechanics/game_mechanics_encounter_roles.md define the role modifiers.
+Minions carry no coin (D79).
 
 Honest scope notes:
-- The Boss "bonus item from a context loot pool" (L161) is authored per-encounter location/quest
-  content, not a creature-table drop — out of scope here. derive_role_loot scales the creature's
+- The Boss "bonus item from a context loot pool" is authored per-encounter location/quest
+  content, not a creature-table drop — out of scope here. generate_loot scales the creature's
   own table; the context-pool item is a future content concern.
 - Named currency is "set per creature" (bespoke) in the spec; with no per-creature authored
   currency yet, Named resolves to the category base (identity), same as Standard. When bespoke
@@ -23,9 +19,11 @@ Honest scope notes:
 
 import math
 import random
+from collections.abc import Mapping
 
 from dice import roll
 from encounter_roles import EncounterRole
+from rules_engine import SKILL_TIER_ORDER, SkillTier
 
 # Enemy creature categories (catalog-derived runtime `category`). The currency-bearing
 # ones roll coin per the Currency Drop Rules; the rest carry none ("animals don't carry coin").
@@ -139,16 +137,21 @@ def _role_quantity(quantity: int, role: str) -> int:
     return quantity  # Standard, Named.
 
 
-def derive_role_loot(loot_table: dict, role: str, rng: random.Random) -> list[dict]:
+def generate_loot(loot_table: dict, role: str, party_tiers: Mapping[str, SkillTier], rng: random.Random) -> list[dict]:
     """Roll a defeated enemy's actual drops from its loot table, scaled by encounter role.
 
-    Each table entry {item_id, chance, quantity} has its chance modified per role, then the
-    (modified) chance is rolled once. A hit rolls dice quantity before role scaling. Hits
-    become {item_id, quantity} dicts in the returned list — order preserved, misses omitted. Pure:
-    every roll flows through ``rng``, no mutation of the input table."""
+    Every authored requirement must meet the party's best tier per skill before any roll.
+    Authored chance >= 1 skips the chance roll; quantity dice still roll before role scaling.
+    Other chances use the role modifier. Returns {item_id, quantity} in table order without
+    mutating the input. Unknown skills or tiers fail loudly."""
     _validate_role(role)
     drops: list[dict] = []
     for entry in loot_table.get("drops", []):
+        if not all(
+            SKILL_TIER_ORDER.index(party_tiers[requirement["skill"]]) >= SKILL_TIER_ORDER.index(requirement["tier"])
+            for requirement in entry.get("requires", [])
+        ):
+            continue
         chance = _role_drop_chance(entry["chance"], role)
         if entry["chance"] >= 1 or rng.random() < chance:
             authored = entry["quantity"]
