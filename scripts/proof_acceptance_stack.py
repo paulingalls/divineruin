@@ -4,6 +4,7 @@ import asyncio
 import fnmatch
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import time
@@ -83,9 +84,9 @@ def main(action):
             saved = json.loads(state.read_text())
             stop_if_started(saved["started"], saved["dsn"])
             state.unlink()
-    elif action in ("start", "bun-start"):
+    elif action in ("start", "bun-start", "e2e-start"):
         settings = checkout_livekit_settings()
-        kind = "bun" if action == "bun-start" else "acceptance"
+        kind = action.split("-")[0] if "-" in action else "acceptance"
         name = f"dr-proof-{kind}-{settings['WT_CHECKOUT_ID']}-{os.environ['PROOF_RUN_PID']}"
         labels = {
             "com.divineruin.clone": settings["WT_CLONE_ID"],
@@ -166,8 +167,26 @@ def main(action):
                 f"proof LiveKit {'reuse' if server.container.id in before else 'start'} {server.container.id}",
                 flush=True,
             )
+        e2e = {}
+        if action == "e2e-start":
+            expected = subprocess.check_output(
+                ["bash", "scripts/worktree-common.sh", "expected-env"],
+                cwd=ROOT,
+                text=True,
+            )
+            ports = {
+                "E2E_API_PORT",
+                "E2E_APP_PORT",
+                "E2E_WEB_PORT",
+                "E2E_LH_DEBUG_PORT",
+            }
+            e2e = {k: v for line in expected.splitlines() for k, v in [line.split("=", 1)] if k in ports}
+            if set(e2e) != ports:
+                raise RuntimeError("checkout authority did not supply all E2E ports")
+            e2e["PROOF_E2E_ARTIFACTS"] = str(ROOT / "flake-artifacts")
         exports(
             {
+                **e2e,
                 "PROOF_AGENT_PROVIDER": "acceptance",
                 "PROOF_ACCEPTANCE_ADMIN": admin,
                 "PROOF_ACCEPTANCE_TEMPLATE": "proof_template",
@@ -186,7 +205,7 @@ def main(action):
                 ),
             }
         )
-    elif action in ("stop", "bun-stop"):
+    elif action in ("stop", "bun-stop", "e2e-stop"):
         if state.exists():
             saved = json.loads(state.read_text())
             owned = []

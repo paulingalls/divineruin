@@ -4,6 +4,7 @@ import ast
 import fnmatch
 import json
 import os
+import re
 import shlex
 import subprocess
 from pathlib import Path
@@ -91,6 +92,103 @@ def partitions(path):
     return [("", "", "")]
 
 
+def e2e_tasks(shared=(), stack_keyed=()):
+    specs = sorted(Path("e2e/specs").glob("*.e2e.ts"))
+    groups = {
+        "home-character": (
+            "chromium",
+            [p for p in specs if p.name == "home-character.e2e.ts"],
+        ),
+        "chromium": (
+            "chromium",
+            [p for p in specs if not p.name.startswith("web-") and p.name != "home-character.e2e.ts"],
+        ),
+        "web": (
+            "web",
+            [p for p in specs if p.name.startswith("web-") and p.name != "web-production.e2e.ts"],
+        ),
+        "web-lighthouse": (
+            "web-lighthouse",
+            [p for p in specs if p.name == "web-production.e2e.ts"],
+        ),
+    }
+    # Proof coverage counts Python source readers too; require E2E execution ownership here.
+    declared = sorted(p for _, files in groups.values() for p in files)
+    if declared != sorted(Path("e2e/specs").glob("*.e2e.ts")):
+        raise ValueError("E2E partitions must cover every spec exactly once")
+    tasks = {}
+    for part, (project, files) in groups.items():
+        if not files:
+            raise ValueError(f"empty e2e partition: {part}")
+        inputs = [
+            *[{"imports-of": str(p)} for p in files],
+            {"imports-of": "e2e/playwright.config.ts"},
+            "$stack",
+            "$bun-config",
+            "scripts/proof-e2e.sh",
+            "scripts/proof-db-clone.ts",
+            "e2e/package.json",
+            "e2e/bun.lock",
+            "e2e/tsconfig.json",
+            "apps/server/src/**",
+            "apps/server/package.json",
+            "apps/server/tsconfig.json",
+            "apps/server/bunfig.toml",
+            "packages/**",
+            "$e2e-home-character-represents",
+            "content/**",
+            "!**/*.test.*",
+        ]
+        if project == "chromium":
+            inputs += [
+                {"imports-of": "e2e/global-setup.ts"},
+                "apps/mobile/src/**",
+                "apps/mobile/assets/**",
+                "apps/mobile/app.json",
+                "apps/mobile/package.json",
+                "apps/mobile/tsconfig.json",
+                "apps/mobile/metro.config.js",
+                "assets/**",
+                ".watchmanconfig",
+                "!apps/mobile/src/__tests__/**",
+            ]
+        else:
+            inputs += [
+                "apps/web/src/**",
+                "apps/web/scripts/**",
+                "apps/web/public/**",
+                "apps/web/index.html",
+                "apps/web/package.json",
+                "apps/web/tsconfig.json",
+                "apps/audio/**",
+            ]
+        if part == "chromium":
+            inputs += [
+                {
+                    "imports-of": "e2e/fixtures/inventory-snapshot.py",
+                    "python-path": ["apps/agent"],
+                },
+                "apps/agent/pyproject.toml",
+                "apps/agent/uv.lock",
+                "apps/agent/.python-version",
+            ]
+        # Anchors prevent the chromium remainder from also matching home-character.
+        filters = " ".join(shlex.quote("/" + p.name.replace(".", r"\.") + "$") for p in files)
+        tasks[f"e2e:{part}"] = {
+            "run": f"bash scripts/proof-e2e.sh {part} --project={project} {filters}",
+            "sets": ["sprint"],
+            "lane": "e2e",
+            "needs": ["e2e-stack"],
+            "links": ["node_modules", "e2e/node_modules"],
+            "inputs": inputs,
+            "keyed": [
+                *sorted(shared if part == "chromium" else stack_keyed),
+                *(["packages/shared/**"] if part == "home-character" else []),
+            ],
+        }
+    return tasks
+
+
 def main():
     paths = sorted(str(p) for root in (Path("apps/agent"), Path("scripts")) for p in root.rglob("*.py"))
     result = subprocess.run(
@@ -145,7 +243,7 @@ def main():
             fnmatch.fnmatch(p, pat) or fnmatch.fnmatch(p, pat.replace("/**/", "/")) for pat in stack_patterns("stack")
         )
     }
-    tasks = {}
+    tasks = e2e_tasks(shared, stack_keyed)
     for path in entries:
         conftests = [
             str(p / "conftest.py")
@@ -214,7 +312,7 @@ def main():
             "needs": ["acceptance-stack"],
             "links": ["node_modules"],
             "inputs": inputs,
-            "keyed": sorted(keyed[path] | (stack_keyed)),
+            "keyed": [*sorted(keyed[path] | stack_keyed), "packages/shared/**"],
         }
         for suffix, selector, expression in partitions(path):
             part = dict(task)
@@ -228,7 +326,7 @@ def main():
             tasks[f"agent-acceptance:{Path(path).stem}" + (f":{suffix}" if suffix else "")] = part
     # Root unkeyed policy must preserve the existing Bun tasks and the full unit key.
     for name, task in json.loads(Path("scripts/proof-bun-tasks.json").read_text()).items():
-        tasks[name] = {**task, "keyed": sorted(shared)}
+        tasks[name] = {**task, "keyed": [*sorted(shared), "packages/shared/**"]}
     tasks["agent-pytest"] = {
         "run": "ALLOW_PAID_TESTS= REQUIRE_REAL_LLM= uv run --frozen --directory apps/agent pytest tests/ -q -m 'not acceptance' -n 8",
         "sets": ["land"],
@@ -254,8 +352,21 @@ def main():
             "$stack",
             "$bun-config",
         ],
-        "keyed": sorted(shared),
+        "keyed": [*sorted(shared), "packages/shared/**"],
     }
+    for task in tasks.values():
+        expanded = []
+        for item in task["inputs"]:
+            path = item.get("imports-of") if isinstance(item, dict) else None
+            if path in graph and graph[path].get("reason"):
+                # Dynamic registry discovery needs the whole Python corpus, not a false import proof.
+                expanded += [*graph[path]["closure"], "apps/agent/**/*.py"]
+                # unkeyed would strip the shared agent modules the registry discovers at runtime.
+                discovered = {f for f in shared if re.fullmatch(r"apps/agent/[^/]+_agent\.py", f)}
+                task["keyed"] = sorted(set(task.get("keyed", [])) | discovered)
+            else:
+                expanded.append(item)
+        task["inputs"] = expanded
     output = {"unkeyed": sorted(shared), "tasks": tasks}
     (Path(os.environ["PROOF_DECLARATIONS"]) / "python.yaml").write_text(json.dumps(output, indent=2) + "\n")
 

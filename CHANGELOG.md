@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.33.0 — 2026-11-03
+
+- Playwright runs as proof tasks in the sprint set: `e2e:chromium`, `e2e:web`, `e2e:web-lighthouse` and `e2e:home-character`, which is the representative for `packages/shared` edits. A web-only edit skips the mobile app tests and a mobile-only edit skips the web tests; editing a spec runs only its task. The e2e tasks share one lane because they bind fixed ports. Each keeps Playwright's 4 workers and runs beside acceptance at every core.
+- The sprint hook calls only `proof run --set sprint`. A fresh run of all 100 tasks (636 acceptance cases, 88 Playwright tests) took 354 s, about the time acceptance alone took before, against 347 s plus a separate 133 s Playwright run. A red e2e task keeps its log, screenshot, video and trace.
+- The four acceptance tests proof could not trace (dynamic imports) no longer run on every change: they key on the agent sources, including the `*_agent.py` modules the verb registry discovers.
+- Proof v0.33.2. The milestone "Run only the tests an edit could break" reaches distance 0.
+
 ## 0.32.0 — 2026-11-03
 
 - The hooks run proof's selection, not whole lanes. Commit runs staged lint, `proof lint`, then only the commit-set tasks the staged files can break; a repeat commit finds them PROVEN, and a Markdown-only commit runs none. Story land runs the commit and land sets on the merged tree, reusing what the branch proved: a repeat land took 3 s instead of 171 s. Sprint close runs the selected acceptance tasks next to Playwright. `bun run test:all`, `test:python` and `test:acceptance` stay as manual full lanes, and PR CI still runs everything.
