@@ -1,9 +1,9 @@
-import { readFileSync } from "node:fs";
 import { pythonClosure } from "../node_modules/@pi-innovations/proof/src/python";
 
-const paths = JSON.parse(readFileSync(0, "utf8")) as string[];
+const paths = (await Bun.stdin.json()) as string[];
 const roots = ["apps/agent", "apps/agent/tests", "scripts"];
-const texts = new Map(paths.map((path) => [path, readFileSync(path, "utf8")]));
+const texts = new Map<string, string>();
+for (const path of paths) texts.set(path, await Bun.file(path).text());
 const source = {
   paths,
   read: (path: string) => texts.get(path),
@@ -33,4 +33,4 @@ const result = Object.fromEntries(
       ];
     }),
 );
-process.stdout.write(JSON.stringify(result));
+await Bun.write(Bun.stdout, JSON.stringify(result));
