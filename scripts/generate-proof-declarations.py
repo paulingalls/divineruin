@@ -58,6 +58,10 @@ def partitions(path):
         for node in tree.body:
             if isinstance(node, ast.ClassDef) and node.name.startswith("Test"):
                 raise ValueError(f"{path}: unsupported collected class")
+            if isinstance(node, (ast.Import, ast.ImportFrom)) and any(
+                (a.asname or a.name).startswith(("test_", "Test")) for a in node.names
+            ):
+                raise ValueError(f"{path}: unsupported imported test")
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test_"):
                 names.append(node.name)
             elif isinstance(node, (ast.Assign, ast.AnnAssign)):
