@@ -111,6 +111,10 @@ def e2e_tasks(shared=(), stack_keyed=()):
             [p for p in specs if p.name == "web-production.e2e.ts"],
         ),
     }
+    # Proof coverage counts Python source readers too; require E2E execution ownership here.
+    declared = sorted(p for _, files in groups.values() for p in files)
+    if declared != sorted(Path("e2e/specs").glob("*.e2e.ts")):
+        raise ValueError("E2E partitions must cover every spec exactly once")
     tasks = {}
     for part, (project, files) in groups.items():
         if not files:
