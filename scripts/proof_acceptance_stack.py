@@ -28,6 +28,12 @@ def state_path(kind):
     )
 
 
+def save_state(path, value):
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(descriptor, "w") as stream:
+        json.dump(value, stream)
+
+
 def exports(values):
     Path(os.environ["PROOF_PROVIDER_ENV"]).write_text("".join(f"{k}={v}\n" for k, v in values.items()))
 
@@ -51,7 +57,7 @@ def main(action):
         load_env()
         dsn = resolve_database_url()
         started = ensure_db_up(dsn)
-        state.write_text(json.dumps({"started": started, "dsn": dsn}))
+        save_state(state, {"started": started, "dsn": dsn})
         exports(
             {
                 "PROOF_AGENT_PROVIDER": "dev",
@@ -73,7 +79,7 @@ def main(action):
             "com.docker.compose.project": name,
             "divineruin.proof.run": os.environ["PROOF_RUN_PID"],
         }
-        state.write_text(json.dumps({"name": name, "labels": labels}))
+        save_state(state, {"name": name, "labels": labels})
         client = docker.from_env()
         container = client.containers.run(
             "postgres:16-alpine",
