@@ -1,6 +1,7 @@
 """Checkout-side proof providers; tasks receive endpoints without Git or Docker calls."""
 
 import asyncio
+import fnmatch
 import json
 import os
 import sys
@@ -47,6 +48,18 @@ def load_env():
             os.environ[key] = values[key]
 
 
+def require_declared_seed_inputs(modules):
+    """The template is shared by every task, so each file that shapes it must key them all."""
+    declared = json.loads((ROOT / "proof.yaml").read_text())["inputs"]["seeded-data"]
+    files = {getattr(sys.modules[m], "__file__", None) for m in modules}
+    paths = {
+        Path(f).resolve().relative_to(ROOT).as_posix() for f in files if f and Path(f).resolve().is_relative_to(ROOT)
+    }
+    missing = sorted(p for p in paths if not any(fnmatch.fnmatch(p, d) for d in declared))
+    if missing:
+        raise RuntimeError(f"seed imports undeclared in proof.yaml inputs.seeded-data: {missing}")
+
+
 def main(action):
     from _db_lifecycle import ensure_db_up, resolve_database_url, stop_if_started
     from acceptance._livekit import checkout_livekit_settings, ensure_livekit_server
@@ -86,6 +99,8 @@ def main(action):
             name=name,
             detach=True,
             environment={"POSTGRES_PASSWORD": "proof"},
+            # Every proof job opens an agent pool plus Bun pools; 100 is too few at jobs = cores.
+            command=["postgres", "-c", "max_connections=1000"],
             ports={"5432/tcp": None},
             labels=labels,
         )
@@ -110,7 +125,9 @@ def main(action):
                 await conn.close()
             await _apply_migrations_and_seed(admin.rsplit("/", 1)[0] + "/proof_template")
 
+        loaded = set(sys.modules)
         asyncio.run(prepare())
+        require_declared_seed_inputs(set(sys.modules) - loaded)
         cache = client.containers.run(
             "valkey/valkey:8-alpine",
             name=f"{name}-redis",
