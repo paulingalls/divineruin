@@ -91,7 +91,7 @@ def partitions(path):
     return [("", "", "")]
 
 
-def e2e_tasks():
+def e2e_tasks(shared=(), stack_keyed=()):
     specs = sorted(Path("e2e/specs").glob("*.e2e.ts"))
     groups = {
         "home-character": (
@@ -176,7 +176,10 @@ def e2e_tasks():
             "needs": ["e2e-stack"],
             "links": ["node_modules", "e2e/node_modules"],
             "inputs": inputs,
-            "keyed": ["packages/shared/**"] if part == "home-character" else [],
+            "keyed": [
+                *sorted(shared if part == "chromium" else stack_keyed),
+                *(["packages/shared/**"] if part == "home-character" else []),
+            ],
         }
     return tasks
 
@@ -235,7 +238,7 @@ def main():
             fnmatch.fnmatch(p, pat) or fnmatch.fnmatch(p, pat.replace("/**/", "/")) for pat in stack_patterns("stack")
         )
     }
-    tasks = e2e_tasks()
+    tasks = e2e_tasks(shared, stack_keyed)
     for path in entries:
         conftests = [
             str(p / "conftest.py")
@@ -346,6 +349,16 @@ def main():
         ],
         "keyed": [*sorted(shared), "packages/shared/**"],
     }
+    for task in tasks.values():
+        expanded = []
+        for item in task["inputs"]:
+            path = item.get("imports-of") if isinstance(item, dict) else None
+            if path in graph and graph[path].get("reason"):
+                # Dynamic registry discovery needs the whole Python corpus, not a false import proof.
+                expanded += [*graph[path]["closure"], "apps/agent/**/*.py"]
+            else:
+                expanded.append(item)
+        task["inputs"] = expanded
     output = {"unkeyed": sorted(shared), "tasks": tasks}
     (Path(os.environ["PROOF_DECLARATIONS"]) / "python.yaml").write_text(json.dumps(output, indent=2) + "\n")
 
