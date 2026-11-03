@@ -178,7 +178,7 @@ tasks:
       - imports-of: "apps/server/src/waitlist.test.ts"
       - imports-of: "apps/server/src/workspace.test.ts"
       - "content/*.json"
-      - "apps/server/src/**/*.ts"
+      - "apps/server/src/**/!(*.test).ts"
       - "assets/images/**"
   server-db:
     run: "REQUIRE_DB=1 bun --env-file=../../.env test --cwd apps/server src/db.test.ts"
