@@ -1,17 +1,8 @@
 {
   "bun-scripts": {
-    "run": "bun --env-file=.env test ./scripts",
-    "sets": [
-      "commit"
-    ],
-    "links": [
-      "node_modules",
-      ".env"
-    ],
-    "env": [
-      "DATABASE_URL",
-      "REDIS_URL"
-    ],
+    "run": "bun scripts/proof-db-clone.ts bun --env-file=.env test ./scripts",
+    "sets": ["commit", "land"],
+    "links": ["node_modules", ".env"],
     "inputs": [
       "$bun-config",
       "scripts/tsconfig.json",
@@ -21,18 +12,16 @@
       "$seeded-data",
       {
         "imports-of": "apps/mobile/test-preload.ts"
-      }
-    ]
+      },
+      "$stack",
+      "scripts/proof-db-clone.ts"
+    ],
+    "needs": ["bun-stack"]
   },
   "bun-shared": {
     "run": "bun test --cwd packages/shared",
-    "sets": [
-      "commit"
-    ],
-    "links": [
-      "node_modules",
-      ".env"
-    ],
+    "sets": ["commit", "land"],
+    "links": ["node_modules", ".env"],
     "inputs": [
       "$bun-config",
       "packages/shared/package.json",
@@ -89,13 +78,8 @@
   },
   "bun-design-tokens": {
     "run": "bun test --cwd packages/design-tokens",
-    "sets": [
-      "commit"
-    ],
-    "links": [
-      "node_modules",
-      ".env"
-    ],
+    "sets": ["commit", "land"],
+    "links": ["node_modules", ".env"],
     "inputs": [
       "$bun-config",
       "packages/design-tokens/package.json",
@@ -110,13 +94,8 @@
   },
   "bun-server": {
     "run": "bun --env-file=../../.env test --cwd apps/server --path-ignore-patterns='**/{db,terrain-startup.integration,locations-load.integration,invite-store}.test.ts'",
-    "sets": [
-      "commit"
-    ],
-    "links": [
-      "node_modules",
-      ".env"
-    ],
+    "sets": ["commit", "land"],
+    "links": ["node_modules", ".env"],
     "inputs": [
       "$bun-config",
       "apps/server/package.json",
@@ -296,18 +275,9 @@
     ]
   },
   "server-db": {
-    "run": "REQUIRE_DB=1 bun --env-file=../../.env test --cwd apps/server src/db.test.ts",
-    "sets": [
-      "commit"
-    ],
-    "links": [
-      "node_modules",
-      ".env"
-    ],
-    "env": [
-      "DATABASE_URL",
-      "REDIS_URL"
-    ],
+    "run": "bun scripts/proof-db-clone.ts REQUIRE_DB=1 bun --env-file=../../.env test --cwd apps/server src/db.test.ts",
+    "sets": ["commit", "land"],
+    "links": ["node_modules", ".env"],
     "inputs": [
       "$bun-config",
       "apps/server/package.json",
@@ -316,22 +286,16 @@
       {
         "imports-of": "apps/server/src/db.test.ts"
       },
-      "scripts/migrations/**"
-    ]
+      "scripts/migrations/**",
+      "$stack",
+      "scripts/proof-db-clone.ts"
+    ],
+    "needs": ["bun-stack"]
   },
   "server-locations-load": {
-    "run": "REQUIRE_DB=1 bun --env-file=../../.env test --cwd apps/server src/locations-load.integration.test.ts",
-    "sets": [
-      "commit"
-    ],
-    "links": [
-      "node_modules",
-      ".env"
-    ],
-    "env": [
-      "DATABASE_URL",
-      "REDIS_URL"
-    ],
+    "run": "bun scripts/proof-db-clone.ts REQUIRE_DB=1 bun --env-file=../../.env test --cwd apps/server src/locations-load.integration.test.ts",
+    "sets": ["commit", "land"],
+    "links": ["node_modules", ".env"],
     "inputs": [
       "$bun-config",
       "apps/server/package.json",
@@ -340,22 +304,16 @@
       {
         "imports-of": "apps/server/src/locations-load.integration.test.ts"
       },
-      "$seeded-data"
-    ]
+      "$seeded-data",
+      "$stack",
+      "scripts/proof-db-clone.ts"
+    ],
+    "needs": ["bun-stack"]
   },
   "server-terrain-startup": {
-    "run": "REQUIRE_DB=1 bun --env-file=../../.env test --cwd apps/server src/terrain-startup.integration.test.ts",
-    "sets": [
-      "commit"
-    ],
-    "links": [
-      "node_modules",
-      ".env"
-    ],
-    "env": [
-      "DATABASE_URL",
-      "REDIS_URL"
-    ],
+    "run": "bun scripts/proof-db-clone.ts REQUIRE_DB=1 bun --env-file=../../.env test --cwd apps/server src/terrain-startup.integration.test.ts",
+    "sets": ["commit", "land"],
+    "links": ["node_modules", ".env"],
     "inputs": [
       "$bun-config",
       "apps/server/package.json",
@@ -364,22 +322,16 @@
       {
         "imports-of": "apps/server/src/terrain-startup.integration.test.ts"
       },
-      "$seeded-data"
-    ]
+      "$seeded-data",
+      "$stack",
+      "scripts/proof-db-clone.ts"
+    ],
+    "needs": ["bun-stack"]
   },
   "server-invite-store": {
-    "run": "REQUIRE_REDIS=1 bun --env-file=../../.env test --cwd apps/server src/invite-store.test.ts",
-    "sets": [
-      "commit"
-    ],
-    "links": [
-      "node_modules",
-      ".env"
-    ],
-    "env": [
-      "DATABASE_URL",
-      "REDIS_URL"
-    ],
+    "run": "bun scripts/proof-db-clone.ts REQUIRE_REDIS=1 bun --env-file=../../.env test --cwd apps/server src/invite-store.test.ts",
+    "sets": ["commit", "land"],
+    "links": ["node_modules", ".env"],
     "inputs": [
       "$bun-config",
       "apps/server/package.json",
@@ -387,18 +339,16 @@
       "apps/server/bunfig.toml",
       {
         "imports-of": "apps/server/src/invite-store.test.ts"
-      }
-    ]
+      },
+      "$stack",
+      "scripts/proof-db-clone.ts"
+    ],
+    "needs": ["bun-stack"]
   },
   "bun-mobile": {
     "run": "bun test --cwd apps/mobile",
-    "sets": [
-      "commit"
-    ],
-    "links": [
-      "node_modules",
-      ".env"
-    ],
+    "sets": ["commit", "land"],
+    "links": ["node_modules", ".env"],
     "inputs": [
       "$bun-config",
       "apps/mobile/package.json",
@@ -587,13 +537,8 @@
   },
   "bun-web": {
     "run": "bun test --cwd apps/web",
-    "sets": [
-      "commit"
-    ],
-    "links": [
-      "node_modules",
-      ".env"
-    ],
+    "sets": ["commit", "land"],
+    "links": ["node_modules", ".env"],
     "inputs": [
       "$bun-config",
       "apps/web/package.json",

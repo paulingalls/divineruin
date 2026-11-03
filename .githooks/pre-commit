@@ -27,3 +27,5 @@ fi
 
 echo "Running staged language checks..."
 bash scripts/test-fast.sh
+bunx proof lint
+bunx proof run --staged --set commit

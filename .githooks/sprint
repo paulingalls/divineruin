@@ -56,7 +56,7 @@ snap_dir() { printf '%s/%s-%s' "$ART" "$(date +%Y%m%d-%H%M%S)" "$(git rev-parse 
 
 ( set -o pipefail; unset DATABASE_URL REDIS_URL; \
   REQUIRE_DOCKER=1 TESTCONTAINERS_RYUK_DISABLED=true \
-  bun run test:acceptance 2>&1 | tee "$ART/last-acceptance.log" ) &
+  bunx proof run --set sprint 2>&1 | tee "$ART/last-acceptance.log" ) &
 acc_pid=$!
 bg_pids+=("$acc_pid")
 

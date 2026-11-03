@@ -4,6 +4,7 @@ import ast
 import fnmatch
 import json
 import os
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -48,6 +49,42 @@ def paid_only(path):
 
 def imports(path):
     return {"imports-of": path, "python-path": ROOTS}
+
+
+def partitions(path):
+    tree = ast.parse(Path(path).read_text())
+    if Path(path).stem == "test_choir_capstone":
+        names = []
+        for node in tree.body:
+            if isinstance(node, ast.ClassDef) and node.name.startswith("Test"):
+                raise ValueError(f"{path}: unsupported collected class")
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test_"):
+                names.append(node.name)
+            elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                if any(isinstance(t, ast.Name) and t.id.startswith("test_") for t in targets):
+                    raise ValueError(f"{path}: unsupported collected assignment")
+        if not names:
+            raise ValueError(f"{path}: no tests")
+        return [(name, "::" + name, "") for name in names]
+    if Path(path).stem == "test_terrain_commands":
+        values = [
+            ast.literal_eval(n.value)
+            for n in tree.body
+            if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "TERRAINS" for t in n.targets)
+        ]
+        if len(values) != 1 or len(values[0]) < 6:
+            raise ValueError(f"{path}: expected TERRAINS partition")
+        names = [row[0] for row in values[0]]
+        if any(not isinstance(n, str) or not n.isidentifier() for n in names) or len(set(names)) != len(names):
+            raise ValueError(f"{path}: unsupported terrain names")
+        a, b = " or ".join(names[:5]), " or ".join(names[5:])
+        return [
+            ("a", "", f" -k {shlex.quote('(' + a + ')')}"),
+            ("b", "", f" -k {shlex.quote('(' + b + ') and not (' + a + ')')}"),
+            ("other", "", f" -k {shlex.quote('not (' + a + ' or ' + b + ')')}"),
+        ]
+    return [("", "", "")]
 
 
 def main():
@@ -167,7 +204,7 @@ def main():
             ]
         if "apps/agent/tests/agent_tool_profiles.py" in graph[path]["closure"]:
             inputs += [imports(str(p)) for p in sorted(Path("apps/agent").glob("*_agent.py"))]
-        tasks[f"agent-acceptance:{Path(path).stem}"] = {
+        task = {
             "run": f"ALLOW_PAID_TESTS= REQUIRE_REAL_LLM= uv run --frozen --directory apps/agent pytest {path.removeprefix('apps/agent/')} -q -m '{MARKERS}'",
             "sets": ["sprint"],
             "needs": ["acceptance-stack"],
@@ -175,6 +212,16 @@ def main():
             "inputs": inputs,
             "keyed": sorted(keyed[path] | (stack_keyed)),
         }
+        for suffix, selector, expression in partitions(path):
+            part = dict(task)
+            part["run"] = (
+                task["run"].replace(
+                    path.removeprefix("apps/agent/"),
+                    path.removeprefix("apps/agent/") + selector,
+                )
+                + expression
+            )
+            tasks[f"agent-acceptance:{Path(path).stem}" + (f":{suffix}" if suffix else "")] = part
     # Root unkeyed policy must preserve the existing Bun tasks and the full unit key.
     for name, task in json.loads(Path("scripts/proof-bun-tasks.json").read_text()).items():
         tasks[name] = {**task, "keyed": sorted(shared)}
