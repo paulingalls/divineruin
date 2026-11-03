@@ -4,6 +4,7 @@ import ast
 import fnmatch
 import json
 import os
+import re
 import shlex
 import subprocess
 from pathlib import Path
@@ -360,6 +361,9 @@ def main():
             if path in graph and graph[path].get("reason"):
                 # Dynamic registry discovery needs the whole Python corpus, not a false import proof.
                 expanded += [*graph[path]["closure"], "apps/agent/**/*.py"]
+                # unkeyed would strip the shared agent modules the registry discovers at runtime.
+                discovered = {f for f in shared if re.fullmatch(r"apps/agent/[^/]+_agent\.py", f)}
+                task["keyed"] = sorted(set(task.get("keyed", [])) | discovered)
             else:
                 expanded.append(item)
         task["inputs"] = expanded
