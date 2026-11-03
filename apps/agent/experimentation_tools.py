@@ -74,13 +74,16 @@ async def _experiment_with_materials_impl(
         player = await queries_mod.get_player(player_id, conn=conn, for_update=True)
         if not player:
             raise ToolError(f"Unknown player: {player_id}")
-        available = await queries_mod.get_player_materials(player_id, conn=conn, for_update=True)
         known = frozenset(await queries_mod.get_player_known_recipe_ids(player_id, conn=conn))
 
         # Prefer an UNKNOWN recipe the player can legitimately discover (so a known recipe
         # sharing the output doesn't shadow a distinct unknown one).
         match = experimentation.find_matching_recipe(
             all_recipes, intended_output, materials, catalog, exclude_ids=known
+        )
+
+        available = await queries_mod.get_player_materials(
+            player_id, conn=conn, for_update=True, allow_tainted=bool(match and match["tainted_materials"])
         )
 
         if match is None and any(r["output_item"] == intended_output and r["id"] in known for r in all_recipes):
@@ -94,7 +97,9 @@ async def _experiment_with_materials_impl(
             if not alloc.satisfied:
                 raise ToolError(f"You can't spare the materials for that: {alloc.reason}")
             context.userdata.validate_acting_player(player_id)
-            await mutations_mod.consume_player_materials(player_id, alloc.by_id, conn=conn)
+            await mutations_mod.consume_player_materials(
+                player_id, alloc.by_id, allow_tainted=match["tainted_materials"], conn=conn
+            )
             outcome = experimentation.resolve_experimentation(player, match["crafting_dc"], rng=rng)
             if outcome.success:
                 context.userdata.validate_acting_player(player_id)

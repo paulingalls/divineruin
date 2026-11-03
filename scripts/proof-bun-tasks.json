@@ -93,7 +93,7 @@
     ]
   },
   "bun-server": {
-    "run": "bun --env-file=../../.env test --cwd apps/server --path-ignore-patterns='**/{db,terrain-startup.integration,locations-load.integration,invite-store}.test.ts'",
+    "run": "bun --env-file=../../.env test --cwd apps/server --path-ignore-patterns='**/{db,inventory-taint.integration,terrain-startup.integration,locations-load.integration,invite-store}.test.ts'",
     "sets": ["commit", "land"],
     "links": ["node_modules", ".env"],
     "inputs": [
@@ -644,5 +644,33 @@
         "imports-of": "apps/web/src/client.tsx"
       }
     ]
+  },
+  "server-inventory-taint": {
+    "run": "uv sync --project apps/agent --frozen && bun scripts/proof-db-clone.ts REQUIRE_DB=1 bun --env-file=../../.env test --cwd apps/server src/inventory-taint.integration.test.ts",
+    "sets": ["commit", "land"],
+    "links": ["node_modules", ".env"],
+    "inputs": [
+      "$bun-config",
+      "apps/server/package.json",
+      "apps/server/tsconfig.json",
+      "apps/server/bunfig.toml",
+      {
+        "imports-of": "apps/server/src/inventory-taint.integration.test.ts"
+      },
+      "$seeded-data",
+      "$stack",
+      "scripts/proof-db-clone.ts",
+      "apps/agent/db_inventory_snapshot.py",
+      "apps/agent/db_queries.py",
+      "apps/agent/db.py",
+      "apps/agent/uv.lock",
+      "scripts/migrations/**",
+      "apps/agent/asset_utils.py",
+      "apps/agent/npcs.py",
+      "apps/agent/companion_profiles.py",
+      "apps/agent/pyproject.toml",
+      ".python-version"
+    ],
+    "needs": ["bun-stack"]
   }
 }

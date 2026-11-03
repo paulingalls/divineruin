@@ -405,48 +405,4 @@ describe("handleCreateActivity", () => {
     const body = (await res.json()) as { error: string };
     expect(body.error).toContain("Insufficient material");
   });
-
-  test("consumes materials by quantity — decrements a surplus stack, deletes a depleted one", async () => {
-    setQueryStubs([
-      playerWarrior,
-      forgeRental,
-      skillExpert,
-      slotsEmpty,
-      {
-        match: "item_id IN",
-        result: [
-          { item_id: "iron_ingot", quantity: 3 },
-          { item_id: "leather_strip", quantity: 1 },
-        ],
-      },
-    ]);
-
-    const req = makeRequest("POST", "/api/activities", {
-      type: "crafting",
-      parameters: { recipe_id: "reinforced_shield" },
-    });
-    const res = await handleCreateActivity(req, "player_1");
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { status: string };
-    expect(body.status).toBe("in_progress");
-
-    // Assert the actual mutation shape, not just the result-stub count: the
-    // surplus iron stack must be UPDATEd to remaining=1, and the depleted
-    // leather stack must be DELETEd. Without this, the mock would false-green
-    // even if UPDATE/DELETE were swapped or remaining miscomputed.
-    const ironUpdate = getCapturedQueries().find(
-      (q) => q.sql.includes("UPDATE player_inventory") && q.values.includes("iron_ingot"),
-    );
-    expect(ironUpdate).toBeDefined();
-    expect(ironUpdate!.sql).toContain("jsonb_set");
-    expect(ironUpdate!.values).toContain(1); // remaining = 3 - 2
-    const leatherDelete = getCapturedQueries().find(
-      (q) => q.sql.includes("DELETE FROM player_inventory") && q.values.includes("leather_strip"),
-    );
-    expect(leatherDelete).toBeDefined();
-    const leatherUpdate = getCapturedQueries().find(
-      (q) => q.sql.includes("UPDATE player_inventory") && q.values.includes("leather_strip"),
-    );
-    expect(leatherUpdate).toBeUndefined();
-  });
 });

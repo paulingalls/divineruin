@@ -11,5 +11,12 @@ appId: com.divineruin.app
 - extendedWaitUntil:
     visible: "HTTP quantity 2"
     timeout: 50000
-- assertVisible: "Oak Wood, 2"
+- assertVisible: "Oak Wood, clean, 2"
+- assertVisible: "Oak Wood, tainted, 1"
+- tapOn: "Oak Wood, tainted, 1"
+- assertVisible: "Tainted quantity 1"
+- tapOn: "← Back"
+- tapOn: "Oak Wood, clean, 2"
+- assertVisible: "Clean quantity 2"
+- tapOn: "← Back"
 - pressKey: Home

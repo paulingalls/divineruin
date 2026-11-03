@@ -132,6 +132,7 @@ async def get_player(
     *,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
     for_update: bool = False,
+    tainted: bool = False,
 ) -> dict | None:
     _conn = conn or await db.get_pool()
     sql = "SELECT data FROM players WHERE player_id = $1"
@@ -218,12 +219,12 @@ async def get_player_inventory(player_id: str, *, conn: asyncpg.Connection | asy
     connection = conn or await db.get_pool()
     rows = await connection.fetch(
         """
-        SELECT pi.item_id, i.data AS item_data, m.data AS material_data, pi.data AS slot_data
+        SELECT pi.item_id, pi.tainted, i.data AS item_data, m.data AS material_data, pi.data AS slot_data
         FROM player_inventory pi
         LEFT JOIN items i ON i.id = pi.item_id
         LEFT JOIN materials_catalog m ON m.id = pi.item_id
         WHERE pi.player_id = $1
-        ORDER BY pi.item_id
+        ORDER BY pi.item_id, pi.tainted
         """,
         player_id,
     )
@@ -306,16 +307,16 @@ async def get_player_known_recipe_ids(
 
 
 async def get_player_materials(
-    player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None, for_update: bool = False
+    player_id: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    for_update: bool = False,
+    allow_tainted: bool = False,
 ) -> dict[str, int]:
-    """Return {material_id: quantity} for a player's inventory — the pre-flight Check 4
-    + craft-consume input. Reads player_inventory directly, including catalog-free rows."""
-    _conn = conn or await db.get_pool()
-    sql = "SELECT item_id, COALESCE((data->>'quantity')::int, 1) AS quantity FROM player_inventory WHERE player_id = $1"
-    if for_update:
-        sql += " FOR UPDATE"
-    rows = await _conn.fetch(sql, player_id)
-    return {row["item_id"]: row["quantity"] for row in rows}
+    from inventory_allocation import eligible_totals, read_stacks
+
+    rows = await read_stacks(conn or await db.get_pool(), player_id, for_update=for_update)
+    return eligible_totals(rows, allow_tainted=allow_tainted)
 
 
 async def get_accessible_workspaces(
@@ -359,12 +360,13 @@ async def get_inventory_item(
     *,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
     for_update: bool = False,
+    tainted: bool = False,
 ) -> dict | None:
     _conn = conn or await db.get_pool()
-    sql = "SELECT data FROM player_inventory WHERE player_id = $1 AND item_id = $2"
+    sql = "SELECT data FROM player_inventory WHERE player_id = $1 AND item_id = $2 AND tainted = $3"
     if for_update:
         sql += " FOR UPDATE"
-    row = await _conn.fetchrow(sql, player_id, item_id)
+    row = await _conn.fetchrow(sql, player_id, item_id, tainted)
     if row is None:
         return None
     return json.loads(row["data"])
@@ -379,6 +381,7 @@ async def get_player_quest(
     *,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
     for_update: bool = False,
+    tainted: bool = False,
 ) -> dict | None:
     _conn = conn or await db.get_pool()
     sql = "SELECT data FROM player_quests WHERE player_id = $1 AND quest_id = $2"

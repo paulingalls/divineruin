@@ -39,6 +39,7 @@ async def test_guest_experiment_consumes_own_materials_and_records_result(match)
         "id": "iron_sword",
         "output_item": "iron_sword",
         "crafting_dc": 1,
+        "tainted_materials": False,
         "materials": [{"material_id": "iron_ingot", "quantity": 2, "tier_minimum": 1, "substitutable": False}],
     }
     mutations = module(consume_player_materials=None, add_player_known_recipe=True)
@@ -92,6 +93,7 @@ async def test_stale_experiment_add_known_recipe():
         "id": "iron_sword",
         "output_item": "iron_sword",
         "crafting_dc": 1,
+        "tainted_materials": False,
         "materials": [{"material_id": "iron_ingot", "quantity": 2, "tier_minimum": 1, "substitutable": False}],
     }
     mutations = module(consume_player_materials=None, add_player_known_recipe=True)
@@ -142,6 +144,7 @@ async def test_stale_experiment_record_failure():
         "id": "iron_sword",
         "output_item": "iron_sword",
         "crafting_dc": 1,
+        "tainted_materials": False,
         "materials": [{"material_id": "iron_ingot", "quantity": 2, "tier_minimum": 1, "substitutable": False}],
     }
     mutations = module(consume_player_materials=None, add_player_known_recipe=True)
@@ -192,6 +195,7 @@ async def test_stale_experiment_failed_roll_consume():
         "id": "iron_sword",
         "output_item": "iron_sword",
         "crafting_dc": 100,
+        "tainted_materials": False,
         "materials": [{"material_id": "iron_ingot", "quantity": 2, "tier_minimum": 1, "substitutable": False}],
     }
     mutations = module(consume_player_materials=None, add_player_known_recipe=True)

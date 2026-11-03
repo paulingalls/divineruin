@@ -148,7 +148,7 @@ async def _check_gather_impl(
                 await gather_mutations.deplete_node_quantity(node["id"], 1, conn=conn)
         for material_id, qty in counts.items():
             session.validate_acting_player(player_id)
-            await mutations.add_inventory_item(player_id, material_id, qty, conn=conn)
+            await mutations.add_inventory_item(player_id, material_id, qty, tainted=False, conn=conn)
         # The gather roll spends Blessed/Inspired's +1d4 (M4.8 story-009): remove + persist the
         # signalled conditions on the SAME tx connection, so the die-consume commits atomically
         # with the node depletion + inventory grant.

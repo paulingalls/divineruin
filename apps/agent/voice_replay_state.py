@@ -7,7 +7,10 @@ from typing import Any
 
 async def inventory_quantities(pool: Any, player_id: str) -> dict[str, int]:
     rows = await pool.fetch("SELECT item_id, data FROM player_inventory WHERE player_id = $1", player_id)
-    return {row["item_id"]: json.loads(row["data"]).get("quantity", 0) for row in rows}
+    quantities = Counter()
+    for row in rows:
+        quantities[row["item_id"]] += json.loads(row["data"]).get("quantity", 0)
+    return dict(quantities)
 
 
 async def assert_inventory_result(

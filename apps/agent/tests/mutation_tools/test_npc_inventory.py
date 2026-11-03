@@ -164,7 +164,9 @@ class TestTransactGain:
         assert result["item_name"] == "Health Potion"
         assert result["quantity"] == 2
         assert result["source"] == "looted"
-        mock_mutations.add_inventory_item.assert_called_once_with("player_1", "health_potion", 2, conn=mock_conn)
+        mock_mutations.add_inventory_item.assert_called_once_with(
+            "player_1", "health_potion", 2, tainted=False, conn=mock_conn
+        )
 
     @pytest.mark.asyncio
     async def test_unknown_item(self):

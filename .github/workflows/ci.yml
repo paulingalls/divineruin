@@ -101,6 +101,7 @@ jobs:
       - run: uv sync --project scripts --frozen && bun run seed
       # test:server isolates db.test.ts (real lazy SQL Proxy) from the bulk
       # suite, which mock.module()s ./db.ts (Bun module mocks leak across files).
+      - run: uv sync --project apps/agent --frozen
       - run: bun run test:server
       - run: bun test --cwd apps/mobile
       - run: bun test --cwd packages/shared

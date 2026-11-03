@@ -123,6 +123,8 @@ async def _roll_enemy_loot(
         table = await content.get_loot_table(p.loot_table_id)
         if table is not None:
             drops = encounter_loot.generate_loot(table, p.role, party_tiers, rng)
+            for drop in drops:
+                drop["tainted"] = table.get("hollow_residue", False)
     return currency, drops
 
 
@@ -182,7 +184,9 @@ async def distribute_loot(
             if material is not None:
                 raise ValueError(f"Loot drop '{drop['item_id']}' is ambiguous across item and material catalogs")
             definition = item
-        await mutations.add_inventory_item(recipient, drop["item_id"], drop["quantity"], conn=conn)
+        await mutations.add_inventory_item(
+            recipient, drop["item_id"], drop["quantity"], tainted=drop["tainted"], conn=conn
+        )
         if recipient == recipient_id:
             primary_loot.append(drop)
         item_recipients.append((recipient, definition["name"]))

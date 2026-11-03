@@ -42,7 +42,7 @@ async def _seed_full_crafting_slot(pool, player_id: str) -> None:
 async def _stock(pool, player_id: str, item_id: str, qty: int) -> None:
     await pool.execute(
         "INSERT INTO player_inventory (player_id, item_id, data) VALUES ($1, $2, $3::jsonb) "
-        "ON CONFLICT (player_id, item_id) DO UPDATE SET data = $3::jsonb",
+        "ON CONFLICT (player_id, item_id, tainted) DO UPDATE SET data = $3::jsonb",
         player_id,
         item_id,
         json.dumps({"quantity": qty}),

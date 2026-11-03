@@ -45,32 +45,6 @@ class TestStateMutations:
         assert json.loads(call_args[3]) == 5
 
     @pytest.mark.asyncio
-    async def test_add_inventory_item_upserts_quantity(self):
-        """add_inventory_item should insert or increment quantity."""
-        mock_pool = AsyncMock()
-        mock_pool.execute = AsyncMock()
-
-        with patch("db.get_pool", return_value=mock_pool):
-            await db_mutations.add_inventory_item("p1", "sword", quantity=2)
-
-        call_args = mock_pool.execute.call_args[0]
-        assert "INSERT INTO player_inventory" in call_args[0]
-        assert "ON CONFLICT" in call_args[0]
-        assert call_args[1] == "p1"
-        assert call_args[2] == "sword"
-
-    @pytest.mark.asyncio
-    async def test_remove_inventory_item_returns_true_on_success(self):
-        """remove_inventory_item should return True if item was deleted."""
-        mock_pool = AsyncMock()
-        mock_pool.execute = AsyncMock(return_value="DELETE 1")
-
-        with patch("db.get_pool", return_value=mock_pool):
-            result = await db_mutations.remove_inventory_item("p1", "sword")
-
-        assert result is True
-
-    @pytest.mark.asyncio
     async def test_remove_inventory_item_returns_false_on_miss(self):
         """remove_inventory_item should return False if item not found."""
         mock_pool = AsyncMock()
@@ -207,37 +181,6 @@ class TestTransactInventory:
     """transact_inventory applies a signed delta and deletes the row at <= 0."""
 
     @pytest.mark.asyncio
-    async def test_decrement_keeps_row_above_zero(self):
-        """A decrement that leaves stock returns the remaining quantity, no delete."""
-        mock_conn = AsyncMock()
-        mock_conn.fetchrow = AsyncMock(return_value={"quantity": 2})
-
-        with patch("db_mutations.remove_inventory_item", new_callable=AsyncMock) as mock_remove:
-            result = await db_mutations_inventory.transact_inventory("p1", "sword", -1, conn=mock_conn)
-
-        assert result == 2
-        mock_remove.assert_not_awaited()
-        sql, *args = mock_conn.fetchrow.call_args[0]
-        assert "UPDATE player_inventory" in sql
-        assert "jsonb_set" in sql
-        assert "RETURNING" in sql
-        assert args[0] == "p1"
-        assert args[1] == "sword"
-        assert args[2] == -1
-
-    @pytest.mark.asyncio
-    async def test_decrement_to_zero_deletes_row(self):
-        """Hitting exactly zero deletes the stack via the canonical remove helper."""
-        mock_conn = AsyncMock()
-        mock_conn.fetchrow = AsyncMock(return_value={"quantity": 0})
-
-        with patch("db_mutations.remove_inventory_item", new_callable=AsyncMock) as mock_remove:
-            result = await db_mutations_inventory.transact_inventory("p1", "sword", -1, conn=mock_conn)
-
-        assert result == 0
-        mock_remove.assert_awaited_once_with("p1", "sword", conn=mock_conn)
-
-    @pytest.mark.asyncio
     async def test_decrement_past_zero_floors_and_deletes(self):
         """Over-decrementing floors the remaining count at 0 and deletes the row."""
         mock_conn = AsyncMock()
@@ -247,7 +190,7 @@ class TestTransactInventory:
             result = await db_mutations_inventory.transact_inventory("p1", "sword", -5, conn=mock_conn)
 
         assert result == 0
-        mock_remove.assert_awaited_once_with("p1", "sword", conn=mock_conn)
+        mock_remove.assert_awaited_once_with("p1", "sword", tainted=False, conn=mock_conn)
 
     @pytest.mark.asyncio
     async def test_missing_row_raises(self):

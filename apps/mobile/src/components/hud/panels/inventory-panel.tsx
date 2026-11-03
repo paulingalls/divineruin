@@ -9,12 +9,17 @@ import { BrandColors, FontStyles, Spacing, Radius, RARITY_COLORS } from "@/const
 
 const MAX_CARRY_WEIGHT = 30;
 const NUM_COLUMNS = 3;
+const stackKey = (item: InventoryItem) => `${item.id}:${item.tainted}`;
 
 function ItemTile({ item, onPress }: { item: InventoryItem; onPress: () => void }) {
   const borderColor = RARITY_COLORS[item.rarity] ?? BrandColors.charcoal;
 
   return (
-    <Pressable style={[styles.tile, { borderColor }]} onPress={onPress}>
+    <Pressable
+      style={[styles.tile, { borderColor }]}
+      onPress={onPress}
+      accessibilityLabel={`${item.name}, ${item.tainted ? "tainted" : "clean"}, ${item.quantity}`}
+    >
       {item.imageUrl ? (
         <CachedImage uri={item.imageUrl} style={styles.tileImage} borderRadius={6} />
       ) : (
@@ -22,6 +27,7 @@ function ItemTile({ item, onPress }: { item: InventoryItem; onPress: () => void 
           {item.name}
         </ThemedText>
       )}
+      {item.tainted && <ThemedText style={styles.tileName}>Tainted</ThemedText>}
       {item.quantity > 1 && (
         <View style={styles.quantityBadge}>
           <ThemedText style={styles.quantityText}>{item.quantity}</ThemedText>
@@ -52,6 +58,7 @@ function ItemDetail({
         <CachedImage uri={item.imageUrl} style={styles.detailImage} borderRadius={6} />
       )}
       <ThemedText style={styles.detailName}>{item.name}</ThemedText>
+      <ThemedText>{`${item.tainted ? "Tainted" : "Clean"} quantity ${item.quantity}`}</ThemedText>
       <ThemedText style={[styles.detailRarity, { color: rarityColor }]}>
         {item.rarity.toUpperCase()}
       </ThemedText>
@@ -86,8 +93,8 @@ function ItemDetail({
 export function InventoryPanel() {
   const inventory = useStore(panelStore, (s) => s.inventory);
   const error = useStore(panelStore, (s) => s.inventoryRefreshError);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selected = inventory.find((item) => item.id === selectedId);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const selected = inventory.find((item) => stackKey(item) === selectedKey);
 
   const totalWeight = useMemo(
     () => inventory.reduce((sum, item) => sum + item.weight * item.quantity, 0),
@@ -96,7 +103,7 @@ export function InventoryPanel() {
   const weightRatio = Math.min(totalWeight / MAX_CARRY_WEIGHT, 1);
 
   if (selected) {
-    return <ItemDetail item={selected} error={error} onBack={() => setSelectedId(null)} />;
+    return <ItemDetail item={selected} error={error} onBack={() => setSelectedKey(null)} />;
   }
 
   return (
@@ -105,9 +112,11 @@ export function InventoryPanel() {
       <FlatList
         data={inventory}
         numColumns={NUM_COLUMNS}
-        keyExtractor={(item) => item.id}
+        keyExtractor={stackKey}
         contentContainerStyle={styles.gridContent}
-        renderItem={({ item }) => <ItemTile item={item} onPress={() => setSelectedId(item.id)} />}
+        renderItem={({ item }) => (
+          <ItemTile item={item} onPress={() => setSelectedKey(stackKey(item))} />
+        )}
         ListEmptyComponent={
           <View style={styles.empty}>
             <ThemedText style={styles.emptyText}>No items</ThemedText>

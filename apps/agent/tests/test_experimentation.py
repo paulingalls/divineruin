@@ -29,6 +29,7 @@ IRON_SWORD = {
     "id": "iron_sword",
     "output_item": "iron_sword",
     "crafting_dc": 13,
+    "tainted_materials": False,
     "materials": [
         {"material_id": "iron_ingot", "quantity": 2, "tier_minimum": 1, "substitutable": False},
         {"material_id": "leather_strip", "quantity": 1, "tier_minimum": 1, "substitutable": False},
@@ -38,6 +39,7 @@ OAK_SHIELD = {
     "id": "oak_shield",
     "output_item": "oak_shield",
     "crafting_dc": 11,
+    "tainted_materials": False,
     "materials": [{"material_id": "oak_plank", "quantity": 3, "tier_minimum": 1, "substitutable": False}],
 }
 RECIPES = [IRON_SWORD, OAK_SHIELD]

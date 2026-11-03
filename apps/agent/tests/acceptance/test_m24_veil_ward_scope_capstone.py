@@ -269,7 +269,7 @@ async def test_anchor_survives_wrap_beats_and_expires_on_the_world_clock(reset_d
     )
     await seed_player_with_pools(pool, player_id=player_id, class_="mage", focus_current=20, known_spells=(_SPELL_ID,))
     await _equip_weapon(pool, player_id)
-    await db_mutations.add_inventory_item(player_id, "veil_ward_anchor_small", 1, conn=pool)
+    await db_mutations.add_inventory_item(player_id, "veil_ward_anchor_small", 1, tainted=False, conn=pool)
     await spells.load_spells()
 
     spell = spells.get_spell(_SPELL_ID)

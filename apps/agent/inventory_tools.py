@@ -96,7 +96,7 @@ async def _gain(session, player_id, item_id, delta, source, item, *, db_mod, mut
 
     async with db_mod.transaction() as conn:
         session.validate_acting_player(player_id)
-        await mutations.add_inventory_item(player_id, item_id, delta, conn=conn)
+        await mutations.add_inventory_item(player_id, item_id, delta, tainted=False, conn=conn)
 
     # ONE builder for every ITEM_ACQUIRED writer (tool_support): the combat-loot pass emits the
     # same shape from the same place, so the client's item card can never go blank on one path

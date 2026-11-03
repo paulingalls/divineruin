@@ -1,6 +1,7 @@
 import { getAllErrandTemplates, getAllTrainingPrograms } from "./activity_templates.ts";
 import { listRecipes, craftingDurationSeconds } from "./recipes.ts";
 import { getActivityTypeConfig } from "./training_state_machine.ts";
+import { eligibleTotals, type InventoryStack } from "./inventory_allocation.ts";
 import { sql } from "./db.ts";
 import { parseJsonb } from "./parse-jsonb.ts";
 import { logError } from "./env.ts";
@@ -71,12 +72,12 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
     const inventoryPromise =
       allMaterialIds.size > 0
         ? (sql`
-            SELECT item_id,
+            SELECT item_id, tainted,
               COALESCE((data->>'quantity')::int, 1) AS quantity
             FROM player_inventory
             WHERE player_id = ${playerId} AND item_id IN ${sql([...allMaterialIds])}
-          ` as Promise<{ item_id: string; quantity: number }[]>)
-        : Promise.resolve([] as { item_id: string; quantity: number }[]);
+          ` as Promise<InventoryStack[]>)
+        : Promise.resolve([] as InventoryStack[]);
 
     const activePromise = sql`
       SELECT data FROM async_activities
@@ -112,12 +113,6 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
     const [inventoryRows, activeRows, trainingRows, playerRows, knownSpellRows] = await Promise.all(
       [inventoryPromise, activePromise, trainingPromise, playerPromise, knownSpellsPromise],
     );
-
-    // Build owned map
-    const owned: Record<string, number> = {};
-    for (const row of inventoryRows) {
-      owned[row.item_id] = row.quantity;
-    }
 
     // Build active map: template key → ActiveStatus
     const activeMap = new Map<string, ActiveStatus>();
@@ -217,6 +212,7 @@ export async function handleGetActivityTemplates(playerId: string): Promise<Resp
         type: "crafting",
         label: "Crafting",
         items: listRecipes().map((r) => {
+          const owned = eligibleTotals(inventoryRows, r.tainted_materials);
           const materials: MaterialRequirement[] = r.materials.map((m) => ({
             itemId: m.material_id,
             name: displayName(m.material_id),
