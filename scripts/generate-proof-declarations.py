@@ -85,7 +85,7 @@ def main():
     for file in sorted(shared):
         candidates = [p for p in entries if file in graph[p]["direct"]]
         if not candidates:
-            candidates = [p for p in entries if file in graph[p]["closure"] or file in shared]
+            candidates = [p for p in entries if file in graph[p]["closure"]] or entries
             limit = 1
         else:
             limit = 3

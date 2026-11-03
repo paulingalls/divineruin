@@ -17,7 +17,13 @@ def snapshot_repository():
         for base, dirs, files in os.walk(ROOT / directory, followlinks=False):
             dirs[:] = sorted(d for d in dirs if d not in EXCLUDED)
             paths.extend(str((Path(base) / f).relative_to(ROOT)) for f in sorted(files))
-    required = {"apps/agent/agent.py", "scripts/seed_content.py", "packages/shared/package.json", "e2e/package.json"}
+    required = {
+        "apps/agent/agent.py",
+        "scripts/seed_content.py",
+        "packages/shared/package.json",
+        "e2e/package.json",
+        "docs/INDEX.md",
+    }
     if not required <= set(paths):
         raise RuntimeError(f"incomplete proof inventory: {sorted(required - set(paths))}")
     target = ROOT / ".proof-inventory.json"
