@@ -71,21 +71,6 @@
       "scripts/**/*.py"
     ]
   },
-  "exempt": {
-    "apps/agent/tests/acceptance/multiplayer_voice/test_arbitration.py": "Paid provider calls require separate per-run human approval",
-    "apps/agent/tests/acceptance/multiplayer_voice/test_dm_turn.py": "Paid provider calls require separate per-run human approval",
-    "apps/agent/tests/acceptance/multiplayer_voice/test_guest_capstone.py": "Paid provider calls require separate per-run human approval",
-    "apps/agent/tests/acceptance/multiplayer_voice/test_reaction.py": "Paid provider calls require separate per-run human approval",
-    "apps/agent/tests/acceptance/multiplayer_voice/test_reconnection.py": "Paid provider calls require separate per-run human approval",
-    "apps/agent/tests/acceptance/multiplayer_voice/test_transcription.py": "Paid provider calls require separate per-run human approval",
-    "apps/agent/tests/acceptance/test_combat_cache_prefix.py": "Paid provider calls require separate per-run human approval",
-    "apps/agent/tests/acceptance/test_gather_continuation.py": "Paid provider calls require separate per-run human approval",
-    "apps/agent/tests/acceptance/test_m1_5_training_cycle.py": "Paid provider calls require separate per-run human approval",
-    "apps/agent/tests/acceptance/test_m1_6_companion_errands.py": "Paid provider calls require separate per-run human approval",
-    "apps/agent/tests/acceptance/test_m29_combat_reactions.py": "Paid provider calls require separate per-run human approval",
-    "apps/agent/tests/acceptance/test_narration_schema.py": "Paid provider calls require separate per-run human approval",
-    "apps/agent/tests/acceptance/test_strict_luna_gameplay.py": "Paid provider calls require separate per-run human approval"
-  },
   "generate": {
     "run": "python3 scripts/generate-proof-declarations.py",
     "inputs": [

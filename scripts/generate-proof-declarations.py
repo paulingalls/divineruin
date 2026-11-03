@@ -74,9 +74,6 @@ def main():
         check=True,
     )
     root = json.loads(parsed.stdout)
-    exempt = {p for p in root["exempt"] if p.startswith(str(TESTS))}
-    if paid != exempt:
-        raise ValueError(f"paid-only files differ from root exemptions: {sorted(paid ^ exempt)}")
     entries = [str(p) for p in tests if str(p) not in paid]
     if len({Path(p).stem for p in entries}) != len(entries):
         raise ValueError("duplicate acceptance stems")
@@ -190,9 +187,6 @@ def main():
             "apps/agent/**",
             "apps/mobile/assets/**",
             "assets/**",
-            # The line-cap and inventory unit tests read every acceptance file; proof lint
-            # refuses exempt files as inputs, so only the paid-only sources stay out.
-            *[f"!{path}" for path in sorted(exempt)],
             ".env.example",
             "apps/audio/**",
             "apps/mobile/src/__tests__/fixtures/**",
