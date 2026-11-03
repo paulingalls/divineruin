@@ -6,7 +6,8 @@
   ],
   "coverage": [
     "{scripts,packages/shared,packages/design-tokens,apps/server,apps/mobile,apps/web}/**/*.test.{ts,tsx}",
-    "apps/agent/tests/**/test_*.py"
+    "apps/agent/tests/**/test_*.py",
+    "e2e/specs/*.e2e.ts"
   ],
   "inputs": {
     "bun-config": [
@@ -69,6 +70,9 @@
       "apps/agent/uv.lock",
       "apps/agent/.python-version",
       "scripts/**/*.py"
+    ],
+    "e2e-home-character-represents": [
+      "packages/shared/**"
     ]
   },
   "generate": {
@@ -81,7 +85,8 @@
       "apps/agent/**/*.py",
       "scripts/**/*.py",
       "package.json",
-      "bun.lock"
+      "bun.lock",
+      "e2e/specs/*.e2e.ts"
     ],
     "links": [
       "node_modules"
@@ -99,6 +104,16 @@
     "bun-stack": {
       "start": "bash scripts/proof-acceptance-stack.sh bun-start",
       "stop": "bash scripts/proof-acceptance-stack.sh bun-stop"
+    },
+    "e2e-stack": {
+      "start": "bash scripts/proof-acceptance-stack.sh e2e-start",
+      "stop": "bash scripts/proof-acceptance-stack.sh e2e-stop"
     }
-  }
+  },
+  "lanes": {
+    "e2e": 1
+  },
+  "unkeyed": [
+    "packages/shared/**"
+  ]
 }

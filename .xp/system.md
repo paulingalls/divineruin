@@ -232,7 +232,7 @@ without certifying paid speech-recognition accuracy.
   `paulingalls/sprint-*` / `story-*` / `free-*` branches. `.githooks/pre-push`
   scans outgoing secrets for every ref without starting services. Story land
   runs Proof selection for the `land` set on the merged index. PR CI owns static and non-acceptance checks;
-  `.githooks/sprint` runs Proof `sprint` selection and Playwright at sprint close on the
+  `.githooks/sprint` runs Proof `sprint` selection (including Playwright) at sprint close on the
   trial-merged integration tree. Free patches run the outgoing secret scan
   plus focused card Acceptance at the affected behavior/integration
   boundary on the trial-merged tree, then normal PR CI before merge. The lead
@@ -365,13 +365,12 @@ combined owned inventory or failed enumeration also refuses.
 An unavailable registered worktree blocks sweep, including
 locked worktrees on unmounted volumes. Remove or prune only registrations known
 to be abandoned before sweeping their resources.
-The sprint hook’s per-run Postgres and Valkey belong to the E2E lane.
-Acceptance enters without those sibling-lane DSNs so its Python
-lifecycle can validate checkout-owned settings; acceptance then loads the
-checkout settings and provider credentials through its existing env file.
+The sprint hook invokes only Proof. Its E2E provider owns seeded Postgres and
+Valkey; each E2E task clones the template and runs in the single E2E port lane.
+Acceptance uses its separate provider concurrently at the default job limit.
+The E2E runner preserves failed logs and test-results under flake-artifacts.
 The sprint hook exports `ALLOW_PAID_TESTS=` and `REQUIRE_REAL_LLM=` empty in
-all children; env files cannot restore approval. Acceptance unsets only the
-sibling-lane `DATABASE_URL` and `REDIS_URL`.
+all children; env files cannot restore approval. The hook unsets caller `DATABASE_URL` and `REDIS_URL`; providers supply endpoints.
 
 **Dependency-changing landings**: before a land command that pushes automatically,
 stage installs from the reviewed manifests/locks and refresh the integration

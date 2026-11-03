@@ -1,91 +1,30 @@
 #!/usr/bin/env bash
-set -e
-cd "$(git rev-parse --show-toplevel)"
+set -uo pipefail
+cd "$(git rev-parse --show-toplevel)" || exit 1
 
 # Empty exports prevent explicit env files from restoring paid approval.
 export ALLOW_PAID_TESTS= REQUIRE_REAL_LLM=
 
-# Diagnostics must not replace the suite's failure status.
-snapshot_lane_logs() {
-  local dest="$1" f
-  shift
-  mkdir -p "$dest" || return 0
-  for f in "$@"; do
-    [ -f "$f" ] && { cp "$f" "$dest/" || true; }
-  done
-  return 0
-}
-
-echo "  Acceptance prerequisite: Docker..."
 if ! docker info >/dev/null 2>&1; then
-  echo "ERROR: Docker must be running for sprint acceptance tests." >&2
+  echo "ERROR: Docker must be running for sprint tests." >&2
   exit 1
 fi
-
 bash scripts/sweep-test-containers.sh || true
 
-bg_pids=()
-_terminate_lane_tree() {
-  local parent="$1" child
-  for child in $(pgrep -P "$parent" 2>/dev/null); do
-    _terminate_lane_tree "$child"
-  done
-  kill "$parent" 2>/dev/null || true
-}
-_cleanup() {
-  for pid in "${bg_pids[@]}"; do _terminate_lane_tree "$pid"; done
-  for pid in "${bg_pids[@]}"; do wait "$pid" 2>/dev/null || true; done
-  command -v _te_teardown >/dev/null 2>&1 && _te_teardown || true
-}
-trap _cleanup EXIT
-trap 'exit 130' INT
-trap 'exit 143' TERM
-
-caller_db="${DATABASE_URL-}" caller_redis="${REDIS_URL-}" caller_db_set="${DATABASE_URL+x}" caller_redis_set="${REDIS_URL+x}"
-# Acceptance uses checkout services; E2E uses per-run services.
-source "scripts/worktree-common.sh"
-wt_expected_env
-export PORT="$E2E_API_PORT"
-if [ "$caller_db_set" = x ]; then export DATABASE_URL="$caller_db"; else unset DATABASE_URL; fi
-if [ "$caller_redis_set" = x ]; then export REDIS_URL="$caller_redis"; else unset REDIS_URL; fi
-source scripts/test-env.sh
-
 ART="$PWD/flake-artifacts"
-mkdir -p "$ART"
-snap_dir() { printf '%s/%s-%s' "$ART" "$(date +%Y%m%d-%H%M%S)" "$(git rev-parse --short HEAD)"; }
-
-( set -o pipefail; unset DATABASE_URL REDIS_URL; \
-  REQUIRE_DOCKER=1 TESTCONTAINERS_RYUK_DISABLED=true \
-  bunx proof run --set sprint 2>&1 | tee "$ART/last-acceptance.log" ) &
-acc_pid=$!
-bg_pids+=("$acc_pid")
-
-echo "  E2E tests (local Playwright)..."
-e2e_dir="$PWD/e2e"
-e2e_log="$ART/last-e2e.log"
-(cd "$e2e_dir" && bunx playwright test --reporter=list) 2>&1 | tee "$e2e_log"
-e2e_rc=${PIPESTATUS[0]}
-if [ "$e2e_rc" -ne 0 ]; then
-  snap="$(snap_dir)"
-  snapshot_lane_logs "$snap" "$e2e_log"
-  cp -R "$e2e_dir/test-results" "$snap/test-results" 2>/dev/null || true
-  echo "ERROR: E2E tests failed. Artifacts preserved at:" >&2
-  echo "    $snap" >&2
-  echo "  Inspect a trace with: bunx playwright show-trace $snap/test-results/<test-dir>/trace.zip" >&2
-  exit "$e2e_rc"
+mkdir -p "$ART" || exit 1
+# Providers own endpoints; the E2E runner preserves browser artifacts before sandbox removal.
+unset DATABASE_URL REDIS_URL
+REQUIRE_DOCKER=1 TESTCONTAINERS_RYUK_DISABLED=true \
+  bunx proof run --set sprint 2>&1 | tee "$ART/last-sprint.log"
+status=${PIPESTATUS[0]}
+if [ "$status" -ne 0 ]; then
+  snap="$ART/$(date +%Y%m%d-%H%M%S)-$(git rev-parse --short HEAD)"
+  mkdir -p "$snap" && {
+    cp "$ART/last-sprint.log" "$snap/" || true
+    docker ps -a > "$snap/docker-ps.log" 2>&1 || true
+  }
+  echo "ERROR: sprint tests failed. Logs preserved at: $snap" >&2
+  exit "$status"
 fi
-
-echo "  Acceptance tests (waiting)..."
-if wait "$acc_pid"; then acc_rc=0; else acc_rc=$?; fi
-bg_pids=()  # acceptance reaped — trap now only tears down the test-env containers
-if [ "$acc_rc" -ne 0 ]; then
-  snap="$(snap_dir)"
-  snapshot_lane_logs "$snap" "$ART/last-acceptance.log"
-  docker ps -a > "$snap/docker-ps.log" 2>&1 || true
-  docker logs "$LIVEKIT_ACCEPTANCE_CONTAINER" > "$snap/livekit-container.log" 2>&1 || true
-  echo "ERROR: acceptance tests failed. Logs preserved at:" >&2
-  echo "    $snap" >&2
-  exit "$acc_rc"
-fi
-
 echo "All tests passed."
