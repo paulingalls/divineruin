@@ -190,7 +190,9 @@ def main():
             "apps/agent/**",
             "apps/mobile/assets/**",
             "assets/**",
-            "!apps/agent/tests/acceptance/**/test_*.py",
+            # The line-cap and inventory unit tests read every acceptance file; proof lint
+            # refuses exempt files as inputs, so only the paid-only sources stay out.
+            *[f"!{path}" for path in sorted(exempt)],
             ".env.example",
             "apps/audio/**",
             "apps/mobile/src/__tests__/fixtures/**",
