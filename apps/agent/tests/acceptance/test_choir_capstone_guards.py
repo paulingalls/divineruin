@@ -2,11 +2,12 @@
 
 import asyncio
 import json
+import os
 
 import pytest
 from acceptance._livekit import ensure_livekit_server
 from acceptance._livekit_client import register_data_packet_collector
-from acceptance._postgres_fixtures import _owned_postgres_container
+from acceptance._postgres_fixtures import _owned_postgres_container, provider_database
 from acceptance.choir_capstone_voice import BurstSTT, ChoirVoiceDiagnostic
 from acceptance.multiplayer_voice._harness import PLAYER_TWO_SPEECH, MultiplayerVoiceHarness
 from acceptance.seeds import seed_player_with_pools
@@ -40,6 +41,9 @@ def livekit_server():
 
 @pytest.fixture(scope="session")
 def postgres_container(livekit_server):
+    if os.environ.get("PROOF_AGENT_PROVIDER"):
+        yield from provider_database()
+        return
     with _owned_postgres_container() as pg:
         yield pg.get_connection_url().replace("postgresql+psycopg2://", "postgresql://")
 

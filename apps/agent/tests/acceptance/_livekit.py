@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import subprocess
 import time
 from dataclasses import dataclass
@@ -51,6 +52,14 @@ def checkout_livekit_settings() -> dict[str, str]:
 
 
 def ensure_livekit_server(*, require_docker: bool = True) -> LiveKitServer:
+    if os.environ.get("PROOF_AGENT_PROVIDER"):
+        return LiveKitServer(
+            ws_url=os.environ["PROOF_LIVEKIT_WS"],
+            http_url=os.environ["PROOF_LIVEKIT_HTTP"],
+            api_key=os.environ["PROOF_LIVEKIT_KEY"],
+            api_secret=os.environ["PROOF_LIVEKIT_SECRET"],
+            container=None,
+        )
     settings = checkout_livekit_settings()
     name = settings["LIVEKIT_ACCEPTANCE_CONTAINER"]
     udp_port = int(settings["LIVEKIT_ACCEPTANCE_UDP_PORT"])
@@ -87,7 +96,7 @@ def ensure_livekit_server(*, require_docker: bool = True) -> LiveKitServer:
 
 
 def _handle_docker_unavailable(exc: DockerException, *, require_docker: bool) -> None:
-    if require_docker:
+    if require_docker or os.environ.get("PROOF_AGENT_PROVIDER"):
         raise RuntimeError(f"Docker is required for acceptance tests but is unavailable: {exc}")
     pytest.skip(f"Docker unavailable — acceptance tests require Docker ({exc})")
 

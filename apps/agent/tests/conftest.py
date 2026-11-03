@@ -11,6 +11,7 @@ from _paid_tests import (
     install_paid_call_guard,
     paid_skip_reason,
 )
+from _repo_inventory import snapshot_repository
 from archetype_abilities_config_fixture import setup_archetype_abilities_config_fixture
 from archetype_milestones_config_fixture import setup_archetype_milestones_config_fixture
 from archetypes_config_fixture import setup_archetypes_config_fixture
@@ -40,6 +41,7 @@ def _is_xdist_worker(config: pytest.Config) -> bool:
 
 def pytest_configure(config: pytest.Config) -> None:
     install_paid_call_guard()
+    snapshot_repository()
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:
@@ -59,6 +61,12 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     """
     global _started_db, _db_url
     if _is_xdist_worker(session.config):
+        return
+    if os.environ.get("PROOF_AGENT_PROVIDER"):
+        if not os.environ.get("DATABASE_URL"):
+            raise RuntimeError("proof provider omitted DATABASE_URL")
+        if os.environ["PROOF_AGENT_PROVIDER"] == "dev" and not os.environ.get("REDIS_URL"):
+            raise RuntimeError("proof dev provider omitted REDIS_URL")
         return
     _db_url = resolve_database_url()
     _started_db = ensure_db_up(_db_url)
@@ -80,7 +88,8 @@ def pytest_sessionfinish(session: pytest.Session) -> None:
             reporter.write_sep("!", "\n".join(attempts))
     if _is_xdist_worker(session.config):
         return
-    stop_if_started(_started_db, _db_url)
+    if not os.environ.get("PROOF_AGENT_PROVIDER"):
+        stop_if_started(_started_db, _db_url)
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:

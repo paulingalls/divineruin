@@ -41,7 +41,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@pi-innovations/proof": "git+https://github.com/paulingalls/proof.git#v0.27.0",
+    "@pi-innovations/proof": "git+https://github.com/paulingalls/proof.git#v0.29.0",
     "@types/bun": "1.4.4",
     "eslint": "^10.10.0",
     "eslint-config-prettier": "^10.1.8",

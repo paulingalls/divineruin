@@ -1,8 +1,9 @@
 import re
-import subprocess
 import tokenize
 from io import StringIO
 from pathlib import Path
+
+from _repo_inventory import repository_files
 
 REPO_ROOT = Path(__file__).parents[3]
 SOURCE_ROOTS = ("apps", "packages", "e2e", "scripts")
@@ -15,10 +16,9 @@ def _code_files():
     # parallel walk that lists one can read it after it is deleted (bug fd71c364).
     files = []
     for source_root in SOURCE_ROOTS:
-        listed = subprocess.run(
-            ["git", "ls-files", "-z", "--", source_root], cwd=REPO_ROOT, check=True, capture_output=True, text=True
-        ).stdout
-        found = [REPO_ROOT / name for name in listed.split("\0") if Path(name).suffix in SOURCE_SUFFIXES]
+        found = [
+            REPO_ROOT / name for name in repository_files(REPO_ROOT, source_root) if name.suffix in SOURCE_SUFFIXES
+        ]
         assert found, f"no tracked code files under {source_root}: a renamed source root leaves the cap green"
         files.extend(found)
     return sorted(files)

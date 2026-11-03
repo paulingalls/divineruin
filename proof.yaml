@@ -1,372 +1,115 @@
-version: 1
-project: "divineruin"
-delivered:
-  - "**"
-coverage:
-  - "{scripts,packages/shared,packages/design-tokens,apps/server,apps/mobile,apps/web}/**/*.test.{ts,tsx}"
-inputs:
-  bun-config:
-    - "bun.lock"
-    - "package.json"
-    - "bunfig.toml"
-    - "tsconfig.json"
-  seeded-data:
-    - "content/*.json"
-    - "scripts/migrations/**"
-    - "scripts/pyproject.toml"
-    - "scripts/uv.lock"
-    - ".python-version"
-    - "scripts/.python-version"
-    - "apps/agent/_gods_content.py"
-    - "apps/agent/action_contracts.py"
-    - "apps/agent/archetypes.py"
-    - "apps/agent/catalog_parse.py"
-    - "apps/agent/check_resolution.py"
-    - "apps/agent/check_resolution_save.py"
-    - "apps/agent/combat_grapple.py"
-    - "apps/agent/combat_init_validation.py"
-    - "apps/agent/combat_spatial.py"
-    - "apps/agent/condition_bonus.py"
-    - "apps/agent/condition_sources.py"
-    - "apps/agent/condition_voice_rules.py"
-    - "apps/agent/conditions.py"
-    - "apps/agent/creature_schema.py"
-    - "apps/agent/creature_tiers.py"
-    - "apps/agent/dice.py"
-    - "apps/agent/dramatic.py"
-    - "apps/agent/encounter_actions.py"
-    - "apps/agent/encounter_references.py"
-    - "apps/agent/reaction_windows.py"
-    - "apps/agent/region_types.py"
-    - "apps/agent/role_archetypes.py"
-    - "apps/agent/rules_engine.py"
-    - "apps/agent/social_resolution.py"
-    - "apps/agent/spell_voice_rules.py"
-    - "apps/agent/terrain.py"
-    - "apps/agent/world_effect_targets.py"
-    - "apps/agent/world_regions.py"
-    - "scripts/seed_content.py"
-tasks:
-  bun-scripts:
-    run: "bun --env-file=.env test ./scripts"
-    sets:
-      - "commit"
-    links:
-      - "node_modules"
-      - ".env"
-    env:
-      - "DATABASE_URL"
-      - "REDIS_URL"
-    inputs:
-      - "$bun-config"
-      - "scripts/tsconfig.json"
-      - imports-of: "scripts/test_content.test.ts"
-      - "$seeded-data"
-      - imports-of: "apps/mobile/test-preload.ts"
-  bun-shared:
-    run: "bun test --cwd packages/shared"
-    sets:
-      - "commit"
-    links:
-      - "node_modules"
-      - ".env"
-    inputs:
-      - "$bun-config"
-      - "packages/shared/package.json"
-      - "packages/shared/tsconfig.json"
-      - imports-of: "packages/shared/src/entities/ability.test.ts"
-      - imports-of: "packages/shared/src/entities/archetype.test.ts"
-      - imports-of: "packages/shared/src/entities/companion.test.ts"
-      - imports-of: "packages/shared/src/entities/creature.test.ts"
-      - imports-of: "packages/shared/src/entities/encounter-references.test.ts"
-      - imports-of: "packages/shared/src/entities/encounter.test.ts"
-      - imports-of: "packages/shared/src/entities/item.test.ts"
-      - imports-of: "packages/shared/src/entities/location.test.ts"
-      - imports-of: "packages/shared/src/entities/npc.test.ts"
-      - imports-of: "packages/shared/src/entities/recipe.test.ts"
-      - imports-of: "packages/shared/src/entities/role_archetype.test.ts"
-      - imports-of: "packages/shared/src/entities/spell.test.ts"
-      - imports-of: "packages/shared/src/entities/terrain.test.ts"
-      - "content/{companions,npcs,role_archetypes,locations,encounter_templates,creatures,loot_tables}.json"
-      - "packages/shared/fixtures/**"
-      - "assets/images/{companion,npc}_*.png"
-      - "apps/agent/terrain.py"
-      - "scripts/pyproject.toml"
-      - "scripts/uv.lock"
-      - "scripts/.python-version"
-      - "apps/agent/region_types.py"
-      - ".python-version"
-  bun-design-tokens:
-    run: "bun test --cwd packages/design-tokens"
-    sets:
-      - "commit"
-    links:
-      - "node_modules"
-      - ".env"
-    inputs:
-      - "$bun-config"
-      - "packages/design-tokens/package.json"
-      - "packages/design-tokens/tsconfig.json"
-      - imports-of: "packages/design-tokens/src/fonts.test.ts"
-      - imports-of: "packages/design-tokens/src/index.test.ts"
-  bun-server:
-    run: "bun --env-file=../../.env test --cwd apps/server --path-ignore-patterns='**/{db,terrain-startup.integration,locations-load.integration,invite-store}.test.ts'"
-    sets:
-      - "commit"
-    links:
-      - "node_modules"
-      - ".env"
-    inputs:
-      - "$bun-config"
-      - "apps/server/package.json"
-      - "apps/server/tsconfig.json"
-      - "apps/server/bunfig.toml"
-      - imports-of: "apps/server/src/abilities-load.test.ts"
-      - imports-of: "apps/server/src/abilities-save-fields.test.ts"
-      - imports-of: "apps/server/src/activities.test.ts"
-      - imports-of: "apps/server/src/activity_create.test.ts"
-      - imports-of: "apps/server/src/activity_create_errand.test.ts"
-      - imports-of: "apps/server/src/activity_create_training.test.ts"
-      - imports-of: "apps/server/src/activity_inventory.test.ts"
-      - imports-of: "apps/server/src/activity_spell_scope.test.ts"
-      - imports-of: "apps/server/src/activity_templates.test.ts"
-      - imports-of: "apps/server/src/archetype_tiers.test.ts"
-      - imports-of: "apps/server/src/archetypes-load.test.ts"
-      - imports-of: "apps/server/src/assigned_companion.test.ts"
-      - imports-of: "apps/server/src/auth.test.ts"
-      - imports-of: "apps/server/src/catchup.test.ts"
-      - imports-of: "apps/server/src/catchup_items.test.ts"
-      - imports-of: "apps/server/src/character.test.ts"
-      - imports-of: "apps/server/src/companion_chatter.test.ts"
-      - imports-of: "apps/server/src/content-catalog-api.test.ts"
-      - imports-of: "apps/server/src/debug.test.ts"
-      - imports-of: "apps/server/src/dispositions.test.ts"
-      - imports-of: "apps/server/src/email-transport.test.ts"
-      - imports-of: "apps/server/src/email.test.ts"
-      - imports-of: "apps/server/src/env.test.ts"
-      - imports-of: "apps/server/src/errand_risk.test.ts"
-      - imports-of: "apps/server/src/image-assets.test.ts"
-      - imports-of: "apps/server/src/image-gen-api.test.ts"
-      - imports-of: "apps/server/src/image-gen.test.ts"
-      - imports-of: "apps/server/src/image-post-process.test.ts"
-      - imports-of: "apps/server/src/image-prompt-templates.test.ts"
-      - imports-of: "apps/server/src/inventory-api.test.ts"
-      - imports-of: "apps/server/src/inventory_snapshot.test.ts"
-      - imports-of: "apps/server/src/invite-e2e.test.ts"
-      - imports-of: "apps/server/src/invite.test.ts"
-      - imports-of: "apps/server/src/items-load.test.ts"
-      - imports-of: "apps/server/src/livekit.test.ts"
-      - imports-of: "apps/server/src/locations-load.test.ts"
-      - imports-of: "apps/server/src/mentor_variants-load.test.ts"
-      - imports-of: "apps/server/src/mentor_variants.test.ts"
-      - imports-of: "apps/server/src/middleware.test.ts"
-      - imports-of: "apps/server/src/milestones-load.test.ts"
-      - imports-of: "apps/server/src/parse-helpers.test.ts"
-      - imports-of: "apps/server/src/player-session-boundary.test.ts"
-      - imports-of: "apps/server/src/pricing.test.ts"
-      - imports-of: "apps/server/src/push.test.ts"
-      - imports-of: "apps/server/src/recipes-content.test.ts"
-      - imports-of: "apps/server/src/recipes.test.ts"
-      - imports-of: "apps/server/src/repair.test.ts"
-      - imports-of: "apps/server/src/role_archetypes-load.test.ts"
-      - imports-of: "apps/server/src/role_archetypes.test.ts"
-      - imports-of: "apps/server/src/skill-tier-reader-guard.test.ts"
-      - imports-of: "apps/server/src/slot_validation.test.ts"
-      - imports-of: "apps/server/src/spells-load.test.ts"
-      - imports-of: "apps/server/src/training_state_machine.test.ts"
-      - imports-of: "apps/server/src/vendor-contract.test.ts"
-      - imports-of: "apps/server/src/waitlist.test.ts"
-      - imports-of: "apps/server/src/workspace.test.ts"
-      - "content/*.json"
-      - "apps/server/src/**/!(*.test).ts"
-      - "assets/images/**"
-  server-db:
-    run: "REQUIRE_DB=1 bun --env-file=../../.env test --cwd apps/server src/db.test.ts"
-    sets:
-      - "commit"
-    links:
-      - "node_modules"
-      - ".env"
-    env:
-      - "DATABASE_URL"
-      - "REDIS_URL"
-    inputs:
-      - "$bun-config"
-      - "apps/server/package.json"
-      - "apps/server/tsconfig.json"
-      - "apps/server/bunfig.toml"
-      - imports-of: "apps/server/src/db.test.ts"
-      - "scripts/migrations/**"
-  server-locations-load:
-    run: "REQUIRE_DB=1 bun --env-file=../../.env test --cwd apps/server src/locations-load.integration.test.ts"
-    sets:
-      - "commit"
-    links:
-      - "node_modules"
-      - ".env"
-    env:
-      - "DATABASE_URL"
-      - "REDIS_URL"
-    inputs:
-      - "$bun-config"
-      - "apps/server/package.json"
-      - "apps/server/tsconfig.json"
-      - "apps/server/bunfig.toml"
-      - imports-of: "apps/server/src/locations-load.integration.test.ts"
-      - "$seeded-data"
-  server-terrain-startup:
-    run: "REQUIRE_DB=1 bun --env-file=../../.env test --cwd apps/server src/terrain-startup.integration.test.ts"
-    sets:
-      - "commit"
-    links:
-      - "node_modules"
-      - ".env"
-    env:
-      - "DATABASE_URL"
-      - "REDIS_URL"
-    inputs:
-      - "$bun-config"
-      - "apps/server/package.json"
-      - "apps/server/tsconfig.json"
-      - "apps/server/bunfig.toml"
-      - imports-of: "apps/server/src/terrain-startup.integration.test.ts"
-      - "$seeded-data"
-  server-invite-store:
-    run: "REQUIRE_REDIS=1 bun --env-file=../../.env test --cwd apps/server src/invite-store.test.ts"
-    sets:
-      - "commit"
-    links:
-      - "node_modules"
-      - ".env"
-    env:
-      - "DATABASE_URL"
-      - "REDIS_URL"
-    inputs:
-      - "$bun-config"
-      - "apps/server/package.json"
-      - "apps/server/tsconfig.json"
-      - "apps/server/bunfig.toml"
-      - imports-of: "apps/server/src/invite-store.test.ts"
-  bun-mobile:
-    run: "bun test --cwd apps/mobile"
-    sets:
-      - "commit"
-    links:
-      - "node_modules"
-      - ".env"
-    inputs:
-      - "$bun-config"
-      - "apps/mobile/package.json"
-      - "apps/mobile/tsconfig.json"
-      - "apps/mobile/bunfig.toml"
-      - imports-of: "apps/mobile/scripts/ios-scene-manifest.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/auth-store.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/cached-image-uri.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/catchup-store.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/character-store.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/choir-service-isolation.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/companion-portrait.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/dice-overlay-dramatic.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/divine-favor-toast.test.tsx"
-      - imports-of: "apps/mobile/src/__tests__/http-inventory-origin.test.tsx"
-      - imports-of: "apps/mobile/src/__tests__/hud-store.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/inventory-freshness.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/inventory-refresh-lifecycle.test.tsx"
-      - imports-of: "apps/mobile/src/__tests__/invite-link.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/music-player.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/music-registry.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/narration-player.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/native-transport-route.test.tsx"
-      - imports-of: "apps/mobile/src/__tests__/native-transport.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/panel-store.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/pending-invite-store.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/pill-chassis.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/resonance-hud.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/session-store.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/sound-registry.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/soundscape-player.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/soundscape-registry.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/specialization-choice.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/spell-display.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/texture-scheduler.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/theme.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/transcript-row-label.test.tsx"
-      - imports-of: "apps/mobile/src/__tests__/transcript-store.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/use-activity-actions.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/use-creation-hints.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/use-game-events.audio.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/use-game-events.character.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/use-game-events.overlays-creation.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/use-game-events.overlays.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/use-game-events.panel.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/use-game-events.parse.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/use-game-events.portraits.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/use-game-events.sender.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/use-game-events.session.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/use-game-events.subscription.test.tsx"
-      - imports-of: "apps/mobile/src/__tests__/use-game-events.transcript.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/use-inventory-refresh.test.tsx"
-      - imports-of: "apps/mobile/src/__tests__/volume.test.ts"
-      - imports-of: "apps/mobile/src/__tests__/wire-contract.test.ts"
-      - imports-of: "apps/mobile/src/audio/game-event-parsing.test.ts"
-      - imports-of: "apps/mobile/src/audio/game-event-session-init.test.ts"
-      - imports-of: "apps/mobile/src/components/activity-launcher-strings.test.ts"
-      - imports-of: "apps/mobile/src/components/hud/condition-display.test.ts"
-      - imports-of: "apps/mobile/src/components/hud/currency-display.test.ts"
-      - imports-of: "apps/mobile/src/utils/invite-link.test.ts"
-      - "apps/mobile/src/**/*.tsx"
-      - imports-of: "apps/mobile/test-preload.ts"
-      - "$seeded-data"
-      - imports-of: "scripts/migrate.ts"
-      - imports-of: "apps/server/src/index.ts"
-      - "apps/mobile/app.json"
-      - "apps/mobile/assets/images/{icon,splash}.png"
-      - "apps/server/bunfig.toml"
-  bun-web:
-    run: "bun test --cwd apps/web"
-    sets:
-      - "commit"
-    links:
-      - "node_modules"
-      - ".env"
-    inputs:
-      - "$bun-config"
-      - "apps/web/package.json"
-      - "apps/web/tsconfig.json"
-      - imports-of: "apps/web/scripts/gen-fonts-css.test.ts"
-      - imports-of: "apps/web/scripts/gen-og-assets.test.ts"
-      - imports-of: "apps/web/scripts/gen-theme.test.ts"
-      - imports-of: "apps/web/scripts/prerender.test.ts"
-      - imports-of: "apps/web/src/App.test.tsx"
-      - imports-of: "apps/web/src/cache-policy.test.ts"
-      - imports-of: "apps/web/src/components/Footer.test.tsx"
-      - imports-of: "apps/web/src/components/NavBar.test.tsx"
-      - imports-of: "apps/web/src/entry-server.test.tsx"
-      - imports-of: "apps/web/src/fonts/fonts.test.ts"
-      - imports-of: "apps/web/src/lib/analytics.test.ts"
-      - imports-of: "apps/web/src/lib/api.test.ts"
-      - imports-of: "apps/web/src/lib/crawl.test.ts"
-      - imports-of: "apps/web/src/lib/public-env.test.ts"
-      - imports-of: "apps/web/src/lib/reveal.test.ts"
-      - imports-of: "apps/web/src/lib/seo.test.ts"
-      - imports-of: "apps/web/src/lib/useReveal.test.ts"
-      - imports-of: "apps/web/src/sections/AudioDemo.test.tsx"
-      - imports-of: "apps/web/src/sections/Classes.test.tsx"
-      - imports-of: "apps/web/src/sections/Faq.test.tsx"
-      - imports-of: "apps/web/src/sections/Hero.test.tsx"
-      - imports-of: "apps/web/src/sections/Pantheon.test.tsx"
-      - imports-of: "apps/web/src/sections/Premise.test.tsx"
-      - imports-of: "apps/web/src/sections/Pricing.test.tsx"
-      - imports-of: "apps/web/src/sections/Races.test.tsx"
-      - imports-of: "apps/web/src/sections/Session.test.tsx"
-      - imports-of: "apps/web/src/sections/Tech.test.tsx"
-      - imports-of: "apps/web/src/sections/Waitlist.test.tsx"
-      - imports-of: "apps/web/src/sections/World.test.tsx"
-      - "apps/web/src/fonts/**"
-      - "apps/web/src/lib/api.ts"
-      - "apps/web/src/lib/analytics.ts"
-      - "apps/web/index.html"
-      - "apps/web/src/**/*.css"
-      - "apps/web/src/audio/**"
-      - "apps/web/public/*.{png,ico}"
-      - imports-of: "apps/web/src/client.tsx"
+{
+  "version": 1,
+  "project": "divineruin",
+  "delivered": [
+    "**"
+  ],
+  "coverage": [
+    "{scripts,packages/shared,packages/design-tokens,apps/server,apps/mobile,apps/web}/**/*.test.{ts,tsx}",
+    "apps/agent/tests/**/test_*.py"
+  ],
+  "inputs": {
+    "bun-config": [
+      "bun.lock",
+      "package.json",
+      "bunfig.toml",
+      "tsconfig.json"
+    ],
+    "seeded-data": [
+      "content/*.json",
+      "scripts/migrations/**",
+      "scripts/pyproject.toml",
+      "scripts/uv.lock",
+      ".python-version",
+      "scripts/.python-version",
+      "apps/agent/_gods_content.py",
+      "apps/agent/action_contracts.py",
+      "apps/agent/archetypes.py",
+      "apps/agent/catalog_parse.py",
+      "apps/agent/check_resolution.py",
+      "apps/agent/check_resolution_save.py",
+      "apps/agent/combat_grapple.py",
+      "apps/agent/combat_init_validation.py",
+      "apps/agent/combat_spatial.py",
+      "apps/agent/condition_bonus.py",
+      "apps/agent/condition_sources.py",
+      "apps/agent/condition_voice_rules.py",
+      "apps/agent/conditions.py",
+      "apps/agent/creature_schema.py",
+      "apps/agent/creature_tiers.py",
+      "apps/agent/dice.py",
+      "apps/agent/dramatic.py",
+      "apps/agent/encounter_actions.py",
+      "apps/agent/encounter_references.py",
+      "apps/agent/reaction_windows.py",
+      "apps/agent/region_types.py",
+      "apps/agent/role_archetypes.py",
+      "apps/agent/rules_engine.py",
+      "apps/agent/social_resolution.py",
+      "apps/agent/spell_voice_rules.py",
+      "apps/agent/terrain.py",
+      "apps/agent/world_effect_targets.py",
+      "apps/agent/world_regions.py",
+      "scripts/seed_content.py"
+    ],
+    "stack-shared": [
+      "apps/agent/tests/acceptance/_livekit.py",
+      "apps/agent/tests/acceptance/_postgres_fixtures.py",
+      "apps/agent/tests/_db_lifecycle.py",
+      "scripts/seed_content.py"
+    ],
+    "stack": [
+      "$seeded-data",
+      "$stack-shared",
+      "scripts/proof-acceptance-stack.sh",
+      "scripts/proof_acceptance_stack.py",
+      "scripts/worktree-common.sh",
+      "docker-compose.yml",
+      "apps/agent/pyproject.toml",
+      "apps/agent/uv.lock",
+      "apps/agent/.python-version",
+      "scripts/**/*.py"
+    ]
+  },
+  "exempt": {
+    "apps/agent/tests/acceptance/multiplayer_voice/test_arbitration.py": "Paid provider calls require separate per-run human approval",
+    "apps/agent/tests/acceptance/multiplayer_voice/test_dm_turn.py": "Paid provider calls require separate per-run human approval",
+    "apps/agent/tests/acceptance/multiplayer_voice/test_guest_capstone.py": "Paid provider calls require separate per-run human approval",
+    "apps/agent/tests/acceptance/multiplayer_voice/test_reaction.py": "Paid provider calls require separate per-run human approval",
+    "apps/agent/tests/acceptance/multiplayer_voice/test_reconnection.py": "Paid provider calls require separate per-run human approval",
+    "apps/agent/tests/acceptance/multiplayer_voice/test_transcription.py": "Paid provider calls require separate per-run human approval",
+    "apps/agent/tests/acceptance/test_combat_cache_prefix.py": "Paid provider calls require separate per-run human approval",
+    "apps/agent/tests/acceptance/test_gather_continuation.py": "Paid provider calls require separate per-run human approval",
+    "apps/agent/tests/acceptance/test_m1_5_training_cycle.py": "Paid provider calls require separate per-run human approval",
+    "apps/agent/tests/acceptance/test_m1_6_companion_errands.py": "Paid provider calls require separate per-run human approval",
+    "apps/agent/tests/acceptance/test_m29_combat_reactions.py": "Paid provider calls require separate per-run human approval",
+    "apps/agent/tests/acceptance/test_narration_schema.py": "Paid provider calls require separate per-run human approval",
+    "apps/agent/tests/acceptance/test_strict_luna_gameplay.py": "Paid provider calls require separate per-run human approval"
+  },
+  "generate": {
+    "run": "python3 scripts/generate-proof-declarations.py",
+    "inputs": [
+      "scripts/generate-proof-declarations.py",
+      "scripts/proof-python-closure.ts",
+      "scripts/proof-bun-tasks.json",
+      "proof.yaml",
+      "apps/agent/**/*.py",
+      "scripts/**/*.py",
+      "package.json",
+      "bun.lock"
+    ],
+    "links": [
+      "node_modules"
+    ]
+  },
+  "providers": {
+    "agent-db": {
+      "start": "bash scripts/proof-acceptance-stack.sh dev-start",
+      "stop": "bash scripts/proof-acceptance-stack.sh dev-stop"
+    },
+    "acceptance-stack": {
+      "start": "bash scripts/proof-acceptance-stack.sh start",
+      "stop": "bash scripts/proof-acceptance-stack.sh stop"
+    }
+  }
+}
