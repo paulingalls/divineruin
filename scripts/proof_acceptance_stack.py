@@ -3,7 +3,6 @@
 import asyncio
 import json
 import os
-import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -16,11 +15,14 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / "apps/agent"), str(ROOT / "apps/agent/tests")]
 
 
-def state_path():
+def state_path(kind):
     from acceptance._livekit import checkout_livekit_settings
 
     settings = checkout_livekit_settings()
-    return Path(tempfile.gettempdir()) / f"proof-stack-{settings['WT_CHECKOUT_ID']}-{os.environ['PROOF_RUN_PID']}.json"
+    return (
+        Path(tempfile.gettempdir())
+        / f"proof-stack-{kind}-{settings['WT_CHECKOUT_ID']}-{os.environ['PROOF_RUN_PID']}.json"
+    )
 
 
 def exports(values):
@@ -28,16 +30,12 @@ def exports(values):
 
 
 def load_env():
-    result = subprocess.run(
-        ["bash", "scripts/worktree-common.sh", "expected-env"],
-        cwd=ROOT,
-        text=True,
-        capture_output=True,
-        check=True,
-    )
-    values = dict(line.split("=", 1) for line in result.stdout.splitlines())
+    from _db_lifecycle import _read_env_file
+
+    values = _read_env_file(ROOT / ".env")
     for key in ("DATABASE_URL", "REDIS_URL"):
-        os.environ.setdefault(key, values[key])
+        if key not in os.environ:
+            os.environ[key] = values[key]
 
 
 def main(action):
@@ -45,7 +43,7 @@ def main(action):
     from acceptance._livekit import checkout_livekit_settings, ensure_livekit_server
     from acceptance._postgres_fixtures import _apply_migrations_and_seed
 
-    state = state_path()
+    state = state_path("dev" if action.startswith("dev-") else "acceptance")
     if action == "dev-start":
         load_env()
         dsn = resolve_database_url()

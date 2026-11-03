@@ -113,6 +113,7 @@ def main():
             "apps/agent/tests/fixtures/**",
             "apps/agent/tests/acceptance/fixtures/**",
             "apps/mobile/assets/**",
+            "apps/audio/**",
             "content/**",
         ]
         closure_text = "\n".join(Path(p).read_text() for p in graph[path]["closure"])
@@ -122,12 +123,22 @@ def main():
                 "scripts/**/*.ts",
                 "apps/mobile/scripts/**",
                 "apps/mobile/src/audio/**",
+                "apps/mobile/tsconfig.json",
+                "apps/mobile/package.json",
+                "apps/mobile/bunfig.toml",
                 "apps/server/**",
                 "packages/shared/**",
                 "assets/**",
                 "docs/**",
                 "$bun-config",
             ]
+        if "inventory-db-bridge" in closure_text or "_inventory_bridge" in closure_text:
+            inputs += [
+                {"imports-of": "apps/mobile/scripts/inventory-db-bridge.ts"},
+                {"imports-of": "apps/mobile/test-preload.ts"},
+            ]
+        if "apps/agent/tests/agent_tool_profiles.py" in graph[path]["closure"]:
+            inputs.append("apps/agent/*_agent.py")
         tasks[f"agent-acceptance:{Path(path).stem}"] = {
             "run": f"ALLOW_PAID_TESTS= REQUIRE_REAL_LLM= uv run --frozen --directory apps/agent pytest {path.removeprefix('apps/agent/')} -q -m '{MARKERS}'",
             "sets": ["sprint"],
@@ -148,7 +159,13 @@ def main():
             "apps/agent/**",
             "apps/mobile/assets/**",
             "assets/**",
-            "!apps/agent/tests/acceptance/**",
+            "!apps/agent/tests/acceptance/**/test_*.py",
+            ".env.example",
+            "apps/audio/**",
+            "apps/mobile/src/__tests__/fixtures/**",
+            "apps/mobile/tsconfig.json",
+            "apps/mobile/package.json",
+            "apps/mobile/bunfig.toml",
             "content/**",
             "scripts/**/*.py",
             "apps/**/*.{ts,tsx}",
