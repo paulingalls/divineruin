@@ -31,6 +31,8 @@ async def _apply_migrations(conn: asyncpg.Connection) -> None:
 
 
 def _require_docker_or_skip() -> None:
+    if os.environ.get("PROOF_AGENT_PROVIDER"):
+        raise RuntimeError("proof tasks must use provider Postgres without Docker")
     try:
         docker.from_env().ping()
     except DockerException as exc:
@@ -57,9 +59,34 @@ def _owned_postgres_container():
     return PostgresContainer(_PG_IMAGE).with_name(f"divineruin-test-{os.getpid()}-pg-{uuid4().hex}")
 
 
+def provider_database() -> Iterator[str]:
+    admin = os.environ["PROOF_ACCEPTANCE_ADMIN"]
+    template = os.environ["PROOF_ACCEPTANCE_TEMPLATE"]
+    if template != "proof_template":
+        raise RuntimeError("unexpected proof template")
+    name = f"proof_task_{uuid4().hex}"
+    dsn = urlunsplit(urlsplit(admin)._replace(path=f"/{name}"))
+
+    async def execute(sql):
+        conn = await asyncpg.connect(admin)
+        try:
+            await conn.execute(sql)
+        finally:
+            await conn.close()
+
+    asyncio.run(execute(f'CREATE DATABASE "{name}" TEMPLATE "{template}"'))
+    try:
+        yield dsn
+    finally:
+        asyncio.run(execute(f'DROP DATABASE "{name}" WITH (FORCE)'))
+
+
 @pytest.fixture(scope="session")
 def postgres_container() -> Iterator[str]:
     """Boot a per-run Postgres testcontainer (ryuk disabled); yield its asyncpg DSN."""
+    if os.environ.get("PROOF_AGENT_PROVIDER"):
+        yield from provider_database()
+        return
     _require_docker_or_skip()
     with _owned_postgres_container() as pg:
         # testcontainers yields a SQLAlchemy/psycopg2 URL; asyncpg wants a bare scheme.
@@ -70,7 +97,8 @@ def postgres_container() -> Iterator[str]:
 @pytest.fixture(scope="session")
 def migrated_db(postgres_container: str) -> str:
     """Apply migrations + content seed once per session; return the DSN."""
-    asyncio.run(_apply_migrations_and_seed(postgres_container))
+    if not os.environ.get("PROOF_AGENT_PROVIDER"):
+        asyncio.run(_apply_migrations_and_seed(postgres_container))
     return postgres_container
 
 

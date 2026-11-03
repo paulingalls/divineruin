@@ -85,7 +85,7 @@ def livekit_server() -> Iterator[dict[str, str]]:
             "api_secret": server.api_secret,
         }
     finally:
-        if os.environ.get("ACCEPTANCE_NO_REUSE") == "1":
+        if os.environ.get("ACCEPTANCE_NO_REUSE") == "1" and server.container is not None:
             server.container.remove(force=True)
 
 

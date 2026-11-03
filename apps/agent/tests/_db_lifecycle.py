@@ -448,3 +448,17 @@ def stop_if_started(started: bool, database_url: str | None = None) -> None:
             state_path.unlink()
         else:
             _write_state(state_path, state)
+
+
+def configure_provider_redis() -> None:
+    """Give each proof acceptance task a cache database shared with its Bun children."""
+    if os.environ.get("PROOF_AGENT_PROVIDER") != "acceptance":
+        return
+    from redis import Redis
+
+    base = os.environ["PROOF_ACCEPTANCE_REDIS"]
+    with Redis.from_url(base, socket_connect_timeout=5, socket_timeout=5) as connection:
+        number = int(connection.incr("proof:task-database"))
+    if number >= int(os.environ["PROOF_ACCEPTANCE_REDIS_DATABASES"]):
+        raise RuntimeError("proof acceptance cache database capacity exceeded")
+    os.environ["REDIS_URL"] = base.rsplit("/", 1)[0] + f"/{number}"

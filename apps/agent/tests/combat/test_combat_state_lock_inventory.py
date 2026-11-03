@@ -1,6 +1,5 @@
 import ast
 import asyncio
-import subprocess
 from collections import Counter
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
@@ -27,25 +26,9 @@ EXEMPT_FULL_STATE_SAVES: frozenset[tuple[str, str]] = frozenset(
 
 
 def _repository_files() -> tuple[Path, ...]:
-    result = subprocess.run(
-        [
-            "git",
-            "ls-files",
-            "--cached",
-            "--others",
-            "--exclude-standard",
-            "-z",
-            "--",
-            "apps",
-            "packages",
-            "scripts",
-            "docs",
-        ],
-        cwd=_REPO_ROOT,
-        check=True,
-        capture_output=True,
-    )
-    return tuple(Path(path.decode()) for path in result.stdout.split(b"\0") if path)
+    from _repo_inventory import repository_files
+
+    return tuple(repository_files(_REPO_ROOT, "apps", "packages", "scripts", "docs", untracked=True))
 
 
 def _files_containing(needle: bytes, paths: tuple[Path, ...]) -> list[str]:

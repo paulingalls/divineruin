@@ -2,10 +2,10 @@
 
 import ast
 import inspect
-import subprocess
 from pathlib import Path
 
 import pytest
+from _repo_inventory import repository_files
 from agent_tool_profiles import AGENT_PROFILE_NAMES, AGENT_TOOL_LISTS
 from livekit.agents.llm import ToolContext
 from tool_schema_walk import SchemaFacts, walk_tool_schema
@@ -93,10 +93,7 @@ def test_agent_union_counts_are_pinned(name, tools):
 
 
 def _tracked_python_paths(root: Path) -> list[Path]:
-    result = subprocess.run(
-        ["git", "ls-files", "-z", "--", "*.py"], cwd=root, check=True, capture_output=True, text=True
-    )
-    return [root / name for name in result.stdout.split("\0") if name]
+    return [root / name for name in repository_files(root, "*.py")]
 
 
 def _is_agent_session_call(node: ast.Call) -> bool:
