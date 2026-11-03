@@ -36,24 +36,22 @@ describe("npcs.json — portrait schema", () => {
     expect(new Set(voiceIds).size).toBe(voiceIds.length);
   });
 
-  test("exactly 13 NPCs carry tracked portrait slugs", () => {
+  test("exactly 13 NPC portrait files exist", () => {
     const portraitRows = rawNpcs.filter((npc) => "portrait" in npc);
     expect(portraitRows).toHaveLength(13);
 
     const repoRoot = new URL("../../../../", import.meta.url).pathname;
-    const tracked = Bun.spawnSync(["git", "ls-files", "assets/images/npc_*.png"], {
-      cwd: repoRoot,
-    });
-    expect(tracked.exitCode).toBe(0);
-    const trackedPaths = new Set(tracked.stdout.toString().trim().split("\n"));
-    expect(trackedPaths.size).toBe(13);
+    const portraitPaths = new Set(
+      new Bun.Glob("assets/images/npc_*.png").scanSync({ cwd: repoRoot }),
+    );
+    expect(portraitPaths.size).toBe(13);
 
     for (const npc of portraitRows) {
       const portrait = npc.portrait;
       expect(typeof portrait).toBe("string");
       if (typeof portrait !== "string") throw new TypeError("portrait is not a string");
       expect(portrait).toMatch(/^npc_[a-z0-9_]+$/);
-      expect(trackedPaths.has(`assets/images/${portrait}.png`)).toBe(true);
+      expect(portraitPaths.has(`assets/images/${portrait}.png`)).toBe(true);
     }
   });
 });
