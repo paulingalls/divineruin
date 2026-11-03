@@ -16,11 +16,34 @@ MARKERS = "acceptance and not real_llm and not openai_real_llm and not live_voic
 
 
 def paid_only(path):
-    tree = ast.parse(path.read_text())
-    for node in tree.body:
+    value = None
+    for node in ast.parse(path.read_text()).body:
         if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "pytestmark" for t in node.targets):
-            return any(isinstance(n, ast.Attribute) and n.attr in PAID for n in ast.walk(node.value))
-    return False
+            if value is not None:
+                raise ValueError(f"{path}: unsupported pytestmark reassignment")
+            value = node.value
+        elif (
+            isinstance(node, (ast.AnnAssign, ast.AugAssign))
+            and isinstance(node.target, ast.Name)
+            and node.target.id == "pytestmark"
+        ):
+            raise ValueError(f"{path}: unsupported pytestmark assignment")
+    if value is None:
+        return False
+    markers = value.elts if isinstance(value, (ast.List, ast.Tuple)) else [value]
+    names = set()
+    for marker in markers:
+        target = marker.func if isinstance(marker, ast.Call) else marker
+        if not (
+            isinstance(target, ast.Attribute)
+            and isinstance(target.value, ast.Attribute)
+            and target.value.attr == "mark"
+            and isinstance(target.value.value, ast.Name)
+            and target.value.value.id == "pytest"
+        ):
+            raise ValueError(f"{path}: unsupported pytestmark expression")
+        names.add(target.attr)
+    return bool(names & PAID)
 
 
 def imports(path):
