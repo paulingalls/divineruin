@@ -85,7 +85,8 @@ def main(action):
             state.unlink()
     elif action in ("start", "bun-start"):
         settings = checkout_livekit_settings()
-        name = f"dr-proof-{settings['WT_CHECKOUT_ID']}-{os.environ['PROOF_RUN_PID']}"
+        kind = "bun" if action == "bun-start" else "acceptance"
+        name = f"dr-proof-{kind}-{settings['WT_CHECKOUT_ID']}-{os.environ['PROOF_RUN_PID']}"
         labels = {
             "com.divineruin.clone": settings["WT_CLONE_ID"],
             "com.divineruin.checkout": settings["WT_CHECKOUT_ID"],
