@@ -51,10 +51,11 @@ A checklist for adding a row to `content/locations.json`. The schema examples un
 
 **References.** Seed validates terrain/region_type, exit destinations, gathering-node refs and `resource_table` materials. It does not validate `ambient_sounds`. Check each bed against `SoundscapeName` in `apps/mobile/src/audio/soundscape-registry.ts`; an unknown bed plays silence. Every NPC, item or scene id you name must already exist in its `content/*.json`.
 
-**Catalog pins a new row turns red.** Update all three in the same commit:
+**Catalog pins a new row turns red.** Update the applicable pins in the same commit:
 - `LOCATION_COUNT` in `apps/server/src/locations-load.test.ts`.
 - The row count and the id groups (`ACCORD_IDS`, `MILLHAVEN_IDS`, `WILDERNESS_IDS`, `DUNGEON_IDS`) in `packages/shared/src/entities/location.test.ts`.
 - The id → navigation map in `apps/agent/tests/test_travel_content.py`, for any row with `navigation`.
+- A node in `apps/mobile/src/data/map-layout.ts` for every new location, pinned by `apps/mobile/src/__tests__/map-layout.test.ts`. Give it a display label, display region, and unique coordinates in 0–1000.
 
 **Seed and validate**, from the repository root:
 
@@ -63,6 +64,7 @@ bun run seed
 bun --env-file=.env run --cwd apps/agent uv run pytest tests/test_content_validation.py tests/test_seed_content.py tests/test_travel_content.py tests/test_terrain.py tests/test_gathering_content.py tests/acceptance/test_seed_atomic.py -q
 bun --env-file=.env test --cwd apps/server src/locations-load.test.ts src/errand_risk.test.ts
 bun test --cwd packages/shared src/entities/location.test.ts
+bun test --cwd apps/mobile src/__tests__/map-layout.test.ts
 ```
 
 `content/*.json` changes need a reseed, or the strict loaders fail server startup.
