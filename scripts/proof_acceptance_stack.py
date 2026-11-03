@@ -65,7 +65,7 @@ def main(action):
     from acceptance._livekit import checkout_livekit_settings, ensure_livekit_server
     from acceptance._postgres_fixtures import _apply_migrations_and_seed
 
-    state = state_path("dev" if action.startswith("dev-") else "acceptance")
+    state = state_path(action.split("-")[0] if "-" in action else "acceptance")
     if action == "dev-start":
         load_env()
         dsn = resolve_database_url()
@@ -83,9 +83,10 @@ def main(action):
             saved = json.loads(state.read_text())
             stop_if_started(saved["started"], saved["dsn"])
             state.unlink()
-    elif action == "start":
+    elif action in ("start", "bun-start"):
         settings = checkout_livekit_settings()
-        name = f"dr-proof-{settings['WT_CHECKOUT_ID']}-{os.environ['PROOF_RUN_PID']}"
+        kind = "bun" if action == "bun-start" else "acceptance"
+        name = f"dr-proof-{kind}-{settings['WT_CHECKOUT_ID']}-{os.environ['PROOF_RUN_PID']}"
         labels = {
             "com.divineruin.clone": settings["WT_CLONE_ID"],
             "com.divineruin.checkout": settings["WT_CHECKOUT_ID"],
@@ -132,7 +133,15 @@ def main(action):
             "valkey/valkey:8-alpine",
             name=f"{name}-redis",
             detach=True,
-            command=["valkey-server", "--databases", str(CACHE_DATABASES), "--save", "", "--appendonly", "no"],
+            command=[
+                "valkey-server",
+                "--databases",
+                str(CACHE_DATABASES),
+                "--save",
+                "",
+                "--appendonly",
+                "no",
+            ],
             ports={"6379/tcp": None},
             labels=labels,
         )
@@ -150,12 +159,13 @@ def main(action):
                     if time.monotonic() >= deadline:
                         raise
                     time.sleep(0.2)
-        before = {c.id for c in client.containers.list()}
-        server = ensure_livekit_server()
-        print(
-            f"proof LiveKit {'reuse' if server.container.id in before else 'start'} {server.container.id}",
-            flush=True,
-        )
+        if action == "start":
+            before = {c.id for c in client.containers.list()}
+            server = ensure_livekit_server()
+            print(
+                f"proof LiveKit {'reuse' if server.container.id in before else 'start'} {server.container.id}",
+                flush=True,
+            )
         exports(
             {
                 "PROOF_AGENT_PROVIDER": "acceptance",
@@ -164,13 +174,19 @@ def main(action):
                 "PROOF_ACCEPTANCE_REDIS": redis_url,
                 "PROOF_ACCEPTANCE_REDIS_DATABASES": str(CACHE_DATABASES),
                 "DATABASE_URL": admin,
-                "PROOF_LIVEKIT_WS": server.ws_url,
-                "PROOF_LIVEKIT_HTTP": server.http_url,
-                "PROOF_LIVEKIT_KEY": server.api_key,
-                "PROOF_LIVEKIT_SECRET": server.api_secret,
+                **(
+                    {
+                        "PROOF_LIVEKIT_WS": server.ws_url,
+                        "PROOF_LIVEKIT_HTTP": server.http_url,
+                        "PROOF_LIVEKIT_KEY": server.api_key,
+                        "PROOF_LIVEKIT_SECRET": server.api_secret,
+                    }
+                    if action == "start"
+                    else {"REDIS_URL": redis_url}
+                ),
             }
         )
-    elif action == "stop":
+    elif action in ("stop", "bun-stop"):
         if state.exists():
             saved = json.loads(state.read_text())
             owned = []

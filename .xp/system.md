@@ -15,9 +15,9 @@ plus an async worker. Everything else is TypeScript on Bun (never Node): Bun.ser
 REST API, Expo/expo-router mobile client, Bun-SSR web. Bun-native APIs only
 (Bun.serve / Bun.sql / Bun.redis / Bun.file), `bun`/`bunx`, never npx.
 Tests: `bun test` (bun:test) for TS, `pytest` + `pytest-asyncio` for Python.
-Commit fast tier: `bash scripts/test-fast.sh` checks staged language files.
+Commit fast tier: staged lint via `bash scripts/test-fast.sh`, then Proof lint and staged `commit` selection.
 Story Verify runs the card’s focused behavioral checks.
-Story land retains `bun run test:all` before merge. PR CI owns full static
+Story land runs Proof selection for the `land` set (including `commit`) on the merged index. PR CI owns full static
 checks and Bun/Python non-acceptance suites. Sprint close owns deterministic
 acceptance and Playwright; CI repeats them for free-patch coverage without
 predecessor-result caching. Push scans outgoing secrets only.
@@ -138,7 +138,7 @@ its boundary.
 | Automation | Expo/React Native mobile app | Maestro — `apps/mobile/.maestro/` flows + `scripts/maestro-acceptance.ts` |
 | HTTP/WebSocket | `apps/server` Bun.serve REST; LiveKit token + data-channel endpoints | bun:test server suites |
 | Message-event | Valkey/Redis `async_worker.py` polling loop | pytest — `test_ops_async_reset_runbook.py` |
-| CLI | Product: `agent.py dev`, `async_worker.py`; developer: pre-commit, pre-merge-commit, pre-push, sprint, test-fast.sh, test-all.ts | Product pytest; developer entry points use disposable dispatch/failure scaffolding, recorded then removed (constraint 3) |
+| CLI | Product: `agent.py dev`, `async_worker.py`; developer: pre-commit (Proof commit), pre-merge-commit (Proof land), pre-push, sprint (Proof sprint + Playwright), test-fast.sh, test-all.ts | Product pytest; developer entry points use disposable dispatch/failure scaffolding, recorded then removed (constraint 3) |
 
 A story's ACs must be executed by the surface-driving test named in its Verify.
 The real-LLM acceptance lane is deliberately excluded from `test:all` (ADR 0003,
@@ -231,8 +231,8 @@ without certifying paid speech-recognition accuracy.
   "protected" as the reason for it. Work lands as first-parent merges of
   `paulingalls/sprint-*` / `story-*` / `free-*` branches. `.githooks/pre-push`
   scans outgoing secrets for every ref without starting services. Story land
-  runs the fast lane before merge. PR CI owns static and non-acceptance checks;
-  `.githooks/sprint` runs acceptance and Playwright at sprint close on the
+  runs Proof selection for the `land` set on the merged index. PR CI owns static and non-acceptance checks;
+  `.githooks/sprint` runs Proof `sprint` selection and Playwright at sprint close on the
   trial-merged integration tree. Free patches run the outgoing secret scan
   plus focused card Acceptance at the affected behavior/integration
   boundary on the trial-merged tree, then normal PR CI before merge. The lead
@@ -390,3 +390,5 @@ frozen installs above before pushing: the python lane's workspace-report test
 reds on "installed package is missing". A story worktree cut before a
 worktree-validator change tears down with its old scripts and fails; run
 `bun run worktree:teardown --sweep` from the primary checkout afterwards.
+
+Manual full lanes remain available through `bun run test:all`, `bun run test:python`, and `bun run test:acceptance`.

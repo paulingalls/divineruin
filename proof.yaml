@@ -95,6 +95,10 @@
     "acceptance-stack": {
       "start": "bash scripts/proof-acceptance-stack.sh start",
       "stop": "bash scripts/proof-acceptance-stack.sh stop"
+    },
+    "bun-stack": {
+      "start": "bash scripts/proof-acceptance-stack.sh bun-start",
+      "stop": "bash scripts/proof-acceptance-stack.sh bun-stop"
     }
   }
 }

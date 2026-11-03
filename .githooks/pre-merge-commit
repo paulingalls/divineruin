@@ -14,4 +14,4 @@ export ALLOW_PAID_TESTS= REQUIRE_REAL_LLM=
 # xp land keeps only the last line of a refusing hook; the full lane output lands here.
 mkdir -p flake-artifacts
 set -o pipefail
-bun run test:all 2>&1 | tee flake-artifacts/last-pre-merge-commit.log
+bunx proof run --staged --set land 2>&1 | tee flake-artifacts/last-pre-merge-commit.log
