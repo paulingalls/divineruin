@@ -670,7 +670,7 @@ Canonical economy specification: static pricing data. Dynamic systems live in su
 
 ---
 
-## game_mechanics/game_mechanics_encounter_roles.md (790 lines)
+## game_mechanics/game_mechanics_encounter_roles.md (783 lines)
 
 Encounter role system: creature stat/loot/XP modifiers, encounter budget math, narration guidance. Referenced by bestiary and economy for loot scaling and currency drops.
 
@@ -678,13 +678,13 @@ Encounter role system: creature stat/loot/XP modifiers, encounter budget math, n
 |---|---|---|
 | Role Definitions | 11-64 | Minion/Standard/Elite/Boss/Legendary role tags and intent |
 | Combat Stat Modifiers | 65-123 | HP, attack, damage, AC, save modifiers per role |
-| Loot Modifiers | 124-184 | Material/currency drop multipliers, role-based loot rules |
-| XP Modifiers | 185-200 | XP scaling per role |
-| Encounter Budget System | 201-256 | Budget math, party-size scaling, encounter composition |
-| Worked Examples | 257-584 | Full encounter walk-throughs across regions and tiers |
-| DM Narration Guidance | 585-655 | How to voice role differences in combat |
-| Derivation Formula (Implementation Reference) | 656-769 | Algorithms for runtime stat/loot derivation |
-| Design Decisions | 770-790 | Locked decisions for the role system |
+| Loot Modifiers | 124-193 | Material/currency drop multipliers, role-based loot rules |
+| XP Modifiers | 194-209 | XP scaling per role |
+| Encounter Budget System | 210-265 | Budget math, party-size scaling, encounter composition |
+| Worked Examples | 266-593 | Full encounter walk-throughs across regions and tiers |
+| DM Narration Guidance | 594-664 | How to voice role differences in combat |
+| Derivation Formula (Implementation Reference) | 665-762 | Algorithms for runtime stat/loot derivation |
+| Design Decisions | 763-783 | Locked decisions for the role system |
 
 ---
 
