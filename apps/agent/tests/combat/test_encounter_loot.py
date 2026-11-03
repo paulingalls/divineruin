@@ -277,3 +277,26 @@ def test_hollow_wrack_currency_contract():
         assert calculate_currency_drop("hollow_wrack", 3, "minion", Fixed(chance)) == 0
     with pytest.raises(ValueError, match="Unknown creature category"):
         calculate_currency_drop("hollow_bogus", 3, "standard", Fixed(0))
+
+
+@pytest.mark.parametrize("seed", [0, 1, 9, 122])
+@pytest.mark.parametrize("chance", [1.0, 1.2])
+def test_guaranteed_minion_skips_chance_roll(seed, chance):
+    guaranteed = {"item_id": "hide", "chance": chance, "quantity": 3}
+    tail = {"item_id": "bone", "chance": 0.4, "quantity": 1}
+    rng, reference = random.Random(seed), random.Random(seed)
+    expected_tail = derive_role_loot({"drops": [tail]}, "minion", reference)
+    assert derive_role_loot({"drops": [guaranteed, tail]}, "minion", rng) == [
+        {"item_id": "hide", "quantity": 2},
+        *expected_tail,
+    ]
+    assert rng.getstate() == reference.getstate()
+
+
+@pytest.mark.parametrize("seed", [0, 1, 9, 122])
+def test_guaranteed_dice_minion_consumes_only_quantity(seed):
+    rng, reference = random.Random(seed), random.Random(seed)
+    quantity = max(1, reference.randint(1, 4) - 1)
+    table = {"drops": [{"item_id": "wolf_fangs", "chance": 1.0, "quantity": "1d4"}]}
+    assert derive_role_loot(table, "minion", rng) == [{"item_id": "wolf_fangs", "quantity": quantity}]
+    assert rng.getstate() == reference.getstate()

@@ -150,7 +150,7 @@ def derive_role_loot(loot_table: dict, role: str, rng: random.Random) -> list[di
     drops: list[dict] = []
     for entry in loot_table.get("drops", []):
         chance = _role_drop_chance(entry["chance"], role)
-        if rng.random() < chance:
+        if entry["chance"] >= 1 or rng.random() < chance:
             authored = entry["quantity"]
             quantity = roll(authored, rng=rng).total if isinstance(authored, str) else authored
             drops.append({"item_id": entry["item_id"], "quantity": _role_quantity(quantity, role)})
