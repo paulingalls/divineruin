@@ -397,6 +397,9 @@
         "imports-of": "apps/mobile/src/__tests__/invite-link.test.ts"
       },
       {
+        "imports-of": "apps/mobile/src/__tests__/map-layout.test.ts"
+      },
+      {
         "imports-of": "apps/mobile/src/__tests__/music-player.test.ts"
       },
       {

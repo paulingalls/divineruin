@@ -1,5 +1,5 @@
 /**
- * Static map node positions for the 16 MVP locations.
+ * Static map node positions for the location catalog.
  * Coordinates are in a 0–1000 space, scaled to container at render time.
  * Connections derived from content/locations.json exits.
  */
@@ -16,6 +16,9 @@ export const MAP_LAYOUT: MapLayoutNode[] = [
   // --- Accord (central hub) ---
   { id: "accord_market_square", label: "Market Square", x: 500, y: 400, region: "Accord" },
   { id: "accord_guild_hall", label: "Guild Hall", x: 500, y: 280, region: "Accord" },
+  { id: "accord_training_hall", label: "Training Hall", x: 500, y: 140, region: "Accord" },
+  { id: "accord_forge", label: "Grimjaw's Forge", x: 350, y: 280, region: "Accord" },
+  { id: "grimjaw_quarters", label: "Grimjaw's Quarters", x: 250, y: 200, region: "Accord" },
   { id: "accord_temple_row", label: "Temple Row", x: 650, y: 400, region: "Accord" },
   { id: "accord_dockside", label: "Dockside", x: 500, y: 520, region: "Accord" },
   {
@@ -30,6 +33,22 @@ export const MAP_LAYOUT: MapLayoutNode[] = [
 
   // --- Greyvale South Road (connector) ---
   { id: "greyvale_south_road", label: "South Road", x: 500, y: 650, region: "Greyvale" },
+
+  // --- Keldaran ---
+  { id: "keldaran_southern_pass", label: "Southern Pass", x: 325, y: 650, region: "Keldaran" },
+
+  // --- Thornveld ---
+  {
+    id: "thornveld_old_growth_grove",
+    label: "Old-Growth Grove",
+    x: 150,
+    y: 650,
+    region: "Thornveld",
+  },
+
+  // --- Sunward Coast ---
+  { id: "sunward_tidal_shore", label: "Tidal Shore", x: 750, y: 520, region: "Sunward Coast" },
+  { id: "sunward_reed_marsh", label: "Reed Marsh", x: 850, y: 380, region: "Sunward Coast" },
 
   // --- Millhaven ---
   { id: "millhaven", label: "Millhaven", x: 400, y: 770, region: "Millhaven" },
