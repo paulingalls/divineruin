@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.31.1 — 2026-11-02
+
+- `proof` (v0.27.0) declares the ten Bun test targets: the six packages plus the four DB and Redis server tests as their own tasks. `bunx proof run --set commit` runs only the tasks whose test imports or declared reads changed, and `proof plan` shows the rest PROVEN. Hooks keep their current tiers for now.
+- The shared portrait checks test that the files exist instead of asking Git, so they pass in a sandbox without a repository.
+
 ## 0.31.0 — 2026-10-13
 
 - Each check runs once, in the cheapest tier that catches it, with measured costs in `.xp/system.md`. Push now only scans outgoing commits for secrets (about 0.1 s, no services). Story land keeps the fast lane, and sprint close runs acceptance and Playwright. PR CI owns full lint and all suites, so free patches lose no coverage; Python and acceptance run as parallel jobs, and acceptance refuses to skip when Docker is missing.
