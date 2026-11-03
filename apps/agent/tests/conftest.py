@@ -4,7 +4,7 @@ import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from _db_lifecycle import ensure_db_up, resolve_database_url, stop_if_started
+from _db_lifecycle import configure_provider_redis, ensure_db_up, resolve_database_url, stop_if_started
 from _paid_tests import (
     authorize_paid_calls,
     finish_paid_calls,
@@ -42,6 +42,8 @@ def _is_xdist_worker(config: pytest.Config) -> bool:
 def pytest_configure(config: pytest.Config) -> None:
     install_paid_call_guard()
     snapshot_repository()
+    if not _is_xdist_worker(config):
+        configure_provider_redis()
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:

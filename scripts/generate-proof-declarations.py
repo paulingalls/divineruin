@@ -132,13 +132,18 @@ def main():
                 "docs/**",
                 "$bun-config",
             ]
+        if "async-activity-reset.md" in closure_text:
+            inputs.append("docs/ops/async-activity-reset.md")
+        for target in ("use-game-events.parse.test.ts", "sound-registry.test.ts"):
+            if target in closure_text:
+                inputs.append({"imports-of": f"apps/mobile/src/__tests__/{target}"})
         if "inventory-db-bridge" in closure_text or "_inventory_bridge" in closure_text:
             inputs += [
                 {"imports-of": "apps/mobile/scripts/inventory-db-bridge.ts"},
                 {"imports-of": "apps/mobile/test-preload.ts"},
             ]
         if "apps/agent/tests/agent_tool_profiles.py" in graph[path]["closure"]:
-            inputs.append("apps/agent/*_agent.py")
+            inputs += [imports(str(p)) for p in sorted(Path("apps/agent").glob("*_agent.py"))]
         tasks[f"agent-acceptance:{Path(path).stem}"] = {
             "run": f"ALLOW_PAID_TESTS= REQUIRE_REAL_LLM= uv run --frozen --directory apps/agent pytest {path.removeprefix('apps/agent/')} -q -m '{MARKERS}'",
             "sets": ["sprint"],

@@ -5,12 +5,15 @@ import json
 import os
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 import asyncpg
 import docker
+import redis
 from docker.errors import NotFound
 
+CACHE_DATABASES = 512
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / "apps/agent"), str(ROOT / "apps/agent/tests")]
 
@@ -86,8 +89,6 @@ def main(action):
         admin = f"postgresql://postgres:proof@127.0.0.1:{port}/postgres"
 
         async def prepare():
-            import time
-
             deadline = time.monotonic() + 60
             while True:
                 try:
@@ -104,6 +105,28 @@ def main(action):
             await _apply_migrations_and_seed(admin.rsplit("/", 1)[0] + "/proof_template")
 
         asyncio.run(prepare())
+        cache = client.containers.run(
+            "valkey/valkey:8-alpine",
+            name=f"{name}-redis",
+            detach=True,
+            command=["valkey-server", "--databases", str(CACHE_DATABASES), "--save", "", "--appendonly", "no"],
+            ports={"6379/tcp": None},
+            labels=labels,
+        )
+        print(f"proof Valkey start {cache.id}", flush=True)
+        cache.reload()
+        cache_port = cache.attrs["NetworkSettings"]["Ports"]["6379/tcp"][0]["HostPort"]
+        redis_url = f"redis://127.0.0.1:{cache_port}/0"
+        deadline = time.monotonic() + 60
+        with redis.Redis.from_url(redis_url, socket_connect_timeout=1, socket_timeout=1) as connection:
+            while True:
+                try:
+                    connection.ping()
+                    break
+                except redis.RedisError:
+                    if time.monotonic() >= deadline:
+                        raise
+                    time.sleep(0.2)
         before = {c.id for c in client.containers.list()}
         server = ensure_livekit_server()
         print(
@@ -115,6 +138,8 @@ def main(action):
                 "PROOF_AGENT_PROVIDER": "acceptance",
                 "PROOF_ACCEPTANCE_ADMIN": admin,
                 "PROOF_ACCEPTANCE_TEMPLATE": "proof_template",
+                "PROOF_ACCEPTANCE_REDIS": redis_url,
+                "PROOF_ACCEPTANCE_REDIS_DATABASES": str(CACHE_DATABASES),
                 "DATABASE_URL": admin,
                 "PROOF_LIVEKIT_WS": server.ws_url,
                 "PROOF_LIVEKIT_HTTP": server.http_url,
@@ -125,13 +150,16 @@ def main(action):
     elif action == "stop":
         if state.exists():
             saved = json.loads(state.read_text())
-            try:
-                container = docker.from_env().containers.get(saved["name"])
-            except NotFound:
-                pass
-            else:
+            owned = []
+            for name in (saved["name"], saved["name"] + "-redis"):
+                try:
+                    container = docker.from_env().containers.get(name)
+                except NotFound:
+                    continue
                 if any(container.labels.get(k) != v for k, v in saved["labels"].items()):
-                    raise RuntimeError("proof Postgres ownership changed; refusing removal")
+                    raise RuntimeError("proof stack ownership changed; refusing removal")
+                owned.append(container)
+            for container in owned:
                 container.remove(force=True, v=True)
             state.unlink()
     else:
