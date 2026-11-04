@@ -59,7 +59,7 @@ async def material_rooms(livekit_server):
 async def seed_material_owner(pool, owner, entries):
     await seed_player(pool, player_id=owner, location_id="greyvale_wilderness_north")
     for mid, qty in entries.items():
-        await db_mutations.add_inventory_item(owner, mid, qty)
+        await db_mutations.add_inventory_item(owner, mid, qty, tainted=False)
 
 
 @pytest.fixture

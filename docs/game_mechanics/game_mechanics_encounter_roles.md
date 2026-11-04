@@ -135,6 +135,15 @@ All modifiers apply to the creature's base loot table as defined in `game_mechan
 | **Boss** | All drops 100% (guaranteed) | +50% (round up) | 2× base + bonus (see below) | One bonus item from context loot pool |
 | **Named** | As written (bespoke tables, already 100%) | As written | As written (bespoke) | Unique items per creature |
 
+Skill requirements are checked before any roll. Every requirement must be met by the
+party's best tier for that skill among the player participants who fought; different
+participants may supply different skills. Ineligible rows consume no RNG.
+Authored chance ≥100% overrides every role's chance modifier, including Minion:
+it skips the chance roll, while quantity still rolls dice and uses the role modifier.
+Role-promoted 100% chances still consume a chance roll. Currency is calculated separately.
+Seeded rewards remain identical to the previous generator when every gate passes and
+no authored guaranteed row is encountered.
+
 ### Currency Drop Rules
 
 Not every creature carries money. Currency drops are determined by creature category, then modified by encounter role.
@@ -718,33 +727,17 @@ ROLE_MODIFIERS = {
 ### Loot Derivation
 
 ```python
-def derive_role_loot(base_loot: list[LootEntry], role: EncounterRole, creature_category: str, creature_tier: int) -> list[LootEntry]:
-    """
-    Modifies a creature's base loot table by encounter role.
-    Also calculates currency drop if applicable.
-    """
-    if role in (EncounterRole.STANDARD, EncounterRole.NAMED):
-        return base_loot  # No modification
-    
-    derived_loot = []
-    for entry in base_loot:
-        modified = entry.copy()
-        
-        if role == EncounterRole.MINION:
-            modified.probability = max(0.05, entry.probability * 0.5)
-            modified.quantity = max(1, parse_quantity(entry.quantity) - 1)
-        
-        elif role == EncounterRole.ELITE:
-            modified.probability = min(1.0, entry.probability + 0.25)
-            modified.quantity = parse_quantity(entry.quantity) + 1
-        
-        elif role == EncounterRole.BOSS:
-            modified.probability = 1.0  # All drops guaranteed
-            modified.quantity = ceil(parse_quantity(entry.quantity) * 1.5)
-        
-        derived_loot.append(modified)
-    
-    return derived_loot
+def generate_loot(loot_table, role, party_tiers, rng):
+    """party_tiers holds the best tier per skill among player combat participants."""
+    drops = []
+    for entry in loot_table["drops"]:
+        if not all(SKILL_TIER_ORDER.index(party_tiers[r["skill"]]) >=
+                   SKILL_TIER_ORDER.index(r["tier"]) for r in entry.get("requires", [])):
+            continue
+        if entry["chance"] >= 1 or rng.random() < role_drop_chance(entry["chance"], role):
+            quantity = roll(entry["quantity"], rng) if isinstance(entry["quantity"], str) else entry["quantity"]
+            drops.append({"item_id": entry["item_id"], "quantity": role_quantity(quantity, role)})
+    return drops
 
 def calculate_currency_drop(creature_category: str, creature_tier: int, role: EncounterRole) -> CurrencyDrop | None:
     """Returns currency drop for a creature, or None if the category doesn't drop currency."""

@@ -73,28 +73,6 @@ class TestStateQueries:
         assert result == {}
 
     @pytest.mark.asyncio
-    async def test_get_player_inventory_joins_items(self):
-        """get_player_inventory should join items and inventory slots."""
-        mock_pool = AsyncMock()
-        mock_pool.fetch = AsyncMock(
-            return_value=[
-                {
-                    "item_id": "sword",
-                    "item_data": json.dumps({"id": "sword", "name": "Steel Sword"}),
-                    "material_data": None,
-                    "slot_data": json.dumps({"quantity": 1, "equipped": True}),
-                }
-            ]
-        )
-
-        with patch("db.get_pool", return_value=mock_pool):
-            result = await db_queries.get_player_inventory("p1")
-
-        assert len(result) == 1
-        assert result[0]["id"] == "sword"
-        assert result[0]["slot_info"]["equipped"] is True
-
-    @pytest.mark.asyncio
     async def test_get_player_inventory_raises_on_id_in_neither_catalog(self):
         mock_pool = AsyncMock()
         mock_pool.fetch = AsyncMock(

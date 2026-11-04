@@ -404,7 +404,7 @@ Worktree bootstrap design brief and measured implementation outcome.
 
 ---
 
-## world_data_simulation.md (997 lines)
+## world_data_simulation.md (999 lines)
 
 DB schemas, JSON entity formats, world sim rules, content style guide.
 
@@ -413,12 +413,12 @@ Additional topics: Authoring a Location: required fields, terrain/region_type ru
 | Section | Lines | What's There |
 |---|---|---|
 | Purpose | 3-10 | Content authoring format, world simulation rules, and data model; sparse data, DM narrates |
-| Content Authoring Format | 11-508 | JSON schemas, Tier 1 (authored) vs Tier 2 (generated) |
-| Content Style Guide | 509-668 | Write for the ear, description limits, NPC content, Hollow wrongness |
-| World Simulation Rules | 669-858 | World clock (1:1), 4 simulation layers (per-minute through event-driven) |
-| Data Model | 859-956 | PostgreSQL + Redis: 10 content tables, 12 state tables, 7 Redis patterns |
-| MVP Content Scope | 957-985 | ~20 locations, ~25 NPCs, ~40 items, ~5 quests, ~18 events |
-| Cross-References | 986-997 | Where these schemas and rules connect to the other design docs |
+| Content Authoring Format | 11-510 | JSON schemas, Tier 1 (authored) vs Tier 2 (generated) |
+| Content Style Guide | 511-670 | Write for the ear, description limits, NPC content, Hollow wrongness |
+| World Simulation Rules | 671-860 | World clock (1:1), 4 simulation layers (per-minute through event-driven) |
+| Data Model | 861-958 | PostgreSQL + Redis: 10 content tables, 12 state tables, 7 Redis patterns |
+| MVP Content Scope | 959-987 | ~20 locations, ~25 NPCs, ~40 items, ~5 quests, ~18 events |
+| Cross-References | 988-999 | Where these schemas and rules connect to the other design docs |
 
 ---
 
@@ -670,7 +670,7 @@ Canonical economy specification: static pricing data. Dynamic systems live in su
 
 ---
 
-## game_mechanics/game_mechanics_encounter_roles.md (790 lines)
+## game_mechanics/game_mechanics_encounter_roles.md (783 lines)
 
 Encounter role system: creature stat/loot/XP modifiers, encounter budget math, narration guidance. Referenced by bestiary and economy for loot scaling and currency drops.
 
@@ -678,13 +678,13 @@ Encounter role system: creature stat/loot/XP modifiers, encounter budget math, n
 |---|---|---|
 | Role Definitions | 11-64 | Minion/Standard/Elite/Boss/Legendary role tags and intent |
 | Combat Stat Modifiers | 65-123 | HP, attack, damage, AC, save modifiers per role |
-| Loot Modifiers | 124-184 | Material/currency drop multipliers, role-based loot rules |
-| XP Modifiers | 185-200 | XP scaling per role |
-| Encounter Budget System | 201-256 | Budget math, party-size scaling, encounter composition |
-| Worked Examples | 257-584 | Full encounter walk-throughs across regions and tiers |
-| DM Narration Guidance | 585-655 | How to voice role differences in combat |
-| Derivation Formula (Implementation Reference) | 656-769 | Algorithms for runtime stat/loot derivation |
-| Design Decisions | 770-790 | Locked decisions for the role system |
+| Loot Modifiers | 124-193 | Material/currency drop multipliers, role-based loot rules |
+| XP Modifiers | 194-209 | XP scaling per role |
+| Encounter Budget System | 210-265 | Budget math, party-size scaling, encounter composition |
+| Worked Examples | 266-593 | Full encounter walk-throughs across regions and tiers |
+| DM Narration Guidance | 594-664 | How to voice role differences in combat |
+| Derivation Formula (Implementation Reference) | 665-762 | Algorithms for runtime stat/loot derivation |
+| Design Decisions | 763-783 | Locked decisions for the role system |
 
 ---
 

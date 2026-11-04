@@ -25,17 +25,18 @@ export async function inventorySnapshot(playerId: string, tx = sql) {
   const rows: {
     inventory_revision: string;
     item_id: string | null;
+    tainted: boolean;
     item_data: unknown;
     material_data: unknown;
     slot_data: unknown;
   }[] = await tx`
-    SELECT p.inventory_revision::text, pi.item_id, i.data AS item_data, m.data AS material_data, pi.data AS slot_data
+    SELECT p.inventory_revision::text, pi.item_id, pi.tainted, i.data AS item_data, m.data AS material_data, pi.data AS slot_data
     FROM players p
     LEFT JOIN player_inventory pi ON pi.player_id = p.player_id
     LEFT JOIN items i ON i.id = pi.item_id
     LEFT JOIN materials_catalog m ON m.id = pi.item_id
     WHERE p.player_id = ${playerId}
-    ORDER BY pi.item_id
+    ORDER BY pi.item_id, pi.tainted
   `;
   if (!rows.length) throw new Error(`Unknown inventory owner ${playerId}`);
   const inventory = rows
@@ -46,6 +47,7 @@ export async function inventorySnapshot(playerId: string, tx = sql) {
       const item = { ...parseJsonb(row.item_data ?? row.material_data) };
       if (row.item_data == null) item.type = "material";
       item.slot_info = parseJsonb(row.slot_data);
+      item.tainted = row.tainted;
       const image = itemImage(item);
       if (image) item.image_url = image;
       return item;

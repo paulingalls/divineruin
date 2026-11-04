@@ -20,6 +20,7 @@ def project_inventory(rows) -> list[dict]:
             raise ValueError(f"Inventory id {row['item_id']!r} has no item or material catalog entry")
         slot = json.loads(row["slot_data"])
         item["slot_info"] = slot
+        item["tainted"] = row["tainted"]
         image_url = compute_item_image_url(item)
         if image_url:
             item["image_url"] = image_url
@@ -31,14 +32,14 @@ async def get_inventory_snapshot(player_id: str, *, conn=None) -> dict:
     connection = conn or await db.get_pool()
     rows = await connection.fetch(
         """
-        SELECT p.inventory_revision::text, pi.item_id, i.data AS item_data,
+        SELECT p.inventory_revision::text, pi.item_id, pi.tainted, i.data AS item_data,
                m.data AS material_data, pi.data AS slot_data
         FROM players p
         LEFT JOIN player_inventory pi ON pi.player_id = p.player_id
         LEFT JOIN items i ON i.id = pi.item_id
         LEFT JOIN materials_catalog m ON m.id = pi.item_id
         WHERE p.player_id = $1
-        ORDER BY pi.item_id
+        ORDER BY pi.item_id, pi.tainted
         """,
         player_id,
     )

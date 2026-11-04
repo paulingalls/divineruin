@@ -226,7 +226,7 @@ async def get_loot_table(loot_table_id: str) -> dict | None:
 
     Static content read from the pool + Redis cache (no conn param), mirroring
     get_encounter_template. combat_end calls this on victory — inside its teardown tx — to
-    scale the table's base drops by each defeated enemy's role (encounter_loot.derive_role_loot).
+    gate the table by party skills and scale drops by enemy role (encounter_loot.generate_loot).
     Reading from the pool rather than the in-flight tx conn is correct: loot tables are immutable
     seeded content, independent of the combat-teardown mutations. Returns None for an unknown id."""
     cache_key = f"loot_table:{loot_table_id}"

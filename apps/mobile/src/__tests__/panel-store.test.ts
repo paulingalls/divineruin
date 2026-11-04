@@ -45,6 +45,7 @@ const SAMPLE_ITEM: InventoryItem = {
   value_base: 25,
   quantity: 1,
   equipped: true,
+  tainted: false,
 };
 
 const SAMPLE_QUEST: QuestView = {

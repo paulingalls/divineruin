@@ -20,7 +20,8 @@ def eligible_items(session, target_id, inventory):
     return [
         item
         for item in inventory
-        if item.get("slot_info", {}).get("equipped") is True
+        if not item.get("tainted", False)
+        and item.get("slot_info", {}).get("equipped") is True
         and item.get("type") in ("weapon", "shield", "tool")
         and item.get("durability_tier") in durability.DURABILITY_MAX_HITS
     ]

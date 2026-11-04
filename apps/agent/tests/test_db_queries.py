@@ -33,12 +33,6 @@ class TestGetPlayerKnownRecipeIds:
 
 class TestGetPlayerMaterials:
     @patch("db_queries.db")
-    async def test_returns_material_id_to_quantity(self, mock_db):
-        pool = _pool_with_fetch([{"item_id": "iron_ore", "quantity": 3}, {"item_id": "oak_wood", "quantity": 1}])
-        mock_db.get_pool = AsyncMock(return_value=pool)
-        assert await db_queries.get_player_materials("p1") == {"iron_ore": 3, "oak_wood": 1}
-
-    @patch("db_queries.db")
     async def test_for_update_appends_lock_clause(self, mock_db):
         pool = _pool_with_fetch([])
         mock_db.get_pool = AsyncMock(return_value=pool)

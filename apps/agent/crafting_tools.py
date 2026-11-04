@@ -336,7 +336,9 @@ async def _start_crafting_project_impl(
         accessible = await queries_mod.get_accessible_workspaces(
             player_id, location_id, conn=conn, has_portable_lab=has_portable_lab
         )
-        available = await queries_mod.get_player_materials(player_id, conn=conn, for_update=True)
+        available = await queries_mod.get_player_materials(
+            player_id, conn=conn, for_update=True, allow_tainted=recipe["tainted_materials"]
+        )
 
         # A non-canonical crafting/recipe tier makes run_preflight Check 2 raise a raw
         # ValueError (DB-validated at write boundaries, so a content/migration bug, not
@@ -355,7 +357,9 @@ async def _start_crafting_project_impl(
         alloc = validation_mod.allocate_materials(recipe["materials"], available, catalog)
         if not alloc.satisfied:
             raise ToolError(f"Cannot craft {recipe['name']}: {alloc.reason}")
-        await mutations_mod.consume_player_materials(player_id, alloc.by_id, conn=conn)
+        await mutations_mod.consume_player_materials(
+            player_id, alloc.by_id, allow_tainted=recipe["tainted_materials"], conn=conn
+        )
 
         cycles = recipe["async_cycles"]
         min_seconds = cycles * _SECONDS_PER_CYCLE if cycles > 0 else _FIELD_CRAFT_FLOOR_SECONDS

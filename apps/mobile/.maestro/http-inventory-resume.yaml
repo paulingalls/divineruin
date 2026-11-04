@@ -4,7 +4,7 @@ appId: com.divineruin.app
 - extendedWaitUntil:
     visible: "HTTP quantity 3"
     timeout: 10000
-- assertVisible: "Oak Wood, 3"
+- assertVisible: "Oak Wood, clean, 3"
 - tapOn: "Hold next GET"
 - assertVisible: "GET held"
 - tapOn: "Commit immediate snapshot"
@@ -14,4 +14,11 @@ appId: com.divineruin.app
 - assertVisible: "Old GET released"
 - assertVisible: "HTTP quantity 4"
 - assertNotVisible: "HTTP quantity 3"
+- assertVisible: "Oak Wood, tainted, 1"
+- tapOn: "Oak Wood, tainted, 1"
+- assertVisible: "Tainted quantity 1"
+- tapOn: "← Back"
+- tapOn: "Oak Wood, clean, 4"
+- assertVisible: "Clean quantity 4"
+- tapOn: "← Back"
 - takeScreenshot: http-inventory

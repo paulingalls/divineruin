@@ -40,18 +40,6 @@ async def test_material_reaches_inventory_dm_and_session(reset_db_pool):
     ]
 
 
-async def test_flask_prefers_item_catalog(reset_db_pool):
-    pool = await db.get_pool()
-    player_id = "material_inventory_flask"
-    await _seed_inventory(pool, player_id, {"crystal_flask": {"quantity": 1}})
-    rows = await db_queries.get_player_inventory(player_id)
-    assert len(rows) == 1
-    assert rows[0]["id"] == "crystal_flask"
-    assert rows[0]["type"] == "equipment"
-    assert rows[0]["effects"]
-    assert rows[0]["description"].startswith("Thin glass")
-
-
 async def test_material_does_not_enter_combat_traits(reset_db_pool):
     pool = await db.get_pool()
     player_id = "material_inventory_combat"

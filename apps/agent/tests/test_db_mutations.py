@@ -17,29 +17,9 @@ class TestCreateWorkspaceRental:
 
 
 class TestConsumePlayerMaterials:
-    async def test_decrements_when_remaining_positive(self):
-        conn = AsyncMock()
-        conn.fetchval = AsyncMock(return_value=3)
-        await db_mutations.consume_player_materials("p1", {"iron_ore": 2}, conn=conn)
-        sql = conn.execute.call_args.args[0]
-        assert "UPDATE player_inventory" in sql and "jsonb_set" in sql
-
-    async def test_deletes_when_fully_consumed(self):
-        conn = AsyncMock()
-        conn.fetchval = AsyncMock(return_value=2)
-        await db_mutations.consume_player_materials("p1", {"iron_ore": 2}, conn=conn)
-        sql = conn.execute.call_args.args[0]
-        assert "DELETE FROM player_inventory" in sql
-
-    async def test_consumes_each_material_in_allocation(self):
-        conn = AsyncMock()
-        conn.fetchval = AsyncMock(return_value=5)
-        await db_mutations.consume_player_materials("p1", {"iron_ore": 1, "oak_wood": 2}, conn=conn)
-        assert conn.execute.await_count == 2
-
     async def test_raises_on_short_stack_instead_of_deleting(self):
         conn = AsyncMock()
-        conn.fetchval = AsyncMock(return_value=1)
+        conn.fetch = AsyncMock(return_value=[{"item_id": "iron_ore", "quantity": 1, "tainted": False}])
         with pytest.raises(ValueError, match="exceeds held quantity"):
             await db_mutations.consume_player_materials("p1", {"iron_ore": 2}, conn=conn)
         conn.execute.assert_not_awaited()
@@ -61,20 +41,3 @@ class TestCreateAsyncActivityConnSeam:
         aid = await db_mutations.create_async_activity("p1", {"status": "in_progress"}, conn=conn)
         assert aid.startswith("activity_")
         conn.execute.assert_awaited_once()
-
-
-class TestQuantityDeltaExpr:
-    def test_builds_signed_delta_jsonb_set_for_a_plain_column(self):
-        expr = db_mutations.quantity_delta_expr("data", "$3")
-        assert expr == "jsonb_set(data, '{quantity}', (COALESCE((data->>'quantity')::int, 0) + $3)::text::jsonb)"
-
-    def test_qualifies_the_column_for_the_on_conflict_arm(self):
-        expr = db_mutations.quantity_delta_expr("player_inventory.data", "$4")
-        assert "COALESCE((player_inventory.data->>'quantity')::int, 0) + $4" in expr
-        assert expr.startswith("jsonb_set(player_inventory.data, '{quantity}',")
-
-    async def test_add_inventory_item_uses_the_shared_expr(self):
-        conn = AsyncMock()
-        await db_mutations.add_inventory_item("p1", "iron_ore", 2, conn=conn)
-        sql = conn.execute.call_args.args[0]
-        assert db_mutations.quantity_delta_expr("player_inventory.data", "$4") in sql

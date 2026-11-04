@@ -270,7 +270,7 @@ async def _update_quest_impl(
                     item = await content.get_item(item_id)
                     item_name = item.get("name", item_id) if item else item_id
                     for pid in eligible_ids:
-                        await mutations.add_inventory_item(pid, item_id, qty, conn=conn)
+                        await mutations.add_inventory_item(pid, item_id, qty, tainted=False, conn=conn)
                         item_recipients.append((pid, item_name))
                         paid_ids.add(pid)
                     if actor_id in eligible_ids:
