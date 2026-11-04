@@ -181,6 +181,19 @@ async def test_repair_targets_clean_gear_only(reset_db_pool):
         actual = await rows(h.pool, pid)
         assert actual[1] == original
         assert json.loads(actual[0]["data"])["current_hits"] == 10
+        await h.pool.execute(
+            "DELETE FROM player_inventory WHERE player_id=$1 AND item_id='shortsword_basic' AND NOT tainted", pid
+        )
+        before = await get_inventory_snapshot(pid)
+        inventory = await rows(h.pool, pid)
+        gold = await h.pool.fetchval("SELECT data->'gold' FROM players WHERE player_id=$1", pid)
+        error = await h.command(
+            "repair_item", {"item_id": "shortsword_basic", "npc_id": "grimjaw_blacksmith"}, error=True
+        )
+        assert "aren't carrying" in error
+        assert await get_inventory_snapshot(pid) == before
+        assert await rows(h.pool, pid) == inventory
+        assert await h.pool.fetchval("SELECT data->'gold' FROM players WHERE player_id=$1", pid) == gold
     finally:
         await h.close()
 
