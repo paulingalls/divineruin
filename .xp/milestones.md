@@ -21,3 +21,18 @@ Candidates: re-verify the aura and resonance boxes against `apps/agent/hollow_re
 Goal: `build_encounter` builds encounters from the catalog, and harvesting enforces skill gates: `docs/milestones/07_bestiary.md` Milestone 7.4 ACs, which unblock Phase 9's material sell values (Execution plan Milestone 34).
 Measure: python3 -c 'import re; s=open("docs/milestones/07_bestiary.md").read(); b=re.search(r"^### Milestone 7.4 .*?(?=^### |\Z)",s,re.M|re.S).group(0); print("distance=%d" % len(re.findall(r"^- \[ \] ",b,re.M)))'
 Candidates: D-4: `build_encounter` reads each companion's `hp_factor`, not a flat 0.75 (Sable is 0.50), which overrides the doc's "75% HP" AC wording. Movement modes (fly, swim, climb, burrow) in the creature schema in both languages, if environment modifiers need them. Normalize `behavior.morale`/`group_size` to one shape. Backfill natural rows' engine-resolvable riders before they enter combat. Enforce `loot_tables.json` `requires`. Fix the woven_void_fragment, veil_shard and salvageable_weapon tier/category against the spec. Reach the creature catalog only through `query_info kind="creature"`. Choose the signature ability (`04_combat.md:34`).
+
+## Patron favor and gifts (Phase 8 M8.1)
+Goal: all ten patrons' Layer 1 gifts are live, Layer 2 Resonance modifiers and Layer 3 tiers are defined, and the Unbound Path is selectable: `docs/milestones/08_patrons.md` Milestone 8.1 ACs (divineruin2 plan Milestones 8.1a–8.1d are done; tiers and decay are checked off).
+Measure: python3 -c 'import re; s=open("docs/milestones/08_patrons.md").read(); b=re.search(r"^### Milestone 8.1 .*?(?=^### |\Z)",s,re.M|re.S).group(0); print("distance=%d" % len(re.findall(r"^- \[ \] ",b,re.M)))'
+Candidates: Thyra's gift (`awaits_terrain`): Phase 10 shipped `apps/agent/terrain.py` `TerrainType`, so bind it. Veythar, Syrath, Valdris and Zhael (`awaits_rest`) wait on a production caller of `apply_long_rest`/short rest (`rest_mechanics.py:236`). Orenthel (`awaits_healing`) waits on an HP-restore caller. Mortaen and Nythera are `narrated`; decide whether "mechanically distinct and always active" needs more. Layer 2 and Layer 3 are still null in `content/gods.json`. Whether a favor loss may ever trigger a whisper is an open human question (note from story-224). The spec's 15–30 minute heartbeat against the hydration-time decay chosen in M8.1b. Unbound Path (Resonance visibility, +3 push, Veil Mastery).
+
+## Patron abilities (Phase 8 M8.2)
+Goal: every patron's abilities across the three favor tiers, with recharge, can be granted and activated by the DM in play: `docs/milestones/08_patrons.md` Milestone 8.2 ACs.
+Measure: python3 -c 'import re; s=open("docs/milestones/08_patrons.md").read(); b=re.search(r"^### Milestone 8.2 .*?(?=^### |\Z)",s,re.M|re.S).group(0); print("distance=%d" % len(re.findall(r"^- \[ \] ",b,re.M)))'
+Candidates: see the phase doc; depends on M8.1's Layer 3 definitions.
+
+## Archetype synergies and the Unbound Path (Phase 8 M8.3)
+Goal: Layer 4 archetype synergy bonuses work, and the Unbound Path is a mechanically complete alternative to a patron: `docs/milestones/08_patrons.md` Milestone 8.3 ACs.
+Measure: python3 -c 'import re; s=open("docs/milestones/08_patrons.md").read(); b=re.search(r"^### Milestone 8.3 .*?(?=^### |\Z)",s,re.M|re.S).group(0); print("distance=%d" % len(re.findall(r"^- \[ \] ",b,re.M)))'
+Candidates: see the phase doc; depends on M8.1 and M8.2.
