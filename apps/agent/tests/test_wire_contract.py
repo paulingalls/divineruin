@@ -259,7 +259,7 @@ async def test_item_acquired_serializes_to_fixture() -> None:
     mutations.add_inventory_item = AsyncMock()
     sink = combat_events.EventSink()
     await combat_rewards.distribute_loot(
-        [{"item_id": expected["item_id"], "quantity": expected["quantity"]}],
+        [{"item_id": expected["item_id"], "quantity": expected["quantity"], "tainted": False}],
         [expected["player_id"]],
         recipient_id=expected["player_id"],
         mutations=mutations,
