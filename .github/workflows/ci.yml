@@ -94,7 +94,7 @@ jobs:
           python-version-file: .python-version
       - uses: astral-sh/setup-uv@v7
         with:
-          version: 0.13.5
+          version: 0.13.7
           python-version: 3.14.7
       - run: bun install --frozen-lockfile
       - run: bun run scripts/migrate.ts
@@ -119,7 +119,7 @@ jobs:
           python-version-file: .python-version
       - uses: astral-sh/setup-uv@v7
         with:
-          version: 0.13.5
+          version: 0.13.7
           python-version: 3.14.7
       - run: uv sync --project apps/agent --frozen
       - run: cd apps/agent && uv run ruff check .
@@ -179,7 +179,7 @@ jobs:
           python-version-file: .python-version
       - uses: astral-sh/setup-uv@v7
         with:
-          version: 0.13.5
+          version: 0.13.7
           python-version: 3.14.7
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: bun install --frozen-lockfile
@@ -239,7 +239,7 @@ jobs:
           python-version-file: .python-version
       - uses: astral-sh/setup-uv@v7
         with:
-          version: 0.13.5
+          version: 0.13.7
           python-version: 3.14.7
       - run: bun install --frozen-lockfile
       - run: bun run scripts/migrate.ts
