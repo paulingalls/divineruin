@@ -14,19 +14,21 @@ roles:               # harness/model[/effort]; a card's Executor: line overrides
   # THE DIVERSITY ARGUMENT: a reviewer sharing the implementer's priors agrees with them for
   # the same reasons, so each leg that argues with work sits in the other family from the
   # leg that wrote it.
-  # Model split: the judgment seats (planner, slate-reviewer, angle-reviewer) run on codex's
-  # frontier model; the long multi-step seats (executor, fixer) stay on the cheaper workhorse
-  # at medium, because low effort there cuts corners that surface only at land.
+  # Every codex seat runs on GPT-6.1 Sol. Astra cost ~6-7x Sol on these seats (10x on cached
+  # input, which dominates) and was 77% of a sprint's codex spend at 21% of its tokens.
+  # Effort buys back judgment where a miss is silent: planner and angle-reviewer at high.
+  # Medium elsewhere; low effort on executor/fixer cuts corners that surface only at land.
+  # Terra loses on long multi-step coding (needs xhigh to near Sol, then costs more).
   lead: claude/claude-opus-5-5
-  planner: codex/gpt-6-astra/medium
+  planner: codex/gpt-6.1-sol/high
   executor: codex/gpt-6.1-sol/medium
   # claude, so the story diff review is the cross-family look at a codex executor.
   reviewer: claude/claude-opus-5-5/medium
   # /high: a plan review is cheap relative to a story built on a plan nobody argued with.
   plan-reviewer: claude/claude-opus-5-5/high
   # codex: the lead authors the slate on claude.
-  slate-reviewer: codex/gpt-6-astra/medium
+  slate-reviewer: codex/gpt-6.1-sol/medium
   # Both read the whole sprint diff; codex's input limit is 1,048,576 characters. If either
   # dies on input size, that limit is the first suspect.
-  angle-reviewer: codex/gpt-6-astra/medium
+  angle-reviewer: codex/gpt-6.1-sol/high
   fixer: codex/gpt-6.1-sol/medium
