@@ -185,7 +185,7 @@ The Warden's spec block (Encounter Creature Stat Blocks) names `loot_hollow_ward
 - [x] `generate_loot` returns guaranteed drops always and probabilistic drops at correct rates
 - [ ] Harvesting requires correct skill tier: Survival:Trained, Crafting:Expert, Arcana:Expert
 - [x] Party without a required skill tier gets no harvesting drop (gated out before rolling)
-- [ ] All Hollow creature loot is flagged tainted; non-Hollow loot is not
+- [x] All Hollow creature loot is flagged tainted; non-Hollow loot is not
 - [ ] Purification via Dispel Corruption clears taint flag; async purification tracks activity timer
 - [ ] `build_encounter` selects creatures matching requested tier and scales to combatant count
 - [ ] Solo encounters assume 1 player + 1 companion at 75% HP effectiveness
