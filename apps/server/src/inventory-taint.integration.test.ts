@@ -8,7 +8,12 @@ import { sql } from "./db.ts";
 type Snapshot = {
   player_id: string;
   inventory_revision: string;
-  inventory: { id: string; tainted: boolean; slot_info: { quantity: number } }[];
+  inventory: {
+    id: string;
+    tainted: boolean;
+    slot_info: { quantity: number };
+    image_url?: string;
+  }[];
 };
 type StackRow = { item_id: string; tainted: boolean; data: Record<string, unknown> };
 
@@ -71,6 +76,9 @@ describe.skipIf(!hasDb)("inventory stacks over real HTTP and Python", () => {
       if (equipment)
         await sql`INSERT INTO player_inventory(player_id,item_id,tainted,data)
         VALUES(${pid},'crystal_flask',${taint},${{ quantity: 1, equipped: false, current_hits: taint ? 2 : 7 }})`;
+      if (equipment)
+        await sql`INSERT INTO player_inventory(player_id,item_id,tainted,data)
+        VALUES(${pid},'shortsword_basic',${taint},${{ quantity: 1, equipped: false }})`;
     }
   }
   async function state() {
@@ -150,6 +158,14 @@ describe.skipIf(!hasDb)("inventory stacks over real HTTP and Python", () => {
       ["crystal_flask", true],
       ["oak_wood", false],
       ["oak_wood", true],
+      ["shortsword_basic", false],
+      ["shortsword_basic", true],
+    ]);
+    expect(
+      actual.inventory.filter((i) => i.id === "shortsword_basic").map((i) => i.image_url),
+    ).toEqual([
+      "/api/assets/images/img_9df6915b16519226",
+      "/api/assets/images/img_9df6915b16519226",
     ]);
     expect(typeof actual.inventory_revision).toBe("string");
   });
