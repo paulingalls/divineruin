@@ -128,31 +128,33 @@ def quantity_delta_expr(data_col: str, delta_param: str) -> str:
 
 
 async def add_inventory_item(
-    player_id: str, item_id: str, quantity: int, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+    player_id: str, item_id: str, quantity: int, *, tainted: bool, conn: asyncpg.Connection | asyncpg.Pool | None = None
 ) -> None:
     _conn = conn or await db.get_pool()
     await _conn.execute(
         f"""
-        INSERT INTO player_inventory (player_id, item_id, data)
-        VALUES ($1, $2, $3::jsonb)
-        ON CONFLICT (player_id, item_id)
+        INSERT INTO player_inventory (player_id, item_id, data, tainted)
+        VALUES ($1, $2, $3::jsonb, $5)
+        ON CONFLICT (player_id, item_id, tainted)
         DO UPDATE SET data = {quantity_delta_expr("player_inventory.data", "$4")}
         """,
         player_id,
         item_id,
         json.dumps({"quantity": quantity, "equipped": False}),
         quantity,
+        tainted,
     )
 
 
 async def remove_inventory_item(
-    player_id: str, item_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+    player_id: str, item_id: str, *, tainted: bool = False, conn: asyncpg.Connection | asyncpg.Pool | None = None
 ) -> bool:
     _conn = conn or await db.get_pool()
     result = await _conn.execute(
-        "DELETE FROM player_inventory WHERE player_id = $1 AND item_id = $2",
+        "DELETE FROM player_inventory WHERE player_id = $1 AND item_id = $2 AND tainted = $3",
         player_id,
         item_id,
+        tainted,
     )
     return result == "DELETE 1"
 
@@ -380,44 +382,16 @@ async def create_workspace_rental(
 
 
 async def consume_player_materials(
-    player_id: str, allocation: dict[str, int], *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+    player_id: str,
+    allocation: dict[str, int],
+    *,
+    allow_tainted: bool = False,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> None:
-    """Deduct an allocation ({material_id: quantity}) from a player's inventory,
-    mirroring the TS consume path (activities.ts): decrement the stack, or delete
-    the row when fully consumed. Run inside the caller's locked transaction (the
-    caller holds the inventory rows FOR UPDATE) so concurrent crafts can't double-spend.
+    """Consume validated recipe units inside the caller's transaction."""
+    from inventory_allocation import consume
 
-    Precondition: the allocation must already be validated against held quantities
-    (recipe_validation.allocate_materials, under the same lock). This fails fast on a
-    short stack rather than silently DELETEing it — a negative remaining means the
-    allocation lied, which is a bug, not a routine empty-out."""
-    _conn = conn or await db.get_pool()
-    for material_id, qty in allocation.items():
-        current = await _conn.fetchval(
-            "SELECT COALESCE((data->>'quantity')::int, 1) FROM player_inventory WHERE player_id = $1 AND item_id = $2",
-            player_id,
-            material_id,
-        )
-        remaining = (current or 0) - qty
-        if remaining < 0:
-            raise ValueError(
-                f"consume_player_materials: allocation exceeds held quantity for "
-                f"{material_id} (have {current or 0}, need {qty}) — allocation not validated under lock"
-            )
-        if remaining > 0:
-            await _conn.execute(
-                "UPDATE player_inventory SET data = jsonb_set(data, '{quantity}', $3::jsonb) "
-                "WHERE player_id = $1 AND item_id = $2",
-                player_id,
-                material_id,
-                json.dumps(remaining),
-            )
-        else:
-            await _conn.execute(
-                "DELETE FROM player_inventory WHERE player_id = $1 AND item_id = $2",
-                player_id,
-                material_id,
-            )
+    await consume(conn or await db.get_pool(), player_id, allocation, allow_tainted=allow_tainted)
 
 
 async def update_player_gold(

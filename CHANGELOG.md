@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.34.0 — 2026-11-04
+
+- Every location now appears on the HUD map. Seven locations had no map node (Training Hall, Grimjaw's Forge, Grimjaw's Quarters, the Old-Growth Grove, Keldaran Southern Pass, the Tidal Shore and the Reed Marsh), so the map panel silently left them and their routes off. A test now fails when a location has no node, and the location-authoring guide lists it.
+- Combat loot honours skill gates. `generate_loot` replaces `derive_role_loot`. A drop whose `requires` the party cannot meet never appears; it is not a failed roll. The gate uses the best tier per skill among the players who fought, so one player's Crafting and another's Arcana can unlock a drop together. A drop authored at chance 1 always drops, even from a Minion, and dice quantities still roll.
+- Hollow loot is tainted. Migration 061 keys `player_inventory` by `(player_id, item_id, tainted)`, so tainted and clean units of an item are separate stacks. Drops from a `hollow_residue` loot table land tainted, and other drops land clean. A craft whose recipe does not allow tainted materials never spends tainted units; one that does spends them first. The Python and HTTP inventory snapshots and the mobile inventory panel keep the two stacks apart. Native HUD verification is deferred: Xcode 26.3 cannot build Expo 57 on the Intel Mac.
+- The `agent-db` proof provider applies pending migrations to the checkout's dev database, so a story that adds a migration no longer fails land.
+- Phase 7 M7.4: 8 open acceptance criteria (was 11).
+
 ## 0.33.0 — 2026-11-03
 
 - Playwright runs as proof tasks in the sprint set: `e2e:chromium`, `e2e:web`, `e2e:web-lighthouse` and `e2e:home-character`, which is the representative for `packages/shared` edits. A web-only edit skips the mobile app tests and a mobile-only edit skips the web tests; editing a spec runs only its task. The e2e tasks share one lane because they bind fixed ports. Each keeps Playwright's 4 workers and runs beside acceptance at every core.

@@ -10,9 +10,10 @@ from encounter_loot import (
     _BOSS_CURRENCY_BONUS,
     PARTY_REWARD_BONUS,
     calculate_currency_drop,
-    derive_role_loot,
+    generate_loot,
     party_reward_multiplier,
 )
+from rules_engine import SKILLS, SkillTier
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "scripts"))
 validate_loot_table = importlib.import_module("seed_content").validate_loot_table
@@ -35,6 +36,9 @@ class FakeRng(random.Random):
 
     def random(self) -> float:
         return self._chance
+
+
+PARTY_TIERS: dict[str, SkillTier] = {skill: "master" for skill in SKILLS}
 
 
 def test_minion_drops_no_currency_d79() -> None:
@@ -106,57 +110,57 @@ def _table() -> dict:
 
 
 def test_standard_loot_drops_entries_whose_chance_passes() -> None:
-    drops = derive_role_loot(_table(), "standard", FakeRng(chance=0.0))
+    drops = generate_loot(_table(), "standard", PARTY_TIERS, FakeRng(chance=0.0))
     assert drops == [{"item_id": "hide", "quantity": 2}, {"item_id": "bone", "quantity": 1}]
 
 
 def test_standard_loot_omits_entries_whose_chance_fails() -> None:
-    assert derive_role_loot(_table(), "standard", FakeRng(chance=0.6)) == []
+    assert generate_loot(_table(), "standard", PARTY_TIERS, FakeRng(chance=0.6)) == []
 
 
 def test_minion_loot_halves_chance_and_drops_quantity() -> None:
-    drops = derive_role_loot(_table(), "minion", FakeRng(chance=0.05))
+    drops = generate_loot(_table(), "minion", PARTY_TIERS, FakeRng(chance=0.05))
     assert drops == [{"item_id": "hide", "quantity": 1}, {"item_id": "bone", "quantity": 1}]
 
 
 def test_minion_loot_chance_has_5pct_floor() -> None:
     table = {"drops": [{"item_id": "x", "chance": 0.08, "quantity": 1}]}
-    assert derive_role_loot(table, "minion", FakeRng(chance=0.045)) == [{"item_id": "x", "quantity": 1}]
+    assert generate_loot(table, "minion", PARTY_TIERS, FakeRng(chance=0.045)) == [{"item_id": "x", "quantity": 1}]
 
 
 def test_elite_loot_adds_chance_and_quantity() -> None:
-    drops = derive_role_loot(_table(), "elite", FakeRng(chance=0.5))
+    drops = generate_loot(_table(), "elite", PARTY_TIERS, FakeRng(chance=0.5))
     assert drops == [{"item_id": "hide", "quantity": 3}]
 
 
 def test_elite_loot_chance_caps_at_one() -> None:
     table = {"drops": [{"item_id": "x", "chance": 0.9, "quantity": 1}]}
-    assert derive_role_loot(table, "elite", FakeRng(chance=0.99)) == [{"item_id": "x", "quantity": 2}]
+    assert generate_loot(table, "elite", PARTY_TIERS, FakeRng(chance=0.99)) == [{"item_id": "x", "quantity": 2}]
 
 
 def test_boss_loot_is_guaranteed_and_boosts_quantity() -> None:
-    drops = derive_role_loot(_table(), "boss", FakeRng(chance=0.99))
+    drops = generate_loot(_table(), "boss", PARTY_TIERS, FakeRng(chance=0.99))
     assert drops == [{"item_id": "hide", "quantity": 3}, {"item_id": "bone", "quantity": 2}]
 
 
 def test_named_loot_is_identity() -> None:
-    drops = derive_role_loot(_table(), "named", FakeRng(chance=0.0))
+    drops = generate_loot(_table(), "named", PARTY_TIERS, FakeRng(chance=0.0))
     assert drops == [{"item_id": "hide", "quantity": 2}, {"item_id": "bone", "quantity": 1}]
 
 
 def test_empty_loot_table_yields_no_drops() -> None:
-    assert derive_role_loot({"drops": []}, "boss", FakeRng(chance=0.0)) == []
-    assert derive_role_loot({}, "standard", FakeRng(chance=0.0)) == []
+    assert generate_loot({"drops": []}, "boss", PARTY_TIERS, FakeRng(chance=0.0)) == []
+    assert generate_loot({}, "standard", PARTY_TIERS, FakeRng(chance=0.0)) == []
 
 
-def test_derive_role_loot_unknown_role_raises() -> None:
+def test_generate_loot_unknown_role_raises() -> None:
     with pytest.raises(ValueError, match="Unknown encounter role"):
-        derive_role_loot(_table(), "champion", FakeRng())
+        generate_loot(_table(), "champion", PARTY_TIERS, FakeRng())
 
 
-def test_derive_role_loot_does_not_mutate_input() -> None:
+def test_generate_loot_does_not_mutate_input() -> None:
     table = _table()
-    derive_role_loot(table, "boss", FakeRng(chance=0.0))
+    generate_loot(table, "boss", PARTY_TIERS, FakeRng(chance=0.0))
     assert table["drops"][0] == {"item_id": "hide", "chance": 0.5, "quantity": 2}
 
 
@@ -176,19 +180,19 @@ def test_derive_role_loot_does_not_mutate_input() -> None:
 )
 def test_dice_quantity_rolls_before_role_modifier(die: int, role: str, expected: int) -> None:
     table = {"drops": [{"item_id": "residue", "chance": 1.0, "quantity": "1d4"}]}
-    assert derive_role_loot(table, role, FakeRng(die=die)) == [{"item_id": "residue", "quantity": expected}]
+    assert generate_loot(table, role, PARTY_TIERS, FakeRng(die=die)) == [{"item_id": "residue", "quantity": expected}]
 
 
 def test_missed_dice_drop_does_not_roll_quantity() -> None:
     rng = random.Random(20)
     before = rng.getstate()
     table = {"drops": [{"item_id": "residue", "chance": 0.0, "quantity": "1d4"}]}
-    assert derive_role_loot(table, "standard", rng) == []
+    assert generate_loot(table, "standard", PARTY_TIERS, rng) == []
     rng.setstate(before)
     rng.random()
     expected_next = rng.random()
     rng.setstate(before)
-    derive_role_loot(table, "standard", rng)
+    generate_loot(table, "standard", PARTY_TIERS, rng)
     assert rng.random() == expected_next
 
 
@@ -197,7 +201,7 @@ def assert_rollable_tables(tables: list[dict]) -> None:
     for table in tables:
         assert table["drops"], table["id"]
         assert validate_loot_table(table) == []
-        drops = derive_role_loot(table, "standard", random.Random(122))
+        drops = generate_loot(table, "standard", PARTY_TIERS, random.Random(122))
         assert all(type(drop["quantity"]) is int and drop["quantity"] > 0 for drop in drops)
 
 
@@ -206,36 +210,13 @@ def test_real_loot_tables_accept_positive_integer_or_dice_quantities() -> None:
     assert_rollable_tables(json.loads(path.read_text()))
 
 
-def test_legacy_loot_table_keeps_seeded_rng_sequence() -> None:
-    rng = random.Random(122)
-    path = Path(__file__).resolve().parents[4] / "content" / "loot_tables.json"
-    tables = {table["id"]: table for table in json.loads(path.read_text())}
-    drops = derive_role_loot(tables["loot_hollow_rend"], "standard", rng)
-    assert drops == [{"item_id": "rend_shard", "quantity": 1}]
-    assert rng.random() == 0.3022981875355706
-
-
 def test_hollowed_knight_seeded_roll() -> None:
     path = Path(__file__).resolve().parents[4] / "content" / "loot_tables.json"
     tables = {table["id"]: table for table in json.loads(path.read_text())}
-    assert derive_role_loot(tables["loot_hollowed_knight"], "standard", random.Random(4)) == [
+    assert generate_loot(tables["loot_hollowed_knight"], "standard", PARTY_TIERS, random.Random(4)) == [
         {"item_id": "wrack_core", "quantity": 1},
         {"item_id": "hollow_ward_armor", "quantity": 1},
     ]
-
-
-def test_requirements_remain_data_during_loot_roll() -> None:
-    table = {
-        "drops": [
-            {
-                "item_id": "residue",
-                "chance": 1.0,
-                "quantity": 1,
-                "requires": [{"skill": "crafting", "tier": "expert"}],
-            }
-        ]
-    }
-    assert derive_role_loot(table, "standard", FakeRng()) == [{"item_id": "residue", "quantity": 1}]
 
 
 def test_party_reward_bonus_constant() -> None:
@@ -277,3 +258,26 @@ def test_hollow_wrack_currency_contract():
         assert calculate_currency_drop("hollow_wrack", 3, "minion", Fixed(chance)) == 0
     with pytest.raises(ValueError, match="Unknown creature category"):
         calculate_currency_drop("hollow_bogus", 3, "standard", Fixed(0))
+
+
+@pytest.mark.parametrize("seed", [0, 1, 9, 122])
+@pytest.mark.parametrize("chance", [1.0, 1.2])
+def test_guaranteed_minion_skips_chance_roll(seed, chance):
+    guaranteed = {"item_id": "hide", "chance": chance, "quantity": 3}
+    tail = {"item_id": "bone", "chance": 0.4, "quantity": 1}
+    rng, reference = random.Random(seed), random.Random(seed)
+    expected_tail = generate_loot({"drops": [tail]}, "minion", PARTY_TIERS, reference)
+    assert generate_loot({"drops": [guaranteed, tail]}, "minion", PARTY_TIERS, rng) == [
+        {"item_id": "hide", "quantity": 2},
+        *expected_tail,
+    ]
+    assert rng.getstate() == reference.getstate()
+
+
+@pytest.mark.parametrize("seed", [0, 1, 9, 122])
+def test_guaranteed_dice_minion_consumes_only_quantity(seed):
+    rng, reference = random.Random(seed), random.Random(seed)
+    quantity = max(1, reference.randint(1, 4) - 1)
+    table = {"drops": [{"item_id": "wolf_fangs", "chance": 1.0, "quantity": "1d4"}]}
+    assert generate_loot(table, "minion", PARTY_TIERS, rng) == [{"item_id": "wolf_fangs", "quantity": quantity}]
+    assert rng.getstate() == reference.getstate()

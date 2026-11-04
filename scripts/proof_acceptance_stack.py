@@ -72,6 +72,10 @@ def main(action):
         dsn = resolve_database_url()
         started = ensure_db_up(dsn)
         save_state(state, {"started": started, "dsn": dsn})
+        # The dev database outlives checkouts, so a tree that adds a migration must apply it here.
+        subprocess.run(
+            ["bun", "run", "scripts/migrate.ts"], cwd=ROOT, env={**os.environ, "DATABASE_URL": dsn}, check=True
+        )
         exports(
             {
                 "PROOF_AGENT_PROVIDER": "dev",

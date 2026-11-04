@@ -74,6 +74,7 @@ await withOwnedProcesses(async (scope) => {
   if (!verified.ok) throw new Error(`Real auth failed: ${verified.status}`);
   const auth = (await verified.json()) as { token: string; account_id: string; player_id: string };
   await sql`INSERT INTO player_inventory(player_id,item_id,data) VALUES(${auth.player_id},'oak_wood',${{ quantity: 2, equipped: false }})`;
+  await sql`INSERT INTO player_inventory(player_id,item_id,tainted,data) VALUES(${auth.player_id},'oak_wood',true,${{ quantity: 1, equipped: false }})`;
   let quantity = 2;
   let gets = 0;
   let hold = false;
@@ -88,7 +89,7 @@ await withOwnedProcesses(async (scope) => {
   }
   async function advance() {
     quantity++;
-    await sql`UPDATE player_inventory SET data=${{ quantity, equipped: false }} WHERE player_id=${auth.player_id} AND item_id='oak_wood'`;
+    await sql`UPDATE player_inventory SET data=${{ quantity, equipped: false }} WHERE player_id=${auth.player_id} AND item_id='oak_wood' AND tainted=false`;
   }
   const proxy = Bun.serve({
     hostname: "127.0.0.1",

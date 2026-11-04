@@ -155,9 +155,9 @@ export async function handleActivityDecision(
         if (craftedItemId && body.decision_id === "keep") {
           granted = true;
           await tx`
-            INSERT INTO player_inventory (player_id, item_id, data)
-            VALUES (${playerId}, ${craftedItemId}, ${{ quantity: 1, equipped: false }})
-            ON CONFLICT (player_id, item_id)
+            INSERT INTO player_inventory (player_id, item_id, data, tainted)
+            VALUES (${playerId}, ${craftedItemId}, ${{ quantity: 1, equipped: false }}, false)
+            ON CONFLICT (player_id, item_id, tainted)
             DO UPDATE SET data = jsonb_set(
               player_inventory.data,
               '{quantity}',

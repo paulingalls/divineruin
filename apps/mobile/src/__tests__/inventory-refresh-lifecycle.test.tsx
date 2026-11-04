@@ -219,6 +219,7 @@ if (process.env[CONTRACT_CHILD] === "1") {
       lore: "",
       value_base: 1,
       equipped: false,
+      tainted: false,
     } satisfies InventoryItem;
     panelStore.getState().acceptInventory(authStore.getState().playerId!, "1", [item]);
     await act(() => {

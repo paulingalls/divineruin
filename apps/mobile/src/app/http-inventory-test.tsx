@@ -48,7 +48,9 @@ function PollingFixture() {
       void fetch(`${origin}/observe`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quantity: inventory.find((i) => i.id === "oak_wood")?.quantity }),
+        body: JSON.stringify({
+          quantity: inventory.find((i) => i.id === "oak_wood" && !i.tainted)?.quantity,
+        }),
       });
   }, [fixture, inventory]);
   useEffect(() => {
@@ -107,7 +109,7 @@ function PollingFixture() {
     <View style={{ flex: 1, padding: 24, paddingTop: 80 }}>
       {validFixture && <InventoryPolling />}
       <ThemedText>{status}</ThemedText>
-      <ThemedText>{`HTTP quantity ${inventory.find((i) => i.id === "oak_wood")?.quantity ?? 0}`}</ThemedText>
+      <ThemedText>{`HTTP quantity ${inventory.find((i) => i.id === "oak_wood" && !i.tainted)?.quantity ?? 0}`}</ThemedText>
       <Pressable
         onPress={() => {
           void control("hold");

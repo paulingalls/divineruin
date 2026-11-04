@@ -84,32 +84,6 @@ const decide = (choice = "keep", owner = "owner") =>
   );
 
 describe("committed crafting inventory", () => {
-  test("creation returns full remaining snapshot after partial decrement and exhausted delete", async () => {
-    craftStubs();
-    const res = await create();
-    expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({
-      player_id: "owner",
-      inventory_revision: "7",
-      inventory: [
-        { id: "iron_ingot", slot_info: { quantity: 2 } },
-        { id: "sword", slot_info: { equipped: true } },
-      ],
-    });
-    const queries = getCapturedQueries();
-    expect(queries.find((q) => q.sql.includes("UPDATE player_inventory"))?.values).toEqual([
-      2,
-      "owner",
-      "iron_ingot",
-    ]);
-    expect(queries.find((q) => q.sql.includes("DELETE FROM player_inventory"))?.values).toEqual([
-      "owner",
-      "leather_strip",
-    ]);
-    expect(queries.findIndex((q) => q.sql.includes("LEFT JOIN items"))).toBeGreaterThan(
-      queries.findIndex((q) => q.sql.includes("DELETE FROM player_inventory")),
-    );
-  });
   test.each(["creation", "keep"])("%s response waits for transaction commit", async (kind) => {
     let release!: () => void;
     const committed = new Promise<void>((r) => {

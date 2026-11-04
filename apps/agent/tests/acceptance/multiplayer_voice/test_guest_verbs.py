@@ -134,7 +134,7 @@ async def test_guest_verbs_reach_persisted_party_rows(
         guest,
         json.dumps({"patron": "kaelen", "level": 10, "max": 100, "last_whisper_level": 10}),
     )
-    await db_mutations.add_inventory_item(guest, "healing_potion", 2, conn=pool)
+    await db_mutations.add_inventory_item(guest, "healing_potion", 2, tainted=False, conn=pool)
     await milestones.load_milestones()
     userdata = SessionData(player_id=host, location_id="accord_guild_hall")
     model = ScriptedModel()

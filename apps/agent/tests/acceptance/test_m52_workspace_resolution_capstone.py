@@ -42,7 +42,7 @@ async def _seed_forge_crafter(player_id: str) -> None:
         await pool.execute(
             """
             INSERT INTO player_inventory (player_id, item_id, data) VALUES ($1, $2, $3::jsonb)
-            ON CONFLICT (player_id, item_id) DO UPDATE SET data = $3::jsonb
+            ON CONFLICT (player_id, item_id, tainted) DO UPDATE SET data = $3::jsonb
             """,
             player_id,
             item_id,

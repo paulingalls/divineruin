@@ -173,7 +173,7 @@ async def prepare_case(case_id: str) -> Scenario:
     sd = SessionData(player_id=player_id, location_id=location, room=make_mock_room())
 
     if case_id == "exploration.query_inventory":
-        await db_mutations.add_inventory_item(player_id, "healing_potion", 2, conn=pool)
+        await db_mutations.add_inventory_item(player_id, "healing_potion", 2, tainted=False, conn=pool)
     elif case_id == "exploration.check_gather":
         await _set_skill(pool, player_id, "survival", "master")
     elif case_id == "exploration.check_social":
@@ -220,7 +220,7 @@ async def prepare_case(case_id: str) -> Scenario:
         await _set_skill(pool, player_id, "crafting", "trained")
         await pool.execute(
             "INSERT INTO player_inventory (player_id, item_id, data) VALUES ($1, 'shortsword_basic', $2::jsonb) "
-            "ON CONFLICT (player_id, item_id) DO UPDATE SET data = $2::jsonb",
+            "ON CONFLICT (player_id, item_id, tainted) DO UPDATE SET data = $2::jsonb",
             player_id,
             json.dumps({"current_hits": 2}),
         )

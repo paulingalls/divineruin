@@ -26,7 +26,7 @@ async def owners(dev_db_pool):
 async def write(conn, pid, quantity):
     await conn.execute(
         "INSERT INTO player_inventory(player_id,item_id,data) VALUES($1,'oak_wood',$2::jsonb) "
-        "ON CONFLICT(player_id,item_id) DO UPDATE SET data=excluded.data",
+        "ON CONFLICT(player_id,item_id,tainted) DO UPDATE SET data=excluded.data",
         pid,
         json.dumps({"quantity": quantity}),
     )

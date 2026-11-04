@@ -58,7 +58,7 @@ async def test_rest_created_tainted_craft_fails_the_expert_gate_at_resolution(
         await pool.execute(
             """
             INSERT INTO player_inventory (player_id, item_id, data) VALUES ($1, $2, $3::jsonb)
-            ON CONFLICT (player_id, item_id) DO UPDATE SET data = $3::jsonb
+            ON CONFLICT (player_id, item_id, tainted) DO UPDATE SET data = $3::jsonb
             """,
             player_id,
             mat["material_id"],

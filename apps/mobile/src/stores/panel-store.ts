@@ -41,6 +41,7 @@ export interface InventoryItem {
   value_base: number;
   quantity: number;
   equipped: boolean;
+  tainted: boolean;
   imageUrl?: string;
 }
 

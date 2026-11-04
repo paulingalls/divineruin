@@ -67,6 +67,7 @@ async def _run_end_combat_db(session, cs, outcome, *, save_mock, read_side_effec
     db_mutations_conditions.save_player_conditions = save_mock  # type: ignore[assignment]
     mutations = AsyncMock()
     queries = AsyncMock()
+    queries.get_player = AsyncMock(return_value={})
     for name, mock in (queries_overrides or {}).items():
         setattr(queries, name, mock)
     sink = EventSink()

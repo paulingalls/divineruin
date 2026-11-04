@@ -246,7 +246,10 @@ async def test_guest_end_combat_grants_each_members_loot_and_coin():
     spoils = EncounterSpoils(
         xp_total=50,
         currency_silver=20,
-        loot_pool=[{"item_id": "relic", "quantity": 1}, {"item_id": "gem", "quantity": 1}],
+        loot_pool=[
+            {"item_id": "relic", "quantity": 1, "tainted": False},
+            {"item_id": "gem", "quantity": 1, "tainted": False},
+        ],
         defeated_enemies=["Goblin Scout"],
     )
     with patch("combat_end.combat_rewards.roll_encounter_spoils", AsyncMock(return_value=spoils)):
@@ -281,7 +284,7 @@ async def test_guest_end_combat_grants_each_members_loot_and_coin():
         "player_2": ["Blue Gem"],
     }
     assert {call.args[0] for call in mutations.update_player_gold.await_args_list} == {"player_1", "player_2"}
-    assert json.loads(raw)["loot"] == [{"item_id": "gem", "quantity": 1}]
+    assert json.loads(raw)["loot"] == [{"item_id": "gem", "quantity": 1, "tainted": False}]
     assert json.loads(raw)["currency_gold"] > 0
 
 
@@ -301,7 +304,11 @@ async def test_guest_final_blow_ends_resolve_phase_and_pays_both():
     deps["queries"].get_inventory_snapshot = snapshot_queries().get_inventory_snapshot
     deps["db_mod"] = checked_commit_db(deps["db_mod"], ctx.userdata.room)
     spoils = EncounterSpoils(
-        xp_total=50, loot_pool=[{"item_id": "relic", "quantity": 1}, {"item_id": "gem", "quantity": 1}]
+        xp_total=50,
+        loot_pool=[
+            {"item_id": "relic", "quantity": 1, "tainted": False},
+            {"item_id": "gem", "quantity": 1, "tainted": False},
+        ],
     )
     deps["mutations"].add_inventory_item = AsyncMock()
     with ctx.userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
@@ -342,7 +349,7 @@ async def test_identical_combat_drops_count_one_display_name():
     ctx.userdata.combat_state = _make_combat_state(enemy_fallen=True)
     mutations = combat_end_mutations()
     mutations.add_inventory_item = AsyncMock()
-    spoils = EncounterSpoils(loot_pool=[{"item_id": "relic", "quantity": 1}] * 2)
+    spoils = EncounterSpoils(loot_pool=[{"item_id": "relic", "quantity": 1, "tainted": False}] * 2)
     with (
         patch("combat_end.combat_rewards.roll_encounter_spoils", AsyncMock(return_value=spoils)),
         patch("db_content_queries.get_item", AsyncMock(return_value={"name": "Sun Relic"})),
@@ -370,7 +377,12 @@ async def test_combat_commit_failure_records_no_items():
     ctx.userdata.combat_state = cs
     mutations = combat_end_mutations()
     mutations.add_inventory_item = AsyncMock()
-    spoils = EncounterSpoils(loot_pool=[{"item_id": "relic", "quantity": 1}, {"item_id": "gem", "quantity": 1}])
+    spoils = EncounterSpoils(
+        loot_pool=[
+            {"item_id": "relic", "quantity": 1, "tainted": False},
+            {"item_id": "gem", "quantity": 1, "tainted": False},
+        ]
+    )
 
     @asynccontextmanager
     async def failed_transaction():
@@ -426,7 +438,7 @@ async def test_combat_snapshot_excludes_currency_only_seats():
     cs.participants.insert(1, guest)
     place_actors(cs)
     ctx.userdata.combat_state = cs
-    spoils = EncounterSpoils(currency_silver=200, loot_pool=[{"item_id": "relic", "quantity": 1}])
+    spoils = EncounterSpoils(currency_silver=200, loot_pool=[{"item_id": "relic", "quantity": 1, "tainted": False}])
     queries = snapshot_queries()
     mutations = combat_end_mutations()
     mutations.add_inventory_item = AsyncMock()

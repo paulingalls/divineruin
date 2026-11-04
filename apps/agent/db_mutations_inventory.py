@@ -1,16 +1,4 @@
-"""Inventory item-instance-state + signed-quantity write operations.
-
-Sibling to db_mutations.py, which holds the legacy inventory primitives
-(add_inventory_item for the +delta increment, remove_inventory_item for the row
-delete, consume_player_materials). This module owns per-instance state on an
-inventory row (durability current_hits) and the verb-era signed-delta quantity
-write (transact_inventory, behind the ``transact`` verb), and exists as its own
-SRP module to keep db_mutations.py under the 500-line cap (same call as the
-db_mutations_divine.py touch-split). transact_inventory reuses
-db_mutations.remove_inventory_item for its delete-at-zero path rather than
-duplicating the DELETE. All async, accept optional conn where they participate in
-a caller transaction.
-"""
+"""Stack-scoped durability and signed quantity mutations."""
 
 import json
 
@@ -25,6 +13,7 @@ async def update_item_durability(
     item_id: str,
     current_hits: int,
     *,
+    tainted: bool = False,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> None:
     """Set current_hits on a single player_inventory row (per-instance durability).
@@ -38,11 +27,12 @@ async def update_item_durability(
         """
         UPDATE player_inventory
         SET data = jsonb_set(data, '{current_hits}', $3::jsonb)
-        WHERE player_id = $1 AND item_id = $2
+        WHERE player_id = $1 AND item_id = $2 AND tainted = $4
         """,
         player_id,
         item_id,
         json.dumps(current_hits),
+        tainted,
     )
 
 
@@ -51,6 +41,7 @@ async def transact_inventory(
     item_id: str,
     delta: int,
     *,
+    tainted: bool = False,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> int:
     """Decrement a stack's quantity by a negative delta; return the remaining quantity.
@@ -76,17 +67,18 @@ async def transact_inventory(
         f"""
         UPDATE player_inventory
         SET data = {db_mutations.quantity_delta_expr("data", "$3")}
-        WHERE player_id = $1 AND item_id = $2
+        WHERE player_id = $1 AND item_id = $2 AND tainted = $4
         RETURNING (data->>'quantity')::int AS quantity
         """,
         player_id,
         item_id,
         delta,
+        tainted,
     )
     if row is None:
         raise ValueError(f"No inventory row for player {player_id!r} item {item_id!r} to transact.")
     remaining = row["quantity"]
     if remaining <= 0:
-        await db_mutations.remove_inventory_item(player_id, item_id, conn=_conn)
+        await db_mutations.remove_inventory_item(player_id, item_id, tainted=tainted, conn=_conn)
         return 0
     return remaining

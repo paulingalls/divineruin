@@ -61,6 +61,7 @@ export function parseInventoryItems(rawItems: Record<string, unknown>[]): Invent
       value_base: typeof raw.value_base === "number" ? raw.value_base : 0,
       quantity: typeof slotInfo?.quantity === "number" ? slotInfo.quantity : 1,
       equipped: slotInfo?.equipped === true,
+      tainted: raw.tainted === true,
       ...(typeof raw.image_url === "string" ? { imageUrl: raw.image_url } : {}),
     };
   });
