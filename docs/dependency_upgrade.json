@@ -8,7 +8,7 @@
   },
   "registry_snapshot_date": "2026-09-19",
   "python_version": "3.14.7",
-  "uv_version": "0.13.5",
+  "uv_version": "0.13.7",
   "projects": [
     "apps/agent",
     "scripts"
@@ -242,6 +242,18 @@
       "registry_latest": "10.0.1",
       "held_by": null,
       "reason": null
+    },
+    {
+      "project": ".",
+      "group": "devDependencies",
+      "name": "@pi-innovations/proof",
+      "requested": "git+https://github.com/paulingalls/proof.git#v0.33.2",
+      "locked": "github:paulingalls/proof#b91f55c",
+      "installed": "github:paulingalls/proof#b91f55c",
+      "candidate": "0.33.2",
+      "registry_latest": "0.34.0",
+      "held_by": null,
+      "reason": "git tag pin; v0.34.0 not yet evaluated"
     },
     {
       "project": ".",
@@ -1475,12 +1487,12 @@
     {
       "lane": "uv sync --project apps/agent --frozen",
       "status": "passed",
-      "evidence": "uv 0.13.5 installed the agent lock under CPython 3.14.7."
+      "evidence": "uv 0.13.7 installed the agent lock under CPython 3.14.7."
     },
     {
       "lane": "uv sync --project scripts --frozen",
       "status": "passed",
-      "evidence": "uv 0.13.5 installed the scripts lock under CPython 3.14.7."
+      "evidence": "uv 0.13.7 installed the scripts lock under CPython 3.14.7."
     },
     {
       "lane": "dependency report --scope all",

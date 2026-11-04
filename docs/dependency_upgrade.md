@@ -1,7 +1,7 @@
 # Dependency upgrade
 
 Registry snapshot: 2026-09-19  
-Toolchain: CPython 3.14.7; uv 0.13.5; Bun 1.4.4
+Toolchain: CPython 3.14.7; uv 0.13.7; Bun 1.4.4
 Execution evidence: historical record accepted at 795cec97832a7fe2d7567b36d0343e476e236b76 on 2026-09-19T14:14:59Z.
 
 ## Python environments
@@ -43,6 +43,7 @@ Release age policy: 604800 seconds.
 | Project | Group | Dependency | Requested | Locked / installed | Candidate | Registry latest | Decision |
 |---|---|---|---|---|---|---|---|
 | . | devDependencies | @eslint/js | `^10.0.1` | 10.0.1 / 10.0.1 | 10.0.1 | 10.0.1 | Current |
+| . | devDependencies | @pi-innovations/proof | `git+https://github.com/paulingalls/proof.git#v0.33.2` | github:paulingalls/proof#b91f55c / github:paulingalls/proof#b91f55c | 0.33.2 | 0.34.0 | git tag pin; v0.34.0 not yet evaluated |
 | . | devDependencies | @types/bun | `1.4.4` | 1.4.4 / 1.4.4 | 1.4.4 | 1.4.4 | Current |
 | . | devDependencies | eslint | `^10.10.0` | 10.10.0 / 10.10.0 | 10.10.0 | 10.11.0 | Registry latest is inside the unchanged seven-day minimum release age; the candidate is the newest eligible stable release. |
 | . | devDependencies | eslint-config-prettier | `^10.1.8` | 10.1.8 / 10.1.8 | 10.1.8 | 10.1.8 | Current |
@@ -198,8 +199,8 @@ Compatibility exceptions:
 |---|---|---|
 | bun install --frozen-lockfile | passed | Bun 1.4.4 accepted the root frozen lock without changes. |
 | bun install --cwd e2e --frozen-lockfile | passed | Bun 1.4.4 accepted the independent e2e frozen lock without changes. |
-| uv sync --project apps/agent --frozen | passed | uv 0.13.5 installed the agent lock under CPython 3.14.7. |
-| uv sync --project scripts --frozen | passed | uv 0.13.5 installed the scripts lock under CPython 3.14.7. |
+| uv sync --project apps/agent --frozen | passed | uv 0.13.7 installed the agent lock under CPython 3.14.7. |
+| uv sync --project scripts --frozen | passed | uv 0.13.7 installed the scripts lock under CPython 3.14.7. |
 | dependency report --scope all | passed | All nine manifests, four locks, installed trees, CI, and rendered Markdown validated. |
 | dependency report tests | passed | Fault suite passed, including named YAML steps and missing e2e inputs. |
 | worktree bootstrap tests | passed | Tool pins, frozen installs, Chromium, seed ordering, and Docker ownership faults passed. |
