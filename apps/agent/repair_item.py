@@ -94,7 +94,7 @@ async def _repair_item_impl(
 
         # locate item -> not-repairable -> no-op (already full)
         inventory = await queries_mod.get_player_inventory(player_id, conn=conn)
-        item = next((it for it in inventory if it.get("id") == item_id), None)
+        item = next((it for it in inventory if it.get("id") == item_id and not it.get("tainted", False)), None)
         if item is None:
             raise ToolError(f"You aren't carrying '{item_id}' to repair.")
         name = item.get("name", item_id)

@@ -147,7 +147,7 @@ async def test_activate_routes_an_anchor_item_id_and_writes_a_location_ward(rese
     location_id = "cap_m25_activate_anchor_hall"
     try:
         await seed_player_with_pools(pool, player_id=player_id, focus_current=10)
-        await db_mutations.add_inventory_item(player_id, "veil_ward_anchor_small", 1, conn=pool)
+        await db_mutations.add_inventory_item(player_id, "veil_ward_anchor_small", 1, tainted=False, conn=pool)
 
         room = make_mock_room()
         ctx = make_context(player_id, location_id=location_id, room=room)

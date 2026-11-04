@@ -26,7 +26,8 @@ def _find_equipped(inventory: list[dict], item_type: str, name: str | None = Non
     matches = [
         it
         for it in inventory
-        if it.get("slot_info", {}).get("equipped")
+        if not it.get("tainted", False)
+        and it.get("slot_info", {}).get("equipped")
         and it.get("type") == item_type
         and it.get("durability_tier")
         and (name is None or it.get("name", "").lower() == name.lower())

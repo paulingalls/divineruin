@@ -173,7 +173,7 @@ async def test_completing_final_stage_fires_its_on_complete():
     ctx, mock_db, conn, content, queries, mutations = _completion_mocks(current_stage=1)
     raw = await _update_quest_impl(ctx, "cq", 2, db_mod=mock_db, mutations=mutations, queries=queries, content=content)
     response = json.loads(raw)
-    mutations.add_inventory_item.assert_awaited_once_with("player_1", "prize", 1, conn=conn)
+    mutations.add_inventory_item.assert_awaited_once_with("player_1", "prize", 1, tainted=False, conn=conn)
     assert response["completed"] is True
 
 

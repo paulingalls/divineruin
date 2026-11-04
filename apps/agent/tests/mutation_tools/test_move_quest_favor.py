@@ -254,7 +254,9 @@ class TestUpdateQuest:
         assert item_reward["type"] == "item"
         assert item_reward["item_id"] == "research_tablet"
         mock_mutations.update_player_xp.assert_called_once()
-        mock_mutations.add_inventory_item.assert_called_once_with("player_1", "research_tablet", 1, conn=mock_conn)
+        mock_mutations.add_inventory_item.assert_called_once_with(
+            "player_1", "research_tablet", 1, tainted=False, conn=mock_conn
+        )
 
     @pytest.mark.asyncio
     async def test_backward_blocked(self):

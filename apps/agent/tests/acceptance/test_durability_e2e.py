@@ -45,7 +45,7 @@ async def _seed_inventory_item(pool, player_id: str, item_id: str, current_hits:
     """Put a real catalog item in the player's inventory at `current_hits` (per-instance state)."""
     await pool.execute(
         "INSERT INTO player_inventory (player_id, item_id, data) VALUES ($1, $2, $3::jsonb) "
-        "ON CONFLICT (player_id, item_id) DO UPDATE SET data = $3::jsonb",
+        "ON CONFLICT (player_id, item_id, tainted) DO UPDATE SET data = $3::jsonb",
         player_id,
         item_id,
         json.dumps({"current_hits": current_hits}),

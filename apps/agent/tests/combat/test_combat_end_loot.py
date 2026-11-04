@@ -170,7 +170,9 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool, material):
         assert qty == 1
 
         assert end_data["primary_currency_gold"] == pytest.approx(0.4)
-        assert end_data["primary_loot"] == [{"item_id": _MATERIAL_ID if material else _ITEM_ID, "quantity": 1}]
+        assert end_data["primary_loot"] == [
+            {"item_id": _MATERIAL_ID if material else _ITEM_ID, "quantity": 1, "tainted": False}
+        ]
 
         currency_events = [e for e in sink.captured if e.event_type == E.CURRENCY_GAINED]
         assert len(currency_events) == 1
