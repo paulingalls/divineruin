@@ -98,7 +98,7 @@ async def test_worker_credits_escrow_once_after_due(reset_db_pool, item, output,
         ("artificer", "rend_shard", 3, -1, "quantity"),
         ("artificer", "rend_shard", 0, 1, "tainted"),
         ("artificer", "corruption_saturated_stone", 3, 1, "unpurifiable"),
-        ("artificer", "rend_shard", 3, 1.5, "integer"),
+        ("artificer", "rend_shard", 3, "2", "integer"),
     ],
 )
 async def test_refusal_preserves_inventory(reset_db_pool, class_, item, held, quantity, message):
