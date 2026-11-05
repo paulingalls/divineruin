@@ -27,6 +27,7 @@ from dialogue_parser import Segment
 from errand_resolution import companion_errand_data, resolve_errand_outcome
 from llm_config import AUDIO_DIR, audio_url_for
 from narration import generate_activity_narration, generate_notification_hook, generate_progress_snippets
+from purification_tools import credit_purification, purification_outcome
 from push import send_push_notification
 from tts_prerender import synthesize_segments
 from world_news import generate_world_news
@@ -84,6 +85,8 @@ async def _resolve_one_outcome(activity: dict, player_data: dict) -> dict | None
     unknown types (caller reverts the claim and skips)."""
     activity_type = activity.get("activity_type", "crafting")
     parameters = activity.get("parameters", {})
+    if activity_type == "purification":
+        return purification_outcome(activity)
     if activity_type == "crafting":
         # crafting_resolution fetches the recipe category + quality tables and threads
         # them into the pure resolver (which still re-runs the workspace/tainted gates and
@@ -184,6 +187,8 @@ async def _resolve_single_activity(activity: dict) -> None:
                 {"status": "resolved", "narration_audio_url": audio_url},
                 conn,
             )
+            if applied and activity_type == "purification":
+                await credit_purification(conn, activity, outcome_dict)
         if not applied:
             # The stale-recovery sweep reverted this row to in_progress while we
             # rendered (work outran STALE_RESOLVING_THRESHOLD). The CAS guard kept
@@ -218,6 +223,8 @@ def activity_title(activity_type: str, activity: dict) -> str:
     params = activity.get("parameters", {})
     if activity_type == "crafting":
         return params.get("result_item_name", "Crafting")
+    if activity_type == "purification":
+        return "Purification"
     if activity_type == "training":
         stat = params.get("stat", "")
         return f"{stat.capitalize()} Training" if stat else "Training"

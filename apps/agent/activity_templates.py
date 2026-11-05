@@ -63,6 +63,10 @@ COMPANION_CONTEXT = {
 # Narration prompt templates per activity type.
 # Structure (segments, emotions) is enforced by the tool schema, not the prompt.
 NARRATION_PROMPTS = {
+    "purification": """Narrate the Artificer's completed purification of {quantity} tainted {source_item_id}.
+Use DM_NARRATOR only. Describe the fading taint through sound and smell in 60-120 words.
+The clean units are already in inventory; collection only acknowledges the work.
+""",
     "crafting": """You are {npc_name}, {npc_role} in the world of Divine Ruin.
 Personality: {npc_personality}
 Speech style: {npc_speech_style}
@@ -237,6 +241,8 @@ def build_narration_prompt(activity_type: str, outcome: dict) -> tuple[str, list
     decisions = outcome.get("decision_options", [])
     decision_text = "\n".join(f"- {d['label']}" for d in decisions)
 
+    if activity_type == "purification":
+        return template.format(**ctx), []
     if activity_type == "crafting":
         npc = get_crafting_npc(ctx.get("npc_id", "grimjaw_blacksmith"))
         prompt = template.format(
