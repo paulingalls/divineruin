@@ -15,7 +15,7 @@ Defines the full creature catalog, from stat block schema through regional creat
 | M7.1 — Creature Stat Block Schema | 9 | 0 | 0 |
 | M7.2 — Regional Creature Catalog | 11 | 0 | 0 |
 | M7.3 — Hollow Creatures (Special Mechanics) | 2 | 0 | 8 |
-| M7.4 — Loot, Harvesting & Encounter Builder | 0 | 0 | 11 |
+| M7.4 — Loot, Harvesting & Encounter Builder | 5 | 0 | 6 |
 
 **Catalog cutover and inventory refresh:** All ten encounters store catalog references, explicit roles and recommended party levels; combat expands these references into persisted snapshots. The bestiary Combat Effect Inventory records the supported paths and their remaining limits. Social `command` and `accusation` effects carry narrative-only focus/narration, without automatic healing or spell buff dice. Choir Deafened restrictions, Charmed movement, silence and core phases execute through structured combat paths. The Still and Architect remain deferred Named encounters; their terrain, anchors and legendary mechanics remain open. M7.3 remains partial. The live Combat Effect Inventory names each executable, mixed and narrative-only effect.
 
@@ -169,10 +169,14 @@ The Warden's spec block (Encounter Creature Stat Blocks) names `loot_hollow_ward
 
 **Deliverables:**
 - Loot generation: `generate_loot(loot_table, role, party_tiers, rng)` returning guaranteed drops plus probabilistic rolls
-- Skill-gated harvesting tiers:
-  - Survival:Trained — basic materials (pelts, bones, common herbs)
-  - Crafting:Expert — refined materials (sinew, treated hide, alchemical reagents)
-  - Arcana:Expert — magical components (essence, resonance shards, enchanted fragments)
+- Skill-gated harvesting follows the bestiary's Harvesting Skill Requirements table (`game_mechanics_bestiary.md:1173-1183`); each gated drop names one material `kind`, and each kind maps to exactly one skill/tier pair:
+  - None — obvious items (coins, fangs, dropped weapons, loose materials)
+  - Survival:Trained — pelts, meat, basic organs, common plant materials
+  - Survival:Expert — venom sacs, intact glands, rare organs, volatile materials; also rare gems (`rare_gem`, project decision, not in the spec table)
+  - Crafting:Trained — crafting-grade construct materials, salvageable components
+  - Crafting:Expert — Hollow residue, delicate/volatile materials
+  - Arcana:Trained — magical components from magical creatures
+  - Arcana:Expert — Named creature fragments, high-tier arcane components, Veil shards
 - Hollow loot tainting: all Hollow creature drops flagged as tainted by default
 - Purification paths: Clerics use Dispel Corruption (immediate), Artificers use async purification activity
 - Encounter builder: `build_encounter(tier, combatant_count, environment)` returning creature selection with scaling
@@ -183,7 +187,7 @@ The Warden's spec block (Encounter Creature Stat Blocks) names `loot_hollow_ward
 
 **Acceptance criteria:**
 - [x] `generate_loot` returns guaranteed drops always and probabilistic drops at correct rates
-- [ ] Harvesting requires correct skill tier: Survival:Trained, Crafting:Expert, Arcana:Expert
+- [x] Harvesting requires the correct skill tier per the spec's Harvesting Skill Requirements table: every gated drop's kind maps to one spec pair
 - [x] Party without a required skill tier gets no harvesting drop (gated out before rolling)
 - [x] All Hollow creature loot is flagged tainted; non-Hollow loot is not
 - [ ] Purification via Dispel Corruption clears taint flag; async purification tracks activity timer
@@ -191,7 +195,7 @@ The Warden's spec block (Encounter Creature Stat Blocks) names `loot_hollow_ward
 - [ ] Solo encounters assume 1 player + 1 companion at 75% HP effectiveness
 - [ ] Environment modifiers adjust creature selection (e.g., no aquatic creatures in mountains)
 - [ ] Generated encounters resolve in 3-5 rounds given expected player damage output
-- [ ] Loot materials link to Phase 5 crafting recipes where applicable
+- [x] Every loot item is named by a Phase 5 recipe material or marked `crafting_use: "trade"` on its unique catalog owner
 - [ ] Tests cover loot generation for all creature categories, harvesting skill gates, encounter scaling, and environment filtering
 
 **Key references:**

@@ -224,16 +224,16 @@ Additional topics: TTS Evaluation: Provider comparison: Inworld, Cartesia, Chatt
 
 ---
 
-## dependency_upgrade.md (226 lines)
+## dependency_upgrade.md (227 lines)
 
 Reproducible inventory of all direct dependencies, lock resolutions, compatibility and release-age decisions, infrastructure holds, and executed validation lanes.
 
 | Section | Lines | What's There |
 |---|---|---|
 | Python environments | 7-38 | Python environment and lockfile inventory. |
-| Bun workspace | 39-126 | Release age policy: 604800 seconds. |
-| Independent browser toolchain | 127-194 | Browser toolchain dependencies and validation. |
-| Historical validation outcomes | 195-226 | Recorded compatibility checks and test results. |
+| Bun workspace | 39-127 | Release age policy: 604800 seconds. |
+| Independent browser toolchain | 128-195 | Browser toolchain dependencies and validation. |
+| Historical validation outcomes | 196-227 | Recorded compatibility checks and test results. |
 
 ---
 
@@ -908,7 +908,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/07_bestiary.md (201 lines)
+## milestones/07_bestiary.md (205 lines)
 
 ---
 
