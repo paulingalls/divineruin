@@ -169,10 +169,14 @@ The Warden's spec block (Encounter Creature Stat Blocks) names `loot_hollow_ward
 
 **Deliverables:**
 - Loot generation: `generate_loot(loot_table, role, party_tiers, rng)` returning guaranteed drops plus probabilistic rolls
-- Skill-gated harvesting tiers:
-  - Survival:Trained — basic materials (pelts, bones, common herbs)
-  - Crafting:Expert — refined materials (sinew, treated hide, alchemical reagents)
-  - Arcana:Expert — magical components (essence, resonance shards, enchanted fragments)
+- Skill-gated harvesting follows the bestiary's Harvesting Skill Requirements table (`game_mechanics_bestiary.md:1173-1183`); each gated drop names one material `kind`, and each kind maps to exactly one skill/tier pair:
+  - None — obvious items (coins, fangs, dropped weapons, loose materials)
+  - Survival:Trained — pelts, meat, basic organs, common plant materials
+  - Survival:Expert — venom sacs, intact glands, rare organs, volatile materials; also rare gems (`rare_gem`, project decision, not in the spec table)
+  - Crafting:Trained — crafting-grade construct materials, salvageable components
+  - Crafting:Expert — Hollow residue, delicate/volatile materials
+  - Arcana:Trained — magical components from magical creatures
+  - Arcana:Expert — Named creature fragments, high-tier arcane components, Veil shards
 - Hollow loot tainting: all Hollow creature drops flagged as tainted by default
 - Purification paths: Clerics use Dispel Corruption (immediate), Artificers use async purification activity
 - Encounter builder: `build_encounter(tier, combatant_count, environment)` returning creature selection with scaling
@@ -183,7 +187,7 @@ The Warden's spec block (Encounter Creature Stat Blocks) names `loot_hollow_ward
 
 **Acceptance criteria:**
 - [x] `generate_loot` returns guaranteed drops always and probabilistic drops at correct rates
-- [ ] Harvesting requires correct skill tier: Survival:Trained, Crafting:Expert, Arcana:Expert
+- [ ] Harvesting requires the correct skill tier per the spec's Harvesting Skill Requirements table: every gated drop's kind maps to one spec pair
 - [x] Party without a required skill tier gets no harvesting drop (gated out before rolling)
 - [x] All Hollow creature loot is flagged tainted; non-Hollow loot is not
 - [ ] Purification via Dispel Corruption clears taint flag; async purification tracks activity timer
