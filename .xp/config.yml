@@ -32,3 +32,7 @@ roles:               # harness/model[/effort]; a card's Executor: line overrides
   # dies on input size, that limit is the first suspect.
   angle-reviewer: codex/gpt-6.1-sol/high
   fixer: codex/gpt-6.1-sol/medium
+  # Security angle only (sprint.py runs it when angle.stem == "security"). An exact CLEAR
+  # skips the security angle-reviewer, so read its reasons before trusting them: Haiku
+  # flipped CLEAR/ESCALATE across runs in xp-plugin's replay. On a miss, unset for one sprint.
+  angle-triage: claude/claude-haiku-5-5
