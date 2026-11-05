@@ -19,6 +19,7 @@ class CreatureStatBlock:
     name: str                    # Display: "Mawling"
     category: str                # "hollow" | "beast" | "humanoid" | "construct" | "undead" | "elemental"
     tier: int                    # 1-4. Universal threat scale (see Tier System)
+    terrains: list[TerrainType]   # Required, nonempty habitat from the closed terrain enum
     description: str             # 1-2 sentence DM reference (not read to player)
     
     # === COMBAT STATS ===
@@ -107,6 +108,8 @@ class Ability:
 
 The required `loot_table_id` replaces the former nested `loot` block and names a table in `content/loot_tables.json`. Story-122 carries the loot details in that table.
 
+Habitat `terrains` is required and nonempty; unknown terrain values are rejected. It is distinct from region ids in `regions` and the free-text `behavior.environment`.
+
 ### Tier System (Universal)
 
 | Tier | Threat | Player Levels | Encounter Role |
@@ -132,6 +135,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 ## Hollow Creatures
 
 > The entities that emerge from the Sundered Veil are not creatures in any meaningful sense. They are **expressions** of the Hollow — extensions, tendrils, antibodies of something incomprehensibly vast. They cannot be joined, allied with, or understood through any framework mortals possess.
+
+Hollow creatures can emerge through Veil breaches in any habitat. Their catalog terrains currently include the complete TerrainType vocabulary: `ancient_forest`, `forest`, `grassland`, `mountain`, `coast`, `wetland`, `underground`, `farmland`, `village`, `city`.
 
 ### Hollow Combat Properties (All Hollow Creatures)
 
@@ -630,6 +635,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Morale:** Flees at half pack size. | **Group:** Pack of 3-6
 **Found in:** Greyvale forest, Thornveld edge, Drathian Steppe, mountain foothills
 
+**Terrains:** `ancient_forest`, `forest`, `grassland`, `mountain`.
+
 **Loot:**
 | Drop | Qty | Chance | Requires |
 |---|---|---|---|
@@ -654,6 +661,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Behavior:** Territorial. Charges at intruders. Does not pursue beyond territory.
 **Morale:** Fights to death defending territory. Flees if encountered outside territory. | **Group:** Solitary or sounder of 2-4
 **Found in:** Greyvale farmlands, forest edges, Thornveld outer
+
+**Terrains:** `ancient_forest`, `forest`, `farmland`.
 
 **Loot:**
 | Drop | Qty | Chance | Requires |
@@ -681,6 +690,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Morale:** Flees if web is destroyed. | **Group:** Solitary or pair (shared web)
 **Found in:** Greyvale ruins, caves, dungeons, Thornveld canopy
 
+**Terrains:** `ancient_forest`, `underground`.
+
 **Loot:**
 | Drop | Qty | Chance | Requires |
 |---|---|---|---|
@@ -707,6 +718,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Behavior:** Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.
 **Morale:** Flees at half HP or if leader falls. Surrenders if clearly outmatched. | **Group:** Gang of 3-6, often with 1 Bandit Captain (Tier 2)
 **Found in:** Roads between settlements, forest ambush points, ruins
+
+**Terrains:** `forest`, `grassland`, `underground`, `farmland`.
 
 **Loot:**
 | Drop | Qty | Chance | Requires |
@@ -739,6 +752,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Morale:** Flees if first pounce fails. | **Group:** Solitary
 **Found in:** Thornveld, deep Greyvale forest
 
+**Terrains:** `ancient_forest`, `forest`.
+
 **Loot:**
 | Drop | Qty | Chance | Requires |
 |---|---|---|---|
@@ -764,6 +779,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Behavior:** Territorial guardian of corrupted groves. A treant twisted by proximity to Hollow corruption — still natural, but warped and hostile. Prioritizes fire-users as threats.
 **Morale:** Fights to death defending its grove. Will not pursue beyond 100 ft of its tree. | **Group:** Solitary (guarding 2-3 normal trees that are "its" grove)
 **Found in:** Thornveld corruption edges, Greyvale where Hollow meets forest
+
+**Terrains:** `ancient_forest`, `forest`.
 
 **Loot:**
 | Drop | Qty | Chance | Requires |
@@ -795,6 +812,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Morale:** Flees after taking any damage (unless defending nest). | **Group:** Pair or flock of 4-8
 **Found in:** Drathian Steppe, mountain passes, open highlands
 
+**Terrains:** `grassland`, `mountain`.
+
 **Loot:**
 | Drop | Qty | Chance | Requires |
 |---|---|---|---|
@@ -818,6 +837,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Behavior:** Herd animal. Normally docile. Panics and stampedes when threatened. Individual bison charge only when cornered or defending calves.
 **Morale:** Stampedes away from danger. Individual fights to death only if cornered. | **Group:** Herd of 6-20 (only 1-2 fight; rest flee)
 **Found in:** Drathian Steppe, open grasslands
+
+**Terrains:** `grassland`.
 
 **Loot:**
 | Drop | Qty | Chance | Requires |
@@ -848,6 +869,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Morale:** Flees immediately after striking. | **Group:** Solitary or nest of 2-3
 **Found in:** Keldaran Mountains, mountain passes, cave entrances
 
+**Terrains:** `mountain`, `underground`.
+
 **Loot:**
 | Drop | Qty | Chance | Requires |
 |---|---|---|---|
@@ -875,6 +898,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Morale:** Fights to 25% HP, then attempts to burrow and escape. | **Group:** Solitary or mated pair
 **Found in:** Keldaran mines, mountain caves, underground passages
 
+**Terrains:** `mountain`, `underground`.
+
 **Loot:**
 | Drop | Qty | Chance | Requires |
 |---|---|---|---|
@@ -901,6 +926,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Behavior:** Follows last instructions given by its creator. Most Keldaran war golems guard ancient holds or mines. They do not communicate and cannot be reasoned with. They perform their duty until destroyed.
 **Morale:** Fights to destruction. Cannot flee, surrender, or negotiate. | **Group:** Solitary (guarding a specific location)
 **Found in:** Keldaran ancient holds, deep mines, ruins from the pre-Sundering era
+
+**Terrains:** `underground`.
 
 **Loot:**
 | Drop | Qty | Chance | Requires |
@@ -933,6 +960,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Morale:** Releases prey if it takes 10+ damage in one hit. | **Group:** Solitary
 **Found in:** Sunward Coast marshes, river crossings, wetlands
 
+**Terrains:** `coast`, `wetland`.
+
 **Loot:**
 | Drop | Qty | Chance | Requires |
 |---|---|---|---|
@@ -957,6 +986,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Behavior:** Territorial in coastal waters. Uses Lightning Discharge to stun prey, then bites grappled targets.
 **Morale:** Retreats to deep water if outmatched on shore. | **Group:** Solitary or pair
 **Found in:** Sunward Coast waters, river mouths, coastal caves
+
+**Terrains:** `coast`, `wetland`.
 
 **Loot:**
 | Drop | Qty | Chance | Requires |
@@ -989,6 +1020,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Morale:** Flees if 50% of pack killed. | **Group:** Pack of 3-5
 **Found in:** Umbral Deep, Keldaran deep mines, underground ruins
 
+**Terrains:** `underground`.
+
 **Loot:**
 | Drop | Qty | Chance | Requires |
 |---|---|---|---|
@@ -1015,6 +1048,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Behavior:** Guards ancient underground structures. Activates when intruders enter its zone. Will not pursue beyond its assigned area.
 **Morale:** Fights to destruction within its zone. | **Group:** Solitary or pair (flanking a doorway)
 **Found in:** Umbral Deep ruins, Keldaran ancient holds, pre-Sundering structures
+
+**Terrains:** `underground`.
 
 **Loot:**
 | Drop | Qty | Chance | Requires |
@@ -1048,6 +1083,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Morale:** Fights to death defending territory. Outside territory: retreats below 50% HP unless cubs nearby. | **Group:** Solitary or mother with 1-2 cubs (cubs are non-combatants)
 **Found in:** Thornveld, Keldaran mountain forests, northern Greyvale
 
+**Terrains:** `ancient_forest`, `forest`, `mountain`.
+
 **Loot:**
 | Drop | Qty | Chance | Requires |
 |---|---|---|---|
@@ -1076,6 +1113,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Morale:** Fights while regenerating. Flees if on fire. | **Group:** Solitary or pair
 **Found in:** Thornveld, mountain passes, marshes, ruins
 
+**Terrains:** `ancient_forest`, `mountain`, `wetland`, `underground`.
+
 **Loot:**
 | Drop | Qty | Chance | Requires |
 |---|---|---|---|
@@ -1103,6 +1142,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Behavior:** Stays behind bodyguards. Uses crossbow at range, switches to sword when pressed. Commands bandits tactically — has them flank, focus fire, and retreat when losing.
 **Morale:** Flees when last bodyguard falls. Surrenders if cornered and outmatched — will offer information or treasure for life. | **Group:** With 3-6 bandits
 **Found in:** Roads, forest camps, ruins used as hideouts
+
+**Terrains:** `forest`, `grassland`, `underground`, `farmland`.
 
 **Loot:**
 | Drop | Qty | Chance | Requires |
@@ -1133,6 +1174,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Behavior:** Apex predator of mountain and steppe skies. Dives from extreme altitude, uses Lightning Breath on groups, picks up isolated targets with talons. Intelligent enough to avoid large armed groups.
 **Morale:** Retreats to altitude if badly wounded. Returns when healed. Does not fight to the death unless defending nest. | **Group:** Solitary or mated pair
 **Found in:** Keldaran mountain peaks, Drathian Steppe (during storms), high altitude everywhere
+
+**Terrains:** `grassland`, `mountain`.
 
 **Loot:**
 | Drop | Qty | Chance | Requires |
@@ -1300,6 +1343,8 @@ This inventory binds selected encounter species to their delivered combat consum
 
 Structured recharge is `{kind: "roll", die: 6, threshold: 5}`, `{kind: "encounter", uses: 1}`, or `{kind: "round", uses: 1}`. Thresholds are integers 1–6; uses are positive integers. Attacks may carry boolean `advantage`. Typed condition-only actives require positive integer `duration`; legacy encounter attack duration remains optional. Executable active kinds are `attack`, `healing`, and `prepare_attack`; social `command` and `accusation` and untyped narrative abilities retain nullable textual recharge. Healing accepts positive `NdM` with an optional nonnegative `+bonus`. Preparation carries `advantage: true` and a known-condition `on_hit` rider with positive integer duration. Every present catalog signature requires a nonblank cue; legacy encounter-template signatures remain cue-optional until story-138.
 
+Faction habitats: Ashmark soldiers and sergeants use `grassland`, `farmland`; cultists, cult fanatics and cult leaders use `underground`, `village`, `city`.
+
 ## Encounter Creature Stat Blocks
 
 These authored spec blocks adapt the eight encounter-only enemy types. All eight are catalog rows; encounter templates retain their flat combat entries.
@@ -1308,6 +1353,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. All eight
 
 ```json
 {
+  "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
   "id": "hollowed_scout",
   "name": "Hollowed Scout",
   "category": "hollow",
@@ -1413,6 +1459,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. All eight
 
 ```json
 {
+  "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
   "id": "hollow_wisp",
   "name": "Hollow Wisp",
   "category": "hollow",
@@ -1508,6 +1555,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. All eight
 
 ```json
 {
+  "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
   "id": "hollow_warden",
   "name": "Hollow Warden",
   "category": "hollow",
@@ -1620,6 +1668,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. All eight
 
 ```json
 {
+  "terrains": ["grassland", "farmland"],
   "id": "ashmark_soldier",
   "name": "Ashmark Soldier",
   "category": "humanoid",
@@ -1705,6 +1754,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. All eight
 
 ```json
 {
+  "terrains": ["grassland", "farmland"],
   "id": "ashmark_sergeant",
   "name": "Ashmark Sergeant",
   "category": "humanoid",
@@ -1807,6 +1857,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. All eight
 
 ```json
 {
+  "terrains": ["underground", "village", "city"],
   "id": "cultist",
   "name": "Cultist",
   "category": "humanoid",
@@ -1881,6 +1932,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. All eight
 
 ```json
 {
+  "terrains": ["underground", "village", "city"],
   "id": "cult_fanatic",
   "name": "Cult Fanatic",
   "category": "humanoid",
@@ -1982,6 +2034,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. All eight
 
 ```json
 {
+  "terrains": ["underground", "village", "city"],
   "id": "cult_leader",
   "name": "Cult Leader",
   "category": "humanoid",

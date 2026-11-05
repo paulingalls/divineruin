@@ -11,6 +11,7 @@ from test_creature_spec_pins_encounter_authored import SIGNATURE_PINS
 import db
 from creature_catalog import CreatureNotFoundError, query_creature_by_id, query_creatures_by_region
 from creature_schema import validate_creature_stat_block
+from terrain import TerrainType
 
 ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -23,7 +24,10 @@ def assert_catalog_rows(rows):
     assert len(ids) == len(set(ids))
     assert {"hollow_shadeling", "hollow_hollowmoth"} <= set(ids)
     for row in rows:
-        assert validate_creature_stat_block(json.loads(row["data"])) == []
+        data = json.loads(row["data"])
+        assert isinstance(data["terrains"], list) and data["terrains"]
+        assert all(isinstance(value, str) and value in TerrainType for value in data["terrains"])
+        assert validate_creature_stat_block(data) == []
 
 
 def test_catalog_columns_and_indexes(fresh_migrated_db):
@@ -34,9 +38,19 @@ def test_catalog_columns_and_indexes(fresh_migrated_db):
             definitions = "\n".join(row["indexdef"] for row in indexes)
             for column in ("category", "tier", "name"):
                 assert f"({column})" in definitions
+            authored = json.loads((ROOT / "content/creatures.json").read_text())
+            authored_ids = [row["id"] for row in authored]
+            assert len(authored_ids) == len(set(authored_ids))
             await seed_content.seed(conn)
+            await conn.execute("UPDATE creatures SET data = data - 'terrains'")
+            counts = await seed_content.seed(conn)
+            assert counts["creatures"] == len(authored)
             rows = await conn.fetch("SELECT id, data, name, category, tier, level FROM creatures ORDER BY id")
             assert_catalog_rows(rows)
+            assert {row["id"] for row in rows} == set(authored_ids)
+            assert {row["id"]: json.loads(row["data"])["terrains"] for row in rows} == {
+                row["id"]: row["terrains"] for row in authored
+            }
             for key, pin in SIGNATURE_PINS.items():
                 matches = [row for row in rows if row["id"] == key]
                 assert len(matches) == 1
@@ -88,6 +102,7 @@ def test_internal_catalog_queries_use_regions_tier_and_named_missing_error(fresh
             monkeypatch.setattr(db, "get_pool", get_pool)
             for key, pin in SIGNATURE_PINS.items():
                 assert (await query_creature_by_id(key))["signature_ability"] == pin
+            assert (await query_creature_by_id("tidecaller_eel"))["terrains"] == ["coast", "wetland"]
             shadeling = await query_creature_by_id("hollow_shadeling")
             assert shadeling["id"] == "hollow_shadeling"
             assert shadeling["regions"] == ["ashmark", "greyvale"]
