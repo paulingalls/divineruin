@@ -2,6 +2,8 @@
 
 import json
 
+import db_mutations
+
 
 async def read_stacks(connection, player_id, *, for_update=False):
     query = """SELECT item_id, tainted, COALESCE((data->>'quantity')::int, 1) AS quantity
@@ -58,3 +60,39 @@ async def consume(connection, player_id, allocation, *, allow_tainted=False):
                 item_id,
                 tainted,
             )
+
+
+def purification_output(source_item_id):
+    if source_item_id == "corruption_saturated_stone":
+        raise ValueError("corruption_saturated_stone is unpurifiable")
+    return "battleaxe_common" if source_item_id == "salvageable_weapon" else source_item_id
+
+
+async def credit_clean(connection, owner_id, source_item_id, quantity):
+    """Credit purified units on the caller's transaction; escrow callers must not debit held stacks."""
+    output_id = purification_output(source_item_id)
+    if quantity <= 0:
+        raise ValueError("Purification requires a positive quantity")
+    await db_mutations.add_inventory_item(owner_id, output_id, quantity, tainted=False, conn=connection)
+    return output_id
+
+
+async def purify_held_stack(connection, owner_id, source_item_id):
+    """Move one whole held tainted stack using the caller's transaction and owner locks."""
+    purification_output(source_item_id)
+    row = await connection.fetchrow(
+        "SELECT COALESCE((data->>'quantity')::int, 1) AS quantity FROM player_inventory "
+        "WHERE player_id=$1 AND item_id=$2 AND tainted=true FOR UPDATE",
+        owner_id,
+        source_item_id,
+    )
+    if row is None or row["quantity"] <= 0:
+        raise ValueError(f"No tainted stack of {source_item_id} is held by {owner_id}")
+    quantity = row["quantity"]
+    await connection.execute(
+        "DELETE FROM player_inventory WHERE player_id=$1 AND item_id=$2 AND tainted=true",
+        owner_id,
+        source_item_id,
+    )
+    output_id = await credit_clean(connection, owner_id, source_item_id, quantity)
+    return dict(player_id=owner_id, source_item_id=source_item_id, item_id=output_id, quantity=quantity)

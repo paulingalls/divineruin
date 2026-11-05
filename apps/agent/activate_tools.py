@@ -72,6 +72,11 @@ async def activate(
     for a spell or ability that hits several allies/enemies at once — not both. Omit both for a
     self-targeted or partyless capability.
 
+    For Dispel Corruption on inventory, use the queried item_target_id as target_id:
+    "item:<owner_player_id>:<item_id>", e.g. "item:player_1:rend_shard". It selects the
+    owner's whole tainted stack; the owner must be a player in this session's party.
+    Item purification is available outside phase resolution, with no target_ids.
+
     Some activations refuse — narrate the refusal rather than forcing it: a revival spell is
     refused on a Hollow-killed corpse; a spell's own multi-target cap is enforced (too many is
     refused); a Veil Ward raise is refused while one is already up (one shared ward per party) or

@@ -70,6 +70,8 @@ async def query_info(
     - kind="npc", target_id=<npc id>: personality, speech style, relationship-filtered knowledge.
     - kind="lore", target_id=<topic keyword>: history, gods, the Hollow, races, cultures.
     - kind="inventory": target party player inventory IDs and eligible_held_item_ids; omit target_id for the acting player.
+    Inventory entries expose item_target_id="item:<owner_player_id>:<item_id>"; pass that
+    selector to activate Dispel Corruption, e.g. "item:player_1:rend_shard".
     - kind="settlement_population", target_id=<location id>: how many of each NPC role staff a
       settlement, scaled by its size (tier) and character (personality), plus a `roster` of
       those NPCs with a name, personality traits, and a `voice_id` each — use it to voice an
@@ -396,6 +398,9 @@ async def _query_inventory_impl(
                 "name": item.get("name"),
                 "type": item.get("type"),
                 "id": item.get("id"),
+                "item_target_id": f"item:{player_id}:{item['id']}",
+                "subtype": item.get("subtype"),
+                "durability_tier": item.get("durability_tier"),
                 "quantity": item.get("slot_info", {}).get("quantity", 1),
                 "tainted": item.get("tainted", False),
                 "description": item.get("description"),
