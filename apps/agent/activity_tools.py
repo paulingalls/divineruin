@@ -25,6 +25,7 @@ import activity_payloads
 import crafting_tools
 import errand_tools
 import experimentation_tools
+import purification_tools
 import training_tools
 from action_sound_content import ACTION_SOUND_EXPORTS, publish_action_sound
 from activity_payloads import ActivityPayload
@@ -41,10 +42,10 @@ async def begin_activity(
     activity: ActivityPayload,
 ) -> str:
     """Begin a downtime activity: training, a companion errand, crafting, renting a workspace,
-    or experimenting with materials.
+    experimenting with materials, or purifying tainted units as an Artificer.
 
     Pass one activity object, picked by its kind: "training", "companion_errand", "crafting",
-    "workspace", or "experiment". A spell_* training program requires spell_id; other training
+    "workspace", "experiment", or "purification" (item_id and integer quantity). A spell_* training program requires spell_id; other training
     programs forbid it.
 
     Returns an error if the activity's own preconditions refuse — a training cycle already in
@@ -71,12 +72,17 @@ async def _begin_activity_impl(
     material_ids: list[str] | None = None,
     quantities: list[int] | None = None,
     intended_output: str | None = None,
+    item_id: str | None = None,
+    quantity: int | None = None,
     training_mod=training_tools,
     errand_mod=errand_tools,
     crafting_mod=crafting_tools,
     experimentation_mod=experimentation_tools,
 ) -> str:
     logger.info("begin_activity called: kind=%s", kind)
+
+    if kind == "purification":
+        return await purification_tools.begin_purification(context, item_id, quantity)
 
     if kind == "training":
         if not program_id:

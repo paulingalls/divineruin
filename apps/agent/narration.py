@@ -43,6 +43,9 @@ async def generate_progress_snippets(
     if activity_type == "crafting":
         item_name = _sanitize_player_text(parameters.get("result_item_name", "an item"), max_len=50)
         context = f"crafting {item_name} at the forge"
+    elif activity_type == "purification":
+        item = _sanitize_player_text(parameters["item_id"], max_len=50)
+        context = f"purifying {parameters['quantity']} tainted {item} over three training cycles"
     elif activity_type == "training":
         stat = _sanitize_player_text(parameters.get("stat", "combat"), max_len=20)
         context = f"training {stat} with their mentor"

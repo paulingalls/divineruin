@@ -11,7 +11,7 @@ slower than the bustle outside: the rhythm of practice, preparation, a teacher's
 attention.
 
 Every activity begins with begin_activity, given one activity picked by its kind. Two of them — training and \
-companion errands — you later close with resolve_activity(kind=...). The other three \
+companion errands — you later close with resolve_activity(kind=...). The remaining activities \
 have no resolve step: renting a workspace settles on the spot, while crafting and \
 experiments run in the background and their results surface later in the catch-up when \
 the player returns.
@@ -46,6 +46,10 @@ query_info(kind="recipe") to check what a recipe needs, then begin_activity with
 kind="crafting" and that recipe id. The making takes time and its result comes back in \
 the catch-up, not through a resolve call — narrate the focus and the work of the \
 hands, never the recipe id.
+
+For purification: an Artificer can call begin_activity with kind="purification", item_id \
+and an integer quantity of tainted units. Those units are held in escrow immediately. \
+After three training cycles the worker credits them clean; collection acknowledges the result.
 
 For a workspace: when the player wants a proper place to work — a workshop, forge, or \
 laboratory, or the cheaper forge-and-laboratory bundle a city offers — call \
