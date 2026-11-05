@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { parseCreatureJson, validateCreatureJson, validateCreatureStatBlock } from "./creature";
+import { TERRAIN_TYPE_VALUES } from "./terrain";
 import { REGION_IDS } from "./region";
 import { CONDITION_NAMES, RESISTANCE_TAG_VALUES, ENCOUNTER_ACTION_KIND_VALUES } from "./encounter";
 
@@ -63,6 +64,16 @@ test("real_catalog_and_injected_invalid_entry", async () => {
   const raw = await Bun.file(new URL("../../../../content/creatures.json", import.meta.url)).text();
   const entries = JSON.parse(raw) as Record<string, unknown>[];
   assertCatalogEntries(entries);
+  expect(validateCreatureJson(raw)).toEqual([]);
+  for (const entry of entries) {
+    expect(Array.isArray(entry.terrains)).toBe(true);
+    const terrains = entry.terrains as unknown[];
+    expect(terrains.length).toBeGreaterThan(0);
+    for (const terrain of terrains) {
+      expect(typeof terrain).toBe("string");
+      expect(TERRAIN_TYPE_VALUES).toContain(terrain as (typeof TERRAIN_TYPE_VALUES)[number]);
+    }
+  }
   for (const name of ["spec_shadeling", "spec_hollowmoth"]) {
     const fixture = corpus.valid.find((row) => row.name === name)!;
     expect(fixture.block).toEqual(entries.find((row) => row.id === fixture.block.id)!);
