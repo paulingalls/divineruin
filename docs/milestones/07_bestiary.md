@@ -15,7 +15,7 @@ Defines the full creature catalog, from stat block schema through regional creat
 | M7.1 — Creature Stat Block Schema | 9 | 0 | 0 |
 | M7.2 — Regional Creature Catalog | 11 | 0 | 0 |
 | M7.3 — Hollow Creatures (Special Mechanics) | 2 | 0 | 8 |
-| M7.4 — Loot, Harvesting & Encounter Builder | 4 | 0 | 7 |
+| M7.4 — Loot, Harvesting & Encounter Builder | 5 | 0 | 6 |
 
 **Catalog cutover and inventory refresh:** All ten encounters store catalog references, explicit roles and recommended party levels; combat expands these references into persisted snapshots. The bestiary Combat Effect Inventory records the supported paths and their remaining limits. Social `command` and `accusation` effects carry narrative-only focus/narration, without automatic healing or spell buff dice. Choir Deafened restrictions, Charmed movement, silence and core phases execute through structured combat paths. The Still and Architect remain deferred Named encounters; their terrain, anchors and legendary mechanics remain open. M7.3 remains partial. The live Combat Effect Inventory names each executable, mixed and narrative-only effect.
 
@@ -187,7 +187,7 @@ The Warden's spec block (Encounter Creature Stat Blocks) names `loot_hollow_ward
 
 **Acceptance criteria:**
 - [x] `generate_loot` returns guaranteed drops always and probabilistic drops at correct rates
-- [ ] Harvesting requires the correct skill tier per the spec's Harvesting Skill Requirements table: every gated drop's kind maps to one spec pair
+- [x] Harvesting requires the correct skill tier per the spec's Harvesting Skill Requirements table: every gated drop's kind maps to one spec pair
 - [x] Party without a required skill tier gets no harvesting drop (gated out before rolling)
 - [x] All Hollow creature loot is flagged tainted; non-Hollow loot is not
 - [ ] Purification via Dispel Corruption clears taint flag; async purification tracks activity timer

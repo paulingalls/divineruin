@@ -602,7 +602,7 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 | Architect's blueprint fragment | 1d4 | 100% | Arcana: Expert | Arcane component (Tier 4). Patterns for impossible structures. Can be studied to learn advanced enchantment principles or sold to scholars for enormous sums |
 | Living stone | 2d6 | 100% | Crafting: Expert | Metals & stone (Tier 4, tainted). Stone that still responds to will. Can be shaped without tools. Purified: supreme-tier construction material |
 | Named fragment | 1 | 100% | Arcana: Expert | Hollow residue (Tier 4). Named creature material |
-| Void-touched foundation | 1 | 50% | Arcana: Expert | Gems & crystals + Hollow residue (Tier 4). A piece of whatever the Architect was building at its core. The most valuable research material in the game. What was it making? |
+| Void-touched foundation | 1 | 50% | Arcana: Expert | Hollow residue (Tier 4). A piece of whatever the Architect was building at its core. The most valuable research material in the game. What was it making? |
 
 ---
 
