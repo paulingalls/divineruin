@@ -178,7 +178,7 @@ The Warden's spec block (Encounter Creature Stat Blocks) names `loot_hollow_ward
   - Arcana:Trained — magical components from magical creatures
   - Arcana:Expert — Named creature fragments, high-tier arcane components, Veil shards
 - Hollow loot tainting: all Hollow creature drops flagged as tainted by default
-- Purification paths: Clerics use Dispel Corruption (immediate), Artificers use async purification activity
+- Purification paths: Clerics use Dispel Corruption to purify a whole tainted inventory stack immediately for the selected party player owner, spending normal Focus. `item:<owner_player_id>:<item_id>` selects the object; `corruption_saturated_stone` is unpurifiable. Purified `salvageable_weapon` yields usable standard martial equipment (`battleaxe_common`). Artificer async purification activity remains pending.
 - Encounter builder: `build_encounter(tier, combatant_count, environment)` returning creature selection with scaling
 - Solo player HP math: encounters balanced for 1 player + companion at 75% effectiveness
 - Environment modifiers: terrain type affects creature selection and combat difficulty
