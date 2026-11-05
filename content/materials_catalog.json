@@ -441,6 +441,7 @@
   {
     "id": "cave_gemstone",
     "name": "Cave Gemstone",
+    "kind": "rare_gem",
     "category": "gem",
     "tier": 2,
     "rarity": "uncommon",
@@ -522,6 +523,7 @@
   {
     "id": "thornveld_amber",
     "name": "Thornveld Amber",
+    "kind": "rare_gem",
     "category": "gem",
     "tier": 3,
     "rarity": "rare",
