@@ -190,10 +190,10 @@ LOOT = {
         ("cave_wyrm_scales", "1d6", 1.0, (("survival", "trained"),)),
         ("wyrm_acid_gland", 1, 0.5, (("survival", "expert"),)),
         ("wyrm_teeth", "1d4", 1.0, ()),
-        ("cave_gemstone", "1d4", 0.25, (("investigation", "trained"),)),
+        ("cave_gemstone", "1d4", 0.25, (("survival", "expert"),)),
     ),
     "war_golem": (
-        ("golem_core", 1, 1.0, (("crafting", "expert"),)),
+        ("golem_core", 1, 1.0, (("crafting", "trained"),)),
         ("enchanted_stone", "2d4", 1.0, ()),
         ("forged_steel", "1d4", 0.75, (("crafting", "trained"),)),
         ("power_crystal", 1, 0.25, (("arcana", "expert"),)),

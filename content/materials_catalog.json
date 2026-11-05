@@ -47,7 +47,8 @@
     "rarity": "rare",
     "source": "Salvaged from the plating of shattered War Golems (Crafting: Trained).",
     "weight": 1.5,
-    "description": "Plate steel still humming with the old forge-songs of the constructs."
+    "description": "Plate steel still humming with the old forge-songs of the constructs.",
+    "kind": "construct_part"
   },
   {
     "id": "oak_wood",
@@ -137,7 +138,8 @@
     "rarity": "common",
     "source": "Skinned from wolves felled on the trails.",
     "weight": 1.0,
-    "description": "Coarse grey fur still carrying the cold of the wild."
+    "description": "Coarse grey fur still carrying the cold of the wild.",
+    "kind": "pelt"
   },
   {
     "id": "boar_hide",
@@ -147,7 +149,8 @@
     "rarity": "common",
     "source": "Taken from wild boar in the lowland brush.",
     "weight": 1.2,
-    "description": "Thick bristled hide that thuds when slapped flat."
+    "description": "Thick bristled hide that thuds when slapped flat.",
+    "kind": "pelt"
   },
   {
     "id": "leather_strip",
@@ -177,7 +180,8 @@
     "rarity": "rare",
     "source": "Stripped from cave trolls; slow to stop knitting itself shut.",
     "weight": 2.0,
-    "description": "Rubbery green hide that twitches faintly long after the kill."
+    "description": "Rubbery green hide that twitches faintly long after the kill.",
+    "kind": "pelt"
   },
   {
     "id": "wyrm_scales",
@@ -197,7 +201,9 @@
     "rarity": "rare",
     "source": "Cut from the flanks of deep-cave wyrms.",
     "weight": 0.6,
-    "description": "Dark iridescent scales that drink the torchlight."
+    "description": "Dark iridescent scales that drink the torchlight.",
+    "crafting_use": "trade",
+    "kind": "pelt"
   },
   {
     "id": "animal_bone",
@@ -217,7 +223,8 @@
     "rarity": "rare",
     "source": "Broken from the dense skeleton of a cave troll.",
     "weight": 0.8,
-    "description": "Bone heavy as stone, marrow still faintly warm."
+    "description": "Bone heavy as stone, marrow still faintly warm.",
+    "crafting_use": "trade"
   },
   {
     "id": "wyrm_teeth",
@@ -237,7 +244,8 @@
     "rarity": "uncommon",
     "source": "Extracted from giant spiders and cave wyrms.",
     "weight": 0.2,
-    "description": "A taut translucent bladder sloshing with cloudy poison."
+    "description": "A taut translucent bladder sloshing with cloudy poison.",
+    "kind": "venom"
   },
   {
     "id": "dire_bear_heart",
@@ -247,7 +255,8 @@
     "rarity": "rare",
     "source": "Cut from a slain dire bear; potent in restorative brews.",
     "weight": 1.0,
-    "description": "A fist of dark muscle that still gives a slow, heavy beat."
+    "description": "A fist of dark muscle that still gives a slow, heavy beat.",
+    "kind": "rare_organ"
   },
   {
     "id": "thunderbird_feather",
@@ -267,7 +276,8 @@
     "rarity": "rare",
     "source": "Grown in the gland of a thunderbird or tidecaller eel.",
     "weight": 0.2,
-    "description": "A jagged shard that ticks with caged lightning."
+    "description": "A jagged shard that ticks with caged lightning.",
+    "kind": "magical_component"
   },
   {
     "id": "thunderbird_oil",
@@ -297,7 +307,8 @@
     "rarity": "rare",
     "source": "Recovered from a Mawling; must be purified before safe use.",
     "weight": 0.2,
-    "description": "A torn sliver that hums wrong, like a note held too long."
+    "description": "A torn sliver that hums wrong, like a note held too long.",
+    "kind": "hollow_residue"
   },
   {
     "id": "spatial_residue",
@@ -307,7 +318,8 @@
     "rarity": "rare",
     "source": "Condensed from a Hollow Weaver's unraveling; purify first.",
     "weight": 0.1,
-    "description": "A bead of nothing that hums from the wrong side of your palm; the eye keeps sliding off it."
+    "description": "A bead of nothing that hums from the wrong side of your palm; the eye keeps sliding off it.",
+    "kind": "hollow_residue"
   },
   {
     "id": "hollow_shard",
@@ -327,7 +339,8 @@
     "rarity": "rare",
     "source": "Cut from a Hollowed Knight or Veilrender; purify before use.",
     "weight": 0.5,
-    "description": "A dense knot of corruption that pulses like a slow heart."
+    "description": "A dense knot of corruption that pulses like a slow heart.",
+    "kind": "hollow_residue"
   },
   {
     "id": "veil_shard",
@@ -337,7 +350,8 @@
     "rarity": "rare",
     "source": "Shed by a Veilrender as the Veil tears.",
     "weight": 0.2,
-    "description": "A glassy splinter that chimes like wind across a far sky; held to the eye, it shows that sky wrong."
+    "description": "A glassy splinter that chimes like wind across a far sky; held to the eye, it shows that sky wrong.",
+    "kind": "veil_shard"
   },
   {
     "id": "veilrender_carapace",
@@ -357,7 +371,8 @@
     "rarity": "legendary",
     "source": "Left behind by a Choir, a Still, or the Architect.",
     "weight": 0.3,
-    "description": "A shard that murmurs a name you almost remember."
+    "description": "A shard that murmurs a name you almost remember.",
+    "kind": "named_fragment"
   },
   {
     "id": "arcane_dust",
@@ -375,9 +390,11 @@
     "category": "arcane",
     "tier": 3,
     "rarity": "rare",
-    "source": "Extracted from a War Golem's chest (Crafting: Expert).",
+    "source": "Extracted from a War Golem's chest (Crafting: Trained).",
     "weight": 1.0,
-    "description": "A caged crystal heart that ticks with borrowed will."
+    "description": "A caged crystal heart that ticks with borrowed will.",
+    "crafting_use": "trade",
+    "kind": "construct_part"
   },
   {
     "id": "power_crystal",
@@ -387,7 +404,8 @@
     "rarity": "rare",
     "source": "Drawn from a War Golem's reservoir (Arcana: Expert).",
     "weight": 0.4,
-    "description": "A crystal that warms the palm and hums a single low note."
+    "description": "A crystal that warms the palm and hums a single low note.",
+    "kind": "high_tier_arcane"
   },
   {
     "id": "divine_material",
@@ -417,7 +435,8 @@
     "rarity": "uncommon",
     "source": "Reeled from giant spider webs in the deep woods.",
     "weight": 0.1,
-    "description": "Thread light as breath and stronger than it has any right to be."
+    "description": "Thread light as breath and stronger than it has any right to be.",
+    "kind": "basic_organ"
   },
   {
     "id": "cave_gemstone",
@@ -425,7 +444,7 @@
     "category": "gem",
     "tier": 2,
     "rarity": "uncommon",
-    "source": "Found in cave wyrm nests (1d4 with Investigation: Trained).",
+    "source": "Found in cave wyrm nests (1d4 with Survival: Expert).",
     "weight": 0.1,
     "description": "A rough crystal that throws back the torch in a dozen colors."
   },
@@ -497,7 +516,8 @@
     "rarity": "rare",
     "source": "Cut from the rotted core of a Hollow-touched ironwood; must be purified before use.",
     "weight": 0.5,
-    "description": "Black-veined wood that twitches faintly until the corruption is burned out."
+    "description": "Black-veined wood that twitches faintly until the corruption is burned out.",
+    "kind": "volatile"
   },
   {
     "id": "thornveld_amber",
@@ -527,7 +547,8 @@
     "rarity": "rare",
     "source": "Skinned from a slain dire bear; thick enough to turn a blade.",
     "weight": 8.0,
-    "description": "A heavy shaggy pelt that smells of musk and cold rivers."
+    "description": "A heavy shaggy pelt that smells of musk and cold rivers.",
+    "kind": "pelt"
   },
   {
     "id": "silver_ingot",
@@ -543,11 +564,12 @@
     "id": "woven_void_fragment",
     "name": "Woven Void Fragment",
     "category": "hollow_residue",
-    "tier": 3,
+    "tier": 2,
     "rarity": "rare",
     "source": "A scrap of torn Veil, painstakingly wound onto a spindle before it unravels.",
     "weight": 0.1,
-    "description": "A thread of nothing that whispers as it unwinds; it weighs less than it should."
+    "description": "A thread of nothing that whispers as it unwinds; it weighs less than it should.",
+    "kind": "hollow_residue"
   },
   {
     "id": "living_stone",
@@ -557,7 +579,8 @@
     "rarity": "legendary",
     "source": "Quarried from the Architect's construction zone, where the rock still reshapes itself.",
     "weight": 3.0,
-    "description": "Grey stone that flows like slow water and re-forms when you look away."
+    "description": "Grey stone that flows like slow water and re-forms when you look away.",
+    "kind": "volatile"
   },
   {
     "id": "choir_resonance_crystal",
@@ -567,7 +590,8 @@
     "rarity": "legendary",
     "source": "Recovered from a destroyed Choir; it still holds the last note it sang.",
     "weight": 0.4,
-    "description": "A clear crystal that rings with a chord no one is playing."
+    "description": "A clear crystal that rings with a chord no one is playing.",
+    "kind": "high_tier_arcane"
   },
   {
     "id": "shard_false_paradise",
@@ -587,7 +611,8 @@
     "rarity": "common",
     "source": "Taken from a Grey Wolf.",
     "weight": 0.1,
-    "description": "Small pointed fangs worn smooth at the roots."
+    "description": "Small pointed fangs worn smooth at the roots.",
+    "crafting_use": "trade"
   },
   {
     "id": "wolf_meat",
@@ -597,7 +622,9 @@
     "rarity": "common",
     "source": "Harvested from a Grey Wolf.",
     "weight": 1.0,
-    "description": "Lean game meat with a sharp wild scent."
+    "description": "Lean game meat with a sharp wild scent.",
+    "crafting_use": "trade",
+    "kind": "meat"
   },
   {
     "id": "boar_tusks",
@@ -607,7 +634,8 @@
     "rarity": "common",
     "source": "Taken from a Wild Boar.",
     "weight": 0.3,
-    "description": "Two curved tusks marked by old scrapes."
+    "description": "Two curved tusks marked by old scrapes.",
+    "crafting_use": "trade"
   },
   {
     "id": "boar_meat",
@@ -617,7 +645,9 @@
     "rarity": "common",
     "source": "Harvested from a Wild Boar.",
     "weight": 1.0,
-    "description": "Rich meat with a strong earthy smell."
+    "description": "Rich meat with a strong earthy smell.",
+    "crafting_use": "trade",
+    "kind": "meat"
   },
   {
     "id": "spider_chitin",
@@ -627,7 +657,8 @@
     "rarity": "common",
     "source": "Taken from a Giant Spider.",
     "weight": 0.2,
-    "description": "Hard plates that click when stacked."
+    "description": "Hard plates that click when stacked.",
+    "crafting_use": "trade"
   },
   {
     "id": "stalker_pelt",
@@ -637,7 +668,9 @@
     "rarity": "uncommon",
     "source": "Skinned from a Thornveld Stalker.",
     "weight": 1.2,
-    "description": "Dappled fur carrying the scent of damp bark."
+    "description": "Dappled fur carrying the scent of damp bark.",
+    "crafting_use": "trade",
+    "kind": "pelt"
   },
   {
     "id": "stalker_claws",
@@ -647,7 +680,8 @@
     "rarity": "uncommon",
     "source": "Taken from a Thornveld Stalker.",
     "weight": 0.1,
-    "description": "Hooked claws sharp enough to catch on cloth."
+    "description": "Hooked claws sharp enough to catch on cloth.",
+    "crafting_use": "trade"
   },
   {
     "id": "ironwood_bark",
@@ -657,7 +691,9 @@
     "rarity": "uncommon",
     "source": "Cut from a Corrupted Treant.",
     "weight": 0.5,
-    "description": "Dense bark whose split edges smell faintly of rot."
+    "description": "Dense bark whose split edges smell faintly of rot.",
+    "crafting_use": "trade",
+    "kind": "plant"
   },
   {
     "id": "razorwing_talons",
@@ -667,7 +703,9 @@
     "rarity": "uncommon",
     "source": "Harvested from Steppe Razorwing.",
     "weight": 0.1,
-    "description": "Hooked talons that rasp together, sharp enough to split a thumbnail."
+    "description": "Hooked talons that rasp together, sharp enough to split a thumbnail.",
+    "crafting_use": "trade",
+    "kind": "basic_organ"
   },
   {
     "id": "bison_hide",
@@ -677,7 +715,9 @@
     "rarity": "common",
     "source": "Harvested from Steppe Bison.",
     "weight": 1.5,
-    "description": "A heavy hide that smells of dust and dry grass."
+    "description": "A heavy hide that smells of dust and dry grass.",
+    "crafting_use": "trade",
+    "kind": "pelt"
   },
   {
     "id": "bison_horn",
@@ -687,7 +727,8 @@
     "rarity": "common",
     "source": "Harvested from Steppe Bison.",
     "weight": 0.5,
-    "description": "A thick curved horn that rings dully when knocked on stone."
+    "description": "A thick curved horn that rings dully when knocked on stone.",
+    "crafting_use": "trade"
   },
   {
     "id": "bison_meat",
@@ -697,7 +738,9 @@
     "rarity": "common",
     "source": "Harvested from Steppe Bison.",
     "weight": 1.0,
-    "description": "A dense, rich-smelling cut of red meat, heavy in the hand."
+    "description": "A dense, rich-smelling cut of red meat, heavy in the hand.",
+    "crafting_use": "trade",
+    "kind": "meat"
   },
   {
     "id": "viper_venom",
@@ -707,7 +750,9 @@
     "rarity": "uncommon",
     "source": "Harvested from Rock Viper.",
     "weight": 0.1,
-    "description": "A stoppered dose of venom with a sharp, bitter smell."
+    "description": "A stoppered dose of venom with a sharp, bitter smell.",
+    "crafting_use": "trade",
+    "kind": "venom"
   },
   {
     "id": "viper_skin",
@@ -717,7 +762,9 @@
     "rarity": "uncommon",
     "source": "Harvested from Rock Viper.",
     "weight": 0.2,
-    "description": "A thin, dry skin that whispers when it bends."
+    "description": "A thin, dry skin that whispers when it bends.",
+    "crafting_use": "trade",
+    "kind": "pelt"
   },
   {
     "id": "wyrm_acid_gland",
@@ -727,7 +774,9 @@
     "rarity": "rare",
     "source": "Harvested from Cave Wyrm.",
     "weight": 0.5,
-    "description": "A swollen gland that fizzes faintly and stinks of sour metal."
+    "description": "A swollen gland that fizzes faintly and stinks of sour metal.",
+    "crafting_use": "trade",
+    "kind": "gland"
   },
   {
     "id": "lurker_hide",
@@ -737,7 +786,9 @@
     "rarity": "uncommon",
     "source": "Harvested from Saltmarsh Lurker.",
     "weight": 1.2,
-    "description": "A slick, briny hide that squelches when folded."
+    "description": "A slick, briny hide that squelches when folded.",
+    "crafting_use": "trade",
+    "kind": "pelt"
   },
   {
     "id": "lurker_teeth",
@@ -747,7 +798,8 @@
     "rarity": "common",
     "source": "Harvested from Saltmarsh Lurker.",
     "weight": 0.1,
-    "description": "Needle teeth that click together, still smelling of salt mud."
+    "description": "Needle teeth that click together, still smelling of salt mud.",
+    "crafting_use": "trade"
   },
   {
     "id": "eel_skin",
@@ -757,7 +809,9 @@
     "rarity": "uncommon",
     "source": "Harvested from Tidecaller Eel.",
     "weight": 0.5,
-    "description": "A slick skin that smells of the tide and creaks as it dries."
+    "description": "A slick skin that smells of the tide and creaks as it dries.",
+    "crafting_use": "trade",
+    "kind": "pelt"
   },
   {
     "id": "lightning_gland",
@@ -767,7 +821,9 @@
     "rarity": "rare",
     "source": "Harvested from Tidecaller Eel.",
     "weight": 0.2,
-    "description": "A taut gland that crackles faintly between your fingers."
+    "description": "A taut gland that crackles faintly between your fingers.",
+    "crafting_use": "trade",
+    "kind": "gland"
   },
   {
     "id": "eel_oil",
@@ -777,7 +833,9 @@
     "rarity": "uncommon",
     "source": "Harvested from Tidecaller Eel.",
     "weight": 0.2,
-    "description": "A slick oil that hisses when a drop meets hot iron."
+    "description": "A slick oil that hisses when a drop meets hot iron.",
+    "crafting_use": "trade",
+    "kind": "meat"
   },
   {
     "id": "crawler_chitin",
@@ -787,7 +845,8 @@
     "rarity": "uncommon",
     "source": "Harvested from Umbral Crawler.",
     "weight": 0.2,
-    "description": "A curved plate of black chitin that clicks when tapped."
+    "description": "A curved plate of black chitin that clicks when tapped.",
+    "crafting_use": "trade"
   },
   {
     "id": "paralytic_gland",
@@ -797,7 +856,9 @@
     "rarity": "uncommon",
     "source": "Harvested from Umbral Crawler.",
     "weight": 0.2,
-    "description": "A soft sac that smells of bitter almonds and numbs the fingertips."
+    "description": "A soft sac that smells of bitter almonds and numbs the fingertips.",
+    "crafting_use": "trade",
+    "kind": "gland"
   },
   {
     "id": "crawler_mandible",
@@ -807,7 +868,8 @@
     "rarity": "uncommon",
     "source": "Harvested from Umbral Crawler.",
     "weight": 0.2,
-    "description": "A hooked jaw, still sharp enough to rasp against stone."
+    "description": "A hooked jaw, still sharp enough to rasp against stone.",
+    "crafting_use": "trade"
   },
   {
     "id": "guardian_core_small",
@@ -817,7 +879,9 @@
     "rarity": "uncommon",
     "source": "Harvested from Deepstone Guardian.",
     "weight": 0.2,
-    "description": "A palm-sized stone heart that hums faintly against the skin."
+    "description": "A palm-sized stone heart that hums faintly against the skin.",
+    "crafting_use": "trade",
+    "kind": "construct_part"
   },
   {
     "id": "ancient_mechanism",
@@ -827,7 +891,9 @@
     "rarity": "uncommon",
     "source": "Harvested from Deepstone Guardian.",
     "weight": 0.2,
-    "description": "A cluster of stone gears that tick when turned by hand."
+    "description": "A cluster of stone gears that tick when turned by hand.",
+    "crafting_use": "trade",
+    "kind": "construct_part"
   },
   {
     "id": "dire_bear_claws",
@@ -837,7 +903,8 @@
     "rarity": "uncommon",
     "source": "Harvested from Dire Bear.",
     "weight": 0.2,
-    "description": "A heavy, curved claw that smells of earth and old blood."
+    "description": "A heavy, curved claw that smells of earth and old blood.",
+    "crafting_use": "trade"
   },
   {
     "id": "dire_bear_fat",
@@ -847,7 +914,9 @@
     "rarity": "uncommon",
     "source": "Harvested from Dire Bear.",
     "weight": 0.2,
-    "description": "Thick, rank fat that renders down into lamp oil and salve."
+    "description": "Thick, rank fat that renders down into lamp oil and salve.",
+    "crafting_use": "trade",
+    "kind": "meat"
   },
   {
     "id": "troll_blood",
@@ -857,7 +926,9 @@
     "rarity": "uncommon",
     "source": "Harvested from Troll.",
     "weight": 0.2,
-    "description": "Dark blood that bubbles faintly in the vial, as if still healing."
+    "description": "Dark blood that bubbles faintly in the vial, as if still healing.",
+    "crafting_use": "trade",
+    "kind": "rare_organ"
   },
   {
     "id": "lightning_gland_large",
@@ -867,7 +938,9 @@
     "rarity": "rare",
     "source": "Harvested from Thunderbird.",
     "weight": 0.2,
-    "description": "A swollen gland that crackles and stings the palm that holds it."
+    "description": "A swollen gland that crackles and stings the palm that holds it.",
+    "crafting_use": "trade",
+    "kind": "gland"
   },
   {
     "id": "thunderbird_egg",
@@ -877,7 +950,8 @@
     "rarity": "rare",
     "source": "Harvested from Thunderbird.",
     "weight": 0.2,
-    "description": "A heavy egg that thrums like distant thunder."
+    "description": "A heavy egg that thrums like distant thunder.",
+    "crafting_use": "trade"
   },
   {
     "id": "dissolution_membrane",
@@ -885,9 +959,11 @@
     "category": "hollow_residue",
     "tier": 2,
     "rarity": "rare",
-    "source": "Recovered from a Mawling; requires expert Crafting and trained Arcana to harvest.",
+    "source": "Recovered from a Mawling; requires expert Crafting to harvest.",
     "weight": 0.2,
-    "description": "A wet rasp sounds when the membrane is unfolded; its edges dissolve exposed fibers."
+    "description": "A wet rasp sounds when the membrane is unfolded; its edges dissolve exposed fibers.",
+    "crafting_use": "trade",
+    "kind": "hollow_residue"
   },
   {
     "id": "corrupted_armor_fragments",
@@ -897,7 +973,8 @@
     "rarity": "uncommon",
     "source": "Recovered from a Hollowed Knight; purification yields high-grade steel.",
     "weight": 0.8,
-    "description": "Armor scraps clatter with a hollow ring and smell of scorched iron."
+    "description": "Armor scraps clatter with a hollow ring and smell of scorched iron.",
+    "crafting_use": "trade"
   },
   {
     "id": "remnant_identity",
@@ -907,17 +984,9 @@
     "rarity": "rare",
     "source": "Extracted from a Hollowed Knight with trained Arcana.",
     "weight": 0.1,
-    "description": "A faint remembered voice whispers from the remnant; useful for memory extraction or soul peace."
-  },
-  {
-    "id": "salvageable_weapon",
-    "name": "Salvageable Weapon",
-    "category": "metal",
-    "tier": 3,
-    "rarity": "uncommon",
-    "source": "Tainted weapon recovered from a Hollowed Knight for purification.",
-    "weight": 2.0,
-    "description": "Its blade rings dully and smells of old ash; purification yields a standard martial weapon."
+    "description": "A faint remembered voice whispers from the remnant; useful for memory extraction or soul peace.",
+    "crafting_use": "trade",
+    "kind": "magical_component"
   },
   {
     "id": "corruption_saturated_stone",
@@ -927,7 +996,8 @@
     "rarity": "uncommon",
     "source": "Recovered from a Veilrender; cannot be purified and serves Hollow research.",
     "weight": 1.0,
-    "description": "A low hum rises from the stone, followed by the smell of wet earth."
+    "description": "A low hum rises from the stone, followed by the smell of wet earth.",
+    "crafting_use": "trade"
   },
   {
     "id": "wrack_core_large",
@@ -937,7 +1007,9 @@
     "rarity": "rare",
     "source": "Recovered from a Veilrender with expert Crafting; purify before use.",
     "weight": 1.0,
-    "description": "A deep pulse sounds within this heavy core, more potent than a knight’s wrack core."
+    "description": "A deep pulse sounds within this heavy core, more potent than a knight’s wrack core.",
+    "crafting_use": "trade",
+    "kind": "hollow_residue"
   },
   {
     "id": "freed_memories",
@@ -947,7 +1019,8 @@
     "rarity": "legendary",
     "source": "Released when the Choir core breaks.",
     "weight": 0.1,
-    "description": "A specific memory from someone consumed by the Choir."
+    "description": "A specific memory from someone consumed by the Choir.",
+    "crafting_use": "trade"
   },
   {
     "id": "architect_blueprint_fragment",
@@ -957,7 +1030,9 @@
     "rarity": "legendary",
     "source": "Recovered from the Architect's structures.",
     "weight": 0.1,
-    "description": "Patterns for impossible structures."
+    "description": "Patterns for impossible structures.",
+    "crafting_use": "trade",
+    "kind": "named_fragment"
   },
   {
     "id": "void_touched_foundation",
@@ -967,6 +1042,8 @@
     "rarity": "legendary",
     "source": "Recovered from the Architect's central construction.",
     "weight": 0.1,
-    "description": "A fragment of an unknown foundational structure."
+    "description": "A fragment of an unknown foundational structure.",
+    "crafting_use": "trade",
+    "kind": "named_fragment"
   }
 ]

@@ -15,7 +15,7 @@ Defines the full creature catalog, from stat block schema through regional creat
 | M7.1 — Creature Stat Block Schema | 9 | 0 | 0 |
 | M7.2 — Regional Creature Catalog | 11 | 0 | 0 |
 | M7.3 — Hollow Creatures (Special Mechanics) | 2 | 0 | 8 |
-| M7.4 — Loot, Harvesting & Encounter Builder | 0 | 0 | 11 |
+| M7.4 — Loot, Harvesting & Encounter Builder | 4 | 0 | 7 |
 
 **Catalog cutover and inventory refresh:** All ten encounters store catalog references, explicit roles and recommended party levels; combat expands these references into persisted snapshots. The bestiary Combat Effect Inventory records the supported paths and their remaining limits. Social `command` and `accusation` effects carry narrative-only focus/narration, without automatic healing or spell buff dice. Choir Deafened restrictions, Charmed movement, silence and core phases execute through structured combat paths. The Still and Architect remain deferred Named encounters; their terrain, anchors and legendary mechanics remain open. M7.3 remains partial. The live Combat Effect Inventory names each executable, mixed and narrative-only effect.
 
@@ -191,7 +191,7 @@ The Warden's spec block (Encounter Creature Stat Blocks) names `loot_hollow_ward
 - [ ] Solo encounters assume 1 player + 1 companion at 75% HP effectiveness
 - [ ] Environment modifiers adjust creature selection (e.g., no aquatic creatures in mountains)
 - [ ] Generated encounters resolve in 3-5 rounds given expected player damage output
-- [ ] Loot materials link to Phase 5 crafting recipes where applicable
+- [x] Every loot item is named by a Phase 5 recipe material or marked `crafting_use: "trade"` on its unique catalog owner
 - [ ] Tests cover loot generation for all creature categories, harvesting skill gates, encounter scaling, and environment filtering
 
 **Key references:**

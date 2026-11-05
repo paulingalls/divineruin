@@ -277,7 +277,7 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 | Drop | Qty | Chance | Requires | Category |
 |---|---|---|---|---|
 | Rend shard | 1 | 75% | Crafting: Expert | Hollow residue (Tier 2) |
-| Dissolution membrane | 1 | 25% | Crafting: Expert + Arcana: Trained | Hollow residue + Arcane component (Tier 2) |
+| Dissolution membrane | 1 | 25% | Crafting: Expert | Hollow residue (Tier 2) |
 
 ---
 
@@ -325,7 +325,7 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 | Drop | Qty | Chance | Requires | Category |
 |---|---|---|---|---|
 | Spatial residue | 1 | 100% | Crafting: Expert | Hollow residue (Tier 2). Used in Veil-ward crafting, teleportation research |
-| Woven void fragment | 1 | 25% | Arcana: Expert | Arcane component (Tier 2). Extremely valuable — used in portal/teleportation enchantments |
+| Woven void fragment | 1 | 25% | Crafting: Expert | Hollow residue (Tier 2). Extremely valuable — used in portal/teleportation enchantments |
 
 ---
 
@@ -487,7 +487,7 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 | Drop | Qty | Chance | Requires | Category |
 |---|---|---|---|---|
 | Choir resonance crystal | 1 | 100% | Arcana: Expert | Hollow residue (Tier 4). Contains trapped memories. Used in supreme-tier enchantments or released for narrative effect |
-| Named fragment | 1 | 100% | Crafting: Expert | Hollow residue (Tier 4). Fragment of a Named creature. Scholars, gods, and factions will pay anything for this |
+| Named fragment | 1 | 100% | Arcana: Expert | Hollow residue (Tier 4). Fragment of a Named creature. Scholars, gods, and factions will pay anything for this |
 | Freed memories | 1d6 | 100% | None | Arcane component (Tier 4). Each is a specific memory from a consumed person. Narrative-first loot — each memory is a story |
 
 ---
@@ -539,7 +539,7 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 | Drop | Qty | Chance | Requires | Category |
 |---|---|---|---|---|
 | Shard of false paradise | 1 per anchor | 100% | Arcana: Expert | Hollow residue (Tier 4). Contains trapped serenity. Can be used to create zones of forced calm — or to study how the Hollow creates beauty |
-| Named fragment | 1 | 100% | Crafting: Expert | Hollow residue (Tier 4). Named creature material |
+| Named fragment | 1 | 100% | Arcana: Expert | Hollow residue (Tier 4). Named creature material |
 | Absorbed memories | varies | 100% | None | Narrative loot. The people the Still consumed — their last possessions, their final smiles, frozen in place |
 
 ---
@@ -601,8 +601,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 |---|---|---|---|---|
 | Architect's blueprint fragment | 1d4 | 100% | Arcana: Expert | Arcane component (Tier 4). Patterns for impossible structures. Can be studied to learn advanced enchantment principles or sold to scholars for enormous sums |
 | Living stone | 2d6 | 100% | Crafting: Expert | Metals & stone (Tier 4, tainted). Stone that still responds to will. Can be shaped without tools. Purified: supreme-tier construction material |
-| Named fragment | 1 | 100% | Crafting: Expert | Hollow residue (Tier 4). Named creature material |
-| Void-touched foundation | 1 | 50% | Arcana: Expert + Crafting: Expert | Gems & crystals + Hollow residue (Tier 4). A piece of whatever the Architect was building at its core. The most valuable research material in the game. What was it making? |
+| Named fragment | 1 | 100% | Arcana: Expert | Hollow residue (Tier 4). Named creature material |
+| Void-touched foundation | 1 | 50% | Arcana: Expert | Gems & crystals + Hollow residue (Tier 4). A piece of whatever the Architect was building at its core. The most valuable research material in the game. What was it making? |
 
 ---
 
@@ -881,7 +881,7 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 | Wyrm scales | 1d6 | 100% | Survival: Trained |
 | Wyrm acid gland | 1 | 50% | Survival: Expert |
 | Wyrm teeth | 1d4 | 100% | None |
-| Cave gemstones (from nest) | 1d4 | 25% | Investigation: Trained |
+| Cave gemstones (from nest) | 1d4 | 25% | Survival: Expert |
 
 ---
 
@@ -905,7 +905,7 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Loot:**
 | Drop | Qty | Chance | Requires |
 |---|---|---|---|
-| Golem core | 1 | 100% | Crafting: Expert |
+| Golem core | 1 | 100% | Crafting: Trained |
 | Enchanted stone | 2d4 | 100% | None |
 | Keldaran forged steel | 1d4 | 75% | Crafting: Trained |
 | Power crystal | 1 | 25% | Arcana: Expert |
@@ -1021,7 +1021,7 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 |---|---|---|---|
 | Guardian core (small) | 1 | 100% | Crafting: Trained |
 | Enchanted stone | 1d4 | 100% | None |
-| Ancient mechanism | 1 | 25% | Crafting: Expert |
+| Ancient mechanism | 1 | 25% | Crafting: Trained |
 
 ---
 

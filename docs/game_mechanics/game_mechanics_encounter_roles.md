@@ -519,7 +519,7 @@ Exactly as written in the bestiary. No modifications.
 | Rend shard | 2d4 | 100% | Crafting: Expert |
 | Dissolution membrane | 3 | 100% | Crafting: Expert |
 | Spatial residue | 1 | 100% | Arcana: Trained |
-| Woven void fragment | 1 | 50% (base 25% × 2, guaranteed floor) | Arcana: Expert |
+| Woven void fragment | 1 | 50% (base 25% × 2, guaranteed floor) | Crafting: Expert |
 | Currency | (2d6 × 2) + 15 sp | 15% (base chance unchanged) | Absorbed from victims |
 | Bonus item (context loot) | 1 | 100% | Example: half-dissolved Thornwatch badge, corrupted weapon from a previous victim, Hollow-tainted gem |
 

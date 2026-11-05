@@ -5,8 +5,8 @@ Reconciled against the codebase on **2026-10-13**, during **Sprint 68**
 its limits are recorded in the story handback. Checked criteria are not a claim
 that every designed effect has shipped.
 
-**Position: 334 / 538 acceptance criteria — 62%** (the sum of the per-phase
-counts in `README.md`). **204 criteria remain unchecked.** Phases 1, 2, 4, 5,
+**Position: 335 / 538 acceptance criteria — 62%** (the sum of the per-phase
+counts in `README.md`). **203 criteria remain unchecked.** Phases 1, 2, 4, 5,
 6 and 10 have all recorded criteria checked. Phase 3 is still Partial at 34/34:
 casting infrastructure is exercised, but complete deterministic spell-effect
 coverage is **unverified**. All 87 spell rows carry textual `mechanics`; this
@@ -112,7 +112,7 @@ not schedules or measured implementation costs.
 
 | Phase | Milestones | Open ACs | Dependencies / decisions | Size estimate | Exercised or inventoried substrate |
 |---|---|---|---|---|---|
-| **7 · Bestiary** | 7.1–7.4 | 16 | M7.4 signature and companion assumptions | ~2 sprints | Guaranteed drops and party skill gates exercised through persisted combat victory; roles/budgets/loot exercised through combat; 36 catalog rows, 11 catalog-backed encounter templates referencing 14 distinct species; seeded/queryable catalog and Python/TypeScript contracts. Generated composition and the remaining M7.3 effects remain open. |
+| **7 · Bestiary** | 7.1–7.4 | 15 | M7.4 signature and companion assumptions | ~2 sprints | Every dropped item has an exclusive recipe link or trade marker on its catalog owner. Guaranteed drops and party skill gates exercised through persisted combat victory; roles/budgets/loot exercised through combat; 36 catalog rows, 11 catalog-backed encounter templates referencing 14 distinct species; seeded/queryable catalog and Python/TypeScript contracts. Generated composition and the remaining M7.3 effects remain open. |
 | **8 · Patrons** | 8.1–8.3 | 32 | Phase 2 archetype detail for M8.3; original schema criteria remain open | ~2–3 sprints | Ten authored Layer-1 gifts; Layers 2–4 null. Favor action recording, standing/query and decay checks pass; XP/favor Resolve and client favor-event handling are exercised. Complete gift-effect coverage is not certified here. |
 | **9 · Economy** | 9.1–9.10 | 75 | Phase 7 material/creature integration; Phase 5/6 inputs | large | Shared pricing getters/repair costs, reputation-to-stance and committed material inventory boundaries pass. The migrated pricing table exists. No complete economy certification is implied. |
 | **11 · World Loop** | 11.1–11.6 | 46 | D-A–D-E; M11.4 needs Phase 9, M11.6 needs Phase 8 | ~4–6 sprints | Migrated `region_state`, `npc_state`, `world_events_log`, `god_agent_state`, `world_flags`; direct quest world effects; activity-worker reset harness. These do not establish a world scheduler or cascade. |
