@@ -65,6 +65,7 @@ async def test_attack_producer_clears_only_positive_source_damage(source, damage
         queries=deps["queries"],
         resolver=deps["resolver"],
         concentration_break_mod=deps["concentration_break_mod"],
+        conn=MagicMock(),
     )
     assert result["resolved"] is True
     assert conditions.has_condition(state.participants[1].conditions, "charmed") is not clears

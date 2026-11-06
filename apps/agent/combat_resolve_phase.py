@@ -18,6 +18,7 @@ import combat_phase
 import combat_spatial
 import combat_spatial_declarations
 import combat_wrap
+import combat_wrongdoing
 import concentration_break
 import db
 import db_mutations
@@ -233,6 +234,8 @@ async def _resolve_phase_locked(
         "exhaustion_narration": exhaustion_narration,
         "legendary_available": wrap_adv.legendary_available,
     }
+    if facts := combat_wrongdoing.aggression_facts(state):
+        response["wrongdoing"] = facts
     logger.info(
         "resolve_phase result: beat=%s, round=%d, packets=%d", state.beat, state.round_number, len(packet_summaries)
     )

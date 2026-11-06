@@ -391,6 +391,7 @@ async def test_resolve_phase_rolls_back_player_hp_when_save_combat_state_fails(d
     monkeypatch.setattr(db_mutations, "save_combat_state", AsyncMock(side_effect=RuntimeError("boom")))
     queries = MagicMock()
     queries.get_player_inventory = AsyncMock(return_value=[])  # no equipped items -> no durability writes
+    queries.get_player = AsyncMock(side_effect=lambda pid, **kw: {"player_id": pid})
     break_mod = MagicMock()
     break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
 

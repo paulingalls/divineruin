@@ -41,7 +41,7 @@ async def test_db_tool_connection_error_returns_tool_error():
         mock_txn.side_effect = ConnectionError("Database unreachable")
 
         with pytest.raises(ToolError, match="trouble accessing"):
-            await update_npc_disposition(context, npc_id="torin", delta=1, reason="test")
+            await update_npc_disposition(context, npc_id="torin", delta=1, reason="test", grievance="none")
 
 
 @pytest.mark.asyncio
@@ -53,7 +53,7 @@ async def test_db_tool_timeout_returns_tool_error():
         mock_txn.side_effect = TimeoutError("Query took too long")
 
         with pytest.raises(ToolError, match="longer than expected"):
-            await update_npc_disposition(context, npc_id="torin", delta=1, reason="test")
+            await update_npc_disposition(context, npc_id="torin", delta=1, reason="test", grievance="none")
 
 
 @pytest.mark.asyncio
@@ -77,7 +77,7 @@ async def test_db_tool_rollback_prevents_partial_state():
         mock_txn.return_value.__aenter__.return_value = AsyncMock()
 
         with pytest.raises(ToolError):
-            await update_npc_disposition(context, npc_id="torin", delta=1, reason="test")
+            await update_npc_disposition(context, npc_id="torin", delta=1, reason="test", grievance="none")
 
         assert len(session.recent_events) == initial_events
 
@@ -90,7 +90,7 @@ async def test_db_tool_succeeds_normally_after_an_error():
     with get_npc, present, patch("db.transaction") as mock_txn:
         mock_txn.side_effect = ConnectionError("Temporary failure")
         with pytest.raises(ToolError):
-            await update_npc_disposition(context, npc_id="torin", delta=1, reason="test")
+            await update_npc_disposition(context, npc_id="torin", delta=1, reason="test", grievance="none")
 
     get_npc, present = _npc_lookups()
     with (
@@ -104,7 +104,9 @@ async def test_db_tool_succeeds_normally_after_an_error():
         mock_conn = AsyncMock()
         mock_txn.return_value.__aenter__.return_value = mock_conn
 
-        data = json.loads(await update_npc_disposition(context, npc_id="torin", delta=1, reason="test"))
+        data = json.loads(
+            await update_npc_disposition(context, npc_id="torin", delta=1, reason="test", grievance="none")
+        )
 
         assert data["npc_id"] == "torin"
         assert data["previous"] == "neutral"

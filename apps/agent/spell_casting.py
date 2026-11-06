@@ -12,6 +12,7 @@ import cast_modifiers
 import character_spells
 import combat_hollow_resonance
 import combat_voice_rules
+import concealment
 import condition_produce
 import conditions
 import db
@@ -106,8 +107,6 @@ async def _cast_spell_impl(
     conditions_mutations_mod=db_mutations_conditions,
     condition_produce_mod=condition_produce,
     character_spells_mod=character_spells,
-    is_concealed: bool = False,
-    target_wronged_caster: bool = False,
 ) -> str:
     """Out-of-combat cast entry. Opens its own transaction, delegates the cast to the shared
     ``_resolve_cast`` core, then syncs the in-memory SSOT and flushes the deferred events
@@ -148,8 +147,6 @@ async def _cast_spell_impl(
             conditions_mutations_mod=conditions_mutations_mod,
             condition_produce_mod=condition_produce_mod,
             character_spells_mod=character_spells_mod,
-            is_concealed=is_concealed,
-            target_wronged_caster=target_wronged_caster,
         )
 
     # Transaction committed cleanly — sync the in-memory SSOT to the persisted values, then release
@@ -195,8 +192,6 @@ async def _resolve_cast(
     conditions_mutations_mod=db_mutations_conditions,
     condition_produce_mod=condition_produce,
     character_spells_mod=character_spells,
-    is_concealed: bool = False,
-    target_wronged_caster: bool = False,
 ) -> CastResult:
     """Resolve ONE cast against the DB using the caller's ``conn`` (opens no transaction of its own),
     shared by ``cast_spell`` (out-of-combat) and the in-combat ABILITY packet (story-007).
@@ -317,7 +312,7 @@ async def _resolve_cast(
         raw = combat_hollow_resonance.cast_generation(combat_state or session.combat_state, caster, spell, raw)
         return cast_modifiers.apply_ward_halving(raw, ward_active, veil_ward=veil_ward)
 
-    generated, patron_resonance = await patron_cast_context.apply_patron(
+    generated, patron_resonance, wrongdoing = await patron_cast_context.apply_patron(
         generation(patron),
         generation(None),
         patron,
@@ -330,9 +325,13 @@ async def _resolve_cast(
         combat_state=combat_state,
         target_id=target_id,
         target_ids=target_ids,
-        is_concealed=is_concealed,
-        target_wronged_caster=target_wronged_caster,
     )
+
+    concealment_packet = None
+    if concealment.is_concealed(player):
+        if revalidate_actor:
+            session.validate_acting_player(player_id)
+        concealment_packet = await concealment.transition(player, False, ended_by="cast", conn=conn)
 
     if spell.focus_cost > 0:
         if revalidate_actor:
@@ -393,6 +392,10 @@ async def _resolve_cast(
         "resonance_modifiers": modifiers,
         "ward_active": ward_active,
     }
+    if wrongdoing is not None:
+        packet["wrongdoing"] = wrongdoing
+    if concealment_packet is not None:
+        packet["concealment"] = concealment_packet
     if patron_resonance is not None:
         packet["patron_resonance"] = patron_resonance
     # Carry the explicit target into the packet for the DM to voice (corpse/ally/object/area).

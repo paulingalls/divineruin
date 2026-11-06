@@ -83,6 +83,7 @@ async def test_real_killing_attack_releases_only_the_fallen_grapplers_targets():
         queries=deps["queries"],
         resolver=_damage_resolver(10),
         concentration_break_mod=deps["concentration_break_mod"],
+        conn=MagicMock(),
     )
 
     assert summary["target_fallen"] is True
@@ -125,6 +126,7 @@ async def test_cannot_act_condition_releases_only_when_it_lands(save_success, re
                 break_concentration_on_damage=AsyncMock(return_value=None),
                 break_concentration_on_incapacitation=AsyncMock(return_value=None),
             ),
+            conn=MagicMock(),
         )
 
     player = state.get_participant("player_1")

@@ -16,6 +16,7 @@ import combat_recharge
 import combat_resolution
 import combat_spatial_declarations
 import combat_voice_rules
+import concealment
 import conditions
 import spell_casting
 from combat_ability import (
@@ -342,6 +343,9 @@ async def _resolve_one_packet(
     # before the swing loop so all swings of an expanded sequence share one verdict.
     enemies_remaining = sum(1 for p in state.participants if p.type == "enemy" and not p.is_fallen)
     is_first_attack = not state.first_attack_resolved
+    concealment_packet = None
+    if attacker.type == "player":
+        concealment_packet = await concealment.reveal_attacker(attacker.id, conn=conn, queries=queries)
     attack_summaries: list[dict] = []
     for act in actions:
         sub = await _resolve_attack_packet(
@@ -429,6 +433,8 @@ async def _resolve_one_packet(
         # aggregated dramatic flag and its reason label never disagree (story-004).
         summary["dramatic"] = any(s["dramatic"] for s in attack_summaries)
         summary["context"] = next((s["context"] for s in attack_summaries if s["dramatic"]), "")
+    if concealment_packet is not None:
+        summary["concealment"] = concealment_packet
     summary["actor_id"] = packet.actor_id
     summary["resolved"] = True
     return _attach_riders(summary, attacker, decl)

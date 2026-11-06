@@ -33,7 +33,6 @@ async def cast(
     database=None,
     connection=None,
     favor=True,
-    **facts,
 ):
     ctx = ctx or make_context()
     player_id = ctx.userdata.acting_player_id
@@ -85,7 +84,6 @@ async def cast(
         concentration_mutations_mod=MagicMock(update_player_concentration=AsyncMock()),
         character_spells_mod=MagicMock(get_known=AsyncMock(return_value=[{"spell_id": spell.id}])),
         ward_resolution_mod=MagicMock(resolve_scope_ward=AsyncMock(return_value={} if ward else None)),
-        **facts,
     )
     try:
         raw = await _activate_impl(
@@ -162,25 +160,6 @@ async def test_other_patron_casts(patron, spell_id, kwargs, expected):
 
 
 @pytest.mark.parametrize(
-    "patron,fact,spell_id,expected",
-    [
-        ("syrath", "is_concealed", "arcane_fireball", 1),
-        ("syrath", "is_concealed", "arcane_magic_missile", 0),
-        ("valdris", "target_wronged_caster", "arcane_disintegrate", 2),
-        ("valdris", "target_wronged_caster", "arcane_haste", 1),
-    ],
-)
-async def test_explicit_producer_handoff(patron, fact: str, spell_id, expected):
-    facts: dict[str, Any] = {fact: True}
-    packet = await cast(patron, spell_id, target_id="enemy", **facts)
-    assert packet["resonance_generated"] == expected
-    facts[fact] = False
-    standard = await cast(patron, spell_id, target_id="enemy", **facts)
-    assert packet["patron_resonance"]["standard"] == standard["resonance_generated"]
-    assert "patron_resonance" not in standard
-
-
-@pytest.mark.parametrize(
     "patron,spell_id,kwargs",
     [
         ("kaelen", "arcane_hold_person", {}),
@@ -195,8 +174,8 @@ async def test_explicit_producer_handoff(patron, fact: str, spell_id, expected):
         ("mortaen", "arcane_magic_missile", {}),
         ("nythera", "arcane_fireball", {"visit": {"data": {"revisited": True}}}),
         ("nythera", "arcane_fireball", {}),
-        ("valdris", "arcane_fireball", {"target_id": "enemy", "target_wronged_caster": True}),
-        ("valdris", "arcane_haste", {"target_wronged_caster": True}),
+        ("valdris", "arcane_fireball", {"target_id": "enemy", "rows": {"enemy": {"hp": {"current": 20}}}}),
+        ("valdris", "arcane_haste", {}),
     ],
 )
 async def test_unmet_predicate(patron, spell_id, kwargs):
@@ -225,8 +204,6 @@ async def test_unbound(patron, spell_id):
         target_id="ally",
         rows={"ally": {"hp": {"current": 0}}},
         visit={"data": {}},
-        is_concealed=True,
-        target_wronged_caster=True,
     )
     packet = await cast(patron, spell_id, **kwargs)
     standard = await cast(None, spell_id, favor=False, **kwargs)
@@ -406,7 +383,7 @@ async def test_declared_nonprimary_cast_uses_working_targets(patron, spell_id, d
 async def test_all_targets_must_qualify(patron, hps, expected):
     spell = replace(spells.get_spell("arcane_magic_missile"), max_targets=3)
     rows = {pid: {"hp": {"current": hp}} for pid, hp in zip(["a", "b"], hps, strict=True)}
-    packet = await cast(patron, spell=spell, target_ids=["a", "b", "a"], rows=rows, target_wronged_caster=True)
+    packet = await cast(patron, spell=spell, target_ids=["a", "b", "a"], rows=rows)
     assert packet["resonance_generated"] == expected
     assert ("patron_resonance" in packet) == (expected == 0)
 
