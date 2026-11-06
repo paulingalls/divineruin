@@ -148,7 +148,7 @@ class TestValidateEnemyResistanceTags:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("defect", [None, "dc", "resistance_tags"])
+@pytest.mark.parametrize("defect", [None, "dc", "resistance_tags", "unknown kind"])
 async def test_combat_entry_calls_public_shape_and_resistance_guards(monkeypatch, defect):
     import copy
     from unittest.mock import Mock
@@ -181,6 +181,8 @@ async def test_combat_entry_calls_public_shape_and_resistance_guards(monkeypatch
         enemy["action_pool"][0]["dc"] = "12"
     elif defect == "resistance_tags":
         enemy["resistance_tags"] = ["unknown"]
+    elif defect == "unknown kind":
+        enemy["action_pool"] = [{"name": "Decree", "kind": "decree"}]
     content.get_encounter_template.return_value = encounter
 
     async def load(creature_id, **kwargs):

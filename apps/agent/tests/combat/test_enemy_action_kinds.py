@@ -1,8 +1,6 @@
 """Commands must not roll damage "0", which is not a valid dice expression."""
 
-import ast
 import random
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -16,7 +14,6 @@ from combat_packet import _resolve_one_packet
 from combat_phase import ResolutionPacket
 from declarations import Declaration, DeclarationType
 
-_AGENT_DIR = Path(__file__).resolve().parents[2]
 _CATALOG = catalog_encounters()
 
 
@@ -77,16 +74,6 @@ def test_a_command_carrying_a_strike_field_is_refused(field):
 
     with pytest.raises(ValueError, match=field):
         validate_encounter_actions([{"id": "e1", "action_pool": [{"name": "Rally", "kind": "command", field: "x"}]}])
-
-
-def test_combat_start_runs_the_kind_check():
-    tree = ast.parse((_AGENT_DIR / "combat_init_participants.py").read_text())
-    called = {
-        node.func.id if isinstance(node.func, ast.Name) else getattr(node.func, "attr", None)
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Call)
-    }
-    assert "validate_encounter_actions" in called
 
 
 def test_a_held_command_is_never_rolled():
