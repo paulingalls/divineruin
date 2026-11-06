@@ -19,7 +19,7 @@ import db_content_queries
 import db_mutations
 import db_queries
 import event_types as E
-from combat_entry import load_party_players
+from combat_entry import generated_encounter, load_party_players, validate_entry_form
 from combat_init_participants import assemble_participants
 from combat_init_participants import class_reaction_ids as class_reaction_ids
 from combat_init_validation import validate_enemy_action_shapes as validate_enemy_action_shapes
@@ -41,6 +41,8 @@ async def _start_combat_impl(
     encounter_id: str,
     encounter_description: str,
     *,
+    difficulty: str = "",
+    tier: int | None = None,
     mutations=db_mutations,
     queries=db_queries,
     content=db_content_queries,
@@ -52,6 +54,8 @@ async def _start_combat_impl(
             context,
             encounter_id,
             encounter_description,
+            difficulty=difficulty,
+            tier=tier,
             mutations=mutations,
             queries=queries,
             content=content,
@@ -64,6 +68,8 @@ async def _start_combat_locked(
     encounter_id: str,
     encounter_description: str,
     *,
+    difficulty: str = "",
+    tier: int | None = None,
     mutations=db_mutations,
     queries=db_queries,
     content=db_content_queries,
@@ -76,9 +82,20 @@ async def _start_combat_locked(
     if session.in_combat:
         raise ToolError("Already in combat. End the current combat first.")
 
-    encounter = await content.get_encounter_template(encounter_id)
-    if encounter is None:
-        raise ToolError(f"Encounter template '{encounter_id}' not found.")
+    validate_entry_form(encounter_id, difficulty, tier)
+    terrain = None
+    member_players = None
+    if encounter_id:
+        encounter = await content.get_encounter_template(encounter_id)
+        if encounter is None:
+            raise ToolError(f"Encounter template '{encounter_id}' not found.")
+    else:
+        player = await queries.get_player(actor_id)
+        if player is None:
+            raise ToolError(f"Player '{actor_id}' not found.")
+        member_players = await load_party_players(session, player, queries=queries)
+        encounter, terrain = await generated_encounter(session, member_players, difficulty, tier, content=content)
+        encounter_id = encounter["id"]
 
     try:
         validate_encounter_references(encounter)
@@ -86,9 +103,12 @@ async def _start_combat_locked(
     except ValueError as error:
         raise ToolError(str(error)) from error
 
-    player = await queries.get_player(actor_id)
-    if player is None:
-        raise ToolError(f"Player '{actor_id}' not found.")
+    if member_players is None:
+        player = await queries.get_player(actor_id)
+        if player is None:
+            raise ToolError(f"Player '{actor_id}' not found.")
+    else:
+        player = dict(member_players)[actor_id]
 
     # Stance gate (story-008): a gated encounter resolves allied/hostile from the player's
     # reputation with the GATE faction. "allied" stands the encounter down (return a narration
@@ -117,7 +137,8 @@ async def _start_combat_locked(
             logger.info("start_combat: encounter %s resolved allied; combat averted", encounter_id)
             return f"The {faction.get('name', faction_id)} recognizes you as an ally and stands down. No combat."
 
-    member_players = await load_party_players(session, player, queries=queries)
+    if member_players is None:
+        member_players = await load_party_players(session, player, queries=queries)
 
     participants, spatial, initiative_entries, initiative_order, retained_choir = await assemble_participants(
         session, encounter, encounter_id, member_players, content=content, queries=queries
@@ -138,7 +159,8 @@ async def _start_combat_locked(
 
     from combat_terrain import resolve_terrain
 
-    terrain = await resolve_terrain(session, content_mod=content)
+    if terrain is None:
+        terrain = await resolve_terrain(session, content_mod=content)
     combat_id = f"combat_{uuid.uuid4().hex[:8]}"
     combat_state = CombatState(
         encounter_id=encounter_id,

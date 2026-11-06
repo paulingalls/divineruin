@@ -110,20 +110,6 @@ def test_internal_catalog_queries_use_regions_tier_and_named_missing_error(fresh
                 await query_creature_by_id("no_such")
             with pytest.raises(ValueError, match="atlantis"):
                 await query_creatures_by_region("atlantis")
-            ashmark = await query_creatures_by_region("ashmark")
-            assert {row["id"] for row in ashmark} >= {"hollow_shadeling", "hollow_hollowmoth"}
-            ashmark_tier_two = {row["id"] for row in await query_creatures_by_region("ashmark", tier=2)}
-            assert not ashmark_tier_two & {"hollow_shadeling", "hollow_hollowmoth"}
-            greyvale = await query_creatures_by_region("greyvale")
-            assert {row["id"] for row in greyvale} >= {"hollow_shadeling", "hollow_hollowmoth"}
-            scratch = {**shadeling, "id": "scratch_tier_two", "tier": 2, "regions": ["greyvale"]}
-            await conn.execute(
-                "INSERT INTO creatures (id, data) VALUES ($1, $2::jsonb)", scratch["id"], json.dumps(scratch)
-            )
-            greyvale_tier_two = {row["id"] for row in await query_creatures_by_region("greyvale", tier=2)}
-            assert "scratch_tier_two" in greyvale_tier_two
-            assert not greyvale_tier_two & {"hollow_shadeling", "hollow_hollowmoth"}
-            assert "scratch_tier_two" not in {row["id"] for row in await query_creatures_by_region("ashmark")}
         finally:
             await conn.close()
 
@@ -147,3 +133,76 @@ def test_signature_survives_real_seed_and_query(migrated_db, monkeypatch, creatu
             await conn.close()
 
     asyncio.run(check())
+
+
+@pytest.fixture
+def mock_combat_agent_factory():
+    return None
+
+
+@pytest.mark.parametrize(
+    "location,levels,region,tier",
+    [
+        ("greyvale_wilderness_north", (3,), "greyvale", 1),
+        ("greyvale_wilderness_north", (3, 7), "greyvale", 2),
+        ("sunward_tidal_shore", (3,), "sunward_coast", 1),
+        ("sunward_tidal_shore", (7,), "sunward_coast", 2),
+    ],
+)
+async def test_public_creature_queries(reset_db_pool, location, levels, region, tier):
+    from acceptance.mawling_harness import MawlingHarness
+
+    h = MawlingHarness()
+    try:
+        await h.prepare(levels, location=location)
+        async with h.pool.acquire() as conn:
+            async with conn.transaction():
+                shadeling = json.loads(await conn.fetchval("SELECT data FROM creatures WHERE id='hollow_shadeling'"))
+                scratch = {**shadeling, "id": "scratch_tier_two", "tier": 2, "regions": ["greyvale"]}
+                await conn.execute(
+                    "INSERT INTO creatures (id,data) VALUES ($1,$2::jsonb)", scratch["id"], json.dumps(scratch)
+                )
+                # Route our DB seam to this transaction so the inserted row is visible to commands.
+                from unittest.mock import AsyncMock, patch
+
+                with patch("db.get_pool", AsyncMock(return_value=conn)):
+                    result = await h.command("query_info", {"kind": "creature"})
+                    expected = {
+                        r["id"]
+                        for r in await conn.fetch(
+                            "SELECT id FROM creatures WHERE data->'regions' @> $1::jsonb AND tier=$2",
+                            json.dumps([region]),
+                            tier,
+                        )
+                    }
+                    assert expected and {r["id"] for r in result} == expected
+                    assert ("hollow_shadeling" in expected) == (region == "greyvale" and tier == 1)
+                    assert ("scratch_tier_two" in expected) == (region == "greyvale" and tier == 2)
+                    explicit = await h.command("query_info", {"kind": "creature", "target_id": "tidecaller_eel"})
+                    row = json.loads(await conn.fetchval("SELECT data FROM creatures WHERE id='tidecaller_eel'"))
+                    assert explicit["id"] == "tidecaller_eel"
+                    for key in (
+                        "name",
+                        "tier",
+                        "category",
+                        "level",
+                        "hp",
+                        "ac",
+                        "speed",
+                        "attacks",
+                        "narration",
+                        "audio",
+                    ):
+                        assert explicit[key] == row[key]
+                    error = await h.command("query_info", {"kind": "creature", "target_id": "no_such"}, error=True)
+                    assert "no_such" in error
+                raise RollbackQuery()
+    except RollbackQuery:
+        pass
+    finally:
+        if hasattr(h, "session"):
+            await h.close()
+
+
+class RollbackQuery(Exception):
+    pass

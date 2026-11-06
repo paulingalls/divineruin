@@ -15,6 +15,7 @@ import choir_encounter
 import combat_ability
 import combat_spatial
 import crafting_tools
+import creature_catalog
 import db_activity_queries
 import db_content_queries
 import db_queries
@@ -50,6 +51,7 @@ async def _resolve_disposition(npc_id: str, player_id: str, npc: dict, *, querie
 async def query_info(
     context: RunContext[SessionData],
     kind: Literal[
+        "creature",
         "combat",
         "location",
         "npc",
@@ -65,6 +67,7 @@ async def query_info(
     target_id: str | None = None,
 ) -> str:
     """Look up world info in one call. Set kind and (for most kinds) target_id:
+    - kind="creature": catalog summary by target_id; omit it for this region at the party tier.
     - kind="combat": current actor/location/zone IDs and distances; target_id selects the origin.
     - kind="location", target_id=<location id>: scene details, atmosphere, exits.
     - kind="npc", target_id=<npc id>: personality, speech style, relationship-filtered knowledge.
@@ -99,6 +102,8 @@ async def _query_info_impl(
     training_mod=training_tools,
     crafting_mod=crafting_tools,
 ) -> str:
+    if kind == "creature":
+        return await creature_catalog.creature_summary(context.userdata, target_id)
     if kind == "combat":
         try:
             return json.dumps(

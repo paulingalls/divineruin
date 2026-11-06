@@ -22,3 +22,13 @@ def build_spatial(encounter, players, enemies, companion=None):
         speeds[actor_id] = number(speed, "companion speed", nonnegative=True)
     spatial = {"positions": positions, "speeds": speeds, "locations": scene["locations"], "zones": scene["zones"]}
     return validate_spatial(spatial, list(positions))
+
+
+def default_scene_placement(references):
+    return {
+        "party_start": {"x": 0, "y": 0, "z": 0},
+        "companion_start": {"x": 0, "y": 5, "z": 0},
+        "actors": {ref["id"]: {"x": 20, "y": 5 * i, "z": 0} for i, ref in enumerate(references)},
+        "locations": {},
+        "zones": {},
+    }
