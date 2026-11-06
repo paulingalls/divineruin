@@ -179,11 +179,12 @@ The Warden's spec block (Encounter Creature Stat Blocks) names `loot_hollow_ward
   - Arcana:Expert — Named creature fragments, high-tier arcane components, Veil shards
 - Hollow loot tainting: all Hollow creature drops flagged as tainted by default
 - Purification paths: Clerics use Dispel Corruption to purify a whole tainted inventory stack immediately for the selected party player owner, spending normal Focus. `item:<owner_player_id>:<item_id>` selects the object; `corruption_saturated_stone` is unpurifiable. Purified `salvageable_weapon` yields usable standard martial equipment (`battleaxe_common`). Artificers escrow a chosen quantity of tainted units for three independently sampled Crafting skill-practice cycles; the worker credits the clean output exactly once before collection acknowledges it.
-- Pure encounter builder: `build_encounter(catalog, tier, party, environment, difficulty, rng)` returning role-tagged catalog references; DM entry integration follows separately
+- Pure encounter builder: `build_encounter(catalog, tier, party, environment, difficulty, rng)` returning role-tagged catalog references
 - Solo player HP math: profile factors weight budget and DPR (Kael/Lira/Tam 0.75; Sable 0.50), against the 1.75 baseline
 - Environment modifiers: terrain type affects creature selection and combat difficulty
-- Encounters tuned for 3-5 round resolution at expected player power
-- Agent tools: `resolve_harvesting(creature_id, player_skills)` returning available materials, `generate_encounter(region, tier, difficulty)` returning encounter specification
+- Encounters tuned for their difficulty's expected HP/DPR round window (standard 3-5, tough 4-6, boss 5-7)
+- Agent entry: `enter_mode(mode="combat", difficulty="standard"|"tough"|"boss", tier=None)` generates a location-filtered encounter; `encounter_id` selects a mutually exclusive template.
+- Agent catalog reads: `query_info(kind="creature", target_id=None)` returns a creature summary by id, or lists the session region at the party tier. Harvesting runs automatically with victory loot generation at combat end.
 
 **Acceptance criteria:**
 - [x] `generate_loot` returns guaranteed drops always and probabilistic drops at correct rates
@@ -192,9 +193,9 @@ The Warden's spec block (Encounter Creature Stat Blocks) names `loot_hollow_ward
 - [x] All Hollow creature loot is flagged tainted; non-Hollow loot is not
 - [ ] Purification via Dispel Corruption clears taint flag; async purification tracks activity timer
 - [ ] `build_encounter` selects creatures matching requested tier and scales to combatant count
-- [ ] Solo encounters assume 1 player + 1 companion at 75% HP effectiveness
+- [ ] Solo encounters use the active companion's profile factor (Kael/Lira/Tam 0.75; Sable 0.50) for budget and expected damage
 - [ ] Environment modifiers adjust creature selection (e.g., no aquatic creatures in mountains)
-- [ ] Generated encounters resolve in 3-5 rounds given expected player damage output
+- [ ] Generated encounters resolve in their difficulty's round window given expected player damage output (standard 3-5, tough 4-6, boss 5-7)
 - [x] Every loot item is named by a Phase 5 recipe material or marked `crafting_use: "trade"` on its unique catalog owner
 - [ ] Tests cover loot generation for all creature categories, harvesting skill gates, encounter scaling, and environment filtering
 
