@@ -16,8 +16,8 @@ async def resolve_item_target(session, spell_id, target_id, target_ids, *, phase
             _, owner_id, item_id = parts
             _validate_id(owner_id, "owner_player_id")
             _validate_id(item_id, "item_id")
-            if phase:
-                raise ToolError("Inventory object purification is only available outside phase resolution")
+            if phase or session.in_combat:
+                raise ToolError("Inventory object purification is only available outside combat and phase resolution")
             if target_ids is not None:
                 raise ToolError("Inventory object purification requires one target_id, without target_ids")
             if owner_id not in session.party.member_ids:

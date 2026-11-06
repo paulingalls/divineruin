@@ -15,7 +15,9 @@ import db_queries
 import spells
 from activate_tools import activate
 from caster_state import ConcentrationState, ResonanceTrack
+from combat_agent import CombatAgent
 from inventory_tools import transact
+from mode_tools import enter_mode
 from party_state import PartyMember
 from query_tools import query_info
 from session_data import SessionData
@@ -34,7 +36,9 @@ class DispelHarness:
         self.sd.party.members.append(PartyMember(self.players[1], ResonanceTrack(), ConcentrationState()))
         self.model = ScenarioModel([])
         self.session = AgentSession(llm=self.model, max_tool_steps=5, userdata=self.sd)
-        await self.session.start(Agent(instructions="Execute the command.", tools=[activate, query_info, transact]))
+        await self.session.start(
+            Agent(instructions="Execute the command.", tools=[activate, query_info, transact, enter_mode])
+        )
         return self
 
     async def command(self, name, arguments, *, error=False):
@@ -75,6 +79,11 @@ class DispelHarness:
         await self.session.aclose()
         for pid in self.players:
             await self.pool.execute("DELETE FROM players WHERE player_id=$1", pid)
+
+
+@pytest.fixture
+def mock_combat_agent_factory():
+    return None
 
 
 @pytest.fixture
@@ -130,6 +139,26 @@ async def test_selected_party_owner_only(dispel):
     ]
     assert await h.focus(a) == 7 and await h.focus(b) == 10
     await h.assert_snapshot(b)
+
+
+async def test_combat_agent_refuses_item_purification(dispel):
+    h = dispel
+    a, b, _ = h.players
+    await h.add(b)
+    selector = await h.selector(b)
+    await h.command("enter_mode", {"mode": "combat", "encounter_id": "ruins_mawling_pair"})
+    assert isinstance(h.session.current_agent, CombatAgent)
+    before = await h.snapshot(b)
+    state = h.sd.combat_state
+    assert state is not None
+    combat = state.to_dict()
+    saved = await h.pool.fetchval("SELECT data FROM combat_instances WHERE combat_id=$1", state.combat_id)
+    assert "outside combat" in (await h.cast(selector, error=True)).lower()
+    assert await h.snapshot(b) == before
+    assert await h.focus(a) == await h.focus(b) == 10
+    assert state.to_dict() == combat
+    assert await h.pool.fetchval("SELECT data FROM combat_instances WHERE combat_id=$1", state.combat_id) == saved
+    assert not h.events()
 
 
 @pytest.mark.parametrize(
