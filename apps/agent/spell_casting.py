@@ -33,6 +33,7 @@ import resonance as resonance_mod
 import resonance_events
 import spell_knowledge
 import spells
+import unbound_tools
 import vaelti_echo_warning
 import veil_ward as veil_ward_mod
 import ward_resolution
@@ -118,44 +119,47 @@ async def _cast_spell_impl(
     caster = session.member_state(player_id)
     logger.info("cast_spell called: spell=%s player=%s", spell_id, player_id)
 
-    async with db_mod.transaction() as conn:
-        result = await _resolve_cast(
-            session,
-            spell_id,
-            conn=conn,
-            caster=caster,
-            revalidate_actor=True,
-            target_id=target_id,
-            target_ids=target_ids,
-            queries_mod=queries_mod,
-            content_mod=content_mod,
-            persistence_mod=persistence_mod,
-            resonance_mutations_mod=resonance_mutations_mod,
-            resonance_events_mod=resonance_events_mod,
-            spells_mod=spells_mod,
-            resonance=resonance,
-            leveling_mod=leveling_mod,
-            veil_ward=veil_ward,
-            ward_resolution_mod=ward_resolution_mod,
-            hollow_echo=hollow_echo,
-            dice_mod=dice_mod,
-            echo_events_mod=echo_events_mod,
-            racial_mod=racial_mod,
-            vaelti_warning_mod=vaelti_warning_mod,
-            concentration_mutations_mod=concentration_mutations_mod,
-            conditions_mod=conditions_mod,
-            conditions_mutations_mod=conditions_mutations_mod,
-            condition_produce_mod=condition_produce_mod,
-            character_spells_mod=character_spells_mod,
-        )
+    async with session.combat_state_lock:
+        async with db_mod.transaction() as conn:
+            result = await _resolve_cast(
+                session,
+                spell_id,
+                conn=conn,
+                caster=caster,
+                revalidate_actor=True,
+                target_id=target_id,
+                target_ids=target_ids,
+                queries_mod=queries_mod,
+                content_mod=content_mod,
+                persistence_mod=persistence_mod,
+                resonance_mutations_mod=resonance_mutations_mod,
+                resonance_events_mod=resonance_events_mod,
+                spells_mod=spells_mod,
+                resonance=resonance,
+                leveling_mod=leveling_mod,
+                veil_ward=veil_ward,
+                ward_resolution_mod=ward_resolution_mod,
+                hollow_echo=hollow_echo,
+                dice_mod=dice_mod,
+                echo_events_mod=echo_events_mod,
+                racial_mod=racial_mod,
+                vaelti_warning_mod=vaelti_warning_mod,
+                concentration_mutations_mod=concentration_mutations_mod,
+                conditions_mod=conditions_mod,
+                conditions_mutations_mod=conditions_mutations_mod,
+                condition_produce_mod=condition_produce_mod,
+                character_spells_mod=character_spells_mod,
+            )
 
-    # Transaction committed cleanly — sync the in-memory SSOT to the persisted values, then release
-    # the deferred client events. A rolled-back tx skips this (the `async with` re-raises), so the
-    # session stays pristine and no event fires.
-    if result.new_resonance is not None:
-        caster.resonance.current = result.new_resonance
-    if result.concentration_spell_id is not _UNCHANGED:
-        caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
+        # Transaction committed cleanly — sync the in-memory SSOT to the persisted values, then release
+        # the deferred client events. A rolled-back tx skips this (the `async with` re-raises), so the
+        # session stays pristine and no event fires.
+        if result.new_resonance is not None:
+            caster.resonance.current = result.new_resonance
+        if result.concentration_spell_id is not _UNCHANGED:
+            caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
+        if result.unbound_veil_mastery_spent:
+            caster.unbound_veil_mastery_used = True
     await result.flush_events()
     return json.dumps(result.packet)
 
@@ -405,6 +409,7 @@ async def _resolve_cast(
     # The packet and the events stay here — they close over session. The Vaelti warning is a
     # bus-only deferred event the background process voices a heartbeat before the echo lands
     # (story-009 consumer), and must precede the echo publish (immediate here, or at select).
+    mastery_spent = False
     if state == "overreach":
         choice_count = next(
             (m["value"] for m in cast_modifiers.patron_modifiers(patron) if m["kind"] == "echo_roll_choice"), 1
@@ -424,8 +429,13 @@ async def _resolve_cast(
         if choice_count == 2:
             packet["pending_choice"] = await patron_echo_choice.create(player_id, candidates, conn=conn)
         else:
-            echo = candidates[0]
-            packet["hollow_echo"] = {"band": echo.band, "name": echo.name, "effect": echo.effect}
+            echo, mastery_spent = unbound_tools.veil_mastery(candidates[0], patron, caster)
+            packet["hollow_echo"] = {
+                "band": echo.band,
+                "name": echo.name,
+                "effect": echo.effect,
+                **({"veil_mastery": True} if mastery_spent else {}),
+            }
             events.append(lambda: echo_events_mod.publish_hollow_echo(session, echo))
     # Cantrips scale their base damage with character level (story-003); fixed-cost spells carry their
     # damage in `mechanics`, so no scaled dice for them.
@@ -469,4 +479,5 @@ async def _resolve_cast(
         concentration_spell_id=concentration_spell_id,
         generated=generated,
         events=events,
+        unbound_veil_mastery_spent=mastery_spent,
     )

@@ -235,3 +235,11 @@ async def test_no_roll_failures_do_not_apply_gift(world, hearing_only, difficult
     result, count = await skill_roll(ctx, difficulty=difficulty, hearing_only=hearing_only)
     assert result["roll"] == 0 and count == 0
     assert "gift_name" not in result
+
+
+@pytest.fixture(autouse=True)
+def resonance_read(monkeypatch):
+    monkeypatch.setattr(
+        "db_mutations_resonance.read_player_resonance",
+        AsyncMock(return_value={"current": 0, "state": "stable", "flickering_bonus": 0}),
+    )

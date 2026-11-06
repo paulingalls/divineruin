@@ -25,6 +25,7 @@ def _player(focus: int = 10, level: int = 5) -> dict:
         "player_id": "player_1",
         "name": "Lyra",
         "class": "mage",
+        "divine_favor": {"patron": "orenthel"},
         "level": level,
         "focus": {"current": focus, "max": 10},
     }

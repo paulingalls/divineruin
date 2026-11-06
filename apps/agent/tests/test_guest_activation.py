@@ -124,12 +124,16 @@ async def test_party_member_inner_fire_round_trip():
     from party_state import PartyState
 
     party = make_context(party_member_ids=["player_2"]).userdata.party
-    party.members[1].draethar_inner_fire_used = True
+    fields = ("draethar_inner_fire_used", "unbound_raw_channeling_used", "unbound_veil_mastery_used")
+    for field in fields:
+        setattr(party.members[1], field, True)
     saved = party.to_dict()
-    assert PartyState.from_dict(saved).members[1].draethar_inner_fire_used
+    restored = PartyState.from_dict(saved)
+    assert all(getattr(restored.members[1], field) for field in fields)
     for member in saved["members"]:
-        member.pop("draethar_inner_fire_used")
-    assert all(not m.draethar_inner_fire_used for m in PartyState.from_dict(saved).members)
+        for field in fields:
+            member.pop(field)
+    assert all(not getattr(m, field) for m in PartyState.from_dict(saved).members for field in fields)
 
 
 def _fire_fixture():

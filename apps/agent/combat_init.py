@@ -415,6 +415,7 @@ async def _start_combat_locked(
         member.weapon_used = False
         member.weapon_crit_vs_heavy = False
         member.draethar_inner_fire_used = False
+        member.unbound_raw_channeling_used = False
 
     # Build initiative summary once for event + response
     initiative_summary = [

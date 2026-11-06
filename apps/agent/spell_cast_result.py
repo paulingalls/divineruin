@@ -28,6 +28,7 @@ class CastResult:
     concentration_spell_id: object
     generated: int
     events: list
+    unbound_veil_mastery_spent: bool = False
 
     async def flush_events(self) -> None:
         """Emit the deferred client events in order. Call ONLY after the caller's tx commits.
