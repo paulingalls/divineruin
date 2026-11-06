@@ -90,7 +90,9 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 - [ ] `content/gods.json` validates with all 10 complete patron profiles
 - [ ] Background process calls `evaluate_patron_alignment` on 15-30 minute heartbeat
 - [ ] DB schema supports patron selection, favor tracking, and tier state
+  <!-- Evidence: The lead chose the existing players.data->'divine_favor' JSONB object over player_patron/patron_favor_state tables. patron stores selection; level/max store favor; get_patron_tier derives tier on reload. test_favor_tier_persistence.py verifies the committed round trip. -->
 - [ ] Tests cover favor accumulation, decay, tier transitions (up and down), and Unbound Path mechanics
+  <!-- Evidence: test_favor_tier_persistence.py covers upward, action-downward, and neglect-downward tier round trips with unchanged selection. test_displeasure_delivery.py limits loss whispers to tier drops. The Unbound Path remainder belongs to this sprint's unbound-path-mechanics card. -->
 
 **Key references:**
 - *Game Mechanics Patrons — 4-Layer Architecture*

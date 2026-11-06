@@ -4,7 +4,6 @@ import pytest
 
 import event_types as E
 from bg_event_handlers import REBUILD_EVENT_TYPES, handle_events, queue_god_whisper
-from bg_speech import SpeechPriority
 from event_bus import GameEvent
 from god_whisper_data import get_god_profile
 from session_data import SessionData
@@ -57,7 +56,15 @@ class TestHiddenRevealed:
 class TestDivineFavorWhisperIsPrimaryOnly:
     """The primary player is the sole writer of the party divine-whisper cadence."""
 
-    _CROSSING = {"new_level": 30, "last_whisper_level": 0, "patron_id": "kaelen", "amount": 5}
+    _CROSSING = {
+        "previous_level": 25,
+        "new_level": 30,
+        "max": 100,
+        "requested_amount": 5,
+        "last_whisper_level": 0,
+        "patron_id": "kaelen",
+        "amount": 5,
+    }
 
     def test_primarys_crossing_queues_a_whisper(self):
         sd = _sd()
@@ -130,41 +137,15 @@ def _favor_event(amount: int, reason: str, player_id: str = "player_1") -> GameE
         payload={
             "player_id": player_id,
             "patron_id": "kaelen",
+            "previous_level": 30 - amount,
             "new_level": 30,
+            "max": 100,
+            "requested_amount": amount,
             "last_whisper_level": 0,
             "amount": amount,
             "reason": reason,
         },
     )
-
-
-def test_contrary_loss_queues_displeasure_once_on_same_session():
-    sd = _sd()
-    speech = []
-    event = _favor_event(-5, "Patron action 'fled_battle'")
-    handle_events([event], sd, speech, False, {}, [])
-    assert len(speech) == 1
-    queued = speech[0]
-    assert queued.priority == SpeechPriority.CRITICAL
-    assert queued.recipient_id == "player_1"
-    assert queued.stinger_sound == "god_whisper_stinger"
-    assert "Something shifts. The air thickens." in queued.instructions
-    assert get_god_profile("kaelen").displeasure_prompt in queued.instructions
-    assert queued.is_displeasure
-    handle_events([event], sd, speech, False, {}, [])
-    assert len(speech) == 1
-    assert sd.displeasure_heard_by == set()
-
-
-def test_neglect_and_teammate_loss_leave_displeasure_available():
-    sd = _sd()
-    speech = []
-    handle_events([_favor_event(-5, "neglect")], sd, speech, False, {}, [])
-    handle_events([_favor_event(-5, "Patron action 'fled_battle'", "player_2")], sd, speech, False, {}, [])
-    assert speech == []
-    assert sd.displeasure_heard_by == set()
-    handle_events([_favor_event(-5, "Patron action 'fled_battle'")], sd, speech, False, {}, [])
-    assert len(speech) == 1
 
 
 def test_positive_due_favor_remains_ordinary_and_zero_queues_nothing():
