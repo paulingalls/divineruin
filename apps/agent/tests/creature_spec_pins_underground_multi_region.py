@@ -156,7 +156,7 @@ LOOT = {
     "deepstone_guardian": (
         ("guardian_core_small", 1, 1.0, (("crafting", "trained"),)),
         ("enchanted_stone", "1d4", 1.0, ()),
-        ("ancient_mechanism", 1, 0.25, (("crafting", "expert"),)),
+        ("ancient_mechanism", 1, 0.25, (("crafting", "trained"),)),
     ),
     "dire_bear": (
         ("dire_bear_hide", 1, 1.0, (("survival", "trained"),)),

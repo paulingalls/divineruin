@@ -69,7 +69,8 @@
         "item_description": "a fragment of bone with an unnatural crystalline growth",
         "item_features": "the porous bone texture and the faceted crystal emerging from within"
       }
-    }
+    },
+    "crafting_use": "trade"
   },
   {
     "id": "ruins_journal_fragment",
@@ -302,7 +303,8 @@
       "light",
       "finesse"
     ],
-    "durability_tier": "standard"
+    "durability_tier": "standard",
+    "crafting_use": "trade"
   },
   {
     "id": "longsword_guild",
@@ -388,7 +390,8 @@
       "finesse",
       "thrown"
     ],
-    "durability_tier": "standard"
+    "durability_tier": "standard",
+    "crafting_use": "trade"
   },
   {
     "id": "leather_armor_basic",
@@ -428,7 +431,8 @@
     "armor_properties": [
       "light"
     ],
-    "durability_tier": "standard"
+    "durability_tier": "standard",
+    "crafting_use": "trade"
   },
   {
     "id": "chain_shirt",
@@ -468,7 +472,8 @@
     "armor_properties": [
       "medium"
     ],
-    "durability_tier": "standard"
+    "durability_tier": "standard",
+    "crafting_use": "trade"
   },
   {
     "id": "shield_iron",
@@ -849,7 +854,8 @@
       "heavy",
       "stealth_disadvantage"
     ],
-    "durability_tier": "standard"
+    "durability_tier": "standard",
+    "crafting_use": "trade"
   },
   {
     "id": "travelers_cloak",
@@ -943,7 +949,8 @@
       "light",
       "finesse"
     ],
-    "durability_tier": "reinforced"
+    "durability_tier": "reinforced",
+    "crafting_use": "trade"
   },
   {
     "id": "aelindran_focus_crystal",
@@ -986,7 +993,8 @@
         "item_description": "a faceted crystal in a tarnished silver cage on a fine chain",
         "item_features": "the multifaceted crystal surface, intricate silver cage work, and faint inner luminescence"
       }
-    }
+    },
+    "crafting_use": "trade"
   },
   {
     "id": "veil_touched_ring",
@@ -1913,7 +1921,8 @@
         "description": "Restores HP, applied externally."
       }
     ],
-    "value_base": 8
+    "value_base": 8,
+    "crafting_use": "trade"
   },
   {
     "id": "healing_potion_minor",
@@ -1935,7 +1944,8 @@
         "description": "Restores HP."
       }
     ],
-    "value_base": 13
+    "value_base": 13,
+    "crafting_use": "trade"
   },
   {
     "id": "healing_potion_standard",
@@ -2888,7 +2898,8 @@
       "medium",
       "anti_hollow"
     ],
-    "durability_tier": "reinforced"
+    "durability_tier": "reinforced",
+    "crafting_use": "trade"
   },
   {
     "id": "masterwork_plate",
@@ -2946,7 +2957,8 @@
       "light",
       "caster"
     ],
-    "durability_tier": "reinforced"
+    "durability_tier": "reinforced",
+    "crafting_use": "trade"
   },
   {
     "id": "buckler_wooden",
@@ -3415,7 +3427,8 @@
     "effects": [],
     "value_base": 2,
     "craft_value": 12,
-    "value_modifiers": {}
+    "value_modifiers": {},
+    "crafting_use": "trade"
   },
   {
     "id": "bone_fang_t1",
@@ -3434,7 +3447,8 @@
     "effects": [],
     "value_base": 1,
     "craft_value": 8,
-    "value_modifiers": {}
+    "value_modifiers": {},
+    "crafting_use": "trade"
   },
   {
     "id": "venom_gland_t1",
@@ -3474,7 +3488,9 @@
     "craft_value": 50,
     "value_modifiers": {
       "npc:scholar_emris": 2.0
-    }
+    },
+    "crafting_use": "trade",
+    "kind": "hollow_residue"
   },
   {
     "id": "hollow_residue_t2",
@@ -3495,7 +3511,9 @@
     "craft_value": 90,
     "value_modifiers": {
       "npc:scholar_emris": 2.0
-    }
+    },
+    "crafting_use": "trade",
+    "kind": "hollow_residue"
   },
   {
     "id": "arcane_component_t2",
@@ -3514,7 +3532,8 @@
     "effects": [],
     "value_base": 15,
     "craft_value": 75,
-    "value_modifiers": {}
+    "value_modifiers": {},
+    "crafting_use": "trade"
   },
   {
     "id": "quality_longsword",
@@ -3543,7 +3562,8 @@
     "properties": [
       "versatile"
     ],
-    "durability_tier": "standard"
+    "durability_tier": "standard",
+    "crafting_use": "trade"
   },
   {
     "id": "treasure_map_intel",
@@ -3558,6 +3578,23 @@
     "weight": 0.1,
     "effects": [],
     "value_base": 50,
-    "value_modifiers": {}
+    "value_modifiers": {},
+    "crafting_use": "trade"
+  },
+  {
+    "id": "salvageable_weapon",
+    "name": "Salvageable Weapon",
+    "tier": 3,
+    "rarity": "uncommon",
+    "weight": 2.0,
+    "description": "Its blade rings dully and smells of old ash; purification yields a standard martial weapon.",
+    "crafting_use": "trade",
+    "type": "equipment",
+    "tags": [
+      "equipment",
+      "salvage"
+    ],
+    "effects": [],
+    "value_base": 100
   }
 ]

@@ -75,4 +75,5 @@ def test_variant_optional_fields_are_pinned():
         "Crafting": set(),
         "WorkspaceRental": set(),
         "Experiment": set(),
+        "Purification": set(),
     }

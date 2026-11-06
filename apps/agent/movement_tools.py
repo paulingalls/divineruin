@@ -166,6 +166,31 @@ async def _move_player_impl(
     queries=db_queries,
     content=db_content_queries,
 ) -> str | tuple:
+    session: SessionData = context.userdata
+    async with session.combat_state_lock:
+        if session.in_combat:
+            raise ToolError("Cannot move between locations during combat.")
+        return await _move_player_locked(
+            context,
+            destination_id,
+            db_mod=db_mod,
+            mutations=mutations,
+            travel_mutations=travel_mutations,
+            queries=queries,
+            content=content,
+        )
+
+
+async def _move_player_locked(
+    context: RunContext[SessionData],
+    destination_id: str,
+    *,
+    db_mod,
+    mutations,
+    travel_mutations,
+    queries,
+    content,
+) -> str | tuple:
     logger.info("move_player called: destination_id=%s", destination_id)
     _validate_id(destination_id, "destination_id")
     session: SessionData = context.userdata
@@ -251,10 +276,6 @@ async def _move_player_impl(
     from dispatch_agent import DispatchAgent, create_dispatch_agent
 
     dest_is_training = bool(destination_location and destination_location.get("agent_context") == "training")
-    # Only exploration and dispatch agents own move_player, so current_agent is one
-    # of those here — combat can't reach this path (CombatAgent has no move_player; it
-    # exits via end_combat). If move_player is ever added to a combat-like agent,
-    # revisit so an in-progress activity isn't abandoned by an incidental move.
     current_is_training = isinstance(context.session.current_agent, DispatchAgent)
     activity_change = dest_is_training != current_is_training
 

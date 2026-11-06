@@ -19,6 +19,7 @@ class CreatureStatBlock:
     name: str                    # Display: "Mawling"
     category: str                # "hollow" | "beast" | "humanoid" | "construct" | "undead" | "elemental"
     tier: int                    # 1-4. Universal threat scale (see Tier System)
+    terrains: list[TerrainType]   # Required, nonempty habitat from the closed terrain enum
     description: str             # 1-2 sentence DM reference (not read to player)
     
     # === COMBAT STATS ===
@@ -107,6 +108,8 @@ class Ability:
 
 The required `loot_table_id` replaces the former nested `loot` block and names a table in `content/loot_tables.json`. Story-122 carries the loot details in that table.
 
+Habitat `terrains` is required and nonempty; unknown terrain values are rejected. It is distinct from region ids in `regions` and the free-text `behavior.environment`.
+
 ### Tier System (Universal)
 
 | Tier | Threat | Player Levels | Encounter Role |
@@ -132,6 +135,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 ## Hollow Creatures
 
 > The entities that emerge from the Sundered Veil are not creatures in any meaningful sense. They are **expressions** of the Hollow — extensions, tendrils, antibodies of something incomprehensibly vast. They cannot be joined, allied with, or understood through any framework mortals possess.
+
+Hollow creatures can emerge through Veil breaches in any habitat. Their catalog terrains currently include the complete TerrainType vocabulary: `ancient_forest`, `forest`, `grassland`, `mountain`, `coast`, `wetland`, `underground`, `farmland`, `village`, `city`.
 
 ### Hollow Combat Properties (All Hollow Creatures)
 
@@ -277,7 +282,7 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 | Drop | Qty | Chance | Requires | Category |
 |---|---|---|---|---|
 | Rend shard | 1 | 75% | Crafting: Expert | Hollow residue (Tier 2) |
-| Dissolution membrane | 1 | 25% | Crafting: Expert + Arcana: Trained | Hollow residue + Arcane component (Tier 2) |
+| Dissolution membrane | 1 | 25% | Crafting: Expert | Hollow residue (Tier 2) |
 
 ---
 
@@ -325,7 +330,7 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 | Drop | Qty | Chance | Requires | Category |
 |---|---|---|---|---|
 | Spatial residue | 1 | 100% | Crafting: Expert | Hollow residue (Tier 2). Used in Veil-ward crafting, teleportation research |
-| Woven void fragment | 1 | 25% | Arcana: Expert | Arcane component (Tier 2). Extremely valuable — used in portal/teleportation enchantments |
+| Woven void fragment | 1 | 25% | Crafting: Expert | Hollow residue (Tier 2). Extremely valuable — used in portal/teleportation enchantments |
 
 ---
 
@@ -487,7 +492,7 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 | Drop | Qty | Chance | Requires | Category |
 |---|---|---|---|---|
 | Choir resonance crystal | 1 | 100% | Arcana: Expert | Hollow residue (Tier 4). Contains trapped memories. Used in supreme-tier enchantments or released for narrative effect |
-| Named fragment | 1 | 100% | Crafting: Expert | Hollow residue (Tier 4). Fragment of a Named creature. Scholars, gods, and factions will pay anything for this |
+| Named fragment | 1 | 100% | Arcana: Expert | Hollow residue (Tier 4). Fragment of a Named creature. Scholars, gods, and factions will pay anything for this |
 | Freed memories | 1d6 | 100% | None | Arcane component (Tier 4). Each is a specific memory from a consumed person. Narrative-first loot — each memory is a story |
 
 ---
@@ -539,7 +544,7 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 | Drop | Qty | Chance | Requires | Category |
 |---|---|---|---|---|
 | Shard of false paradise | 1 per anchor | 100% | Arcana: Expert | Hollow residue (Tier 4). Contains trapped serenity. Can be used to create zones of forced calm — or to study how the Hollow creates beauty |
-| Named fragment | 1 | 100% | Crafting: Expert | Hollow residue (Tier 4). Named creature material |
+| Named fragment | 1 | 100% | Arcana: Expert | Hollow residue (Tier 4). Named creature material |
 | Absorbed memories | varies | 100% | None | Narrative loot. The people the Still consumed — their last possessions, their final smiles, frozen in place |
 
 ---
@@ -601,8 +606,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 |---|---|---|---|---|
 | Architect's blueprint fragment | 1d4 | 100% | Arcana: Expert | Arcane component (Tier 4). Patterns for impossible structures. Can be studied to learn advanced enchantment principles or sold to scholars for enormous sums |
 | Living stone | 2d6 | 100% | Crafting: Expert | Metals & stone (Tier 4, tainted). Stone that still responds to will. Can be shaped without tools. Purified: supreme-tier construction material |
-| Named fragment | 1 | 100% | Crafting: Expert | Hollow residue (Tier 4). Named creature material |
-| Void-touched foundation | 1 | 50% | Arcana: Expert + Crafting: Expert | Gems & crystals + Hollow residue (Tier 4). A piece of whatever the Architect was building at its core. The most valuable research material in the game. What was it making? |
+| Named fragment | 1 | 100% | Arcana: Expert | Hollow residue (Tier 4). Named creature material |
+| Void-touched foundation | 1 | 50% | Arcana: Expert | Hollow residue (Tier 4). A piece of whatever the Architect was building at its core. The most valuable research material in the game. What was it making? |
 
 ---
 
@@ -630,6 +635,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Morale:** Flees at half pack size. | **Group:** Pack of 3-6
 **Found in:** Greyvale forest, Thornveld edge, Drathian Steppe, mountain foothills
 
+**Terrains:** `ancient_forest`, `forest`, `grassland`, `mountain`.
+
 **Loot:**
 | Drop | Qty | Chance | Requires |
 |---|---|---|---|
@@ -654,6 +661,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Behavior:** Territorial. Charges at intruders. Does not pursue beyond territory.
 **Morale:** Fights to death defending territory. Flees if encountered outside territory. | **Group:** Solitary or sounder of 2-4
 **Found in:** Greyvale farmlands, forest edges, Thornveld outer
+
+**Terrains:** `ancient_forest`, `forest`, `farmland`.
 
 **Loot:**
 | Drop | Qty | Chance | Requires |
@@ -681,6 +690,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Morale:** Flees if web is destroyed. | **Group:** Solitary or pair (shared web)
 **Found in:** Greyvale ruins, caves, dungeons, Thornveld canopy
 
+**Terrains:** `ancient_forest`, `underground`.
+
 **Loot:**
 | Drop | Qty | Chance | Requires |
 |---|---|---|---|
@@ -707,6 +718,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Behavior:** Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.
 **Morale:** Flees at half HP or if leader falls. Surrenders if clearly outmatched. | **Group:** Gang of 3-6, often with 1 Bandit Captain (Tier 2)
 **Found in:** Roads between settlements, forest ambush points, ruins
+
+**Terrains:** `forest`, `grassland`, `underground`, `farmland`.
 
 **Loot:**
 | Drop | Qty | Chance | Requires |
@@ -739,6 +752,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Morale:** Flees if first pounce fails. | **Group:** Solitary
 **Found in:** Thornveld, deep Greyvale forest
 
+**Terrains:** `ancient_forest`, `forest`.
+
 **Loot:**
 | Drop | Qty | Chance | Requires |
 |---|---|---|---|
@@ -764,6 +779,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Behavior:** Territorial guardian of corrupted groves. A treant twisted by proximity to Hollow corruption — still natural, but warped and hostile. Prioritizes fire-users as threats.
 **Morale:** Fights to death defending its grove. Will not pursue beyond 100 ft of its tree. | **Group:** Solitary (guarding 2-3 normal trees that are "its" grove)
 **Found in:** Thornveld corruption edges, Greyvale where Hollow meets forest
+
+**Terrains:** `ancient_forest`, `forest`.
 
 **Loot:**
 | Drop | Qty | Chance | Requires |
@@ -795,6 +812,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Morale:** Flees after taking any damage (unless defending nest). | **Group:** Pair or flock of 4-8
 **Found in:** Drathian Steppe, mountain passes, open highlands
 
+**Terrains:** `grassland`, `mountain`.
+
 **Loot:**
 | Drop | Qty | Chance | Requires |
 |---|---|---|---|
@@ -818,6 +837,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Behavior:** Herd animal. Normally docile. Panics and stampedes when threatened. Individual bison charge only when cornered or defending calves.
 **Morale:** Stampedes away from danger. Individual fights to death only if cornered. | **Group:** Herd of 6-20 (only 1-2 fight; rest flee)
 **Found in:** Drathian Steppe, open grasslands
+
+**Terrains:** `grassland`.
 
 **Loot:**
 | Drop | Qty | Chance | Requires |
@@ -848,6 +869,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Morale:** Flees immediately after striking. | **Group:** Solitary or nest of 2-3
 **Found in:** Keldaran Mountains, mountain passes, cave entrances
 
+**Terrains:** `mountain`, `underground`.
+
 **Loot:**
 | Drop | Qty | Chance | Requires |
 |---|---|---|---|
@@ -875,13 +898,15 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Morale:** Fights to 25% HP, then attempts to burrow and escape. | **Group:** Solitary or mated pair
 **Found in:** Keldaran mines, mountain caves, underground passages
 
+**Terrains:** `mountain`, `underground`.
+
 **Loot:**
 | Drop | Qty | Chance | Requires |
 |---|---|---|---|
 | Wyrm scales | 1d6 | 100% | Survival: Trained |
 | Wyrm acid gland | 1 | 50% | Survival: Expert |
 | Wyrm teeth | 1d4 | 100% | None |
-| Cave gemstones (from nest) | 1d4 | 25% | Investigation: Trained |
+| Cave gemstones (from nest) | 1d4 | 25% | Survival: Expert |
 
 ---
 
@@ -902,10 +927,12 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Morale:** Fights to destruction. Cannot flee, surrender, or negotiate. | **Group:** Solitary (guarding a specific location)
 **Found in:** Keldaran ancient holds, deep mines, ruins from the pre-Sundering era
 
+**Terrains:** `underground`.
+
 **Loot:**
 | Drop | Qty | Chance | Requires |
 |---|---|---|---|
-| Golem core | 1 | 100% | Crafting: Expert |
+| Golem core | 1 | 100% | Crafting: Trained |
 | Enchanted stone | 2d4 | 100% | None |
 | Keldaran forged steel | 1d4 | 75% | Crafting: Trained |
 | Power crystal | 1 | 25% | Arcana: Expert |
@@ -933,6 +960,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Morale:** Releases prey if it takes 10+ damage in one hit. | **Group:** Solitary
 **Found in:** Sunward Coast marshes, river crossings, wetlands
 
+**Terrains:** `coast`, `wetland`.
+
 **Loot:**
 | Drop | Qty | Chance | Requires |
 |---|---|---|---|
@@ -957,6 +986,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Behavior:** Territorial in coastal waters. Uses Lightning Discharge to stun prey, then bites grappled targets.
 **Morale:** Retreats to deep water if outmatched on shore. | **Group:** Solitary or pair
 **Found in:** Sunward Coast waters, river mouths, coastal caves
+
+**Terrains:** `coast`, `wetland`.
 
 **Loot:**
 | Drop | Qty | Chance | Requires |
@@ -989,6 +1020,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Morale:** Flees if 50% of pack killed. | **Group:** Pack of 3-5
 **Found in:** Umbral Deep, Keldaran deep mines, underground ruins
 
+**Terrains:** `underground`.
+
 **Loot:**
 | Drop | Qty | Chance | Requires |
 |---|---|---|---|
@@ -1016,12 +1049,14 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Morale:** Fights to destruction within its zone. | **Group:** Solitary or pair (flanking a doorway)
 **Found in:** Umbral Deep ruins, Keldaran ancient holds, pre-Sundering structures
 
+**Terrains:** `underground`.
+
 **Loot:**
 | Drop | Qty | Chance | Requires |
 |---|---|---|---|
 | Guardian core (small) | 1 | 100% | Crafting: Trained |
 | Enchanted stone | 1d4 | 100% | None |
-| Ancient mechanism | 1 | 25% | Crafting: Expert |
+| Ancient mechanism | 1 | 25% | Crafting: Trained |
 
 ---
 
@@ -1047,6 +1082,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Behavior:** Extremely territorial. Charges largest threat. Grapples and mauls. A dire bear in its rage state is one of the most dangerous natural encounters in the game.
 **Morale:** Fights to death defending territory. Outside territory: retreats below 50% HP unless cubs nearby. | **Group:** Solitary or mother with 1-2 cubs (cubs are non-combatants)
 **Found in:** Thornveld, Keldaran mountain forests, northern Greyvale
+
+**Terrains:** `ancient_forest`, `forest`, `mountain`.
 
 **Loot:**
 | Drop | Qty | Chance | Requires |
@@ -1076,6 +1113,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Morale:** Fights while regenerating. Flees if on fire. | **Group:** Solitary or pair
 **Found in:** Thornveld, mountain passes, marshes, ruins
 
+**Terrains:** `ancient_forest`, `mountain`, `wetland`, `underground`.
+
 **Loot:**
 | Drop | Qty | Chance | Requires |
 |---|---|---|---|
@@ -1103,6 +1142,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Behavior:** Stays behind bodyguards. Uses crossbow at range, switches to sword when pressed. Commands bandits tactically — has them flank, focus fire, and retreat when losing.
 **Morale:** Flees when last bodyguard falls. Surrenders if cornered and outmatched — will offer information or treasure for life. | **Group:** With 3-6 bandits
 **Found in:** Roads, forest camps, ruins used as hideouts
+
+**Terrains:** `forest`, `grassland`, `underground`, `farmland`.
 
 **Loot:**
 | Drop | Qty | Chance | Requires |
@@ -1133,6 +1174,8 @@ Target: 3-5 rounds per combat encounter. Use these baselines:
 **Behavior:** Apex predator of mountain and steppe skies. Dives from extreme altitude, uses Lightning Breath on groups, picks up isolated targets with talons. Intelligent enough to avoid large armed groups.
 **Morale:** Retreats to altitude if badly wounded. Returns when healed. Does not fight to the death unless defending nest. | **Group:** Solitary or mated pair
 **Found in:** Keldaran mountain peaks, Drathian Steppe (during storms), high altitude everywhere
+
+**Terrains:** `grassland`, `mountain`.
 
 **Loot:**
 | Drop | Qty | Chance | Requires |
@@ -1205,9 +1248,170 @@ Divine Ruin is designed for solo play (Phase 1) with a companion NPC. Encounters
 | 9-14 | 1 Tier 3 creature | 1 Tier 3 + 2 Tier 2 | 1 Tier 3 (elite) + Tier 2 adds |
 | 15-20 | 1 Tier 3 + Tier 2 adds | 2 Tier 3 creatures | 1 Tier 4 creature |
 
-### Companion Scaling
+### Pure Catalog Builder
 
-The companion NPC should be approximately 75% of the player's combat effectiveness. This means the player + companion together are roughly 1.75× a single character. Encounters balanced for 2 full characters would be too easy; encounters for 1 would be too hard.
+`build_encounter(catalog, tier, party, environment, difficulty, rng)` returns fresh
+`{id, creature_id, role}` references. Its caller loads the catalog and supplies a
+resolved `{region, terrain}`; combat entry integration follows separately. Candidates
+must list both memberships and be requested-tier creatures or tier−1 adds. At least
+one requested-tier creature and one non-Minion are required; these may be different
+creatures. Species may repeat; at most one Boss is allowed, with none required.
+Hollow creatures participate normally. Named creatures (every Tier-4 row today) are never generated.
+The composition table above is guidance, including authored encounters outside this
+builder's domain, rather than another generation filter.
+
+Budget level is `floor(sum(player levels) / player count)`. Reuse the difficulty
+ceiling from `encounter_budget`, multiplied by effective headcount / 1.75; there is
+no lower cost bound. Effective headcount is player count plus the sum of companions'
+profile `hp_factor`: Kael, Lira and Tam contribute 0.75; Sable contributes 0.50.
+`SOLO_PARTY_BASELINE = 1.75` names one player plus a 0.75 companion.
+
+### Expected Damage Reference Progression
+
+`EXPECTED_PLAYER_DAMAGE_PER_ROUND` is keyed by **each level 1–20**, not the floor
+of a budget band. It is a reference damage build, equally weighted over all 18
+archetypes, not a simulation of a particular player's equipment, prepared spells or
+remaining resources. Budget still uses the floor-mean player level independently.
+
+Reference builds start with their `creation_classes.CLASSES` primary score 16 (+3),
+all other scores 12 (+1). L4 and L8's two points raise only the primary modifier to
++4 and +5. Weapons use the actual Strength/Dexterity selection in
+`check_resolution_attack.weapon_attribute_modifier`; Shillelagh uses Wisdom.
+Arcane spells (including Bard's arcane electives) use Intelligence; divine/primal
+spells use Wisdom. Off-primary attacks retain +1. Use proficiency from
+`rules_engine.proficiency_bonus`: +1 through L6, +2 at L7, +3 at L14. Weapon enhancement
+by budget band is 0/0/+1/+1/+2 (Steel Longsword / Veil-Forged Weapon establish the
+crafting bonuses). Apply enhancement to attack and damage, retaining the starting
+weapon die from `creation_classes.CLASSES`. The 18 main hands are 1×1d12, 5×1d8,
+9×1d6 and 3×1d4, mean 34/9; calculate archetypes separately before averaging.
+Opposing midpoint AC by band is 11.5/11.5/13.5/15.5/18, rounded up for d20 comparisons.
+Weapon attack modifier is its own attribute modifier + proficiency + enhancement; spells
+receive no weapon enhancement. Natural 1 misses, natural 20 hits and adds the damage
+dice once. Thus `attack(D,F) = H×(D+F) + 0.05×D`, where D is mean dice damage and F
+is flat damage. Advantage uses `H' = 1−(1−H)²`, crit chance `1−0.95²`.
+
+For saves, explicitly assume a neutral target save modifier +2, DC
+`8 + spell attribute modifier + proficiency`, natural 1 fails and natural 20 saves.
+Enumerate the twenty faces to obtain failure probability Q. A save spell deals
+`Q×damage`, or `(Q + (1−Q)/2)×damage` with half on success. This target-save
+assumption is a reference, not an assertion about every catalog creature.
+No resistance, vulnerability, Resonance bonus dice, reaction damage, multiple area
+targets or conditional Hollow bonus contributes. No damage is tuned to an HP cell.
+
+### Five-round reference rotations
+
+Use fresh resource pools from `content/archetypes.json`: base + matching primary
+attribute modifier + floor(level/divisor), or base + modifier when divisor is zero.
+Other resource attributes have modifier +1. Enumerate five main actions, spending
+Focus and Stamina only when available; choose the largest expected total, divided
+by five. Martial-only archetypes recover 2 Stamina after each action, capped at their
+pool. Focus does not regenerate. Five rounds budgets expenditure across the longest
+standard fight; tough/boss use the same reference, not a fresh burst every round.
+
+Core abilities and costs come from `content/archetype_abilities.json`; spell costs,
+damage and tier come from `content/spells.json`. Assume this damage-oriented reference
+has learned/prepared the listed source electives as its archetype unlocks their tier;
+these are build assumptions, **not automatic grants**. Core spells remain available
+at their core grant even if the chassis lacks a cantrip tier. Bard's cross-source
+reference chooses arcane damage electives. Each spell replaces the main weapon
+sequence for its round. The finite rotation options are:
+
+| Archetypes / option | Expected damage and resource accounting |
+|---|---|
+| All 18 | Starting weapon attack; Warrior, Skirmisher and Paladin get two at L10. Flat governing modifier and enhancement apply per swing. |
+| Warrior | Devastating Strike costs 3 Stamina, adds 1d8 once on that round's attack; 2d8 at L10, 3d8 at L17. Extra Attack does not double this bonus. |
+| Guardian | Protective Strike has ordinary weapon damage; no extra damage for its defensive rider. |
+| Skirmisher | Flanking Strike costs 3 Stamina: one attack with advantage and +1d6, other swing ordinary. Assume the reference companion can flank. |
+| Rogue | Ordinary weapon; Precise Strike can spend 3 Stamina for advantage. Sneak Attack has no authored content row and contributes no damage. |
+| Spy | Ordinary weapon; betrayal-dependent Backstab is not routine against a hostile enemy. |
+| Warden | Core Shillelagh substitutes a 1d8 staff. Guardian Strike's defensive rider adds no damage. |
+| Paladin | Minimum Divine Smite costs 2 Focus for +1d8 once that round, excluding Hollow bonus. Competes with spell options. |
+| Beastcaller | Command Companion costs 1 Focus; one 1d6 + governing modifier attack replaces the main action, never an additional party attack. |
+| Artificer | Deploy Construct costs 3 Focus and the first action; four later independent 1d6 + INT attacks accompany four main actions. No attack on deployment round or pre-fight summon. |
+| Whisper | Mind Spike: scaling cantrip d6 psychic, no flat modifier; use the reference save odds. |
+| Bard, Diplomat | Cutting Words: 1d4 psychic, no flat modifier; reference save odds, no invented scaling. Can choose a weapon or eligible spell instead. |
+| Marshal | Direct Strike costs 2 Focus. Count only the increment over an ally's ordinary 1d6 + governing modifier attack: advantage plus 1d4; the ordinary ally attack already belongs to party DPR. |
+| Arcane (Mage, Artificer, Seeker, Whisper), Bard | Arcane Bolt: Nd6 + modifier. Magic Missile: three auto-hit (1d4+1) darts, cost 2; no invented threshold for its unspecified extra darts. Elemental Burst: 2d6, 3d6/L7, 4d6/L13, half on save, cost 3. Disintegrate: attack for 5d6+20, cost 7. |
+| Primal (Druid, Beastcaller, Warden) | Thorn Whip: Nd6 + modifier. Blight: 4d8, half on save, cost 5. Exclude terrain-dependent Call Lightning and unspecified summoned-animal damage. |
+| Divine (Cleric, Oracle, Paladin, Diplomat, Marshal) | Sacred Flame: Nd6 + modifier, no damage on save. Flame Strike: 4d6, half on save, cost 5. Divine Judgment: 6d8, half on save, cost 7. Respect each archetype's tier gates (Paladin/Diplomat/Marshal have no supreme tier). |
+| Divine, from standard tier | Spiritual Weapon: cost 4 Focus and the first action; four later independent 1d8 + WIS attacks accompany four main actions. No pre-fight cast or deployment-round attack. |
+
+The non-spell psychic core cantrips use their primary Charisma for the reference save DC.
+For scaling cantrips N is 1, 2/L5, 3/L11, 4/L17, matching `leveling.cantrip_damage_dice`.
+Persistent construct/spiritual weapon attacks use spell attack odds and no weapon
+bonuses. The model assumes they survive the five-round reference fight. Healing,
+control, elective martial abilities, and specialization choices contribute no extra
+damage. These omissions and the reference build assumptions limit the estimate.
+
+Player spell and ability damage is not yet engine-resolved: only weapon attacks
+and Extra Attack apply HP damage in general combat. Generated fights therefore run
+longer than this intended-damage table certifies until debt `6d3b1d6a` is paid.
+
+For example, L9 primary-attribute attacks have weapon H=0.65, spell H=0.60, save Q=0.60;
+off-primary attacks substitute modifier +1 (H=0.45/0.40 and Q=0.40). Its five-round
+archetype totals divided by five are:
+
+| Archetype | L9 DPR |
+|---|---|
+| warrior | 11.600000 |
+| guardian | 3.150000 |
+| skirmisher | 12.090000 |
+| mage | 17.045000 |
+| artificer | 17.770000 |
+| seeker | 17.045000 |
+| druid | 13.030000 |
+| beastcaller | 13.030000 |
+| warden | 13.030000 |
+| cleric | 16.260000 |
+| paladin | 10.200000 |
+| oracle | 16.260000 |
+| rogue | 7.702500 |
+| spy | 3.150000 |
+| whisper | 10.500000 |
+| bard | 10.500000 |
+| diplomat | 6.920000 |
+| marshal | 7.120000 |
+
+Their sum / 18 is 11.46680556…, rounded only after aggregation to 11.47.
+The full level progression follows from the same five-action calculation; rising
+AC at L15 can lower the estimate despite better equipment. Use the authored rounded
+values at runtime:
+
+| Level | Attribute | Enhancement | Proficiency | Primary weapon H | Primary spell H | Primary save Q | Unrounded mean | Authored DPR |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 3 | 0 | 1 | 0.65 | 0.65 | 0.45 | 6.310194 | 6.31 |
+| 2 | 3 | 0 | 1 | 0.65 | 0.65 | 0.45 | 6.404083 | 6.40 |
+| 3 | 3 | 0 | 1 | 0.65 | 0.65 | 0.45 | 6.827417 | 6.83 |
+| 4 | 4 | 0 | 1 | 0.70 | 0.70 | 0.50 | 7.600903 | 7.60 |
+| 5 | 4 | 1 | 1 | 0.65 | 0.60 | 0.50 | 9.021028 | 9.02 |
+| 6 | 4 | 1 | 1 | 0.65 | 0.60 | 0.50 | 9.108083 | 9.11 |
+| 7 | 4 | 1 | 2 | 0.70 | 0.65 | 0.55 | 9.586625 | 9.59 |
+| 8 | 5 | 1 | 2 | 0.75 | 0.70 | 0.60 | 10.391583 | 10.39 |
+| 9 | 5 | 1 | 2 | 0.65 | 0.60 | 0.60 | 11.466806 | 11.47 |
+| 10 | 5 | 1 | 2 | 0.65 | 0.60 | 0.60 | 13.072083 | 13.07 |
+| 11 | 5 | 1 | 2 | 0.65 | 0.60 | 0.60 | 13.380694 | 13.38 |
+| 12 | 5 | 1 | 2 | 0.65 | 0.60 | 0.60 | 13.793750 | 13.79 |
+| 13 | 5 | 1 | 2 | 0.65 | 0.60 | 0.60 | 13.829861 | 13.83 |
+| 14 | 5 | 1 | 3 | 0.70 | 0.65 | 0.65 | 14.621042 | 14.62 |
+| 15 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 14.270500 | 14.27 |
+| 16 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 14.309389 | 14.31 |
+| 17 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 14.600500 | 14.60 |
+| 18 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 14.815417 | 14.82 |
+| 19 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 15.025417 | 15.03 |
+| 20 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 15.098750 | 15.10 |
+
+Party DPR is `Σ DPR(player's own level) + Σ hp_factor × DPR(companion owner's level)`.
+The same players and companion factors drive damage and budget. A L4/L7 party has
+budget level 5, but DPR `7.60 + 9.59 + 0.75×7.60 = 22.89` with Kael owned by L4,
+or `24.3825` with Kael owned by L7. Companions supply `player_id` and resolved
+`hp_factor`; players supply `id`, `type: player`, `level`.
+
+Select exact role-scaled HP using `derive_role_stats`; do not rescale returned references.
+Expected rounds (`total enemy HP / party DPR`) must be inclusively 3–5 for standard,
+4–6 for tough, 5–7 for boss. This is an expected-HP/DPR estimate. No feasible composition
+raises a named no-fit error with tier, level band, difficulty, region, terrain,
+headcount, scaled ceiling and party DPR. Candidate absence also names the request;
+there is no fallback encounter. Equal RNG seeds and equal inputs give equal references.
 
 ### Environment Modifiers
 
@@ -1300,6 +1504,8 @@ This inventory binds selected encounter species to their delivered combat consum
 
 Structured recharge is `{kind: "roll", die: 6, threshold: 5}`, `{kind: "encounter", uses: 1}`, or `{kind: "round", uses: 1}`. Thresholds are integers 1–6; uses are positive integers. Attacks may carry boolean `advantage`. Typed condition-only actives require positive integer `duration`; legacy encounter attack duration remains optional. Executable active kinds are `attack`, `healing`, and `prepare_attack`; social `command` and `accusation` and untyped narrative abilities retain nullable textual recharge. Healing accepts positive `NdM` with an optional nonnegative `+bonus`. Preparation carries `advantage: true` and a known-condition `on_hit` rider with positive integer duration. Every present catalog signature requires a nonblank cue; legacy encounter-template signatures remain cue-optional until story-138.
 
+Faction habitats: Ashmark soldiers and sergeants use `grassland`, `farmland`; cultists, cult fanatics and cult leaders use `underground`, `village`, `city`.
+
 ## Encounter Creature Stat Blocks
 
 These authored spec blocks adapt the eight encounter-only enemy types. All eight are catalog rows; encounter templates retain their flat combat entries.
@@ -1308,6 +1514,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. All eight
 
 ```json
 {
+  "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
   "id": "hollowed_scout",
   "name": "Hollowed Scout",
   "category": "hollow",
@@ -1413,6 +1620,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. All eight
 
 ```json
 {
+  "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
   "id": "hollow_wisp",
   "name": "Hollow Wisp",
   "category": "hollow",
@@ -1508,6 +1716,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. All eight
 
 ```json
 {
+  "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
   "id": "hollow_warden",
   "name": "Hollow Warden",
   "category": "hollow",
@@ -1620,6 +1829,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. All eight
 
 ```json
 {
+  "terrains": ["grassland", "farmland"],
   "id": "ashmark_soldier",
   "name": "Ashmark Soldier",
   "category": "humanoid",
@@ -1705,6 +1915,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. All eight
 
 ```json
 {
+  "terrains": ["grassland", "farmland"],
   "id": "ashmark_sergeant",
   "name": "Ashmark Sergeant",
   "category": "humanoid",
@@ -1807,6 +2018,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. All eight
 
 ```json
 {
+  "terrains": ["underground", "village", "city"],
   "id": "cultist",
   "name": "Cultist",
   "category": "humanoid",
@@ -1881,6 +2093,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. All eight
 
 ```json
 {
+  "terrains": ["underground", "village", "city"],
   "id": "cult_fanatic",
   "name": "Cult Fanatic",
   "category": "humanoid",
@@ -1982,6 +2195,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. All eight
 
 ```json
 {
+  "terrains": ["underground", "village", "city"],
   "id": "cult_leader",
   "name": "Cult Leader",
   "category": "humanoid",

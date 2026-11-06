@@ -148,7 +148,7 @@ class TestValidateEnemyResistanceTags:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("defect", [None, "dc", "resistance_tags"])
+@pytest.mark.parametrize("defect", [None, "dc", "resistance_tags", "unknown kind"])
 async def test_combat_entry_calls_public_shape_and_resistance_guards(monkeypatch, defect):
     import copy
     from unittest.mock import Mock
@@ -157,6 +157,7 @@ async def test_combat_entry_calls_public_shape_and_resistance_guards(monkeypatch
     from sample_fixtures import make_context
 
     import combat_init
+    import combat_init_participants
     import combat_init_validation
     import creature_schema
     from tests.combat.test_start_combat import SAMPLE_ENCOUNTER, _make_start_combat_mocks
@@ -165,8 +166,8 @@ async def test_combat_entry_calls_public_shape_and_resistance_guards(monkeypatch
     assert creature_schema.validate_enemy_resistance_tags is combat_init_validation.validate_enemy_resistance_tags
     shapes = Mock(wraps=combat_init_validation.validate_enemy_action_shapes)
     resistance = Mock(wraps=combat_init_validation.validate_enemy_resistance_tags)
-    monkeypatch.setattr(combat_init, "validate_enemy_action_shapes", shapes)
-    monkeypatch.setattr(combat_init, "validate_enemy_resistance_tags", resistance)
+    monkeypatch.setattr(combat_init_participants, "validate_enemy_action_shapes", shapes)
+    monkeypatch.setattr(combat_init_participants, "validate_enemy_resistance_tags", resistance)
     mutations, queries, content = _make_start_combat_mocks()
     encounter = copy.deepcopy(SAMPLE_ENCOUNTER)
     from sample_fixtures import load_test_creature
@@ -180,6 +181,8 @@ async def test_combat_entry_calls_public_shape_and_resistance_guards(monkeypatch
         enemy["action_pool"][0]["dc"] = "12"
     elif defect == "resistance_tags":
         enemy["resistance_tags"] = ["unknown"]
+    elif defect == "unknown kind":
+        enemy["action_pool"] = [{"name": "Decree", "kind": "decree"}]
     content.get_encounter_template.return_value = encounter
 
     async def load(creature_id, **kwargs):

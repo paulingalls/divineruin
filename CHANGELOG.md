@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.35.0 — 2026-11-06
+## 0.36.0 — 2026-11-06
 
 - Every patron now has its Layer 2 Resonance modifier and its three favor tiers (Acknowledged, Devoted, Exalted) in `content/gods.json`. The Python loader and a new shared TypeScript god entity validate them against one fixture corpus and fail loudly on a bad profile.
 - A caster's patron changes their magic. Kaelen's combat spells generate 1 less Resonance. Thyra's generate less on natural ground. Syrath's generate 2 less while hidden. Orenthel's healing generates none. Valdris's are halved against a creature that wronged the party. Mortaen's generate none on a target at 0 HP. Nythera's generate 1 less in a place the caster has never been. No reduction goes below 0. Veythar's arcane casters roll 2 Flickering bonus dice instead of 1. Aelora's spells ignore Veil Ward penalties. At Resonance 9+, a Zhael follower hears two Hollow Echo results and picks one aloud.
@@ -9,6 +9,17 @@
 - A favor loss now whispers only when it drops the player's tier; smaller losses stay silent. Neglect decay is still narrated at session start and on join.
 - The Unbound Path works. The DM can tell an Unbound player their exact Resonance. Once per encounter they can push it up by 3 through `activate`, and once per session Veil Mastery turns a Hollow Echo into "Nothing stirs".
 - Phase 8 M8.1: 3 open acceptance criteria (was 9). The alignment heartbeat is deferred to its own sprint.
+
+## 0.35.0 — 2026-11-06
+
+- Harvesting follows the bestiary's skill table. Every gated drop names one material kind, and each kind needs exactly one skill and tier (pelts and meat Survival: Trained; glands, venom and rare gems Survival: Expert; construct parts Crafting: Trained; Hollow residue Crafting: Expert; magical components Arcana: Trained; Named fragments and Veil shards Arcana: Expert). A catalog test fails on any drop whose gate disagrees with its kind. cave_gemstone moves to Survival: Expert, named_fragment to Arcana: Expert, and woven_void_fragment to tier 2. Migration 062 turns salvageable_weapon into equipment.
+- Every loot drop either appears in a recipe or is marked `crafting_use: "trade"` for later sell values; no drop is both.
+- Dispel Corruption purifies a whole tainted stack. The caster names the owner and the item, Focus is spent as for any cast, and the units move to the clean stack in one transaction. Corruption-saturated stone refuses before Focus is spent.
+- Artificers can purify tainted units as a timed activity: `begin_activity(kind="purification")` takes the units into escrow at once, and after three skill-practice cycles the worker returns them clean, exactly once even if resolution replays.
+- Every creature names its habitat in a required `terrains` list, in Python and TypeScript. Hollow creatures list every terrain for now.
+- `build_encounter` composes encounters from the creature catalog by tier, region and terrain. The budget scales with party size and each companion's own HP factor (Sable 0.50, the others 0.75). A mixed-level party uses its mean level. Expected damage per round follows each player's level, so fights fit their difficulty's round window: standard 3–5, tough 4–6, boss 5–7. A request that cannot fit raises a named error. Known gap: player spell and ability damage is not yet applied by the combat engine (debt 6d3b1d6a), so generated fights run longer than certified until it is.
+- The DM can start a generated encounter with `enter_mode(mode="combat")` and a difficulty instead of an encounter id, and can look creatures up with `query_info(kind="creature")`. GPT-6 Luna accepted all five changed tool sets in strict mode.
+- Phase 7 M7.4 is complete: 0 open acceptance criteria (was 8).
 
 ## 0.34.0 — 2026-11-04
 

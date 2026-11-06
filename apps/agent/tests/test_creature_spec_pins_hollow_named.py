@@ -61,15 +61,15 @@ ABILITIES = {
 LOOT = {
     "hollow_choir": (
         ("choir_resonance_crystal", 1, 1.0, (("arcana", "expert"),)),
-        ("named_fragment", 1, 1.0, (("crafting", "expert"),)),
+        ("named_fragment", 1, 1.0, (("arcana", "expert"),)),
         ("freed_memories", "1d6", 1.0, ()),
     ),
-    "hollow_still": (("named_fragment", 1, 1.0, (("crafting", "expert"),)),),
+    "hollow_still": (("named_fragment", 1, 1.0, (("arcana", "expert"),)),),
     "hollow_architect": (
         ("architect_blueprint_fragment", "1d4", 1.0, (("arcana", "expert"),)),
         ("living_stone", "2d6", 1.0, (("crafting", "expert"),)),
-        ("named_fragment", 1, 1.0, (("crafting", "expert"),)),
-        ("void_touched_foundation", 1, 0.5, (("arcana", "expert"), ("crafting", "expert"))),
+        ("named_fragment", 1, 1.0, (("arcana", "expert"),)),
+        ("void_touched_foundation", 1, 0.5, (("arcana", "expert"),)),
     ),
 }
 VULNERABILITIES = {

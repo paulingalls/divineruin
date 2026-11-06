@@ -379,8 +379,8 @@
         "quantity": "1d4",
         "requires": [
           {
-            "skill": "investigation",
-            "tier": "trained"
+            "skill": "survival",
+            "tier": "expert"
           }
         ]
       }
@@ -397,7 +397,7 @@
         "requires": [
           {
             "skill": "crafting",
-            "tier": "expert"
+            "tier": "trained"
           }
         ]
       },
@@ -550,7 +550,7 @@
         "requires": [
           {
             "skill": "crafting",
-            "tier": "expert"
+            "tier": "trained"
           }
         ]
       }
@@ -723,10 +723,6 @@
           {
             "skill": "crafting",
             "tier": "expert"
-          },
-          {
-            "skill": "arcana",
-            "tier": "trained"
           }
         ]
       }
@@ -754,7 +750,7 @@
         "chance": 0.25,
         "requires": [
           {
-            "skill": "arcana",
+            "skill": "crafting",
             "tier": "expert"
           }
         ]
@@ -865,7 +861,7 @@
         "chance": 1,
         "requires": [
           {
-            "skill": "crafting",
+            "skill": "arcana",
             "tier": "expert"
           }
         ]
@@ -889,7 +885,7 @@
         "chance": 1,
         "requires": [
           {
-            "skill": "crafting",
+            "skill": "arcana",
             "tier": "expert"
           }
         ]
@@ -929,7 +925,7 @@
         "chance": 1,
         "requires": [
           {
-            "skill": "crafting",
+            "skill": "arcana",
             "tier": "expert"
           }
         ]
@@ -941,10 +937,6 @@
         "requires": [
           {
             "skill": "arcana",
-            "tier": "expert"
-          },
-          {
-            "skill": "crafting",
             "tier": "expert"
           }
         ]

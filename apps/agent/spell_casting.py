@@ -31,6 +31,7 @@ import patron_echo_choice
 import racial_resonance
 import resonance as resonance_mod
 import resonance_events
+import spell_item_resolution
 import spell_knowledge
 import spells
 import unbound_tools
@@ -219,10 +220,9 @@ async def _resolve_cast(
     update, so the ability must not double-emit."""
     caster = caster or session.party.primary
     _validate_id(spell_id, "spell_id")
-    # Validate the explicit target id the same way as spell_id, on the shared core so BOTH the
-    # out-of-combat cast and the in-combat ABILITY path are guarded once (concern 8816cdffb757).
-    if target_id is not None:
-        _validate_id(target_id, "target_id")
+    item_target = await spell_item_resolution.resolve_item_target(
+        session, spell_id, target_id, target_ids, phase=player is not None, content=content_mod
+    )
     if target_ids is not None:
         for tid in target_ids:
             _validate_id(tid, "target_id")
@@ -251,9 +251,9 @@ async def _resolve_cast(
             spell_def = None
         produces_ooc = spell_def is not None and spell_def.applies_condition is not None and not session.in_combat
         locked_rows, player = await condition_produce_mod.lock_ooc_caster_and_targets(
-            produces_ooc=produces_ooc,
+            produces_ooc=produces_ooc or item_target is not None,
             player_id=player_id,
-            target_id=target_id,
+            target_id=item_target[0] if item_target else target_id,
             target_ids=target_ids,
             party_member_ids=session.party.member_ids,
             queries_mod=queries_mod,
@@ -337,6 +337,11 @@ async def _resolve_cast(
             session.validate_acting_player(player_id)
         concealment_packet = await concealment.transition(player, False, ended_by="cast", conn=conn)
 
+    purified = None
+    if item_target is not None:
+        purified = await spell_item_resolution.purify_item(
+            session, item_target, conn, caster_id=player_id, revalidate_actor=revalidate_actor
+        )
     if spell.focus_cost > 0:
         if revalidate_actor:
             session.validate_acting_player(player_id)
@@ -402,6 +407,7 @@ async def _resolve_cast(
         packet["concealment"] = concealment_packet
     if patron_resonance is not None:
         packet["patron_resonance"] = patron_resonance
+    spell_item_resolution.defer_inventory(session, purified, packet, events)
     # Carry the explicit target into the packet for the DM to voice (corpse/ally/object/area).
     # Additive — a self-cast (target_id None) leaves the packet shape untouched.
     if target_id is not None:

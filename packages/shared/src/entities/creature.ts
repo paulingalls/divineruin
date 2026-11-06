@@ -5,6 +5,7 @@ import {
   type DurabilityRider,
   type ChoirEffect,
 } from "./action_contracts";
+import { TERRAIN_TYPE_VALUES, type TerrainType } from "./terrain";
 import lootTables from "../../../../content/loot_tables.json";
 import { REGION_IDS, type RegionId } from "./region";
 import {
@@ -26,6 +27,7 @@ export interface CreatureStatBlock {
   tier: 1 | 2 | 3 | 4;
   home_region: RegionId | "multi_region";
   regions: RegionId[];
+  terrains: TerrainType[];
   description: string;
   level: number;
   hp: number;
@@ -213,6 +215,15 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
     regions.forEach((region, i) => {
       if (!(REGION_IDS as readonly unknown[]).includes(region))
         problems.push(`regions[${i}]: unknown region`);
+    });
+  }
+  const terrains = field(creature, "terrains", "", "array");
+  if (Array.isArray(terrains)) {
+    if (terrains.length === 0) problems.push("terrains: expected non-empty array");
+    terrains.forEach((terrain, i) => {
+      if (typeof terrain !== "string") problems.push(`terrains[${i}]: expected string`);
+      else if (!(TERRAIN_TYPE_VALUES as readonly string[]).includes(terrain))
+        problems.push(`terrains[${i}]: unknown terrain`);
     });
   }
   field(creature, "description", "", "string");

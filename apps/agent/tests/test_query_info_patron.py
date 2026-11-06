@@ -148,7 +148,7 @@ def test_emitted_query_info_schema_advertises_patron():
     tool = next(row for row in parsed if row["name"] == "query_info")
 
     kinds = tool["input_schema"]["properties"]["kind"]["enum"]
-    assert len(kinds) == 11
+    assert len(kinds) == 12
     assert kinds.count("patron") == 1
     assert 'kind="patron"' in tool["description"]
     assert "Only an active or narrated gift is granted" in tool["description"]
