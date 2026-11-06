@@ -838,7 +838,7 @@
       "effect": "Gain advantage on Perception and Survival checks in natural terrain. The DM narrates the health of the ecosystem without a check.",
       "trigger": "While you are in natural terrain.",
       "recharge": "always",
-      "status": "awaits_terrain"
+      "status": "active"
     },
     "layer_2_resonance": {
       "name": "Veil Grounding",

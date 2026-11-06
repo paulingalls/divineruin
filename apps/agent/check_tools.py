@@ -35,6 +35,7 @@ import rules_engine
 import skill_persistence
 from check_discovery import _check_discover_impl
 from check_payloads import CheckPayload
+from combat_terrain import skill_natural_terrain
 from condition_consume import consume_beneficial_conditions, serialize_combat_check
 from condition_voice_rules import validate_hearing_check
 from db_errors import db_tool, validated_player_conditions
@@ -157,6 +158,7 @@ async def _check_skill_impl(
         skill,
         difficulty,
         ally_present=session.ally_present_for(player_id),
+        natural_terrain=await skill_natural_terrain(session, player, skill),
         hearing_only=hearing_only,
     )
 

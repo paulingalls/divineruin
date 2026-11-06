@@ -51,7 +51,12 @@ class TestQueryLocation:
         mock_content = MagicMock()
         mock_content.get_location = AsyncMock(return_value=SAMPLE_LOCATION)
         ctx = _make_context()
-        result = json.loads(await _query_location_impl(ctx, location_id="accord_guild_hall", content=mock_content))
+        activities = MagicMock(get_divine_favor=AsyncMock(return_value={"patron": "none", "level": 0, "max": 100}))
+        result = json.loads(
+            await _query_location_impl(
+                ctx, location_id="accord_guild_hall", content=mock_content, activities=activities
+            )
+        )
         assert result["name"] == "Guild Hall"
         assert "hidden_elements" not in result
 

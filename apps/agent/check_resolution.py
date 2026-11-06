@@ -6,12 +6,12 @@ All resolution functions accept an optional `rng` for deterministic testing.
 import random
 from dataclasses import dataclass
 
-from _gods_content import load_gods
 from condition_bonus import roll_bonus_dice as roll_bonus_dice
 from condition_voice_rules import auto_fail_hearing_perception
 from conditions import ConditionEffects, get_condition_effects
 from dice import roll as dice_roll
 from dramatic import DramaticContext, evaluate_dramatic_context
+from patron_gifts import skill_gift
 from rules_engine import (
     ADVANCEMENT_THRESHOLDS,
     SKILL_CAPABILITIES,
@@ -292,6 +292,7 @@ def _resolve_skill_check_impl(
     rng: random.Random | None = None,
     *,
     ally_present: bool,
+    natural_terrain: bool,
     hearing_only: bool,
 ) -> SkillCheckResult:
     skill_lower = skill.lower()
@@ -340,17 +341,12 @@ def _resolve_skill_check_impl(
         )
 
     gift_name = None
-    if (
-        ally_present
-        and not _check_auto_fail(dc, tier)
-        and (player_data.get("divine_favor") or {}).get("patron") == "aelora"
-    ):
-        gift = next(row["layer_1_gift"] for row in load_gods() if row["god_id"] == "aelora")
-        if gift["mechanics"]["requires"] != "ally_present":
-            raise ValueError(f"Aelora's gift requires {gift['mechanics']['requires']!r}, not a present ally")
-        if gift["status"] == "active":
-            bonus += gift["mechanics"]["amount"]
-            gift_name = gift["name"]
+    if not _check_auto_fail(dc, tier):
+        gift_bonus, gift_advantage, gift_name = skill_gift(
+            player_data, skill_lower, ally_present=ally_present, natural_terrain=natural_terrain
+        )
+        bonus += gift_bonus
+        advantage = advantage or gift_advantage
 
     check = resolve_check(
         score,
@@ -386,10 +382,17 @@ def resolve_skill_check(
     rng: random.Random | None = None,
     *,
     ally_present: bool,
+    natural_terrain: bool,
     hearing_only: bool,
 ) -> SkillCheckResult:
     return _resolve_skill_check_impl(
-        player_data, skill, dc_for_tier(difficulty), rng, ally_present=ally_present, hearing_only=hearing_only
+        player_data,
+        skill,
+        dc_for_tier(difficulty),
+        rng,
+        ally_present=ally_present,
+        natural_terrain=natural_terrain,
+        hearing_only=hearing_only,
     )
 
 
@@ -400,6 +403,7 @@ def resolve_skill_check_dc(
     rng: random.Random | None = None,
     *,
     ally_present: bool,
+    natural_terrain: bool,
     hearing_only: bool,
 ) -> SkillCheckResult:
     """Like resolve_skill_check but accepts a numeric DC directly.
@@ -407,7 +411,15 @@ def resolve_skill_check_dc(
     Use when the DC is stored as a number (e.g. hidden element DCs)
     rather than a difficulty tier string.
     """
-    return _resolve_skill_check_impl(player_data, skill, dc, rng, ally_present=ally_present, hearing_only=hearing_only)
+    return _resolve_skill_check_impl(
+        player_data,
+        skill,
+        dc,
+        rng,
+        ally_present=ally_present,
+        natural_terrain=natural_terrain,
+        hearing_only=hearing_only,
+    )
 
 
 # --- Skill advancement ---

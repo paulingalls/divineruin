@@ -33,6 +33,7 @@ import event_types as E
 import rules_engine
 import travel as travel_engine
 from action_sound_content import publish_action_sound
+from combat_terrain import skill_natural_terrain
 from condition_consume import persist_combat_consumption, serialize_combat_check
 from db_errors import db_tool, validated_player_conditions
 from game_events import publish_game_event
@@ -126,6 +127,7 @@ async def _travel_impl(
             dc,
             rng,
             ally_present=session.ally_present_for(speaker_id),
+            natural_terrain=await skill_natural_terrain(session, player, _NAV_SKILL, content_mod=content),
             hearing_only=False,
         )
 
