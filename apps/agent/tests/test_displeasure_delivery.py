@@ -24,7 +24,10 @@ async def test_whisper_delivery_marks_only_ordinary_favor(amount, should_mark):
                 payload={
                     "player_id": "player_1",
                     "patron_id": "kaelen",
-                    "new_level": 30,
+                    "previous_level": 40 if amount < 0 else 25,
+                    "new_level": 35 if amount < 0 else 30,
+                    "max": 100,
+                    "requested_amount": amount,
                     "last_whisper_level": 0,
                     "amount": amount,
                     "reason": "Patron action 'fled_battle'",
@@ -46,7 +49,10 @@ async def test_whisper_delivery_marks_only_ordinary_favor(amount, should_mark):
     with (
         patch("game_events.publish_game_event", side_effect=publish),
         patch("background_process.asyncio.sleep", new_callable=AsyncMock),
-        patch("background_process.db_activity_queries.get_divine_favor", new=AsyncMock(return_value={"level": 30})),
+        patch(
+            "background_process.db_activity_queries.get_divine_favor",
+            new=AsyncMock(return_value={"level": 35 if amount < 0 else 30}),
+        ),
         patch("background_process.db_mutations_divine.mark_favor_whisper_level", new=AsyncMock()) as mark,
     ):
         await bg._deliver_speech()
@@ -68,7 +74,10 @@ async def test_failed_whisper_delivery_never_marks_favor():
                 payload={
                     "player_id": "player_1",
                     "patron_id": "kaelen",
+                    "previous_level": 25,
                     "new_level": 30,
+                    "max": 100,
+                    "requested_amount": 5,
                     "last_whisper_level": 0,
                     "amount": 5,
                     "reason": "valor",
@@ -86,7 +95,7 @@ async def test_failed_whisper_delivery_never_marks_favor():
     mark.assert_not_awaited()
 
 
-async def test_contrary_action_at_favor_floor_still_queues_displeasure():
+async def test_contrary_action_at_favor_floor_stays_silent():
     activities = MagicMock()
     activities.get_divine_favor = AsyncMock(
         return_value={"patron": "kaelen", "level": 0, "max": 100, "last_whisper_level": 0}
@@ -107,24 +116,13 @@ async def test_contrary_action_at_favor_floor_still_queues_displeasure():
     sd = SessionData(player_id="player_1", location_id="accord_guild_hall", patron_id="kaelen")
     bg = BackgroundProcess(session=MagicMock(), session_data=sd)
     bg._handle_events([GameEvent(event_type=event_type, payload=payload) for event_type, payload in pending])
-    assert len(bg._speech_queue) == 1
-    assert bg._speech_queue[0].is_displeasure
+    assert bg._speech_queue == []
 
 
 async def test_discarded_displeasure_can_be_queued_again():
     sd = SessionData(player_id="player_1", location_id="accord_guild_hall", patron_id="kaelen")
     bg = BackgroundProcess(session=MagicMock(), session_data=sd)
-    contrary = GameEvent(
-        event_type=E.DIVINE_FAVOR_CHANGED,
-        payload={
-            "player_id": "player_1",
-            "patron_id": "kaelen",
-            "new_level": 25,
-            "last_whisper_level": 0,
-            "amount": -5,
-            "reason": "Patron action 'fled_battle'",
-        },
-    )
+    contrary = _contrary()
     newer = GameEvent(event_type=E.WORLD_EVENT, payload={"event_id": "god_whisper:other", "patron_id": "kaelen"})
     bg._handle_events([contrary, newer])
     with (
@@ -143,17 +141,7 @@ async def test_discarded_displeasure_can_be_queued_again():
 async def test_failed_displeasure_can_be_queued_again_and_success_spends_latch():
     sd = SessionData(player_id="player_1", location_id="accord_guild_hall", patron_id="kaelen")
     bg = BackgroundProcess(session=MagicMock(), session_data=sd)
-    contrary = GameEvent(
-        event_type=E.DIVINE_FAVOR_CHANGED,
-        payload={
-            "player_id": "player_1",
-            "patron_id": "kaelen",
-            "new_level": 25,
-            "last_whisper_level": 0,
-            "amount": -5,
-            "reason": "Patron action 'fled_battle'",
-        },
-    )
+    contrary = _contrary()
     bg._handle_events([contrary, contrary])
     assert len(bg._speech_queue) == 1
     with (
@@ -166,6 +154,7 @@ async def test_failed_displeasure_can_be_queued_again_and_success_spends_latch()
         bg._handle_events([contrary])
         await bg._deliver_speech()
     assert sd.displeasure_heard_by == {"player_1"}
+    contrary.payload.update(previous_level=75, new_level=70)
     bg._handle_events([contrary])
     assert bg._speech_queue == []
 
@@ -177,7 +166,10 @@ def _contrary(player_id="player_1", patron_id="kaelen"):
             "player_id": player_id,
             "patron_id": patron_id,
             "amount": -5,
-            "new_level": 25,
+            "previous_level": 40,
+            "new_level": 35,
+            "max": 100,
+            "requested_amount": -5,
             "last_whisper_level": 0,
             "reason": "Patron action 'fled_battle'",
         },
@@ -273,3 +265,35 @@ async def test_recipientless_displeasure_fails_loudly(successful_delivery):
     with pytest.raises(AssertionError):
         await bg._deliver_speech()
     assert sd.displeasure_heard_by == set()
+
+
+@pytest.mark.parametrize(
+    "previous,new,maximum,reason,recipient,queued",
+    [
+        (40, 35, 100, "contrary", "player_1", True),
+        (50, 45, 100, "contrary", "player_1", False),
+        (20, 15, 50, "contrary", "player_1", True),
+        (75, 70, 100, "contrary", "player_1", True),
+        (0, 0, 100, "contrary", "player_1", False),
+        (40, 35, 100, "neglect", "player_1", False),
+        (40, 35, 100, "contrary", "player_2", False),
+    ],
+)
+def test_only_tier_drops_queue_displeasure(previous, new, maximum, reason, recipient, queued):
+    sd = SessionData(player_id="player_1", location_id="hall", patron_id="kaelen")
+    bg = BackgroundProcess(session=MagicMock(), session_data=sd)
+    event = _contrary(recipient)
+    event.payload.update(previous_level=previous, new_level=new, max=maximum, amount=new - previous, reason=reason)
+    bg._handle_events([event, event])
+    assert len(bg._speech_queue) == int(queued)
+    assert sd.displeasure_heard_by == set()
+    if queued:
+        speech = bg._speech_queue[0]
+        assert speech.is_displeasure and speech.recipient_id == "player_1"
+        assert speech.priority == SpeechPriority.CRITICAL
+        assert speech.stinger_sound == "god_whisper_stinger"
+        assert "Something shifts. The air thickens." in speech.instructions
+        assert get_god_profile("kaelen").displeasure_prompt in speech.instructions
+    else:
+        bg._handle_events([_contrary()])
+        assert len(bg._speech_queue) == 1
