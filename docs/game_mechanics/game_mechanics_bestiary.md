@@ -1268,57 +1268,140 @@ profile `hp_factor`: Kael, Lira and Tam contribute 0.75; Sable contributes 0.50.
 
 ### Expected Damage Reference Progression
 
-`EXPECTED_PLAYER_DAMAGE_PER_ROUND` is an authored reference estimate, not a combat
-simulation or a guarantee about a particular build. Weight all 18 archetypes equally.
-Their starting main hands (`creation_classes.py`) are 1×1d12, 5×1d8, 9×1d6,
-3×1d4: mean die `W = (6.5 + 5×4.5 + 9×3.5 + 3×2.5)/18 = 34/9`.
-Use one proficient weapon attack per round, starting governing score 16 (+3).
-Spend L4 and L8 attribute points on that score, capped at 20 (+5).
+`EXPECTED_PLAYER_DAMAGE_PER_ROUND` is keyed by **each level 1–20**, not the floor
+of a budget band. It is a reference damage build, equally weighted over all 18
+archetypes, not a simulation of a particular player's equipment, prepared spells or
+remaining resources. Budget still uses the floor-mean player level independently.
 
-Evaluate each band at its lowest level, deliberately retaining that conservative
-estimate throughout the band. Proficiency is +1 before L7, +2 before L14, then +3.
-Opposing AC is the corresponding threat tier's midpoint (11.5, 11.5, 13.5, 15.5, 18);
-fractional AC rounds up when comparing an integer attack roll. Assume ordinary
-attacks, natural 1 misses, natural 20 hits and adds one damage-dice roll. No advantage,
-resistance, area damage, species-specific damage, reactions or critical flat bonus.
+Reference builds start with their `creation_classes.CLASSES` primary score 16 (+3),
+all other scores 12 (+1). L4 and L8's two points raise only the primary modifier to
++4 and +5. Weapons use the actual Strength/Dexterity selection in
+`check_resolution_attack.weapon_attribute_modifier`; Shillelagh uses Wisdom.
+Arcane spells (including Bard's arcane electives) use Intelligence; divine/primal
+spells use Wisdom. Off-primary attacks retain +1. Use proficiency from
+`rules_engine.proficiency_bonus`: +1 through L6, +2 at L7, +3 at L14. Weapon enhancement
+by budget band is 0/0/+1/+1/+2 (Steel Longsword / Veil-Forged Weapon establish the
+crafting bonuses). Apply enhancement to attack and damage, retaining the starting
+weapon die from `creation_classes.CLASSES`. The 18 main hands are 1×1d12, 5×1d8,
+9×1d6 and 3×1d4, mean 34/9; calculate archetypes separately before averaging.
+Opposing midpoint AC by band is 11.5/11.5/13.5/15.5/18, rounded up for d20 comparisons.
+Weapon attack modifier is its own attribute modifier + proficiency + enhancement; spells
+receive no weapon enhancement. Natural 1 misses, natural 20 hits and adds the damage
+dice once. Thus `attack(D,F) = H×(D+F) + 0.05×D`, where D is mean dice damage and F
+is flat damage. Advantage uses `H' = 1−(1−H)²`, crit chance `1−0.95²`.
 
-Reference equipment by band is starting/basic, starting/trained, Expert +1,
-Expert +1, Master +2. These are equipment assumptions, not automatic level rewards:
-crafting's Steel Longsword and Veil-Forged Weapon establish +1/+2 attack and damage;
-apply that enhancement to each starting weapon without changing its die.
+For saves, explicitly assume a neutral target save modifier +2, DC
+`8 + spell attribute modifier + proficiency`, natural 1 fails and natural 20 saves.
+Enumerate the twenty faces to obtain failure probability Q. A save spell deals
+`Q×damage`, or `(Q + (1−Q)/2)×damage` with half on success. This target-save
+assumption is a reference, not an assertion about every catalog creature.
+No resistance, vulnerability, Resonance bonus dice, reaction damage, multiple area
+targets or conditional Hollow bonus contributes. No damage is tuned to an HP cell.
 
-Include two routine core damage expenditures in the equal-archetype average:
-Warrior's Devastating Strike (+1d8, +2d8 at L10) and Paladin's minimum Divine Smite
-(+1d8, excluding the conditional Hollow bonus). Assume each is used every other
-round, once on that round's attack. Their averaged bonus dice per round are
-`B = (4.5 + 4.5)/36 = 0.25`, rising to `(9 + 4.5)/36 = 0.375` at L10.
-Other conditional abilities, elective choices and spell rotations are excluded from
-this weapon reference; no unrestricted spell/resource burst is assumed. It estimates
-sustained weapon pressure and can understate a caster's cantrip or leveled-spell damage.
-At L10 Warrior, Skirmisher and Paladin gain a second weapon attack. At the sampled
-L15 floor their extra dice sum is `6.5 + 3.5 + 4.5 = 14.5`; do not double their
-once-per-round bonus. The L9 band keeps its pre-L10 floor.
+### Five-round reference rotations
 
-Let `A` be attribute modifier, `E` enhancement, `P` proficiency and `H` hit probability.
-Count successful d20 faces against `ceil(AC)` with modifier `A+E+P`; all five reference
-rows have `H = 13/20 = 0.65`. First-attack DPR is
-`H × (W+A+E+B) + 0.05 × (W+B)`. At L15 add
-`[H × (14.5 + 3×(A+E)) + 0.05×14.5]/18` for the three Extra Attack archetypes.
-Round only the final per-player value to two decimals, then use that authored value.
+Use fresh resource pools from `content/archetypes.json`: base + matching primary
+attribute modifier + floor(level/divisor), or base + modifier when divisor is zero.
+Other resource attributes have modifier +1. Enumerate five main actions, spending
+Focus and Stamina only when available; choose the largest expected total, divided
+by five. Martial-only archetypes recover 2 Stamina after each action, capped at their
+pool. Focus does not regenerate. Five rounds budgets expenditure across the longest
+standard fight; tough/boss use the same reference, not a fresh burst every round.
 
-| Level band | Floor | A | E | P | Mid AC | B | Extra Attack contribution | Unrounded DPR | Authored DPR |
-|---|---|---|---|---|---|---|---|---|---|
-| 1-2 | 1 | 3 | 0 | 1 | 11.5 | 0.25 | 0 | 4.769444… | 4.77 |
-| 3-4 | 3 | 3 | 0 | 1 | 11.5 | 0.25 | 0 | 4.769444… | 4.77 |
-| 5-8 | 5 | 4 | 1 | 1 | 13.5 | 0.25 | 0 | 6.069444… | 6.07 |
-| 9-14 | 9 | 5 | 1 | 2 | 15.5 | 0.25 | 0 | 6.719444… | 6.72 |
-| 15-20 | 15 | 5 | 2 | 3 | 18 | 0.375 | 1.322222… | 8.779166… | 8.78 |
+Core abilities and costs come from `content/archetype_abilities.json`; spell costs,
+damage and tier come from `content/spells.json`. Assume this damage-oriented reference
+has learned/prepared the listed source electives as its archetype unlocks their tier;
+these are build assumptions, **not automatic grants**. Core spells remain available
+at their core grant even if the chassis lacks a cantrip tier. Bard's cross-source
+reference chooses arcane damage electives. Each spell replaces the main weapon
+sequence for its round. The finite rotation options are:
+
+| Archetypes / option | Expected damage and resource accounting |
+|---|---|
+| All 18 | Starting weapon attack; Warrior, Skirmisher and Paladin get two at L10. Flat governing modifier and enhancement apply per swing. |
+| Warrior | Devastating Strike costs 3 Stamina, adds 1d8 once on that round's attack; 2d8 at L10, 3d8 at L17. Extra Attack does not double this bonus. |
+| Guardian | Protective Strike has ordinary weapon damage; no extra damage for its defensive rider. |
+| Skirmisher | Flanking Strike costs 3 Stamina: one attack with advantage and +1d6, other swing ordinary. Assume the reference companion can flank. |
+| Rogue | Once/round Sneak Attack with an adjacent ally: 1d6, 2d6/L5, 3d6/L9, 4d6/L13, 5d6/L17 (`game_mechanics_archetypes.md`). Precise Strike can spend 3 Stamina for advantage. |
+| Spy | Ordinary weapon; betrayal-dependent Backstab is not routine against a hostile enemy. |
+| Warden | Core Shillelagh substitutes a 1d8 staff. Guardian Strike's defensive rider adds no damage. |
+| Paladin | Minimum Divine Smite costs 2 Focus for +1d8 once that round, excluding Hollow bonus. Competes with spell options. |
+| Beastcaller | Command Companion costs 1 Focus; one 1d6 + governing modifier attack replaces the main action, never an additional party attack. |
+| Artificer | Deploy Construct costs 3 Focus and the first action; four later independent 1d6 + INT attacks accompany four main actions. No attack on deployment round or pre-fight summon. |
+| Whisper | Mind Spike: scaling cantrip d6 psychic, no flat modifier; use the reference save odds. |
+| Bard, Diplomat | Cutting Words: 1d4 psychic, no flat modifier; reference save odds, no invented scaling. Can choose a weapon or eligible spell instead. |
+| Marshal | Direct Strike costs 2 Focus. Count only the increment over an ally's ordinary 1d6 + governing modifier attack: advantage plus 1d4; the ordinary ally attack already belongs to party DPR. |
+| Arcane (Mage, Artificer, Seeker, Whisper), Bard | Arcane Bolt: Nd6 + modifier. Magic Missile: three auto-hit (1d4+1) darts, cost 2; no invented threshold for its unspecified extra darts. Elemental Burst: 2d6, 3d6/L7, 4d6/L13, half on save, cost 3. Disintegrate: attack for 5d6+20, cost 7. |
+| Primal (Druid, Beastcaller, Warden) | Thorn Whip: Nd6 + modifier. Blight: 4d8, half on save, cost 5. Exclude terrain-dependent Call Lightning and unspecified summoned-animal damage. |
+| Divine (Cleric, Oracle, Paladin, Diplomat, Marshal) | Sacred Flame: Nd6 + modifier, no damage on save. Flame Strike: 4d6, half on save, cost 5. Divine Judgment: 6d8, half on save, cost 7. Respect each archetype's tier gates (Paladin/Diplomat/Marshal have no supreme tier). |
+| Divine, from standard tier | Spiritual Weapon: cost 4 Focus and the first action; four later independent 1d8 + WIS attacks accompany four main actions. No pre-fight cast or deployment-round attack. |
+
+The non-spell psychic core cantrips use their primary Charisma for the reference save DC.
+For scaling cantrips N is 1, 2/L5, 3/L11, 4/L17, matching `leveling.cantrip_damage_dice`.
+Persistent construct/spiritual weapon attacks use spell attack odds and no weapon
+bonuses. The model assumes they survive the five-round reference fight. Healing,
+control, elective martial abilities, and specialization choices contribute no extra
+damage. These omissions and the reference build assumptions limit the estimate;
+this table does not certify deterministic implementation of every content ability.
+
+For example, L9 primary-attribute attacks have weapon H=0.65, spell H=0.60, save Q=0.60;
+off-primary attacks substitute modifier +1 (H=0.45/0.40 and Q=0.40). Its five-round
+archetype totals divided by five are:
+
+| Archetype | L9 DPR |
+|---|---|
+| warrior | 11.600000 |
+| guardian | 3.150000 |
+| skirmisher | 12.090000 |
+| mage | 17.045000 |
+| artificer | 17.770000 |
+| seeker | 17.045000 |
+| druid | 13.030000 |
+| beastcaller | 13.030000 |
+| warden | 13.030000 |
+| cleric | 16.260000 |
+| paladin | 10.200000 |
+| oracle | 16.260000 |
+| rogue | 17.940000 |
+| spy | 3.150000 |
+| whisper | 10.500000 |
+| bard | 10.500000 |
+| diplomat | 6.920000 |
+| marshal | 7.120000 |
+
+Their sum / 18 is 12.035555…, rounded only after aggregation to 12.04.
+The full level progression follows from the same five-action calculation; rising
+AC at L15 can lower the estimate despite better equipment. Use the authored rounded
+values at runtime:
+
+| Level | Attribute | Enhancement | Proficiency | Primary weapon H | Primary spell H | Primary save Q | Unrounded mean | Authored DPR |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 3 | 0 | 1 | 0.65 | 0.65 | 0.45 | 6.499778 | 6.50 |
+| 2 | 3 | 0 | 1 | 0.65 | 0.65 | 0.45 | 6.593667 | 6.59 |
+| 3 | 3 | 0 | 1 | 0.65 | 0.65 | 0.45 | 7.017000 | 7.02 |
+| 4 | 4 | 0 | 1 | 0.70 | 0.70 | 0.50 | 7.796806 | 7.80 |
+| 5 | 4 | 1 | 1 | 0.65 | 0.60 | 0.50 | 9.400194 | 9.40 |
+| 6 | 4 | 1 | 1 | 0.65 | 0.60 | 0.50 | 9.487250 | 9.49 |
+| 7 | 4 | 1 | 2 | 0.70 | 0.65 | 0.55 | 9.978431 | 9.98 |
+| 8 | 5 | 1 | 2 | 0.75 | 0.70 | 0.60 | 10.794083 | 10.79 |
+| 9 | 5 | 1 | 2 | 0.65 | 0.60 | 0.60 | 12.035556 | 12.04 |
+| 10 | 5 | 1 | 2 | 0.65 | 0.60 | 0.60 | 13.640833 | 13.64 |
+| 11 | 5 | 1 | 2 | 0.65 | 0.60 | 0.60 | 13.949444 | 13.95 |
+| 12 | 5 | 1 | 2 | 0.65 | 0.60 | 0.60 | 14.362500 | 14.36 |
+| 13 | 5 | 1 | 2 | 0.65 | 0.60 | 0.60 | 14.588194 | 14.59 |
+| 14 | 5 | 1 | 3 | 0.70 | 0.65 | 0.65 | 15.404653 | 15.40 |
+| 15 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 15.028833 | 15.03 |
+| 16 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 15.067722 | 15.07 |
+| 17 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 15.548417 | 15.55 |
+| 18 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 15.763333 | 15.76 |
+| 19 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 15.973333 | 15.97 |
+| 20 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 16.046667 | 16.05 |
 
 Party DPR is `Σ DPR(player's own level) + Σ hp_factor × DPR(companion owner's level)`.
-The same players and companion factors drive both damage and budget. A L4/L7 party
-has budget level 5, but DPR `4.77 + 6.07 + 0.75×4.77 = 14.4175` if Kael belongs to
-the L4 player, or `15.3925` if he belongs to the L7 player. Companions must provide
-`player_id` and resolved `hp_factor`; players provide `id`, `type: player`, `level`.
+The same players and companion factors drive damage and budget. A L4/L7 party has
+budget level 5, but DPR `7.80 + 9.98 + 0.75×7.80 = 23.63` with Kael owned by L4,
+or `25.265` with Kael owned by L7. Companions supply `player_id` and resolved
+`hp_factor`; players supply `id`, `type: player`, `level`.
 
 Select exact role-scaled HP using `derive_role_stats`; do not rescale returned references.
 Expected rounds (`total enemy HP / party DPR`) must be inclusively 3–5 for standard,

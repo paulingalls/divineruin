@@ -542,7 +542,7 @@ Event-driven price fluctuation, three-phase event lifecycle, standard economic e
 
 ---
 
-## game_mechanics/game_mechanics_bestiary.md (2212 lines)
+## game_mechanics/game_mechanics_bestiary.md (2295 lines)
 
 Creature stat blocks, Hollow and natural creatures, materials, encounters.
 
@@ -552,10 +552,10 @@ Creature stat blocks, Hollow and natural creatures, materials, encounters.
 | Hollow Creatures | 135-613 | 9 Hollow entities (Shadeling through The Architect), special mechanics |
 | Natural Creatures | 614-1189 | 19 creatures across 6 regions plus multi-region, Tier 1-3 |
 | Material Catalog Summary | 1190-1236 | Material values and crafting uses for all creature drops |
-| Encounter Building Guidelines | 1237-1342 | Tier-based scaling, solo player math, companion effectiveness |
-| Design Decisions Log (Bestiary) | 1343-1346 | Bestiary decisions (24-29) |
-| Combat Effect Inventory | 1347-1422 |  Audited combat effects, resolver bindings, scheduled contracts and narrative deferrals. |
-| Encounter Creature Stat Blocks | 1423-2212 | Eight encounter-only creatures with complete spec stat blocks, source actions, canonical regions, and audio-first narration |
+| Encounter Building Guidelines | 1237-1425 | Tier-based scaling, solo player math, companion effectiveness |
+| Design Decisions Log (Bestiary) | 1426-1429 | Bestiary decisions (24-29) |
+| Combat Effect Inventory | 1430-1505 |  Audited combat effects, resolver bindings, scheduled contracts and narrative deferrals. |
+| Encounter Creature Stat Blocks | 1506-2295 | Eight encounter-only creatures with complete spec stat blocks, source actions, canonical regions, and audio-first narration |
 
 ---
 

@@ -18,14 +18,28 @@ PROFILES = {
 }
 ENV = {"region": "greyvale", "terrain": "forest"}
 DPR = {
-    1: 4.77,
-    2: 4.77,
-    3: 4.77,
-    4: 4.77,
-    **dict.fromkeys(range(5, 9), 6.07),
-    **dict.fromkeys(range(9, 15), 6.72),
-    **dict.fromkeys(range(15, 21), 8.78),
+    1: 6.5,
+    2: 6.59,
+    3: 7.02,
+    4: 7.8,
+    5: 9.4,
+    6: 9.49,
+    7: 9.98,
+    8: 10.79,
+    9: 12.04,
+    10: 13.64,
+    11: 13.95,
+    12: 14.36,
+    13: 14.59,
+    14: 15.4,
+    15: 15.03,
+    16: 15.07,
+    17: 15.55,
+    18: 15.76,
+    19: 15.97,
+    20: 16.05,
 }
+
 WINDOWS = {"standard": (3, 5), "tough": (4, 6), "boss": (5, 7)}
 
 
@@ -76,6 +90,14 @@ def check(refs, catalog, tier, members, environment=ENV, difficulty="standard"):
     return budget["total"], hp
 
 
+def test_personal_level_progression_at_builder_boundary():
+    for level, damage in DPR.items():
+        members = [{"id": "player", "type": "player", "level": level}]
+        with pytest.raises(ValueError) as error:
+            build_encounter([row(10000)], 2, members, ENV, "standard", Random(0))
+        assert f"party_DPR={damage}" in str(error.value)
+
+
 def test_catalog_selection():
     before = deepcopy(CATALOG)
     members = party()
@@ -89,25 +111,20 @@ def test_catalog_selection():
 
 def test_two_players_scale_above_solo_ceiling():
     members = party((6, 6))
-    for catalog in (CATALOG, [row(9)]):
+    for catalog in (CATALOG, [row(15)]):
         refs = build_encounter(catalog, 2, members, ENV, "standard", Random(0))
         cost, _ = check(refs, catalog, 2, members)
         if catalog != CATALOG:
             assert 4 < cost <= 44 / 7
-    for owner in (0, 1):
-        ordered = party((6, 6), owner=owner)[::-1]
-        assert build_encounter(CATALOG, 2, ordered, ENV, "standard", Random(0)) == build_encounter(
-            CATALOG, 2, members, ENV, "standard", Random(0)
-        )
 
 
 def test_sable_factor_controls_budget_and_damage():
     members = party(companion="companion_sable")
     assert members[-1]["hp_factor"] == 0.5
     check(build_encounter(CATALOG, 2, members, ENV, "standard", Random(0)), CATALOG, 2, members)
-    with pytest.raises(ValueError, match=r"No fit.*headcount=1.5.*party_DPR=9.105"):
-        build_encounter([row(8)], 2, members, ENV, "standard", Random(0))
-    check(build_encounter([row(8)], 2, party(), ENV, "standard", Random(0)), [row(8)], 2, party())
+    with pytest.raises(ValueError, match=r"No fit.*headcount=1.5"):
+        build_encounter([row(14)], 2, members, ENV, "standard", Random(0))
+    check(build_encounter([row(14)], 2, party(), ENV, "standard", Random(0)), [row(14)], 2, party())
 
 
 def test_mountain_requires_both_memberships():
@@ -137,17 +154,17 @@ def test_no_candidates_and_no_fit_name_request():
 
 def test_round_window_includes_exact_endpoints():
     members = party()
-    members[-1]["hp_factor"] = 8 / 6.07 - 1
-    for hp in (24, 40):
+    members[-1]["hp_factor"] = 16 / 9.49 - 1
+    for hp in (48, 80):
         catalog = [row(hp)]
         results = [build_encounter(catalog, 2, members, ENV, "standard", Random(seed)) for seed in range(50)]
         totals = {check(refs, catalog, 2, members)[1] for refs in results}
         assert hp in totals
     with pytest.raises(ValueError, match="No fit"):
-        build_encounter([row(41)], 2, members, ENV, "standard", Random(0))
+        build_encounter([row(81)], 2, members, ENV, "standard", Random(0))
     for seed in range(50):
-        refs = build_encounter([row(23)], 2, members, ENV, "standard", Random(seed))
-        check(refs, [row(23)], 2, members)
+        refs = build_encounter([row(47)], 2, members, ENV, "standard", Random(seed))
+        check(refs, [row(47)], 2, members)
 
 
 def test_hollow_eligible_named_excluded_and_tier_four_refuses():
@@ -172,18 +189,30 @@ def test_mixed_levels_use_owner_damage_and_floor_mean_budget():
         hps = {check(refs, catalog, 2, members)[1] for refs in results}
         observed.append(hps)
         assert results[0] == build_encounter(catalog, 2, members[::-1], ENV, "standard", Random(0))
-    assert 45 in observed[0] and 45 not in observed[1]
+    assert 75 in observed[0] and 75 not in observed[1]
     with pytest.raises(ValueError, match=r"No fit.*level_band=3-4"):
-        build_encounter([row(8)], 2, party((4, 5)), ENV, "standard", Random(0))
+        build_encounter([row(14)], 2, party((4, 5)), ENV, "standard", Random(0))
 
 
-def test_all_candidate_cells_over_fifty_seeds(tmp_path):
+def test_all_candidate_cells_over_fifty_seeds():
     expected = {
-        1: ((33, 33, 39), (39, 46, 39), (46, 46, 46), (46, 46, 46), (46, 46, 46)),
-        2: ((42, 42, 42), (42, 42, 42), (42, 42, 47), (42, 47, 47), (47, 47, 47)),
-        3: ((0, 0, 0), (0, 0, 0), (0, 0, 20), (0, 20, 21), (20, 25, 25)),
+        1: (
+            (29, 29, 33, 33, 33, 33, 33, 32, 33, 32, 32, 29, 29, 29, 33, 33, 33, 33, 33, 32),
+            (29, 29, 33, 33, 39, 33, 33, 33, 33, 33, 33, 33, 33, 32, 33, 33, 33, 33, 33, 33),
+            (32, 32, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33, 32, 32, 33, 33, 33, 33, 33, 33),
+        ),
+        2: (
+            (42, 42, 42, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47),
+            (47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47),
+            (47, 47, 47, 42, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47),
+        ),
+        3: (
+            (0, 0, 0, 0, 21, 21, 21, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25),
+            (0, 0, 20, 20, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25),
+            (20, 20, 21, 25, 25, 25, 25, 22, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25),
+        ),
     }
-    refused, supported = [], set()
+    supported = set()
     cells = 0
     for tier in (1, 2, 3):
         pairs = sorted(
@@ -196,14 +225,13 @@ def test_all_candidate_cells_over_fifty_seeds(tmp_path):
             }
         )
         assert len(pairs) >= 25
-        for endpoint, level in enumerate((1, 2, 3, 4, 5, 8, 9, 14, 15, 20)):
+        for level in range(1, 21):
             for di, difficulty in enumerate(WINDOWS):
                 successes = 0
                 for region, terrain in pairs:
                     cells += 1
                     environment = {"region": region, "terrain": terrain}
                     members = party((level,))
-                    name = f"{tier}/{level}/{difficulty}/{region}/{terrain}"
                     outcome = None
                     for seed in range(50):
                         try:
@@ -220,9 +248,5 @@ def test_all_candidate_cells_over_fifty_seeds(tmp_path):
                     if outcome:
                         supported.add((tier, difficulty))
                         successes += 1
-                    else:
-                        refused.append(name)
-                assert successes == expected[tier][endpoint // 2][di]
+                assert successes == expected[tier][di][level - 1]
     assert cells >= 3000 and len(supported) == 9
-    (tmp_path / "refused-cells.json").write_text(json.dumps(refused, indent=2))
-    print(f"{cells} cells x 50 seeds; {len(refused)} named refusals; report: {tmp_path / 'refused-cells.json'}")

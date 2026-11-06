@@ -10,18 +10,33 @@ from encounter_roles import ROLE_MODIFIERS, derive_role_stats
 SOLO_PARTY_BASELINE = 1.75
 # Authored reference progression; derivation in the bestiary's Encounter Building Guidelines.
 EXPECTED_PLAYER_DAMAGE_PER_ROUND = {
-    "1-2": 4.77,
-    "3-4": 4.77,
-    "5-8": 6.07,
-    "9-14": 6.72,
-    "15-20": 8.78,
+    1: 6.5,
+    2: 6.59,
+    3: 7.02,
+    4: 7.8,
+    5: 9.4,
+    6: 9.49,
+    7: 9.98,
+    8: 10.79,
+    9: 12.04,
+    10: 13.64,
+    11: 13.95,
+    12: 14.36,
+    13: 14.59,
+    14: 15.4,
+    15: 15.03,
+    16: 15.07,
+    17: 15.55,
+    18: 15.76,
+    19: 15.97,
+    20: 16.05,
 }
+
 ROUND_WINDOWS = {"standard": (3, 5), "tough": (4, 6), "boss": (5, 7)}
 
 
 def _player_damage(level: int) -> float:
-    band = calculate_encounter_budget([], level)["level_band"]
-    return EXPECTED_PLAYER_DAMAGE_PER_ROUND[band]
+    return EXPECTED_PLAYER_DAMAGE_PER_ROUND[level]
 
 
 @lru_cache(maxsize=128)
