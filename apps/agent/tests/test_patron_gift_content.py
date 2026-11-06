@@ -8,7 +8,7 @@ EXPECTED_GIFTS = {
     "aelora": ("always", "active"),
     "syrath": ("short_rest", "awaits_rest"),
     "mortaen": ("always", "narrated"),
-    "thyra": ("always", "awaits_terrain"),
+    "thyra": ("always", "active"),
     "valdris": ("short_rest", "awaits_rest"),
     "nythera": ("always", "narrated"),
     "orenthel": ("always", "awaits_healing"),

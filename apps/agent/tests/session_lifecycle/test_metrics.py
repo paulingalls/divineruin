@@ -242,6 +242,7 @@ class TestMetricsAccumulation:
         mock_mutations = MagicMock()
         mock_mutations.update_player_location = AsyncMock()
         mock_mutations.upsert_map_progress = AsyncMock()
+        mock_mutations.record_departure = AsyncMock()
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
         mock_queries.get_npcs_at_location = AsyncMock(return_value=[])

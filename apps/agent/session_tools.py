@@ -5,10 +5,12 @@ import json
 import logging
 from contextvars import copy_context
 from functools import partial
+from typing import Literal
 
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
+import combat_wrongdoing
 import db
 import db_activity_queries
 import db_content_queries
@@ -36,11 +38,15 @@ async def update_npc_disposition(
     npc_id: str,
     delta: int,
     reason: str,
+    grievance: Literal["none", "broken_promise", "injustice"],
 ) -> str:
     """Shift an NPC's disposition toward or away from the player.
     Delta range: -2 to +2. Positive = warmer, negative = colder.
-    Scale: hostile -> unfriendly -> neutral -> friendly -> trusted."""
-    return await _update_npc_disposition_impl(context, npc_id, delta, reason)
+    Scale: hostile -> unfriendly -> neutral -> friendly -> trusted.
+    Grievance marks that this NPC wronged the player or allies: broken_promise or
+    injustice. Use none for ordinary disposition changes; it never clears a mark.
+    Delta zero can mark a grievance without shifting disposition."""
+    return await _update_npc_disposition_impl(context, npc_id, delta, reason, grievance)
 
 
 async def _update_npc_disposition_impl(
@@ -48,6 +54,7 @@ async def _update_npc_disposition_impl(
     npc_id: str,
     delta: int,
     reason: str,
+    grievance: Literal["none", "broken_promise", "injustice"],
     *,
     db_mod=db,
     mutations=db_mutations,
@@ -59,6 +66,8 @@ async def _update_npc_disposition_impl(
     session: SessionData = context.userdata
     player_id = session.acting_player_id
 
+    if grievance not in {"none", *combat_wrongdoing.GRIEVANCES}:
+        raise ToolError(f"Unknown grievance: {grievance}")
     delta = max(-2, min(2, delta))
 
     npc = await content.get_npc(npc_id)
@@ -73,6 +82,11 @@ async def _update_npc_disposition_impl(
     pending_events: list[tuple[str, dict]] = []
 
     async with db_mod.transaction() as conn:
+        if grievance != "none":
+            player = await queries.get_player(player_id, conn=conn, for_update=True)
+            if player is None:
+                raise ToolError(f"Player '{player_id}' not found")
+            combat_wrongdoing.grievance(player, npc_id)
         current = await queries.get_npc_disposition(npc_id, player_id, conn=conn, for_update=True)
         if current is None:
             current = npc.get("default_disposition", "neutral")
@@ -81,6 +95,10 @@ async def _update_npc_disposition_impl(
 
         session.validate_acting_player(player_id)
         await mutations.set_npc_disposition(npc_id, player_id, new_disposition, reason, conn=conn)
+
+        if grievance != "none":
+            session.validate_acting_player(player_id)
+            await mutations.set_player_flag(player_id, combat_wrongdoing.grievance_key(npc_id), grievance, conn=conn)
 
         pending_events.append(
             (
@@ -109,6 +127,8 @@ async def _update_npc_disposition_impl(
         "new": new_disposition,
         "reason": reason,
     }
+    if grievance != "none":
+        response["wrongdoing"] = {"target_id": npc_id, "player_id": player_id, "source": "grievance", "kind": grievance}
     logger.info("update_npc_disposition result: %s → %s for %s", current, new_disposition, npc_id)
     return json.dumps(response)
 

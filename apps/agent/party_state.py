@@ -28,6 +28,8 @@ class PartyMember:
     weapon_used: bool = False
     weapon_crit_vs_heavy: bool = False
     draethar_inner_fire_used: bool = False
+    unbound_raw_channeling_used: bool = False
+    unbound_veil_mastery_used: bool = False
 
 
 @dataclass
@@ -107,6 +109,8 @@ class PartyState:
                 weapon_used=m_data.get("weapon_used", False),
                 weapon_crit_vs_heavy=m_data.get("weapon_crit_vs_heavy", False),
                 draethar_inner_fire_used=m_data.get("draethar_inner_fire_used", False),
+                unbound_raw_channeling_used=m_data.get("unbound_raw_channeling_used", False),
+                unbound_veil_mastery_used=m_data.get("unbound_veil_mastery_used", False),
             )
             members.append(member)
         return cls(members=members)

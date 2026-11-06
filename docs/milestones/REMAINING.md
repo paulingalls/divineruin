@@ -82,11 +82,8 @@ its triggers and legal IDs. This does not certify natural spoken Beat-3 pauses.
   harness exercises activity recovery, and world-effect tests exercise direct
   quest effects; neither proves a world tick or scheduled event evaluation.
   Those runtime capabilities remain **unverified**.
-- **Patron placeholders:**
-  `test_patron_roster_consistency.py::test_layer_2_through_4_placeholders_exist_and_are_null`
-  reserves Layers 2–4. All ten Layer-1 gifts are objects. When implementing
-  later layers, revise the obsolete placeholder assertion and retain the
-  roster checks.
+- **Patron layers:** Layers 1–3 are authored and validated in Python and TypeScript
+  (`test_gods_layers.py`, `god.test.ts`); Layer 4 stays reserved null for M8.3.
 
 ## 4. Documentation decisions still open
 
@@ -103,7 +100,7 @@ The story-111 retired-tool-name guard was deleted in `cb5dd18e`; it no longer
 protects milestone prose. Historical repair narratives are omitted from this
 current work map; the handback records their disposition.
 
-## 5. Incomplete implementation phases (27 milestones, 195 open ACs)
+## 5. Incomplete implementation phases (27 milestones, 189 open ACs)
 
 The AC column counts **unchecked** criteria. Estimates are planning judgments,
 not schedules or measured implementation costs.
@@ -111,7 +108,7 @@ not schedules or measured implementation costs.
 | Phase | Milestones | Open ACs | Dependencies / decisions | Size estimate | Exercised or inventoried substrate |
 |---|---|---|---|---|---|
 | **7 · Bestiary** | 7.3 | 8 | Remaining Hollow effects and native Choir certification | ~2 sprints | Every dropped item has an exclusive recipe link or trade marker on its catalog owner. Guaranteed drops and party skill gates exercised through persisted combat victory; roles/budgets/loot exercised through combat; 36 catalog rows, 11 catalog-backed encounter templates referencing 14 distinct species; seeded/queryable catalog and Python/TypeScript contracts. Generated entry, persisted resume, victory loot and public creature summaries are exercised. All six categories have persisted victory coverage, including a test-only undead fixture; remaining M7.3 effects stay open. |
-| **8 · Patrons** | 8.1–8.3 | 32 | Phase 2 archetype detail for M8.3; original schema criteria remain open | ~2–3 sprints | Ten authored Layer-1 gifts; Layers 2–4 null. Favor action recording, standing/query and decay checks pass; XP/favor Resolve and client favor-event handling are exercised. Complete gift-effect coverage is not certified here. |
+| **8 · Patrons** | 8.1–8.3 | 26 | M8.1: alignment heartbeat needs a deed-journal design; five rest/heal-gated gifts need production rest and HP-restore callers. Phase 2 archetype detail for M8.3 | ~2 sprints | Layers 1–3 authored for all ten patrons; all ten Layer 2 effects apply on the production cast path; Thyra, Kaelen and Aelora gifts are live; tier-drop loss whispers; Unbound Veil Clarity, Raw Channeling and Veil Mastery. Favor persists in players.data JSONB (no separate tables). |
 | **9 · Economy** | 9.1–9.10 | 75 | Phase 7 material/creature integration; Phase 5/6 inputs | large | Shared pricing getters/repair costs, reputation-to-stance and committed material inventory boundaries pass. The migrated pricing table exists. No complete economy certification is implied. |
 | **11 · World Loop** | 11.1–11.6 | 46 | D-A–D-E; M11.4 needs Phase 9, M11.6 needs Phase 8 | ~4–6 sprints | Migrated `region_state`, `npc_state`, `world_events_log`, `god_agent_state`, `world_flags`; direct quest world effects; activity-worker reset harness. These do not establish a world scheduler or cascade. |
 | **12 · Story Content** | 12.1–12.7 | 34 | Phase 11 and its blocking decision section | ~5–7 sprints | Migrated `scenes` (013) and `story_moments` (012); scene-tool and settlement-generation boundaries. `gods.json` has authored secret-agenda text for Veythar and Syrath; a season director is not certified. |

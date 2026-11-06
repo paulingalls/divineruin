@@ -108,7 +108,7 @@ def test_position_scoped_inspired_retained_until_eligible(kind):
         if kind == "save":
             return check_resolution_save.resolve_saving_throw(player, "wisdom", 8, "stunned", rng=FixedRng(10))
         return check_resolution.resolve_skill_check_dc(
-            player, "athletics", 8, rng=FixedRng(10), ally_present=False, hearing_only=False
+            player, "athletics", 8, rng=FixedRng(10), natural_terrain=False, ally_present=False, hearing_only=False
         )
 
     result = roll()

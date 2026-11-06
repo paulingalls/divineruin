@@ -19,6 +19,7 @@ from session_data import CombatParticipant
 
 def _queries():
     q = MagicMock()
+    q.get_player = AsyncMock(side_effect=lambda pid, **kw: {"player_id": pid})
     q.get_player_inventory = AsyncMock(return_value=[])  # no equipped items -> no durability write
     q.get_inventory_snapshot = snapshot_query([])
     return q
@@ -66,6 +67,7 @@ async def test_a_swing_by_a_player_with_no_party_member_resolves_instead_of_rais
         resolver=_damage_resolver(3),
         concentration_break_mod=MagicMock(break_concentration_on_damage=AsyncMock(return_value=None)),
         sink=EventSink(),
+        conn=MagicMock(),
     )
 
     assert summary["actor_id"] == "ghost_pc"

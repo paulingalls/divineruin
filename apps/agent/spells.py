@@ -90,6 +90,8 @@ class Spell:
     # decision spell-ts-reader-gated) since the TS server never reads it. Default keeps in-code
     # Spell(...) builds working; parse_spell_row REQUIRES it from raw rows (strict).
     sound_id: str = ""
+    combat_aid: bool = False
+    healing: bool = False
 
 
 # Module-level runtime-loaded spells, keyed by spell id. Populated by load_spells()
@@ -117,7 +119,7 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
         spell_tier = data["spell_tier"]
         if spell_tier not in _SPELL_TIERS:
             raise ValueError(f"spell {spell_id!r} spell_tier {spell_tier!r} not in {sorted(_SPELL_TIERS)}")
-        for component in ("verbal", "hostile"):
+        for component in ("verbal", "hostile", "combat_aid", "healing"):
             if not isinstance(data[component], bool):
                 raise ValueError(f"spell {spell_id!r} {component} is not a bool")
         concentration = data["concentration"]
@@ -148,6 +150,8 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
             narration_cue=data["narration_cue"],
             verbal=data["verbal"],
             hostile=data["hostile"],
+            combat_aid=data["combat_aid"],
+            healing=data["healing"],
             resonance_by_source=parse_int_dict(data["resonance_by_source"], f"spell {spell_id!r} resonance_by_source"),
             audio_cue=parse_str(data["audio_cue"], f"spell {spell_id!r} audio_cue"),
             concentration=concentration,

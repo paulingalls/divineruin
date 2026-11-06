@@ -132,12 +132,18 @@ class TestCombatStartE2E:
         player_part = await _run_start(_player(stored_conditions=stored))
 
         baseline = resolve_skill_check(
-            {"attributes": dict(_ATTRS), "level": 5}, "athletics", "moderate", ally_present=False, hearing_only=False
+            {"attributes": dict(_ATTRS), "level": 5},
+            "athletics",
+            "moderate",
+            natural_terrain=False,
+            ally_present=False,
+            hearing_only=False,
         )
         in_combat = resolve_skill_check(
             {"attributes": dict(_ATTRS), "level": 5, "conditions": player_part.conditions},
             "athletics",
             "moderate",
+            natural_terrain=False,
             ally_present=False,
             hearing_only=False,
         )

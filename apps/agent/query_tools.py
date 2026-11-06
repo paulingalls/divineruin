@@ -18,16 +18,21 @@ import crafting_tools
 import creature_catalog
 import db_activity_queries
 import db_content_queries
+import db_mutations_resonance
 import db_queries
 import recipe_tools
 import spell_knowledge
 import spells
 import training_tools
+import unbound_tools
 from _gods_content import load_gods
+from combat_terrain import resolve_terrain
 from db_errors import db_tool
 from patron_favor import get_patron_tier
+from patron_gifts import thyra_gift
 from session_data import SessionData
 from settlement_generation import generate_settlement_npcs, generate_settlement_roster
+from terrain import is_natural
 from tool_support import (
     _location_for_narration,
     _npc_for_narration,
@@ -89,7 +94,8 @@ async def query_info(
       and active learned variant ids (no target_id needed).
     - kind="patron": the current player's patron standing, progress, authored favor action ids,
       and Layer 1 gift (no target_id needed). Only an active or narrated gift is granted;
-      an awaits_* gift is the god's promise, not yet a power."""
+      an awaits_* gift is the god's promise, not yet a power. Unbound Veil Clarity reveals exact
+      Resonance; the response lists unbound_raw_channeling for activate and automatic Veil Mastery."""
     return await _query_info_impl(context, kind, target_id)
 
 
@@ -153,13 +159,15 @@ async def _query_patron_impl(
     gods_loader=load_gods,
 ) -> str:
     session: SessionData = context.userdata
-    favor = await activities.get_divine_favor(session.acting_player_id)
+    player_id = session.acting_player_id
+    favor = await activities.get_divine_favor(player_id)
     if favor is None:
         raise ToolError("Cannot query patron: current player has no divine_favor row.")
 
+    track = await db_mutations_resonance.read_player_resonance(player_id)
     tier = get_patron_tier(favor)
     if tier is None:
-        return json.dumps({"state": "Unbound"})
+        return json.dumps(unbound_tools.patron_query(track))
 
     patron_id = favor["patron"]
     patron = next((row for row in gods_loader() if row["god_id"] == patron_id), None)
@@ -178,6 +186,7 @@ async def _query_patron_impl(
     return json.dumps(
         {
             "patron_id": patron_id,
+            "resonance": {"state": track["state"]},
             "short_name": patron["short_name"],
             "title": patron["title"],
             "tier": tier,
@@ -187,6 +196,7 @@ async def _query_patron_impl(
             "favor_needed_to_next_tier": favor_needed,
             "favor_actions": patron["favor_actions"],
             "layer_1_gift": patron["layer_1_gift"],
+            **await _ecosystem_cue(session, favor),
         }
     )
 
@@ -264,11 +274,26 @@ async def _query_abilities_impl(
     return json.dumps({"abilities": results, "spells": spell_rows})
 
 
+async def _ecosystem_cue(session: SessionData, favor: dict) -> dict:
+    gift = thyra_gift(favor)
+    if gift is None or not is_natural(await resolve_terrain(session)):
+        return {}
+    location_id = session.combat_state.location_id if session.combat_state is not None else session.location_id
+    return {
+        "ecosystem_health_cue": {
+            "gift_name": gift["name"],
+            "location_id": location_id,
+            "instruction": "Narrate the ecosystem health sensed by Nature's Pulse without a check, using available location facts.",
+        }
+    }
+
+
 async def _query_location_impl(
     context: RunContext[SessionData],
     location_id: str,
     *,
     content=db_content_queries,
+    activities=db_activity_queries,
 ) -> str:
     logger.info("query_info[location] called: location_id=%s", location_id)
     _validate_id(location_id, "location_id")
@@ -279,6 +304,12 @@ async def _query_location_impl(
     session: SessionData = context.userdata
     location = apply_time_conditions(location, session.world_time)
     narration = _location_for_narration(location)
+    current_id = session.combat_state.location_id if session.combat_state is not None else session.location_id
+    if location_id == current_id:
+        favor = await activities.get_divine_favor(session.acting_player_id)
+        if favor is None:
+            raise ToolError("Cannot query location: current player has no divine_favor row.")
+        narration.update(await _ecosystem_cue(session, favor))
     return json.dumps(narration)
 
 

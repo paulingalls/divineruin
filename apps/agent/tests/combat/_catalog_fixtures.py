@@ -27,10 +27,14 @@ def deps(seed=0):
         *a, **k, rng=random.Random(seed)
     )
     return dict(
+        conn=MagicMock(),
         resolver=resolver,
         sink=MagicMock(emit=AsyncMock()),
         mutations=MagicMock(update_player_hp=AsyncMock()),
-        queries=MagicMock(get_player_inventory=AsyncMock(return_value=[])),
+        queries=MagicMock(
+            get_player_inventory=AsyncMock(return_value=[]),
+            get_player=AsyncMock(side_effect=lambda pid, **kw: {"player_id": pid}),
+        ),
         concentration_break_mod=MagicMock(break_concentration_on_damage=AsyncMock(return_value=None)),
     )
 

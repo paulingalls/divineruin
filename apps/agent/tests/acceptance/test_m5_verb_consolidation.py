@@ -30,8 +30,7 @@ VERB_PRESENCE = [
     (learn, "learn", {"dispatch"}),
     (check, "check", {"exploration", "combat", "onboarding", "dispatch"}),
     (enter_mode, "enter_mode", {"exploration"}),
-    # M7 story-004: select also resolves pending L5 choices mid-training, so dispatch holds it too.
-    (select, "select", {"exploration", "dispatch"}),
+    (select, "select", {"exploration", "dispatch", "combat"}),
     # M23 story-002: the faction reputation DM verb sits beside update_npc_disposition on the
     # single exploration agent (world-state mutation verbs live there, per M7's collapse).
     (adjust_faction_reputation, "adjust_faction_reputation", {"exploration"}),

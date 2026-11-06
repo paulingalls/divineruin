@@ -112,3 +112,9 @@ def resolve_hollow_echo(
             return HollowEchoResult(band=band, name=name, effect=effect, effective_roll=effective_roll)
     band, name, effect = _BREACH
     return HollowEchoResult(band=band, name=name, effect=effect, effective_roll=effective_roll)
+
+
+def nothing_stirs(echo: HollowEchoResult) -> HollowEchoResult:
+    """Preserve the actual roll when Veil Mastery suppresses its consequence."""
+    _, band, name, effect = _BANDS[0]
+    return HollowEchoResult(band, name, effect, echo.effective_roll)

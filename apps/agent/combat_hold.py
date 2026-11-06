@@ -24,6 +24,7 @@ import combat_reaction_contest
 import combat_reaction_effect
 import combat_recharge
 import combat_voice_rules
+import combat_wrongdoing
 import event_types as E
 import reaction_gate
 import reaction_spend
@@ -337,7 +338,7 @@ def _roll(state, head: dict, action: dict, resolver, reaction_ac_bonus):
     attacker = state.get_participant(head["actor_id"])
     target = state.get_participant(declaration.target_id)
     action = begin_execution(state, attacker, action, declaration, head)
-    return roll_attack(
+    rolled = roll_attack(
         attacker,
         action,
         target,
@@ -347,6 +348,9 @@ def _roll(state, head: dict, action: dict, resolver, reaction_ac_bonus):
         resolver=resolver,
         combat_state=state,
     )
+
+    combat_wrongdoing.record_attack(state, attacker, target)
+    return rolled
 
 
 def _window(state, head: dict, stage: str, triggers: tuple[str, ...]) -> dict:

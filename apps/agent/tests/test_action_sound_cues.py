@@ -77,7 +77,9 @@ def arrival_mocks(log, *, exit=True, requires=None, navigation="established_road
     }
     dest = {"id": "dest", "name": "Destination", "navigation": navigation, "exits": {}}
     content = MagicMock(get_location=AsyncMock(side_effect=lambda id: {"accord_guild_hall": start, "dest": dest}[id]))
-    mutations = MagicMock(update_player_location=AsyncMock(), upsert_map_progress=AsyncMock())
+    mutations = MagicMock(
+        update_player_location=AsyncMock(), upsert_map_progress=AsyncMock(), record_departure=AsyncMock()
+    )
     travel = MagicMock(update_player_travel_state=AsyncMock())
     queries = MagicMock(
         get_player=AsyncMock(return_value={"player_id": "player_1", "conditions": []}),

@@ -34,6 +34,7 @@ import mentor_variants
 import reaction_gate
 import spell_casting
 import spells
+import unbound_tools
 import veil_anchor_tools
 import veil_ward
 import veil_ward_tools
@@ -46,7 +47,7 @@ logger = logging.getLogger("divineruin.tools")
 _VEIL_WARD = "veil_ward"
 _VEIL_WARD_DISMISS = "veil_ward_dismiss"
 _DRAETHAR_INNER_FIRE = "draethar_inner_fire"
-_RESERVED = frozenset({_VEIL_WARD, _VEIL_WARD_DISMISS, _DRAETHAR_INNER_FIRE})
+_RESERVED = frozenset({_VEIL_WARD, _VEIL_WARD_DISMISS, _DRAETHAR_INNER_FIRE, unbound_tools.RAW_CHANNELING})
 
 
 @function_tool()
@@ -63,9 +64,10 @@ async def activate(
     Pass the id of the thing being activated. For spells, abilities, and learned mentor variants
     this is their content id (e.g. 'arcane_bolt', 'warrior_devastating_strike', or
     'warrior_cleaving_blow_keldaran'); for a Veil Anchor it is the carried item's id (e.g.
-    'veil_ward_anchor_small'). Three reserved tokens have no content id of their own:
+    'veil_ward_anchor_small'). The reserved tokens have no content id of their own:
     'veil_ward' raises a Veil Ward, 'veil_ward_dismiss' drops one, and 'draethar_inner_fire'
-    triggers a Draethar's racial Inner Fire.
+    triggers a Draethar's racial Inner Fire. 'unbound_raw_channeling' adds exactly 3
+    Resonance for an Unbound member, once per encounter; query_info(kind='patron') lists it.
 
     Pass target_id when the capability affects ONE other entity (a spell/ability target). A Veil
     Ward is always raised or dismissed by the player speaking; omit target_id for it. Pass target_ids (a list)
@@ -159,6 +161,8 @@ async def _activate_impl(
             raise
         raise ToolError(f"{unknown} Reactions that fit the open window: {', '.join(valid)}.") from unknown
 
+    if kind == unbound_tools.RAW_CHANNELING:
+        return await unbound_tools._raw_channeling_impl(context)
     if kind == _VEIL_WARD:
         return await ward_mod._activate_veil_ward_impl(context, active=True, caster_id=target_id)
     if kind == _VEIL_WARD_DISMISS:

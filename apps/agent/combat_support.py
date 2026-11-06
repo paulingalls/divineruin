@@ -11,6 +11,7 @@ import combat_grapple
 import combat_hollow_death
 import combat_resolution
 import combat_spatial
+import combat_wrongdoing
 import concentration_break
 import condition_sources
 import conditions
@@ -175,6 +176,7 @@ async def _resolve_attack_packet(
         resolver=resolver,
         combat_state=combat_state,
     )
+    combat_wrongdoing.record_attack(combat_state, attacker, target)
     summary = await apply_attack_result(
         session,
         attacker,

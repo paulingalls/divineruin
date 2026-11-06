@@ -54,6 +54,7 @@ class TestUpdateNpcDisposition:
                 mutations=mock_mutations,
                 queries=mock_queries,
                 content=mock_content,
+                grievance="none",
             )
         )
 

@@ -464,7 +464,6 @@ async def test_melody_source_damage_owner_clears_movement(damage, same_source):
         result,
         18,
         combat_state=state,
-        conn=None,
         publish_roll=False,
         **d,
     )

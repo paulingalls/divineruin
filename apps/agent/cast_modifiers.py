@@ -5,21 +5,34 @@ from __future__ import annotations
 from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING
 
+from _gods_content import load_gods
 from spells import Spell
-from terrain import is_earth_or_stone, resonance_base
+from terrain import is_earth_or_stone, is_natural, resonance_base
 
 if TYPE_CHECKING:
     from hollow_echo import HollowEchoResult
+    from patron_cast_context import PatronCastFacts
 
 
-def compute_generated_resonance(spell: Spell, race: str | None, *, terrain: str | None, resonance, racial_mod) -> int:
+def compute_generated_resonance(
+    spell: Spell, race: str | None, *, terrain: str | None, resonance, racial_mod, patron: str | None = None
+) -> int:
     """Scale primal catalog generation by terrain, then apply Korath before ward halving.
 
     Catalog values preserve spell-specific tuning; the Focus formula serves in-code builds
     without a catalog entry. Decimal arithmetic preserves half-up ties such as farmland's 1.5.
     """
     base = resonance_base(terrain) if spell.source == "primal" else None  # type: ignore[arg-type]
+    steps = sum(
+        m["value"]
+        for m in patron_modifiers(patron)
+        if m["kind"] == "primal_multiplier_steps" and base is not None and terrain is not None and is_natural(terrain)
+    )
+    if steps:
+        base = max(Decimal(0), Decimal(str(base)) + Decimal("0.1") * steps)
     generated = spell.resonance_by_source.get(spell.source)
+    if generated is None and steps:
+        raise ValueError("Patron primal multiplier requires catalog generation")
     if generated is None:
         generated = resonance.calculate_resonance_generated(spell.focus_cost, spell.source, terrain=terrain)
     elif base is not None:
@@ -31,6 +44,48 @@ def compute_generated_resonance(spell: Spell, race: str | None, *, terrain: str 
         reduction = racial_mod.get_racial_resonance_modifier("korath", "primal_reduction")
         generated = resonance.apply_primal_reduction(generated, reduction)
     return generated
+
+
+def patron_modifiers(patron: str | None) -> list[dict]:
+    if patron is None or patron == "none":
+        return []
+    for god in load_gods():
+        if god["god_id"] == patron:
+            return god["layer_2_resonance"]["modifiers"]
+    raise ValueError(f"Unknown patron {patron!r}")
+
+
+def apply_patron_generation(
+    generated: int,
+    spell: Spell,
+    patron: str | None,
+    *,
+    terrain: str | None = None,
+    facts: PatronCastFacts,
+) -> tuple[int, list[str]]:
+    predicates = {
+        "combat_aid": spell.combat_aid,
+        "healing": spell.healing,
+        "natural_ground": terrain is not None and is_natural(terrain),
+        "primal_on_natural_ground": spell.source == "primal" and terrain is not None and is_natural(terrain),
+        "hidden_or_stealthed": facts.is_concealed,
+        "wrongdoer_target": facts.target_wronged_caster,
+        "target_at_zero_hp": facts.targets_at_zero_hp,
+        "unvisited_location": facts.first_stay,
+    }
+    applied = []
+    for modifier in patron_modifiers(patron):
+        if not predicates.get(modifier["applies_to"], False):
+            continue
+        kind, value = modifier["kind"], modifier["value"]
+        if kind == "generation_delta":
+            generated += value
+        elif kind == "generation_override":
+            generated = value
+        elif kind == "generation_multiplier":
+            generated = int(Decimal(generated) * Decimal(str(value)))
+        applied.append(modifier["applies_to"])
+    return max(0, generated), applied
 
 
 def compute_effective_resonance(
@@ -67,14 +122,19 @@ def apply_ward_halving(generated: int, ward_active: bool, *, veil_ward) -> int:
     return generated
 
 
-def ward_combat_modifiers(state: str, ward_active: bool, *, resonance, veil_ward) -> dict[str, int]:
+def ward_combat_modifiers(
+    state: str, ward_active: bool, *, resonance, veil_ward, patron: str | None = None, source: str | None = None
+) -> dict[str, int]:
     """The state's net combat modifiers, with an active ward's -1 damage die / -1 DC folded in.
 
     spec magic.md:199-200. ``get_state_modifiers`` returns a fresh dict, so folding the penalty in
     never mutates the shared modifier table.
     """
     modifiers = resonance.get_state_modifiers(state)
-    if ward_active:
+    patron_effects = {m["kind"]: m["value"] for m in patron_modifiers(patron)}
+    if state == "flickering" and source == "arcane" and "flickering_damage_dice" in patron_effects:
+        modifiers["damage_dice"] = patron_effects["flickering_damage_dice"]
+    if ward_active and not patron_effects.get("ward_penalty_immunity"):
         modifiers["damage_dice"] += veil_ward.WARD_DAMAGE_DIE_PENALTY
         modifiers["dc"] += veil_ward.WARD_DC_PENALTY
     return modifiers
@@ -89,8 +149,9 @@ def resolve_overreach_echo(
     hollow_echo,
     veil_ward,
     racial_mod,
-) -> tuple[HollowEchoResult, bool]:
-    """Roll and resolve the Overreach Hollow Echo. Returns ``(echo, vaelti_warned)``.
+    choice_count: int = 1,
+) -> tuple[tuple[HollowEchoResult, ...], bool]:
+    """Return ordered Echo candidates and whether to publish Vaelti's warning.
 
     At Overreach the Veil tears: auto-roll a d20 (spec magic.md:167-185). An active ward adds +4 to
     the roll (a milder result). The echo resolves against the caller's LOCAL ``effective_resonance``,
@@ -100,17 +161,30 @@ def resolve_overreach_echo(
     the base roll is drawn first and the advantage roll second (existing dice mocks feed a sequence
     and depend on that order). ``vaelti_warned`` is returned rather than published here, because the
     1-round advance-warning event closes over ``session``, which this pure layer never sees.
+
+    Zhael's choice replaces automatic Vaelti advantage: both benefits use two dice,
+    and the player may keep the better result.
     """
+    if choice_count not in (1, 2):
+        raise ValueError(f"Unsupported Echo choice count: {choice_count}")
     roll = dice_mod.roll("d20").total
     advantage_roll = None
     vaelti_warned = False
     if race == "vaelti" and racial_mod.get_racial_resonance_modifier("vaelti", "echo_save_advantage"):
         advantage_roll = dice_mod.roll("d20").total
         vaelti_warned = True
+    if choice_count == 2:
+        second = advantage_roll if advantage_roll is not None else dice_mod.roll("d20").total
+        return tuple(
+            hollow_echo.resolve_hollow_echo(
+                candidate, effective_resonance, ward_bonus=veil_ward.WARD_ECHO_BONUS if ward_active else 0
+            )
+            for candidate in (roll, second)
+        ), vaelti_warned
     echo = hollow_echo.resolve_hollow_echo(
         roll,
         effective_resonance,
         ward_bonus=veil_ward.WARD_ECHO_BONUS if ward_active else 0,
         advantage_roll=advantage_roll,
     )
-    return echo, vaelti_warned
+    return (echo,), vaelti_warned

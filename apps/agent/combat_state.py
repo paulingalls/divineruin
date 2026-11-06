@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass, field
 import choir_effects
 import combat_reaction_contest
 import combat_spatial
+import combat_wrongdoing
 import condition_sources
 import reaction_spend
 import reaction_windows
@@ -61,6 +62,7 @@ class CombatState:
     # encounter resolves, never resets. Feeds the M4.5 dramatic-dice "first_attack"
     # signal so the opening strike earns the dice (story-004).
     first_attack_resolved: bool = False
+    first_hostility: dict[str, str] = field(default_factory=dict)
     # Diplomat de-escalation (M4.6a story-004). Combat-scoped, never reset within an encounter.
     # ``deescalated`` flips True when a de-escalation argument lands; _wrap reads it to end
     # combat with outcome "deescalated".
@@ -153,6 +155,7 @@ class CombatState:
             ac_modifiers=data.get("ac_modifiers", {}),
             focus_marks=data.get("focus_marks", {}),
             first_attack_resolved=data.get("first_attack_resolved", False),
+            first_hostility=combat_wrongdoing.validate_ledger(data.get("first_hostility", {}), data["participants"]),
             deescalated=data.get("deescalated", False),
             deescalation_scene=DeEscalationState(**data.get("deescalation_scene", {})),
             # Plain dict (or None) — no rebuild. Absent on rows written before story-004.

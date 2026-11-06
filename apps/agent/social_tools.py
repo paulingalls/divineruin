@@ -99,6 +99,7 @@ async def _check_social_impl(
         base_dc,
         rng,
         ally_present=session.ally_present_for(player_id),
+        natural_terrain=False,
         hearing_only=False,
     )
     current = await resolve_disposition(npc_id, player_id, queries_mod=queries, content_mod=content)

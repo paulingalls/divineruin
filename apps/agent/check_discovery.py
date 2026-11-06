@@ -28,6 +28,7 @@ import db_queries
 import event_types as E
 import rules_engine
 from action_sound_content import ACTION_SOUND_EXPORTS, publish_action_sound
+from combat_terrain import skill_natural_terrain
 from condition_consume import consume_beneficial_conditions, serialize_combat_check
 from condition_voice_rules import validate_hearing_check
 from db_errors import validated_player_conditions
@@ -166,6 +167,7 @@ async def _check_discover_impl(
             skill_lower,
             DEFAULT_DISCOVER_DC,
             ally_present=session.ally_present_for(player_id),
+            natural_terrain=await skill_natural_terrain(session, player, skill_lower, content_mod=content),
             hearing_only=hearing_only,
         )
         if result.auto_fail:
@@ -197,6 +199,7 @@ async def _check_discover_impl(
         skill_lower,
         dc,
         ally_present=session.ally_present_for(player_id),
+        natural_terrain=await skill_natural_terrain(session, player, skill_lower, content_mod=content),
         hearing_only=hearing_only,
     )
     if result.auto_fail:

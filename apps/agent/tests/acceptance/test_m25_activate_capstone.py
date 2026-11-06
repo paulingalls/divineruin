@@ -53,7 +53,8 @@ def test_activate_registered_on_combat_and_exploration_folded_nouns_gone_everywh
 
 def test_tool_budget_holds_exact_counts() -> None:
     """Exact registration counts make a tool addition deliberate even below the vendor ceiling."""
-    assert len(COMBAT_AGENT_TOOLS) == 9
+    # 10: `select` joined combat so a Zhael follower can pick a Hollow Echo mid-fight (patron-resonance-effects).
+    assert len(COMBAT_AGENT_TOOLS) == 10
     assert len(COMBAT_AGENT_TOOLS) <= MAX_STRICT_TOOLS - 4
 
     assert len(EXPLORATION_TOOLS) == 15

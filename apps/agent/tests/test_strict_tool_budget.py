@@ -42,7 +42,7 @@ def test_exploration_strict_tool_count():
 
 def test_combat_strict_tool_count():
     # Exact registration count makes a tool addition deliberate even below the vendor ceiling.
-    assert len(COMBAT_AGENT_TOOLS) == 9
+    assert len(COMBAT_AGENT_TOOLS) == 10
 
 
 def test_dispatch_strict_tool_count():

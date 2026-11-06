@@ -91,13 +91,20 @@ def _player(**extra):
 
 def test_exhausted_lowers_check_modifier():
     plain = resolve_skill_check_dc(
-        _player(), "athletics", 15, rng=_ScriptedRNG([10]), ally_present=False, hearing_only=False
+        _player(),
+        "athletics",
+        15,
+        rng=_ScriptedRNG([10]),
+        natural_terrain=False,
+        ally_present=False,
+        hearing_only=False,
     )
     tired = resolve_skill_check_dc(
         _player(conditions=apply_condition([], "exhausted")),
         "athletics",
         15,
         rng=_ScriptedRNG([10]),
+        natural_terrain=False,
         ally_present=False,
         hearing_only=False,
     )
@@ -107,7 +114,13 @@ def test_exhausted_lowers_check_modifier():
 def test_poisoned_disadvantages_physical_skill():
     conds = apply_condition([], "poisoned")
     result = resolve_skill_check_dc(
-        _player(conditions=conds), "athletics", 15, rng=_ScriptedRNG([18, 5]), ally_present=False, hearing_only=False
+        _player(conditions=conds),
+        "athletics",
+        15,
+        rng=_ScriptedRNG([18, 5]),
+        natural_terrain=False,
+        ally_present=False,
+        hearing_only=False,
     )
     assert result.roll == 5  # disadvantage kept the lower die
 
@@ -115,7 +128,13 @@ def test_poisoned_disadvantages_physical_skill():
 def test_poisoned_does_not_disadvantage_charisma_skill():
     conds = apply_condition([], "poisoned")  # str/dex/con only
     result = resolve_skill_check_dc(
-        _player(conditions=conds), "persuasion", 15, rng=_ScriptedRNG([18, 5]), ally_present=False, hearing_only=False
+        _player(conditions=conds),
+        "persuasion",
+        15,
+        rng=_ScriptedRNG([18, 5]),
+        natural_terrain=False,
+        ally_present=False,
+        hearing_only=False,
     )
     assert result.roll == 18  # single die — charisma skill unaffected
 

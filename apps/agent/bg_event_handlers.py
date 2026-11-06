@@ -11,6 +11,7 @@ from bg_speech import PendingSpeech, SpeechPriority
 from companion_profiles import get_companion_profile
 from companion_prompts import build_companion_cue
 from god_whisper_data import get_god_profile, should_trigger_whisper
+from patron_favor import get_patron_tier
 from sanitize import sanitize_for_prompt
 from tool_support import _disposition_rank
 
@@ -244,10 +245,15 @@ def handle_events(
             new_level = ev.payload.get("new_level", 0)
             last_whisper = ev.payload.get("last_whisper_level", 0)
             amount = ev.payload["amount"]
-            requested_amount = ev.payload.get("requested_amount", amount)
             if (
-                requested_amount < 0
+                amount < 0
                 and ev.payload.get("reason") != "neglect"
+                and get_patron_tier(
+                    {"patron": ev.payload["patron_id"], "max": ev.payload["max"], "level": ev.payload["previous_level"]}
+                )
+                != get_patron_tier(
+                    {"patron": ev.payload["patron_id"], "max": ev.payload["max"], "level": ev.payload["new_level"]}
+                )
                 and sd.primary_player_id not in sd.displeasure_heard_by
                 and not any(speech.is_displeasure for speech in speech_queue)
             ):

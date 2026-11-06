@@ -1,9 +1,7 @@
 """Spell casting persistence and deferred client events."""
 
-import inspect
 import json
 import logging
-from dataclasses import dataclass
 from typing import cast
 
 from livekit.agents.llm import ToolError
@@ -14,6 +12,7 @@ import cast_modifiers
 import character_spells
 import combat_hollow_resonance
 import combat_voice_rules
+import concealment
 import condition_produce
 import conditions
 import db
@@ -27,12 +26,15 @@ import event_types as E
 import hollow_echo as hollow_echo_mod
 import hollow_echo_events
 import leveling
+import patron_cast_context
+import patron_echo_choice
 import racial_resonance
 import resonance as resonance_mod
 import resonance_events
 import spell_item_resolution
 import spell_knowledge
 import spells
+import unbound_tools
 import vaelti_echo_warning
 import veil_ward as veil_ward_mod
 import ward_resolution
@@ -41,46 +43,11 @@ from game_events import publish_game_event
 from party_state import PartyMember
 from resource_costs import gate_pool
 from session_data import CombatState, SessionData
+from spell_cast_result import _UNCHANGED as _UNCHANGED
+from spell_cast_result import CastResult as CastResult
 from tool_support import _validate_id
 
 logger = logging.getLogger("divineruin.tools")
-
-
-# Sentinel for CastResult.concentration_spell_id: a non-concentration cast never touches
-# concentration, which must be distinguishable from "end concentration" (None is a valid
-# concentration_spell_id). _UNCHANGED means "this cast did not touch concentration".
-_UNCHANGED = object()
-
-
-@dataclass(frozen=True)
-class CastResult:
-    """The outcome of resolving one cast, returned by ``_resolve_cast`` for the caller to commit.
-
-    ``_resolve_cast`` is in-memory-PURE: it persists via the passed ``conn`` but never mutates the
-    session's resonance/concentration SSOT, so a rolled-back caller tx leaves the session pristine.
-    The caller syncs these post-commit from this result and then flushes ``events`` (deferred so a
-    rollback leaks no client event).
-
-    ``new_resonance`` is the value persisted this cast, or ``None`` when nothing was generated
-    (no resonance write — a cantrip or a floored-to-0 reduction). ``concentration_spell_id`` is the
-    started spell id, or the ``_UNCHANGED`` sentinel when the cast never touched concentration.
-    """
-
-    packet: dict
-    new_resonance: int | None
-    concentration_spell_id: object
-    generated: int
-    events: list
-
-    async def flush_events(self) -> None:
-        """Emit the deferred client events in order. Call ONLY after the caller's tx commits.
-
-        Each entry is a zero-arg callable; sync ones (the bus-only Vaelti warning) return None,
-        async ones (resonance/echo publishes) return a coroutine that is awaited."""
-        for emit in self.events:
-            result = emit()
-            if inspect.isawaitable(result):
-                await result
 
 
 def _gate_spell(player: dict, spell_id: str, known_spell_ids: frozenset[str], *, spells_mod=spells):
@@ -90,6 +57,7 @@ def _gate_spell(player: dict, spell_id: str, known_spell_ids: frozenset[str], *,
     both reject an unknown or unaffordable cast IDENTICALLY — and, in combat, before any write (AC2).
     Pure (no I/O): the caller supplies the already-fetched player row and known ids. Returns the
     resolved Spell."""
+    patron_echo_choice.gate(player)
     try:
         spell = spells_mod.get_spell(spell_id)
     except ValueError as e:
@@ -152,44 +120,47 @@ async def _cast_spell_impl(
     caster = session.member_state(player_id)
     logger.info("cast_spell called: spell=%s player=%s", spell_id, player_id)
 
-    async with db_mod.transaction() as conn:
-        result = await _resolve_cast(
-            session,
-            spell_id,
-            conn=conn,
-            caster=caster,
-            revalidate_actor=True,
-            target_id=target_id,
-            target_ids=target_ids,
-            queries_mod=queries_mod,
-            content_mod=content_mod,
-            persistence_mod=persistence_mod,
-            resonance_mutations_mod=resonance_mutations_mod,
-            resonance_events_mod=resonance_events_mod,
-            spells_mod=spells_mod,
-            resonance=resonance,
-            leveling_mod=leveling_mod,
-            veil_ward=veil_ward,
-            ward_resolution_mod=ward_resolution_mod,
-            hollow_echo=hollow_echo,
-            dice_mod=dice_mod,
-            echo_events_mod=echo_events_mod,
-            racial_mod=racial_mod,
-            vaelti_warning_mod=vaelti_warning_mod,
-            concentration_mutations_mod=concentration_mutations_mod,
-            conditions_mod=conditions_mod,
-            conditions_mutations_mod=conditions_mutations_mod,
-            condition_produce_mod=condition_produce_mod,
-            character_spells_mod=character_spells_mod,
-        )
+    async with session.combat_state_lock:
+        async with db_mod.transaction() as conn:
+            result = await _resolve_cast(
+                session,
+                spell_id,
+                conn=conn,
+                caster=caster,
+                revalidate_actor=True,
+                target_id=target_id,
+                target_ids=target_ids,
+                queries_mod=queries_mod,
+                content_mod=content_mod,
+                persistence_mod=persistence_mod,
+                resonance_mutations_mod=resonance_mutations_mod,
+                resonance_events_mod=resonance_events_mod,
+                spells_mod=spells_mod,
+                resonance=resonance,
+                leveling_mod=leveling_mod,
+                veil_ward=veil_ward,
+                ward_resolution_mod=ward_resolution_mod,
+                hollow_echo=hollow_echo,
+                dice_mod=dice_mod,
+                echo_events_mod=echo_events_mod,
+                racial_mod=racial_mod,
+                vaelti_warning_mod=vaelti_warning_mod,
+                concentration_mutations_mod=concentration_mutations_mod,
+                conditions_mod=conditions_mod,
+                conditions_mutations_mod=conditions_mutations_mod,
+                condition_produce_mod=condition_produce_mod,
+                character_spells_mod=character_spells_mod,
+            )
 
-    # Transaction committed cleanly — sync the in-memory SSOT to the persisted values, then release
-    # the deferred client events. A rolled-back tx skips this (the `async with` re-raises), so the
-    # session stays pristine and no event fires.
-    if result.new_resonance is not None:
-        caster.resonance.current = result.new_resonance
-    if result.concentration_spell_id is not _UNCHANGED:
-        caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
+        # Transaction committed cleanly — sync the in-memory SSOT to the persisted values, then release
+        # the deferred client events. A rolled-back tx skips this (the `async with` re-raises), so the
+        # session stays pristine and no event fires.
+        if result.new_resonance is not None:
+            caster.resonance.current = result.new_resonance
+        if result.concentration_spell_id is not _UNCHANGED:
+            caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
+        if result.unbound_veil_mastery_spent:
+            caster.unbound_veil_mastery_used = True
     await result.flush_events()
     return json.dumps(result.packet)
 
@@ -294,9 +265,9 @@ async def _resolve_cast(
     known_spell_ids = spell_knowledge.castable_spell_ids(player.get("class"), (row["spell_id"] for row in known_rows))
     spell = _gate_spell(player, spell_id, known_spell_ids, spells_mod=spells_mod)
 
-    # Revivify gate (M4.4 story-007, rerouted M11): a revival spell cannot reach a Hollow-killed
-    # corpse. The refusal keys on the TARGET row — the resolved target_id when given, else the caster
-    # (self-cast). Refused before any Focus/Resonance write.
+    # Revivify gate: a revival spell cannot reach a Hollow-killed corpse. The refusal keys on the
+    # TARGET row (the resolved target_id, else the caster for a self-cast) and is refused before any
+    # Focus/Resonance write. A non-revival targeted cast is DM-narrated and skips the fetch.
     if spell_id in REVIVAL_SPELL_IDS:
         if target_id is not None and target_id != player_id:
             gate_row = await queries_mod.get_player(target_id, conn=conn)
@@ -306,15 +277,16 @@ async def _resolve_cast(
             gate_row = player
         if revivify_refused(gate_row):
             raise ToolError(f"{spell_id} cannot reach the corpse — it is Hollow-killed.")
-    # The caster's race drives the M3.4 racial Resonance interactions (Korath/Thessyn/Vaelti
-    # below). A player with no race set takes no racial branch.
     race = player.get("race")
+    patron = (player.get("divine_favor") or {}).get("patron")
+    try:
+        cast_modifiers.patron_modifiers(patron)
+    except ValueError as e:
+        raise ToolError(str(e)) from e
 
-    # Multi-target normalization + cap (M4.8 story-007): reject both-args / empty / over-cap and
-    # dedup BEFORE any Focus/Resonance write, so an invalid cast deducts nothing (same gate-first rule
-    # as affordability). normalize_target_list is the targeting SSOT; convert its ValueError to a
-    # DM-narratable ToolError. Rejecting an uncapped (single-target-only) spell here also closes the
-    # revival Hollow-gate bypass — a revival spell has no max_targets, so target_ids on it is refused.
+    # Multi-target normalization runs BEFORE any Focus/Resonance write, so an invalid cast deducts
+    # nothing. Rejecting target_ids on an uncapped (single-target-only) spell also closes the revival
+    # Hollow-gate bypass: a revival spell has no max_targets, so target_ids on it is refused.
     if target_ids is not None:
         try:
             target_ids = spells_mod.normalize_target_list(spell, target_id, target_ids)
@@ -322,27 +294,48 @@ async def _resolve_cast(
             raise ToolError(str(e)) from e
     current_focus = (player.get("focus") or {}).get("current", 0)
 
-    try:
-        terrain = (
-            await resolve_terrain(session, combat_state=combat_state, content_mod=content_mod)
-            if spell.source == "primal"
-            else None
-        )
-        generated = cast_modifiers.compute_generated_resonance(
-            spell, race, terrain=terrain, resonance=resonance, racial_mod=racial_mod
-        )
-    except ValueError as e:
-        raise ToolError(f"Cannot cast {spell.name}: {e}") from e
-
-    generated = combat_hollow_resonance.cast_generation(combat_state or session.combat_state, caster, spell, generated)
-
+    terrain = (
+        await resolve_terrain(session, combat_state=combat_state, content_mod=content_mod)
+        if spell.source == "primal"
+        or any(m["applies_to"] == "natural_ground" for m in cast_modifiers.patron_modifiers(patron))
+        else None
+    )
     # An active Veil Ward halves generated Resonance. Resolved from the DB, never the in-memory
-    # mirror — expiry is lazy, so a lapsed or walked-away-from ward would otherwise halve casts
-    # forever. The read stays here (it needs session/conn); the halving is pure.
+    # mirror: expiry is lazy, so a lapsed or walked-away-from ward would otherwise halve casts forever.
     ward_active = (
         await ward_resolution_mod.resolve_scope_ward(session, conn=conn, combat_state=combat_state) is not None
     )
-    generated = cast_modifiers.apply_ward_halving(generated, ward_active, veil_ward=veil_ward)
+
+    def generation(cast_patron: str | None) -> int:
+        try:
+            raw = cast_modifiers.compute_generated_resonance(
+                spell, race, terrain=terrain, resonance=resonance, racial_mod=racial_mod, patron=cast_patron
+            )
+        except ValueError as e:
+            raise ToolError(f"Cannot cast {spell.name}: {e}") from e
+        raw = combat_hollow_resonance.cast_generation(combat_state or session.combat_state, caster, spell, raw)
+        return cast_modifiers.apply_ward_halving(raw, ward_active, veil_ward=veil_ward)
+
+    generated, patron_resonance, wrongdoing = await patron_cast_context.apply_patron(
+        generation(patron),
+        generation(None),
+        patron,
+        session,
+        player,
+        terrain=terrain,
+        conn=conn,
+        queries_mod=queries_mod,
+        spell=spell,
+        combat_state=combat_state,
+        target_id=target_id,
+        target_ids=target_ids,
+    )
+
+    concealment_packet = None
+    if concealment.is_concealed(player):
+        if revalidate_actor:
+            session.validate_acting_player(player_id)
+        concealment_packet = await concealment.transition(player, False, ended_by="cast", conn=conn)
 
     purified = None
     if item_target is not None:
@@ -354,11 +347,8 @@ async def _resolve_cast(
             session.validate_acting_player(player_id)
         await persistence_mod.update_player_resources(player_id, focus=current_focus - spell.focus_cost, conn=conn)
 
-    # The post-cast total: shed one cast-paced decay round (suppressed in combat, where the WRAP beat
-    # is the canonical clock), then accrue this cast — pure (cast_modifiers). Persist it via conn but
-    # keep it LOCAL: the caller syncs session.resonance post-commit, so a rollback leaves the
-    # in-memory track untouched. new_resonance is None when nothing generated (no write), so the
-    # caller leaves the standing value alone.
+    # The post-cast total is persisted via conn but kept LOCAL: the caller syncs session.resonance
+    # post-commit, so a rollback leaves the in-memory track untouched.
     effective_resonance = cast_modifiers.compute_effective_resonance(
         generated,
         combat_hollow_resonance.current_total(combat_state, caster),
@@ -374,10 +364,6 @@ async def _resolve_cast(
         await resonance_mutations_mod.update_player_resonance(player_id, effective_resonance, conn=conn)
         combat_hollow_resonance.stage_total(combat_state, player_id, effective_resonance)
 
-    # Casting a concentration spell starts concentration on it and ends any prior one (the single
-    # players.data{concentration,spell_id} slot makes this one write the "prior ends"). Persisted via
-    # conn; the started spell id is RETURNED for the caller to sync in-memory post-commit. A
-    # non-concentration cast never touches concentration (returns the _UNCHANGED sentinel).
     concentration_spell_id: object = _UNCHANGED
     if spell.concentration:
         if revalidate_actor:
@@ -385,15 +371,11 @@ async def _resolve_cast(
         await concentration_mutations_mod.update_player_concentration(player_id, spell_id, conn=conn)
         concentration_spell_id = spell_id
 
-    # State is derived from the LOCAL post-cast value (NOT session.resonance.current, which is unsynced
-    # until the caller commits) via the pure get_resonance_state, so nothing sticks on rollback.
-    # flickering_bonus is hydrated + GATED at session-init (story-004) and session-stable — read it
-    # from the track so every derivation (packet, HUD, cast) shares one value.
     state = resonance.get_resonance_state(effective_resonance, flickering_bonus=caster.resonance.flickering_bonus)
 
-    # Defer every client event so the caller flushes them post-commit (rollback-safe). The cast's own
+    # Every client event is deferred for the caller to flush post-commit (rollback-safe). The cast's own
     # RESONANCE_CHANGED is omitted when suppressed (in combat the WRAP push is authoritative) and when
-    # nothing generated (a cantrip leaves the state unchanged — AC6).
+    # nothing generated (a cantrip leaves the state unchanged).
     events: list = []
     events.append(
         lambda: publish_game_event(
@@ -407,8 +389,9 @@ async def _resolve_cast(
             )
         )
 
-    # Net combat modifiers for the state, with an active ward's -1 die / -1 DC folded into a fresh dict.
-    modifiers = cast_modifiers.ward_combat_modifiers(state, ward_active, resonance=resonance, veil_ward=veil_ward)
+    modifiers = cast_modifiers.ward_combat_modifiers(
+        state, ward_active, resonance=resonance, veil_ward=veil_ward, patron=patron, source=spell.source
+    )
     packet = {
         "narration_cue": spell.narration_cue,
         "audio_cue": spell.audio_cue,
@@ -418,17 +401,26 @@ async def _resolve_cast(
         "resonance_modifiers": modifiers,
         "ward_active": ward_active,
     }
+    if wrongdoing is not None:
+        packet["wrongdoing"] = wrongdoing
+    if concealment_packet is not None:
+        packet["concealment"] = concealment_packet
+    if patron_resonance is not None:
+        packet["patron_resonance"] = patron_resonance
     spell_item_resolution.defer_inventory(session, purified, packet, events)
     # Carry the explicit target into the packet for the DM to voice (corpse/ally/object/area).
     # Additive — a self-cast (target_id None) leaves the packet shape untouched.
     if target_id is not None:
         packet["target_id"] = target_id
-    # At Overreach the Veil tears: cast_modifiers rolls the d20 (plus the Vaelti advantage d20) and
-    # resolves the echo with the ward's +4. The packet and the events stay here — they close over
-    # session. The Vaelti warning is a bus-only deferred event the background process voices a
-    # heartbeat before the echo lands (story-009 consumer), and must precede the echo publish.
+    # The packet and the events stay here — they close over session. The Vaelti warning is a
+    # bus-only deferred event the background process voices a heartbeat before the echo lands
+    # (story-009 consumer), and must precede the echo publish (immediate here, or at select).
+    mastery_spent = False
     if state == "overreach":
-        echo, vaelti_warned = cast_modifiers.resolve_overreach_echo(
+        choice_count = next(
+            (m["value"] for m in cast_modifiers.patron_modifiers(patron) if m["kind"] == "echo_roll_choice"), 1
+        )
+        candidates, vaelti_warned = cast_modifiers.resolve_overreach_echo(
             effective_resonance,
             race,
             ward_active,
@@ -436,11 +428,23 @@ async def _resolve_cast(
             hollow_echo=hollow_echo,
             veil_ward=veil_ward,
             racial_mod=racial_mod,
+            choice_count=choice_count,
         )
         if vaelti_warned:
             events.append(lambda: vaelti_warning_mod.publish_vaelti_echo_warning(session))
-        packet["hollow_echo"] = {"band": echo.band, "name": echo.name, "effect": echo.effect}
-        events.append(lambda: echo_events_mod.publish_hollow_echo(session, echo))
+        if choice_count == 2:
+            if revalidate_actor:
+                session.validate_acting_player(player_id)
+            packet["pending_choice"] = await patron_echo_choice.create(player_id, candidates, conn=conn)
+        else:
+            echo, mastery_spent = unbound_tools.veil_mastery(candidates[0], patron, caster)
+            packet["hollow_echo"] = {
+                "band": echo.band,
+                "name": echo.name,
+                "effect": echo.effect,
+                **({"veil_mastery": True} if mastery_spent else {}),
+            }
+            events.append(lambda: echo_events_mod.publish_hollow_echo(session, echo))
     # Cantrips scale their base damage with character level (story-003); fixed-cost spells carry their
     # damage in `mechanics`, so no scaled dice for them.
     if spell.spell_tier == "cantrip":
@@ -483,4 +487,5 @@ async def _resolve_cast(
         concentration_spell_id=concentration_spell_id,
         generated=generated,
         events=events,
+        unbound_veil_mastery_spent=mastery_spent,
     )

@@ -148,6 +148,7 @@ async def _resolve_deescalation_packet(
         combat_resolution.DEESCALATE_BASE_DC,
         rng,
         ally_present=session.ally_present_for(attacker.id),
+        natural_terrain=False,
         hearing_only=False,
     )
     argument_total = argument.total

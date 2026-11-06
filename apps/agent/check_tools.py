@@ -14,6 +14,7 @@ keyword seams for TEST-ONLY injection; production uses the `@function_tool` wrap
 
 import json
 import logging
+from contextlib import nullcontext
 
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
@@ -22,6 +23,7 @@ import check_payloads
 import check_resolution
 import check_resolution_save
 import choir_scene
+import concealment
 import condition_voice_rules
 import db
 import db_content_queries
@@ -35,12 +37,14 @@ import rules_engine
 import skill_persistence
 from check_discovery import _check_discover_impl
 from check_payloads import CheckPayload
+from combat_terrain import skill_natural_terrain
 from condition_consume import consume_beneficial_conditions, serialize_combat_check
 from condition_voice_rules import validate_hearing_check
 from db_errors import db_tool, validated_player_conditions
 from game_events import publish_game_event
 from gathering_tools import _check_gather_impl
 from session_data import SessionData
+from skill_check_effects import SkillCheckEffects
 from social_tools import _check_social_impl
 from tool_support import _cap_str
 
@@ -63,7 +67,9 @@ async def check(
     risky), "social" (sway a specific NPC), "discover" (search or examine a visible
     thing), "save" (an effect forces the player to resist), "dice" (a narrative-only
     random moment), or "gather" (forage at the current location). Each kind's fields
-    describe themselves.
+    describe themselves. Successful Stealth conceals the acting player. Call another
+    Stealth check when a watcher might notice, using that watcher's difficulty;
+    failure reveals the player. Casting or attacking also ends concealment.
 
     Narrate the result from narrative_hint / narrative_cue. Never speak raw numbers or DCs."""
     mode, kwargs = check_payloads.to_impl_args(roll)
@@ -129,6 +135,39 @@ async def _check_skill_impl(
     db_mod=db,
     conditions_mutations=db_mutations_conditions,
 ) -> str:
+    effects = SkillCheckEffects()
+    async with db_mod.transaction() if skill.lower() == "stealth" else nullcontext(None) as conn:
+        response = await _check_skill_run(
+            context,
+            skill,
+            difficulty,
+            context_description,
+            hearing_only=hearing_only,
+            queries=queries,
+            mutations=mutations,
+            db_mod=db_mod,
+            conditions_mutations=conditions_mutations,
+            conn=conn,
+            effects=effects,
+        )
+    await effects.flush(context.userdata, publish=publish_game_event)
+    return response
+
+
+async def _check_skill_run(
+    context,
+    skill,
+    difficulty,
+    context_description,
+    *,
+    hearing_only,
+    queries,
+    mutations,
+    db_mod,
+    conditions_mutations,
+    effects,
+    conn=None,
+):
     try:
         validate_hearing_check(skill, hearing_only)
     except ValueError as e:
@@ -144,7 +183,11 @@ async def _check_skill_impl(
         raise ToolError(f"Unknown difficulty: '{difficulty}'. Valid: {sorted(VALID_DIFFICULTIES - {'deadly'})}")
 
     player_id = session.acting_player_id
-    player = await queries.get_player(player_id)
+    player = (
+        await queries.get_player(player_id, conn=conn, for_update=True)
+        if conn is not None
+        else await queries.get_player(player_id)
+    )
     if player is None:
         raise ToolError(f"Player '{player_id}' not found.")
     # Validate the stored conditions at this read boundary (M4.4 story-008): a corrupt row otherwise
@@ -157,12 +200,22 @@ async def _check_skill_impl(
         skill,
         difficulty,
         ally_present=session.ally_present_for(player_id),
+        natural_terrain=await skill_natural_terrain(session, player, skill),
         hearing_only=hearing_only,
     )
+
+    concealment_packet = None
+    if skill.lower() == "stealth":
+        session.validate_acting_player(player_id)
+        concealment_packet = await concealment.transition(
+            player, result.success, ended_by=None if result.success else "failed_stealth", conn=conn
+        )
+        concealment_packet["guidance"] = "Call Stealth again when a watcher might notice; failure reveals this player."
 
     if result.auto_fail:
         return json.dumps(
             {
+                **({"concealment": concealment_packet} if concealment_packet else {}),
                 "outcome": "automatic_failure",
                 "skill": result.skill,
                 "roll": 0,
@@ -171,35 +224,35 @@ async def _check_skill_impl(
             }
         )
 
-    await publish_game_event(
-        session.room,
-        E.DICE_ROLL,
-        {
-            "roll_type": "skill_check",
-            "skill": result.skill,
-            "roll": result.roll,
-            "total": result.total,
-            "success": result.success,
-            "dramatic": result.dramatic,
-            "context": result.context,
-        },
-        event_bus=session.event_bus,
+    effects.events.append(
+        (
+            E.DICE_ROLL,
+            {
+                "roll_type": "skill_check",
+                "skill": result.skill,
+                "roll": result.roll,
+                "total": result.total,
+                "success": result.success,
+                "dramatic": result.dramatic,
+                "context": result.context,
+            },
+        )
     )
 
     # Track skill use for tier advancement (shared helper enforces M1.2 contract). When the check
     # consumed a beneficial die (M4.8 story-003), the advancement write AND the condition removal run
     # in ONE transaction so a half-applied check can't occur (concern 42c4e9c2a23b); the common
-    # no-consume path keeps the single tx-free write exactly as before.
+    # no-consume path remains tx-free except Stealth, which shares its concealment transaction.
     consumed_state = None
     if result.consumed_conditions:
-        async with db_mod.transaction() as conn:
+        async with nullcontext(conn) if conn is not None else db_mod.transaction() as write_conn:
             session.validate_acting_player(player_id)
             adv = await skill_persistence.apply_skill_use_with_persistence(
                 player_id,
                 skill,
                 counter_increment=1,
                 initial_tier=rules_engine._get_skill_tier(player, skill.lower()),
-                conn=conn,
+                conn=write_conn,
                 queries=queries,
                 mutations=mutations,
             )
@@ -207,7 +260,7 @@ async def _check_skill_impl(
                 player_id,
                 result.consumed_conditions,
                 conditions_mutations,
-                conn=conn,
+                conn=write_conn,
                 combat_state=session.combat_state,
                 db_mod=db_mod,
             )
@@ -218,25 +271,25 @@ async def _check_skill_impl(
             skill,
             counter_increment=1,
             initial_tier=rules_engine._get_skill_tier(player, skill.lower()),
+            conn=conn,
             queries=queries,
             mutations=mutations,
         )
 
-    if consumed_state is not None:
-        session.combat_state = consumed_state
-
+    effects.combat_state = consumed_state
     if adv is not None and adv.advanced:
-        await publish_game_event(
-            session.room,
-            E.SKILL_TIER_ADVANCED,
-            {"skill": adv.skill, "old_tier": adv.old_tier, "new_tier": adv.new_tier},
-            event_bus=session.event_bus,
+        effects.events.append(
+            (
+                E.SKILL_TIER_ADVANCED,
+                {"skill": adv.skill, "old_tier": adv.old_tier, "new_tier": adv.new_tier},
+            )
         )
 
     outcome = "success" if result.success else "failure"
-    session.record_event(f"Skill check ({skill}, {difficulty}): {outcome}")
+    effects.recent_event = f"Skill check ({skill}, {difficulty}): {outcome}"
 
     response = {
+        **({"concealment": concealment_packet} if concealment_packet else {}),
         "outcome": outcome,
         "skill": result.skill,
         "roll": result.roll,
