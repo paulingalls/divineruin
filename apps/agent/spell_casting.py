@@ -427,6 +427,8 @@ async def _resolve_cast(
         if vaelti_warned:
             events.append(lambda: vaelti_warning_mod.publish_vaelti_echo_warning(session))
         if choice_count == 2:
+            if revalidate_actor:
+                session.validate_acting_player(player_id)
             packet["pending_choice"] = await patron_echo_choice.create(player_id, candidates, conn=conn)
         else:
             echo, mastery_spent = unbound_tools.veil_mastery(candidates[0], patron, caster)

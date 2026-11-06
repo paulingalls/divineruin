@@ -141,3 +141,32 @@ async def test_malformed_pending_fails_loud_at_cast_boundary(players, bad):
     )
     with pytest.raises(ToolError, match="Malformed"):
         await cast("zhael", ctx=make_context(player_id=ids[0]), database=(database, pool), queries=db_queries)
+
+
+async def test_revoked_guest_cannot_create_choice_after_row_lock(players):
+    ids, pool, database = players
+    ctx = make_context(player_id=ids[0], party_member_ids=ids)
+    ctx.userdata.member_state(ids[1]).resonance.current = 9
+    before = await db_queries.get_player(ids[1], conn=pool)
+    live = True
+    lock = db_queries.get_players_for_update
+
+    def validate(*_):
+        if not live:
+            raise RuntimeError("stale authenticated actor")
+
+    async def revoke(*args, **kwargs):
+        nonlocal live
+        rows = await lock(*args, **kwargs)
+        live = False
+        return rows
+
+    with (
+        ctx.userdata._bind_authenticated_actor(ids[1], 4, validate),
+        patch.object(db_queries, "get_players_for_update", revoke),
+        patch("hollow_echo_events.publish_hollow_echo", new_callable=AsyncMock) as published,
+    ):
+        with pytest.raises(RuntimeError, match="stale authenticated actor"):
+            await cast("zhael", 9, ctx=ctx, database=(database, pool), queries=db_queries)
+        published.assert_not_awaited()
+    assert await db_queries.get_player(ids[1], conn=pool) == before
