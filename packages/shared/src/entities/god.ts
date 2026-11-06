@@ -95,7 +95,6 @@ function modifier(value: unknown, path: string): void {
 
 export function validateGod(profile: unknown): God {
   const identityPath = "god.god_id";
-  const abilityIds = new Set<string>();
   const row = object(profile, identityPath);
   const patron = text(row.god_id, identityPath);
   let path = `${patron}.layer_2_resonance`;
@@ -118,8 +117,6 @@ export function validateGod(profile: unknown): God {
       !/^[a-z0-9]+(?:_[a-z0-9]+)*$/.test(id.slice(patron.length + 1))
     )
       fail(`${abilityPath}.id`, "expected patron-prefixed snake_case");
-    if (abilityIds.has(id)) fail(`${abilityPath}.id`, "duplicate ability id");
-    abilityIds.add(id);
     if (
       !["always", "long_rest", "per_session"].includes(
         text(ability.recharge, `${abilityPath}.recharge`),
