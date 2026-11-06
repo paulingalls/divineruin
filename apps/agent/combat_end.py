@@ -334,6 +334,7 @@ def _end_combat_finish(
         member.weapon_used = False
         member.weapon_crit_vs_heavy = False
         member.draethar_inner_fire_used = False
+        member.unbound_raw_channeling_used = False
     session.combat_state = None
 
     # Post-commit sync of the location-ward mirror: only when the dying encounter ward changed

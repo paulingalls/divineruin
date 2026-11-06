@@ -195,6 +195,10 @@ async def _resolve_phase_locked(
         if m.player_id in pending_by_member:
             m.resonance.current = pending_by_member[m.player_id]
 
+    for caster_id, cr in cast_outcome.results.items():
+        if cr.unbound_veil_mastery_spent:
+            session.member_state(caster_id).unbound_veil_mastery_used = True
+
     # Isolate each publish: a failed mirror must not block handoff or another member's update.
     with isolated_publish("resolve_phase sink flush"):
         await sink.flush()

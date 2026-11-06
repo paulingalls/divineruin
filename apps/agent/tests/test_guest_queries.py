@@ -1,6 +1,7 @@
 import json
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from sample_fixtures import make_context
 
 from query_tools import _query_abilities_impl, _query_inventory_impl, _query_npc_impl, _query_patron_impl
@@ -85,3 +86,11 @@ async def test_guest_npc_disposition_filters_knowledge_for_guest():
     assert result["disposition"] == "unfriendly"
     assert result["knowledge"] == ["hello"]
     queries.get_npc_disposition.assert_awaited_once_with("keeper", "player_2")
+
+
+@pytest.fixture(autouse=True)
+def resonance_read(monkeypatch):
+    monkeypatch.setattr(
+        "db_mutations_resonance.read_player_resonance",
+        AsyncMock(return_value={"current": 0, "state": "stable", "flickering_bonus": 0}),
+    )

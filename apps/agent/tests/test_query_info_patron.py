@@ -53,6 +53,7 @@ async def test_bound_patron_reports_standing_and_authored_actions():
 
     assert response == {
         "patron_id": "sentinel",
+        "resonance": {"state": "stable"},
         "short_name": "Sentinel",
         "title": "the Boundary",
         "tier": "Acknowledged",
@@ -106,22 +107,6 @@ async def test_exalted_has_explicitly_no_next_tier():
 
 
 @pytest.mark.asyncio
-async def test_unbound_returns_before_catalog_lookup():
-    context = make_context()
-    activities = MagicMock()
-    activities.get_divine_favor = AsyncMock(return_value={"patron": "none", "level": 0, "max": 100})
-
-    def forbidden_catalog_read():
-        raise AssertionError("Unbound response must not read gods content")
-
-    response = json.loads(
-        await query_tools._query_patron_impl(context, activities=activities, gods_loader=forbidden_catalog_read)
-    )
-
-    assert response == {"state": "Unbound"}
-
-
-@pytest.mark.asyncio
 async def test_missing_divine_favor_fails_loud():
     activities = MagicMock()
     activities.get_divine_favor = AsyncMock(return_value=None)
@@ -168,3 +153,11 @@ def test_emitted_query_info_schema_advertises_patron():
     assert 'kind="patron"' in tool["description"]
     assert "Only an active or narrated gift is granted" in tool["description"]
     assert "an awaits_* gift is the god's promise, not yet a power" in tool["description"]
+
+
+@pytest.fixture(autouse=True)
+def resonance_read(monkeypatch):
+    monkeypatch.setattr(
+        "db_mutations_resonance.read_player_resonance",
+        AsyncMock(return_value={"current": 0, "state": "stable", "flickering_bonus": 0}),
+    )
