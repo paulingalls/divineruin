@@ -31,7 +31,15 @@ def mock_combat_agent_factory():
             2,
         ),
         ("hollowed_scout", [{}, {}], 9, 1, [], 0, 1),
-        ("hollow_mawling", [{"crafting": "expert"}], 9, 1, [(0, "rend_shard", 1)], 0, 1),
+        (
+            "hollow_mawling",
+            [{"crafting": "expert"}],
+            9,
+            1,
+            [(0, "rend_shard", 1), (0, "dissolution_membrane", 1)],
+            0,
+            2,
+        ),
         ("hollow_mawling", [{"arcana": "trained"}], 9, 1, [], 0, 0),
         ("hollow_mawling", [{}], 9, 1, [], 0, 0),
         (
