@@ -399,6 +399,9 @@ async def _resolve_cast(
     # Additive — a self-cast (target_id None) leaves the packet shape untouched.
     if target_id is not None:
         packet["target_id"] = target_id
+    # The packet and the events stay here — they close over session. The Vaelti warning is a
+    # bus-only deferred event the background process voices a heartbeat before the echo lands
+    # (story-009 consumer), and must precede the echo publish (immediate here, or at select).
     if state == "overreach":
         choice_count = next(
             (m["value"] for m in cast_modifiers.patron_modifiers(patron) if m["kind"] == "echo_roll_choice"), 1

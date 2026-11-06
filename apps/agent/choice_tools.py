@@ -1,4 +1,11 @@
-"""Resolve authenticated specialization and spoken Hollow Echo choices."""
+"""Resolve authenticated specialization and spoken Hollow Echo choices (ADR 0007 ``select``).
+
+The L5 specialization fork's ``milestone_id`` arrives from the tap/voice call, not from
+hand-off state on the Resolve's result. Immutability rides the FOR UPDATE read, so a duplicate
+or concurrent resolution loses cleanly. Rewards are party-wide (M28 story-001), so the fork
+belongs to the authenticated speaker. A specialization resolution publishes no event: the client
+dismisses the HUD overlay locally on tap.
+"""
 
 import json
 import logging

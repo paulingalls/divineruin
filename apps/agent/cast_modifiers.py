@@ -153,8 +153,17 @@ def resolve_overreach_echo(
 ) -> tuple[tuple[HollowEchoResult, ...], bool]:
     """Return ordered Echo candidates and whether to publish Vaelti's warning.
 
+    At Overreach the Veil tears: auto-roll a d20 (spec magic.md:167-185). An active ward adds +4 to
+    the roll (a milder result). The echo resolves against the caller's LOCAL ``effective_resonance``,
+    never the unsynced session value.
+
+    Vaelti Hyper-awareness (spec 246-252): advantage on the save — a SECOND d20, take the better, so
+    the base roll is drawn first and the advantage roll second (existing dice mocks feed a sequence
+    and depend on that order). ``vaelti_warned`` is returned rather than published here, because the
+    1-round advance-warning event closes over ``session``, which this pure layer never sees.
+
     Zhael's choice replaces automatic Vaelti advantage: both benefits use two dice,
-    and the player may keep the better result. Publication belongs after commit.
+    and the player may keep the better result.
     """
     if choice_count not in (1, 2):
         raise ValueError(f"Unsupported Echo choice count: {choice_count}")
