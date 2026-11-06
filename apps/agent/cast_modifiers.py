@@ -5,6 +5,7 @@ from __future__ import annotations
 from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING
 
+from _gods_content import load_gods
 from spells import Spell
 from terrain import is_earth_or_stone, resonance_base
 
@@ -31,6 +32,24 @@ def compute_generated_resonance(spell: Spell, race: str | None, *, terrain: str 
         reduction = racial_mod.get_racial_resonance_modifier("korath", "primal_reduction")
         generated = resonance.apply_primal_reduction(generated, reduction)
     return generated
+
+
+def patron_modifiers(patron: str | None) -> list[dict]:
+    if patron is None or patron == "none":
+        return []
+    for god in load_gods():
+        if god["god_id"] == patron:
+            return god["layer_2_resonance"]["modifiers"]
+    raise ValueError(f"Unknown patron {patron!r}")
+
+
+def apply_patron_generation(generated: int, spell: Spell, patron: str | None) -> tuple[int, list[str]]:
+    applied = []
+    for modifier in patron_modifiers(patron):
+        if modifier["kind"] == "generation_delta" and modifier["applies_to"] == "combat_aid" and spell.combat_aid:
+            generated += modifier["value"]
+            applied.append(modifier["applies_to"])
+    return max(0, generated), applied
 
 
 def compute_effective_resonance(

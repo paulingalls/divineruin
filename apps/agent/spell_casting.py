@@ -308,15 +308,13 @@ async def _resolve_cast(
             gate_row = player
         if revivify_refused(gate_row):
             raise ToolError(f"{spell_id} cannot reach the corpse — it is Hollow-killed.")
-    # The caster's race drives the M3.4 racial Resonance interactions (Korath/Thessyn/Vaelti
-    # below). A player with no race set takes no racial branch.
     race = player.get("race")
+    patron = (player.get("divine_favor") or {}).get("patron")
+    try:
+        cast_modifiers.patron_modifiers(patron)
+    except ValueError as e:
+        raise ToolError(str(e)) from e
 
-    # Multi-target normalization + cap (M4.8 story-007): reject both-args / empty / over-cap and
-    # dedup BEFORE any Focus/Resonance write, so an invalid cast deducts nothing (same gate-first rule
-    # as affordability). normalize_target_list is the targeting SSOT; convert its ValueError to a
-    # DM-narratable ToolError. Rejecting an uncapped (single-target-only) spell here also closes the
-    # revival Hollow-gate bypass — a revival spell has no max_targets, so target_ids on it is refused.
     if target_ids is not None:
         try:
             target_ids = spells_mod.normalize_target_list(spell, target_id, target_ids)
@@ -345,6 +343,9 @@ async def _resolve_cast(
         await ward_resolution_mod.resolve_scope_ward(session, conn=conn, combat_state=combat_state) is not None
     )
     generated = cast_modifiers.apply_ward_halving(generated, ward_active, veil_ward=veil_ward)
+
+    standard_generation = generated
+    generated, patron_applied = cast_modifiers.apply_patron_generation(generated, spell, patron)
 
     if spell.focus_cost > 0:
         if revalidate_actor:
@@ -415,6 +416,13 @@ async def _resolve_cast(
         "resonance_modifiers": modifiers,
         "ward_active": ward_active,
     }
+    if generated != standard_generation:
+        packet["patron_resonance"] = {
+            "patron": patron,
+            "applies_to": patron_applied,
+            "standard": standard_generation,
+            "generated": generated,
+        }
     # Carry the explicit target into the packet for the DM to voice (corpse/ally/object/area).
     # Additive — a self-cast (target_id None) leaves the packet shape untouched.
     if target_id is not None:
