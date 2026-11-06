@@ -1248,9 +1248,84 @@ Divine Ruin is designed for solo play (Phase 1) with a companion NPC. Encounters
 | 9-14 | 1 Tier 3 creature | 1 Tier 3 + 2 Tier 2 | 1 Tier 3 (elite) + Tier 2 adds |
 | 15-20 | 1 Tier 3 + Tier 2 adds | 2 Tier 3 creatures | 1 Tier 4 creature |
 
-### Companion Scaling
+### Pure Catalog Builder
 
-The companion NPC should be approximately 75% of the player's combat effectiveness. This means the player + companion together are roughly 1.75× a single character. Encounters balanced for 2 full characters would be too easy; encounters for 1 would be too hard.
+`build_encounter(catalog, tier, party, environment, difficulty, rng)` returns fresh
+`{id, creature_id, role}` references. Its caller loads the catalog and supplies a
+resolved `{region, terrain}`; combat entry integration follows separately. Candidates
+must list both memberships and be requested-tier creatures or tier−1 adds. At least
+one requested-tier creature and one non-Minion are required; these may be different
+creatures. Species may repeat; at most one Boss is allowed, with none required.
+Hollow creatures participate normally. Named and Tier-4 creatures are never generated.
+The composition table above is guidance, including authored encounters outside this
+builder's domain, rather than another generation filter.
+
+Budget level is `floor(sum(player levels) / player count)`. Reuse the difficulty
+ceiling from `encounter_budget`, multiplied by effective headcount / 1.75; there is
+no lower cost bound. Effective headcount is player count plus the sum of companions'
+profile `hp_factor`: Kael, Lira and Tam contribute 0.75; Sable contributes 0.50.
+`SOLO_PARTY_BASELINE = 1.75` names one player plus a 0.75 companion.
+
+### Expected Damage Reference Progression
+
+`EXPECTED_PLAYER_DAMAGE_PER_ROUND` is an authored reference estimate, not a combat
+simulation or a guarantee about a particular build. Weight all 18 archetypes equally.
+Their starting main hands (`creation_classes.py`) are 1×1d12, 5×1d8, 9×1d6,
+3×1d4: mean die `W = (6.5 + 5×4.5 + 9×3.5 + 3×2.5)/18 = 34/9`.
+Use one proficient weapon attack per round, starting governing score 16 (+3).
+Spend L4 and L8 attribute points on that score, capped at 20 (+5).
+
+Evaluate each band at its lowest level, deliberately retaining that conservative
+estimate throughout the band. Proficiency is +1 before L7, +2 before L14, then +3.
+Opposing AC is the corresponding threat tier's midpoint (11.5, 11.5, 13.5, 15.5, 18);
+fractional AC rounds up when comparing an integer attack roll. Assume ordinary
+attacks, natural 1 misses, natural 20 hits and adds one damage-dice roll. No advantage,
+resistance, area damage, species-specific damage, reactions or critical flat bonus.
+
+Reference equipment by band is starting/basic, starting/trained, Expert +1,
+Expert +1, Master +2. These are equipment assumptions, not automatic level rewards:
+crafting's Steel Longsword and Veil-Forged Weapon establish +1/+2 attack and damage;
+apply that enhancement to each starting weapon without changing its die.
+
+Include two routine core damage expenditures in the equal-archetype average:
+Warrior's Devastating Strike (+1d8, +2d8 at L10) and Paladin's minimum Divine Smite
+(+1d8, excluding the conditional Hollow bonus). Assume each is used every other
+round, once on that round's attack. Their averaged bonus dice per round are
+`B = (4.5 + 4.5)/36 = 0.25`, rising to `(9 + 4.5)/36 = 0.375` at L10.
+Other conditional abilities, elective choices and spell rotations are excluded from
+this weapon reference; no unrestricted spell/resource burst is assumed. It estimates
+sustained weapon pressure and can understate a caster's cantrip or leveled-spell damage.
+At L10 Warrior, Skirmisher and Paladin gain a second weapon attack. At the sampled
+L15 floor their extra dice sum is `6.5 + 3.5 + 4.5 = 14.5`; do not double their
+once-per-round bonus. The L9 band keeps its pre-L10 floor.
+
+Let `A` be attribute modifier, `E` enhancement, `P` proficiency and `H` hit probability.
+Count successful d20 faces against `ceil(AC)` with modifier `A+E+P`; all five reference
+rows have `H = 13/20 = 0.65`. First-attack DPR is
+`H × (W+A+E+B) + 0.05 × (W+B)`. At L15 add
+`[H × (14.5 + 3×(A+E)) + 0.05×14.5]/18` for the three Extra Attack archetypes.
+Round only the final per-player value to two decimals, then use that authored value.
+
+| Level band | Floor | A | E | P | Mid AC | B | Extra Attack contribution | Unrounded DPR | Authored DPR |
+|---|---|---|---|---|---|---|---|---|---|
+| 1-2 | 1 | 3 | 0 | 1 | 11.5 | 0.25 | 0 | 4.769444… | 4.77 |
+| 3-4 | 3 | 3 | 0 | 1 | 11.5 | 0.25 | 0 | 4.769444… | 4.77 |
+| 5-8 | 5 | 4 | 1 | 1 | 13.5 | 0.25 | 0 | 6.069444… | 6.07 |
+| 9-14 | 9 | 5 | 1 | 2 | 15.5 | 0.25 | 0 | 6.719444… | 6.72 |
+| 15-20 | 15 | 5 | 2 | 3 | 18 | 0.375 | 1.322222… | 8.779166… | 8.78 |
+
+Party DPR is `Σ DPR(player's own level) + Σ hp_factor × DPR(companion owner's level)`.
+The same players and companion factors drive both damage and budget. A L4/L7 party
+has budget level 5, but DPR `4.77 + 6.07 + 0.75×4.77 = 14.4175` if Kael belongs to
+the L4 player, or `15.3925` if he belongs to the L7 player. Companions must provide
+`player_id` and resolved `hp_factor`; players provide `id`, `type: player`, `level`.
+
+Select exact role-scaled HP using `derive_role_stats`; do not rescale returned references.
+Expected rounds (`total enemy HP / party DPR`) must be inclusively 3–5 for standard,
+4–6 for tough, 5–7 for boss. This is an expected-HP/DPR estimate. No feasible composition
+raises a named no-fit error with tier, level band, difficulty, region, terrain,
+headcount, scaled ceiling and party DPR. Candidate absence also names the request;
+there is no fallback encounter. Equal RNG seeds and equal inputs give equal references.
 
 ### Environment Modifiers
 
