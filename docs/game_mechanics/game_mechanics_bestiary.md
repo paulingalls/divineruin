@@ -1322,7 +1322,7 @@ sequence for its round. The finite rotation options are:
 | Warrior | Devastating Strike costs 3 Stamina, adds 1d8 once on that round's attack; 2d8 at L10, 3d8 at L17. Extra Attack does not double this bonus. |
 | Guardian | Protective Strike has ordinary weapon damage; no extra damage for its defensive rider. |
 | Skirmisher | Flanking Strike costs 3 Stamina: one attack with advantage and +1d6, other swing ordinary. Assume the reference companion can flank. |
-| Rogue | Once/round Sneak Attack with an adjacent ally: 1d6, 2d6/L5, 3d6/L9, 4d6/L13, 5d6/L17 (`game_mechanics_archetypes.md`). Precise Strike can spend 3 Stamina for advantage. |
+| Rogue | Ordinary weapon; Precise Strike can spend 3 Stamina for advantage. Sneak Attack has no authored content row and contributes no damage. |
 | Spy | Ordinary weapon; betrayal-dependent Backstab is not routine against a hostile enemy. |
 | Warden | Core Shillelagh substitutes a 1d8 staff. Guardian Strike's defensive rider adds no damage. |
 | Paladin | Minimum Divine Smite costs 2 Focus for +1d8 once that round, excluding Hollow bonus. Competes with spell options. |
@@ -1341,8 +1341,11 @@ For scaling cantrips N is 1, 2/L5, 3/L11, 4/L17, matching `leveling.cantrip_dama
 Persistent construct/spiritual weapon attacks use spell attack odds and no weapon
 bonuses. The model assumes they survive the five-round reference fight. Healing,
 control, elective martial abilities, and specialization choices contribute no extra
-damage. These omissions and the reference build assumptions limit the estimate;
-this table does not certify deterministic implementation of every content ability.
+damage. These omissions and the reference build assumptions limit the estimate.
+
+Player spell and ability damage is not yet engine-resolved: only weapon attacks
+and Extra Attack apply HP damage in general combat. Generated fights therefore run
+longer than this intended-damage table certifies until debt `6d3b1d6a` is paid.
 
 For example, L9 primary-attribute attacks have weapon H=0.65, spell H=0.60, save Q=0.60;
 off-primary attacks substitute modifier +1 (H=0.45/0.40 and Q=0.40). Its five-round
@@ -1362,45 +1365,45 @@ archetype totals divided by five are:
 | cleric | 16.260000 |
 | paladin | 10.200000 |
 | oracle | 16.260000 |
-| rogue | 17.940000 |
+| rogue | 7.702500 |
 | spy | 3.150000 |
 | whisper | 10.500000 |
 | bard | 10.500000 |
 | diplomat | 6.920000 |
 | marshal | 7.120000 |
 
-Their sum / 18 is 12.035555…, rounded only after aggregation to 12.04.
+Their sum / 18 is 11.46680556…, rounded only after aggregation to 11.47.
 The full level progression follows from the same five-action calculation; rising
 AC at L15 can lower the estimate despite better equipment. Use the authored rounded
 values at runtime:
 
 | Level | Attribute | Enhancement | Proficiency | Primary weapon H | Primary spell H | Primary save Q | Unrounded mean | Authored DPR |
 |---|---|---|---|---|---|---|---|---|
-| 1 | 3 | 0 | 1 | 0.65 | 0.65 | 0.45 | 6.499778 | 6.50 |
-| 2 | 3 | 0 | 1 | 0.65 | 0.65 | 0.45 | 6.593667 | 6.59 |
-| 3 | 3 | 0 | 1 | 0.65 | 0.65 | 0.45 | 7.017000 | 7.02 |
-| 4 | 4 | 0 | 1 | 0.70 | 0.70 | 0.50 | 7.796806 | 7.80 |
-| 5 | 4 | 1 | 1 | 0.65 | 0.60 | 0.50 | 9.400194 | 9.40 |
-| 6 | 4 | 1 | 1 | 0.65 | 0.60 | 0.50 | 9.487250 | 9.49 |
-| 7 | 4 | 1 | 2 | 0.70 | 0.65 | 0.55 | 9.978431 | 9.98 |
-| 8 | 5 | 1 | 2 | 0.75 | 0.70 | 0.60 | 10.794083 | 10.79 |
-| 9 | 5 | 1 | 2 | 0.65 | 0.60 | 0.60 | 12.035556 | 12.04 |
-| 10 | 5 | 1 | 2 | 0.65 | 0.60 | 0.60 | 13.640833 | 13.64 |
-| 11 | 5 | 1 | 2 | 0.65 | 0.60 | 0.60 | 13.949444 | 13.95 |
-| 12 | 5 | 1 | 2 | 0.65 | 0.60 | 0.60 | 14.362500 | 14.36 |
-| 13 | 5 | 1 | 2 | 0.65 | 0.60 | 0.60 | 14.588194 | 14.59 |
-| 14 | 5 | 1 | 3 | 0.70 | 0.65 | 0.65 | 15.404653 | 15.40 |
-| 15 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 15.028833 | 15.03 |
-| 16 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 15.067722 | 15.07 |
-| 17 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 15.548417 | 15.55 |
-| 18 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 15.763333 | 15.76 |
-| 19 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 15.973333 | 15.97 |
-| 20 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 16.046667 | 16.05 |
+| 1 | 3 | 0 | 1 | 0.65 | 0.65 | 0.45 | 6.310194 | 6.31 |
+| 2 | 3 | 0 | 1 | 0.65 | 0.65 | 0.45 | 6.404083 | 6.40 |
+| 3 | 3 | 0 | 1 | 0.65 | 0.65 | 0.45 | 6.827417 | 6.83 |
+| 4 | 4 | 0 | 1 | 0.70 | 0.70 | 0.50 | 7.600903 | 7.60 |
+| 5 | 4 | 1 | 1 | 0.65 | 0.60 | 0.50 | 9.021028 | 9.02 |
+| 6 | 4 | 1 | 1 | 0.65 | 0.60 | 0.50 | 9.108083 | 9.11 |
+| 7 | 4 | 1 | 2 | 0.70 | 0.65 | 0.55 | 9.586625 | 9.59 |
+| 8 | 5 | 1 | 2 | 0.75 | 0.70 | 0.60 | 10.391583 | 10.39 |
+| 9 | 5 | 1 | 2 | 0.65 | 0.60 | 0.60 | 11.466806 | 11.47 |
+| 10 | 5 | 1 | 2 | 0.65 | 0.60 | 0.60 | 13.072083 | 13.07 |
+| 11 | 5 | 1 | 2 | 0.65 | 0.60 | 0.60 | 13.380694 | 13.38 |
+| 12 | 5 | 1 | 2 | 0.65 | 0.60 | 0.60 | 13.793750 | 13.79 |
+| 13 | 5 | 1 | 2 | 0.65 | 0.60 | 0.60 | 13.829861 | 13.83 |
+| 14 | 5 | 1 | 3 | 0.70 | 0.65 | 0.65 | 14.621042 | 14.62 |
+| 15 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 14.270500 | 14.27 |
+| 16 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 14.309389 | 14.31 |
+| 17 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 14.600500 | 14.60 |
+| 18 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 14.815417 | 14.82 |
+| 19 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 15.025417 | 15.03 |
+| 20 | 5 | 2 | 3 | 0.65 | 0.55 | 0.65 | 15.098750 | 15.10 |
 
 Party DPR is `Σ DPR(player's own level) + Σ hp_factor × DPR(companion owner's level)`.
 The same players and companion factors drive damage and budget. A L4/L7 party has
-budget level 5, but DPR `7.80 + 9.98 + 0.75×7.80 = 23.63` with Kael owned by L4,
-or `25.265` with Kael owned by L7. Companions supply `player_id` and resolved
+budget level 5, but DPR `7.60 + 9.59 + 0.75×7.60 = 22.89` with Kael owned by L4,
+or `24.3825` with Kael owned by L7. Companions supply `player_id` and resolved
 `hp_factor`; players supply `id`, `type: player`, `level`.
 
 Select exact role-scaled HP using `derive_role_stats`; do not rescale returned references.
