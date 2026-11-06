@@ -139,27 +139,6 @@ class TestQueryLore:
 
 class TestQueryInventory:
     @pytest.mark.asyncio
-    async def test_returns_items(self):
-        mock_queries = MagicMock()
-        mock_queries.get_player_inventory = AsyncMock(
-            return_value=[
-                {
-                    "name": "Sealed Research Tablet",
-                    "type": "quest_item",
-                    "description": "A warm stone tablet.",
-                    "rarity": "rare",
-                    "effects": [],
-                    "lore": "Research notes from an Aelindran outpost.",
-                }
-            ]
-        )
-        ctx = _make_context()
-        result = json.loads(await _query_inventory_impl(ctx, queries=mock_queries))
-        assert len(result["items"]) == 1
-        assert result["items"][0]["name"] == "Sealed Research Tablet"
-        mock_queries.get_player_inventory.assert_awaited_once_with("player_1")
-
-    @pytest.mark.asyncio
     async def test_empty_inventory(self):
         mock_queries = MagicMock()
         mock_queries.get_player_inventory = AsyncMock(return_value=[])

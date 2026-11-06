@@ -1,5 +1,6 @@
 [
   {
+    "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
     "id": "hollow_shadeling",
     "name": "Shadeling",
     "category": "hollow",
@@ -102,6 +103,7 @@
     ]
   },
   {
+    "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
     "id": "hollow_hollowmoth",
     "name": "Hollowmoth",
     "category": "hollow",
@@ -211,6 +213,7 @@
     ]
   },
   {
+    "terrains": ["ancient_forest", "forest", "grassland", "mountain"],
     "id": "grey_wolf",
     "name": "Grey Wolf",
     "category": "beast",
@@ -300,6 +303,7 @@
     ]
   },
   {
+    "terrains": ["ancient_forest", "forest", "farmland"],
     "id": "wild_boar",
     "name": "Wild Boar",
     "category": "beast",
@@ -385,6 +389,7 @@
     ]
   },
   {
+    "terrains": ["ancient_forest", "underground"],
     "id": "giant_spider",
     "name": "Giant Spider",
     "category": "beast",
@@ -489,6 +494,7 @@
     ]
   },
   {
+    "terrains": ["forest", "grassland", "underground", "farmland"],
     "id": "bandit",
     "name": "Bandit",
     "category": "humanoid",
@@ -586,6 +592,7 @@
     ]
   },
   {
+    "terrains": ["ancient_forest", "forest"],
     "id": "thornveld_stalker",
     "name": "Thornveld Stalker",
     "category": "beast",
@@ -681,6 +688,7 @@
     ]
   },
   {
+    "terrains": ["ancient_forest", "forest"],
     "id": "corrupted_treant",
     "name": "Corrupted Treant",
     "category": "elemental",
@@ -791,6 +799,7 @@
     ]
   },
   {
+    "terrains": ["grassland", "mountain"],
     "id": "steppe_razorwing",
     "name": "Steppe Razorwing",
     "category": "beast",
@@ -886,6 +895,7 @@
     ]
   },
   {
+    "terrains": ["grassland"],
     "id": "steppe_bison",
     "name": "Steppe Bison",
     "category": "beast",
@@ -963,6 +973,7 @@
     ]
   },
   {
+    "terrains": ["mountain", "underground"],
     "id": "rock_viper",
     "name": "Rock Viper",
     "category": "beast",
@@ -1047,6 +1058,7 @@
     ]
   },
   {
+    "terrains": ["mountain", "underground"],
     "id": "cave_wyrm",
     "name": "Cave Wyrm",
     "category": "beast",
@@ -1160,6 +1172,7 @@
     ]
   },
   {
+    "terrains": ["underground"],
     "id": "war_golem",
     "name": "War Golem",
     "category": "construct",
@@ -1270,6 +1283,7 @@
     ]
   },
   {
+    "terrains": ["coast", "wetland"],
     "id": "saltmarsh_lurker",
     "name": "Saltmarsh Lurker",
     "category": "beast",
@@ -1371,6 +1385,7 @@
     ]
   },
   {
+    "terrains": ["coast", "wetland"],
     "id": "tidecaller_eel",
     "name": "Tidecaller Eel",
     "category": "beast",
@@ -1473,6 +1488,7 @@
     ]
   },
   {
+    "terrains": ["underground"],
     "id": "umbral_crawler",
     "name": "Umbral Crawler",
     "category": "beast",
@@ -1575,6 +1591,7 @@
     ]
   },
   {
+    "terrains": ["underground"],
     "id": "deepstone_guardian",
     "name": "Deepstone Guardian",
     "category": "construct",
@@ -1693,6 +1710,7 @@
     ]
   },
   {
+    "terrains": ["ancient_forest", "forest", "mountain"],
     "id": "dire_bear",
     "name": "Dire Bear",
     "category": "beast",
@@ -1807,6 +1825,7 @@
     ]
   },
   {
+    "terrains": ["ancient_forest", "mountain", "wetland", "underground"],
     "id": "troll",
     "name": "Troll",
     "category": "humanoid",
@@ -1911,6 +1930,7 @@
     ]
   },
   {
+    "terrains": ["forest", "grassland", "underground", "farmland"],
     "id": "bandit_captain",
     "name": "Bandit Captain",
     "category": "humanoid",
@@ -2037,6 +2057,7 @@
     ]
   },
   {
+    "terrains": ["grassland", "mountain"],
     "id": "thunderbird",
     "name": "Thunderbird",
     "category": "beast",
@@ -2150,6 +2171,7 @@
     ]
   },
   {
+    "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
     "id": "hollow_mawling",
     "name": "Mawling",
     "category": "hollow",
@@ -2319,6 +2341,7 @@
     ]
   },
   {
+    "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
     "id": "hollow_weaver",
     "name": "Hollow Weaver",
     "category": "hollow",
@@ -2436,6 +2459,7 @@
     ]
   },
   {
+    "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
     "id": "hollow_knight",
     "name": "Hollowed Knight",
     "category": "hollow",
@@ -2582,6 +2606,7 @@
     ]
   },
   {
+    "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
     "id": "hollow_veilrender",
     "name": "Veilrender",
     "category": "hollow",
@@ -2727,6 +2752,7 @@
     ]
   },
   {
+    "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
     "id": "hollow_choir",
     "name": "The Choir",
     "category": "hollow",
@@ -2946,6 +2972,7 @@
     ]
   },
   {
+    "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
     "id": "hollow_still",
     "name": "The Still",
     "category": "hollow",
@@ -3092,6 +3119,7 @@
     ]
   },
   {
+    "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
     "id": "hollow_architect",
     "name": "The Architect",
     "category": "hollow",
@@ -3263,6 +3291,7 @@
     ]
   },
   {
+    "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
     "id": "hollowed_scout",
     "name": "Hollowed Scout",
     "category": "hollow",
@@ -3363,6 +3392,7 @@
     "xp_reward": 125
   },
   {
+    "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
     "id": "hollow_wisp",
     "name": "Hollow Wisp",
     "category": "hollow",
@@ -3453,6 +3483,7 @@
     "xp_reward": 40
   },
   {
+    "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
     "id": "hollow_warden",
     "name": "Hollow Warden",
     "category": "hollow",
@@ -3560,6 +3591,7 @@
     "xp_reward": 200
   },
   {
+    "terrains": ["grassland", "farmland"],
     "id": "ashmark_soldier",
     "name": "Ashmark Soldier",
     "category": "humanoid",
@@ -3640,6 +3672,7 @@
     "xp_reward": 100
   },
   {
+    "terrains": ["grassland", "farmland"],
     "id": "ashmark_sergeant",
     "name": "Ashmark Sergeant",
     "category": "humanoid",
@@ -3737,6 +3770,7 @@
     "xp_reward": 150
   },
   {
+    "terrains": ["underground", "village", "city"],
     "id": "cultist",
     "name": "Cultist",
     "category": "humanoid",
@@ -3806,6 +3840,7 @@
     "xp_reward": 20
   },
   {
+    "terrains": ["underground", "village", "city"],
     "id": "cult_fanatic",
     "name": "Cult Fanatic",
     "category": "humanoid",
@@ -3902,6 +3937,7 @@
     "xp_reward": 45
   },
   {
+    "terrains": ["underground", "village", "city"],
     "id": "cult_leader",
     "name": "Cult Leader",
     "category": "humanoid",

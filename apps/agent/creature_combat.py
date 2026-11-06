@@ -17,7 +17,7 @@ _ATTRIBUTES = dict(
         strict=True,
     )
 )
-_CATEGORIES = {"humanoid", "beast", "construct", "undead"}
+_CATEGORIES = {"humanoid", "beast", "construct", "undead", "elemental"}
 
 
 def _action(source):

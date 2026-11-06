@@ -11,6 +11,7 @@
         "id"
       ],
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -124,6 +125,7 @@
         "id"
       ],
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_hollowmoth",
         "name": "Hollowmoth",
         "category": "hollow",
@@ -246,6 +248,7 @@
         "id"
       ],
       "block": {
+        "terrains": ["forest", "grassland", "underground", "farmland"],
         "id": "bandit",
         "name": "Bandit",
         "category": "humanoid",
@@ -336,6 +339,7 @@
     {
       "name": "synthetic_beast",
       "block": {
+        "terrains": ["forest"],
         "id": "schema_beast",
         "name": "Beast",
         "category": "beast",
@@ -426,6 +430,7 @@
     {
       "name": "synthetic_construct",
       "block": {
+        "terrains": ["forest"],
         "id": "schema_construct",
         "name": "Construct",
         "category": "construct",
@@ -516,6 +521,7 @@
     {
       "name": "synthetic_undead",
       "block": {
+        "terrains": ["forest"],
         "id": "schema_undead",
         "name": "Undead",
         "category": "undead",
@@ -606,6 +612,7 @@
     {
       "name": "synthetic_elemental",
       "block": {
+        "terrains": ["forest"],
         "id": "schema_elemental",
         "name": "Elemental",
         "category": "elemental",
@@ -696,6 +703,7 @@
     {
       "name": "non_hollow_ignores_hollow_contents",
       "block": {
+        "terrains": ["forest", "grassland", "underground", "farmland"],
         "id": "bandit",
         "name": "Bandit",
         "category": "humanoid",
@@ -788,6 +796,7 @@
     {
       "name": "legacy_no_combat_fields",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -893,6 +902,7 @@
     {
       "name": "all_combat_fields",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_all_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -1057,6 +1067,7 @@
     {
       "name": "attack_properties",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_attack_properties",
         "name": "Shadeling",
         "category": "hollow",
@@ -1163,6 +1174,7 @@
     {
       "name": "condition_attack",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_condition_attack",
         "name": "Shadeling",
         "category": "hollow",
@@ -1272,6 +1284,7 @@
     {
       "name": "half_area_attack",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_half_area_attack",
         "name": "Shadeling",
         "category": "hollow",
@@ -1381,6 +1394,7 @@
     {
       "name": "grapple_attack",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_grapple_attack",
         "name": "Shadeling",
         "category": "hollow",
@@ -1490,6 +1504,7 @@
     {
       "name": "command_active",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_command_active",
         "name": "Shadeling",
         "category": "hollow",
@@ -1605,6 +1620,7 @@
     {
       "name": "accusation_active",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_accusation_active",
         "name": "Shadeling",
         "category": "hollow",
@@ -1720,6 +1736,7 @@
     {
       "name": "signature_ability",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_signature_ability",
         "name": "Shadeling",
         "category": "hollow",
@@ -1830,6 +1847,7 @@
     {
       "name": "resistance_tags",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_resistance_tags",
         "name": "Shadeling",
         "category": "hollow",
@@ -1938,6 +1956,7 @@
     {
       "name": "recharge_roll",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -2048,6 +2067,7 @@
     {
       "name": "recharge_encounter",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -2157,6 +2177,7 @@
     {
       "name": "recharge_round",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -2266,6 +2287,7 @@
     {
       "name": "advantage_true",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -2372,6 +2394,7 @@
     {
       "name": "advantage_false",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -2478,6 +2501,7 @@
     {
       "name": "signature_cue",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -2588,6 +2612,7 @@
     {
       "name": "active_attack",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -2711,6 +2736,7 @@
     {
       "name": "active_healing",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -2830,6 +2856,7 @@
     {
       "name": "active_prepare_attack",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -2952,6 +2979,7 @@
     {
       "name": "legacy_command",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -3066,6 +3094,7 @@
     {
       "name": "legacy_accusation",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -3180,6 +3209,7 @@
     {
       "name": "narrative_attack_text",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -3293,6 +3323,7 @@
     {
       "name": "structured_save_action",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -3410,6 +3441,7 @@
     {
       "name": "choir_catalog",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_choir",
         "name": "The Choir",
         "category": "hollow",
@@ -3634,6 +3666,7 @@
     {
       "name": "missing_reactions",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -3740,6 +3773,7 @@
     {
       "name": "missing_xp_reward",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -3846,6 +3880,7 @@
     {
       "name": "bad_category",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "dragon",
@@ -3953,6 +3988,7 @@
     {
       "name": "tier_0",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -4060,6 +4096,7 @@
     {
       "name": "tier_5",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -4167,6 +4204,7 @@
     {
       "name": "missing_attack_damage",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -4273,6 +4311,7 @@
     {
       "name": "bad_attack_type",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -4380,6 +4419,7 @@
     {
       "name": "unknown_loot",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -4487,6 +4527,7 @@
     {
       "name": "malformed_hollow",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -4594,6 +4635,7 @@
     {
       "name": "missing_non_hollow_key",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "beast",
@@ -4690,6 +4732,7 @@
     {
       "name": "two_defects",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -4796,6 +4839,7 @@
     {
       "name": "bad_hollow_class",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -4903,6 +4947,7 @@
     {
       "name": "null_hollow_on_hollow",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -5000,6 +5045,7 @@
     {
       "name": "non_string_list_entries",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -5111,6 +5157,7 @@
     {
       "name": "non_string_audio_special",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -5220,6 +5267,7 @@
     {
       "name": "non_object_entries",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -5323,6 +5371,7 @@
     {
       "name": "wrong_types",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -5441,6 +5490,7 @@
     {
       "name": "whole_number_floats",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -5549,6 +5599,7 @@
     {
       "name": "missing_regions",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -5653,6 +5704,7 @@
     {
       "name": "empty_regions",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -5758,6 +5810,7 @@
     {
       "name": "unknown_region",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -5865,6 +5918,7 @@
     {
       "name": "missing_home_region",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -5972,6 +6026,7 @@
     {
       "name": "unknown_home_region",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -6081,6 +6136,7 @@
       "name": "unknown_active_kind",
       "field": "kind",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_unknown_active_kind",
         "name": "Shadeling",
         "category": "hollow",
@@ -6200,6 +6256,7 @@
       "name": "mark_with_damage",
       "field": "damage",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_mark_with_damage",
         "name": "Shadeling",
         "category": "hollow",
@@ -6320,6 +6377,7 @@
       "name": "condition_without_save",
       "field": "save",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_condition_without_save",
         "name": "Shadeling",
         "category": "hollow",
@@ -6430,6 +6488,7 @@
       "name": "condition_without_dc",
       "field": "dc",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_condition_without_dc",
         "name": "Shadeling",
         "category": "hollow",
@@ -6541,6 +6600,7 @@
       "name": "unknown_condition",
       "field": "applies_condition",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_unknown_condition",
         "name": "Shadeling",
         "category": "hollow",
@@ -6651,6 +6711,7 @@
       "name": "half_without_damage",
       "field": "half_on_success",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_half_without_damage",
         "name": "Shadeling",
         "category": "hollow",
@@ -6763,6 +6824,7 @@
       "name": "grapple_without_escape_dc",
       "field": "escape_dc",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_grapple_without_escape_dc",
         "name": "Shadeling",
         "category": "hollow",
@@ -6875,6 +6937,7 @@
       "name": "unknown_resistance_tag",
       "field": "resistance_tags",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_unknown_resistance_tag",
         "name": "Shadeling",
         "category": "hollow",
@@ -6987,6 +7050,7 @@
       "name": "signature_without_name",
       "field": "signature_ability.name",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_signature_without_name",
         "name": "Shadeling",
         "category": "hollow",
@@ -7100,6 +7164,7 @@
       "name": "signature_without_description",
       "field": "signature_ability.description",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_signature_without_description",
         "name": "Shadeling",
         "category": "hollow",
@@ -7213,6 +7278,7 @@
       "name": "active_kind_attack",
       "field": "damage",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -7339,6 +7405,7 @@
       "name": "attack_with_mark_kind",
       "field": "kind",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_attack_with_mark_kind",
         "name": "Shadeling",
         "category": "hollow",
@@ -7449,6 +7516,7 @@
       "name": "attack_properties_wrong_type",
       "field": "properties",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_attack_properties_wrong_type",
         "name": "Shadeling",
         "category": "hollow",
@@ -7559,6 +7627,7 @@
       "name": "active_properties_wrong_type",
       "field": "properties",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_active_properties_wrong_type",
         "name": "Shadeling",
         "category": "hollow",
@@ -7678,6 +7747,7 @@
       "name": "half_wrong_type",
       "field": "half_on_success",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_half_wrong_type",
         "name": "Shadeling",
         "category": "hollow",
@@ -7788,6 +7858,7 @@
       "name": "escape_dc_wrong_type",
       "field": "escape_dc",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_escape_dc_wrong_type",
         "name": "Shadeling",
         "category": "hollow",
@@ -7901,6 +7972,7 @@
       "name": "resistance_tags_wrong_type",
       "field": "resistance_tags",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_resistance_tags_wrong_type",
         "name": "Shadeling",
         "category": "hollow",
@@ -8011,6 +8083,7 @@
       "name": "signature_wrong_type",
       "field": "signature_ability",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_signature_wrong_type",
         "name": "Shadeling",
         "category": "hollow",
@@ -8120,6 +8193,7 @@
     {
       "name": "recharge_roll_kind_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -8234,6 +8308,7 @@
     {
       "name": "recharge_roll_kind_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -8348,6 +8423,7 @@
     {
       "name": "recharge_roll_missing_kind",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -8461,6 +8537,7 @@
     {
       "name": "recharge_roll_die_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -8575,6 +8652,7 @@
     {
       "name": "recharge_roll_die_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -8689,6 +8767,7 @@
     {
       "name": "recharge_roll_die_2",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -8803,6 +8882,7 @@
     {
       "name": "recharge_roll_die_3",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -8917,6 +8997,7 @@
     {
       "name": "recharge_roll_missing_die",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -9030,6 +9111,7 @@
     {
       "name": "recharge_roll_threshold_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -9144,6 +9226,7 @@
     {
       "name": "recharge_roll_threshold_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -9258,6 +9341,7 @@
     {
       "name": "recharge_roll_threshold_2",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -9372,6 +9456,7 @@
     {
       "name": "recharge_roll_threshold_3",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -9486,6 +9571,7 @@
     {
       "name": "recharge_roll_threshold_4",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -9600,6 +9686,7 @@
     {
       "name": "recharge_roll_threshold_5",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -9714,6 +9801,7 @@
     {
       "name": "recharge_roll_missing_threshold",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -9827,6 +9915,7 @@
     {
       "name": "recharge_roll_object_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -9937,6 +10026,7 @@
     {
       "name": "recharge_roll_object_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -10047,6 +10137,7 @@
     {
       "name": "recharge_roll_object_2",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -10157,6 +10248,7 @@
     {
       "name": "recharge_roll_object_3",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -10267,6 +10359,7 @@
     {
       "name": "recharge_roll_object_4",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -10377,6 +10470,7 @@
     {
       "name": "recharge_roll_alien_uses",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -10492,6 +10586,7 @@
     {
       "name": "recharge_encounter_kind_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -10605,6 +10700,7 @@
     {
       "name": "recharge_encounter_kind_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -10718,6 +10814,7 @@
     {
       "name": "recharge_encounter_missing_kind",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -10830,6 +10927,7 @@
     {
       "name": "recharge_encounter_uses_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -10943,6 +11041,7 @@
     {
       "name": "recharge_encounter_uses_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -11056,6 +11155,7 @@
     {
       "name": "recharge_encounter_uses_2",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -11169,6 +11269,7 @@
     {
       "name": "recharge_encounter_uses_3",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -11282,6 +11383,7 @@
     {
       "name": "recharge_encounter_uses_4",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -11395,6 +11497,7 @@
     {
       "name": "recharge_encounter_uses_5",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -11508,6 +11611,7 @@
     {
       "name": "recharge_encounter_missing_uses",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -11620,6 +11724,7 @@
     {
       "name": "recharge_encounter_die_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -11734,6 +11839,7 @@
     {
       "name": "recharge_encounter_object_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -11844,6 +11950,7 @@
     {
       "name": "recharge_encounter_object_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -11954,6 +12061,7 @@
     {
       "name": "recharge_encounter_object_2",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -12064,6 +12172,7 @@
     {
       "name": "recharge_encounter_object_3",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -12174,6 +12283,7 @@
     {
       "name": "recharge_encounter_object_4",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -12284,6 +12394,7 @@
     {
       "name": "recharge_encounter_alien_die",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -12398,6 +12509,7 @@
     {
       "name": "recharge_encounter_alien_threshold",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -12512,6 +12624,7 @@
     {
       "name": "recharge_round_kind_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -12625,6 +12738,7 @@
     {
       "name": "recharge_round_kind_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -12738,6 +12852,7 @@
     {
       "name": "recharge_round_missing_kind",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -12850,6 +12965,7 @@
     {
       "name": "recharge_round_uses_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -12963,6 +13079,7 @@
     {
       "name": "recharge_round_uses_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -13076,6 +13193,7 @@
     {
       "name": "recharge_round_uses_2",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -13189,6 +13307,7 @@
     {
       "name": "recharge_round_uses_3",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -13302,6 +13421,7 @@
     {
       "name": "recharge_round_uses_4",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -13415,6 +13535,7 @@
     {
       "name": "recharge_round_uses_5",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -13528,6 +13649,7 @@
     {
       "name": "recharge_round_missing_uses",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -13640,6 +13762,7 @@
     {
       "name": "recharge_round_die_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -13754,6 +13877,7 @@
     {
       "name": "recharge_round_object_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -13864,6 +13988,7 @@
     {
       "name": "recharge_round_object_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -13974,6 +14099,7 @@
     {
       "name": "recharge_round_object_2",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -14084,6 +14210,7 @@
     {
       "name": "recharge_round_object_3",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -14194,6 +14321,7 @@
     {
       "name": "recharge_round_object_4",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -14304,6 +14432,7 @@
     {
       "name": "recharge_round_alien_die",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -14418,6 +14547,7 @@
     {
       "name": "recharge_round_alien_threshold",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -14532,6 +14662,7 @@
     {
       "name": "advantage_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -14642,6 +14773,7 @@
     {
       "name": "advantage_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -14752,6 +14884,7 @@
     {
       "name": "advantage_2",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -14862,6 +14995,7 @@
     {
       "name": "advantage_3",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -14972,6 +15106,7 @@
     {
       "name": "advantage_4",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -15082,6 +15217,7 @@
     {
       "name": "signature_missing_cue",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -15195,6 +15331,7 @@
     {
       "name": "signature_cue_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -15309,6 +15446,7 @@
     {
       "name": "signature_cue_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -15423,6 +15561,7 @@
     {
       "name": "signature_cue_2",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -15537,6 +15676,7 @@
     {
       "name": "signature_cue_3",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -15651,6 +15791,7 @@
     {
       "name": "signature_cue_4",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -15765,6 +15906,7 @@
     {
       "name": "signature_cue_5",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -15879,6 +16021,7 @@
     {
       "name": "active_attack_damage_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -16006,6 +16149,7 @@
     {
       "name": "active_attack_damage_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -16133,6 +16277,7 @@
     {
       "name": "active_attack_missing_damage",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -16259,6 +16404,7 @@
     {
       "name": "active_attack_damage_type_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -16386,6 +16532,7 @@
     {
       "name": "active_attack_damage_type_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -16513,6 +16660,7 @@
     {
       "name": "active_attack_missing_damage_type",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -16639,6 +16787,7 @@
     {
       "name": "active_attack_duration_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -16766,6 +16915,7 @@
     {
       "name": "active_attack_duration_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -16893,6 +17043,7 @@
     {
       "name": "active_attack_duration_2",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -17020,6 +17171,7 @@
     {
       "name": "active_attack_duration_3",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -17147,6 +17299,7 @@
     {
       "name": "active_attack_missing_duration",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -17273,6 +17426,7 @@
     {
       "name": "active_attack_forbidden_target_group",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -17401,6 +17555,7 @@
     {
       "name": "active_attack_forbidden_healing",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -17529,6 +17684,7 @@
     {
       "name": "active_attack_forbidden_on_hit",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -17657,6 +17813,7 @@
     {
       "name": "active_attack_recharge_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -17781,6 +17938,7 @@
     {
       "name": "active_attack_recharge_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -17905,6 +18063,7 @@
     {
       "name": "active_healing_target_group_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -18028,6 +18187,7 @@
     {
       "name": "active_healing_target_group_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -18151,6 +18311,7 @@
     {
       "name": "active_healing_target_group_2",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -18274,6 +18435,7 @@
     {
       "name": "active_healing_missing_target_group",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -18396,6 +18558,7 @@
     {
       "name": "active_healing_healing_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -18519,6 +18682,7 @@
     {
       "name": "active_healing_healing_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -18642,6 +18806,7 @@
     {
       "name": "active_healing_healing_2",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -18765,6 +18930,7 @@
     {
       "name": "active_healing_healing_3",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -18888,6 +19054,7 @@
     {
       "name": "active_healing_healing_4",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -19011,6 +19178,7 @@
     {
       "name": "active_healing_healing_5",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -19134,6 +19302,7 @@
     {
       "name": "active_healing_missing_healing",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -19256,6 +19425,7 @@
     {
       "name": "active_healing_forbidden_damage",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -19380,6 +19550,7 @@
     {
       "name": "active_healing_forbidden_damage_type",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -19504,6 +19675,7 @@
     {
       "name": "active_healing_forbidden_applies_condition",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -19628,6 +19800,7 @@
     {
       "name": "active_healing_forbidden_save",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -19752,6 +19925,7 @@
     {
       "name": "active_healing_forbidden_dc",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -19876,6 +20050,7 @@
     {
       "name": "active_healing_forbidden_half_on_success",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -20000,6 +20175,7 @@
     {
       "name": "active_healing_forbidden_escape_dc",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -20124,6 +20300,7 @@
     {
       "name": "active_healing_recharge_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -20244,6 +20421,7 @@
     {
       "name": "active_healing_recharge_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -20364,6 +20542,7 @@
     {
       "name": "active_prepare_attack_advantage_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -20490,6 +20669,7 @@
     {
       "name": "active_prepare_attack_advantage_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -20616,6 +20796,7 @@
     {
       "name": "active_prepare_attack_advantage_2",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -20742,6 +20923,7 @@
     {
       "name": "active_prepare_attack_missing_advantage",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -20867,6 +21049,7 @@
     {
       "name": "active_prepare_attack_on_hit_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -20990,6 +21173,7 @@
     {
       "name": "active_prepare_attack_on_hit_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -21113,6 +21297,7 @@
     {
       "name": "active_prepare_attack_on_hit_2",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -21236,6 +21421,7 @@
     {
       "name": "active_prepare_attack_missing_on_hit",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -21358,6 +21544,7 @@
     {
       "name": "active_prepare_attack_on_hit.applies_condition_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -21484,6 +21671,7 @@
     {
       "name": "active_prepare_attack_on_hit.applies_condition_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -21610,6 +21798,7 @@
     {
       "name": "active_prepare_attack_on_hit.applies_condition_2",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -21736,6 +21925,7 @@
     {
       "name": "active_prepare_attack_missing_on_hit.applies_condition",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -21861,6 +22051,7 @@
     {
       "name": "active_prepare_attack_on_hit.duration_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -21987,6 +22178,7 @@
     {
       "name": "active_prepare_attack_on_hit.duration_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -22113,6 +22305,7 @@
     {
       "name": "active_prepare_attack_on_hit.duration_2",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -22239,6 +22432,7 @@
     {
       "name": "active_prepare_attack_on_hit.duration_3",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -22365,6 +22559,7 @@
     {
       "name": "active_prepare_attack_on_hit.duration_4",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -22491,6 +22686,7 @@
     {
       "name": "active_prepare_attack_missing_on_hit.duration",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -22616,6 +22812,7 @@
     {
       "name": "active_prepare_attack_forbidden_damage",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -22743,6 +22940,7 @@
     {
       "name": "active_prepare_attack_forbidden_damage_type",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -22870,6 +23068,7 @@
     {
       "name": "active_prepare_attack_forbidden_applies_condition",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -22997,6 +23196,7 @@
     {
       "name": "active_prepare_attack_forbidden_save",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -23124,6 +23324,7 @@
     {
       "name": "active_prepare_attack_forbidden_dc",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -23251,6 +23452,7 @@
     {
       "name": "active_prepare_attack_forbidden_half_on_success",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -23378,6 +23580,7 @@
     {
       "name": "active_prepare_attack_forbidden_escape_dc",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -23505,6 +23708,7 @@
     {
       "name": "active_prepare_attack_recharge_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -23628,6 +23832,7 @@
     {
       "name": "active_prepare_attack_recharge_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -23751,6 +23956,7 @@
     {
       "name": "mark_command_target_group",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -23870,6 +24076,7 @@
     {
       "name": "mark_command_healing",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -23989,6 +24196,7 @@
     {
       "name": "mark_command_advantage",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -24108,6 +24316,7 @@
     {
       "name": "mark_command_on_hit",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -24227,6 +24436,7 @@
     {
       "name": "mark_accusation_target_group",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -24346,6 +24556,7 @@
     {
       "name": "mark_accusation_healing",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -24465,6 +24676,7 @@
     {
       "name": "mark_accusation_advantage",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -24584,6 +24796,7 @@
     {
       "name": "mark_accusation_on_hit",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -24703,6 +24916,7 @@
     {
       "name": "attack_kind_healing",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -24812,6 +25026,7 @@
     {
       "name": "attack_kind_prepare_attack",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -24921,6 +25136,7 @@
     {
       "name": "active_healing_extra_advantage_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -25045,6 +25261,7 @@
     {
       "name": "active_healing_extra_on_hit_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -25169,6 +25386,7 @@
     {
       "name": "active_prepare_attack_extra_target_group_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -25296,6 +25514,7 @@
     {
       "name": "active_prepare_attack_extra_healing_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -25423,6 +25642,7 @@
     {
       "name": "active_prepare_attack_extra_on_hit.applies_condition_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -25549,6 +25769,7 @@
     {
       "name": "active_prepare_attack_extra_on_hit.applies_condition_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -25675,6 +25896,7 @@
     {
       "name": "active_prepare_attack_extra_on_hit.extra_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -25802,6 +26024,7 @@
     {
       "name": "active_attack_missing_applies_condition",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -25928,6 +26151,7 @@
     {
       "name": "active_attack_missing_save",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -26054,6 +26278,7 @@
     {
       "name": "active_attack_missing_dc",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -26180,6 +26405,7 @@
     {
       "name": "active_attack_zero_wrong_damage_type",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -26307,6 +26533,7 @@
     {
       "name": "active_attack_half_on_success_type_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -26431,6 +26658,7 @@
     {
       "name": "active_attack_half_on_success_type_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -26555,6 +26783,7 @@
     {
       "name": "active_attack_half_on_success_type_2",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -26679,6 +26908,7 @@
     {
       "name": "active_attack_save_type_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -26803,6 +27033,7 @@
     {
       "name": "active_attack_save_type_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -26927,6 +27158,7 @@
     {
       "name": "active_attack_dc_type_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -27051,6 +27283,7 @@
     {
       "name": "active_attack_dc_type_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -27175,6 +27408,7 @@
     {
       "name": "active_attack_dc_type_2",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -27299,6 +27533,7 @@
     {
       "name": "active_attack_escape_dc_type_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -27423,6 +27658,7 @@
     {
       "name": "active_attack_escape_dc_type_1",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -27547,6 +27783,7 @@
     {
       "name": "active_attack_escape_dc_type_2",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -27671,6 +27908,7 @@
     {
       "name": "active_attack_applies_condition_type_0",
       "block": {
+        "terrains": ["forest"],
         "id": "fixture_legacy_no_combat_fields",
         "name": "Shadeling",
         "category": "hollow",
@@ -27795,6 +28033,7 @@
     {
       "name": "structured_save_bad_resolution",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -27916,6 +28155,7 @@
     {
       "name": "structured_save_bad_save",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -28037,6 +28277,7 @@
     {
       "name": "structured_save_bad_dc",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -28158,6 +28399,7 @@
     {
       "name": "structured_save_bad_save_success_damage",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -28279,6 +28521,7 @@
     {
       "name": "structured_save_bad_conditions_on_failure",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -28400,6 +28643,7 @@
     {
       "name": "structured_save_bad_conditions_on_success",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_shadeling",
         "name": "Shadeling",
         "category": "hollow",
@@ -28526,6 +28770,7 @@
     {
       "name": "choir_bad_0_resolution",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_choir",
         "name": "The Choir",
         "category": "hollow",
@@ -28751,6 +28996,7 @@
     {
       "name": "choir_bad_1_save_success_damage",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_choir",
         "name": "The Choir",
         "category": "hollow",
@@ -28976,6 +29222,7 @@
     {
       "name": "choir_bad_2_conditions_on_failure",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_choir",
         "name": "The Choir",
         "category": "hollow",
@@ -29201,6 +29448,7 @@
     {
       "name": "choir_bad_3_conditions_on_success",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_choir",
         "name": "The Choir",
         "category": "hollow",
@@ -29432,6 +29680,7 @@
     {
       "name": "choir_bad_4_to_hit",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_choir",
         "name": "The Choir",
         "category": "hollow",
@@ -29657,6 +29906,7 @@
     {
       "name": "choir_bad_5_duration_dice",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_choir",
         "name": "The Choir",
         "category": "hollow",
@@ -29882,6 +30132,7 @@
     {
       "name": "choir_bad_6_movement",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_choir",
         "name": "The Choir",
         "category": "hollow",
@@ -30107,6 +30358,7 @@
     {
       "name": "choir_bad_7_dc",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_choir",
         "name": "The Choir",
         "category": "hollow",
@@ -30332,6 +30584,7 @@
     {
       "name": "choir_bad_8_recharge",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_choir",
         "name": "The Choir",
         "category": "hollow",
@@ -30557,6 +30810,7 @@
     {
       "name": "choir_bad_9_damage",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_choir",
         "name": "The Choir",
         "category": "hollow",
@@ -30783,6 +31037,7 @@
     {
       "name": "choir_bad_10_rounds",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_choir",
         "name": "The Choir",
         "category": "hollow",
@@ -31008,6 +31263,7 @@
     {
       "name": "choir_bad_11_radius_ft",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_choir",
         "name": "The Choir",
         "category": "hollow",
@@ -31233,6 +31489,7 @@
     {
       "name": "choir_bad_12_trigger",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_choir",
         "name": "The Choir",
         "category": "hollow",
@@ -31458,6 +31715,7 @@
     {
       "name": "choir_bad_13_redirect",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_choir",
         "name": "The Choir",
         "category": "hollow",
@@ -31683,6 +31941,7 @@
     {
       "name": "choir_bad_14_dc",
       "block": {
+        "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
         "id": "hollow_choir",
         "name": "The Choir",
         "category": "hollow",

@@ -15,6 +15,7 @@ import choir_encounter
 import combat_ability
 import combat_spatial
 import crafting_tools
+import creature_catalog
 import db_activity_queries
 import db_content_queries
 import db_queries
@@ -50,6 +51,7 @@ async def _resolve_disposition(npc_id: str, player_id: str, npc: dict, *, querie
 async def query_info(
     context: RunContext[SessionData],
     kind: Literal[
+        "creature",
         "combat",
         "location",
         "npc",
@@ -65,11 +67,14 @@ async def query_info(
     target_id: str | None = None,
 ) -> str:
     """Look up world info in one call. Set kind and (for most kinds) target_id:
+    - kind="creature": catalog summary by target_id; omit it for this region at the party tier.
     - kind="combat": current actor/location/zone IDs and distances; target_id selects the origin.
     - kind="location", target_id=<location id>: scene details, atmosphere, exits.
     - kind="npc", target_id=<npc id>: personality, speech style, relationship-filtered knowledge.
     - kind="lore", target_id=<topic keyword>: history, gods, the Hollow, races, cultures.
     - kind="inventory": target party player inventory IDs and eligible_held_item_ids; omit target_id for the acting player.
+    Inventory entries expose item_target_id="item:<owner_player_id>:<item_id>"; pass that
+    selector to activate Dispel Corruption, e.g. "item:player_1:rend_shard".
     - kind="settlement_population", target_id=<location id>: how many of each NPC role staff a
       settlement, scaled by its size (tier) and character (personality), plus a `roster` of
       those NPCs with a name, personality traits, and a `voice_id` each — use it to voice an
@@ -97,6 +102,8 @@ async def _query_info_impl(
     training_mod=training_tools,
     crafting_mod=crafting_tools,
 ) -> str:
+    if kind == "creature":
+        return await creature_catalog.creature_summary(context.userdata, target_id)
     if kind == "combat":
         try:
             return json.dumps(
@@ -396,6 +403,9 @@ async def _query_inventory_impl(
                 "name": item.get("name"),
                 "type": item.get("type"),
                 "id": item.get("id"),
+                "item_target_id": f"item:{player_id}:{item['id']}",
+                "subtype": item.get("subtype"),
+                "durability_tier": item.get("durability_tier"),
                 "quantity": item.get("slot_info", {}).get("quantity", 1),
                 "tainted": item.get("tainted", False),
                 "description": item.get("description"),

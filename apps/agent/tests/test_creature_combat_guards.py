@@ -48,9 +48,6 @@ def test_translation_rejects_named_custom_and_unusable_pool():
     with pytest.raises(ValueError, match="Named/custom"):
         translate(source)
     source = row("bandit")
-    source["category"] = "elemental"
-    with pytest.raises(ValueError, match="unsupported category"):
-        translate(source)
     for attacks in ([], [{**source["attacks"][0], "recharge": {"kind": "encounter", "uses": 1}}]):
         source = row("bandit")
         source["attacks"] = attacks

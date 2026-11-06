@@ -856,6 +856,7 @@
   ],
   "fixture_catalog": [
     {
+      "terrains": ["forest", "grassland", "underground", "farmland"],
       "id": "fixture_goblin",
       "name": "Goblin Scout",
       "category": "humanoid",
@@ -941,6 +942,7 @@
       ]
     },
     {
+      "terrains": ["forest", "grassland", "underground"],
       "id": "fixture_wolf",
       "name": "Dire Wolf",
       "category": "humanoid",

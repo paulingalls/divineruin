@@ -17,6 +17,7 @@ import event_types as E
 from caster_state import ConcentrationState, ResonanceTrack
 from combat_agent import CombatAgent
 from combat_end import _end_combat_db
+from combat_spatial import distance
 from mode_tools import enter_mode
 from party_state import PartyMember
 from session_data import SessionData
@@ -96,6 +97,27 @@ class LootHarness(MawlingHarness):
             for enemy in self.enemies:
                 state = self.sd.combat_state
                 assert state is not None
+                assert state.spatial is not None
+                destination = state.spatial["positions"][enemy]
+                if distance(state.spatial["positions"][self.players[0]], destination) > 5:
+                    await self.command(
+                        "declare_phase",
+                        {
+                            "declarations": [
+                                {"kind": "move", "actor_id": self.players[0], "destination": destination},
+                                *[
+                                    {"kind": "defend", "actor_id": p.id}
+                                    for p in state.participants
+                                    if p.id != self.players[0] and not p.is_fallen
+                                ],
+                            ]
+                        },
+                    )
+                    packets = await self.drain()
+                    assert any(p.get("moved_ft", 0) > 0 for p in packets)
+                    state = await self.reload()
+                    assert state.spatial is not None
+                    assert state.spatial["positions"][self.players[0]] == destination
                 round_number = state.round_number
                 await self.command(
                     "declare_phase",

@@ -108,14 +108,14 @@ LOOT = {
         "loot_hollow_mawling",
         (
             ("rend_shard", 1, 0.75, (("crafting", "expert"),)),
-            ("dissolution_membrane", 1, 0.25, (("crafting", "expert"), ("arcana", "trained"))),
+            ("dissolution_membrane", 1, 0.25, (("crafting", "expert"),)),
         ),
     ),
     "hollow_weaver": (
         "loot_hollow_weaver",
         (
             ("spatial_residue", 1, 1.0, (("crafting", "expert"),)),
-            ("woven_void_fragment", 1, 0.25, (("arcana", "expert"),)),
+            ("woven_void_fragment", 1, 0.25, (("crafting", "expert"),)),
         ),
     ),
     "hollow_knight": (

@@ -12,7 +12,9 @@ def guest_context():
 
 async def test_guest_inventory_describes_guest_items():
     ctx = guest_context()
-    queries = MagicMock(get_player_inventory=AsyncMock(side_effect=lambda pid: [{"name": f"{pid} sword"}]))
+    queries = MagicMock(
+        get_player_inventory=AsyncMock(side_effect=lambda pid: [{"id": "sword", "name": f"{pid} sword"}])
+    )
     with ctx.userdata._bind_authenticated_actor("player_2", 4, lambda *_: None):
         result = json.loads(await _query_inventory_impl(ctx, queries=queries))
     assert result["items"][0]["name"] == "player_2 sword"

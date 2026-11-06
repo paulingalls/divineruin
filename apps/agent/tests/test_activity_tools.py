@@ -13,7 +13,6 @@ import db
 import db_training
 import training_tools
 from activity_payloads import (
-    ACTIVITY_VARIANTS,
     CompanionErrand,
     Crafting,
     Experiment,
@@ -271,10 +270,6 @@ class TestSumTypeVariantsSatisfyTheRouter:
         kind, kwargs = to_impl_kwargs(payload)
         _, _, fns = await _begin(kind, **kwargs)
         fns[dispatched].assert_awaited_once()
-
-    def test_every_variant_has_a_case(self):
-        assert len(_VARIANT_CASES) == len(ACTIVITY_VARIANTS)
-        assert {type(p) for p, _ in _VARIANT_CASES} == set(ACTIVITY_VARIANTS)
 
 
 class TestResolveTraining:

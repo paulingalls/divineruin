@@ -7,6 +7,7 @@ from pathlib import Path
 from action_contracts import CHOIR_EFFECT_FIELDS, STRUCTURED_FIELDS, validate_action_extensions, validate_recharge
 from combat_init_validation import validate_enemy_action_shapes, validate_enemy_resistance_tags
 from encounter_actions import validate_encounter_actions
+from terrain import TerrainType
 from world_regions import REGION_IDS
 
 CATEGORIES = ("hollow", "beast", "humanoid", "construct", "undead", "elemental")
@@ -81,6 +82,15 @@ def validate_creature_stat_block(creature: object) -> list[str]:
         for i, region in enumerate(regions):
             if region not in REGION_IDS:
                 problems.append(f"regions[{i}]: unknown region")
+    terrains = field(creature, "terrains", "", "array")
+    if isinstance(terrains, list):
+        if not terrains:
+            problems.append("terrains: expected non-empty array")
+        for i, terrain in enumerate(terrains):
+            if not isinstance(terrain, str):
+                problems.append(f"terrains[{i}]: expected string")
+            elif terrain not in TerrainType:
+                problems.append(f"terrains[{i}]: unknown terrain")
     field(creature, "description", "", "string")
     for key in ("level", "hp", "ac", "speed"):
         field(creature, key, "", "integer")

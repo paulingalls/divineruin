@@ -68,6 +68,14 @@ class WorkspaceRental(BaseModel):
     days: int = Field(description="Rental length in days, at least 1.")
 
 
+class Purification(BaseModel):
+    """Escrow tainted units for three Artificer training cycles."""
+
+    kind: Literal["purification"]
+    item_id: str
+    quantity: int = Field(strict=True, description="Integer number of tainted units, at least 1.")
+
+
 class Experiment(BaseModel):
     """Craft WITHOUT a recipe by committing materials toward an intended output."""
 
@@ -78,10 +86,17 @@ class Experiment(BaseModel):
     intended_output: str = Field(description="The item id the player hopes for.")
 
 
-ActivityVariant = Union[Training, CompanionErrand, Crafting, WorkspaceRental, Experiment]
+ActivityVariant = Union[Training, CompanionErrand, Crafting, WorkspaceRental, Experiment, Purification]
 ActivityPayload = Annotated[ActivityVariant, Field(discriminator="kind")]
 
-ACTIVITY_VARIANTS: tuple[type[BaseModel], ...] = (Training, CompanionErrand, Crafting, WorkspaceRental, Experiment)
+ACTIVITY_VARIANTS: tuple[type[BaseModel], ...] = (
+    Training,
+    CompanionErrand,
+    Crafting,
+    WorkspaceRental,
+    Experiment,
+    Purification,
+)
 
 
 def to_impl_kwargs(activity: ActivityVariant) -> tuple[str, dict]:
@@ -102,6 +117,8 @@ def to_impl_kwargs(activity: ActivityVariant) -> tuple[str, dict]:
             "npc_id": activity.npc_id,
             "days": activity.days,
         }
+    if isinstance(activity, Purification):
+        return "purification", {"item_id": activity.item_id, "quantity": activity.quantity}
     return "experiment", {
         "material_ids": [m.material_id for m in activity.materials],
         "quantities": [m.quantity for m in activity.materials],

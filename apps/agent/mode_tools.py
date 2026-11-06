@@ -32,12 +32,16 @@ async def enter_mode(
     mode: str,
     encounter_id: str = "",
     encounter_description: str = "",
+    difficulty: str = "",
+    tier: int | None = None,
 ) -> str | tuple:
     """Hand off to a focused mode context. Pick a mode:
 
     - mode="combat": combat begins. Give encounter_id (the encounter template) and
       encounter_description (a brief note on how combat starts). Rolls initiative and
-      establishes turn order.
+      establishes turn order. Instead of encounter_id, give difficulty="standard",
+      "tough" or "boss" to generate catalog enemies for this location; optional tier=1-4
+      overrides the party tier. Never combine encounter_id with difficulty or tier.
     - mode="dispatch": the player wants a deliberate between-adventure activity —
       training with a mentor, or sending a companion on an errand. No other args.
     - mode="blacksmith": the player wants to repair gear at a settlement forge. A
@@ -45,7 +49,7 @@ async def enter_mode(
       No other args.
 
     Control returns here when the mode concludes."""
-    return await _enter_mode_impl(context, mode, encounter_id, encounter_description)
+    return await _enter_mode_impl(context, mode, encounter_id, encounter_description, difficulty, tier)
 
 
 async def _enter_mode_impl(
@@ -53,11 +57,11 @@ async def _enter_mode_impl(
     mode: str,
     encounter_id: str = "",
     encounter_description: str = "",
+    difficulty: str = "",
+    tier: int | None = None,
 ) -> str | tuple:
     if mode == "combat":
-        if not encounter_id:
-            raise ToolError("enter_mode(mode='combat') requires an encounter_id.")
-        return await _start_combat_impl(context, encounter_id, encounter_description)
+        return await _start_combat_impl(context, encounter_id, encounter_description, difficulty=difficulty, tier=tier)
     if mode == "dispatch":
         result = await _enter_dispatch_impl(context)
         await publish_action_sound(context.userdata, ACTION_SOUND_EXPORTS["ACTION_ENTER_MODE_DISPATCH"])

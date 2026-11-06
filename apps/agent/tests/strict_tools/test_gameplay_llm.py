@@ -84,3 +84,40 @@ async def test_luna_pilot_emits_every_tool_as_strict(monkeypatch, profile, tools
     emitted = requests[0]["tools"]
     assert len(emitted) == len(tools)
     assert all(tool["function"]["strict"] is True for tool in emitted)
+
+    functions = {t["function"]["name"]: t["function"] for t in emitted}
+    if profile in {"exploration", "combat", "dispatch", "onboarding", "blacksmith"}:
+        schema = functions["query_info"]["parameters"]
+        assert schema["additionalProperties"] is False
+        assert "creature" in schema["properties"]["kind"]["enum"]
+    if profile == "exploration":
+        schema = functions["enter_mode"]["parameters"]
+        assert schema["additionalProperties"] is False
+        assert set(schema["required"]) == {"mode", "encounter_id", "encounter_description", "difficulty", "tier"}
+        assert set(schema["properties"]) == set(schema["required"])
+        assert schema["properties"]["difficulty"]["type"] == ["string", "null"]
+        assert schema["properties"]["tier"]["type"] == ["integer", "null"]
+
+    if profile == "dispatch":
+        function = next(t["function"] for t in emitted if t["function"]["name"] == "begin_activity")
+        schema = function["parameters"]
+
+        def resolve(node):
+            if "$ref" in node:
+                target = schema
+                for part in node["$ref"].removeprefix("#/").split("/"):
+                    target = target[part]
+                return resolve(target)
+            return node
+
+        activity = resolve(schema["properties"]["activity"])
+        branches = [resolve(branch) for branch in activity["anyOf"]]
+        purification = next(
+            branch
+            for branch in branches
+            if branch["properties"]["kind"].get("const") == "purification"
+            or branch["properties"]["kind"].get("enum") == ["purification"]
+        )
+        assert set(purification["required"]) == {"kind", "item_id", "quantity"}
+        assert purification["properties"]["quantity"]["type"] == "integer"
+        assert purification["additionalProperties"] is False

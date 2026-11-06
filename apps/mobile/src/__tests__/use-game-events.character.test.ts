@@ -150,11 +150,15 @@ test("hollow_corruption_changed floors float values", () => {
   expect(sessionStore.getState().corruptionLevel).toBe(2);
 });
 
-test("combat_started with difficulty sets combatDifficulty in store", () => {
-  handleGameEvent({ type: "combat_started", difficulty: "hard" });
-  expect(sessionStore.getState().combatDifficulty).toBe("hard");
-  expect(sessionStore.getState().inCombat).toBe(true);
-});
+test.each(["moderate", "hard"] as const)(
+  "combat_started with %s sets combatDifficulty in store",
+  (difficulty) => {
+    sessionStore.setState({ combatDifficulty: difficulty === "moderate" ? "hard" : "moderate" });
+    handleGameEvent({ type: "combat_started", difficulty });
+    expect(sessionStore.getState().combatDifficulty).toBe(difficulty);
+    expect(sessionStore.getState().inCombat).toBe(true);
+  },
+);
 
 test("combat_started without difficulty keeps default", () => {
   handleGameEvent({ type: "combat_started" });
