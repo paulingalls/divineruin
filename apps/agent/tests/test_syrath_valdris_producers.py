@@ -321,26 +321,31 @@ async def test_guest_action_concealment(world, action, hit, spell_id):
     )
 
 
-async def test_unknown_targets_refuse_before_writes(world):
+async def test_grievance_writer_refuses_unknown_target_before_writes(world):
     from livekit.agents.llm import ToolError
 
     import session_tools
 
     ids, conn, database, queries = world
     ctx = make_context(player_id=ids[0])
-    await hide(world, ctx)
-    await conn.execute(
-        "UPDATE players SET data=jsonb_set(data, '{divine_favor}', '{\"patron\":\"valdris\"}') WHERE player_id=$1",
-        ids[0],
-    )
     before = await conn.fetchval("SELECT data FROM players WHERE player_id=$1", ids[0])
-    with pytest.raises(ToolError, match="Unknown target"):
-        await cast(world, ctx, "arcane_haste", "missing_target")
     with pytest.raises(ToolError, match="not found"):
         await session_tools._update_npc_disposition_impl(
             ctx, "missing_target", 0, "injustice", "injustice", db_mod=database, queries=queries
         )
     assert await conn.fetchval("SELECT data FROM players WHERE player_id=$1", ids[0]) == before
+
+
+@pytest.mark.parametrize("target", ["companion_kael", "altar_object"])
+async def test_valdris_ooc_cast_at_companion_or_object(world, target):
+    ids, conn, _, _ = world
+    await conn.execute(
+        "UPDATE players SET data=jsonb_set(data, '{divine_favor}', '{\"patron\":\"valdris\"}') WHERE player_id=$1",
+        ids[0],
+    )
+    packet = await cast(world, make_context(player_id=ids[0]), "arcane_haste", target)
+    assert packet["resonance_generated"] == 3
+    assert "wrongdoing" not in packet
 
 
 def test_ledger_reloads_after_player_rises_as_echo():

@@ -2,8 +2,6 @@
 
 from livekit.agents.llm import ToolError
 
-from condition_produce import resolve_effective_targets
-
 GRIEVANCES = {"broken_promise", "injustice"}
 
 
@@ -49,27 +47,34 @@ def grievance(player, target_id):
     return value
 
 
-async def wrongdoing(session, player, *, target_id, target_ids, combat_state, conn, queries_mod):
-    targets = (
-        resolve_effective_targets(target_ids, target_id, self_value=None) if target_id is not None or target_ids else []
-    )
+async def wrongdoing(session, player, *, target_id, combat_state, conn, queries_mod):
+    """Evidence that the single explicit target wronged the party, or None."""
     state = combat_state if combat_state is not None else session.combat_state
     evidence = None
-    for target in targets:
-        if state is not None:
-            if state.get_participant(target) is None:
-                raise ToolError(f"Unknown target: {target}")
-            if state.first_hostility.get(target) == "hostile":
-                evidence = {"target_id": target, "source": "aggression"}
-        elif await queries_mod.get_player(target, conn=conn) is None:
-            if await conn.fetchrow("SELECT id FROM npcs WHERE id=$1", target) is None:
-                raise ToolError(f"Unknown target: {target}")
-        # Exact runtime identity: creature templates never inherit an NPC's grievance.
-        for pid in session.party.member_ids:
-            row = player if pid == player["player_id"] else await queries_mod.get_player(pid, conn=conn)
-            if row is None:
-                raise ToolError(f"Player '{pid}' not found")
-            kind = grievance(row, target)
-            if kind:
-                evidence = {"target_id": target, "player_id": pid, "source": "grievance", "kind": kind}
+    if state is not None:
+        if state.get_participant(target_id) is None:
+            raise ToolError(f"Unknown target: {target_id}")
+        if state.first_hostility.get(target_id) == "hostile":
+            evidence = {"target_id": target_id, "source": "aggression"}
+    elif not await _is_known_creature(target_id, conn, queries_mod):
+        # Tolerated: objects, corpses and other DM-narrated ids hold no grievance, so the cast
+        # generates standard Resonance. The grievance writer still refuses an unknown id.
+        return None
+    # Exact runtime identity: creature templates never inherit an NPC's grievance.
+    for pid in session.party.member_ids:
+        row = player if pid == player["player_id"] else await queries_mod.get_player(pid, conn=conn)
+        if row is None:
+            raise ToolError(f"Player '{pid}' not found")
+        kind = grievance(row, target_id)
+        if kind:
+            evidence = {"target_id": target_id, "player_id": pid, "source": "grievance", "kind": kind}
     return evidence
+
+
+async def _is_known_creature(target_id, conn, queries_mod):
+    if await queries_mod.get_player(target_id, conn=conn) is not None:
+        return True
+    row = await conn.fetchrow(
+        "SELECT 1 FROM npcs WHERE id=$1 UNION ALL SELECT 1 FROM companions WHERE id=$1", target_id
+    )
+    return row is not None

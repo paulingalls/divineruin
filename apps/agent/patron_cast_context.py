@@ -45,18 +45,10 @@ async def _resolve_facts(
     target_ids=None,
 ) -> PatronCastFacts:
     evidence = None
-    if patron == "valdris":
+    if patron == "valdris" and target_id is not None and target_ids is None and not is_area_spell(spell.id):
         evidence = await combat_wrongdoing.wrongdoing(
-            session,
-            player,
-            target_id=target_id,
-            target_ids=target_ids,
-            combat_state=combat_state,
-            conn=conn,
-            queries_mod=queries_mod,
+            session, player, target_id=target_id, combat_state=combat_state, conn=conn, queries_mod=queries_mod
         )
-        if target_id is None or target_ids is not None or is_area_spell(spell.id):
-            evidence = None
     at_zero = False
     first_stay = False
     if patron == "mortaen" and (target_id is not None or target_ids):
