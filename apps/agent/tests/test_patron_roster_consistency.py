@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import copy
 import json
+from pathlib import Path
 
 import pytest
 
@@ -10,20 +12,11 @@ from _gods_content import load_gods
 from creation_deities import DEITIES
 from god_whisper_data import GOD_WHISPER_PROFILES
 
-EXPECTED_PATRON_IDS = frozenset(
-    {
-        "veythar",
-        "kaelen",
-        "aelora",
-        "syrath",
-        "thyra",
-        "orenthel",
-        "valdris",
-        "mortaen",
-        "nythera",
-        "zhael",
-    }
-)
+ROSTER = json.loads((Path(__file__).resolve().parents[3] / "packages/shared/fixtures/god_profiles.json").read_text())[
+    "patron_ids"
+]
+EXPECTED_PATRON_IDS = frozenset(ROSTER)
+assert len(ROSTER) == len(EXPECTED_PATRON_IDS) == 10
 
 
 GODS_ENTRIES: list[dict] = load_gods()
@@ -87,18 +80,11 @@ def test_load_deities_rejects_none_god_id_in_gods_json(tmp_path, monkeypatch):
     import _gods_content
     import creation_deities as cd
 
-    poisoned = [
-        *GODS_ENTRIES,
-        {
-            "god_id": "none",
-            "short_name": "Bogus",
-            "title": "the Forbidden",
-            "domain": "x",
-            "description": "x",
-            "card_description": "x",
-            "synergy_classes": [],
-        },
-    ]
+    unbound = copy.deepcopy(GODS_ENTRIES[0])
+    unbound["god_id"] = "none"
+    for tier, ability in unbound["layer_3_tier_abilities"].items():
+        ability["id"] = f"none_{tier}"
+    poisoned = [*GODS_ENTRIES, unbound]
     poisoned_path = tmp_path / "gods.json"
     poisoned_path.write_text(json.dumps(poisoned))
     monkeypatch.setattr(_gods_content, "_GODS_JSON_PATH", poisoned_path)
@@ -111,17 +97,8 @@ def test_load_deities_rejects_none_god_id_in_gods_json(tmp_path, monkeypatch):
         _gods_content.load_gods.cache_clear()
 
 
-def test_layer_2_through_4_placeholders_exist_and_are_null():
-    """ADR 0001 reserves null patron slots without introducing another authority."""
-    placeholders = (
-        "layer_2_resonance",
-        "layer_3_tier_abilities",
-        "layer_4_synergy_matrix",
-    )
+def test_authored_layers_and_reserved_layer_four():
     for entry in GODS_ENTRIES:
-        for key in placeholders:
-            assert key in entry, f"{entry['god_id']} missing placeholder {key!r}"
-            assert entry[key] is None, (
-                f"{entry['god_id']} has non-null {key!r} — Phase 8 authoring "
-                f"is out of scope for this ADR until a follow-up sprint"
-            )
+        assert entry["layer_2_resonance"] is not None, entry["god_id"]
+        assert entry["layer_3_tier_abilities"] is not None, entry["god_id"]
+        assert entry["layer_4_synergy_matrix"] is None, entry["god_id"]
