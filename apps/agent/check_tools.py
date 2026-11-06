@@ -44,6 +44,7 @@ from db_errors import db_tool, validated_player_conditions
 from game_events import publish_game_event
 from gathering_tools import _check_gather_impl
 from session_data import SessionData
+from skill_check_effects import SkillCheckEffects
 from social_tools import _check_social_impl
 from tool_support import _cap_str
 
@@ -134,31 +135,23 @@ async def _check_skill_impl(
     db_mod=db,
     conditions_mutations=db_mutations_conditions,
 ) -> str:
-    if skill.lower() == "stealth":
-        async with db_mod.transaction() as conn:
-            return await _check_skill_run(
-                context,
-                skill,
-                difficulty,
-                context_description,
-                hearing_only=hearing_only,
-                queries=queries,
-                mutations=mutations,
-                db_mod=db_mod,
-                conditions_mutations=conditions_mutations,
-                conn=conn,
-            )
-    return await _check_skill_run(
-        context,
-        skill,
-        difficulty,
-        context_description,
-        hearing_only=hearing_only,
-        queries=queries,
-        mutations=mutations,
-        db_mod=db_mod,
-        conditions_mutations=conditions_mutations,
-    )
+    effects = SkillCheckEffects()
+    async with db_mod.transaction() if skill.lower() == "stealth" else nullcontext(None) as conn:
+        response = await _check_skill_run(
+            context,
+            skill,
+            difficulty,
+            context_description,
+            hearing_only=hearing_only,
+            queries=queries,
+            mutations=mutations,
+            db_mod=db_mod,
+            conditions_mutations=conditions_mutations,
+            conn=conn,
+            effects=effects,
+        )
+    await effects.flush(context.userdata, publish=publish_game_event)
+    return response
 
 
 async def _check_skill_run(
@@ -172,6 +165,7 @@ async def _check_skill_run(
     mutations,
     db_mod,
     conditions_mutations,
+    effects,
     conn=None,
 ):
     try:
@@ -230,19 +224,19 @@ async def _check_skill_run(
             }
         )
 
-    await publish_game_event(
-        session.room,
-        E.DICE_ROLL,
-        {
-            "roll_type": "skill_check",
-            "skill": result.skill,
-            "roll": result.roll,
-            "total": result.total,
-            "success": result.success,
-            "dramatic": result.dramatic,
-            "context": result.context,
-        },
-        event_bus=session.event_bus,
+    effects.events.append(
+        (
+            E.DICE_ROLL,
+            {
+                "roll_type": "skill_check",
+                "skill": result.skill,
+                "roll": result.roll,
+                "total": result.total,
+                "success": result.success,
+                "dramatic": result.dramatic,
+                "context": result.context,
+            },
+        )
     )
 
     # Track skill use for tier advancement (shared helper enforces M1.2 contract). When the check
@@ -282,19 +276,17 @@ async def _check_skill_run(
             mutations=mutations,
         )
 
-    if consumed_state is not None:
-        session.combat_state = consumed_state
-
+    effects.combat_state = consumed_state
     if adv is not None and adv.advanced:
-        await publish_game_event(
-            session.room,
-            E.SKILL_TIER_ADVANCED,
-            {"skill": adv.skill, "old_tier": adv.old_tier, "new_tier": adv.new_tier},
-            event_bus=session.event_bus,
+        effects.events.append(
+            (
+                E.SKILL_TIER_ADVANCED,
+                {"skill": adv.skill, "old_tier": adv.old_tier, "new_tier": adv.new_tier},
+            )
         )
 
     outcome = "success" if result.success else "failure"
-    session.record_event(f"Skill check ({skill}, {difficulty}): {outcome}")
+    effects.recent_event = f"Skill check ({skill}, {difficulty}): {outcome}"
 
     response = {
         **({"concealment": concealment_packet} if concealment_packet else {}),
