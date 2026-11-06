@@ -97,6 +97,7 @@ async def _update_npc_disposition_impl(
         await mutations.set_npc_disposition(npc_id, player_id, new_disposition, reason, conn=conn)
 
         if grievance != "none":
+            session.validate_acting_player(player_id)
             await mutations.set_player_flag(player_id, combat_wrongdoing.grievance_key(npc_id), grievance, conn=conn)
 
         pending_events.append(
