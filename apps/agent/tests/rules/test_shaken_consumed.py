@@ -47,6 +47,7 @@ def _combat_mocks():
     mutations.save_combat_state = AsyncMock()
     queries = MagicMock()
     queries.get_player_inventory = AsyncMock(return_value=[])
+    queries.get_player = AsyncMock(side_effect=lambda pid, **kw: {"player_id": pid})
     concentration = MagicMock()
     concentration.break_concentration_on_damage = AsyncMock(return_value=None)
     return mutations, queries, concentration
@@ -76,6 +77,7 @@ async def test_shaken_is_consumed_after_one_attack_before_the_next_swing():
         queries=queries,
         resolver=cast(Any, RealResolver(rng)),
         concentration_break_mod=concentration,
+        conn=MagicMock(),
     )
 
     assert rng.calls.count((1, 20)) == 3
