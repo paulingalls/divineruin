@@ -1256,7 +1256,7 @@ resolved `{region, terrain}`; combat entry integration follows separately. Candi
 must list both memberships and be requested-tier creatures or tier−1 adds. At least
 one requested-tier creature and one non-Minion are required; these may be different
 creatures. Species may repeat; at most one Boss is allowed, with none required.
-Hollow creatures participate normally. Named and Tier-4 creatures are never generated.
+Hollow creatures participate normally. Named creatures (every Tier-4 row today) are never generated.
 The composition table above is guidance, including authored encounters outside this
 builder's domain, rather than another generation filter.
 

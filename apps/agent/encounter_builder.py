@@ -78,7 +78,8 @@ def build_encounter(
         p["hp_factor"] * _player_damage(players[p["player_id"]]) for p in companions
     )
     low, high = ROUND_WINDOWS[difficulty]
-    min_hp, max_hp = ceil(low * damage), floor(high * damage)
+    # Exact products have at most four decimals; rounding first keeps inclusive endpoints exact.
+    min_hp, max_hp = ceil(round(low * damage, 9)), floor(round(high * damage, 9))
     region, terrain = environment["region"], environment["terrain"]
     context = (
         f"tier={tier}, level_band={budget['level_band']}, difficulty={difficulty}, "
@@ -90,7 +91,6 @@ def build_encounter(
             row
             for row in catalog
             if row["tier"] in (tier, tier - 1)
-            and row["tier"] < 4
             and (row.get("hollow") or {}).get("class") != "named"
             and region in row["regions"]
             and terrain in row["terrains"]

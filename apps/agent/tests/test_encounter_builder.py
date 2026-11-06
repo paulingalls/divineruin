@@ -79,14 +79,14 @@ def check(refs, catalog, tier, members, environment=ENV, difficulty="standard"):
     hp = 0
     for ref in refs:
         creature = by_id[ref["creature_id"]]
-        assert creature["tier"] in (tier, tier - 1) and creature["tier"] < 4
+        assert creature["tier"] in (tier, tier - 1)
         assert (creature.get("hollow") or {}).get("class") != "named"
         assert environment["region"] in creature["regions"]
         assert environment["terrain"] in creature["terrains"]
         hp += derive_role_stats(creature, ref["role"])["hp"]
     assert any(by_id[ref["creature_id"]]["tier"] == tier for ref in refs)
     low, high = WINDOWS[difficulty]
-    assert low <= hp / damage <= high
+    assert low <= round(hp / damage, 9) <= high
     return budget["total"], hp
 
 
@@ -153,6 +153,9 @@ def test_no_candidates_and_no_fit_name_request():
 
 
 def test_round_window_includes_exact_endpoints():
+    # L4 + Sable: exact party DPR 11.4, so 57 HP is exactly 5.0 rounds; float sums give 11.3999...
+    sable = party((4,), "companion_sable")
+    check(build_encounter([row(57)], 2, sable, ENV, "standard", Random(0)), [row(57)], 2, sable)
     members = party()
     members[-1]["hp_factor"] = 16 / 9.11 - 1
     for hp in (48, 80):
@@ -199,7 +202,7 @@ def test_all_candidate_cells_over_fifty_seeds():
         1: (
             (29, 29, 33, 33, 33, 33, 33, 33, 33, 33, 32, 32, 32, 29, 33, 33, 33, 33, 33, 33),
             (32, 32, 39, 33, 39, 39, 33, 33, 39, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33),
-            (33, 32, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33, 32, 33, 33, 33, 33, 33, 33),
+            (33, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33, 32, 33, 33, 33, 33, 33, 33),
         ),
         2: (
             (42, 42, 42, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47),
