@@ -212,19 +212,24 @@ async def test_encounter_end_and_start_refill_only_raw_channeling(world):
 
     w = world
     encounter(w)
-    host = w.ctx.userdata.party.members[0]
-    await push(w)
-    host.unbound_veil_mastery_used = True
+    members = w.ctx.userdata.party.members
+    for member in members:
+        with w.ctx.userdata._bind_authenticated_actor(member.player_id, 4, lambda *_: None):
+            await push(w)
+        member.unbound_veil_mastery_used = True
     await _end_combat_impl(w.ctx, "fled", mutations=combat_end_mutations(), db_mod=w.db)
-    assert not host.unbound_raw_channeling_used and host.unbound_veil_mastery_used
+    assert all(not m.unbound_raw_channeling_used and m.unbound_veil_mastery_used for m in members)
     # Start must reset independently of end, including encounters entered with retained flags.
-    host.unbound_raw_channeling_used = True
+    for member in members:
+        member.unbound_raw_channeling_used = True
     mutations, queries, content = _make_start_combat_mocks()
     queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "player_id": w.ids[0]})
     queries.get_players_for_update = AsyncMock(return_value={w.ids[1]: {**SAMPLE_PLAYER, "player_id": w.ids[1]}})
     await _start_combat_impl(
         w.ctx, "goblin_patrol", "A patrol.", mutations=mutations, queries=queries, content=content, db_mod=w.db
     )
-    assert not host.unbound_raw_channeling_used and host.unbound_veil_mastery_used
-    await push(w)
-    assert host.unbound_raw_channeling_used
+    assert all(not m.unbound_raw_channeling_used and m.unbound_veil_mastery_used for m in members)
+    for member in members:
+        with w.ctx.userdata._bind_authenticated_actor(member.player_id, 4, lambda *_: None):
+            await push(w)
+    assert all(m.unbound_raw_channeling_used for m in members)
