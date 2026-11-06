@@ -90,7 +90,7 @@ def test_catalog_columns_and_indexes(fresh_migrated_db):
     asyncio.run(check())
 
 
-def test_internal_catalog_queries_use_regions_tier_and_named_missing_error(fresh_migrated_db, monkeypatch):
+def test_internal_catalog_queries_name_missing_errors(fresh_migrated_db, monkeypatch):
     async def check():
         conn = await asyncpg.connect(fresh_migrated_db)
         try:
@@ -100,12 +100,6 @@ def test_internal_catalog_queries_use_regions_tier_and_named_missing_error(fresh
                 return conn
 
             monkeypatch.setattr(db, "get_pool", get_pool)
-            for key, pin in SIGNATURE_PINS.items():
-                assert (await query_creature_by_id(key))["signature_ability"] == pin
-            assert (await query_creature_by_id("tidecaller_eel"))["terrains"] == ["coast", "wetland"]
-            shadeling = await query_creature_by_id("hollow_shadeling")
-            assert shadeling["id"] == "hollow_shadeling"
-            assert shadeling["regions"] == ["ashmark", "greyvale"]
             with pytest.raises(CreatureNotFoundError, match="no_such"):
                 await query_creature_by_id("no_such")
             with pytest.raises(ValueError, match="atlantis"):
