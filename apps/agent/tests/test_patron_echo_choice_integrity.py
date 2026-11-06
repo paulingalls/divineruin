@@ -170,3 +170,23 @@ async def test_revoked_guest_cannot_create_choice_after_row_lock(players):
             await cast("zhael", 9, ctx=ctx, database=(database, pool), queries=db_queries)
         published.assert_not_awaited()
     assert await db_queries.get_player(ids[1], conn=pool) == before
+
+
+@pytest.mark.parametrize("field,value", [("id", "third"), ("band", None), ("name", ""), ("effect", "")])
+async def test_malformed_option_refuses_without_consumption_or_publication(players, field, value):
+    ids, pool, database = players
+    ctx, pending = await pending_cast(ids, pool, database)
+    pending["options"][0][field] = value
+    if value is None:
+        del pending["options"][0][field]
+    await pool.execute(
+        "UPDATE players SET data=jsonb_set(data, '{pending_hollow_echo_choice}', $2::jsonb) WHERE player_id=$1",
+        ids[0],
+        json.dumps(pending),
+    )
+    before = await db_queries.get_player(ids[0], conn=pool)
+    with patch("hollow_echo_events.publish_hollow_echo", new_callable=AsyncMock) as published:
+        with pytest.raises(ToolError, match="Malformed pending Hollow Echo option"):
+            await _select_impl(ctx, pending["choice_id"], pending["options"][0]["id"], db_mod=database)
+        published.assert_not_awaited()
+    assert await db_queries.get_player(ids[0], conn=pool) == before
