@@ -61,7 +61,15 @@ async def test_guest_disposition_reads_and_writes_guest_row():
         with ctx.userdata._bind_authenticated_actor("player_2", 4, lambda *_: None):
             result = json.loads(
                 await _update_npc_disposition_impl(
-                    ctx, "keeper", 1, "helped", db_mod=db, queries=queries, mutations=mutations, content=content
+                    ctx,
+                    "keeper",
+                    1,
+                    "helped",
+                    db_mod=db,
+                    queries=queries,
+                    mutations=mutations,
+                    content=content,
+                    grievance="none",
                 )
             )
     assert result["previous"] == "unfriendly"
@@ -87,7 +95,15 @@ async def test_guest_disposition_revoked_before_write_refuses():
         with ctx.userdata._bind_authenticated_actor("player_2", 4, validate):
             with pytest.raises(RuntimeError, match="stale"):
                 await _update_npc_disposition_impl(
-                    ctx, "keeper", 1, "helped", db_mod=db, queries=queries, mutations=mutations, content=content
+                    ctx,
+                    "keeper",
+                    1,
+                    "helped",
+                    db_mod=db,
+                    queries=queries,
+                    mutations=mutations,
+                    content=content,
+                    grievance="none",
                 )
     mutations.set_npc_disposition.assert_not_awaited()
 

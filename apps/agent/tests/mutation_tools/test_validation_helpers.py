@@ -65,6 +65,7 @@ class TestStringCaps:
                 mutations=MagicMock(),
                 queries=MagicMock(),
                 content=MagicMock(),
+                grievance="none",
             )
 
     @pytest.mark.asyncio

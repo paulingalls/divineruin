@@ -371,6 +371,7 @@ def _resolve_skill_check_impl(
         dramatic=check.dramatic,
         context=check.context,
         consumed_conditions=consumed,
+        auto_fail=check.auto_fail,
         gift_name=gift_name,
     )
 

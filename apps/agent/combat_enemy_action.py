@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING
 
 import check_resolution_save
+import combat_wrongdoing
 import concentration_break
 import conditions
 import event_types as E
@@ -226,6 +227,7 @@ async def resolve_save_damage_action(
         bonus_dice_eligible=False,
         advantage=reaction_save_advantage,
     )
+    combat_wrongdoing.record_attack(state, attacker, target)
     # The encounter-role overlay scales this the way it scales a weapon hit (check_resolution_attack
     # multiplies the final total by damage_mult): a Boss's wave must burn like a Boss. dc_mod already
     # rides the save above, so dropping the multiplier here would role-scale half the action.

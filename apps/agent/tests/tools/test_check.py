@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from livekit.agents.llm import ToolError
+from sample_fixtures import make_db_mod
 
 import event_types as E
 from check_tools import _check_dice_impl, _check_impl, _check_save_impl, _check_skill_impl
@@ -62,8 +63,16 @@ class TestCheckSkill:
     async def test_publishes_event(self):
         queries, mutations = _skill_mocks()
         room = _make_mock_room()
+        database, conn = make_db_mod()
+        conn.execute = AsyncMock()
         await _check_skill_impl(
-            _make_context(room=room), "stealth", "hard", "sneaking past guard", queries=queries, mutations=mutations
+            _make_context(room=room),
+            "stealth",
+            "hard",
+            "sneaking past guard",
+            queries=queries,
+            mutations=mutations,
+            db_mod=database,
         )
         room.local_participant.publish_data.assert_called()
         call_data = json.loads(room.local_participant.publish_data.call_args_list[0][0][0])

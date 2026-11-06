@@ -94,6 +94,7 @@ def _combat_mocks():
     mutations.update_player_hp = AsyncMock()
     mutations.save_combat_state = AsyncMock()
     queries = MagicMock()
+    queries.get_player = AsyncMock(side_effect=lambda pid, **kw: {"player_id": pid})
     break_mod = MagicMock()
     break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
     return mutations, queries, break_mod
@@ -170,6 +171,7 @@ async def test_extra_attack_consumes_beneficial_die_once():
         queries=queries,
         resolver=check_resolution_attack,
         concentration_break_mod=break_mod,
+        conn=MagicMock(),
     )
     assert len(summary["attacks"]) == 2
     assert summary["attacks"][0]["consumed_conditions"] == ("blessed",)

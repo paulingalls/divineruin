@@ -207,12 +207,14 @@ async def test_ac5_disposition_guard_blocks_absent_allows_present(m7_world: str)
     # Absent: the clerk is scheduled at the city, not the dungeon → guard refuses.
     in_dungeon = make_context(player_id=_PLAYER_ID, location_id=_DUNGEON_ID, room=make_mock_room())
     with pytest.raises(ToolError, match="isn't here"):
-        await _update_npc_disposition_impl(in_dungeon, _NPC_ID, 1, "tried from afar")
+        await _update_npc_disposition_impl(in_dungeon, _NPC_ID, 1, "tried from afar", grievance="none")
 
     # Present: at the city (the fixture's yielded Stage) the clerk IS scheduled, so the
     # shift succeeds — the guard does not over-fire on legitimate co-located use.
     in_city = make_context(player_id=_PLAYER_ID, location_id=m7_world, room=make_mock_room())
-    result = json.loads(await _update_npc_disposition_impl(in_city, _NPC_ID, 1, "helped at the stall"))
+    result = json.loads(
+        await _update_npc_disposition_impl(in_city, _NPC_ID, 1, "helped at the stall", grievance="none")
+    )
     assert result["new"] == "friendly"  # neutral default + 1
 
 

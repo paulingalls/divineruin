@@ -53,6 +53,7 @@ def _mutations():
 
 def _queries():
     q = MagicMock()
+    q.get_player = AsyncMock(side_effect=lambda pid, **kw: {"player_id": pid})
     q.get_player_inventory = AsyncMock(return_value=[])
     return q
 
@@ -85,6 +86,7 @@ async def _resolve(cs, decl: Declaration, resolver, actor_id: str = "player_1") 
         queries=_queries(),
         resolver=resolver,
         concentration_break_mod=_break_mod(),
+        conn=MagicMock(),
     )
 
 

@@ -1,7 +1,9 @@
 import json
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
+from sample_fixtures import make_db_mod
 
 import check_resolution
 import event_types as E
@@ -32,9 +34,17 @@ class TestSkillCheckDramatic:
     async def test_nat20_is_dramatic(self, force_d20):
         force_d20(20)
         queries, mutations = _skill_mocks()
+        database, conn = make_db_mod()
+        conn.execute = AsyncMock()
         room = _make_mock_room()
         await _check_skill_impl(
-            _make_context(room=room), "stealth", "moderate", "sneaking", queries=queries, mutations=mutations
+            _make_context(room=room),
+            "stealth",
+            "moderate",
+            "sneaking",
+            queries=queries,
+            mutations=mutations,
+            db_mod=database,
         )
         payload = _dice_event(room)
         assert payload["roll_type"] == "skill_check"
@@ -45,9 +55,17 @@ class TestSkillCheckDramatic:
     async def test_nat1_is_dramatic(self, force_d20):
         force_d20(1)
         queries, mutations = _skill_mocks()
+        database, conn = make_db_mod()
+        conn.execute = AsyncMock()
         room = _make_mock_room()
         await _check_skill_impl(
-            _make_context(room=room), "stealth", "moderate", "sneaking", queries=queries, mutations=mutations
+            _make_context(room=room),
+            "stealth",
+            "moderate",
+            "sneaking",
+            queries=queries,
+            mutations=mutations,
+            db_mod=database,
         )
         payload = _dice_event(room)
         assert payload["dramatic"] is True
@@ -57,9 +75,17 @@ class TestSkillCheckDramatic:
     async def test_routine_roll_not_dramatic(self, force_d20):
         force_d20(10)
         queries, mutations = _skill_mocks()
+        database, conn = make_db_mod()
+        conn.execute = AsyncMock()
         room = _make_mock_room()
         await _check_skill_impl(
-            _make_context(room=room), "stealth", "moderate", "sneaking", queries=queries, mutations=mutations
+            _make_context(room=room),
+            "stealth",
+            "moderate",
+            "sneaking",
+            queries=queries,
+            mutations=mutations,
+            db_mod=database,
         )
         payload = _dice_event(room)
         assert payload["dramatic"] is False
