@@ -8,7 +8,8 @@ GRIEVANCES = {"broken_promise", "injustice"}
 
 
 def validate_ledger(ledger, participants):
-    hostiles = {p["id"] for p in participants if p["type"] == "enemy"}
+    # Mirrors CombatParticipant.is_ally: a player risen as a temporary_hollowed echo is a hostile key.
+    hostiles = {p["id"] for p in participants if p["type"] not in ("player", "companion")}
     if not isinstance(ledger, dict) or any(
         key not in hostiles or side not in ("ally", "hostile") for key, side in ledger.items()
     ):

@@ -341,3 +341,21 @@ async def test_unknown_targets_refuse_before_writes(world):
             ctx, "missing_target", 0, "injustice", "injustice", db_mod=database, queries=queries
         )
     assert await conn.fetchval("SELECT data FROM players WHERE player_id=$1", ids[0]) == before
+
+
+def test_ledger_reloads_after_player_rises_as_echo():
+    from dataclasses import replace
+
+    from combat._helpers import _make_combat_state
+    from voice_condition_fixtures import place_actors
+
+    import combat_wrongdoing
+    from combat_state import CombatState
+
+    state = _make_combat_state()
+    player = state.participants[0]
+    echo = replace(player, id="player_2", type="temporary_hollowed")
+    state.participants.append(echo)
+    state = place_actors(state)
+    combat_wrongdoing.record_attack(state, player, echo)
+    assert CombatState.from_dict(state.to_dict()).first_hostility == {"player_2": "ally"}
