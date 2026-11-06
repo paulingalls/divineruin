@@ -33,7 +33,10 @@ async def test_generated_entry_resume(
 ):
     h = LootHarness()
     try:
-        await h.prepare(levels, companion)
+        await h.prepare(levels, companion or "companion_kael")
+        if not companion:
+            assert h.sd.companion is not None
+            h.sd.companion.is_present = False
         templates = await h.pool.fetchval("SELECT count(*) FROM encounter_templates")
         with patch("combat_entry.Random", return_value=Random(0)):
             result = await h.command("enter_mode", {"mode": "combat", "difficulty": difficulty, "tier": tier})
@@ -130,3 +133,82 @@ async def test_unresolvable_terrain_starts_nothing(reset_db_pool, terrain, exist
     finally:
         await h.close()
         await h.pool.execute("DELETE FROM locations WHERE id=$1", location_id)
+
+
+@pytest.mark.parametrize(
+    "skills,expected",
+    [
+        ({}, {"stalker_claws": 1, "wolf_fangs": 2}),
+        (
+            {"survival": "trained"},
+            {"stalker_pelt": 1, "stalker_claws": 1, "wolf_pelt": 1, "wolf_fangs": 2, "wolf_meat": 2},
+        ),
+        (
+            {"survival": "expert", "crafting": "expert"},
+            {
+                "stalker_pelt": 1,
+                "stalker_claws": 1,
+                "hollow_residue_t1": 1,
+                "wolf_pelt": 1,
+                "wolf_fangs": 1,
+                "wolf_meat": 2,
+            },
+        ),
+    ],
+)
+async def test_generated_victory_uses_saved_loot_tables_and_gates(reset_db_pool, skills, expected):
+    h = LootHarness()
+    try:
+        await h.prepare()
+        await h.pool.execute(
+            "UPDATE players SET data=jsonb_set(data,'{proficiencies}',$2::jsonb) WHERE player_id=$1",
+            h.players[0],
+            json.dumps([skill for skill, tier in skills.items() if tier == "trained"]),
+        )
+        for skill, tier in skills.items():
+            if tier == "expert":
+                await h.pool.execute(
+                    "INSERT INTO skill_advancement (player_id,skill_id,tier) VALUES ($1,$2,$3)",
+                    h.players[0],
+                    skill,
+                    tier,
+                )
+        with patch("combat_entry.Random", return_value=Random(9)):
+            result = await h.command("enter_mode", {"mode": "combat", "difficulty": "standard"})
+        h.roster = result["participants"]
+        state = await h.reload()
+        enemies = [p for p in state.participants if p.type == "enemy"]
+        assert [(p.creature_id, p.role, p.loot_table_id) for p in enemies] == [
+            ("thornveld_stalker", "minion", "loot_thornveld_stalker"),
+            ("hollow_shadeling", "standard", "loot_hollow_drift"),
+            ("grey_wolf", "standard", "loot_grey_wolf"),
+            ("bandit", "minion", "loot_bandit"),
+        ]
+        h.enemies = [p.id for p in enemies]
+        await h.victory(Random(1))
+        rows = await h.pool.fetch(
+            "SELECT player_id,item_id,data,tainted FROM player_inventory WHERE player_id=$1", h.players[0]
+        )
+        assert {row["item_id"]: json.loads(row["data"])["quantity"] for row in rows} == expected
+        assert all(row["player_id"] == h.players[0] for row in rows)
+        assert all(row["tainted"] is (row["item_id"] == "hollow_residue_t1") for row in rows)
+        from db_queries import get_player
+
+        player = await get_player(h.players[0])
+        assert player is not None and player["gold"] == 0
+    finally:
+        await h.close()
+
+
+async def test_infeasible_environment_starts_nothing(reset_db_pool):
+    h = LootHarness()
+    try:
+        await h.prepare(location="keldaran_southern_pass")
+        rows = await h.pool.fetchval("SELECT count(*) FROM combat_instances")
+        error = await h.command("enter_mode", {"mode": "combat", "difficulty": "standard", "tier": 3}, error=True)
+        assert "No fit" in error and "keldaran_mountains" in error and "mountain" in error
+        assert h.sd.combat_state is None and not isinstance(h.session.current_agent, CombatAgent)
+        assert await h.pool.fetchval("SELECT count(*) FROM combat_instances") == rows
+        assert not any(e["type"] == "combat_started" for e in published_payloads(h.sd.room))
+    finally:
+        await h.close()

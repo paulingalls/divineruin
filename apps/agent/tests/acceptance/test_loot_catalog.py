@@ -1,5 +1,7 @@
 import asyncio
 import json
+from pathlib import Path
+from random import Random
 
 import asyncpg
 import pytest
@@ -169,3 +171,57 @@ def test_every_drop_has_exactly_one_crafting_disposition(catalog):
     assert traded
     for item_id in owners:
         assert (item_id in linked) != (item_id in traded), item_id
+
+
+@pytest.fixture
+def mock_combat_agent_factory():
+    return None
+
+
+CATEGORY_VICTORIES = [
+    ("hollow", "hollow_shadeling", 1, {"hollow_residue_t1": 1}, 0),
+    ("beast", "grey_wolf", 9, {"wolf_pelt": 1, "wolf_fangs": 4, "wolf_meat": 2}, 0),
+    ("humanoid", "bandit", 9, {"shortsword_basic": 1}, 4),
+    ("construct", "war_golem", 9, {"golem_core": 1, "enchanted_stone": 7, "forged_steel": 2}, 0),
+    ("undead", "schema_undead", 9, {"healing_salve": 1}, 0),
+    ("elemental", "corrupted_treant", 9, {"ironwood_bark": 4}, 0),
+]
+
+
+@pytest.mark.parametrize("category,creature,seed,expected,silver", CATEGORY_VICTORIES)
+async def test_every_category_victory_loot(reset_db_pool, category, creature, seed, expected, silver):
+    from acceptance.loot_harness import LootHarness
+
+    import db
+    import db_queries
+    from creature_schema import CATEGORIES
+
+    assert {case[0] for case in CATEGORY_VICTORIES} == set(CATEGORIES)
+    h = LootHarness()
+    pool = await db.get_pool()
+    if category == "undead":
+        fixtures = json.loads(
+            (Path(__file__).resolve().parents[4] / "packages/shared/fixtures/creature_blocks.json").read_text()
+        )
+        row = next(case["block"] for case in fixtures["valid"] if case["name"] == "synthetic_undead")
+        await pool.execute("INSERT INTO creatures (id,data) VALUES ($1,$2::jsonb)", row["id"], json.dumps(row))
+    try:
+        await h.start_loot(creature, [{"crafting": "expert", "survival": "expert", "arcana": "expert"}], 1)
+        assert (await h.reload()).participants
+        await h.victory(Random(seed))
+        records = await pool.fetch("SELECT item_id,data,tainted FROM player_inventory WHERE player_id=$1", h.players[0])
+        actual = {r["item_id"]: json.loads(r["data"]) for r in records}
+        assert {key: value["quantity"] for key, value in actual.items()} == expected
+        assert expected
+        assert all(r["tainted"] is (category == "hollow") for r in records)
+        player = await db_queries.get_player(h.players[0])
+        assert player is not None and player["gold"] == pytest.approx(silver / 10)
+    finally:
+        if hasattr(h, "session"):
+            await h.close()
+        elif hasattr(h, "encounter_id"):
+            await pool.execute("DELETE FROM encounter_templates WHERE id=$1", h.encounter_id)
+            for pid in h.players:
+                await pool.execute("DELETE FROM players WHERE player_id=$1", pid)
+        if category == "undead":
+            await pool.execute("DELETE FROM creatures WHERE id=$1", creature)

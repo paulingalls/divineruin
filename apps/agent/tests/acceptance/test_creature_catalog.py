@@ -206,3 +206,28 @@ async def test_public_creature_queries(reset_db_pool, location, levels, region, 
 
 class RollbackQuery(Exception):
     pass
+
+
+@pytest.mark.parametrize("region,exists", [(None, False), (None, True), ("atlantis", True)])
+async def test_public_catalog_refuses_unknown_location_or_region(reset_db_pool, region, exists):
+    from uuid import uuid4
+
+    from acceptance.mawling_harness import MawlingHarness
+
+    h = MawlingHarness()
+    location_id = f"catalog_missing_{uuid4().hex}"
+    try:
+        await h.prepare(location=location_id)
+        if exists:
+            await h.pool.execute(
+                "INSERT INTO locations (id,data) VALUES ($1,$2::jsonb)",
+                location_id,
+                json.dumps({"id": location_id, "region": region}),
+            )
+        error = await h.command("query_info", {"kind": "creature"}, error=True)
+        assert ("region" if exists else location_id) in error
+        if region:
+            assert region in error
+    finally:
+        await h.close()
+        await h.pool.execute("DELETE FROM locations WHERE id=$1", location_id)
