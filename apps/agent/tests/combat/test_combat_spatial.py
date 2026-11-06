@@ -243,6 +243,7 @@ def test_combat_tools_unchanged():
         "end_combat",
         "activate",
         "get_spell_info",
+        "select",
     }
 
 
