@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.35.0 — 2026-11-06
+
+- Every patron now has its Layer 2 Resonance modifier and its three favor tiers (Acknowledged, Devoted, Exalted) in `content/gods.json`. The Python loader and a new shared TypeScript god entity validate them against one fixture corpus and fail loudly on a bad profile.
+- A caster's patron changes their magic. Kaelen's combat spells generate 1 less Resonance. Thyra's generate less on natural ground. Syrath's generate 2 less while hidden. Orenthel's healing generates none. Valdris's are halved against a creature that wronged the party. Mortaen's generate none on a target at 0 HP. Nythera's generate 1 less in a place the caster has never been. No reduction goes below 0. Veythar's arcane casters roll 2 Flickering bonus dice instead of 1. Aelora's spells ignore Veil Ward penalties. At Resonance 9+, a Zhael follower hears two Hollow Echo results and picks one aloud.
+- Hiding and grievances are real state. A successful Stealth check hides the player until they cast, attack or fail a Stealth check the DM calls when a watcher might notice. Combat records who struck first, and the DM can mark a broken promise or an injustice with `update_npc_disposition`.
+- Thyra's Nature's Pulse is live: advantage on Perception and Survival in natural terrain for every check, discovery, gathering, travel and Choir-search roll. The DM is also cued to narrate ecosystem health without a check.
+- A favor loss now whispers only when it drops the player's tier; smaller losses stay silent. Neglect decay is still narrated at session start and on join.
+- The Unbound Path works. The DM can tell an Unbound player their exact Resonance. Once per encounter they can push it up by 3 through `activate`, and once per session Veil Mastery turns a Hollow Echo into "Nothing stirs".
+- Phase 8 M8.1: 3 open acceptance criteria (was 9). The alignment heartbeat is deferred to its own sprint.
+
 ## 0.34.0 — 2026-11-04
 
 - Every location now appears on the HUD map. Seven locations had no map node (Training Hall, Grimjaw's Forge, Grimjaw's Quarters, the Old-Growth Grove, Keldaran Southern Pass, the Tidal Shore and the Reed Marsh), so the map panel silently left them and their routes off. A test now fails when a location has no node, and the location-authoring guide lists it.
