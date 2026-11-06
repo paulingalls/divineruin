@@ -280,6 +280,10 @@ async def test_nythera_arrival_revisit_and_member_history(dev_db_pool):
             other = await cast("nythera", ctx=other_ctx, database=database, connection=conn)
             assert other["resonance_generated"] == 3
             assert "patron_resonance" not in other
+            other_map = await conn.fetchval(
+                "SELECT data FROM player_map_progress WHERE player_id=$1 AND location_id='first_stop'", ids[1]
+            )
+            assert json.loads(other_map) == {"connections": ["elsewhere"], "revisited": True}
             await arrive("first_stop")
             assert await generation() == 2
             await arrive("elsewhere")
