@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.36.1 — 2026-11-06
+
+- CI's Python lanes install ffmpeg from a pinned, sha256-checked static build (BtbN month-end 2026-10-31, LGPL 8.1) that is cached between runs, instead of through apt. The Azure apt mirror had stalled that step to the 20-minute job timeout twice in one day. The step is capped at 5 minutes.
+
 ## 0.36.0 — 2026-11-06
 
 - Every patron now has its Layer 2 Resonance modifier and its three favor tiers (Acknowledged, Devoted, Exalted) in `content/gods.json`. The Python loader and a new shared TypeScript god entity validate them against one fixture corpus and fail loudly on a bad profile.
