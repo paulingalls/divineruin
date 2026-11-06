@@ -80,7 +80,7 @@ def test_a_command_carrying_a_strike_field_is_refused(field):
 
 
 def test_combat_start_runs_the_kind_check():
-    tree = ast.parse((_AGENT_DIR / "combat_init.py").read_text())
+    tree = ast.parse((_AGENT_DIR / "combat_init_participants.py").read_text())
     called = {
         node.func.id if isinstance(node.func, ast.Name) else getattr(node.func, "attr", None)
         for node in ast.walk(tree)

@@ -28,7 +28,7 @@ from rules_engine import SKILL_TIER_ORDER, SkillTier
 # Enemy creature categories (catalog-derived runtime `category`). The currency-bearing
 # ones roll coin per the Currency Drop Rules; the rest carry none ("animals don't carry coin").
 _CURRENCY_CATEGORIES = frozenset({"humanoid", "hollow_rend", "hollow_wrack", "undead"})
-_NO_CURRENCY_CATEGORIES = frozenset({"beast", "hollow_drift", "construct", "named"})
+_NO_CURRENCY_CATEGORIES = frozenset({"beast", "hollow_drift", "construct", "elemental", "named"})
 _VALID_CATEGORIES = _CURRENCY_CATEGORIES | _NO_CURRENCY_CATEGORIES
 
 _VALID_ROLES = frozenset(r.value for r in EncounterRole)

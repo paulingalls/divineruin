@@ -29,3 +29,49 @@ async def query_creatures_by_region(region_id: str, tier: int | None = None) -> 
         tier,
     )
     return [json.loads(row["data"]) for row in rows]
+
+
+async def creature_summary(session, target_id):
+    from livekit.agents.llm import ToolError
+
+    import db_content_queries
+    import db_queries
+    from combat_entry import load_party_players, mean_player_level
+    from creature_tiers import tier_for_player_level
+
+    try:
+        if target_id:
+            rows = [await query_creature_by_id(target_id)]
+        else:
+            location = await db_content_queries.get_location(session.location_id)
+            if location is None:
+                raise ToolError(f"Location '{session.location_id}' not found.")
+            player = await db_queries.get_player(session.acting_player_id)
+            if player is None:
+                raise ToolError(f"Player '{session.acting_player_id}' not found.")
+            members = await load_party_players(session, player, queries=db_queries)
+            tier = tier_for_player_level(mean_player_level(members))
+            region = location.get("region")
+            if not isinstance(region, str):
+                raise ValueError(f"Location '{session.location_id}' has invalid region {region!r}")
+            rows = await query_creatures_by_region(region, tier)
+    except (CreatureNotFoundError, ValueError) as error:
+        raise ToolError(f"Creature query failed: {error}") from error
+    keys = (
+        "id",
+        "name",
+        "category",
+        "tier",
+        "level",
+        "hp",
+        "ac",
+        "speed",
+        "attacks",
+        "behavior",
+        "narration",
+        "audio",
+        "hollow",
+        "signature_ability",
+    )
+    summaries = [{key: row[key] for key in keys if key in row} for row in rows]
+    return json.dumps(summaries[0] if target_id else summaries)

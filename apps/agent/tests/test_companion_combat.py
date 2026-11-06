@@ -113,7 +113,7 @@ class TestCompanionCombatProfile:
         # ValueError that crashes combat init (retro-try combat-init-wrap, decision 4c60aefd).
         import dataclasses
 
-        import combat_init
+        import combat_init_participants
         from companion_profiles import CompanionAttack
 
         good = get_companion_profile("companion_kael")
@@ -126,7 +126,7 @@ class TestCompanionCombatProfile:
             damage_type="slashing",
         )
         corrupt = dataclasses.replace(good, attacks=(bad_attack,))
-        monkeypatch.setattr(combat_init, "get_companion_profile", lambda _: corrupt)
+        monkeypatch.setattr(combat_init_participants, "get_companion_profile", lambda _: corrupt)
 
         with pytest.raises(ToolError):
             await _run_combat_with_companion(CompanionState(id="companion_kael", name="Kael"))

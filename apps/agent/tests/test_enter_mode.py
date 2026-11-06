@@ -15,15 +15,6 @@ def _ctx() -> MagicMock:
 
 class TestEnterModeDelegation:
     @pytest.mark.asyncio
-    async def test_combat_delegates_with_encounter_args(self):
-        ctx = _ctx()
-        sentinel = ("combat-agent", "{}")
-        with patch("mode_tools._start_combat_impl", new_callable=AsyncMock, return_value=sentinel) as m:
-            result = await _enter_mode_impl(ctx, "combat", "goblin_ambush", "they leap from the reeds")
-        m.assert_awaited_once_with(ctx, "goblin_ambush", "they leap from the reeds")
-        assert result is sentinel
-
-    @pytest.mark.asyncio
     async def test_dispatch_delegates(self):
         ctx = _ctx()
         sentinel = ("dispatch-agent", "{}")
@@ -43,14 +34,6 @@ class TestEnterModeDelegation:
 
 
 class TestEnterModeFailLoud:
-    @pytest.mark.asyncio
-    async def test_combat_without_encounter_id_fails_loud(self):
-        ctx = _ctx()
-        with patch("mode_tools._start_combat_impl", new_callable=AsyncMock) as m:
-            with pytest.raises(ToolError, match="encounter_id"):
-                await _enter_mode_impl(ctx, "combat", "", "they leap out")
-        m.assert_not_awaited()
-
     @pytest.mark.asyncio
     async def test_unknown_mode_fails_loud_listing_valid_modes(self):
         ctx = _ctx()

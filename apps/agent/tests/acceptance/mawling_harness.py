@@ -104,6 +104,33 @@ class MawlingHarness:
         self.enemies = [p["id"] for p in self.roster if p["type"] == "enemy"]
         return self
 
+    async def prepare(self, levels=(3,), companion="companion_kael", location="greyvale_wilderness_north"):
+        from query_tools import query_info
+
+        self.pool = await db.get_pool()
+        self.encounter_id = "ruins_mawling_pair"
+        self.players = [f"generated_{uuid4().hex}" for _ in levels]
+        for pid, level in zip(self.players, levels, strict=True):
+            await seed_player_with_pools(self.pool, player_id=pid, class_="warrior")
+            row = await db_queries.get_player(pid)
+            assert row is not None
+            row.update(
+                level=level,
+                gold=0,
+                hp={"current": 100, "max": 100},
+                equipment={"main_hand": {"name": "Longsword", "damage": "1d8", "damage_type": "slashing"}},
+            )
+            await self.pool.execute("UPDATE players SET data=$2::jsonb WHERE player_id=$1", pid, json.dumps(row))
+        self.sd = SessionData(player_id=self.players[0], location_id=location, room=make_mock_room())
+        for pid in self.players[1:]:
+            self.sd.party.members.append(PartyMember(pid, ResonanceTrack(), ConcentrationState()))
+        if companion:
+            self.sd.companion = CompanionState(id=companion, name=companion.removeprefix("companion_").title())
+        self.model = ScenarioModel([])
+        self.session = AgentSession(llm=self.model, max_tool_steps=5, userdata=self.sd)
+        await self.session.start(Agent(instructions="Execute the command.", tools=[enter_mode, query_info]))
+        return self
+
     async def command(self, name, arguments, *, error=False):
         self.model.commands.append((name, arguments))
         with self.sd._bind_authenticated_actor(self.players[0], 1, lambda *_: None):
