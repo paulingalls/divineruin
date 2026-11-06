@@ -174,12 +174,16 @@ def e2e_tasks(shared=(), stack_keyed=()):
             ]
         # Anchors prevent the chromium remainder from also matching home-character.
         filters = " ".join(shlex.quote("/" + p.name.replace(".", r"\.") + "$") for p in files)
+        # chromium specs read the Python inventory projection; a cold per-sandbox venv build
+        # inside their synchronous spawn exhausted the 120 s test budget (sprint close 11-04, 11-06).
+        python = part == "chromium"
+        run = f"bash scripts/proof-e2e.sh {part} --project={project} {filters}"
         tasks[f"e2e:{part}"] = {
-            "run": f"bash scripts/proof-e2e.sh {part} --project={project} {filters}",
+            "run": f"uv sync --project apps/agent --frozen && {run}" if python else run,
             "sets": ["sprint"],
             "lane": "e2e",
             "needs": ["e2e-stack"],
-            "links": ["node_modules", "e2e/node_modules"],
+            "links": ["node_modules", "e2e/node_modules", *(["apps/agent/.venv"] if python else [])],
             "inputs": inputs,
             "keyed": [
                 *sorted(shared if part == "chromium" else stack_keyed),
