@@ -7,6 +7,7 @@ from livekit import agents
 from activate_tools import activate
 from base_agent import BaseGameAgent
 from check_tools import check
+from choice_tools import select
 from combat_death_save import request_death_save
 from combat_end import end_combat
 from combat_turn import consume_legendary_action, declare_phase, resolve_phase
@@ -22,10 +23,6 @@ from warm_prompts import format_combat_hot_line
 # the engine's wrap end-condition. The old per-actor resolve_enemy_turn/request_attack
 # verbs are gone — all damage routes through CombatParticipant HP via the packet path.
 #
-# The `select` verb is intentionally NOT here. Combat DOES award XP now — end_combat grants it
-# party-wide inside its own transaction (M28 story-001), so an L10/15/20 auto-grant applies mid-
-# teardown — but the L5 fork it can surface is only ever RESOLVED after the handoff: end_combat
-# returns the exploration agent in the same breath, and select lives there (concern 3c02318dfa99).
 COMBAT_AGENT_TOOLS = [
     declare_phase,
     resolve_phase,
@@ -36,6 +33,7 @@ COMBAT_AGENT_TOOLS = [
     query_info,
     activate,
     get_spell_info,
+    select,
 ]
 
 
