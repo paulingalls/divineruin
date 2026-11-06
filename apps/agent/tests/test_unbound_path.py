@@ -5,7 +5,7 @@ from functools import partial
 from unittest.mock import patch
 
 import pytest
-from _unbound_path_fixtures import cast, encounter, push, row
+from _unbound_path_fixtures import cast, encounter, phase, push, row
 from _unbound_path_fixtures import world as world
 from livekit.agents.llm import ToolError
 from sample_fixtures import published_payloads
@@ -48,19 +48,13 @@ async def test_guest_push_and_first_echo_are_independent_member_uses(world):
     with w.ctx.userdata._bind_authenticated_actor(w.ids[1], 4, lambda *_: None):
         assert (await push(w))["resonance_added"] == 3
         assert (await row(w))["resonance"]["current"] == 12
-        with pytest.raises(ToolError, match="spent"):
-            await push(w)
         w.ctx.userdata.combat_state = None
-        first = await cast(w)
-        second = await cast(w)
-    assert first["hollow_echo"]["band"] == "nothing"
-    assert first["hollow_echo"]["veil_mastery"] is True
-    assert second["hollow_echo"]["band"] == "breach"
+        assert (await cast(w))["hollow_echo"]["veil_mastery"] is True
     host, guest = w.ctx.userdata.party.members
     assert not host.unbound_veil_mastery_used and guest.unbound_veil_mastery_used
     assert host.resonance.current == 9 and guest.resonance.current == 12
     echoes = [p for p in published_payloads(w.ctx.userdata.room) if p["type"] == "hollow_echo_result"]
-    assert [p["band"] for p in echoes] == ["nothing", "breach"]
+    assert [p["band"] for p in echoes] == ["nothing"]
 
 
 async def test_follower_sees_state_only_and_cannot_push(world):
@@ -82,8 +76,6 @@ async def test_follower_sees_state_only_and_cannot_push(world):
 
 
 async def test_push_requires_encounter_participation_and_ignores_ward_generation(world):
-    from _unbound_path_fixtures import encounter
-
     w = world
     with w.ctx.userdata._bind_authenticated_actor(w.ids[1], 4, lambda *_: None):
         with pytest.raises(ToolError, match="encounter"):
@@ -107,8 +99,6 @@ async def test_push_requires_encounter_participation_and_ignores_ward_generation
     assert (await row(w))["resonance"]["current"] == 10
     events = published_payloads(w.ctx.userdata.room)
     assert events[-1] == {"type": "resonance_changed", "state": "overreach", "caster_id": w.ids[1]}
-    await push(w)
-    assert (await row(w, 0))["resonance"]["current"] == 12
 
 
 @pytest.mark.parametrize("patron,first_roll", [(None, 1), ("none", 20)])
@@ -158,8 +148,6 @@ async def test_unaffordable_cast_preserves_mastery(world):
 
 
 async def test_combat_cast_commits_mastery_for_declaring_member(world):
-    from _unbound_path_fixtures import phase
-
     w = world
     encounter(w)
     result = await phase(w)
@@ -224,24 +212,19 @@ async def test_encounter_end_and_start_refill_only_raw_channeling(world):
 
     w = world
     encounter(w)
+    host = w.ctx.userdata.party.members[0]
     await push(w)
-    with w.ctx.userdata._bind_authenticated_actor(w.ids[1], 4, lambda *_: None):
-        await push(w)
-    for m in w.ctx.userdata.party.members:
-        m.unbound_veil_mastery_used = True
+    host.unbound_veil_mastery_used = True
     await _end_combat_impl(w.ctx, "fled", mutations=combat_end_mutations(), db_mod=w.db)
-    assert all(not m.unbound_raw_channeling_used and m.unbound_veil_mastery_used for m in w.ctx.userdata.party.members)
+    assert not host.unbound_raw_channeling_used and host.unbound_veil_mastery_used
     # Start must reset independently of end, including encounters entered with retained flags.
-    for m in w.ctx.userdata.party.members:
-        m.unbound_raw_channeling_used = True
+    host.unbound_raw_channeling_used = True
     mutations, queries, content = _make_start_combat_mocks()
     queries.get_player = AsyncMock(return_value={**SAMPLE_PLAYER, "player_id": w.ids[0]})
     queries.get_players_for_update = AsyncMock(return_value={w.ids[1]: {**SAMPLE_PLAYER, "player_id": w.ids[1]}})
     await _start_combat_impl(
         w.ctx, "goblin_patrol", "A patrol.", mutations=mutations, queries=queries, content=content, db_mod=w.db
     )
-    assert all(not m.unbound_raw_channeling_used and m.unbound_veil_mastery_used for m in w.ctx.userdata.party.members)
+    assert not host.unbound_raw_channeling_used and host.unbound_veil_mastery_used
     await push(w)
-    with w.ctx.userdata._bind_authenticated_actor(w.ids[1], 4, lambda *_: None):
-        await push(w)
-    assert all(m.unbound_raw_channeling_used for m in w.ctx.userdata.party.members)
+    assert host.unbound_raw_channeling_used

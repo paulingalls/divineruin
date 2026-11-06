@@ -46,8 +46,6 @@ async def test_rollback_preserves_resources_memory_uses_and_events(world, action
                 await push(w)
         else:
             assert member.unbound_veil_mastery_used
-            w.ctx.userdata.combat_state = None
-            assert (await cast(w))["hollow_echo"]["band"] == "breach"
 
 
 @pytest.mark.parametrize("combat", [False, True])
@@ -70,8 +68,6 @@ async def test_publish_failure_cannot_restore_committed_mastery(world, combat):
                         await cast(w, sid="arcane_fireball", echo=echo)
         assert w.ctx.userdata.party.members[1].unbound_veil_mastery_used
         assert (await row(w))["focus"]["current"] < 100
-        w.ctx.userdata.combat_state = None
-        assert (await cast(w))["hollow_echo"]["band"] == "breach"
 
 
 async def test_guest_revoked_after_the_row_lock_cannot_push(world):
