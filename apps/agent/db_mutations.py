@@ -270,11 +270,35 @@ async def upsert_map_progress(
         INSERT INTO player_map_progress (player_id, location_id, data)
         VALUES ($1, $2, $3::jsonb)
         ON CONFLICT (player_id, location_id) DO UPDATE
-        SET data = player_map_progress.data || '{"revisited": true}'::jsonb
+        SET data = EXCLUDED.data || player_map_progress.data || '{"revisited": true}'::jsonb
         """,
         player_id,
         location_id,
         json.dumps({"connections": connections}),
+    )
+
+
+async def record_departure(
+    player_id: str,
+    location_id: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> None:
+    """Mark a location as visited when the player leaves it, keeping any existing row.
+
+    Character creation writes no map row for the starting location, so without this a return to the
+    start would read as a first stay. The row carries no connections (the departed location's exits
+    are not in hand); the next arrival's upsert fills them in.
+    """
+    _conn = conn or await db.get_pool()
+    await _conn.execute(
+        """
+        INSERT INTO player_map_progress (player_id, location_id, data)
+        VALUES ($1, $2, '{}'::jsonb)
+        ON CONFLICT (player_id, location_id) DO NOTHING
+        """,
+        player_id,
+        location_id,
     )
 
 

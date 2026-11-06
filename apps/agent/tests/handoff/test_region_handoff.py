@@ -24,6 +24,7 @@ def _move_mocks(location_map: dict) -> dict:
     mock_mutations = MagicMock()
     mock_mutations.update_player_location = AsyncMock()
     mock_mutations.upsert_map_progress = AsyncMock()
+    mock_mutations.record_departure = AsyncMock()
     mock_queries = MagicMock()
     mock_queries.get_player = AsyncMock(return_value={"name": "Test", "level": 1})
     mock_queries.get_targets_at_location = AsyncMock(return_value=[])

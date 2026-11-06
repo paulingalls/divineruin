@@ -69,6 +69,7 @@ class TestMovePlayer:
         mock_mutations = MagicMock()
         mock_mutations.update_player_location = AsyncMock()
         mock_mutations.upsert_map_progress = AsyncMock()
+        mock_mutations.record_departure = AsyncMock()
         return mock_db, mock_content, mock_queries, mock_mutations, mock_conn
 
     @pytest.mark.asyncio

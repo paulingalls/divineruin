@@ -20,6 +20,7 @@ def _travel_mocks(player=None):
     mutations = MagicMock()
     mutations.update_player_location = AsyncMock()
     mutations.upsert_map_progress = AsyncMock()
+    mutations.record_departure = AsyncMock()
     conditions_mutations = MagicMock()
     conditions_mutations.save_player_conditions = AsyncMock()
     travel_mutations = MagicMock()

@@ -273,7 +273,9 @@ async def test_nythera_arrival_revisit_and_member_history(dev_db_pool):
 
             database = MagicMock(transaction=scope, extract_exit_connections=lambda exits: list(exits))
             mutations = MagicMock(
-                update_player_location=AsyncMock(), upsert_map_progress=db_mutations.upsert_map_progress
+                update_player_location=AsyncMock(),
+                upsert_map_progress=db_mutations.upsert_map_progress,
+                record_departure=db_mutations.record_departure,
             )
 
             async def arrive(destination):
@@ -294,6 +296,7 @@ async def test_nythera_arrival_revisit_and_member_history(dev_db_pool):
             async def generation():
                 return (await cast("nythera", ctx=ctx, database=database, connection=conn))["resonance_generated"]
 
+            assert await generation() == 3
             await arrive("first_stop")
             assert await generation() == 2
             other_ctx = make_context(player_id=ids[1], location_id="first_stop")
@@ -311,6 +314,12 @@ async def test_nythera_arrival_revisit_and_member_history(dev_db_pool):
                 )
             )
             assert data == {"connections": [], "revisited": True}
+            await arrive("accord_guild_hall")
+            assert await generation() == 3
+            start = await conn.fetchval(
+                "SELECT data FROM player_map_progress WHERE player_id=$1 AND location_id='accord_guild_hall'", ids[0]
+            )
+            assert json.loads(start) == {"connections": [], "revisited": True}
         finally:
             await transaction.rollback()
 

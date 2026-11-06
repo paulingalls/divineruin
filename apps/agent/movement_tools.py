@@ -81,6 +81,8 @@ async def apply_arrival(
         for member_id in member_ids:
             await mutations.update_player_location(member_id, destination_id, conn=conn)
             if destination_id != previous_location_id:
+                if previous_location_id is not None:
+                    await mutations.record_departure(member_id, previous_location_id, conn=conn)
                 await mutations.upsert_map_progress(member_id, destination_id, exit_connections, conn=conn)
             await travel_mutations.update_player_travel_state(member_id, None, conn=conn)
 
