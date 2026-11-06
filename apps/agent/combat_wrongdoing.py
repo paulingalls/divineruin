@@ -56,10 +56,9 @@ async def wrongdoing(session, player, *, target_id, combat_state, conn, queries_
             raise ToolError(f"Unknown target: {target_id}")
         if state.first_hostility.get(target_id) == "hostile":
             evidence = {"target_id": target_id, "source": "aggression"}
-    elif not await _is_known_creature(target_id, conn, queries_mod):
-        # Tolerated: objects, corpses and other DM-narrated ids hold no grievance, so the cast
-        # generates standard Resonance. The grievance writer still refuses an unknown id.
-        return None
+    # Out of combat any target id is tolerated: only update_npc_disposition writes grievances,
+    # and it refuses unknown NPCs, so objects, corpses, companions and DM-narrated ids find no
+    # grievance and the cast generates standard Resonance.
     # Exact runtime identity: creature templates never inherit an NPC's grievance.
     for pid in session.party.member_ids:
         row = player if pid == player["player_id"] else await queries_mod.get_player(pid, conn=conn)
@@ -69,12 +68,3 @@ async def wrongdoing(session, player, *, target_id, combat_state, conn, queries_
         if kind:
             evidence = {"target_id": target_id, "player_id": pid, "source": "grievance", "kind": kind}
     return evidence
-
-
-async def _is_known_creature(target_id, conn, queries_mod):
-    if await queries_mod.get_player(target_id, conn=conn) is not None:
-        return True
-    row = await conn.fetchrow(
-        "SELECT 1 FROM npcs WHERE id=$1 UNION ALL SELECT 1 FROM companions WHERE id=$1", target_id
-    )
-    return row is not None
