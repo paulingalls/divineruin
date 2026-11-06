@@ -27,6 +27,8 @@ _BLESS_ROW = {
     "spell_tier": "minor",
     "verbal": True,
     "hostile": False,
+    "combat_aid": True,
+    "healing": False,
     "focus_cost": 2,
     "mechanics": "An ally gains +1d4 on attacks and saves. Concentration.",
     "narration_cue": "You speak their name and your patron hears — warmth settling into bones.",
