@@ -1,20 +1,4 @@
-"""Choice resolution tools — the generic ``select`` verb (M4, ADR 0007).
-
-select resolves a pending player choice surfaced by a Resolve. Today the only
-pending choice is the L5 specialization fork that ``_award_xp_core`` surfaces on
-level-up (the SPECIALIZATION_CHOICE event's ``milestone_id`` is the id select
-resolves against — it arrives from the tap/voice call, not from hand-off state
-on the Resolve's result). select absorbed the
-with-choice path of ``resolve_milestone``, which M4 story-004 removed; it enforces
-immutability via the FOR UPDATE read, so a duplicate or concurrent resolution
-loses cleanly.
-
-Rewards are party-wide (M28 story-001), so the fork belongs to the authenticated speaker.
-
-No event is published on resolution: the client dismisses the HUD overlay locally
-on tap (the present-options SPECIALIZATION_CHOICE event is owned by the level-up
-path in progression_tools).
-"""
+"""Resolve authenticated specialization and spoken Hollow Echo choices."""
 
 import json
 import logging
@@ -26,6 +10,7 @@ import db
 import db_queries
 import milestone_persistence
 import milestones
+import patron_echo_choice
 from db_errors import db_tool
 from milestones import Milestone
 from session_data import SessionData
@@ -41,10 +26,9 @@ async def select(
     choice_id: str,
     option: str,
 ) -> str:
-    """Resolve a pending choice the HUD surfaced — today, the level-5 specialization
-    fork. Pass the choice_id from the pending choice and the chosen option id. The
-    choice is permanent. Do NOT call for the level 10/15/20 grants; those apply
-    automatically on level-up."""
+    """Resolve a pending specialization or Hollow Echo choice. Use the emitted choice_id
+    and option id. For Hollow Echo, offer both descriptions aloud and wait for the
+    player's spoken choice before selecting. Level 10/15/20 grants apply automatically."""
     return await _select_impl(context, choice_id, option)
 
 
@@ -80,6 +64,9 @@ async def _select_impl(
     session: SessionData = context.userdata
     target_id = session.acting_player_id
     logger.info("select called: choice_id=%s option=%s caller=%s", choice_id, option, target_id)
+
+    if choice_id.startswith(patron_echo_choice.PREFIX):
+        return await patron_echo_choice.select(session, choice_id, option, db_mod=db_mod, queries_mod=queries_mod)
 
     async with db_mod.transaction() as conn:
         try:

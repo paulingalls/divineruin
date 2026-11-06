@@ -26,6 +26,7 @@ import hollow_echo as hollow_echo_mod
 import hollow_echo_events
 import leveling
 import patron_cast_context
+import patron_echo_choice
 import racial_resonance
 import resonance as resonance_mod
 import resonance_events
@@ -53,6 +54,7 @@ def _gate_spell(player: dict, spell_id: str, known_spell_ids: frozenset[str], *,
     both reject an unknown or unaffordable cast IDENTICALLY — and, in combat, before any write (AC2).
     Pure (no I/O): the caller supplies the already-fetched player row and known ids. Returns the
     resolved Spell."""
+    patron_echo_choice.gate(player)
     try:
         spell = spells_mod.get_spell(spell_id)
     except ValueError as e:
@@ -379,8 +381,9 @@ async def _resolve_cast(
             )
         )
 
-    # Net combat modifiers for the state, with an active ward's -1 die / -1 DC folded into a fresh dict.
-    modifiers = cast_modifiers.ward_combat_modifiers(state, ward_active, resonance=resonance, veil_ward=veil_ward)
+    modifiers = cast_modifiers.ward_combat_modifiers(
+        state, ward_active, resonance=resonance, veil_ward=veil_ward, patron=patron, source=spell.source
+    )
     packet = {
         "narration_cue": spell.narration_cue,
         "audio_cue": spell.audio_cue,
@@ -396,12 +399,11 @@ async def _resolve_cast(
     # Additive — a self-cast (target_id None) leaves the packet shape untouched.
     if target_id is not None:
         packet["target_id"] = target_id
-    # At Overreach the Veil tears: cast_modifiers rolls the d20 (plus the Vaelti advantage d20) and
-    # resolves the echo with the ward's +4. The packet and the events stay here — they close over
-    # session. The Vaelti warning is a bus-only deferred event the background process voices a
-    # heartbeat before the echo lands (story-009 consumer), and must precede the echo publish.
     if state == "overreach":
-        echo, vaelti_warned = cast_modifiers.resolve_overreach_echo(
+        choice_count = next(
+            (m["value"] for m in cast_modifiers.patron_modifiers(patron) if m["kind"] == "echo_roll_choice"), 1
+        )
+        candidates, vaelti_warned = cast_modifiers.resolve_overreach_echo(
             effective_resonance,
             race,
             ward_active,
@@ -409,11 +411,16 @@ async def _resolve_cast(
             hollow_echo=hollow_echo,
             veil_ward=veil_ward,
             racial_mod=racial_mod,
+            choice_count=choice_count,
         )
         if vaelti_warned:
             events.append(lambda: vaelti_warning_mod.publish_vaelti_echo_warning(session))
-        packet["hollow_echo"] = {"band": echo.band, "name": echo.name, "effect": echo.effect}
-        events.append(lambda: echo_events_mod.publish_hollow_echo(session, echo))
+        if choice_count == 2:
+            packet["pending_choice"] = await patron_echo_choice.create(player_id, candidates, conn=conn)
+        else:
+            echo = candidates[0]
+            packet["hollow_echo"] = {"band": echo.band, "name": echo.name, "effect": echo.effect}
+            events.append(lambda: echo_events_mod.publish_hollow_echo(session, echo))
     # Cantrips scale their base damage with character level (story-003); fixed-cost spells carry their
     # damage in `mechanics`, so no scaled dice for them.
     if spell.spell_tier == "cantrip":

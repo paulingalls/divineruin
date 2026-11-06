@@ -18,6 +18,7 @@ class TestCombatAgentConfig:
     def test_combat_tools_are_complete(self):
         from activate_tools import activate
         from check_tools import check
+        from choice_tools import select
         from combat_death_save import request_death_save
         from combat_end import end_combat
         from combat_turn import consume_legendary_action, declare_phase, resolve_phase
@@ -34,6 +35,7 @@ class TestCombatAgentConfig:
             query_info,
             activate,
             get_spell_info,
+            select,
         }
         assert set(COMBAT_AGENT_TOOLS) == expected
 
@@ -62,15 +64,6 @@ class TestCombatAgentConfig:
 
         for tool in [enter_location, move_player, enter_mode, update_quest]:
             assert tool not in COMBAT_AGENT_TOOLS
-
-    def test_combat_excludes_milestone_resolution(self):
-        # Combat DOES award XP (end_combat grants it party-wide via the XP Resolve, M28
-        # story-001), but the L5 fork it can surface is only ever RESOLVED after the handoff:
-        # end_combat returns the exploration agent in the same breath, and select lives there
-        # (concern 3c02318dfa99).
-        from choice_tools import select
-
-        assert select not in COMBAT_AGENT_TOOLS
 
 
 class TestCombatSystemPrompt:
