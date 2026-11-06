@@ -80,7 +80,8 @@ async def apply_arrival(
         session.validate_acting_player(speaker_id)
         for member_id in member_ids:
             await mutations.update_player_location(member_id, destination_id, conn=conn)
-            await mutations.upsert_map_progress(member_id, destination_id, exit_connections, conn=conn)
+            if destination_id != previous_location_id:
+                await mutations.upsert_map_progress(member_id, destination_id, exit_connections, conn=conn)
             await travel_mutations.update_player_travel_state(member_id, None, conn=conn)
 
         # The Veil Ward is scope-owned (M24), so moving can change it: a party that walks out of a

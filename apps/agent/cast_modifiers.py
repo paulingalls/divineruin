@@ -6,21 +6,33 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING
 
 from _gods_content import load_gods
+from patron_cast_context import PatronCastFacts
 from spells import Spell
-from terrain import is_earth_or_stone, resonance_base
+from terrain import is_earth_or_stone, is_natural, resonance_base
 
 if TYPE_CHECKING:
     from hollow_echo import HollowEchoResult
 
 
-def compute_generated_resonance(spell: Spell, race: str | None, *, terrain: str | None, resonance, racial_mod) -> int:
+def compute_generated_resonance(
+    spell: Spell, race: str | None, *, terrain: str | None, resonance, racial_mod, patron: str | None = None
+) -> int:
     """Scale primal catalog generation by terrain, then apply Korath before ward halving.
 
     Catalog values preserve spell-specific tuning; the Focus formula serves in-code builds
     without a catalog entry. Decimal arithmetic preserves half-up ties such as farmland's 1.5.
     """
     base = resonance_base(terrain) if spell.source == "primal" else None  # type: ignore[arg-type]
+    steps = sum(
+        m["value"]
+        for m in patron_modifiers(patron)
+        if m["kind"] == "primal_multiplier_steps" and base is not None and terrain is not None and is_natural(terrain)
+    )
+    if steps:
+        base = max(Decimal(0), Decimal(str(base)) + Decimal("0.1") * steps)
     generated = spell.resonance_by_source.get(spell.source)
+    if generated is None and steps:
+        raise ValueError("Patron primal multiplier requires catalog generation")
     if generated is None:
         generated = resonance.calculate_resonance_generated(spell.focus_cost, spell.source, terrain=terrain)
     elif base is not None:
@@ -43,12 +55,36 @@ def patron_modifiers(patron: str | None) -> list[dict]:
     raise ValueError(f"Unknown patron {patron!r}")
 
 
-def apply_patron_generation(generated: int, spell: Spell, patron: str | None) -> tuple[int, list[str]]:
+def apply_patron_generation(
+    generated: int,
+    spell: Spell,
+    patron: str | None,
+    *,
+    terrain: str | None = None,
+    facts: PatronCastFacts,
+) -> tuple[int, list[str]]:
+    predicates = {
+        "combat_aid": spell.combat_aid,
+        "healing": spell.healing,
+        "natural_ground": terrain is not None and is_natural(terrain),
+        "primal_on_natural_ground": spell.source == "primal" and terrain is not None and is_natural(terrain),
+        "hidden_or_stealthed": facts.is_concealed,
+        "wrongdoer_target": facts.target_wronged_caster,
+        "target_at_zero_hp": facts.targets_at_zero_hp,
+        "unvisited_location": facts.first_stay,
+    }
     applied = []
     for modifier in patron_modifiers(patron):
-        if modifier["kind"] == "generation_delta" and modifier["applies_to"] == "combat_aid" and spell.combat_aid:
-            generated += modifier["value"]
-            applied.append(modifier["applies_to"])
+        if not predicates.get(modifier["applies_to"], False):
+            continue
+        kind, value = modifier["kind"], modifier["value"]
+        if kind == "generation_delta":
+            generated += value
+        elif kind == "generation_override":
+            generated = value
+        elif kind == "generation_multiplier":
+            generated = int(Decimal(generated) * Decimal(str(value)))
+        applied.append(modifier["applies_to"])
     return max(0, generated), applied
 
 

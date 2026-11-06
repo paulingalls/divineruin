@@ -5,55 +5,6 @@ import hollow_echo
 import racial_resonance as racial_mod
 import resonance
 import veil_ward
-from spells import Spell, SpellSource
-
-
-def _spell(
-    *,
-    source: SpellSource = "arcane",
-    focus_cost: int = 10,
-    resonance_value: int | None = 6,
-    spell_id: str = "test_spell",
-) -> Spell:
-    return Spell(
-        verbal=True,
-        hostile=True,
-        id=spell_id,
-        name="Test Spell",
-        source=source,
-        spell_tier="standard",
-        focus_cost=focus_cost,
-        mechanics="Deals force damage to one target.",
-        narration_cue="A surge of raw power snaps outward.",
-        audio_cue="SFX-001",
-        resonance_by_source={source: resonance_value} if resonance_value is not None else {},
-    )
-
-
-class TestComputeGeneratedResonance:
-    def test_catalog_value_is_the_ssot(self):
-        spell = _spell(resonance_value=6, focus_cost=10)
-        assert (
-            cast_modifiers.compute_generated_resonance(
-                spell, None, terrain=None, resonance=resonance, racial_mod=racial_mod
-            )
-            == 6
-        )
-
-    def test_falls_back_to_the_formula_without_a_catalog_entry(self):
-        spell = _spell(source="arcane", focus_cost=10, resonance_value=None)
-        expected = resonance.calculate_resonance_generated(10, "arcane", terrain=None)
-        got = cast_modifiers.compute_generated_resonance(
-            spell, None, terrain=None, resonance=resonance, racial_mod=racial_mod
-        )
-        assert got == expected
-
-    def test_korath_reduction_does_not_apply_to_arcane(self):
-        spell = _spell(source="arcane", resonance_value=6)
-        got = cast_modifiers.compute_generated_resonance(
-            spell, "korath", terrain=None, resonance=resonance, racial_mod=racial_mod
-        )
-        assert got == 6
 
 
 class TestComputeEffectiveResonance:

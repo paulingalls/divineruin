@@ -263,13 +263,14 @@ async def upsert_map_progress(
     *,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> None:
-    """Record a visited location. Idempotent — INSERT ON CONFLICT DO NOTHING."""
+    """Record first arrival, or mark a later stay without replacing discovered connections."""
     _conn = conn or await db.get_pool()
     await _conn.execute(
         """
         INSERT INTO player_map_progress (player_id, location_id, data)
         VALUES ($1, $2, $3::jsonb)
-        ON CONFLICT (player_id, location_id) DO NOTHING
+        ON CONFLICT (player_id, location_id) DO UPDATE
+        SET data = player_map_progress.data || '{"revisited": true}'::jsonb
         """,
         player_id,
         location_id,
