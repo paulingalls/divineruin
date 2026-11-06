@@ -102,7 +102,9 @@ def test_invalid_catalog_shape(shape, read_catalog):
         read_catalog(shape)
 
 
-@pytest.mark.parametrize("defect", ["duplicate_patron", "duplicate_ability", "missing_id", "blank_id", "numeric_id"])
+@pytest.mark.parametrize(
+    "defect", ["duplicate_patron", "duplicate_ability", "cross_catalog_ability", "missing_id", "blank_id", "numeric_id"]
+)
 def test_invalid_catalog_identity(defect, read_catalog):
     rows = copy.deepcopy(CATALOG)
     if defect == "duplicate_patron":
@@ -112,6 +114,11 @@ def test_invalid_catalog_identity(defect, read_catalog):
         tiers = rows[0]["layer_3_tier_abilities"]
         tiers["devoted"]["id"] = tiers["acknowledged"]["id"]
         field = "veythar.layer_3_tier_abilities.devoted.id"
+    elif defect == "cross_catalog_ability":
+        rows[0] = copy.deepcopy(CORPUS["valid"][0]["profile"])
+        rows[1] = copy.deepcopy(rows[0])
+        rows[1]["god_id"] = "veythar_fixture"
+        field = "veythar_fixture.layer_3_tier_abilities.acknowledged.id"
     else:
         rows[0]["god_id"] = {"missing_id": None, "blank_id": " ", "numeric_id": 2}[defect]
         if defect == "missing_id":

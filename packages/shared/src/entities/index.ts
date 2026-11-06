@@ -82,3 +82,5 @@ export { REGION_IDS } from "./region";
 export type { RegionId } from "./region";
 
 export * from "./terrain";
+export type { God, GodTier, GodTierAbility, GodResonance, GodModifier } from "./god";
+export { validateGod, validateGods } from "./god";
