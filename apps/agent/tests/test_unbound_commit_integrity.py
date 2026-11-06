@@ -72,3 +72,31 @@ async def test_publish_failure_cannot_restore_committed_mastery(world, combat):
         assert (await row(w))["focus"]["current"] < 100
         w.ctx.userdata.combat_state = None
         assert (await cast(w))["hollow_echo"]["band"] == "breach"
+
+
+async def test_guest_revoked_after_the_row_lock_cannot_push(world):
+    import db_queries
+
+    w = world
+    encounter(w)
+    before = await row(w)
+    authorized = True
+    real_get_player = db_queries.get_player
+
+    async def lock_then_revoke(*args, **kwargs):
+        nonlocal authorized
+        player = await real_get_player(*args, **kwargs)
+        authorized = False
+        return player
+
+    def validate(*_):
+        if not authorized:
+            raise RuntimeError("stale authenticated actor")
+
+    with w.ctx.userdata._bind_authenticated_actor(w.ids[1], 4, validate):
+        with patch.object(db_queries, "get_player", lock_then_revoke):
+            with pytest.raises(RuntimeError, match="stale"):
+                await push(w)
+    assert await row(w) == before
+    assert not w.ctx.userdata.party.members[1].unbound_raw_channeling_used
+    assert not published_payloads(w.ctx.userdata.room)
