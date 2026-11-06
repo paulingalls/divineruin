@@ -4,6 +4,7 @@ from livekit.agents.llm import ToolError
 
 import db_content_queries
 from combat_state import CombatState
+from patron_gifts import NATURES_PULSE_SKILLS, thyra_gift
 from session_data import SessionData
 from terrain import is_natural, properties
 
@@ -31,6 +32,6 @@ async def skill_natural_terrain(
     combat_state: CombatState | None = None,
     content_mod=db_content_queries,
 ) -> bool:
-    if (player.get("divine_favor") or {}).get("patron") != "thyra" or skill.lower() not in {"perception", "survival"}:
+    if thyra_gift(player.get("divine_favor") or {}) is None or skill.lower() not in NATURES_PULSE_SKILLS:
         return False
     return is_natural(await resolve_terrain(session, combat_state=combat_state, content_mod=content_mod))

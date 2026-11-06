@@ -2,6 +2,8 @@
 
 from _gods_content import load_gods
 
+NATURES_PULSE_SKILLS = frozenset({"perception", "survival"})
+
 
 def thyra_gift(favor: dict) -> dict | None:
     if favor.get("patron") != "thyra":
@@ -18,6 +20,6 @@ def skill_gift(player: dict, skill: str, *, ally_present: bool, natural_terrain:
             raise ValueError(f"Aelora's gift requires {gift['mechanics']['requires']!r}, not a present ally")
         if gift["status"] == "active":
             return gift["mechanics"]["amount"], False, gift["name"]
-    if natural_terrain and skill in {"perception", "survival"} and (gift := thyra_gift(favor)):
+    if natural_terrain and skill in NATURES_PULSE_SKILLS and (gift := thyra_gift(favor)):
         return 0, True, gift["name"]
     return 0, False, None
