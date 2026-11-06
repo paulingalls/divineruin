@@ -41,10 +41,13 @@ async def test_save_then_get_player_roundtrips_conditions(dev_db_pool):
             {"attributes": {"strength": 14}, "level": 5},
             "athletics",
             "moderate",
+            natural_terrain=False,
             ally_present=False,
             hearing_only=False,
         )
-        tired = resolve_skill_check(player, "athletics", "moderate", ally_present=False, hearing_only=False)
+        tired = resolve_skill_check(
+            player, "athletics", "moderate", natural_terrain=False, ally_present=False, hearing_only=False
+        )
         assert tired.modifier == plain.modifier - 1
     finally:
         await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)

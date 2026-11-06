@@ -2,6 +2,7 @@
 
 import check_resolution
 import condition_voice_rules
+from combat_terrain import skill_natural_terrain
 from declarations import DeclarationType
 
 SEARCH_TARGET = "choir_sound"
@@ -144,6 +145,7 @@ async def search(session, state, actor, declaration, *, queries, conn):
         skill,
         18,
         ally_present=session.ally_present_for(actor.id),
+        natural_terrain=await skill_natural_terrain(session, player, skill, combat_state=state),
         hearing_only=skill == "perception",
     )
     import conditions
@@ -164,6 +166,7 @@ async def search(session, state, actor, declaration, *, queries, conn):
         "success": result.success,
         "auto_fail": result.auto_fail,
         "choir": facts(state),
+        **({"gift_name": result.gift_name} if result.gift_name else {}),
     }
     return packet
 

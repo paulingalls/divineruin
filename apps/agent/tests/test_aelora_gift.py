@@ -12,6 +12,7 @@ from sample_fixtures import make_context, make_db_mod
 from voice_condition_fixtures import place_actors
 
 import check_resolution
+import patron_gifts
 from _gods_content import load_gods
 from check_discovery import _check_discover_impl
 from check_tools import _check_skill_impl
@@ -41,26 +42,26 @@ def _live_party(session, *identities):
 
 def test_bond_uses_content_amount_only_with_an_ally(monkeypatch):
     solo = check_resolution._resolve_skill_check_impl(
-        player("aelora"), "athletics", 13, ToolRng(10), ally_present=False, hearing_only=False
+        player("aelora"), "athletics", 13, ToolRng(10), natural_terrain=False, ally_present=False, hearing_only=False
     )
     together = check_resolution._resolve_skill_check_impl(
-        player("aelora"), "athletics", 13, ToolRng(10), ally_present=True, hearing_only=False
+        player("aelora"), "athletics", 13, ToolRng(10), natural_terrain=False, ally_present=True, hearing_only=False
     )
     assert together.total - solo.total == 1
     assert together.gift_name == "Hearthkeeper's Bond"
     assert solo.gift_name is None
     for patron in ("veythar", None):
         other = check_resolution._resolve_skill_check_impl(
-            player(patron), "athletics", 13, ToolRng(10), ally_present=True, hearing_only=False
+            player(patron), "athletics", 13, ToolRng(10), natural_terrain=False, ally_present=True, hearing_only=False
         )
         assert other.total == solo.total
         assert other.gift_name is None
 
     rows = copy.deepcopy(load_gods())
     next(row for row in rows if row["god_id"] == "aelora")["layer_1_gift"]["mechanics"]["amount"] = 2
-    monkeypatch.setattr(check_resolution, "load_gods", lambda: rows)
+    monkeypatch.setattr(patron_gifts, "load_gods", lambda: rows)
     stronger = check_resolution._resolve_skill_check_impl(
-        player("aelora"), "athletics", 13, ToolRng(10), ally_present=True, hearing_only=False
+        player("aelora"), "athletics", 13, ToolRng(10), natural_terrain=False, ally_present=True, hearing_only=False
     )
     assert stronger.total - solo.total == 2
 
@@ -69,16 +70,16 @@ def _with_aelora_gift(monkeypatch, field, value):
     rows = copy.deepcopy(load_gods())
     gift = next(row for row in rows if row["god_id"] == "aelora")["layer_1_gift"]
     (gift["mechanics"] if field == "requires" else gift)[field] = value
-    monkeypatch.setattr(check_resolution, "load_gods", lambda: rows)
+    monkeypatch.setattr(patron_gifts, "load_gods", lambda: rows)
 
 
 def test_inactive_bond_grants_nothing(monkeypatch):
     solo = check_resolution._resolve_skill_check_impl(
-        player("aelora"), "athletics", 13, ToolRng(10), ally_present=False, hearing_only=False
+        player("aelora"), "athletics", 13, ToolRng(10), natural_terrain=False, ally_present=False, hearing_only=False
     )
     _with_aelora_gift(monkeypatch, "status", "awaits_binding")
     dormant = check_resolution._resolve_skill_check_impl(
-        player("aelora"), "athletics", 13, ToolRng(10), ally_present=True, hearing_only=False
+        player("aelora"), "athletics", 13, ToolRng(10), natural_terrain=False, ally_present=True, hearing_only=False
     )
     assert dormant.total == solo.total
     assert dormant.gift_name is None
@@ -88,13 +89,13 @@ def test_unknown_bond_requirement_fails_loud(monkeypatch):
     _with_aelora_gift(monkeypatch, "requires", "ally_in_combat")
     with pytest.raises(ValueError, match="ally_in_combat"):
         check_resolution._resolve_skill_check_impl(
-            player("aelora"), "athletics", 13, ToolRng(10), ally_present=True, hearing_only=False
+            player("aelora"), "athletics", 13, ToolRng(10), natural_terrain=False, ally_present=True, hearing_only=False
         )
 
 
 def test_beyond_tier_check_does_not_name_unapplied_bond():
     result = check_resolution._resolve_skill_check_impl(
-        player("aelora"), "athletics", 28, ToolRng(10), ally_present=True, hearing_only=False
+        player("aelora"), "athletics", 28, ToolRng(10), natural_terrain=False, ally_present=True, hearing_only=False
     )
     assert result.gift_name is None
 

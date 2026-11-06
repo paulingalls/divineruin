@@ -122,7 +122,7 @@ def test_hearing_auto_failure_without_rng_or_bonus(resolver_name, threshold):
     player = {"conditions": [{"type": "deafened"}, {"type": "inspired"}]}
     rng = MagicMock(randint=MagicMock(return_value=20))
     result = getattr(check_resolution, resolver_name)(
-        player, "perception", threshold, rng=rng, ally_present=True, hearing_only=True
+        player, "perception", threshold, rng=rng, natural_terrain=False, ally_present=True, hearing_only=True
     )
     assert result.success is False
     assert result.roll == 0
@@ -367,7 +367,7 @@ def test_deafened_cannot_spend_inspired_but_blessed_stays_usable(kind):
         result = check_resolution_save.resolve_saving_throw(player, "wisdom", 8, "stunned", rng=FixedRng(10))
     else:
         result = check_resolution.resolve_skill_check_dc(
-            player, "athletics", 8, rng=FixedRng(10), ally_present=False, hearing_only=False
+            player, "athletics", 8, rng=FixedRng(10), natural_terrain=False, ally_present=False, hearing_only=False
         )
     assert "inspired" not in result.consumed_conditions
     assert ("blessed" in result.consumed_conditions) is (kind != "skill")

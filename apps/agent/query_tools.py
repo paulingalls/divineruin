@@ -23,10 +23,13 @@ import spell_knowledge
 import spells
 import training_tools
 from _gods_content import load_gods
+from combat_terrain import resolve_terrain
 from db_errors import db_tool
 from patron_favor import get_patron_tier
+from patron_gifts import thyra_gift
 from session_data import SessionData
 from settlement_generation import generate_settlement_npcs, generate_settlement_roster
+from terrain import is_natural
 from tool_support import (
     _location_for_narration,
     _npc_for_narration,
@@ -180,6 +183,7 @@ async def _query_patron_impl(
             "favor_needed_to_next_tier": favor_needed,
             "favor_actions": patron["favor_actions"],
             "layer_1_gift": patron["layer_1_gift"],
+            **await _ecosystem_cue(session, favor),
         }
     )
 
@@ -257,11 +261,26 @@ async def _query_abilities_impl(
     return json.dumps({"abilities": results, "spells": spell_rows})
 
 
+async def _ecosystem_cue(session: SessionData, favor: dict) -> dict:
+    gift = thyra_gift(favor)
+    if gift is None or not is_natural(await resolve_terrain(session)):
+        return {}
+    location_id = session.combat_state.location_id if session.combat_state is not None else session.location_id
+    return {
+        "ecosystem_health_cue": {
+            "gift_name": gift["name"],
+            "location_id": location_id,
+            "instruction": "Narrate the ecosystem health sensed by Nature's Pulse without a check, using available location facts.",
+        }
+    }
+
+
 async def _query_location_impl(
     context: RunContext[SessionData],
     location_id: str,
     *,
     content=db_content_queries,
+    activities=db_activity_queries,
 ) -> str:
     logger.info("query_info[location] called: location_id=%s", location_id)
     _validate_id(location_id, "location_id")
@@ -272,6 +291,12 @@ async def _query_location_impl(
     session: SessionData = context.userdata
     location = apply_time_conditions(location, session.world_time)
     narration = _location_for_narration(location)
+    current_id = session.combat_state.location_id if session.combat_state is not None else session.location_id
+    if location_id == current_id:
+        favor = await activities.get_divine_favor(session.acting_player_id)
+        if favor is None:
+            raise ToolError("Cannot query location: current player has no divine_favor row.")
+        narration.update(await _ecosystem_cue(session, favor))
     return json.dumps(narration)
 
 

@@ -105,7 +105,9 @@ class TestResolversTolerateJsonNullConditions:
         from check_resolution import resolve_skill_check_dc
 
         player = {"attributes": self._ATTRS, "level": 3, "conditions": None}
-        result = resolve_skill_check_dc(player, "athletics", 10, ally_present=False, hearing_only=False)
+        result = resolve_skill_check_dc(
+            player, "athletics", 10, natural_terrain=False, ally_present=False, hearing_only=False
+        )
         assert result is not None
 
     def test_resolve_saving_throw_tolerates_null(self):
