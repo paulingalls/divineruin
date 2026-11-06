@@ -6,12 +6,12 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING
 
 from _gods_content import load_gods
-from patron_cast_context import PatronCastFacts
 from spells import Spell
 from terrain import is_earth_or_stone, is_natural, resonance_base
 
 if TYPE_CHECKING:
     from hollow_echo import HollowEchoResult
+    from patron_cast_context import PatronCastFacts
 
 
 def compute_generated_resonance(

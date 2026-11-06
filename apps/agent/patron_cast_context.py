@@ -3,6 +3,7 @@
 import json
 from dataclasses import dataclass
 
+import cast_modifiers
 from condition_produce import resolve_effective_targets
 from spell_voice_rules import is_area_spell
 
@@ -15,7 +16,16 @@ class PatronCastFacts:
     first_stay: bool = False
 
 
-async def resolve_facts(
+async def apply_patron(generated: int, standard: int, patron, session, player, *, spell, terrain, **context):
+    """Apply the patron's Layer 2 generation; return it with the DM's packet entry when it differs."""
+    facts = await _resolve_facts(patron, session, player, spell=spell, **context)
+    result, applied = cast_modifiers.apply_patron_generation(generated, spell, patron, terrain=terrain, facts=facts)
+    if result == standard:
+        return result, None
+    return result, {"patron": patron, "applies_to": applied, "standard": standard, "generated": result}
+
+
+async def _resolve_facts(
     patron,
     session,
     player,

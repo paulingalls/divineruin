@@ -301,6 +301,9 @@ async def _resolve_cast(
     known_spell_ids = spell_knowledge.castable_spell_ids(player.get("class"), (row["spell_id"] for row in known_rows))
     spell = _gate_spell(player, spell_id, known_spell_ids, spells_mod=spells_mod)
 
+    # Revivify gate: a revival spell cannot reach a Hollow-killed corpse. The refusal keys on the
+    # TARGET row (the resolved target_id, else the caster for a self-cast) and is refused before any
+    # Focus/Resonance write. A non-revival targeted cast is DM-narrated and skips the fetch.
     if spell_id in REVIVAL_SPELL_IDS:
         if target_id is not None and target_id != player_id:
             gate_row = await queries_mod.get_player(target_id, conn=conn)
@@ -317,6 +320,9 @@ async def _resolve_cast(
     except ValueError as e:
         raise ToolError(str(e)) from e
 
+    # Multi-target normalization runs BEFORE any Focus/Resonance write, so an invalid cast deducts
+    # nothing. Rejecting target_ids on an uncapped (single-target-only) spell also closes the revival
+    # Hollow-gate bypass: a revival spell has no max_targets, so target_ids on it is refused.
     if target_ids is not None:
         try:
             target_ids = spells_mod.normalize_target_list(spell, target_id, target_ids)
@@ -324,28 +330,35 @@ async def _resolve_cast(
             raise ToolError(str(e)) from e
     current_focus = (player.get("focus") or {}).get("current", 0)
 
-    try:
-        terrain = (
-            await resolve_terrain(session, combat_state=combat_state, content_mod=content_mod)
-            if spell.source == "primal"
-            or any(m["applies_to"] == "natural_ground" for m in cast_modifiers.patron_modifiers(patron))
-            else None
-        )
-        generated = cast_modifiers.compute_generated_resonance(
-            spell, race, terrain=terrain, resonance=resonance, racial_mod=racial_mod, patron=patron
-        )
-    except ValueError as e:
-        raise ToolError(f"Cannot cast {spell.name}: {e}") from e
-
-    standard_generation = cast_modifiers.compute_generated_resonance(
-        spell, race, terrain=terrain, resonance=resonance, racial_mod=racial_mod
+    terrain = (
+        await resolve_terrain(session, combat_state=combat_state, content_mod=content_mod)
+        if spell.source == "primal"
+        or any(m["applies_to"] == "natural_ground" for m in cast_modifiers.patron_modifiers(patron))
+        else None
     )
-    state_for_cast = combat_state if combat_state is not None else session.combat_state
-    standard_generation = combat_hollow_resonance.cast_generation(state_for_cast, caster, spell, standard_generation)
-    facts = await patron_cast_context.resolve_facts(
+    # An active Veil Ward halves generated Resonance. Resolved from the DB, never the in-memory
+    # mirror: expiry is lazy, so a lapsed or walked-away-from ward would otherwise halve casts forever.
+    ward_active = (
+        await ward_resolution_mod.resolve_scope_ward(session, conn=conn, combat_state=combat_state) is not None
+    )
+
+    def generation(cast_patron: str | None) -> int:
+        try:
+            raw = cast_modifiers.compute_generated_resonance(
+                spell, race, terrain=terrain, resonance=resonance, racial_mod=racial_mod, patron=cast_patron
+            )
+        except ValueError as e:
+            raise ToolError(f"Cannot cast {spell.name}: {e}") from e
+        raw = combat_hollow_resonance.cast_generation(combat_state or session.combat_state, caster, spell, raw)
+        return cast_modifiers.apply_ward_halving(raw, ward_active, veil_ward=veil_ward)
+
+    generated, patron_resonance = await patron_cast_context.apply_patron(
+        generation(patron),
+        generation(None),
         patron,
         session,
         player,
+        terrain=terrain,
         conn=conn,
         queries_mod=queries_mod,
         spell=spell,
@@ -355,23 +368,14 @@ async def _resolve_cast(
         is_concealed=is_concealed,
         target_wronged_caster=target_wronged_caster,
     )
-    generated = combat_hollow_resonance.cast_generation(combat_state or session.combat_state, caster, spell, generated)
-
-    ward_active = (
-        await ward_resolution_mod.resolve_scope_ward(session, conn=conn, combat_state=combat_state) is not None
-    )
-    generated = cast_modifiers.apply_ward_halving(generated, ward_active, veil_ward=veil_ward)
-
-    standard_generation = cast_modifiers.apply_ward_halving(standard_generation, ward_active, veil_ward=veil_ward)
-    generated, patron_applied = cast_modifiers.apply_patron_generation(
-        generated, spell, patron, terrain=terrain, facts=facts
-    )
 
     if spell.focus_cost > 0:
         if revalidate_actor:
             session.validate_acting_player(player_id)
         await persistence_mod.update_player_resources(player_id, focus=current_focus - spell.focus_cost, conn=conn)
 
+    # The post-cast total is persisted via conn but kept LOCAL: the caller syncs session.resonance
+    # post-commit, so a rollback leaves the in-memory track untouched.
     effective_resonance = cast_modifiers.compute_effective_resonance(
         generated,
         combat_hollow_resonance.current_total(combat_state, caster),
@@ -396,6 +400,9 @@ async def _resolve_cast(
 
     state = resonance.get_resonance_state(effective_resonance, flickering_bonus=caster.resonance.flickering_bonus)
 
+    # Every client event is deferred for the caller to flush post-commit (rollback-safe). The cast's own
+    # RESONANCE_CHANGED is omitted when suppressed (in combat the WRAP push is authoritative) and when
+    # nothing generated (a cantrip leaves the state unchanged).
     events: list = []
     events.append(
         lambda: publish_game_event(
@@ -420,13 +427,8 @@ async def _resolve_cast(
         "resonance_modifiers": modifiers,
         "ward_active": ward_active,
     }
-    if generated != standard_generation:
-        packet["patron_resonance"] = {
-            "patron": patron,
-            "applies_to": patron_applied,
-            "standard": standard_generation,
-            "generated": generated,
-        }
+    if patron_resonance is not None:
+        packet["patron_resonance"] = patron_resonance
     # Carry the explicit target into the packet for the DM to voice (corpse/ally/object/area).
     # Additive — a self-cast (target_id None) leaves the packet shape untouched.
     if target_id is not None:
