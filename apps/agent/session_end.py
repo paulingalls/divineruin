@@ -26,11 +26,27 @@ if TYPE_CHECKING:
 logger = logging.getLogger("divineruin.session_end")
 
 
-def ensure_session_end(sd: SessionData) -> asyncio.Task[None]:
+def ensure_session_end(sd: SessionData, *, session=None, closing: str | None = None) -> asyncio.Task[None]:
     """The one end path for Leave, close callbacks and session caps; never retry a recap."""
     if sd.session_end_task is None:
-        sd.session_end_task = asyncio.create_task(run_session_end(sd))
+        sd.session_end_task = asyncio.create_task(_end(sd, session, closing))
     return sd.session_end_task
+
+
+async def _end(sd, session, closing) -> None:
+    try:
+        if closing is not None:
+            from speech_delivery import deliver_speech
+
+            try:
+                await deliver_speech(session, closing, logger, "Session closing line", tool_choice="none")
+            except Exception:
+                await session_outcome.complete(sd.primary_player_id, sd.session_id, "failed")
+                raise
+        await run_session_end(sd)
+    finally:
+        if session is not None:
+            await session.aclose()
 
 
 async def run_guest_departure(sd: SessionData, player_id: str, session) -> None:

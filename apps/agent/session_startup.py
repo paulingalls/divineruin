@@ -15,6 +15,7 @@ from multiplayer_input import MultiplayerInput
 from multiplayer_transcription import MultiParticipantTranscriber
 from participant_lifecycle import PartyLifecycle, _setup_party_join
 from session_data import SessionData
+from session_limits import LimitClock, SessionLimits
 
 
 def _primary_room_options(userdata: SessionData, *, audio_input: bool) -> room_io.RoomOptions:
@@ -84,12 +85,17 @@ async def start_gameplay_session(
 ) -> GameplayInputOwner:
     speech_ready = asyncio.Event()
     lifecycle = _setup_party_join(room, userdata, agent_session=session, speech_ready=speech_ready)
-    await session.start(room=room, agent=agent, room_options=gameplay_room_options(userdata))
+    await start_session(room, session, agent, userdata, gameplay_room_options(userdata))
     speech_ready.set()
     transcriber = MultiParticipantTranscriber(
         room,
         stt=deepgram.STT(model="nova-3", language="en"),
         authorizer=lifecycle.authorize,
+        activity=lambda identity, generation: (
+            userdata.limits.player_speech()
+            if userdata.limits is not None and lifecycle.is_authorized(identity, generation)
+            else None
+        ),
     )
     multiplayer_input = MultiplayerInput(
         transcriber,
@@ -109,6 +115,21 @@ async def start_gameplay_session(
 
     session.on("close", close_multiplayer_input)
     return owner
+
+
+async def start_session(room, session, agent, userdata, options=None) -> None:
+    if userdata.limits is None:
+        owner = SessionLimits(session, LimitClock(), userdata)
+        userdata.limits = owner
+        session.on("user_input_transcribed", owner._solo_speech)
+        session.on("close", owner.close)
+
+        owner.start()
+    try:
+        await session.start(room=room, agent=agent, room_options=options or solo_room_options(userdata))
+    except BaseException:
+        await userdata.limits.aclose()
+        raise
 
 
 def _register_speech_end_tracking(session: AgentSession) -> None:

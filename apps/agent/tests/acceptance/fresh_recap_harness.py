@@ -28,8 +28,9 @@ from creation_rules import build_character_data
 
 
 class Job:
-    def __init__(self, server, player_id):
+    def __init__(self, server, player_id, prepare_player=None):
         self.server, self.player_id = server, player_id
+        self.prepare_player = prepare_player
         self.room_name = f"recap-{uuid.uuid4().hex}"
         self.episode = Episode()
         self.episode.player_id = player_id
@@ -50,6 +51,8 @@ class Job:
             )
 
         self.player = await connect_room(server["ws_url"], token(self.player_id))
+        if self.prepare_player is not None:
+            await self.prepare_player(self)
 
         async def entry(ctx):
             try:

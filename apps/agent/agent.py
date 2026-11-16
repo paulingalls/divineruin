@@ -25,7 +25,7 @@ from participant_lifecycle import _setup_reconnection
 from production_preflight import is_production, production_preflight, validate_production_env
 from region_types import REGION_CITY
 from session_data import CreationState, SessionData
-from session_startup import _make_agent_session, solo_room_options, start_gameplay_session
+from session_startup import _make_agent_session, start_gameplay_session, start_session
 from speech_delivery import deliver_speech
 from voices import NONVERBAL_VOICE_KEYS, ROLE_VOICE_KEYS, VOICES
 
@@ -184,8 +184,10 @@ async def _join_session_end(ctx: agents.JobContext) -> None:
         sd = ctx.primary_session.userdata
     except RuntimeError:
         return  # no AgentSession was ever started for this job
+    if sd.limits is not None:
+        await sd.limits.aclose()
     tasks = [task for task in (sd.session_end_task, sd.multiplayer_close_task) if task is not None]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
+    results = await asyncio.gather(*(asyncio.shield(task) for task in tasks), return_exceptions=True)
     failures = [result for result in results if isinstance(result, BaseException)]
     if len(failures) == 1:
         raise failures[0]
@@ -319,7 +321,7 @@ async def _start_dm_session(ctx, player_id, session_id, predecessor) -> None:
         )
         session = _session_with_listeners("claude-sonnet-4-20250514", userdata)
         prologue_agent = PrologueAgent()
-        await session.start(room=ctx.room, agent=prologue_agent, room_options=solo_room_options(userdata))
+        await start_session(ctx.room, session, prologue_agent, userdata)
         _setup_reconnection(ctx.room, session, userdata, prologue_agent)
     else:
         # --- Existing gameplay flow ---
@@ -384,7 +386,7 @@ async def _start_dm_session(ctx, player_id, session_id, predecessor) -> None:
                 companion_id=select_companion_for_archetype(player["class"]),
                 publish_session_init=True,
             )
-            await session.start(room=ctx.room, agent=onboarding_agent, room_options=solo_room_options(userdata))
+            await start_session(ctx.room, session, onboarding_agent, userdata)
             _setup_reconnection(ctx.room, session, userdata, onboarding_agent)
             if userdata.favor_loss:
                 patron, loss = userdata.favor_loss

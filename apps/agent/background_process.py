@@ -22,7 +22,6 @@ from bg_speech import COMPANION_IDLE_SECS, PendingSpeech, SpeechPriority
 from companion_cue_events import publish_companion_cue
 from companion_prompts import build_companion_cue, is_companion_cue
 from sanitize import sanitize_for_prompt
-from session_end import ensure_session_end
 from speaker_context import build_speaker_context
 from speech_delivery import deliver_speech
 from task_logging import log_task_failure
@@ -71,23 +70,12 @@ class BackgroundProcess:
         # The session is the owner, so the session's end is the only thing that stops the loop —
         # an agent's on_exit is a handoff, not a session end (debt 2009d9ef).
         self._session.on("close", self._on_session_close)
-        # ...and the same reasoning puts the end-of-session recap here. start() is called from
-        # ExplorationAgent._enter's `if sd.background is None:` block, so a handback registers
-        # nothing new and the recap fires exactly once per session. Its own handler, not folded
-        # into _on_session_close: stop() calls that one directly to join the loop, and a recap
-        # there would run an LLM call and a DB write from inside the fast lane.
-        self._session.on("close", self._on_session_end)
 
     def _on_session_close(self, _ev: object) -> None:
         """Sync half of ``stop`` — LiveKit emits ``close`` from a sync handler chain."""
         self._stop = True
         if self._task is not None:
             self._task.cancel()
-
-    def _on_session_end(self, _ev: object) -> None:
-        """Spawn the end-of-session recap. ``emit`` is synchronous (rtc/event_emitter.py), so
-        this cannot await; ``agent._join_session_end`` joins the handle before room teardown."""
-        ensure_session_end(self._sd)
 
     def pause(self) -> None:
         self._paused = True
@@ -156,7 +144,7 @@ class BackgroundProcess:
         return handle_events(events, self._sd, self._speech_queue)
 
     def _check_companion_idle(self) -> None:
-        if not self._sd.companion_can_act:
+        if self._idle_suppressed or not self._sd.companion_can_act:
             return
         companion = self._sd.companion
         if companion is None:
@@ -176,11 +164,12 @@ class BackgroundProcess:
                     "makes an idle observation about the surroundings or something on their mind.",
                     companion.emotional_state,
                 ),
+                silence_generated=True,
             )
 
     def _check_scene_beat_hints(self) -> None:
         """Deliver companion hints from the active scene's beats on player silence."""
-        if self._sd.in_combat:
+        if self._idle_suppressed or self._sd.in_combat:
             return
         if self._sd.last_player_speech_time <= 0:
             return
@@ -248,12 +237,30 @@ class BackgroundProcess:
                     f"offers this guidance: {hint_text}",
                     self._sd.companion.emotional_state,
                 ),
+                silence_generated=True,
             )
 
-    def _queue_speech(self, priority: SpeechPriority, instructions: str) -> None:
-        self._speech_queue.append(PendingSpeech(priority=priority, instructions=instructions))
+    @property
+    def _idle_suppressed(self) -> bool:
+        return self._sd.limits is not None and self._sd.limits.suppressed
+
+    def discard_idle_speech(self) -> None:
+        self._speech_queue = [s for s in self._speech_queue if not s.silence_generated]
+
+    def _queue_speech(self, priority: SpeechPriority, instructions: str, *, silence_generated=False) -> None:
+        if silence_generated and self._idle_suppressed:
+            return
+        self._speech_queue.append(
+            PendingSpeech(
+                priority=priority,
+                instructions=instructions,
+                silence_generated=silence_generated,
+            )
+        )
 
     async def _deliver_speech(self) -> None:
+        if self._idle_suppressed:
+            self.discard_idle_speech()
         if not self._speech_queue:
             return
 
@@ -276,6 +283,13 @@ class BackgroundProcess:
         top = max(speakable, key=lambda s: (s.priority, s.created))
         self._speech_queue = held
 
+        revoked = None
+        suppression = None
+        if top.silence_generated and self._sd.limits is not None:
+            suppression = self._sd.limits.suppression
+            if suppression.is_set():
+                return
+            revoked = suppression.wait
         companion = self._sd.companion
         if companion and is_companion_cue(top.instructions, companion):
             await publish_companion_cue(self._sd, companion)
@@ -292,11 +306,14 @@ class BackgroundProcess:
             )
             await asyncio.sleep(2.0)
 
+        if suppression is not None and suppression.is_set():
+            return
         delivered = await deliver_speech(
             self._session,
             top.instructions,
             logger,
             f"Proactive speech (priority={top.priority.name})",
+            revoked=revoked,
         )
         if not delivered:
             return
