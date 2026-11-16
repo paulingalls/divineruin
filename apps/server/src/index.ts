@@ -1,5 +1,6 @@
 import { handleGetInventory } from "./inventory-api.ts";
 import { serve } from "bun";
+import { handleHealth } from "./health.ts";
 import { handleLivekitToken } from "./livekit.ts";
 import { handleCreateInvite, handleRedeemInvite } from "./invite.ts";
 import { handleGetCharacter } from "./character.ts";
@@ -57,6 +58,10 @@ export async function handleRequest(req: Request, ip: string): Promise<Response>
   console.log(`[${req.method}] ${path}`);
   const rateLimited = checkRateLimit(ip, path);
   if (rateLimited) return rateLimited;
+
+  if (path === "/api/health" && req.method === "GET") {
+    return withCors(await handleHealth());
+  }
 
   // --- Unauthenticated routes ---
 
