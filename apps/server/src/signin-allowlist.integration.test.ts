@@ -38,16 +38,17 @@ describe.skipIf(!hasDb)("invite-only sign-in through HTTP and operator CLI", () 
       stdout: "pipe",
       stderr: "pipe",
     });
-    const [status, stderr] = await Promise.all([
+    const [status, stderr, stdout] = await Promise.all([
       child.exited,
       new Response(child.stderr).text(),
       new Response(child.stdout).text(),
     ]);
-    return { status, stderr };
+    return { status, stderr, stdout };
   }
   async function allow(email: string) {
     const result = await cli(` ${email.toUpperCase()} `);
     expect(result, result.stderr).toMatchObject({ status: 0 });
+    expect(result.stdout).toContain(new URL(process.env.DATABASE_URL!).host);
   }
   async function post(path: string, email: string, code?: string) {
     return fetch(new URL(`/api/auth/${path}`, server.url), {

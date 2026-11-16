@@ -62,11 +62,15 @@ await withOwnedProcesses(async (scope) => {
   scope.spawn(["bun", "apps/server/src/index.ts"], { cwd: root, env: backendEnv });
   await ready(scope, `${origin}/api/inventory`, 401);
   const email = `native-http-${crypto.randomUUID()}@example.com`;
-  const fixtureEmails = [email, "acceptance@divineruin.test"];
+  const preflightEmail = "acceptance@divineruin.test";
+  let enrolledPreflight = false;
   try {
-    for (const fixtureEmail of fixtureEmails) {
-      await sql`INSERT INTO signin_allowlist(email) VALUES(${fixtureEmail})`;
-    }
+    await sql`INSERT INTO signin_allowlist(email) VALUES(${email})`;
+    const inserted = await sql<
+      { email: string }[]
+    >`INSERT INTO signin_allowlist(email) VALUES(${preflightEmail})
+      ON CONFLICT (email) DO NOTHING RETURNING email`;
+    enrolledPreflight = inserted.length === 1;
     const [account] = await sql<
       { id: string }[]
     >`INSERT INTO accounts(email) VALUES(${email}) RETURNING id`;
@@ -205,12 +209,12 @@ await withOwnedProcesses(async (scope) => {
       await proxy.stop(true);
     }
   } finally {
-    for (const fixtureEmail of fixtureEmails) {
-      await sql`DELETE FROM players WHERE account_id IN (SELECT id FROM accounts WHERE email=${fixtureEmail})`;
-      await sql`DELETE FROM auth_codes WHERE account_id IN (SELECT id FROM accounts WHERE email=${fixtureEmail})`;
-      await sql`DELETE FROM accounts WHERE email=${fixtureEmail}`;
-      await sql`DELETE FROM signin_allowlist WHERE email=${fixtureEmail}`;
-    }
+    await sql`DELETE FROM players WHERE account_id IN (SELECT id FROM accounts WHERE email=${email})`;
+    await sql`DELETE FROM auth_codes WHERE account_id IN (SELECT id FROM accounts WHERE email=${email})`;
+    await sql`DELETE FROM accounts WHERE email=${email}`;
+    await sql`DELETE FROM signin_allowlist WHERE email=${email}`;
+    // The preflight account is shared with manual Maestro runs; remove only membership this run added.
+    if (enrolledPreflight) await sql`DELETE FROM signin_allowlist WHERE email=${preflightEmail}`;
     await sql.close();
   }
 });

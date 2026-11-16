@@ -18,3 +18,4 @@ try {
 } finally {
   await sql.close();
 }
+console.log(`${remove ? "Removed" : "Allowed"} ${email} in ${new URL(databaseUrl).host}`);
