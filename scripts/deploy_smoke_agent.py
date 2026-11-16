@@ -41,7 +41,7 @@ def image_checks(h, image, uid):
     metadata = h.inspect(image)
     assert metadata["Architecture"] == "amd64"
     for args, expected in [
-        (["python", "--version"], "Python 3.14.7"),
+        (["python", "--version"], "Python " + pathlib.Path(".python-version").read_text().strip()),
         (["ffmpeg", "-version"], "n8.1.3-27-g8dca1586f4"),
     ]:
         output = h.command(["docker", "run", "--rm", "--platform", "linux/amd64", image, *args], capture=True)
@@ -56,7 +56,7 @@ def image_checks(h, image, uid):
             image,
             "python",
             "-c",
-            "from pathlib import Path; p=Path('/app/apps/server/audio/smoke'); p.touch(); p.unlink()",
+            "from pathlib import Path\nfor d in ('/app/apps/server/audio', '/app/apps/agent/transcripts'):\n    p = Path(d, 'smoke'); p.touch(); p.unlink()",
         ]
     )
 

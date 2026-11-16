@@ -20,7 +20,6 @@
 !packages/design-tokens/
 !packages/design-tokens/package.json
 !deploy/agent.Dockerfile
-!.python-version
 !apps/agent/
 !apps/agent/*.py
 !apps/agent/pyproject.toml
