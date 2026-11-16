@@ -6,6 +6,7 @@ import logging
 import time
 from unittest.mock import patch
 
+import pytest
 from acceptance.fresh_recap_harness import RecapHarness
 
 import agent
@@ -277,3 +278,36 @@ async def test_fresh_recap(livekit_server, reset_db_pool, caplog):
     await guest_recap(livekit_server)
     await startup_failures(livekit_server)
     await taken_over(livekit_server)
+
+
+@pytest.mark.parametrize("promoted", [False, True])
+@pytest.mark.parametrize("failure", ["generation", "save"])
+async def test_failed_guest_reentry_skips_old_recap(livekit_server, reset_db_pool, caplog, promoted, failure):
+    from party_state import PartyState
+    from session_end import run_session_end
+
+    async with RecapHarness(livekit_server) as harness:
+        host, guest = await harness.player(), await harness.player()
+        await seed(guest, "saved")
+        job = await harness.start(host)
+        sd = await job.wait()
+        sd.party.members.extend(PartyState.solo(guest).members)
+        if promoted:
+            sd.handoff_primary(host)
+        else:
+            sd.departing_player_id = guest
+        target = (
+            "session_end.generate_session_summary" if failure == "generation" else "db_mutations.save_session_summary"
+        )
+        with patch("room_admin.remove_player"), patch(target, side_effect=RuntimeError("injected guest failure")):
+            with pytest.raises(RuntimeError, match="injected guest failure"):
+                if promoted:
+                    await run_session_end(sd)
+                else:
+                    await run_guest_departure(sd, guest, job.episode.session)
+        assert await outcome(guest) == {"session_id": sd.session_id, "state": "failed"}
+        caplog.clear()
+        returning = await harness.start(guest)
+        await returning.wait()
+        assert STALE not in returning.greetings[0] and FRESH not in returning.greetings[0]
+        assert any(r.levelno == logging.WARNING and "failed" in r.getMessage() for r in caplog.records)

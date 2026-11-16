@@ -80,7 +80,7 @@ async def run_guest_departure(sd: SessionData, player_id: str, session) -> None:
                 player_id,
                 sd.session_id,
                 "saved",
-                guest_saved=player_id != (sd.outcome_player_id or sd.primary_player_id),
+                guest_completion=player_id != (sd.outcome_player_id or sd.primary_player_id),
             )
             await promote_after_departure(sd, player_id, session)
         else:
@@ -92,11 +92,16 @@ async def run_guest_departure(sd: SessionData, player_id: str, session) -> None:
                 player_id,
                 sd.session_id,
                 "saved",
-                guest_saved=player_id != (sd.outcome_player_id or sd.primary_player_id),
+                guest_completion=player_id != (sd.outcome_player_id or sd.primary_player_id),
             )
     except Exception:
         if not saved and summary_in_progress:
-            await session_outcome.complete(player_id, sd.session_id, "failed")
+            await session_outcome.complete(
+                player_id,
+                sd.session_id,
+                "failed",
+                guest_completion=player_id != (sd.outcome_player_id or sd.primary_player_id),
+            )
         logger.exception("Guest departure failed for %s", player_id)
         if end_published and not removed:
             try:
@@ -135,9 +140,14 @@ async def run_session_end(sd: SessionData) -> None:
         payload = await generate_session_summary(sd, sd.transcript_path, sd.session_start_time, player_id=sole_member)
         await db_mutations.save_session_summary(player_id, sd.session_id, payload)
     except Exception:
-        await session_outcome.complete(player_id, sd.session_id, "failed")
+        await session_outcome.complete(
+            player_id,
+            sd.session_id,
+            "failed",
+            guest_completion=player_id != (sd.outcome_player_id or sd.primary_player_id),
+        )
         raise
     await session_outcome.complete(
-        player_id, sd.session_id, "saved", guest_saved=player_id != (sd.outcome_player_id or sd.primary_player_id)
+        player_id, sd.session_id, "saved", guest_completion=player_id != (sd.outcome_player_id or sd.primary_player_id)
     )
     await publish_game_event(sd.room, E.SESSION_END, payload, sd.event_bus)

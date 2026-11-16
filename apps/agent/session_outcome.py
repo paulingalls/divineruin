@@ -101,7 +101,7 @@ async def resolve_predecessor(player_id: str) -> Predecessor:
     return Predecessor(raw, None if reason else prior, prior, reason, predecessor_id)
 
 
-async def complete(player_id: str, session_id: str, state: State, *, guest_saved: bool = False) -> None:
+async def complete(player_id: str, session_id: str, state: State, *, guest_completion: bool = False) -> None:
     redis = await db.get_redis()
     await redis.eval(
         _COMPLETE,
@@ -109,7 +109,7 @@ async def complete(player_id: str, session_id: str, state: State, *, guest_saved
         f"session_outcome:{player_id}",
         session_id,
         json.dumps({"session_id": session_id, "state": state}),
-        "guest" if guest_saved else "owner",
+        "guest" if guest_completion else "owner",
         TTL_S,
     )
 
