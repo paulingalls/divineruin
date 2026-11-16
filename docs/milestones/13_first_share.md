@@ -58,7 +58,7 @@ PostgreSQL, Valkey and LiveKit; model and voice providers are deterministic.
 - [x] Only allowlisted emails can sign in
 - [x] A session has a length cap and an idle timeout
 - [x] One player cannot run concurrent sessions or dispatch a second DM — 2 h ownership TTL; sessions enforce the approved 60-minute cap
-- [ ] Rate limits hold behind the load balancer
+- [x] Rate limits hold behind the load balancer — `apps/server/src/rate-limit.integration.test.ts`, `apps/server/src/rate-limit-failure.test.ts` (real HTTP, shared Valkey, proxy/JWT identity, fail-closed)
 
 ## Deployment and TestFlight
 

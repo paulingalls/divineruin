@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 
 process.env.JWT_SECRET = "48d10d0851017d6e6d6f40ae66e6e15071a7caa782cb343c5c8dad7d4ffb310c";
 
@@ -34,6 +34,12 @@ void mock.module("./db.ts", () => {
 });
 
 const { signJwt } = await import("./auth.ts");
+const previousRateBypass = process.env.RATE_LIMIT_BYPASS;
+process.env.RATE_LIMIT_BYPASS = "1";
+afterAll(() => {
+  if (previousRateBypass === undefined) delete process.env.RATE_LIMIT_BYPASS;
+  else process.env.RATE_LIMIT_BYPASS = previousRateBypass;
+});
 const { handleRequest } = await import("./index.ts");
 
 function request(path: string, token?: string, body?: Record<string, unknown>): Request {
