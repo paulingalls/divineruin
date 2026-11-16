@@ -38,7 +38,7 @@ from dispatch_agent import create_dispatch_agent
 from session_data import CompanionState, SessionData
 
 pytestmark = [
-    # The skipif is the not-opted-in path (CI: ci.yml runs the whole suite with no key).
+    # The skipif is the not-opted-in path (automatic tiers keep paid approval empty).
     # REQUIRE_REAL_LLM=1 suppresses it so the real_llm fixture can fail the lane LOUD instead
     # — a skipif firing first would keep the false green (story-019 AC1).
     pytest.mark.skipif(
