@@ -1,6 +1,7 @@
 """Engine-driven quest conditions reached by arrival, combat completion and item discovery."""
 
 import json
+from typing import TYPE_CHECKING
 
 from livekit.agents.voice import RunContext
 
@@ -10,6 +11,9 @@ import db_mutations
 import db_queries
 from quest_tools import _update_quest_impl
 from session_data import SessionData
+
+if TYPE_CHECKING:
+    from quest_authority import PendingQuest
 
 
 async def advance_on_arrival(
@@ -92,8 +96,14 @@ def finish_combat_quests(session, end_data, response, summary_parts):
 
 
 async def advance_on_item_discovered(
-    session, item_id, *, conn, queries=db_queries, mutations=db_mutations, content=db_content_queries
-):
+    session: SessionData,
+    item_id: str,
+    *,
+    conn,
+    queries=db_queries,
+    mutations=db_mutations,
+    content=db_content_queries,
+) -> list[PendingQuest]:
     from quest_authority import advance_quest_db, item_condition_satisfied
 
     pending = []
@@ -123,7 +133,7 @@ async def advance_on_item_discovered(
     return pending
 
 
-async def lock_discovery_rows(session, *, conn, queries=db_queries):
+async def lock_discovery_rows(session: SessionData, *, conn, queries=db_queries) -> dict:
     actor = session.acting_player_id
     session.validate_acting_player(actor)
     party_ids = sorted({session.primary_player_id, actor} | set(session.party.member_ids))

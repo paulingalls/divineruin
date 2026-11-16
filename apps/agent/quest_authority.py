@@ -1,6 +1,7 @@
 """Quest tools — quest progression and world effects."""
 
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from livekit.agents.llm import ToolError
@@ -241,7 +242,7 @@ async def _advance_one(
     ), quest
 
 
-async def _scene_transition(response, quest, original_stage, content):
+async def _scene_transition(response: dict, quest: dict, original_stage: int, content) -> None:
     from scene_tools import detect_scene_transition
 
     response.pop("scene_transition", None)
@@ -256,7 +257,7 @@ async def _scene_transition(response, quest, original_stage, content):
             }
 
 
-async def item_condition_satisfied(condition, party_ids, *, conn, queries=db_queries):
+async def item_condition_satisfied(condition: dict, party_ids: Iterable[str], *, conn, queries=db_queries) -> bool:
     items = condition.get("items", [])
     if not items:
         raise ValueError("item_discovered requires at least one item")
@@ -270,10 +271,28 @@ async def item_condition_satisfied(condition, party_ids, *, conn, queries=db_que
     return False
 
 
-async def advance_quest_db(session, quest_id, new_stage_id, *, conn, **kwargs) -> PendingQuest:
-    queries = kwargs.get("queries", db_queries)
-    content = kwargs.get("content", db_content_queries)
-    pending, quest = await _advance_one(session, quest_id, new_stage_id, conn=conn, **kwargs)
+async def advance_quest_db(
+    session: SessionData,
+    quest_id: str,
+    new_stage_id: int,
+    *,
+    conn,
+    mutations=db_mutations,
+    queries=db_queries,
+    content=db_content_queries,
+    milestones_mod=milestones,
+    activities=db_activity_queries,
+    divine_mutations=db_mutations_divine,
+) -> PendingQuest:
+    deps = dict(
+        mutations=mutations,
+        queries=queries,
+        content=content,
+        milestones_mod=milestones_mod,
+        activities=activities,
+        divine_mutations=divine_mutations,
+    )
+    pending, quest = await _advance_one(session, quest_id, new_stage_id, conn=conn, **deps)
     stages = quest["stages"]
     while pending.response["new_stage"] < len(stages):
         index = pending.response["new_stage"]
@@ -283,7 +302,7 @@ async def advance_quest_db(session, quest_id, new_stage_id, *, conn, **kwargs) -
         if not await item_condition_satisfied(condition, pending.party_ids, conn=conn, queries=queries):
             break
         following, _ = await _advance_one(
-            session, quest_id, index + 1, conn=conn, prior_corruption=pending.corruption, **kwargs
+            session, quest_id, index + 1, conn=conn, prior_corruption=pending.corruption, **deps
         )
         following.response["rewards_applied"] = (
             pending.response["rewards_applied"] + following.response["rewards_applied"]
