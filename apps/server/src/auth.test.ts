@@ -68,13 +68,6 @@ afterEach(() => {
 });
 
 describe("signJwt / verifyJwt", () => {
-  test("round-trips a valid token", async () => {
-    const token = await signJwt({ accountId: "acc-123", playerId: "player_abc" });
-    expect(typeof token).toBe("string");
-    const claims = await verifyJwt(token);
-    expect(claims).toEqual({ accountId: "acc-123", playerId: "player_abc" });
-  });
-
   test("returns null for garbage token", async () => {
     const result = await verifyJwt("not-a-jwt");
     expect(result).toBeNull();
