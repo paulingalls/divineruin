@@ -273,32 +273,35 @@ test("real SDK not_found on an already-ended old room permits takeover", async (
   expect([...recording.live]).toEqual([b]);
 });
 
-test("lost transition authority cannot dispatch, mint, roll back or delete successor ownership", async () => {
-  const p = player(),
-    r = room();
-  const hold = recording.hold("create", r);
-  const pending = token(p, r);
-  await hold.entered.promise;
-  await Bun.redis.send("MSET", [
-    `session_lock:player:${p}`,
-    "successor",
-    `session_lock:room:${r}`,
-    "successor",
-    `player_room:${p}`,
-    r,
-    `room_owner:${r}`,
-    p,
-    `room_dispatched:${r}`,
-    p,
-  ]);
-  hold.resume.release();
-  const result = await pending;
-  expect(result.status).toBe(503);
-  expect(result.body.token).toBeUndefined();
-  await owned(p, r);
-  expect(await Bun.redis.get(`session_lock:player:${p}`)).toBe("successor");
-  expect(recording.calls.map((c) => c.operation)).toEqual(["create"]);
-});
+for (const stage of ["create", "dispatch"] as const)
+  test(`lost transition authority at ${stage} issues no later RPC, token, rollback or successor delete`, async () => {
+    const p = player(),
+      r = room();
+    const hold = recording.hold(stage, r);
+    const pending = token(p, r);
+    await hold.entered.promise;
+    await Bun.redis.send("MSET", [
+      `session_lock:player:${p}`,
+      "successor",
+      `session_lock:room:${r}`,
+      "successor",
+      `player_room:${p}`,
+      r,
+      `room_owner:${r}`,
+      p,
+      `room_dispatched:${r}`,
+      p,
+    ]);
+    hold.resume.release();
+    const result = await pending;
+    expect(result.status).toBe(503);
+    expect(result.body.token).toBeUndefined();
+    await owned(p, r);
+    expect(await Bun.redis.get(`session_lock:player:${p}`)).toBe("successor");
+    expect(recording.calls.map((c) => c.operation)).toEqual(
+      stage === "create" ? ["create"] : ["create", "dispatch"],
+    );
+  });
 
 test("foreign token and invites are refused without changing either player's live room", async () => {
   const p = player(),
