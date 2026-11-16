@@ -229,7 +229,7 @@ describe("creature tier player bands", () => {
 describe("authored creature tiers", () => {
   test("every content row has the expected tier", () => {
     const rows = encounters.flatMap((enc) => enc.enemies.map((enemy) => [enc.id, enemy] as const));
-    expect(rows).toHaveLength(25);
+    expect(rows).toHaveLength(26);
     const named: Record<string, number> = {
       Shadeling: 1,
       Mawling: 2,

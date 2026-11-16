@@ -181,13 +181,18 @@
   {
     "id": "hollow_patrol_greyvale",
     "name": "Hollow Patrol",
-    "description": "Dry leaves rasp in a breath that is not yours. Cold ash stings your nose. A lone shade drifts across the northern road.",
+    "description": "Dry leaves rasp in a breath that is not yours. Cold ash stings your nose. Two shades drift across the northern road, one trailing the other like smoke.",
     "difficulty": "easy",
     "enemies": [
       {
         "id": "shadeling_1",
         "creature_id": "hollow_shadeling",
         "role": "standard"
+      },
+      {
+        "id": "shadeling_2",
+        "creature_id": "hollow_shadeling",
+        "role": "minion"
       }
     ],
     "recommended_party_level": 1,
@@ -206,6 +211,11 @@
         "shadeling_1": {
           "x": 30,
           "y": -10,
+          "z": 0
+        },
+        "shadeling_2": {
+          "x": 30,
+          "y": 10,
           "z": 0
         }
       },
