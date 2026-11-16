@@ -1,5 +1,6 @@
 import asyncio
 import json
+import uuid
 
 import asyncpg
 import pytest
@@ -134,6 +135,7 @@ def test_valid_seed_commits_creatures_and_map(fresh_migrated_db, monkeypatch, ca
 @pytest.fixture(autouse=True)
 def default_mode(monkeypatch):
     monkeypatch.delenv("SEED_PRODUCTION", raising=False)
+    monkeypatch.setenv("CONTENT_CACHE_PREFIX", "seed-atomic-" + uuid.uuid4().hex + ":")
 
 
 async def rows(dsn, sql=None):

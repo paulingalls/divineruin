@@ -56,3 +56,19 @@ async def validate_runtime_catalogs(conn) -> None:
         parsed = {row["id"]: getattr(module, parser)(row["id"], row["data"]) for row in snapshot[table]}
         if name == "spells":
             module.set_spells(parsed)
+
+
+async def invalidate_content_cache() -> None:
+    command = Path(__file__).with_name("seed_cache.ts")
+    process = await asyncio.create_subprocess_exec("bun", "--no-env-file", "run", str(command))
+    try:
+        async with asyncio.timeout(15):
+            await process.wait()
+        if process.returncode:
+            raise RuntimeError("Valkey content-cache invalidation failed")
+    except TimeoutError:
+        raise RuntimeError("Valkey content-cache invalidation timed out") from None
+    finally:
+        if process.returncode is None:
+            process.kill()
+            await process.wait()

@@ -305,6 +305,15 @@ await s.close();
         assert h.inspect(h.project + "-server")["Id"] == unchanged_image
         assert recipe_name() == recipe["name"], "HTTP catalog retained pre-deployment recipe"
         print("content-only deployment refreshes the HTTP catalog", flush=True)
+        accepted = serving()
+        accepted_rows = snapshot()
+        override["services"]["migrate"]["environment"] = {"REDIS_URL": "redis://127.0.0.1:1"}
+        configure()
+        deploy(False, keep_healthy=True, error="Valkey content-cache invalidation failed")
+        assert serving() == accepted
+        assert snapshot() == accepted_rows
+        h.health(url)
+        print("cache invalidation failure preserves serving containers", flush=True)
     finally:
         h.stop(events)
         stream.close()

@@ -234,6 +234,7 @@ def main():
     settings = {
         "DATABASE_URL": proxy_url(fixture_db, 15432),
         "REDIS_URL": proxy_url(base_redis, 16379),
+        "CONTENT_CACHE_PREFIX": name + ":",
         "JWT_SECRET": uuid.uuid4().hex + uuid.uuid4().hex,
         "INTERNAL_SECRET": uuid.uuid4().hex,
         "CORS_ORIGIN": "https://smoke.invalid",

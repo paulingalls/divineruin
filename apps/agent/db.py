@@ -128,6 +128,7 @@ DESYNCED_REPLY_LOG = "Redis GET %s answered %r, not a string: discarding the des
 
 
 async def _cache_get(key: str) -> str | None:
+    key = os.environ.get("CONTENT_CACHE_PREFIX", "") + key
     try:
         r = await get_redis()
         value = await r.get(key)
@@ -159,6 +160,7 @@ async def _discard_desynced_redis(r: aioredis.Redis, key: str, reply: object) ->
 
 
 async def _cache_set(key: str, value: str) -> None:
+    key = os.environ.get("CONTENT_CACHE_PREFIX", "") + key
     try:
         r = await get_redis()
         await r.set(key, value, ex=CACHE_TTL)

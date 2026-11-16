@@ -20,7 +20,7 @@ COPY packages/shared/src/ ./packages/shared/src/
 COPY scripts/pyproject.toml scripts/uv.lock ./scripts/
 RUN uv sync --project scripts --frozen --no-dev --no-cache \
     && useradd --create-home --uid 10001 migrate
-COPY scripts/migrate.ts scripts/seed_content.py scripts/seed_catalogs.py scripts/seed_catalogs.ts ./scripts/
+COPY scripts/migrate.ts scripts/seed_content.py scripts/seed_catalogs.py scripts/seed_catalogs.ts scripts/seed_cache.ts ./scripts/
 COPY apps/server/src/ ./apps/server/src/
 COPY scripts/migrations/ ./scripts/migrations/
 COPY apps/agent/*.py ./apps/agent/

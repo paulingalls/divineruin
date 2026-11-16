@@ -468,6 +468,10 @@ async def main() -> None:
                 from seed_catalogs import validate_runtime_catalogs
 
                 await validate_runtime_catalogs(conn)
+        if production:
+            from seed_catalogs import invalidate_content_cache
+
+            await invalidate_content_cache()
         total = sum(counts.values())
         print(f"\nDone: {total} entities seeded to {target}, all validations passed.")
     finally:
