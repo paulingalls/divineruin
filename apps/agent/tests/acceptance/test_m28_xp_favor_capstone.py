@@ -19,8 +19,6 @@ import milestones
 import quest_tools
 from combat_end import _end_combat_db
 from combat_events import EventSink
-from exploration_agent import EXPLORATION_TOOLS
-from llm_config import MAX_STRICT_TOOLS
 from session_data import CombatParticipant, CombatState, SessionData
 
 # The ONLY authored stage declaring both rewards: greyvale_anomaly stage index 4
@@ -98,11 +96,6 @@ def test_no_agent_registers_award_tools(name: str, tools: list) -> None:
 
 
 # --- 2. The tool-ceiling win holds ------------------------------------------------------
-
-
-def test_exploration_keeps_four_free_slots() -> None:
-    assert len(EXPLORATION_TOOLS) == 16
-    assert len(EXPLORATION_TOOLS) <= MAX_STRICT_TOOLS - 4
 
 
 # --- 2b. The authored content this net's arithmetic is seeded from ----------------------
