@@ -47,7 +47,6 @@ def run(h, settings, fixture, proxy):
             **dict(
                 settings,
                 DATABASE_URL=h.fixture_db,
-                JWT_SECRET="ab" * 32,
                 REDIS_URL=h.base_redis,
                 MEDIA_DIR=str(h.tmp / "host-media"),
             ),
@@ -97,6 +96,7 @@ await s.close();""")
         dict(
             {k: os.environ[k] for k in ("PATH", "HOME")},
             DATABASE_URL=h.fixture_db,
+            JWT_SECRET="ab" * 32,
             REDIS_URL=h.base_redis,
         ),
     )
