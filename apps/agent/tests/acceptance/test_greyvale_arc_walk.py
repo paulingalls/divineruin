@@ -133,3 +133,67 @@ def unknown_condition(harness):
             await refresh(arc, quest, 0)
 
     harness.run_sync(check())
+
+
+@given(parsers.parse("a First Blood fight ending through {route}"))
+def first_blood(harness, route):
+    from unittest.mock import patch
+
+    from acceptance._capstone_helpers import _d20
+    from acceptance.first_blood_walk import FirstBloodWalk
+
+    harness.stack.enter_context(patch("check_resolution.dice_roll", side_effect=lambda *_, **__: _d20(20)))
+    arc = harness.run_sync(FirstBloodWalk().start(harness, route))
+    harness.state["blood"] = arc
+    harness.run_sync(arc.prepare())
+
+
+@given(parsers.parse("a First Blood exclusion {case}"))
+def first_blood_exclusion(harness, case):
+    from acceptance.first_blood_walk import FirstBloodWalk
+
+    options = {
+        "wrong": {"encounter": "shadeling_cluster"},
+        "defeat": {"outcome": "defeat"},
+        "fled": {"outcome": "fled"},
+        "deescalated": {"outcome": "deescalated"},
+        "standing": {"cleared": False},
+        "dead": {"alive": False},
+        "progressed": {"stage": 3},
+    }
+    route = "resolve_phase" if case == "deescalated" else "end_combat"
+    arc = harness.run_sync(FirstBloodWalk().start(harness, route, **options[case]))
+    harness.state.update(blood=arc, blood_stage=3 if case == "progressed" else 2)
+    harness.run_sync(arc.prepare())
+
+
+@when("the fight ends")
+def first_blood_ends(harness):
+    harness.state["blood_result"] = harness.run_sync(harness.state["blood"].end())
+
+
+@then("First Blood rewards and the dungeon objective reach the DM once")
+def first_blood_reward(harness):
+    async def check():
+        arc = harness.state["blood"]
+        await arc.rewarded(harness.state["blood_result"])
+        await arc.replay_refused()
+        await arc.fresh_encounter()
+
+    harness.run_sync(check())
+
+
+@then("First Blood stays unpaid")
+def first_blood_unpaid(harness):
+    async def check():
+        import db_queries
+        import event_types as E
+
+        arc = harness.state["blood"]
+        marker = await db_queries.get_player_quest(arc.player, "greyvale_anomaly")
+        assert marker is not None and marker["current_stage"] == harness.state["blood_stage"]
+        assert not [e for e in arc.events if e["type"] in {E.QUEST_UPDATED, E.WORLD_EVENT}]
+        assert not [e for e in arc.events if e["type"] == E.XP_AWARDED and "Quest" in e["reason"]]
+        assert await db_queries.get_npc_disposition("elder_yanna", arc.player) is None
+
+    harness.run_sync(check())

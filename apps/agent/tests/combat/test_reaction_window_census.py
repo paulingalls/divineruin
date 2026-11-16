@@ -60,7 +60,7 @@ _WINDOW_CENSUS = {
 # The `grapple` branch hangs on two content rows that are the SAME action twice. A content edit
 # dropping Seizing Grab strands rogue_slippery and spy_slippery with nothing going red anywhere
 # else, so the carriers are pinned as a literal.
-_GRAPPLE_CARRIERS = [("mawling_1", "Lunge"), ("mawling_2", "Lunge"), ("mawling_1", "Lunge")]
+_GRAPPLE_CARRIERS = [("mawling_1", "Lunge"), ("mawling_2", "Lunge")]
 _COMMAND_CARRIERS = [
     ("ashmark_patrol", "ashmark_sergeant", "Rally"),
     ("cult_cell", "cult_fanatic_1", "Bless"),

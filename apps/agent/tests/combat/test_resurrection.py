@@ -239,6 +239,7 @@ class TestCombatEndDefeatWiring:
         cs = _make_combat_state(player_fallen=True)
         session = SessionData(player_id="player_1", location_id="battlefield_danger", room=None)
         end_data = {
+            "quest_updates": [],
             "xp_total": 0,
             "xp_granted": 0,
             "summary_xp_granted": 0,
