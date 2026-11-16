@@ -47,13 +47,13 @@ Owner: divineruin2 clone.
 - [ ] The Leave button shows the session summary
 - [ ] Re-entering never speaks a stale recap
 - [x] The prologue plays with default configuration
-- [ ] A failed DM dispatch does not leave the player in an empty room
+- [x] A failed DM dispatch does not leave the player in an empty room
 
 ## Protecting the Bill
 
 - [x] Only allowlisted emails can sign in
 - [ ] A session has a length cap and an idle timeout
-- [ ] One player cannot run concurrent sessions or dispatch a second DM
+- [x] One player cannot run concurrent sessions or dispatch a second DM — 2 h ownership TTL; story-session-caps enforces the approved 60-minute cap this sprint
 - [ ] Rate limits hold behind the load balancer
 
 ## Deployment and TestFlight

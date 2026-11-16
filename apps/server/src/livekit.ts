@@ -5,7 +5,7 @@ import {
   DataPacket_Kind,
 } from "livekit-server-sdk";
 import { TrackSource } from "@livekit/protocol";
-import { logError } from "./env.ts";
+import { joinPlayerRoom } from "./session-rooms.ts";
 import { parseJsonBody } from "./middleware.ts";
 export { DataPacket_Kind };
 
@@ -33,8 +33,14 @@ export function getLivekitClients(): LivekitClients | null {
     url,
     apiKey,
     apiSecret,
-    roomService: new RoomServiceClient(url.replace("wss://", "https://"), apiKey, apiSecret),
-    dispatchClient: new AgentDispatchClient(url, apiKey, apiSecret),
+    roomService: new RoomServiceClient(url.replace("wss://", "https://"), apiKey, apiSecret, {
+      requestTimeout: 10,
+      failover: false,
+    }),
+    dispatchClient: new AgentDispatchClient(url, apiKey, apiSecret, {
+      requestTimeout: 10,
+      failover: false,
+    }),
   };
   return _clients;
 }
@@ -115,29 +121,9 @@ export async function handleLivekitToken(req: Request, playerId: string): Promis
     return Response.json({ error: roomNameError }, { status: 400 });
   }
 
-  try {
-    await clients.roomService.createRoom({ name: room_name });
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (!msg.includes("already exists") && !msg.includes("already being created")) {
-      logError(`Failed to create LiveKit room "${room_name}":`, e);
-    }
-  }
-
-  const jwt = await mintParticipantToken(clients, room_name, player_id);
-
-  try {
-    await clients.dispatchClient.createDispatch(room_name, "divineruin-dm", {
-      metadata: JSON.stringify({ player_id }),
-    });
-    console.log(`Dispatched DM agent to room "${room_name}"`);
-  } catch (e: unknown) {
-    logError("Failed to dispatch DM agent:", e);
-  }
-
-  return Response.json({
-    token: jwt,
-    room_name,
-    url: clients.url,
-  });
+  const result = await joinPlayerRoom(clients, player_id, room_name, () =>
+    mintParticipantToken(clients, room_name, player_id),
+  );
+  if ("error" in result) return Response.json({ error: result.error }, { status: result.status });
+  return Response.json({ token: result.token, room_name, url: clients.url });
 }
