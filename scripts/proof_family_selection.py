@@ -241,9 +241,15 @@ def select_content(inventory, families, content):
     return assignments
 
 
-def audit_content(tasks, inventory, assignments):
-    for source in set().union(*assignments.values()):
-        expected = {task for task, selected in assignments.items() if source in selected}
+def audit_content(tasks, inventory, families, content):
+    for source in sorted(content | SHARED_INPUTS):
+        expected = SEED_REPRESENTATIVES | direct_readers(inventory, source)
+        expected |= {task for task, meta in inventory.items() if source in families[meta["family"]]["reads"]}
         receiving = {task for task in inventory if source in tasks[task]["keyed"]}
-        if receiving != expected or any(source not in tasks[t]["inputs"] for t in receiving):
-            raise ValueError(f"{source}: content coverage/input mismatch: {sorted(receiving ^ expected)}")
+        missing_inputs = {task for task in expected if source not in tasks[task]["inputs"]}
+        if receiving != expected or missing_inputs:
+            raise ValueError(
+                f"{source}: content coverage/input mismatch: "
+                f"missing keys={sorted(expected - receiving)}, extra keys={sorted(receiving - expected)}, "
+                f"missing inputs={sorted(missing_inputs)}"
+            )

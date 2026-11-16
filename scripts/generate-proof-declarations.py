@@ -392,7 +392,7 @@ def main():
     for name, selected in content_assignments.items():
         tasks[name]["keyed"] += sorted(selected)
         tasks[name]["inputs"] += sorted(selected)
-    audit_content(tasks, inventory, content_assignments)
+    audit_content(tasks, inventory, families, content)
     for name in tasks.keys() - inventory.keys():
         tasks[name]["keyed"] += sorted(content | SHARED_INPUTS)
     output = {"unkeyed": sorted(sources | content | SHARED_INPUTS), "tasks": tasks}
