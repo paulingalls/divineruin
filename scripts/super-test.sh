@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SOURCE="$(cd "$(dirname "$0")/.." && pwd -P)"
+# launchd runs an installed copy outside any checkout, so the plist names the source repo.
+SOURCE="${SUPER_SOURCE:-$(cd "$(dirname "$0")/.." && pwd -P)}"
 TARGET="${SUPER_WORKTREE:-$HOME/.xp/super/divineruin}"
 mkdir -p "$(dirname "$TARGET")"
 TARGET="$(cd "$(dirname "$TARGET")" && pwd -P)/$(basename "$TARGET")"

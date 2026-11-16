@@ -3,8 +3,11 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 PRIMARY="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
-RUNNER="$PRIMARY/scripts/super-test.sh"
-[ -f "$RUNNER" ] || { echo "ERROR: durable runner missing: $RUNNER" >&2; exit 1; }
+# A copy outside every checkout: a branch switch in the primary cannot remove or change the scheduled runner.
+# Rerun this installer to update it.
+RUNNER="$HOME/.xp/super/super-test.sh"
+mkdir -p "$(dirname "$RUNNER")"
+cp scripts/super-test.sh "$RUNNER"
 LABEL=com.divineruin.super-test
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 LOGS="$HOME/.xp/super/flake-artifacts"
@@ -25,7 +28,7 @@ with open(path, "wb") as output:
         "Label": label,
         "ProgramArguments": ["/bin/bash", runner],
         "WorkingDirectory": primary,
-        "EnvironmentVariables": {"PATH": tool_path},
+        "EnvironmentVariables": {"PATH": tool_path, "SUPER_SOURCE": primary},
         "StartCalendarInterval": [
             {"Weekday": day, "Hour": 2, "Minute": 0} for day in (2, 4, 6)
         ],
