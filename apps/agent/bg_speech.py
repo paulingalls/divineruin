@@ -28,3 +28,4 @@ class PendingSpeech:
     # delivered there breaks the DM off mid-beat. Only a producer whose whole point is to reach
     # the player during a fight opts in (the Vaelti advance warning).
     combat_safe: bool = field(default=False, compare=False)
+    silence_generated: bool = field(default=False, compare=False)

@@ -165,7 +165,12 @@ def watch_close(session, sd) -> None:
     sd.outcome_player_id = sd.primary_player_id
 
     def closed(_event):
-        if sd.background is None:
-            sd.session_end_task = asyncio.create_task(complete(sd.primary_player_id, sd.session_id, "failed"))
+        if sd.session_end_task is None:
+            if sd.background is None:
+                sd.session_end_task = asyncio.create_task(complete(sd.primary_player_id, sd.session_id, "failed"))
+            else:
+                from session_end import ensure_session_end
+
+                ensure_session_end(sd)
 
     session.on("close", closed)

@@ -51,6 +51,7 @@ async def test_prologue_start_installs_primary_room_options() -> None:
     ctx.connect = AsyncMock()
     session = MagicMock()
     session.start = AsyncMock()
+    session.userdata = SessionData(player_id="player_1", location_id="")
     with (
         patch("agent._make_agent_session", return_value=session),
         patch("agent._setup_reconnection"),
@@ -133,6 +134,9 @@ async def test_gameplay_start_owns_inputs_and_closes_them_with_session(monkeypat
         def on(self, event, callback):
             self.listeners[event] = callback
 
+        def off(self, event, callback):
+            self.listeners.pop(event, None)
+
     monkeypatch.setattr("session_startup.deepgram.STT", lambda **_kwargs: object())
     room = Room()
     session = Session()
@@ -172,6 +176,8 @@ async def test_gameplay_start_owns_inputs_and_closes_them_with_session(monkeypat
     assert close_task is not None
     await close_task
     assert owner.input._task is None
+    assert sd.limits is not None
+    await sd.limits.aclose()
 
 
 async def test_cleanup_failures_from_every_owned_resource_are_raised_together() -> None:

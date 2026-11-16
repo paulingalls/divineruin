@@ -10,6 +10,7 @@ from livekit.agents import AgentSession
 
 import event_types as E
 import room_admin
+import session_outcome
 from card_tap_handler import PLAYER_HINTS_TOPIC, authorized_hint_actor
 from session_data import SessionData
 from session_end import ensure_session_end, run_guest_departure
@@ -49,6 +50,7 @@ class LeaveRequestHandler:
             if self.close_task is not None:
                 return
             self.close_task = asyncio.create_task(self._end_before_gameplay(sender))
+            self.sd.session_end_task = self.close_task
             task = self.close_task
         elif len(self.sd.party.members) > 1:
             self.sd.departing_player_id = sender
@@ -64,7 +66,10 @@ class LeaveRequestHandler:
         try:
             await room_admin.remove_player(self.room.name, sender)
         finally:
-            await self.session.aclose()
+            try:
+                await session_outcome.complete(self.sd.primary_player_id, self.sd.session_id, "failed")
+            finally:
+                await self.session.aclose()
 
     async def _close_after(self, end: asyncio.Task[None]) -> None:
         try:

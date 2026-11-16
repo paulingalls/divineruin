@@ -56,8 +56,8 @@ PostgreSQL, Valkey and LiveKit; model and voice providers are deterministic.
 ## Protecting the Bill
 
 - [x] Only allowlisted emails can sign in
-- [ ] A session has a length cap and an idle timeout
-- [x] One player cannot run concurrent sessions or dispatch a second DM — 2 h ownership TTL; story-session-caps enforces the approved 60-minute cap this sprint
+- [x] A session has a length cap and an idle timeout
+- [x] One player cannot run concurrent sessions or dispatch a second DM — 2 h ownership TTL; sessions enforce the approved 60-minute cap
 - [ ] Rate limits hold behind the load balancer
 
 ## Deployment and TestFlight
