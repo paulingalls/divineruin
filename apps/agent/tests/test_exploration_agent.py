@@ -20,7 +20,7 @@ class TestExplorationAgentConfig:
 
 
 class TestExplorationToolset:
-    def test_count_at_fifteen_under_ceiling(self):
+    def test_count_at_sixteen_under_ceiling(self):
         from llm_config import MAX_STRICT_TOOLS
 
         assert len(EXPLORATION_TOOLS) == 16

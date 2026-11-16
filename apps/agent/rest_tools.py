@@ -29,9 +29,11 @@ def _pool_values(player: dict, key: str) -> tuple[int, int]:
 @function_tool()
 @db_tool
 async def rest(context: RunContext[SessionData], rest_type: RestType) -> str:
-    """Rest when players choose recovery at a safe inn or tavern. Choose short or long;
-    narrate the returned recovery or refusal. Rest is unavailable during combat or
-    outside a safe rest location. Present, co-located party members recover together.
+    """Rest when players choose recovery at a safe inn or tavern; narrate the returned
+    recovery or refusal. short: Stamina refills and Focus recovers to half; HP does not.
+    long: HP, Stamina and Focus refill and the settlement becomes the party's anchor.
+    Rest is unavailable during combat or outside a safe rest location. Present,
+    co-located party members recover together.
     """
     session = context.userdata
     actor = session.acting_player_id
