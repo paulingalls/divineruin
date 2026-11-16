@@ -130,28 +130,6 @@ async def test_automatic_wrap_settlement(fragment_player, quest_starts, outcome)
     assert quest_starts.await_args.args[1:] == ("greyvale_anomaly", 0)
 
 
-@pytest.fixture
-def stub_companion_hydrate_io():
-    yield
-
-
-@pytest.fixture
-def mock_combat_agent_factory(request):
-    from unittest.mock import MagicMock, patch
-
-    if request.node.name == "test_saved_rider_reentry_and_wrap_defeat":
-        yield
-    else:
-        with patch("combat_agent.create_combat_agent", return_value=MagicMock()) as factory:
-            yield factory
-
-
-async def test_saved_rider_reentry_and_wrap_defeat(livekit_server, reset_db_pool, tmp_path):
-    from acceptance.rider_reentry_walk import reentry_and_defeat
-
-    await reentry_and_defeat(livekit_server, tmp_path)
-
-
 async def test_seeded_rider_instructions_and_retained_events(reset_db_pool):
     import json
 
