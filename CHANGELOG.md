@@ -8,6 +8,9 @@
 - Every authored location can be walked to from the Accord market square and every exit has a way back. Five exits were missing, including the ones into Emris's study and Yanna's farmhouse and the road north out of the square. A content check fails if either property breaks.
 - Players can rest. The DM's new `rest` tool restores Stamina fully and Focus to half on a short rest, and HP, Stamina and Focus on a long rest, which also records the settlement as the player's anchor. Either rest resets Resonance. It refuses in combat and where the location is not safe, and restores each co-located party member from their own pools.
 - A lost fight no longer crashes resurrection with a missing player id.
+- New characters are created with their archetype's Focus and Stamina pools. Creation had written neither, so every spell or ability with a cost was refused; migration 063 backfills existing characters without touching pools already spent.
+- A long rest restores HP only up to the ceiling left by permanent death penalties.
+- The per-player character snapshot sent after a rest goes only to that player, not to everyone in the room.
 
 ## 0.36.1 — 2026-11-06
 
