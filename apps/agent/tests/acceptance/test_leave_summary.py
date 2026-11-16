@@ -249,3 +249,22 @@ async def test_failed_recap_still_closes(livekit_server, reset_db_pool):
             redis = await db.get_redis()
             raw = await redis.get(f"session_outcome:{pid}")
             assert raw is not None and json.loads(raw)["state"] == "failed"
+
+
+async def test_leave_before_gameplay_ends_the_room(livekit_server, reset_db_pool, monkeypatch):
+    for key, value in (("URL", "ws_url"), ("API_KEY", "api_key"), ("API_SECRET", "api_secret")):
+        monkeypatch.setenv(f"LIVEKIT_{key}", livekit_server[value])
+    async with RecapHarness(livekit_server) as harness:
+        pid = await harness.player(beat=1)
+        job = await harness.start(pid)
+        sd = await job.wait()
+        assert sd.background is None
+        closed, disconnected = asyncio.Event(), asyncio.Event()
+        job.episode.session.on("close", lambda _: closed.set())
+        job.player.on("disconnected", lambda *_: disconnected.set())
+        await send(job.player)
+        async with asyncio.timeout(5):
+            await asyncio.gather(closed.wait(), disconnected.wait())
+        await join_end(sd)
+        raw = await (await db.get_redis()).get(f"session_outcome:{pid}")
+        assert raw is not None and json.loads(raw)["state"] == "failed"
