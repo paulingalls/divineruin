@@ -65,6 +65,33 @@ def matches(patterns, path):
     return any(pattern.fullmatch(path) for pattern in patterns)
 
 
+def explicit_roots(path, graph):
+    local = set()
+    text = Path(path).read_text()
+    if graph[path].get("localReason") and path not in ABSENT_IMPORTS:
+        if path == "apps/agent/tests/agent_tool_profiles.py":
+            roots = {str(p) for p in Path("apps/agent").glob("*_agent.py")}
+        else:
+            literals = {
+                node.value
+                for node in ast.walk(ast.parse(text))
+                if isinstance(node, ast.Constant)
+                and isinstance(node.value, str)
+                and re.fullmatch(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*", node.value)
+            }
+            roots = {
+                str(Path(root) / (literal.replace(".", "/") + ".py")) for root in ROOTS for literal in literals
+            } & graph.keys()
+        if not roots:
+            raise ValueError(f"{path}: unrooted dynamic import: {graph[path]['localReason']}")
+        local.update(roots)
+    if "spec_from_file_location" in text or "run_path" in text:
+        if path not in PATH_LOADED:
+            raise ValueError(f"{path}: undeclared path-loaded Python root")
+        local.update(PATH_LOADED[path])
+    return local
+
+
 def runtime_closure(entry, graph):
     pending = [entry]
     closure = set()
@@ -76,28 +103,7 @@ def runtime_closure(entry, graph):
             raise ValueError(f"{entry}: missing Python root {path}")
         closure.add(path)
         pending.extend(set(graph[path]["closure"]) - closure)
-        text = Path(path).read_text()
-        if graph[path].get("localReason") and path not in ABSENT_IMPORTS:
-            if path == "apps/agent/tests/agent_tool_profiles.py":
-                roots = {str(p) for p in Path("apps/agent").glob("*_agent.py")}
-            else:
-                literals = {
-                    node.value
-                    for node in ast.walk(ast.parse(text))
-                    if isinstance(node, ast.Constant)
-                    and isinstance(node.value, str)
-                    and re.fullmatch(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*", node.value)
-                }
-                roots = {
-                    str(Path(root) / (literal.replace(".", "/") + ".py")) for root in ROOTS for literal in literals
-                } & graph.keys()
-            if not roots:
-                raise ValueError(f"{path}: unrooted dynamic import: {graph[path]['localReason']}")
-            pending.extend(roots - closure)
-        if "spec_from_file_location" in text or "run_path" in text:
-            if path not in PATH_LOADED:
-                raise ValueError(f"{path}: undeclared path-loaded Python root")
-            pending.extend(set(PATH_LOADED[path]) - closure)
+        pending.extend(explicit_roots(path, graph) - closure)
     return closure
 
 
@@ -138,6 +144,9 @@ def task_inventory(acceptance, e2e, graph, families):
             "path": entry,
             "family": memberships.pop(),
             "preferred": preferred,
+            "direct": (set(graph[entry]["direct"]) - {entry}) | explicit_roots(entry, graph)
+            if entry in graph
+            else set(),
             "closure": full,
         }
     if not inventory or not acceptance or any(not inventory[t]["closure"] for t in acceptance):
@@ -170,13 +179,46 @@ def select_readers(inventory, source, readers, budget):
     return selected
 
 
+def source_readers(inventory, families, source):
+    readers = {t for t, m in inventory.items() if source in m["closure"]}
+    owners = {name for name, family in families.items() if matches(family["owns"], source)}
+    own = {t for t, m in inventory.items() if m["path"] == source}
+    return readers, owners, own
+
+
+def ordinary_candidates(inventory, source, reaching):
+    direct = {t for t in reaching if source in inventory[t]["direct"]}
+    preferred = {t for t in reaching if source in inventory[t]["preferred"]}
+    return direct or preferred or reaching
+
+
+def first_reader(inventory, candidates):
+    return min(
+        candidates,
+        key=lambda t: (len(inventory[t]["closure"]), inventory[t]["path"], t),
+    )
+
+
 def select_sources(inventory, families, sources):
     assignments = {task: set() for task in inventory}
     for source in sorted(sources):
-        readers = {task for task, meta in inventory.items() if source in meta["closure"]}
-        owners = {name for name, family in families.items() if matches(family["owns"], source)}
-        selected = select_readers(inventory, source, readers, 1 if harness_source(source) else 2)
-        selected.update(task for task, meta in inventory.items() if meta["family"] in owners or meta["path"] == source)
+        readers, owners, selected = source_readers(inventory, families, source)
+        if harness_source(source):
+            selected |= select_readers(inventory, source, readers, 1)
+            selected.update(t for t, m in inventory.items() if m["family"] in owners)
+        else:
+            direct = {t for t, m in inventory.items() if source in m["direct"]}
+            if sum(t.startswith("agent-acceptance:") for t in direct) <= 10:
+                selected |= direct
+            shared = sum(t.startswith("agent-acceptance:") for t in readers) > 10
+            for family in owners | {inventory[t]["family"] for t in readers}:
+                members = {t for t, m in inventory.items() if m["family"] == family}
+                reaching = readers & members
+                if family not in owners and not shared:
+                    selected |= reaching
+                elif not selected & members:
+                    candidates = ordinary_candidates(inventory, source, reaching) or members
+                    selected.add(first_reader(inventory, candidates))
         for task in selected:
             assignments[task].add(source)
     return assignments
@@ -201,26 +243,36 @@ def audit_readers(source, inventory, readers, receiving, required, budget):
 
 def audit_selection(tasks, inventory, families, sources):
     for source in sorted(sources):
-        readers = {task for task, meta in inventory.items() if source in meta["closure"]}
-        owners = {name for name, family in families.items() if matches(family["owns"], source)}
-        required = {t for t, m in inventory.items() if m["family"] in owners or m["path"] == source}
+        readers, owners, own = source_readers(inventory, families, source)
         receiving = {t for t in inventory if source in tasks[t]["keyed"] and source in tasks[t]["inputs"]}
-        audit_readers(
-            source,
-            inventory,
-            readers,
-            receiving,
-            required,
-            1 if harness_source(source) else 2,
-        )
-
-        if not harness_source(source) and sum(t.startswith("agent-acceptance:") for t in readers) > 10:
-            for family in families:
-                reaching = {t for t in readers if inventory[t]["family"] == family}
-                preferred = {t for t in reaching if source in inventory[t]["preferred"]}
-                selected = {t for t in receiving - required if inventory[t]["family"] == family}
-                if not selected <= (preferred or reaching):
-                    raise ValueError(f"{source}: family {family}: invalid representatives {sorted(selected)}")
+        if harness_source(source):
+            required = own | {t for t, m in inventory.items() if m["family"] in owners}
+            audit_readers(source, inventory, readers, receiving, required, 1)
+            continue
+        direct = {t for t, m in inventory.items() if source in m["direct"]}
+        required = own | (direct if sum(t.startswith("agent-acceptance:") for t in direct) <= 10 else set())
+        if missing := required - receiving:
+            raise ValueError(f"orphan {source}: missing direct coverage/input: {sorted(missing)}")
+        shared = sum(t.startswith("agent-acceptance:") for t in readers) > 10
+        for family in families:
+            members = {t for t, m in inventory.items() if m["family"] == family}
+            reaching = readers & members
+            selected = receiving & members
+            if family not in owners and not shared:
+                if selected != (reaching | (required & members)):
+                    raise ValueError(f"{source}: family {family}: reader coverage/input mismatch")
+                continue
+            if family not in owners and not reaching:
+                if selected:
+                    raise ValueError(f"{source}: family {family}: unexpected receivers {sorted(selected)}")
+                continue
+            if not selected:
+                raise ValueError(f"orphan {source}: family {family}: missing representative coverage/input")
+            if len(selected - required) > (0 if required & members else 1):
+                raise ValueError(f"{source}: family {family}: representative cap exceeded {sorted(selected)}")
+            candidates = ordinary_candidates(inventory, source, reaching) or members
+            if not selected - required <= candidates:
+                raise ValueError(f"{source}: family {family}: invalid representatives {sorted(selected)}")
 
 
 def content_inventory():
