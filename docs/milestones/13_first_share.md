@@ -18,8 +18,8 @@ mystery object and the call to action are one beat, in session 1.
 - [x] The fragment fight runs from `fragment_shadeling` in a contained Accord location
 - [x] When the fight ends, the player holds `greyvale_veil_fragment` and `greyvale_anomaly` has started through the quest path
 - [x] Session 1 pays less than 75 XP, so the player reaches Millhaven at level 1
-- [ ] A patron whisper is waiting in catch-up after session 1
-- [x] One acceptance walk drives creation to quest-started with no paid provider
+- [x] A patron whisper is waiting in catch-up after session 1
+- [x] One acceptance walk drives creation to whisper queued with no paid provider
 
 ## Session 2 — Millhaven and the Breach
 
