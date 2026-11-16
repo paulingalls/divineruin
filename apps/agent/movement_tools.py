@@ -49,7 +49,8 @@ async def move_player(
 ) -> str | tuple:
     """Move the party to a connected location. Provide the destination
     location ID from the current location's exits. Returns the full scene
-    context for the new location."""
+    context for the new location. Arriving may complete a location-based quest stage; it then appears in
+    `quest_updates` — narrate its `narrative_beat` and do not call `update_quest` for it."""
     return await _move_player_impl(context, destination_id)
 
 

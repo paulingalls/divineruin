@@ -66,7 +66,8 @@ async def travel(
     Survival navigation check against the destination's navigation, may cost time or get the party
     lost, accrues Exhaustion on a forced march or a bad miss in harsh conditions, and on a successful
     journey moves the party to the destination. Pass `forced_march=True` (and an `hours` estimate)
-    when the party pushes on without rest."""
+    when the party pushes on without rest. Arriving may complete a location-based quest stage; it then appears in
+    `quest_updates` — narrate its `narrative_beat` and do not call `update_quest` for it."""
     return await _travel_impl(context, destination_id, mode, hours=hours, forced_march=forced_march)
 
 
