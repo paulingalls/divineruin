@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
+import { sql } from "./db.ts";
 import { SignJWT } from "jose";
 import { codePath, launch, resources, secret } from "./test-fixtures/rate-limit-server.ts";
 
@@ -196,4 +197,58 @@ test("development bypass permits more than the limit without storage", async () 
     k = data.track("ip", x);
   for (let n = 0; n < 4; n++) await allowed(await post(s, x));
   expect(await Bun.redis.get(k)).toBeNull();
+});
+
+test("route-specific ceilings hold for valid requests through the dispatcher", async () => {
+  const player = await data.player(),
+    Authorization = await bearer(player);
+  const room = `rate_${crypto.randomUUID()}`;
+  const auth = { Authorization, "X-Internal-Secret": secret };
+  const code = `rate-${crypto.randomUUID()}`;
+  await Bun.redis.set(`invite:${code}`, room, "EX", 60);
+  const paths = [
+    ["/api/auth/verify-code", 5],
+    ["/api/waitlist", 5],
+    ["/api/livekit/token", 10],
+    ["/api/livekit/invite", 10],
+    ["/api/livekit/redeem", 10],
+    ["/api/push-token", 5],
+    ["/api/images/generate", 10],
+  ] as const;
+  try {
+    for (const [path, limit] of paths) {
+      data.track("player", player, path);
+      for (let n = 0; n <= limit; n++) {
+        let body: Record<string, string> = { room_name: room };
+        if (path === "/api/auth/verify-code") {
+          const email = await data.address(),
+            client = ip();
+          data.track("ip", client);
+          await allowed(await post(a, client, email));
+          const [row] = await sql<
+            { code: string }[]
+          >`SELECT c.code FROM auth_codes c JOIN accounts a ON a.id=c.account_id WHERE a.email=${email}`;
+          body = { email, code: row!.code };
+        } else if (path === "/api/waitlist") body = { email: await data.address() };
+        else if (path === "/api/livekit/redeem") body = { code };
+        else if (path === "/api/push-token") body = { token: `ExpoPushToken[${player}]` };
+        else if (path === "/api/images/generate") body = { templateId: "character_portrait" };
+        const response = await (n % 2 ? a : b).request(path, auth, body);
+        if (n === limit) await blocked(response);
+        else {
+          expect(response.status).toBe(200);
+          expect(await response.json()).toBeObject();
+        }
+      }
+    }
+  } finally {
+    await Bun.redis.del(
+      `player_room:${player}`,
+      `room_owner:${room}`,
+      `room_dispatched:${room}`,
+      `invite:${code}`,
+    );
+    const invites = (await Bun.redis.send("KEYS", ["invite:*"])) as string[];
+    for (const key of invites) if ((await Bun.redis.get(key)) === room) await Bun.redis.del(key);
+  }
 });

@@ -17,6 +17,7 @@ export function spawnServer(
       PORT: "0",
       SERVER_HOST: "127.0.0.1",
       EMAIL_TRANSPORT: "mock",
+      INTERNAL_SECRET: secret,
       BUN_TEST: undefined,
       RATE_LIMIT_BYPASS: undefined,
       TRUSTED_PROXY_HOPS: "1",
@@ -77,6 +78,7 @@ export async function resources() {
   if ((await Bun.redis.send("PING", [])) !== "PONG") throw new Error("Valkey unavailable");
   const keys = new Set<string>();
   const emails: string[] = [];
+  const players: string[] = [];
   return {
     track(kind: string, id: string, path = codePath) {
       const k = key(kind, id, path);
@@ -89,6 +91,12 @@ export async function resources() {
       await sql`INSERT INTO signin_allowlist (email) VALUES (${email})`;
       return email;
     },
+    async player() {
+      const id = `rate_${crypto.randomUUID()}`;
+      await sql`INSERT INTO players (player_id, data) VALUES (${id}, ${JSON.stringify({})}::jsonb)`;
+      players.push(id);
+      return id;
+    },
     async codes(email: string) {
       const rows = await sql<
         { id: string }[]
@@ -97,7 +105,13 @@ export async function resources() {
     },
     async cleanup() {
       for (const k of keys) await Bun.redis.del(k);
+      for (const id of players) {
+        await sql`DELETE FROM push_tokens WHERE player_id=${id}`;
+        await sql`DELETE FROM players WHERE player_id=${id}`;
+      }
       for (const email of emails) {
+        await sql`DELETE FROM waitlist WHERE email=${email}`;
+        await sql`DELETE FROM players WHERE account_id IN (SELECT id FROM accounts WHERE email=${email})`;
         await sql`DELETE FROM auth_codes WHERE account_id IN (SELECT id FROM accounts WHERE email=${email})`;
         await sql`DELETE FROM accounts WHERE email=${email}`;
         await sql`DELETE FROM signin_allowlist WHERE email=${email}`;
@@ -112,6 +126,11 @@ if (import.meta.main) {
       return Promise.resolve();
     },
   }));
+  void mock.module("../image-gen.ts", () => ({
+    generateImage: () => Promise.resolve({ assetId: "rate_fixture", path: "unused" }),
+  }));
+  const { installSeam } = await import("../session-room-process.fixture.ts");
+  await installSeam(async () => {});
   const { startServer } = await import("../index.ts");
   await startServer();
 }
