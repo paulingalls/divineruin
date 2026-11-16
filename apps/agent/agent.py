@@ -9,7 +9,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 
 from livekit import agents
-from livekit.agents import AgentServer
+from livekit.agents import AgentServer, AgentSession
 from livekit.agents.__main__ import main as livekit_main
 
 import db
@@ -19,6 +19,7 @@ import db_queries
 import session_outcome
 from error_line import install as install_error_lines
 from gameplay_llm import gameplay_llm_api_key
+from leave_request_handler import LeaveRequestHandler
 from media_dir import validate_media_dir
 from participant_lifecycle import _setup_reconnection
 from production_preflight import is_production, production_preflight, validate_production_env
@@ -158,6 +159,16 @@ def _build_recap_instruction(last_summary: dict | None) -> str:
         return ""
 
     return " " + " ".join(parts)
+
+
+def _session_with_listeners(model: str, userdata: SessionData) -> AgentSession:
+    session = _make_agent_session(model, userdata)
+    session_outcome.watch_close(session, userdata)
+    assert userdata.room is not None
+    handler = LeaveRequestHandler(userdata.room, session, userdata)
+    handler.start()
+    session.on("close", handler.stop)
+    return session
 
 
 async def _join_session_end(ctx: agents.JobContext) -> None:
@@ -306,9 +317,8 @@ async def _start_dm_session(ctx, player_id, session_id, predecessor) -> None:
             room=ctx.room,
             creation_state=CreationState(),
         )
-        session = _make_agent_session("claude-sonnet-4-20250514", userdata)
+        session = _session_with_listeners("claude-sonnet-4-20250514", userdata)
         prologue_agent = PrologueAgent()
-        session_outcome.watch_close(session, userdata)
         await session.start(room=ctx.room, agent=prologue_agent, room_options=solo_room_options(userdata))
         _setup_reconnection(ctx.room, session, userdata, prologue_agent)
     else:
@@ -365,7 +375,7 @@ async def _start_dm_session(ctx, player_id, session_id, predecessor) -> None:
             from onboarding_agent import OnboardingAgent
 
             userdata.onboarding_beat = onboarding_beat
-            session = _make_agent_session("claude-haiku-4-5-20251001", userdata)
+            session = _session_with_listeners("claude-haiku-4-5-20251001", userdata)
             # Resolve the companion from the archetype, NOT from userdata.companion: that is
             # written only when the companion_met flag is already set, so a player reconnecting
             # AT beat 3 has None there — and beat 3 is where the companion is staged.
@@ -374,7 +384,6 @@ async def _start_dm_session(ctx, player_id, session_id, predecessor) -> None:
                 companion_id=select_companion_for_archetype(player["class"]),
                 publish_session_init=True,
             )
-            session_outcome.watch_close(session, userdata)
             await session.start(room=ctx.room, agent=onboarding_agent, room_options=solo_room_options(userdata))
             _setup_reconnection(ctx.room, session, userdata, onboarding_agent)
             if userdata.favor_loss:
@@ -398,9 +407,8 @@ async def _start_dm_session(ctx, player_id, session_id, predecessor) -> None:
         region_type = location_data.get("region_type", REGION_CITY) if location_data else REGION_CITY
         gameplay_agent = create_gameplay_agent(region_type, location_id, companion=userdata.companion)
 
-        session = _make_agent_session("claude-haiku-4-5-20251001", userdata)
+        session = _session_with_listeners("claude-haiku-4-5-20251001", userdata)
 
-        session_outcome.watch_close(session, userdata)
         await start_gameplay_session(ctx.room, session, gameplay_agent, userdata)
 
         _setup_reconnection(ctx.room, session, userdata, gameplay_agent)

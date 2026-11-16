@@ -22,7 +22,7 @@ from bg_speech import COMPANION_IDLE_SECS, PendingSpeech, SpeechPriority
 from companion_cue_events import publish_companion_cue
 from companion_prompts import build_companion_cue, is_companion_cue
 from sanitize import sanitize_for_prompt
-from session_end import run_session_end
+from session_end import ensure_session_end
 from speaker_context import build_speaker_context
 from speech_delivery import deliver_speech
 from task_logging import log_task_failure
@@ -87,7 +87,7 @@ class BackgroundProcess:
     def _on_session_end(self, _ev: object) -> None:
         """Spawn the end-of-session recap. ``emit`` is synchronous (rtc/event_emitter.py), so
         this cannot await; ``agent._join_session_end`` joins the handle before room teardown."""
-        self._sd.session_end_task = asyncio.create_task(run_session_end(self._sd))
+        ensure_session_end(self._sd)
 
     def pause(self) -> None:
         self._paused = True
