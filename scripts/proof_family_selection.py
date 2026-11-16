@@ -214,6 +214,14 @@ def audit_selection(tasks, inventory, families, sources):
             1 if harness_source(source) else 2,
         )
 
+        if not harness_source(source) and sum(t.startswith("agent-acceptance:") for t in readers) > 10:
+            for family in families:
+                reaching = {t for t in readers if inventory[t]["family"] == family}
+                preferred = {t for t in reaching if source in inventory[t]["preferred"]}
+                selected = {t for t in receiving - required if inventory[t]["family"] == family}
+                if not selected <= (preferred or reaching):
+                    raise ValueError(f"{source}: family {family}: invalid representatives {sorted(selected)}")
+
 
 def content_inventory():
     paths = {str(path) for path in Path("content").glob("*.json") if path.is_file()}
