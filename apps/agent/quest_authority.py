@@ -4,7 +4,6 @@ import logging
 from dataclasses import dataclass
 
 from livekit.agents.llm import ToolError
-from livekit.agents.voice import RunContext
 
 import combat_rewards
 import db_activity_queries
@@ -35,21 +34,13 @@ class PendingQuest:
 
 
 def _is_unpaid_for_stage(player_quest: dict | None, new_stage_id: int) -> bool:
-    """Has this member NOT yet been paid for the stage `update_quest(new_stage_id)` completes?
-
-    `update_quest(N)` pays for stage N-1, so a marker of M means stages 0..M-1 are already paid;
-    the member is unpaid exactly when M < N. No row at all -> -1 -> unpaid, which is the whole
-    reason the marker exists (story-009).
-
-    ONE predicate answers two questions, and it must stay one: who the reward passes pay, and
-    whose marker may advance. Split them and the farming hole reopens on the half you forgot.
-    """
+    """A marker N records payment through stage N-1; a missing row is unpaid."""
     current_stage = player_quest.get("current_stage", -1) if player_quest else -1
     return current_stage < new_stage_id
 
 
 async def advance_quest_db(
-    context: RunContext[SessionData],
+    session: SessionData,
     quest_id: str,
     new_stage_id: int,
     *,
@@ -63,7 +54,6 @@ async def advance_quest_db(
 ) -> "PendingQuest":
     logger.info("update_quest called: quest_id=%s, new_stage_id=%d", quest_id, new_stage_id)
     _validate_id(quest_id, "quest_id")
-    session: SessionData = context.userdata
     actor_id = session.acting_player_id
     primary_id = session.primary_player_id
 
@@ -89,6 +79,7 @@ async def advance_quest_db(
     pending_notes: list[str] = []
 
     session.validate_acting_player(actor_id)
+    # Freeze the roster before awaits and lock quest rows in the same order in every session.
     party_ids = sorted({primary_id} | set(session.party.member_ids))
     party_quests = {pid: await queries.get_player_quest(pid, quest_id, conn=conn, for_update=True) for pid in party_ids}
     player_quest = party_quests[primary_id]

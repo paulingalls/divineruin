@@ -31,3 +31,26 @@ Feature: Engine driven Greyvale arrivals
   Scenario: Unknown authored conditions fail loudly
     Given a warm session walking the complete quest corpus
     Then an unknown condition fails the warm refresh loudly
+
+  Scenario Outline: Winning the named fight completes First Blood once
+    Given a First Blood fight ending through <route>
+    When the fight ends
+    Then First Blood rewards and the dungeon objective reach the DM once
+    Examples:
+      | route         |
+      | end_combat    |
+      | resolve_phase |
+
+  Scenario Outline: Other combat endings leave First Blood active
+    Given a First Blood exclusion <case>
+    When the fight ends
+    Then First Blood stays unpaid
+    Examples:
+      | case          |
+      | wrong         |
+      | defeat        |
+      | fled          |
+      | deescalated   |
+      | standing      |
+      | dead          |
+      | progressed    |

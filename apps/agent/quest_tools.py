@@ -56,7 +56,7 @@ async def _update_quest_impl(
 ) -> str:
     async with db_mod.transaction() as conn:
         pending = await advance_quest_db(
-            context,
+            context.userdata,
             quest_id,
             new_stage_id,
             conn=conn,

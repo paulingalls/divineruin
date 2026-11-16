@@ -1,18 +1,18 @@
 """Fixed basic-attack policy driven through real combat tools and persistence."""
 
+import json
 import random
 from datetime import UTC, datetime
 from unittest.mock import patch
 from uuid import uuid4
 
-from combat._helpers import _resolve_round
 from sample_fixtures import make_context, make_mock_room
 
 import combat_end
 import db_mutations
 from combat_death_save import request_death_save
 from combat_down import is_terminally_down
-from combat_turn import declare_phase
+from combat_turn import declare_phase, resolve_phase
 from companion_profiles import get_companion_profile, select_companion_for_archetype
 from condition_restrictions import cannot_act
 from creation_rules import build_character_data
@@ -91,7 +91,15 @@ async def fight(pool, archetype, seed):
                         )
                 assert declarations, "no acting combatants before terminal wrap"
                 await declare_phase(ctx, declarations)
-                result = await _resolve_round(ctx)
+                for _ in range(64):
+                    result = await resolve_phase(ctx)
+                    if isinstance(result, tuple):
+                        break
+                    result = json.loads(result)
+                    if result.get("next", {}).get("waiting_on") is None and result["beat"] == "declaration":
+                        break
+                else:
+                    raise AssertionError("First Blood did not drain held actions within 64 calls")
                 if isinstance(result, tuple):
                     assert len(ending) == 1
                     return ending[0]

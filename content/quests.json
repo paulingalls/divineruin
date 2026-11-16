@@ -46,7 +46,7 @@
         "completion_conditions": {
           "type": "combat_completed",
           "encounter": "hollow_patrol_greyvale",
-          "outcome": "survived"
+          "outcome": "victory"
         },
         "on_complete": {
           "xp": 150,
