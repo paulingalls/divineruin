@@ -3,6 +3,7 @@ import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from session_outcome_fixture import isolated_outcome_startup as isolated_outcome_startup
 from speech_handles import completed_handle
 
 from agent import _extract_player_id
@@ -201,7 +202,8 @@ class TestDMSession:
 
                 MockSD.assert_called_once_with(
                     player_id="player_1",
-                    location_id="accord_market_square",
+                    session_id="isolated-session",
+                    location_id="accord_guild_hall",
                     room=mock_ctx.room,
                     patron_id="none",
                 )
@@ -402,4 +404,4 @@ class TestDMSession:
                 call_kwargs = mock_session_instance.generate_reply.call_args[1]
                 instructions = call_kwargs["instructions"]
                 assert "enter_location" in instructions
-                assert "market" in instructions.lower()
+                assert "accord_guild_hall" in instructions

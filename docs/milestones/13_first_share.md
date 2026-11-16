@@ -45,9 +45,13 @@ Owner: divineruin2 clone.
 ## Session Edges
 
 - [ ] The Leave button shows the session summary
-- [ ] Re-entering never speaks a stale recap
+- [x] Re-entering never speaks a stale recap
 - [x] The prologue plays with default configuration
 - [x] A failed DM dispatch does not leave the player in an empty room
+
+`apps/agent/tests/acceptance/test_fresh_recap.py` exercises room-service takeover,
+failed and timed-out closes, guest recaps and saved-location re-entry with real
+PostgreSQL, Valkey and LiveKit; model and voice providers are deterministic.
 
 ## Protecting the Bill
 

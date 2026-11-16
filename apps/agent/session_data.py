@@ -72,6 +72,7 @@ class SessionData:
     location_id: str
     party: PartyState = field(init=False)
     session_id: str = field(default_factory=lambda: uuid.uuid4().hex)
+    outcome_player_id: str = ""
     room: rtc.Room | None = field(default=None, repr=False)
     _actor_binding: ContextVar[AuthenticatedActor | None] = field(
         default_factory=lambda: ContextVar("actor_player_id", default=None),

@@ -7,6 +7,7 @@ import pytest
 from livekit.agents import Agent, room_io
 from livekit.agents.voice import SpeechHandle
 from livekit.agents.voice.speech_handle import InputDetails
+from session_outcome_fixture import isolated_outcome_startup as isolated_outcome_startup
 
 from session_data import SessionData
 from session_startup import GameplayInputOwner, gameplay_room_options, solo_room_options, start_gameplay_session

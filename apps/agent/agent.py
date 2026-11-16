@@ -16,6 +16,7 @@ import db
 import db_content_queries
 import db_mutations
 import db_queries
+import session_outcome
 from error_line import install as install_error_lines
 from gameplay_llm import gameplay_llm_api_key
 from media_dir import validate_media_dir
@@ -184,7 +185,11 @@ async def _join_session_end(ctx: agents.JobContext) -> None:
 @server.rtc_session(agent_name="divineruin-dm", on_session_end=_join_session_end)
 async def dm_session(ctx: agents.JobContext) -> None:
     player_id = _extract_player_id(ctx)
+    async with session_outcome.startup(player_id) as (session_id, predecessor):
+        await _start_dm_session(ctx, player_id, session_id, predecessor)
 
+
+async def _start_dm_session(ctx, player_id, session_id, predecessor) -> None:
     # Load the archetype chassis once per agent process. The XP Resolve / update_quest
     # call calculate_max_hp -> get_archetype_chassis, which needs the chassis
     # populated (M2.1 folded the old module-level HP/resource constants into the
@@ -272,12 +277,9 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
     # Determine session type: new player (creation) vs returning
     player = None
-    last_summary = None
+    last_summary = predecessor.summary
     try:
-        player, last_summary = await asyncio.gather(
-            db_queries.get_player(player_id),
-            db_queries.get_last_session_summary(player_id),
-        )
+        player = await db_queries.get_player(player_id)
     except Exception:
         logger.warning("Failed to load player/session data", exc_info=True)
 
@@ -295,19 +297,21 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
         userdata = SessionData(
             player_id=player_id,
+            session_id=session_id,
             location_id="",
             room=ctx.room,
             creation_state=CreationState(),
         )
         session = _make_agent_session("claude-sonnet-4-20250514", userdata)
         prologue_agent = PrologueAgent()
+        session_outcome.watch_close(session, userdata)
         await session.start(room=ctx.room, agent=prologue_agent, room_options=solo_room_options(userdata))
         _setup_reconnection(ctx.room, session, userdata, prologue_agent)
     else:
         # --- Existing gameplay flow ---
         assert player is not None  # guaranteed by needs_creation check
-        if last_summary is not None:
-            location_id = player.get("location_id", START_LOCATION)
+        if player.get("location_id") or predecessor.prior_summary is not None:
+            location_id = player.get("location_id") or START_LOCATION
             is_first_session = False
         else:
             location_id = "accord_market_square"
@@ -319,6 +323,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
         userdata = SessionData(
             player_id=player_id,
+            session_id=session_id,
             location_id=location_id,
             room=ctx.room,
             patron_id=patron_id,
@@ -365,6 +370,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
                 companion_id=select_companion_for_archetype(player["class"]),
                 publish_session_init=True,
             )
+            session_outcome.watch_close(session, userdata)
             await session.start(room=ctx.room, agent=onboarding_agent, room_options=solo_room_options(userdata))
             _setup_reconnection(ctx.room, session, userdata, onboarding_agent)
             if userdata.favor_loss:
@@ -390,9 +396,18 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
         session = _make_agent_session("claude-haiku-4-5-20251001", userdata)
 
+        session_outcome.watch_close(session, userdata)
         await start_gameplay_session(ctx.room, session, gameplay_agent, userdata)
 
         _setup_reconnection(ctx.room, session, userdata, gameplay_agent)
+
+        if predecessor.skip_reason:
+            logger.warning(
+                "Recap skipped for player %s predecessor %s: %s",
+                player_id,
+                predecessor.session_id,
+                predecessor.skip_reason,
+            )
 
         # --- Initial greeting ---
         favor_instruction = ""

@@ -451,7 +451,11 @@ def stop_if_started(started: bool, database_url: str | None = None) -> None:
 
 
 def configure_provider_redis() -> None:
-    """Give each proof acceptance task a cache database shared with its Bun children."""
+    """Resolve checkout Valkey or allocate a Proof task cache shared with Bun children."""
+    if not os.environ.get("PROOF_AGENT_PROVIDER") and not os.environ.get("REDIS_URL"):
+        redis_url = _read_env_file(_REPO_ROOT / ".env").get("REDIS_URL")
+        if redis_url:
+            os.environ["REDIS_URL"] = redis_url
     if os.environ.get("PROOF_AGENT_PROVIDER") != "acceptance":
         return
     from redis import Redis

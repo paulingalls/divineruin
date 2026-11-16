@@ -1,0 +1,1 @@
+from session_outcome_fixture import isolated_outcome_completion as isolated_outcome_completion
