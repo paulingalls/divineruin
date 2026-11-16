@@ -4,15 +4,56 @@
     "tests": [
       "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:m45_dramatic_dice_capstone)\\.py"
     ],
-    "owns": ["apps/agent/(?:dice|dramatic|rules_engine)\\.py"]
+    "owns": [
+      "apps/agent/(?:dice|dramatic|rules_engine)\\.py"
+    ],
+    "reads": []
+  },
+  {
+    "name": "npc-repair",
+    "tests": [
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:durability_e2e)\\.py"
+    ],
+    "owns": [
+      "apps/agent/(?:combat[^/]*|choir[^/]*|encounter[^/]*|durability[^/]*|damage[^/]*|death[^/]*|enemy[^/]*|initiative[^/]*|reaction[^/]*|monster[^/]*)\\.py"
+    ],
+    "reads": [
+      "content/items.json",
+      "content/locations.json",
+      "content/npcs.json",
+      "content/pricing.json",
+      "content/recipes.json",
+      "content/role_archetypes.json"
+    ]
   },
   {
     "name": "combat",
     "tests": [
-      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:catalog_action_runtime|catalog_combat_translation|catalog_encounter_cutover|choir_.*|combat_spatial_entry|durability_e2e|fallen_melee_failures|first_blood_atomicity|generated_combat(?:_movement)?|mawling_.*|m(?:12|13|41|42|43|44|47|48)_.*)\\.py"
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:catalog_action_runtime|catalog_combat_translation|catalog_encounter_cutover|choir_.*|combat_spatial_entry|fallen_melee_failures|first_blood_atomicity|generated_combat(?:_movement)?|mawling_.*|m(?:12|13|41|42|43|44|47|48)_.*)\\.py"
     ],
     "owns": [
       "apps/agent/(?:combat[^/]*|choir[^/]*|encounter[^/]*|durability[^/]*|damage[^/]*|death[^/]*|enemy[^/]*|initiative[^/]*|reaction[^/]*|monster[^/]*)\\.py"
+    ],
+    "reads": [
+      "content/action_sounds.json",
+      "content/archetype_abilities.json",
+      "content/archetypes.json",
+      "content/combat_sounds.json",
+      "content/companions.json",
+      "content/creatures.json",
+      "content/encounter_templates.json",
+      "content/events.json",
+      "content/factions.json",
+      "content/gods.json",
+      "content/items.json",
+      "content/level_progression.json",
+      "content/locations.json",
+      "content/loot_tables.json",
+      "content/quests.json",
+      "content/racial_resonance_bonuses.json",
+      "content/role_archetypes.json",
+      "content/scenes.json",
+      "content/spells.json"
     ]
   },
   {
@@ -22,6 +63,16 @@
     ],
     "owns": [
       "apps/agent/(?:spell[^/]*|condition[^/]*|concentration[^/]*|patron[^/]*|corruption[^/]*|dispel[^/]*|veil_ward[^/]*|hollow_resonance[^/]*)\\.py"
+    ],
+    "reads": [
+      "content/archetype_abilities.json",
+      "content/archetypes.json",
+      "content/companions.json",
+      "content/gods.json",
+      "content/items.json",
+      "content/locations.json",
+      "content/racial_resonance_bonuses.json",
+      "content/spells.json"
     ]
   },
   {
@@ -31,24 +82,104 @@
     ],
     "owns": [
       "apps/agent/(?:archetyp[^/]*|role_archetypes|progression[^/]*|mentor[^/]*|milestone[^/]*|level[^/]*|xp[^/]*|favor[^/]*|training[^/]*)\\.py"
+    ],
+    "reads": [
+      "content/archetype_abilities.json",
+      "content/archetype_milestones.json",
+      "content/archetypes.json",
+      "content/gods.json",
+      "content/level_progression.json",
+      "content/mentor_variants.json",
+      "content/racial_resonance_bonuses.json",
+      "content/role_archetypes.json",
+      "content/spells.json",
+      "content/training_activity_types.json",
+      "content/training_programs.json"
+    ]
+  },
+  {
+    "name": "npc-workspaces",
+    "tests": [
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:inventory_taint|m52_workspace_resolution_capstone)\\.py"
+    ],
+    "owns": [
+      "apps/agent/(?:inventory[^/]*|craft[^/]*|recipe[^/]*|loot[^/]*|material[^/]*|gather[^/]*|workspace[^/]*|quality[^/]*|equipment[^/]*|item[^/]*|artificer[^/]*)\\.py"
+    ],
+    "reads": [
+      "content/items.json",
+      "content/locations.json",
+      "content/loot_tables.json",
+      "content/materials_catalog.json",
+      "content/npcs.json",
+      "content/pricing.json",
+      "content/quality_outcomes.json",
+      "content/recipes.json",
+      "content/role_archetypes.json"
     ]
   },
   {
     "name": "inventory-crafting",
     "tests": [
-      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:artificer_slot_e2e|crafting_.*|inventory_taint(?:_migration)?|live_material_inventory|material_inventory|loot_.*|recipe_.*|m46c_gathering_capstone|m52_workspace_resolution_capstone|m53_quality_outcomes_capstone)\\.py"
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:artificer_slot_e2e|crafting_.*|inventory_taint_migration|live_material_inventory|material_inventory|loot_.*|recipe_.*|m46c_gathering_capstone|m53_quality_outcomes_capstone)\\.py"
     ],
     "owns": [
       "apps/agent/(?:inventory[^/]*|craft[^/]*|recipe[^/]*|loot[^/]*|material[^/]*|gather[^/]*|workspace[^/]*|quality[^/]*|equipment[^/]*|item[^/]*|artificer[^/]*)\\.py"
+    ],
+    "reads": [
+      "content/archetype_abilities.json",
+      "content/archetypes.json",
+      "content/gathering_nodes.json",
+      "content/inventory_pools.json",
+      "content/items.json",
+      "content/locations.json",
+      "content/loot_tables.json",
+      "content/materials_catalog.json",
+      "content/pricing.json",
+      "content/quality_outcomes.json",
+      "content/recipes.json"
+    ]
+  },
+  {
+    "name": "npc-social",
+    "tests": [
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:m46a_social_capstone|story_005_m6_npc_archetype_capstone)\\.py"
+    ],
+    "owns": [
+      "apps/agent/(?:world[^/]*|region[^/]*|terrain[^/]*|explor[^/]*|settlement[^/]*|reputation[^/]*|npc[^/]*|location[^/]*|travel[^/]*|social[^/]*)\\.py"
+    ],
+    "reads": [
+      "content/archetype_abilities.json",
+      "content/archetypes.json",
+      "content/locations.json",
+      "content/npcs.json",
+      "content/role_archetypes.json"
     ]
   },
   {
     "name": "world",
     "tests": [
-      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:exploration_collapse|first_episode_settlement|greyvale_arc_walk|m15_deescalation_scene_capstone|m46[ab]_.*|m62_settlement_capstone|reputation_writer_stance|terrain_commands|story_005_m6_npc_archetype_capstone)\\.py"
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:exploration_collapse|first_episode_settlement|greyvale_arc_walk|m15_deescalation_scene_capstone|m46b_.*|m62_settlement_capstone|reputation_writer_stance|terrain_commands)\\.py"
     ],
     "owns": [
       "apps/agent/(?:world[^/]*|region[^/]*|terrain[^/]*|explor[^/]*|settlement[^/]*|reputation[^/]*|npc[^/]*|location[^/]*|travel[^/]*|social[^/]*)\\.py"
+    ],
+    "reads": [
+      "content/archetype_abilities.json",
+      "content/archetypes.json",
+      "content/companions.json",
+      "content/creatures.json",
+      "content/encounter_templates.json",
+      "content/events.json",
+      "content/factions.json",
+      "content/gathering_nodes.json",
+      "content/locations.json",
+      "content/lore_entries.json",
+      "content/quests.json",
+      "content/racial_resonance_bonuses.json",
+      "content/role_archetypes.json",
+      "content/scenes.json",
+      "content/settlement_templates.json",
+      "content/spells.json"
     ]
   },
   {
@@ -56,7 +187,18 @@
     "tests": [
       "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:kaelen_iron_resolve_capstone|m6_4_companion_chain_capstone)\\.py"
     ],
-    "owns": ["apps/agent/(?:companion[^/]*|db_mutations_companion[^/]*)\\.py"]
+    "owns": [
+      "apps/agent/(?:companion[^/]*|db_mutations_companion[^/]*)\\.py"
+    ],
+    "reads": [
+      "content/companions.json",
+      "content/creatures.json",
+      "content/encounter_templates.json",
+      "content/errand_templates.json",
+      "content/items.json",
+      "content/locations.json",
+      "content/quests.json"
+    ]
   },
   {
     "name": "sessions",
@@ -65,23 +207,118 @@
     ],
     "owns": [
       "apps/agent/(?:creation[^/]*|onboarding[^/]*|session[^/]*|participant[^/]*|rest[^/]*|first_episode[^/]*|character_creation[^/]*)\\.py"
+    ],
+    "reads": [
+      "content/archetype_abilities.json",
+      "content/archetype_milestones.json",
+      "content/archetypes.json",
+      "content/companions.json",
+      "content/creatures.json",
+      "content/encounter_templates.json",
+      "content/events.json",
+      "content/gods.json",
+      "content/items.json",
+      "content/level_progression.json",
+      "content/locations.json",
+      "content/quests.json",
+      "content/racial_resonance_bonuses.json",
+      "content/spells.json"
+    ]
+  },
+  {
+    "name": "npc-guest",
+    "tests": [
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:guest_verbs)\\.py"
+    ],
+    "owns": [
+      "apps/agent/(?:multiplayer[^/]*|guest[^/]*|host_handoff[^/]*)\\.py"
+    ],
+    "reads": [
+      "content/archetype_abilities.json",
+      "content/archetypes.json",
+      "content/companions.json",
+      "content/creatures.json",
+      "content/encounter_templates.json",
+      "content/items.json",
+      "content/locations.json",
+      "content/npcs.json",
+      "content/quests.json",
+      "content/spells.json",
+      "content/training_activity_types.json",
+      "content/training_programs.json"
     ]
   },
   {
     "name": "multiplayer",
     "tests": [
-      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:guest_leaves|guest_verbs|host_handoff|data_channel_roundtrip|m(?:14|18|20)_.*)\\.py"
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:guest_leaves|host_handoff|data_channel_roundtrip|m(?:14|18|20)_.*)\\.py"
     ],
-    "owns": ["apps/agent/(?:multiplayer[^/]*|guest[^/]*|host_handoff[^/]*)\\.py"]
+    "owns": [
+      "apps/agent/(?:multiplayer[^/]*|guest[^/]*|host_handoff[^/]*)\\.py"
+    ],
+    "reads": [
+      "content/archetype_abilities.json",
+      "content/archetypes.json",
+      "content/companions.json",
+      "content/creatures.json",
+      "content/encounter_templates.json",
+      "content/items.json",
+      "content/locations.json",
+      "content/quests.json",
+      "content/spells.json",
+      "content/training_activity_types.json",
+      "content/training_programs.json"
+    ]
   },
   {
-    "name": "voice-tools",
+    "name": "npc-dispatch",
     "tests": [
-      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:m(?:22|25|26|27)_.*|m5_verb_consolidation|m6_stage_schema|story_007_capstone)\\.py"
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:m26_dispatch_verbs_capstone)\\.py"
     ],
     "owns": [
       "apps/agent/(?:voice[^/]*|audio[^/]*|narrat[^/]*|tts[^/]*|stt[^/]*|tool[^/]*|verb[^/]*)\\.py",
       "scripts/audio/[^/]+\\.py"
+    ],
+    "reads": [
+      "content/companions.json",
+      "content/errand_templates.json",
+      "content/items.json",
+      "content/locations.json",
+      "content/materials_catalog.json",
+      "content/npcs.json",
+      "content/recipes.json",
+      "content/role_archetypes.json",
+      "content/training_activity_types.json",
+      "content/training_programs.json"
+    ]
+  },
+  {
+    "name": "voice-tools",
+    "tests": [
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:m(?:22|25|27)_.*|m5_verb_consolidation|m6_stage_schema|story_007_capstone)\\.py"
+    ],
+    "owns": [
+      "apps/agent/(?:voice[^/]*|audio[^/]*|narrat[^/]*|tts[^/]*|stt[^/]*|tool[^/]*|verb[^/]*)\\.py",
+      "scripts/audio/[^/]+\\.py"
+    ],
+    "reads": [
+      "content/action_sounds.json",
+      "content/archetype_abilities.json",
+      "content/archetypes.json",
+      "content/combat_sounds.json",
+      "content/companions.json",
+      "content/errand_templates.json",
+      "content/factions.json",
+      "content/gods.json",
+      "content/items.json",
+      "content/locations.json",
+      "content/materials_catalog.json",
+      "content/racial_resonance_bonuses.json",
+      "content/recipes.json",
+      "content/spells.json",
+      "content/training_activity_types.json",
+      "content/training_programs.json",
+      "content/voice_registry.json"
     ]
   },
   {
@@ -92,6 +329,41 @@
     "owns": [
       "scripts/(?:seed[^/]*|catalog[^/]*)\\.py",
       "apps/agent/(?:catalog[^/]*|creature[^/]*|production_preflight|_gods_content)\\.py"
+    ],
+    "reads": [
+      "content/archetype_abilities.json",
+      "content/archetype_milestones.json",
+      "content/archetypes.json",
+      "content/companions.json",
+      "content/creatures.json",
+      "content/encounter_templates.json",
+      "content/errand_templates.json",
+      "content/events.json",
+      "content/factions.json",
+      "content/gathering_nodes.json",
+      "content/gods.json",
+      "content/inventory_pools.json",
+      "content/items.json",
+      "content/level_progression.json",
+      "content/locations.json",
+      "content/loot_tables.json",
+      "content/lore_entries.json",
+      "content/materials_catalog.json",
+      "content/mentor_variants.json",
+      "content/npc_state.json",
+      "content/npcs.json",
+      "content/pricing.json",
+      "content/quality_outcomes.json",
+      "content/quests.json",
+      "content/racial_resonance_bonuses.json",
+      "content/recipes.json",
+      "content/role_archetypes.json",
+      "content/scenes.json",
+      "content/settlement_templates.json",
+      "content/spells.json",
+      "content/training_activity_types.json",
+      "content/training_programs.json",
+      "content/voice_registry.json"
     ]
   },
   {
@@ -101,16 +373,36 @@
     ],
     "owns": [
       "apps/agent/(?:activity_templates|async_worker[^/]*|db|database[^/]*|redis[^/]*|worker[^/]*)\\.py"
+    ],
+    "reads": [
+      "content/items.json",
+      "content/locations.json",
+      "content/materials_catalog.json",
+      "content/recipes.json",
+      "content/training_activity_types.json",
+      "content/training_programs.json"
     ]
   },
   {
     "name": "mobile-e2e",
-    "tests": ["e2e/specs/(?!web-)[^/]+\\.e2e\\.ts"],
-    "owns": []
+    "tests": [
+      "e2e/specs/(?!web-)[^/]+\\.e2e\\.ts"
+    ],
+    "owns": [],
+    "reads": [
+      "content/companions.json",
+      "content/items.json",
+      "content/locations.json",
+      "content/materials_catalog.json",
+      "content/recipes.json"
+    ]
   },
   {
     "name": "web-e2e",
-    "tests": ["e2e/specs/web-[^/]+\\.e2e\\.ts"],
-    "owns": []
+    "tests": [
+      "e2e/specs/web-[^/]+\\.e2e\\.ts"
+    ],
+    "owns": [],
+    "reads": []
   }
 ]

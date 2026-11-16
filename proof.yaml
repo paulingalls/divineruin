@@ -103,6 +103,7 @@
       "bun.lock",
       "e2e/specs/*.e2e.ts",
       "scripts/proof-families.json",
+      "content/*.json",
       "e2e/fixtures/inventory-snapshot.py"
     ],
     "links": [
