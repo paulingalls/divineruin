@@ -14,6 +14,7 @@ from livekit.agents.__main__ import main as livekit_main
 
 import db
 import db_content_queries
+import db_mutations
 import db_queries
 from gameplay_llm import gameplay_llm_api_key
 from participant_lifecycle import _setup_reconnection
@@ -341,6 +342,11 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
         # Check for mid-onboarding reconnection
         onboarding_beat = player.get("flags", {}).get("onboarding_beat")
+        from onboarding_tools import FINAL_BEAT, ONBOARDING_COMPLETE
+
+        if isinstance(onboarding_beat, int) and onboarding_beat > FINAL_BEAT:
+            await db_mutations.set_player_flag(player_id, "onboarding_beat", ONBOARDING_COMPLETE)
+            onboarding_beat = ONBOARDING_COMPLETE
         if isinstance(onboarding_beat, int):
             from companion_profiles import select_companion_for_archetype
             from onboarding_agent import OnboardingAgent

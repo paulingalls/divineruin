@@ -1,8 +1,6 @@
-import asyncio
 import logging
-import time
 from typing import Any, cast
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from livekit.rtc.participant import PublishDataError
@@ -11,7 +9,6 @@ from speech_handles import completed_handle
 from background_process import BackgroundProcess
 from bg_speech import PendingSpeech, SpeechPriority
 from companion_prompts import build_companion_cue
-from onboarding_background import OnboardingBackgroundProcess
 from session_data import CompanionState, SessionData
 
 
@@ -83,75 +80,6 @@ async def test_runtime_error_escapes_background_before_voice() -> None:
 
     with pytest.raises(RuntimeError) as raised:
         await background._deliver_speech()
-
-    assert raised.value is failure
-    session.generate_reply.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_publish_data_error_keeps_onboarding_loop_alive(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    sd = _session_data()
-    sd.onboarding_beat = 4
-    sd.last_player_speech_time = time.time() - 60
-    failure = PublishDataError("cue rejected")
-    publishes = 0
-
-    async def publish(*_args: object, **_kwargs: object) -> None:
-        nonlocal publishes
-        publishes += 1
-        if publishes == 1:
-            raise failure
-
-    second_reply = asyncio.Event()
-
-    def reply(**_kwargs: object):
-        if session.generate_reply.call_count >= 2:
-            second_reply.set()
-        return completed_handle()
-
-    _publisher(sd).side_effect = publish
-    session = MagicMock()
-    session.generate_reply = MagicMock(side_effect=reply)
-    background = OnboardingBackgroundProcess(session, sd)
-
-    try:
-        with (
-            patch("onboarding_background.POLL_INTERVAL_SECONDS", 0),
-            patch("onboarding_background.NUDGE_DELAY_SECONDS", 0),
-            caplog.at_level(logging.ERROR, logger="divineruin.companion_cue_events"),
-        ):
-            background.start()
-            await asyncio.wait_for(second_reply.wait(), timeout=2)
-            assert background._task is not None
-            assert not background._task.done()
-    finally:
-        await background.stop()
-
-    assert session.generate_reply.call_count >= 2
-    records = _cue_error_records(caplog)
-    assert len(records) == 1
-    assert records[0].exc_info is not None
-    assert records[0].exc_info[1] is failure
-
-
-@pytest.mark.asyncio
-async def test_runtime_error_ends_onboarding_loop_before_voice() -> None:
-    sd = _session_data()
-    sd.onboarding_beat = 4
-    sd.last_player_speech_time = time.time() - 60
-    failure = RuntimeError("publish defect")
-    _publisher(sd).side_effect = failure
-    session = MagicMock()
-    session.generate_reply = MagicMock()
-    background = OnboardingBackgroundProcess(session, sd)
-
-    with patch("onboarding_background.POLL_INTERVAL_SECONDS", 0):
-        background.start()
-        assert background._task is not None
-        with pytest.raises(RuntimeError) as raised:
-            await asyncio.wait_for(background._task, timeout=2)
 
     assert raised.value is failure
     session.generate_reply.assert_not_called()

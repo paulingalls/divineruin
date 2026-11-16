@@ -9,7 +9,6 @@ from god_whisper_data import (
     GOD_WHISPER_PROFILES,
     _load_profiles,
     get_god_profile,
-    should_trigger_whisper,
 )
 
 
@@ -87,17 +86,3 @@ class TestGodWhisperProfiles:
     def test_favor_constants(self):
         assert FAVOR_WHISPER_THRESHOLD == 25
         assert FAVOR_WHISPER_COOLDOWN == 25
-
-
-class TestShouldTriggerWhisper:
-    def test_triggers_at_threshold(self):
-        assert should_trigger_whisper(25, 0) is True
-
-    def test_no_trigger_below_threshold(self):
-        assert should_trigger_whisper(20, 0) is False
-
-    def test_no_trigger_within_cooldown(self):
-        assert should_trigger_whisper(40, 25) is False
-
-    def test_triggers_after_cooldown(self):
-        assert should_trigger_whisper(50, 25) is True

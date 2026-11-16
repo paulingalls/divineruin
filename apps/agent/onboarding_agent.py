@@ -1,10 +1,4 @@
-"""OnboardingAgent — guided first 10-15 minutes for new players.
-
-Haiku model, city-appropriate tools, scripted 5-beat sequence.
-Lightweight BackgroundProcess for beats 4-5 (stall detection + companion nudges).
-The system prompt lives in onboarding_prompt: a companion-invariant body plus a
-beat-3/4 span rendered from the assigned companion's content row.
-"""
+"""Guided arrival, market exploration and companion meeting."""
 
 import logging
 import time
@@ -17,8 +11,6 @@ import event_types as E
 from base_agent import BaseGameAgent
 from check_tools import check
 from game_events import publish_game_event
-from movement_tools import move_player
-from onboarding_background import OnboardingBackgroundProcess
 from onboarding_prompt import build_onboarding_instructions
 from onboarding_tools import advance_onboarding_beat
 from query_tools import query_info
@@ -31,7 +23,6 @@ logger = logging.getLogger("divineruin.onboarding")
 ONBOARDING_TOOLS = [
     enter_location,
     query_info,
-    move_player,
     check,
     record_story_moment,
     advance_onboarding_beat,
@@ -39,16 +30,10 @@ ONBOARDING_TOOLS = [
 
 
 class OnboardingAgent(BaseGameAgent):
-    """Guided onboarding agent for new players' first session.
+    """Three beats ending with the assigned companion's meeting and exploration handoff.
 
-    Drives a 5-beat scripted sequence: Arrival, Market, Companion Meeting,
-    The Companion's Suggestion, First Destination. After beat 5, hands off to the
-    exploration agent.
-
-    companion_id is the player's ASSIGNED companion — a pure function of their archetype via
-    select_companion_for_archetype, resolved by whichever site constructs this agent (the
-    creation handoff or a mid-onboarding reconnect). None renders beats 3-4 without a named
-    companion; see onboarding_prompt._unassigned_span.
+    companion_id is resolved from the persisted archetype at creation or reconnect.
+    None stages an unnamed stranger until assignment succeeds.
     """
 
     def __init__(
@@ -66,7 +51,6 @@ class OnboardingAgent(BaseGameAgent):
         )
         self._onboarding_beat = onboarding_beat
         self._publish_session_init_on_enter = publish_session_init
-        self._background: OnboardingBackgroundProcess | None = None
 
     async def _enter(self) -> None:
         await super()._enter()
@@ -78,8 +62,6 @@ class OnboardingAgent(BaseGameAgent):
                 await publish_game_event(sd.room, E.SESSION_INIT, payload, sd.event_bus)
             except Exception:
                 logger.exception("Failed to publish session_init after onboarding reconnect")
-        self._background = OnboardingBackgroundProcess(session=self.session, session_data=sd)
-        self._background.start()
 
         logger.info(
             "OnboardingAgent entered session for player %s at beat %d",
@@ -102,10 +84,3 @@ class OnboardingAgent(BaseGameAgent):
     async def on_user_turn_completed(self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage) -> None:
         sd: SessionData = self.session.userdata
         sd.last_player_speech_time = time.time()
-
-    async def on_exit(self) -> None:
-        if self._background:
-            await self._background.stop()
-        sd: SessionData = self.session.userdata
-        logger.info("OnboardingAgent exiting at beat %s", sd.onboarding_beat)
-        await super().on_exit()

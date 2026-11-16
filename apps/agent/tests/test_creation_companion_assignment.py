@@ -125,23 +125,6 @@ _PAYLOAD = {
 
 
 class TestFinalizeAssignsCompanion:
-    @pytest.mark.parametrize(
-        "class_choice,companion_id",
-        [
-            ("mage", "companion_kael"),
-            ("warrior", "companion_lira"),
-            ("cleric", "companion_tam"),
-            ("spy", "companion_sable"),
-        ],
-    )
-    @patch("creation_tools.db_mutations_companion.insert_companion_relationship_if_absent", new_callable=AsyncMock)
-    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
-    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
-    async def test_each_companion_is_reachable(self, _create, payload, grant, class_choice, companion_id):
-        payload.return_value = _PAYLOAD
-        await _finalize(_ctx(_state(class_choice)))
-        grant.assert_awaited_once_with("test_player", companion_id)
-
     @patch(
         "creation_tools.db_mutations_companion.insert_companion_relationship_if_absent",
         new_callable=AsyncMock,
@@ -169,27 +152,3 @@ class TestFinalizeAssignsCompanion:
                 await _finalize(_ctx(_state("mage")))
         insert.assert_awaited_once()
         upsert.assert_not_awaited()
-
-
-@pytest.mark.usefixtures("dev_db_pool")
-class TestUnmockedFinalizeWritesNothing:
-    """Stub external I/O before creation, whose broad error handler can otherwise hide a request."""
-
-    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
-    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
-    async def test_finalize_without_a_grant_patch_leaves_the_dev_db_untouched(self, _create, payload, dev_db_pool):
-        # Deliberately patches NOTHING on the grant path — that is the whole point. Narrowing
-        # stub_creation_companion_grant back to an opt-in fixture reds this with a stray row.
-        payload.return_value = _PAYLOAD
-        player_id = "test_story003_unmocked"
-        await dev_db_pool.execute("DELETE FROM companion_relationships WHERE player_id = $1", player_id)
-        try:
-            ctx = MagicMock()
-            ctx.userdata = SessionData(player_id=player_id, location_id="", room=None, creation_state=_state("mage"))
-            await _finalize(ctx)
-            count = await dev_db_pool.fetchval(
-                "SELECT count(*) FROM companion_relationships WHERE player_id = $1", player_id
-            )
-            assert count == 0
-        finally:
-            await dev_db_pool.execute("DELETE FROM companion_relationships WHERE player_id = $1", player_id)

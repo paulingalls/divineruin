@@ -229,6 +229,9 @@
       },
       "up": {
         "destination": "torin_quarters"
+      },
+      "east": {
+        "destination": "accord_guild_infirmary"
       }
     },
     "conditions": {
@@ -903,5 +906,33 @@
       ],
       "rare": []
     }
+  },
+  {
+    "id": "accord_guild_infirmary",
+    "settlement_tier": "city",
+    "personality": "prosperous",
+    "name": "Guild Infirmary",
+    "tier": 1,
+    "danger_level": 0,
+    "district": "accord_central",
+    "region": "sunward_coast",
+    "region_type": "city",
+    "terrain": "city",
+    "tags": [
+      "guild",
+      "infirmary"
+    ],
+    "description": "Linen rustles behind a wooden screen. The room smells of boiled herbs and lamp oil. A narrow cot stands beside a basin of warm water.",
+    "atmosphere": "hushed, close, sheltered",
+    "exits": {
+      "west": {
+        "destination": "accord_guild_hall"
+      }
+    },
+    "ambient_sounds": "guild_hall_bustle",
+    "key_features": [
+      "a narrow cot behind a wooden screen",
+      "a basin of warm water"
+    ]
   }
 ]

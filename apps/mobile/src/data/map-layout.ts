@@ -16,6 +16,7 @@ export const MAP_LAYOUT: MapLayoutNode[] = [
   // --- Accord (central hub) ---
   { id: "accord_market_square", label: "Market Square", x: 500, y: 400, region: "Accord" },
   { id: "accord_guild_hall", label: "Guild Hall", x: 500, y: 280, region: "Accord" },
+  { id: "accord_guild_infirmary", label: "Infirmary", x: 565, y: 280, region: "Accord" },
   { id: "accord_training_hall", label: "Training Hall", x: 500, y: 140, region: "Accord" },
   { id: "accord_forge", label: "Grimjaw's Forge", x: 350, y: 280, region: "Accord" },
   { id: "grimjaw_quarters", label: "Grimjaw's Quarters", x: 250, y: 200, region: "Accord" },

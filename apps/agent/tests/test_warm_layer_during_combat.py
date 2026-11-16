@@ -37,13 +37,13 @@ DB_SEAMS = (
     "background_process.db_content_queries.get_location",
     "background_process.db_queries.get_npcs_at_location",
     "background_process.db_training.get_player_active_training_activities",
+    "background_process.db_queries.get_player_flag_value",
 )
 
 
 @contextmanager
 def _mock_db():
-    """The four DB seams _rebuild_warm_layer fans out to, plus the disposition read the NPC
-    affordance makes as soon as a caller gives the npcs seam a non-empty row."""
+    """Mock the warm-layer reads and the NPC disposition lookup."""
     with (
         patch("background_process.db_queries.get_player", new_callable=AsyncMock, return_value=None),
         patch("background_process.db_activity_queries.get_player_activities", new_callable=AsyncMock, return_value=[]),
@@ -51,6 +51,7 @@ def _mock_db():
         patch(DB_SEAMS[1], new_callable=AsyncMock, return_value=SAMPLE_LOCATION) as location,
         patch(DB_SEAMS[2], new_callable=AsyncMock, return_value=[]) as npcs,
         patch(DB_SEAMS[3], new_callable=AsyncMock, return_value=[]) as training,
+        patch(DB_SEAMS[4], new_callable=AsyncMock, return_value=None),
         patch("db_queries.get_npc_dispositions", new_callable=AsyncMock, return_value={}),
     ):
         yield (quests, location, npcs, training)
@@ -98,8 +99,7 @@ async def _settle(predicate, what: str) -> None:
 
 @contextmanager
 def _mock_startup_db():
-    """Everything `_run` touches before it parks on the bus: the rider-scene prefetch plus the
-    four warm-layer queries."""
+    """Mock startup reads before the background loop parks on the bus."""
     with (
         patch("background_process.db_content_queries.get_scene", new_callable=AsyncMock, return_value=None),
         _mock_db() as seams,

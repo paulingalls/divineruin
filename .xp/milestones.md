@@ -36,3 +36,8 @@ Candidates: see the phase doc; depends on M8.1's Layer 3 definitions.
 Goal: Layer 4 archetype synergy bonuses work, and the Unbound Path is a mechanically complete alternative to a patron: `docs/milestones/08_patrons.md` Milestone 8.3 ACs.
 Measure: python3 -c 'import re; s=open("docs/milestones/08_patrons.md").read(); b=re.search(r"^### Milestone 8.3 .*?(?=^### |\Z)",s,re.M|re.S).group(0); print("distance=%d" % len(re.findall(r"^- \[ \] ",b,re.M)))'
 Candidates: see the phase doc; depends on M8.1 and M8.2.
+
+## First share: friends play the story on TestFlight
+Goal: "I think we need to really focus on the story to get people started" (human 2026-11-15): a friend on TestFlight plays a complete first episode and two more sessions without the DM improvising the plot: every box in `docs/milestones/13_first_share.md`. This checkout's line is Session 1; the divineruin2 clone adds Session 2, Session 3 and deployment sections to the same file.
+Measure: python3 -c 'import re; print("distance=%d" % len(re.findall(r"^- \[ \] ",open("docs/milestones/13_first_share.md").read(),re.M)))'
+Candidates: a carry choice for the fragment with a consequence in session 2 (needs a consumer on the Greyvale side first); re-choosing race and patron in a later session at Temple Row; an in-session patron whisper instead of the catch-up one; cut market beat 2 if a played session runs past 30 minutes; the human plays the build end to end and files what breaks.

@@ -4,7 +4,7 @@ import asyncio
 import logging
 
 
-def log_task_failure(task: asyncio.Task, logger: logging.Logger, message: str) -> None:
+def log_task_failure(task: asyncio.Future, logger: logging.Logger, message: str) -> None:
     if task.cancelled():
         return
     exception = task.exception()

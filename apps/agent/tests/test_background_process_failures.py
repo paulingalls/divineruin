@@ -53,7 +53,7 @@ def _background_data():
 
         add("db_queries.get_player", return_value=None)
         add("db_activity_queries.get_player_activities", return_value=[])
-        mocks.rider = add("db_content_queries.get_scene", return_value=None)
+        mocks.episode = add("db_queries.get_player_flag_value", return_value=None)
         mocks.quests = add("db_queries.get_active_player_quests", return_value=[])
         mocks.location = add("db_content_queries.get_location", return_value={"name": "Guild Hall"})
         mocks.npcs = add("db_queries.get_npcs_at_location", return_value=[])
@@ -343,33 +343,6 @@ async def test_plain_livekit_agent_is_fatal_by_design(caplog):
             await _finish(process)
 
 
-@pytest.mark.asyncio
-async def test_rider_prefetch_oserror_logs_and_rebuilds_continue(caplog):
-    process, sd, agent = _make_process()
-    initial_applied = asyncio.Event()
-    rebuilt = asyncio.Event()
-
-    async def update(_instructions):
-        (initial_applied if agent.update_instructions.await_count == 1 else rebuilt).set()
-
-    agent.update_instructions.side_effect = update
-    with _background_data() as mocks, caplog.at_level(logging.ERROR, logger=BACKGROUND_LOGGER):
-        mocks.rider.side_effect = OSError("rider unavailable")
-        process.start()
-        try:
-            await _wait(initial_applied)
-            _publish_rebuild(sd)
-            await _wait(rebuilt)
-            assert process._task is not None and not process._task.done()
-            assert agent.update_instructions.await_count == 2
-            records = [r for r in caplog.records if r.name == BACKGROUND_LOGGER and r.levelno == logging.ERROR]
-            assert len(records) == 1
-            assert records[0].exc_info is not None
-            assert isinstance(records[0].exc_info[1], OSError)
-        finally:
-            await _finish(process)
-
-
 @pytest.mark.parametrize(
     "failure",
     [
@@ -452,7 +425,7 @@ async def test_build_keyerror_ends_loop_and_logs(caplog):
             await _finish(process)
 
 
-@pytest.mark.parametrize("site", ["rider", "location"], ids=["rider-prefetch", "fetch-fan-out"])
+@pytest.mark.parametrize("site", ["location", "episode"], ids=["fetch-fan-out", "episode-receipt"])
 @pytest.mark.asyncio
 async def test_untolerated_fetch_error_ends_loop_and_logs(caplog, site):
     process, _, _ = _make_process()

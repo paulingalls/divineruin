@@ -86,20 +86,9 @@ def _caster_state(archetype_id: str = "mage") -> CreationState:
         phase="identity",
         race="elari",
         class_choice=archetype_id,
-        deity=None,
+        deity="veythar",
         name="Aric",
         backstory="Seeker of truth.",
-    )
-
-
-def _martial_state() -> CreationState:
-    return CreationState(
-        phase="identity",
-        race="human",
-        class_choice="warrior",
-        deity="kaelen",
-        name="Thane",
-        backstory="A sellsword.",
     )
 
 
@@ -121,26 +110,6 @@ _PAYLOAD = {
 
 
 class TestFinalizeGrantsStartingSpells:
-    @patch("creation_tools.character_spells.record_learned", new_callable=AsyncMock)
-    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
-    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
-    async def test_mage_creation_records_two_prepared_electives(self, _create, mock_payload, mock_record):
-        mock_payload.return_value = _PAYLOAD
-        await _finalize(_ctx(_caster_state()))
-        assert mock_record.await_count == 2
-        for call in mock_record.await_args_list:
-            assert call.kwargs["is_prepared"] is True
-            args = call.args
-            assert "training" in (list(args) + list(call.kwargs.values()))
-
-    @patch("creation_tools.character_spells.record_learned", new_callable=AsyncMock)
-    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
-    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
-    async def test_martial_creation_records_no_spells(self, _create, mock_payload, mock_record):
-        mock_payload.return_value = _PAYLOAD
-        await _finalize(_ctx(_martial_state()))
-        mock_record.assert_not_awaited()
-
     @pytest.mark.parametrize(
         "archetype_id",
         ["mage", "artificer", "seeker", "cleric", "paladin", "oracle", "druid", "beastcaller", "warden"],

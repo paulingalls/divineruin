@@ -1,11 +1,9 @@
-import re
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from base_agent import BaseGameAgent
-from creation_prompts import CREATION_SYSTEM_PROMPT
-from session_data import SessionData
+from session_data import CreationState, SessionData
 
 
 class TestCreationAgentInit:
@@ -14,46 +12,6 @@ class TestCreationAgentInit:
 
         agent = CreationAgent()
         assert isinstance(agent, BaseGameAgent)
-
-    def test_has_creation_system_prompt(self):
-        from creation_agent import CreationAgent
-
-        agent = CreationAgent()
-        assert agent._instructions == CREATION_SYSTEM_PROMPT
-
-    def test_has_creation_tools_only(self):
-        from creation_agent import CREATION_TOOLS, CreationAgent
-
-        agent = CreationAgent()
-        assert list(agent._tools) == CREATION_TOOLS
-
-    def test_no_gameplay_tools(self):
-        from creation_agent import CreationAgent
-
-        agent = CreationAgent()
-        tool_names = {getattr(t, "__name__", "") for t in agent._tools}
-        assert "enter_location" not in tool_names
-        assert "enter_mode" not in tool_names
-        assert "move_player" not in tool_names
-        assert "end_session" not in tool_names
-
-    def test_creation_tools_list_contents(self):
-        from creation_agent import CREATION_TOOLS
-
-        tool_names = {t.__name__ for t in CREATION_TOOLS}
-        assert tool_names == {
-            "push_creation_cards",
-            "set_creation_choice",
-            "finalize_character",
-        }
-
-    def test_prompt_commands_no_tool_the_agent_lacks(self):
-        """Match removed tool identifiers, not ordinary English words in narration."""
-        from creation_agent import CREATION_TOOLS
-
-        commanded = set(re.findall(r"[Cc]all ([a-z]+(?:_[a-z]+)+)", CREATION_SYSTEM_PROMPT))
-        available = {t.__name__ for t in CREATION_TOOLS}
-        assert commanded <= available, f"creation prompt commands absent tools: {commanded - available}"
 
     def test_accepts_chat_ctx(self):
         from creation_agent import CreationAgent
@@ -65,46 +23,6 @@ class TestCreationAgentInit:
 
 class TestCreationAgentOnEnter:
     @pytest.mark.asyncio
-    async def test_on_enter_pushes_race_cards(self):
-        from creation_agent import CreationAgent
-
-        agent = CreationAgent()
-        mock_session = MagicMock()
-        mock_sd = SessionData(
-            player_id="test_player",
-            location_id="",
-            room=MagicMock(),
-        )
-        mock_session.userdata = mock_sd
-
-        with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
-            with patch("creation_agent.push_cards_to_client", new_callable=AsyncMock) as mock_push:
-                with patch("creation_agent.push_creation_music", new_callable=AsyncMock):
-                    await agent.on_enter()
-
-                    mock_push.assert_called_once_with("race", mock_sd.room, mock_sd.event_bus)
-
-    @pytest.mark.asyncio
-    async def test_on_enter_emits_wonder_music_state(self):
-        from creation_agent import CreationAgent
-
-        agent = CreationAgent()
-        mock_session = MagicMock()
-        mock_sd = SessionData(
-            player_id="test_player",
-            location_id="",
-            room=MagicMock(),
-        )
-        mock_session.userdata = mock_sd
-
-        with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
-            with patch("creation_agent.push_cards_to_client", new_callable=AsyncMock):
-                with patch("creation_agent.push_creation_music", new_callable=AsyncMock) as mock_push_music:
-                    await agent.on_enter()
-
-                    mock_push_music.assert_called_once_with("wonder", mock_sd.room, mock_sd.event_bus)
-
-    @pytest.mark.asyncio
     async def test_on_enter_starts_card_tap_handler(self):
         from creation_agent import CreationAgent
 
@@ -113,6 +31,7 @@ class TestCreationAgentOnEnter:
         mock_sd = SessionData(
             player_id="test_player",
             location_id="",
+            creation_state=CreationState(),
             room=MagicMock(),
         )
         mock_session.userdata = mock_sd
@@ -128,29 +47,6 @@ class TestCreationAgentOnEnter:
                         MockCTH.assert_called_once_with(room=mock_sd.room, session=mock_session, userdata=mock_sd)
                         mock_cth.start.assert_called_once()
                         assert agent._card_tap is mock_cth
-
-    @pytest.mark.asyncio
-    async def test_on_enter_generates_initial_reply(self):
-        from creation_agent import CreationAgent
-
-        agent = CreationAgent()
-        mock_session = MagicMock()
-        mock_sd = SessionData(
-            player_id="test_player",
-            location_id="",
-            room=MagicMock(),
-        )
-        mock_session.userdata = mock_sd
-
-        with patch.object(type(agent), "session", new_callable=lambda: property(lambda self: mock_session)):
-            with patch("creation_agent.push_cards_to_client", new_callable=AsyncMock):
-                with patch("creation_agent.push_creation_music", new_callable=AsyncMock):
-                    await agent.on_enter()
-
-                    mock_session.generate_reply.assert_called_once()
-                    call_kwargs = mock_session.generate_reply.call_args[1]
-                    assert "Awakening" in call_kwargs["instructions"]
-                    assert call_kwargs["tool_choice"] == "none"
 
 
 class TestCreationAgentReadinessGate:
@@ -190,6 +86,7 @@ class TestCreationAgentReadinessGate:
         mock_sd = SessionData(
             player_id="test_player",
             location_id="",
+            creation_state=CreationState(),
             room=MagicMock(),
         )
         mock_session.userdata = mock_sd

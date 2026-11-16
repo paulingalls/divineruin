@@ -19,6 +19,7 @@ from livekit import agents
 
 import db_session_queries
 import event_types as E
+import first_episode
 from activate_tools import activate
 from background_process import BackgroundProcess
 from base_agent import BaseGameAgent
@@ -117,9 +118,14 @@ class ExplorationAgent(BaseGameAgent):
         # SPLIT it, each seeing half the events and keeping its own quest/scene/warm caches, and
         # both rebuilding on the 30s fallback. That is a doubled DB fan-out over two divergent
         # warm layers racing each other into the same agent.
-        if sd.background is None:
-            sd.background = BackgroundProcess(session=self.session, session_data=sd)
-            sd.background.start()
+        background = sd.background
+        created = background is None
+        if background is None:
+            background = sd.background = BackgroundProcess(session=self.session, session_data=sd)
+        # Queue the rider before the loop starts consuming speech.
+        await first_episode.enter(sd)
+        if created:
+            background.start()
         self._fire_and_forget(self._publish_session_init(sd))
 
         # Consume L5 specialization taps from the HUD: a tap drives the DM to resolve
