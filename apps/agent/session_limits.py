@@ -60,7 +60,8 @@ class SessionLimits:
             return
         self.last_player = self.clock.now()
         self.suppressed = False
-        self.suppression = asyncio.Event()
+        if self.suppression.is_set():
+            self.suppression = asyncio.Event()
         if check_in := self.notifications.get("check-in"):
             check_in.cancel()
         self.wake.set()

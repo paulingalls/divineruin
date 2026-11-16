@@ -445,10 +445,12 @@ async def test_selected_and_livekit_queued_idle_speech_are_cancelled(livekit_ser
             try:
                 await until(lambda: harness.instructions("Queued idle cue"))
                 handle = next(h for r, h in harness.handles if r.get("instructions") == "Queued idle cue.")
-                await harness.advance(840)
+                await harness.advance(550)
+                await harness.speech(job)
+                await harness.advance(850)
                 await until(lambda: handle.interrupted)
                 assert session.current_speech is leading
-                await harness.advance(1140)
+                await harness.advance(1150)
                 await until(lambda: harness.instructions("closing line"))
             finally:
                 release.set()
