@@ -15,6 +15,7 @@ from session_data import CombatParticipant, CombatState, CompanionState, Session
 def _mock_db_for_warm_layer(quests=None, location=None, npcs=None, training=None):
     """Mock the DB calls used by _rebuild_warm_layer."""
     with (
+        patch("background_process.db_queries.get_player_flag_value", new_callable=AsyncMock, return_value=None),
         patch("background_process.db_queries.get_player", new_callable=AsyncMock, return_value=None),
         patch("background_process.db_activity_queries.get_player_activities", new_callable=AsyncMock, return_value=[]),
         patch(
@@ -268,6 +269,17 @@ class TestDeliverSpeech:
         call_kwargs = session.generate_reply.call_args[1]
         assert call_kwargs["instructions"] == "high"
         assert len(bg._speech_queue) == 0
+
+    async def test_a_handoff_that_never_finishes_draining_drops_one_speech_loudly(self, caplog, monkeypatch):
+        import speech_delivery
+
+        monkeypatch.setattr(speech_delivery, "DRAIN_RETRY_SECS", 0.05)
+        bg, _, session = _make_bg()
+        session.generate_reply.side_effect = RuntimeError(speech_delivery.DRAINING)
+        bg._speech_queue = [PendingSpeech(priority=SpeechPriority.ROUTINE, instructions="hint")]
+        await bg._deliver_speech()
+        assert bg._speech_queue == []
+        assert [r.levelname for r in caplog.records if "never finished draining" in r.message] == ["ERROR"]
 
     async def test_empty_queue_no_op(self):
         bg, _, session = _make_bg()

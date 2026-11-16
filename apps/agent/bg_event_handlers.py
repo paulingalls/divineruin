@@ -72,11 +72,8 @@ def handle_events(
     events: list[GameEvent],
     sd: SessionData,
     speech_queue: list[PendingSpeech],
-    rider_triggered: bool,
-    scene_cache: dict[str, dict],
-    quest_cache: list[dict],
-) -> tuple[bool, bool]:
-    """Dispatch game events to handlers. Returns (needs_rebuild, rider_triggered)."""
+) -> bool:
+    """Dispatch game events and report whether the warm layer needs rebuilding."""
     needs_rebuild = False
     can_act = sd.companion_can_act
     companion = sd.companion
@@ -100,13 +97,6 @@ def handle_events(
 
         if ev.event_type == E.LOCATION_CHANGED:
             new_loc = ev.payload.get("new_location", "")
-
-            if not rider_triggered and not sd.has_companion and new_loc == "accord_market_square" and not quest_cache:
-                rider_triggered = True
-                rider_scene = scene_cache.get("scene_rider_arrival")
-                if rider_scene:
-                    _queue(speech_queue, SpeechPriority.CRITICAL, rider_scene["instructions"])
-                continue
 
             if can_act and companion:
                 companion.emotional_state = "curious"
@@ -268,7 +258,7 @@ def handle_events(
             if element_id:
                 sd.recently_revealed_element_ids.append(element_id)
 
-    return needs_rebuild, rider_triggered
+    return needs_rebuild
 
 
 def queue_god_whisper(

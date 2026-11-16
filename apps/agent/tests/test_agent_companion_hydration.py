@@ -1,12 +1,10 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from livekit.agents.llm import ToolError
 from speech_handles import completed_handle
 
 from companion_profiles import get_companion_profile
 from exploration_agent import ExplorationAgent
-from onboarding_agent import OnboardingAgent
 from session_data import CompanionState, SessionData
 from system_prompts import build_system_prompt
 
@@ -82,32 +80,6 @@ class TestReturningPlayerCompanion:
         assert companion.last_speech_time > 0
 
     @pytest.mark.asyncio
-    async def test_mid_onboarding_reconnect_hydrates_before_dispatch(self):
-        player = {
-            "name": "Aric",
-            "class": "warrior",
-            "level": 1,
-            "location_id": "accord_market_square",
-            "flags": {"onboarding_beat": 3, "companion_met": True},
-        }
-
-        session, hydrate, _userdata = await _run_dm_session(player)
-
-        hydrate.assert_awaited_once_with("player_1", "companion_lira", "Lira", player_level=1)
-        agent = session.start.call_args.kwargs["agent"]
-        assert isinstance(agent, OnboardingAgent)
-        options = session.start.call_args.kwargs["room_options"]
-        assert options.participant_identity == "player_1"
-        assert options.close_on_disconnect is False
-        # Onboarding predates the transcriber: room audio is the only way it hears the player.
-        assert options.get_audio_input_options() is not None
-        instructions = agent._instructions
-        assert isinstance(instructions, str)
-        assert "Lira" in instructions
-        assert "Kael" not in instructions
-        assert agent._publish_session_init_on_enter is True
-
-    @pytest.mark.asyncio
     async def test_unassignable_archetype_fails_loud_instead_of_defaulting_to_kael(self):
         player = {
             "name": "Aric",
@@ -135,109 +107,6 @@ class TestReturningPlayerCompanion:
         gameplay_agent = session.start.call_args.kwargs["agent"]
         assert isinstance(gameplay_agent, ExplorationAgent)
         assert gameplay_agent._agent_type == "city"
-
-
-class TestFirstMeetingCompanion:
-    @pytest.mark.asyncio
-    async def test_beat_three_reads_persisted_class_and_hydrates_complement(self):
-        from onboarding_tools import advance_onboarding_beat
-
-        ctx = MagicMock()
-        ctx.userdata = SessionData(
-            player_id="player_1",
-            location_id="accord_market_square",
-            onboarding_beat=3,
-            creation_state=None,
-        )
-        player = {"name": "Aric", "class": "warrior", "level": 12}
-
-        with (
-            patch("onboarding_tools.db_queries.get_player", new_callable=AsyncMock, return_value=player) as get_player,
-            patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock),
-            patch(
-                "companion_relationship_queries.hydrate_companion_state",
-                new_callable=AsyncMock,
-                side_effect=_fake_hydrated_companion,
-            ) as hydrate,
-        ):
-            await advance_onboarding_beat._func(ctx)
-
-        get_player.assert_awaited_once_with("player_1")
-        hydrate.assert_awaited_once_with("player_1", "companion_lira", "Lira", player_level=12)
-        assert ctx.userdata.companion.id == "companion_lira"
-        assert ctx.userdata.companion.player_level == 12
-
-    @pytest.mark.asyncio
-    async def test_gameplay_handoff_summary_names_assigned_companion(self):
-        from onboarding_tools import advance_onboarding_beat
-
-        ctx = MagicMock()
-        ctx.userdata = SessionData(
-            player_id="player_1",
-            location_id="accord_guild_hall",
-            onboarding_beat=5,
-            companion=CompanionState(id="companion_lira", name="Lira"),
-        )
-
-        with (
-            patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock),
-            patch("gameplay_agent.create_gameplay_agent", return_value=MagicMock()) as create_agent,
-        ):
-            await advance_onboarding_beat._func(ctx)
-
-        chat_ctx = create_agent.call_args.kwargs["chat_ctx"]
-        summary = " ".join(str(item.content) for item in chat_ctx.items)
-        assert "companion Lira" in summary
-        assert "companion Kael" not in summary
-
-    @pytest.mark.asyncio
-    async def test_gameplay_handoff_without_a_companion_fails_loud(self):
-        from onboarding_tools import advance_onboarding_beat
-
-        ctx = MagicMock()
-        ctx.userdata = SessionData(
-            player_id="player_1",
-            location_id="accord_guild_hall",
-            onboarding_beat=5,
-            companion=None,
-        )
-
-        with (
-            patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock) as set_flag,
-            patch("gameplay_agent.create_gameplay_agent") as create_agent,
-            pytest.raises(ToolError, match="without a companion"),
-        ):
-            await advance_onboarding_beat._func(ctx)
-
-        set_flag.assert_not_awaited()
-        create_agent.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_beat_three_failure_leaves_the_beat_unadvanced(self):
-        from onboarding_tools import advance_onboarding_beat
-
-        ctx = MagicMock()
-        ctx.userdata = SessionData(
-            player_id="player_1",
-            location_id="accord_market_square",
-            onboarding_beat=3,
-            creation_state=None,
-        )
-
-        with (
-            patch(
-                "onboarding_tools.db_queries.get_player",
-                new_callable=AsyncMock,
-                return_value={"name": "Aric", "class": "necromancer", "level": 1},
-            ),
-            patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock) as set_flag,
-            pytest.raises(ValueError, match="necromancer"),
-        ):
-            await advance_onboarding_beat._func(ctx)
-
-        assert ctx.userdata.onboarding_beat == 3
-        assert ctx.userdata.companion is None
-        set_flag.assert_not_awaited()
 
 
 class TestCompanionPrompt:

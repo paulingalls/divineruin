@@ -25,6 +25,7 @@ remaining-work evidence live in [REMAINING.md](REMAINING.md).*
 | 10 · Terrain | [10_terrain.md](10_terrain.md) | ✅ Complete (sprint-1001) | 17/17 ACs | Required terrain, primal/Korath/Druid gates and persisted combat caching shipped. **†Veil Ward** |
 | 11 · World Loop | [11_world_loop.md](11_world_loop.md) | ⬜ Not started | 0/46 ACs | Clock/scheduler/cascade criteria remain open; bounded consumer and worker evidence in [REMAINING.md](REMAINING.md). **†Veil Ward** |
 | 12 · Story Content | [12_story_content.md](12_story_content.md) | ⬜ Not started | 0/34 ACs | Planned. |
+| 13 · First Share | [13_first_share.md](13_first_share.md) | 🟡 Partial | 14/36 ACs | Session 1: 9/9. The walk from creation to a queued whisper exercises caster pools, persisted rider, silence hints and fragment settlement through the session lifecycle; no repeat after consumption and worker restart at favor zero. Session 2 retains five checked criteria. |
 
 > **† Veil Ward.** M24 shipped the location/encounter-scoped, party-wide, duration-bound, multi-source ward model in sprint-040 (`057_veil_ward_scope.sql`), including the Phase 3 source durations and Phase 5 Artificer Veil Anchor recipe. Phase 10 M10.2 ships the Druid terrain gate and ancient-forest discount; Phase 11 owns ambient and Sacred-site world wards.
 
@@ -116,8 +117,9 @@ with its upstream dependencies.
 | 7 | [07_bestiary.md](07_bestiary.md) | `../game_mechanics/game_mechanics_bestiary.md`, `../game_mechanics/game_mechanics_encounter_roles.md` | 4 |
 | 8 | [08_patrons.md](08_patrons.md) | `../game_mechanics/game_mechanics_patrons.md` | 3 |
 | 9 | [09_economy.md](09_economy.md) | `../game_mechanics/game_mechanics_economy.md` + 6 subsystem docs in `../game_mechanics/economy/` (`supply_demand_engine.md`, `faction_reputation_pricing.md`, `merchant_inventory_restock.md`, `gold_sink_ledger.md`, `inflation_targets_controls.md`, `game_mechanics_p2p_trade.md`) | 10 |
+| 13 | [13_first_share.md](13_first_share.md) | `../mvp_spec.md` | 1 |
 
-**Total: 50 milestones across 10 phases**
+**Total: 51 milestones in the phase files listed above**
 
 ## Audit Completion
 

@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.39.0 — 2026-11-16
+
+- The game runs as containers. `deploy/compose.yml` runs the server, the DM agent and the async worker, plus a one-shot migrate-and-seed job, from three images (`deploy/*.Dockerfile`). The images run as a non-root user and carry no `.env`, tests or mobile sources. `scripts/deploy-up.sh` is the operator's entry point, and `scripts/deploy-smoke.sh` checks the built images locally before a deploy. Nothing in this release creates a cloud resource.
+- `GET /api/health` returns 200 when Postgres and Valkey both answer, and 503 naming whichever did not, within a bounded deadline.
+- Every deploy migrates and seeds before any serving container is replaced. A failed migration or malformed content stops the deploy with the old containers untouched. Production seeding skips the `player_1` fixture, refuses if fixture rows already exist, validates rows with both the Python and TypeScript catalog parsers before committing, and clears the content caches so the new content is served without restarting the server.
+- Narration audio and portraits live under one generated-media directory, set by one variable that all three processes read and backed by one named volume. They survive a container restart and are served by the server whichever container wrote them. The bundled prologue and tracked images still load on a fresh volume.
+- A production server, agent or worker refuses to start half-configured and names every missing variable. The mock email transport is refused in production, so `RESEND_API_KEY` is required. `deploy/env.production.example` lists what each service needs, and `.env.example` is complete.
+- An unhandled error in the server, agent or worker leaves one JSON line on stderr with the service, time, message and stack, and no tokens, emails or player speech. Compose keeps bounded, rotated logs per service.
+- The iOS app can be built for TestFlight against a named server with an EAS profile.
+
+## 0.38.1 — 2026-11-16
+
+- The fast Python lane seeds its dev database after migrating it, so a change to `content/*.json` is tested against matching data at story land instead of the previous seed. The fixture players in `content/players.json` are reset on each run.
+- `scripts/teardown-worktree.sh --sweep` works on a machine that also runs unrelated Docker Compose projects. It skips a project with no divineruin ownership labels and still refuses on partial, mixed or malformed ownership.
+
+## 0.38.0 — 2026-11-16
+
+- Session one is a complete episode. A new player answers two questions, meets a companion, fights once, is handed a mystery and a reason to go north, and finds a message from their god waiting afterward.
+- Character creation asks for a calling and a name. The first-share roster is four archetypes (warrior, mage, rogue, cleric), three races (human, elari, vaelti) and four patrons (Kaelen, Veythar, Syrath, Aelora). Race defaults to human and the patron follows the archetype; a player who names a race or patron from the roster gets it. The full catalogs are untouched, so the roster widens by editing one list.
+- Onboarding is three beats in the market square and ends when the companion has been met. The DM can no longer move the player during onboarding, so play always begins in the square. The companions' `onboarding_suggestion` field is removed from the content and from the Python and TypeScript loaders.
+- The wounded rider now arrives for every new player, once, when play begins. He is carrying a wrapped stone shard out of the Greyvale; in the new guild infirmary the sound thins around it and one shadeling condenses. The scene could not fire before: it required a player with no companion, and it listened for a location change that the onboarding handoff never makes.
+- When that fight ends, by victory, defeat, flight or de-escalation, the engine gives the player the Veil Fragment and starts "The Greyvale Anomaly". The DM no longer has to decide to start the quest. It happens once, inside the combat-end transaction, and two sessions ending the same fight cannot grant it twice.
+- The first fight is one shadeling. Across 20 fixed seeds a level-1 warrior, mage, rogue and cleric with their companion win 20, 19, 19 and 20 fights. Session one pays 25 XP, so the player reaches Millhaven at level 1.
+- A patron whisper is generated for the catch-up feed after the first episode, even at zero favor, and only once. This spends one background narration and one voice render per new player. The favor-25 whisper trigger is unchanged.
+- Companion hints during the rider scene reach a silent player before any quest is active.
+- Fixed: a reconnect could fail its cleanup because a speech handle was scheduled as a task (#625), and proactive speech during a combat handoff could stop all later background hints (#626).
+- Three unread entries are removed from `content/events.json` (`market_disruption`, `normalcy_market_task`, `companion_introduction`).
+- `docs/milestones/13_first_share.md` lists every step to a friends playtest and `docs/milestones/audit/first-share.md` records the evidence behind them.
+
 ## 0.37.0 — 2026-11-15
 
 - The Millhaven leg of the Greyvale arc no longer depends on the DM deciding to advance the quest. Arriving in Millhaven, by walking or by travel, completes "The Road North"; winning the Hollow patrol fight completes "First Blood", whether combat ends through the DM's tool or automatically. Rewards are paid once and roll back with the combat end if anything fails.

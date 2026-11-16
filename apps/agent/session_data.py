@@ -58,7 +58,7 @@ class CompanionState:
 
 @dataclass
 class CreationState:
-    phase: str = "prologue"  # prologue | awakening | calling | devotion | identity | complete
+    phase: str = "prologue"  # prologue | calling | identity | complete
     race: str | None = None
     class_choice: str | None = None
     deity: str | None = None

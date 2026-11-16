@@ -1,4 +1,3 @@
-import json
 from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -7,19 +6,13 @@ import pytest
 from livekit.agents.llm import ToolError
 
 import event_types as E
-from creation_classes import CLASSES
-from creation_deities import DEITIES
 from creation_prompts import CREATION_SYSTEM_PROMPT
-from creation_tools import finalize_character, push_creation_cards, push_creation_music, set_creation_choice
+from creation_tools import finalize_character, push_creation_music
 from event_bus import EventBus
 from hp_scaling import calculate_max_hp
 from rules_engine import attribute_modifier
 from session_data import CreationState, SessionData
 
-# _func bypasses SDK Literal validation — use Any-typed refs so Pyright accepts
-# values outside the Literal (e.g. "race", "invalid") that the underlying code handles.
-_push_cards: Any = push_creation_cards._func
-_set_choice: Any = set_creation_choice._func
 _finalize: Any = finalize_character._func
 
 
@@ -37,21 +30,6 @@ def _make_context(creation_state: CreationState | None = None) -> MagicMock:
 
 
 class TestFinalizeCharacter:
-    async def test_missing_race_returns_error(self):
-        ctx = _make_context(CreationState(class_choice="warrior", name="Aric"))
-        with pytest.raises(ToolError, match="race"):
-            await _finalize(ctx)
-
-    async def test_missing_class_returns_error(self):
-        ctx = _make_context(CreationState(race="human", name="Aric"))
-        with pytest.raises(ToolError, match="class"):
-            await _finalize(ctx)
-
-    async def test_missing_name_returns_error(self):
-        ctx = _make_context(CreationState(race="human", class_choice="warrior"))
-        with pytest.raises(ToolError, match="name"):
-            await _finalize(ctx)
-
     async def test_not_in_creation_mode(self):
         ctx = _make_context()
         ctx.userdata.creation_state = None
@@ -60,7 +38,7 @@ class TestFinalizeCharacter:
 
     @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
-    async def test_successful_finalize(self, mock_create_player, mock_get_payload):
+    async def test_finalize_initializes_patron_clock(self, mock_create_player, mock_get_payload):
         mock_get_payload.return_value = {
             "character": {"name": "Aric"},
             "location": None,
@@ -79,85 +57,11 @@ class TestFinalizeCharacter:
             backstory="A wandering sellsword.",
         )
         ctx = _make_context(cs)
-        agent, json_str = await _finalize(ctx)
-        result = json.loads(json_str)
-
-        from onboarding_agent import OnboardingAgent
-
-        assert isinstance(agent, OnboardingAgent)
-        assert "character" in result
-        assert result["character"]["name"] == "Aric"
-        assert result["character"]["race"] == "Human"
-        assert result["character"]["class"] == "Warrior"
-        assert cs.phase == "complete"
-        assert ctx.userdata.onboarding_beat == 1
-        mock_create_player.assert_awaited_once()
+        await _finalize(ctx)
         stored = mock_create_player.call_args.args[2]
         served = datetime.fromisoformat(stored["divine_favor"]["last_served_at"])
         assert served.tzinfo is not None
         assert abs((datetime.now(UTC) - served).total_seconds()) < 60
-
-    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
-    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
-    async def test_finalize_with_deferred_deity(self, mock_create_player, mock_get_payload):
-        mock_get_payload.return_value = {
-            "character": {"name": "Aric"},
-            "location": None,
-            "quests": [],
-            "inventory": [],
-            "map_progress": [],
-            "world_state": {"time": "evening"},
-        }
-
-        cs = CreationState(
-            phase="identity",
-            race="elari",
-            class_choice="mage",
-            deity=None,
-            name="Aric",
-            backstory="Seeker of truth.",
-        )
-        ctx = _make_context(cs)
-        agent, json_str = await _finalize(ctx)
-        result = json.loads(json_str)
-
-        from onboarding_agent import OnboardingAgent
-
-        assert isinstance(agent, OnboardingAgent)
-        assert "character" in result
-        assert cs.phase == "complete"
-
-    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
-    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
-    async def test_finalize_calls_create_player(self, mock_create_player, mock_get_payload):
-        mock_get_payload.return_value = {
-            "character": {},
-            "location": None,
-            "quests": [],
-            "inventory": [],
-            "map_progress": [],
-            "world_state": {},
-        }
-
-        cs = CreationState(
-            race="draethar",
-            class_choice="guardian",
-            deity="valdris",
-            name="Thane",
-            backstory="Protector of the weak.",
-        )
-        ctx = _make_context(cs)
-        _agent, _json_str = await _finalize(ctx)
-
-        mock_create_player.assert_awaited_once()
-        call_args = mock_create_player.call_args
-        player_id = call_args[0][0]
-        data = call_args[0][2]
-        assert player_id == "test_player"
-        assert data["name"] == "Thane"
-        assert data["race"] == "draethar"
-        assert data["class"] == "guardian"
-        assert data["deity"] == "valdris"
 
     @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
@@ -187,30 +91,6 @@ class TestFinalizeCharacter:
         assert data["hp"]["current"] == expected
         assert data["hp"]["max"] == expected
 
-    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
-    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
-    async def test_finalize_updates_session_location(self, mock_create_player, mock_get_payload):
-        mock_get_payload.return_value = {
-            "character": {},
-            "location": None,
-            "quests": [],
-            "inventory": [],
-            "map_progress": [],
-            "world_state": {},
-        }
-
-        cs = CreationState(
-            race="human",
-            class_choice="warrior",
-            deity=None,
-            name="Aric",
-            backstory="Test.",
-        )
-        ctx = _make_context(cs)
-        _agent, _json_str = await _finalize(ctx)
-
-        assert ctx.userdata.location_id != ""
-
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock, side_effect=Exception("DB down"))
     async def test_finalize_db_error(self, mock_create_player):
         cs = CreationState(
@@ -221,6 +101,7 @@ class TestFinalizeCharacter:
         ctx = _make_context(cs)
         with pytest.raises(ToolError):
             await _finalize(ctx)
+        assert cs.deity is None
 
 
 class TestPushCreationMusic:
@@ -239,95 +120,3 @@ class TestCreationPromptDropsMusicTools:
     def test_no_play_sound_or_set_music_state_bullets(self):
         assert "play_sound" not in CREATION_SYSTEM_PROMPT
         assert "set_music_state" not in CREATION_SYSTEM_PROMPT
-
-
-class TestFullCreationFlow:
-    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
-    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
-    async def test_complete_flow(self, mock_create_player, mock_get_payload):
-        mock_get_payload.return_value = {
-            "character": {"name": "Aric"},
-            "location": None,
-            "quests": [],
-            "inventory": [],
-            "map_progress": [],
-            "world_state": {"time": "evening"},
-        }
-
-        cs = CreationState()
-        ctx = _make_context(cs)
-
-        result = json.loads(await _push_cards(ctx, category="race"))
-        assert result["count"] == 6
-
-        result = json.loads(await _set_choice(ctx, category="race", value="elari"))
-        assert result["confirmed"] == "race"
-
-        result = json.loads(await _push_cards(ctx, category="class"))
-        assert result["count"] == len(CLASSES)
-
-        result = json.loads(await _set_choice(ctx, category="class", value="mage"))
-        assert result["confirmed"] == "class"
-
-        result = json.loads(await _push_cards(ctx, category="deity"))
-        assert result["count"] == len(DEITIES)
-
-        result = json.loads(await _set_choice(ctx, category="deity", value="veythar"))
-        assert result["confirmed"] == "deity"
-
-        result = json.loads(await _set_choice(ctx, category="name", value="Seraphina"))
-        assert cs.name == "Seraphina"
-
-        result = json.loads(await _set_choice(ctx, category="backstory", value="A scholar of the diaspora."))
-        assert cs.backstory == "A scholar of the diaspora."
-
-        agent, json_str = await _finalize(ctx)
-        result = json.loads(json_str)
-        from onboarding_agent import OnboardingAgent
-
-        assert isinstance(agent, OnboardingAgent)
-        assert "character" in result
-        assert cs.phase == "complete"
-        assert not ctx.userdata.in_creation
-        assert ctx.userdata.onboarding_beat == 1
-
-        mock_create_player.assert_awaited_once()
-        data = mock_create_player.call_args[0][2]
-        assert data["name"] == "Seraphina"
-        assert data["race"] == "elari"
-        assert data["class"] == "mage"
-        assert data["deity"] == "veythar"
-
-    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
-    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
-    async def test_each_race_with_representative_class(self, mock_create_player, mock_get_payload):
-        mock_get_payload.return_value = {
-            "character": {},
-            "location": None,
-            "quests": [],
-            "inventory": [],
-            "map_progress": [],
-            "world_state": {},
-        }
-
-        combos = [
-            ("draethar", "warrior"),
-            ("elari", "mage"),
-            ("korath", "guardian"),
-            ("vaelti", "rogue"),
-            ("thessyn", "bard"),
-            ("human", "diplomat"),
-        ]
-
-        for race_id, class_id in combos:
-            cs = CreationState()
-            ctx = _make_context(cs)
-            await _set_choice(ctx, category="race", value=race_id)
-            await _set_choice(ctx, category="class", value=class_id)
-            await _set_choice(ctx, category="deity", value="none")
-            await _set_choice(ctx, category="name", value="TestChar")
-            await _set_choice(ctx, category="backstory", value="Test.")
-            _agent, json_str = await _finalize(ctx)
-            result = json.loads(json_str)
-            assert "character" in result, f"Failed for {race_id}/{class_id}: {result}"
-            assert cs.phase == "complete"

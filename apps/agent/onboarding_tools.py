@@ -21,9 +21,8 @@ BEAT_NAMES = {
     1: "arrival",
     2: "market",
     3: "companion_meeting",
-    4: "kael_suggestion",
-    5: "first_destination",
 }
+FINAL_BEAT = max(BEAT_NAMES)
 
 
 @function_tool
@@ -32,10 +31,8 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
 
     Call when the current beat's completion conditions are met.
     Beat 1 (Arrival): After initial narration delivered.
-    Beat 2 (Market): After 2-3 player exchanges or player attempts to leave.
-    Beat 3 (Companion Meeting): After the companion has been introduced and companion state initialized.
-    Beat 4 (The Companion's Suggestion): After player indicates a direction or asks to be led.
-    Beat 5 (First Destination): After Greyvale quest hook delivered.
+    Beat 2 (Market): After 2-3 player exchanges.
+    Beat 3 (Companion Meeting): After introduction, initialize the companion and hand off to exploration.
     """
     sd: SessionData = context.userdata
 
@@ -44,14 +41,19 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
 
     current = sd.onboarding_beat
 
-    if current >= 5:
-        companion = sd.companion
-        if companion is None:
-            raise ToolError(f"Player {sd.player_id!r} completed onboarding without a companion")
+    if current == FINAL_BEAT:
+        from companion_relationship_queries import hydrate_assigned_companion_state
 
-        # Beat 5 complete — hand off to open-world exploration (city region).
-        sd.onboarding_beat = None
+        # Assignment must succeed before completion so a failed selection is replayable.
+        player = await db_queries.get_player(sd.player_id)
+        if player is None:
+            raise ToolError(f"Player {sd.player_id!r} missing during companion assignment")
+        companion = await hydrate_assigned_companion_state(sd.player_id, player["class"], player["level"])
+        companion.last_speech_time = time.time()
+        sd.companion = companion
+        await db_mutations.set_player_flag(sd.player_id, "companion_met", True)
         await db_mutations.set_player_flag(sd.player_id, "onboarding_beat", ONBOARDING_COMPLETE)
+        sd.onboarding_beat = None
 
         from livekit.agents.llm import ChatContext
 
@@ -63,8 +65,7 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
             role="system",
             content=(
                 f"Player completed onboarding. They met companion {companion.name}, "
-                "explored the Accord of Tides market, and received the "
-                "Greyvale quest hook. Begin open-world gameplay."
+                f"and remain at {sd.location_id}. Begin open-world gameplay."
             ),
         )
         result = json.dumps({"onboarding_complete": True, "location": sd.location_id})
@@ -77,22 +78,6 @@ async def advance_onboarding_beat(context: RunContext) -> str | tuple[Agent, str
         sound_id = ACTION_SOUND_EXPORTS["ACTION_ADVANCE_ONBOARDING_BEAT"]
         await publish_action_sound(sd, sound_id)
         return agent, result
-
-    if current == 3:
-        from companion_relationship_queries import hydrate_assigned_companion_state
-
-        # First meeting: bind the companion the persisted archetype assigns, BEFORE persisting
-        # the beat advance. A failed assignment then leaves the player replayable at beat 3
-        # rather than at beat 4 with companion_met unset, which the beat-5 guard above makes
-        # permanently unfinishable.
-        player = await db_queries.get_player(sd.player_id)
-        if player is None:
-            raise ToolError(f"Player {sd.player_id!r} missing during companion assignment")
-        companion = await hydrate_assigned_companion_state(sd.player_id, player["class"], player["level"])
-        companion.last_speech_time = time.time()
-        sd.companion = companion
-        await db_mutations.set_player_flag(sd.player_id, "companion_met", True)
-        logger.info("Companion %s initialized for player %s after beat 3", companion.name, sd.player_id)
 
     next_beat = current + 1
     sd.onboarding_beat = next_beat

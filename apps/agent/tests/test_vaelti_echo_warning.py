@@ -31,18 +31,16 @@ class TestEmitter:
 class TestConsumer:
     def test_warning_event_queues_one_critical_speech(self):
         queue = []
-        handle_events([GameEvent(event_type=E.VAELTI_ECHO_WARNING, payload={})], _sd(), queue, False, {}, [])
+        handle_events([GameEvent(event_type=E.VAELTI_ECHO_WARNING, payload={})], _sd(), queue)
         assert len(queue) == 1
         assert queue[0].priority == SpeechPriority.CRITICAL
         assert queue[0].instructions == vaelti_echo_warning.WARNING_INSTRUCTION
 
     def test_unrelated_event_does_not_queue_the_warning(self):
         queue = []
-        handle_events([GameEvent(event_type=E.DICE_ROLL, payload={})], _sd(), queue, False, {}, [])
+        handle_events([GameEvent(event_type=E.DICE_ROLL, payload={})], _sd(), queue)
         assert not any(s.instructions == vaelti_echo_warning.WARNING_INSTRUCTION for s in queue)
 
     def test_warning_does_not_trigger_warm_rebuild(self):
-        needs_rebuild, _ = handle_events(
-            [GameEvent(event_type=E.VAELTI_ECHO_WARNING, payload={})], _sd(), [], False, {}, []
-        )
+        needs_rebuild = handle_events([GameEvent(event_type=E.VAELTI_ECHO_WARNING, payload={})], _sd(), [])
         assert needs_rebuild is False

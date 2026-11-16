@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import re
-from collections.abc import AsyncGenerator, AsyncIterable, Callable
+from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable
 from typing import Any
 
 from livekit import agents, rtc
@@ -113,7 +113,7 @@ class BaseGameAgent(ReportingEntry):
         self._turn_timer = TurnTimer()
         self._affect_analyzer = PlayerAffectAnalyzer()
         self._transcript: TranscriptLogger | None = None
-        self._bg_tasks: set[asyncio.Task[None]] = set()
+        self._bg_tasks: set[asyncio.Future[None]] = set()
         self._tts_instance_callback = tts_instance_callback
 
     def static_prompt(self, sd: SessionData) -> str:
@@ -125,12 +125,12 @@ class BaseGameAgent(ReportingEntry):
         """
         return self._static_instructions
 
-    def _fire_and_forget(self, coro: Any) -> None:
-        task = asyncio.create_task(coro)
+    def _fire_and_forget(self, awaitable: Awaitable[None]) -> None:
+        task = asyncio.ensure_future(awaitable)
         self._bg_tasks.add(task)
         task.add_done_callback(self._on_bg_task_done)
 
-    def _on_bg_task_done(self, task: asyncio.Task[None]) -> None:
+    def _on_bg_task_done(self, task: asyncio.Future[None]) -> None:
         self._bg_tasks.discard(task)
         log_task_failure(task, logger, "Background task failed")
 

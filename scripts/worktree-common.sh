@@ -296,6 +296,11 @@ wt_sweep_owner() {
 import json,sys
 try:
     labels=json.load(sys.stdin)
+    if not isinstance(labels,dict):
+        raise ValueError("expected ownership label object")
+    if sys.argv[1] == "classify" and not any(k in labels for k in ("com.divineruin.clone", "com.divineruin.checkout")):
+        print("unlabelled")
+        sys.exit(0)
     pair=[labels[k] for k in ("com.divineruin.clone", "com.divineruin.checkout")]
     if any(not isinstance(v,str) or not v or any(c.isspace() for c in v) for v in pair):
         raise ValueError("missing or invalid ownership")
@@ -303,7 +308,7 @@ try:
 except (ValueError,TypeError,KeyError) as error:
     print("ownership labels are invalid: " + str(error), file=sys.stderr)
     sys.exit(1)
-'
+' "${2:-strict}"
 }
 
 wt_sweep_candidates() {
@@ -327,10 +332,14 @@ print("\n".join(x["Name"] for x in rows))
     first=""
     while IFS= read -r id; do
       [ -n "$id" ] || continue
-      owner="$(wt_sweep_owner "$id")" || return 1
+      owner="$(wt_sweep_owner "$id" classify)" || return 1
       if [ -n "$first" ] && [ "$first" != "$owner" ]; then wt_die "project $project has mixed ownership."; return 1; fi
       first="$owner"
     done <<< "$ids"
+    # Tolerate only projects with neither ownership key on any resource: foreign
+    # projects and pre-label divineruin stacks, left untouched for manual removal.
+    # Partial, mixed or malformed ownership still refuses.
+    [ "$first" = unlabelled ] && continue
     IFS=$'\t' read -r clone checkout <<< "$first"
     [ "$clone" = "$WT_CLONE_ID" ] || continue
     owned=$((owned + 1))

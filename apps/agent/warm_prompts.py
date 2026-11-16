@@ -202,6 +202,7 @@ async def build_warm_layer(
     npcs_raw: list[dict] | None = None,
     scene_cache: dict[str, dict] | None = None,
     training: list[dict] | None = None,
+    first_episode_phase: bool | int | str | None = None,
 ) -> str:
     import asyncio
 
@@ -249,9 +250,12 @@ async def build_warm_layer(
         # REGISTER — DM persona guidance from the active scene's instructions (may be absent).
         active_scene = None
         if scene_cache:
+            from first_episode import hint_scene
             from scene_tools import get_active_scene_for_context
 
-            active_scene = get_active_scene_for_context(scene_cache, quests or [], location)
+            active_scene = hint_scene(scene_cache, first_episode_phase, location_id)
+            if active_scene is None:
+                active_scene = get_active_scene_for_context(scene_cache, quests or [], location)
         if active_scene:
             sections.append(f"REGISTER — {active_scene['name']}\n{active_scene['instructions']}")
 

@@ -26,8 +26,7 @@ CREATION_TOOLS = [push_creation_cards, set_creation_choice, finalize_character]
 class CreationAgent(BaseGameAgent):
     """Creation-only agent with Sonnet model and creation tools.
 
-    Guides players through character creation: Awakening (race),
-    Calling (class), Devotion (deity), Identity (name/backstory), Finalize.
+    Asks for a calling and a name before entering play.
     """
 
     def __init__(self, chat_ctx=None) -> None:
@@ -49,20 +48,20 @@ class CreationAgent(BaseGameAgent):
         self._card_tap = CardTapHandler(room=sd.room, session=self.session, userdata=sd)
         self._card_tap.start()
 
-        # Push initial race cards so they're on screen
-        await push_cards_to_client("race", sd.room, sd.event_bus)
+        assert sd.creation_state is not None
+        sd.creation_state.phase = "calling"
+        await push_cards_to_client("class", sd.room, sd.event_bus)
 
-        # Awakening mood cue — deterministic Resolve, not an LLM tool (M27)
+        # Creation mood is a deterministic Resolve, not an LLM tool.
         await push_creation_music("wonder", sd.room, sd.event_bus)
 
         # Trigger opening narration
         self.session.generate_reply(
             instructions=(
-                "The prologue has finished. Begin the Awakening phase. "
-                "The race cards are already visible to the player — "
+                "The prologue has finished. Begin the calling. "
+                "The calling cards are already visible to the player — "
                 "do NOT call push_creation_cards. "
-                "Ask the player about their race using the sensory approach "
-                "from your instructions."
+                'Ask: "What do you reach for when danger comes?" Then ask for their name.'
             ),
             tool_choice="none",
         )
