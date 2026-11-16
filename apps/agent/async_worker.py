@@ -26,6 +26,7 @@ from crafting_resolution import resolve_crafting_outcome
 from dialogue_parser import Segment
 from errand_resolution import companion_errand_data, resolve_errand_outcome
 from llm_config import AUDIO_DIR, audio_url_for
+from media_dir import validate_media_dir
 from narration import generate_activity_narration, generate_notification_hook, generate_progress_snippets
 from production_preflight import is_production, load_catalogs, production_preflight, validate_production_env
 from purification_tools import credit_purification, purification_outcome
@@ -314,6 +315,7 @@ async def main() -> None:
     """Main entry point for the async worker."""
     validate_production_env()
     validate_worker_env()
+    validate_media_dir()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     logger.info("Async worker starting, poll interval: %ds", POLL_INTERVAL)
 

@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
 import anthropic
+
+from media_dir import media_dir
 
 if TYPE_CHECKING:
     import anthropic.types
@@ -38,7 +39,7 @@ MAX_NULLABLE_PER_OBJECT = 12
 # is the only detector, which is why story-019 AC1 made it fail loud. Strict stays
 # interim-OFF until the surface fits -- see ADR 0008, "Not yet attainable".
 
-AUDIO_DIR = os.environ.get("ASYNC_AUDIO_DIR") or os.path.join(os.path.dirname(__file__), "..", "server", "audio")
+AUDIO_DIR = str(media_dir() / "audio")
 
 client = anthropic.AsyncAnthropic()
 

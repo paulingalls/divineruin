@@ -1,3 +1,4 @@
+import { portraitDir } from "./image-dir.ts";
 import { generateImage } from "./image-gen.ts";
 import { logError } from "./env.ts";
 import { parseJsonBody, verifyInternalSecret } from "./middleware.ts";
@@ -29,7 +30,7 @@ export async function handleGenerateImage(req: Request): Promise<Response> {
   const vars = body.vars ?? {};
 
   try {
-    const result = await generateImage(templateId, vars);
+    const result = await generateImage(templateId, vars, portraitDir());
     return Response.json({
       assetId: result.assetId,
       url: `/api/assets/images/${result.assetId}`,

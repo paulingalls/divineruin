@@ -7,6 +7,7 @@
  *   bun run scripts/generate_art.ts --batch mvp
  */
 
+import { TRACKED_IMAGE_DIR } from "../apps/server/src/image-dir.ts";
 import { generateImage, computeAssetId, getAssetPath } from "../apps/server/src/image-gen.ts";
 import { PROMPT_TEMPLATES } from "../apps/server/src/image-prompt-templates.ts";
 import { MVP_BATCH } from "./art/mvp-batch.ts";
@@ -29,7 +30,7 @@ async function runSingle(templateId: string, varsJson: string) {
 
   console.log(`Generating ${templateId}...`);
   const start = performance.now();
-  const result = await generateImage(templateId, vars);
+  const result = await generateImage(templateId, vars, TRACKED_IMAGE_DIR);
   const elapsed = ((performance.now() - start) / 1000).toFixed(1);
   console.log(`Done: ${result.assetId} (${elapsed}s)`);
   console.log(`File: ${result.path}`);
@@ -57,7 +58,12 @@ async function runBatch(batchName: string) {
 
     const start = performance.now();
     try {
-      const result = await generateImage(entry.templateId, entry.vars, entry.assetId ? { assetId: entry.assetId } : undefined);
+      const result = await generateImage(
+        entry.templateId,
+        entry.vars,
+        TRACKED_IMAGE_DIR,
+        entry.assetId ? { assetId: entry.assetId } : undefined,
+      );
       const elapsed = ((performance.now() - start) / 1000).toFixed(1);
 
       // If it completed in under 500ms, it was likely a cache hit
@@ -108,7 +114,7 @@ async function copyBatchAssets(
 
   for (const entry of entries) {
     const assetId = entry.assetId ?? computeAssetId(entry.templateId, entry.vars);
-    const srcPath = getAssetPath(assetId);
+    const srcPath = getAssetPath(assetId, TRACKED_IMAGE_DIR);
     const destName = entry[filterKey]!;
     const dest = `${destDir}/${destName}.png`;
     const src = Bun.file(srcPath);
@@ -137,7 +143,7 @@ if (flagIndex("--batch") !== -1) {
 } else if (flagIndex("--template") !== -1) {
   const templateId = args[flagIndex("--template") + 1];
   const varsIdx = flagIndex("--vars");
-  const varsJson = varsIdx !== -1 ? args[varsIdx + 1] ?? "{}" : "{}";
+  const varsJson = varsIdx !== -1 ? (args[varsIdx + 1] ?? "{}") : "{}";
   if (!templateId) {
     console.error("Usage: --template <id> [--vars '{...}']");
     process.exit(1);

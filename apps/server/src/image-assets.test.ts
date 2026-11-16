@@ -8,12 +8,12 @@ let tmpDir: string;
 
 beforeEach(async () => {
   tmpDir = await mkdtemp(join(tmpdir(), "img-asset-test-"));
-  process.env.ASSET_IMAGE_DIR = tmpDir;
+  process.env.MEDIA_DIR = tmpDir;
 });
 
 afterEach(async () => {
   await rm(tmpDir, { recursive: true, force: true });
-  delete process.env.ASSET_IMAGE_DIR;
+  delete process.env.MEDIA_DIR;
 });
 
 test("handleImageAsset returns 400 for invalid ID with special chars", async () => {
@@ -32,11 +32,12 @@ test("handleImageAsset returns 404 for missing file", async () => {
   expect(body.error).toBe("Not found");
 });
 
-test("an empty ASSET_IMAGE_DIR serves tracked assets from the repo image dir", async () => {
-  process.env.ASSET_IMAGE_DIR = "";
-  const mod = await import("./image-assets.ts");
-  const res = await mod.handleImageAsset("companion_kael_primary");
-  expect(res.status).toBe(200);
+test("generated portraits take precedence over tracked assets", async () => {
+  const bytes = new Uint8Array([1, 2, 3]);
+  await Bun.write(join(tmpDir, "portraits/companion_kael_primary.png"), bytes);
+  const { handleImageAsset } = await import("./image-assets.ts");
+  const res = await handleImageAsset("companion_kael_primary");
+  expect(new Uint8Array(await res.arrayBuffer())).toEqual(bytes);
 });
 
 test("handleImageAsset returns PNG with correct headers for valid file", async () => {
@@ -46,7 +47,7 @@ test("handleImageAsset returns PNG with correct headers for valid file", async (
   })
     .png()
     .toBuffer();
-  await Bun.write(join(tmpDir, `${testId}.png`), pngBuf);
+  await Bun.write(join(tmpDir, "portraits", `${testId}.png`), pngBuf);
 
   const mod = await import("./image-assets.ts");
   const res = await mod.handleImageAsset(testId);

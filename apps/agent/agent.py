@@ -16,6 +16,7 @@ import db
 import db_content_queries
 import db_queries
 from gameplay_llm import gameplay_llm_api_key
+from media_dir import validate_media_dir
 from participant_lifecycle import _setup_reconnection
 from production_preflight import is_production, production_preflight, validate_production_env
 from region_types import REGION_CITY
@@ -432,6 +433,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
 if __name__ == "__main__":
     validate_production_env()
     validate_env()
+    validate_media_dir()
     if is_production():
         asyncio.run(production_preflight("agent"))
     import atexit
