@@ -1,4 +1,5 @@
 import { test, expect, queryDb } from "../fixtures/character.js";
+import { cleanupAccountByEmail } from "../fixtures/auth.js";
 import { API_ORIGIN } from "../ports.js";
 import { type Browser, type Page } from "@playwright/test";
 import { spawnSync } from "node:child_process";
@@ -136,111 +137,120 @@ test("HTTP crafting and keep update two subscribed same-player HUDs; other playe
 }) => {
   await seed(testUser.playerId);
   const email = `inventory-${crypto.randomUUID()}@example.com`;
-  const [{ id: accountId }] = await queryDb<{ id: string }>(
-    "INSERT INTO accounts(email) VALUES($1) RETURNING id",
-    [email],
-  );
-  await queryDb(
-    "INSERT INTO auth_codes(account_id,code,expires_at) VALUES($1,'123456',now()+interval '10 minutes')",
-    [accountId],
-  );
-  const auth = await fetch(`${API_ORIGIN}/api/auth/verify-code`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, code: "123456" }),
-  });
-  expect(auth.ok).toBe(true);
-  const other = (await auth.json()) as { token: string; player_id: string; account_id: string };
-  await seed(other.player_id, true);
-  const a1 = await device(browser, testUser),
-    a2 = await device(browser, testUser),
-    b = await device(browser, {
-      token: other.token,
-      playerId: other.player_id,
-      accountId: other.account_id,
-    });
   try {
-    const before = await inventory(testUser.token);
-    const otherBefore = await inventory(other.token);
-    await converged(a1.page, before);
-    await converged(a2.page, before);
-    await converged(b.page, otherBefore);
-    const otherStore = await store(b.page);
-    if (process.env.INVENTORY_SUPPRESS_DELIVERY === "1")
-      await a2.page.route("**/api/inventory", (route) => route.abort());
-    const craftResponse = a1.page.waitForResponse(
-      (r) => r.url().endsWith("/api/activities") && r.request().method() === "POST",
+    await queryDb("INSERT INTO signin_allowlist(email) VALUES($1)", [email]);
+    const [{ id: accountId }] = await queryDb<{ id: string }>(
+      "INSERT INTO accounts(email) VALUES($1) RETURNING id",
+      [email],
     );
-    await a1.page.evaluate(() =>
-      window.__DR!.startActivity("crafting", { recipe_id: "reinforced_shield" }),
+    await queryDb(
+      "INSERT INTO auth_codes(account_id,code,expires_at) VALUES($1,'123456',now()+interval '10 minutes')",
+      [accountId],
     );
-    const crafted = (await (await craftResponse).json()) as Snapshot & { activity_id: string };
-    expect(crafted.activity_id).toBeTruthy();
-    expect(crafted.inventory.find((i) => i.id === "iron_ingot")?.slot_info.quantity).toBe(3);
-    expect(crafted.inventory.some((i) => i.id === "leather_strip")).toBe(false);
-    expect(sorted(crafted.inventory)).toEqual(sorted(pythonInventory(testUser.playerId)));
-    await converged(a1.page, crafted);
-    await converged(a2.page, crafted);
-    await converged(b.page, otherBefore);
-    expect(sorted(await store(a2.page))).toEqual(sorted(await store(a1.page)));
-    expect(await store(b.page)).toEqual(otherStore);
-    await expect(a2.page.getByText("Crystal Flask", { exact: true })).toBeVisible();
-    await queryDb("UPDATE async_activities SET data = data || $1::jsonb WHERE id=$2", [
-      JSON.stringify({
-        status: "resolved",
-        decision_options: [{ id: "keep" }],
-        outcome: { crafted_item_id: "reinforced_shield" },
-      }),
-      crafted.activity_id,
-    ]);
-    const keepResponse = a1.page.waitForResponse((r) => r.url().endsWith("/decide"));
-    await a1.page.evaluate((id) => window.__DR!.submitDecision(id, "keep"), crafted.activity_id);
-    const kept = (await (await keepResponse).json()) as Snapshot;
-    expect(kept.inventory.find((i) => i.id === "reinforced_shield")?.slot_info.quantity).toBe(1);
-    await converged(a1.page, kept);
-    await converged(a2.page, kept);
-    await converged(b.page, otherBefore);
-    expect(sorted(await store(a2.page))).toEqual(sorted(await store(a1.page)));
-    expect(await store(b.page)).toEqual(otherStore);
-    expect(sorted(kept.inventory)).toEqual(sorted(pythonInventory(testUser.playerId)));
-    await expect(a2.page.getByText("Reinforced Shield", { exact: true })).toBeVisible();
-    const duplicate = await fetch(`${API_ORIGIN}/api/activities/${crafted.activity_id}/decide`, {
+    const auth = await fetch(`${API_ORIGIN}/api/auth/verify-code`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${testUser.token}` },
-      body: JSON.stringify({ decision_id: "keep" }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, code: "123456" }),
     });
-    expect(duplicate.status).toBe(400);
-    expect(await duplicate.json()).not.toHaveProperty("inventory");
-    const concurrentId = `concurrent_${crypto.randomUUID().replaceAll("-", "")}`;
-    await queryDb("INSERT INTO async_activities(id,player_id,data) VALUES($1,$2,$3::jsonb)", [
-      concurrentId,
-      testUser.playerId,
-      JSON.stringify({
-        status: "resolved",
-        activity_type: "crafting",
-        decision_options: [{ id: "keep" }],
-        outcome: { crafted_item_id: "reinforced_shield" },
-      }),
-    ]);
-    const keep = () =>
-      fetch(`${API_ORIGIN}/api/activities/${concurrentId}/decide`, {
+    expect(auth.ok).toBe(true);
+    const other = (await auth.json()) as { token: string; player_id: string; account_id: string };
+    await seed(other.player_id, true);
+    const a1 = await device(browser, testUser),
+      a2 = await device(browser, testUser),
+      b = await device(browser, {
+        token: other.token,
+        playerId: other.player_id,
+        accountId: other.account_id,
+      });
+    try {
+      const before = await inventory(testUser.token);
+      const otherBefore = await inventory(other.token);
+      await converged(a1.page, before);
+      await converged(a2.page, before);
+      await converged(b.page, otherBefore);
+      const otherStore = await store(b.page);
+      if (process.env.INVENTORY_SUPPRESS_DELIVERY === "1")
+        await a2.page.route("**/api/inventory", (route) => route.abort());
+      const craftResponse = a1.page.waitForResponse(
+        (r) => r.url().endsWith("/api/activities") && r.request().method() === "POST",
+      );
+      await a1.page.evaluate(() =>
+        window.__DR!.startActivity("crafting", { recipe_id: "reinforced_shield" }),
+      );
+      const crafted = (await (await craftResponse).json()) as Snapshot & { activity_id: string };
+      expect(crafted.activity_id).toBeTruthy();
+      expect(crafted.inventory.find((i) => i.id === "iron_ingot")?.slot_info.quantity).toBe(3);
+      expect(crafted.inventory.some((i) => i.id === "leather_strip")).toBe(false);
+      expect(sorted(crafted.inventory)).toEqual(sorted(pythonInventory(testUser.playerId)));
+      await converged(a1.page, crafted);
+      await converged(a2.page, crafted);
+      await converged(b.page, otherBefore);
+      expect(sorted(await store(a2.page))).toEqual(sorted(await store(a1.page)));
+      expect(await store(b.page)).toEqual(otherStore);
+      await expect(a2.page.getByText("Crystal Flask", { exact: true })).toBeVisible();
+      await queryDb("UPDATE async_activities SET data = data || $1::jsonb WHERE id=$2", [
+        JSON.stringify({
+          status: "resolved",
+          decision_options: [{ id: "keep" }],
+          outcome: { crafted_item_id: "reinforced_shield" },
+        }),
+        crafted.activity_id,
+      ]);
+      const keepResponse = a1.page.waitForResponse((r) => r.url().endsWith("/decide"));
+      await a1.page.evaluate((id) => window.__DR!.submitDecision(id, "keep"), crafted.activity_id);
+      const kept = (await (await keepResponse).json()) as Snapshot;
+      expect(kept.inventory.find((i) => i.id === "reinforced_shield")?.slot_info.quantity).toBe(1);
+      await converged(a1.page, kept);
+      await converged(a2.page, kept);
+      await converged(b.page, otherBefore);
+      expect(sorted(await store(a2.page))).toEqual(sorted(await store(a1.page)));
+      expect(await store(b.page)).toEqual(otherStore);
+      expect(sorted(kept.inventory)).toEqual(sorted(pythonInventory(testUser.playerId)));
+      await expect(a2.page.getByText("Reinforced Shield", { exact: true })).toBeVisible();
+      const duplicate = await fetch(`${API_ORIGIN}/api/activities/${crafted.activity_id}/decide`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${testUser.token}` },
         body: JSON.stringify({ decision_id: "keep" }),
       });
-    expect((await Promise.all([keep(), keep()])).map((r) => r.status).sort()).toEqual([200, 400]);
-    expect(
-      (await inventory(testUser.token)).inventory.find((i) => i.id === "reinforced_shield")
-        ?.slot_info.quantity,
-    ).toBe(2);
+      expect(duplicate.status).toBe(400);
+      expect(await duplicate.json()).not.toHaveProperty("inventory");
+      const concurrentId = `concurrent_${crypto.randomUUID().replaceAll("-", "")}`;
+      await queryDb("INSERT INTO async_activities(id,player_id,data) VALUES($1,$2,$3::jsonb)", [
+        concurrentId,
+        testUser.playerId,
+        JSON.stringify({
+          status: "resolved",
+          activity_type: "crafting",
+          decision_options: [{ id: "keep" }],
+          outcome: { crafted_item_id: "reinforced_shield" },
+        }),
+      ]);
+      const keep = () =>
+        fetch(`${API_ORIGIN}/api/activities/${concurrentId}/decide`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${testUser.token}`,
+          },
+          body: JSON.stringify({ decision_id: "keep" }),
+        });
+      expect((await Promise.all([keep(), keep()])).map((r) => r.status).sort()).toEqual([200, 400]);
+      expect(
+        (await inventory(testUser.token)).inventory.find((i) => i.id === "reinforced_shield")
+          ?.slot_info.quantity,
+      ).toBe(2);
+    } finally {
+      await a1.context.close();
+      await a2.context.close();
+      await b.context.close();
+    }
   } finally {
-    await a1.context.close();
-    await a2.context.close();
-    await b.context.close();
+    await cleanupAccountByEmail(email);
   }
 });
 
 test("keep decision revalidates resolved status after the real row lock", async ({ testUser }) => {
+  await queryDb("DELETE FROM player_inventory WHERE player_id=$1", [testUser.playerId]);
   const id = `locked_${crypto.randomUUID().replaceAll("-", "")}`;
   await queryDb("INSERT INTO async_activities(id,player_id,data) VALUES($1,$2,$3::jsonb)", [
     id,

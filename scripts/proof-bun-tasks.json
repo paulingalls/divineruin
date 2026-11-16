@@ -93,7 +93,7 @@
     ]
   },
   "bun-server": {
-    "run": "bun --env-file=../../.env test --cwd apps/server --path-ignore-patterns='**/{db,purification.integration,inventory-taint.integration,terrain-startup.integration,locations-load.integration,invite-store}.test.ts'",
+    "run": "bun --env-file=../../.env test --cwd apps/server --path-ignore-patterns='**/{db,signin-allowlist.integration,purification.integration,inventory-taint.integration,terrain-startup.integration,locations-load.integration,invite-store}.test.ts'",
     "sets": ["commit", "land"],
     "links": ["node_modules", ".env"],
     "inputs": [
@@ -698,6 +698,28 @@
       "apps/agent/uv.lock",
       "apps/agent/pyproject.toml",
       ".python-version"
+    ],
+    "needs": ["bun-stack"]
+  },
+  "server-signin-allowlist": {
+    "run": "bun scripts/proof-db-clone.ts REQUIRE_DB=1 bun --env-file=../../.env test --cwd apps/server src/signin-allowlist.integration.test.ts",
+    "sets": ["commit", "land"],
+    "links": ["node_modules", ".env"],
+    "inputs": [
+      "$bun-config",
+      "apps/server/package.json",
+      "apps/server/tsconfig.json",
+      "apps/server/bunfig.toml",
+      {
+        "imports-of": "apps/server/src/signin-allowlist.integration.test.ts"
+      },
+      "scripts/allow-email.ts",
+      "apps/server/src/email.ts",
+      "package.json",
+      "$seeded-data",
+      "$stack",
+      "scripts/proof-db-clone.ts",
+      "scripts/migrations/**"
     ],
     "needs": ["bun-stack"]
   }
