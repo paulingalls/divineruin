@@ -18,6 +18,15 @@ from proof_family_selection import (
     select_sources,
     task_inventory,
 )
+from proof_named_file_readers import (
+    NON_PYTHON,
+    add_provider_readers,
+    audit_named,
+    audit_nonempty,
+    data_inventory,
+    named_readers,
+    select_named,
+)
 
 ROOT = Path.cwd()
 TESTS = Path("apps/agent/tests/acceptance")
@@ -242,23 +251,17 @@ def main():
     graph = json.loads(result.stdout)
     tests = [Path(p) for p in tracked(str(TESTS), suffix=".py") if Path(p).name.startswith("test_")]
     paid = {str(p) for p in tests if paid_only(p)}
-    # Bun already owns the YAML parser; avoid a generator-only Python dependency.
-    parsed = subprocess.run(
-        [
-            "bun",
-            "-e",
-            'console.log(JSON.stringify(Bun.YAML.parse(await Bun.file("proof.yaml").text())))',
-        ],
-        text=True,
-        capture_output=True,
-        check=True,
-    )
-    root = json.loads(parsed.stdout)
     entries = [str(p) for p in tests if str(p) not in paid]
     if len({Path(p).stem for p in entries}) != len(entries):
         raise ValueError("duplicate acceptance stems")
     sources = set(paths) - {"e2e/fixtures/inventory-snapshot.py"}
+    data = data_inventory()
+    restored = sources | data | NON_PYTHON
+    shared_key = sorted(
+        p for suffix in (".ts", ".tsx", ".json") for p in tracked("packages/shared", suffix=suffix) if p not in data
+    )
     tasks = e2e_tasks()
+    tasks["e2e:home-character"]["keyed"] = list(shared_key)
     e2e = {
         name: [
             item["imports-of"]
@@ -325,7 +328,7 @@ def main():
             "needs": ["acceptance-stack"],
             "links": ["node_modules"],
             "inputs": inputs,
-            "keyed": [SHARED_KEY],
+            "keyed": list(shared_key),
         }
         for suffix, selector, expression in partitions(path):
             part = dict(task)
@@ -341,7 +344,7 @@ def main():
             acceptance[name] = path
     # Root unkeyed policy must preserve the existing Bun tasks and the full unit key.
     for name, task in json.loads(Path("scripts/proof-bun-tasks.json").read_text()).items():
-        tasks[name] = {**task, "keyed": [*sorted(sources), SHARED_KEY]}
+        tasks[name] = {**task, "keyed": [*sorted(restored), SHARED_KEY]}
     tasks["agent-pytest"] = {
         "run": "ALLOW_PAID_TESTS= REQUIRE_REAL_LLM= uv run --frozen --directory apps/agent pytest tests/ -q -m 'not acceptance' -n 8",
         "sets": ["land"],
@@ -367,7 +370,7 @@ def main():
             "$stack",
             "$bun-config",
         ],
-        "keyed": [*sorted(sources), SHARED_KEY],
+        "keyed": [*sorted(restored), SHARED_KEY],
     }
     if unknown := RUNTIME_DOCUMENTS.keys() - tasks.keys():
         raise SystemExit(f"runtime documents name no generated task: {sorted(unknown)}")
@@ -392,17 +395,20 @@ def main():
     content = content_inventory()
     families = load_families(content)
     inventory = task_inventory(acceptance, e2e, graph, families)
-    infrastructure = {item for item in root["inputs"]["stack-shared"] + root["inputs"]["stack"] if item in sources}
-    ordinary_sources = sources - SHARED_INPUTS
-    infrastructure -= SHARED_INPUTS
-    assignments, representatives = select_sources(inventory, families, ordinary_sources, infrastructure)
+    add_provider_readers(inventory)
+    ordinary_sources = (sources | NON_PYTHON) - SHARED_INPUTS
+    assignments = select_sources(inventory, families, ordinary_sources)
+    readers = named_readers(inventory, data)
+    for name, selected in select_named(inventory, readers).items():
+        assignments[name].update(selected)
     for name, selected in assignments.items():
         tasks[name]["keyed"] = [*tasks[name]["keyed"], *sorted(selected)]
         tasks[name]["inputs"] = [
             *tasks[name]["inputs"],
             *sorted(selected | inventory[name]["closure"]),
         ]
-    audit_selection(tasks, inventory, families, ordinary_sources, infrastructure, representatives)
+    audit_selection(tasks, inventory, families, ordinary_sources)
+    audit_named(tasks, inventory, readers)
     content_assignments = select_content(inventory, families, content)
     for name, selected in content_assignments.items():
         tasks[name]["keyed"] += sorted(selected)
@@ -410,7 +416,13 @@ def main():
     audit_content(tasks, inventory, families, content)
     for name in tasks.keys() - inventory.keys():
         tasks[name]["keyed"] += sorted(content | SHARED_INPUTS)
-    output = {"unkeyed": sorted(sources | content | SHARED_INPUTS), "tasks": tasks}
+    audit_nonempty(
+        tasks,
+        {p for p in sources if p.startswith("apps/agent/tests/")} | NON_PYTHON | data,
+        json.loads(Path("proof.yaml").read_text())["inputs"],
+        graph,
+    )
+    output = {"unkeyed": sorted(restored | content | SHARED_INPUTS), "tasks": tasks}
     (Path(os.environ["PROOF_DECLARATIONS"]) / "python.yaml").write_text(json.dumps(output, indent=2) + "\n")
 
 

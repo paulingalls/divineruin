@@ -148,67 +148,71 @@ def task_inventory(acceptance, e2e, graph, families):
     return inventory
 
 
-def select_sources(inventory, families, sources, infrastructure):
+def harness_source(source):
+    return source.startswith("apps/agent/tests/") or source in {
+        "scripts/worktree-common.sh",
+        "scripts/ensure-db.ts",
+    }
+
+
+def select_readers(inventory, source, readers, budget):
+    if sum(task.startswith("agent-acceptance:") for task in readers) <= 10:
+        return set(readers)
+    selected = set()
+    for family in {inventory[t]["family"] for t in readers}:
+        reaching = {t for t in readers if inventory[t]["family"] == family}
+        preferred = {t for t in reaching if source in inventory[t]["preferred"]}
+        candidates = sorted(
+            preferred or reaching,
+            key=lambda t: (len(inventory[t]["closure"]), inventory[t]["path"], t),
+        )
+        selected.update(candidates[:budget])
+    return selected
+
+
+def select_sources(inventory, families, sources):
     assignments = {task: set() for task in inventory}
-    representatives = {}
     for source in sorted(sources):
         readers = {task for task, meta in inventory.items() if source in meta["closure"]}
         owners = {name for name, family in families.items() if matches(family["owns"], source)}
-        selected = {task for task, meta in inventory.items() if meta["family"] in owners or meta["path"] == source}
-        shared = sum(task.startswith("agent-acceptance:") for task in readers) > 10
-        by_family = {}
-        if not shared:
-            selected.update(readers)
-        else:
-            for family in families:
-                reaching = {task for task in readers if inventory[task]["family"] == family}
-                preferred = {task for task in reaching if source in inventory[task]["preferred"]}
-                candidates = sorted(
-                    preferred or reaching,
-                    key=lambda task: (
-                        len(inventory[task]["closure"]),
-                        inventory[task]["path"],
-                        task,
-                    ),
-                )
-                by_family[family] = set(candidates[:2])
-                selected.update(by_family[family])
-        if source in infrastructure:
-            selected.update(inventory)
+        selected = select_readers(inventory, source, readers, 1 if harness_source(source) else 2)
+        selected.update(task for task, meta in inventory.items() if meta["family"] in owners or meta["path"] == source)
         for task in selected:
             assignments[task].add(source)
-        representatives[source] = by_family
-    return assignments, representatives
+    return assignments
 
 
-def audit_selection(tasks, inventory, families, sources, infrastructure, representatives):
+def audit_readers(source, inventory, readers, receiving, required, budget):
+    shared = sum(t.startswith("agent-acceptance:") for t in readers) > 10
+    expected = required | (set() if shared else readers)
+    if missing := expected - receiving:
+        raise ValueError(f"orphan {source}: missing direct coverage/input: {sorted(missing)}")
+    if extra := receiving - readers - required:
+        raise ValueError(f"{source}: unexpected receivers: {sorted(extra)}")
+    if shared:
+        for family in {inventory[t]["family"] for t in readers}:
+            reaching = {t for t in readers if inventory[t]["family"] == family}
+            selected = {t for t in receiving - required if inventory[t]["family"] == family}
+            if not receiving & reaching:
+                raise ValueError(f"orphan {source}: family {family}: missing representative coverage/input")
+            if len(selected) > budget:
+                raise ValueError(f"{source}: family {family}: representative cap exceeded {sorted(selected)}")
+
+
+def audit_selection(tasks, inventory, families, sources):
     for source in sorted(sources):
         readers = {task for task, meta in inventory.items() if source in meta["closure"]}
-        shared = sum(task.startswith("agent-acceptance:") for task in readers) > 10
         owners = {name for name, family in families.items() if matches(family["owns"], source)}
+        required = {t for t, m in inventory.items() if m["family"] in owners or m["path"] == source}
         receiving = {t for t in inventory if source in tasks[t]["keyed"] and source in tasks[t]["inputs"]}
-        for task, meta in inventory.items():
-            family = meta["family"]
-            required = family in owners or meta["path"] == source or source in infrastructure
-            if required or (task in readers and not shared):
-                if task not in receiving:
-                    raise ValueError(f"orphan {source}: task {task}, family {family}: missing direct coverage/input")
-            elif task in readers:
-                reps = representatives[source][family]
-                if not reps or not reps <= receiving:
-                    raise ValueError(
-                        f"orphan {source}: task {task}, family {family}: missing representative coverage/input"
-                    )
-        for family, reps in representatives[source].items():
-            reaching = {t for t in readers if inventory[t]["family"] == family}
-            preferred = {t for t in reaching if source in inventory[t]["preferred"]}
-            if len(reps) > 2 or not reps <= (preferred or reaching):
-                raise ValueError(f"{source}: family {family}: invalid representatives {sorted(reps)}")
-            selected = {t for t in receiving if inventory[t]["family"] == family}
-            if family not in owners and source not in infrastructure:
-                selected -= {t for t in selected if inventory[t]["path"] == source}
-                if len(selected) > 2:
-                    raise ValueError(f"{source}: family {family}: representative cap exceeded {sorted(selected)}")
+        audit_readers(
+            source,
+            inventory,
+            readers,
+            receiving,
+            required,
+            1 if harness_source(source) else 2,
+        )
 
 
 def content_inventory():
@@ -220,7 +224,10 @@ def content_inventory():
 
 # A test whose own source names the seed script or the migrations exercises them directly
 # (seed atomicity, a migration's backfill), so it keys them beyond the representatives.
-DIRECT_MARKERS = {"scripts/seed_content.py": "seed_content", "scripts/migrations/**": "migrations"}
+DIRECT_MARKERS = {
+    "scripts/seed_content.py": "seed_content",
+    "scripts/migrations/**": "migrations",
+}
 
 
 def direct_readers(inventory, source):
