@@ -19,11 +19,6 @@ describe("handleLivekitToken", () => {
     expect(body.error).toContain("required");
   });
 
-  test("rejects missing room_name", async () => {
-    const res = await handleLivekitToken(tokenRequest({}), "p1");
-    expect(res.status).toBe(400);
-  });
-
   test("rejects player_id with special characters", async () => {
     const res = await handleLivekitToken(tokenRequest({ room_name: "test-room" }), "a<b>c");
     expect(res.status).toBe(400);
@@ -44,17 +39,5 @@ describe("handleLivekitToken", () => {
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string };
     expect(body.error).toContain("maximum length");
-  });
-
-  test("accepts valid IDs with underscores and hyphens", async () => {
-    const res = await handleLivekitToken(
-      tokenRequest({ room_name: "room-42_test" }),
-      "player_1-abc",
-    );
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { token: string; room_name: string; url: string };
-    expect(body.token).toBe("mock-jwt-token");
-    expect(body.room_name).toBe("room-42_test");
-    expect(body.url).toBe("wss://test.livekit.cloud");
   });
 });

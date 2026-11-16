@@ -259,6 +259,18 @@ export default function SessionScreen() {
           Connection failed
         </ThemedText>
         <ThemedText style={[styles.centered, { color: BrandColors.ash }]}>{error}</ThemedText>
+        {!inviteCode && (
+          <Pressable
+            accessibilityRole="button"
+            style={styles.leaveButton}
+            onPress={() => {
+              sessionStore.getState().setPhase("connecting");
+              void fetchToken(makeRoomName());
+            }}
+          >
+            <ThemedText style={styles.leaveText}>Retry</ThemedText>
+          </Pressable>
+        )}
         <Pressable style={styles.leaveButton} onPress={handleLeave}>
           <ThemedText style={styles.leaveText}>Go back</ThemedText>
         </Pressable>

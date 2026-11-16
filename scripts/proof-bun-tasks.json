@@ -93,7 +93,7 @@
     ]
   },
   "bun-server": {
-    "run": "bun --env-file=../../.env test --cwd apps/server --path-ignore-patterns='**/{db,signin-allowlist.integration,purification.integration,inventory-taint.integration,terrain-startup.integration,locations-load.integration,invite-store}.test.ts'",
+    "run": "bun --env-file=../../.env test --cwd apps/server --path-ignore-patterns='**/{db,signin-allowlist.integration,purification.integration,inventory-taint.integration,terrain-startup.integration,locations-load.integration,session-rooms.integration,invite-store}.test.ts'",
     "sets": ["commit", "land"],
     "links": ["node_modules", ".env"],
     "inputs": [
@@ -190,9 +190,6 @@
       },
       {
         "imports-of": "apps/server/src/inventory_snapshot.test.ts"
-      },
-      {
-        "imports-of": "apps/server/src/invite-e2e.test.ts"
       },
       {
         "imports-of": "apps/server/src/invite.test.ts"
@@ -720,6 +717,23 @@
       "$stack",
       "scripts/proof-db-clone.ts",
       "scripts/migrations/**"
+    ],
+    "needs": ["bun-stack"]
+  },
+  "server-session-rooms": {
+    "run": "bun scripts/proof-db-clone.ts REQUIRE_REDIS=1 bun --env-file=../../.env test --cwd apps/server src/session-rooms.integration.test.ts",
+    "sets": ["commit", "land"],
+    "links": ["node_modules", ".env"],
+    "inputs": [
+      "$bun-config",
+      "apps/server/package.json",
+      "apps/server/tsconfig.json",
+      "apps/server/bunfig.toml",
+      {
+        "imports-of": "apps/server/src/session-rooms.integration.test.ts"
+      },
+      "$stack",
+      "scripts/proof-db-clone.ts"
     ],
     "needs": ["bun-stack"]
   }
