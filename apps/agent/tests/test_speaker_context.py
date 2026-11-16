@@ -251,6 +251,7 @@ async def test_warm_facts_belong_to_host_during_guest_turn():
     }
     quests = [
         {
+            "quest_id": "host",
             "quest_name": "Host Quest",
             "current_stage": 0,
             "stages": [
