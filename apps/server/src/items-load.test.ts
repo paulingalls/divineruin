@@ -22,7 +22,7 @@ describe("content/items.json — parseItemRow conformance", () => {
     }
   });
 
-  test("the veil fragment is an unsellable quest item", async () => {
+  test("the veil fragment carries quest-only metadata and zero value", async () => {
     const rows = await loadItemsJson();
     const row = rows.find((r) => r.id === "greyvale_veil_fragment");
     expect(row).toBeDefined();

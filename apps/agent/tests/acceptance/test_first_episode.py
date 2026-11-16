@@ -15,6 +15,11 @@ from exploration_agent import ExplorationAgent
 
 
 @pytest.fixture
+def mock_combat_agent_factory():
+    yield
+
+
+@pytest.fixture
 def stub_creation_companion_grant():
     yield
 
@@ -262,6 +267,11 @@ async def test_calling_and_name_finalize(livekit_server, reset_db_pool, tmp_path
                     "SELECT companion_id FROM companion_relationships WHERE player_id=$1", run.player_id
                 )
                 assert [row["companion_id"] for row in rows] == [companion]
+
+        if calling == "warrior":
+            from acceptance.rider_walk import finish_first_episode
+
+            await finish_first_episode(run)
 
 
 @pytest.mark.asyncio

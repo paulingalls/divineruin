@@ -15,7 +15,7 @@ def _sd() -> SessionData:
 
 def _dispatch(events: list[GameEvent], sd: SessionData | None = None) -> tuple[bool, SessionData]:
     sd = sd or _sd()
-    needs_rebuild, _ = handle_events(events, sd, [], False, {}, [])
+    needs_rebuild = handle_events(events, sd, [])
     return needs_rebuild, sd
 
 
@@ -73,9 +73,6 @@ class TestDivineFavorWhisperIsPrimaryOnly:
             [GameEvent(event_type=E.DIVINE_FAVOR_CHANGED, payload={**self._CROSSING, "player_id": "player_1"})],
             sd,
             speech,
-            False,
-            {},
-            [],
         )
         assert len(speech) == 1
         assert speech[0].recipient_id == "player_1"
@@ -87,9 +84,6 @@ class TestDivineFavorWhisperIsPrimaryOnly:
             [GameEvent(event_type=E.DIVINE_FAVOR_CHANGED, payload={**self._CROSSING, "player_id": "player_2"})],
             sd,
             speech,
-            False,
-            {},
-            [],
         )
         assert speech == []
 
@@ -99,7 +93,7 @@ class TestDivineFavorWhisperIsPrimaryOnly:
         # unstamped payload whispers to the primary rather than being silently dropped.
         sd = _sd()
         speech: list = []
-        handle_events([GameEvent(event_type=E.DIVINE_FAVOR_CHANGED, payload=self._CROSSING)], sd, speech, False, {}, [])
+        handle_events([GameEvent(event_type=E.DIVINE_FAVOR_CHANGED, payload=self._CROSSING)], sd, speech)
         assert len(speech) == 1
 
     def test_after_handoff_p2_crossing_whispers_and_host_crossing_does_not(self):
@@ -111,7 +105,7 @@ class TestDivineFavorWhisperIsPrimaryOnly:
             GameEvent(event_type=E.DIVINE_FAVOR_CHANGED, payload={**self._CROSSING, "player_id": "player_1"}),
             GameEvent(event_type=E.DIVINE_FAVOR_CHANGED, payload={**self._CROSSING, "player_id": "player_2"}),
         ]
-        handle_events(events, sd, speech, False, {}, [])
+        handle_events(events, sd, speech)
         assert len(speech) == 1
 
 
@@ -151,9 +145,9 @@ def _favor_event(amount: int, reason: str, player_id: str = "player_1") -> GameE
 def test_positive_due_favor_remains_ordinary_and_zero_queues_nothing():
     sd = _sd()
     speech = []
-    handle_events([_favor_event(0, "none")], sd, speech, False, {}, [])
+    handle_events([_favor_event(0, "none")], sd, speech)
     assert speech == []
-    handle_events([_favor_event(5, "valor")], sd, speech, False, {}, [])
+    handle_events([_favor_event(5, "valor")], sd, speech)
     assert len(speech) == 1
     assert not speech[0].is_displeasure
     assert get_god_profile("kaelen").displeasure_prompt not in speech[0].instructions
@@ -163,4 +157,4 @@ def test_favor_event_requires_amount():
     payload = _favor_event(5, "valor").payload
     del payload["amount"]
     with pytest.raises(KeyError, match="amount"):
-        handle_events([GameEvent(event_type=E.DIVINE_FAVOR_CHANGED, payload=payload)], _sd(), [], False, {}, [])
+        handle_events([GameEvent(event_type=E.DIVINE_FAVOR_CHANGED, payload=payload)], _sd(), [])

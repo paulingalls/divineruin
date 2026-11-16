@@ -92,6 +92,21 @@ async def deliver_player_turn(
     )
 
 
+async def _generate_reply(session: AgentSession, reply_kwargs: dict[str, object]):
+    # LiveKit refuses new speech while draining the old agent during a handoff.
+    # Retry that exact transition refusal; a stuck handoff must still fail loudly.
+    async with asyncio.timeout(5):
+        while True:
+            try:
+                return session.generate_reply(**reply_kwargs)  # type: ignore[arg-type]
+            except RuntimeError as exc:
+                if exc.args != (
+                    "cannot schedule new speech, the speech scheduling is draining/pausing, the speech will be cancelled",
+                ):
+                    raise
+                await asyncio.sleep(0.02)
+
+
 async def _deliver(
     session: AgentSession,
     logger: logging.Logger,
@@ -101,7 +116,7 @@ async def _deliver(
     **reply_kwargs: object,
 ) -> bool:
     try:
-        handle = session.generate_reply(**reply_kwargs)  # type: ignore[arg-type]
+        handle = await _generate_reply(session, reply_kwargs)
     except RuntimeError as exc:
         if exc.args not in GENERATE_REPLY_SESSION_UNAVAILABLE_ARGS:
             raise

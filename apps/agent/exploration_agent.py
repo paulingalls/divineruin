@@ -137,7 +137,14 @@ class ExplorationAgent(BaseGameAgent):
         # warm layers racing each other into the same agent.
         if sd.background is None:
             sd.background = BackgroundProcess(session=self.session, session_data=sd)
+            import first_episode
+
+            await first_episode.enter(sd)
             sd.background.start()
+        else:
+            import first_episode
+
+            await first_episode.enter(sd)
         self._fire_and_forget(self._publish_session_init(sd))
 
         # Consume L5 specialization taps from the HUD: a tap drives the DM to resolve
