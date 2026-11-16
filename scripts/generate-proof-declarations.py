@@ -367,6 +367,8 @@ def main():
         ],
         "keyed": [*sorted(shared), SHARED_KEY],
     }
+    if unknown := RUNTIME_DOCUMENTS.keys() - tasks.keys():
+        raise SystemExit(f"runtime documents name no generated task: {sorted(unknown)}")
     for name, task in tasks.items():
         if "super" not in task["sets"]:
             task["sets"].append("super")
