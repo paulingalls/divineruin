@@ -47,9 +47,19 @@ The only thing that changes between local and prod for the application code is *
 
 ## Environment & secrets
 
-All runtime config flows through environment variables (see `.env.example` for the full list). In production these are **platform-managed secrets** (DO App Platform env vars / droplet secret store) — never a committed `.env`. The canonical required set: `DATABASE_URL`, `REDIS_URL`, `LIVEKIT_URL`/`LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `DEEPGRAM_API_KEY`, `INWORLD_API_KEY`, `JWT_SECRET`, `INTERNAL_SECRET`, plus the Spaces `S3_*` trio once the asset migration lands. `ANTHROPIC_API_KEY` remains required independently of `GAMEPLAY_LLM` because session summaries, narration, world news, companion idle writing, and god whispers use the background Anthropic client; `GAMEPLAY_LLM=anthropic` also uses it for rollback gameplay.
+All runtime config flows through environment variables. `.env.example` covers local development; `deploy/env.production.example` lists migrate, server, agent and worker settings with consumers, requirements and defaults. Only operator-filled values have active blank assignments: optional and Compose-supplied variables stay commented because an empty env-file value overrides code defaults. Keep the filled file outside version control with restricted permissions, or use platform-managed secrets.
 
-The agent validates its required env eagerly at startup (`apps/agent/agent.py`), and the async worker independently validates its background Anthropic dependency (`apps/agent/async_worker.py`); the server reads lazily per-request (`apps/server/src/db.ts`) so no-DB unit tests run without config. These behaviors are correct for their context and need no change for production.
+With `NODE_ENV=production`, the server validates configuration once before route imports or I/O. It reports every absent, empty or whitespace-only required value together: `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `INTERNAL_SECRET`, `CORS_ORIGIN`, `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `GEMINI_API_KEY`, `RESEND_API_KEY`, `MEDIA_DIR`. It refuses `EMAIL_TRANSPORT=mock` even with a key. Media must also be absolute and writable. The image start command forces production; development transport selection remains unchanged.
+
+The agent validates voice/session dependencies eagerly; production agent and worker also validate their server, database, cache, internal secret, Anthropic and Inworld dependencies before registration or polling. `ANTHROPIC_API_KEY` remains required independently of `GAMEPLAY_LLM` for background work. The default gameplay provider is `openai-luna` (`OPENAI_API_KEY`); `anthropic` is the explicit rollback. Compose supplies `AGENT_ENV`, `SERVER_URL`, `MEDIA_DIR` and migrate's `SEED_PRODUCTION`. Mobile's `EXPO_PUBLIC_API_URL` is a separate build input.
+
+## Deploy checklist
+
+- Copy `deploy/env.production.example` to a private operator file, restrict it with `chmod 600`, and fill the active assignments. Configure distinct voice IDs. Leave optional/defaulted declarations commented unless intentionally overriding them.
+- Provision the managed Postgres, Valkey and LiveKit services. Verify the Resend sender domain for `RESEND_FROM_EMAIL` (default `auth@divineruin.com`); provide a real `RESEND_API_KEY`.
+- Set shell inputs and deploy: `DEPLOY_ENV_FILE=/absolute/private/production.env DEPLOY_HTTP_PORT=3001 COMPOSE_PROJECT_NAME=divineruin bash scripts/deploy-up.sh`. These three inputs control the deploy script/Compose interpolation; putting them inside the operator env file has no effect. The port is loopback-bound; expose it through the deployment's HTTPS proxy.
+- Confirm server health and agent/worker startup. Build the mobile client with the public HTTPS `EXPO_PUBLIC_API_URL`.
+- On the deployed stack, perform the first real sign-in: request a code, receive the actual Resend email, and successfully verify the code. Record the deployment date and result in the operator's deployment record. Local smoke uses placeholder keys and seeded verification codes; it does not send email or certify provider delivery.
 
 ## Migrations & seed on deploy
 

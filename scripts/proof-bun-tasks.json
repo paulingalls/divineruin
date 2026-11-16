@@ -268,7 +268,12 @@
       },
       "content/*.json",
       "apps/server/src/**/!(*.test).ts",
-      "assets/images/**"
+      "assets/images/**",
+      { "imports-of": "apps/server/src/config.test.ts" },
+      "scripts/env_inventory.py",
+      "apps/agent/**/*.py",
+      ".env.example",
+      "deploy/env.production.example"
     ]
   },
   "server-db": {

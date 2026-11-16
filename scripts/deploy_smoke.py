@@ -14,6 +14,7 @@ import urllib.parse
 import urllib.request
 import uuid
 
+import deploy_smoke_config as config_smoke
 import deploy_smoke_server as server_smoke
 from deploy_smoke_images import image_sources
 
@@ -239,6 +240,11 @@ def main():
         "NODE_ENV": "production",
         "PORT": "3001",
         "MEDIA_DIR": "/var/lib/divineruin/media",
+        "LIVEKIT_URL": "ws://127.0.0.1:1",
+        "LIVEKIT_API_KEY": "smoke-LIVEKIT_API_KEY-01234567890123456789012345678901",
+        "LIVEKIT_API_SECRET": "smoke-LIVEKIT_API_SECRET-01234567890123456789012345678901",
+        "GEMINI_API_KEY": "smoke-GEMINI_API_KEY",
+        "RESEND_API_KEY": "smoke-RESEND_API_KEY",
     }
     if mode in ("agent", "migrate", "media"):
         settings.update(agent_smoke.environment())
@@ -248,7 +254,7 @@ def main():
     compose_started = True
     images = {}
     if mode != "migrate":
-        targets = ("server", "agent") if mode == "media" else (mode,)
+        targets = ("server", "agent") if mode == "media" else ("server" if mode == "config" else mode,)
         command([*compose, "build", *targets], deadline=900)
         for target in targets:
             image = project + "-" + target
@@ -299,7 +305,7 @@ def main():
         'const r = new Bun.RedisClient(process.env.REDIS_URL); await r.set(process.env.SMOKE_KEY,"alive","EX",1800); r.close();'
     )
     sentinel = True
-    if mode == "server":
+    if mode in ("server", "config"):
         fixture = server_smoke.fixture(sys.modules[__name__])
     compose_started = True
     command([*compose, "up", "-d", "proxy"])
@@ -347,8 +353,10 @@ def main():
         == "alive"
     )
     authorize()
-    if mode == "server":
+    if mode in ("server", "config"):
         server_smoke.development(sys.modules[__name__])
+        if mode == "config":
+            config_smoke.run(sys.modules[__name__], images["server"], settings)
     else:
         print(mode + " smoke passed", flush=True)
 

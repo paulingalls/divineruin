@@ -11,9 +11,6 @@ export function mediaDir(): string {
 
 export async function validateMediaDir(): Promise<void> {
   const production = Bun.env.NODE_ENV === "production";
-  if (production && !Bun.env.MEDIA_DIR?.trim()) {
-    throw new Error("MEDIA_DIR is required in production");
-  }
   const root = mediaDir();
   try {
     if (!production) await mkdir(root, { recursive: true });
