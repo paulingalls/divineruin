@@ -74,6 +74,11 @@
     ],
     "e2e-home-character-represents": [
       "packages/shared/**"
+    ],
+    "documentation-exclusions": [
+      "!docs/**",
+      "!**/*.md",
+      "!CHANGELOG.md"
     ]
   },
   "generate": {
@@ -115,6 +120,6 @@
     "e2e": 1
   },
   "unkeyed": [
-    "packages/shared/**"
+    "packages/shared/**/*.{ts,tsx,json}"
   ]
 }
