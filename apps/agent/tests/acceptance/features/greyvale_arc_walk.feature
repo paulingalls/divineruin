@@ -107,3 +107,27 @@ Feature: Engine driven Greyvale arrivals
     And two doors connect the inn to the same settlement
     When the host requests a long rest
     Then the resting party and identified client snapshots agree for long
+
+  Scenario: Finding the journal puts it in hand and finishes the search
+    Given a journal search at the ruins
+    When the player searches the research station
+    Then the journal and its quest rewards arrive once
+
+  Scenario Outline: Entering a previously searched item stage
+    Given an earlier journal discovery with <holding>
+    When the quest enters the journal stage
+    Then its final stage is <stage>
+
+    Examples:
+      | holding   | stage |
+      | retained  | 4     |
+      | removed   | 3     |
+      | unflagged | 3     |
+
+  Scenario: Item stages require all items from one party member
+    Given a private search requiring two items
+    Then one find cannot finish it and the second finishes it once
+
+  Scenario: Entering satisfied item stages chains to the next objective
+    Given a journal search at the ruins
+    Then starting an already satisfied item quest pays each stage once

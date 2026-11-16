@@ -35,7 +35,7 @@ Shipped in v0.37.0 (divineruin2 clone, sprint `greyvale-millhaven`). The fight's
 
 Owner: divineruin2 clone.
 
-- [ ] Finding the journal fragment puts the item in the inventory
+- [x] Finding the journal fragment puts the item in the inventory
 - [ ] The ruins have a fight attached and tuned for a level-2 player
 - [ ] The inner chamber holds the discovery
 - [ ] The artifact choice is applied and persists

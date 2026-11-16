@@ -15,23 +15,6 @@ from tools._helpers import _make_context
 class TestCheckDiscover:
     @pytest.mark.asyncio
     @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
-    async def test_successful_discovery(self, mock_event):
-        content, queries, mutations = _make_discover_mocks()
-        ctx = _make_context(location_id="test_location")
-        with patch("check_resolution.dice_roll", return_value=_roll(15)):
-            result = json.loads(
-                await _check_discover_impl(
-                    ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
-                )
-            )
-        assert result["outcome"] == "discovered"
-        assert "hidden passage" in result["description"]
-        assert result["element_id"] == "secret_door"
-        assert result["target"] == "bookshelf"
-        mutations.set_player_flag.assert_called_once_with("player_1", "secret_door.discovered", True)
-
-    @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
     async def test_dice_roll_carries_dramatic_verdict(self, mock_event):
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")

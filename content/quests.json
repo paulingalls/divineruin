@@ -192,9 +192,9 @@
         "objective": "Convince Elder Yanna to show you Aldric's stone.",
         "target_location_id": "millhaven",
         "completion_conditions": {
-          "type": "item_discovered",
-          "items": ["aldric_strange_stone"],
-          "location": "millhaven"
+          "type": "npc_interaction",
+          "npc": "elder_yanna",
+          "topic": "Aldric's stone"
         },
         "on_complete": {
           "xp": 100,

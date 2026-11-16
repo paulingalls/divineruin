@@ -265,7 +265,9 @@ async def test_public_roll_producers_carry_current_combat_spoken_eligibility(pro
         else [],
     }
     content = MagicMock(
-        get_location=AsyncMock(return_value=location), get_gathering_nodes_at_location=AsyncMock(return_value=[])
+        get_item=AsyncMock(return_value=None),
+        get_location=AsyncMock(return_value=location),
+        get_gathering_nodes_at_location=AsyncMock(return_value=[]),
     )
     calls = []
 

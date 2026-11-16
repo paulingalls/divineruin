@@ -12,6 +12,7 @@ from acceptance.greyvale_finish_line import (
     scene_hint,
     start_warm,
 )
+from acceptance.journal_steps import *  # noqa: F403
 from acceptance.rest_walk import *  # noqa: F403
 from pytest_bdd import given, parsers, scenarios, then, when
 

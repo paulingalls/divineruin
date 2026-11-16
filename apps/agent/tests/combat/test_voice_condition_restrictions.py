@@ -154,6 +154,7 @@ async def test_public_hearing_and_sight_routes(kind, candidate, monkeypatch):
     monkeypatch.setattr(
         check_tools.db_content_queries, "get_location", AsyncMock(return_value={"hidden_elements": hidden})
     )
+    monkeypatch.setattr(check_tools.db_content_queries, "get_item", AsyncMock(return_value=None))
     events = AsyncMock()
     monkeypatch.setattr(check_tools, "publish_game_event", events)
     import check_discovery
