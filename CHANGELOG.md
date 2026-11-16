@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.37.1 — 2026-11-15
+
+- The fast Python lane seeds its dev database after migrating it, so a change to `content/*.json` is tested against matching data at story land instead of the previous seed. The fixture players in `content/players.json` are reset on each run.
+- `scripts/teardown-worktree.sh --sweep` works on a machine that also runs unrelated Docker Compose projects. It skips a project with no divineruin ownership labels and still refuses on partial, mixed or malformed ownership.
+
 ## 0.37.0 — 2026-11-15
 
 - The Millhaven leg of the Greyvale arc no longer depends on the DM deciding to advance the quest. Arriving in Millhaven, by walking or by travel, completes "The Road North"; winning the Hollow patrol fight completes "First Blood", whether combat ends through the DM's tool or automatically. Rewards are paid once and roll back with the combat end if anything fails.
