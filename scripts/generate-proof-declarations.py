@@ -359,6 +359,8 @@ def main():
         "keyed": [*sorted(shared), "packages/shared/**"],
     }
     for task in tasks.values():
+        if "super" not in task["sets"]:
+            task["sets"].append("super")
         expanded = []
         for item in task["inputs"]:
             path = item.get("imports-of") if isinstance(item, dict) else None
