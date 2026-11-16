@@ -120,6 +120,7 @@ class RestWalk(ArcWalk):
         snapshots = [e["character"]["player_id"] for e in self.events if e["type"] == E.SESSION_INIT]
         assert sorted(snapshots) == sorted(pid for i, pid in enumerate(self.ids) if i in (0, 1, 4))
         assert sorted(e["caster_id"] for e in self.events if e["type"] == E.RESONANCE_CHANGED) == sorted(snapshots)
+        assert all(e["state"] == "stable" for e in self.events if e["type"] == E.RESONANCE_CHANGED)
         if kind == "short":
             self.before = rows
             self.events.clear()
