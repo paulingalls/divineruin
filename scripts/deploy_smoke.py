@@ -354,7 +354,7 @@ def main():
     )
     authorize()
     if mode in ("server", "config"):
-        server_smoke.development(sys.modules[__name__])
+        server_smoke.development(sys.modules[__name__], fixture)
         if mode == "config":
             config_smoke.run(sys.modules[__name__], images["server"], settings)
     else:

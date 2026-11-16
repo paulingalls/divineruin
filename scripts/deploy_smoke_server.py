@@ -84,7 +84,12 @@ def run(h, settings, fixture, proxy):
     assert h.inspect(server_id)["State"]["StartedAt"] == started
 
 
-def development(h):
+def development(h, account):
+    h.bun("""const s = new Bun.SQL(process.env.DATABASE_URL);
+await s`INSERT INTO auth_codes (account_id, code, expires_at)
+SELECT id, '654321', NOW() + INTERVAL '10 minutes' FROM accounts
+WHERE email = ${'smoke-' + process.env.SMOKE_KEY + '@example.invalid'}`;
+await s.close();""")
     dev, dev_url = h.host(
         ["bun", "run", "dev:server"],
         dict(
@@ -94,6 +99,10 @@ def development(h):
         ),
     )
     h.health(dev_url)
+    status, auth, _ = h.http(dev_url + "/api/auth/verify-code", {"email": account["email"], "code": "654321"})
+    assert status == 200 and auth["account_id"] == account["id"], (status, auth)
+    status, me, _ = h.http(dev_url + "/api/me", token=auth["token"])
+    assert status == 200 and me["account_id"] == account["id"] and me["email"] == account["email"], (status, me)
     assert h.http(dev_url + "/api/me")[0] == 401
     h.stop(dev)
     print("server smoke passed", flush=True)
