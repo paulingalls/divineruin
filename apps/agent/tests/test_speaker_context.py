@@ -6,6 +6,7 @@ from livekit.agents import AgentSession, llm
 from livekit.agents.voice.events import CloseEvent, CloseReason
 
 import event_types as E
+import session_outcome
 from background_process import BackgroundProcess
 from bg_speech import PendingSpeech, SpeechPriority
 from caster_state import ConcentrationState, ResonanceTrack
@@ -218,7 +219,8 @@ async def test_session_end_recap_survives_host_close_task():
     sd.room.isconnected.return_value = True
     sd.room.local_participant.publish_data = AsyncMock()
     session = AgentSession(max_tool_steps=5, userdata=sd)
-    background = BackgroundProcess(session, sd)
+    sd.background = BackgroundProcess(session, sd)
+    session_outcome.watch_close(session, sd)
     summary = {"summary": "Party returned"}
     with (
         patch("session_end.generate_session_summary", new_callable=AsyncMock, return_value=summary),
@@ -226,7 +228,7 @@ async def test_session_end_recap_survives_host_close_task():
     ):
         with sd._bind_authenticated_actor("host", 1, lambda *_: None):
             await end_session._func(MagicMock(userdata=sd), "goodbye")
-            background._on_session_end(CloseEvent(reason=CloseReason.JOB_SHUTDOWN))
+            session.emit("close", CloseEvent(reason=CloseReason.JOB_SHUTDOWN))
             assert sd.session_end_task is not None
             await sd.session_end_task
     save.assert_awaited_once_with("host", sd.session_id, summary)

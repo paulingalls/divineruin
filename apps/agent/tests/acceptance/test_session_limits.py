@@ -357,6 +357,7 @@ async def test_idle_cues_are_revoked_and_fresh_silence_resets(livekit_server, re
         await bg._deliver_speech()
         assert harness.instructions("event-driven companion cue")
         assert not harness.instructions("Listen again.")
+        sd.companion.last_speech_time = 1
         old_state = dict(bg._scene_hint_state)
         old_time = sd.companion.last_speech_time
         bg._check_companion_idle()
