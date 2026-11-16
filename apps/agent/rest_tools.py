@@ -64,7 +64,8 @@ async def rest(context: RunContext[SessionData], rest_type: RestType) -> str:
             players = {pid: row for pid, row in players.items() if row.get("location_id") == location_id}
             recovery = {}
             for pid, row in players.items():
-                hp = _pool_values(row, "hp")
+                current_hp, base_max_hp = _pool_values(row, "hp")
+                hp = (current_hp, max(1, base_max_hp + row.get("maxhp_override", 0)))
                 stamina = _pool_values(row, "stamina") if "stamina" in row else None
                 focus = _pool_values(row, "focus") if "focus" in row else None
                 recovery[pid] = apply_rest(rest_type, *(stamina or (None, None)), *(focus or (None, None)), *hp)
