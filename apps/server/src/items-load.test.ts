@@ -22,6 +22,17 @@ describe("content/items.json — parseItemRow conformance", () => {
     }
   });
 
+  test("the veil fragment is an unsellable quest item", async () => {
+    const rows = await loadItemsJson();
+    const row = rows.find((r) => r.id === "greyvale_veil_fragment");
+    expect(row).toBeDefined();
+    const item = parseItemRow("greyvale_veil_fragment", row!);
+    expect(item.type).toBe("quest_item");
+    expect(item.tags).toContain("quest");
+    expect(item.value_base).toBe(0);
+    expect(item.quest_only).toBe(true);
+  });
+
   test("parsed items round-trip their id and core fields", async () => {
     const items = await loadItemsJson();
     const sample = items.find((i) => i.id === "shortsword_basic");

@@ -3596,5 +3596,34 @@
     ],
     "effects": [],
     "value_base": 100
+  },
+  {
+    "id": "greyvale_veil_fragment",
+    "name": "Veil Fragment",
+    "tier": 1,
+    "type": "quest_item",
+    "rarity": "common",
+    "description": "Oilcloth crackles around a cold shard. Nearby voices sound strangely distant. A thin hum presses against your teeth.",
+    "tags": [
+      "quest",
+      "hollow",
+      "greyvale"
+    ],
+    "weight": 0.5,
+    "effects": [],
+    "value_base": 0,
+    "value_modifiers": {},
+    "lore": "Brought from Greyvale by a wounded rider. Keep it safe; this evidence is not for sale.",
+    "found_in": [
+      "accord_guild_infirmary"
+    ],
+    "art_template": {
+      "template_id": "item_quest",
+      "vars": {
+        "item_description": "an oilcloth-wrapped shard",
+        "item_features": "a cold fractured edge"
+      }
+    },
+    "quest_only": true
   }
 ]
