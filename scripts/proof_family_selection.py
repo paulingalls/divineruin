@@ -218,13 +218,25 @@ def content_inventory():
     return paths
 
 
+# A test whose own source names the seed script or the migrations exercises them directly
+# (seed atomicity, a migration's backfill), so it keys them beyond the representatives.
+DIRECT_MARKERS = {"scripts/seed_content.py": "seed_content", "scripts/migrations/**": "migrations"}
+
+
+def direct_readers(inventory, source):
+    marker = DIRECT_MARKERS.get(source)
+    if marker is None:
+        return set()
+    return {task for task, meta in inventory.items() if marker in Path(meta["path"]).read_text()}
+
+
 def select_content(inventory, families, content):
     if not inventory.keys() >= SEED_REPRESENTATIVES or len(SEED_REPRESENTATIVES) > 2:
         raise ValueError("missing or excessive seed representatives")
     assignments = {task: set() for task in inventory}
     for source in content | SHARED_INPUTS:
         readers = {task for task, meta in inventory.items() if source in families[meta["family"]]["reads"]}
-        for task in readers | SEED_REPRESENTATIVES:
+        for task in readers | SEED_REPRESENTATIVES | direct_readers(inventory, source):
             assignments[task].add(source)
     return assignments
 
