@@ -41,6 +41,7 @@ RUNTIME_DOCUMENTS = {
     ],
 }
 SHARED_KEY = "packages/shared/**/*.{ts,tsx,json}"
+PROVIDER_DRIVER = {"scripts/proof_acceptance_stack.py"}
 MARKERS = "acceptance and not real_llm and not openai_real_llm and not live_voice"
 
 
@@ -396,11 +397,13 @@ def main():
     families = load_families(content)
     inventory = task_inventory(acceptance, e2e, graph, families)
     add_provider_readers(inventory)
-    ordinary_sources = (sources | NON_PYTHON) - SHARED_INPUTS
+    ordinary_sources = (sources | NON_PYTHON) - SHARED_INPUTS - PROVIDER_DRIVER
     assignments = select_sources(inventory, families, ordinary_sources)
     readers = named_readers(inventory, data)
     for name, selected in select_named(inventory, readers).items():
         assignments[name].update(selected)
+    for selected in assignments.values():
+        selected.update(PROVIDER_DRIVER)
     for name, selected in assignments.items():
         tasks[name]["keyed"] = [*tasks[name]["keyed"], *sorted(selected)]
         tasks[name]["inputs"] = [
