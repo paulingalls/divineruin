@@ -1,3 +1,5 @@
+# Before REQUIRE_BACKEND=1, run `bun run allow acceptance@divineruin.test`
+# against the backend's DATABASE_URL.
 appId: com.divineruin.app
 ---
 # Auth-form exercise — REQUIRES apps/server reachable from the device.

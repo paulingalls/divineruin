@@ -26,6 +26,7 @@ describe.skipIf(!hasDb)("inventory stacks over real HTTP and Python", () => {
   let pid: string;
   let accountId: string;
   let token: string;
+  const email = `${prefix}@example.com`;
   const recipeIds = ["clean", "mixed", "short"].map((id) => `${prefix}_${id}`);
   const previousPort = process.env.PORT;
   const previousHost = process.env.SERVER_HOST;
@@ -113,7 +114,8 @@ describe.skipIf(!hasDb)("inventory stacks over real HTTP and Python", () => {
     process.env.PORT = "0";
     process.env.SERVER_HOST = "127.0.0.1";
     server = await startServer();
-    const email = `${prefix}@example.com`;
+
+    await sql`INSERT INTO signin_allowlist(email) VALUES(${email})`;
     const [account] = await sql<
       { id: string }[]
     >`INSERT INTO accounts(email) VALUES(${email}) RETURNING id`;
@@ -141,6 +143,7 @@ describe.skipIf(!hasDb)("inventory stacks over real HTTP and Python", () => {
       await sql`DELETE FROM accounts WHERE id=${accountId}`;
     }
     for (const id of recipeIds) await sql`DELETE FROM recipes WHERE id=${id}`;
+    await sql`DELETE FROM signin_allowlist WHERE email=${email}`;
     await server.stop(true);
     if (previousPort === undefined) delete process.env.PORT;
     else process.env.PORT = previousPort;

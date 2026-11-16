@@ -23,6 +23,7 @@ describe.skipIf(!hasDb)("purification over public command, worker and HTTP", () 
   let pid: string;
   let accountId: string;
   let token: string;
+  const email = `purification_${crypto.randomUUID()}@example.com`;
   const oldPort = process.env.PORT;
   const oldHost = process.env.SERVER_HOST;
   const request = async (path: string, body?: unknown) => {
@@ -38,7 +39,8 @@ describe.skipIf(!hasDb)("purification over public command, worker and HTTP", () 
     process.env.PORT = "0";
     process.env.SERVER_HOST = "127.0.0.1";
     server = await startServer();
-    const email = `purification_${crypto.randomUUID()}@example.com`;
+
+    await sql`INSERT INTO signin_allowlist(email) VALUES(${email})`;
     const [account] = await sql<
       { id: string }[]
     >`INSERT INTO accounts(email) VALUES(${email}) RETURNING id`;
@@ -64,6 +66,7 @@ describe.skipIf(!hasDb)("purification over public command, worker and HTTP", () 
       await sql`DELETE FROM auth_codes WHERE account_id=${accountId}`;
       await sql`DELETE FROM accounts WHERE id=${accountId}`;
     }
+    await sql`DELETE FROM signin_allowlist WHERE email=${email}`;
     await server.stop(true);
     if (oldPort === undefined) delete process.env.PORT;
     else process.env.PORT = oldPort;

@@ -827,7 +827,7 @@ Additional topics: When to use: The "reverted N times" worker warning + why the 
 
 ---
 
-## ops/production-deployment-architecture.md (108 lines)
+## ops/production-deployment-architecture.md (109 lines)
 
 Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, all-managed** — managed Postgres + Valkey, LiveKit Cloud, DO Spaces for assets; agent + server as containers. Local infra maps to this target on unique dev ports (Postgres 55432, Valkey 56379). Resolves the AWS/GCP-vs-DO and LiveKit Cloud-vs-self-hosted contradictions.
 
@@ -837,12 +837,12 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 | Target architecture | 11-32 | Topology diagram + per-component prod hosting table |
 | Local → production mapping | 33-47 | Containerized stand-ins; unique dev ports; env-only difference |
 | Environment & secrets | 48-55 | Canonical required env set; platform secrets in prod |
-| Deploy checklist | 56-63 |  |
-| Migrations & seed on deploy | 64-69 | migrate.ts + seed_content.py as deploy steps |
-| Asset storage | 70-73 | Defers to the object-storage migration spec (DO Spaces) |
-| Contradictions this doc resolves | 74-81 | Provider, LiveKit hosting, cost-model follow-up |
-| Finding process errors | 82-103 |  |
-| Open follow-ups | 104-108 | cost_model recompute, asset migration, Dockerfiles |
+| Deploy checklist | 56-64 |  |
+| Migrations & seed on deploy | 65-70 | migrate.ts + seed_content.py as deploy steps |
+| Asset storage | 71-74 | Defers to the object-storage migration spec (DO Spaces) |
+| Contradictions this doc resolves | 75-82 | Provider, LiveKit hosting, cost-model follow-up |
+| Finding process errors | 83-104 |  |
+| Open follow-ups | 105-109 | cost_model recompute, asset migration, Dockerfiles |
 
 ---
 

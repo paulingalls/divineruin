@@ -7,7 +7,8 @@ import os
 def fixture(h):
     fixture = json.loads(
         h.bun("""const s = new Bun.SQL(process.env.DATABASE_URL);
-    const [a] = await s`INSERT INTO accounts (email) VALUES (${'smoke-' + process.env.SMOKE_KEY + '@example.invalid'}) RETURNING id, email, created_at`;
+    const [a] = await s`INSERT INTO accounts (email) VALUES (${'smoke-' + process.env.SMOKE_KEY.replaceAll(':', '-') + '@example.invalid'}) RETURNING id, email, created_at`;
+    await s`INSERT INTO signin_allowlist(email) VALUES (${a.email})`;
     await s`INSERT INTO auth_codes (account_id, code, expires_at) VALUES (${a.id}, '123456', NOW() + INTERVAL '10 minutes')`;
     console.log(JSON.stringify(a)); await s.close();""")
     )
@@ -46,6 +47,7 @@ def run(h, settings, fixture, proxy):
             **dict(
                 settings,
                 DATABASE_URL=h.fixture_db,
+                JWT_SECRET="ab" * 32,
                 REDIS_URL=h.base_redis,
                 MEDIA_DIR=str(h.tmp / "host-media"),
             ),
@@ -88,7 +90,7 @@ def development(h, account):
     h.bun("""const s = new Bun.SQL(process.env.DATABASE_URL);
 await s`INSERT INTO auth_codes (account_id, code, expires_at)
 SELECT id, '654321', NOW() + INTERVAL '10 minutes' FROM accounts
-WHERE email = ${'smoke-' + process.env.SMOKE_KEY + '@example.invalid'}`;
+WHERE email = ${'smoke-' + process.env.SMOKE_KEY.replaceAll(':', '-') + '@example.invalid'}`;
 await s.close();""")
     dev, dev_url = h.host(
         ["bun", "run", "dev:server"],

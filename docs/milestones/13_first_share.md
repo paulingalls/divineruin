@@ -51,7 +51,7 @@ Owner: divineruin2 clone.
 
 ## Protecting the Bill
 
-- [ ] Only allowlisted emails can sign in
+- [x] Only allowlisted emails can sign in
 - [ ] A session has a length cap and an idle timeout
 - [ ] One player cannot run concurrent sessions or dispatch a second DM
 - [ ] Rate limits hold behind the load balancer
