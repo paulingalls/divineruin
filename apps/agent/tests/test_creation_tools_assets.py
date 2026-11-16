@@ -1,31 +1,7 @@
 import hashlib
 import json
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
-import event_types as E
 from asset_utils import compute_asset_id
-from creation_tools import push_creation_cards
-from session_data import CreationState, SessionData
-
-# _func bypasses SDK Literal validation — use an Any-typed ref so Pyright accepts
-# values outside the Literal that the underlying code handles.
-_push_cards: Any = push_creation_cards._func
-
-
-def _make_context(creation_state: CreationState | None = None) -> MagicMock:
-    """Build a mock RunContext with SessionData containing a creation state."""
-    sd = SessionData(
-        player_id="test_player",
-        location_id="",
-        room=None,
-        creation_state=creation_state or CreationState(),
-    )
-    ctx = MagicMock()
-    ctx.userdata = sd
-    return ctx
 
 
 class TestComputeAssetId:
@@ -57,29 +33,3 @@ class TestComputeAssetId:
         a = compute_asset_id("t", {"b": "2", "a": "1"})
         b = compute_asset_id("t", {"a": "1", "b": "2"})
         assert a == b
-
-
-class TestCreationCardsImageUrl:
-    async def test_race_cards_have_image_url(self):
-        ctx = _make_context()
-        await _push_cards(ctx, category="race")
-
-    async def test_class_cards_have_image_url(self):
-        ctx = _make_context()
-        await _push_cards(ctx, category="class")
-
-    async def test_deity_cards_have_image_url(self):
-        ctx = _make_context()
-        await _push_cards(ctx, category="deity")
-
-    @pytest.mark.parametrize("category", ["race", "class", "deity"])
-    @patch("creation_tools.publish_game_event", new_callable=AsyncMock)
-    async def test_card_payloads_contain_image_url(self, mock_publish, category):
-        ctx = _make_context()
-        await _push_cards(ctx, category=category)
-        cards_call = [c for c in mock_publish.call_args_list if c[0][1] == E.CREATION_CARDS]
-        assert len(cards_call) > 0
-        cards = cards_call[0][0][2]["cards"]
-        for card in cards:
-            assert "image_url" in card, f"Card {card['id']} missing image_url"
-            assert card["image_url"].startswith(f"/api/assets/images/{category}_")

@@ -31,6 +31,7 @@ from creation_deities import DEITIES
 from creation_portrait import generate_player_portrait
 from creation_races import RACES
 from creation_rules import build_character_data, infer_culture, select_starting_spells
+from creation_subset import ALLOWED_IDS, DEFAULT_PATRONS, DEFAULT_RACE, remaining_choices
 from game_events import publish_game_event
 from session_data import SessionData
 
@@ -69,7 +70,7 @@ def _build_cards_and_data(category: str) -> tuple[list[dict], list[dict]]:
     Returns (cards_for_client, full_data_for_llm).
     """
     if category == "race":
-        items = RACES
+        items = {key: RACES[key] for key in ALLOWED_IDS["race"]}
         cards = [
             {
                 "id": r.id,
@@ -82,7 +83,7 @@ def _build_cards_and_data(category: str) -> tuple[list[dict], list[dict]]:
         ]
         full_data = [{"id": r.id, "name": r.name, "description": r.description} for r in items.values()]
     elif category == "class":
-        items = CLASSES
+        items = {key: CLASSES[key] for key in ALLOWED_IDS["class"]}
         cards = [
             {
                 "id": c.id,
@@ -97,7 +98,7 @@ def _build_cards_and_data(category: str) -> tuple[list[dict], list[dict]]:
             {"id": c.id, "name": c.name, "category": c.category, "description": c.description} for c in items.values()
         ]
     elif category == "deity":
-        items = DEITIES
+        items = {key: DEITIES[key] for key in ALLOWED_IDS["deity"]}
         cards = [
             {
                 "id": d.id,
@@ -135,7 +136,7 @@ async def push_creation_music(music_state: str, room, event_bus) -> None:
     await publish_game_event(room, E.SET_MUSIC_STATE, {"music_state": music_state}, event_bus=event_bus)
 
 
-CardCategory = Literal["class", "deity"]
+CardCategory = Literal["race", "class", "deity"]
 
 
 @function_tool
@@ -144,7 +145,7 @@ async def push_creation_cards(
     category: CardCategory,
 ) -> str:
     """Push visual cards to client and return full data for narration.
-    Race cards are shown automatically — only call this for class and deity phases."""
+    Calling cards are shown at entry. Offer race or patron cards only when asked."""
 
     sd: SessionData = context.userdata
     cards, full_data = _build_cards_and_data(category)
@@ -177,20 +178,17 @@ async def set_creation_choice(
 
     # Validate ID-based choices
     if category == "race":
-        if value not in RACES:
-            raise ToolError(f"Unknown race: {_safe_id_snippet(value)}. Valid: {', '.join(RACES.keys())}")
+        if value not in ALLOWED_IDS["race"]:
+            raise ToolError(f"Unknown race: {_safe_id_snippet(value)}. Valid: {', '.join(ALLOWED_IDS['race'])}")
         cs.race = value
-        cs.phase = "calling"
     elif category == "class":
-        if value not in CLASSES:
-            raise ToolError(f"Unknown class: {_safe_id_snippet(value)}. Valid: {', '.join(CLASSES.keys())}")
+        if value not in ALLOWED_IDS["class"]:
+            raise ToolError(f"Unknown class: {_safe_id_snippet(value)}. Valid: {', '.join(ALLOWED_IDS['class'])}")
         cs.class_choice = value
-        cs.phase = "devotion"
     elif category == "deity":
-        if value not in DEITIES:
-            raise ToolError(f"Unknown deity: {_safe_id_snippet(value)}. Valid: {', '.join(DEITIES.keys())}")
+        if value not in ALLOWED_IDS["deity"]:
+            raise ToolError(f"Unknown deity: {_safe_id_snippet(value)}. Valid: {', '.join(ALLOWED_IDS['deity'])}")
         cs.deity = value
-        cs.phase = "identity"
     elif category == "name":
         sanitized = _sanitize_name(value)
         if not sanitized:
@@ -198,6 +196,9 @@ async def set_creation_choice(
         cs.name = sanitized
     elif category == "backstory":
         cs.backstory = _sanitize_backstory(value) if value else ""
+
+    remaining = remaining_choices(cs)
+    cs.phase = "calling" if "class" in remaining else "identity"
 
     # Publish visual feedback
     await publish_game_event(
@@ -220,19 +221,6 @@ async def set_creation_choice(
         "phase": cs.phase,
     }
 
-    # Guidance for next step
-    remaining = []
-    if cs.race is None:
-        remaining.append("race")
-    if cs.class_choice is None:
-        remaining.append("class")
-    if cs.deity is None:
-        remaining.append("deity")
-    if cs.name is None:
-        remaining.append("name")
-    if cs.backstory is None:
-        remaining.append("backstory")
-
     guidance = f"Remaining: {', '.join(remaining)}." if remaining else "All choices made. Call finalize_character."
 
     # Return the stored value (sanitized for name/backstory) rather than raw input
@@ -249,29 +237,21 @@ async def set_creation_choice(
 async def finalize_character(context: RunContext) -> str | tuple:
     """Generate stats and persist completed character.
 
-    Call when all creation choices are set (race, class, deity, name, backstory).
+    Call after class and name are set. Unset race defaults to human; unset patron
+    defaults to the calling's patron. Backstory is optional.
     """
     sd: SessionData = context.userdata
     cs = sd.creation_state
     if cs is None or cs.phase == "complete":
         raise ToolError("Not in creation mode.")
 
-    # Validate all required fields
-    missing = []
-    if cs.race is None:
-        missing.append("race")
-    if cs.class_choice is None:
-        missing.append("class")
-    if cs.name is None:
-        missing.append("name")
+    missing = remaining_choices(cs)
     if missing:
         raise ToolError(f"Missing required choices: {', '.join(missing)}")
-
-    # Deity can be None (deferred) or "none" (explicitly no patron)
+    assert cs.class_choice and cs.name
+    cs.race = cs.race if cs.race is not None else DEFAULT_RACE
+    cs.deity = cs.deity if cs.deity is not None else DEFAULT_PATRONS[cs.class_choice]
     deity_id = cs.deity
-
-    if not cs.name or not cs.race or not cs.class_choice:
-        raise ToolError("Missing required choices: name, race, or class")
 
     try:
         character_data = build_character_data(
