@@ -302,6 +302,17 @@ lost review rounds to both halves of this, five times.
   in the card. Story tier is static; broad regression runs only in the full tier
   once at sprint close (human 2026-10-01). After a repair rerun affected checks;
   repeat mutations only when their guard or proof changed.
+- RUN `bunx proof run --set land` IN THE WORKTREE BEFORE HANDBACK, after the
+  last commit, and quote its summary line. It is the selection story land runs,
+  keyed to what the diff can break, so land reuses its proofs. Sprints
+  first-episode and bill-and-edges each lost a land to a red only this
+  selection caught (a console-mode `ctx.job` of None; a test fake rejecting a
+  new keyword).
+- `Acceptance:` IS ONE SHELL COMMAND, run from the repository root: no prose,
+  no commentary, no bare `bunx playwright` (e2e goes through
+  `bash scripts/test-focused-e2e.sh <spec>`). A reviewer that wants to explain
+  a check writes it into Context or AC. Sprint bill-and-edges lost a start and
+  a land to an Acceptance line a slate review had turned into prose.
 - Native XP CLI jobs do not wake the lead on completion. Keep the active turn,
   save each terminal session and log path, and poll handoff state, log age and
   child liveness about every 45 seconds. Inspect a stopped job's actual cause
