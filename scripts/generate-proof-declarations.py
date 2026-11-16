@@ -348,6 +348,7 @@ def main():
         "inputs": [
             "apps/agent/**",
             "apps/mobile/assets/**",
+            "apps/mobile/src/global.css",
             "assets/**",
             ".env.example",
             "apps/audio/**",
