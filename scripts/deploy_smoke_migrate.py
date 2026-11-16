@@ -7,6 +7,8 @@ import socket
 import subprocess
 import time
 
+from deploy_smoke_server import fixture
+
 SERVICES = ("server", "agent", "worker")
 
 
@@ -234,12 +236,16 @@ await s.close();
                 raise AssertionError(service + " startup marker missing")
         baseline = assert_content()
         migrate_image = h.inspect(h.project + "-migrate")["Id"]
-        _, output = deploy(True, keep_healthy=True)
+        _, output = deploy(True)
         assert "No new migrations to apply." in output
         assert h.inspect(h.project + "-migrate")["Id"] == migrate_image
         assert snapshot() == baseline
-        assert serving() == state
-        print("unchanged image: fresh job; complete row snapshots unchanged", flush=True)
+        refreshed = serving()
+        assert all(refreshed[service][0] != state[service][0] for service in SERVICES)
+        assert all(refreshed[service][1] == state[service][1] for service in SERVICES)
+        state = refreshed
+        h.ready(url)
+        print("unchanged image: fresh job and readers; complete row snapshots unchanged", flush=True)
 
         configure(changed=True)
         invalid()
@@ -275,6 +281,30 @@ await s.close();
         current = serving()
         assert all(current[service][1] == changed[service] for service in SERVICES)
         assert assert_content() == baseline
+        account = fixture(h)
+        status, auth, _ = h.http(url + "/api/auth/verify-code", {"email": account["email"], "code": "123456"})
+        assert status == 200, auth
+        recipes_path = corpus / "recipes.json"
+        recipes = json.loads(recipes_path.read_text())
+        recipe = recipes[0]
+
+        def recipe_name():
+            status, body, _ = h.http(url + "/api/activity-templates", token=auth["token"])
+            assert status == 200, body
+            return next(
+                item["name"] for group in body["groups"] for item in group["items"] if item["id"] == recipe["id"]
+            )
+
+        assert recipe_name() == recipe["name"]
+        recipe["name"] = "Deployment smoke revised recipe"
+        recipes_path.write_text(json.dumps(recipes))
+        unchanged_image = h.inspect(h.project + "-server")["Id"]
+        deploy(True)
+        h.ready(url)
+        h.health(url)
+        assert h.inspect(h.project + "-server")["Id"] == unchanged_image
+        assert recipe_name() == recipe["name"], "HTTP catalog retained pre-deployment recipe"
+        print("content-only deployment refreshes the HTTP catalog", flush=True)
     finally:
         h.stop(events)
         stream.close()

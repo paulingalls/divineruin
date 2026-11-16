@@ -7,4 +7,4 @@ compose=(docker compose -f "$root/deploy/compose.yml" "$@")
 # Agent and worker share a tag; concurrent builds stamp different Compose service labels.
 "${compose[@]}" build migrate server agent
 "${compose[@]}" run --rm --no-deps -T migrate
-"${compose[@]}" up -d --no-build --no-deps server agent worker
+"${compose[@]}" up -d --force-recreate --no-build --no-deps server agent worker
