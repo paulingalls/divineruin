@@ -120,7 +120,7 @@ export function setErrandTemplates(map: ReadonlyMap<string, ErrandTemplate>): vo
   errandTemplates = map;
 }
 
-function parseErrandRow(id: string, raw: unknown): ErrandTemplate {
+export function parseErrandRow(id: string, raw: unknown): ErrandTemplate {
   if (!raw || typeof raw !== "object") {
     throw new Error(`errand_templates[${id}].data is not an object`);
   }

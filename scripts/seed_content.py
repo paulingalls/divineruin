@@ -464,6 +464,10 @@ async def main() -> None:
                 for err in errors:
                     print(f"  - {err}")
                 sys.exit(1)
+            if production:
+                from seed_catalogs import validate_runtime_catalogs
+
+                await validate_runtime_catalogs(conn)
         total = sum(counts.values())
         print(f"\nDone: {total} entities seeded to {target}, all validations passed.")
     finally:

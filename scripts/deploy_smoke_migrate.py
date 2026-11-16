@@ -96,7 +96,11 @@ console.log(JSON.stringify(result)); await s.close();
             return
         raise AssertionError("health route reachable before successful deployment")
 
-    def deploy(success, keep_healthy=False):
+    def deploy(
+        success,
+        keep_healthy=False,
+        error="unknown location_id 'missing_smoke_location'",
+    ):
         output_path = h.tmp / ("attempt-" + str(len(seen_jobs)) + ".log")
         with output_path.open("w") as output:
             child = subprocess.Popen(
@@ -129,7 +133,7 @@ console.log(JSON.stringify(result)); await s.close();
         if success:
             assert "Seed mode: production" in output and "all validations passed" in output
         else:
-            assert "unknown location_id 'missing_smoke_location'" in output, output
+            assert error in output, output
         deadline = time.monotonic() + 5
         while True:
             recorded = all_events()
@@ -184,7 +188,18 @@ await s.close();
         no_listener()
         invalid()
         deploy(False)
-        uid = h.command(["docker", "run", "--rm", "--entrypoint", "id", h.project + "-migrate", "-u"], capture=True)
+        uid = h.command(
+            [
+                "docker",
+                "run",
+                "--rm",
+                "--entrypoint",
+                "id",
+                h.project + "-migrate",
+                "-u",
+            ],
+            capture=True,
+        )
         assert uid.isdigit() and int(uid) > 0
         assert serving() == {}
         no_listener()
@@ -238,9 +253,22 @@ await s.close();
         assert serving() == state
         h.health(url)
         assert snapshot() == baseline
-        print("changed images: failed job preserved all serving ids, images, start times and health", flush=True)
+        print(
+            "changed images: failed job preserved all serving ids, images, start times and health",
+            flush=True,
+        )
 
         nodes_path.write_text(valid_nodes)
+        roles_path = corpus / "role_archetypes.json"
+        valid_roles = roles_path.read_text()
+        roles = json.loads(valid_roles)
+        roles[0]["default_disposition"] = "invalid-smoke-disposition"
+        roles_path.write_text(json.dumps(roles))
+        deploy(False, keep_healthy=True, error="default_disposition")
+        assert serving() == state
+        assert snapshot() == baseline
+        h.health(url)
+        roles_path.write_text(valid_roles)
         deploy(True)
         h.ready(url)
         h.health(url)
