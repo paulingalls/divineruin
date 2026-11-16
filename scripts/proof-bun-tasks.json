@@ -93,7 +93,7 @@
     ]
   },
   "bun-server": {
-    "run": "bun --env-file=../../.env test --cwd apps/server --path-ignore-patterns='**/{db,rate-limit.integration,rate-limit-failure,signin-allowlist.integration,purification.integration,inventory-taint.integration,terrain-startup.integration,locations-load.integration,session-rooms.integration,invite-store}.test.ts'",
+    "run": "bun --env-file=../../.env test --cwd apps/server --path-ignore-patterns='**/{db,rate-limit.integration,rate-limit-failure,rate-limit-atomicity,signin-allowlist.integration,purification.integration,inventory-taint.integration,terrain-startup.integration,locations-load.integration,session-rooms.integration,invite-store}.test.ts'",
     "sets": ["commit", "land"],
     "links": ["node_modules", ".env"],
     "inputs": [
@@ -739,7 +739,7 @@
     "needs": ["bun-stack"]
   },
   "server-rate-limit": {
-    "run": "bun scripts/proof-db-clone.ts REQUIRE_DB=1 REQUIRE_REDIS=1 bun --env-file=../../.env test --cwd apps/server src/rate-limit.integration.test.ts src/rate-limit-failure.test.ts",
+    "run": "bun scripts/proof-db-clone.ts REQUIRE_DB=1 REQUIRE_REDIS=1 bun --env-file=../../.env test --cwd apps/server src/rate-limit.integration.test.ts src/rate-limit-failure.test.ts src/rate-limit-atomicity.test.ts",
     "sets": ["commit", "land"],
     "links": ["node_modules", ".env"],
     "inputs": [
@@ -753,6 +753,7 @@
       {
         "imports-of": "apps/server/src/rate-limit-failure.test.ts"
       },
+      { "imports-of": "apps/server/src/rate-limit-atomicity.test.ts" },
       "apps/server/src/test-fixtures/rate-limit-server.ts",
       {
         "imports-of": "apps/server/src/index.ts"
