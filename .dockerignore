@@ -32,6 +32,8 @@
 !apps/mobile/assets/sounds/textures/
 !apps/mobile/assets/sounds/textures/*.mp3
 !assets/
+!assets/images/
+!assets/images/*.png
 !assets/audio/
 !assets/audio/prologue.mp3
 !deploy/migrate.Dockerfile

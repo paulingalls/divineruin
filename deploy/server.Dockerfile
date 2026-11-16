@@ -17,8 +17,12 @@ COPY apps/server/src ./apps/server/src
 COPY packages/shared/src ./packages/shared/src
 COPY packages/shared/package.json ./packages/shared/package.json
 COPY content/loot_tables.json ./content/loot_tables.json
+COPY assets/images/ ./assets/images/
+RUN groupadd --gid 10001 media && useradd --uid 10001 --gid media --create-home media \
+    && mkdir -p /var/lib/divineruin/media/audio /var/lib/divineruin/media/portraits \
+    && chown -R 10001:10001 /var/lib/divineruin/media
 ENV NODE_ENV=production
 WORKDIR /app/apps/server
-USER bun
+USER 10001:10001
 EXPOSE 3001
 CMD ["bun", "run", "start"]

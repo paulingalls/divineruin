@@ -180,9 +180,6 @@
         "imports-of": "apps/server/src/image-gen-api.test.ts"
       },
       {
-        "imports-of": "apps/server/src/image-gen.test.ts"
-      },
-      {
         "imports-of": "apps/server/src/image-post-process.test.ts"
       },
       {

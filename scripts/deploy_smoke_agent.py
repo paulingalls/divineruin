@@ -56,7 +56,7 @@ def image_checks(h, image, uid):
             image,
             "python",
             "-c",
-            "from pathlib import Path\nfor d in ('/app/apps/server/audio', '/app/apps/agent/transcripts'):\n    p = Path(d, 'smoke'); p.touch(); p.unlink()",
+            "from pathlib import Path\nfor d in ('/var/lib/divineruin/media', '/app/apps/agent/transcripts'):\n    p = Path(d, 'smoke'); p.touch(); p.unlink()",
         ]
     )
 

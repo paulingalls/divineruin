@@ -17,8 +17,8 @@ FROM python:3.14.7-slim-bookworm
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 10001 agent \
-    && mkdir -p /app/apps/server/audio /app/apps/agent/transcripts \
-    && chown agent:agent /app/apps/server/audio /app/apps/agent/transcripts
+    && mkdir -p /var/lib/divineruin/media/audio /var/lib/divineruin/media/portraits /app/apps/agent/transcripts \
+    && chown -R agent:agent /var/lib/divineruin/media /app/apps/agent/transcripts
 COPY --from=dependencies /app/apps/agent/.venv /app/apps/agent/.venv
 COPY --from=ffmpeg /opt/ffmpeg /opt/ffmpeg
 ENV PATH="/app/apps/agent/.venv/bin:/opt/ffmpeg/bin:$PATH" \

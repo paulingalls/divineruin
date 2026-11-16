@@ -15,6 +15,11 @@ from voices import VOICE_ENV_VARS
 AGENT = Path(__file__).resolve().parents[1]
 
 
+@pytest.fixture(autouse=True)
+def writable_media(monkeypatch, tmp_path):
+    monkeypatch.setenv("MEDIA_DIR", str(tmp_path))
+
+
 def startup_env():
     env = {k: os.environ[k] for k in ("PATH", "HOME")}
     env.update(
@@ -36,6 +41,7 @@ def startup_env():
         DATABASE_URL="postgresql://smoke:smoke@127.0.0.1:1/smoke",
         REDIS_URL="redis://127.0.0.1:1",
         LIVEKIT_URL="ws://127.0.0.1:1",
+        MEDIA_DIR=os.environ["MEDIA_DIR"],
     )
     return env
 

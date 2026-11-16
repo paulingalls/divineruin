@@ -1,13 +1,11 @@
 import json
 import os
 import pathlib
-import re
 import shutil
 import signal
 import socket
 import subprocess
 import sys
-import tarfile
 import tempfile
 import time
 import traceback
@@ -16,9 +14,13 @@ import urllib.parse
 import urllib.request
 import uuid
 
+from deploy_smoke_images import image_sources
+
 mode = sys.argv[1]
-if mode in ("agent", "migrate"):
+if mode in ("agent", "migrate", "media"):
     import deploy_smoke_agent as agent_smoke
+if mode == "media":
+    import deploy_smoke_media as media_smoke
 if mode == "migrate":
     import deploy_smoke_migrate as migrate_smoke
 
@@ -42,8 +44,21 @@ base_redis = env["SMOKE_REDIS"]
 fixture_db = urllib.parse.urlsplit(base_db)._replace(path="/" + name).geturl()
 private_values = [base_db, base_redis, fixture_db]
 # worktree-common.sh exports the CHECKOUT's COMPOSE_PROJECT_NAME; a child that omits -p must not resolve to it.
-env.update(DEPLOY_ENV_FILE=str(tmp / "runtime.env"), DEPLOY_HTTP_PORT="0", COMPOSE_PROJECT_NAME=project)
-compose = ["docker", "compose", "-p", project, "-f", str(root / "deploy/compose.yml"), "-f", str(tmp / "override.json")]
+env.update(
+    DEPLOY_ENV_FILE=str(tmp / "runtime.env"),
+    DEPLOY_HTTP_PORT="0",
+    COMPOSE_PROJECT_NAME=project,
+)
+compose = [
+    "docker",
+    "compose",
+    "-p",
+    project,
+    "-f",
+    str(root / "deploy/compose.yml"),
+    "-f",
+    str(tmp / "override.json"),
+]
 
 
 def command(args, *, capture=False, input=None, settings=None, merged=False, deadline=300):
@@ -77,7 +92,12 @@ def authorize():
 def bun(code, db=fixture_db):
     authorize()
     settings = dict(env, DATABASE_URL=db, REDIS_URL=base_redis, SMOKE_KEY=key)
-    return command(["bun", "--no-env-file", "run", "-"], capture=True, input=code, settings=settings)
+    return command(
+        ["bun", "--no-env-file", "run", "-"],
+        capture=True,
+        input=code,
+        settings=settings,
+    )
 
 
 def proxy_url(original, port):
@@ -95,7 +115,10 @@ def http(url, body=None, method=None, token=None):
     if token:
         headers["Authorization"] = "Bearer " + token
     req = urllib.request.Request(
-        url, data=json.dumps(body).encode() if body is not None else None, headers=headers, method=method
+        url,
+        data=json.dumps(body).encode() if body is not None else None,
+        headers=headers,
+        method=method,
     )
     start = time.monotonic()
     try:
@@ -104,7 +127,11 @@ def http(url, body=None, method=None, token=None):
         response = error
     with response:
         data = response.read()
-        return (response.status, json.loads(data) if data else None, time.monotonic() - start)
+        return (
+            response.status,
+            json.loads(data) if data else None,
+            time.monotonic() - start,
+        )
 
 
 def ready(url, process=None):
@@ -159,34 +186,6 @@ def stop(child):
             child.wait()
 
 
-def image_sources(image):
-    container = command(["docker", "create", image], capture=True)
-    exports.append(container)
-    archive = tmp / "image.tar"
-    command(["docker", "export", "-o", str(archive), container])
-    with tarfile.open(archive) as tree:
-        paths = [entry.name.removeprefix("./") for entry in tree]
-    assert "app/apps/server/src/index.ts" in paths and "app/packages/shared/src/index.ts" in paths
-    bad = []
-    for path in paths:
-        parts = pathlib.PurePosixPath(path).parts
-        if any(p == ".env" or p.startswith(".env.") or p == ".git" for p in parts):
-            bad.append(path)
-        if (
-            path.startswith("app/")
-            and "node_modules" not in parts
-            and re.search(
-                r"(^|/)(tests?|__tests__|fixtures|test-fixtures|mocks|__mocks__|mobile)(/|$)|[.]test[.]|/(test-env|activities-test-mock|test-util)[.]",
-                path,
-            )
-        ):
-            bad.append(path)
-    assert not bad, f"image contains forbidden sources: {bad[:8]}"
-    archive.unlink()
-    command(["docker", "rm", container])
-    exports.remove(container)
-
-
 def main():
     global created_db, compose_started, sentinel
     authorize()
@@ -225,8 +224,10 @@ def main():
         },
         "networks": {"checkout": {"external": True, "name": network}},
     }
-    if mode in ("agent", "migrate"):
+    if mode in ("agent", "migrate", "media"):
         agent_smoke.configure(override, project)
+    if mode == "media":
+        media_smoke.configure(sys.modules[__name__], override)
     (tmp / "override.json").write_text(json.dumps(override))
     settings = {
         "DATABASE_URL": proxy_url(fixture_db, 15432),
@@ -236,28 +237,39 @@ def main():
         "CORS_ORIGIN": "https://smoke.invalid",
         "NODE_ENV": "production",
         "PORT": "3001",
+        "MEDIA_DIR": "/var/lib/divineruin/media",
     }
-    if mode in ("agent", "migrate"):
+    if mode in ("agent", "migrate", "media"):
         settings.update(agent_smoke.environment())
     private_values.extend(settings[k] for k in ("DATABASE_URL", "REDIS_URL", "JWT_SECRET", "INTERNAL_SECRET"))
     (tmp / "runtime.env").write_text("".join(k + "=" + v + "\n" for k, v in settings.items()))
     os.chmod(tmp / "runtime.env", 0o600)
     compose_started = True
+    images = {}
     if mode != "migrate":
-        command([*compose, "build", mode], deadline=900)
-        image = command([*compose, "images", "-q", mode], capture=True)
-        if not image:
-            image = project + "-" + mode
-        print(
-            "image " + command(["docker", "image", "inspect", "--format", "{{.Id}}", image], capture=True), flush=True
-        )
-        built_images.append(project + "-" + mode)
-        uid = command(["docker", "run", "--rm", "--entrypoint", "id", image, "-u"], capture=True)
-        assert uid.isdigit() and int(uid) > 0, "image must execute as non-root"
-        if mode == "agent":
-            agent_smoke.image_checks(sys.modules[__name__], image, uid)
-        else:
-            image_sources(image)
+        targets = ("server", "agent") if mode == "media" else (mode,)
+        command([*compose, "build", *targets], deadline=900)
+        for target in targets:
+            image = project + "-" + target
+            images[target] = image
+            built_images.append(image)
+            print(
+                "image "
+                + command(
+                    ["docker", "image", "inspect", "--format", "{{.Id}}", image],
+                    capture=True,
+                ),
+                flush=True,
+            )
+            uid = command(
+                ["docker", "run", "--rm", "--entrypoint", "id", image, "-u"],
+                capture=True,
+            )
+            assert uid.isdigit() and int(uid) > 0, "image must execute as non-root"
+            if target == "agent":
+                agent_smoke.image_checks(sys.modules[__name__], image, uid)
+            else:
+                image_sources(sys.modules[__name__], image)
     bun(
         'const s = new Bun.SQL(process.env.DATABASE_URL); await s.unsafe(`CREATE DATABASE "'
         + name
@@ -271,7 +283,16 @@ def main():
         command(["bun", "--no-env-file", "run", "scripts/migrate.ts"], settings=fixture_env)
         authorize()
         command(
-            ["uv", "run", "--project", "scripts", "--frozen", "python", "scripts/seed_content.py"], settings=fixture_env
+            [
+                "uv",
+                "run",
+                "--project",
+                "scripts",
+                "--frozen",
+                "python",
+                "scripts/seed_content.py",
+            ],
+            settings=fixture_env,
         )
     bun(
         'const r = new Bun.RedisClient(process.env.REDIS_URL); await r.set(process.env.SMOKE_KEY,"alive","EX",1800); r.close();'
@@ -294,7 +315,10 @@ def main():
                 break
         except OSError:
             time.sleep(0.25)
-    for dep, port, upstream_port in [("postgres", 15432, 5432), ("valkey", 16379, 6379)]:
+    for dep, port, upstream_port in [
+        ("postgres", 15432, 5432),
+        ("valkey", 16379, 6379),
+    ]:
         assert (
             http(
                 proxy + "/proxies",
@@ -308,7 +332,9 @@ def main():
             )[0]
             == 201
         )
-    if mode == "migrate":
+    if mode == "media":
+        media_smoke.run(sys.modules[__name__], images, settings)
+    elif mode == "migrate":
         migrate_smoke.run(sys.modules[__name__], override)
     elif mode == "agent":
         agent_smoke.run(sys.modules[__name__], proxy, image)
@@ -336,9 +362,18 @@ def main():
             assert http(endpoint + "/api/me", token="invalid")[0] == 401
 
         me(url)
+        (tmp / "host-media").mkdir()
         baseline, host_url = host(
             ["bun", "run", "--cwd", "apps/server", "start"],
-            dict(env, **dict(settings, DATABASE_URL=fixture_db, REDIS_URL=base_redis)),
+            dict(
+                env,
+                **dict(
+                    settings,
+                    DATABASE_URL=fixture_db,
+                    REDIS_URL=base_redis,
+                    MEDIA_DIR=str(tmp / "host-media"),
+                ),
+            ),
         )
         health(host_url)
         me(host_url)
@@ -385,7 +420,11 @@ def main():
     if mode == "server":
         dev, dev_url = host(
             ["bun", "run", "dev:server"],
-            dict({k: os.environ[k] for k in ("PATH", "HOME")}, DATABASE_URL=fixture_db, REDIS_URL=base_redis),
+            dict(
+                {k: os.environ[k] for k in ("PATH", "HOME")},
+                DATABASE_URL=fixture_db,
+                REDIS_URL=base_redis,
+            ),
         )
         health(dev_url)
         assert http(dev_url + "/api/me")[0] == 401

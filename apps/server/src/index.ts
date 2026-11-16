@@ -1,3 +1,4 @@
+import { validateMediaDir } from "./media-dir.ts";
 import { handleGetInventory } from "./inventory-api.ts";
 import { serve } from "bun";
 import { handleHealth } from "./health.ts";
@@ -250,6 +251,7 @@ export async function handleRequest(req: Request, ip: string): Promise<Response>
 }
 
 export async function startServer() {
+  await validateMediaDir();
   // Danger levels derive from the loaded locations; spell-backed abilities parse against
   // the spell catalog. Keep those dependencies ahead of the concurrent loaders.
   await loadLocations();

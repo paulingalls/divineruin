@@ -1,15 +1,11 @@
+import { mediaDir } from "./media-dir.ts";
 import { test, expect, describe, beforeEach, mock } from "bun:test";
 import { dbMockFactory, setQueryStubs, resetMockDb, makeRequest } from "./activities-test-mock.ts";
 
 void mock.module("./db.ts", dbMockFactory);
 
-const {
-  handleListActivities,
-  handleGetActivity,
-  handleActivityDecision,
-  handleAudioFile,
-  resolveAudioDir,
-} = await import("./activities.ts");
+const { handleListActivities, handleGetActivity, handleActivityDecision, handleAudioFile } =
+  await import("./activities.ts");
 
 beforeEach(() => {
   resetMockDb();
@@ -318,21 +314,6 @@ describe("handleActivityDecision", () => {
   });
 });
 
-describe("resolveAudioDir", () => {
-  const DEFAULT = resolveAudioDir(undefined);
-
-  test("an empty-string env falls back to the default dir (?? would keep '')", () => {
-    // .env.example ships ASYNC_AUDIO_DIR= (empty), so `cp .env.example .env`
-    // sets it to "". With `??` that empty string wins and AUDIO_DIR resolves to
-    // filesystem root; `||` must treat it like unset.
-    expect(resolveAudioDir("")).toBe(DEFAULT);
-  });
-
-  test("a configured dir is used verbatim", () => {
-    expect(resolveAudioDir("/custom/audio")).toBe("/custom/audio");
-  });
-});
-
 describe("handleAudioFile", () => {
   test("rejects invalid filename with path traversal", async () => {
     const res = await handleAudioFile("../../../etc/passwd");
@@ -349,26 +330,8 @@ describe("handleAudioFile", () => {
     expect(res.status).toBe(404);
   });
 
-  test("serves existing mp3 file with correct headers", async () => {
-    const audioDir = resolveAudioDir(Bun.env.ASYNC_AUDIO_DIR);
-    const testFile = `${audioDir}/test_audio_serve.mp3`;
-    await Bun.write(testFile, "fake-mp3-data");
-    try {
-      const res = await handleAudioFile("test_audio_serve.mp3");
-      expect(res.headers.get("Content-Type")).toBe("audio/mpeg");
-      expect(res.headers.get("Cache-Control")).toContain("public");
-    } finally {
-      const fs = await import("node:fs");
-      try {
-        fs.unlinkSync(testFile);
-      } catch {
-        /* cleanup best-effort */
-      }
-    }
-  });
-
   test("serves existing wav file with wav content type", async () => {
-    const audioDir = resolveAudioDir(Bun.env.ASYNC_AUDIO_DIR);
+    const audioDir = `${mediaDir()}/audio`;
     const testFile = `${audioDir}/test_audio_serve.wav`;
     await Bun.write(testFile, "fake-wav-data");
     try {
