@@ -197,3 +197,56 @@ def first_blood_unpaid(harness):
         assert await db_queries.get_npc_disposition("elder_yanna", arc.player) is None
 
     harness.run_sync(check())
+
+
+@given(parsers.parse("a walker at {source}"))
+def walker(harness, source):
+    async def setup():
+        arc = await ArcWalk().start(harness, "move_player", stage=None)
+        await arc.pool.execute(
+            "UPDATE players SET data=data || $2::jsonb WHERE player_id=$1",
+            arc.player,
+            json.dumps({"location_id": source}),
+        )
+        arc.sd.location_id = source
+        harness.state["arc"] = arc
+
+    harness.run_sync(setup())
+
+
+@when(parsers.parse("they take {outbound} to {destination}"))
+def walk_outbound(harness, outbound, destination):
+    async def walk():
+        import db
+
+        arc = harness.state["arc"]
+        source = arc.sd.location_id
+        redis = await db.get_redis()
+        await redis.delete(f"location:{source}", f"location:{destination}")
+        result = await arc.arrive(destination)
+        await assert_walk_arrival(arc, result, source, destination)
+        harness.state["result"] = result
+
+    harness.run_sync(walk())
+
+
+async def assert_walk_arrival(arc, result, source, destination):
+    import db_queries
+
+    assert result["moved"]
+    assert result["previous_location"] == source
+    assert result["location"]["id"] == arc.sd.location_id == destination
+    player = await db_queries.get_player(arc.player)
+    assert player is not None and player["location_id"] == destination
+
+
+@then(parsers.parse("{return_key} returns them to {source} with {outbound} leading to {destination}"))
+def walk_return(harness, return_key, source, outbound, destination):
+    async def walk():
+        arc = harness.state["arc"]
+        assert harness.state["result"]["location"]["exits"][return_key]["destination"] == source
+        result = await arc.arrive(source)
+        await assert_walk_arrival(arc, result, destination, source)
+        assert result["location"]["exits"][outbound]["destination"] == destination
+
+    harness.run_sync(walk())
