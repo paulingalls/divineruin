@@ -99,8 +99,9 @@ def assert_finish(line, quest, index):
         "decision_made": [cc.get("decision"), *cc.get("options", [])],
     }[kind]
     assert fields and all(value and value in line for value in fields), line
-    if kind == "knowledge_acquired":
+    if kind not in {"location_reached", "combat_completed"}:
         assert f'update_quest(quest_id="{quest["id"]}", new_stage_id={index + 1})' in line
+    if kind == "knowledge_acquired":
         assert "once the player has learned" in line
     if kind in {"location_reached", "combat_completed"}:
         assert "update_quest" not in line

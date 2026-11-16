@@ -71,26 +71,24 @@ def quest_finish_line(quest: dict) -> str:
     stage = quest["stages"][index]
     condition = stage["completion_conditions"]
     kind = condition["type"]
+    advance = f'call update_quest(quest_id="{quest["quest_id"]}", new_stage_id={index + 1})'
     if kind == "location_reached":
         return f"completed on arrival at {condition['location']}"
     if kind == "knowledge_acquired":
         facts = ", ".join(condition["required_info"])
         sources = ", ".join(condition["sources"])
-        return (
-            f"once the player has learned {facts} from {sources}, "
-            f'call update_quest(quest_id="{quest["quest_id"]}", new_stage_id={index + 1})'
-        )
+        return f"once the player has learned {facts} from {sources}, {advance}"
     if kind == "combat_completed":
         return (
             f'when the fight begins, start it with enter_mode(mode="combat", '
             f'encounter_id="{condition["encounter"]}"); finish with outcome {condition["outcome"]}'
         )
     if kind == "item_discovered":
-        return f"discover {', '.join(condition['items'])} at {condition['location']}"
+        return f"once the player discovers {', '.join(condition['items'])} at {condition['location']}, {advance}"
     if kind == "npc_interaction":
-        return f"speak with {condition['npc']} about {condition['topic']}"
+        return f"once the player speaks with {condition['npc']} about {condition['topic']}, {advance}"
     if kind == "decision_made":
-        return f"decide {condition['decision']}: {', '.join(condition['options'])}"
+        return f"once the player decides {condition['decision']} ({', '.join(condition['options'])}), {advance}"
     raise ValueError(f"Quest {quest['quest_id']} stage {index}: unknown completion condition {kind!r}")
 
 
