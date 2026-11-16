@@ -8,9 +8,13 @@ import subprocess
 from pathlib import Path
 
 from proof_family_selection import (
+    SHARED_INPUTS,
     SYNTHETIC,
+    audit_content,
     audit_selection,
+    content_inventory,
     load_families,
+    select_content,
     select_sources,
     task_inventory,
 )
@@ -370,15 +374,28 @@ def main():
             "$documentation-exclusions",
             *RUNTIME_DOCUMENTS.get(name, []),
         ]
-    families = load_families()
+    content = content_inventory()
+    families = load_families(content)
     inventory = task_inventory(acceptance, e2e, graph, families)
     infrastructure = {item for item in root["inputs"]["stack-shared"] + root["inputs"]["stack"] if item in sources}
-    assignments, representatives = select_sources(inventory, families, sources, infrastructure)
+    ordinary_sources = sources - SHARED_INPUTS
+    infrastructure -= SHARED_INPUTS
+    assignments, representatives = select_sources(inventory, families, ordinary_sources, infrastructure)
     for name, selected in assignments.items():
         tasks[name]["keyed"] = [*tasks[name]["keyed"], *sorted(selected)]
-        tasks[name]["inputs"] = [*tasks[name]["inputs"], *sorted(selected | inventory[name]["closure"])]
-    audit_selection(tasks, inventory, families, sources, infrastructure, representatives)
-    output = {"unkeyed": sorted(sources), "tasks": tasks}
+        tasks[name]["inputs"] = [
+            *tasks[name]["inputs"],
+            *sorted(selected | inventory[name]["closure"]),
+        ]
+    audit_selection(tasks, inventory, families, ordinary_sources, infrastructure, representatives)
+    content_assignments = select_content(inventory, families, content)
+    for name, selected in content_assignments.items():
+        tasks[name]["keyed"] += sorted(selected)
+        tasks[name]["inputs"] += sorted(selected)
+    audit_content(tasks, inventory, content_assignments)
+    for name in tasks.keys() - inventory.keys():
+        tasks[name]["keyed"] += sorted(content | SHARED_INPUTS)
+    output = {"unkeyed": sorted(sources | content | SHARED_INPUTS), "tasks": tasks}
     (Path(os.environ["PROOF_DECLARATIONS"]) / "python.yaml").write_text(json.dumps(output, indent=2) + "\n")
 
 

@@ -5,6 +5,13 @@ import json
 import re
 from pathlib import Path
 
+SHARED_CONTENT = {"content/players.json"}
+SHARED_INPUTS = {"scripts/seed_content.py", "scripts/migrations/**", *SHARED_CONTENT}
+SEED_REPRESENTATIVES = {
+    "agent-acceptance:test_greyvale_arc_walk",
+    "agent-acceptance:test_seed_content_cache",
+}
+
 ROOTS = ("apps/agent", "apps/agent/tests", "scripts")
 SYNTHETIC = (
     "creation_tools",
@@ -19,14 +26,14 @@ PATH_LOADED = {
 ABSENT_IMPORTS = {"apps/agent/tests/acceptance/test_exploration_collapse.py"}
 
 
-def load_families():
+def load_families(content):
     path = "scripts/proof-families.json"
     rows = json.loads(Path(path).read_text())
     if not isinstance(rows, list) or not rows:
         raise ValueError(f"{path}: expected nonempty family list")
     families = {}
     for row in rows:
-        if not isinstance(row, dict) or set(row) != {"name", "tests", "owns"}:
+        if not isinstance(row, dict) or set(row) != {"name", "tests", "owns", "reads"}:
             raise ValueError(f"{path}: invalid family schema: {row!r}")
         name = row["name"]
         if not isinstance(name, str) or not name.strip() or name in families:
@@ -42,7 +49,15 @@ def load_families():
                 patterns[field] = [re.compile(v) for v in values]
             except re.error as error:
                 raise ValueError(f"family {name}: invalid {field} regex: {error}") from error
-        families[name] = patterns
+        reads = row["reads"]
+        if not isinstance(reads, list) or any(not isinstance(v, str) or v not in content for v in reads):
+            raise ValueError(f"family {name}: reads must name existing content JSON paths: {reads!r}")
+        if len(set(reads)) != len(reads) or SHARED_CONTENT.intersection(reads):
+            raise ValueError(f"family {name}: duplicate or shared reads: {reads!r}")
+        families[name] = {**patterns, "reads": set(reads)}
+    owned = set().union(*(family["reads"] for family in families.values()), SHARED_CONTENT)
+    if missing := content - owned:
+        raise ValueError(f"content has no reader family: {sorted(missing)}")
     return families
 
 
@@ -194,3 +209,41 @@ def audit_selection(tasks, inventory, families, sources, infrastructure, represe
                 selected -= {t for t in selected if inventory[t]["path"] == source}
                 if len(selected) > 2:
                     raise ValueError(f"{source}: family {family}: representative cap exceeded {sorted(selected)}")
+
+
+def content_inventory():
+    paths = {str(path) for path in Path("content").glob("*.json") if path.is_file()}
+    if not paths or not paths >= SHARED_CONTENT:
+        raise ValueError("missing content inventory or content/players.json")
+    return paths
+
+
+# A test whose own source names the seed script or the migrations exercises them directly
+# (seed atomicity, a migration's backfill), so it keys them beyond the representatives.
+DIRECT_MARKERS = {"scripts/seed_content.py": "seed_content", "scripts/migrations/**": "migrations"}
+
+
+def direct_readers(inventory, source):
+    marker = DIRECT_MARKERS.get(source)
+    if marker is None:
+        return set()
+    return {task for task, meta in inventory.items() if marker in Path(meta["path"]).read_text()}
+
+
+def select_content(inventory, families, content):
+    if not inventory.keys() >= SEED_REPRESENTATIVES or len(SEED_REPRESENTATIVES) > 2:
+        raise ValueError("missing or excessive seed representatives")
+    assignments = {task: set() for task in inventory}
+    for source in content | SHARED_INPUTS:
+        readers = {task for task, meta in inventory.items() if source in families[meta["family"]]["reads"]}
+        for task in readers | SEED_REPRESENTATIVES | direct_readers(inventory, source):
+            assignments[task].add(source)
+    return assignments
+
+
+def audit_content(tasks, inventory, assignments):
+    for source in set().union(*assignments.values()):
+        expected = {task for task, selected in assignments.items() if source in selected}
+        receiving = {task for task in inventory if source in tasks[task]["keyed"]}
+        if receiving != expected or any(source not in tasks[t]["inputs"] for t in receiving):
+            raise ValueError(f"{source}: content coverage/input mismatch: {sorted(receiving ^ expected)}")
