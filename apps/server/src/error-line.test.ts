@@ -59,7 +59,7 @@ test("real requests retain Bun's response and report abandoned errors privately 
   const result = await child(`
     import { mock } from "bun:test";
     let healthCalls=0;
-    const fail = () => { const e = new Error(${JSON.stringify(secret)}); e.stack += "\\n    at leak (https://user:password@example.com/file.ts?key=private-key:1:2)"; throw e; };
+    const fail = () => { const e = new Error(${JSON.stringify(secret)}); e.stack += "\\n    at leak (https://user:private-key@example.com/file.ts:1:2)"; throw e; };
     mock.module("./apps/server/src/health.ts", () => ({handleHealth: () => { healthCalls++; if (healthCalls === 2) throw 'untrusted speech'; if (healthCalls === 3) {const e=new Error(${JSON.stringify(secret)});e.stack=${JSON.stringify(secret)};throw e;} return fail(); }}));
     mock.module("./apps/server/src/auth.ts", () => ({requireAuth: async () => ({playerId: "synthetic"}), handleRequestCode() {}, handleVerifyCode() {}, handleGetMe() {}, signJwt() {}, verifyJwt() {}}));
     mock.module("./apps/server/src/db.ts", () => ({sql: fail}));
