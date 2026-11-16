@@ -104,7 +104,14 @@
       "e2e/specs/*.e2e.ts",
       "scripts/proof-families.json",
       "content/*.json",
-      "e2e/fixtures/inventory-snapshot.py"
+      "e2e/fixtures/inventory-snapshot.py",
+      "apps/agent/tests/acceptance/**/*.feature",
+      "apps/agent/tests/fixtures/**",
+      "apps/agent/tests/acceptance/fixtures/**",
+      "packages/shared/fixtures/**",
+      "packages/shared/**/*.{ts,tsx,json}",
+      "scripts/worktree-common.sh",
+      "scripts/ensure-db.ts"
     ],
     "links": [
       "node_modules"
