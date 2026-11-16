@@ -270,6 +270,17 @@ class TestDeliverSpeech:
         assert call_kwargs["instructions"] == "high"
         assert len(bg._speech_queue) == 0
 
+    async def test_a_handoff_that_never_finishes_draining_drops_one_speech_loudly(self, caplog, monkeypatch):
+        import speech_delivery
+
+        monkeypatch.setattr(speech_delivery, "DRAIN_RETRY_SECS", 0.05)
+        bg, _, session = _make_bg()
+        session.generate_reply.side_effect = RuntimeError(speech_delivery.DRAINING)
+        bg._speech_queue = [PendingSpeech(priority=SpeechPriority.ROUTINE, instructions="hint")]
+        await bg._deliver_speech()
+        assert bg._speech_queue == []
+        assert [r.levelname for r in caplog.records if "never finished draining" in r.message] == ["ERROR"]
+
     async def test_empty_queue_no_op(self):
         bg, _, session = _make_bg()
         await bg._deliver_speech()
