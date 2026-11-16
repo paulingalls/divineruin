@@ -11,6 +11,7 @@ interface Runtime {
 }
 interface Device {
   udid?: string;
+  deviceTypeIdentifier?: string;
   name?: string;
   state?: string;
   isAvailable?: boolean;
@@ -104,10 +105,12 @@ export async function resolveOwnedSimulator(
 ): Promise<string> {
   const name = await ownedName(deps);
   const runtimes = parseRuntimes(await deps.run(["xcrun", "simctl", "list", "runtimes", "--json"]));
+  // A device-specific runtime (e.g. iOS-27-2-iPhone19-4) supports only its one device, the
+  // foldable iPhone Duo, which has no Home button for Maestro's pressKey Home.
   const ios = runtimes.filter(
     (runtime) =>
       runtime.isAvailable === true &&
-      runtime.identifier?.startsWith("com.apple.CoreSimulator.SimRuntime.iOS-"),
+      /^com\.apple\.CoreSimulator\.SimRuntime\.iOS-\d+(?:-\d+)*$/.test(runtime.identifier ?? ""),
   );
   ios.sort(newer);
   const runtime = ios.at(0);
@@ -116,6 +119,12 @@ export async function resolveOwnedSimulator(
   let device = ownedDevice(devices, name);
   if (requestedUdid !== undefined && requestedUdid.trim() !== device?.udid)
     throw new Error(`IOS_SIMULATOR_UDID must name the owned simulator ${name}`);
+  const supported = new Set(runtime.supportedDeviceTypes?.map((type) => type.identifier));
+  if (device && !supported.has(device.deviceTypeIdentifier)) {
+    if (device.state === "Booted") await deps.run(["xcrun", "simctl", "shutdown", device.udid!]);
+    await deps.run(["xcrun", "simctl", "delete", device.udid!]);
+    device = undefined;
+  }
   if (!device) {
     const phone = runtime.supportedDeviceTypes?.find(
       (type) => type.productFamily === "iPhone" && type.identifier,

@@ -16,6 +16,7 @@ import event_types as E
 from background_process import BackgroundProcess
 from exploration_agent import ExplorationAgent
 from session_data import SessionData
+from session_outcome import watch_close
 
 # apps/mobile/src/audio/game-event-handler.ts:266-286 reads these off the SESSION_END
 # payload and populates the summary screen from them. A key the producer spells
@@ -38,9 +39,6 @@ def _quiet_session(*, real_background: bool):
     """Silence everything the recap is not about — the HUD tap, the warm loop's DB reads, the
     session-init query, and the summary's LLM and story-moment edges.
 
-    ``real_background`` keeps ``BackgroundProcess.start()`` real (only its loop body is
-    stubbed) so the close handlers register on the real session emitter — that registration
-    is what the tests below are about.
     """
     background = (
         patch.object(BackgroundProcess, "_run", new_callable=AsyncMock)
@@ -108,6 +106,7 @@ class TestEndSessionReachesTheCloseEmit:
         sd = _session_data()
         model = _EndModel()
         session = AgentSession(llm=model, max_tool_steps=5, userdata=sd)
+        watch_close(session, sd)
         session.output.set_audio_enabled(False)
         closed = asyncio.Event()
         session.on("close", lambda _ev: closed.set())
@@ -128,55 +127,12 @@ class TestEndSessionReachesTheCloseEmit:
         assert save.await_args is not None and save.await_args.args[0] == "player_1"
 
 
-class TestTheRecapFiresOncePerSession:
-    """Real CloseEvent dispatch verifies registration and vendor arity.
-    The separate close-path test proves the event actually arrives."""
-
-    @pytest.mark.asyncio
-    async def test_a_real_close_fires_the_recap_once(self):
-        sd = _session_data()
-        session = AgentSession(max_tool_steps=5, userdata=sd)
-
-        with (
-            _quiet_session(real_background=True),
-            patch.object(ExplorationAgent, "session", property(lambda _s: session)),
-            patch("db_mutations.save_session_summary", new_callable=AsyncMock) as mock_save,
-        ):
-            await _enter()
-            session.emit("close", CloseEvent(reason=CloseReason.JOB_SHUTDOWN))
-            assert sd.session_end_task is not None
-            await sd.session_end_task
-
-        assert len(_session_end_payloads(sd)) == 1
-        mock_save.assert_awaited_once()
-
-    @pytest.mark.asyncio
-    async def test_two_fights_do_not_multiply_the_recap(self):
-        """LiveKit deduplicates the same bound handler, but a new process creates a distinct handler."""
-        sd = _session_data()
-        session = AgentSession(max_tool_steps=5, userdata=sd)
-
-        with (
-            _quiet_session(real_background=True),
-            patch.object(ExplorationAgent, "session", property(lambda _s: session)),
-            patch("db_mutations.save_session_summary", new_callable=AsyncMock) as mock_save,
-        ):
-            agent = await _enter()
-            for _ in range(2):  # two fights
-                await agent.on_exit()
-                agent = await _enter()
-
-            session.emit("close", CloseEvent(reason=CloseReason.JOB_SHUTDOWN))
-            assert sd.session_end_task is not None
-            await sd.session_end_task
-
-        assert len(_session_end_payloads(sd)) == 1
-        mock_save.assert_awaited_once()
-
+class TestSessionRecapPayload:
     @pytest.mark.asyncio
     async def test_the_payload_carries_every_key_the_client_reads(self):
         sd = _session_data()
         session = AgentSession(max_tool_steps=5, userdata=sd)
+        watch_close(session, sd)
 
         with (
             _quiet_session(real_background=True),
@@ -200,6 +156,7 @@ class TestTheRecapFiresOncePerSession:
         sd = _session_data()
         sd.session_start_time = time.time() - 600
         session = AgentSession(max_tool_steps=5, userdata=sd)
+        watch_close(session, sd)
 
         with (
             _quiet_session(real_background=True) as mock_llm,

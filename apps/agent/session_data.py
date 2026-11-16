@@ -23,6 +23,7 @@ from token_tracker import TokenTracker
 if TYPE_CHECKING:
     from background_process import BackgroundProcess
     from participant_lifecycle import ReconnectionLifecycle
+    from session_limits import SessionLimits
     from session_startup import GameplayInputOwner
     from speaker_context import SpeakerSummary
 
@@ -72,6 +73,7 @@ class SessionData:
     location_id: str
     party: PartyState = field(init=False)
     session_id: str = field(default_factory=lambda: uuid.uuid4().hex)
+    outcome_player_id: str = ""
     room: rtc.Room | None = field(default=None, repr=False)
     _actor_binding: ContextVar[AuthenticatedActor | None] = field(
         default_factory=lambda: ContextVar("actor_player_id", default=None),
@@ -158,6 +160,7 @@ class SessionData:
     # The handle agent.py's on_session_end joins. AgentSession emits "close" synchronously
     # (rtc/event_emitter.py), so the handler can only spawn the work — and an unjoined task
     # races room.disconnect(), which makes publish_game_event drop the recap.
+    limits: SessionLimits | None = field(default=None, repr=False, compare=False)
     session_end_task: asyncio.Task | None = field(default=None, repr=False, compare=False)
     multiplayer_owner: GameplayInputOwner | None = field(default=None, repr=False, compare=False)
     reconnection_owner: ReconnectionLifecycle | None = field(default=None, repr=False, compare=False)

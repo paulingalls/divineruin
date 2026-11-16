@@ -1,4 +1,5 @@
 import { mock } from "bun:test";
+import { ServerError } from "livekit-server-sdk";
 
 // Shared test setup: set dummy LiveKit env vars before any module imports.
 // requireEnv() reads at import time, so this must run before importing livekit.ts or debug.ts.
@@ -28,6 +29,7 @@ export function resetMintedTokens(): void {
 
 // Mock livekit-server-sdk so tests never make real HTTP calls.
 void mock.module("livekit-server-sdk", () => ({
+  ServerError,
   RoomServiceClient: class {
     createRoom() {
       return Promise.resolve({});

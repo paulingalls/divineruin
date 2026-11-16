@@ -59,6 +59,7 @@ The agent validates voice/session dependencies eagerly; production agent and wor
 - Provision the managed Postgres, Valkey and LiveKit services. Verify the Resend sender domain for `RESEND_FROM_EMAIL` (default `auth@divineruin.com`); provide a real `RESEND_API_KEY`.
 - Set shell inputs and deploy: `DEPLOY_ENV_FILE=/absolute/private/production.env DEPLOY_HTTP_PORT=3001 COMPOSE_PROJECT_NAME=divineruin bash scripts/deploy-up.sh`. These three inputs control the deploy script/Compose interpolation; putting them inside the operator env file has no effect. The port is loopback-bound; expose it through the deployment's HTTPS proxy.
 - Confirm server health and agent/worker startup. Build the mobile client with the public HTTPS `EXPO_PUBLIC_API_URL`.
+- After migration, allow each friend with `bun --env-file=/absolute/private/production.env run allow 'Friend@Example.com'`; remove access to subsequent sign-ins with `bun --env-file=/absolute/private/production.env run allow --remove 'Friend@Example.com'`. The private operator file's `DATABASE_URL` selects production. Keep that file private.
 - On the deployed stack, perform the first real sign-in: request a code, receive the actual Resend email, and successfully verify the code. Record the deployment date and result in the operator's deployment record. Local smoke uses placeholder keys and seeded verification codes; it does not send email or certify provider delivery.
 
 ## Migrations & seed on deploy

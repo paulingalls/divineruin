@@ -466,7 +466,7 @@ async def get_last_session_summary(
     _conn = conn or await db.get_pool()
     row = await _conn.fetchrow(
         """
-        SELECT data FROM session_summaries
+        SELECT data, session_id FROM session_summaries
         WHERE player_id = $1
         ORDER BY created_at DESC
         LIMIT 1
@@ -475,4 +475,4 @@ async def get_last_session_summary(
     )
     if row is None:
         return None
-    return json.loads(row["data"])
+    return {**json.loads(row["data"]), "session_id": row["session_id"]}

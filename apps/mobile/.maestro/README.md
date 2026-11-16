@@ -53,7 +53,8 @@ both surfaces.
 
 - `launch.yaml` — offline-safe smoke: app launches without crashing. Runs by
   default.
-- `auth-form.yaml` — backend-required: exercises the auth screen form
+- `auth-form.yaml` — backend-required: first run `bun run allow acceptance@divineruin.test`
+  against the backend's `DATABASE_URL`. Exercises the auth screen form
   mechanics (input → SEND CODE → phase transition to the code-input view). The
   email→code transition only happens on a 2xx from `/auth/request-code`, so
   this flow requires `apps/server` running and reachable from the device.

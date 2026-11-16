@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.41.0 — 2026-11-16
+
+- Sign-in is invite-only. An email must be on the allowlist (`bun run allow <email>`, `--remove` to revoke) to receive or use a code; anyone else is told the playtest is invite-only, and no account is created. The script prints which database it wrote to.
+- One DM per player. Starting a session while another is live closes the old room first, so its DM saves the summary; nobody can join or invite into a room they don't own. A DM that fails to join returns an error with a retry instead of an empty room.
+- Re-entering never speaks a stale recap. A new session waits up to 15 s for the previous one's summary; if it failed or never arrived, the DM greets the player without a recap. A dispatch superseded while waiting steps aside quietly.
+- Leave shows the session summary. A solo player's Leave ends the session and the summary screen appears; in a party, the leaver departs with their own summary and a guest becomes host if needed. Leave during creation or onboarding returns home at once. If no summary arrives within 15 s, the app goes home anyway.
+- A session is capped at 60 minutes, with a steer toward a resting point at 55. After 5 minutes of player silence, companion chatter and hints stop and the DM checks in once; at 10 minutes the session ends with its summary saved.
+- Rate limits live in Valkey and hold across server instances. Signed-in requests count per player; others count per client IP, read from `X-Forwarded-For` behind the HTTPS proxy when `TRUSTED_PROXY_HOPS` is set. A broken limit store fails the request rather than letting it through.
+- The native iOS check picks a general iOS runtime and a phone with a Home gesture, not Xcode 27.2's foldable-only runtime.
+
 ## 0.40.0 — 2026-11-16
 
 - PR CI runs only the two lint jobs. Tests are proven locally by Proof: a free patch's land runs `scripts/free-acceptance.sh`, which runs Proof's `land` set and then its `sprint` set on the trial-merged tree with the sprint hook's environment.

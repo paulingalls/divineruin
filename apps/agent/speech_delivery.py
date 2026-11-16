@@ -29,6 +29,8 @@ async def deliver_speech(
     logger: logging.Logger,
     description: str,
     failure_level: int = logging.WARNING,
+    revoked: Callable[[], Awaitable[object]] | None = None,
+    tool_choice: str | None = None,
 ) -> bool:
     """Speak ``instructions`` through ``session``; False when the player heard nothing.
 
@@ -37,7 +39,10 @@ async def deliver_speech(
     only opening and nothing will retry it. A session already shutting down stays a WARNING
     either way: no speech was owed.
     """
-    return await _deliver(session, logger, description, failure_level, instructions=instructions)
+    kwargs: dict[str, object] = {"instructions": instructions}
+    if tool_choice is not None:
+        kwargs["tool_choice"] = tool_choice
+    return await _deliver(session, logger, description, failure_level, revoked=revoked, **kwargs)
 
 
 async def deliver_player_turn(
@@ -46,7 +51,7 @@ async def deliver_player_turn(
     logger: logging.Logger,
     description: str,
     failure_level: int = logging.ERROR,
-    revoked: Callable[[], Awaitable[None]] | None = None,
+    revoked: Callable[[], Awaitable[object]] | None = None,
 ) -> bool:
     """Answer one authenticated player turn; False when that player heard nothing.
 
@@ -115,46 +120,48 @@ async def _deliver(
     logger: logging.Logger,
     description: str,
     failure_level: int,
-    revoked: Callable[[], Awaitable[None]] | None = None,
+    revoked: Callable[[], Awaitable[object]] | None = None,
     **reply_kwargs: object,
 ) -> bool:
+    revocation_task = asyncio.ensure_future(revoked()) if revoked is not None else None
+    request = asyncio.create_task(_generate_reply(session, reply_kwargs))
+    handle = None
+    handle_task = None
     try:
-        handle = await _generate_reply(session, reply_kwargs)
-    except RuntimeError as exc:
-        if exc.args not in GENERATE_REPLY_SESSION_UNAVAILABLE_ARGS:
-            raise
-        logger.warning("%s skipped: %s", description, exc)
-        return False
-    except TimeoutError:
-        # ERROR whatever the caller's level: one speech is lost, and raising instead would end
-        # the background loop and every later hint with it.
-        logger.error("%s dropped: the handoff never finished draining", description)
-        return False
-
-    if revoked is None:
-        await handle
-    else:
-        handle_task = asyncio.ensure_future(handle)
-        revocation_task = asyncio.ensure_future(revoked())
+        if revocation_task is not None:
+            done, _ = await asyncio.wait((request, revocation_task), return_when=asyncio.FIRST_COMPLETED)
+            if revocation_task in done and not request.done():
+                return False
         try:
-            done, _pending = await asyncio.wait(
-                (handle_task, revocation_task),
-                return_when=asyncio.FIRST_COMPLETED,
-            )
-            if revocation_task in done and not handle_task.done():
-                handle.interrupt(force=True)
-            await handle_task
+            handle = await request
+        except RuntimeError as exc:
+            if exc.args not in GENERATE_REPLY_SESSION_UNAVAILABLE_ARGS:
+                raise
+            logger.warning("%s skipped: %s", description, exc)
+            return False
+        except TimeoutError:
+            logger.error("%s dropped: the handoff never finished draining", description)
+            return False
+        handle_task = asyncio.ensure_future(handle)
+        if revocation_task is not None:
+            done, _ = await asyncio.wait((handle_task, revocation_task), return_when=asyncio.FIRST_COMPLETED)
             if revocation_task in done:
+                if not handle_task.done():
+                    handle.interrupt(force=True)
                 revocation_task.result()
-        except asyncio.CancelledError:
+        await handle_task
+        if (failure := handle.exception()) is not None:
+            logger.log(failure_level, "%s failed: %s", description, failure)
+            return False
+        return True
+    finally:
+        # Cancellation can arrive during handoff retry or after LiveKit accepted a handle.
+        if handle is None and request.done() and not request.cancelled() and request.exception() is None:
+            handle = request.result()
+        if handle is not None and (handle_task is None or not handle_task.done()):
             handle.interrupt(force=True)
-            handle_task.cancel()
-            await asyncio.gather(handle_task, return_exceptions=True)
-            raise
-        finally:
-            revocation_task.cancel()
-            await asyncio.gather(revocation_task, return_exceptions=True)
-    if (failure := handle.exception()) is not None:
-        logger.log(failure_level, "%s failed: %s", description, failure)
-        return False
-    return True
+        tasks: list[asyncio.Future] = [task for task in (request, handle_task, revocation_task) if task is not None]
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)

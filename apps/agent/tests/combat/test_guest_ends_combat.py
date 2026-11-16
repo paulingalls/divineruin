@@ -12,6 +12,7 @@ from combat.test_start_combat import _make_start_combat_mocks, _stance_mocks
 from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
 from sample_fixtures import SAMPLE_PLAYER, make_context, make_mock_room, published_payloads
+from session_outcome_fixture import isolated_outcome_completion as isolated_outcome_completion
 from voice_condition_fixtures import place_actors
 
 from combat_end import _end_combat_db, _end_combat_impl

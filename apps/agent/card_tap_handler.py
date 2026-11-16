@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import logging
 import time
-from contextlib import nullcontext
+from contextlib import AbstractContextManager, nullcontext
 
 from livekit import rtc
 from livekit.agents import AgentSession
@@ -30,6 +30,32 @@ logger = logging.getLogger("divineruin.card_tap")
 
 HINT_COOLDOWN_S = 2.0
 PLAYER_HINTS_TOPIC = "player_hints"
+
+
+def authorized_hint_actor(userdata: SessionData, sender: str) -> AbstractContextManager[None] | None:
+    """Return the current sender scope, or None when a room sender may not act."""
+    try:
+        _validate_id(sender, "sender")
+    except ToolError:
+        logger.warning("Player hint dropped: unusable sender %r", sender)
+        return None
+    if not userdata.party.contains(sender):
+        logger.warning("Player hint dropped: sender %r is not in the party", sender)
+        return None
+    owner = userdata.multiplayer_owner
+    if owner is not None:
+        lifecycle = owner.lifecycle
+        generation = lifecycle.current_generation(sender)
+        if generation is None or not lifecycle.is_authorized(sender, generation):
+            logger.warning("Player hint dropped: sender %r is not authorized", sender)
+            return None
+        actor_scope = userdata._bind_authenticated_actor(sender, generation, lifecycle.require_authorized)
+    elif len(userdata.party.member_ids) == 1:
+        actor_scope = nullcontext()
+    else:
+        logger.warning("Player hint dropped: no actor authorization for %r", sender)
+        return None
+    return actor_scope
 
 
 def build_hint_instruction(card_id: str, category: str) -> str | None:
@@ -201,26 +227,8 @@ class SpecializationTapHandler(_PlayerHintsListener):
             logger.warning("Specialization tap dropped: invalid ids (%r / %r)", milestone_id, specialization_id)
             return False
 
-        try:
-            _validate_id(sender, "sender")
-        except ToolError:
-            logger.warning("Specialization tap dropped: unusable sender %r", sender)
-            return False
-        if not self._userdata.party.contains(sender):
-            logger.warning("Specialization tap dropped: sender %r is not in the party", sender)
-            return False
-        owner = self._userdata.multiplayer_owner
-        if owner is not None:
-            lifecycle = owner.lifecycle
-            generation = lifecycle.current_generation(sender)
-            if generation is None or not lifecycle.is_authorized(sender, generation):
-                logger.warning("Specialization tap dropped: sender %r is not authorized", sender)
-                return False
-            actor_scope = self._userdata._bind_authenticated_actor(sender, generation, lifecycle.require_authorized)
-        elif len(self._userdata.party.member_ids) == 1:
-            actor_scope = nullcontext()
-        else:
-            logger.warning("Specialization tap dropped: no actor authorization for %r", sender)
+        actor_scope = authorized_hint_actor(self._userdata, sender)
+        if actor_scope is None:
             return False
         logger.info("Specialization tap: %s -> %s", milestone_id, specialization_id)
         with actor_scope:
