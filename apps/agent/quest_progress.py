@@ -1,4 +1,4 @@
-"""Engine-driven quest conditions reached by arrival and combat completion."""
+"""Engine-driven quest conditions reached by arrival, combat completion and item discovery."""
 
 import json
 
@@ -89,3 +89,51 @@ def finish_combat_quests(session, end_data, response, summary_parts):
         if transition := update.get("scene_transition"):
             session.pre_combat_agent_type = transition["region"]
             response["scene_transition"] = transition
+
+
+async def advance_on_item_discovered(
+    session, item_id, *, conn, queries=db_queries, mutations=db_mutations, content=db_content_queries
+):
+    from quest_authority import advance_quest_db, item_condition_satisfied
+
+    pending = []
+    for quest in sorted(
+        await queries.get_active_player_quests(session.primary_player_id, conn=conn), key=lambda q: q["quest_id"]
+    ):
+        stage = quest["current_stage"]
+        condition = quest["stages"][stage].get("completion_conditions", {})
+        if (
+            condition.get("type") != "item_discovered"
+            or item_id not in condition.get("items", [])
+            or condition.get("location") != session.location_id
+        ):
+            continue
+        if await item_condition_satisfied(condition, (session.acting_player_id,), conn=conn, queries=queries):
+            pending.append(
+                await advance_quest_db(
+                    session,
+                    quest["quest_id"],
+                    stage + 1,
+                    conn=conn,
+                    mutations=mutations,
+                    queries=queries,
+                    content=content,
+                )
+            )
+    return pending
+
+
+async def lock_discovery_rows(session, *, conn, queries=db_queries):
+    actor = session.acting_player_id
+    session.validate_acting_player(actor)
+    party_ids = sorted({session.primary_player_id, actor} | set(session.party.member_ids))
+    quests = await queries.get_active_player_quests(session.primary_player_id, conn=conn)
+    for quest in sorted(quests, key=lambda q: q["quest_id"]):
+        for pid in party_ids:
+            await queries.get_player_quest(pid, quest["quest_id"], conn=conn, for_update=True)
+    for pid in party_ids:
+        await queries.get_player(pid, conn=conn, for_update=True)
+    player = await queries.get_player(actor, conn=conn)
+    if player is None:
+        raise ValueError(f"Missing discovery actor {actor}")
+    return player

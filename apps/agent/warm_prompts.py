@@ -84,7 +84,7 @@ def quest_finish_line(quest: dict) -> str:
             f'encounter_id="{condition["encounter"]}"); finish with outcome {condition["outcome"]}'
         )
     if kind == "item_discovered":
-        return f"once the player discovers {', '.join(condition['items'])} at {condition['location']}, {advance}"
+        return f"completed automatically when the player discovers {', '.join(condition['items'])} at {condition['location']}"
     if kind == "npc_interaction":
         return f"once the player speaks with {condition['npc']} about {condition['topic']}, {advance}"
     if kind == "decision_made":

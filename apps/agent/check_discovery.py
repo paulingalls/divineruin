@@ -33,6 +33,9 @@ from condition_consume import consume_beneficial_conditions, serialize_combat_ch
 from condition_voice_rules import validate_hearing_check
 from db_errors import validated_player_conditions
 from game_events import publish_game_event, publish_hidden_revealed
+from inventory_refresh import publish_inventory
+from quest_completion import finish_quest
+from quest_progress import advance_on_item_discovered, lock_discovery_rows
 from session_data import SessionData
 from tool_support import _cap_str
 
@@ -211,12 +214,39 @@ async def _check_discover_impl(
 
     response = _roll_response(result, target, outcome)
     element_id = element.get("id")
-    # The discover roll spends Blessed/Inspired's +1d4 (M4.8 story-009). Wrap a tx ONLY when BOTH
-    # writes fire — the success discovery-flag AND the die-consume — so they commit atomically; a
-    # lone write (success-only, or consume-only on a failed roll) takes the plain autocommit path,
-    # matching the save tool's single-write precedent (no needless BEGIN/COMMIT).
     consumed_state = None
-    if result.success and result.consumed_conditions:
+    pending = []
+    item = await content.get_item(element_id) if result.success else None
+    if item is not None:
+        async with db_mod.transaction() as conn:
+            locked_player = await lock_discovery_rows(session, conn=conn, queries=queries)
+            granted = not locked_player.get("flags", {}).get(f"{element_id}.discovered")
+            if granted:
+                await mutations.set_player_flag(player_id, f"{element_id}.discovered", True, conn=conn)
+                await mutations.add_inventory_item(player_id, element_id, 1, tainted=False, conn=conn)
+                pending = await advance_on_item_discovered(
+                    session, element_id, conn=conn, queries=queries, mutations=mutations, content=content
+                )
+            if result.consumed_conditions:
+                consumed_state = await consume_beneficial_conditions(
+                    player_id,
+                    result.consumed_conditions,
+                    conditions_mutations,
+                    conn=conn,
+                    combat_state=session.combat_state,
+                    db_mod=db_mod,
+                )
+        response["quest_updates"] = [finish_quest(session, p) for p in pending]
+        for p in pending:
+            for event_type, payload in p.events:
+                await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
+        recipients = {pid for p in pending for pid, _ in p.item_recipients}
+        if granted:
+            recipients.add(player_id)
+            session.record_item_found(player_id, item["name"])
+        for pid in sorted(recipients):
+            await publish_inventory(session, pid, queries=queries)
+    elif result.success and result.consumed_conditions:
         async with db_mod.transaction() as conn:
             session.validate_acting_player(player_id)
             await mutations.set_player_flag(player_id, f"{element_id}.discovered", True, conn=conn)

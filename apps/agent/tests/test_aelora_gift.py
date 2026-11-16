@@ -193,7 +193,10 @@ async def test_tool_response_names_bond_only_with_present_ally(producer):
                     if producer == "discover_empty"
                     else [{"id": "secret", "discover_skill": "perception", "dc": 18, "description": "Door"}]
                 )
-                content = MagicMock(get_location=AsyncMock(return_value={"hidden_elements": hidden}))
+                content = MagicMock(
+                    get_item=AsyncMock(return_value=None),
+                    get_location=AsyncMock(return_value={"hidden_elements": hidden}),
+                )
                 with patch("check_resolution.dice_roll", return_value=_roll(2)):
                     raw = await _check_discover_impl(
                         ctx, "perception", "wall", content=content, queries=queries, mutations=mutations

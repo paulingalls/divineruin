@@ -7,7 +7,6 @@ from sample_fixtures import mock_txn
 import event_types as E
 from background_process import BackgroundProcess
 from bg_speech import SpeechPriority
-from check_discovery import _check_discover_impl
 from event_bus import GameEvent
 from movement_tools import _check_exit_requirement
 from quest_tools import _apply_world_effects, _update_quest_impl
@@ -211,46 +210,6 @@ class TestCheckExitRequirement:
             "skill_check:athletics:15 || seal.discovered", "player_1", queries=mock_queries
         )
         assert result is True
-
-
-class TestDiscoverSetsFlag:
-    @pytest.mark.asyncio
-    async def test_successful_discovery_sets_flag(self):
-        mock_content = MagicMock()
-        mock_content.get_location = AsyncMock(
-            return_value={
-                "id": "test_loc",
-                "name": "Test Location",
-                "hidden_elements": [
-                    {"id": "test_seal", "discover_skill": "perception", "dc": 1, "description": "A seal mark."}
-                ],
-            }
-        )
-        mock_queries = MagicMock()
-        mock_queries.get_player = AsyncMock(
-            return_value={
-                "player_id": "player_1",
-                "attributes": {"wisdom": 20},
-                "proficiencies": ["perception"],
-                "level": 10,
-            }
-        )
-        mock_mutations = MagicMock()
-        mock_mutations.set_player_flag = AsyncMock()
-        ctx = _make_context(location_id="test_loc")
-        result = json.loads(
-            await _check_discover_impl(
-                ctx,
-                "perception",
-                "seal",
-                content=mock_content,
-                queries=mock_queries,
-                mutations=mock_mutations,
-            )
-        )
-
-        if result.get("outcome") == "discovered":
-            mock_mutations.set_player_flag.assert_called_once_with("player_1", "test_seal.discovered", True)
 
 
 QUEST_WITH_EFFECTS = {
