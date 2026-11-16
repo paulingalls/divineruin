@@ -26,6 +26,7 @@ from session_data import CompanionState
 
 TEMPLATES = json.loads((CONTENT_ROOT / "content/encounter_templates.json").read_text())
 TARGETS = {
+    "fragment_shadeling": (1, "easy", [("hollow_shadeling", "standard", 1)]),
     "shadeling_cluster": (1, "easy", [("hollow_shadeling", "standard", 2)]),
     "hollow_wisp": (2, "moderate", [("hollow_wisp", "standard", 1)]),
     "hollow_patrol_greyvale": (1, "easy", [("hollow_shadeling", "standard", 1), ("hollow_shadeling", "minion", 1)]),

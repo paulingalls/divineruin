@@ -16,6 +16,7 @@ import db_mutations_reputation
 import db_mutations_veil_ward
 import db_queries
 import event_types as E
+import first_episode
 import pricing_queries
 import quest_progress
 from combat_conditions_persist import reconcile_member_conditions
@@ -152,6 +153,7 @@ async def _end_combat_db(
     quest_updates = await quest_progress.advance_on_combat_end(
         session, cs, outcome, conn=conn, sink=sink, queries=queries, mutations=mutations, content=content
     )
+    episode = await first_episode.settle(session, cs, conn=conn, sink=sink)
     await choir_scene.end(session, cs, outcome, mutations=mutations, queries=queries, conn=conn)
     rng = rng or random.Random()
     actor_id = session.acting_player_id
@@ -299,6 +301,7 @@ async def _end_combat_db(
 
     return {
         "quest_updates": quest_updates,
+        "episode": episode,
         "choir": choir_encounter.facts(cs),
         "xp_total": rewards.spoils.xp_total,
         "xp_granted": rewards.xp.xp_granted,
@@ -365,6 +368,8 @@ def _end_combat_finish(
     if defeated_enemies:
         session.record_companion_memory(f"Fought {', '.join(defeated_enemies)} at {cs.location_id}: {outcome}")
 
+    episode_facts = first_episode.finish(session, end_data.get("episode"))
+
     session.session_xp_earned += end_data["summary_xp_granted"]
     for pid, share in end_data["xp_by_player"].items():
         session.record_player_metric(pid, "xp_earned", share)
@@ -374,6 +379,7 @@ def _end_combat_finish(
     loot = end_data.get("primary_loot", [])
     currency_gold = end_data.get("primary_currency_gold", 0)
     response = {
+        "first_episode": episode_facts,
         "choir": end_data.get("choir"),
         "outcome": outcome,
         "xp_total": xp_total,
@@ -402,6 +408,8 @@ def _end_combat_finish(
     from livekit.agents.llm import ChatContext
 
     summary_parts = [f"Combat resolved: {outcome}."]
+    if episode_facts:
+        summary_parts.append(episode_facts["aftermath"])
     if end_data.get("choir"):
         summary_parts.append(end_data["choir"]["cue"])
     # The player's OWN share, not the encounter total — in a party the two differ, and narrating

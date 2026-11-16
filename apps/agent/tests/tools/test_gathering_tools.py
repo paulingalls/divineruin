@@ -269,7 +269,7 @@ class TestNodeRevealSignal:
         hidden = next(e for e in published_events(ctx) if e.event_type == E.HIDDEN_REVEALED)
 
         sd = SessionData(player_id="player_1", location_id="greyvale_wilderness_north")
-        needs_rebuild, _ = handle_events([hidden], sd, [], False, {}, [])
+        needs_rebuild = handle_events([hidden], sd, [])
 
         assert needs_rebuild is True
         assert sd.recently_revealed_element_ids == ["n1"]

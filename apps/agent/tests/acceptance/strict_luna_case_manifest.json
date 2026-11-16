@@ -278,12 +278,12 @@
     "id": "creation.set_choice",
     "profile": "creation",
     "seed": "creation.set_choice",
-    "prompt": "Record my confirmed race choice as draethar, then narrate and include the word scales.",
+    "prompt": "Record my confirmed race choice as elari, then narrate and include the word Veil.",
     "expected_tool": "set_creation_choice",
     "expected_variant": null,
     "prerequisite": null,
     "assertion": "creation.set_choice",
-    "narration_anchor": "scales"
+    "narration_anchor": "veil"
   },
   {
     "id": "creation.finalize_character",

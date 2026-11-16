@@ -5,8 +5,12 @@ Reconciled against the codebase on **2026-10-13**, during **Sprint 68**
 its limits are recorded in the story handback. Checked criteria are not a claim
 that every designed effect has shipped.
 
-**Position: 342 / 538 acceptance criteria — 64%** (the sum of the per-phase
-counts in `README.md`). **196 criteria remain unchecked.** Phases 1, 2, 4, 5,
+First Share counts its full 36-item checklist; Session 1 is 9/9 after the
+walk from creation to a queued whisper (2026-11-15). Session 2 retains five checked
+criteria; the full phase is 14/36, with 22 criteria open.
+
+**Position: 362 / 574 acceptance criteria — 63%** (the sum of the per-phase
+counts in `README.md`). **212 criteria remain unchecked.** Phases 1, 2, 4, 5,
 6 and 10 have all recorded criteria checked. Phase 3 is still Partial at 34/34:
 casting infrastructure is exercised, but complete deterministic spell-effect
 coverage is **unverified**. All 87 spell rows carry textual `mechanics`; this
@@ -100,18 +104,19 @@ The story-111 retired-tool-name guard was deleted in `cb5dd18e`; it no longer
 protects milestone prose. Historical repair narratives are omitted from this
 current work map; the handback records their disposition.
 
-## 5. Incomplete implementation phases (27 milestones, 189 open ACs)
+## 5. Incomplete implementation phases (28 milestones, 196 open ACs)
 
 The AC column counts **unchecked** criteria. Estimates are planning judgments,
 not schedules or measured implementation costs.
 
 | Phase | Milestones | Open ACs | Dependencies / decisions | Size estimate | Exercised or inventoried substrate |
 |---|---|---|---|---|---|
-| **7 · Bestiary** | 7.3 | 8 | Remaining Hollow effects and native Choir certification | ~2 sprints | Every dropped item has an exclusive recipe link or trade marker on its catalog owner. Guaranteed drops and party skill gates exercised through persisted combat victory; roles/budgets/loot exercised through combat; 36 catalog rows, 11 catalog-backed encounter templates referencing 14 distinct species; seeded/queryable catalog and Python/TypeScript contracts. Generated entry, persisted resume, victory loot and public creature summaries are exercised. All six categories have persisted victory coverage, including a test-only undead fixture; remaining M7.3 effects stay open. |
+| **7 · Bestiary** | 7.3 | 8 | Remaining Hollow effects and native Choir certification | ~2 sprints | Every dropped item has an exclusive recipe link or trade marker on its catalog owner. Guaranteed drops and party skill gates exercised through persisted combat victory; roles/budgets/loot exercised through combat; 36 catalog rows, 12 catalog-backed encounter templates referencing 14 distinct species; seeded/queryable catalog and Python/TypeScript contracts. Generated entry, persisted resume, victory loot and public creature summaries are exercised. All six categories have persisted victory coverage, including a test-only undead fixture; remaining M7.3 effects stay open. |
 | **8 · Patrons** | 8.1–8.3 | 26 | M8.1: alignment heartbeat needs a deed-journal design; five rest/heal-gated gifts need production rest and HP-restore callers. Phase 2 archetype detail for M8.3 | ~2 sprints | Layers 1–3 authored for all ten patrons; all ten Layer 2 effects apply on the production cast path; Thyra, Kaelen and Aelora gifts are live; tier-drop loss whispers; Unbound Veil Clarity, Raw Channeling and Veil Mastery. Favor persists in players.data JSONB (no separate tables). |
 | **9 · Economy** | 9.1–9.10 | 75 | Phase 7 material/creature integration; Phase 5/6 inputs | large | Shared pricing getters/repair costs, reputation-to-stance and committed material inventory boundaries pass. The migrated pricing table exists. No complete economy certification is implied. |
 | **11 · World Loop** | 11.1–11.6 | 46 | D-A–D-E; M11.4 needs Phase 9, M11.6 needs Phase 8 | ~4–6 sprints | Migrated `region_state`, `npc_state`, `world_events_log`, `god_agent_state`, `world_flags`; direct quest world effects; activity-worker reset harness. These do not establish a world scheduler or cascade. |
 | **12 · Story Content** | 12.1–12.7 | 34 | Phase 11 and its blocking decision section | ~5–7 sprints | Migrated `scenes` (013) and `story_moments` (012); scene-tool and settlement-generation boundaries. `gods.json` has authored secret-agenda text for Veythar and Syrath; a season director is not certified. |
+| **13 · First Share** | Sessions 1–3, session edges, cost, deployment and playtest | 22 | Remaining First Share checklist | Later work unsized | Session 1: 9/9; full phase: 14/36, including five Session 2 criteria. The walk from creation to a queued whisper and persisted rider re-entry run through real room transport; caster pools and no repeat after consumption and worker restart at favor zero pass; both silence hints, engine settlement on all offered outcomes, replay and rollback are exercised. The first fight pays 25 XP and the shared balance harness scores 20/19/19/20 wins. |
 
 **Hazards before the relevant phase opens:**
 

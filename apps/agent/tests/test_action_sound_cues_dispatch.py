@@ -40,7 +40,12 @@ def test_fixed_dispatch_rows_cover_catalog():
     from test_action_sound_cues_modes import CASES as MODE_CASES
 
     assert (
-        set(NEW_IDS.values()) | set(OLD_CASES.values()) | set(MODE_CASES.values()) | {"action_discover_reveal"}
+        set(NEW_IDS.values())
+        | set(OLD_CASES.values())
+        | set(MODE_CASES.values())
+        # Covered outside these tables: the reveal by its own test, the onboarding beat by the
+        # first-episode acceptance walk.
+        | {"action_discover_reveal", "action_advance_onboarding_beat"}
         == ACTION_SOUND_IDS
     )
 

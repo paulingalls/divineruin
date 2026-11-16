@@ -69,6 +69,7 @@ async def test_hot_context_tracks_authenticated_speaker_on_each_turn():
     with (
         patch.object(ExplorationAgent, "session", property(lambda _: MagicMock(userdata=sd))),
         patch("background_process.db_queries.get_player", side_effect=get_player),
+        patch("background_process.db_queries.get_player_flag_value", new_callable=AsyncMock, return_value=None),
         patch("background_process.db_queries.get_active_player_quests", side_effect=get_quests),
         patch("background_process.db_activity_queries.get_player_activities", side_effect=get_activities),
         patch(
@@ -147,6 +148,7 @@ async def test_background_refresh_keeps_last_good_speaker_on_missing_row_and_io_
     with (
         patch("background_process.db_queries.get_player", side_effect=get_player),
         patch("background_process.db_activity_queries.get_player_activities", new_callable=AsyncMock, return_value=[]),
+        patch("background_process.db_queries.get_player_flag_value", new_callable=AsyncMock, return_value=None),
         patch("background_process.db_queries.get_active_player_quests", new_callable=AsyncMock, return_value=[]),
         patch(
             "background_process.db_training.get_player_active_training_activities",
@@ -298,6 +300,7 @@ async def test_background_rebuild_reads_host_under_guest_binding():
     quests = AsyncMock(return_value=[])
     training = AsyncMock(return_value=[])
     with (
+        patch("background_process.db_queries.get_player_flag_value", new_callable=AsyncMock, return_value=None),
         patch("background_process.db_queries.get_active_player_quests", quests),
         patch("background_process.db_training.get_player_active_training_activities", training),
         patch(

@@ -112,37 +112,32 @@ Rolling countryside north of the Accord of Tides, transitioning into something d
 
 A self-contained story in 3–5 sessions that tests all core systems while planting seeds of the larger mystery.
 
-### Session 1 — Arrival and Disruption (~30–45 min)
+### Session 1 — The Fragment (~30–45 min)
 
-**Prologue** (60–90 seconds)
-- Narrated introduction to Aethos, the Veil, the invasion
-- Sets stakes and emotional tone
-- Transitions into character creation
+**Prologue and character creation**
+- A short voiced prologue introduces Aethos, the Veil and the invasion.
+- The DM asks for a calling and a name. Human race and a class-appropriate patron default; the player may volunteer an allowed race or patron.
+- The first-share roster is human, elari or vaelti; warrior, mage, rogue or cleric; Veythar, Kaelen, Aelora or Syrath.
 
-**Character Creation** (10–15 min)
-- Narrated conversation with the DM
-- Race → Class → Divine Patronage → Placement → Name & Backstory
-- Player is placed in the Sunward Accord (the only MVP starting culture)
+**Three onboarding beats**
+- A welcome, the market square and a companion meeting introduce the Accord through sound and conversation.
+- Meeting the assigned companion hands off to exploration in the market square.
 
-**Normalcy** (~5 min)
-- The player explores the market square
-- Meets 1–2 NPCs, performs a simple task (teaches navigation, interaction, skill checks)
-- Meets their starting companion NPC
-- The Accord of Tides feels warm, alive, worth protecting
+**The rider and the bundle**
+- Hooves stumble over cobbles. A wounded rider arrives clutching something wrapped in oilcloth.
+- The player and companion help carry him through the guild hall to its infirmary.
+- Sound thins around the bundle. One shadeling condenses beside the cot.
+- The DM starts `fragment_shadeling` at `accord_guild_infirmary`: one standard shadeling, an easy level-1 encounter with the assigned companion.
 
-**Disruption**
-- A wounded rider arrives from the north. The market falls silent.
-- News: the Ashmark has expanded. A Greyvale town is reporting Hollow creatures where none have been seen before.
-- The rider collapses. The mood shifts permanently.
+**The fragment and the call north**
+- On victory, defeat, flight or an offered de-escalation, the engine grants `greyvale_veil_fragment`, starts `greyvale_anomaly` at its first stage and completes the saved episode receipt.
+- Defeat retains the Mortaen return. Reconnects and later sessions do not replay the rider or duplicate the fragment.
+- After the fight, Torin hushes the room, asks the player to keep the fragment wrapped and calls them north to Millhaven.
+- Session 1 pays less than 75 XP; the player reaches Millhaven at level 1.
 
-**Call to Action**
-- The player's mentor/guild/patron asks them to investigate the Greyvale reports
-- Class-appropriate framing: warrior sent to defend, seeker sent to investigate, cleric sent to heal, rogue sent to scout
-- The player departs the city for the Greyvale with their companion
+**Session edge:** A patron whisper in catch-up remains a separate First Share criterion.
 
-**Session End Hook:** The companion mentions hearing rumors about the Greyvale ruins — strange lights, old stories. Something to look into.
-
-**Async Unlocks:** *Crafting:* Resupply at the market — choose between restocking basic supplies (1hr, safe) or commissioning a hollow-ward charm from Grimjaw (4hr, material-dependent outcome). *Training:* Train with a mentor NPC — brief voiced scene setting up the focus, 6hr timer, culmination scene with progression choice. *Companion errand:* Send companion to ask around about the Greyvale ruins — returns in 2-4 hours with local rumors and a lead.
+**Async unlocks:** Resupply or commission a ward charm at the market; train with a mentor; send the companion to ask about the Greyvale ruins.
 
 ---
 

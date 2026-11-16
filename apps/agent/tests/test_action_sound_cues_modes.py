@@ -18,8 +18,6 @@ from session_data import CompanionState, CreationState
 CASES = {
     "blacksmith": "action_enter_mode_blacksmith",
     "dispatch": "action_enter_mode_dispatch",
-    "beat_2": "action_advance_onboarding_beat",
-    "beat_complete": "action_advance_onboarding_beat",
     "creation": "action_finalize_character",
 }
 
@@ -94,66 +92,55 @@ async def test_mode_constructor_failure_has_no_cue(mode):
     assert cues(ctx) == []
 
 
-@pytest.mark.parametrize("case,beat,flag", [("beat_2", 1, 2), ("beat_complete", 5, "complete")])
-async def test_onboarding_cue_after_persisted_beat(case, beat, flag):
+@pytest.fixture
+def meeting():
+    with (
+        patch(
+            "onboarding_tools.db_queries.get_player",
+            new_callable=AsyncMock,
+            return_value={"class": "warrior", "level": 1},
+        ),
+        patch(
+            "companion_relationship_queries.hydrate_assigned_companion_state",
+            new_callable=AsyncMock,
+            return_value=CompanionState(id="companion_lira", name="Lira"),
+        ),
+    ):
+        yield
+
+
+@pytest.mark.parametrize("beat", [1, 3])
+async def test_onboarding_failure_has_no_cue(beat, meeting):
     ctx = context()
     ctx.userdata.onboarding_beat = beat
-    if beat == 5:
-        ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
-    log = []
-    watch_cue(ctx, log)
 
-    async def persist(*args):
-        assert args == (ctx.userdata.player_id, "onboarding_beat", flag)
-        log.append("flag")
+    async def persist(_player_id, flag, _value):
+        if flag == "onboarding_beat":
+            raise RuntimeError("write failed")
 
-    with patch("onboarding_tools.db_mutations.set_player_flag", side_effect=persist) as write:
-        result = await advance_onboarding_beat._func(ctx)
-        log.append("return")
-    write.assert_awaited_once()
-    if beat == 5:
-        assert isinstance(result, tuple)
-        assert json.loads(result[1])["onboarding_complete"] is True
-        assert ctx.userdata.onboarding_beat is None
-    else:
-        assert isinstance(result, str)
-        assert json.loads(result)["beat"] == 2
-    assert_cue(ctx, CASES[case])
-    assert log == ["flag", "cue", "return"]
-
-
-@pytest.mark.parametrize("beat,reason", [(1, "write"), (5, "write"), (5, "companion")])
-async def test_onboarding_failure_has_no_cue(beat, reason):
-    ctx = context()
-    ctx.userdata.onboarding_beat = beat
-    if beat == 5 and reason != "companion":
-        ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
-    with patch("onboarding_tools.db_mutations.set_player_flag", side_effect=RuntimeError("write failed")) as write:
-        with pytest.raises(ToolError if reason == "companion" else RuntimeError):
+    with patch("onboarding_tools.db_mutations.set_player_flag", side_effect=persist):
+        with pytest.raises(RuntimeError, match="write failed"):
             await advance_onboarding_beat._func(ctx)
-    assert write.await_count == (0 if reason == "companion" else 1)
     assert cues(ctx) == []
 
 
-async def test_completed_onboarding_agent_failure_has_no_cue():
+async def test_completed_onboarding_agent_failure_has_no_cue(meeting):
     ctx = context()
-    ctx.userdata.onboarding_beat = 5
-    ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
+    ctx.userdata.onboarding_beat = 3
     with (
         patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock) as write,
         patch("gameplay_agent.create_gameplay_agent", side_effect=RuntimeError("agent failed")) as factory,
     ):
         with pytest.raises(RuntimeError, match="agent failed"):
             await advance_onboarding_beat._func(ctx)
-    write.assert_awaited_once()
+    write.assert_any_await(ctx.userdata.player_id, "onboarding_beat", "complete")
     factory.assert_called_once()
     assert cues(ctx) == []
 
 
-async def test_completed_onboarding_cue_failure_preserves_handoff():
+async def test_completed_onboarding_cue_failure_preserves_handoff(meeting):
     ctx = context()
-    ctx.userdata.onboarding_beat = 5
-    ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
+    ctx.userdata.onboarding_beat = 3
     with (
         patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock) as write,
         patch.object(
@@ -164,7 +151,7 @@ async def test_completed_onboarding_cue_failure_preserves_handoff():
     assert isinstance(result, tuple)
     assert json.loads(result[1])["onboarding_complete"] is True
     assert ctx.userdata.onboarding_beat is None
-    write.assert_awaited_once_with(ctx.userdata.player_id, "onboarding_beat", "complete")
+    write.assert_any_await(ctx.userdata.player_id, "onboarding_beat", "complete")
     publish.assert_awaited_once()
 
 

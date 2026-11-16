@@ -30,9 +30,9 @@ def test_recommended_party_level_cases(encounter):
     validate_encounter_references(encounter, CATALOG)
 
 
-def test_all_eleven_reference_templates():
+def test_all_twelve_reference_templates():
     templates = json.loads((ROOT / "content/encounter_templates.json").read_text())
-    assert len(templates) == 11
+    assert len(templates) == 12
     for template in templates:
         assert all(set(enemy) == {"id", "creature_id", "role"} for enemy in template["enemies"])
         validate_encounter_references(template, CATALOG)

@@ -262,8 +262,8 @@ async def _backfill_progress_snippets(exclude_ids: set[str] | None = None) -> No
 async def check_god_whisper_triggers() -> int:
     """Check for players who should receive async god whispers.
 
-    Criteria: patron != "none", favor >= threshold, no pending whisper,
-    and level - last_whisper_level >= cooldown.
+    A patron receives a whisper after their first completed episode or after
+    reaching the favor threshold/cooldown, provided none is pending.
 
     Returns the number of whispers generated.
     """
@@ -273,10 +273,17 @@ async def check_god_whisper_triggers() -> int:
     pool = await db.get_pool()
     rows = await pool.fetch(
         """
-        SELECT player_id, data->'divine_favor' AS favor FROM players
-        WHERE data->'divine_favor'->>'patron' IS NOT NULL
-          AND data->'divine_favor'->>'patron' != 'none'
-          AND (data->'divine_favor'->>'level')::int >= $1
+        SELECT * FROM (
+            SELECT player_id, data->'divine_favor' AS favor,
+                COALESCE(data->'flags'->>'first_episode' = 'complete', FALSE)
+                AND NOT COALESCE((data->'flags'->>'first_episode_whisper_sent')::boolean, FALSE)
+                AND COALESCE((data->'divine_favor'->>'last_whisper_level')::int, 0) = 0
+                AS episode_eligible
+            FROM players
+            WHERE data->'divine_favor'->>'patron' IS NOT NULL
+              AND data->'divine_favor'->>'patron' != 'none'
+        ) candidates
+        WHERE (favor->>'level')::int >= $1 OR episode_eligible
         """,
         FAVOR_WHISPER_THRESHOLD,
     )
@@ -288,10 +295,10 @@ async def check_god_whisper_triggers() -> int:
         level = favor.get("level", 0)
         last_whisper = favor.get("last_whisper_level", 0)
 
-        if not should_trigger_whisper(level, last_whisper):
+        favor_eligible = should_trigger_whisper(level, last_whisper)
+        if not favor_eligible and not row["episode_eligible"]:
             continue
 
-        # Check no pending whisper already exists
         pending = await db_activity_queries.get_pending_god_whispers(player_id)
         if pending:
             continue
@@ -299,7 +306,10 @@ async def check_god_whisper_triggers() -> int:
         patron_id = favor.get("patron", "none")
         try:
             await generate_god_whisper(player_id, patron_id)
-            await db_mutations_divine.mark_favor_whisper_level(player_id, level)
+            if row["episode_eligible"]:
+                await db_mutations.set_player_flag(player_id, "first_episode_whisper_sent", True)
+            if favor_eligible:
+                await db_mutations_divine.mark_favor_whisper_level(player_id, level)
             count += 1
         except Exception:
             logger.exception("Failed to generate god whisper for %s", player_id)

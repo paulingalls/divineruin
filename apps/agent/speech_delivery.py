@@ -92,6 +92,24 @@ async def deliver_player_turn(
     )
 
 
+DRAINING = "cannot schedule new speech, the speech scheduling is draining/pausing, the speech will be cancelled"
+DRAIN_RETRY_SECS = 60.0
+
+
+async def _generate_reply(session: AgentSession, reply_kwargs: dict[str, object]):
+    # LiveKit refuses new speech while draining the old agent during a handoff; retry that
+    # exact refusal. A drain outlasted 5 seconds on a loaded machine, so the bound is sized
+    # for a stuck handoff, not a slow one.
+    async with asyncio.timeout(DRAIN_RETRY_SECS):
+        while True:
+            try:
+                return session.generate_reply(**reply_kwargs)  # type: ignore[arg-type]
+            except RuntimeError as exc:
+                if exc.args != (DRAINING,):
+                    raise
+                await asyncio.sleep(0.02)
+
+
 async def _deliver(
     session: AgentSession,
     logger: logging.Logger,
@@ -101,11 +119,16 @@ async def _deliver(
     **reply_kwargs: object,
 ) -> bool:
     try:
-        handle = session.generate_reply(**reply_kwargs)  # type: ignore[arg-type]
+        handle = await _generate_reply(session, reply_kwargs)
     except RuntimeError as exc:
         if exc.args not in GENERATE_REPLY_SESSION_UNAVAILABLE_ARGS:
             raise
         logger.warning("%s skipped: %s", description, exc)
+        return False
+    except TimeoutError:
+        # ERROR whatever the caller's level: one speech is lost, and raising instead would end
+        # the background loop and every later hint with it.
+        logger.error("%s dropped: the handoff never finished draining", description)
         return False
 
     if revoked is None:

@@ -16,6 +16,7 @@ import db_mutations_divine
 import db_queries
 import db_training
 import event_types as E
+import first_episode
 from bg_event_handlers import handle_events
 from bg_speech import COMPANION_IDLE_SECS, PendingSpeech, SpeechPriority
 from companion_cue_events import publish_companion_cue
@@ -57,7 +58,7 @@ class BackgroundProcess:
         self._quest_cache: list[dict] = []
         self._scene_cache: dict[str, dict] = {}
         self._scene_hint_state: dict = {}
-        self._rider_triggered: bool = False
+        self._episode = None
         self._last_static_key: tuple[str, str, str | None] | None = None
         self._cached_static: str = ""
         self._last_target: BaseGameAgent | None = None
@@ -124,13 +125,6 @@ class BackgroundProcess:
                 pass
 
     async def _run(self) -> None:
-        try:
-            rider = await db_content_queries.get_scene("scene_rider_arrival")
-            if rider:
-                self._scene_cache["scene_rider_arrival"] = rider
-        except TRANSIENT_IO_ERRORS:
-            logger.error("Rider scene prefetch failed", exc_info=True)
-
         # Initial warm layer build
         await self._rebuild_warm_layer()
         logger.info("Background process started")
@@ -159,15 +153,7 @@ class BackgroundProcess:
             await self._rebuild_warm_layer()
 
     def _handle_events(self, events: list) -> bool:
-        needs_rebuild, self._rider_triggered = handle_events(
-            events,
-            self._sd,
-            self._speech_queue,
-            self._rider_triggered,
-            self._scene_cache,
-            self._quest_cache,
-        )
-        return needs_rebuild
+        return handle_events(events, self._sd, self._speech_queue)
 
     def _check_companion_idle(self) -> None:
         if not self._sd.companion_can_act:
@@ -201,7 +187,9 @@ class BackgroundProcess:
 
         from scene_tools import get_active_scene_for_context
 
-        scene = get_active_scene_for_context(self._scene_cache, self._quest_cache, None)
+        scene = first_episode.hint_scene(self._scene_cache, self._episode, self._sd.location_id)
+        if scene is None:
+            scene = get_active_scene_for_context(self._scene_cache, self._quest_cache, None)
         if scene is None:
             return
 
@@ -337,16 +325,18 @@ class BackgroundProcess:
 
     async def _build_warm_layer(self) -> bool:
         try:
-            quests, location, npcs_raw, training = await asyncio.gather(
+            quests, location, npcs_raw, training, episode = await asyncio.gather(
                 db_queries.get_active_player_quests(self._sd.primary_player_id),
                 db_content_queries.get_location(self._sd.location_id),
                 db_queries.get_npcs_at_location(self._sd.location_id),
                 db_training.get_player_active_training_activities(self._sd.primary_player_id),
+                db_queries.get_player_flag_value(self._sd.primary_player_id, "first_episode"),
             )
             self._quest_cache = quests
+            self._episode = episode
 
             # Build scene cache from quest scene_graphs
-            scene_ids: list[str] = []
+            scene_ids: list[str] = [first_episode.SCENE] if episode == "rider" else []
             for q in quests:
                 for entry in q.get("scene_graph", []):
                     sid = entry.get("scene_id")
@@ -383,6 +373,7 @@ class BackgroundProcess:
                 npcs_raw=npcs_raw,
                 scene_cache=self._scene_cache or None,
                 training=training or None,
+                first_episode_phase=episode,
             )
         except TRANSIENT_IO_ERRORS:
             logger.error("Warm layer build failed", exc_info=True)

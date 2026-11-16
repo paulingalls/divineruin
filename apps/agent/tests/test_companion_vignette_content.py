@@ -1,4 +1,4 @@
-"""AC1/AC2/AC4: the four beat-3/4 vignettes are authored per companion, in the content row.
+"""AC1/AC2/AC4: the four meeting vignettes are authored per companion, in the content row.
 
 TWO AUTHORING RULES THIS FILE ENFORCES BLUNTLY, because a text guard cannot attribute a word
 to a speaker. Both are stated here so the next author meets them as a rule, not as a red:
@@ -8,7 +8,7 @@ to a speaker. Both are stated here so the next author meets them as a rule, not 
    field and cannot tell whose "she" it is reading, so a third party's pronoun both satisfies the
    companion's positive assertion vacuously AND false-reds a nonbinary companion's scene against
    correct prose. Name third parties by role on every mention, or use they/them.
-2. NO SPEECH VERB APPEARS ANYWHERE IN SABLE'S TWO FIELDS — not even the fishwife's. Same reason:
+2. NO SPEECH VERB APPEARS ANYWHERE IN SABLE'S MEETING — not even the fishwife's. Same reason:
    the guard cannot tell that the verb belongs to the vendor. Her name reveal is written around
    the list ("uses the name aloud"), which costs one phrasing and buys a check that reds.
 
@@ -29,7 +29,7 @@ from companion_profiles import parse_companion_row
 _CONTENT_PATH = Path(__file__).resolve().parents[3] / "content" / "companions.json"
 _RAW = json.loads(_CONTENT_PATH.read_text())
 
-VIGNETTE_FIELDS = ("onboarding_meeting", "onboarding_suggestion")
+VIGNETTE_FIELDS = ("onboarding_meeting",)
 
 # The map is the card's human decision (2026-09-04). Keyed by the row's own `gender`, so the
 # content file is what says who is who — not a re-typed table of companion ids in a test.
@@ -95,7 +95,7 @@ def _present(words: Sequence[str], text: str) -> list[str]:
 
 
 class TestVignetteFieldsExist:
-    def test_every_row_declares_both_vignette_fields(self):
+    def test_every_row_declares_a_meeting(self):
         for row in _RAW:
             for field in VIGNETTE_FIELDS:
                 assert isinstance(row.get(field), str) and row[field].strip(), f"{row['id']}.{field}"
@@ -110,7 +110,6 @@ class TestVignetteFieldsExist:
         for row in _RAW:
             c = parse_companion_row(row["id"], row)
             assert c.onboarding_meeting == row["onboarding_meeting"]
-            assert c.onboarding_suggestion == row["onboarding_suggestion"]
 
 
 class TestVignettePronouns:

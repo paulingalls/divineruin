@@ -37,6 +37,7 @@ const byId = new Map(catalog.map((l) => [l.id, l]));
 const ACCORD_IDS = [
   "accord_market_square",
   "accord_guild_hall",
+  "accord_guild_infirmary",
   "accord_training_hall",
   "accord_temple_row",
   "accord_dockside",
@@ -66,8 +67,8 @@ const NON_SETTLEMENT_IDS = [...DUNGEON_IDS, ...WILDERNESS_IDS];
 const RESOURCE_RARITIES = ["common", "uncommon", "rare"];
 
 describe("locations.json — catalog cardinality", () => {
-  test("23 rows total", () => {
-    expect(catalog.length).toBe(23);
+  test("24 rows total", () => {
+    expect(catalog.length).toBe(24);
   });
 
   test("ids are unique", () => {

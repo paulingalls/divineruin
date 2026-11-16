@@ -16,7 +16,7 @@ import event_types as E
 import movement_tools
 import spells
 from creation_agent import CreationAgent
-from session_data import SessionData
+from session_data import CreationState, SessionData
 from spell_casting import _cast_spell_impl
 
 # One clean cantrip (focus_cost 0, non-concentration) so the real cast resolves
@@ -92,7 +92,9 @@ async def test_creation_awakening_emits_wonder_resolve() -> None:
     agent = CreationAgent()
     mock_session = MagicMock()  # NOT AsyncMock: generate_reply is called un-awaited, and an
     # un-awaited coroutine raises RuntimeWarning, which pyproject escalates to an error.
-    session_data = SessionData(player_id="cap_m27_awakening", location_id="", room=make_mock_room())
+    session_data = SessionData(
+        player_id="cap_m27_awakening", location_id="", room=make_mock_room(), creation_state=CreationState()
+    )
     mock_session.userdata = session_data
 
     with (

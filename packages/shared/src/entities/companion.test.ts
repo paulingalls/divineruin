@@ -87,12 +87,10 @@ describe("companions.json — row shape", () => {
     }
   });
 
-  test("every companion declares both onboarding vignette fields", () => {
+  test("every companion declares an onboarding meeting", () => {
     for (const c of companions) {
       expect(typeof c.onboarding_meeting).toBe("string");
       expect(c.onboarding_meeting.length).toBeGreaterThan(0);
-      expect(typeof c.onboarding_suggestion).toBe("string");
-      expect(c.onboarding_suggestion.length).toBeGreaterThan(0);
     }
   });
 

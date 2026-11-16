@@ -148,7 +148,7 @@ async def test_ac2_discovery_reveals_and_surfaces_in_hot_layer_same_turn(
     assert revealed[0].payload["element_id"] == _SEAL_ID
 
     # Background handler records the reveal + asks for a rebuild...
-    needs_rebuild, _ = handle_events(events, sd, [], False, {}, [])
+    needs_rebuild = handle_events(events, sd, [])
     assert needs_rebuild is True
     assert _SEAL_ID in sd.recently_revealed_element_ids
 
@@ -186,7 +186,7 @@ async def test_ac4_full_stage_pipeline_e2e(m6_world: str, monkeypatch: pytest.Mo
     # 2. Discover the seal via the advertised prose: reveal fires + hot-layer same-turn.
     result = json.loads(await _check_discover_impl(ctx, skill="perception", target=_PROSE_TARGET))
     assert result["outcome"] == "discovered"
-    needs_rebuild, _ = handle_events(sd.event_bus.drain(), sd, [], False, {}, [])
+    needs_rebuild = handle_events(sd.event_bus.drain(), sd, [])
     assert needs_rebuild is True
     assert f"[Revealed: {_SEAL_ID}]" in ExplorationAgent._build_hot_context(None, sd)  # type: ignore[arg-type]
 
