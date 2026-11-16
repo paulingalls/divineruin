@@ -10,7 +10,7 @@ technique, and choose which known elective spells fill their loadout
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 import asyncpg
 
@@ -24,61 +24,48 @@ import db_mutations_resurrection
 import spell_preparation
 import spells
 
-if TYPE_CHECKING:
-    from session_data import SessionData
-
 RestType = Literal["short", "long"]
 
 
 def apply_short_rest(
-    current_stamina: int,
-    max_stamina: int,
-    current_focus: int,
-    max_focus: int,
-) -> tuple[int, int]:
-    """Short rest (~1 hour): stamina fully restored, focus recovers to half pool minimum."""
-    new_stamina = max_stamina
-    new_focus = max(current_focus, max_focus // 2)
-    return new_stamina, new_focus
+    current_stamina: int | None,
+    max_stamina: int | None,
+    current_focus: int | None,
+    max_focus: int | None,
+) -> tuple[int | None, int | None]:
+    """Short rest: present Stamina fills, present Focus recovers to half pool minimum."""
+    focus = None if current_focus is None or max_focus is None else max(current_focus, max_focus // 2)
+    return max_stamina, focus
 
 
 def apply_long_rest(
-    current_stamina: int,
-    max_stamina: int,
-    current_focus: int,
-    max_focus: int,
+    current_stamina: int | None,
+    max_stamina: int | None,
+    current_focus: int | None,
+    max_focus: int | None,
     current_hp: int,
     max_hp: int,
-) -> tuple[int, int, int]:
-    """Long rest (~8 hours): all resource pools fully restored."""
+) -> tuple[int | None, int | None, int]:
+    """Long rest: HP and all present resource pools fully restore."""
     return max_stamina, max_focus, max_hp
 
 
 def apply_rest(
     rest_type: RestType,
-    current_stamina: int,
-    max_stamina: int,
-    current_focus: int,
-    max_focus: int,
+    current_stamina: int | None,
+    max_stamina: int | None,
+    current_focus: int | None,
+    max_focus: int | None,
     current_hp: int,
     max_hp: int,
-) -> tuple[int, int, int]:
-    """Dispatcher: apply short or long rest, returning (stamina, focus, hp)."""
+) -> tuple[int | None, int | None, int]:
+    """Restore present pools; None represents an absent pool, never a new zero pool."""
     if rest_type == "short":
         stamina, focus = apply_short_rest(current_stamina, max_stamina, current_focus, max_focus)
         return stamina, focus, current_hp
-    elif rest_type == "long":
-        return apply_long_rest(
-            current_stamina,
-            max_stamina,
-            current_focus,
-            max_focus,
-            current_hp,
-            max_hp,
-        )
-    else:
-        msg = f"Unknown rest type: {rest_type!r}"
-        raise ValueError(msg)
+    if rest_type == "long":
+        return apply_long_rest(current_stamina, max_stamina, current_focus, max_focus, current_hp, max_hp)
+    raise ValueError(f"Unknown rest type: {rest_type!r}")
 
 
 async def swap_elective_on_long_rest(
@@ -200,44 +187,38 @@ async def prepare_spells_on_long_rest(
 
 
 async def reset_resonance_on_rest(
-    session: SessionData,
+    player_id: str,
     *,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
-    resonance_mutations_mod=db_mutations_resonance,
 ) -> None:
-    """Reset this caster's Resonance to stable/0 on a short or long rest.
-
-    M3.1's one live resonance mutation (generation-on-cast arrives in M3.3). Zeroes
-    the in-memory ``session.resonance`` and persists the reset via story-002's
-    reset_player_resonance, keeping the session and players.data in sync.
-
-    Unlike the player_id-based siblings above, this takes the SessionData because it
-    owns the in-memory copy. To make the reset atomic with other long-rest writes,
-    pass a transactional ``conn`` (e.g. from ``db.transaction()``); with ``conn=None``
-    the single persist runs on a pooled connection.
-    """
-    player_id = session.acting_player_id
-    session.member_state(player_id).resonance.current = 0
-    await resonance_mutations_mod.reset_player_resonance(player_id, conn=conn)
+    """Persist a rest reset; the caller adopts session mirrors after commit."""
+    await db_mutations_resonance.reset_player_resonance(player_id, conn=conn)
 
 
 async def record_last_rested_settlement(
-    session: SessionData,
+    player_ids: list[str],
+    location_id: str,
     *,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
     location_mod=db_content_queries,
     resurrection_mutations_mod=db_mutations_resurrection,
-) -> None:
-    """On a long rest in a settlement, record it as the player's last-rested settlement —
-    resurrection anchor tier-3 (you wake where you last felt safe). No-op when resting outside a
-    settlement (a location with no settlement_tier). Pass a transactional ``conn`` to make this
-    atomic with the other long-rest writes.
-
-    Forward-seam: apply_long_rest has no production caller yet, so this hook is wired for when a
-    rest tool ships — tier-3 stays dormant in the resolver until then.
-    """
-    location = await location_mod.get_location(session.location_id)
-    if location and location.get("settlement_tier"):
-        await resurrection_mutations_mod.set_last_rested_settlement(
-            session.acting_player_id, session.location_id, conn=conn
-        )
+) -> str:
+    """Resolve the unique directly connected same-region/tier settlement before writing anchors."""
+    room = await location_mod.get_location(location_id)
+    if not room or not room.get("settlement_tier"):
+        raise ValueError(f"Rest location {location_id!r} has no settlement tier")
+    parents = set()
+    for destination in {exit_["destination"] for exit_ in room.get("exits", {}).values()}:
+        parent = await location_mod.get_location(destination)
+        if (
+            parent
+            and parent.get("region") == room.get("region")
+            and parent.get("settlement_tier") == room["settlement_tier"]
+        ):
+            parents.add(destination)
+    if len(parents) != 1:
+        raise ValueError(f"Rest location {location_id!r} needs one connected settlement; found {sorted(parents)}")
+    anchor = parents.pop()
+    for player_id in player_ids:
+        await resurrection_mutations_mod.set_last_rested_settlement(player_id, anchor, conn=conn)
+    return anchor
