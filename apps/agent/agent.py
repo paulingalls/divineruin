@@ -185,7 +185,9 @@ async def _join_session_end(ctx: agents.JobContext) -> None:
 @server.rtc_session(agent_name="divineruin-dm", on_session_end=_join_session_end)
 async def dm_session(ctx: agents.JobContext) -> None:
     player_id = _extract_player_id(ctx)
-    async with session_outcome.startup(player_id) as (session_id, predecessor):
+    async with session_outcome.startup(player_id, ctx.job.room.name) as (session_id, predecessor):
+        if session_id is None:
+            return
         await _start_dm_session(ctx, player_id, session_id, predecessor)
 
 

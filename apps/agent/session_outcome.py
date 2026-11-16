@@ -17,7 +17,11 @@ TTL_S = 7200
 WAIT_S = 15
 State = Literal["saved", "failed"]
 
+# KEYS[2] is the server's player_room:<player_id> (apps/server/src/session-rooms.ts), set to the
+# new room before its DM is dispatched. A dispatch whose room it no longer names was taken over.
 _REGISTER = """
+local room = redis.call('GET', KEYS[2])
+if room and room ~= ARGV[4] then return -1 end
 local current = redis.call('GET', KEYS[1])
 if (current or '') ~= ARGV[1] then return 0 end
 redis.call('SET', KEYS[1], ARGV[2], 'EX', ARGV[3])
@@ -110,19 +114,41 @@ async def complete(player_id: str, session_id: str, state: State, *, guest_saved
     )
 
 
+async def _taken_over(player_id: str, room_name: str) -> bool:
+    redis = await db.get_redis()
+    room = await redis.get(f"player_room:{player_id}")
+    if isinstance(room, bytes):
+        room = room.decode()
+    return room is not None and room != room_name
+
+
 @asynccontextmanager
-async def startup(player_id: str):
-    predecessor = await resolve_predecessor(player_id)
+async def startup(player_id: str, room_name: str):
+    """Yield (session_id, predecessor), or (None, None) when a newer dispatch took the player over."""
+    try:
+        predecessor = await resolve_predecessor(player_id)
+    except RuntimeError:
+        if await _taken_over(player_id, room_name):
+            logger.info("Dispatch for %s in %s was taken over while waiting; abandoning", player_id, room_name)
+            yield None, None
+            return
+        raise
     session_id = uuid4().hex
     redis = await db.get_redis()
     registered = await redis.eval(
         _REGISTER,
-        1,
+        2,
         f"session_outcome:{player_id}",
+        f"player_room:{player_id}",
         predecessor.observed or "",
         json.dumps({"session_id": session_id, "state": "live"}),
         TTL_S,
+        room_name,
     )
+    if registered == -1:
+        logger.info("Dispatch for %s in %s was taken over while waiting; abandoning", player_id, room_name)
+        yield None, None
+        return
     if not registered:
         raise RuntimeError(f"Session outcome owner changed during startup for {player_id}")
     try:

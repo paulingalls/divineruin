@@ -12,7 +12,7 @@ from session_outcome import Predecessor
 @pytest.fixture(autouse=True)
 def isolated_outcome_startup():
     @asynccontextmanager
-    async def startup(_player_id):
+    async def startup(_player_id, _room_name):
         summary = await db_queries.get_last_session_summary(_player_id)
         yield "isolated-session", Predecessor(None, summary, summary)
 

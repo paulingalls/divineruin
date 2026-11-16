@@ -242,6 +242,33 @@ async def startup_failures(server):
         assert current is not None and current["state"] == "failed"
 
 
+async def taken_over(server):
+    """A dispatch whose room the server no longer names for the player abandons quietly."""
+
+    async def finished_quietly(job):
+        async with asyncio.timeout(25):
+            await job.ready.wait()
+        assert job.error is None
+        assert job.started_agent == ""
+
+    redis = await db.get_redis()
+    async with RecapHarness(server) as harness:
+        pid = await harness.player()
+        await seed(pid, "saved")
+        await redis.set(f"player_room:{pid}", "newer-room", ex=7200)
+        await finished_quietly(await harness.start(pid))
+        assert await outcome(pid) == {"session_id": "older", "state": "saved"}
+
+    async with RecapHarness(server) as harness:
+        pid = await harness.player()
+        await seed(pid, "live")
+        job = await harness.start(pid)
+        await redis.set(f"player_room:{pid}", "newer-room", ex=7200)
+        await seed(pid, "live", "newer-session", row=False)
+        await finished_quietly(job)
+        assert await outcome(pid) == {"session_id": "newer-session", "state": "live"}
+
+
 async def test_fresh_recap(livekit_server, reset_db_pool, caplog):
     for failure in (None, "generation", "save", "timeout"):
         await overlapping(livekit_server, caplog, failure)
@@ -249,3 +276,4 @@ async def test_fresh_recap(livekit_server, reset_db_pool, caplog):
     await early_close(livekit_server)
     await guest_recap(livekit_server)
     await startup_failures(livekit_server)
+    await taken_over(livekit_server)
