@@ -379,6 +379,8 @@ async def _update_quest_impl(
         "milestone_grants": outcome.milestone_grants if outcome else [],
         "specialization_fork": outcome.specialization_fork if outcome else False,
     }
+    if current_stage >= 0 and (narrative_beat := on_complete.get("narrative_beat")):
+        response["narrative_beat"] = narrative_beat
     logger.info("update_quest result: %s → stage %d, %d rewards", quest_id, new_stage_id, len(rewards_applied))
 
     # Scene transition check — a scene region change updates the persisting agent in

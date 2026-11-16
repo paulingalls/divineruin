@@ -30,6 +30,7 @@ import db_mutations_conditions
 import db_mutations_travel
 import db_queries
 import event_types as E
+import quest_progress
 import rules_engine
 import travel as travel_engine
 from action_sound_content import publish_action_sound
@@ -173,12 +174,16 @@ async def _travel_impl(
         session.combat_state = consumed_state
 
     arrived = result.success and not result.wrong_area
+    quest_updates = []
     if arrived:
         # Reuse move_player's full arrival path (LOCATION_CHANGED for the HUD, map progress,
         # corruption tracking) — not just the location setter — so a travelled arrival updates
         # the client exactly like a walked one.
         await apply_arrival(
             session, destination_id, destination, db_mod=db_mod, mutations=mutations, travel_mutations=travel_mutations
+        )
+        quest_updates = await quest_progress.advance_on_arrival(
+            context, destination_id, db_mod=db_mod, mutations=mutations, queries=queries, content=content
         )
         if roll is None:
             await publish_action_sound(session, "action_travel")
@@ -215,6 +220,7 @@ async def _travel_impl(
         "destination": destination_id,
         "mode": mode_lower,
         "arrived": arrived,
+        "quest_updates": quest_updates,
         "dramatic": result.dramatic,
         "context": result.context,
         "narrative_cue": result.narrative_cue,

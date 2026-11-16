@@ -12,6 +12,7 @@ import db_mutations
 import db_mutations_travel
 import db_queries
 import event_types as E
+import quest_progress
 import ward_resolution
 from action_sound_content import publish_action_sound
 from db_errors import db_tool
@@ -250,6 +251,9 @@ async def _move_player_locked(
         mutations=mutations,
         travel_mutations=travel_mutations,
     )
+    quest_updates = await quest_progress.advance_on_arrival(
+        context, destination_id, db_mod=db_mod, mutations=mutations, queries=queries, content=content
+    )
     await publish_action_sound(session, "action_move")
     session.record_event(f"Moved to {destination_id}")
 
@@ -258,7 +262,7 @@ async def _move_player_locked(
     scene = await _build_scene_context(
         destination_id, session, location=destination_location, content=content, queries=queries
     )
-    result = {"moved": True, "previous_location": previous_location_id, **scene}
+    result = {"moved": True, "previous_location": previous_location_id, "quest_updates": quest_updates, **scene}
     logger.info(
         "move_player result: %s → %s, %d NPCs, %d targets",
         previous_location_id,
