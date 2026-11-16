@@ -932,7 +932,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/13_first_share.md (22 lines)
+## milestones/13_first_share.md (75 lines)
 
 ---
 
@@ -940,7 +940,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/REMAINING.md (179 lines)
+## milestones/REMAINING.md (182 lines)
 
 ---
 
@@ -949,6 +949,10 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 ---
 
 ## milestones/audit/dependency-versions.md (148 lines)
+
+---
+
+## milestones/audit/first-share.md (157 lines)
 
 ---
 

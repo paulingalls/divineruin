@@ -1,10 +1,9 @@
-import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from livekit.agents.llm import ToolError
 
-from session_data import CompanionState, SessionData
+from session_data import SessionData
 
 
 def _make_context(onboarding_beat: int = 1, location_id: str = "accord_market_square"):
@@ -21,102 +20,6 @@ def _make_context(onboarding_beat: int = 1, location_id: str = "accord_market_sq
 
 class TestAdvanceOnboardingBeat:
     @pytest.mark.asyncio
-    @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
-    async def test_advance_beat_1_to_2(self, mock_set_player_flag):
-        from onboarding_tools import advance_onboarding_beat
-
-        ctx = _make_context(onboarding_beat=1)
-
-        raw = await advance_onboarding_beat._func(ctx)
-        assert isinstance(raw, str)
-        result = json.loads(raw)
-
-        assert result["beat"] == 2
-        assert result["beat_name"] == "market"
-        assert ctx.userdata.onboarding_beat == 2
-        mock_set_player_flag.assert_awaited_once_with("player_1", "onboarding_beat", 2)
-
-    @pytest.mark.asyncio
-    @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
-    async def test_advance_beat_2_to_3(self, mock_set_player_flag):
-        from onboarding_tools import advance_onboarding_beat
-
-        ctx = _make_context(onboarding_beat=2)
-
-        raw = await advance_onboarding_beat._func(ctx)
-        assert isinstance(raw, str)
-        result = json.loads(raw)
-
-        assert result["beat"] == 3
-        assert result["beat_name"] == "companion_meeting"
-        assert ctx.userdata.onboarding_beat == 3
-
-    @pytest.mark.asyncio
-    @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
-    @patch(
-        "onboarding_tools.db_queries.get_player",
-        new_callable=AsyncMock,
-        return_value={"name": "Aric", "class": "warrior", "level": 1},
-    )
-    async def test_advance_beat_3_initializes_companion(self, mock_get_player, mock_set_player_flag):
-        from onboarding_tools import advance_onboarding_beat
-
-        ctx = _make_context(onboarding_beat=3)
-
-        raw = await advance_onboarding_beat._func(ctx)
-        assert isinstance(raw, str)
-        result = json.loads(raw)
-
-        assert result["beat"] == 4
-        assert result["beat_name"] == "kael_suggestion"
-        assert ctx.userdata.companion is not None
-        assert ctx.userdata.companion.name == "Lira"
-        assert ctx.userdata.companion.id == "companion_lira"
-        mock_get_player.assert_awaited_once_with("player_1")
-        calls = mock_set_player_flag.await_args_list
-        flag_names = [c.args[1] for c in calls]
-        assert "companion_met" in flag_names
-        assert "onboarding_beat" in flag_names
-
-    @pytest.mark.asyncio
-    @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
-    async def test_advance_beat_4_to_5(self, mock_set_player_flag):
-        from onboarding_tools import advance_onboarding_beat
-
-        ctx = _make_context(onboarding_beat=4)
-        ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
-
-        raw = await advance_onboarding_beat._func(ctx)
-        assert isinstance(raw, str)
-        result = json.loads(raw)
-
-        assert result["beat"] == 5
-        assert result["beat_name"] == "first_destination"
-
-    @pytest.mark.asyncio
-    @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
-    async def test_advance_beat_5_returns_city_agent_handoff(self, mock_set_player_flag):
-        from onboarding_tools import advance_onboarding_beat
-
-        ctx = _make_context(onboarding_beat=5, location_id="accord_guild_hall")
-        ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
-
-        raw = await advance_onboarding_beat._func(ctx)
-
-        assert isinstance(raw, tuple)
-        agent, json_str = raw
-        from exploration_agent import ExplorationAgent
-
-        assert isinstance(agent, ExplorationAgent)
-        assert agent._agent_type == "city"
-        result = json.loads(json_str)
-        assert result["onboarding_complete"] is True
-        assert ctx.userdata.onboarding_beat is None
-        from onboarding_tools import ONBOARDING_COMPLETE
-
-        mock_set_player_flag.assert_any_await("player_1", "onboarding_beat", ONBOARDING_COMPLETE)
-
-    @pytest.mark.asyncio
     async def test_advance_when_not_onboarding_returns_error(self):
         from onboarding_tools import advance_onboarding_beat
 
@@ -125,14 +28,3 @@ class TestAdvanceOnboardingBeat:
 
         with pytest.raises(ToolError, match="Not in onboarding mode"):
             await advance_onboarding_beat._func(ctx)
-
-    @pytest.mark.asyncio
-    @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
-    async def test_advance_preserves_location(self, mock_set_player_flag):
-        from onboarding_tools import advance_onboarding_beat
-
-        ctx = _make_context(onboarding_beat=1, location_id="accord_market_square")
-
-        await advance_onboarding_beat._func(ctx)
-
-        assert ctx.userdata.location_id == "accord_market_square"

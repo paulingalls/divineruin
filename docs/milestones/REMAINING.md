@@ -5,8 +5,11 @@ Reconciled against the codebase on **2026-10-13**, during **Sprint 68**
 its limits are recorded in the story handback. Checked criteria are not a claim
 that every designed effect has shipped.
 
-**Position: 350 / 547 acceptance criteria — 64%** (the sum of the per-phase
-counts in `README.md`). **197 criteria remain unchecked.** Phases 1, 2, 4, 5,
+First Share now counts its full 36-item checklist; Session 1 is 3/9 after the
+companion-meeting handoff (2026-11-15).
+
+**Position: 351 / 574 acceptance criteria — 61%** (the sum of the per-phase
+counts in `README.md`). **223 criteria remain unchecked.** Phases 1, 2, 4, 5,
 6 and 10 have all recorded criteria checked. Phase 3 is still Partial at 34/34:
 casting infrastructure is exercised, but complete deterministic spell-effect
 coverage is **unverified**. All 87 spell rows carry textual `mechanics`; this
@@ -112,7 +115,7 @@ not schedules or measured implementation costs.
 | **9 · Economy** | 9.1–9.10 | 75 | Phase 7 material/creature integration; Phase 5/6 inputs | large | Shared pricing getters/repair costs, reputation-to-stance and committed material inventory boundaries pass. The migrated pricing table exists. No complete economy certification is implied. |
 | **11 · World Loop** | 11.1–11.6 | 46 | D-A–D-E; M11.4 needs Phase 9, M11.6 needs Phase 8 | ~4–6 sprints | Migrated `region_state`, `npc_state`, `world_events_log`, `god_agent_state`, `world_flags`; direct quest world effects; activity-worker reset harness. These do not establish a world scheduler or cascade. |
 | **12 · Story Content** | 12.1–12.7 | 34 | Phase 11 and its blocking decision section | ~5–7 sprints | Migrated `scenes` (013) and `story_moments` (012); scene-tool and settlement-generation boundaries. `gods.json` has authored secret-agenda text for Veythar and Syrath; a season director is not certified. |
-| **13 · First Share** | Session 1 | 7 | Companion onboarding, rider arrival, fragment fight and quest, XP budget, patron whisper, and the creation-to-quest acceptance walk | Three remaining Session 1 cards | Calling/name creation, the 3/4/4 roster, persisted spell/companion grants and creation-to-onboarding handoff exercised through the product session lifecycle. |
+| **13 · First Share** | Sessions 1–3, session edges, cost, deployment and playtest | 33 | Rider arrival, fragment fight and quest, XP budget, patron whisper, creation-to-quest acceptance, and the remaining First Share checklist | Two remaining Session 1 cards; later work unsized | Session 1: 3/9; full phase: 3/36. Calling/name creation, the 3/4/4 roster, persisted spell/companion grants and the companion-meeting handoff exercised through the product session lifecycle. |
 
 **Hazards before the relevant phase opens:**
 
