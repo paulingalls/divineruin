@@ -12,6 +12,7 @@ import db_mutations
 import db_queries
 import db_session_queries
 import event_types as E
+from archetypes import get_archetype_chassis
 from db_errors import db_tool
 from game_events import publish_game_event
 from resonance_events import publish_resonance_changed
@@ -66,8 +67,9 @@ async def rest(context: RunContext[SessionData], rest_type: RestType) -> str:
             for pid, row in players.items():
                 current_hp, base_max_hp = _pool_values(row, "hp")
                 hp = (current_hp, max(1, base_max_hp + row.get("maxhp_override", 0)))
-                stamina = _pool_values(row, "stamina") if "stamina" in row else None
-                focus = _pool_values(row, "focus") if "focus" in row else None
+                resource = get_archetype_chassis(row["class"]).resource
+                stamina = _pool_values(row, "stamina") if "stamina" in row or resource.stamina_formula else None
+                focus = _pool_values(row, "focus") if "focus" in row or resource.focus_formula else None
                 recovery[pid] = apply_rest(rest_type, *(stamina or (None, None)), *(focus or (None, None)), *hp)
             session.validate_acting_player(actor)
             if rest_type == "long":

@@ -38,7 +38,9 @@ class RestWalk(ArcWalk):
                 "last_rested_settlement_id": "old_anchor",
                 "resonance": {"current": 7, "flickering_bonus": 1},
             }
-            if i != 4:
+            if i == 4:
+                patch["stamina"] = {"current": 7, "max": 14}
+            else:
                 patch.update(stamina={"current": 3 + i, "max": 10 + i}, focus={"current": 8 if i else 0, "max": 11})
             await self.pool.execute(
                 "UPDATE players SET data=(data-'stamina'-'focus'-'player_id') || $2::jsonb WHERE player_id=$1",
@@ -100,14 +102,15 @@ class RestWalk(ArcWalk):
         for i, pid in enumerate(self.ids):
             expected = copy.deepcopy(self.before[pid])
             if i in (0, 1, 4):
-                if "stamina" in expected:
-                    s, f = apply_short_rest(
-                        expected["stamina"]["current"], expected["stamina"]["max"], expected["focus"]["current"], 11
-                    )
-                    if kind == "long":
-                        s, f, _ = apply_long_rest(3 + i, 10 + i, 0, 11, 5 + i, 30 + i)
-                    assert (s, f) == (10 + i, 11 if kind == "long" else (8 if i else 5))
-                    expected["stamina"]["current"], expected["focus"]["current"] = s, f
+                stamina = expected.get("stamina", {})
+                focus = expected.get("focus", {})
+                args = (stamina.get("current"), stamina.get("max"), focus.get("current"), focus.get("max"))
+                s, f = apply_short_rest(*args)
+                if kind == "long":
+                    s, f, _ = apply_long_rest(*args, 5 + i, 30 + i)
+                for key, current in (("stamina", s), ("focus", f)):
+                    if key in expected:
+                        expected[key]["current"] = current
                 if kind == "long":
                     expected["hp"]["current"] = 30 + i
                     expected["last_rested_settlement_id"] = self.anchor
