@@ -172,6 +172,7 @@ def main():
     private_values.extend(settings[k] for k in ('DATABASE_URL', 'REDIS_URL', 'JWT_SECRET', 'INTERNAL_SECRET'))
     (tmp / 'runtime.env').write_text(''.join(k + '=' + v + '\n' for k, v in settings.items()))
     os.chmod(tmp / 'runtime.env', 0o600)
+    compose_started = True
     command(compose + ['build'])
     image = command(compose + ['images', '-q', 'server'], capture=True)
     if not image:
@@ -272,7 +273,7 @@ finally:
     actions = [lambda child=child: stop(child) for child in children]
     if compose_started:
         actions.append(lambda: command(compose + ['logs', '--no-color']))
-        actions.append(lambda: command(compose + ['down', '--volumes', '--remove-orphans']))
+        actions.append(lambda: command(compose + ['down', '--volumes', '--remove-orphans', '--rmi', 'local']))
     actions.extend(lambda container=container: command(['docker', 'rm', '-f', container]) for container in exports)
     if sentinel:
         actions.append(lambda: bun('const r = new Bun.RedisClient(process.env.REDIS_URL); await r.del(process.env.SMOKE_KEY); r.close();'))

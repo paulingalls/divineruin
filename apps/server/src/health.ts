@@ -30,7 +30,6 @@ function postgres(): Promise<boolean> {
       client = new SQL({
         url: requireEnv("DATABASE_URL"),
         max: 1,
-        connectionTimeout: DEADLINE_MS / 1_000,
       });
       const [row] = await client<{ alive: unknown }[]>`SELECT 1 AS alive`;
       return row?.alive === 1;
@@ -44,7 +43,6 @@ function valkey(): Promise<boolean> {
   return probe(
     async () => {
       client = new RedisClient(requireEnv("REDIS_URL"), {
-        connectionTimeout: DEADLINE_MS,
         autoReconnect: false,
         maxRetries: 0,
         enableOfflineQueue: false,
