@@ -1,9 +1,10 @@
 // Outbound verification-email edge seam. The ONLY place that calls the real
 // Resend API, so a single switch decides mock vs real — no caller (and no env
 // like the e2e harness's NODE_ENV=development) can route a test run to the live
-// API by accident. Transport selection, in priority order:
+// API by accident. Production startup requires RESEND_API_KEY and refuses explicit mock.
+// Outside production, transport selection remains, in priority order:
 //   EMAIL_TRANSPORT=mock     -> never send (e2e harness sets this)
-//   EMAIL_TRANSPORT=resend   -> send IFF a key is present (prod opt-in; also
+//   EMAIL_TRANSPORT=resend   -> send IFF a key is present (also
 //                               lets unit tests exercise the real branch)
 //   (unset)                  -> mock under any test runner or when unconfigured,
 //                               real otherwise

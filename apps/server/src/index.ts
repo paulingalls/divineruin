@@ -1,3 +1,4 @@
+import "./config.ts";
 import { validateMediaDir } from "./media-dir.ts";
 import { handleGetInventory } from "./inventory-api.ts";
 import { serve } from "bun";

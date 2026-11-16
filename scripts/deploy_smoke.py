@@ -14,6 +14,8 @@ import urllib.parse
 import urllib.request
 import uuid
 
+import deploy_smoke_config as config_smoke
+import deploy_smoke_server as server_smoke
 from deploy_smoke_images import image_sources
 
 mode = sys.argv[1]
@@ -238,6 +240,11 @@ def main():
         "NODE_ENV": "production",
         "PORT": "3001",
         "MEDIA_DIR": "/var/lib/divineruin/media",
+        "LIVEKIT_URL": "ws://127.0.0.1:1",
+        "LIVEKIT_API_KEY": "smoke-LIVEKIT_API_KEY-01234567890123456789012345678901",
+        "LIVEKIT_API_SECRET": "smoke-LIVEKIT_API_SECRET-01234567890123456789012345678901",
+        "GEMINI_API_KEY": "smoke-GEMINI_API_KEY",
+        "RESEND_API_KEY": "smoke-RESEND_API_KEY",
     }
     if mode in ("agent", "migrate", "media"):
         settings.update(agent_smoke.environment())
@@ -247,7 +254,7 @@ def main():
     compose_started = True
     images = {}
     if mode != "migrate":
-        targets = ("server", "agent") if mode == "media" else (mode,)
+        targets = ("server", "agent") if mode == "media" else ("server" if mode == "config" else mode,)
         command([*compose, "build", *targets], deadline=900)
         for target in targets:
             image = project + "-" + target
@@ -298,13 +305,8 @@ def main():
         'const r = new Bun.RedisClient(process.env.REDIS_URL); await r.set(process.env.SMOKE_KEY,"alive","EX",1800); r.close();'
     )
     sentinel = True
-    if mode == "server":
-        fixture = json.loads(
-            bun("""const s = new Bun.SQL(process.env.DATABASE_URL);
-    const [a] = await s`INSERT INTO accounts (email) VALUES (${'smoke-' + process.env.SMOKE_KEY + '@example.invalid'}) RETURNING id, email, created_at`;
-    await s`INSERT INTO auth_codes (account_id, code, expires_at) VALUES (${a.id}, '123456', NOW() + INTERVAL '10 minutes')`;
-    console.log(JSON.stringify(a)); await s.close();""")
-        )
+    if mode in ("server", "config"):
+        fixture = server_smoke.fixture(sys.modules[__name__])
     compose_started = True
     command([*compose, "up", "-d", "proxy"])
     proxy_port = command([*compose, "port", "proxy", "8474"], capture=True).rsplit(":", 1)[1]
@@ -339,73 +341,7 @@ def main():
     elif mode == "agent":
         agent_smoke.run(sys.modules[__name__], proxy, image)
     else:
-        command([*compose, "up", "-d", "--no-deps", "server"])
-        server_id = command([*compose, "ps", "-q", "server"], capture=True)
-        started = inspect(server_id)["State"]["StartedAt"]
-        url = "http://127.0.0.1:" + command([*compose, "port", "server", "3001"], capture=True).rsplit(":", 1)[1]
-        ready(url)
-        health(url)
-        status, auth, _ = http(url + "/api/auth/verify-code", {"email": fixture["email"], "code": "123456"})
-        assert status == 200 and auth["account_id"] == fixture["id"]
-        token = auth["token"]
-        expected = {
-            "account_id": fixture["id"],
-            "player_id": "player_" + fixture["id"][:8],
-            "email": fixture["email"],
-            "created_at": fixture["created_at"],
-        }
-
-        def me(endpoint):
-            status, body, _ = http(endpoint + "/api/me", token=token)
-            assert status == 200 and body == expected, (status, body)
-            assert http(endpoint + "/api/me")[0] == 401
-            assert http(endpoint + "/api/me", token="invalid")[0] == 401
-
-        me(url)
-        (tmp / "host-media").mkdir()
-        baseline, host_url = host(
-            ["bun", "run", "--cwd", "apps/server", "start"],
-            dict(
-                env,
-                **dict(
-                    settings,
-                    DATABASE_URL=fixture_db,
-                    REDIS_URL=base_redis,
-                    MEDIA_DIR=str(tmp / "host-media"),
-                ),
-            ),
-        )
-        health(host_url)
-        me(host_url)
-        stop(baseline)
-        for dep in ("postgres", "valkey"):
-            for fault in ("refusal", "timeout"):
-                health(url)
-                path = proxy + "/proxies/" + dep
-                if fault == "refusal":
-                    assert http(path, {"enabled": False})[0] == 200
-                else:
-                    assert (
-                        http(
-                            path + "/toxics",
-                            {
-                                "name": "blackhole",
-                                "type": "timeout",
-                                "stream": "downstream",
-                                "attributes": {"timeout": 0},
-                            },
-                        )[0]
-                        == 200
-                    )
-                for _ in range(3):
-                    health(url, dep)
-                if fault == "refusal":
-                    assert http(path, {"enabled": True})[0] == 200
-                else:
-                    assert http(path + "/toxics/blackhole", method="DELETE")[0] == 204
-                health(url)
-        me(url)
-        assert inspect(server_id)["State"]["StartedAt"] == started
+        server_smoke.run(sys.modules[__name__], settings, fixture, proxy)
     authorize()
     for original in upstreams.values():
         current = inspect(original["Id"])
@@ -417,19 +353,10 @@ def main():
         == "alive"
     )
     authorize()
-    if mode == "server":
-        dev, dev_url = host(
-            ["bun", "run", "dev:server"],
-            dict(
-                {k: os.environ[k] for k in ("PATH", "HOME")},
-                DATABASE_URL=fixture_db,
-                REDIS_URL=base_redis,
-            ),
-        )
-        health(dev_url)
-        assert http(dev_url + "/api/me")[0] == 401
-        stop(dev)
-        print("server smoke passed", flush=True)
+    if mode in ("server", "config"):
+        server_smoke.development(sys.modules[__name__])
+        if mode == "config":
+            config_smoke.run(sys.modules[__name__], images["server"], settings)
     else:
         print(mode + " smoke passed", flush=True)
 
