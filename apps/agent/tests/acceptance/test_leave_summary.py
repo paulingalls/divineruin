@@ -106,6 +106,35 @@ async def join(job, identity):
     )
 
 
+async def server_request(player, operation, room):
+    import os
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[4]
+    fixture = root / "apps/server/src/session-room-process.fixture.ts"
+    script = f"""
+        const {{installSeam, Recording, request}} = await import({json.dumps(str(fixture))});
+        const recording = new Recording();
+        await installSeam(call => recording.invoke(call));
+        const result = await request({json.dumps(player)}, {json.dumps(operation)}, {{room_name: {json.dumps(room)}}});
+        console.log('BOUNDARY:' + JSON.stringify({{...result, calls: recording.calls}}));
+        Bun.redis.close();
+    """
+    proc = await asyncio.create_subprocess_exec(
+        "bun",
+        "--env-file=.env",
+        "--eval",
+        script,
+        cwd=root,
+        env={**os.environ, "RATE_LIMIT_BYPASS": "1"},
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await asyncio.wait_for(proc.communicate(), 15)
+    assert proc.returncode == 0, stderr.decode()
+    return json.loads(stdout.decode().split("BOUNDARY:")[-1])
+
+
 async def test_party_leaves(livekit_server, reset_db_pool, monkeypatch):
     from acceptance._livekit_client import (
         aclose_audio,
@@ -124,6 +153,7 @@ async def test_party_leaves(livekit_server, reset_db_pool, monkeypatch):
             host, guest = await harness.player(), await harness.player()
             job = await harness.start(host)
             sd = await job.wait()
+            assert (await server_request(host, "token", job.room_name))["status"] == 200
             room = await join(job, guest)
             try:
                 assert sd.multiplayer_owner is not None
@@ -156,6 +186,13 @@ async def test_party_leaves(livekit_server, reset_db_pool, monkeypatch):
                 assert not sd.background._task.done()
                 survivor_room = room if primary_leaves else job.player
                 assert survivor_room.isconnected()
+                if primary_leaves:
+                    assert (await server_request(guest, "invite", job.room_name))["status"] == 200
+                    assert (await server_request(host, "invite", job.room_name))["status"] == 403
+                    replacement = await server_request(host, "token", f"replacement-{host}")
+                    assert replacement["status"] == 200
+                    assert all(call["room"] != job.room_name for call in replacement["calls"])
+                    assert survivor_room.isconnected()
                 await wait_until(lambda job=job: job.episode.session.current_speech is None)
                 track = await wait_for_audio_track(survivor_room, identity="recap-agent")
                 stream = rtc.AudioStream(track)
@@ -175,6 +212,11 @@ async def test_party_leaves(livekit_server, reset_db_pool, monkeypatch):
                     await aclose_audio(source)
             finally:
                 await aclose_room(room)
+                redis = await db.get_redis()
+                for pid in (host, guest):
+                    await redis.delete(f"player_room:{pid}")
+                for name in (job.room_name, f"replacement-{host}"):
+                    await redis.delete(f"room_owner:{name}", f"room_dispatched:{name}")
 
 
 async def test_sender_authorization_survives_handoff(livekit_server, reset_db_pool):
