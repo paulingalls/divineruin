@@ -24,6 +24,10 @@ CATALOGS = (
 )
 
 
+class PreflightError(RuntimeError):
+    """Safe startup diagnostic; its cause can contain credentials from a malformed URL."""
+
+
 def is_production() -> bool:
     return os.getenv("AGENT_ENV", "development") == "production"
 
@@ -63,7 +67,7 @@ async def load_catalogs(command: str, *, require_nonempty: bool = False) -> None
                 if not loaded:
                     raise ValueError("required catalog is empty")
         except Exception as exc:
-            raise RuntimeError(f"Content preflight failed: {name}") from exc
+            raise PreflightError(f"Content preflight failed: {name}") from exc
     if require_nonempty:
         from _gods_content import load_gods
         from action_sound_content import _load_action_sounds
@@ -76,6 +80,14 @@ async def load_catalogs(command: str, *, require_nonempty: bool = False) -> None
 
 
 async def production_preflight(command: str) -> None:
+    try:
+        await _production_preflight(command)
+    except PreflightError as exc:
+        logger.error("%s", exc)
+        raise SystemExit(1) from None
+
+
+async def _production_preflight(command: str) -> None:
     validate_production_env()
     logger.info("Preflight environment validated")
     try:
@@ -85,7 +97,7 @@ async def production_preflight(command: str) -> None:
                 async with pool.acquire() as connection:
                     await connection.fetchval("SELECT 1")
         except Exception as exc:
-            raise RuntimeError("Postgres preflight failed") from exc
+            raise PreflightError("Postgres preflight failed") from exc
         logger.info("Preflight Postgres query succeeded")
         await load_catalogs(command, require_nonempty=True)
         try:
@@ -93,12 +105,12 @@ async def production_preflight(command: str) -> None:
                 redis = await db.get_redis()
                 await redis.ping()
         except Exception as exc:
-            raise RuntimeError("Valkey preflight failed") from exc
+            raise PreflightError("Valkey preflight failed") from exc
         logger.info("Preflight Valkey PING succeeded")
     finally:
         try:
             async with asyncio.timeout(DEADLINE):
                 await db.close_all()
         except Exception as exc:
-            raise RuntimeError("Preflight resource cleanup failed") from exc
+            raise PreflightError("Preflight resource cleanup failed") from exc
     logger.info("Preflight resources closed; preflight complete")

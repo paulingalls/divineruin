@@ -100,3 +100,26 @@ async def test_development_worker_reaches_existing_database_startup():
     ):
         with pytest.raises(RuntimeError, match="existing startup"):
             await async_worker.main()
+
+
+def test_preflight_failure_does_not_print_database_credentials():
+    env = dict(
+        startup_env(),
+        AGENT_ENV="production",
+        SERVER_URL="http://server:3001",
+        DATABASE_URL="postgresql://smoke:prefix?credential-must-stay-private@localhost/db",
+    )
+    process = subprocess.Popen(
+        [sys.executable, str(AGENT / "async_worker.py")],
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        start_new_session=True,
+    )
+    try:
+        output, _ = process.communicate(timeout=18)
+        assert process.returncode != 0 and "Postgres preflight failed" in output, output
+        assert "credential-must-stay-private" not in output, output
+    finally:
+        stop(process)
