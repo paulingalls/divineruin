@@ -373,6 +373,7 @@ class BackgroundProcess:
                 npcs_raw=npcs_raw,
                 scene_cache=self._scene_cache or None,
                 training=training or None,
+                first_episode_phase=episode,
             )
         except TRANSIENT_IO_ERRORS:
             logger.error("Warm layer build failed", exc_info=True)

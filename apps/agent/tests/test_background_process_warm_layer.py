@@ -117,6 +117,7 @@ class TestWarmLayerRebuild:
                         npcs_raw=mock_npcs,
                         scene_cache=None,
                         training=None,
+                        first_episode_phase=None,
                     )
                     mock_agent.update_instructions.assert_awaited_once_with("full prompt")
                     assert bp._last_warm_layer == "warm layer content"

@@ -6,9 +6,11 @@ from unittest.mock import patch
 
 from acceptance._capstone_helpers import _d20
 from acceptance.first_episode_harness import episode, until
+from acceptance.rider_walk import requested
 from livekit.agents import llm
 
 import db
+import db_content_queries
 import db_mutations
 import db_mutations_companion
 import db_mutations_death
@@ -47,6 +49,12 @@ async def reentry_and_defeat(server, tmp_path):
     async with episode(server, tmp_path, player_id=pid, initial_agent="ExplorationAgent") as run:
         sd = run.session.userdata
         assert await db_queries.get_player_flag_value(pid, "first_episode") == "rider"
+        scene = await db_content_queries.get_scene("scene_rider_arrival")
+        assert scene is not None
+        instructions = scene["instructions"]
+        receipt = await run.turn("query_info", kind="location", target_id=sd.location_id)
+        assert not receipt.is_error, receipt.output
+        assert requested(run, instructions)
         for destination in ("accord_guild_hall", "accord_market_square"):
             receipt = await run.turn("move_player", destination_id=destination)
             assert not receipt.is_error, receipt.output
@@ -72,6 +80,10 @@ async def reentry_and_defeat(server, tmp_path):
         for destination in ("accord_guild_hall", "accord_guild_infirmary"):
             result = await run.turn("move_player", destination_id=destination)
             assert not result.is_error, result.output
+        run.requests.clear()
+        receipt = await run.turn("query_info", kind="location", target_id=sd.location_id)
+        assert not receipt.is_error, receipt.output
+        assert requested(run, instructions)
         receipt = await run.turn("enter_mode", mode="combat", encounter_id="fragment_shadeling")
         assert not receipt.is_error, receipt.output
         await until(lambda: run.session.current_agent.__class__.__name__ == "CombatAgent")
