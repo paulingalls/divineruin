@@ -42,6 +42,9 @@
       },
       "northwest": {
         "destination": "accord_forge"
+      },
+      "northeast": {
+        "destination": "greyvale_south_road"
       }
     },
     "conditions": {
@@ -99,6 +102,9 @@
       },
       "east": {
         "destination": "millhaven_inn"
+      },
+      "west": {
+        "destination": "yanna_farmhouse"
       }
     },
     "conditions": {
@@ -220,6 +226,9 @@
       },
       "north": {
         "destination": "accord_training_hall"
+      },
+      "up": {
+        "destination": "torin_quarters"
       }
     },
     "conditions": {
@@ -314,6 +323,9 @@
       },
       "east": {
         "destination": "sunward_tidal_shore"
+      },
+      "southeast": {
+        "destination": "emris_study"
       }
     },
     "conditions": {
@@ -584,6 +596,9 @@
     "exits": {
       "out": {
         "destination": "accord_market_square"
+      },
+      "up": {
+        "destination": "grimjaw_quarters"
       }
     },
     "conditions": {

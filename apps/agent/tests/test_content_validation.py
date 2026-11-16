@@ -103,15 +103,35 @@ class TestContentCrossReferences:
         assert not (companion_ids & npc_ids)
         assert "companion_kael" in companion_ids
 
-    def test_location_exits_reference_valid_destinations(self):
-        locations = _load_json("locations.json")
-        location_ids = {loc["id"] for loc in locations}
-
-        for loc in locations:
-            for direction, exit_info in loc.get("exits", {}).items():
-                dest = exit_info.get("destination") if isinstance(exit_info, dict) else exit_info
-                assert dest in location_ids, (
-                    f"Location '{loc['id']}' exit '{direction}' references unknown destination '{dest}'"
+    def test_every_location_is_reachable_with_reciprocal_exits(self):
+        locations = json.loads((CONTENT_DIR / "locations.json").read_text())
+        assert locations, "Location catalog is empty"
+        exits = {
+            loc["id"]: {
+                direction: info["destination"] if isinstance(info, dict) else info
+                for direction, info in loc.get("exits", {}).items()
+            }
+            for loc in locations
+        }
+        root = "accord_market_square"
+        assert root in exits, f"Missing starting location '{root}'"
+        for source, routes in exits.items():
+            for direction, destination in routes.items():
+                assert destination in exits, (
+                    f"Location '{source}' exit '{direction}' references unknown destination '{destination}'"
+                )
+        visited = set()
+        pending = [root]
+        while pending:
+            source = pending.pop()
+            if source not in visited:
+                visited.add(source)
+                pending.extend(exits[source].values())
+        assert visited == exits.keys(), f"Unreachable locations: {sorted(exits.keys() - visited)}"
+        for source, routes in exits.items():
+            for direction, destination in routes.items():
+                assert source in exits[destination].values(), (
+                    f"Location '{source}' exit '{direction}' to '{destination}' has no return exit"
                 )
 
     def test_faction_leaders_resolve_to_real_npc_or_null(self):

@@ -54,3 +54,15 @@ Feature: Engine driven Greyvale arrivals
       | standing      |
       | dead          |
       | progressed    |
+
+  Scenario Outline: Authored exits support a round trip
+    Given a walker at <source>
+    When they take <outbound> to <destination>
+    Then <return_key> returns them to <source> with <outbound> leading to <destination>
+    Examples:
+      | source               | outbound  | destination         | return_key |
+      | accord_dockside      | southeast | emris_study         | out        |
+      | accord_guild_hall    | up        | torin_quarters      | out        |
+      | accord_forge         | up        | grimjaw_quarters    | out        |
+      | millhaven            | west      | yanna_farmhouse     | out        |
+      | accord_market_square | northeast | greyvale_south_road | south      |
