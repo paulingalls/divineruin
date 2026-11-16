@@ -30,12 +30,10 @@ if (process.env.RATE_LIMIT_BYPASS === "1" && Bun.env.NODE_ENV === "production") 
 }
 
 export function clientIP(req: Request, peer: string): string {
-  if (!hops) return peer;
-  const parts =
-    req.headers
-      .get("X-Forwarded-For")
-      ?.split(",")
-      .map((part) => part.trim()) ?? [];
+  const header = req.headers.get("X-Forwarded-For");
+  // No header is a direct caller (the agent and worker reach the server without the proxy).
+  if (!hops || header === null) return peer;
+  const parts = header.split(",").map((part) => part.trim());
   const suffix = parts.slice(-hops);
   const reason =
     parts.length < hops ? "short" : suffix.some((part) => !isIP(part)) ? "malformed" : null;

@@ -104,7 +104,7 @@ test("valid JWT player identity spans replicas, token changes and shared IPs", a
   expect(await Bun.redis.get(pk)).toBe("11");
   expect(await Bun.redis.get(peer)).toBeNull();
 });
-test("unset trust, malformed and short trusted suffixes use the peer and warn", async () => {
+test("unset trust, an absent header, and malformed or short trusted suffixes use the peer", async () => {
   const peer = data.track("ip", "127.0.0.1");
   for (const hops of [undefined, "1", "2"]) {
     await Bun.redis.del(peer);
@@ -114,8 +114,11 @@ test("unset trust, malformed and short trusted suffixes use the peer and warn", 
     for (const value of inputs) await allowed(await post(s, value));
     await blocked(await post(s, hops === undefined ? ip() : undefined));
     expect(await Bun.redis.get(peer)).toBe("4");
-    if (hops) expect(s.logs()).toContain("fallback: short");
-    if (hops === "1") expect(s.logs()).toContain("fallback: malformed");
+    if (hops === "2") expect(s.logs()).toContain("fallback: short");
+    if (hops === "1") {
+      expect(s.logs()).toContain("fallback: malformed");
+      expect(s.logs()).not.toContain("fallback: short");
+    }
   }
   await Bun.redis.del(peer);
   const v6 = "2001:db8::123";
