@@ -117,7 +117,6 @@ with its upstream dependencies.
 | 7 | [07_bestiary.md](07_bestiary.md) | `../game_mechanics/game_mechanics_bestiary.md`, `../game_mechanics/game_mechanics_encounter_roles.md` | 4 |
 | 8 | [08_patrons.md](08_patrons.md) | `../game_mechanics/game_mechanics_patrons.md` | 3 |
 | 9 | [09_economy.md](09_economy.md) | `../game_mechanics/game_mechanics_economy.md` + 6 subsystem docs in `../game_mechanics/economy/` (`supply_demand_engine.md`, `faction_reputation_pricing.md`, `merchant_inventory_restock.md`, `gold_sink_ledger.md`, `inflation_targets_controls.md`, `game_mechanics_p2p_trade.md`) | 10 |
-
 | 13 | [13_first_share.md](13_first_share.md) | `../mvp_spec.md` | 1 |
 
 **Total: 51 milestones in the phase files listed above**
