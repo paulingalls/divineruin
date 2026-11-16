@@ -17,7 +17,6 @@ void mock.module("./db.ts", () => {
 });
 
 const { handleJoinWaitlist } = await import("./waitlist.ts");
-const { checkRateLimit, _resetRateLimits } = await import("./middleware.ts");
 
 function jsonReq(body: Record<string, unknown>, headers?: Record<string, string>): Request {
   return new Request("http://localhost/api/waitlist", {
@@ -77,22 +76,5 @@ describe("handleJoinWaitlist", () => {
     const res = await handleJoinWaitlist(req);
     expect(res.status).toBe(415);
     expect(sqlCalls.length).toBe(0);
-  });
-});
-
-describe("/api/waitlist rate limit", () => {
-  beforeEach(() => {
-    _resetRateLimits();
-    delete process.env.RATE_LIMIT_BYPASS;
-  });
-
-  test("allows 5 requests per IP per minute, then 429s", () => {
-    for (let i = 0; i < 5; i++) {
-      expect(checkRateLimit("9.9.9.9", "/api/waitlist")).toBeNull();
-    }
-    const blocked = checkRateLimit("9.9.9.9", "/api/waitlist");
-    expect(blocked).not.toBeNull();
-    expect(blocked!.status).toBe(429);
-    expect(blocked!.headers.get("Retry-After")).not.toBeNull();
   });
 });

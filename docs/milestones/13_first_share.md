@@ -44,17 +44,21 @@ Owner: divineruin2 clone.
 
 ## Session Edges
 
-- [ ] The Leave button shows the session summary
-- [ ] Re-entering never speaks a stale recap
+- [x] The Leave button shows the session summary
+- [x] Re-entering never speaks a stale recap
 - [x] The prologue plays with default configuration
-- [ ] A failed DM dispatch does not leave the player in an empty room
+- [x] A failed DM dispatch does not leave the player in an empty room
+
+`apps/agent/tests/acceptance/test_fresh_recap.py` exercises room-service takeover,
+failed and timed-out closes, guest recaps and saved-location re-entry with real
+PostgreSQL, Valkey and LiveKit; model and voice providers are deterministic.
 
 ## Protecting the Bill
 
-- [ ] Only allowlisted emails can sign in
-- [ ] A session has a length cap and an idle timeout
-- [ ] One player cannot run concurrent sessions or dispatch a second DM
-- [ ] Rate limits hold behind the load balancer
+- [x] Only allowlisted emails can sign in
+- [x] A session has a length cap and an idle timeout
+- [x] One player cannot run concurrent sessions or dispatch a second DM — 2 h ownership TTL; sessions enforce the approved 60-minute cap
+- [x] Rate limits hold behind the load balancer — `apps/server/src/rate-limit.integration.test.ts`, `apps/server/src/rate-limit-failure.test.ts` (real HTTP, shared Valkey, proxy/JWT identity, fail-closed)
 
 ## Deployment and TestFlight
 

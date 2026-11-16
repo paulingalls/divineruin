@@ -87,7 +87,7 @@ class Episode:
         self.stt = CommandSTT()
         self.speeches = []
 
-    def make_session(self, _model, userdata: SessionData):
+    def make_session(self, _model, userdata: SessionData, **session_options):
         self.session = AgentSession(
             userdata=userdata,
             stt=self.stt,
@@ -95,6 +95,7 @@ class Episode:
             tts=ToneTTS(),
             turn_detection="stt",
             min_endpointing_delay=0.01,
+            **session_options,
         )
         return self.session
 
@@ -167,9 +168,9 @@ async def episode(
 
     queue_speech = BackgroundProcess._queue_speech
 
-    def capture_speech(background, priority, instructions):
+    def capture_speech(background, priority, instructions, **kwargs):
         run.speeches.append((priority, instructions))
-        queue_speech(background, priority, instructions)
+        queue_speech(background, priority, instructions, **kwargs)
 
     chat = run.model.chat
 

@@ -214,8 +214,23 @@ def e2e_tasks():
     return tasks
 
 
+def tracked(*roots: str, suffix: str) -> list[str]:
+    """Source files under roots, skipping hidden directories.
+
+    Proof runs this in a sandbox that is not a git checkout, so `git ls-files` is unavailable.
+    Every local virtualenv (.venv, scripts/audio/.venv-sa3) is hidden, and no tracked Python
+    file sits under a hidden directory; a venv's files must never become declaration inputs.
+    """
+    return sorted(
+        str(p)
+        for root in roots
+        for p in Path(root).rglob(f"*{suffix}")
+        if not any(part.startswith(".") for part in p.relative_to(root).parts)
+    )
+
+
 def main():
-    paths = sorted(str(p) for root in (Path("apps/agent"), Path("scripts")) for p in root.rglob("*.py"))
+    paths = tracked("apps/agent", "scripts", suffix=".py")
     paths.append("e2e/fixtures/inventory-snapshot.py")
     result = subprocess.run(
         ["bun", "scripts/proof-python-closure.ts"],
@@ -225,7 +240,7 @@ def main():
         check=True,
     )
     graph = json.loads(result.stdout)
-    tests = sorted(TESTS.rglob("test_*.py"))
+    tests = [Path(p) for p in tracked(str(TESTS), suffix=".py") if Path(p).name.startswith("test_")]
     paid = {str(p) for p in tests if paid_only(p)}
     # Bun already owns the YAML parser; avoid a generator-only Python dependency.
     parsed = subprocess.run(

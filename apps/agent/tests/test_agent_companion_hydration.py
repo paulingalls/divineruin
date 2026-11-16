@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from session_outcome_fixture import isolated_outcome_startup as isolated_outcome_startup
 from speech_handles import completed_handle
 
 from companion_profiles import get_companion_profile

@@ -1,17 +1,17 @@
+import { SessionControls } from "@/session/session-controls";
+import { useSessionExit, useSessionLifecycle } from "@/session/session-lifecycle";
 import { useInventoryRefresh } from "@/hooks/use-inventory-refresh";
-import { useEffect, useRef, useCallback, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as Crypto from "expo-crypto";
 import { LiveKitRoom, useConnectionState, useLocalParticipant, useVoiceAssistant } from "@/livekit";
-import { ConnectionState } from "livekit-client";
 import { useStore } from "zustand";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 import { Image } from "expo-image";
 import { ThemedText } from "@/components/themed-text";
-import { InviteButton } from "@/components/invite-button";
 import { firstInviteCode } from "@/utils/invite-link";
 import { TranscriptView } from "@/components/transcript-view";
 import { AtmosphericBackground } from "@/components/atmospheric-background";
@@ -26,16 +26,9 @@ import { useSessionToken } from "@/hooks/useSessionToken";
 import { useGameEvents } from "@/hooks/use-game-events";
 import { useDuckingBridge } from "@/hooks/use-ducking-bridge";
 import { configureAudioSession } from "@/audio/audio-config";
-import { releaseAllPlayers } from "@/audio/sfx-player";
-import { startSoundscapeEngine, stopSoundscapeEngine } from "@/audio/soundscape-player";
-import { startMusicEngine, stopMusicEngine } from "@/audio/music-player";
-import { stopNarration } from "@/audio/narration-player";
 import { sessionStore } from "@/stores/session-store";
-import { characterStore } from "@/stores/character-store";
-import { transcriptStore } from "@/stores/transcript-store";
-import { hudStore } from "@/stores/hud-store";
 import { panelStore } from "@/stores/panel-store";
-import { BrandColors, Spacing, Radius, Shadows } from "@/constants/theme";
+import { BrandColors, Spacing, Shadows } from "@/constants/theme";
 
 function LoadingShell({ children }: { children: React.ReactNode }) {
   return (
@@ -59,7 +52,6 @@ function LoadingShell({ children }: { children: React.ReactNode }) {
 function makeRoomName(): string {
   return `divineruin-${Crypto.randomUUID()}`;
 }
-const RECONNECT_TIMEOUT_MS = 2 * 60 * 1000;
 const SWIPE_UP_THRESHOLD = -50;
 
 function SwipeUpTrigger() {
@@ -84,87 +76,14 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
   const connectionState = useConnectionState();
   useVoiceAssistant();
   const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
-  const wasActive = useRef(false);
-  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
-  const phase = useStore(sessionStore, (s) => s.phase);
   const reconnecting = useStore(sessionStore, (s) => s.reconnecting);
 
   useGameEvents();
   useInventoryRefresh();
   useDuckingBridge();
 
-  const toggleMute = () => {
-    void localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled);
-  };
-
-  useEffect(() => {
-    return () => {
-      stopSoundscapeEngine();
-      stopMusicEngine();
-      stopNarration();
-      releaseAllPlayers();
-      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (phase === "summary") {
-      router.replace("/session-summary");
-    }
-  }, [phase, router]);
-
-  useEffect(() => {
-    if (connectionState === ConnectionState.Connected) {
-      sessionStore.getState().setPhase("active");
-      wasActive.current = true;
-      startSoundscapeEngine();
-      startMusicEngine();
-
-      if (reconnecting) {
-        sessionStore.getState().setReconnecting(false);
-        if (reconnectTimer.current) {
-          clearTimeout(reconnectTimer.current);
-          reconnectTimer.current = null;
-        }
-      }
-
-      const char = characterStore.getState().character;
-      if (char && !sessionStore.getState().locationContext) {
-        sessionStore.getState().setLocationContext({
-          locationId: char.locationId,
-          locationName: char.locationName,
-          atmosphere: "",
-          region: "",
-          tags: [],
-          ambientSounds: "",
-          timeOfDay: "",
-        });
-      }
-    }
-
-    const isReconnecting =
-      connectionState === ConnectionState.Reconnecting ||
-      connectionState === ConnectionState.SignalReconnecting;
-    if (isReconnecting && wasActive.current) {
-      sessionStore.getState().setReconnecting(true);
-      if (!reconnectTimer.current) {
-        reconnectTimer.current = setTimeout(() => {
-          sessionStore.getState().setReconnecting(false);
-          sessionStore.getState().setPhase("ended");
-          onLeave();
-        }, RECONNECT_TIMEOUT_MS);
-      }
-    }
-
-    if (connectionState === ConnectionState.Disconnected && wasActive.current && !reconnecting) {
-      if (phase !== "summary") {
-        sessionStore.getState().setPhase("ended");
-        const timer = setTimeout(() => onLeave(), 2000);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [connectionState, onLeave, reconnecting, phase]);
+  useSessionLifecycle(connectionState, onLeave);
 
   return (
     <View style={styles.content}>
@@ -182,32 +101,14 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
 
       <OverlayManager />
 
-      <View style={styles.buttonRow}>
-        <Pressable
-          style={[
-            styles.buttonBase,
-            styles.muteButton,
-            !isMicrophoneEnabled && styles.muteButtonActive,
-          ]}
-          onPress={toggleMute}
-        >
-          <ThemedText
-            style={[
-              styles.buttonText,
-              styles.muteText,
-              !isMicrophoneEnabled && styles.muteTextActive,
-            ]}
-          >
-            {isMicrophoneEnabled ? "Mute" : "Muted"}
-          </ThemedText>
-        </Pressable>
-
-        <Pressable style={[styles.buttonBase, styles.leaveButton]} onPress={onLeave}>
-          <ThemedText style={[styles.buttonText, styles.leaveText]}>Leave</ThemedText>
-        </Pressable>
-
-        <InviteButton />
-      </View>
+      <SessionControls
+        transport={{
+          isMicrophoneEnabled,
+          setMicrophoneEnabled: (enabled) => localParticipant.setMicrophoneEnabled(enabled),
+          publishData: (payload, options) => localParticipant.publishData(payload, options),
+        }}
+        onLeave={onLeave}
+      />
 
       <SwipeUpTrigger />
 
@@ -219,7 +120,6 @@ function SessionContent({ onLeave }: { onLeave: () => void }) {
 }
 
 export default function SessionScreen() {
-  const router = useRouter();
   const { code } = useLocalSearchParams<{ code?: string | string[] }>();
   const inviteCode = firstInviteCode(code);
   const { state, error, token, serverUrl, fetchToken, redeemInvite, reset } = useSessionToken();
@@ -236,21 +136,7 @@ export default function SessionScreen() {
     }
   }, [inviteCode, fetchToken, redeemInvite]);
 
-  const handleLeave = useCallback(() => {
-    const currentPhase = sessionStore.getState().phase;
-    if (currentPhase === "summary") {
-      router.replace("/session-summary");
-      return;
-    }
-    stopSoundscapeEngine();
-    stopMusicEngine();
-    reset();
-    sessionStore.getState().reset();
-    transcriptStore.getState().clear();
-    hudStore.getState().reset();
-    panelStore.getState().reset();
-    router.back();
-  }, [reset, router]);
+  const handleLeave = useSessionExit(reset);
 
   if (state === "error") {
     return (
@@ -259,6 +145,18 @@ export default function SessionScreen() {
           Connection failed
         </ThemedText>
         <ThemedText style={[styles.centered, { color: BrandColors.ash }]}>{error}</ThemedText>
+        {!inviteCode && (
+          <Pressable
+            accessibilityRole="button"
+            style={styles.leaveButton}
+            onPress={() => {
+              sessionStore.getState().setPhase("connecting");
+              void fetchToken(makeRoomName());
+            }}
+          >
+            <ThemedText style={styles.leaveText}>Retry</ThemedText>
+          </Pressable>
+        )}
         <Pressable style={styles.leaveButton} onPress={handleLeave}>
           <ThemedText style={styles.leaveText}>Go back</ThemedText>
         </Pressable>
@@ -311,45 +209,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: BrandColors.parchment,
   },
-  buttonRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: Spacing.three,
-    zIndex: 20,
-  },
-  buttonBase: {
-    minWidth: 120,
-    alignItems: "center",
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
-    borderRadius: Radius.md,
-  },
-  buttonText: {
-    fontSize: 24,
-    fontWeight: "600" as const,
-  },
-  muteButton: {
-    borderWidth: 2,
-    borderColor: BrandColors.ash,
-    backgroundColor: "transparent",
-  },
-  muteButtonActive: {
-    borderColor: BrandColors.ember,
-    backgroundColor: BrandColors.emberFaint,
-  },
-  muteText: {
-    color: BrandColors.bone,
-  },
-  muteTextActive: {
-    color: BrandColors.ember,
-  },
-  leaveButton: {
-    backgroundColor: BrandColors.hollow,
-    ...Shadows.glowHollow,
-  },
-  leaveText: {
-    color: BrandColors.void,
-  },
+  leaveButton: { backgroundColor: BrandColors.hollow, ...Shadows.glowHollow },
+  leaveText: { color: BrandColors.void },
   loadingArt: {
     opacity: 0.4,
   },

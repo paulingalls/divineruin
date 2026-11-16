@@ -2,6 +2,8 @@ import { validateId, getLivekitClients, mintParticipantToken } from "./livekit.t
 import { parseJsonBody } from "./middleware.ts";
 import { putInvite, getInvite } from "./invite-store.ts";
 
+import { ownsDispatchedRoom } from "./session-rooms.ts";
+
 const INVITE_TTL_SECONDS = 1800;
 
 /** High-entropy, URL-safe invite code — the capability secret for redeem. */
@@ -9,7 +11,7 @@ export function generateCode(): string {
   return Buffer.from(crypto.getRandomValues(new Uint8Array(8))).toString("base64url");
 }
 
-export async function handleCreateInvite(req: Request, _playerId: string): Promise<Response> {
+export async function handleCreateInvite(req: Request, playerId: string): Promise<Response> {
   const body = await parseJsonBody<{ room_name?: string }>(req);
   if (!body) {
     return Response.json({ error: "Invalid Content-Type" }, { status: 415 });
@@ -23,6 +25,10 @@ export async function handleCreateInvite(req: Request, _playerId: string): Promi
   const roomNameError = validateId(room_name, "room_name");
   if (roomNameError) {
     return Response.json({ error: roomNameError }, { status: 400 });
+  }
+
+  if (!(await ownsDispatchedRoom(playerId, room_name))) {
+    return Response.json({ error: "You do not own this room." }, { status: 403 });
   }
 
   const code = generateCode();

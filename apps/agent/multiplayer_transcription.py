@@ -52,16 +52,25 @@ class _TranscriberAgent(Agent):
         emit: Callable[[AuthenticatedTranscript], None],
         fail: Callable[[BaseException], None],
         stt: Any,
+        activity: Callable[[str, int], None] | None = None,
     ):
         super().__init__(instructions="Transcribe the linked participant.", stt=stt)
         self.identity = identity
         self.generation = generation
         self._emit = emit
         self._fail = fail
+        self._player_activity = activity
         self._final_events: deque[stt.SpeechEvent] = deque()
 
     async def stt_node(self, audio, model_settings):
         async for event in Agent.default.stt_node(self, audio, model_settings):
+            if (
+                self._player_activity is not None
+                and event.type in (stt.SpeechEventType.INTERIM_TRANSCRIPT, stt.SpeechEventType.FINAL_TRANSCRIPT)
+                and event.alternatives
+                and event.alternatives[0].text.strip()
+            ):
+                self._player_activity(self.identity, self.generation)
             if event.type == stt.SpeechEventType.FINAL_TRANSCRIPT and event.alternatives:
                 self._final_events.append(event)
             yield event
@@ -106,10 +115,12 @@ class MultiParticipantTranscriber:
         stt: Any,
         authorizer: Authorizer,
         session_factory: SessionFactory | None = None,
+        activity: Callable[[str, int], None] | None = None,
     ):
         self.room = room
         self.stt = stt
         self._authorizer = authorizer
+        self._player_activity = activity
         self._session_factory = session_factory
         self._queue: asyncio.Queue[AuthenticatedTranscript | BaseException] = asyncio.Queue(
             maxsize=MAX_PENDING_TRANSCRIPTS
@@ -214,6 +225,7 @@ class MultiParticipantTranscriber:
                 self._emit_transcript,
                 functools.partial(self._record_failure, identity),
                 self.stt,
+                self._player_activity,
             )
             if self._session_factory is None:
                 session = _input_session()

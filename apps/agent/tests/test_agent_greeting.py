@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from livekit.agents import Agent, AgentSession
 from livekit.agents.voice.agent_activity import AgentActivity
+from session_outcome_fixture import isolated_outcome_startup as isolated_outcome_startup
 from speech_handles import completed_handle, in_flight_handle
 
 DM_LOGGER = "divineruin.dm"
@@ -37,7 +38,7 @@ async def _run_gameplay_greeting(last_summary, generate_reply, favor_loss=None, 
         "name": "Aric",
         "class": "warrior",
         "level": 1,
-        "location_id": "accord_guild_hall",
+        "location_id": "accord_guild_hall" if last_summary else None,
         "flags": {"onboarding_beat": onboarding_beat} if onboarding_beat is not None else {},
     }
 

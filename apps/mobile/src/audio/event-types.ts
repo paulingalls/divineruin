@@ -19,6 +19,7 @@ export const DICE_RESULT = "dice_result" as const;
 // Session lifecycle
 export const SESSION_INIT = "session_init" as const;
 export const SESSION_END = "session_end" as const;
+export const LEAVE_REQUESTED = "leave_requested" as const;
 
 // Location
 export const LOCATION_CHANGED = "location_changed" as const;

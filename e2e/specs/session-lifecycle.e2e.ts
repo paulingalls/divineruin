@@ -47,3 +47,40 @@ test.describe("Session lifecycle", () => {
     await expect(sessionPage.page.getByText("Quests")).toBeVisible();
   });
 });
+
+test("production session shows dispatch error and retries with a fresh room", async ({
+  characterPage,
+}) => {
+  const rooms: string[] = [];
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const error = "The DM could not join. Try again.";
+  await characterPage.route("**/api/livekit/token", async (route) => {
+    const body = route.request().postDataJSON() as { room_name: string };
+    rooms.push(body.room_name);
+    if (rooms.length === 2) await held;
+    await route.fulfill({ status: 503, json: { error } });
+  });
+  try {
+    await characterPage.goto("/session");
+    await expect(characterPage.getByText("Connection failed", { exact: true })).toBeVisible();
+    await expect(characterPage.getByText(error, { exact: true })).toBeVisible();
+    const retry = characterPage.getByRole("button", { name: "Retry", exact: true });
+    await expect(retry).toBeVisible();
+    await retry.click();
+    await expect.poll(() => rooms.length).toBe(2);
+    expect(rooms[0]).toMatch(/^[a-zA-Z0-9_-]+$/);
+    expect(rooms[1]).toMatch(/^[a-zA-Z0-9_-]+$/);
+    expect(rooms[1]).not.toBe(rooms[0]);
+    await expect(characterPage.getByText("Entering the world...", { exact: true })).toBeVisible();
+    await expect(retry).toBeHidden();
+    release();
+    await expect(characterPage.getByText(error, { exact: true })).toBeVisible();
+    await expect(retry).toBeVisible();
+    expect(rooms).toHaveLength(2);
+  } finally {
+    release();
+  }
+});

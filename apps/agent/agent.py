@@ -9,21 +9,23 @@ from collections.abc import MutableMapping
 from pathlib import Path
 
 from livekit import agents
-from livekit.agents import AgentServer
+from livekit.agents import AgentServer, AgentSession
 from livekit.agents.__main__ import main as livekit_main
 
 import db
 import db_content_queries
 import db_mutations
 import db_queries
+import session_outcome
 from error_line import install as install_error_lines
 from gameplay_llm import gameplay_llm_api_key
+from leave_request_handler import LeaveRequestHandler
 from media_dir import validate_media_dir
 from participant_lifecycle import _setup_reconnection
 from production_preflight import is_production, production_preflight, validate_production_env
 from region_types import REGION_CITY
 from session_data import CreationState, SessionData
-from session_startup import _make_agent_session, solo_room_options, start_gameplay_session
+from session_startup import _make_agent_session, start_gameplay_session, start_session
 from speech_delivery import deliver_speech
 from voices import NONVERBAL_VOICE_KEYS, ROLE_VOICE_KEYS, VOICES
 
@@ -159,6 +161,16 @@ def _build_recap_instruction(last_summary: dict | None) -> str:
     return " " + " ".join(parts)
 
 
+def _session_with_listeners(model: str, userdata: SessionData) -> AgentSession:
+    session = _make_agent_session(model, userdata)
+    session_outcome.watch_close(session, userdata)
+    assert userdata.room is not None
+    handler = LeaveRequestHandler(userdata.room, session, userdata)
+    handler.start()
+    session.on("close", handler.stop)
+    return session
+
+
 async def _join_session_end(ctx: agents.JobContext) -> None:
     """Wait for the end-of-session recap to finish publishing before the room goes away.
 
@@ -172,8 +184,10 @@ async def _join_session_end(ctx: agents.JobContext) -> None:
         sd = ctx.primary_session.userdata
     except RuntimeError:
         return  # no AgentSession was ever started for this job
+    if sd.limits is not None:
+        await sd.limits.aclose()
     tasks = [task for task in (sd.session_end_task, sd.multiplayer_close_task) if task is not None]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
+    results = await asyncio.gather(*(asyncio.shield(task) for task in tasks), return_exceptions=True)
     failures = [result for result in results if isinstance(result, BaseException)]
     if len(failures) == 1:
         raise failures[0]
@@ -184,7 +198,15 @@ async def _join_session_end(ctx: agents.JobContext) -> None:
 @server.rtc_session(agent_name="divineruin-dm", on_session_end=_join_session_end)
 async def dm_session(ctx: agents.JobContext) -> None:
     player_id = _extract_player_id(ctx)
+    # Like _extract_player_id, a job-less console session (development) falls back to the room.
+    room_name = ctx.job.room.name if ctx.job else ctx.room.name
+    async with session_outcome.startup(player_id, room_name) as (session_id, predecessor):
+        if session_id is None:
+            return
+        await _start_dm_session(ctx, player_id, session_id, predecessor)
 
+
+async def _start_dm_session(ctx, player_id, session_id, predecessor) -> None:
     # Load the archetype chassis once per agent process. The XP Resolve / update_quest
     # call calculate_max_hp -> get_archetype_chassis, which needs the chassis
     # populated (M2.1 folded the old module-level HP/resource constants into the
@@ -272,12 +294,9 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
     # Determine session type: new player (creation) vs returning
     player = None
-    last_summary = None
+    last_summary = predecessor.summary
     try:
-        player, last_summary = await asyncio.gather(
-            db_queries.get_player(player_id),
-            db_queries.get_last_session_summary(player_id),
-        )
+        player = await db_queries.get_player(player_id)
     except Exception:
         logger.warning("Failed to load player/session data", exc_info=True)
 
@@ -295,19 +314,20 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
         userdata = SessionData(
             player_id=player_id,
+            session_id=session_id,
             location_id="",
             room=ctx.room,
             creation_state=CreationState(),
         )
-        session = _make_agent_session("claude-sonnet-4-20250514", userdata)
+        session = _session_with_listeners("claude-sonnet-4-20250514", userdata)
         prologue_agent = PrologueAgent()
-        await session.start(room=ctx.room, agent=prologue_agent, room_options=solo_room_options(userdata))
+        await start_session(ctx.room, session, prologue_agent, userdata)
         _setup_reconnection(ctx.room, session, userdata, prologue_agent)
     else:
         # --- Existing gameplay flow ---
         assert player is not None  # guaranteed by needs_creation check
-        if last_summary is not None:
-            location_id = player.get("location_id", START_LOCATION)
+        if player.get("location_id") or predecessor.prior_summary is not None:
+            location_id = player.get("location_id") or START_LOCATION
             is_first_session = False
         else:
             location_id = "accord_market_square"
@@ -319,6 +339,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
         userdata = SessionData(
             player_id=player_id,
+            session_id=session_id,
             location_id=location_id,
             room=ctx.room,
             patron_id=patron_id,
@@ -356,7 +377,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
             from onboarding_agent import OnboardingAgent
 
             userdata.onboarding_beat = onboarding_beat
-            session = _make_agent_session("claude-haiku-4-5-20251001", userdata)
+            session = _session_with_listeners("claude-haiku-4-5-20251001", userdata)
             # Resolve the companion from the archetype, NOT from userdata.companion: that is
             # written only when the companion_met flag is already set, so a player reconnecting
             # AT beat 3 has None there — and beat 3 is where the companion is staged.
@@ -365,7 +386,7 @@ async def dm_session(ctx: agents.JobContext) -> None:
                 companion_id=select_companion_for_archetype(player["class"]),
                 publish_session_init=True,
             )
-            await session.start(room=ctx.room, agent=onboarding_agent, room_options=solo_room_options(userdata))
+            await start_session(ctx.room, session, onboarding_agent, userdata)
             _setup_reconnection(ctx.room, session, userdata, onboarding_agent)
             if userdata.favor_loss:
                 patron, loss = userdata.favor_loss
@@ -388,11 +409,19 @@ async def dm_session(ctx: agents.JobContext) -> None:
         region_type = location_data.get("region_type", REGION_CITY) if location_data else REGION_CITY
         gameplay_agent = create_gameplay_agent(region_type, location_id, companion=userdata.companion)
 
-        session = _make_agent_session("claude-haiku-4-5-20251001", userdata)
+        session = _session_with_listeners("claude-haiku-4-5-20251001", userdata)
 
         await start_gameplay_session(ctx.room, session, gameplay_agent, userdata)
 
         _setup_reconnection(ctx.room, session, userdata, gameplay_agent)
+
+        if predecessor.skip_reason:
+            logger.warning(
+                "Recap skipped for player %s predecessor %s: %s",
+                player_id,
+                predecessor.session_id,
+                predecessor.skip_reason,
+            )
 
         # --- Initial greeting ---
         favor_instruction = ""

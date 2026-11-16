@@ -69,6 +69,13 @@ export async function handleRequestCode(req: Request): Promise<Response> {
     return Response.json({ error: "A valid email address is required" }, { status: 400 });
   }
 
+  const membership = await sql<
+    { email: string }[]
+  >`SELECT email FROM signin_allowlist WHERE email=${rawEmail}`;
+  if (membership.length === 0) {
+    return Response.json({ error: "This playtest is invite-only" }, { status: 403 });
+  }
+
   // Find-or-create account
   await sql`
     INSERT INTO accounts (email) VALUES (${rawEmail})
@@ -111,10 +118,17 @@ export async function handleVerifyCode(req: Request): Promise<Response> {
     return Response.json({ error: "Invalid Content-Type" }, { status: 415 });
   }
 
-  const rawEmail = body.email?.trim().toLowerCase();
+  const rawEmail = normalizeEmail(body.email);
   const rawCode = body.code?.trim();
   if (!rawEmail || !rawCode) {
     return Response.json({ error: "Email and code are required" }, { status: 400 });
+  }
+
+  const membership = await sql<
+    { email: string }[]
+  >`SELECT email FROM signin_allowlist WHERE email=${rawEmail}`;
+  if (membership.length === 0) {
+    return Response.json({ error: "This playtest is invite-only" }, { status: 403 });
   }
 
   // Look up account

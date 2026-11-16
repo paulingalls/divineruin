@@ -203,7 +203,7 @@
   {
     "name": "sessions",
     "tests": [
-      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:first_episode(?:_atomicity|_reentry)?|m35_session_persistence_capstone|player_session_persistence|rest_.*)\\.py"
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:first_episode(?:_atomicity|_reentry)?|m35_session_persistence_capstone|player_session_persistence|rest_.*|fresh_recap|leave_summary|session_limits|session_room_ownership)\\.py"
     ],
     "owns": [
       "apps/agent/(?:creation[^/]*|onboarding[^/]*|session[^/]*|participant[^/]*|rest[^/]*|first_episode[^/]*|character_creation[^/]*)\\.py"

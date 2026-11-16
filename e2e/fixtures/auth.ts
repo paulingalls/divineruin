@@ -60,8 +60,10 @@ export async function cleanupAccount(accountId: string): Promise<void> {
 /** Clean up all data for an account by email. */
 export async function cleanupAccountByEmail(email: string): Promise<void> {
   const rows = await queryDb<{ id: string }>(`SELECT id FROM accounts WHERE email = $1`, [email]);
-  if (rows.length > 0) {
-    await cleanupAccount(rows[0].id);
+  try {
+    if (rows.length > 0) await cleanupAccount(rows[0].id);
+  } finally {
+    await queryDb(`DELETE FROM signin_allowlist WHERE email = $1`, [email]);
   }
 }
 
@@ -71,48 +73,51 @@ export const test = base.extend<{ authenticatedPage: Page }, { testUser: TestUse
     async ({}, use) => {
       const email = `e2e-${crypto.randomUUID()}@test.divineruin.com`;
 
-      // Create account and auth code directly in DB to avoid rate limits
-      const accounts = await queryDb<{ id: string }>(
-        `INSERT INTO accounts (email) VALUES ($1) RETURNING id`,
-        [email],
-      );
-      if (accounts.length === 0) throw new Error("Failed to create account");
-      const accountId = accounts[0].id;
+      try {
+        await queryDb(`INSERT INTO signin_allowlist(email) VALUES ($1)`, [email]);
+        // Create account and auth code directly in DB to avoid rate limits
+        const accounts = await queryDb<{ id: string }>(
+          `INSERT INTO accounts (email) VALUES ($1) RETURNING id`,
+          [email],
+        );
+        if (accounts.length === 0) throw new Error("Failed to create account");
+        const accountId = accounts[0].id;
 
-      const code = String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0");
-      const expiresAt = new Date(Date.now() + 10 * 60_000);
-      await queryDb(`INSERT INTO auth_codes (account_id, code, expires_at) VALUES ($1, $2, $3)`, [
-        accountId,
-        code,
-        expiresAt.toISOString(),
-      ]);
+        const code = String(Math.floor(Math.random() * 1_000_000)).padStart(6, "0");
+        const expiresAt = new Date(Date.now() + 10 * 60_000);
+        await queryDb(`INSERT INTO auth_codes (account_id, code, expires_at) VALUES ($1, $2, $3)`, [
+          accountId,
+          code,
+          expiresAt.toISOString(),
+        ]);
 
-      // Verify code via API to get a valid JWT
-      const verifyRes = await fetch(`${API_ORIGIN}/api/auth/verify-code`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code }),
-      });
-      if (!verifyRes.ok) {
-        throw new Error(`verify-code failed: ${verifyRes.status} ${await verifyRes.text()}`);
+        // Verify code via API to get a valid JWT
+        const verifyRes = await fetch(`${API_ORIGIN}/api/auth/verify-code`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, code }),
+        });
+        if (!verifyRes.ok) {
+          throw new Error(`verify-code failed: ${verifyRes.status} ${await verifyRes.text()}`);
+        }
+
+        const data = (await verifyRes.json()) as {
+          token: string;
+          account_id: string;
+          player_id: string;
+        };
+
+        const testUser: TestUser = {
+          email,
+          token: data.token,
+          accountId: data.account_id,
+          playerId: data.player_id,
+        };
+
+        await use(testUser);
+      } finally {
+        await cleanupAccountByEmail(email);
       }
-
-      const data = (await verifyRes.json()) as {
-        token: string;
-        account_id: string;
-        player_id: string;
-      };
-
-      const testUser: TestUser = {
-        email,
-        token: data.token,
-        accountId: data.account_id,
-        playerId: data.player_id,
-      };
-
-      await use(testUser);
-
-      await cleanupAccount(accountId);
     },
     { scope: "worker" },
   ],
