@@ -5,7 +5,7 @@ import re
 import subprocess
 from pathlib import Path
 
-from proof_family_selection import audit_readers, select_readers
+from proof_family_selection import NON_PYTHON, audit_readers, select_readers
 
 DATA_PATTERNS = (
     "apps/agent/tests/acceptance/**/*.feature",
@@ -13,7 +13,6 @@ DATA_PATTERNS = (
     "apps/agent/tests/acceptance/fixtures/**",
     "packages/shared/fixtures/**",
 )
-NON_PYTHON = {"scripts/worktree-common.sh", "scripts/ensure-db.ts"}
 PROVIDER_HARNESS = {
     "apps/agent/tests/_db_lifecycle.py",
     "apps/agent/tests/acceptance/_postgres_fixtures.py",
@@ -25,7 +24,7 @@ PROVIDER_HARNESS = {
 def data_inventory():
     paths = set()
     for pattern in DATA_PATTERNS:
-        # Path.glob's trailing ** enumerates directories; rglob enumerates files too.
+        # Before Python 3.13 a trailing ** matches only directories; **/* matches files everywhere.
         matches = Path().glob(pattern + "/*" if pattern.endswith("/**") else pattern)
         found = {str(p) for p in matches if p.is_file()}
         if not found:

@@ -148,11 +148,11 @@ def task_inventory(acceptance, e2e, graph, families):
     return inventory
 
 
+NON_PYTHON = {"scripts/worktree-common.sh", "scripts/ensure-db.ts"}
+
+
 def harness_source(source):
-    return source.startswith("apps/agent/tests/") or source in {
-        "scripts/worktree-common.sh",
-        "scripts/ensure-db.ts",
-    }
+    return source.startswith("apps/agent/tests/") or source in NON_PYTHON
 
 
 def select_readers(inventory, source, readers, budget):
