@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.38.1 — 2026-11-16
+
+- The fast Python lane seeds its dev database after migrating it, so a change to `content/*.json` is tested against matching data at story land instead of the previous seed. The fixture players in `content/players.json` are reset on each run.
+- `scripts/teardown-worktree.sh --sweep` works on a machine that also runs unrelated Docker Compose projects. It skips a project with no divineruin ownership labels and still refuses on partial, mixed or malformed ownership.
+
 ## 0.38.0 — 2026-11-16
 
 - Session one is a complete episode. A new player answers two questions, meets a companion, fights once, is handed a mystery and a reason to go north, and finds a message from their god waiting afterward.
