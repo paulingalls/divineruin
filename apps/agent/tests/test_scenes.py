@@ -288,7 +288,13 @@ class TestWarmLayerSceneInjection:
             "quest_id": "greyvale",
             "quest_name": "Greyvale",
             "current_stage": 0,
-            "stages": [{"id": "s0", "objective": "Travel."}],
+            "stages": [
+                {
+                    "id": "s0",
+                    "objective": "Travel.",
+                    "completion_conditions": {"type": "location_reached", "location": "millhaven"},
+                }
+            ],
             "scene_graph": [{"scene_id": "scene_road", "stage_refs": [0]}],
         }
         scene_cache = {

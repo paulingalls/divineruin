@@ -198,7 +198,7 @@ def _resolve_deps(damage=3):
     """DI bundle for resolve_phase: a deterministic damage resolver plus the mutations/queries/
     concentration mocks the packet path touches, and a no-op db_mod so the per-phase transaction
     wrapper runs without a real connection."""
-    queries = MagicMock()
+    queries = MagicMock(get_active_player_quests=AsyncMock(return_value=[]))
     queries.get_player_inventory = AsyncMock(return_value=[])  # no equipped items
     queries.get_inventory_snapshot = snapshot_query([])
     # The ability Focus pre-validation fetches the player for_update; a sufficient-Focus default so

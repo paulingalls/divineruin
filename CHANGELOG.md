@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.37.0 — 2026-11-15
+
+- The Millhaven leg of the Greyvale arc no longer depends on the DM deciding to advance the quest. Arriving in Millhaven, by walking or by travel, completes "The Road North"; winning the Hollow patrol fight completes "First Blood", whether combat ends through the DM's tool or automatically. Rewards are paid once and roll back with the combat end if anything fails.
+- The DM's prompt states what finishes each active quest stage: the encounter to start for a fight, the facts and sources for an investigation, and the exact `update_quest` call for stages the engine does not advance. The unread stage `hints` arrays are removed from `content/quests.json` and the shared TypeScript quest entity; scene-beat companion hints are unchanged.
+- The Millhaven patrol is retuned for a level-1 character with a companion: one shadeling and one minion shadeling, no mawling. Across 20 fixed seeds a warrior, mage, rogue and cleric win 20, 17, 17 and 20 fights using only basic attacks. The mawling waits for the ruins.
+- Every authored location can be walked to from the Accord market square and every exit has a way back. Five exits were missing, including the ones into Emris's study and Yanna's farmhouse and the road north out of the square. A content check fails if either property breaks.
+- Players can rest. The DM's new `rest` tool restores Stamina fully and Focus to half on a short rest, and HP, Stamina and Focus on a long rest, which also records the settlement as the player's anchor. Either rest resets Resonance. It refuses in combat and where the location is not safe, and restores each co-located party member from their own pools.
+- A lost fight no longer crashes resurrection with a missing player id.
+- New characters are created with their archetype's Focus and Stamina pools. Creation had written neither, so every spell or ability with a cost was refused; migration 063 backfills existing characters without touching pools already spent.
+- A long rest restores HP only up to the ceiling left by permanent death penalties.
+- The per-player character snapshot sent after a rest goes only to that player, not to everyone in the room.
+
 ## 0.36.1 — 2026-11-06
 
 - CI's Python lanes install ffmpeg from a pinned, sha256-checked static build (BtbN month-end 2026-10-31, LGPL 8.1) that is cached between runs, instead of through apt. The Azure apt mirror had stalled that step to the 20-minute job timeout twice in one day. The step is capped at 5 minutes.

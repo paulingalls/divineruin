@@ -3,7 +3,8 @@ export type QuestCompletionCondition =
   | { type: "knowledge_acquired"; required_info: string[]; sources: string[] }
   | { type: "combat_completed"; encounter: string; outcome: string }
   | { type: "item_discovered"; items: string[]; location: string }
-  | { type: "npc_interaction"; npc: string; topic: string };
+  | { type: "npc_interaction"; npc: string; topic: string }
+  | { type: "decision_made"; decision: string; options: string[] };
 
 export interface QuestReward {
   item: string;
@@ -32,7 +33,6 @@ export interface QuestStage {
   id: string;
   name?: string;
   objective: string;
-  hints: string[];
   completion_conditions: QuestCompletionCondition;
   on_complete?: QuestStageComplete;
   branches?: Record<string, QuestBranch>;

@@ -12,7 +12,7 @@ from creation_classes import CLASSES
 from creation_deities import DEITIES
 from creation_races import RACES
 from hp_scaling import calculate_max_hp
-from rules_engine import attribute_modifier
+from rules_engine import attribute_modifier, calculate_max_pools
 from spells import get_spells_by_source
 from starter_zone import STARTER_ZONE_ID
 
@@ -300,7 +300,14 @@ def build_character_data(
     cultures = infer_culture(race_id, class_id, deity_id)
     location_id = get_starting_location(cultures[0])
 
+    maxima = calculate_max_pools(class_id, 1, {key: attribute_modifier(value) for key, value in attributes.items()})
+    pools = {
+        key: {"current": maximum, "max": maximum}
+        for key in ("stamina", "focus")
+        if (maximum := getattr(maxima, key)) is not None
+    }
     return {
+        **pools,
         "name": name,
         "race": race_id,
         "class": class_id,

@@ -43,6 +43,7 @@ def combat_end_queries(**overrides) -> MagicMock:
     player participant's row (the XP Resolve locks it FOR UPDATE) and their inventory (weapon
     durability). ``overrides`` shadow either — e.g. an equipped-weapon inventory."""
     queries = MagicMock(
+        get_active_player_quests=AsyncMock(return_value=[]),
         get_player=AsyncMock(side_effect=lambda pid, conn=None, for_update=False: {**GUILD_PLAYER, "player_id": pid}),
         get_player_inventory=AsyncMock(return_value=[]),
         get_inventory_snapshot=snapshot_query([]),
@@ -65,6 +66,7 @@ def default_player_row(request, monkeypatch):
     """A plausible level-1 row for any player_id, so the combat-end XP grant has something to read."""
     if "dev_db_pool" in request.fixturenames:
         return
+    monkeypatch.setattr(db_queries, "get_active_player_quests", AsyncMock(return_value=[]))
     monkeypatch.setattr(
         db_queries,
         "get_player",

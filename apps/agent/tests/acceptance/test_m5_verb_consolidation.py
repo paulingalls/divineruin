@@ -6,7 +6,7 @@ import pytest
 from _retired_tools import RETIRED_TOOL_REPLACEMENTS
 from acceptance.seeds import seed_player
 from agent_tool_profiles import AGENT_TOOL_LISTS
-from livekit.agents.llm import is_function_tool, is_raw_function_tool
+from livekit.agents.llm import ToolContext, is_function_tool, is_raw_function_tool
 from sample_fixtures import make_context
 
 import db
@@ -20,12 +20,14 @@ from mode_tools import enter_mode
 from patron_action_tools import record_patron_action
 from recipe_tools import _learn_recipe_impl, learn
 from reputation_tools import adjust_faction_reputation
+from rest_tools import rest
 
 # verb -> the EXACT set of agents that must hold it (grep-verified against the tool
 # lists). Updated for M7: the three region rows fold into "exploration". A future sprint
 # that moves a verb on/off an agent must update this map in lockstep, or this capstone
 # goes red on staleness.
 VERB_PRESENCE = [
+    (rest, "rest", {"exploration"}),
     (transact, "transact", {"exploration"}),
     (learn, "learn", {"dispatch"}),
     (check, "check", {"exploration", "combat", "onboarding", "dispatch"}),
@@ -78,6 +80,9 @@ def test_consolidated_verb_present_where_expected(verb, verb_name: str, expected
 def test_within_strict_ceiling_and_strict_schema(name: str, tools: list) -> None:
     """Construct strict vendor tools; RawFunctionTool would opt out of schema while still occupying a tool slot."""
     assert len(tools) <= MAX_STRICT_TOOLS, f"{name} has {len(tools)} tools (ceiling {MAX_STRICT_TOOLS})"
+    schemas = ToolContext(tools).parse_function_tools("openai", strict=True)
+    assert {s["function"]["name"] for s in schemas} == {t.__name__ for t in tools}
+    assert all(s["function"]["strict"] for s in schemas)
     for t in tools:
         assert is_function_tool(t) and not is_raw_function_tool(t), (
             f"{name}'s {getattr(t, '__name__', t)!r} is not a strict function tool"

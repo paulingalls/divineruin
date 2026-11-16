@@ -26,7 +26,7 @@ def _content_row(path, row_id):
     return next(row for row in rows if row["id"] == row_id)
 
 
-async def _started_with(item_id, encounter_id="hollow_patrol_greyvale"):
+async def _started_with(item_id, encounter_id="ruins_mawling_pair"):
     item = _content_row("content/items.json", item_id)
     encounter = _content_row("content/encounter_templates.json", encounter_id)
     mutations, queries, content = _make_start_combat_mocks()
@@ -69,7 +69,7 @@ async def test_combat_init_folds_carried_item_traits_and_round_trips():
 async def test_combat_init_reads_and_keeps_each_party_members_own_inventory():
     stillheart = _content_row("content/items.json", "stillheart")
     cloak = _content_row("content/items.json", "cloak_steppe_winds")
-    encounter = _content_row("content/encounter_templates.json", "hollow_patrol_greyvale")
+    encounter = _content_row("content/encounter_templates.json", "ruins_mawling_pair")
     mutations, queries, content = _make_start_combat_mocks()
     second = deepcopy(SAMPLE_PLAYER)
     second.update(player_id="player_2", name="Bren")
@@ -82,7 +82,7 @@ async def test_combat_init_reads_and_keeps_each_party_members_own_inventory():
 
     await _start_combat_impl(
         ctx,
-        encounter_id="hollow_patrol_greyvale",
+        encounter_id="ruins_mawling_pair",
         encounter_description="The party is tested.",
         mutations=mutations,
         queries=queries,
@@ -101,7 +101,7 @@ async def test_combat_init_reads_and_keeps_each_party_members_own_inventory():
 
 @pytest.mark.asyncio
 async def test_authored_hollow_shriek_cannot_frighten_choirs_silence_bearer():
-    ctx, state = await _started_with("choirs_silence", "hollow_patrol_greyvale")
+    ctx, state = await _started_with("choirs_silence", "ruins_mawling_pair")
     attacker = _participant(state, "mawling_1")
     target = _participant(state, "player_1")
     action = {
@@ -133,7 +133,7 @@ async def test_authored_hollow_shriek_cannot_frighten_choirs_silence_bearer():
 
 @pytest.mark.asyncio
 async def test_authored_hollow_shriek_uses_stillheart_wisdom_advantage_and_names_source():
-    ctx, state = await _started_with("stillheart", "hollow_patrol_greyvale")
+    ctx, state = await _started_with("stillheart", "ruins_mawling_pair")
     attacker = _participant(state, "mawling_1")
     target = _participant(state, "player_1")
     action = {

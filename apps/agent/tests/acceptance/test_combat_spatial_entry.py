@@ -29,7 +29,7 @@ LEVELS = {
     "ruins_mawling_pair": 5,
     "hollowed_scout": 4,
     "hollow_wisp": 2,
-    "hollow_patrol_greyvale": 3,
+    "hollow_patrol_greyvale": 1,
     "ruins_guardian": 7,
     "bandit_ambush": 5,
     "ashmark_patrol": 6,

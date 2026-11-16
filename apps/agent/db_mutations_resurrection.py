@@ -5,7 +5,7 @@ db_mutations_conditions. Writes the cost + revive state on players.data JSONB:
 - attributes.<attr>  — permanent attribute penalty (delta, accumulates)
 - maxhp_override      — negative int, the death-7+ -1/level fraying (delta, accumulates)
 - hp.current + location_id — the revive (HP + anchor placement)
-- last_rested_settlement_id — anchor tier-3 state (forward-seam; no rest caller writes it yet)
+- last_rested_settlement_id — anchor tier-3 state
 
 All accept conn= for transaction participation, mirroring the sibling mutation modules.
 """

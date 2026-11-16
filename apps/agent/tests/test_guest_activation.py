@@ -246,6 +246,7 @@ def test_combat_end_resets_every_member_after_use():
     cs = CombatState(combat_id="c1", participants=[], initiative_order=[], location_id=session.location_id)
     session.combat_state = cs
     end_data = {
+        "quest_updates": [],
         "xp_total": 0,
         "xp_granted": 0,
         "summary_xp_granted": 0,

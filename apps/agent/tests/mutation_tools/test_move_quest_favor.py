@@ -62,6 +62,7 @@ class TestMovePlayer:
         if locations is not None:
             mock_content.get_location = AsyncMock(side_effect=locations)
         mock_queries = MagicMock()
+        mock_queries.get_active_player_quests = AsyncMock(return_value=[])
         mock_queries.get_npcs_at_location = AsyncMock(return_value=[])
         mock_queries.get_npc_dispositions = AsyncMock(return_value={})
         mock_queries.get_targets_at_location = AsyncMock(return_value=[])

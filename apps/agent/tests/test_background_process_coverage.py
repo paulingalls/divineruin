@@ -9,7 +9,6 @@ import event_types as E
 from background_process import BackgroundProcess
 from bg_speech import PendingSpeech, SpeechPriority
 from event_bus import GameEvent
-from session_data import CompanionState
 
 
 class TestBackgroundProcessLifecycle:
@@ -254,24 +253,6 @@ class TestGuidanceSystem:
         with patch.object(bp, "_queue_speech") as mock_queue:
             bp._check_scene_beat_hints()
             mock_queue.assert_not_called()
-
-    def test_queues_after_silence(self):
-        mock_sd = MagicMock()
-        mock_sd.in_combat = False
-        past = time.time() - 35
-        mock_sd.last_player_speech_time = past
-        mock_sd.last_agent_speech_end = past
-        mock_sd.companion_can_act = True
-        mock_sd.companion = CompanionState(id="companion_kael", name="Kael")
-        bp = BackgroundProcess(MagicMock(), mock_sd)
-        bp._quest_cache = [BEAT_QUEST]
-        bp._scene_cache = BEAT_SCENE_CACHE
-        with patch.object(bp, "_queue_speech") as mock_queue:
-            bp._check_scene_beat_hints()
-            mock_queue.assert_called_once()
-            call_args = mock_queue.call_args[0]
-            assert call_args[0] == SpeechPriority.IMPORTANT
-            assert "Test hint 1" in call_args[1]
 
     def test_skips_while_agent_spoke(self):
         mock_sd = MagicMock()

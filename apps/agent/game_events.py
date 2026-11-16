@@ -40,6 +40,8 @@ async def publish_game_event(
     event_type: str,
     payload: dict,
     event_bus: EventBus | None = None,
+    *,
+    destination_identities: list[str] | None = None,
 ) -> None:
     """Publish to the internal event bus first, so the background process sees
     the event whether or not client delivery succeeds; transport errors still raise.
@@ -62,7 +64,12 @@ async def publish_game_event(
                 logger.warning("Room disconnected, skipping %s event", event_type)
                 return
         data = json.dumps({"type": event_type, **payload}).encode("utf-8")
-        await room.local_participant.publish_data(data, reliable=True, topic="game_events")
+        if destination_identities is None:
+            await room.local_participant.publish_data(data, reliable=True, topic="game_events")
+        else:
+            await room.local_participant.publish_data(
+                data, reliable=True, topic="game_events", destination_identities=destination_identities
+            )
         logger.debug("Published %s event to data channel", event_type)
 
 
