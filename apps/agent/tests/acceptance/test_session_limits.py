@@ -224,14 +224,17 @@ async def test_creation_handoffs_keep_original_cap(livekit_server, reset_db_pool
         for category, value in (("class", "warrior"), ("name", "Vale")):
             result = await job.episode.turn("set_creation_choice", category=category, value=value)
             assert not result.is_error, result.output
+        await harness.advance(100)
         result = await job.episode.turn("finalize_character")
         assert not result.is_error, result.output
         await until(lambda: job.episode.session.current_agent.__class__.__name__ == "OnboardingAgent")
+        assert sd.limits is owner
+        await harness.advance(200)
         for _ in range(3):
             result = await job.episode.turn("advance_onboarding_beat")
             assert not result.is_error, result.output
         await until(lambda: job.episode.session.current_agent.__class__.__name__ == "ExplorationAgent")
-        assert limits is owner and owner.started == 0
+        assert sd.limits is owner and owner.started == 0
         for seconds in (500, 1000, 1500, 2000, 2500, 3000, 3500):
             await harness.advance(seconds)
             await harness.speech(job)
