@@ -8,13 +8,13 @@ on the way into every fight and flipped it to the end-of-session summary screen
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import TYPE_CHECKING
 
 import db_mutations
 import event_types as E
 import room_admin
+import session_outcome
 from game_events import publish_game_event
 from host_handoff import promote_after_departure
 from session_summary import generate_session_summary
@@ -30,6 +30,7 @@ async def run_guest_departure(sd: SessionData, player_id: str, session) -> None:
     end_published = False
     removed = False
     saved = False
+    summary_in_progress = False
     try:
         if sd.departing_player_id != player_id or not sd.party.contains(player_id):
             raise RuntimeError(f"No pending departure for {player_id!r}")
@@ -38,7 +39,9 @@ async def run_guest_departure(sd: SessionData, player_id: str, session) -> None:
         lifecycle = sd.multiplayer_owner.lifecycle if sd.multiplayer_owner else None
         if lifecycle is None:
             raise RuntimeError("Guest departure requires party lifecycle")
+        summary_in_progress = True
         payload = await generate_session_summary(sd, sd.transcript_path, sd.session_start_time, player_id=player_id)
+        summary_in_progress = False
         payload = {**payload, "player_id": player_id}
         await publish_game_event(sd.room, E.SESSION_END, payload, sd.event_bus)
         end_published = True
@@ -46,14 +49,30 @@ async def run_guest_departure(sd: SessionData, player_id: str, session) -> None:
         removed = True
         lifecycle.mark_departed(player_id)
         if player_id == sd.primary_player_id:
+            summary_in_progress = True
             await db_mutations.save_session_summary(player_id, sd.session_id, payload)
             saved = True
+            await session_outcome.complete(
+                player_id,
+                sd.session_id,
+                "saved",
+                guest_saved=player_id != (sd.outcome_player_id or sd.primary_player_id),
+            )
             await promote_after_departure(sd, player_id, session)
         else:
             sd.party.members[:] = [member for member in sd.party.members if member.player_id != player_id]
+            summary_in_progress = True
             await db_mutations.save_session_summary(player_id, sd.session_id, payload)
             saved = True
+            await session_outcome.complete(
+                player_id,
+                sd.session_id,
+                "saved",
+                guest_saved=player_id != (sd.outcome_player_id or sd.primary_player_id),
+            )
     except Exception:
+        if not saved and summary_in_progress:
+            await session_outcome.complete(player_id, sd.session_id, "failed")
         logger.exception("Guest departure failed for %s", player_id)
         if end_published and not removed:
             try:
@@ -87,14 +106,14 @@ async def run_session_end(sd: SessionData) -> None:
     hold the departed host's earnings.
     """
     sole_member = sd.primary_player_id if len(sd.party.members) == 1 else None
-    payload = await generate_session_summary(sd, sd.transcript_path, sd.session_start_time, player_id=sole_member)
-
-    results = await asyncio.gather(
-        publish_game_event(sd.room, E.SESSION_END, payload, sd.event_bus),
-        db_mutations.save_session_summary(sd.primary_player_id, sd.session_id, payload),
-        return_exceptions=True,
+    player_id = sd.primary_player_id
+    try:
+        payload = await generate_session_summary(sd, sd.transcript_path, sd.session_start_time, player_id=sole_member)
+        await db_mutations.save_session_summary(player_id, sd.session_id, payload)
+    except Exception:
+        await session_outcome.complete(player_id, sd.session_id, "failed")
+        raise
+    await session_outcome.complete(
+        player_id, sd.session_id, "saved", guest_saved=player_id != (sd.outcome_player_id or sd.primary_player_id)
     )
-    for i, result in enumerate(results):
-        if isinstance(result, Exception):
-            labels = ("publish session_end", "save session summary")
-            logger.exception("Failed to %s", labels[i], exc_info=result)
+    await publish_game_event(sd.room, E.SESSION_END, payload, sd.event_bus)

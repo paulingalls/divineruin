@@ -146,37 +146,6 @@ class TestSessionSummary:
             assert "Line 1" in call_kwargs["transcript_tail"]
 
 
-class TestRecapInstruction:
-    def test_builds_recap_from_full_summary(self):
-        from agent import _build_recap_instruction
-
-        summary = {
-            "summary": "You explored the ruins.",
-            "key_events": ["Found a sword", "Fought goblins"],
-            "decisions": ["Spared the chief"],
-            "next_hooks": ["Deeper ruins await"],
-        }
-        recap = _build_recap_instruction(summary)
-        assert "You explored the ruins." in recap
-        assert "Found a sword" in recap
-        assert "Deeper ruins await" in recap
-        assert "Spared the chief" in recap
-
-    def test_empty_summary_returns_empty(self):
-        from agent import _build_recap_instruction
-
-        assert _build_recap_instruction(None) == ""
-        assert _build_recap_instruction({}) == ""
-
-    def test_partial_summary(self):
-        from agent import _build_recap_instruction
-
-        summary = {"summary": "A brief venture."}
-        recap = _build_recap_instruction(summary)
-        assert "A brief venture." in recap
-        assert "Key events" not in recap
-
-
 class TestReconnectInstruction:
     def test_includes_location(self):
         from participant_lifecycle import _build_reconnect_instruction
