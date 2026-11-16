@@ -42,6 +42,9 @@
       },
       "northwest": {
         "destination": "accord_forge"
+      },
+      "northeast": {
+        "destination": "greyvale_south_road"
       }
     },
     "conditions": {
@@ -62,6 +65,7 @@
   },
   {
     "id": "millhaven",
+    "navigation": "established_road",
     "settlement_tier": "village",
     "personality": "struggling",
     "name": "Millhaven",
@@ -98,6 +102,9 @@
       },
       "east": {
         "destination": "millhaven_inn"
+      },
+      "west": {
+        "destination": "yanna_farmhouse"
       }
     },
     "conditions": {
@@ -220,6 +227,9 @@
       "north": {
         "destination": "accord_training_hall"
       },
+      "up": {
+        "destination": "torin_quarters"
+      },
       "east": {
         "destination": "accord_guild_infirmary"
       }
@@ -316,6 +326,9 @@
       },
       "east": {
         "destination": "sunward_tidal_shore"
+      },
+      "southeast": {
+        "destination": "emris_study"
       }
     },
     "conditions": {
@@ -586,6 +599,9 @@
     "exits": {
       "out": {
         "destination": "accord_market_square"
+      },
+      "up": {
+        "destination": "grimjaw_quarters"
       }
     },
     "conditions": {

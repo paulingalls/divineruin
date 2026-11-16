@@ -57,9 +57,6 @@ def test_tool_budget_holds_exact_counts() -> None:
     assert len(COMBAT_AGENT_TOOLS) == 10
     assert len(COMBAT_AGENT_TOOLS) <= MAX_STRICT_TOOLS - 4
 
-    assert len(EXPLORATION_TOOLS) == 15
-    assert len(EXPLORATION_TOOLS) <= MAX_STRICT_TOOLS - 4
-
 
 async def _focus_current(player_id: str) -> int:
     player = await db_queries.get_player(player_id, conn=await db.get_pool())

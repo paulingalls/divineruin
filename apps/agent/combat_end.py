@@ -18,6 +18,7 @@ import db_queries
 import event_types as E
 import first_episode
 import pricing_queries
+import quest_progress
 from combat_conditions_persist import reconcile_member_conditions
 from combat_durability import _accrue_durability, _find_equipped
 from combat_end_lives import settle_lives
@@ -147,9 +148,12 @@ async def _end_combat_db(
 
     ``content`` resolves loot tables (db_content_queries by default; injectable for tests);
     ``rng`` seeds the loot/currency rolls (a fresh system Random by default)."""
-    episode = await first_episode.settle(session, cs, conn=conn, sink=sink)
     import choir_scene
 
+    quest_updates = await quest_progress.advance_on_combat_end(
+        session, cs, outcome, conn=conn, sink=sink, queries=queries, mutations=mutations, content=content
+    )
+    episode = await first_episode.settle(session, cs, conn=conn, sink=sink)
     await choir_scene.end(session, cs, outcome, mutations=mutations, queries=queries, conn=conn)
     rng = rng or random.Random()
     actor_id = session.acting_player_id
@@ -296,6 +300,7 @@ async def _end_combat_db(
     import choir_encounter
 
     return {
+        "quest_updates": quest_updates,
         "episode": episode,
         "choir": choir_encounter.facts(cs),
         "xp_total": rewards.spoils.xp_total,
@@ -421,6 +426,7 @@ def _end_combat_finish(
     if currency_gold > 0:
         summary_parts.append(f"Currency: {currency_gold:.1f} gold.")
 
+    quest_progress.finish_combat_quests(session, end_data, response, summary_parts)
     summary_ctx = ChatContext()
     summary_ctx.add_message(role="system", content=" ".join(summary_parts))
 

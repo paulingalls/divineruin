@@ -172,16 +172,6 @@ class TestCheckSceneBeatHints:
         sd.companion = CompanionState(id="companion_kael", name="Kael")
         return sd
 
-    def test_hint_after_beat_delay(self):
-        sd = self._make_sd_with_companion()
-        bg, _, _ = _make_bg(session_data=sd)
-        bg._quest_cache = [QUEST_WITH_BEATS]
-        bg._scene_cache = SCENE_CACHE_FOR_BEATS
-        bg._check_scene_beat_hints()
-        assert len(bg._speech_queue) == 1
-        assert bg._speech_queue[0].priority == SpeechPriority.IMPORTANT
-        assert "Hint A1" in bg._speech_queue[0].instructions
-
     def test_no_hint_before_delay(self):
         sd = self._make_sd_with_companion(last_player_speech_time=time.time() - 10)
         bg, _, _ = _make_bg(session_data=sd)

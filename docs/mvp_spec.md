@@ -775,11 +775,6 @@ The following JSON entities implement the MVP story arc using the schemas define
       "id": "stage_1_investigate",
       "name": "The Road North",
       "objective": "Travel to Millhaven and investigate the Hollow reports.",
-      "hints": [
-        "Your companion mentions hearing that Millhaven is a day's travel north of the Accord.",
-        "Your companion suggests talking to Guildmaster Torin before leaving — he might have more details about what the scouts found.",
-        "Your companion says directly: 'Torin said the town's called Millhaven. Let's head north along the trade road.'"
-      ],
       "completion_conditions": {
         "type": "location_reached",
         "location": "millhaven"
@@ -794,11 +789,6 @@ The following JSON entities implement the MVP story arc using the schemas define
       "id": "stage_2_gather_intel",
       "name": "Something Wrong",
       "objective": "Talk to Millhaven's residents and learn what they've seen.",
-      "hints": [
-        "Your companion notices a woman watching you from near the mill — she looks like she's in charge.",
-        "Your companion suggests asking at the inn — 'Barkeeps always know what's going on.'",
-        "Your companion says: 'That's Elder Yanna. She runs this town. We should talk to her.'"
-      ],
       "completion_conditions": {
         "type": "knowledge_acquired",
         "required_info": ["hollow_sighting_details", "ruins_light_reports"],
@@ -814,11 +804,6 @@ The following JSON entities implement the MVP story arc using the schemas define
       "id": "stage_3_first_contact",
       "name": "First Blood",
       "objective": "Engage the Hollow creatures near Millhaven and survive.",
-      "hints": [
-        "Your companion's attention snaps north. 'Do you hear that? That... silence?'",
-        "Your companion draws their weapon. 'Something's moving out there. This is it.'",
-        "Your companion says: 'The tracks lead toward the northern fields. Ready up.'"
-      ],
       "completion_conditions": {
         "type": "combat_completed",
         "encounter": "hollow_patrol_greyvale",
@@ -835,11 +820,6 @@ The following JSON entities implement the MVP story arc using the schemas define
       "id": "stage_4_the_ruins",
       "name": "What Lies Beneath",
       "objective": "Explore the Greyvale Ruins and discover what's causing the disturbance.",
-      "hints": [
-        "Your companion keeps glancing at the hills to the northeast. 'The elder mentioned the old ruins. And the lights.'",
-        "Your companion says: 'Whatever's happening with the Hollow, those ruins are connected. I'd bet on it.'",
-        "Your companion says directly: 'We need to go to the Greyvale Ruins. The answer's there.'"
-      ],
       "completion_conditions": {
         "type": "item_discovered",
         "items": ["ruins_journal_fragment"],
@@ -868,11 +848,6 @@ The following JSON entities implement the MVP story arc using the schemas define
       "id": "stage_5_return",
       "name": "The Weight of Discovery",
       "objective": "Return to the Accord of Tides and report what you found.",
-      "hints": [
-        "Your companion says: 'We need to get this to someone who can read it. Back to the Accord.'",
-        "Your companion mentions the Aelindran scholars in the Dockside Quarter. 'If anyone can read old academic notation, it's them.'",
-        "Your companion says: 'Emris — the Aelindran archivist in the Dockside Quarter. They'd know what this means.'"
-      ],
       "completion_conditions": {
         "type": "npc_interaction",
         "npc": "scholar_emris",

@@ -23,13 +23,13 @@ mystery object and the call to action are one beat, in session 1.
 
 ## Session 2 — Millhaven and the Breach
 
-Owner: divineruin2 clone (sprint `greyvale-millhaven`). It may reword these.
+Shipped in v0.37.0 (divineruin2 clone, sprint `greyvale-millhaven`). The fight's bar is 16 wins of 20 seeds per archetype, where a win includes being downed and saved by the companion.
 
-- [ ] Arriving in Millhaven completes stage 1 without the DM choosing to
-- [ ] The DM's prompt names what finishes the current stage
-- [ ] The Millhaven fight is winnable at level 1 and victory advances the quest
-- [ ] Every location is reachable from the market square, and every exit has a return
-- [ ] The player can rest at the inn
+- [x] Arriving in Millhaven completes stage 1 without the DM choosing to
+- [x] The DM's prompt names what finishes the current stage
+- [x] The Millhaven fight is winnable at level 1 and victory advances the quest
+- [x] Every location is reachable from the market square, and every exit has a return
+- [x] The player can rest at the inn
 
 ## Session 3 — The Ruins and the Reveal
 

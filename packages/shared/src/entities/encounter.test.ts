@@ -145,7 +145,6 @@ describe("encounter_templates.json — enemy action kinds", () => {
     expect(carriers).toEqual([
       ["mawling_1", "Lunge", 13],
       ["mawling_2", "Lunge", 13],
-      ["mawling_1", "Lunge", 13],
     ]);
   });
 
@@ -230,7 +229,7 @@ describe("creature tier player bands", () => {
 describe("authored creature tiers", () => {
   test("every content row has the expected tier", () => {
     const rows = encounters.flatMap((enc) => enc.enemies.map((enemy) => [enc.id, enemy] as const));
-    expect(rows).toHaveLength(28);
+    expect(rows).toHaveLength(27);
     const named: Record<string, number> = {
       Shadeling: 1,
       Mawling: 2,

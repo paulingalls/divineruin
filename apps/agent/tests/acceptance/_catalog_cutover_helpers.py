@@ -29,7 +29,7 @@ TARGETS = {
     "fragment_shadeling": (1, "easy", [("hollow_shadeling", "standard", 1)]),
     "shadeling_cluster": (1, "easy", [("hollow_shadeling", "standard", 2)]),
     "hollow_wisp": (2, "moderate", [("hollow_wisp", "standard", 1)]),
-    "hollow_patrol_greyvale": (3, "hard", [("hollow_mawling", "standard", 1), ("hollow_shadeling", "minion", 2)]),
+    "hollow_patrol_greyvale": (1, "easy", [("hollow_shadeling", "standard", 1), ("hollow_shadeling", "minion", 1)]),
     "hollowed_scout": (4, "hard", [("hollowed_scout", "elite", 1)]),
     "ruins_mawling_pair": (5, "moderate", [("hollow_mawling", "standard", 2)]),
     "bandit_ambush": (5, "moderate", [("bandit_captain", "elite", 1), ("bandit", "minion", 4)]),

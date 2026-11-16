@@ -306,11 +306,6 @@ Quests are state machines. Each quest has stages with objectives, completion con
     {
       "id": 1,
       "objective": "Gather information about the patrol in Veldross",
-      "hints": [
-        "Ask around the market",
-        "Check Thornwatch notice boards",
-        "Maren Thell was a former field medic — she might know something"
-      ],
       "completion_conditions": [
         "learned_patrol_heading OR learned_patrol_members >= 2"
       ],
@@ -322,7 +317,6 @@ Quests are state machines. Each quest has stages with objectives, completion con
     {
       "id": 2,
       "objective": "Travel to the old watchtower near the Hollowmere border",
-      "hints": ["The road north from Veldross leads to the border region"],
       "completion_conditions": ["arrived_at_old_watchtower"],
       "on_complete": {
         "xp": 75,
@@ -332,7 +326,6 @@ Quests are state machines. Each quest has stages with objectives, completion con
     {
       "id": 3,
       "objective": "Search the watchtower for signs of the patrol",
-      "hints": ["The watchtower looks abandoned but there are recent tracks"],
       "completion_conditions": ["found_patrol_journal OR found_patrol_survivor"],
       "branches": {
         "found_journal": {
@@ -594,7 +587,7 @@ Each tier reveals more, creating a natural conversational progression that rewar
 
 ### Writing Quest Content
 
-Quest content spans `description`, `stages`, `hints`, `completion_conditions`, and `branches`. The DM delivers all of this in conversation, never as text on a screen.
+Quest content spans `description`, `stages`, `completion_conditions`, and `branches`. The DM delivers all of this in conversation, never as text on a screen.
 
 **Quest descriptions: the hook, not the briefing.** The `description` is what the quest-giver says (or what the DM narrates) to draw the player in. Write it as dialogue or narration, not as a quest log entry.
 
@@ -609,10 +602,10 @@ The first gives the DM a scene to perform. The second is a UI tooltip.
 Good: *"Find out what the night watch saw at the ruins."*
 Weak: *"Gather information from 3 NPCs about the ruins (0/3)."*
 
-**Hints: escalating, in-character.** The `hints` array in each stage feeds the guidance system. Write them as things the companion or DM would naturally say, in escalating specificity:
+**Hints: escalating, in-character.** Scene beats in `content/scenes.json` supply `companion_hints` to the guidance system. Link each stage to its scene through the quest’s `scene_graph`; the beat’s `hint_delay_seconds` controls delivery during silence. Write them as things the companion or DM would naturally say, in escalating specificity:
 
 ```json
-"hints": [
+"companion_hints": [
   "Your companion mentions they overheard someone at the inn talking about the ruins.",
   "Your companion suggests asking the innkeeper — she seems to know everyone's business.",
   "Your companion says directly: 'The innkeeper's cousin was at those ruins. We should talk to her.'"

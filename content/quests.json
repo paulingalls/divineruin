@@ -12,11 +12,6 @@
         "name": "The Road North",
         "objective": "Travel to Millhaven and investigate the Hollow reports.",
         "target_location_id": "millhaven",
-        "hints": [
-          "Your companion mentions hearing that Millhaven is a day's travel north of the Accord.",
-          "Your companion suggests talking to Guildmaster Torin before leaving — he might have more details about what the scouts found.",
-          "Your companion says directly: 'Torin said the town's called Millhaven. Let's head north along the trade road.'"
-        ],
         "completion_conditions": {
           "type": "location_reached",
           "location": "millhaven"
@@ -32,11 +27,6 @@
         "name": "Something Wrong",
         "objective": "Talk to Millhaven's residents and learn what they've seen.",
         "target_location_id": "millhaven",
-        "hints": [
-          "Your companion notices a woman watching you from near the mill — she looks like she's in charge.",
-          "Your companion suggests asking at the inn — 'Barkeeps always know what's going on.'",
-          "Your companion says: 'That's Elder Yanna. She runs this town. We should talk to her.'"
-        ],
         "completion_conditions": {
           "type": "knowledge_acquired",
           "required_info": ["hollow_sighting_details", "ruins_light_reports"],
@@ -53,15 +43,10 @@
         "name": "First Blood",
         "objective": "Engage the Hollow creatures near Millhaven and survive.",
         "target_location_id": "greyvale_wilderness_north",
-        "hints": [
-          "Your companion's attention snaps north. 'Do you hear that? That... silence?'",
-          "Your companion draws their weapon. 'Something's moving out there. This is it.'",
-          "Your companion says: 'The tracks lead toward the northern fields. Ready up.'"
-        ],
         "completion_conditions": {
           "type": "combat_completed",
           "encounter": "hollow_patrol_greyvale",
-          "outcome": "survived"
+          "outcome": "victory"
         },
         "on_complete": {
           "xp": 150,
@@ -80,11 +65,6 @@
         "name": "What Lies Beneath",
         "objective": "Explore the Greyvale Ruins and discover what's causing the disturbance.",
         "target_location_id": "greyvale_ruins_entrance",
-        "hints": [
-          "Your companion keeps glancing at the hills to the northeast. 'The elder mentioned the old ruins. And the lights.'",
-          "Your companion says: 'Whatever's happening with the Hollow, those ruins are connected. I'd bet on it.'",
-          "Your companion says directly: 'We need to go to the Greyvale Ruins. The answer's there.'"
-        ],
         "completion_conditions": {
           "type": "item_discovered",
           "items": ["ruins_journal_fragment"],
@@ -119,11 +99,6 @@
         "name": "The Weight of Discovery",
         "objective": "Return to the Accord of Tides and report what you found.",
         "target_location_id": "emris_study",
-        "hints": [
-          "Your companion says: 'We need to get this to someone who can read it. Back to the Accord.'",
-          "Your companion mentions the Aelindran scholars in the Dockside Quarter. 'If anyone can read old academic notation, it's them.'",
-          "Your companion says: 'Emris — the Aelindran archivist in the Dockside Quarter. They'd know what this means.'"
-        ],
         "completion_conditions": {
           "type": "npc_interaction",
           "npc": "scholar_emris",
@@ -184,11 +159,6 @@
         "name": "The Man Who Came Back Wrong",
         "objective": "Learn about Aldric from Millhaven's residents.",
         "target_location_id": "millhaven",
-        "hints": [
-          "Your companion notices the locals avoiding a topic. 'There's something they're not saying.'",
-          "Your companion suggests: 'The innkeeper seems to know everyone. Maybe ask about recent... problems.'",
-          "Your companion says: 'Maren mentioned someone named Aldric. And Elder Yanna keeps visiting someone. Same person?'"
-        ],
         "completion_conditions": {
           "type": "knowledge_acquired",
           "required_info": ["aldric_went_to_ruins", "aldric_came_back_changed"],
@@ -205,11 +175,6 @@
         "name": "The Hollow Stare",
         "objective": "Find Aldric and try to communicate with him.",
         "target_location_id": "millhaven_inn",
-        "hints": [
-          "Your companion glances toward the corner booth. 'Is that... is he alright?'",
-          "Your companion says: 'He's not responding. But look at his hands — he's drawing something.'",
-          "Your companion says: 'Those shapes he's tracing. They look like the notation in the ruins.'"
-        ],
         "completion_conditions": {
           "type": "npc_interaction",
           "npc": "aldric_hollowed",
@@ -226,11 +191,6 @@
         "name": "What He Brought Back",
         "objective": "Convince Elder Yanna to show you Aldric's stone.",
         "target_location_id": "millhaven",
-        "hints": [
-          "Your companion says: 'Yanna's hiding something. She keeps touching her pocket.'",
-          "Your companion suggests: 'Maybe if she trusts us enough, she'll show us what Aldric brought back.'",
-          "Your companion says: 'Yanna, we've seen the ruins. Whatever Aldric found — we need to see it. To help him.'"
-        ],
         "completion_conditions": {
           "type": "item_discovered",
           "items": ["aldric_strange_stone"],
@@ -265,11 +225,6 @@
         "name": "Taking Stock",
         "objective": "Survey Millhaven's defenses and identify vulnerabilities.",
         "target_location_id": "millhaven",
-        "hints": [
-          "Your companion looks around the town. 'Not much to work with, is there?'",
-          "Your companion suggests walking the perimeter. 'Let's see what we've got to defend.'",
-          "Your companion says: 'The north side is completely open. If they come from the fields, there's nothing stopping them.'"
-        ],
         "completion_conditions": {
           "type": "knowledge_acquired",
           "required_info": ["millhaven_north_vulnerability", "millhaven_resources"],
@@ -286,11 +241,6 @@
         "name": "Hard Choices",
         "objective": "Choose how to allocate Millhaven's resources: north barricade, watchtower, or evacuation supplies.",
         "target_location_id": "millhaven",
-        "hints": [
-          "Your companion lays out the options. 'Barricade to the north buys time. Watchtower gives warning. Evacuation supplies save lives if we lose.'",
-          "Your companion says: 'There's not enough for all three. Pick what matters most.'",
-          "Your companion says: 'What would you rather have — walls, eyes, or a way out?'"
-        ],
         "completion_conditions": {
           "type": "decision_made",
           "decision": "fortification_choice",
@@ -336,11 +286,6 @@
         "name": "Fragments and Echoes",
         "objective": "Help Emris study the Greyvale artifacts.",
         "target_location_id": "emris_study",
-        "hints": [
-          "Your companion says: 'Emris looks like they haven't slept. Maybe we should check in.'",
-          "Your companion says: 'The scholar said they needed help comparing the notation to their archives.'",
-          "Your companion says: 'Emris is in their study on the dockside. They asked us to come back.'"
-        ],
         "completion_conditions": {
           "type": "npc_interaction",
           "npc": "scholar_emris",
@@ -357,11 +302,6 @@
         "name": "The Last Letter",
         "objective": "Earn Emris's trust enough for them to share their mentor's final letter.",
         "target_location_id": "emris_study",
-        "hints": [
-          "Your companion notices Emris holding something — a letter, old and well-handled. 'There's more they're not showing us.'",
-          "Your companion says: 'Be patient. They'll share when they're ready. Some knowledge costs trust.'",
-          "Your companion says: 'Emris, if your mentor's letter is connected to what we found... we need to see it. All of it.'"
-        ],
         "completion_conditions": {
           "type": "npc_interaction",
           "npc": "scholar_emris",
