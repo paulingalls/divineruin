@@ -15,6 +15,7 @@ DICE_RESULT = "dice_result"  # client-only alias for DICE_ROLL
 # Session lifecycle
 SESSION_INIT = "session_init"
 SESSION_END = "session_end"
+LEAVE_REQUESTED = "leave_requested"
 
 # Location
 LOCATION_CHANGED = "location_changed"

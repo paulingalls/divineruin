@@ -1,4 +1,4 @@
-import { test, expect } from "../fixtures/character.js";
+import { test, expect } from "../fixtures/session.js";
 
 test.describe("Session summary", () => {
   test("redirects to home when no summary data exists", async ({
@@ -15,4 +15,64 @@ test.describe("Session summary", () => {
       authenticatedPage.getByText(/ENTER AETHOS|Your story is about to begin/i).first(),
     ).toBeVisible();
   });
+});
+
+async function requestLeave(sessionPage: import("../fixtures/session.js").SessionPage) {
+  const { page } = sessionPage;
+  await sessionPage.enterFromHome();
+  await sessionPage.injectSessionInit();
+  await page.clock.install();
+  await page.clock.pauseAt(new Date());
+  await page.getByRole("button", { name: "Leave", exact: true }).click();
+  await expect(page.getByText("Wrapping up…", { exact: true })).toBeVisible();
+  const observations = await page.evaluate(() => window.__DR!.transport);
+  expect(observations.packets).toEqual([
+    {
+      payload: Array.from(new TextEncoder().encode(JSON.stringify({ type: "leave_requested" }))),
+      reliable: true,
+      topic: "player_hints",
+    },
+  ]);
+  expect(observations.microphone).toEqual([false]);
+  expect(observations.disposed).toBe(false);
+  await expect(page.getByRole("button", { name: "Muted", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Wrapping up…", exact: true })).toBeDisabled();
+  return page.evaluateHandle(() => window.__DR!.transport);
+}
+
+test("Leave mutes, requests one recap and shows the received summary", async ({ sessionPage }) => {
+  const transport = await requestLeave(sessionPage);
+  const { page } = sessionPage;
+  await page.getByText("Wrapping up…", { exact: true }).click({ force: true });
+  expect(await page.evaluate(() => window.__DR!.transport.packets.length)).toBe(1);
+  await page.evaluate(() =>
+    window.__DR!.injectPacket(
+      Array.from(
+        new TextEncoder().encode(
+          JSON.stringify({
+            type: "session_end",
+            summary: "The bells rang at farewell.",
+            xp_earned: 12,
+          }),
+        ),
+      ),
+    ),
+  );
+  await expect(page.getByTestId("session-summary-screen")).toBeVisible();
+  await expect(page.getByText("The bells rang at farewell.")).toBeVisible();
+  await page.clock.runFor(16000);
+  await expect(page.getByTestId("session-summary-screen")).toBeVisible();
+  await transport.dispose();
+});
+
+test("Leave returns home at fifteen seconds without a recap", async ({ sessionPage }) => {
+  const transport = await requestLeave(sessionPage);
+  const { page } = sessionPage;
+  await page.clock.runFor(14999);
+  await expect(page.getByText("Wrapping up…", { exact: true })).toBeVisible();
+  await page.clock.runFor(1);
+  await expect(page.getByText(/ENTER AETHOS|Your story is about to begin/i).first()).toBeVisible();
+  await expect(page.getByTestId("session-summary-screen")).toBeHidden();
+  expect(await transport.evaluate((t) => t.disposed)).toBe(true);
+  await transport.dispose();
 });

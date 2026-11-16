@@ -9,6 +9,7 @@ export interface GameEvent {
 
 export interface SessionPage {
   page: Page;
+  enterFromHome: () => Promise<void>;
   injectEvent: (event: GameEvent) => Promise<void>;
   injectSessionInit: (overrides?: Record<string, unknown>) => Promise<void>;
   openPanel: (tab: string) => Promise<void>;
@@ -35,6 +36,21 @@ export const test = characterTest.extend<{
 
     // Wait for window.__DR to be exposed
     await characterPage.waitForFunction(() => typeof window.__DR?.handleGameEvent === "function");
+
+    const enterFromHome = async () => {
+      const enter = await characterPage.evaluateHandle(() => {
+        const navigate = window.__DR!.navigate;
+        navigate("/");
+        return () => navigate("/session-test");
+      });
+      await characterPage
+        .getByText(/ENTER AETHOS|Your story is about to begin/i)
+        .first()
+        .waitFor();
+      await enter.evaluate((navigate) => navigate());
+      await enter.dispose();
+      await characterPage.waitForFunction(() => typeof window.__DR?.handleGameEvent === "function");
+    };
 
     const injectEvent = async (event: GameEvent) => {
       await characterPage.evaluate((e) => {
@@ -168,7 +184,14 @@ export const test = characterTest.extend<{
       });
     };
 
-    await use({ page: characterPage, injectEvent, injectSessionInit, openPanel, closePanel });
+    await use({
+      page: characterPage,
+      enterFromHome,
+      injectEvent,
+      injectSessionInit,
+      openPanel,
+      closePanel,
+    });
   },
 });
 

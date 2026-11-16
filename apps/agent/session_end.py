@@ -1,4 +1,4 @@
-"""Session end: the recap the player hears, fired once — when the SESSION closes.
+"""Session end: one shared recap for explicit end requests and session close.
 
 Not on an agent's ``on_exit``. That runs on every mode handoff (``AgentActivity.drain``
 awaits it, agent_activity.py:919-932), so a SESSION_END published there reached the client
@@ -8,6 +8,7 @@ on the way into every fight and flipped it to the end-of-session summary screen
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import TYPE_CHECKING
 
@@ -23,6 +24,13 @@ if TYPE_CHECKING:
     from session_data import SessionData
 
 logger = logging.getLogger("divineruin.session_end")
+
+
+def ensure_session_end(sd: SessionData) -> asyncio.Task[None]:
+    """The one end path for Leave, close callbacks and session caps; never retry a recap."""
+    if sd.session_end_task is None:
+        sd.session_end_task = asyncio.create_task(run_session_end(sd))
+    return sd.session_end_task
 
 
 async def run_guest_departure(sd: SessionData, player_id: str, session) -> None:

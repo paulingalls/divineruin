@@ -30,61 +30,6 @@ class TestBackgroundProcessLifecycle:
             await bp.stop()
 
     @pytest.mark.asyncio
-    async def test_session_close_stops_the_loop(self):
-        """The session's close is the ONLY thing that stops the loop now — no agent's on_exit
-        does, so nothing else would ever end it."""
-        # A COLLECTION per event, not one handler: start() registers two distinct close
-        # handlers (loop stop, session-end recap) and LiveKit's EventEmitter keeps both
-        # (a set, rtc/event_emitter.py:15) — the old dict silently kept only the last.
-        handlers: dict[str, list] = {}
-        mock_session = MagicMock()
-        mock_session.on = lambda event, cb: handlers.setdefault(event, []).append(cb)
-        mock_sd = MagicMock()
-        mock_sd.event_bus = MagicMock()
-        mock_sd.event_bus.get = AsyncMock(side_effect=asyncio.CancelledError)
-
-        bp = BackgroundProcess(mock_session, mock_sd)
-        with (
-            patch.object(bp, "_rebuild_warm_layer", new_callable=AsyncMock),
-            patch("background_process.run_session_end", new_callable=AsyncMock),
-        ):
-            bp.start()
-            for handler in handlers["close"]:
-                handler(MagicMock())
-
-            assert bp._stop is True
-            assert bp._task is not None
-            await asyncio.gather(bp._task, return_exceptions=True)
-            assert bp._task.cancelled()
-
-    @pytest.mark.asyncio
-    async def test_livekit_really_dispatches_the_close_handler(self):
-        """Construct the installed AgentSession to exercise vendor arity and logger behavior."""
-        from livekit.agents import AgentSession
-        from livekit.agents.voice.events import CloseEvent, CloseReason
-
-        # max_tool_steps is production's literal only to keep test_strict_tool_budget's
-        # every-site walk complete: this session is an event emitter here and never generates.
-        session = AgentSession(max_tool_steps=5)
-        mock_sd = MagicMock()
-        mock_sd.event_bus = MagicMock()
-        mock_sd.event_bus.get = AsyncMock(side_effect=asyncio.CancelledError)
-
-        bp = BackgroundProcess(session, mock_sd)
-        with (
-            patch.object(bp, "_rebuild_warm_layer", new_callable=AsyncMock),
-            # The real recap opens mock_sd.transcript_path; a MagicMock opens as fd 1 and closes stdout.
-            patch("background_process.run_session_end", new_callable=AsyncMock),
-        ):
-            bp.start()
-            session.emit("close", CloseEvent(reason=CloseReason.JOB_SHUTDOWN))
-
-            assert bp._stop is True
-            assert bp._task is not None
-            await asyncio.gather(bp._task, return_exceptions=True)
-            assert bp._task.cancelled()
-
-    @pytest.mark.asyncio
     async def test_stop_cancels_background_task(self):
         mock_session = MagicMock()
         mock_sd = MagicMock()

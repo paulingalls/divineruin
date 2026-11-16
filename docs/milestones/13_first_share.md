@@ -44,7 +44,7 @@ Owner: divineruin2 clone.
 
 ## Session Edges
 
-- [ ] The Leave button shows the session summary
+- [x] The Leave button shows the session summary
 - [x] Re-entering never speaks a stale recap
 - [x] The prologue plays with default configuration
 - [x] A failed DM dispatch does not leave the player in an empty room
