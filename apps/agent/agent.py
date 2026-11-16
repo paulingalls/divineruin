@@ -17,6 +17,7 @@ import db_content_queries
 import db_queries
 from gameplay_llm import gameplay_llm_api_key
 from participant_lifecycle import _setup_reconnection
+from production_preflight import is_production, production_preflight, validate_production_env
 from region_types import REGION_CITY
 from session_data import CreationState, SessionData
 from session_startup import _make_agent_session, solo_room_options, start_gameplay_session
@@ -429,7 +430,10 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
 
 if __name__ == "__main__":
+    validate_production_env()
     validate_env()
+    if is_production():
+        asyncio.run(production_preflight("agent"))
     import atexit
 
     def _cleanup_db() -> None:
