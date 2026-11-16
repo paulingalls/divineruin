@@ -408,6 +408,8 @@ def _end_combat_finish(
     from livekit.agents.llm import ChatContext
 
     summary_parts = [f"Combat resolved: {outcome}."]
+    if episode_facts:
+        summary_parts.append(episode_facts["aftermath"])
     if end_data.get("choir"):
         summary_parts.append(end_data["choir"]["cue"])
     # The player's OWN share, not the encounter total — in a party the two differ, and narrating

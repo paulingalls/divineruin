@@ -143,7 +143,8 @@ async def test_seeded_rider_instructions_and_retained_events(reset_db_pool):
     assert 'enter_mode(mode="combat", encounter_id="fragment_shadeling")' in instructions
     assert "accord_guild_infirmary" in instructions
     assert all(
-        cue in instructions for cue in ("oilcloth", "Sound thins", "One shadeling", "After the fight", "Torin", "north")
+        cue in instructions + scene["aftermath"]
+        for cue in ("oilcloth", "Sound thins", "One shadeling", "After the fight", "Torin", "north")
     )
     assert scene["beats"] and all(beat["companion_hints"] for beat in scene["beats"])
     events = json.loads((CONTENT_ROOT / "content/events.json").read_text())

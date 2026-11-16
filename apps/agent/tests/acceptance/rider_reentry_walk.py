@@ -129,3 +129,8 @@ async def reentry_and_defeat(server, tmp_path):
             if isinstance(item, llm.ChatMessage)
         )
         assert "Combat resolved: defeat." in summary
+        assert scene["aftermath"] in summary
+        run.requests.clear()
+        receipt = await run.turn("query_info", kind="inventory")
+        assert not receipt.is_error, receipt.output
+        assert requested(run, scene["aftermath"])

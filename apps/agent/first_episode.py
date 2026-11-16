@@ -1,5 +1,7 @@
 """The persisted rider receipt owns first-episode entry, hints and settlement."""
 
+from dataclasses import dataclass
+
 import db
 import db_content_queries
 import db_mutations
@@ -19,6 +21,12 @@ ENCOUNTER = "fragment_shadeling"
 INFIRMARY = "accord_guild_infirmary"
 FRAGMENT = "greyvale_veil_fragment"
 QUEST = "greyvale_anomaly"
+
+
+@dataclass
+class PendingEpisode:
+    quest: PendingQuest | None
+    aftermath: str
 
 
 async def enter(session: SessionData) -> None:
@@ -48,7 +56,7 @@ def hint_scene(scene_cache: dict[str, dict], episode, location_id: str) -> dict 
     return None
 
 
-async def settle(session: SessionData, cs: CombatState, *, conn, sink: EventSink) -> PendingQuest | bool | None:
+async def settle(session: SessionData, cs: CombatState, *, conn, sink: EventSink) -> PendingEpisode | None:
     if cs.encounter_id != ENCOUNTER or cs.location_id != INFIRMARY:
         return None
     pid = session.primary_player_id
@@ -56,6 +64,10 @@ async def settle(session: SessionData, cs: CombatState, *, conn, sink: EventSink
     await conn.execute("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", f"first_episode:{pid}")
     if await db_queries.get_player_flag_value(pid, "first_episode", conn=conn) != "rider":
         return None
+    scene = await db_content_queries.get_scene(SCENE)
+    if scene is None:
+        raise RuntimeError("The first episode rider scene is missing")
+    aftermath = scene["aftermath"]
     pending = None
     if await db_queries.get_player_quest(pid, QUEST, conn=conn) is None:
         pending = await advance_quest_db(session, QUEST, 0, conn=conn)
@@ -81,12 +93,12 @@ async def settle(session: SessionData, cs: CombatState, *, conn, sink: EventSink
     await sink.emit(
         session.room, E.INVENTORY_UPDATED, await inventory_payload(pid, conn=conn), event_bus=session.event_bus
     )
-    return pending if pending is not None else True
+    return PendingEpisode(pending, aftermath)
 
 
-def finish(session: SessionData, pending: PendingQuest | bool | None) -> dict | None:
+def finish(session: SessionData, pending: PendingEpisode | None) -> dict | None:
     if pending is None:
         return None
-    quest = finish_quest(session, pending) if isinstance(pending, PendingQuest) else None
+    quest = finish_quest(session, pending.quest) if pending.quest is not None else None
     session.record_item_found(session.primary_player_id, "Veil Fragment")
-    return {"item_id": FRAGMENT, "quest": quest, "first_episode": "complete"}
+    return {"item_id": FRAGMENT, "quest": quest, "first_episode": "complete", "aftermath": pending.aftermath}

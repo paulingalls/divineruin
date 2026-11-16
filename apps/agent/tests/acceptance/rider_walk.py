@@ -1,5 +1,6 @@
 """Room-level observations for the rider, hints and first combat handoff."""
 
+import json
 import time
 
 from acceptance.first_episode_harness import until
@@ -58,7 +59,13 @@ async def finish_first_episode(run):
     enemies[0].is_fallen = True
     receipt = await run.turn("end_combat", outcome="victory")
     assert not receipt.is_error, receipt.output
+    aftermath = scene["aftermath"]
+    assert json.loads(receipt.output)["first_episode"]["aftermath"] == aftermath
     await until(lambda: run.session.current_agent.__class__.__name__ == "ExplorationAgent")
+    run.requests.clear()
+    receipt = await run.turn("query_info", kind="inventory")
+    assert not receipt.is_error, receipt.output
+    assert requested(run, aftermath)
     player = await db_queries.get_player(run.player_id)
     assert player is not None
     assert player["flags"]["first_episode"] == "complete"
