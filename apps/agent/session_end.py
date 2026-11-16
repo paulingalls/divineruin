@@ -1,4 +1,4 @@
-"""Session end: the recap the player hears, fired once — when the SESSION closes.
+"""Session end: one shared recap for explicit end requests and session close.
 
 Not on an agent's ``on_exit``. That runs on every mode handoff (``AgentActivity.drain``
 awaits it, agent_activity.py:919-932), so a SESSION_END published there reached the client

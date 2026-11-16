@@ -1,3 +1,7 @@
+import { useRouter } from "expo-router";
+import { ConnectionState } from "livekit-client";
+import { SessionControls } from "@/session/session-controls";
+import { useSessionExit, useSessionLifecycle } from "@/session/session-lifecycle";
 import { useActivityActions } from "@/hooks/use-activity-actions";
 import { useInventoryRefresh } from "@/hooks/use-inventory-refresh";
 /**
@@ -6,11 +10,9 @@ import { useInventoryRefresh } from "@/hooks/use-inventory-refresh";
  * Exposes `window.__DR.handleGameEvent` so Playwright can inject game events
  * directly, bypassing voice/data channels. Guarded by __DEV__ — never ships.
  */
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { useStore } from "zustand";
 
 import { TopBar } from "@/components/hud/top-bar";
 import { PersistentBar } from "@/components/hud/persistent-bar";
@@ -19,8 +21,7 @@ import { PanelShell } from "@/components/hud/panel-shell";
 import { TranscriptView } from "@/components/transcript-view";
 import { CorruptionOverlay } from "@/components/corruption-overlay";
 import { AtmosphericBackground } from "@/components/atmospheric-background";
-import { handleGameEvent } from "@/audio/game-event-handler";
-import { sessionStore } from "@/stores/session-store";
+import { handleGameEvent, handleGameEventMessage } from "@/audio/game-event-handler";
 import { characterStore } from "@/stores/character-store";
 import { transcriptStore } from "@/stores/transcript-store";
 import { hudStore } from "@/stores/hud-store";
@@ -29,15 +30,32 @@ import { portraitStore } from "@/stores/portrait-store";
 import { BrandColors, Spacing } from "@/constants/theme";
 
 export default function SessionTestScreen() {
+  const router = useRouter();
   useInventoryRefresh();
   const { startActivity, submitDecision } = useActivityActions();
-  const router = useRouter();
-  const phase = useStore(sessionStore, (s) => s.phase);
+  const transport = useRef({
+    packets: [] as { payload: number[]; reliable?: boolean; topic?: string }[],
+    microphone: [] as boolean[],
+    disposed: false,
+  });
+  const [mic, setMic] = useState(true);
+  const release = useCallback(() => {
+    transport.current.disposed = true;
+  }, []);
+  const exit = useSessionExit(release);
+  useSessionLifecycle(ConnectionState.Connected, exit);
 
   // Expose handleGameEvent and helpers for Playwright injection; cleanup on unmount
   useEffect(() => {
     if (!__DEV__) return;
     window.__DR = {
+      navigate: (path) => (path === "/" ? router.replace(path) : router.push(path)),
+      transport: transport.current,
+      injectPacket: (payload) =>
+        handleGameEventMessage({
+          payload: new Uint8Array(payload),
+          from: { isAgent: true },
+        } as Parameters<typeof handleGameEventMessage>[0]),
       startActivity,
       submitDecision,
       inventory: () => panelStore.getState().inventory,
@@ -47,6 +65,11 @@ export default function SessionTestScreen() {
     };
     return () => {
       delete window.__DR;
+    };
+  }, [startActivity, submitDecision, router]);
+
+  useEffect(() => {
+    return () => {
       // Don't reset sessionStore here — session-summary reads sessionSummary
       // from the store on mount and handles its own cleanup.
       characterStore.getState().clear();
@@ -55,14 +78,7 @@ export default function SessionTestScreen() {
       panelStore.getState().reset();
       portraitStore.getState().reset();
     };
-  }, [startActivity, submitDecision]);
-
-  // Navigate to summary screen when session ends (mirrors session.tsx)
-  useEffect(() => {
-    if (phase === "summary") {
-      router.replace("/session-summary");
-    }
-  }, [phase, router]);
+  }, []);
 
   if (!__DEV__) return null;
 
@@ -77,6 +93,21 @@ export default function SessionTestScreen() {
           <TranscriptView />
           <OverlayManager />
           <PanelShell />
+          <SessionControls
+            transport={{
+              isMicrophoneEnabled: mic,
+              setMicrophoneEnabled: (enabled) => {
+                transport.current.microphone.push(enabled);
+                setMic(enabled);
+                return Promise.resolve();
+              },
+              publishData: (payload, options) => {
+                transport.current.packets.push({ payload: Array.from(payload), ...options });
+                return Promise.resolve();
+              },
+            }}
+            onLeave={exit}
+          />
         </View>
       </SafeAreaView>
     </View>
