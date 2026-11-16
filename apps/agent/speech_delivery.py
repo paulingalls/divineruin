@@ -95,7 +95,9 @@ async def deliver_player_turn(
 async def _generate_reply(session: AgentSession, reply_kwargs: dict[str, object]):
     # LiveKit refuses new speech while draining the old agent during a handoff.
     # Retry that exact transition refusal; a stuck handoff must still fail loudly.
-    async with asyncio.timeout(5):
+    # A drain outlasted 5 seconds on a loaded machine and the timeout ended the background
+    # process, so the bound is sized for a stuck handoff, not a slow one.
+    async with asyncio.timeout(60):
         while True:
             try:
                 return session.generate_reply(**reply_kwargs)  # type: ignore[arg-type]
