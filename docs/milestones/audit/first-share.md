@@ -37,10 +37,10 @@ ruins and the Emris reveal; spec sessions 4–5 are barely authored.
 - `fragment_shadeling` is one standard shadeling in `accord_guild_infirmary`, reached through the guild hall with a return exit. The shared 20-seed harness scores warrior/mage/rogue/cleric **20/19/19/20** wins and no budget flags.
 - The combat engine settles this encounter/location/receipt on every offered outcome. The fragment, Greyvale stage-0 start and complete receipt share the combat transaction; quest memories apply after commit. Rollback, replay and concurrent-session checks exercise the saved receipt.
 - Rider hints use the saved episode at the square and infirmary before a quest exists. Generic quest-scene selection is unchanged.
-- The creation-to-quest walk uses real room transport and deterministic owned speech/model seams. It does not certify paid speech recognition or live narration quality.
+- The walk from creation to a queued whisper uses real room transport and deterministic owned speech/model seams. Mage and cleric persisted pools match calculated maxima; a costed starting spell passes the pool gate. It does not certify paid speech recognition, narration or TTS quality.
 - `content/events.json` retains five events and has no runtime interpreter. The three superseded market/task/companion entries are removed from authored content; seeding does not delete historical database rows.
-- The god-whisper worker triggers only at favor 25
-  (`god_whisper_data.FAVOR_WHISPER_THRESHOLD`) ✔, which a new player lacks.
+- The actual worker polling loop and SQL queue one patron whisper at completed first episode/favor zero. A durable episode receipt prevents repetition after consumption and worker restart; favor threshold/cooldown remains independent. The owned generator seam inserts real pending rows with narration/audio through `create_god_whisper`, observed with the feed's unchanged pending predicate.
+- Story `whisper-after-session-one`: `cd apps/agent && ALLOW_PAID_TESTS= REQUIRE_REAL_LLM= uv run pytest tests/acceptance/test_first_episode.py -q` — **16 passed**, no skips, 361.94 s. The same unpaid environment with `uv run pytest tests/test_god_whisper_data.py -q` — **10 passed**, 1.15 s. Removing pool initialization, the SQL episode branch, the episode receipt write, or the SQL favor branch each produced the intended behavioral red; disposable evidence is in the story handback.
 
 **Session 2 (Millhaven)**
 - ✔ `hollow_patrol_greyvale` is difficulty hard, recommended level 3 (one

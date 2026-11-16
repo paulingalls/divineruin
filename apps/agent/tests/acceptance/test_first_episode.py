@@ -149,11 +149,13 @@ async def test_creation_cards_and_rejected_choices(livekit_server, reset_db_pool
         ("cleric", "aelora", "companion_tam", "divine"),
     ],
 )
-async def test_calling_and_name_finalize(livekit_server, reset_db_pool, tmp_path, calling, patron, companion, source):
+async def test_calling_and_name_finalize(
+    livekit_server, reset_db_pool, tmp_path, calling, patron, companion, source, caplog
+):
     import db
     import spells
 
-    async with episode(livekit_server, tmp_path, reload_companions=True) as run:
+    async with episode(livekit_server, tmp_path, reload_companions=True, preserve=calling == "warrior") as run:
         from companion_profiles import _companion_profiles
 
         assert set(_companion_profiles) == {"companion_kael", "companion_lira", "companion_tam", "companion_sable"}
@@ -208,6 +210,29 @@ async def test_calling_and_name_finalize(livekit_server, reset_db_pool, tmp_path
                 for tier in ("cantrip", "minor")
             )
         )
+        if source:
+            from resource_costs import gate_pool
+            from rules_engine import attribute_modifier, calculate_max_pools
+
+            maxima = calculate_max_pools(
+                player["class"],
+                player["level"],
+                {key: attribute_modifier(value) for key, value in player["attributes"].items()},
+            )
+            for key in ("focus", "stamina"):
+                maximum = getattr(maxima, key)
+                if maximum is None:
+                    assert key not in player
+                else:
+                    assert maximum > 0
+                    assert player[key] == {"current": maximum, "max": maximum}
+            costed = [spells.get_spell(spell_id) for spell_id in expected if spells.get_spell(spell_id).focus_cost > 0]
+            assert costed
+            spell = costed[0]
+            assert (
+                gate_pool(player, "focus", spell.focus_cost, label=spell.name)
+                == player["focus"]["max"] - spell.focus_cost
+            )
         assert sorted(row["spell_id"] for row in learned) == expected
         assert all(row["is_prepared"] and row["acquisition_track"] == "training" for row in learned)
         exposed = payload["spells"]["core"] + payload["spells"]["learned"]
@@ -272,6 +297,14 @@ async def test_calling_and_name_finalize(livekit_server, reset_db_pool, tmp_path
             from acceptance.rider_walk import finish_first_episode
 
             await finish_first_episode(run)
+
+    if calling == "warrior":
+        from acceptance.first_episode_whisper_harness import cleanup, finish_whisper_walk
+
+        try:
+            await finish_whisper_walk(run.player_id, caplog)
+        finally:
+            await cleanup(run.player_id)
 
 
 @pytest.mark.asyncio
@@ -361,3 +394,66 @@ def test_three_beat_onboarding_surface(companion_id):
     description = advance_onboarding_beat.info.description
     assert description is not None
     assert re.findall(r"Beat (\d+)", description) == ["1", "2", "3"]
+
+
+@pytest.mark.asyncio
+async def test_worker_whisper_eligibility(reset_db_pool, caplog):
+    from uuid import uuid4
+
+    from acceptance.first_episode_whisper_harness import AUDIO, TEXT, Worker, cleanup, observe, set_favor
+
+    import db_mutations
+    import db_mutations_divine
+    from creation_rules import build_character_data
+
+    ids = []
+    worker = Worker()
+    try:
+        for patron, episode_flag, level, last in (
+            ("kaelen", None, 0, 0),
+            ("kaelen", "rider", 24, 0),
+            ("none", "complete", 0, 0),
+            (None, "complete", 0, 0),
+            ("kaelen", "complete", 0, 25),
+            ("kaelen", "complete", 25, 0),
+        ):
+            pid = f"whisper_{uuid4().hex}"
+            ids.append(pid)
+            data = build_character_data("Vale", "human", "warrior", "kaelen", "", created_at=datetime.now(UTC))
+            data["divine_favor"].update(level=level, last_whisper_level=last)
+            if patron is None:
+                del data["divine_favor"]["patron"]
+            else:
+                data["divine_favor"]["patron"] = patron
+            data["flags"] = {} if episode_flag is None else {"first_episode": episode_flag}
+            await db_mutations.create_player(pid, None, data)
+        history = await db_mutations_divine.create_god_whisper(
+            ids[4],
+            {"deity_id": "kaelen", "narration_text": TEXT, "audio_url": AUDIO, "status": "pending"},
+        )
+        await db_mutations_divine.mark_god_whisper_played(history)
+        await worker.poll(caplog, ticks=2)
+        assert worker.calls == [(ids[-1], "kaelen")]
+        for pid, last in zip(ids[:-1], (0, 0, 0, 0, 25), strict=True):
+            await observe(pid, [history] if pid == ids[4] else [], pending=[], receipt=False, last=last)
+        await observe(ids[-1], worker.ids, pending=worker.ids, receipt=True, last=25)
+        pid = ids[1]
+        await set_favor(pid, 25)
+        await worker.poll(caplog)
+        assert worker.calls == [(ids[-1], "kaelen"), (pid, "kaelen")]
+        first = worker.ids[-1]
+        await observe(pid, [first], pending=[first], receipt=False, last=25)
+        await set_favor(pid, 50)
+        await worker.poll(caplog)
+        assert len(worker.calls) == 2
+        await db_mutations_divine.mark_god_whisper_played(first)
+        await set_favor(pid, 49)
+        await worker.poll(caplog)
+        assert len(worker.calls) == 2
+        await set_favor(pid, 50)
+        await worker.poll(caplog)
+        assert worker.calls == [(ids[-1], "kaelen"), (pid, "kaelen"), (pid, "kaelen")]
+        await observe(pid, [first, worker.ids[-1]], pending=worker.ids[-1:], receipt=False, last=50)
+    finally:
+        for pid in ids:
+            await cleanup(pid)
