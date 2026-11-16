@@ -14,6 +14,14 @@ TESTS = Path("apps/agent/tests/acceptance")
 ROOTS = ["apps/agent", "apps/agent/tests", "scripts"]
 CONFTESTS = ["apps/agent/tests/conftest.py", str(TESTS / "conftest.py")]
 PAID = {"real_llm", "openai_real_llm", "live_voice"}
+RUNTIME_DOCUMENTS = {
+    "agent-acceptance:test_ops_async_reset_runbook": ["docs/ops/async-activity-reset.md"],
+    "agent-pytest": [
+        "docs/ops/async-activity-reset.md",
+        "docs/game_mechanics/game_mechanics_patrons.md",
+    ],
+}
+SHARED_KEY = "packages/shared/**/*.{ts,tsx,json}"
 MARKERS = "acceptance and not real_llm and not openai_real_llm and not live_voice"
 
 
@@ -183,11 +191,15 @@ def e2e_tasks(shared=(), stack_keyed=()):
             "sets": ["sprint"],
             "lane": "e2e",
             "needs": ["e2e-stack"],
-            "links": ["node_modules", "e2e/node_modules", *(["apps/agent/.venv"] if python else [])],
+            "links": [
+                "node_modules",
+                "e2e/node_modules",
+                *(["apps/agent/.venv"] if python else []),
+            ],
             "inputs": inputs,
             "keyed": [
                 *sorted(shared if part == "chromium" else stack_keyed),
-                *(["packages/shared/**"] if part == "home-character" else []),
+                *([SHARED_KEY] if part == "home-character" else []),
             ],
         }
     return tasks
@@ -292,11 +304,8 @@ def main():
                 "apps/server/**",
                 "packages/shared/**",
                 "assets/**",
-                "docs/**",
                 "$bun-config",
             ]
-        if "async-activity-reset.md" in closure_text:
-            inputs.append("docs/ops/async-activity-reset.md")
         for target in ("use-game-events.parse.test.ts", "sound-registry.test.ts"):
             if target in closure_text:
                 inputs += [
@@ -316,7 +325,7 @@ def main():
             "needs": ["acceptance-stack"],
             "links": ["node_modules"],
             "inputs": inputs,
-            "keyed": [*sorted(keyed[path] | stack_keyed), "packages/shared/**"],
+            "keyed": [*sorted(keyed[path] | stack_keyed), SHARED_KEY],
         }
         for suffix, selector, expression in partitions(path):
             part = dict(task)
@@ -330,7 +339,7 @@ def main():
             tasks[f"agent-acceptance:{Path(path).stem}" + (f":{suffix}" if suffix else "")] = part
     # Root unkeyed policy must preserve the existing Bun tasks and the full unit key.
     for name, task in json.loads(Path("scripts/proof-bun-tasks.json").read_text()).items():
-        tasks[name] = {**task, "keyed": [*sorted(shared), "packages/shared/**"]}
+        tasks[name] = {**task, "keyed": [*sorted(shared), SHARED_KEY]}
     tasks["agent-pytest"] = {
         "run": "ALLOW_PAID_TESTS= REQUIRE_REAL_LLM= uv run --frozen --directory apps/agent pytest tests/ -q -m 'not acceptance' -n 8",
         "sets": ["land"],
@@ -339,6 +348,7 @@ def main():
         "inputs": [
             "apps/agent/**",
             "apps/mobile/assets/**",
+            "apps/mobile/src/global.css",
             "assets/**",
             ".env.example",
             "apps/audio/**",
@@ -352,13 +362,14 @@ def main():
             "packages/**",
             "e2e/**",
             "scripts/**",
-            "docs/**",
             "$stack",
             "$bun-config",
         ],
-        "keyed": [*sorted(shared), "packages/shared/**"],
+        "keyed": [*sorted(shared), SHARED_KEY],
     }
-    for task in tasks.values():
+    if unknown := RUNTIME_DOCUMENTS.keys() - tasks.keys():
+        raise SystemExit(f"runtime documents name no generated task: {sorted(unknown)}")
+    for name, task in tasks.items():
         if "super" not in task["sets"]:
             task["sets"].append("super")
         expanded = []
@@ -372,7 +383,7 @@ def main():
                 task["keyed"] = sorted(set(task.get("keyed", [])) | discovered)
             else:
                 expanded.append(item)
-        task["inputs"] = expanded
+        task["inputs"] = [*expanded, "$documentation-exclusions", *RUNTIME_DOCUMENTS.get(name, [])]
     output = {"unkeyed": sorted(shared), "tasks": tasks}
     (Path(os.environ["PROOF_DECLARATIONS"]) / "python.yaml").write_text(json.dumps(output, indent=2) + "\n")
 
