@@ -136,7 +136,6 @@ class Companion:
     errand_injury_reduction: int
     gender: str
     onboarding_meeting: str
-    onboarding_suggestion: str
     portrait: CompanionPortrait | None = None
     age: str | None = None
     appearance: str | None = None
@@ -318,7 +317,6 @@ def parse_companion_row(companion_id: str, data: dict) -> Companion:
             ),
             gender=parse_str(data["gender"], f"{companion_id}.gender"),
             onboarding_meeting=parse_str(data["onboarding_meeting"], f"{companion_id}.onboarding_meeting"),
-            onboarding_suggestion=parse_str(data["onboarding_suggestion"], f"{companion_id}.onboarding_suggestion"),
             portrait=_parse_portrait(data.get("portrait"), f"{companion_id}.portrait"),
             age=opt_str(data.get("age"), f"{companion_id}.age"),
             appearance=opt_str(data.get("appearance"), f"{companion_id}.appearance"),

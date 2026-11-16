@@ -1,12 +1,17 @@
 """The first share starts at the product session entrypoint."""
 
 import json
+import re
+from datetime import UTC, datetime
+from unittest.mock import patch
 
 import pytest
 from acceptance.first_episode_harness import episode, until
+from livekit.agents import llm
 
 import db_queries
 import event_types as E
+from exploration_agent import ExplorationAgent
 
 
 @pytest.fixture
@@ -38,7 +43,7 @@ async def test_volunteered_creation(livekit_server, reset_db_pool, tmp_path):
         await until(
             lambda: (
                 run.session.current_agent.__class__.__name__ == "OnboardingAgent"
-                and getattr(run.session.current_agent, "_background", None) is not None
+                and run.session.userdata.onboarding_beat == 1
                 and run.packets(E.SESSION_INIT)
             )
         )
@@ -143,7 +148,10 @@ async def test_calling_and_name_finalize(livekit_server, reset_db_pool, tmp_path
     import db
     import spells
 
-    async with episode(livekit_server, tmp_path) as run:
+    async with episode(livekit_server, tmp_path, reload_companions=True) as run:
+        from companion_profiles import _companion_profiles
+
+        assert set(_companion_profiles) == {"companion_kael", "companion_lira", "companion_tam", "companion_sable"}
         receipt = await run.turn("finalize_character")
         assert receipt.is_error and "class, name" in receipt.output
         assert await db_queries.get_player(run.player_id) is None
@@ -167,7 +175,11 @@ async def test_calling_and_name_finalize(livekit_server, reset_db_pool, tmp_path
         receipt = await run.turn("finalize_character")
         assert not receipt.is_error, receipt.output
         await until(
-            lambda: getattr(run.session.current_agent, "_background", None) is not None and run.packets(E.SESSION_INIT)
+            lambda: (
+                run.session.current_agent.__class__.__name__ == "OnboardingAgent"
+                and run.session.userdata.onboarding_beat == 1
+                and run.packets(E.SESSION_INIT)
+            )
         )
         assert run.session.current_agent.__class__.__name__ == "OnboardingAgent"
         assert run.session.userdata.onboarding_beat == 1
@@ -197,3 +209,145 @@ async def test_calling_and_name_finalize(livekit_server, reset_db_pool, tmp_path
         assert set(expected) <= {row["spell_id"] for row in exposed}
         assert all(row["is_prepared"] for row in exposed if row["spell_id"] in expected)
         assert len(run.model.calls) == len(run.model.receipts) == 5
+
+        for beat in (1, 2, 3):
+            sounds = len(run.packets(E.PLAY_SOUND))
+            if beat == 3 and calling == "warrior":
+                with patch(
+                    "companion_relationship_queries.select_companion_for_archetype",
+                    side_effect=ValueError("selection failed"),
+                ):
+                    failed = await run.turn("advance_onboarding_beat")
+                assert failed.is_error
+                assert run.session.current_agent.__class__.__name__ == "OnboardingAgent"
+                assert run.session.userdata.onboarding_beat == 3
+                saved = await db_queries.get_player(run.player_id)
+                assert saved is not None
+                assert saved["flags"]["onboarding_beat"] == 3
+                assert not saved["flags"].get("companion_met")
+                assert run.session.userdata.companion is None
+                assert len(run.packets(E.PLAY_SOUND)) == sounds
+            receipt = await run.turn("advance_onboarding_beat")
+            assert not receipt.is_error, receipt.output
+            result = json.loads(receipt.output)
+            saved = await db_queries.get_player(run.player_id)
+            assert saved is not None
+            added = run.packets(E.PLAY_SOUND)[sounds:]
+            assert [packet["sound_name"] for packet in added] == ["action_advance_onboarding_beat"]
+            if beat < 3:
+                assert result == {"beat": beat + 1, "beat_name": "market" if beat == 1 else "companion_meeting"}
+                assert saved["flags"]["onboarding_beat"] == run.session.userdata.onboarding_beat == beat + 1
+            else:
+                assert result == {"onboarding_complete": True, "location": "accord_market_square"}
+                await until(lambda: run.session.current_agent.__class__.__name__ == "ExplorationAgent")
+                assert run.session.userdata.onboarding_beat is None
+                assert saved["flags"]["onboarding_beat"] == "complete"
+                assert saved["flags"]["companion_met"] is True
+                bound = run.session.userdata.companion
+                assert bound is not None
+                assert bound.id == companion
+                active = run.session.current_agent
+                assert isinstance(active, ExplorationAgent)
+                assert active._agent_type == "city" and active._initial_location == "accord_market_square"
+                instructions = active.instructions
+                assert isinstance(instructions, str)
+                assert bound.name in instructions
+                summary = " ".join(
+                    item.text_content or "" for item in active.chat_ctx.items if isinstance(item, llm.ChatMessage)
+                )
+                assert bound.name in summary and "accord_market_square" in summary
+                assert "Greyvale quest hook" not in summary
+                assert run.session.userdata.location_id == "accord_market_square"
+                rows = await pool.fetch(
+                    "SELECT companion_id FROM companion_relationships WHERE player_id=$1", run.player_id
+                )
+                assert [row["companion_id"] for row in rows] == [companion]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("beat", [3, 4, 5])
+async def test_persisted_onboarding_startup(livekit_server, reset_db_pool, tmp_path, beat):
+    import db_mutations
+    import db_mutations_companion
+    from creation_rules import build_character_data
+
+    async def prepare(player_id):
+        data = build_character_data("Vale", "human", "warrior", "kaelen", "", created_at=datetime.now(UTC))
+        data["session_count"] = 7
+        data["location_id"] = "accord_market_square"
+        await db_mutations.create_player(player_id, None, data)
+        await db_mutations.set_player_flag(player_id, "onboarding_beat", beat)
+        if beat > 3:
+            await db_mutations.set_player_flag(player_id, "companion_met", True)
+            await db_mutations_companion.upsert_companion_relationship(
+                player_id,
+                "companion_lira",
+                relationship_tier=1,
+                session_count=4,
+                affinity=12,
+                session_memories=["Shared the rain."],
+            )
+
+    expected = "OnboardingAgent" if beat == 3 else "ExplorationAgent"
+    async with episode(livekit_server, tmp_path, prepare=prepare, initial_agent=expected) as run:
+        saved = await db_queries.get_player(run.player_id)
+        assert saved is not None
+        assert saved["session_count"] == 8
+        state = run.session.userdata
+        assert state.location_id == "accord_market_square"
+        if beat > 3:
+            active = run.session.current_agent
+            assert isinstance(active, ExplorationAgent)
+            assert active._agent_type == "city" and active._initial_location == "accord_market_square"
+        relationship = await db_queries.get_companion_relationship(run.player_id, "companion_lira")
+        if beat == 3:
+            assert saved["flags"]["onboarding_beat"] == state.onboarding_beat == 3
+            assert state.companion is None and relationship is None
+            prompt = run.session.current_agent.instructions
+            assert isinstance(prompt, str)
+            assert "Lira" in prompt
+        else:
+            assert state.onboarding_beat is None
+            assert saved["flags"]["onboarding_beat"] == "complete"
+            assert run.packets(E.SESSION_INIT)[0]["character"]["flags"]["onboarding_beat"] == "complete"
+            assert relationship is not None
+            assert state.companion is not None
+            assert state.companion.id == "companion_lira"
+            assert state.companion.session_count == relationship["session_count"] == 5
+            assert state.companion.affinity == relationship["affinity"] == 12
+            assert state.companion.session_memories == relationship["session_memories"] == ["Shared the rain."]
+
+
+@pytest.mark.parametrize("companion_id", ["companion_kael", "companion_lira", "companion_tam", "companion_sable", None])
+def test_three_beat_onboarding_surface(companion_id):
+    from companion_profiles import get_companion_profile
+    from onboarding_agent import OnboardingAgent
+    from onboarding_tools import advance_onboarding_beat
+
+    for beat in (1, 2, 3):
+        active = OnboardingAgent(onboarding_beat=beat, companion_id=companion_id)
+        prompt = active.instructions
+        assert isinstance(prompt, str)
+        assert re.findall(r"### Beat (\d+)", prompt) == ["1", "2", "3"]
+        assert prompt.count("**Complete when:**") == 3
+        assert not re.search(
+            r"\b(?:guild[- ]hall|tavern|Hearthstone|Greyvale|move_player|when the player moves)\b", prompt, re.I
+        )
+        names = set()
+        for tool in active.tools:
+            assert isinstance(tool, llm.FunctionTool)
+            names.add(tool.info.name)
+        assert "move_player" not in names
+        if companion_id:
+            profile = get_companion_profile(companion_id)
+            assert profile.onboarding_meeting in prompt and profile.name in prompt
+            if profile.non_verbal:
+                assert f"[{profile.voice_id}," not in prompt and "does not speak" in prompt
+            else:
+                assert f"[{profile.voice_id}," in prompt
+        else:
+            assert "Do NOT name them" in prompt
+            assert not any(name in prompt for name in ("Kael", "Lira", "Tam", "Sable"))
+    description = advance_onboarding_beat.info.description
+    assert description is not None
+    assert re.findall(r"Beat (\d+)", description) == ["1", "2", "3"]

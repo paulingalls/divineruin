@@ -294,27 +294,6 @@ class TestReturningPlayerDispatch:
         assert agent._agent_type == REGION_CITY
 
 
-class TestOnboardingToGameplay:
-    @pytest.mark.asyncio
-    @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
-    async def test_beat5_returns_city_agent(self, mock_flag):
-        from onboarding_tools import advance_onboarding_beat
-
-        ctx = MagicMock()
-        sd = SessionData(player_id="p1", location_id="accord_guild_hall")
-        sd.onboarding_beat = 5
-        sd.companion = COMPANION
-        ctx.userdata = sd
-
-        result = await advance_onboarding_beat._func(ctx)
-        assert isinstance(result, tuple)
-        agent, json_str = result
-        assert isinstance(agent, ExplorationAgent)
-        assert agent._agent_type == REGION_CITY
-        data = json.loads(json_str)
-        assert data["onboarding_complete"] is True
-
-
 class TestReconnectionAllAgentTypes:
     def test_registers_for_prologue(self):
         from participant_lifecycle import _setup_reconnection

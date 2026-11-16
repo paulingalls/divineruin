@@ -114,12 +114,18 @@ class Episode:
 
 
 @asynccontextmanager
-async def episode(server, tmp_path):
+async def episode(server, tmp_path, *, prepare=None, initial_agent="CreationAgent", reload_companions=False):
     run = Episode()
     # The acceptance fixture opens a new event loop per case; initialize before
     # dm_session starts concurrent readers of the process-scoped pool.
     await db.get_pool()
     assert await db_queries.get_player(run.player_id) is None
+    if prepare is not None:
+        await prepare(run.player_id)
+    if reload_companions:
+        from companion_profiles import set_companion_profiles
+
+        set_companion_profiles({})
     room_name = run.player_id
 
     async def connect(identity):
@@ -157,6 +163,7 @@ async def episode(server, tmp_path):
     with (
         patch("agent._make_agent_session", side_effect=run.make_session),
         patch("base_agent._make_tts", return_value=ToneTTS()),
+        patch("session_startup.deepgram.STT", return_value=CommandSTT()),
         patch("prologue.PROLOGUE_PATH", str(clip)),
         patch.object(run.model, "chat", side_effect=capture),
         patch("session_summary._call_llm_summary", new_callable=AsyncMock, return_value=None),
@@ -164,11 +171,19 @@ async def episode(server, tmp_path):
         try:
             with fake_job_context(room=room, job_metadata=json.dumps({"player_id": run.player_id})) as ctx:
                 await agent.dm_session(ctx)
-                await until(lambda: run.session.current_agent.__class__.__name__ == "CreationAgent" and run.requests)
+                if prepare is None:
+                    await until(
+                        lambda: run.session.current_agent.__class__.__name__ == "CreationAgent" and run.requests
+                    )
+                else:
+                    await until(lambda: run.session.current_agent is not None and run.packets("session_init"))
+                    assert run.session.current_agent.__class__.__name__ == initial_agent
                 yield run
         finally:
             if hasattr(run, "session"):
                 await run.session.aclose()
+                if run.session.userdata.multiplayer_close_task:
+                    await run.session.userdata.multiplayer_close_task
             if hasattr(run, "session") and run.session.userdata.reconnection_owner:
                 await run.session.userdata.reconnection_owner.aclose()
             receiver.cancel()

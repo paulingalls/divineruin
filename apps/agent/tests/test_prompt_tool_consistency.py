@@ -2,13 +2,7 @@ from system_prompts import build_system_prompt
 
 
 def _onboarding_prompt_surface() -> str:
-    """The whole onboarding prompt surface a prompt-tool-drift scan must cover.
-
-    story-013 split the prompt into an invariant body plus a beat-3/4 span rendered per
-    assigned companion, so scanning one constant no longer sees the whole thing: an
-    instruction to call a removed tool could hide in a span the scan never rendered. Union
-    all five renderings (four companions + the unresolved case).
-    """
+    """Render every companion and unresolved onboarding prompt for the tool walk."""
     from onboarding_prompt import build_onboarding_instructions
 
     companions = ("companion_kael", "companion_lira", "companion_tam", "companion_sable", None)

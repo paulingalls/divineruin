@@ -11,7 +11,7 @@ from sample_fixtures import make_context as _make_context
 
 import event_types as E
 from exploration_agent import ExplorationAgent
-from session_data import CompanionState, SessionData
+from session_data import SessionData
 
 
 class TestRoundTrip:
@@ -180,92 +180,3 @@ class TestCreationOnboardingCityRoundTrip:
         assert isinstance(instructions, str)
         assert "Lira" in instructions
         assert "Kael" not in instructions
-
-    @pytest.mark.asyncio
-    @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
-    async def test_beat_5_returns_city_agent(self, mock_set_player_flag):
-        """advance_onboarding_beat at beat 5 returns CityAgent for open-world gameplay."""
-        from onboarding_tools import advance_onboarding_beat
-
-        ctx = MagicMock()
-        ctx.userdata = SessionData(
-            player_id="player_1",
-            location_id="accord_guild_hall",
-            onboarding_beat=5,
-        )
-        ctx.userdata.companion = CompanionState(id="companion_kael", name="Kael")
-
-        raw = await advance_onboarding_beat._func(ctx)
-        assert isinstance(raw, tuple)
-        agent, json_str = raw
-        assert isinstance(agent, ExplorationAgent)
-        assert agent._agent_type == "city"
-        result = json.loads(json_str)
-        assert result["onboarding_complete"] is True
-        assert ctx.userdata.onboarding_beat is None
-
-    @pytest.mark.asyncio
-    @patch("onboarding_tools.db_mutations.set_player_flag", new_callable=AsyncMock)
-    @patch(
-        "onboarding_tools.db_queries.get_player",
-        new_callable=AsyncMock,
-        return_value={"name": "Aric", "class": "warrior", "level": 1},
-    )
-    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
-    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
-    async def test_full_creation_to_city_roundtrip(
-        self,
-        mock_create_player,
-        mock_get_payload,
-        mock_get_player,
-        mock_set_player_flag,
-    ):
-        """Full chain: finalize_character -> OnboardingAgent -> advance through beats -> CityAgent."""
-        from creation_tools import finalize_character
-        from onboarding_agent import OnboardingAgent
-        from onboarding_tools import advance_onboarding_beat
-        from session_data import CreationState
-
-        mock_get_payload.return_value = {
-            "character": {"name": "Aric"},
-            "location": None,
-            "quests": [],
-            "inventory": [],
-            "map_progress": [],
-            "world_state": {"time": "evening"},
-        }
-
-        # Step 1: Create character
-        cs = CreationState(
-            phase="identity",
-            race="human",
-            class_choice="warrior",
-            deity="kaelen",
-            name="Aric",
-            backstory="A wanderer.",
-        )
-        ctx = MagicMock()
-        ctx.userdata = SessionData(player_id="player_1", location_id="", creation_state=cs)
-
-        onboarding_agent, _ = await finalize_character._func(ctx)
-        assert isinstance(onboarding_agent, OnboardingAgent)
-        assert ctx.userdata.onboarding_beat == 1
-
-        # Step 2: Advance through all 5 beats
-        for expected_beat in range(2, 6):
-            result = await advance_onboarding_beat._func(ctx)
-            if isinstance(result, tuple):
-                # Beat 5 -> CityAgent handoff
-                city_agent, _json_str = result
-                assert isinstance(city_agent, ExplorationAgent)
-                assert city_agent._agent_type == "city"
-                assert ctx.userdata.onboarding_beat is None
-                break
-            parsed = json.loads(result)
-            assert parsed["beat"] == expected_beat
-
-        # Companion should have been initialized at beat 3->4
-        assert ctx.userdata.companion is not None
-        assert ctx.userdata.companion.name == "Lira"
-        assert ctx.userdata.companion.id == "companion_lira"
-        mock_get_player.assert_awaited_once_with("player_1")
