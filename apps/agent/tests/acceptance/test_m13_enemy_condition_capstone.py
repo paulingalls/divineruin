@@ -16,7 +16,7 @@ import conditions
 import db
 import db_mutations
 
-_ENCOUNTER = "hollow_patrol_greyvale"
+_ENCOUNTER = "ruins_mawling_pair"
 _ENEMY_ID = "mawling_1"
 _ACTION = "Test Shriek"
 
