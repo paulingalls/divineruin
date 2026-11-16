@@ -19,5 +19,8 @@ if (Bun.env.NODE_ENV === "production") {
   if (Bun.env.EMAIL_TRANSPORT === "mock") {
     reasons.push("EMAIL_TRANSPORT=mock is refused in production");
   }
+  if (Bun.env.BUN_TEST === "1") {
+    reasons.push("BUN_TEST=1 is refused in production (it forces the mock email transport)");
+  }
   if (reasons.length) throw new Error(`Production configuration refused: ${reasons.join("; ")}`);
 }

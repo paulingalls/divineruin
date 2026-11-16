@@ -74,6 +74,8 @@ test("production aggregates empty/whitespace values and explicit mock refusal", 
     true,
   );
   await refused({ ...complete, EMAIL_TRANSPORT: "mock" }, [], true);
+  // BUN_TEST=1 is the other route into the mock transport (env.ts, email-transport.ts).
+  await refused({ ...complete, BUN_TEST: "1" }, ["BUN_TEST"]);
   for (const transport of [undefined, "resend"]) {
     for (const key of ["", " \t"]) {
       await refused(
