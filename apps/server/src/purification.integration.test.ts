@@ -1,6 +1,12 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { assertDbRequired } from "@divineruin/shared/test-util";
 process.env.JWT_SECRET = "ab".repeat(32);
+const previousRateBypass = process.env.RATE_LIMIT_BYPASS;
+process.env.RATE_LIMIT_BYPASS = "1";
+afterAll(() => {
+  if (previousRateBypass === undefined) delete process.env.RATE_LIMIT_BYPASS;
+  else process.env.RATE_LIMIT_BYPASS = previousRateBypass;
+});
 const { startServer } = await import("./index.ts");
 import { sql } from "./db.ts";
 

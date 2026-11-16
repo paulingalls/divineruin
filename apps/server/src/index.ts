@@ -10,7 +10,8 @@ import { handleGetCharacter } from "./character.ts";
 import { handleRepairQuote } from "./repair.ts";
 import { handleRequestCode, handleVerifyCode, handleGetMe, requireAuth } from "./auth.ts";
 import { handleJoinWaitlist } from "./waitlist.ts";
-import { handlePreflight, withCors, checkRateLimit } from "./middleware.ts";
+import { handlePreflight, withCors } from "./middleware.ts";
+import { checkRateLimit, clientIP } from "./rate-limit.ts";
 import { handleCreateActivity } from "./activity_create.ts";
 import {
   handleListActivities,
@@ -59,7 +60,11 @@ export async function handleRequest(req: Request, ip: string): Promise<Response>
   }
 
   console.log(`[${req.method}] ${path}`);
-  const rateLimited = checkRateLimit(ip, path);
+  const identity = await requireAuth(req);
+  const rateLimited =
+    identity instanceof Response
+      ? await checkRateLimit("ip", clientIP(req, ip), path)
+      : await checkRateLimit("player", identity.playerId, path);
   if (rateLimited) return rateLimited;
 
   if (path === "/api/health" && req.method === "GET") {
