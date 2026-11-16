@@ -62,9 +62,7 @@ def resolve_resurrection_anchor(
     2. Nearest allied camp/settlement: a same-region location with a settlement_tier. No map
        coordinates exist, so "nearest" = same region, preferring safer (lower danger_level) then a
        stable id sort.
-    3. Last-rested settlement: player.last_rested_settlement_id. NOTE forward-seam — no rest tool
-       writes this yet (apply_long_rest has no production caller), so tier 3 is dormant at runtime
-       and the resolver falls through to tier 4 until a rest caller ships.
+    3. Last-rested settlement: player.last_rested_settlement_id.
     4. Starter zone: a location tagged "starting_area" (fallback accord_market_square).
     """
     death = locations.get(death_location, {})

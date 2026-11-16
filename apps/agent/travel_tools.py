@@ -30,6 +30,7 @@ import db_mutations_conditions
 import db_mutations_travel
 import db_queries
 import event_types as E
+import quest_progress
 import rules_engine
 import travel as travel_engine
 from action_sound_content import publish_action_sound
@@ -65,7 +66,8 @@ async def travel(
     Survival navigation check against the destination's navigation, may cost time or get the party
     lost, accrues Exhaustion on a forced march or a bad miss in harsh conditions, and on a successful
     journey moves the party to the destination. Pass `forced_march=True` (and an `hours` estimate)
-    when the party pushes on without rest."""
+    when the party pushes on without rest. Arriving may complete a location-based quest stage; it then appears in
+    `quest_updates` — narrate its `narrative_beat` and do not call `update_quest` for it."""
     return await _travel_impl(context, destination_id, mode, hours=hours, forced_march=forced_march)
 
 
@@ -173,12 +175,16 @@ async def _travel_impl(
         session.combat_state = consumed_state
 
     arrived = result.success and not result.wrong_area
+    quest_updates = []
     if arrived:
         # Reuse move_player's full arrival path (LOCATION_CHANGED for the HUD, map progress,
         # corruption tracking) — not just the location setter — so a travelled arrival updates
         # the client exactly like a walked one.
         await apply_arrival(
             session, destination_id, destination, db_mod=db_mod, mutations=mutations, travel_mutations=travel_mutations
+        )
+        quest_updates = await quest_progress.advance_on_arrival(
+            context, destination_id, db_mod=db_mod, mutations=mutations, queries=queries, content=content
         )
         if roll is None:
             await publish_action_sound(session, "action_travel")
@@ -215,6 +221,7 @@ async def _travel_impl(
         "destination": destination_id,
         "mode": mode_lower,
         "arrived": arrived,
+        "quest_updates": quest_updates,
         "dramatic": result.dramatic,
         "context": result.context,
         "narrative_cue": result.narrative_cue,

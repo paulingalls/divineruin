@@ -63,6 +63,7 @@ async def test_resolve_phase_victory_persists_exactly_one_grant(dev_db_pool):
     queries = MagicMock(
         get_player_inventory=AsyncMock(return_value=[]), get_inventory_snapshot=snapshot_query([])
     )  # no equipped items -> no durability
+    queries.get_active_player_quests = db_queries.get_active_player_quests
     queries.get_player = db_queries.get_player  # the grant needs the REAL row read
     break_mod = MagicMock(break_concentration_on_damage=AsyncMock(return_value=None))
 

@@ -33,7 +33,7 @@ async def settle_lives(
         if missing:
             raise RuntimeError(f"Dead player participant(s) {missing} have no players.data row")
         contexts = await resurrection.resurrect_party_on_defeat(
-            [row for _, row in rows], combat_cleared=combat_cleared, conn=conn
+            [{**row, "player_id": pid} for pid, row in rows], combat_cleared=combat_cleared, conn=conn
         )
         death_context = next((ctx for (pid, _), ctx in zip(rows, contexts, strict=True) if pid == primary_id), None)
 
@@ -42,7 +42,9 @@ async def settle_lives(
         primary_row = await queries.get_player(primary_id, conn=conn)
         if primary_row is None:
             raise RuntimeError(f"Primary player {primary_id!r} has no players.data row on defeat")
-        death_context = await resurrection.resurrect_on_defeat(primary_row, combat_cleared=combat_cleared, conn=conn)
+        death_context = await resurrection.resurrect_on_defeat(
+            {**primary_row, "player_id": primary_id}, combat_cleared=combat_cleared, conn=conn
+        )
 
     # The party holds the field, so a savable ally comes to at 1 HP; combat already wrote their HP to 0.
     if outcome in ("victory", "deescalated"):

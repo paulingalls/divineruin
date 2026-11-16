@@ -181,18 +181,13 @@
   {
     "id": "hollow_patrol_greyvale",
     "name": "Hollow Patrol",
-    "description": "A hunting pack of Hollow creatures \u2014 one larger Rend flanked by two drifting shades. They move in eerie coordination, the Rend leading while the Drifts circle like pale wolves.",
-    "difficulty": "hard",
+    "description": "Dry leaves rasp in a breath that is not yours. Cold ash stings your nose. Two shades drift across the northern road, one trailing the other like smoke.",
+    "difficulty": "easy",
     "enemies": [
-      {
-        "id": "mawling_1",
-        "creature_id": "hollow_mawling",
-        "role": "standard"
-      },
       {
         "id": "shadeling_1",
         "creature_id": "hollow_shadeling",
-        "role": "minion"
+        "role": "standard"
       },
       {
         "id": "shadeling_2",
@@ -200,7 +195,7 @@
         "role": "minion"
       }
     ],
-    "recommended_party_level": 3,
+    "recommended_party_level": 1,
     "scene_placement": {
       "party_start": {
         "x": 0,
@@ -213,11 +208,6 @@
         "z": 0
       },
       "actors": {
-        "mawling_1": {
-          "x": 25,
-          "y": 0,
-          "z": 0
-        },
         "shadeling_1": {
           "x": 30,
           "y": -10,
@@ -230,12 +220,7 @@
         }
       },
       "locations": {},
-      "zones": {
-        "mawling_1_corruption_aura": {
-          "center_id": "mawling_1",
-          "radius_ft": 5
-        }
-      }
+      "zones": {}
     }
   },
   {

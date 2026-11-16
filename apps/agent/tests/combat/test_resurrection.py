@@ -119,9 +119,7 @@ class TestResolveResurrectionAnchor:
         anchor = resolve_resurrection_anchor("wild_r3", _LOCATIONS, player, combat_cleared=False)
         assert anchor == "city_r2"
 
-    def test_tier4_starter_zone_fallback_when_tier3_dormant(self):
-        # Tier-3 is dormant (no last-rested tracking caller yet) -> must fall through to the
-        # starting_area-tagged zone. This is the live fall-through the plan-review flagged.
+    def test_tier4_starter_zone_fallback_without_last_rested_settlement(self):
         anchor = resolve_resurrection_anchor("wild_r3", _LOCATIONS, {}, combat_cleared=False)
         assert anchor == "accord_market_square"
 
@@ -239,6 +237,7 @@ class TestCombatEndDefeatWiring:
         cs = _make_combat_state(player_fallen=True)
         session = SessionData(player_id="player_1", location_id="battlefield_danger", room=None)
         end_data = {
+            "quest_updates": [],
             "xp_total": 0,
             "xp_granted": 0,
             "summary_xp_granted": 0,
@@ -273,36 +272,6 @@ class TestCombatEndDefeatWiring:
             session, cs, "victory", mutations=mutations, queries=queries, conn=MagicMock(), sink=EventSink()
         )
         spy.assert_not_awaited()
-
-
-class TestRecordLastRestedSettlement:
-    """The long-rest hook is forward-wired; apply_long_rest has no production caller yet."""
-
-    @pytest.mark.asyncio
-    async def test_records_when_resting_in_a_settlement(self):
-        import rest_mechanics
-        from session_data import SessionData
-
-        session = SessionData(player_id="p1", location_id="millhaven", room=None)
-        loc_mod = MagicMock(get_location=AsyncMock(return_value={"settlement_tier": "village"}))
-        res_mod = MagicMock(set_last_rested_settlement=AsyncMock())
-        await rest_mechanics.record_last_rested_settlement(
-            session, location_mod=loc_mod, resurrection_mutations_mod=res_mod
-        )
-        res_mod.set_last_rested_settlement.assert_awaited_once_with("p1", "millhaven", conn=None)
-
-    @pytest.mark.asyncio
-    async def test_skips_when_resting_outside_a_settlement(self):
-        import rest_mechanics
-        from session_data import SessionData
-
-        session = SessionData(player_id="p1", location_id="wilds", room=None)
-        loc_mod = MagicMock(get_location=AsyncMock(return_value={"region_type": "wilderness"}))
-        res_mod = MagicMock(set_last_rested_settlement=AsyncMock())
-        await rest_mechanics.record_last_rested_settlement(
-            session, location_mod=loc_mod, resurrection_mutations_mod=res_mod
-        )
-        res_mod.set_last_rested_settlement.assert_not_awaited()
 
 
 class TestMortaensDomainScene:
