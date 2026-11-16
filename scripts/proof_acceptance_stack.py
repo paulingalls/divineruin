@@ -72,9 +72,16 @@ def main(action):
         dsn = resolve_database_url()
         started = ensure_db_up(dsn)
         save_state(state, {"started": started, "dsn": dsn})
-        # The dev database outlives checkouts, so a tree that adds a migration must apply it here.
+        # The persistent dev DB needs this tree's migrations and content; seed upserts
+        # reset fixture player rows from content/players.json on every lane run.
         subprocess.run(
             ["bun", "run", "scripts/migrate.ts"], cwd=ROOT, env={**os.environ, "DATABASE_URL": dsn}, check=True
+        )
+        subprocess.run(
+            ["uv", "run", "--project", "scripts", "--frozen", "python", "scripts/seed_content.py"],
+            cwd=ROOT,
+            env={**os.environ, "DATABASE_URL": dsn},
+            check=True,
         )
         exports(
             {
