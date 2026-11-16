@@ -246,7 +246,7 @@ async def test_displeasure_delivery_marks_queued_recipient_after_primary_changes
     sd, bg = _party_background()
     bg._handle_events([_contrary()])
 
-    async def handoff_during_delivery(*args):
+    async def handoff_during_delivery(*args, **_kwargs):
         sd.handoff_primary("player_1")
         await bg.primary_changed()
         return True
