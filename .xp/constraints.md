@@ -10,7 +10,8 @@ Constraint case law.
    duplicate it. Unit tests are TDD scaffolding, not a permanent asset.
 2. **Tests cost what code costs.** Test lines stay at or below twice the lines
    they test. The commit hook finishes in under a minute; everything slower runs at
-   story land, push, sprint close, or PR CI. A slow test is a defect in the test.
+   story land, push, sprint close, PR CI, or scheduled fresh super. A slow test is a
+   defect in the test.
 3. **A product guard is fault-injected once, when it is added, in its own test
    file, and only if its failure would be silent or corrupting.** A test of a
    test, a hook, a gate or a dev tool is build-time scaffolding: record its red
@@ -48,6 +49,8 @@ Constraint case law.
    it must be fixed, it is a card.
 13. **Wall clock is a quality budget.** Each check runs once, in the cheapest
    tier that catches its failure: commit (under a minute), story land (fast
-   lane), push, sprint close (acceptance, Playwright), PR CI. No tier re-proves
-   what a lower tier proved on the same tree. Harness cost — containers, seeding,
+   lane), push, sprint close (acceptance, Playwright), PR CI (static), scheduled
+   fresh super. Local selections reuse keyed proofs; super deliberately
+   revalidates fresh. Other tiers do not re-prove a lower tier on the same tree.
+   Harness cost — containers, seeding,
    process spawns — is test cost: share it, never pay it per test.

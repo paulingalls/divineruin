@@ -101,10 +101,6 @@ def _is_frozen_uv_sync(command: str, project: str) -> bool:
 # Consumers are matched on argv for the same reason installs are: matching the
 # text of a run block accepts `echo "bun run lint:e2e"` as the lane itself, so a
 # deleted consumer keeps its corpus non-empty and the floor certifies nothing.
-def _runs_playwright(command: str) -> bool:
-    return shlex.split(command)[:3] == ["bunx", "playwright", "test"]
-
-
 def _runs_lint_e2e(command: str) -> bool:
     tokens = shlex.split(command)
     return tokens[:1] == ["bun"] and "lint:e2e" in tokens
@@ -147,16 +143,12 @@ def validate_ci_toolchain(root: Path, report: dict) -> None:
         "root Bun": _is_frozen_root_install,
         "e2e Bun": _is_frozen_e2e_install,
         "agent uv": lambda command: _is_frozen_uv_sync(command, "apps/agent"),
-        "scripts uv": lambda command: _is_frozen_uv_sync(command, "scripts"),
     }
     for graph, matches in required.items():
         if not any(matches(command) for command in runs):
             raise ValueError(f"CI does not install the {graph} lock")
 
-    consumers = (
-        ("lint:e2e", _runs_lint_e2e),
-        ("Playwright", _runs_playwright),
-    )
+    consumers = (("lint:e2e", _runs_lint_e2e),)
     for consumer, matches in consumers:
         consuming_jobs = 0
         for job_name, commands in runs_by_job.items():
