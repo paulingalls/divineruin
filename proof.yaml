@@ -61,7 +61,6 @@
       "scripts/seed_content.py"
     ],
     "stack": [
-      "$seeded-data",
       "$stack-shared",
       "scripts/proof-acceptance-stack.sh",
       "scripts/proof_acceptance_stack.py",
@@ -70,7 +69,12 @@
       "apps/agent/pyproject.toml",
       "apps/agent/uv.lock",
       "apps/agent/.python-version",
-      "scripts/**/*.py"
+      "content/*.json",
+      "scripts/migrations/**",
+      "scripts/pyproject.toml",
+      "scripts/uv.lock",
+      ".python-version",
+      "scripts/.python-version"
     ],
     "e2e-home-character-represents": [
       "packages/shared/**"
@@ -79,6 +83,11 @@
       "!docs/**",
       "!**/*.md",
       "!CHANGELOG.md"
+    ],
+    "unit-stack": [
+      "$stack",
+      "$seeded-data",
+      "scripts/**/*.py"
     ]
   },
   "generate": {
@@ -92,7 +101,9 @@
       "scripts/**/*.py",
       "package.json",
       "bun.lock",
-      "e2e/specs/*.e2e.ts"
+      "e2e/specs/*.e2e.ts",
+      "scripts/proof-families.json",
+      "e2e/fixtures/inventory-snapshot.py"
     ],
     "links": [
       "node_modules"

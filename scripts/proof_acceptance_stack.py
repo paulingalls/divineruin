@@ -50,7 +50,7 @@ def load_env():
 
 
 def require_declared_seed_inputs(modules):
-    """The template is shared by every task, so each file that shapes it must key them all."""
+    """Require seed-shaping modules in seeded-data for tasks retaining full seed keys."""
     declared = json.loads((ROOT / "proof.yaml").read_text())["inputs"]["seeded-data"]
     files = {getattr(sys.modules[m], "__file__", None) for m in modules}
     paths = {
