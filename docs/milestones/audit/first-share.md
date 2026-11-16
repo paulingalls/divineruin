@@ -23,7 +23,7 @@ behind them.
   world news and god whispers, and pushes notifications through the server.
 - **Multiplayer:** invite codes, deep links, per-participant STT, host handoff
   and guest departure exist and have acceptance tests.
-- **Content:** 23 locations, 17 NPCs, 4 quests, 9 scenes, 11 encounter
+- **Content:** 24 locations, 17 NPCs, 4 quests, 9 scenes, 12 encounter
   templates, 4 companions. Every NPC `voice_id` resolves to a `VOICES` key.
 
 ## 2. Story path
@@ -33,20 +33,12 @@ The main quest `greyvale_anomaly` has five stages (XP on completion
 ruins and the Emris reveal; spec sessions 4–5 are barely authored.
 
 **Session 1 (Accord)**
-- ✔ `scene_rider_arrival` is gated on no companion and no quest
-  (`bg_event_handlers.py:104`); onboarding always assigns a companion, so no new
-  player hears it. The handler also only reacts to a location change, and
-  onboarding hands off without one.
-- ✔ Nothing in `apps/agent` starts `greyvale_anomaly`; the DM must choose to
-  call `update_quest`. Nothing reads quest `completion_conditions`.
-- ✔ Creation offers 6 races, 18 archetypes and 11 deity options; the entry hook
-  in `creation_agent.py` pushes race cards and asks for race.
-- ✔ `shadeling_cluster` (two `hollow_shadeling`, 8 HP, level 1, difficulty easy)
-  exists and is used nowhere in the arc.
-- ✔ Scene-beat `companion_hints` are delivered on silence
-  (`background_process.py:195`), but the selector returns nothing when no quest
-  is active.
-- `content/events.json` (8 events) is seeded and never read.
+- `scene_rider_arrival` is claimed at exploration entry after onboarding, with no active quest and no saved `first_episode` receipt. The receipt persists across reconnects and sessions; a companion is expected.
+- `fragment_shadeling` is one standard shadeling in `accord_guild_infirmary`, reached through the guild hall with a return exit. The shared 20-seed harness scores warrior/mage/rogue/cleric **20/19/19/20** wins and no budget flags.
+- The combat engine settles this encounter/location/receipt on every offered outcome. The fragment, Greyvale stage-0 start and complete receipt share the combat transaction; quest memories apply after commit. Rollback, replay and concurrent-session checks exercise the saved receipt.
+- Rider hints use the saved episode at the square and infirmary before a quest exists. Generic quest-scene selection is unchanged.
+- The creation-to-quest walk uses real room transport and deterministic owned speech/model seams. It does not certify paid speech recognition or live narration quality.
+- `content/events.json` retains five events and has no runtime interpreter. The three superseded market/task/companion entries are removed from authored content; seeding does not delete historical database rows.
 - The god-whisper worker triggers only at favor 25
   (`god_whisper_data.FAVOR_WHISPER_THRESHOLD`) ✔, which a new player lacks.
 
