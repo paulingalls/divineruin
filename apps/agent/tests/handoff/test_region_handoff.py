@@ -29,6 +29,7 @@ def _move_mocks(location_map: dict) -> dict:
     mock_queries.get_player = AsyncMock(return_value={"name": "Test", "level": 1})
     mock_queries.get_targets_at_location = AsyncMock(return_value=[])
     mock_queries.get_npc_dispositions = AsyncMock(return_value={})
+    mock_queries.get_active_player_quests = AsyncMock(return_value=[])
     mock_queries.get_npcs_at_location = AsyncMock(return_value=[])
     mock_content = MagicMock()
     mock_content.get_location = AsyncMock(side_effect=lambda loc_id: location_map.get(loc_id))

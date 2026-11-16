@@ -31,6 +31,7 @@ def test_navigation_preserves_travel_location_values():
         "greyvale_ruins_exterior": "unmarked_wilderness",
         "greyvale_wilderness_north": "dense_forest",
         "greyvale_south_road": "established_road",
+        "millhaven": "established_road",
         "thornveld_old_growth_grove": "dense_forest",
         "keldaran_southern_pass": "known_trail",
         "sunward_tidal_shore": "known_trail",

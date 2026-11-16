@@ -62,6 +62,7 @@
   },
   {
     "id": "millhaven",
+    "navigation": "established_road",
     "settlement_tier": "village",
     "personality": "struggling",
     "name": "Millhaven",
