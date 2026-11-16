@@ -241,6 +241,7 @@ test("HTTP crafting and keep update two subscribed same-player HUDs; other playe
 });
 
 test("keep decision revalidates resolved status after the real row lock", async ({ testUser }) => {
+  await queryDb("DELETE FROM player_inventory WHERE player_id=$1", [testUser.playerId]);
   const id = `locked_${crypto.randomUUID().replaceAll("-", "")}`;
   await queryDb("INSERT INTO async_activities(id,player_id,data) VALUES($1,$2,$3::jsonb)", [
     id,
