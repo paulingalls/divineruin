@@ -249,14 +249,15 @@ async def finalize_character(context: RunContext) -> str | tuple:
     if missing:
         raise ToolError(f"Missing required choices: {', '.join(missing)}")
     assert cs.class_choice and cs.name
-    cs.race = cs.race if cs.race is not None else DEFAULT_RACE
-    cs.deity = cs.deity if cs.deity is not None else DEFAULT_PATRONS[cs.class_choice]
-    deity_id = cs.deity
+    # Defaults reach the state only once persisted: a failed save followed by a new
+    # calling must re-derive the patron, not keep the old calling's default.
+    race_id = cs.race if cs.race is not None else DEFAULT_RACE
+    deity_id = cs.deity if cs.deity is not None else DEFAULT_PATRONS[cs.class_choice]
 
     try:
         character_data = build_character_data(
             name=cs.name,
-            race_id=cs.race,
+            race_id=race_id,
             class_id=cs.class_choice,
             deity_id=deity_id,
             backstory=cs.backstory or "",
@@ -272,6 +273,7 @@ async def finalize_character(context: RunContext) -> str | tuple:
     except Exception as e:
         logger.exception("Failed to create player %s", sd.player_id)
         raise ToolError("Failed to save character. Please try again.") from e
+    cs.race, cs.deity = race_id, deity_id
 
     # Grant starting elective spells (M8 story-003): the 9 single-source casters begin
     # with a source-appropriate cantrip + minor, prepared (pre-game training). No-op for

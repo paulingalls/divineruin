@@ -101,6 +101,7 @@ class TestFinalizeCharacter:
         ctx = _make_context(cs)
         with pytest.raises(ToolError):
             await _finalize(ctx)
+        assert cs.deity is None
 
 
 class TestPushCreationMusic:
