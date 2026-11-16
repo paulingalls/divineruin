@@ -454,6 +454,20 @@ async def test_worker_whisper_eligibility(reset_db_pool, caplog):
         await worker.poll(caplog)
         assert worker.calls == [(ids[-1], "kaelen"), (pid, "kaelen"), (pid, "kaelen")]
         await observe(pid, [first, worker.ids[-1]], pending=worker.ids[-1:], receipt=False, last=50)
+
+        pid = ids[0]
+        await db_mutations.set_player_flag(pid, "first_episode", "complete")
+        pending = await db_mutations_divine.create_god_whisper(
+            pid, {"deity_id": "kaelen", "narration_text": TEXT, "audio_url": AUDIO, "status": "pending"}
+        )
+        calls = list(worker.calls)
+        await worker.poll(caplog)
+        assert worker.calls == calls
+        await observe(pid, [pending], pending=[pending], receipt=False, last=0)
+        await db_mutations_divine.mark_god_whisper_played(pending)
+        await worker.poll(caplog)
+        assert worker.calls == [*calls, (pid, "kaelen")]
+        await observe(pid, [pending, worker.ids[-1]], pending=worker.ids[-1:], receipt=True, last=0)
     finally:
         for pid in ids:
             await cleanup(pid)
