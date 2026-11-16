@@ -1,8 +1,12 @@
-import { resolve } from "node:path";
+import { isAbsolute, resolve } from "node:path";
 import { mkdir, open, unlink } from "node:fs/promises";
 
 export function mediaDir(): string {
-  return resolve(Bun.env.MEDIA_DIR?.trim() || `${import.meta.dir}/../../../assets/generated`);
+  const configured = Bun.env.MEDIA_DIR?.trim();
+  if (!configured) return resolve(`${import.meta.dir}/../../../assets/generated`);
+  // Each process would resolve it against its own cwd: narration written to one tree, served from another.
+  if (!isAbsolute(configured)) throw new Error(`MEDIA_DIR must be an absolute path: ${configured}`);
+  return resolve(configured);
 }
 
 export async function validateMediaDir(): Promise<void> {

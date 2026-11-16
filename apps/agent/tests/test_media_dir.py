@@ -46,3 +46,25 @@ print(audio_url_for(FILENAME))
             assert response.content == Path(path).read_bytes() and response.content
     finally:
         (ROOT / "assets/generated/audio" / filename).unlink(missing_ok=True)
+
+
+def test_relative_media_dir_is_refused_by_both_processes(monkeypatch):
+    """A relative root resolves against each process's own cwd, splitting writes from reads."""
+    env = dict(os.environ, MEDIA_DIR="assets/generated", AGENT_ENV="development")
+    python = subprocess.run(
+        [sys.executable, "-c", "from media_dir import media_dir; media_dir()"],
+        cwd=ROOT / "apps/agent",
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    bun = subprocess.run(
+        ["bun", "-e", 'import { mediaDir } from "./src/media-dir.ts"; mediaDir();'],
+        cwd=ROOT / "apps/server",
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    for result in (python, bun):
+        assert result.returncode != 0
+        assert "MEDIA_DIR must be an absolute path" in result.stderr
