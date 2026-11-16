@@ -41,17 +41,9 @@ base_db = env["SMOKE_DB"]
 base_redis = env["SMOKE_REDIS"]
 fixture_db = urllib.parse.urlsplit(base_db)._replace(path="/" + name).geturl()
 private_values = [base_db, base_redis, fixture_db]
-env.update(DEPLOY_ENV_FILE=str(tmp / "runtime.env"), DEPLOY_HTTP_PORT="0")
-compose = [
-    "docker",
-    "compose",
-    "-p",
-    project,
-    "-f",
-    str(root / "deploy/compose.yml"),
-    "-f",
-    str(tmp / "override.json"),
-]
+# worktree-common.sh exports the CHECKOUT's COMPOSE_PROJECT_NAME; a child that omits -p must not resolve to it.
+env.update(DEPLOY_ENV_FILE=str(tmp / "runtime.env"), DEPLOY_HTTP_PORT="0", COMPOSE_PROJECT_NAME=project)
+compose = ["docker", "compose", "-p", project, "-f", str(root / "deploy/compose.yml"), "-f", str(tmp / "override.json")]
 
 
 def command(args, *, capture=False, input=None, settings=None, merged=False, deadline=300):
@@ -85,12 +77,7 @@ def authorize():
 def bun(code, db=fixture_db):
     authorize()
     settings = dict(env, DATABASE_URL=db, REDIS_URL=base_redis, SMOKE_KEY=key)
-    return command(
-        ["bun", "--no-env-file", "run", "-"],
-        capture=True,
-        input=code,
-        settings=settings,
-    )
+    return command(["bun", "--no-env-file", "run", "-"], capture=True, input=code, settings=settings)
 
 
 def proxy_url(original, port):
@@ -108,10 +95,7 @@ def http(url, body=None, method=None, token=None):
     if token:
         headers["Authorization"] = "Bearer " + token
     req = urllib.request.Request(
-        url,
-        data=json.dumps(body).encode() if body is not None else None,
-        headers=headers,
-        method=method,
+        url, data=json.dumps(body).encode() if body is not None else None, headers=headers, method=method
     )
     start = time.monotonic()
     try:
@@ -120,11 +104,7 @@ def http(url, body=None, method=None, token=None):
         response = error
     with response:
         data = response.read()
-        return (
-            response.status,
-            json.loads(data) if data else None,
-            time.monotonic() - start,
-        )
+        return (response.status, json.loads(data) if data else None, time.monotonic() - start)
 
 
 def ready(url, process=None):
@@ -269,12 +249,7 @@ def main():
         if not image:
             image = project + "-" + mode
         print(
-            "image "
-            + command(
-                ["docker", "image", "inspect", "--format", "{{.Id}}", image],
-                capture=True,
-            ),
-            flush=True,
+            "image " + command(["docker", "image", "inspect", "--format", "{{.Id}}", image], capture=True), flush=True
         )
         built_images.append(project + "-" + mode)
         uid = command(["docker", "run", "--rm", "--entrypoint", "id", image, "-u"], capture=True)
@@ -296,16 +271,7 @@ def main():
         command(["bun", "--no-env-file", "run", "scripts/migrate.ts"], settings=fixture_env)
         authorize()
         command(
-            [
-                "uv",
-                "run",
-                "--project",
-                "scripts",
-                "--frozen",
-                "python",
-                "scripts/seed_content.py",
-            ],
-            settings=fixture_env,
+            ["uv", "run", "--project", "scripts", "--frozen", "python", "scripts/seed_content.py"], settings=fixture_env
         )
     bun(
         'const r = new Bun.RedisClient(process.env.REDIS_URL); await r.set(process.env.SMOKE_KEY,"alive","EX",1800); r.close();'
@@ -328,10 +294,7 @@ def main():
                 break
         except OSError:
             time.sleep(0.25)
-    for dep, port, upstream_port in [
-        ("postgres", 15432, 5432),
-        ("valkey", 16379, 6379),
-    ]:
+    for dep, port, upstream_port in [("postgres", 15432, 5432), ("valkey", 16379, 6379)]:
         assert (
             http(
                 proxy + "/proxies",
