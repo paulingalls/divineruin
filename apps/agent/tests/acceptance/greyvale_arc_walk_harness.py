@@ -24,7 +24,7 @@ REWARDS = {E.XP_AWARDED, E.DISPOSITION_CHANGED, E.QUEST_UPDATED}
 
 
 class ArcWalk:
-    async def start(self, harness, tool, stage: int | None = 0, status="active"):
+    async def start(self, harness, tool, stage: int | None = 0, status="active", *, agent=None):
         self.pool = await db.get_pool()
         redis = await db.get_redis()
         await redis.delete("location:millhaven")
@@ -41,7 +41,7 @@ class ArcWalk:
         self.model = ScenarioModel([])
         tools = [t for t in EXPLORATION_TOOLS if t.__name__ in {"move_player", "travel"}]
         self.session = AgentSession(llm=self.model, userdata=self.sd)
-        await self.session.start(Agent(instructions="Execute the command.", tools=tools))
+        await self.session.start(agent or Agent(instructions="Execute the command.", tools=tools))
         harness.stack.callback(lambda: harness.run_sync(self.session.aclose()))
         return self
 

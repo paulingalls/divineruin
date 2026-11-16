@@ -2,7 +2,16 @@
 
 import json
 
+import pytest
 from acceptance.greyvale_arc_walk_harness import ROAD, TOWN, ArcWalk
+from acceptance.greyvale_finish_line import (
+    assert_finish,
+    enter_surfaced_combat,
+    quest_corpus,
+    refresh,
+    scene_hint,
+    start_warm,
+)
 from pytest_bdd import given, parsers, scenarios, then, when
 
 scenarios("features/greyvale_arc_walk.feature")
@@ -73,3 +82,54 @@ def target_only(harness):
     assert harness.state["private"]["target_only"] not in [
         u["quest_id"] for u in harness.state["result"]["quest_updates"]
     ]
+
+
+@pytest.fixture
+def mock_combat_agent_factory():
+    return None
+
+
+@given(parsers.parse("an active Greyvale warm session at stage {stage:d}"))
+def warm_stage(harness, stage):
+    harness.state["arc"] = harness.run_sync(start_warm(harness))
+    harness.state["stage"] = stage
+
+
+@then("its scene hint reaches the silent player")
+def hint_reaches(harness):
+    harness.run_sync(scene_hint(harness.state["arc"], harness.state["stage"]))
+
+
+@given("a warm session walking the complete quest corpus")
+def corpus_session(harness):
+    harness.state["arc"] = harness.run_sync(start_warm(harness))
+
+
+@then("every stage renders its finish line and the surfaced combat starts")
+def finish_lines(harness):
+    async def check():
+        arc = harness.state["arc"]
+        combat_line = None
+        for quest in quest_corpus():
+            seeded = json.loads(await arc.pool.fetchval("SELECT data FROM quests WHERE id=$1", quest["id"]))
+            assert seeded["stages"] == quest["stages"]
+            for index in range(len(quest["stages"])):
+                line = await refresh(arc, quest["id"], index)
+                assert_finish(line, quest, index)
+                if quest["id"] == "greyvale_anomaly" and index == 2:
+                    combat_line = line
+        assert combat_line is not None
+        await enter_surfaced_combat(arc, combat_line)
+
+    harness.run_sync(check())
+
+
+@then("an unknown condition fails the warm refresh loudly")
+def unknown_condition(harness):
+    async def check():
+        arc = harness.state["arc"]
+        quest = await arc.private_quest(harness, {"type": "unwritten_condition"}, TOWN)
+        with pytest.raises(ValueError, match=f"{quest}.*0.*unwritten_condition"):
+            await refresh(arc, quest, 0)
+
+    harness.run_sync(check())

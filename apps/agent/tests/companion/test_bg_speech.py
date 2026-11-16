@@ -152,47 +152,6 @@ class TestCompanionIdleSpeech:
         assert len(bg._speech_queue) == 0
 
 
-class TestQuestHints:
-    def test_scene_beat_hint_with_companion_uses_kael(self):
-        sd = _make_session_data()
-        sd.companion = CompanionState(id="companion_kael", name="Kael")
-        past = time.time() - 50
-        sd.last_player_speech_time = past
-        sd.last_agent_speech_end = past
-        bg, _, _ = _make_bg(session_data=sd)
-        bg._quest_cache = [
-            {
-                "quest_id": "greyvale_anomaly",
-                "quest_name": "The Greyvale Anomaly",
-                "current_stage": 0,
-                "stages": [{"id": "s0", "objective": "Travel."}],
-                "scene_graph": [{"scene_id": "scene_road", "stage_refs": [0]}],
-            }
-        ]
-        bg._scene_cache = {
-            "scene_road": {
-                "id": "scene_road",
-                "name": "Road",
-                "type": "quest",
-                "region_type": "wilderness",
-                "instructions": "Travel.",
-                "beats": [
-                    {
-                        "id": "b1",
-                        "description": "Depart.",
-                        "completion_condition": "Go north",
-                        "companion_hints": ["Head north to Millhaven."],
-                        "hint_delay_seconds": 45,
-                    },
-                ],
-            },
-        }
-        bg._check_scene_beat_hints()
-        assert len(bg._speech_queue) == 1
-        assert "COMPANION_KAEL" in bg._speech_queue[0].instructions
-        assert "Head north to Millhaven." in bg._speech_queue[0].instructions
-
-
 class TestEmotionalState:
     def test_location_changed_sets_curious(self):
         sd = _make_session_data()

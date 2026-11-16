@@ -406,3 +406,11 @@ class TestEnemyHostileConditionContent:
             "expected at least one enemy action_pool entry to declare a hostile "
             f"applies_condition ({sorted(_HOSTILE_CONDITIONS)}), found none"
         )
+
+
+def test_quest_stages_use_scene_hints():
+    quests = json.loads((CONTENT_DIR / "quests.json").read_text())
+    assert quests and all(quest["stages"] for quest in quests)
+    for quest in quests:
+        for stage in quest["stages"]:
+            assert "hints" not in stage, (quest["id"], stage["id"])
