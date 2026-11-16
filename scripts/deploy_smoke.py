@@ -10,14 +10,17 @@ import sys
 import tarfile
 import tempfile
 import time
+import traceback
 import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
 
 mode = sys.argv[1]
-if mode == "agent":
+if mode in ("agent", "migrate"):
     import deploy_smoke_agent as agent_smoke
+if mode == "migrate":
+    import deploy_smoke_migrate as migrate_smoke
 
 root = pathlib.Path.cwd()
 run_id = uuid.uuid4().hex[:12]
@@ -39,10 +42,22 @@ base_redis = env["SMOKE_REDIS"]
 fixture_db = urllib.parse.urlsplit(base_db)._replace(path="/" + name).geturl()
 private_values = [base_db, base_redis, fixture_db]
 env.update(DEPLOY_ENV_FILE=str(tmp / "runtime.env"), DEPLOY_HTTP_PORT="0")
-compose = ["docker", "compose", "-p", project, "-f", str(root / "deploy/compose.yml"), "-f", str(tmp / "override.json")]
+compose = [
+    "docker",
+    "compose",
+    "-p",
+    project,
+    "-f",
+    str(root / "deploy/compose.yml"),
+    "-f",
+    str(tmp / "override.json"),
+]
 
 
 def command(args, *, capture=False, input=None, settings=None, merged=False, deadline=300):
+    if args[:2] == ["docker", "compose"]:
+        log.write("compose args: " + repr(args) + "\n")
+        log.flush()
     result = subprocess.run(
         args,
         input=input,
@@ -70,7 +85,12 @@ def authorize():
 def bun(code, db=fixture_db):
     authorize()
     settings = dict(env, DATABASE_URL=db, REDIS_URL=base_redis, SMOKE_KEY=key)
-    return command(["bun", "--no-env-file", "run", "-"], capture=True, input=code, settings=settings)
+    return command(
+        ["bun", "--no-env-file", "run", "-"],
+        capture=True,
+        input=code,
+        settings=settings,
+    )
 
 
 def proxy_url(original, port):
@@ -88,7 +108,10 @@ def http(url, body=None, method=None, token=None):
     if token:
         headers["Authorization"] = "Bearer " + token
     req = urllib.request.Request(
-        url, data=json.dumps(body).encode() if body is not None else None, headers=headers, method=method
+        url,
+        data=json.dumps(body).encode() if body is not None else None,
+        headers=headers,
+        method=method,
     )
     start = time.monotonic()
     try:
@@ -97,7 +120,11 @@ def http(url, body=None, method=None, token=None):
         response = error
     with response:
         data = response.read()
-        return response.status, json.loads(data) if data else None, time.monotonic() - start
+        return (
+            response.status,
+            json.loads(data) if data else None,
+            time.monotonic() - start,
+        )
 
 
 def ready(url, process=None):
@@ -218,7 +245,7 @@ def main():
         },
         "networks": {"checkout": {"external": True, "name": network}},
     }
-    if mode == "agent":
+    if mode in ("agent", "migrate"):
         agent_smoke.configure(override, project)
     (tmp / "override.json").write_text(json.dumps(override))
     settings = {
@@ -230,24 +257,32 @@ def main():
         "NODE_ENV": "production",
         "PORT": "3001",
     }
-    if mode == "agent":
+    if mode in ("agent", "migrate"):
         settings.update(agent_smoke.environment())
     private_values.extend(settings[k] for k in ("DATABASE_URL", "REDIS_URL", "JWT_SECRET", "INTERNAL_SECRET"))
     (tmp / "runtime.env").write_text("".join(k + "=" + v + "\n" for k, v in settings.items()))
     os.chmod(tmp / "runtime.env", 0o600)
     compose_started = True
-    command([*compose, "build", mode], deadline=900)
-    image = command([*compose, "images", "-q", mode], capture=True)
-    if not image:
-        image = project + "-" + mode
-    print("image " + command(["docker", "image", "inspect", "--format", "{{.Id}}", image], capture=True), flush=True)
-    built_images.append(project + "-" + mode)
-    uid = command(["docker", "run", "--rm", "--entrypoint", "id", image, "-u"], capture=True)
-    assert uid.isdigit() and int(uid) > 0, "image must execute as non-root"
-    if mode == "agent":
-        agent_smoke.image_checks(sys.modules[__name__], image, uid)
-    else:
-        image_sources(image)
+    if mode != "migrate":
+        command([*compose, "build", mode], deadline=900)
+        image = command([*compose, "images", "-q", mode], capture=True)
+        if not image:
+            image = project + "-" + mode
+        print(
+            "image "
+            + command(
+                ["docker", "image", "inspect", "--format", "{{.Id}}", image],
+                capture=True,
+            ),
+            flush=True,
+        )
+        built_images.append(project + "-" + mode)
+        uid = command(["docker", "run", "--rm", "--entrypoint", "id", image, "-u"], capture=True)
+        assert uid.isdigit() and int(uid) > 0, "image must execute as non-root"
+        if mode == "agent":
+            agent_smoke.image_checks(sys.modules[__name__], image, uid)
+        else:
+            image_sources(image)
     bun(
         'const s = new Bun.SQL(process.env.DATABASE_URL); await s.unsafe(`CREATE DATABASE "'
         + name
@@ -255,13 +290,23 @@ def main():
         base_db,
     )
     created_db = True
-    authorize()
-    fixture_env = dict(env, DATABASE_URL=fixture_db, REDIS_URL=base_redis)
-    command(["bun", "--no-env-file", "run", "scripts/migrate.ts"], settings=fixture_env)
-    authorize()
-    command(
-        ["uv", "run", "--project", "scripts", "--frozen", "python", "scripts/seed_content.py"], settings=fixture_env
-    )
+    if mode != "migrate":
+        authorize()
+        fixture_env = dict(env, DATABASE_URL=fixture_db, REDIS_URL=base_redis)
+        command(["bun", "--no-env-file", "run", "scripts/migrate.ts"], settings=fixture_env)
+        authorize()
+        command(
+            [
+                "uv",
+                "run",
+                "--project",
+                "scripts",
+                "--frozen",
+                "python",
+                "scripts/seed_content.py",
+            ],
+            settings=fixture_env,
+        )
     bun(
         'const r = new Bun.RedisClient(process.env.REDIS_URL); await r.set(process.env.SMOKE_KEY,"alive","EX",1800); r.close();'
     )
@@ -283,7 +328,10 @@ def main():
                 break
         except OSError:
             time.sleep(0.25)
-    for dep, port, upstream_port in [("postgres", 15432, 5432), ("valkey", 16379, 6379)]:
+    for dep, port, upstream_port in [
+        ("postgres", 15432, 5432),
+        ("valkey", 16379, 6379),
+    ]:
         assert (
             http(
                 proxy + "/proxies",
@@ -297,10 +345,12 @@ def main():
             )[0]
             == 201
         )
-    if mode == "agent":
+    if mode == "migrate":
+        migrate_smoke.run(sys.modules[__name__], override)
+    elif mode == "agent":
         agent_smoke.run(sys.modules[__name__], proxy, image)
     else:
-        command([*compose, "up", "-d", "server"])
+        command([*compose, "up", "-d", "--no-deps", "server"])
         server_id = command([*compose, "ps", "-q", "server"], capture=True)
         started = inspect(server_id)["State"]["StartedAt"]
         url = "http://127.0.0.1:" + command([*compose, "port", "server", "3001"], capture=True).rsplit(":", 1)[1]
@@ -370,13 +420,26 @@ def main():
     )
     authorize()
     if mode == "server":
-        dev, dev_url = host(["bun", "run", "dev:server"], {k: os.environ[k] for k in ("PATH", "HOME")})
+        dev, dev_url = host(
+            ["bun", "run", "dev:server"],
+            dict({k: os.environ[k] for k in ("PATH", "HOME")}, DATABASE_URL=fixture_db, REDIS_URL=base_redis),
+        )
         health(dev_url)
         assert http(dev_url + "/api/me")[0] == 401
         stop(dev)
         print("server smoke passed", flush=True)
     else:
-        print("agent smoke passed", flush=True)
+        print(mode + " smoke passed", flush=True)
+
+
+def cleanup_compose():
+    resolved = json.loads(command([*compose, "config", "--format", "json"], capture=True))
+    if resolved["name"] != project:
+        raise RuntimeError("smoke cleanup refused a different Compose project")
+    try:
+        command([*compose, "logs", "--no-color"])
+    finally:
+        command([*compose, "down", "--volumes", "--remove-orphans"])
 
 
 def interrupt(signum, frame):
@@ -389,13 +452,13 @@ failed = False
 try:
     main()
 except Exception as error:
+    traceback.print_exc(file=log)
     print(f"smoke failed: {error}", flush=True)
     failed = True
 finally:
     actions = [lambda child=child: stop(child) for child in children]
     if compose_started:
-        actions.append(lambda: command([*compose, "logs", "--no-color"]))
-        actions.append(lambda: command([*compose, "down", "--volumes", "--remove-orphans"]))
+        actions.append(cleanup_compose)
     actions.extend(lambda container=container: command(["docker", "rm", "-f", container]) for container in exports)
     actions.extend(lambda image=image: command(["docker", "image", "rm", image]) for image in built_images)
     if sentinel:

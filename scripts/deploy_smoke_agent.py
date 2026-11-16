@@ -121,7 +121,7 @@ console.log(JSON.stringify(r)); await s.close();""")
     assert json.loads(counts) == {"players": 0, "activities": 0, "training": 0}
 
     def case(service, marker, failure=False):
-        h.command([*h.compose, "up", "-d", "--force-recreate", service])
+        h.command([*h.compose, "up", "-d", "--force-recreate", "--no-deps", service])
         container = h.command([*h.compose, "ps", "-a", "-q", service], capture=True)
         assert h.inspect(container)["Image"] == h.inspect(image)["Id"]
         deadline = time.monotonic() + 120
