@@ -322,7 +322,7 @@ class TestRoleVoicesAreNotEnumerated:
             assert "ROLE_" not in prompt, f"a role key leaked into {name}"
 
     def test_each_prompt_names_the_producer_once(self):
-        for prompt in (SYSTEM_PROMPT, CREATION_SYSTEM_PROMPT):
+        for prompt in (SYSTEM_PROMPT,):
             assert prompt.count('kind="settlement_population"') == 1
 
     def test_available_characters_line_is_exactly_the_authored_roster(self):

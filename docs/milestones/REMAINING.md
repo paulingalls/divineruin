@@ -5,8 +5,8 @@ Reconciled against the codebase on **2026-10-13**, during **Sprint 68**
 its limits are recorded in the story handback. Checked criteria are not a claim
 that every designed effect has shipped.
 
-**Position: 342 / 538 acceptance criteria — 64%** (the sum of the per-phase
-counts in `README.md`). **196 criteria remain unchecked.** Phases 1, 2, 4, 5,
+**Position: 350 / 547 acceptance criteria — 64%** (the sum of the per-phase
+counts in `README.md`). **197 criteria remain unchecked.** Phases 1, 2, 4, 5,
 6 and 10 have all recorded criteria checked. Phase 3 is still Partial at 34/34:
 casting infrastructure is exercised, but complete deterministic spell-effect
 coverage is **unverified**. All 87 spell rows carry textual `mechanics`; this
@@ -100,7 +100,7 @@ The story-111 retired-tool-name guard was deleted in `cb5dd18e`; it no longer
 protects milestone prose. Historical repair narratives are omitted from this
 current work map; the handback records their disposition.
 
-## 5. Incomplete implementation phases (27 milestones, 189 open ACs)
+## 5. Incomplete implementation phases (28 milestones, 196 open ACs)
 
 The AC column counts **unchecked** criteria. Estimates are planning judgments,
 not schedules or measured implementation costs.
@@ -112,6 +112,7 @@ not schedules or measured implementation costs.
 | **9 · Economy** | 9.1–9.10 | 75 | Phase 7 material/creature integration; Phase 5/6 inputs | large | Shared pricing getters/repair costs, reputation-to-stance and committed material inventory boundaries pass. The migrated pricing table exists. No complete economy certification is implied. |
 | **11 · World Loop** | 11.1–11.6 | 46 | D-A–D-E; M11.4 needs Phase 9, M11.6 needs Phase 8 | ~4–6 sprints | Migrated `region_state`, `npc_state`, `world_events_log`, `god_agent_state`, `world_flags`; direct quest world effects; activity-worker reset harness. These do not establish a world scheduler or cascade. |
 | **12 · Story Content** | 12.1–12.7 | 34 | Phase 11 and its blocking decision section | ~5–7 sprints | Migrated `scenes` (013) and `story_moments` (012); scene-tool and settlement-generation boundaries. `gods.json` has authored secret-agenda text for Veythar and Syrath; a season director is not certified. |
+| **13 · First Share** | Session 1 | 7 | Companion onboarding, rider arrival, fragment fight and quest, XP budget, patron whisper, and the creation-to-quest acceptance walk | Three remaining Session 1 cards | Calling/name creation, the 3/4/4 roster, persisted spell/companion grants and creation-to-onboarding handoff exercised through the product session lifecycle. |
 
 **Hazards before the relevant phase opens:**
 

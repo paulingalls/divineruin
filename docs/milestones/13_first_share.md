@@ -11,8 +11,8 @@ mystery object and the call to action are one beat, in session 1.
 
 ## Session 1 — The Fragment (Accord of Tides)
 
-- [ ] Creation offers only the first-share subset: 3 races, 4 archetypes, 4 patrons
-- [ ] A player who gives only a calling and a name gets a complete character
+- [x] Creation offers only the first-share subset: 3 races, 4 archetypes, 4 patrons
+- [x] A player who gives only a calling and a name gets a complete character
 - [ ] Onboarding hands off to play once the companion has been met
 - [ ] The rider arrives once for every new player, after onboarding
 - [ ] The fragment fight runs from `shadeling_cluster` in a contained Accord location

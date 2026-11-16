@@ -195,12 +195,13 @@ async def assert_case(case_id: str, scenario: Scenario, events: list[Any], call:
         assert item["slot_info"]["current_hits"] == payload["restored_to"]
         assert (await _existing_player(pool, sd.player_id))["gold"] < 100
     elif branch == "creation_choice":
-        assert sd.creation_state is not None and sd.creation_state.race == "draethar"
+        assert sd.creation_state is not None and sd.creation_state.race == "elari"
     elif branch == "creation_finalized":
         finalized = await _existing_player(pool, sd.player_id)
-        assert (finalized["name"], finalized["race"], finalized["class"]) == ("Luna Vale", "draethar", "warrior"), (
+        assert (finalized["name"], finalized["race"], finalized["class"]) == ("Luna Vale", "human", "warrior"), (
             finalized
         )
+        assert finalized["deity"] == finalized["divine_favor"]["patron"] == "kaelen"
     elif branch == "enter_location":
         assert payload["location"]["id"] == "accord_market_square", payload
         assert await _player_json(pool, sd.player_id) == scenario.before["player"]

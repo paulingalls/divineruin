@@ -156,11 +156,8 @@ async def prepare_case(case_id: str) -> Scenario:
         if case_id == "creation.finalize_character":
             cs = CreationState(
                 phase="identity",
-                race="draethar",
                 class_choice="warrior",
-                deity="none",
                 name="Luna Vale",
-                backstory="A road-worn guardian.",
             )
         return Scenario(SessionData(player_id=player_id, location_id="", room=make_mock_room(), creation_state=cs))
 
