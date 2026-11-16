@@ -10,6 +10,7 @@ run.
 Goal: "set up proof for divineruin's tests so you only run the tests an edit could break" (human 2026-11-02, via the proof session).
 Baseline (main fd77ddfa, 2026-11-02, host load ~20): `bun run test` 14s / 2049 tests; `test:python` 48s / 8836; `test:acceptance:nollm` 618s / 636.
 Measure: python3 scripts/proof_selection_probe.py
+Reading (7393d706, 2026-11-16): distance=468 docs/INDEX.md=31 content/npcs.json=134 scripts/seed_content.py=132 apps/agent/dice.py=133 packages/shared/src/index.ts=38
 Candidates: agent pytest task (uv sandbox venv cost); acceptance split per file; hooks call `proof run --set commit`; migrate remaining milestones from plan.md.
 
 ## Hollow creatures (Phase 7 M7.3)
