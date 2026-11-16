@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.40.0 — 2026-11-16
+## 0.41.0 — 2026-11-16
 
 - Sign-in is invite-only. An email must be on the allowlist (`bun run allow <email>`, `--remove` to revoke) to receive or use a code; anyone else is told the playtest is invite-only, and no account is created. The script prints which database it wrote to.
 - One DM per player. Starting a session while another is live closes the old room first, so its DM saves the summary; nobody can join or invite into a room they don't own. A DM that fails to join returns an error with a retry instead of an empty room.
@@ -9,6 +9,13 @@
 - A session is capped at 60 minutes, with a steer toward a resting point at 55. After 5 minutes of player silence, companion chatter and hints stop and the DM checks in once; at 10 minutes the session ends with its summary saved.
 - Rate limits live in Valkey and hold across server instances. Signed-in requests count per player; others count per client IP, read from `X-Forwarded-For` behind the HTTPS proxy when `TRUSTED_PROXY_HOPS` is set. A broken limit store fails the request rather than letting it through.
 - The native iOS check picks a general iOS runtime and a phone with a Home gesture, not Xcode 27.2's foldable-only runtime.
+
+## 0.40.0 — 2026-11-16
+
+- PR CI runs only the two lint jobs. Tests are proven locally by Proof: a free patch's land runs `scripts/free-acceptance.sh`, which runs Proof's `land` set and then its `sprint` set on the trial-merged tree with the sprint hook's environment.
+- A fresh, cache-free `super` run of every declared task runs on this Mac at 02:00 on Tuesday, Thursday and Saturday (`scripts/super-test.sh`, installed by `scripts/super-test-install.sh`). It tests `origin/main` in its own worktree and raises a macOS notification on any red.
+- Edits select fewer tests. Docs key no task. A widely imported agent module keys about two representative acceptance tests per family instead of every importer, and a content file keys the tests that declare they read it (`scripts/proof-families.json`). The seed script and migrations also key the tests that name them. Across five probe edits the changed task keys fell from 468 to 117 (`scripts/proof_selection_probe.py`).
+- The unused CI service-database mode is gone from the DB lifecycle helpers.
 
 ## 0.39.0 — 2026-11-16
 

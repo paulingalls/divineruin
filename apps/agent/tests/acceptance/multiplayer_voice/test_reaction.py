@@ -32,7 +32,7 @@ from participant_lifecycle import PartyLifecycle, _setup_party_join
 from session_data import CombatParticipant, CombatState, SessionData
 from session_startup import gameplay_room_options
 
-# The skipif is the not-opted-in path (CI without the secret, a worktree carrying
+# The skipif is the not-opted-in path (a run without the secret, a worktree carrying
 # .env.example's placeholder); REQUIRE_REAL_LLM=1 suppresses it so the conftest fixture
 # fails this lane LOUD rather than letting it absent itself from the boundary.
 pytestmark = [

@@ -217,14 +217,6 @@ wt_validate_settings() {
 
 wt_authorize() {
   local intent="$1" ids runtime_db="${DATABASE_URL:-}" runtime_redis="${REDIS_URL:-}"
-  if [ "$intent" = ci ]; then
-    wt_identity || { wt_die "cannot identify the CI checkout."; return 1; }
-    [ "$WT_GIT_DIR" = "$WT_COMMON_DIR" ] \
-      || { wt_die "CI service mode is forbidden from a linked checkout."; return 1; }
-    { [ "${GITHUB_ACTIONS:-}" = true ] && [ "${DIVINERUIN_CI_SERVICE_DB:-}" = 1 ]; } \
-      || { wt_die "CI service mode requires the GitHub Actions service marker."; return 1; }
-    return 0
-  fi
   wt_validate_settings || return 1
   wt_validate_runtime_values "$runtime_db" "$runtime_redis" || return 1
   case "$intent" in

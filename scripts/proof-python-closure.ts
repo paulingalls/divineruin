@@ -10,27 +10,25 @@ const source = {
   mode: (path: string) => (texts.has(path) ? "100644" : undefined),
 };
 const result = Object.fromEntries(
-  paths
-    .filter((path) => path.includes("/acceptance/") || path.endsWith("/conftest.py"))
-    .map((entry) => {
-      const closure = pythonClosure(entry, source, roots);
-      // Stop traversal after one hop while retaining proof's import resolution.
-      const direct = pythonClosure(
-        entry,
-        {
-          ...source,
-          read: (path: string) => (path === entry ? texts.get(path) : ""),
-        },
-        roots,
-      );
-      return [
-        entry,
-        {
-          closure: [...closure.paths].sort(),
-          direct: [...direct.paths].filter((path) => path !== entry).sort(),
-          reason: closure.reason,
-        },
-      ];
-    }),
+  paths.map((entry) => {
+    const closure = pythonClosure(entry, source, roots);
+    // Isolate unresolved imports in this file from reasons in its dependencies.
+    const local = pythonClosure(
+      entry,
+      {
+        ...source,
+        read: (path: string) => (path === entry ? texts.get(path) : ""),
+      },
+      roots,
+    );
+    return [
+      entry,
+      {
+        closure: [...closure.paths].sort(),
+        reason: closure.reason,
+        localReason: local.reason,
+      },
+    ];
+  }),
 );
 await Bun.write(Bun.stdout, JSON.stringify(result));
