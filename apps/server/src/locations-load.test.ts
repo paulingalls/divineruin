@@ -4,7 +4,7 @@ import type { Location } from "@divineruin/shared";
 
 const LOCATIONS_PATH = new URL("../../../content/locations.json", import.meta.url);
 
-const LOCATION_COUNT = 23;
+const LOCATION_COUNT = 24;
 
 async function loadLocationsJson(): Promise<Record<string, unknown>[]> {
   const raw: unknown = await Bun.file(LOCATIONS_PATH).json();
@@ -20,6 +20,21 @@ describe("content/locations.json — parseLocationRow conformance", () => {
       const id = typeof row.id === "string" ? row.id : "<no-id>";
       expect(() => parseLocationRow(id, row)).not.toThrow();
     }
+  });
+
+  test("the infirmary connects to the guild hall in both directions", async () => {
+    const rows = await loadLocationsJson();
+    const hall = rows.find((r) => r.id === "accord_guild_hall")!;
+    const infirmary = rows.find((r) => r.id === "accord_guild_infirmary")!;
+    expect(infirmary).toBeDefined();
+    const there = parseLocationRow("accord_guild_hall", hall);
+    const back = parseLocationRow("accord_guild_infirmary", infirmary);
+    expect(
+      Object.entries(there.exits).some(
+        ([key, exit]) => key !== "up" && exit.destination === back.id,
+      ),
+    ).toBe(true);
+    expect(Object.values(back.exits).some((exit) => exit.destination === there.id)).toBe(true);
   });
 
   test("a location with hidden_elements round-trips all element fields", async () => {

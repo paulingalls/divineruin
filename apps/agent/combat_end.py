@@ -16,6 +16,7 @@ import db_mutations_reputation
 import db_mutations_veil_ward
 import db_queries
 import event_types as E
+import first_episode
 import pricing_queries
 from combat_conditions_persist import reconcile_member_conditions
 from combat_durability import _accrue_durability, _find_equipped
@@ -146,6 +147,7 @@ async def _end_combat_db(
 
     ``content`` resolves loot tables (db_content_queries by default; injectable for tests);
     ``rng`` seeds the loot/currency rolls (a fresh system Random by default)."""
+    episode = await first_episode.settle(session, cs, conn=conn, sink=sink)
     import choir_scene
 
     await choir_scene.end(session, cs, outcome, mutations=mutations, queries=queries, conn=conn)
@@ -294,6 +296,7 @@ async def _end_combat_db(
     import choir_encounter
 
     return {
+        "episode": episode,
         "choir": choir_encounter.facts(cs),
         "xp_total": rewards.spoils.xp_total,
         "xp_granted": rewards.xp.xp_granted,
@@ -360,6 +363,8 @@ def _end_combat_finish(
     if defeated_enemies:
         session.record_companion_memory(f"Fought {', '.join(defeated_enemies)} at {cs.location_id}: {outcome}")
 
+    episode_facts = first_episode.finish(session, end_data.get("episode"))
+
     session.session_xp_earned += end_data["summary_xp_granted"]
     for pid, share in end_data["xp_by_player"].items():
         session.record_player_metric(pid, "xp_earned", share)
@@ -369,6 +374,7 @@ def _end_combat_finish(
     loot = end_data.get("primary_loot", [])
     currency_gold = end_data.get("primary_currency_gold", 0)
     response = {
+        "first_episode": episode_facts,
         "choir": end_data.get("choir"),
         "outcome": outcome,
         "xp_total": xp_total,

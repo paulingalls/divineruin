@@ -268,7 +268,7 @@ Additional topics: Class System: 18 archetypes across 6 categories x 10 gods = 1
 
 ---
 
-## mvp_spec.md (970 lines)
+## mvp_spec.md (965 lines)
 
 Scope, session arc, success criteria, buildable entities.
 
@@ -280,14 +280,14 @@ Additional topics: What We're NOT Building: Explicit scope cuts
 | What the MVP Must Prove | 11-25 | Six core questions |
 | MVP Scope Summary | 26-41 | One culture, one city, one wilderness, one story arc |
 | MVP World | 42-108 | Accord of Tides district and the Greyvale wilderness zone |
-| MVP Story Arc | 109-259 | Session-by-session (5 sessions): arrival → investigation → journey → ruins → revelation |
-| MVP Character Options | 260-296 | Playable character choices for the initial slice |
-| MVP Systems | 297-356 | Included gameplay systems and their MVP limits |
-| Playtest Structure | 357-378 | Internal → Alpha → Beta rounds |
-| Success Criteria | 379-396 | Quantitative (latency, accuracy, completion rate) and qualitative |
-| MVP Development Priorities | 397-435 | Ordered by dependency and risk. Aligned with the detailed 18-step priority list in the *Technical Architecture Document — Development Priorities*. |
-| Document Relationships | 436-449 | Links to the design, architecture, lore, and data documents |
-| Appendix: Starter Content Entities | 450-970 | Full JSON for every MVP entity |
+| MVP Story Arc | 109-254 | Session-by-session (5 sessions): arrival → investigation → journey → ruins → revelation |
+| MVP Character Options | 255-291 | Playable character choices for the initial slice |
+| MVP Systems | 292-351 | Included gameplay systems and their MVP limits |
+| Playtest Structure | 352-373 | Internal → Alpha → Beta rounds |
+| Success Criteria | 374-391 | Quantitative (latency, accuracy, completion rate) and qualitative |
+| MVP Development Priorities | 392-430 | Ordered by dependency and risk. Aligned with the detailed 18-step priority list in the *Technical Architecture Document — Development Priorities*. |
+| Document Relationships | 431-444 | Links to the design, architecture, lore, and data documents |
+| Appendix: Starter Content Entities | 445-965 | Full JSON for every MVP entity |
 
 ---
 
@@ -952,7 +952,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/audit/first-share.md (157 lines)
+## milestones/audit/first-share.md (149 lines)
 
 ---
 

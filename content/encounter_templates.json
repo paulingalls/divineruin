@@ -2,7 +2,7 @@
   {
     "id": "shadeling_cluster",
     "name": "Shadeling Cluster",
-    "description": "Two smears of wrongness drifting low across the ground. They move like smoke \u2014 formless, slow, but the grass withers beneath them and the air goes cold where they pass. Individually fragile. Together, a creeping threat that dissolves what it touches.",
+    "description": "Two smears of wrongness drifting low across the ground. They move like smoke — formless, slow, but the grass withers beneath them and the air goes cold where they pass. Individually fragile. Together, a creeping threat that dissolves what it touches.",
     "difficulty": "easy",
     "enemies": [
       {
@@ -47,7 +47,7 @@
   {
     "id": "ruins_mawling_pair",
     "name": "Mawling Ambush",
-    "description": "Two humanoid shapes step from the shadows \u2014 wrong in every proportion. Limbs too long, joints bending backwards. They have no faces, just an opening that radiates a field of dissolution. They reach for things. They grab. They pull.",
+    "description": "Two humanoid shapes step from the shadows — wrong in every proportion. Limbs too long, joints bending backwards. They have no faces, just an opening that radiates a field of dissolution. They reach for things. They grab. They pull.",
     "difficulty": "moderate",
     "enemies": [
       {
@@ -101,7 +101,7 @@
   {
     "id": "hollowed_scout",
     "name": "The Lost Scout",
-    "description": "It wears the armor of an Accord guild scout. The armor is scarred but recognizable \u2014 the guild insignia still visible on the shoulder plate. The body inside moves with terrible precision: too smooth, too rhythmic, a head that tracks too far. Once, mid-combat, it speaks a name. Not its own. Someone it loved.",
+    "description": "It wears the armor of an Accord guild scout. The armor is scarred but recognizable — the guild insignia still visible on the shoulder plate. The body inside moves with terrible precision: too smooth, too rhythmic, a head that tracks too far. Once, mid-combat, it speaks a name. Not its own. Someone it loved.",
     "difficulty": "hard",
     "enemies": [
       {
@@ -181,7 +181,7 @@
   {
     "id": "hollow_patrol_greyvale",
     "name": "Hollow Patrol",
-    "description": "A hunting pack of Hollow creatures \u2014 one larger Rend flanked by two drifting shades. They move in eerie coordination, the Rend leading while the Drifts circle like pale wolves.",
+    "description": "A hunting pack of Hollow creatures — one larger Rend flanked by two drifting shades. They move in eerie coordination, the Rend leading while the Drifts circle like pale wolves.",
     "difficulty": "hard",
     "enemies": [
       {
@@ -241,7 +241,7 @@
   {
     "id": "ruins_guardian",
     "name": "Hollow Warden",
-    "description": "Something old guards the inner ruins. Taller than a man, its form shifts between solid and translucent. Where it steps, the stone darkens. It doesn't attack immediately \u2014 it watches, as if deciding whether you're a threat or a curiosity.",
+    "description": "Something old guards the inner ruins. Taller than a man, its form shifts between solid and translucent. Where it steps, the stone darkens. It doesn't attack immediately — it watches, as if deciding whether you're a threat or a curiosity.",
     "difficulty": "hard",
     "enemies": [
       {
@@ -287,7 +287,7 @@
   {
     "id": "bandit_ambush",
     "name": "Bandit Ambush",
-    "description": "Gravel shifts on the slope above \u2014 too deliberate for an animal. Figures rise from cover with crossbows half-raised, and a broad-shouldered captain steps onto the road. \"Coin and cargo,\" he calls, almost bored. \"Or we do this the loud way.\"",
+    "description": "Gravel shifts on the slope above — too deliberate for an animal. Figures rise from cover with crossbows half-raised, and a broad-shouldered captain steps onto the road. \"Coin and cargo,\" he calls, almost bored. \"Or we do this the loud way.\"",
     "difficulty": "moderate",
     "enemies": [
       {
@@ -607,6 +607,41 @@
           "radius_ft": 600
         }
       }
+    }
+  },
+  {
+    "id": "fragment_shadeling",
+    "name": "The Fragment Shadow",
+    "description": "A single smear of wrongness gathers beside the oilcloth bundle. Linen stops rustling. The room goes cold.",
+    "difficulty": "easy",
+    "enemies": [
+      {
+        "id": "shadeling_1",
+        "creature_id": "hollow_shadeling",
+        "role": "standard"
+      }
+    ],
+    "recommended_party_level": 1,
+    "scene_placement": {
+      "party_start": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "companion_start": {
+        "x": 0,
+        "y": 5,
+        "z": 0
+      },
+      "actors": {
+        "shadeling_1": {
+          "x": 20,
+          "y": -5,
+          "z": 0
+        }
+      },
+      "locations": {},
+      "zones": {}
     }
   }
 ]

@@ -1,14 +1,4 @@
-"""Deterministic world effects declared by a quest stage's ``on_complete``.
-
-Split out of quest_tools (sprint-044 close, debt 6b7339adcb41) — that module was one line
-from the 500 hard max and is the file this sprint rewrote most, so the next fix on the quest
-path could not land without this move first. Pure move: the parser, its five effect regexes
-and the single applier, unchanged.
-
-Each effect string is authored content, so an unparseable or unknown one WARNS and skips
-rather than raising — one typo must not roll back the stage transaction that already paid
-the party.
-"""
+"""Deterministic world effects declared by a quest stage."""
 
 import logging
 import re
@@ -51,8 +41,10 @@ async def _apply_world_effects(
     reputation_mutations=db_mutations_reputation,
     pending_corruption: dict[str, int] | None = None,
     party_ids: tuple[str, ...] | None = None,
+    pending_notes: list[str] | None = None,
 ) -> None:
     """Parse and apply deterministic world_effects from quest on_complete."""
+    record_note = session.record_event if pending_notes is None else pending_notes.append
     actor_id = session.acting_player_id
     party_ids = party_ids if party_ids is not None else tuple(session.party.member_ids)
     for effect_str in effects:
@@ -103,7 +95,7 @@ async def _apply_world_effects(
                     pid, faction_id, delta, f"world_effect: {effect_str}", conn=conn
                 )
                 if pid == actor_id:
-                    session.record_event(f"{faction_id} reputation {delta:+d} → {new_value} ({event_type})")
+                    record_note(f"{faction_id} reputation {delta:+d} → {new_value} ({event_type})")
                 logger.info("World effect: %s reputation %+d → %s", faction_id, delta, new_value)
             continue
 
@@ -146,7 +138,7 @@ async def _apply_world_effects(
         if m:
             group_name, delta_str = m.group(1), int(m.group(2))
             pending_events.append((E.WORLD_EVENT, {"event_id": f"{group_name}_morale_change", "delta": delta_str}))
-            session.record_event(f"{group_name} morale shifted by {delta_str}")
+            record_note(f"{group_name} morale shifted by {delta_str}")
             logger.info("World effect: %s morale %+d (logged, no morale system yet)", group_name, delta_str)
             continue
 

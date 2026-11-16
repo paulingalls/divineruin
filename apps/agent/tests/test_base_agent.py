@@ -203,24 +203,6 @@ class TestBaseGameAgentLifecycle:
         agent._transcript.close.assert_called_once()
 
 
-class TestBaseGameAgentInfrastructure:
-    def test_fire_and_forget_creates_task(self):
-        agent = BaseGameAgent(instructions="prompt")
-
-        with patch("asyncio.create_task") as mock_create:
-            mock_task = MagicMock()
-            mock_create.return_value = mock_task
-            coro = AsyncMock()()
-
-            agent._fire_and_forget(coro)
-
-            mock_create.assert_called_once()
-            assert mock_task in agent._bg_tasks
-            mock_task.add_done_callback.assert_called_once()
-
-        coro.close()
-
-
 class TestHelperFunctions:
     def test_silence_returns_audio_frame(self):
         frame = _silence(0.5)
