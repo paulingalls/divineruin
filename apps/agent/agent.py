@@ -16,8 +16,11 @@ import db
 import db_content_queries
 import db_mutations
 import db_queries
+from error_line import install as install_error_lines
 from gameplay_llm import gameplay_llm_api_key
+from media_dir import validate_media_dir
 from participant_lifecycle import _setup_reconnection
+from production_preflight import is_production, production_preflight, validate_production_env
 from region_types import REGION_CITY
 from session_data import CreationState, SessionData
 from session_startup import _make_agent_session, solo_room_options, start_gameplay_session
@@ -25,6 +28,7 @@ from speech_delivery import deliver_speech
 from voices import NONVERBAL_VOICE_KEYS, ROLE_VOICE_KEYS, VOICES
 
 logging.basicConfig(level=logging.INFO)
+install_error_lines("agent")
 logger = logging.getLogger("divineruin.dm")
 
 REQUIRED_ENV_VARS = [
@@ -435,7 +439,11 @@ async def dm_session(ctx: agents.JobContext) -> None:
 
 
 if __name__ == "__main__":
+    validate_production_env()
     validate_env()
+    validate_media_dir()
+    if is_production():
+        asyncio.run(production_preflight("agent"))
     import atexit
 
     def _cleanup_db() -> None:

@@ -78,3 +78,5 @@ skills-lock.json
 
 # Watchman cookie files (transient probes dropped in the repo root by watchman)
 .watchman-cookie-*
+
+/assets/generated/

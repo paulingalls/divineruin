@@ -46,7 +46,7 @@ Owner: divineruin2 clone.
 
 - [ ] The Leave button shows the session summary
 - [ ] Re-entering never speaks a stale recap
-- [ ] The prologue plays with default configuration
+- [x] The prologue plays with default configuration
 - [ ] A failed DM dispatch does not leave the player in an empty room
 
 ## Protecting the Bill
@@ -60,11 +60,11 @@ Owner: divineruin2 clone.
 
 Owner: divineruin2 clone. Hosting choice and spend go to the human.
 
-- [ ] Server, agent and worker build as containers
-- [ ] Migrate and seed run as a deploy step
-- [ ] Narration audio and portraits survive a container restart and are served across processes
+- [x] Server, agent and worker build as containers
+- [x] Migrate and seed run as a deploy step
+- [x] Narration audio and portraits survive a container restart and are served across processes
 - [ ] Production config is complete and email is really sent
-- [ ] The server has a health endpoint and errors are reported somewhere
+- [x] The server has a health endpoint and errors are reported somewhere
 - [ ] A TestFlight build installs and connects to the deployed stack
 
 ## Playtest

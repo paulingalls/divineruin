@@ -1,3 +1,4 @@
+import { mediaDir } from "./media-dir.ts";
 import { inventorySnapshot } from "./inventory_snapshot.ts";
 import { sql } from "./db.ts";
 import { parseJsonb } from "./parse-jsonb.ts";
@@ -196,22 +197,13 @@ export async function handleActivityDecision(
   }
 }
 
-// `||` not `??`: .env.example ships ASYNC_AUDIO_DIR= (empty), and `??` keeps that
-// empty string (resolving AUDIO_DIR to filesystem root). An empty value means
-// "unset", so it must fall back to the default dir.
-export function resolveAudioDir(configured: string | undefined): string {
-  return configured || `${import.meta.dir}/../../audio`;
-}
-
-const AUDIO_DIR = resolveAudioDir(Bun.env.ASYNC_AUDIO_DIR);
-
 export async function handleAudioFile(filename: string): Promise<Response> {
   // Reject path traversal: only allow alphanumeric, underscores, hyphens, and a single dot for extension
   if (!/^[a-zA-Z0-9_-]+\.[a-zA-Z0-9]+$/.test(filename)) {
     return Response.json({ error: "Invalid filename" }, { status: 400 });
   }
 
-  const file = Bun.file(`${AUDIO_DIR}/${filename}`);
+  const file = Bun.file(`${mediaDir()}/audio/${filename}`);
   if (!(await file.exists())) {
     return Response.json({ error: "File not found" }, { status: 404 });
   }

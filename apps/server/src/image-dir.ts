@@ -1,5 +1,15 @@
-// `||` not `??`: .env.example ships ASSET_IMAGE_DIR= (empty), and `??` keeps that empty string,
-// resolving every image path to filesystem root. An empty value means "unset", as in resolveAudioDir.
-export function resolveImageDir(configured: string | undefined): string {
-  return configured || `${import.meta.dir}/../../../assets/images`;
+import { resolve } from "node:path";
+import { mediaDir } from "./media-dir.ts";
+
+export const TRACKED_IMAGE_DIR = resolve(import.meta.dir, "../../../assets/images");
+
+export function portraitDir(): string {
+  return `${mediaDir()}/portraits`;
+}
+
+export async function findAssetPath(assetId: string): Promise<string | undefined> {
+  for (const directory of [portraitDir(), TRACKED_IMAGE_DIR]) {
+    const path = `${directory}/${assetId}.png`;
+    if (await Bun.file(path).exists()) return path;
+  }
 }

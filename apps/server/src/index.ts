@@ -1,5 +1,9 @@
+import { errorLine } from "./error-line.ts";
+import "./config.ts";
+import { validateMediaDir } from "./media-dir.ts";
 import { handleGetInventory } from "./inventory-api.ts";
 import { serve } from "bun";
+import { handleHealth } from "./health.ts";
 import { handleLivekitToken } from "./livekit.ts";
 import { handleCreateInvite, handleRedeemInvite } from "./invite.ts";
 import { handleGetCharacter } from "./character.ts";
@@ -57,6 +61,10 @@ export async function handleRequest(req: Request, ip: string): Promise<Response>
   console.log(`[${req.method}] ${path}`);
   const rateLimited = checkRateLimit(ip, path);
   if (rateLimited) return rateLimited;
+
+  if (path === "/api/health" && req.method === "GET") {
+    return withCors(await handleHealth());
+  }
 
   // --- Unauthenticated routes ---
 
@@ -134,7 +142,8 @@ export async function handleRequest(req: Request, ip: string): Promise<Response>
             WHERE id = ${whisperMatch[1]!} AND player_id = ${auth.playerId}
           `;
         return withCors(Response.json({ ok: true }));
-      } catch {
+      } catch (error) {
+        errorLine("Server request failed", error);
         return withCors(Response.json({ error: "Internal server error" }, { status: 500 }));
       }
     }
@@ -245,6 +254,7 @@ export async function handleRequest(req: Request, ip: string): Promise<Response>
 }
 
 export async function startServer() {
+  await validateMediaDir();
   // Danger levels derive from the loaded locations; spell-backed abilities parse against
   // the spell catalog. Keep those dependencies ahead of the concurrent loaders.
   await loadLocations();
@@ -267,6 +277,9 @@ export async function startServer() {
     hostname: process.env.SERVER_HOST ?? "0.0.0.0",
     port: Number(process.env.PORT ?? 3001),
     idleTimeout: 120,
+    error(error) {
+      errorLine("Server request failed", error);
+    },
     fetch(req, activeServer) {
       return handleRequest(req, activeServer.requestIP(req)?.address ?? "unknown");
     },

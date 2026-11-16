@@ -180,9 +180,6 @@
         "imports-of": "apps/server/src/image-gen-api.test.ts"
       },
       {
-        "imports-of": "apps/server/src/image-gen.test.ts"
-      },
-      {
         "imports-of": "apps/server/src/image-post-process.test.ts"
       },
       {
@@ -271,7 +268,12 @@
       },
       "content/*.json",
       "apps/server/src/**/!(*.test).ts",
-      "assets/images/**"
+      "assets/images/**",
+      { "imports-of": "apps/server/src/config.test.ts" },
+      "scripts/env_inventory.py",
+      "apps/agent/**/*.py",
+      ".env.example",
+      "deploy/env.production.example"
     ]
   },
   "server-db": {

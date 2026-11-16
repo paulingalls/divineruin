@@ -5,9 +5,11 @@ from dataclasses import dataclass
 from typing import Any, cast
 
 from livekit.agents import AgentSession, inference, room_io, stt
+from livekit.agents.voice.events import CloseEvent, CloseReason
 from livekit.plugins import deepgram
 
 from base_agent import BaseGameAgent, _make_tts
+from error_line import report
 from gameplay_llm import create_gameplay_llm
 from multiplayer_input import MultiplayerInput
 from multiplayer_transcription import MultiParticipantTranscriber
@@ -134,5 +136,11 @@ def _make_agent_session(model: str, userdata: SessionData) -> AgentSession:
         max_tool_steps=5,
         userdata=userdata,
     )
+
+    @session.on("close")
+    def report_session_error(event: CloseEvent) -> None:
+        if event.reason == CloseReason.ERROR and event.error is not None:
+            report("agent", "Agent session failed", event.error.error)
+
     _register_speech_end_tracking(session)
     return session

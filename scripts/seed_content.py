@@ -73,15 +73,19 @@ PK_COLUMN = {
 UPSERT_SQL = """
     INSERT INTO {table} ({pk_col}, data)
     VALUES ($1, $2::jsonb)
-    ON CONFLICT ({pk_col}) DO UPDATE SET data = $2::jsonb
+    ON CONFLICT ({pk_col}) DO UPDATE SET data = {data}
+    WHERE {table}.data IS DISTINCT FROM {data}
 """
 
 
-def upsert_query(table: str) -> str:
+def upsert_query(table: str, production: bool = False) -> str:
     if not re.match(r"^[a-z_]+$", table):
         raise ValueError(f"Invalid table name: {table}")
     pk_col = PK_COLUMN.get(table, "id")
-    return UPSERT_SQL.format(table=table, pk_col=pk_col)
+    data = "EXCLUDED.data"
+    if production and table == "gathering_nodes":
+        data += " || jsonb_build_object('quantity', gathering_nodes.data->'quantity', 'discovered', gathering_nodes.data->'discovered')"
+    return UPSERT_SQL.format(table=table, pk_col=pk_col, data=data)
 
 
 _MISPARSED_URL = "DATABASE_URL does not parse; percent-encode reserved characters in the password"
@@ -161,7 +165,27 @@ class InvalidContent(Exception):
     pass
 
 
-async def seed(conn: asyncpg.Connection) -> dict[str, int]:
+async def seed(conn: asyncpg.Connection, *, production: bool = False) -> dict[str, int]:
+    if production:
+        path = CONTENT_DIR / "players.json"
+        fixtures = json.loads(path.read_text()) if path.exists() else []
+        if (
+            not isinstance(fixtures, list)
+            or not fixtures
+            or any(
+                not isinstance(row, dict) or not isinstance(row.get("player_id"), str) or not row["player_id"].strip()
+                for row in fixtures
+            )
+        ):
+            raise InvalidContent("players.json: expected nonempty fixture corpus with valid player ids")
+        ids = [row["player_id"] for row in fixtures]
+        offending = await conn.fetch(
+            "SELECT player_id FROM players WHERE player_id = ANY($1::text[]) UNION "
+            "SELECT player_id FROM player_map_progress WHERE player_id = ANY($1::text[]) ORDER BY player_id",
+            ids,
+        )
+        if offending:
+            raise InvalidContent("production fixture refusal: " + ", ".join(row["player_id"] for row in offending))
     counts: dict[str, int] = {}
     reference_path = CONTENT_DIR / "encounter_templates.json"
     catalog_path = CONTENT_DIR / "creatures.json"
@@ -170,13 +194,15 @@ async def seed(conn: asyncpg.Connection) -> dict[str, int]:
             raise InvalidContent(f"{path.name}: expected nonempty reference corpus")
     catalog = {row["id"]: row for row in json.loads(catalog_path.read_text())}
     for filename, table in TABLE_MAP.items():
+        if production and table == "players":
+            continue
         filepath = CONTENT_DIR / filename
         if not filepath.exists():
             print(f"  skip: {filename} (not found)")
             continue
 
         pk_field = PK_COLUMN.get(table, "id")
-        query = upsert_query(table)
+        query = upsert_query(table, production)
         entities = json.loads(filepath.read_text())
         missing = [i for i, entity in enumerate(entities) if not entity.get(pk_field)]
         if missing:
@@ -373,8 +399,7 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
 
 
 async def seed_map_progress(conn: asyncpg.Connection) -> None:
-    """Seed the starting location into player_map_progress for player_1."""
-    # Read player_1's starting location and its exits
+    """Seed fixture starting locations and connections."""
     players = json.loads((CONTENT_DIR / "players.json").read_text())
     locations = json.loads((CONTENT_DIR / "locations.json").read_text())
     location_map = {loc["id"]: loc for loc in locations}
@@ -407,6 +432,11 @@ async def seed_map_progress(conn: asyncpg.Connection) -> None:
 
 
 async def main() -> None:
+    mode = os.environ.get("SEED_PRODUCTION", "")
+    if mode not in ("", "1"):
+        raise ValueError("SEED_PRODUCTION must be empty or 1")
+    production = mode == "1"
+    print("Seed mode: " + ("production" if production else "default (fixtures enabled)"))
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
         raise RuntimeError("DATABASE_URL must be set to seed content")
@@ -418,13 +448,14 @@ async def main() -> None:
         async with conn.transaction():
             print("Seeding content...")
             try:
-                counts = await seed(conn)
+                counts = await seed(conn, production=True) if production else await seed(conn)
             except InvalidContent as error:
                 print(f"Validation FAILED: {error}")
                 sys.exit(1)
 
-            print("\nSeeding map progress...")
-            await seed_map_progress(conn)
+            if not production:
+                print("\nSeeding map progress...")
+                await seed_map_progress(conn)
 
             print("\nValidating...")
             errors = await validate(conn)
@@ -433,6 +464,14 @@ async def main() -> None:
                 for err in errors:
                     print(f"  - {err}")
                 sys.exit(1)
+            if production:
+                from seed_catalogs import validate_runtime_catalogs
+
+                await validate_runtime_catalogs(conn)
+        if production:
+            from seed_catalogs import invalidate_content_cache
+
+            await invalidate_content_cache()
         total = sum(counts.values())
         print(f"\nDone: {total} entities seeded to {target}, all validations passed.")
     finally:

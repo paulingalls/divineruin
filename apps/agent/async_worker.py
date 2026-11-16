@@ -25,8 +25,11 @@ from async_worker_training import advance_training_cycles
 from crafting_resolution import resolve_crafting_outcome
 from dialogue_parser import Segment
 from errand_resolution import companion_errand_data, resolve_errand_outcome
+from error_line import install as install_error_lines
 from llm_config import AUDIO_DIR, audio_url_for
+from media_dir import validate_media_dir
 from narration import generate_activity_narration, generate_notification_hook, generate_progress_snippets
+from production_preflight import is_production, load_catalogs, production_preflight, validate_production_env
 from purification_tools import credit_purification, purification_outcome
 from push import send_push_notification
 from tts_prerender import synthesize_segments
@@ -321,65 +324,49 @@ async def check_god_whisper_triggers() -> int:
 
 async def main() -> None:
     """Main entry point for the async worker."""
+    install_error_lines("worker")
+    validate_production_env()
     validate_worker_env()
+    validate_media_dir()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     logger.info("Async worker starting, poll interval: %ds", POLL_INTERVAL)
 
-    await db.get_pool()
-    logger.info("Database connection established")
-
-    # Load content-backed config. Fail loud if the query fails — the rules
-    # engine depends on these maps being populated before the polling loop starts.
-    from abilities import load_abilities
-    from archetypes import load_archetypes
-    from companion_profiles import load_companion_profiles
-    from mentor_variants import load_mentor_variants
-    from milestones import load_milestones
-    from npcs import load_npcs
-    from racial_resonance import load_racial_resonance
-    from role_archetypes import load_role_archetypes
-    from spells import load_spells
-    from training_rules import load_training_activity_types
-
-    await load_training_activity_types()
-    await load_archetypes()
-    # Spells before abilities: spell-backed caster CORE rows compose their cast DATA
-    # from the spell catalog at parse time (Try 2), so the catalog must load first.
-    await load_spells()
-    await load_racial_resonance()
-    await load_abilities()
-    await load_milestones()
-    await load_mentor_variants()
-    await load_role_archetypes()
-    await load_npcs()
-    # The errand path selects the companion from the player's archetype (companion_errand_data),
-    # so the worker needs the companion catalog the agent has always loaded.
-    await load_companion_profiles()
+    if is_production():
+        await production_preflight("worker")
+    else:
+        await db.get_pool()
+        logger.info("Database connection established")
+        await load_catalogs("worker")
 
     try:
         while True:
+            cycle_succeeded = True
             try:
-                count = await resolve_due_activities()
-                if count > 0:
-                    logger.info("Cycle complete: %d activities resolved", count)
+                await resolve_due_activities()
             except Exception:
+                cycle_succeeded = False
                 logger.exception("Error in resolve cycle")
 
             try:
                 await advance_training_cycles()
             except Exception:
+                cycle_succeeded = False
                 logger.exception("Error in training cycle advancement")
 
             try:
                 await check_god_whisper_triggers()
             except Exception:
+                cycle_succeeded = False
                 logger.exception("Error in god whisper check")
 
             try:
                 await db_training.prune_training_cycle_accruals()
             except Exception:
+                cycle_succeeded = False
                 logger.exception("Error pruning training accruals")
 
+            if cycle_succeeded:
+                logger.info("Polling pass complete")
             await asyncio.sleep(POLL_INTERVAL)
     finally:
         await db.close_all()

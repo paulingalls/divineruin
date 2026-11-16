@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.39.0 — 2026-11-16
+
+- The game runs as containers. `deploy/compose.yml` runs the server, the DM agent and the async worker, plus a one-shot migrate-and-seed job, from three images (`deploy/*.Dockerfile`). The images run as a non-root user and carry no `.env`, tests or mobile sources. `scripts/deploy-up.sh` is the operator's entry point, and `scripts/deploy-smoke.sh` checks the built images locally before a deploy. Nothing in this release creates a cloud resource.
+- `GET /api/health` returns 200 when Postgres and Valkey both answer, and 503 naming whichever did not, within a bounded deadline.
+- Every deploy migrates and seeds before any serving container is replaced. A failed migration or malformed content stops the deploy with the old containers untouched. Production seeding skips the `player_1` fixture, refuses if fixture rows already exist, validates rows with both the Python and TypeScript catalog parsers before committing, and clears the content caches so the new content is served without restarting the server.
+- Narration audio and portraits live under one generated-media directory, set by one variable that all three processes read and backed by one named volume. They survive a container restart and are served by the server whichever container wrote them. The bundled prologue and tracked images still load on a fresh volume.
+- A production server, agent or worker refuses to start half-configured and names every missing variable. The mock email transport is refused in production, so `RESEND_API_KEY` is required. `deploy/env.production.example` lists what each service needs, and `.env.example` is complete.
+- An unhandled error in the server, agent or worker leaves one JSON line on stderr with the service, time, message and stack, and no tokens, emails or player speech. Compose keeps bounded, rotated logs per service.
+- The iOS app can be built for TestFlight against a named server with an EAS profile.
+
 ## 0.38.1 — 2026-11-16
 
 - The fast Python lane seeds its dev database after migrating it, so a change to `content/*.json` is tested against matching data at story land instead of the previous seed. The fixture players in `content/players.json` are reset on each run.

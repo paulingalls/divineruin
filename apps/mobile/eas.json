@@ -1,0 +1,30 @@
+{
+  "cli": {
+    "version": ">=20.1.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "production": {
+      "distribution": "store",
+      "environment": "production",
+      "autoIncrement": true,
+      "env": {
+        "APP_VARIANT": "production"
+      },
+      "ios": {
+        "simulator": false
+      }
+    },
+    "internal": {
+      "distribution": "internal",
+      "environment": "preview",
+      "autoIncrement": true,
+      "env": {
+        "APP_VARIANT": "internal"
+      },
+      "ios": {
+        "simulator": false
+      }
+    }
+  }
+}
