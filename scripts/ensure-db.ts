@@ -4,7 +4,7 @@ const OWNER = new URL("./worktree-common.sh", import.meta.url).pathname;
 const READY_TIMEOUT_MS = 60_000;
 const OWNERSHIP_REFUSAL_EXIT = 78;
 
-export type OwnershipIntent = "settings" | "create" | "connect" | "reuse" | "destroy" | "ci";
+export type OwnershipIntent = "settings" | "create" | "connect" | "reuse" | "destroy";
 
 export interface LifecycleDeps {
   authorizeRuntime(databaseUrl: string, redisUrl?: string): Promise<void>;
@@ -23,10 +23,6 @@ export function parseHostPort(databaseUrl: string): { host: string; port: number
 
 export function parseUser(databaseUrl: string): string {
   return decodeURIComponent(new URL(databaseUrl).username) || "divineruin";
-}
-
-export function isCiServiceMode(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.GITHUB_ACTIONS === "true" && env.DIVINERUIN_CI_SERVICE_DB === "1";
 }
 
 export function isReachable(host: string, port: number, timeoutMs = 1000): Promise<boolean> {
@@ -112,17 +108,11 @@ export async function ensureDbUp(deps: LifecycleDeps = defaults): Promise<boolea
   if (!databaseUrl) throw new Error("DATABASE_URL is not set");
   const { host, port } = parseHostPort(databaseUrl);
   const user = parseUser(databaseUrl);
-  const ci = isCiServiceMode();
-  if (ci) await deps.authorize("ci");
-  else await deps.authorizeRuntime(databaseUrl, process.env.REDIS_URL);
+  await deps.authorizeRuntime(databaseUrl, process.env.REDIS_URL);
   if (await deps.reachable(host, port)) {
-    if (!ci) await deps.authorize("connect");
+    await deps.authorize("connect");
     return false;
   }
-  if (ci)
-    throw new Error(
-      `CI service Postgres is not reachable at ${host}:${port}; Compose mutation is disabled`,
-    );
 
   console.log(
     `[db-lifecycle] Postgres not reachable at ${host}:${port} — starting owned Compose project...`,
@@ -145,7 +135,6 @@ export async function stopIfStarted(
   deps: LifecycleDeps = defaults,
 ): Promise<void> {
   if (!started) return;
-  if (isCiServiceMode()) throw new Error("CI service mode cannot stop Compose resources");
   const exit = await deps.compose("destroy", "stop");
   if (exit !== 0) throw new Error(`owned \`docker compose stop\` failed (exit ${exit})`);
 }

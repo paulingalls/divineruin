@@ -84,7 +84,7 @@ def _read_env_file(path: Path) -> dict[str, str]:
 def resolve_database_url() -> str:
     """The DSN this test run should use, in strict precedence order.
 
-    1. `DATABASE_URL` in the environment — CI exports it, and the acceptance lane's
+    1. `DATABASE_URL` in the environment — the acceptance lane's
        testcontainer fixture assigns it, so the environment must always win.
     2. Repo-root `.env` — `uv run` passes ambient env through but never LOADS .env
        (Bun does, which is why only non-bun invocations broke). Without this, a
@@ -118,10 +118,6 @@ def is_reachable(host: str, port: int, timeout: float = 1.0) -> bool:
             return True
     except OSError:
         return False
-
-
-def _is_ci_service_mode() -> bool:
-    return os.environ.get("GITHUB_ACTIONS") == "true" and os.environ.get("DIVINERUIN_CI_SERVICE_DB") == "1"
 
 
 def _authority_env() -> dict[str, str]:
@@ -350,18 +346,13 @@ def ensure_db_up(database_url: str | None = None) -> bool:
     database_url = database_url or resolve_database_url()
     host, port = parse_host_port(database_url)
     user = _parse_user(database_url)
-    ci_mode = _is_ci_service_mode()
-    if ci_mode:
-        _authorize("ci")
-    else:
-        _authorize_runtime(database_url, os.environ.get("REDIS_URL"))
+    _authorize_runtime(database_url, os.environ.get("REDIS_URL"))
     lock_path, state_path = _lockfile_paths(host, port)
 
     with _locked(lock_path):
         state = _read_state(state_path)
         if is_reachable(host, port):
-            if not ci_mode:
-                _authorize("connect")
+            _authorize("connect")
             if state["harness_started"] and not _same_lifetime(state["lifetime"], _observe_lifetime()):
                 state = {"count": 0, "harness_started": False}
             # Reachable while holding the lock -> nobody else can be
@@ -373,8 +364,6 @@ def ensure_db_up(database_url: str | None = None) -> bool:
         # Unreachable: any refcount on disk is stale (e.g. a prior run was
         # SIGKILLed before it could tear down) since the DB is actually down
         # right now. Rebuild from zero rather than trust it.
-        if ci_mode:
-            raise RuntimeError(f"CI service Postgres is not reachable at {host}:{port}; Compose mutation is disabled")
         _start_compose(host, port, user)
         lifetime = _observe_lifetime()
         _started_lifetimes[(host, port)] = lifetime
@@ -408,10 +397,6 @@ def stop_if_started(started: bool, database_url: str | None = None) -> None:
     developer-owned, so stale state cannot authorize deleting it.
     """
     database_url = database_url or resolve_database_url()
-    if _is_ci_service_mode():
-        if started:
-            raise RuntimeError("CI service mode cannot stop Compose resources")
-        return
     _authorize_runtime(database_url, os.environ.get("REDIS_URL"))
     host, port = parse_host_port(database_url)
     lock_path, state_path = _lockfile_paths(host, port)

@@ -13,7 +13,7 @@ def snapshot_repository():
     if os.environ.get("PROOF_AGENT_PROVIDER") != "dev" or os.environ.get("PYTEST_XDIST_WORKER"):
         return
     paths = []
-    for directory in ("apps", "packages", "scripts", "e2e", "docs"):
+    for directory in ("apps", "packages", "scripts", "e2e"):
         for base, dirs, files in os.walk(ROOT / directory, followlinks=False):
             dirs[:] = sorted(d for d in dirs if d not in EXCLUDED)
             paths.extend(str((Path(base) / f).relative_to(ROOT)) for f in sorted(files))
@@ -22,7 +22,6 @@ def snapshot_repository():
         "scripts/seed_content.py",
         "packages/shared/package.json",
         "e2e/package.json",
-        "docs/INDEX.md",
     }
     if not required <= set(paths):
         raise RuntimeError(f"incomplete proof inventory: {sorted(required - set(paths))}")

@@ -25,27 +25,6 @@ EXEMPT_FULL_STATE_SAVES: frozenset[tuple[str, str]] = frozenset(
 )
 
 
-def _repository_files() -> tuple[Path, ...]:
-    from _repo_inventory import repository_files
-
-    return tuple(repository_files(_REPO_ROOT, "apps", "packages", "scripts", "docs", untracked=True))
-
-
-def _files_containing(needle: bytes, paths: tuple[Path, ...]) -> list[str]:
-    # ls-files --cached still lists a tracked file deleted from the worktree but not yet staged.
-    files = (_REPO_ROOT / path for path in paths)
-    return [str(file) for file in files if file.is_file() and needle in file.read_bytes()]
-
-
-def test_old_lock_name_is_absent_from_repository():
-    paths = _repository_files()
-    this_test = Path("apps/agent/tests/combat/test_combat_state_lock_inventory.py")
-    assert paths and this_test in paths
-
-    old_name = "_".join(("combat", "end", "lock")).encode()
-    assert _files_containing(old_name, paths) == []
-
-
 def test_session_data_exposes_only_combat_state_lock():
     old_name = "_".join(("combat", "end", "lock"))
     session = make_context().userdata

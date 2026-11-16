@@ -6,7 +6,7 @@ import pytest
 from acceptance._live_voice import has_live_voice_key
 from acceptance.multiplayer_voice._harness import PLAYER_ONE_SPEECH, PLAYER_TWO_SPEECH, MultiplayerVoiceHarness
 
-# The skipif is the not-opted-in path (CI without the secret, a worktree carrying
+# The skipif is the not-opted-in path (a run without the secret, a worktree carrying
 # .env.example's placeholder); REQUIRE_REAL_LLM=1 suppresses it so the conftest fixture
 # fails this lane LOUD rather than letting it absent itself from the boundary.
 pytestmark = [

@@ -1,19 +1,37 @@
 """Generate per-file deterministic acceptance tasks and shared-file representatives."""
 
 import ast
-import fnmatch
 import json
 import os
-import re
 import shlex
 import subprocess
 from pathlib import Path
+
+from proof_family_selection import (
+    SHARED_INPUTS,
+    SYNTHETIC,
+    audit_content,
+    audit_selection,
+    content_inventory,
+    load_families,
+    select_content,
+    select_sources,
+    task_inventory,
+)
 
 ROOT = Path.cwd()
 TESTS = Path("apps/agent/tests/acceptance")
 ROOTS = ["apps/agent", "apps/agent/tests", "scripts"]
 CONFTESTS = ["apps/agent/tests/conftest.py", str(TESTS / "conftest.py")]
 PAID = {"real_llm", "openai_real_llm", "live_voice"}
+RUNTIME_DOCUMENTS = {
+    "agent-acceptance:test_ops_async_reset_runbook": ["docs/ops/async-activity-reset.md"],
+    "agent-pytest": [
+        "docs/ops/async-activity-reset.md",
+        "docs/game_mechanics/game_mechanics_patrons.md",
+    ],
+}
+SHARED_KEY = "packages/shared/**/*.{ts,tsx,json}"
 MARKERS = "acceptance and not real_llm and not openai_real_llm and not live_voice"
 
 
@@ -92,7 +110,7 @@ def partitions(path):
     return [("", "", "")]
 
 
-def e2e_tasks(shared=(), stack_keyed=()):
+def e2e_tasks():
     specs = sorted(Path("e2e/specs").glob("*.e2e.ts"))
     groups = {
         "home-character": (
@@ -183,11 +201,14 @@ def e2e_tasks(shared=(), stack_keyed=()):
             "sets": ["sprint"],
             "lane": "e2e",
             "needs": ["e2e-stack"],
-            "links": ["node_modules", "e2e/node_modules", *(["apps/agent/.venv"] if python else [])],
+            "links": [
+                "node_modules",
+                "e2e/node_modules",
+                *(["apps/agent/.venv"] if python else []),
+            ],
             "inputs": inputs,
             "keyed": [
-                *sorted(shared if part == "chromium" else stack_keyed),
-                *(["packages/shared/**"] if part == "home-character" else []),
+                *([SHARED_KEY] if part == "home-character" else []),
             ],
         }
     return tasks
@@ -195,6 +216,7 @@ def e2e_tasks(shared=(), stack_keyed=()):
 
 def main():
     paths = sorted(str(p) for root in (Path("apps/agent"), Path("scripts")) for p in root.rglob("*.py"))
+    paths.append("e2e/fixtures/inventory-snapshot.py")
     result = subprocess.run(
         ["bun", "scripts/proof-python-closure.ts"],
         input=json.dumps(paths),
@@ -220,34 +242,17 @@ def main():
     entries = [str(p) for p in tests if str(p) not in paid]
     if len({Path(p).stem for p in entries}) != len(entries):
         raise ValueError("duplicate acceptance stems")
-    shared = set().union(*(graph[p]["closure"] for p in CONFTESTS))
-    keyed = {p: set() for p in entries}
-    for file in sorted(shared):
-        candidates = [p for p in entries if file in graph[p]["direct"]]
-        if not candidates:
-            candidates = [p for p in entries if file in graph[p]["closure"]] or entries
-            limit = 1
-        else:
-            limit = 3
-        representatives = sorted(candidates, key=lambda p: (len(graph[p]["closure"]), p))[:limit]
-        if not representatives:
-            raise ValueError(f"no representative for {file}")
-        for p in representatives:
-            keyed[p].add(file)
-
-    def stack_patterns(name):
-        return [
-            p for item in root["inputs"][name] for p in (stack_patterns(item[1:]) if item.startswith("$") else [item])
+    sources = set(paths) - {"e2e/fixtures/inventory-snapshot.py"}
+    tasks = e2e_tasks()
+    e2e = {
+        name: [
+            item["imports-of"]
+            for item in task["inputs"]
+            if isinstance(item, dict) and item["imports-of"].startswith("e2e/specs/")
         ]
-
-    stack_keyed = {
-        p
-        for p in shared
-        if any(
-            fnmatch.fnmatch(p, pat) or fnmatch.fnmatch(p, pat.replace("/**/", "/")) for pat in stack_patterns("stack")
-        )
+        for name, task in tasks.items()
     }
-    tasks = e2e_tasks(shared, stack_keyed)
+    acceptance = {}
     for path in entries:
         conftests = [
             str(p / "conftest.py")
@@ -256,15 +261,7 @@ def main():
         ]
         inputs = [
             imports(path),
-            *[
-                imports(f"apps/agent/{module}.py")
-                for module in (
-                    "creation_tools",
-                    "db_mutations_companion",
-                    "companion_relationship_queries",
-                    "combat_agent",
-                )
-            ],
+            *[imports(f"apps/agent/{module}.py") for module in SYNTHETIC],
             "packages/shared/fixtures/**",
             imports(CONFTESTS[0]),
             *[imports(p) for p in conftests],
@@ -292,11 +289,8 @@ def main():
                 "apps/server/**",
                 "packages/shared/**",
                 "assets/**",
-                "docs/**",
                 "$bun-config",
             ]
-        if "async-activity-reset.md" in closure_text:
-            inputs.append("docs/ops/async-activity-reset.md")
         for target in ("use-game-events.parse.test.ts", "sound-registry.test.ts"):
             if target in closure_text:
                 inputs += [
@@ -316,7 +310,7 @@ def main():
             "needs": ["acceptance-stack"],
             "links": ["node_modules"],
             "inputs": inputs,
-            "keyed": [*sorted(keyed[path] | stack_keyed), "packages/shared/**"],
+            "keyed": [SHARED_KEY],
         }
         for suffix, selector, expression in partitions(path):
             part = dict(task)
@@ -327,10 +321,12 @@ def main():
                 )
                 + expression
             )
-            tasks[f"agent-acceptance:{Path(path).stem}" + (f":{suffix}" if suffix else "")] = part
+            name = f"agent-acceptance:{Path(path).stem}" + (f":{suffix}" if suffix else "")
+            tasks[name] = part
+            acceptance[name] = path
     # Root unkeyed policy must preserve the existing Bun tasks and the full unit key.
     for name, task in json.loads(Path("scripts/proof-bun-tasks.json").read_text()).items():
-        tasks[name] = {**task, "keyed": [*sorted(shared), "packages/shared/**"]}
+        tasks[name] = {**task, "keyed": [*sorted(sources), SHARED_KEY]}
     tasks["agent-pytest"] = {
         "run": "ALLOW_PAID_TESTS= REQUIRE_REAL_LLM= uv run --frozen --directory apps/agent pytest tests/ -q -m 'not acceptance' -n 8",
         "sets": ["land"],
@@ -339,6 +335,7 @@ def main():
         "inputs": [
             "apps/agent/**",
             "apps/mobile/assets/**",
+            "apps/mobile/src/global.css",
             "assets/**",
             ".env.example",
             "apps/audio/**",
@@ -352,26 +349,53 @@ def main():
             "packages/**",
             "e2e/**",
             "scripts/**",
-            "docs/**",
             "$stack",
             "$bun-config",
         ],
-        "keyed": [*sorted(shared), "packages/shared/**"],
+        "keyed": [*sorted(sources), SHARED_KEY],
     }
-    for task in tasks.values():
+    if unknown := RUNTIME_DOCUMENTS.keys() - tasks.keys():
+        raise SystemExit(f"runtime documents name no generated task: {sorted(unknown)}")
+    for name, task in tasks.items():
+        if "super" not in task["sets"]:
+            task["sets"].append("super")
+        if name not in acceptance and name not in e2e:
+            task["inputs"] = ["$unit-stack" if item == "$stack" else item for item in task["inputs"]]
         expanded = []
         for item in task["inputs"]:
             path = item.get("imports-of") if isinstance(item, dict) else None
             if path in graph and graph[path].get("reason"):
-                # Dynamic registry discovery needs the whole Python corpus, not a false import proof.
+                # Preserve conservative delivery; family assignments below control source keys.
                 expanded += [*graph[path]["closure"], "apps/agent/**/*.py"]
-                # unkeyed would strip the shared agent modules the registry discovers at runtime.
-                discovered = {f for f in shared if re.fullmatch(r"apps/agent/[^/]+_agent\.py", f)}
-                task["keyed"] = sorted(set(task.get("keyed", [])) | discovered)
             else:
                 expanded.append(item)
-        task["inputs"] = expanded
-    output = {"unkeyed": sorted(shared), "tasks": tasks}
+        task["inputs"] = [
+            *expanded,
+            "$documentation-exclusions",
+            *RUNTIME_DOCUMENTS.get(name, []),
+        ]
+    content = content_inventory()
+    families = load_families(content)
+    inventory = task_inventory(acceptance, e2e, graph, families)
+    infrastructure = {item for item in root["inputs"]["stack-shared"] + root["inputs"]["stack"] if item in sources}
+    ordinary_sources = sources - SHARED_INPUTS
+    infrastructure -= SHARED_INPUTS
+    assignments, representatives = select_sources(inventory, families, ordinary_sources, infrastructure)
+    for name, selected in assignments.items():
+        tasks[name]["keyed"] = [*tasks[name]["keyed"], *sorted(selected)]
+        tasks[name]["inputs"] = [
+            *tasks[name]["inputs"],
+            *sorted(selected | inventory[name]["closure"]),
+        ]
+    audit_selection(tasks, inventory, families, ordinary_sources, infrastructure, representatives)
+    content_assignments = select_content(inventory, families, content)
+    for name, selected in content_assignments.items():
+        tasks[name]["keyed"] += sorted(selected)
+        tasks[name]["inputs"] += sorted(selected)
+    audit_content(tasks, inventory, families, content)
+    for name in tasks.keys() - inventory.keys():
+        tasks[name]["keyed"] += sorted(content | SHARED_INPUTS)
+    output = {"unkeyed": sorted(sources | content | SHARED_INPUTS), "tasks": tasks}
     (Path(os.environ["PROOF_DECLARATIONS"]) / "python.yaml").write_text(json.dumps(output, indent=2) + "\n")
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.40.0 — 2026-11-16
+
+- PR CI runs only the two lint jobs. Tests are proven locally by Proof: a free patch's land runs `scripts/free-acceptance.sh`, which runs Proof's `land` set and then its `sprint` set on the trial-merged tree with the sprint hook's environment.
+- A fresh, cache-free `super` run of every declared task runs on this Mac at 02:00 on Tuesday, Thursday and Saturday (`scripts/super-test.sh`, installed by `scripts/super-test-install.sh`). It tests `origin/main` in its own worktree and raises a macOS notification on any red.
+- Edits select fewer tests. Docs key no task. A widely imported agent module keys about two representative acceptance tests per family instead of every importer, and a content file keys the tests that declare they read it (`scripts/proof-families.json`). The seed script and migrations also key the tests that name them. Across five probe edits the changed task keys fell from 468 to 117 (`scripts/proof_selection_probe.py`).
+- The unused CI service-database mode is gone from the DB lifecycle helpers.
+
 ## 0.39.0 — 2026-11-16
 
 - The game runs as containers. `deploy/compose.yml` runs the server, the DM agent and the async worker, plus a one-shot migrate-and-seed job, from three images (`deploy/*.Dockerfile`). The images run as a non-root user and carry no `.env`, tests or mobile sources. `scripts/deploy-up.sh` is the operator's entry point, and `scripts/deploy-smoke.sh` checks the built images locally before a deploy. Nothing in this release creates a cloud resource.

@@ -75,11 +75,11 @@ Write for the ear: short sentences, concrete sensory details, sound/smell before
 
 **Never run paid tests without explicit human approval.** Tests that call a paid provider (Anthropic, OpenAI, Deepgram — markers `real_llm`, `openai_real_llm`, `live_voice`) are skipped everywhere: the sprint full tier, CI, ad-hoc runs, even with keys in `.env`. Run one only when the human approves that specific run: `ALLOW_PAID_TESTS=1 REQUIRE_REAL_LLM=1 uv run pytest <file>`. A new test that reaches a paid provider must carry one of those markers.
 
-Commit checks staged languages and affected projects, then Proof lint and staged `commit` selection. Story land runs Proof selection for the `land` set (including `commit`) on the merged index. Push scans outgoing secrets without starting services. PR CI owns full static checks and Bun/Python non-acceptance suites, including free patches. `.githooks/sprint` runs Proof `sprint` selection (including Playwright) at sprint close; CI repeats those lanes for free-patch coverage without predecessor-result caching. It exports both paid-approval flags empty for all children so env files cannot restore approval.
+Commit checks staged languages and affected projects, then Proof lint and staged `commit` selection. Story land runs staged Proof `land` selection (including `commit`) on the merged index. Every free patch's Acceptance runs staged `land` then `sprint` selection on the trial-merged tree via `bash scripts/free-acceptance.sh`. `.githooks/sprint` runs Proof `sprint` selection (including Playwright) at sprint close. Both sprint entry points export paid-approval flags empty so env files cannot restore approval. Push scans outgoing secrets without starting services. PR CI runs full static checks in `lint-and-typecheck` and `lint-python`. The scheduled fresh super tier runs `scripts/super-test.sh` (`proof run --fresh --set super`) on a detached checkout; its installer defines Tuesday, Thursday and Saturday at 02:00.
 
 Rules engine must be exhaustively tested (pure functions, deterministic).
 
-**Run the full Python fast lane via the package script — `bun run test:python` (parallel `-n 8`), not a bare `uv run pytest -m "not acceptance"` (serial).** `bun run test:all` runs both the TS and Python fast lanes. Reserve targeted `cd apps/agent && uv run pytest tests/<path>` for the inner TDD loop; use the script for any full-lane check so you exercise the full-lane command CI uses.
+**Run the full Python fast lane via the package script — `bun run test:python` (parallel `-n 8`), not a bare `uv run pytest -m "not acceptance"` (serial).** `bun run test:all` runs both the TS and Python fast lanes. Reserve targeted `cd apps/agent && uv run pytest tests/<path>` for the inner TDD loop; use the script for any full-lane check so you exercise the supported local/manual full-lane command.
 
 ## Settled Decisions
 
@@ -102,7 +102,7 @@ Don't revisit: LiveKit, Python (agent), Bun (TS), Expo, PostgreSQL+JSONB, Valkey
 6. New tools need docstrings (LLM reads them to decide when to call)
 7. **Update milestone checkboxes in `docs/milestones/`** when work is committed
 
-Free patches scan outgoing secrets at push plus focused card Acceptance at the affected behavior/integration boundary on the trial-merged tree, then normal PR CI before merge. The lead adds broader acceptance only when the changed behavior warrants it; each free patch does not automatically run the full local release suite. Direct trunk pushes are not the release workflow.
+Free patches run focused card Acceptance at the affected behavior/integration boundary on the trial-merged tree. Every free card's Acceptance ends with `bash scripts/free-acceptance.sh`, proving the staged land and sprint selections. Push scans outgoing secrets; the two PR lint jobs run before merge. Direct trunk pushes are not the release workflow.
 
 ## Environment Variables
 

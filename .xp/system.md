@@ -18,9 +18,10 @@ Tests: `bun test` (bun:test) for TS, `pytest` + `pytest-asyncio` for Python.
 Commit fast tier: staged lint via `bash scripts/test-fast.sh`, then Proof lint and staged `commit` selection.
 Story Verify runs the card’s focused behavioral checks.
 Story land runs Proof selection for the `land` set (including `commit`) on the merged index. PR CI owns full static
-checks and Bun/Python non-acceptance suites. Sprint close owns deterministic
-acceptance and Playwright; CI repeats them for free-patch coverage without
-predecessor-result caching. Push scans outgoing secrets only.
+checks in two lint jobs. Sprint close owns deterministic acceptance and
+Playwright. Free-patch Acceptance runs staged land then sprint selections via
+`scripts/free-acceptance.sh`. The scheduled fresh super tier revalidates all
+generated tasks on a detached checkout. Push scans outgoing secrets only.
 
 **Check ownership and cost (story-157, 2026-10-13).** Recorded PR #607 merge:
 `67fe361ebe813e55d14a8892faa34728b95491b9`, tree
@@ -44,78 +45,52 @@ CI uses separate Ubuntu runners; its step timestamps have one-second precision
 | Push | Outgoing-history gitleaks | Included in 0.10 hook | Index scans cover a different input; no services or test children |
 | PR CI | Full root/mobile/server/web typechecks, ESLint, Prettier (`lint:ts`) | 40 CI | Commit's affected-project/staged checks provide early feedback |
 | PR CI | e2e `tsc`, ESLint (`lint:e2e`) | 5 CI | First typecheck for e2e; commit does not install its graph |
-| PR CI | Scripts (`bun --env-file=.env test ./scripts`) | 0.570 land; 0 CI | Human-required land fast lane; CI covers free patches |
-| PR CI | Shared / design tokens | 3.647 / 0.031 land; 2 / 0 CI | Human-required land fast lane; CI covers free patches |
-| PR CI | Server bulk | 2.273 land; included in 2 CI server total | Human-required land fast lane; isolated from real DB module |
-| PR CI | Server DB / location / terrain / invite-store | 0.275 / 0.245 / 1.768 / 2.384 land; included in 2 CI server total | Human-required land fast lane; preserve mock-isolation processes |
-| PR CI | Mobile / web | 26.936 / 0.954 land; 16 / 0 CI | Human-required land fast lane; CI covers free patches |
-| PR CI | Python non-acceptance (`test:python`, eight workers) | 88.571 land; 144 CI | Human-required land fast lane; CI covers free patches |
-| Sprint close | Deterministic acceptance (`test:acceptance`) | 657.676 local; 660 CI | CI is the only full acceptance for free patches; no predecessor cache |
-| Sprint close | Playwright | 160.286 local; 317 CI | CI covers free patches; no predecessor cache |
+| Story land / free-patch Acceptance | Scripts (`bun --env-file=.env test ./scripts`) | 0.570 land | Proof staged `land` selection; keyed proofs reused |
+| Story land / free-patch Acceptance | Shared / design tokens | 3.647 / 0.031 land | Proof staged `land` selection; keyed proofs reused |
+| Story land / free-patch Acceptance | Server bulk | 2.273 land | Proof staged `land` selection; keyed proofs reused |
+| Story land / free-patch Acceptance | Server DB / location / terrain / invite-store | 0.275 / 0.245 / 1.768 / 2.384 land | Proof staged `land` selection; keyed proofs reused |
+| Story land / free-patch Acceptance | Mobile / web | 26.936 / 0.954 land | Proof staged `land` selection; keyed proofs reused |
+| Story land / free-patch Acceptance | Python non-acceptance (`test:python`, eight workers) | 88.571 land | Proof staged `land` selection; keyed proofs reused |
+| Sprint close / free-patch Acceptance | Deterministic acceptance (`test:acceptance`) | 657.676 local | Proof `sprint` selection; keyed proofs reused |
+| Sprint close / free-patch Acceptance | Playwright | 160.286 local | Proof `sprint` selection; keyed proofs reused |
+| Scheduled fresh super | `scripts/super-test.sh`: `proof run --fresh --set super` | Not measured | All generated tasks on a detached checkout, paid approvals empty; installer defines Tuesday/Thursday/Saturday 02:00; host installation not checked here |
 | Explicit approval | Paid acceptance / speech recognition | Not measured; approval empty | No automatic tier enables it |
-| Setup | Root/e2e frozen Bun graphs, cached browser | 1.470 / 0.441 / 0.505 | Each isolated CI job installs its own required graph |
-| Setup | Agent/scripts frozen uv graphs | 0.498 / 0.020 | Each isolated CI job installs its own required graph |
+| Setup | Root/e2e frozen Bun graphs, cached browser | 1.470 / 0.441 / 0.505 | Local setup installs both graphs; CI lint installs root/e2e |
+| Setup | Agent/scripts frozen uv graphs | 0.498 / 0.020 | Local setup installs both graphs; CI lint installs agent only |
 | Setup | Route generation, checkout authority and owned stack readiness | Included in fresh 14.50 total | CI generates mobile routes; separate job containers cannot share checkout ownership |
-| Setup | Checkout migration / content seed | 0.472 / 0.844 | CI's isolated service jobs each migrate/seed; acceptance databases replay migrations for isolation |
+| Setup | Checkout migration / content seed | 0.472 / 0.844 | Local checkout setup migrates/seeds; acceptance databases replay migrations for isolation |
 | Setup | CI lint-and-typecheck checkout/install/services/post-job | 22 CI | Separate runner input; steps in DATA |
-| Setup | CI test-python (python) checkout/install/services/post-job | 64 CI | Separate runner input; steps in DATA |
-| Setup | CI test-bun checkout/install/services/post-job | 46 CI | Separate runner input; steps in DATA |
 | Setup | CI lint-python checkout/install/services/post-job | 16 CI | Separate runner input; steps in DATA |
-| Setup | CI test-python (acceptance) checkout/install/services/post-job | 78 CI | Separate runner input; steps in DATA |
-| Setup | CI test-e2e checkout/install/services/post-job | 66 CI | Separate runner input; steps in DATA |
 
-Tier totals on the recorded tree: representative commit 21.55 s; land
-96.54 s; push 0.10 s; sprint 660.77 s. CI job totals: lint/typecheck 70 s,
-lint-python 47 s, Bun 71 s,
-non-acceptance Python 212 s, acceptance 743 s, Playwright 388 s.
-The representative commit's exact four staged paths, older HEAD, index tree,
-generated Expo declarations and frozen dependency graph are in story DATA's
-`evidence/final-commit-input.json`. It covers shared TS (all four project
-checks), agent Python, other Python and shell; HTML/CSS-only, deps-less and
-refusal branches are not timed. Its first disposable probe omitted generated
-`expo-env.d.ts` and failed loudly (18.03 s); that is not a completed tier timing.
+Local tier totals on the recorded tree: representative commit 21.55 s; land
+96.54 s; push 0.10 s; sprint 660.77 s. The representative commit's staged
+paths, dependency graph and generated types are in story-157 DATA's
+`evidence/final-commit-input.json`. Its first disposable probe omitted
+`expo-env.d.ts` and failed loudly; that is not a completed tier timing.
 Child costs overlap and must not be summed into parallel tier totals.
-The earlier local tree `7e88d33f` and superseded PR tree `52f0b0e1` remain
-separate evidence, not this tree's measurements. The earlier sprint probe
-stopped without a completion status; its partial log is not a pass.
 
 Fresh registered checkout setup: 14.50 s with cached images; warm setup: 8.67 s.
-These setup costs are reconciled to this tree: ownership scripts, manifests,
-locks and generated-type inputs are unchanged from their measured tree.
-Ownership checks and teardown remain in `worktree-common.sh`. Focused acceptance
-before/after: 64 passed in 63.53/21.05 s including startup; Postgres starts 9/1,
-migration replays 9/7, full seed calls 9/7. Each mutating case still gets an
-unseeded database; seed rollback and catalog mutation tests keep their own seed.
-Read-only signature parameters use the session seed. Migration and seed costs
-are retained to prove isolation and product seeding behavior.
+Ownership scripts, manifests, locks and generated-type inputs are unchanged
+from their measured tree. Ownership checks and teardown remain in
+`worktree-common.sh`. Focused acceptance before/after: 64 passed in
+63.53/21.05 s including startup; Postgres starts 9/1, migration replays 9/7,
+full seed calls 9/7. Each mutating case still gets an unseeded database;
+seed rollback and catalog mutation tests keep their own seed. Read-only
+signature parameters use the session seed.
 
-The final recorded-tree sprint run passed: 636 acceptance cases, 47 paid skips and
-88 Playwright cases. Its JUnit results include all 64 card-focused cases
+The final recorded-tree sprint run passed: 636 acceptance cases, 47 paid skips
+and 88 Playwright cases. Its JUnit results include all 64 card-focused cases
 (seed_atomic 4, creature_catalog 4, catalog_encounter_cutover 56); those results
 are reused, not rerun. Complete-lane startup counts before/after: Postgres 11/3,
 migrations 9/7, seeds 9/7, LiveKit 1/0 (persistent reuse), checkout Compose 0/0
 (already owned/running). Two Choir module session overrides retain their
-mandatory-service prerequisite policy; they are session costs, not per-case
-starts. The full baseline command used direct uv without the env-file dispatcher
-and ended with two missing-REDIS_URL failures: 638.53 s, 634 passed, 47 skipped.
-It supplies observed startup counts, not a successful tier measurement.
-The sprint's separate E2E setup adds one Postgres and one Valkey start;
-those resources are torn down. Setup child durations are retained in DATA.
-CI's non-acceptance Python matrix job passed `bun run test:python` with no
-checkout `.env`, confirming the dispatcher's missing-file tolerance. Python
-and acceptance have separate runners and independent 20-minute timeouts per
-the human's card answer (2026-10-13, lead commit `38fd2366`). The Python
-job uses 212/1200 s; acceptance uses 743/1200 s (457 s headroom), including
-setup. Acceptance passed 636 cases with 47 paid skips. The six successful CI
-jobs span 743 s in parallel and sum to 1531 runner-seconds; queue time is
-separate. All checkout logs identify `67fe361e`. Runners use Ubuntu 24.04,
-cached Bun and uv downloads, newly installed graphs and fresh service containers.
-CI job/step outcomes, checkout proof, runner/cache details and setup costs are in story
-DATA's `evidence/final-ci-*`; every checkout/install/service/post-job step
-is included in its job total, not a separate behavioral check owner. Setup
-rows sum step durations; job totals also include transitions between steps.
-Historical PR 605 run `38164153205` used tree `e8c15ffb`: jobs
-69/54/75/1151/408 s, a different tree, retained only as context.
+mandatory-service prerequisite policy. The earlier direct-uv baseline lacked
+REDIS_URL and failed twice (638.53 s, 634 passed, 47 skipped); its startup
+counts are evidence, not a successful tier measurement. Sprint E2E setup
+adds one Postgres and one Valkey start, then tears those resources down.
+Setup child durations and the original CI measurements remain in story-157
+DATA. PR CI now runs only `lint-and-typecheck` and `lint-python`; local Proof
+selections own suite coverage and the scheduled super tier revalidates fresh.
 
 Aliases `test`, `test:all`, `lint`, and workspace scripts expand to the leaf
 checks above; they are dispatchers, not additional owners. Nonautomatic dev,
@@ -124,10 +99,9 @@ these tiers; the complete package-script/CI-step inventory is in story DATA's
 `evidence/inventory.json`. Product tests are retained; developer hook/runner
 scaffolding is one-off evidence and never enters a regular test run. CI skips
 documentation-only PRs. e2e type errors, deps-less commits and bypassed hooks
-first receive full static validation at PR CI. The card records the human
-answer (2026-10-13): “Nightly tier — DROP it;
-edit constraints 2 and 13 to remove the nightly tier (tiers: commit, story land,
-push, sprint close, PR CI).” Constraints 2 and 13 match that decision.
+first receive full static validation at PR CI. The scheduled fresh super tier was authorized on 2026-11-16;
+constraints 2 and 13 name its deliberate fresh revalidation alongside keyed
+local proof reuse.
 
 **Surfaces & acceptance**: five surfaces, each with a harness that drives it at
 its boundary.
@@ -138,7 +112,7 @@ its boundary.
 | Automation | Expo/React Native mobile app | Maestro — `apps/mobile/.maestro/` flows + `scripts/maestro-acceptance.ts` |
 | HTTP/WebSocket | `apps/server` Bun.serve REST; LiveKit token + data-channel endpoints | bun:test server suites |
 | Message-event | Valkey/Redis `async_worker.py` polling loop | pytest — `test_ops_async_reset_runbook.py` |
-| CLI | Product: `agent.py dev`, `async_worker.py`; developer: pre-commit (Proof commit), pre-merge-commit (Proof land), pre-push, sprint (Proof sprint + Playwright), test-fast.sh, test-all.ts | Product pytest; developer entry points use disposable dispatch/failure scaffolding, recorded then removed (constraint 3) |
+| CLI | Product: `agent.py dev`, `async_worker.py`; developer: pre-commit (Proof commit), pre-merge-commit (Proof land), pre-push, sprint (Proof sprint + Playwright), test-fast.sh, test-all.ts, free-acceptance.sh | Product pytest; developer entry points use disposable dispatch/failure scaffolding, recorded then removed (constraint 3) |
 
 A story's ACs must be executed by the surface-driving test named in its Verify.
 The real-LLM acceptance lane is deliberately excluded from `test:all` (ADR 0003,
@@ -231,13 +205,13 @@ without certifying paid speech-recognition accuracy.
   "protected" as the reason for it. Work lands as first-parent merges of
   `paulingalls/sprint-*` / `story-*` / `free-*` branches. `.githooks/pre-push`
   scans outgoing secrets for every ref without starting services. Story land
-  runs Proof selection for the `land` set on the merged index. PR CI owns static and non-acceptance checks;
+  runs Proof selection for the `land` set on the merged index. PR CI owns full static checks in two lint jobs;
   `.githooks/sprint` runs Proof `sprint` selection (including Playwright) at sprint close on the
   trial-merged integration tree. Free patches run the outgoing secret scan
   plus focused card Acceptance at the affected behavior/integration
-  boundary on the trial-merged tree, then normal PR CI before merge. The lead
-  adds broader free-patch acceptance only when the changed behavior warrants it;
-  there is no automatic full local release suite for each free patch. Direct
+  boundary on the trial-merged tree. Every free card's Acceptance ends with
+  `bash scripts/free-acceptance.sh` (staged Proof `land` then `sprint`
+  selections), followed by the two PR lint jobs before merge. Direct
   trunk pushes are not the release workflow. Do not repeat an identical broad
   suite on an unchanged tree during review without a concrete uncovered behavior. On a gate
   failure, read repo-root `flake-artifacts/` before calling anything a flake.
@@ -356,8 +330,7 @@ authority separately requires exactly one running checkout-owned service to
 publish the selected loopback endpoint. A stopped owned volume is not proof of
 the process listening on its former port. Missing, mixed, foreign, unreadable,
 or legacy labels fail closed without adoption or deletion during checkout teardown.
-Back up and migrate or remove legacy data manually. CI service Postgres requires
-the explicit GitHub Actions marker and cannot run Compose. Sweep inventories
+Back up and migrate or remove legacy data manually. Sweep inventories
 Compose resources and acceptance-labeled containers, skips clearly foreign
 owners, and deletes only consistently labeled stale checkouts from this clone.
 Missing, mixed or unreadable ownership anywhere aborts before deletion; an empty
