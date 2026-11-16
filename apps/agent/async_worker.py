@@ -25,6 +25,7 @@ from async_worker_training import advance_training_cycles
 from crafting_resolution import resolve_crafting_outcome
 from dialogue_parser import Segment
 from errand_resolution import companion_errand_data, resolve_errand_outcome
+from error_line import install as install_error_lines
 from llm_config import AUDIO_DIR, audio_url_for
 from media_dir import validate_media_dir
 from narration import generate_activity_narration, generate_notification_hook, generate_progress_snippets
@@ -313,6 +314,7 @@ async def check_god_whisper_triggers() -> int:
 
 async def main() -> None:
     """Main entry point for the async worker."""
+    install_error_lines("worker")
     validate_production_env()
     validate_worker_env()
     validate_media_dir()

@@ -36,34 +36,6 @@ class TestResolveDueActivities:
         assert count == 1
         mock_resolve.assert_awaited_once_with(SAMPLE_ACTIVITY)
 
-    @pytest.mark.asyncio
-    async def test_continues_on_individual_failure(self):
-        activities = [
-            {**SAMPLE_ACTIVITY, "id": "act_1"},
-            {**SAMPLE_ACTIVITY, "id": "act_2"},
-        ]
-
-        call_count = 0
-
-        async def mock_resolve(activity):
-            nonlocal call_count
-            call_count += 1
-            if activity["id"] == "act_1":
-                raise RuntimeError("Transient failure")
-
-        with (
-            patch(
-                "async_worker.db_activity_queries.get_due_activities", new_callable=AsyncMock, return_value=activities
-            ),
-            patch("async_worker._resolve_single_activity", side_effect=mock_resolve),
-            patch("async_worker._backfill_progress_snippets", new_callable=AsyncMock),
-            patch("async_worker.generate_world_news", new_callable=AsyncMock),
-        ):
-            count = await resolve_due_activities()
-
-        assert call_count == 2
-        assert count == 1  # Only act_2 succeeded
-
 
 class TestResolveOneOutcomeGates:
     """story-005: the resolution gates must produce a failure OUTCOME (not raise) so

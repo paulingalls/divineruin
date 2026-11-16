@@ -15,6 +15,7 @@ from livekit.agents.__main__ import main as livekit_main
 import db
 import db_content_queries
 import db_queries
+from error_line import install as install_error_lines
 from gameplay_llm import gameplay_llm_api_key
 from media_dir import validate_media_dir
 from participant_lifecycle import _setup_reconnection
@@ -26,6 +27,7 @@ from speech_delivery import deliver_speech
 from voices import NONVERBAL_VOICE_KEYS, ROLE_VOICE_KEYS, VOICES
 
 logging.basicConfig(level=logging.INFO)
+install_error_lines("agent")
 logger = logging.getLogger("divineruin.dm")
 
 REQUIRED_ENV_VARS = [

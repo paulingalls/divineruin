@@ -79,6 +79,28 @@ This document is the canonical deployment reference; where older docs disagree, 
 2. **LiveKit hosting.** **Resolved: LiveKit Cloud (managed)** for production. Self-hosted `livekit-server` exists only for local acceptance tests.
 3. **Cost model assumption (open follow-up).** `cost_model.md` computes its per-session numbers assuming **self-hosted LiveKit**. With LiveKit Cloud chosen, those figures need recomputing — tracked as debt, **not** done in this story.
 
+## Finding process errors
+
+Requires `jq` on the operator's machine. Server request/startup failures, agent
+exception-bearing tool/task logs and session error closes, and worker activity,
+polling and startup failures emit a JSON object on one stderr line. Its keys are
+`service` (`server`, `agent`, `worker`), `time` (UTC ISO 8601), `message` (fixed
+boundary or code logger name plus exception class), and `stack` (code frame
+locations only, at most the innermost 50 frames). When an exception has no usable
+origin stack, locations identify the reporting boundary instead. Exception prose,
+player speech, headers and credentials are excluded from these structured lines.
+
+```sh
+DEPLOY_ENV_FILE=/absolute/private/production.env docker compose -f deploy/compose.yml logs --no-color --no-log-prefix server agent worker 2>&1 | jq -R 'fromjson? | select((.service == "server" or .service == "agent" or .service == "worker") and (.time | type == "string") and (.message | type == "string") and (.stack | type == "string"))'
+```
+
+Compose uses `json-file` rotation: three files of 10 MB per service, including
+migrate. Retention is finite: copy relevant output before rotation removes it.
+Existing runtime tracebacks and vendor logs remain unchanged and may contain
+player content or secrets; the privacy promise applies only to the structured
+lines above. Treat the complete retained logs as sensitive. Sentry is a possible
+later external error service for the human to select; none is configured here.
+
 ## Open follow-ups
 
 - Recompute `cost_model.md` for LiveKit Cloud participant-minute pricing (debt).
