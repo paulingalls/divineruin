@@ -827,7 +827,7 @@ Additional topics: When to use: The "reverted N times" worker warning + why the 
 
 ---
 
-## ops/production-deployment-architecture.md (86 lines)
+## ops/production-deployment-architecture.md (108 lines)
 
 Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, all-managed** — managed Postgres + Valkey, LiveKit Cloud, DO Spaces for assets; agent + server as containers. Local infra maps to this target on unique dev ports (Postgres 55432, Valkey 56379). Resolves the AWS/GCP-vs-DO and LiveKit Cloud-vs-self-hosted contradictions.
 
@@ -841,7 +841,8 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 | Migrations & seed on deploy | 64-69 | migrate.ts + seed_content.py as deploy steps |
 | Asset storage | 70-73 | Defers to the object-storage migration spec (DO Spaces) |
 | Contradictions this doc resolves | 74-81 | Provider, LiveKit hosting, cost-model follow-up |
-| Open follow-ups | 82-86 | cost_model recompute, asset migration, Dockerfiles |
+| Finding process errors | 82-103 |  |
+| Open follow-ups | 104-108 | cost_model recompute, asset migration, Dockerfiles |
 
 ---
 

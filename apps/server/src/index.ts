@@ -1,3 +1,4 @@
+import { errorLine } from "./error-line.ts";
 import "./config.ts";
 import { validateMediaDir } from "./media-dir.ts";
 import { handleGetInventory } from "./inventory-api.ts";
@@ -141,7 +142,8 @@ export async function handleRequest(req: Request, ip: string): Promise<Response>
             WHERE id = ${whisperMatch[1]!} AND player_id = ${auth.playerId}
           `;
         return withCors(Response.json({ ok: true }));
-      } catch {
+      } catch (error) {
+        errorLine("Server request failed", error);
         return withCors(Response.json({ error: "Internal server error" }, { status: 500 }));
       }
     }
@@ -275,6 +277,9 @@ export async function startServer() {
     hostname: process.env.SERVER_HOST ?? "0.0.0.0",
     port: Number(process.env.PORT ?? 3001),
     idleTimeout: 120,
+    error(error) {
+      errorLine("Server request failed", error);
+    },
     fetch(req, activeServer) {
       return handleRequest(req, activeServer.requestIP(req)?.address ?? "unknown");
     },
