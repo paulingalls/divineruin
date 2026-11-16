@@ -268,7 +268,7 @@ Additional topics: Class System: 18 archetypes across 6 categories x 10 gods = 1
 
 ---
 
-## mvp_spec.md (970 lines)
+## mvp_spec.md (945 lines)
 
 Scope, session arc, success criteria, buildable entities.
 
@@ -287,7 +287,7 @@ Additional topics: What We're NOT Building: Explicit scope cuts
 | Success Criteria | 379-396 | Quantitative (latency, accuracy, completion rate) and qualitative |
 | MVP Development Priorities | 397-435 | Ordered by dependency and risk. Aligned with the detailed 18-step priority list in the *Technical Architecture Document — Development Priorities*. |
 | Document Relationships | 436-449 | Links to the design, architecture, lore, and data documents |
-| Appendix: Starter Content Entities | 450-970 | Full JSON for every MVP entity |
+| Appendix: Starter Content Entities | 450-945 | Full JSON for every MVP entity |
 
 ---
 
@@ -404,7 +404,7 @@ Worktree bootstrap design brief and measured implementation outcome.
 
 ---
 
-## world_data_simulation.md (999 lines)
+## world_data_simulation.md (992 lines)
 
 DB schemas, JSON entity formats, world sim rules, content style guide.
 
@@ -413,12 +413,12 @@ Additional topics: Authoring a Location: required fields, terrain/region_type ru
 | Section | Lines | What's There |
 |---|---|---|
 | Purpose | 3-10 | Content authoring format, world simulation rules, and data model; sparse data, DM narrates |
-| Content Authoring Format | 11-510 | JSON schemas, Tier 1 (authored) vs Tier 2 (generated) |
-| Content Style Guide | 511-670 | Write for the ear, description limits, NPC content, Hollow wrongness |
-| World Simulation Rules | 671-860 | World clock (1:1), 4 simulation layers (per-minute through event-driven) |
-| Data Model | 861-958 | PostgreSQL + Redis: 10 content tables, 12 state tables, 7 Redis patterns |
-| MVP Content Scope | 959-987 | ~20 locations, ~25 NPCs, ~40 items, ~5 quests, ~18 events |
-| Cross-References | 988-999 | Where these schemas and rules connect to the other design docs |
+| Content Authoring Format | 11-503 | JSON schemas, Tier 1 (authored) vs Tier 2 (generated) |
+| Content Style Guide | 504-663 | Write for the ear, description limits, NPC content, Hollow wrongness |
+| World Simulation Rules | 664-853 | World clock (1:1), 4 simulation layers (per-minute through event-driven) |
+| Data Model | 854-951 | PostgreSQL + Redis: 10 content tables, 12 state tables, 7 Redis patterns |
+| MVP Content Scope | 952-980 | ~20 locations, ~25 NPCs, ~40 items, ~5 quests, ~18 events |
+| Cross-References | 981-992 | Where these schemas and rules connect to the other design docs |
 
 ---
 

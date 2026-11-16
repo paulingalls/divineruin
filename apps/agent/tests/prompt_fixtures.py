@@ -40,8 +40,16 @@ SAMPLE_QUEST = {
     "quest_name": "The Greyvale Anomaly",
     "current_stage": 1,
     "stages": [
-        {"id": 0, "objective": "Investigate the strange lights."},
-        {"id": 1, "objective": "Find the source of the anomaly."},
+        {
+            "id": 0,
+            "objective": "Investigate the strange lights.",
+            "completion_conditions": {"type": "location_reached", "location": "millhaven"},
+        },
+        {
+            "id": 1,
+            "objective": "Find the source of the anomaly.",
+            "completion_conditions": {"type": "location_reached", "location": "millhaven"},
+        },
     ],
 }
 

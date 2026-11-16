@@ -249,7 +249,18 @@ async def test_warm_facts_belong_to_host_during_guest_turn():
         "region_type": "city",
         "exits": {"north": {"destination": "gate", "requires": "host_flag"}},
     }
-    quests = [{"quest_name": "Host Quest", "current_stage": 0, "stages": [{"objective": "Find host map"}]}]
+    quests = [
+        {
+            "quest_name": "Host Quest",
+            "current_stage": 0,
+            "stages": [
+                {
+                    "objective": "Find host map",
+                    "completion_conditions": {"type": "item_discovered", "items": ["host_map"], "location": "hall"},
+                }
+            ],
+        }
+    ]
     training = [{"id": "host_training", "state": "running_first_half", "data": {"program_name": "Host Drill"}}]
     npc = [{"id": "keeper", "name": "Keeper", "role": "guide"}]
     with (

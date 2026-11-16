@@ -66,6 +66,34 @@ def quest_objective(quest: dict) -> str:
     return ""
 
 
+def quest_finish_line(quest: dict) -> str:
+    index = quest.get("current_stage", 0)
+    stage = quest["stages"][index]
+    condition = stage["completion_conditions"]
+    kind = condition["type"]
+    if kind == "location_reached":
+        return f"completed on arrival at {condition['location']}"
+    if kind == "knowledge_acquired":
+        facts = ", ".join(condition["required_info"])
+        sources = ", ".join(condition["sources"])
+        return (
+            f"once the player has learned {facts} from {sources}, "
+            f'call update_quest(quest_id="{quest["quest_id"]}", new_stage_id={index + 1})'
+        )
+    if kind == "combat_completed":
+        return (
+            f'when the fight begins, start it with enter_mode(mode="combat", '
+            f'encounter_id="{condition["encounter"]}"); finish with outcome {condition["outcome"]}'
+        )
+    if kind == "item_discovered":
+        return f"discover {', '.join(condition['items'])} at {condition['location']}"
+    if kind == "npc_interaction":
+        return f"speak with {condition['npc']} about {condition['topic']}"
+    if kind == "decision_made":
+        return f"decide {condition['decision']}: {', '.join(condition['options'])}"
+    raise ValueError(f"Quest {quest['quest_id']} stage {index}: unknown completion condition {kind!r}")
+
+
 CORRUPTION_GUIDANCE: dict[int, str] = {
     1: (
         "HOLLOW CORRUPTION — Stage 1\n"
@@ -259,7 +287,11 @@ async def build_warm_layer(
                 s = _npc_summary(npc, disposition)
                 address_lines.append(f"{s['name']} ({s['role']}) — {s['disposition']}")
 
-        advance_lines = [f"{q['quest_name']}: {quest_objective(q)}" for q in (quests or []) if quest_objective(q)]
+        advance_lines = [
+            f"{q['quest_name']}: {quest_objective(q)} — {quest_finish_line(q)}"
+            for q in (quests or [])
+            if quest_objective(q)
+        ]
 
         check_targets = [str(f) for f in narr.get("key_features", [])]
         # Locked exits surface as check targets, but NOT their raw `requires` — that string
