@@ -31,7 +31,7 @@ def test_first_blood_rollback_and_retry(harness, route):
                 marker = await db_queries.get_player_quest(arc.player, "greyvale_anomaly", conn=conn)
                 assert marker is not None and marker["current_stage"] == 3
                 player = await db_queries.get_player(arc.player, conn=conn)
-                assert player is not None and player["xp"] == 150 + arc.combat_xp
+                assert player is not None and player["xp"] == arc.initial_xp + 150 + arc.combat_xp
                 reached.append(combat_id)
                 raise ToolError("injected terminal rollback")
 

@@ -38,6 +38,7 @@ class FirstBloodWalk(ArcWalk):
         row = build_character_data(
             "First Blood", "human", "warrior", None, "", created_at=datetime(2026, 11, 1, tzinfo=UTC)
         )
+        self.initial_xp = row["xp"] = 125
         await self.pool.execute("UPDATE players SET data=$2::jsonb WHERE player_id=$1", self.player, json.dumps(row))
         if not alive:
             self.sd.companion = CompanionState(id="companion_lira", name="Lira")
@@ -147,7 +148,7 @@ class FirstBloodWalk(ArcWalk):
                 marker = await db_queries.get_player_quest(self.player, QUEST, conn=conn)
                 assert marker is not None and marker["current_stage"] == 3
                 player = await db_queries.get_player(self.player, conn=conn)
-                assert player is not None and player["xp"] == self.combat_xp + 150
+                assert player is not None and player["xp"] == self.initial_xp + self.combat_xp + 150
         self.events.append(event)
 
     async def rewarded(self, result):
@@ -155,13 +156,13 @@ class FirstBloodWalk(ArcWalk):
         assert marker is not None and marker["current_stage"] == 3
         player = await db_queries.get_player(self.player)
         assert player is not None
-        assert player["xp"] == self.combat_xp + 150
-        assert self.sd.session_xp_earned == player["xp"]
+        assert player["xp"] == self.initial_xp + self.combat_xp + 150
+        assert self.sd.session_xp_earned == player["xp"] - self.initial_xp
         updates = [e for e in self.events if e["type"] == E.QUEST_UPDATED]
         assert len(updates) == 1 and updates[0]["new_stage"] == 3
         xp = [e for e in self.events if e["type"] == E.XP_AWARDED]
         assert sorted(e["amount"] for e in xp) == sorted([150, self.combat_xp])
-        assert sum(e["amount"] for e in xp) == player["xp"]
+        assert sum(e["amount"] for e in xp) == player["xp"] - self.initial_xp
         inventory = await db_queries.get_player_inventory(self.player)
         bones = sum(i.get("quantity", 1) for i in inventory if i["id"] == "hollow_bone_fragment")
         assert bones == 1 + sum(i["quantity"] for i in result["loot"] if i["item_id"] == "hollow_bone_fragment")
@@ -172,7 +173,7 @@ class FirstBloodWalk(ArcWalk):
         (update,) = result["quest_updates"]
         assert update["objective"] == quest["stages"][3]["objective"]
         assert update["narrative_beat"] == quest["stages"][2]["on_complete"]["narrative_beat"]
-        assert {"type": "xp", "amount": 150, "leveled_up": False} in update["rewards_applied"]
+        assert {"type": "xp", "amount": 150, "leveled_up": True} in update["rewards_applied"]
         agent = self.session.current_agent
         assert isinstance(agent, ExplorationAgent)
         assert result["scene_transition"]["region"] == agent._agent_type == "dungeon"
