@@ -100,9 +100,9 @@ def test_no_agent_registers_award_tools(name: str, tools: list) -> None:
 # --- 2. The tool-ceiling win holds ------------------------------------------------------
 
 
-def test_exploration_keeps_five_free_slots() -> None:
-    assert len(EXPLORATION_TOOLS) == 15
-    assert len(EXPLORATION_TOOLS) <= MAX_STRICT_TOOLS - 5
+def test_exploration_keeps_four_free_slots() -> None:
+    assert len(EXPLORATION_TOOLS) == 16
+    assert len(EXPLORATION_TOOLS) <= MAX_STRICT_TOOLS - 4
 
 
 # --- 2b. The authored content this net's arithmetic is seeded from ----------------------

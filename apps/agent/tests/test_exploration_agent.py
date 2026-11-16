@@ -23,7 +23,7 @@ class TestExplorationToolset:
     def test_count_at_fifteen_under_ceiling(self):
         from llm_config import MAX_STRICT_TOOLS
 
-        assert len(EXPLORATION_TOOLS) == 15
+        assert len(EXPLORATION_TOOLS) == 16
         assert len(EXPLORATION_TOOLS) <= MAX_STRICT_TOOLS
 
     def test_holds_unified_superset(self):

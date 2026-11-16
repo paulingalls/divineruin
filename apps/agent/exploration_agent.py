@@ -34,6 +34,7 @@ from query_tools import query_info
 from quest_tools import update_quest
 from region_types import REGION_CITY
 from reputation_tools import adjust_faction_reputation
+from rest_tools import rest
 from scene_tools import enter_location
 from session_data import SessionData
 from session_tools import end_session, record_story_moment, update_npc_disposition
@@ -44,26 +45,6 @@ from warm_prompts import format_affect_context, format_combat_hot_line
 
 logger = logging.getLogger("divineruin.exploration")
 
-# The unified verb vocabulary for all exploration (city/wilderness/dungeon). This is
-# the former CITY_TOOLS — city's tool list was already a strict superset of the
-# wilderness and dungeon lists, so one list serves every region. With a single agent
-# there is no per-region ceiling pressure: 15 verbs leave 5 free slots under
-# MAX_STRICT_TOOLS (relieves debt e665104c753a). The settlement-flavoured verbs
-# (transact, update_npc_disposition) are exposed everywhere; the
-# warm-layer REGISTER (story-002) carries the when-appropriate guidance per ADR 0007 —
-# the Stage gates applicability, not per-agent tool lists.
-#
-# activate (M25 Phase-5 story-003) replaces the item-use deploy_veil_anchor: it is the
-# same polymorphic capability verb registered on combat (story-002), routing a Veil
-# Anchor item id to _deploy_veil_anchor_impl. Registering it here also makes
-# activate_veil_ward's out-of-combat LOCATION-scope raise reachable for the first time —
-# previously only combat held a ward-raising tool, so a Cleric/Druid could never raise
-# an "until dismissed" location ward outside a fight (debt 67ae0f87df29). Net-zero swap:
-# the list stays at net-zero here; M27 story-003 separately tore out play_sound/
-# set_music_state (18->16) — audio derives only from deterministic Resolves and the Stage.
-# M28 story-003 tore out award_xp/award_divine_favor the same way (16->14): XP and favor are
-# granted by the combat-exit and quest-completion Resolves. Authored patron actions
-# use that same favor Resolve.
 EXPLORATION_TOOLS = [
     # World query
     enter_location,
@@ -73,6 +54,7 @@ EXPLORATION_TOOLS = [
     move_player,
     travel,
     transact,
+    rest,
     update_quest,
     update_npc_disposition,
     adjust_faction_reputation,

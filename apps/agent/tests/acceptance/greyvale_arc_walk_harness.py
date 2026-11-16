@@ -39,7 +39,7 @@ class ArcWalk:
         room.local_participant.publish_data.side_effect = self.publish
         self.sd = SessionData(player_id=self.player, location_id=ROAD, room=room)
         self.model = ScenarioModel([])
-        tools = [t for t in EXPLORATION_TOOLS if t.__name__ in {"move_player", "travel"}]
+        tools = [t for t in EXPLORATION_TOOLS if t.__name__ in {"move_player", "travel", "rest"}]
         self.session = AgentSession(llm=self.model, userdata=self.sd)
         await self.session.start(agent or Agent(instructions="Execute the command.", tools=tools))
         harness.stack.callback(lambda: harness.run_sync(self.session.aclose()))

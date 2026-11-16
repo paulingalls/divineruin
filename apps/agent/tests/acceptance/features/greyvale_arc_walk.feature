@@ -66,3 +66,44 @@ Feature: Engine driven Greyvale arrivals
       | accord_forge         | up        | grimjaw_quarters    | out        |
       | millhaven            | west      | yanna_farmhouse     | out        |
       | accord_market_square | northeast | greyvale_south_road | south      |
+
+  Scenario Outline: Rest restores only the present party at a safe inn
+    Given a wounded resting party at <location>
+    When the host requests a <kind> rest
+    Then the resting party and identified client snapshots agree for <kind>
+
+    Examples:
+      | location                   | kind  |
+      | millhaven_inn              | short |
+      | millhaven_inn              | long  |
+      | accord_hearthstone_tavern   | long  |
+
+  Scenario Outline: Rest refuses without changing anyone
+    Given a wounded resting party at millhaven_inn
+    When the host requests rest with <obstacle>
+    Then rest refuses without writes or client updates
+
+    Examples:
+      | obstacle       |
+      | combat         |
+      | null_danger    |
+      | remote_actor   |
+      | street         |
+      | danger         |
+      | tier           |
+      | no_parent      |
+      | two_parents    |
+      | malformed_pool |
+      | missing_hp     |
+
+  Scenario: A lone player rests at the inn
+    Given a wounded resting party at millhaven_inn
+    And the resting player is alone
+    When the host requests a long rest
+    Then the resting party and identified client snapshots agree for long
+
+  Scenario: Two doors to the same settlement identify one anchor
+    Given a wounded resting party at millhaven_inn
+    And two doors connect the inn to the same settlement
+    When the host requests a long rest
+    Then the resting party and identified client snapshots agree for long

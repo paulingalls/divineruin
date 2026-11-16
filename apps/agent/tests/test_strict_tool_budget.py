@@ -36,8 +36,8 @@ def test_agent_within_strict_tool_limit(name, tools):
 
 
 def test_exploration_strict_tool_count():
-    assert len(EXPLORATION_TOOLS) == 15
-    assert len(EXPLORATION_TOOLS) == MAX_STRICT_TOOLS - 5
+    assert len(EXPLORATION_TOOLS) == 16
+    assert len(EXPLORATION_TOOLS) == MAX_STRICT_TOOLS - 4
 
 
 def test_combat_strict_tool_count():
