@@ -7,10 +7,11 @@ remaining distance in one line: a cheap read over records or files, never a test
 run.
 
 ## Run only the tests an edit could break
-Goal: "set up proof for divineruin's tests so you only run the tests an edit could break" (human 2026-11-02, via the proof session).
+Goal: "set up proof for divineruin's tests so you only run the tests an edit could break" (human 2026-11-02, via the proof session). Extended: "if we optimize the test efficiency using proof then we can cut down the hook costs and move faster" (human 2026-11-16): a content or shared-module edit keys only its readers and representatives, and a scheduled fresh super run covers the rest.
 Baseline (main fd77ddfa, 2026-11-02, host load ~20): `bun run test` 14s / 2049 tests; `test:python` 48s / 8836; `test:acceptance:nollm` 618s / 636.
-Measure: python3 -c 'import json,subprocess; from pathlib import Path;  r=json.loads(subprocess.check_output(["bunx","proof","plan","--json"],text=True,stderr=subprocess.DEVNULL)); t={x["task"] for x in r}; t.update({"agent-acceptance"} if any(x.startswith("agent-acceptance:") for x in t) else set()); t.update({"e2e"} if any(x.startswith("e2e:") for x in t) else set()); t.update("hook:"+n for n in ("pre-commit","pre-merge-commit","sprint") if "proof run" in (Path(".githooks")/n).read_text()); w="hook:pre-commit hook:pre-merge-commit hook:sprint bun-scripts bun-shared bun-design-tokens bun-server server-db server-locations-load server-terrain-startup server-invite-store bun-mobile bun-web agent-pytest agent-acceptance e2e".split(); m=[x for x in w if x not in t]; print("distance=%d undeclared: %s" % (len(m), " ".join(m)))'
-Candidates: agent pytest task (uv sandbox venv cost); acceptance split per file; hooks call `proof run --set commit`; migrate remaining milestones from plan.md.
+Measure: python3 scripts/proof_selection_probe.py
+Reading (7393d706, 2026-11-16): distance=468 docs/INDEX.md=31 content/npcs.json=134 scripts/seed_content.py=132 apps/agent/dice.py=133 packages/shared/src/index.ts=38
+Candidates: sprint proof-targeted-selection (super run, docs out of keys, shared-code representatives, content keyed by reader, free land runs land+sprint sets and CI only lints); target distance below 150.
 
 ## Hollow creatures (Phase 7 M7.3)
 Goal: the corruption aura, resonance-on-death and the Tier 4 Hollow behaviours (Choir, Still, Architect) work in play: `docs/milestones/07_bestiary.md` Milestone 7.3 ACs, including the Hollow edge cases (Execution plan Milestone 33, in progress).
