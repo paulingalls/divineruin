@@ -846,6 +846,20 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
+## ops/testflight.md (236 lines)
+
+| Section | Lines | What's There |
+|---|---|---|
+| Tools and evidence | 14-41 |  |
+| Before starting | 42-55 |  |
+| Prepare the checkout | 56-73 |  |
+| Production / TestFlight | 74-160 |  |
+| Internal device build (separate path) | 161-197 |  |
+| Native plugin release review | 198-218 |  |
+| Credential-free generation evidence | 219-236 |  |
+
+---
+
 # Decisions
 
 ## decisions/0001-patron-roster-sot.md (208 lines)

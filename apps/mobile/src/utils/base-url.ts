@@ -4,18 +4,23 @@
  */
 
 const SERVER_PORT = 3001;
-const isDev = typeof __DEV__ !== "undefined" && __DEV__;
 
 export interface ExpoConstants {
-  expoConfig?: { hostUri?: string } | null;
+  expoConfig?: { hostUri?: string; extra?: { apiUrl?: string } } | null;
 }
 
 export function getApiBase(constants?: ExpoConstants): string {
-  const envUrl = String(process.env.EXPO_PUBLIC_API_URL ?? "");
-  if (envUrl) {
-    if (envUrl.startsWith("https://")) return envUrl;
-    if (isDev && envUrl.startsWith("http://")) return envUrl;
-    throw new Error(`EXPO_PUBLIC_API_URL has invalid protocol: ${envUrl.slice(0, 32)}`);
+  const isDev = typeof __DEV__ !== "undefined" && __DEV__;
+  const apiUrl = constants?.expoConfig?.extra?.apiUrl ?? process.env.EXPO_PUBLIC_API_URL;
+  if (apiUrl) {
+    let protocol: string;
+    try {
+      protocol = new URL(apiUrl).protocol;
+    } catch {
+      throw new Error("EXPO_PUBLIC_API_URL must be a valid URL");
+    }
+    if (protocol === "https:" || (isDev && protocol === "http:")) return apiUrl;
+    throw new Error("EXPO_PUBLIC_API_URL must use HTTPS in production");
   }
   if (isDev) {
     const hostUri = constants?.expoConfig?.hostUri;
