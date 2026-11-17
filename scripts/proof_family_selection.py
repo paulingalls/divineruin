@@ -395,6 +395,8 @@ def audit_selection(tasks, inventory, families, sources):
                 continue
             if not selected:
                 raise ValueError(f"orphan {source}: family {family}: missing representative coverage/input")
+            if reaching and (extra := selected - reaching):
+                raise ValueError(f"{source}: family {family}: representatives do not reach source: {sorted(extra)}")
             if len(selected - required) > (0 if required & members else 1):
                 raise ValueError(f"{source}: family {family}: representative cap exceeded {sorted(selected)}")
 
