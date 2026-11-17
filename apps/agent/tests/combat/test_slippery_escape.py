@@ -3,10 +3,10 @@ import dataclasses
 import logging
 
 import pytest
+from adult_mawling_fixture import adult_encounter
 from archetype_abilities_config_fixture import load_fixture_config
 from combat._helpers import _activate, _ctx_at_resolution, _resolve_deps
 from combat._reaction_helpers import _drain, _pause_at, _reaction_packet
-from sample_fixtures import catalog_encounters
 from voice_condition_fixtures import place_actors
 
 import combat_prompts
@@ -16,7 +16,7 @@ import reaction_spend
 import reaction_windows
 from session_data import CombatParticipant
 
-_CATALOG = catalog_encounters()
+_CATALOG = [adult_encounter()]
 
 
 def _grab() -> dict:
