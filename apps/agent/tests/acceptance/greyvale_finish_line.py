@@ -99,7 +99,12 @@ def assert_finish(line, quest, index):
         "decision_made": [cc.get("decision"), *cc.get("options", [])],
     }[kind]
     assert fields and all(value and value in line for value in fields), line
-    if kind not in {"location_reached", "combat_completed", "item_discovered"}:
+    if kind == "decision_made":
+        assert "ask the player aloud" in line
+        for option, details in cc["options"].items():
+            assert details["description"] in line
+            assert f'update_quest(quest_id="{quest["id"]}", new_stage_id={index + 1}, option_id="{option}")' in line
+    if kind not in {"location_reached", "combat_completed", "item_discovered", "decision_made"}:
         assert f'update_quest(quest_id="{quest["id"]}", new_stage_id={index + 1})' in line
     if kind == "knowledge_acquired":
         assert "once the player has learned" in line

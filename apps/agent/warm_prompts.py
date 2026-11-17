@@ -88,7 +88,12 @@ def quest_finish_line(quest: dict) -> str:
     if kind == "npc_interaction":
         return f"once the player speaks with {condition['npc']} about {condition['topic']}, {advance}"
     if kind == "decision_made":
-        return f"once the player decides {condition['decision']} ({', '.join(condition['options'])}), {advance}"
+        options = "; ".join(
+            f'{key}: {option["description"]} — call update_quest(quest_id="{quest["quest_id"]}", '
+            f'new_stage_id={index + 1}, option_id="{key}")'
+            for key, option in condition["options"].items()
+        )
+        return f"ask the player aloud to decide {condition['decision']}; {options}"
     raise ValueError(f"Quest {quest['quest_id']} stage {index}: unknown completion condition {kind!r}")
 
 

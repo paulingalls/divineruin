@@ -98,7 +98,10 @@ class TestContentCrossReferences:
         for quest in quests:
             for stage in quest.get("stages", []):
                 on_complete = stage.get("on_complete", {})
-                for effect in on_complete.get("world_effects", []):
+                effects = list(on_complete.get("world_effects", []))
+                for option in stage.get("completion_conditions", {}).get("options", {}).values():
+                    effects.extend(option["effects"])
+                for effect in effects:
                     m = re.match(r"^(\w+)_disposition\s*[+-]\d+$", effect)
                     if m:
                         shorthand = m.group(1)
@@ -216,11 +219,11 @@ class TestContentIntegrity:
         for npc_id in required:
             assert npc_id in npc_ids, f"Required NPC '{npc_id}' not found"
 
-    def test_greyvale_quest_has_7_stages(self):
+    def test_greyvale_quest_has_8_stages(self):
         quests = _load_json("quests.json")
         greyvale = next((q for q in quests if q["id"] == "greyvale_anomaly"), None)
         assert greyvale is not None, "greyvale_anomaly quest not found"
-        assert len(greyvale["stages"]) == 7, f"Expected 7 stages, got {len(greyvale['stages'])}"
+        assert len(greyvale["stages"]) == 8, f"Expected 8 stages, got {len(greyvale['stages'])}"
 
     def test_all_locations_have_region_type(self):
         locations = _load_json("locations.json")

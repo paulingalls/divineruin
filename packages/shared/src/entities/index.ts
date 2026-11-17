@@ -16,7 +16,7 @@ export type { Recipe, MaterialReq, QualityBand } from "./recipe";
 export type {
   Quest,
   QuestStage,
-  QuestBranch,
+  QuestDecisionOption,
   QuestCompletionCondition,
   QuestReward,
   QuestStageComplete,

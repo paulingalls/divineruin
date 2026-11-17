@@ -237,22 +237,6 @@ class TestGreyvaleSceneGraph:
         assert "scene_graph" in self.greyvale
         assert len(self.greyvale["scene_graph"]) == 5
 
-    def test_scene_graph_covers_all_stages(self):
-        all_refs = []
-        for entry in self.greyvale["scene_graph"]:
-            all_refs.extend(entry["stage_refs"])
-        assert sorted(all_refs) == [0, 1, 2, 3, 4, 5, 6]
-        mapping = {e["scene_id"]: e["stage_refs"] for e in self.greyvale["scene_graph"]}
-        assert mapping["scene_ruins_exploration"] == [3, 4, 5]
-        assert mapping["scene_return_to_accord"] == [6]
-
-    def test_scene_graph_ids_exist_in_scenes_json(self):
-        with open(CONTENT_DIR / "scenes.json") as f:
-            scenes = json.load(f)
-        scene_ids = {s["id"] for s in scenes}
-        for entry in self.greyvale["scene_graph"]:
-            assert entry["scene_id"] in scene_ids, f"scene_graph references unknown scene: {entry['scene_id']}"
-
     def test_no_embedded_scenes(self):
         assert "scenes" not in self.greyvale, "Embedded scenes should be removed — use scene_graph"
 

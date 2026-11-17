@@ -38,7 +38,7 @@ Owner: divineruin clone (taken over from divineruin2, 2026-11-16).
 - [x] Finding the journal fragment puts the item in the inventory
 - [x] The ruins have a fight attached and tuned for a level-2 player — `ruins_mawling_pair` (young mawlings), 16/20-seed bar per archetype at level 2 by both counts (`apps/agent/tests/combat/test_ruins_fight_balance.py`)
 - [x] The inner chamber holds the discovery — `test_greyvale_arc_walk.py`
-- [ ] The artifact choice is applied and persists
+- [x] The artifact choice is applied and persists
 - [ ] Emris can be reached, and the reveal closes the arc on a cliffhanger
 - [ ] Veythar's and Syrath's gifts recharge on rest
 
