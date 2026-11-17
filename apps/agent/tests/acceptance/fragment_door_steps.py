@@ -1,6 +1,8 @@
 """Fragment passage through the authored seal, including the production warm rebuild."""
 
 import os
+from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import AsyncMock, patch
 
 from acceptance.first_blood_walk import FirstBloodWalk
@@ -10,11 +12,14 @@ from pytest_bdd import given, parsers, then, when
 
 import db
 import db_mutations
+import db_mutations_concentration
+import db_mutations_resonance
 import db_queries
 import event_types as E
 from background_process import BackgroundProcess
 from event_bus import GameEvent
 from exploration_agent import ExplorationAgent
+from participant_lifecycle import PartyLifecycle
 from party_state import PartyState
 
 ENTRANCE = "greyvale_ruins_entrance"
@@ -52,6 +57,22 @@ class FragmentDoorWalk(FirstBloodWalk):
         if holding not in {"neither", "seal"}:
             held = [r for r in await db_queries.get_player_inventory(owner) if r["id"] == FRAGMENT]
             assert len(held) == 1 and held[0]["slot_info"]["quantity"] == (0 if holding == "guest_zero" else 1)
+        assert self.sd.room is not None
+        self.lifecycle = PartyLifecycle(
+            self.sd.room,
+            self.sd,
+            queries=db_queries,
+            resonance_mod=db_mutations_resonance,
+            concentration_mod=db_mutations_concentration,
+        )
+        self.sd.multiplayer_owner = cast(Any, SimpleNamespace(lifecycle=self.lifecycle))
+        for pid in self.sd.party.member_ids:
+            self.lifecycle._on_connected(cast(Any, SimpleNamespace(identity=pid)))
+        harness.stack.callback(lambda: harness.run_sync(self.lifecycle.aclose()))
+        if holding == "guest_disconnected":
+            self.lifecycle._on_disconnected(cast(Any, SimpleNamespace(identity=self.guest)))
+            assert not self.lifecycle.is_live(self.guest) and self.sd.party.contains(self.guest)
+        self.holding = holding
         self.marker_before = await db_queries.get_player_quest(self.player, "greyvale_anomaly")
         self.before = await self.inventory()
         self.bg = BackgroundProcess(self.session, self.sd)
@@ -96,6 +117,11 @@ class FragmentDoorWalk(FirstBloodWalk):
         assert await db_queries.get_player_quest(self.player, "greyvale_anomaly") == self.marker_before
         assert await db_queries.get_inventory_item(self.player, "veythar_sealed_artifact") is None
         assert not [e for e in self.events if e["type"] in {E.QUEST_UPDATED, E.INVENTORY_UPDATED}]
+        if self.holding == "guest_disconnected" and not allowed:
+            self.lifecycle._on_connected(cast(Any, SimpleNamespace(identity=self.guest)))
+            self.holding = "guest"
+            await self.attempt()
+            await self.observed(True)
 
 
 @given(parsers.parse("a sealed door party with {holding}"))

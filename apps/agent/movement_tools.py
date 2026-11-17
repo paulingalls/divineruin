@@ -224,7 +224,7 @@ async def _move_player_locked(
     if isinstance(exit_entry, dict) and exit_entry.get("requires"):
         requirement = exit_entry["requires"]
         allowed = False
-        for member_id in tuple(session.party.member_ids):
+        for member_id in session.present_member_ids:
             if await _check_exit_requirement(requirement, member_id, queries=queries):
                 allowed = True
                 break

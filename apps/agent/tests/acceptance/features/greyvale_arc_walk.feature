@@ -164,6 +164,7 @@ Feature: Engine driven Greyvale arrivals
       | seal       | allowed |
       | guest      | allowed |
       | guest_zero | blocked |
+      | guest_disconnected | blocked |
       | nonmember  | blocked |
 
   Scenario Outline: Decisions persist once

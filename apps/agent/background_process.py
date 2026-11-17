@@ -391,7 +391,7 @@ class BackgroundProcess:
                 scene_cache=self._scene_cache or None,
                 training=training or None,
                 first_episode_phase=episode,
-                party_member_ids=tuple(self._sd.party.member_ids),
+                party_member_ids=self._sd.present_member_ids,
             )
         except TRANSIENT_IO_ERRORS:
             logger.error("Warm layer build failed", exc_info=True)
