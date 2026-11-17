@@ -67,6 +67,7 @@ async def _run_end_combat_db(session, cs, outcome, *, save_mock, read_side_effec
     db_mutations_conditions.save_player_conditions = save_mock  # type: ignore[assignment]
     mutations = AsyncMock()
     queries = AsyncMock()
+    queries.get_players_for_update = AsyncMock(side_effect=lambda ids, **kw: {pid: {"player_id": pid} for pid in ids})
     queries.get_player = AsyncMock(return_value={})
     for name, mock in (queries_overrides or {}).items():
         setattr(queries, name, mock)
@@ -100,6 +101,7 @@ async def _run_victory(session, cs, *, rng, drops, gold_by_id=None):
     db_mutations_conditions.save_player_conditions = AsyncMock()  # type: ignore[assignment]
     mutations = AsyncMock()
     queries = AsyncMock()
+    queries.get_players_for_update = AsyncMock(side_effect=lambda ids, **kw: {pid: {"player_id": pid} for pid in ids})
     gold_by_id = gold_by_id or {}
     queries.get_player = AsyncMock(
         side_effect=lambda pid, conn=None, for_update=False: {"gold": gold_by_id.get(pid, 0)}

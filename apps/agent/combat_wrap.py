@@ -11,6 +11,7 @@ import combat_grapple
 import combat_hollow_resonance
 import combat_phase
 import combat_recharge
+import concealment
 import conditions
 import event_types as E
 import fatigue_narration
@@ -121,6 +122,7 @@ async def wrap_phase(
     reach this function, so accepting one would have been a value this function always discarded.
     It comes back because the post-commit in-memory sync reads it.
     """
+    completed_round = state.round_number
     end_data: dict | None = None
     # Beat 3 (narration) is done; Beat 4 (wrap) computes the end-condition,
     # death saves due, and the per-phase Resonance decay signal.
@@ -149,6 +151,7 @@ async def wrap_phase(
 
     ended_outcome = wrap.outcome if (wrap is not None and wrap.combat_ended and wrap.outcome) else None
     if ended_outcome is None:
+        await concealment.expire_gift(state, conn=conn, queries=queries, completed_round=completed_round)
         combat_recharge.recharge_round(state)
         # Combat continues: shed one step of Resonance per phase, per member against their OWN
         # pool (M14 story-004) — never a shared value, never double. WRAP is the canonical combat

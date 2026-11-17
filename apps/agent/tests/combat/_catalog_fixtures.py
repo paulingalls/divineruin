@@ -62,7 +62,11 @@ async def wrap(state):
         sink=MagicMock(emit=AsyncMock()),
         cast_outcome=AbilityCastOutcome(),
         mutations=MagicMock(save_combat_state=AsyncMock()),
-        queries=MagicMock(),
+        queries=MagicMock(
+            get_players_for_update=AsyncMock(
+                return_value={p.id: {"player_id": p.id} for p in state.participants if p.type == "player"}
+            )
+        ),
         save_resolver=MagicMock(),
         resonance_mutations=MagicMock(update_player_resonance=AsyncMock()),
     )

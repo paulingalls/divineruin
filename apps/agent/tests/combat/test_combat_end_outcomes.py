@@ -30,6 +30,7 @@ async def _run_outcome(session, cs, outcome, monkeypatch, *, resurrect_return=No
     db_mutations_conditions.save_player_conditions = AsyncMock()  # type: ignore[assignment]
     mutations = AsyncMock()
     queries = AsyncMock()
+    queries.get_players_for_update = AsyncMock(side_effect=lambda ids, **kw: {pid: {"player_id": pid} for pid in ids})
     queries.get_player = AsyncMock(return_value={"player_id": session.player_id, "gold": 0})
     queries.get_player_inventory = AsyncMock(return_value=[])
     queries.get_inventory_snapshot = snapshot_query([])
