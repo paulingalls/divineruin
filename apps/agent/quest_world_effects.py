@@ -30,7 +30,7 @@ _EFFECT_MORALE_RE = re.compile(r"^(\w+)_morale\s*([+-]\d+)$")
 _EFFECT_REPUTATION_RE = re.compile(r"^(\w+)_reputation\s+(\w+)$")
 
 
-def decision_option(condition: dict, option_id: str | None, session: SessionData) -> dict | None:
+def decision_option(condition: dict, option_id: str | None) -> dict | None:
     if condition.get("type") != "decision_made":
         if option_id is not None:
             raise ToolError("This stage is not a decision; omit option_id.")
@@ -38,10 +38,7 @@ def decision_option(condition: dict, option_id: str | None, session: SessionData
     options = condition["options"]
     if option_id not in options:
         raise ToolError(f"Choose option_id for {condition['decision']}. Valid options: {', '.join(options)}.")
-    selected = options[option_id]
-    if session.companion is None and any(e.startswith("companion_disposition") for e in selected["effects"]):
-        raise ToolError("This option requires a bound companion.")
-    return selected
+    return options[option_id]
 
 
 async def _apply_world_effects(

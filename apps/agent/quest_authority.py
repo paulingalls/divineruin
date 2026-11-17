@@ -103,7 +103,7 @@ async def _advance_one(
         )
 
     condition = stages[current_stage].get("completion_conditions", {}) if current_stage >= 0 else {}
-    selection = decision_option(condition, option_id, session)
+    selection = decision_option(condition, option_id)
 
     if not is_completion and stages[new_stage_id].get("completion_conditions", {}).get("type") == "item_discovered":
         for pid in party_ids:
