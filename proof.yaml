@@ -65,6 +65,7 @@
       "scripts/proof-acceptance-stack.sh",
       "scripts/proof_acceptance_stack.py",
       "scripts/worktree-common.sh",
+      "scripts/worktree-docker.sh",
       "docker-compose.yml",
       "apps/agent/pyproject.toml",
       "apps/agent/uv.lock",
@@ -111,7 +112,42 @@
       "packages/shared/fixtures/**",
       "packages/shared/**/*.{ts,tsx,json}",
       "scripts/worktree-common.sh",
-      "scripts/ensure-db.ts"
+      "scripts/ensure-db.ts",
+      "scripts/proof_runtime_inputs.py",
+      "scripts/worktree-docker.sh",
+      "apps/mobile/assets/sounds/**",
+      "assets/images/**",
+      "assets/audio/**",
+      {
+        "imports-of": "apps/mobile/scripts/emit-audio-registry-keys.ts"
+      },
+      {
+        "imports-of": "apps/mobile/src/__tests__/sound-registry.test.ts"
+      },
+      {
+        "imports-of": "apps/mobile/src/__tests__/use-game-events.parse.test.ts"
+      },
+      {
+        "imports-of": "apps/mobile/test-preload.ts"
+      },
+      {
+        "imports-of": "apps/server/src/index.ts"
+      },
+      {
+        "imports-of": "apps/server/src/session-room-process.fixture.ts"
+      },
+      {
+        "imports-of": "packages/shared/src/entities/encounter.ts"
+      },
+      {
+        "imports-of": "scripts/migrate.ts"
+      },
+      {
+        "imports-of": "scripts/seed_catalogs.ts"
+      },
+      {
+        "imports-of": "scripts/seed_cache.ts"
+      }
     ],
     "links": [
       "node_modules"

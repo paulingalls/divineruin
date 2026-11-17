@@ -3,6 +3,7 @@
 import ast
 import json
 import re
+from functools import cache
 from pathlib import Path
 
 from proof_content_sql import seed_tables, sql_reads
@@ -166,6 +167,16 @@ def matches(patterns, path):
     return any(pattern.fullmatch(path) for pattern in patterns)
 
 
+@cache
+def path_loaded(text):
+    return any(
+        isinstance(n, ast.Call)
+        and isinstance(n.func, ast.Attribute)
+        and n.func.attr in {"spec_from_file_location", "run_path"}
+        for n in ast.walk(ast.parse(text))
+    )
+
+
 def explicit_roots(path, graph):
     local = set()
     text = Path(path).read_text()
@@ -186,7 +197,7 @@ def explicit_roots(path, graph):
         if not roots:
             raise ValueError(f"{path}: unrooted dynamic import: {graph[path]['localReason']}")
         local.update(roots)
-    if "spec_from_file_location" in text or "run_path" in text:
+    if path_loaded(text):
         if path not in PATH_LOADED:
             raise ValueError(f"{path}: undeclared path-loaded Python root")
         local.update(PATH_LOADED[path])
@@ -269,7 +280,11 @@ def task_inventory(acceptance, e2e, graph, families):
     return inventory
 
 
-NON_PYTHON = {"scripts/worktree-common.sh", "scripts/ensure-db.ts"}
+NON_PYTHON = {
+    "scripts/worktree-common.sh",
+    "scripts/worktree-docker.sh",
+    "scripts/ensure-db.ts",
+}
 
 
 def harness_source(source):
