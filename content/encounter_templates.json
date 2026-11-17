@@ -47,21 +47,21 @@
   {
     "id": "ruins_mawling_pair",
     "name": "Mawling Ambush",
-    "description": "Two humanoid shapes step from the shadows — wrong in every proportion. Limbs too long, joints bending backwards. They have no faces, just an opening that radiates a field of dissolution. They reach for things. They grab. They pull.",
+    "description": "Light claws scrape the stone in two places. A pair of young mawlings probe forward on limbs too long for their bodies, feinting and retreating. Their little maws rasp like wet cloth tearing; the air around them tastes of iron.",
     "difficulty": "moderate",
     "enemies": [
       {
         "id": "mawling_1",
-        "creature_id": "hollow_mawling",
+        "creature_id": "hollow_mawling_young",
         "role": "standard"
       },
       {
         "id": "mawling_2",
-        "creature_id": "hollow_mawling",
-        "role": "standard"
+        "creature_id": "hollow_mawling_young",
+        "role": "minion"
       }
     ],
-    "recommended_party_level": 5,
+    "recommended_party_level": 2,
     "scene_placement": {
       "party_start": {
         "x": 0,

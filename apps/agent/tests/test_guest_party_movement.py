@@ -24,6 +24,9 @@ DEST = "greyvale_ruins_inner"
 def _ctx():
     ctx = make_context(location_id=START, party_member_ids=[IDS[1]])
     ctx.userdata.event_bus = MagicMock()
+    owner = MagicMock()
+    owner.lifecycle.is_live.return_value = True
+    ctx.userdata.multiplayer_owner = owner
     ctx.userdata.member_state(IDS[0]).corruption_level = 1
     ctx.userdata.member_state(IDS[1]).corruption_level = 2
     return ctx

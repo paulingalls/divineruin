@@ -113,7 +113,7 @@
       "effect": "Once per short rest, reroll a failed Arcana, History, Investigation, Nature, or Religion check. Take the new result.",
       "trigger": "After you fail one of those knowledge checks.",
       "recharge": "short_rest",
-      "status": "awaits_rest"
+      "status": "active"
     },
     "layer_2_resonance": {
       "name": "Arcane Amplification",
@@ -572,7 +572,7 @@
       "effect": "Become invisible for one round. Attacking or casting a spell ends the invisibility.",
       "trigger": "When you invoke the gift.",
       "recharge": "short_rest",
-      "status": "awaits_rest"
+      "status": "active"
     },
     "layer_2_resonance": {
       "name": "Hidden Casting",

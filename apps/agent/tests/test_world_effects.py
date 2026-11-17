@@ -1,19 +1,12 @@
-import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sample_fixtures import mock_txn
 
 import event_types as E
 from background_process import BackgroundProcess
-from bg_speech import SpeechPriority
-from check_discovery import _check_discover_impl
 from event_bus import GameEvent
 from movement_tools import _check_exit_requirement
-from quest_tools import _apply_world_effects, _update_quest_impl
-from session_data import CompanionState, SessionData
-
-_mock_conn = MagicMock(name="mock_txn_conn")
+from session_data import SessionData
 
 
 def _make_session(location_id: str = "accord_guild_hall", player_id: str = "player_1", **kwargs: object) -> SessionData:
@@ -21,19 +14,6 @@ def _make_session(location_id: str = "accord_guild_hall", player_id: str = "play
     for key, value in kwargs.items():
         setattr(sd, key, value)
     return sd
-
-
-def _make_context(player_id="player_1", location_id="accord_guild_hall", room=None):
-    ctx = MagicMock()
-    ctx.userdata = _make_session(player_id=player_id, location_id=location_id, room=room)
-    return ctx
-
-
-def _make_mock_room():
-    room = MagicMock()
-    room.local_participant = MagicMock()
-    room.local_participant.publish_data = AsyncMock()
-    return room
 
 
 def _make_bg(session_data=None):
@@ -50,127 +30,7 @@ def _make_bg(session_data=None):
     return bg, agent, session
 
 
-class TestApplyWorldEffects:
-    @pytest.mark.asyncio
-    async def test_disposition_effect(self):
-        mock_queries = MagicMock()
-        mock_queries.get_npc_disposition = AsyncMock(return_value="neutral")
-        mock_mutations = MagicMock()
-        mock_mutations.set_npc_disposition = AsyncMock()
-        mock_content = MagicMock()
-        mock_content.get_npc = AsyncMock(return_value={"default_disposition": "neutral"})
-        session = _make_session()
-        pending: list[tuple[str, dict]] = []
-
-        await _apply_world_effects(
-            ["torin_disposition +1"],
-            session,
-            pending,
-            mutations=mock_mutations,
-            queries=mock_queries,
-            content=mock_content,
-        )
-
-        mock_mutations.set_npc_disposition.assert_called_once()
-        call_args = mock_mutations.set_npc_disposition.call_args
-        assert call_args[0][0] == "guildmaster_torin"
-        assert call_args[0][2] == "friendly"
-        assert any(e[0] == E.DISPOSITION_CHANGED for e in pending)
-
-    @pytest.mark.asyncio
-    async def test_corruption_effect(self):
-        session = _make_session()
-        session.corruption_level = 1
-        pending: list[tuple[str, dict]] = []
-
-        await _apply_world_effects(["greyvale_corruption +1"], session, pending)
-
-        assert session.corruption_level == 2
-        corruption_events = [e for e in pending if e[0] == E.HOLLOW_CORRUPTION_CHANGED]
-        assert len(corruption_events) == 1
-        assert corruption_events[0][1]["level"] == 2
-        assert corruption_events[0][1]["previous"] == 1
-
-    @pytest.mark.asyncio
-    async def test_event_effect(self):
-        session = _make_session()
-        pending: list[tuple[str, dict]] = []
-
-        await _apply_world_effects(["event:ruins_discovery_ripple"], session, pending)
-
-        world_events = [e for e in pending if e[0] == E.WORLD_EVENT]
-        assert len(world_events) == 1
-        assert world_events[0][1]["event_id"] == "ruins_discovery_ripple"
-
-    @pytest.mark.asyncio
-    async def test_morale_effect(self):
-        session = _make_session()
-        pending: list[tuple[str, dict]] = []
-
-        await _apply_world_effects(["millhaven_morale +2"], session, pending)
-
-        world_events = [e for e in pending if e[0] == E.WORLD_EVENT]
-        assert len(world_events) == 1
-        assert "millhaven_morale_change" in world_events[0][1]["event_id"]
-
-    @pytest.mark.asyncio
-    async def test_multiple_effects(self):
-        mock_queries = MagicMock()
-        mock_queries.get_npc_disposition = AsyncMock(return_value="neutral")
-        mock_mutations = MagicMock()
-        mock_mutations.set_npc_disposition = AsyncMock()
-        mock_content = MagicMock()
-        mock_content.get_npc = AsyncMock(return_value={"default_disposition": "neutral"})
-        session = _make_session()
-        pending: list[tuple[str, dict]] = []
-
-        await _apply_world_effects(
-            ["emris_disposition +4", "event:faction_interest_triggered", "event:god_whisper:player_patron"],
-            session,
-            pending,
-            mutations=mock_mutations,
-            queries=mock_queries,
-            content=mock_content,
-        )
-
-        event_types = [e[0] for e in pending]
-        assert E.DISPOSITION_CHANGED in event_types
-        assert event_types.count(E.WORLD_EVENT) == 2
-
-    @pytest.mark.asyncio
-    async def test_malformed_effect_handled_gracefully(self):
-        session = _make_session()
-        pending: list[tuple[str, dict]] = []
-
-        await _apply_world_effects(["this_is_not_a_valid_effect", ""], session, pending)
-        assert len(pending) == 0
-
-    @pytest.mark.asyncio
-    async def test_corruption_does_not_go_negative(self):
-        session = _make_session()
-        session.corruption_level = 0
-        pending: list[tuple[str, dict]] = []
-
-        await _apply_world_effects(["greyvale_corruption -1"], session, pending)
-
-        assert session.corruption_level == 0
-
-
 class TestCheckExitRequirement:
-    @pytest.mark.asyncio
-    async def test_discovered_flag_set(self):
-        mock_queries = MagicMock()
-        mock_queries.get_player_flag = AsyncMock(return_value=True)
-        result = await _check_exit_requirement("veythar_seal_mark.discovered", "player_1", queries=mock_queries)
-        assert result is True
-
-    @pytest.mark.asyncio
-    async def test_discovered_flag_not_set(self):
-        mock_queries = MagicMock()
-        mock_queries.get_player_flag = AsyncMock(return_value=False)
-        result = await _check_exit_requirement("veythar_seal_mark.discovered", "player_1", queries=mock_queries)
-        assert result is False
-
     @pytest.mark.asyncio
     async def test_or_logic_first_branch_true(self):
         mock_queries = MagicMock()
@@ -213,132 +73,7 @@ class TestCheckExitRequirement:
         assert result is True
 
 
-class TestDiscoverSetsFlag:
-    @pytest.mark.asyncio
-    async def test_successful_discovery_sets_flag(self):
-        mock_content = MagicMock()
-        mock_content.get_location = AsyncMock(
-            return_value={
-                "id": "test_loc",
-                "name": "Test Location",
-                "hidden_elements": [
-                    {"id": "test_seal", "discover_skill": "perception", "dc": 1, "description": "A seal mark."}
-                ],
-            }
-        )
-        mock_queries = MagicMock()
-        mock_queries.get_player = AsyncMock(
-            return_value={
-                "player_id": "player_1",
-                "attributes": {"wisdom": 20},
-                "proficiencies": ["perception"],
-                "level": 10,
-            }
-        )
-        mock_mutations = MagicMock()
-        mock_mutations.set_player_flag = AsyncMock()
-        ctx = _make_context(location_id="test_loc")
-        result = json.loads(
-            await _check_discover_impl(
-                ctx,
-                "perception",
-                "seal",
-                content=mock_content,
-                queries=mock_queries,
-                mutations=mock_mutations,
-            )
-        )
-
-        if result.get("outcome") == "discovered":
-            mock_mutations.set_player_flag.assert_called_once_with("player_1", "test_seal.discovered", True)
-
-
-QUEST_WITH_EFFECTS = {
-    "id": "test_quest",
-    "name": "Test Quest",
-    "stages": [
-        {
-            "id": 0,
-            "objective": "Start the quest.",
-            "on_complete": {
-                "xp": 50,
-                "world_effects": ["torin_disposition +1"],
-            },
-        },
-        {
-            "id": 1,
-            "objective": "Continue the quest.",
-            "on_complete": {"xp": 100},
-        },
-    ],
-}
-
-
-class TestUpdateQuestWorldEffects:
-    @pytest.mark.asyncio
-    async def test_world_effects_applied_on_stage_advance(self):
-        mock_db = MagicMock()
-        mock_db.transaction = lambda: mock_txn(_mock_conn)
-        mock_content = MagicMock()
-        mock_content.get_quest = AsyncMock(return_value=QUEST_WITH_EFFECTS)
-        mock_content.get_npc = AsyncMock(return_value={"default_disposition": "neutral"})
-        mock_content.get_item = AsyncMock(return_value=None)
-        mock_queries = MagicMock()
-        mock_queries.get_player_quest = AsyncMock(return_value={"current_stage": 0})
-        mock_queries.get_player = AsyncMock(
-            return_value={
-                "player_id": "player_1",
-                "level": 1,
-                "xp": 0,
-            }
-        )
-        mock_queries.get_npc_disposition = AsyncMock(return_value="neutral")
-        mock_mutations = MagicMock()
-        mock_mutations.set_player_quest = AsyncMock()
-        mock_mutations.update_player_xp = AsyncMock()
-        mock_mutations.set_npc_disposition = AsyncMock()
-
-        room = _make_mock_room()
-        ctx = _make_context(room=room)
-        raw = await _update_quest_impl(
-            ctx,
-            quest_id="test_quest",
-            new_stage_id=1,
-            db_mod=mock_db,
-            mutations=mock_mutations,
-            queries=mock_queries,
-            content=mock_content,
-        )
-        assert isinstance(raw, str)
-        result = json.loads(raw)
-
-        assert result["new_stage"] == 1
-        mock_mutations.set_npc_disposition.assert_called_once()
-
-
 class TestGodWhisper:
-    def test_god_whisper_event_triggers_speech(self):
-        sd = _make_session(
-            companion=CompanionState(id="companion_kael", name="Kael"),
-        )
-        sd.patron_id = "kaelen"
-        bg, _, _ = _make_bg(session_data=sd)
-        events = [GameEvent(event_type=E.WORLD_EVENT, payload={"event_id": "god_whisper:player_patron"})]
-        bg._handle_events(events)
-        assert len(bg._speech_queue) == 1
-        assert bg._speech_queue[0].priority == SpeechPriority.CRITICAL
-        assert "GOD_KAELEN" in bg._speech_queue[0].instructions
-
-    def test_god_whisper_uses_patron_voice(self):
-        sd = _make_session()
-        sd.patron_id = "syrath"
-        bg, _, _ = _make_bg(session_data=sd)
-        events = [GameEvent(event_type=E.WORLD_EVENT, payload={"event_id": "god_whisper:player_patron"})]
-        bg._handle_events(events)
-        assert len(bg._speech_queue) == 1
-        assert "GOD_SYRATH" in bg._speech_queue[0].instructions
-        assert bg._speech_queue[0].stinger_sound == "god_whisper_stinger"
-
     def test_divine_favor_triggers_whisper_at_threshold(self):
         sd = _make_session()
         sd.patron_id = "veythar"

@@ -33,14 +33,14 @@ Shipped in v0.37.0 (divineruin2 clone, sprint `greyvale-millhaven`). The fight's
 
 ## Session 3 — The Ruins and the Reveal
 
-Owner: divineruin2 clone.
+Owner: divineruin clone (taken over from divineruin2, 2026-11-16).
 
-- [ ] Finding the journal fragment puts the item in the inventory
-- [ ] The ruins have a fight attached and tuned for a level-2 player
-- [ ] The inner chamber holds the discovery
-- [ ] The artifact choice is applied and persists
-- [ ] Emris can be reached, and the reveal closes the arc on a cliffhanger
-- [ ] Veythar's and Syrath's gifts recharge on rest
+- [x] Finding the journal fragment puts the item in the inventory
+- [x] The ruins have a fight attached and tuned for a level-2 player — `ruins_mawling_pair` (young mawlings), 16/20-seed bar per archetype at level 2 by both counts (`apps/agent/tests/combat/test_ruins_fight_balance.py`)
+- [x] The inner chamber holds the discovery — `test_greyvale_arc_walk.py`
+- [x] The artifact choice is applied and persists
+- [x] Emris can be reached, and the reveal closes the arc on a cliffhanger — Emris outline in `test_greyvale_arc_walk.py` (met at `accord_dockside` and `emris_study`; quest closes once, the player's patron whispers, none for Unbound)
+- [x] Veythar's and Syrath's gifts recharge on rest
 
 ## Session Edges
 

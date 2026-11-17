@@ -96,6 +96,7 @@ def _resolve_deps(*, focus_by_id=None):
         }
 
     queries = MagicMock()
+    queries.get_players_for_update = AsyncMock(side_effect=lambda ids, **kw: {pid: {"player_id": pid} for pid in ids})
     queries.get_player = AsyncMock(side_effect=_get_player)
     queries.get_player_inventory = AsyncMock(return_value=[])
     break_mod = MagicMock()

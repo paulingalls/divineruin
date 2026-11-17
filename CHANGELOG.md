@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.43.0 — 2026-11-17
+
+- The Greyvale arc plays to its end. Finding the journal fragment puts it in the inventory, even when the item was found before its stage came up.
+- The ruins have a fight tuned for a level-2 player: a pair of young mawlings, a new tier-1 Hollow creature. Winning it opens the way on.
+- The Veil fragment from session 1 opens the sealed inner door. Any party member holding it lets the party through, so a warrior is no longer locked out by an Arcana check.
+- Walking into the inner chamber reveals the sealed artifact, with no roll to miss.
+- Keeping the artifact secret or showing the companion is a decision the DM records once. Its effects apply in the same transaction and are remembered. Millhaven's defence choice uses the same path, and an option effect that does not parse is refused.
+- Bringing the find to Emris closes the arc. The closing beat is spoken, and the player's own patron whispers; an Unbound player hears none. Effects that nothing consumed were removed.
+- Veythar followers can reroll a failed knowledge check once, and Syrath followers can vanish for a round in combat. Each gift returns after a short rest.
+
 ## 0.42.1 — 2026-11-17
 
 - Proof generation no longer fails in a checkout that holds a Git-ignored virtualenv (such as `scripts/audio/.venv-sa3`). In a Git checkout the import graph lists only tracked and unignored files; Proof's sandbox keeps scanning its tracked tree.

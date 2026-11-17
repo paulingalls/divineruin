@@ -15,16 +15,10 @@
         "The Hollow creatures emerge: one Rend leading two Drifts",
         "Combat begins — the creatures make sounds that have no source"
       ],
-      "sound_effects": [
-        "ambient_silence_hollow",
-        "hollow_growl",
-        "hollow_whisper"
-      ],
+      "sound_effects": ["ambient_silence_hollow", "hollow_growl", "hollow_whisper"],
       "encounter_id": "hollow_patrol_greyvale"
     },
-    "world_effects": [
-      "start_combat:hollow_patrol_greyvale"
-    ],
+    "world_effects": ["start_combat:hollow_patrol_greyvale"],
     "once": true
   },
   {
@@ -55,7 +49,7 @@
     "id": "faction_interest_triggered",
     "name": "Competing Interests",
     "type": "world_event",
-    "trigger": "quest:greyvale_anomaly:stage == 5 AND player_location STARTS_WITH accord_",
+    "trigger": "quest:greyvale_anomaly:stage == 8 AND player_location STARTS_WITH accord_",
     "description": "Word has spread about what the player found in the ruins. Different factions want the artifact, the information, or both. The player must navigate competing interests.",
     "dm_instructions": {
       "mood": "political pressure, the sense of being watched and wanted",
@@ -68,16 +62,14 @@
         "The player's choices here affect faction reputation permanently"
       ]
     },
-    "world_effects": [
-      "set_flag:faction_interest:active"
-    ],
+    "world_effects": ["set_flag:faction_interest:active"],
     "once": true
   },
   {
     "id": "god_whisper_patron",
     "name": "Divine Recognition",
     "type": "god_whisper",
-    "trigger": "quest:greyvale_anomaly:stage == 5 AND event:faction_interest_triggered:completed",
+    "trigger": "quest:greyvale_anomaly:stage == 8 AND event:faction_interest_triggered:completed",
     "description": "The player's patron deity speaks directly to them about the discovery. The god's perspective reframes what the player found — and hints at a larger significance.",
     "dm_instructions": {
       "mood": "awe, weight of divine attention, the world holding its breath",
@@ -89,15 +81,9 @@
         "Silence returns like a wave breaking. The world resumes.",
         "The companion looks shaken but says nothing unless spoken to"
       ],
-      "sound_effects": [
-        "god_whisper_stinger",
-        "ambient_silence_divine"
-      ]
+      "sound_effects": ["god_whisper_stinger", "ambient_silence_divine"]
     },
-    "world_effects": [
-      "award_divine_favor:10",
-      "set_flag:god_whisper_greyvale:delivered"
-    ],
+    "world_effects": ["award_divine_favor:10", "set_flag:god_whisper_greyvale:delivered"],
     "once": true
   },
   {
@@ -114,15 +100,9 @@
         "The fortification choices from Session 2 async matter now",
         "The player must return and participate in a coordinated defense"
       ],
-      "sound_effects": [
-        "alarm_bell_distant",
-        "crowd_panic"
-      ]
+      "sound_effects": ["alarm_bell_distant", "crowd_panic"]
     },
-    "world_effects": [
-      "set_flag:millhaven_siege:active",
-      "set_flag:greyvale_corruption:+2"
-    ],
+    "world_effects": ["set_flag:millhaven_siege:active", "set_flag:greyvale_corruption:+2"],
     "once": true
   }
 ]

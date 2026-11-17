@@ -95,6 +95,9 @@ class TestConcentrationBreakE2E:
         mutations_mod.save_combat_state = AsyncMock()
         mutations_mod.delete_combat_state = AsyncMock()
         queries_mod = MagicMock()
+        queries_mod.get_players_for_update = AsyncMock(
+            side_effect=lambda ids, **kw: {pid: {"player_id": pid} for pid in ids}
+        )
         queries_mod.get_player_inventory = AsyncMock(return_value=[])
         queries_mod.get_player = AsyncMock(side_effect=lambda pid, **kw: {"player_id": pid})
         resonance_mutations = MagicMock()

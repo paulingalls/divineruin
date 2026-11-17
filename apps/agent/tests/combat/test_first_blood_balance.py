@@ -16,9 +16,11 @@ async def test_first_blood_balance(dev_db_pool, monkeypatch):
     monkeypatch.setattr(db, "_cache_get", AsyncMock(return_value=None))
     monkeypatch.setattr(db, "_cache_set", AsyncMock())
     started = perf_counter()
-    counts = await win_counts(dev_db_pool)
+    counts, standing = await win_counts(dev_db_pool)
     print(f"80 fights: {perf_counter() - started:.3f}s")
     assert set(counts) == {"warrior", "mage", "rogue", "cleric"}
+    assert set(standing) == set(counts)
+    assert all(0 <= standing[key] <= counts[key] <= 20 for key in counts)
     assert all(count >= 16 for count in counts.values()), counts
     templates = json.loads((CONTENT_ROOT / "content/encounter_templates.json").read_text())
     template = next(t for t in templates if t["id"] == PATROL)

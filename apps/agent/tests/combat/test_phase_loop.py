@@ -26,6 +26,7 @@ def _resolve_deps(damage=3):
     mutations/queries/concentration mocks the packet path touches, and a no-op db_mod
     so the per-phase transaction wrapper runs without a real connection."""
     queries = MagicMock(get_active_player_quests=AsyncMock(return_value=[]))
+    queries.get_players_for_update = AsyncMock(side_effect=lambda ids, **kw: {pid: {"player_id": pid} for pid in ids})
     queries.get_player_inventory = AsyncMock(return_value=[])  # no equipped items
     queries.get_inventory_snapshot = snapshot_query([])
     # The ability Focus pre-validation fetches the player for_update; a sufficient-Focus default so

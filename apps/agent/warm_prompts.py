@@ -84,11 +84,16 @@ def quest_finish_line(quest: dict) -> str:
             f'encounter_id="{condition["encounter"]}"); finish with outcome {condition["outcome"]}'
         )
     if kind == "item_discovered":
-        return f"once the player discovers {', '.join(condition['items'])} at {condition['location']}, {advance}"
+        return f"completed automatically when the player discovers {', '.join(condition['items'])} at {condition['location']}"
     if kind == "npc_interaction":
         return f"once the player speaks with {condition['npc']} about {condition['topic']}, {advance}"
     if kind == "decision_made":
-        return f"once the player decides {condition['decision']} ({', '.join(condition['options'])}), {advance}"
+        options = "; ".join(
+            f'{key}: {option["description"]} — call update_quest(quest_id="{quest["quest_id"]}", '
+            f'new_stage_id={index + 1}, option_id="{key}")'
+            for key, option in condition["options"].items()
+        )
+        return f"ask the player aloud to decide {condition['decision']}; {options}"
     raise ValueError(f"Quest {quest['quest_id']} stage {index}: unknown completion condition {kind!r}")
 
 
@@ -203,6 +208,8 @@ async def build_warm_layer(
     scene_cache: dict[str, dict] | None = None,
     training: list[dict] | None = None,
     first_episode_phase: bool | int | str | None = None,
+    party_member_ids: tuple[str, ...] | None = None,
+    quest_decisions: dict[str, dict[str, str]] | None = None,
 ) -> str:
     import asyncio
 
@@ -212,6 +219,17 @@ async def build_warm_layer(
     from tool_support import _location_for_narration, _npc_summary, _resolve_ambient_sounds, apply_time_conditions
 
     sections: list[str] = []
+    for quest_id, decisions in (quest_decisions or {}).items():
+        for decision, option in decisions.items():
+            fact = f"REMEMBERED DECISION — {quest_id}.{decision} = {option}"
+            if quest_id == "greyvale_anomaly" and decision == "artifact_choice":
+                if option == "keep_artifact":
+                    fact += (
+                        ". The companion does not know about the artifact; do not disclose it through companion speech."
+                    )
+                elif option == "show_companion":
+                    fact += ". The companion knows about the artifact."
+            sections.append(fact)
 
     # Use pre-fetched data when available, otherwise query
     if location is None or npcs_raw is None:
@@ -264,10 +282,7 @@ async def build_warm_layer(
         # promote to go; key_features are check targets. Hidden elements are never listed — they
         # surface via discovery (the hot layer).
         #
-        # Reuse movement's single canonical evaluator so the affordance and the move gate can't
-        # drift: flag branches resolve against player flags, skill_check:* branches stay locked
-        # until their flag is set. Only locations with gated exits pay the per-branch flag read,
-        # and warm rebuilds are event-driven (not per-turn), so the cost is negligible.
+        # Match movement's present-party gate; other warm facts still belong to the host.
         from movement_tools import _check_exit_requirement
 
         exits = narr.get("exits", {})
@@ -275,7 +290,13 @@ async def build_warm_layer(
         locked_exits: list[tuple[str, dict]] = []
         for direction, exit_entry in exits.items():
             requires = exit_entry.get("requires")
-            if requires and not await _check_exit_requirement(requires, player_id):
+            allowed = not requires
+            if requires:
+                for member_id in party_member_ids if party_member_ids is not None else (player_id,):
+                    if await _check_exit_requirement(requires, member_id):
+                        allowed = True
+                        break
+            if not allowed:
                 locked_exits.append((direction, exit_entry))
             else:
                 go_exits.append(f"{direction} → {exit_entry.get('destination', 'unknown')}")

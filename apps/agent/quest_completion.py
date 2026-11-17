@@ -8,8 +8,6 @@ def finish_quest(session: SessionData, pending: PendingQuest) -> dict:
     response = pending.response
     quest_id = response["quest_id"]
     quest_name = response["quest_name"]
-    for pid, level in pending.corruption.items():
-        session.member_state(pid).corruption_level = level
     for note in pending.notes:
         session.record_event(note)
     for reward in response["rewards_applied"]:

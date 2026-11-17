@@ -31,6 +31,22 @@ def _load_ids(filename: str, id_field: str = "id") -> set[str]:
 
 
 class TestContentCrossReferences:
+    def test_exit_item_references_exist(self):
+        locations = json.loads((CONTENT_DIR / "locations.json").read_text())
+        items = json.loads((CONTENT_DIR / "items.json").read_text())
+        assert locations and items
+        item_ids = {row["id"] for row in items}
+        visited = set()
+        for location in locations:
+            for direction, exit in location.get("exits", {}).items():
+                for branch in exit.get("requires", "").split("||"):
+                    branch = branch.strip()
+                    if branch.startswith("item:"):
+                        item = branch.removeprefix("item:")
+                        assert item in item_ids, f"{location['id']}.{direction}: unknown item '{item}'"
+                        visited.add((location["id"], direction, item))
+        assert ("greyvale_ruins_entrance", "deeper", "greyvale_veil_fragment") in visited
+
     def test_encounter_ids_referenced_by_quests_exist(self):
         encounter_ids = _load_ids("encounter_templates.json")
         quests = _load_json("quests.json")
@@ -82,7 +98,10 @@ class TestContentCrossReferences:
         for quest in quests:
             for stage in quest.get("stages", []):
                 on_complete = stage.get("on_complete", {})
-                for effect in on_complete.get("world_effects", []):
+                effects = list(on_complete.get("world_effects", []))
+                for option in stage.get("completion_conditions", {}).get("options", {}).values():
+                    effects.extend(option["effects"])
+                for effect in effects:
                     m = re.match(r"^(\w+)_disposition\s*[+-]\d+$", effect)
                     if m:
                         shorthand = m.group(1)
@@ -200,11 +219,11 @@ class TestContentIntegrity:
         for npc_id in required:
             assert npc_id in npc_ids, f"Required NPC '{npc_id}' not found"
 
-    def test_greyvale_quest_has_5_stages(self):
+    def test_greyvale_quest_has_8_stages(self):
         quests = _load_json("quests.json")
         greyvale = next((q for q in quests if q["id"] == "greyvale_anomaly"), None)
         assert greyvale is not None, "greyvale_anomaly quest not found"
-        assert len(greyvale["stages"]) == 5, f"Expected 5 stages, got {len(greyvale['stages'])}"
+        assert len(greyvale["stages"]) == 8, f"Expected 8 stages, got {len(greyvale['stages'])}"
 
     def test_all_locations_have_region_type(self):
         locations = _load_json("locations.json")

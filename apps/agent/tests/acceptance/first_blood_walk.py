@@ -167,8 +167,6 @@ class FirstBloodWalk(ArcWalk):
         bones = sum(i.get("quantity", 1) for i in inventory if i["id"] == "hollow_bone_fragment")
         assert bones == 1 + sum(i["quantity"] for i in result["loot"] if i["item_id"] == "hollow_bone_fragment")
         assert await db_queries.get_npc_disposition("elder_yanna", self.player) == "friendly"
-        morale = [e for e in self.events if e["type"] == E.WORLD_EVENT and e["event_id"] == "millhaven_morale_change"]
-        assert len(morale) == 1 and morale[0]["delta"] == 2
         quest = json.loads(await self.pool.fetchval("SELECT data FROM quests WHERE id=$1", QUEST))
         (update,) = result["quest_updates"]
         assert update["objective"] == quest["stages"][3]["objective"]
@@ -178,7 +176,6 @@ class FirstBloodWalk(ArcWalk):
         assert isinstance(agent, ExplorationAgent)
         assert result["scene_transition"]["region"] == agent._agent_type == "dungeon"
         assert player["gold"] == 15 + result["currency_gold"]
-        assert sum("morale shifted" in str(e) for e in self.sd.recent_events) == 1
 
     async def replay_refused(self):
         before = await self.snapshot()

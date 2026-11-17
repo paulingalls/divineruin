@@ -208,6 +208,7 @@ class TestCombatEndDefeatWiring:
         cs = _make_combat_state(player_fallen=True)
         session = SessionData(player_id="player_1", location_id="battlefield_danger", room=None)
         queries = MagicMock(
+            get_players_for_update=AsyncMock(side_effect=lambda ids, **kw: {pid: {"player_id": pid} for pid in ids}),
             get_player=AsyncMock(return_value=_player()),
             get_player_inventory=AsyncMock(return_value=[]),
             get_inventory_snapshot=snapshot_query([]),

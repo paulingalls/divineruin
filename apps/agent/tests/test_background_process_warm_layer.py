@@ -14,6 +14,7 @@ from session_data import CompanionState, SessionData
 def _mock_db_for_warm_layer(quests=None, location=None, npcs=None, training=None):
     """Mock the DB calls used by _rebuild_warm_layer."""
     with (
+        patch("background_process.db_queries.get_player_quest_decisions", new_callable=AsyncMock, return_value={}),
         patch("background_process.db_queries.get_player_flag_value", new_callable=AsyncMock, return_value=None),
         patch("background_process.db_queries.get_player", new_callable=AsyncMock, return_value=None),
         patch("background_process.db_activity_queries.get_player_activities", new_callable=AsyncMock, return_value=[]),
@@ -118,6 +119,8 @@ class TestWarmLayerRebuild:
                         scene_cache=None,
                         training=None,
                         first_episode_phase=None,
+                        party_member_ids=mock_sd.present_member_ids,
+                        quest_decisions={},
                     )
                     mock_agent.update_instructions.assert_awaited_once_with("full prompt")
                     assert bp._last_warm_layer == "warm layer content"

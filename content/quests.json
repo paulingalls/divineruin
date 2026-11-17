@@ -56,7 +56,7 @@
               "quantity": 1
             }
           ],
-          "world_effects": ["millhaven_morale +2", "yanna_disposition +2"],
+          "world_effects": ["yanna_disposition +2"],
           "narrative_beat": "The creatures are dead — or gone, or dispersed, you're not sure anything that wrong can really die. At the incursion site, you notice something. The residual energy doesn't match normal Hollow signatures. It's structured. Almost deliberate."
         }
       },
@@ -72,26 +72,69 @@
         },
         "on_complete": {
           "xp": 200,
+          "world_effects": [],
+          "narrative_beat": "You hold the journal page. Its precise notation describes resonance thinning and a controlled aperture. A final annotation points to the sealed inner door; the hum behind it answers your breathing."
+        }
+      },
+      {
+        "id": "stage_ruins_fight",
+        "name": "The Hush Beyond",
+        "objective": "Defeat the young mawlings in the ruins and reach the sealed inner door.",
+        "target_location_id": "greyvale_ruins_entrance",
+        "completion_conditions": {
+          "type": "combat_completed",
+          "encounter": "ruins_mawling_pair",
+          "outcome": "victory"
+        },
+        "on_complete": {
+          "xp": 100,
+          "world_effects": [],
+          "narrative_beat": "The last wet rasp dies. In the hush after the fight, your breathing sounds too loud. Ahead, the inner door stands sealed; something beyond it gives one low answering hum."
+        }
+      },
+      {
+        "id": "stage_inner_chamber_artifact",
+        "name": "The Sealed Chamber",
+        "objective": "Enter the sealed inner chamber and take the warm tablet from its pedestal.",
+        "target_location_id": "greyvale_ruins_inner",
+        "completion_conditions": {
+          "type": "location_reached",
+          "location": "greyvale_ruins_inner"
+        },
+        "on_complete": {
+          "xp": 0,
+          "world_effects": [],
           "rewards": [
             {
               "item": "veythar_sealed_artifact",
               "quantity": 1
             }
           ],
-          "world_effects": ["greyvale_corruption +1", "event:ruins_discovery_ripple"],
-          "narrative_beat": "You hold the journal page. The notation is academic, precise. You can't read all of it, but some phrases are clear: 'resonance thinning,' 'controlled aperture,' 'acceptable threshold.' Someone was doing this on purpose. Your companion is very quiet."
-        },
-        "branches": {
-          "keep_artifact": {
-            "description": "Keep the artifact. Don't show it to anyone yet.",
-            "effects": ["player_has_veythar_artifact: true"],
-            "next_stage": "stage_5_return"
-          },
-          "show_companion": {
-            "description": "Show the artifact to your companion immediately.",
-            "effects": ["companion_knows_artifact: true", "companion_disposition +3"],
-            "next_stage": "stage_5_return"
+          "narrative_beat": "Your palm fits the pedestal's hollow, and a warm sealed tablet rises into it. The journal called this a controlled aperture: someone did this on purpose. Your companion falls silent."
+        }
+      },
+      {
+        "id": "stage_artifact_choice",
+        "name": "A Secret to Keep",
+        "objective": "Decide whether to keep the artifact secret or show it to your companion.",
+        "target_location_id": "greyvale_ruins_inner",
+        "completion_conditions": {
+          "type": "decision_made",
+          "decision": "artifact_choice",
+          "options": {
+            "keep_artifact": {
+              "description": "Keep the artifact. Don't show it to anyone yet.",
+              "effects": ["set_flag:player_has_veythar_artifact:true"]
+            },
+            "show_companion": {
+              "description": "Show the artifact to your companion immediately.",
+              "effects": ["set_flag:companion_knows_artifact:true", "companion_disposition +3"]
+            }
           }
+        },
+        "on_complete": {
+          "xp": 0,
+          "world_effects": []
         }
       },
       {
@@ -109,11 +152,9 @@
           "favor": 5,
           "world_effects": [
             "emris_disposition +4",
-            "event:faction_interest_triggered",
             "event:god_whisper:player_patron",
             "accord_guild_reputation completed_faction_quest"
-          ],
-          "narrative_beat": "Emris takes the journal page with trembling hands. They read it once. Then again. Their face goes through recognition, confusion, and something that looks a lot like fear. 'Where did you find this?' they ask, very quietly. 'Where exactly?'"
+          ]
         }
       }
     ],
@@ -132,11 +173,11 @@
       },
       {
         "scene_id": "scene_ruins_exploration",
-        "stage_refs": [3]
+        "stage_refs": [3, 4, 5, 6]
       },
       {
         "scene_id": "scene_return_to_accord",
-        "stage_refs": [4]
+        "stage_refs": [7]
       }
     ],
     "failure_conditions": {
@@ -192,9 +233,9 @@
         "objective": "Convince Elder Yanna to show you Aldric's stone.",
         "target_location_id": "millhaven",
         "completion_conditions": {
-          "type": "item_discovered",
-          "items": ["aldric_strange_stone"],
-          "location": "millhaven"
+          "type": "npc_interaction",
+          "npc": "elder_yanna",
+          "topic": "Aldric's stone"
         },
         "on_complete": {
           "xp": 100,
@@ -244,29 +285,40 @@
         "completion_conditions": {
           "type": "decision_made",
           "decision": "fortification_choice",
-          "options": ["north_barricade", "watchtower", "evacuation_supplies"]
+          "options": {
+            "north_barricade": {
+              "description": "Build barricades on the north side to slow any attack.",
+              "effects": [
+                "set_flag:millhaven_fortification:north_barricade",
+                "set_flag:millhaven_defense:3",
+                "set_flag:millhaven_warning:0",
+                "set_flag:millhaven_evacuation:0"
+              ]
+            },
+            "watchtower": {
+              "description": "Build a watchtower for early warning.",
+              "effects": [
+                "set_flag:millhaven_fortification:watchtower",
+                "set_flag:millhaven_defense:0",
+                "set_flag:millhaven_warning:3",
+                "set_flag:millhaven_evacuation:0"
+              ]
+            },
+            "evacuation_supplies": {
+              "description": "Prepare evacuation supplies and escape routes.",
+              "effects": [
+                "set_flag:millhaven_fortification:evacuation_supplies",
+                "set_flag:millhaven_defense:0",
+                "set_flag:millhaven_warning:0",
+                "set_flag:millhaven_evacuation:3"
+              ]
+            }
+          }
         },
         "on_complete": {
           "xp": 100,
-          "world_effects": ["set_flag:millhaven_fortification:player_choice"],
+          "world_effects": [],
           "narrative_beat": "The townsfolk work through the night. By dawn, it's done — not much, but something. A line drawn in dirt and hope."
-        },
-        "branches": {
-          "north_barricade": {
-            "description": "Build barricades on the north side to slow any attack.",
-            "effects": ["millhaven_defense:+3", "millhaven_warning:0", "millhaven_evacuation:0"],
-            "next_stage": null
-          },
-          "watchtower": {
-            "description": "Build a watchtower for early warning.",
-            "effects": ["millhaven_defense:0", "millhaven_warning:+3", "millhaven_evacuation:0"],
-            "next_stage": null
-          },
-          "evacuation_supplies": {
-            "description": "Prepare evacuation supplies and escape routes.",
-            "effects": ["millhaven_defense:0", "millhaven_warning:0", "millhaven_evacuation:+3"],
-            "next_stage": null
-          }
         }
       }
     ],
@@ -279,7 +331,7 @@
     "type": "side",
     "description": "Emris has been studying artifacts from Aelindra for thirty years. The Greyvale discovery changes everything — the notation matches their missing mentor's work. Helping Emris may unlock deeper understanding of what happened at the ruins, and what Veythar was doing.",
     "giver": "scholar_emris",
-    "prerequisite": "quest:greyvale_anomaly:stage >= 5",
+    "prerequisite": "quest:greyvale_anomaly:stage >= 8",
     "stages": [
       {
         "id": "stage_1_assist_research",

@@ -1,6 +1,7 @@
 """Quest tools — quest progression and world effects."""
 
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from livekit.agents.llm import ToolError
@@ -15,7 +16,7 @@ import event_types as E
 import milestones
 import progression_tools
 from combat_events import EventSink
-from quest_world_effects import _apply_world_effects
+from quest_world_effects import _apply_world_effects, decision_option
 from session_data import SessionData
 from tool_support import _validate_id
 
@@ -26,7 +27,6 @@ logger = logging.getLogger("divineruin.tools")
 class PendingQuest:
     response: dict
     events: list[tuple[str, dict]]
-    corruption: dict[str, int]
     notes: list[str]
     party_ids: tuple[str, ...]
     item_recipients: list[tuple[str, str]]
@@ -39,10 +39,11 @@ def _is_unpaid_for_stage(player_quest: dict | None, new_stage_id: int) -> bool:
     return current_stage < new_stage_id
 
 
-async def advance_quest_db(
+async def _advance_one(
     session: SessionData,
     quest_id: str,
     new_stage_id: int,
+    option_id: str | None = None,
     *,
     conn,
     mutations=db_mutations,
@@ -51,7 +52,7 @@ async def advance_quest_db(
     milestones_mod=milestones,
     activities=db_activity_queries,
     divine_mutations=db_mutations_divine,
-) -> "PendingQuest":
+) -> tuple[PendingQuest, dict]:
     logger.info("update_quest called: quest_id=%s, new_stage_id=%d", quest_id, new_stage_id)
     _validate_id(quest_id, "quest_id")
     actor_id = session.acting_player_id
@@ -75,7 +76,6 @@ async def advance_quest_db(
     paid_ids: set[str] = set()
     xp_paid_ids: set[str] = set()
     favor_paid_ids: set[str] = set()
-    pending_corruption: dict[str, int] = {}
     pending_notes: list[str] = []
 
     session.validate_acting_player(actor_id)
@@ -99,11 +99,32 @@ async def advance_quest_db(
             f"Cannot skip stages. Current: {current_stage}, requested: {new_stage_id}, next valid: {current_stage + 1}."
         )
 
+    condition = stages[current_stage].get("completion_conditions", {}) if current_stage >= 0 else {}
+    selection = decision_option(condition, option_id)
+
+    if not is_completion and stages[new_stage_id].get("completion_conditions", {}).get("type") == "item_discovered":
+        for pid in party_ids:
+            await queries.get_player(pid, conn=conn, for_update=True)
+
     if current_stage >= 0:
         completing_stage = stages[current_stage]
         on_complete = completing_stage.get("on_complete", {})
 
         eligible_ids = [pid for pid in party_ids if _is_unpaid_for_stage(party_quests[pid], new_stage_id)]
+
+        if selection is not None:
+            await _apply_world_effects(
+                selection["effects"],
+                session,
+                pending_events,
+                conn=conn,
+                mutations=mutations,
+                queries=queries,
+                content=content,
+                pending_notes=pending_notes,
+                party_ids=tuple(eligible_ids),
+            )
+            paid_ids.update(eligible_ids)
 
         xp_reward = on_complete.get("xp", 0)
         if xp_reward > 0:
@@ -186,7 +207,6 @@ async def advance_quest_db(
                 mutations=mutations,
                 queries=queries,
                 content=content,
-                pending_corruption=pending_corruption,
                 pending_notes=pending_notes,
                 party_ids=tuple(party_ids),
             )
@@ -201,7 +221,13 @@ async def advance_quest_db(
     session.validate_acting_player(actor_id)
     for pid in sorted(paid_ids | {primary_id}):
         if _is_unpaid_for_stage(party_quests[pid], new_stage_id):
-            await mutations.set_player_quest(pid, quest_id, quest_data, conn=conn)
+            decisions = dict((party_quests[pid] or {}).get("decisions", {}))
+            if selection is not None:
+                decisions[condition["decision"]] = option_id
+            data = dict(quest_data)
+            if decisions:
+                data["decisions"] = decisions
+            await mutations.set_player_quest(pid, quest_id, data, conn=conn)
 
     quest_updated_payload: dict = {
         "quest_id": quest_id,
@@ -228,20 +254,105 @@ async def advance_quest_db(
     }
     if current_stage >= 0 and (narrative_beat := on_complete.get("narrative_beat")):
         response["narrative_beat"] = narrative_beat
+    if is_completion:
+        for entry in quest.get("scene_graph", []):
+            if current_stage in entry["stage_refs"]:
+                scene = await content.get_scene(entry["scene_id"])
+                if scene is None:
+                    raise ValueError(f"Missing completion scene: {entry['scene_id']}")
+                if scene.get("aftermath"):
+                    response["narrative_beat"] = scene["aftermath"]
+                break
     logger.info("update_quest result: %s → stage %d, %d rewards", quest_id, new_stage_id, len(rewards_applied))
 
+    await _scene_transition(response, quest, current_stage, content)
+    return PendingQuest(response, pending_events, pending_notes, tuple(party_ids), item_recipients, outcome), quest
+
+
+async def _scene_transition(response: dict, quest: dict, original_stage: int, content) -> None:
     from scene_tools import detect_scene_transition
 
-    if not is_completion and quest.get("scene_graph"):
-        scene_ids = [e["scene_id"] for e in quest["scene_graph"]]
-        scene_cache = await content.get_scenes_batch(scene_ids)
-        transition = detect_scene_transition(scene_cache, quest, current_stage, new_stage_id)
+    response.pop("scene_transition", None)
+    if not response["completed"] and quest.get("scene_graph"):
+        scene_cache = await content.get_scenes_batch([e["scene_id"] for e in quest["scene_graph"]])
+        transition = detect_scene_transition(scene_cache, quest, original_stage, response["new_stage"])
         if transition and transition["region_changed"]:
             response["scene_transition"] = {
                 "from": transition["old_scene"]["name"],
                 "to": transition["new_scene"]["name"],
                 "region": transition["new_scene"]["region_type"],
             }
-    return PendingQuest(
-        response, pending_events, pending_corruption, pending_notes, tuple(party_ids), item_recipients, outcome
+
+
+async def item_condition_satisfied(condition: dict, party_ids: Iterable[str], *, conn, queries=db_queries) -> bool:
+    items = condition.get("items", [])
+    if not items:
+        raise ValueError("item_discovered requires at least one item")
+    for pid in party_ids:
+        player = await queries.get_player(pid, conn=conn)
+        if player is None or not all(player.get("flags", {}).get(f"{item}.discovered") for item in items):
+            continue
+        held = [await queries.get_inventory_item(pid, item, conn=conn) for item in items]
+        if all(row and row.get("quantity", 0) > 0 for row in held):
+            return True
+    return False
+
+
+async def advance_quest_db(
+    session: SessionData,
+    quest_id: str,
+    new_stage_id: int,
+    option_id: str | None = None,
+    *,
+    conn,
+    mutations=db_mutations,
+    queries=db_queries,
+    content=db_content_queries,
+    milestones_mod=milestones,
+    activities=db_activity_queries,
+    divine_mutations=db_mutations_divine,
+) -> PendingQuest:
+    deps = dict(
+        mutations=mutations,
+        queries=queries,
+        content=content,
+        milestones_mod=milestones_mod,
+        activities=activities,
+        divine_mutations=divine_mutations,
     )
+    pending, quest = await _advance_one(session, quest_id, new_stage_id, option_id, conn=conn, **deps)
+    stages = quest["stages"]
+    while pending.response["new_stage"] < len(stages):
+        index = pending.response["new_stage"]
+        condition = stages[index].get("completion_conditions", {})
+        if condition.get("type") != "item_discovered":
+            break
+        if not await item_condition_satisfied(condition, pending.party_ids, conn=conn, queries=queries):
+            break
+        following, _ = await _advance_one(session, quest_id, index + 1, None, conn=conn, **deps)
+        following.response["rewards_applied"] = (
+            pending.response["rewards_applied"] + following.response["rewards_applied"]
+        )
+        beats = [p.response["narrative_beat"] for p in (pending, following) if p.response.get("narrative_beat")]
+        if beats:
+            following.response["narrative_beat"] = "\n".join(beats)
+        if pending.xp:
+            if following.xp is None:
+                following.xp = pending.xp
+            else:
+                for name in ("xp_granted", "summary_xp_granted"):
+                    setattr(following.xp, name, getattr(following.xp, name) + getattr(pending.xp, name))
+                for pid, share in pending.xp.granted_by_player.items():
+                    following.xp.granted_by_player[pid] = following.xp.granted_by_player.get(pid, 0) + share
+                following.xp.milestone_grants = pending.xp.milestone_grants + following.xp.milestone_grants
+                following.xp.specialization_fork |= pending.xp.specialization_fork
+                following.xp.leveled_up |= pending.xp.leveled_up
+        following.response["milestone_grants"] = following.xp.milestone_grants if following.xp else []
+        following.response["specialization_fork"] = following.xp.specialization_fork if following.xp else False
+        following.events = [(t, p) for t, p in pending.events if t != E.QUEST_UPDATED] + following.events
+        following.notes = pending.notes + following.notes
+        following.item_recipients = pending.item_recipients + following.item_recipients
+        pending = following
+    if pending.response["new_stage"] != new_stage_id:
+        await _scene_transition(pending.response, quest, new_stage_id - 1, content)
+    return pending

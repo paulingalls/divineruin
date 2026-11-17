@@ -138,16 +138,16 @@ async def test_unresolvable_terrain_starts_nothing(reset_db_pool, terrain, exist
 @pytest.mark.parametrize(
     "skills,expected",
     [
-        ({}, {"stalker_claws": 1, "wolf_fangs": 2}),
+        ({}, {"stalker_claws": 2, "wolf_fangs": 2}),
         (
             {"survival": "trained"},
-            {"stalker_pelt": 1, "stalker_claws": 1, "wolf_pelt": 1, "wolf_fangs": 2, "wolf_meat": 2},
+            {"stalker_pelt": 1, "stalker_claws": 2, "wolf_pelt": 1, "wolf_fangs": 2, "wolf_meat": 2},
         ),
         (
             {"survival": "expert", "crafting": "expert"},
             {
                 "stalker_pelt": 1,
-                "stalker_claws": 1,
+                "stalker_claws": 2,
                 "hollow_residue_t1": 1,
                 "wolf_pelt": 1,
                 "wolf_fangs": 1,
@@ -173,14 +173,15 @@ async def test_generated_victory_uses_saved_loot_tables_and_gates(reset_db_pool,
                     skill,
                     tier,
                 )
-        with patch("combat_entry.Random", return_value=Random(9)):
+        # Keep beast harvesting, Hollow residue and humanoid drops in one generated victory.
+        with patch("combat_entry.Random", return_value=Random(29316)):
             result = await h.command("enter_mode", {"mode": "combat", "difficulty": "standard"})
         h.roster = result["participants"]
         state = await h.reload()
         enemies = [p for p in state.participants if p.type == "enemy"]
         assert [(p.creature_id, p.role, p.loot_table_id) for p in enemies] == [
-            ("thornveld_stalker", "minion", "loot_thornveld_stalker"),
-            ("hollow_shadeling", "standard", "loot_hollow_drift"),
+            ("thornveld_stalker", "standard", "loot_thornveld_stalker"),
+            ("hollow_shadeling", "minion", "loot_hollow_drift"),
             ("grey_wolf", "standard", "loot_grey_wolf"),
             ("bandit", "minion", "loot_bandit"),
         ]

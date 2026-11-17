@@ -121,6 +121,9 @@ async def _run(session, cs, outcome="victory", *, players_by_id=None, conn=None,
 
     mutations = AsyncMock()
     queries = AsyncMock()
+    queries.get_players_for_update = AsyncMock(
+        side_effect=lambda ids, **kw: {pid: row for pid in ids if (row := _row(pid)) is not None}
+    )
     queries.get_player = AsyncMock(side_effect=lambda pid, conn=None, for_update=False: _row(pid))
     queries.get_player_inventory = AsyncMock(return_value=[])
     queries.get_inventory_snapshot = snapshot_query([])

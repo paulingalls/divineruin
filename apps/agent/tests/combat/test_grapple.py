@@ -1,13 +1,13 @@
 import copy
 import dataclasses
 import json
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from adult_mawling_fixture import adult_encounter, adult_template
 from combat._helpers import _ctx_at_resolution, _make_combat_state, _resolve_deps, _resolve_round
 from livekit.agents.llm import ToolError
-from sample_fixtures import catalog_encounters, make_context
+from sample_fixtures import make_context
 from voice_condition_fixtures import place_actors
 
 import combat_conditions_persist
@@ -21,11 +21,9 @@ from declaration_payloads import ManeuverDecl
 from declarations import ManeuverIntent
 from tests.combat.test_start_combat import _make_start_combat_mocks
 
-_CATALOG = catalog_encounters()
-
 
 def _encounter() -> dict:
-    return copy.deepcopy(next(row for row in _CATALOG if row["id"] == "ruins_mawling_pair"))
+    return adult_encounter()
 
 
 def _mawlings() -> list[dict]:
@@ -59,11 +57,7 @@ async def test_combat_start_validation_refuses_grapple_without_integer_escape_dc
     else:
         grab["escape_dc"] = bad_dc
     mutations, queries, content = _make_start_combat_mocks()
-    content.get_encounter_template.return_value = next(
-        row
-        for row in json.loads((Path(__file__).resolve().parents[4] / "content/encounter_templates.json").read_text())
-        if row["id"] == encounter["id"]
-    )
+    content.get_encounter_template.return_value = adult_template()
 
     async def load(creature_id, **kwargs):
         return next(enemy for enemy in encounter["enemies"] if enemy["id"] == kwargs["enemy_id"])

@@ -55,7 +55,7 @@ class TestFilterKnowledge:
             "free": ["public"],
             "quest_triggered": {
                 "quest": "greyvale_anomaly",
-                "stage": 4,
+                "stage": 5,
                 "reveals": "something secret",
             },
         }

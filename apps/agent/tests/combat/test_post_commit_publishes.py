@@ -94,6 +94,7 @@ async def test_a_failing_sink_flush_does_not_swallow_the_resonance_pushes():
     mutations.save_combat_state = AsyncMock()
     mutations.update_player_hp = AsyncMock()
     queries = MagicMock()
+    queries.get_players_for_update = AsyncMock(side_effect=lambda ids, **kw: {pid: {"player_id": pid} for pid in ids})
     queries.get_player_inventory = AsyncMock(return_value=[])
     queries.get_player = AsyncMock(return_value={"player_id": "player_1", "focus": {"current": 10, "max": 10}})
     break_mod = MagicMock()

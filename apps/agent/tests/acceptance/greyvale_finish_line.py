@@ -99,11 +99,16 @@ def assert_finish(line, quest, index):
         "decision_made": [cc.get("decision"), *cc.get("options", [])],
     }[kind]
     assert fields and all(value and value in line for value in fields), line
-    if kind not in {"location_reached", "combat_completed"}:
+    if kind == "decision_made":
+        assert "ask the player aloud" in line
+        for option, details in cc["options"].items():
+            assert details["description"] in line
+            assert f'update_quest(quest_id="{quest["id"]}", new_stage_id={index + 1}, option_id="{option}")' in line
+    if kind not in {"location_reached", "combat_completed", "item_discovered", "decision_made"}:
         assert f'update_quest(quest_id="{quest["id"]}", new_stage_id={index + 1})' in line
     if kind == "knowledge_acquired":
         assert "once the player has learned" in line
-    if kind in {"location_reached", "combat_completed"}:
+    if kind in {"location_reached", "combat_completed", "item_discovered"}:
         assert "update_quest" not in line
     if kind == "location_reached":
         assert "arrival" in line
@@ -112,15 +117,15 @@ def assert_finish(line, quest, index):
         assert "when the fight begins" in line
 
 
-async def enter_surfaced_combat(arc, line):
+async def enter_surfaced_combat(arc, line, stage=2, location="greyvale_wilderness_north"):
     encounter = line.split('encounter_id="', 1)[1].split('"', 1)[0]
-    arc.sd.location_id = "greyvale_wilderness_north"
+    arc.sd.location_id = location
     await arc.pool.execute(
         "UPDATE players SET data=jsonb_set(data, '{location_id}', to_jsonb($2::text)) WHERE player_id=$1",
         arc.player,
         arc.sd.location_id,
     )
-    assert await refresh(arc, QUEST, 2) == line
+    assert await refresh(arc, QUEST, stage) == line
     arc.model.commands.append(("enter_mode", {"mode": "combat", "encounter_id": encounter}))
     with arc.sd._bind_authenticated_actor(arc.player, 1, lambda *_: None):
         await arc.session.run(user_input="The fight begins. Execute the command.")

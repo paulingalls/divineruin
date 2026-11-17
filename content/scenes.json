@@ -118,7 +118,7 @@
         "completion_condition": "Player discovers the journal fragment or artifact",
         "companion_hints": [
           "Your companion points to a cleared area. 'Someone was working here. Recently. Look at the dust patterns.'",
-          "Your companion says urgently: 'There — on that pedestal. Do you see it?'"
+          "Your companion says urgently: 'Listen — behind that sealed door. Can you hear the hum?'"
         ],
         "hint_delay_seconds": 60
       },
@@ -138,22 +138,23 @@
     "name": "Return to Accord",
     "type": "quest",
     "region_type": "city",
-    "instructions": "The player is returning to the Accord of Tides with the journal fragment. The journey back should feel reflective — the weight of discovery settling in. Once at the Accord, guide the player toward Emris the Aelindran scholar. The revelation scene with Emris should be quiet and devastating — recognition, confusion, fear. End the quest with more questions than answers.",
+    "instructions": "The player is returning to the Accord of Tides holding the sealed tablet and the journal fragment. Respect the remembered artifact choice: the companion only knows about the tablet if the player showed it. The journey back should feel reflective — the weight of discovery settling in. Once at the Accord, guide the player toward Emris the Aelindran scholar. The revelation scene with Emris should be quiet and devastating — recognition, confusion, fear. End the quest with more questions than answers.",
+    "aftermath": "The tablet's hum drops a note. Paper rustles, then stops in Emris's hands. [SCHOLAR_EMRIS, fearful]: \"This notation. My mentor used it. But Greyvale was only one site.\" Somewhere under the floor, something answers the tablet.",
     "beats": [
       {
         "id": "beat_journey_home",
         "description": "The player travels back to the Accord, processing what they found.",
         "completion_condition": "Player begins the return journey",
         "companion_hints": [
-          "Your companion is quiet for a while, then says: 'We need to get this to someone who can read it. Back to the Accord.'",
+          "Your companion is quiet for a while, then says: 'We need someone who can read the journal. Back to the Accord.'",
           "Your companion mentions: 'The Aelindran scholars in the Dockside Quarter — if anyone can read old academic notation, it's them.'"
         ],
         "hint_delay_seconds": 45
       },
       {
         "id": "beat_emris_revelation",
-        "description": "Emris reads the journal fragment and reacts with recognition and fear.",
-        "completion_condition": "Player delivers the journal fragment to Emris",
+        "description": "Emris compares the held tablet with the journal notation. Recognition turns to fear.",
+        "completion_condition": "Player brings the sealed tablet and journal evidence to Emris",
         "companion_hints": [
           "Your companion says: 'Emris — the Aelindran archivist in the Dockside Quarter. They'd know what this means.'",
           "Your companion says directly: 'We should find Emris. Now.'"

@@ -3,6 +3,9 @@
 import json
 
 import pytest
+from acceptance.artifact_choice_steps import *  # noqa: F403
+from acceptance.emris_reveal_steps import *  # noqa: F403
+from acceptance.fragment_door_steps import *  # noqa: F403
 from acceptance.greyvale_arc_walk_harness import ROAD, TOWN, ArcWalk
 from acceptance.greyvale_finish_line import (
     assert_finish,
@@ -12,10 +15,25 @@ from acceptance.greyvale_finish_line import (
     scene_hint,
     start_warm,
 )
+from acceptance.journal_steps import *  # noqa: F403
 from acceptance.rest_walk import *  # noqa: F403
+from acceptance.ruins_fight_steps import *  # noqa: F403
 from pytest_bdd import given, parsers, scenarios, then, when
 
 scenarios("features/greyvale_arc_walk.feature")
+
+
+@pytest.fixture(autouse=True)
+def current_arc_content(harness):
+    import os
+
+    import db
+
+    async def invalidate():
+        prefix = os.environ.get("CONTENT_CACHE_PREFIX", "")
+        await (await db.get_redis()).delete(prefix + "quest:greyvale_anomaly", prefix + "scene:scene_return_to_accord")
+
+    harness.run_sync(invalidate())
 
 
 @given(parsers.parse("a road quest holder using {tool}"))
@@ -40,7 +58,7 @@ def repeats(harness):
         arc = harness.state["arc"]
         await arc.arrive(ROAD)
         await arc.unchanged_arrival()
-        for stage, status in [(1, "active"), (None, "active"), (6, "completed")]:
+        for stage, status in [(1, "active"), (None, "active"), (8, "completed")]:
             other = await ArcWalk().start(harness, arc.tool, stage, status)
             await other.unchanged_arrival()
 
@@ -110,17 +128,32 @@ def corpus_session(harness):
 def finish_lines(harness):
     async def check():
         arc = harness.state["arc"]
-        combat_line = None
+        combat_lines = {}
         for quest in quest_corpus():
             seeded = json.loads(await arc.pool.fetchval("SELECT data FROM quests WHERE id=$1", quest["id"]))
-            assert seeded["stages"] == quest["stages"]
+            assert seeded == quest
             for index in range(len(quest["stages"])):
                 line = await refresh(arc, quest["id"], index)
                 assert_finish(line, quest, index)
-                if quest["id"] == "greyvale_anomaly" and index == 2:
-                    combat_line = line
-        assert combat_line is not None
-        await enter_surfaced_combat(arc, combat_line)
+                if (
+                    quest["id"] == "greyvale_anomaly"
+                    and quest["stages"][index]["completion_conditions"]["type"] == "combat_completed"
+                ):
+                    combat_lines[index] = line
+        assert set(combat_lines) == {2, 4}
+        for index, encounter, location in [
+            (2, "hollow_patrol_greyvale", "greyvale_wilderness_north"),
+            (4, "ruins_mawling_pair", "greyvale_ruins_entrance"),
+        ]:
+            assert encounter in combat_lines[index]
+            await enter_surfaced_combat(arc, combat_lines[index], index, location)
+            state = arc.sd.combat_state
+            assert state is not None
+            await arc.pool.execute("DELETE FROM combat_instances WHERE combat_id=$1", state.combat_id)
+            arc.sd.combat_state = None
+            from exploration_agent import ExplorationAgent
+
+            arc.session.update_agent(ExplorationAgent())
 
     harness.run_sync(check())
 

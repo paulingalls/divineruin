@@ -157,7 +157,7 @@
       },
       "deeper": {
         "destination": "greyvale_ruins_inner",
-        "requires": "veythar_seal_mark.discovered || skill_check:arcana:14"
+        "requires": "veythar_seal_mark.discovered || skill_check:arcana:14 || item:greyvale_veil_fragment"
       }
     },
     "conditions": {
@@ -413,11 +413,11 @@
     "region_type": "dungeon",
     "terrain": "underground",
     "tags": ["dungeon", "ancient", "aelindran", "dangerous", "sealed"],
-    "description": "Past the sealed door, the hum becomes a chord. The chamber is circular, walls covered in Aelindran notation so dense it looks like texture. In the center, a pedestal holds nothing \u2014 but the air above it shimmers, and the notation on the walls pulses faintly in response to your presence.",
+    "description": "The hum opens into a chord beyond the sealed door. Close air smells of warm stone. Dense Aelindran notation covers the circular chamber, and the central pedestal is worn into a palm-sized hollow.",
     "atmosphere": "charged, alien, watching",
     "key_features": [
       "walls covered floor to ceiling in Aelindran academic notation",
-      "a central pedestal with a visible distortion in the air above it",
+      "a central pedestal worn into a warm, palm-sized hollow",
       "scorch marks on the floor in a precise geometric pattern"
     ],
     "exits": {

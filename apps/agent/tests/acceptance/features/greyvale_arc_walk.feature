@@ -23,6 +23,10 @@ Feature: Engine driven Greyvale arrivals
       | 0     |
       | 1     |
       | 2     |
+      | 4     |
+      | 5     |
+      | 6     |
+      | 7     |
 
   Scenario: Every authored finish line reaches the DM
     Given a warm session walking the complete quest corpus
@@ -107,3 +111,103 @@ Feature: Engine driven Greyvale arrivals
     And two doors connect the inn to the same settlement
     When the host requests a long rest
     Then the resting party and identified client snapshots agree for long
+
+  Scenario: Finding the journal puts it in hand and finishes the search
+    Given a journal search at the ruins
+    When the player searches the research station
+    Then the journal and its quest rewards arrive once
+
+  Scenario Outline: Entering a previously searched item stage
+    Given an earlier journal discovery with <holding>
+    When the quest enters the journal stage
+    Then its final stage is <stage>
+
+    Examples:
+      | holding   | stage |
+      | retained  | 4     |
+      | removed   | 3     |
+      | unflagged | 3     |
+
+  Scenario: Item stages require all items from one party member
+    Given a private search requiring two items
+    Then one find cannot finish it and the second finishes it once
+
+  Scenario: Entering satisfied item stages chains to the next objective
+    Given a journal search at the ruins
+    Then starting an already satisfied item quest pays each stage once
+
+  Scenario: A continuous road walk reaches Emris after resuming
+    Given a new road traveler who will finish the ruins through end_combat
+    And the continuous traveler follows Kaelen
+    When they walk through Millhaven and the journal into the ruins fight
+    Then the level three party wins and the ruins quest reward arrives once
+    And the road traveler resumes with the tablet and closes every authored effect
+
+  Scenario Outline: A continuous road walk wins the ruins fight once
+    Given a new road traveler who will finish the ruins through <route>
+    When they walk through Millhaven and the journal into the ruins fight
+    Then the level three party wins and the ruins quest reward arrives once
+    Examples:
+      | route         |
+      | resolve_phase |
+
+  Scenario Outline: A fragment opens the seal for the present party
+    Given a sealed door party with <holding>
+    When the host asks to pass the inner seal
+    Then the seal passage is <outcome>
+
+    Examples:
+      | holding    | outcome |
+      | host       | allowed |
+      | tainted    | allowed |
+      | neither    | blocked |
+      | seal       | allowed |
+      | guest      | allowed |
+      | guest_zero | blocked |
+      | guest_disconnected | blocked |
+      | nonmember  | blocked |
+
+  Scenario Outline: Decisions persist once
+    Given a decision session for <quest> at <stage>
+    Then choosing <option> persists once and survives later advances
+    Examples:
+      | quest             | stage | option              |
+      | greyvale_anomaly  | 6     | keep_artifact       |
+      | greyvale_anomaly  | 6     | show_companion      |
+      | defend_millhaven  | 1     | north_barricade     |
+      | defend_millhaven  | 1     | watchtower          |
+      | defend_millhaven  | 1     | evacuation_supplies |
+
+  Scenario Outline: Invalid decisions leave the database unchanged
+    Given a decision session for greyvale_anomaly at 6
+    When the decision receives <option>
+    Examples:
+      | option     |
+      | omitted    |
+      | unknown    |
+      | watchtower |
+
+  Scenario: Existing callers can omit the option on ordinary stages
+    Given a decision session for defend_millhaven at 0
+    Then an ordinary stage accepts omission and refuses an unexpected option
+
+  Scenario: Showing requires the bound companion
+    Given a decision session for greyvale_anomaly at 6
+    Then showing without a bound companion refuses without writes
+
+  Scenario Outline: Party decisions respect each recipient's marker
+    Given a decision session for greyvale_anomaly at 6
+    Then a <progress> second member keeps independent decision history
+    Examples:
+      | progress |
+      | eligible |
+      | advanced |
+
+  Scenario Outline: Emris closes the artifact arc for every patron path
+    Given an artifact bearer of <patron> meeting Emris at <location>
+    Then Emris closes the quest once and the player's patron alone whispers
+    Examples:
+      | patron | location       |
+      | kaelen | accord_dockside |
+      | syrath | emris_study    |
+      | none   | accord_dockside |

@@ -23,7 +23,6 @@ async def test_fragment_fight_balance(dev_db_pool, monkeypatch):
     report = calculate_encounter_budget(template["enemies"], 1)
     assert not any(report[key] for key in ("all_minion", "over_budget", "too_many_bosses"))
     print(f"fragment budget={report}")
-    monkeypatch.setattr(harness, "PATROL", "fragment_shadeling")
-    counts = await harness.win_counts(dev_db_pool)
-    assert set(counts) == set(harness.ARCHETYPES)
+    counts, standing = await harness.win_counts(dev_db_pool, encounter_id="fragment_shadeling")
+    assert set(counts) == set(standing) == set(harness.ARCHETYPES)
     assert all(count >= 16 for count in counts.values()), counts

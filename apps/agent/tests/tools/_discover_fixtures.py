@@ -101,6 +101,7 @@ DISCOVER_PLAYER = {
 
 def _make_discover_mocks(location=LOCATION_WITH_HIDDEN, player=DISCOVER_PLAYER):
     mock_content = MagicMock()
+    mock_content.get_item = AsyncMock(return_value=None)
     mock_content.get_location = AsyncMock(return_value=location)
     mock_queries = MagicMock()
     mock_queries.get_player = AsyncMock(return_value=player)

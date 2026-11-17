@@ -23,6 +23,7 @@ from datetime import UTC, datetime
 
 import asyncpg
 
+import concealment
 import db
 import db_mutations_concentration
 import db_mutations_divine
@@ -121,6 +122,8 @@ async def hydrate_session_state(
     persisted — a harmless 0).
     """
     player_id = session.primary_player_id
+    if not session.in_combat:
+        await concealment.expire_orphaned_gift(player, conn=conn)
     res = await resonance_mutations_mod.read_player_resonance(player_id, conn=conn)
     # The ward is read from the LOCATION the session starts in, never from the player row (M24).
     # A fresh session is never in combat, so a location scope is the only one that can cover it.

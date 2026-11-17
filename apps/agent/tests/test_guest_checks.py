@@ -192,7 +192,7 @@ async def test_guest_discover_writes_own_fact_and_host_can_search(inspired):
         "name": "Hall",
         "hidden_elements": [{"id": "secret", "discover_skill": "perception", "dc": 10, "description": "Door"}],
     }
-    content = MagicMock(get_location=AsyncMock(return_value=location))
+    content = MagicMock(get_item=AsyncMock(return_value=None), get_location=AsyncMock(return_value=location))
     mutations = MagicMock(
         set_player_flag=AsyncMock(side_effect=lambda pid, key, value, **_kw: rows[pid]["flags"].__setitem__(key, value))
     )
@@ -325,9 +325,10 @@ async def test_guest_discover_failed_roll_consumes_inspired():
     rows["player_2"]["conditions"] = apply_condition([], "inspired")
     ctx, queries = setup(rows)
     content = MagicMock(
+        get_item=AsyncMock(return_value=None),
         get_location=AsyncMock(
             return_value={"hidden_elements": [{"id": "secret", "discover_skill": "perception", "dc": 19}]}
-        )
+        ),
     )
     mutations = MagicMock(set_player_flag=AsyncMock())
     conditions_mutations = MagicMock(remove_player_conditions=AsyncMock())
@@ -371,9 +372,10 @@ async def test_guest_discover_reads_own_flags():
     rows["player_1"]["flags"] = {"secret.discovered": True}
     ctx, queries = setup(rows)
     content = MagicMock(
+        get_item=AsyncMock(return_value=None),
         get_location=AsyncMock(
             return_value={"hidden_elements": [{"id": "secret", "discover_skill": "perception", "dc": 10}]}
-        )
+        ),
     )
     mutations = MagicMock(set_player_flag=AsyncMock())
     with bind(ctx), fixed_roll():
@@ -414,6 +416,7 @@ STALE_CASES = [
 
 def call_check(mode, d20, ctx, queries, db_writes):
     content = MagicMock(
+        get_item=AsyncMock(return_value=None),
         get_location=AsyncMock(
             return_value={
                 "region": "greyvale",
