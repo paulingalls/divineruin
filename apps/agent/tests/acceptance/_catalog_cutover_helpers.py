@@ -68,16 +68,30 @@ async def started(reset_db_pool, monkeypatch):
     monkeypatch.setattr(db, "_cache_set", AsyncMock())
     pool = await db.get_pool()
     sessions = []
+    private_ids = []
 
     async def start(encounter_id, level=None, companion=None, player_class="warrior"):
         pid = f"cutover_{uuid4().hex}"
         await seed_player(pool, player_id=pid, class_="warrior")
+        if encounter_id == "adult_mawling_pair":
+            from adult_mawling_fixture import adult_template
+
+            encounter_id = f"adult_mawling_{uuid4().hex}"
+            await pool.execute(
+                "INSERT INTO encounter_templates(id,data) VALUES($1,$2::jsonb)",
+                encounter_id,
+                json.dumps(adult_template(encounter_id)),
+            )
+            private_ids.append(encounter_id)
         if encounter_id in TARGETS:
             recommended = TARGETS[encounter_id][0]
         elif encounter_id == "hollow_choir":
             recommended = 16
         else:
-            raise ValueError(f"unknown diagnostic encounter {encounter_id!r}")
+            template = await pool.fetchval("SELECT data FROM encounter_templates WHERE id=$1", encounter_id)
+            if template is None:
+                raise ValueError(f"unknown diagnostic encounter {encounter_id!r}")
+            recommended = json.loads(template)["recommended_party_level"]
         level = level or recommended
         created = build_character_data(
             "Strength reference", "draethar", player_class, None, "", created_at=datetime(2026, 10, 1, tzinfo=UTC)
@@ -139,6 +153,9 @@ async def started(reset_db_pool, monkeypatch):
         if ctx.userdata.combat_state:
             await db_mutations.delete_combat_state(ctx.userdata.combat_state.combat_id, conn=pool)
         await pool.execute("DELETE FROM players WHERE player_id = $1", ctx.userdata.player_id)
+
+    for encounter_id in private_ids:
+        await pool.execute("DELETE FROM encounter_templates WHERE id=$1", encounter_id)
 
 
 def assert_stats(enemy, row, role):
@@ -222,7 +239,7 @@ async def assert_catalog_effects(started):
 
     for encounter, enemy_id, name, condition, face in [
         ("ashmark_patrol", "ashmark_soldier_1", "Shield Bash", "prone", 1),
-        ("ruins_mawling_pair", "mawling_1", "Lunge", "grappled", 13),
+        ("adult_mawling_pair", "mawling_1", "Lunge", "grappled", 13),
     ]:
         ctx, roster = await started(encounter)
         pid = ctx.userdata.player_id
@@ -300,7 +317,7 @@ async def assert_catalog_effects(started):
     import db_queries
     from ability_tools import _request_ability_activation_impl
 
-    ctx, roster = await started("ruins_mawling_pair", player_class="rogue")
+    ctx, roster = await started("adult_mawling_pair", player_class="rogue")
     pid = ctx.userdata.player_id
     assert "Lunge" in next(p for p in roster["participants"] if p["id"] == "mawling_1")["actions"]
     before = await db_queries.get_player(pid)
@@ -350,7 +367,7 @@ async def assert_catalog_grapple_release(started):
     import combat_turn
     import conditions
 
-    ctx, roster = await started("ruins_mawling_pair", companion="companion_kael")
+    ctx, roster = await started("adult_mawling_pair", companion="companion_kael")
     pid = ctx.userdata.player_id
     declarations = {pid: {"type": "defend"}, "companion_kael": {"type": "defend"}}
     for source, target in [("mawling_1", pid), ("mawling_2", "companion_kael")]:
