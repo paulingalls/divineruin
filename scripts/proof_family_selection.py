@@ -5,6 +5,8 @@ import json
 import re
 from pathlib import Path
 
+from proof_content_sql import seed_tables, sql_reads
+
 SHARED_CONTENT = {"content/players.json"}
 SHARED_INPUTS = {"scripts/seed_content.py", "scripts/migrations/**", *SHARED_CONTENT}
 SEED_REPRESENTATIVES = {
@@ -249,7 +251,7 @@ def task_inventory(acceptance, e2e, graph, families):
                     literals[module] = content_literals(module, content)
         inventory[task] = {
             "content_closure": behavioral.get(entry, set()),
-            "content_direct": literals.get(entry, set()),
+            "content_direct": literals.get(entry, set()) | (sql_reads(entry, content) if entry in graph else set()),
             "content_reads": set().union(*(literals[p] for p in behavioral.get(entry, set())), set()),
             "path": entry,
             "family": memberships.pop(),
@@ -414,15 +416,7 @@ def content_readers(inventory, families, content):
     for source, roots in CONTENT_LOADERS.items():
         if source not in content or any(not Path(p).is_file() for p in roots):
             raise ValueError(f"{source}: absent content or loader: {sorted(roots)}")
-    seed_tree = ast.parse(Path("scripts/seed_content.py").read_text())
-    tables = [
-        ast.literal_eval(n.value)
-        for n in seed_tree.body
-        if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "TABLE_MAP" for t in n.targets)
-    ]
-    if len(tables) != 1 or not tables[0]:
-        raise ValueError("scripts/seed_content.py: missing TABLE_MAP")
-    seeded = {f"content/{name}" for name in tables[0]}
+    seeded = {f"content/{name}" for name in seed_tables()}
     if missing := seeded - content:
         raise ValueError(f"seed TABLE_MAP names absent content: {sorted(missing)}")
     readers = {}
@@ -441,7 +435,12 @@ def content_readers(inventory, families, content):
             t
             for t, m in inventory.items()
             if source in families[m["family"]]["reads"]
-            and (roots & m["content_closure"] or source in m["content_reads"] or m["family"] == "mobile-e2e")
+            and (
+                roots & m["content_closure"]
+                or source in m["content_reads"]
+                or source in m["content_direct"]
+                or m["family"] == "mobile-e2e"
+            )
         }
     return readers
 
