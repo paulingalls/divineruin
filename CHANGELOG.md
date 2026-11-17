@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.42.0 — 2026-11-16
+
+- An edit anywhere reruns at most a handful of expensive tests. Across every tracked file outside the lockfiles, manifests, toolchain versions and acceptance-stack scripts, the files whose edit reruns more than 20 acceptance or e2e tasks fell from 829 to 11, and the mean per file fell from 19.5 to 4.7. `python3 scripts/proof_key_breadth.py` reads it in about 20 seconds without running a test, and `--limit <glob> <n>` fails naming any file over a limit. It replaces `scripts/proof_selection_probe.py`.
+- Test harness modules, conftests and provider helpers key one representative test per family. A feature file, fixture or WAV keys the tests that name it.
+- An agent module keys its direct importers when there are at most 10, otherwise one representative per reaching family; below the threshold every reaching test is keyed, its own family included.
+- Content keys the tests whose behavior loads it, including a test's own SQL reads of a seeded table, or representatives. Migrations and the seed script stay within 20.
+- Acceptance tests that launch subprocesses key what they actually launch (Proof-resolved TypeScript closures and named scripts) instead of whole directories, and media keys the tests that read it. An unclassified subprocess launch or a named reader that reaches no test fails generation.
+
 ## 0.41.0 — 2026-11-16
 
 - Sign-in is invite-only. An email must be on the allowlist (`bun run allow <email>`, `--remove` to revoke) to receive or use a code; anyone else is told the playtest is invite-only, and no account is created. The script prints which database it wrote to.
