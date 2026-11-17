@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.42.1 — 2026-11-17
+
+- Proof generation no longer fails in a checkout that holds a Git-ignored virtualenv (such as `scripts/audio/.venv-sa3`). In a Git checkout the import graph lists only tracked and unignored files; Proof's sandbox keeps scanning its tracked tree.
+
 ## 0.42.0 — 2026-11-16
 
 - An edit anywhere reruns at most a handful of expensive tests. Across every tracked file outside the lockfiles, manifests, toolchain versions and acceptance-stack scripts, the files whose edit reruns more than 20 acceptance or e2e tasks fell from 829 to 11, and the mean per file fell from 19.5 to 4.7. `python3 scripts/proof_key_breadth.py` reads it in about 20 seconds without running a test, and `--limit <glob> <n>` fails naming any file over a limit. It replaces `scripts/proof_selection_probe.py`.
