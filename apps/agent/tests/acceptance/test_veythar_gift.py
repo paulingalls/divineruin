@@ -59,6 +59,8 @@ def test_replacement_stands_and_spends_once(harness, replacement):
         row = await walk.row()
         assert row["keepsake"] == "unchanged" and row["patron_gifts"]["other"] == {"x": 1}
         assert "short rest" in (await walk.use(error=True)).lower()
+        assert "reroll_offer" not in await walk.skill()
+        assert await walk.state() == {"spent": True, "pending": None}
 
     harness.run_sync(scenario())
 
