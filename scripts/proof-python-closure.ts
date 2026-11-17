@@ -25,6 +25,7 @@ const result = Object.fromEntries(
       entry,
       {
         closure: [...closure.paths].sort(),
+        direct: [...local.paths].sort(),
         reason: closure.reason,
         localReason: local.reason,
       },
