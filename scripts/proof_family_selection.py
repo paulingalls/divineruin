@@ -434,12 +434,10 @@ def content_readers(inventory, families, content):
         readers[source] = {
             t
             for t, m in inventory.items()
-            if source in families[m["family"]]["reads"]
-            and (
-                roots & m["content_closure"]
-                or source in m["content_reads"]
-                or source in m["content_direct"]
-                or m["family"] == "mobile-e2e"
+            if source in m["content_direct"]
+            or (
+                source in families[m["family"]]["reads"]
+                and (roots & m["content_closure"] or source in m["content_reads"] or m["family"] == "mobile-e2e")
             )
         }
     return readers
