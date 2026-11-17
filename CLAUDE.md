@@ -104,6 +104,8 @@ Don't revisit: LiveKit, Python (agent), Bun (TS), Expo, PostgreSQL+JSONB, Valkey
 
 Free patches run focused card Acceptance at the affected behavior/integration boundary on the trial-merged tree. Every free card's Acceptance ends with `bash scripts/free-acceptance.sh`, proving the staged land and sprint selections. Push scans outgoing secrets; the two PR lint jobs run before merge. Direct trunk pushes are not the release workflow.
 
+**Branches:** `develop` is the trunk. Sprints and free patches land there, each with a `changes/<branch>.md` note (`changes/README.md`), and `xp.py release stamp` versions develop after merge. `main` is what is live: it moves only by `scripts/promote-main.sh <tag>`, a fast-forward to a deployed and verified release.
+
 ## Environment Variables
 
 See `.env.example` for the full list.

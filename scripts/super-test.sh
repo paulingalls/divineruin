@@ -49,10 +49,10 @@ prepare() {
   [ "$#" -le 1 ] || { echo "Usage: $0 [ref]" >&2; return 1; }
   docker info >/dev/null
   cd "$SOURCE"
-  git fetch origin refs/heads/main:refs/remotes/origin/main
+  git fetch origin refs/heads/develop:refs/remotes/origin/develop
   local commit common target_common
-  commit="$(git rev-parse --verify "${1:-origin/main}^{commit}")"
-  echo "Source: $SOURCE; origin/main: $(git rev-parse origin/main); ref: ${1:-origin/main}"
+  commit="$(git rev-parse --verify "${1:-origin/develop}^{commit}")"
+  echo "Source: $SOURCE; origin/develop: $(git rev-parse origin/develop); ref: ${1:-origin/develop}"
   common="$(git rev-parse --path-format=absolute --git-common-dir)"
   if [ -e "$TARGET" ]; then
     [ "$(git -C "$TARGET" rev-parse --show-toplevel)" = "$TARGET" ]
