@@ -114,6 +114,7 @@
       "scripts/worktree-common.sh",
       "scripts/ensure-db.ts",
       "scripts/proof_runtime_inputs.py",
+      "scripts/proof-launch-calls.json",
       "scripts/worktree-docker.sh",
       "apps/mobile/assets/sounds/**",
       "assets/images/**",

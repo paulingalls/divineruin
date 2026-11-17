@@ -1,34 +1,19 @@
 """Repository launches and committed media readers, separate from sandbox delivery."""
 
 import ast
+import json
+from collections import Counter
 from functools import cache
 from pathlib import Path, PurePosixPath
 
 from proof_family_selection import first_reader
 
 ACCEPTANCE = "apps/agent/tests/acceptance/"
+LAUNCH_CALLS = json.loads(Path("scripts/proof-launch-calls.json").read_text())
 LAUNCHES = {
-    "scripts/seed_catalogs.py": ["scripts/seed_catalogs.ts", "scripts/seed_cache.ts"],
-    ACCEPTANCE + "_server.py": ["apps/server/src/index.ts"],
-    ACCEPTANCE + "test_leave_summary.py": ["apps/server/src/session-room-process.fixture.ts"],
-    ACCEPTANCE + "test_inventory_taint_migration.py": ["scripts/migrate.ts"],
-    ACCEPTANCE + "test_combat_spatial_entry.py": ["packages/shared/src/entities/encounter.ts"],
-    ACCEPTANCE + "test_live_material_inventory.py": [
-        "apps/mobile/src/__tests__/use-game-events.parse.test.ts",
-        "apps/mobile/test-preload.ts",
-    ],
-    ACCEPTANCE + "test_m17_spell_sfx_capstone.py": [
-        "apps/mobile/src/__tests__/sound-registry.test.ts",
-        "apps/mobile/test-preload.ts",
-    ],
-    ACCEPTANCE + "test_m22_audio_completeness_capstone.py": ["apps/mobile/scripts/emit-audio-registry-keys.ts"],
-}
-CLASSIFIED = {
-    "apps/agent/tts_prerender.py",
-    "apps/agent/tests/_repo_inventory.py",
-    "apps/agent/tests/_db_lifecycle.py",
-    ACCEPTANCE + "_livekit.py",
-    ACCEPTANCE + "test_m22_audio_completeness_capstone.py",
+    module: sorted({root for site in sites for root in site["roots"]})
+    for module, sites in LAUNCH_CALLS.items()
+    if any(site["roots"] for site in sites)
 }
 CALLS = {
     "subprocess.run",
@@ -80,12 +65,64 @@ def calls(path):
     return names & CALLS
 
 
+def target_bindings(call, tree):
+    # Launch targets may be assembled outside the call (cwd, eval script, command path).
+    expressions = [*call.args, *(k.value for k in call.keywords if k.arg == "cwd")]
+    names = {n.id for expression in expressions for n in ast.walk(expression) if isinstance(n, ast.Name)}
+    bindings = set()
+    pending = list(names)
+    assignments = [n for n in ast.walk(tree) if isinstance(n, (ast.Assign, ast.AnnAssign, ast.AugAssign))]
+    while pending:
+        name = pending.pop()
+        for node in assignments:
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            if not any(isinstance(n, ast.Name) and n.id == name for t in targets for n in ast.walk(t)):
+                continue
+            bindings.add(ast.unparse(node))
+            dependencies = {n.id for n in ast.walk(node.value) if isinstance(n, ast.Name)}
+            pending.extend(dependencies - names)
+            names.update(dependencies)
+    return tuple(sorted(bindings))
+
+
+@cache
+def launch_sites(path):
+    tree = ast.parse(Path(path).read_text())
+    aliases = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            aliases.update({a.asname or a.name: a.name for a in node.names})
+        elif isinstance(node, ast.ImportFrom):
+            aliases.update({a.asname or a.name: f"{node.module}.{a.name}" for a in node.names})
+    sites = Counter()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        head, dot, rest = ast.unparse(node.func).partition(".")
+        name = aliases.get(head, head) + dot + rest
+        if name in CALLS:
+            node.func = ast.parse(name, mode="eval").body
+            sites[(ast.unparse(node), target_bindings(node, tree))] += 1
+    return sites
+
+
+def audit_launches(modules):
+    for module in sorted(modules):
+        actual = launch_sites(module)
+        declarations = LAUNCH_CALLS.get(module, [])
+        for site in declarations:
+            if not site["reason"] or any(not Path(root).is_file() for root in site["roots"]):
+                raise ValueError(f"{module}: invalid launch classification: {site}")
+        expected = Counter((site["call"], tuple(site["bindings"])) for site in declarations)
+        if extra := actual - expected:
+            raise ValueError(f"unclassified repository launch/load: {module}: {dict(extra)}")
+        if missing := expected - actual:
+            raise ValueError(f"{module}: stale launch classification: {dict(missing)}")
+
+
 def runtime_inputs(inventory, runtime):
     readers = {}
-    for meta in inventory.values():
-        for module in meta["closure"]:
-            if module.endswith(".py") and calls(module) and module not in LAUNCHES and module not in CLASSIFIED:
-                raise ValueError(f"unclassified repository launch/load: {module}")
+    audit_launches({module for meta in inventory.values() for module in meta["closure"] if module.endswith(".py")})
     for module, roots in LAUNCHES.items():
         paths = set().union(*(set(runtime[root]) for root in roots))
         for path in paths:
