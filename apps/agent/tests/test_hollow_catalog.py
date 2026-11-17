@@ -8,6 +8,7 @@ SPEC_IDS = {
     "hollow_shadeling",
     "hollow_hollowmoth",
     "hollow_mawling",
+    "hollow_mawling_young",
     "hollow_weaver",
     "hollow_knight",
     "hollow_veilrender",

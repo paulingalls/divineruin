@@ -176,7 +176,7 @@ def test_final_balance_table():
     ordinary = [row for row in TEMPLATES if row["id"] in TARGETS]
     assert len(ordinary) == 11
     assert sum(len(row["enemies"]) for row in ordinary) == 26
-    assert len({ref["creature_id"] for row in ordinary for ref in row["enemies"]}) == 13
+    assert len({ref["creature_id"] for row in ordinary for ref in row["enemies"]}) == 14
     for row in ordinary:
         level, difficulty, groups = TARGETS[row["id"]]
         assert (row["recommended_party_level"], row["difficulty"]) == (level, difficulty)

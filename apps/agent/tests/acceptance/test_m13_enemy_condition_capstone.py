@@ -26,7 +26,7 @@ async def test_authored_condition_catalog(reset_db_pool):
     from creature_catalog import query_creature_by_id
 
     pool = await db.get_pool()
-    original = await query_creature_by_id("hollow_mawling")
+    original = await query_creature_by_id("hollow_mawling_young")
     row = deepcopy(original)
     row["attacks"].append(
         {

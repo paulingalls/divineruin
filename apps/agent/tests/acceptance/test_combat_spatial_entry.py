@@ -27,7 +27,7 @@ TEMPLATES = json.loads((CONTENT_ROOT / "content/encounter_templates.json").read_
 LEVELS = {
     "fragment_shadeling": 1,
     "shadeling_cluster": 1,
-    "ruins_mawling_pair": 5,
+    "ruins_mawling_pair": 2,
     "hollowed_scout": 4,
     "hollow_wisp": 2,
     "hollow_patrol_greyvale": 1,
@@ -287,7 +287,7 @@ async def test_held_reload_uses_committed_positions(spatial_entry):
 
 async def test_held_movement_rechecks_committed_eligibility(spatial_entry):
     ctx, _ = await spatial_entry()
-    await combat_turn._declare_phase_impl(ctx, {"mawling_1": move("mawling_1", 30)})
+    await combat_turn._declare_phase_impl(ctx, {"mawling_1": move("mawling_1", 25)})
     await combat_turn._resolve_phase_impl(ctx)
     saved = await db_mutations.load_combat_state(ctx.userdata.combat_state.combat_id)
     assert saved is not None and saved.spatial is not None

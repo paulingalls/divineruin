@@ -31,7 +31,11 @@ TARGETS = {
     "hollow_wisp": (2, "moderate", [("hollow_wisp", "standard", 1)]),
     "hollow_patrol_greyvale": (1, "easy", [("hollow_shadeling", "standard", 1), ("hollow_shadeling", "minion", 1)]),
     "hollowed_scout": (4, "hard", [("hollowed_scout", "elite", 1)]),
-    "ruins_mawling_pair": (5, "moderate", [("hollow_mawling", "standard", 2)]),
+    "ruins_mawling_pair": (
+        2,
+        "moderate",
+        [("hollow_mawling_young", "standard", 1), ("hollow_mawling_young", "minion", 1)],
+    ),
     "bandit_ambush": (5, "moderate", [("bandit_captain", "elite", 1), ("bandit", "minion", 4)]),
     "ashmark_patrol": (6, "moderate", [("ashmark_sergeant", "elite", 1), ("ashmark_soldier", "standard", 2)]),
     "ruins_guardian": (7, "hard", [("hollow_warden", "boss", 1)]),

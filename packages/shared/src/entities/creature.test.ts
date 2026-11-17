@@ -56,7 +56,8 @@ test("shared_creature_corpus", () => checkCorpus(corpus.valid, corpus.invalid));
 function assertCatalogEntries(entries: Record<string, unknown>[]): void {
   const ids = entries.map((row) => row.id);
   expect(new Set(ids).size).toBe(entries.length);
-  for (const id of ["hollow_shadeling", "hollow_hollowmoth"]) expect(ids).toContain(id);
+  for (const id of ["hollow_shadeling", "hollow_hollowmoth", "hollow_mawling_young"])
+    expect(ids).toContain(id);
   for (const entry of entries) expect(validateCreatureStatBlock(entry)).toEqual([]);
 }
 

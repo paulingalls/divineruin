@@ -48,14 +48,14 @@ describe.skipIf(!hasDatabase)("seeded content", () => {
     expect(knowledge["disposition >= trusted"]).toBeArray();
   });
 
-  test("greyvale_anomaly has 5 stages with completion conditions", async () => {
+  test("greyvale_anomaly has 6 stages with completion conditions", async () => {
     const rows: DataRow[] = await sql`SELECT data FROM quests WHERE id = 'greyvale_anomaly'`;
     expect(rows.length).toBe(1);
 
     const data = getData(rows);
     const stages = data.stages as Array<Record<string, unknown>>;
     expect(stages).toBeArray();
-    expect(stages.length).toBe(5);
+    expect(stages.length).toBe(6);
 
     for (const stage of stages) {
       expect(stage.objective).toBeTruthy();

@@ -23,6 +23,8 @@ Feature: Engine driven Greyvale arrivals
       | 0     |
       | 1     |
       | 2     |
+      | 4     |
+      | 5     |
 
   Scenario: Every authored finish line reaches the DM
     Given a warm session walking the complete quest corpus
@@ -131,3 +133,12 @@ Feature: Engine driven Greyvale arrivals
   Scenario: Entering satisfied item stages chains to the next objective
     Given a journal search at the ruins
     Then starting an already satisfied item quest pays each stage once
+
+  Scenario Outline: A continuous road walk wins the ruins fight once
+    Given a new road traveler who will finish the ruins through <route>
+    When they walk through Millhaven and the journal into the ruins fight
+    Then the level three party wins and the ruins quest reward arrives once
+    Examples:
+      | route         |
+      | end_combat    |
+      | resolve_phase |

@@ -4036,5 +4036,113 @@
     },
     "loot_table_id": "loot_cult_leader",
     "xp_reward": 180
+  },
+  {
+    "terrains": [
+      "ancient_forest",
+      "forest",
+      "grassland",
+      "mountain",
+      "coast",
+      "wetland",
+      "underground",
+      "farmland",
+      "village",
+      "city"
+    ],
+    "id": "hollow_mawling_young",
+    "name": "Young Mawling",
+    "category": "hollow",
+    "tier": 1,
+    "description": "A dry scrape repeats too close, followed by a faint wet rasp. A small body hangs between limbs that reach too far. Cold air tastes of old iron around its unfinished mouth.",
+    "level": 1,
+    "hp": 8,
+    "ac": 10,
+    "speed": 25,
+    "attributes": {
+      "STR": 4,
+      "DEX": 12,
+      "CON": 8,
+      "INT": 1,
+      "WIS": 6,
+      "CHA": 1
+    },
+    "save_proficiencies": [
+      "DEX"
+    ],
+    "attacks": [
+      {
+        "name": "Claw",
+        "type": "melee",
+        "reach": 10,
+        "to_hit": 3,
+        "damage": "1d4+1",
+        "damage_type": "slashing",
+        "special": "Long limbs",
+        "audio": "hlw_claw"
+      },
+      {
+        "name": "Dissolution Maw",
+        "type": "melee",
+        "reach": 5,
+        "to_hit": 3,
+        "damage": "1d4+1",
+        "damage_type": "necrotic",
+        "special": "DC 10 CON or held item loses 1d2 durability",
+        "audio": "hlw_dissolution_maw",
+        "durability_rider": {
+          "save": "CON",
+          "dc": 10,
+          "dice": "1d2",
+          "target": "selected_player_held_item"
+        }
+      }
+    ],
+    "multiattack": null,
+    "passives": [],
+    "actives": [],
+    "reactions": [],
+    "hollow": {
+      "class": "rend",
+      "corruption_aura": 5,
+      "resonance_on_death": 0,
+      "veil_effect": "A tiny scrape returns from the wrong side of the room.",
+      "vulnerable_to": [
+        "radiant",
+        "fire",
+        "divine_spells"
+      ]
+    },
+    "behavior": {
+      "tactics": "Probes defenses, feints, and retreats from strong resistance.",
+      "morale": "retreats_at_25_percent_if_alone",
+      "group_size": "pair",
+      "environment": [
+        "Ashmark",
+        "northern Greyvale",
+        "corrupted zones"
+      ]
+    },
+    "narration": {
+      "first_sighting": "Two light scrapes answer from the stone. A young mawling tests the air with limbs longer than its small body.",
+      "attack_cue": "A wet rasp catches in its little maw. One thin arm darts forward, then pulls back.",
+      "wounded_cue": "Its rasp thins to a crackle. The young mawling feints toward you and skitters back.",
+      "death_cue": "A small crunch folds the long limbs inward. Static fades into a cold hush.",
+      "ambient_cue": "A hesitant scrape repeats from the wrong side of the room. Then even the echo stops."
+    },
+    "audio": {
+      "ambient": "wrong footfall loop",
+      "attack": "wet pulling dissolution",
+      "hit": "impact on semi-solid mass",
+      "death": "organic collapse and static burst",
+      "special": {}
+    },
+    "loot_table_id": "loot_hollow_mawling",
+    "xp_reward": 25,
+    "home_region": "ashmark",
+    "regions": [
+      "ashmark",
+      "greyvale"
+    ]
   }
 ]

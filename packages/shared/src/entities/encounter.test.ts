@@ -134,18 +134,13 @@ describe("encounter_templates.json — enemy action kinds", () => {
     expect(() => encounterActionKind({ name: "Decree", kind: "decree" })).toThrow("unknown kind");
   });
 
-  test("catalog Lunge carriers author escape DC 13", () => {
-    const carriers = actions
-      .filter(({ action }) => action.properties.includes("grapple"))
-      .map(({ enemyId, action }) => [
-        enemyId,
-        action.name,
-        "escape_dc" in action ? action.escape_dc : undefined,
-      ]);
-    expect(carriers).toEqual([
-      ["mawling_1", "Lunge", 13],
-      ["mawling_2", "Lunge", 13],
-    ]);
+  test("adult catalog Lunge authors escape DC 13", () => {
+    const adult = catalog.find((row) => row.id === "hollow_mawling");
+    expect(adult).toBeDefined();
+    const carriers = adult!.attacks
+      .filter((action) => action.properties?.includes("grapple"))
+      .map((action) => [action.name, "escape_dc" in action ? action.escape_dc : undefined]);
+    expect(carriers).toEqual([["Lunge", 13]]);
   });
 
   test("a mark action carries no damage, damage type or applied condition", () => {
