@@ -118,7 +118,7 @@
         "completion_condition": "Player discovers the journal fragment or artifact",
         "companion_hints": [
           "Your companion points to a cleared area. 'Someone was working here. Recently. Look at the dust patterns.'",
-          "Your companion says urgently: 'There — on that pedestal. Do you see it?'"
+          "Your companion says urgently: 'Listen — behind that sealed door. Can you hear the hum?'"
         ],
         "hint_delay_seconds": 60
       },

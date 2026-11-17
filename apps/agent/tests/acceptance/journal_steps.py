@@ -39,7 +39,7 @@ def journal_rewards(harness):
         player = await db_queries.get_player(arc.player)
         assert player is not None
         assert player["xp"] == 200
-        assert await arc.quantity("veythar_sealed_artifact") == 1
+        assert await arc.quantity("veythar_sealed_artifact") == 0
         assert arc.sd.corruption_level == 1
         assert (
             len([e for e in arc.events if e["type"] == E.WORLD_EVENT and e["event_id"] == "ruins_discovery_ripple"])
@@ -116,6 +116,13 @@ def two_items(harness):
         quest = await arc.private_items(harness, items=[ITEM, second])
         location = await db_content_queries.get_location(PLACE)
         assert location is not None
+        original = json.dumps(location)
+
+        async def restore_location():
+            await arc.pool.execute("UPDATE locations SET data=$2::jsonb WHERE id=$1", PLACE, original)
+            await (await db.get_redis()).delete("location:" + PLACE)
+
+        harness.stack.callback(lambda: harness.run_sync(restore_location()))
         location["hidden_elements"].append({"id": second, "discover_skill": "perception", "dc": 1})
         await arc.pool.execute("UPDATE locations SET data=$2::jsonb WHERE id=$1", PLACE, json.dumps(location))
         redis = await db.get_redis()

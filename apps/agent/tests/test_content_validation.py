@@ -216,11 +216,11 @@ class TestContentIntegrity:
         for npc_id in required:
             assert npc_id in npc_ids, f"Required NPC '{npc_id}' not found"
 
-    def test_greyvale_quest_has_6_stages(self):
+    def test_greyvale_quest_has_7_stages(self):
         quests = _load_json("quests.json")
         greyvale = next((q for q in quests if q["id"] == "greyvale_anomaly"), None)
         assert greyvale is not None, "greyvale_anomaly quest not found"
-        assert len(greyvale["stages"]) == 6, f"Expected 6 stages, got {len(greyvale['stages'])}"
+        assert len(greyvale["stages"]) == 7, f"Expected 7 stages, got {len(greyvale['stages'])}"
 
     def test_all_locations_have_region_type(self):
         locations = _load_json("locations.json")

@@ -118,7 +118,7 @@ class TestQuestArcProgression:
     @pytest.mark.asyncio
     async def test_return_effects(self):
         quest = _load_greyvale_quest()
-        return_stage = quest["stages"][5]
+        return_stage = quest["stages"][-1]
         effects = return_stage["on_complete"].get("world_effects", [])
         assert "emris_disposition +4" in effects
         assert "event:faction_interest_triggered" in effects
