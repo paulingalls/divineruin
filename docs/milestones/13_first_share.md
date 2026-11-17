@@ -33,10 +33,10 @@ Shipped in v0.37.0 (divineruin2 clone, sprint `greyvale-millhaven`). The fight's
 
 ## Session 3 — The Ruins and the Reveal
 
-Owner: divineruin2 clone.
+Owner: divineruin clone (taken over from divineruin2, 2026-11-16).
 
 - [x] Finding the journal fragment puts the item in the inventory
-- [ ] The ruins have a fight attached and tuned for a level-2 player
+- [x] The ruins have a fight attached and tuned for a level-2 player — `ruins_mawling_pair` (young mawlings), 16/20-seed bar per archetype at level 2 by both counts (`apps/agent/tests/combat/test_ruins_fight_balance.py`)
 - [ ] The inner chamber holds the discovery
 - [ ] The artifact choice is applied and persists
 - [ ] Emris can be reached, and the reveal closes the arc on a cliffhanger
