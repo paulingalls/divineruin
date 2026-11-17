@@ -70,7 +70,14 @@ CONFIG = [
 
 @cache
 def calls(path):
-    return {ast.unparse(n.func) for n in ast.walk(ast.parse(Path(path).read_text())) if isinstance(n, ast.Call)} & CALLS
+    nodes = list(ast.walk(ast.parse(Path(path).read_text())))
+    alias = {a.asname: a.name for n in nodes if isinstance(n, ast.Import) for a in n.names if a.asname}
+    names = {f"{n.module}.{a.name}" for n in nodes if isinstance(n, ast.ImportFrom) for a in n.names}
+    for n in nodes:
+        if isinstance(n, ast.Call):
+            head, dot, rest = ast.unparse(n.func).partition(".")
+            names.add(alias.get(head, head) + dot + rest)
+    return names & CALLS
 
 
 def runtime_inputs(inventory, runtime):
