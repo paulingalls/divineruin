@@ -52,7 +52,11 @@ function parseHiddenElement(raw: unknown, ctx: string): HiddenElement {
   return el;
 }
 
-function parseExits(raw: unknown, ctx: string): Record<string, LocationExit> {
+function parseExits(
+  raw: unknown,
+  ctx: string,
+  itemIds: ReadonlySet<string>,
+): Record<string, LocationExit> {
   const rec = asRecord(raw, ctx);
   const exits: Record<string, LocationExit> = {};
   for (const [direction, value] of Object.entries(rec)) {
@@ -64,13 +68,20 @@ function parseExits(raw: unknown, ctx: string): Record<string, LocationExit> {
       throw new Error(`${exitCtx}.requires is not a string`);
     }
     const exit: LocationExit = { destination: e.destination };
-    if (e.requires !== undefined) exit.requires = e.requires;
+    if (e.requires !== undefined) {
+      for (const branch of e.requires.split("||").map((part) => part.trim())) {
+        if (branch.startsWith("item:") && !itemIds.has(branch.slice(5))) {
+          throw new Error(`${exitCtx}: unknown item '${branch.slice(5)}'`);
+        }
+      }
+      exit.requires = e.requires;
+    }
     exits[direction] = exit;
   }
   return exits;
 }
 
-export function parseLocationRow(id: string, raw: unknown): Location {
+export function parseLocationRow(id: string, raw: unknown, itemIds: ReadonlySet<string>): Location {
   const ctx = `locations[${id}]`;
   const data = asRecord(raw, ctx);
 
@@ -106,7 +117,7 @@ export function parseLocationRow(id: string, raw: unknown): Location {
     region: data.region,
     tags: parseStringArray(data.tags, `${ctx}.tags`),
     atmosphere: data.atmosphere,
-    exits: parseExits(data.exits, `${ctx}.exits`),
+    exits: parseExits(data.exits, `${ctx}.exits`, itemIds),
   };
 
   if (data.description !== undefined) {
@@ -166,14 +177,16 @@ export function parseLocationRow(id: string, raw: unknown): Location {
 }
 
 export async function loadLocations(): Promise<void> {
-  const rows = await sql<{ id: string; data: unknown }[]>`
-    SELECT id, data FROM locations
-  `;
+  const [rows, items] = await Promise.all([
+    sql<{ id: string; data: unknown }[]>`SELECT id, data FROM locations`,
+    sql<{ id: string }[]>`SELECT id FROM items`,
+  ]);
+  const itemIds = new Set(items.map(({ id }) => id));
   // Build the local map then swap in one synchronous step, so a malformed row fails
   // loud WITHOUT wiping an already-loaded map (mirrors loadAbilities' discipline).
   const map = new Map<string, Location>();
   for (const row of rows) {
-    map.set(row.id, parseLocationRow(row.id, row.data));
+    map.set(row.id, parseLocationRow(row.id, row.data, itemIds));
   }
   locations = map;
   console.log(`Loaded ${map.size} locations`);

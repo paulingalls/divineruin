@@ -31,6 +31,22 @@ def _load_ids(filename: str, id_field: str = "id") -> set[str]:
 
 
 class TestContentCrossReferences:
+    def test_exit_item_references_exist(self):
+        locations = json.loads((CONTENT_DIR / "locations.json").read_text())
+        items = json.loads((CONTENT_DIR / "items.json").read_text())
+        assert locations and items
+        item_ids = {row["id"] for row in items}
+        visited = set()
+        for location in locations:
+            for direction, exit in location.get("exits", {}).items():
+                for branch in exit.get("requires", "").split("||"):
+                    branch = branch.strip()
+                    if branch.startswith("item:"):
+                        item = branch.removeprefix("item:")
+                        assert item in item_ids, f"{location['id']}.{direction}: unknown item '{item}'"
+                        visited.add((location["id"], direction, item))
+        assert ("greyvale_ruins_entrance", "deeper", "greyvale_veil_fragment") in visited
+
     def test_encounter_ids_referenced_by_quests_exist(self):
         encounter_ids = _load_ids("encounter_templates.json")
         quests = _load_json("quests.json")

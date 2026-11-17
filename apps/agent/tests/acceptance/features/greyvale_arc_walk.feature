@@ -142,3 +142,18 @@ Feature: Engine driven Greyvale arrivals
       | route         |
       | end_combat    |
       | resolve_phase |
+
+  Scenario Outline: A fragment opens the seal for the present party
+    Given a sealed door party with <holding>
+    When the host asks to pass the inner seal
+    Then the seal passage is <outcome>
+
+    Examples:
+      | holding    | outcome |
+      | host       | allowed |
+      | tainted    | allowed |
+      | neither    | blocked |
+      | seal       | allowed |
+      | guest      | allowed |
+      | guest_zero | blocked |
+      | nonmember  | blocked |

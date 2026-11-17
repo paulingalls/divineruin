@@ -4,7 +4,6 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 import event_types as E
-from movement_tools import _check_exit_requirement
 from quest_tools import _apply_world_effects
 from session_data import SessionData
 from tool_support import LOCATION_CORRUPTION
@@ -186,19 +185,3 @@ class TestNavigationPath:
         assert LOCATION_CORRUPTION.get("hollow_incursion_site", 0) == 2
         assert LOCATION_CORRUPTION.get("greyvale_ruins_entrance", 0) == 2
         assert LOCATION_CORRUPTION.get("greyvale_ruins_inner", 0) == 3
-
-
-class TestExitRequirementsOnPath:
-    @pytest.mark.asyncio
-    async def test_ruins_inner_blocked_without_discovery(self):
-        mock_queries = MagicMock()
-        mock_queries.get_player_flag = AsyncMock(return_value=False)
-        result = await _check_exit_requirement("veythar_seal_mark.discovered", "player_1", queries=mock_queries)
-        assert result is False
-
-    @pytest.mark.asyncio
-    async def test_ruins_inner_open_with_discovery(self):
-        mock_queries = MagicMock()
-        mock_queries.get_player_flag = AsyncMock(return_value=True)
-        result = await _check_exit_requirement("veythar_seal_mark.discovered", "player_1", queries=mock_queries)
-        assert result is True

@@ -3,6 +3,7 @@
 import json
 
 import pytest
+from acceptance.fragment_door_steps import *  # noqa: F403
 from acceptance.greyvale_arc_walk_harness import ROAD, TOWN, ArcWalk
 from acceptance.greyvale_finish_line import (
     assert_finish,

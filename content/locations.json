@@ -157,7 +157,7 @@
       },
       "deeper": {
         "destination": "greyvale_ruins_inner",
-        "requires": "veythar_seal_mark.discovered || skill_check:arcana:14"
+        "requires": "veythar_seal_mark.discovered || skill_check:arcana:14 || item:greyvale_veil_fragment"
       }
     },
     "conditions": {

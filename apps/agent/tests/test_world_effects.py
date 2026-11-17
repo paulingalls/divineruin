@@ -157,20 +157,6 @@ class TestApplyWorldEffects:
 
 class TestCheckExitRequirement:
     @pytest.mark.asyncio
-    async def test_discovered_flag_set(self):
-        mock_queries = MagicMock()
-        mock_queries.get_player_flag = AsyncMock(return_value=True)
-        result = await _check_exit_requirement("veythar_seal_mark.discovered", "player_1", queries=mock_queries)
-        assert result is True
-
-    @pytest.mark.asyncio
-    async def test_discovered_flag_not_set(self):
-        mock_queries = MagicMock()
-        mock_queries.get_player_flag = AsyncMock(return_value=False)
-        result = await _check_exit_requirement("veythar_seal_mark.discovered", "player_1", queries=mock_queries)
-        assert result is False
-
-    @pytest.mark.asyncio
     async def test_or_logic_first_branch_true(self):
         mock_queries = MagicMock()
         mock_queries.get_player_flag = AsyncMock(side_effect=[True])
