@@ -118,6 +118,7 @@ class TestWarmLayerRebuild:
                         scene_cache=None,
                         training=None,
                         first_episode_phase=None,
+                        party_member_ids=tuple(mock_sd.party.member_ids),
                     )
                     mock_agent.update_instructions.assert_awaited_once_with("full prompt")
                     assert bp._last_warm_layer == "warm layer content"

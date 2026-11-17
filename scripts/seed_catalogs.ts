@@ -24,8 +24,9 @@ function rows(table: string) {
 setSpells(new Map(rows("spells").map(({ id, data }) => [id, parseSpellRow(id, data)])));
 const types = parseActivityTypeRows(rows("training_activity_types"));
 parseProgramRows(rows("training_programs"), types);
+const itemIds = new Set(rows("items").map(({ id }) => id));
 for (const { id, data } of rows("locations")) {
-  numericToDangerLevel(parseLocationRow(id, data).danger_level);
+  numericToDangerLevel(parseLocationRow(id, data, itemIds).danger_level);
 }
 const parsers: [string, (id: string, data: unknown) => unknown][] = [
   ["errand_templates", parseErrandRow],

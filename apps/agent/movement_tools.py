@@ -30,10 +30,16 @@ async def _check_exit_requirement(requires: str, player_id: str, *, queries=db_q
 
     Patterns:
     - ``some_id.discovered`` -- checks player flag
+    - ``item:<id>`` -- checks positive held inventory quantity
     - ``skill_check:*`` -- always False (LLM should handle via tools first)
     """
     branches = [b.strip() for b in requires.split("||")]
     for branch in branches:
+        if branch.startswith("item:"):
+            inventory = await queries.get_player_inventory(player_id)
+            if any(row["id"] == branch[5:] and row["slot_info"].get("quantity", 1) > 0 for row in inventory):
+                return True
+            continue
         if branch.startswith("skill_check:"):
             continue  # LLM must resolve via check (mode="skill") first
         if await queries.get_player_flag(player_id, branch):

@@ -94,4 +94,35 @@ describe.skipIf(!hasDb)("loadLocations — DB row-fetch path", () => {
     expect(loadedIds.has("test_load_alpha")).toBe(true);
     expect(loadedIds.has("test_load_beta")).toBe(true);
   });
+  test("item requirements validate every branch before publishing the map", async () => {
+    const [item] = await sql<{ id: string }[]>`SELECT id FROM items ORDER BY id LIMIT 1`;
+    expect(item).toBeDefined();
+    const valid = `alpha_key.discovered || item:${item!.id}`;
+    async function requirement(requires: string) {
+      const data = {
+        ...testRows.test_load_beta,
+        exits: { back: { destination: "test_load_alpha", requires } },
+      };
+      await sql`UPDATE locations SET data=${data} WHERE id='test_load_beta'`;
+    }
+    try {
+      await requirement(valid);
+      await loadLocations();
+      const published = getLocation("test_load_beta");
+      expect(published!.exits.back?.requires).toBe(valid);
+      for (const invalid of ["missing_fragment_for_seal_test", ""]) {
+        await requirement(`alpha_key.discovered || item:${invalid}`);
+        const error = await loadLocations().then(
+          () => null,
+          (reason: unknown) => reason,
+        );
+        expect(error).toEqual(
+          new Error(`locations[test_load_beta].exits.back: unknown item '${invalid}'`),
+        );
+        expect(getLocation("test_load_beta")).toBe(published);
+      }
+    } finally {
+      await sql`UPDATE locations SET data=${testRows.test_load_beta} WHERE id='test_load_beta'`;
+    }
+  });
 });

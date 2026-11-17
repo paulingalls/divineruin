@@ -203,6 +203,7 @@ async def build_warm_layer(
     scene_cache: dict[str, dict] | None = None,
     training: list[dict] | None = None,
     first_episode_phase: bool | int | str | None = None,
+    party_member_ids: tuple[str, ...] | None = None,
 ) -> str:
     import asyncio
 
@@ -264,10 +265,7 @@ async def build_warm_layer(
         # promote to go; key_features are check targets. Hidden elements are never listed — they
         # surface via discovery (the hot layer).
         #
-        # Reuse movement's single canonical evaluator so the affordance and the move gate can't
-        # drift: flag branches resolve against player flags, skill_check:* branches stay locked
-        # until their flag is set. Only locations with gated exits pay the per-branch flag read,
-        # and warm rebuilds are event-driven (not per-turn), so the cost is negligible.
+        # Match movement's present-party gate; other warm facts still belong to the host.
         from movement_tools import _check_exit_requirement
 
         exits = narr.get("exits", {})
@@ -275,7 +273,13 @@ async def build_warm_layer(
         locked_exits: list[tuple[str, dict]] = []
         for direction, exit_entry in exits.items():
             requires = exit_entry.get("requires")
-            if requires and not await _check_exit_requirement(requires, player_id):
+            allowed = not requires
+            if requires:
+                for member_id in party_member_ids if party_member_ids is not None else (player_id,):
+                    if await _check_exit_requirement(requires, member_id):
+                        allowed = True
+                        break
+            if not allowed:
                 locked_exits.append((direction, exit_entry))
             else:
                 go_exits.append(f"{direction} → {exit_entry.get('destination', 'unknown')}")

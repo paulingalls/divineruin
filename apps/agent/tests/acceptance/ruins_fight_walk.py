@@ -1,6 +1,7 @@
 """Continuous progression from the road through the journal and ruins victory."""
 
 import json
+import os
 from datetime import UTC, datetime
 from typing import cast
 from unittest.mock import AsyncMock, patch
@@ -11,6 +12,7 @@ from acceptance.greyvale_arc_walk_harness import QUEST, ROAD, ArcWalk
 from acceptance.journal_walk import PLACE
 from sample_fixtures import CONTENT_ROOT
 
+import db
 import db_mutations
 import db_queries
 import event_types as E
@@ -28,12 +30,14 @@ class RuinsFightWalk(FirstBloodWalk):
         harness.stack.enter_context(patch.object(ExplorationAgent, "_enter", new=AsyncMock()))
         harness.stack.enter_context(patch.object(CombatAgent, "_enter", new=AsyncMock()))
         await ArcWalk.start(self, harness, "move_player", agent=ExplorationAgent())
+        await (await db.get_redis()).delete(os.environ.get("CONTENT_CACHE_PREFIX", "") + "location:" + PLACE)
         row = build_character_data(
             "Road traveler", "human", "warrior", None, "", created_at=datetime(2026, 11, 1, tzinfo=UTC)
         )
         row["location_id"] = ROAD
         assert row["xp"] == 0 and row["level"] == 1
         await self.pool.execute("UPDATE players SET data=$2::jsonb WHERE player_id=$1", self.player, json.dumps(row))
+        await db_mutations.add_inventory_item(self.player, "greyvale_veil_fragment", 1, tainted=False)
         companion = select_companion_for_archetype("warrior")
         self.sd.companion = CompanionState(id=companion, name=get_companion_profile(companion).name)
         self.route, self.outcome = route, "victory"
@@ -175,8 +179,24 @@ class RuinsFightWalk(FirstBloodWalk):
         assert {r["id"]: r.get("quantity", 1) for r in await db_queries.get_player_inventory(self.player)} == inventory
         assert player["gold"] == self.gold_before + result["currency_gold"]
         assert isinstance(self.session.current_agent, ExplorationAgent)
-        await self.replay_refused()
         self.expected_reward = None
+        assert player["class"] == "warrior" and player["level"] == 3
+        assert not await db_queries.get_player_flag(self.player, "veythar_seal_mark.discovered")
+        for item in ("greyvale_veil_fragment", "veythar_sealed_artifact"):
+            held = [r for r in await db_queries.get_player_inventory(self.player) if r["id"] == item]
+            assert held and held[0]["slot_info"].get("quantity", 1) > 0
+        from event_bus import GameEvent
+
+        await self.bg._process_events([GameEvent(E.QUEST_UPDATED, {})], timed_out=False)
+        await self.arrive("greyvale_ruins_inner")
+        assert "deeper → greyvale_ruins_inner" in self.bg._last_warm_layer
+        assert self.sd.location_id == "greyvale_ruins_inner"
+        arrived = await db_queries.get_player(self.player)
+        artifact = await db_queries.get_inventory_item(self.player, "veythar_sealed_artifact")
+        assert arrived is not None and arrived["location_id"] == "greyvale_ruins_inner"
+        assert artifact is not None and artifact["quantity"] == 1
+        await self.arrive(PLACE)
+        await self.replay_refused()
         await self.repeat_victory()
 
     async def repeat_victory(self):
