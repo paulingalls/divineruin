@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import type { QuestCompletionCondition, QuestStageComplete } from "./quest";
+import type { QuestCompletionCondition, QuestDecisionOption, QuestStageComplete } from "./quest";
 
 const conditionFields = {
   location_reached: ["location"],
@@ -27,6 +27,10 @@ function array(value: unknown): unknown[] {
   if (!Array.isArray(value)) throw new Error("Expected an array");
   return value;
 }
+function text(value: unknown): string {
+  if (typeof value !== "string" || !value.length) throw new Error("Expected a nonempty string");
+  return value;
+}
 const records = (value: unknown) => array(value).map(object);
 async function content(name: string) {
   const parsed: unknown = await Bun.file(
@@ -49,16 +53,21 @@ test("authored quest conditions and rewards satisfy the shared contract", async 
       const fields = conditionFields[cc.type as keyof typeof conditionFields];
       expect(Object.keys(cc).sort()).toEqual(["type", ...fields].sort());
       if (cc.type === "decision_made") {
-        const options = object(cc.options);
-        expect(Object.keys(options).length).toBeGreaterThan(0);
-        for (const [id, option] of Object.entries(options)) {
+        const options: Record<string, QuestDecisionOption> = {};
+        for (const [id, option] of Object.entries(object(cc.options))) {
           expect(id.length).toBeGreaterThan(0);
           const details = object(option);
-          expect(typeof details.description).toBe("string");
-          expect(String(details.description).length).toBeGreaterThan(0);
-          expect(array(details.effects).length).toBeGreaterThan(0);
-          for (const effect of array(details.effects)) expect(typeof effect).toBe("string");
+          const effects = array(details.effects).map(text);
+          expect(effects.length).toBeGreaterThan(0);
+          options[id] = { description: text(details.description), effects };
         }
+        expect(Object.keys(options).length).toBeGreaterThan(0);
+        const decision: Extract<QuestCompletionCondition, { type: "decision_made" }> = {
+          type: "decision_made",
+          decision: text(cc.decision),
+          options,
+        };
+        expect(cc).toEqual(decision);
       }
       if (stage.on_complete) {
         const reward = object(stage.on_complete);
