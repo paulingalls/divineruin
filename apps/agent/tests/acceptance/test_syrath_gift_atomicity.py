@@ -73,7 +73,7 @@ async def test_two_sessions_wait_then_spend_once(veil):
         assert "spent" in next(r.output for r in receipts if r.is_error)
         player = await row(h)
         assert player["patron_gifts"] == {"other": {"x": 1}, GIFT: {"spent": True}}
-        assert player["flags"]["shadow_veil_combat_id"] == h.sd.combat_state.combat_id
+        assert player["flags"]["shadow_veil"] is True
     finally:
         for task in tasks:
             if not task.done():
@@ -88,8 +88,8 @@ async def test_two_sessions_wait_then_spend_once(veil):
         {"patron_gifts": []},
         {"patron_gifts": {GIFT: {"spent": "false"}}},
         {"patron_gifts": {GIFT: {}}},
-        {"flags": {"concealed": True, "shadow_veil_round": 1}},
-        {"flags": {"concealed": True, "shadow_veil_combat_id": "fight", "shadow_veil_round": True}},
+        {"flags": {"concealed": False, "shadow_veil": True}},
+        {"flags": {"concealed": True, "shadow_veil": 1}},
     ],
 )
 async def test_malformed_activation_is_loud_and_preserves_row(veil, data):
@@ -104,10 +104,25 @@ async def test_malformed_expiry_leaves_combat_retryable(veil):
     h = veil
     await use(h)
     await h.pool.execute(
-        "UPDATE players SET data=jsonb_set(data,'{flags,shadow_veil_round}','false') WHERE player_id=$1",
+        "UPDATE players SET data=jsonb_set(data,'{flags,shadow_veil}','1') WHERE player_id=$1",
         h.players[0],
     )
     before = await row(h)
     await h.command("end_combat", {"outcome": "fled"}, error=True)
     assert await row(h) == before
     await h.reload()
+
+
+async def test_player_outside_the_fight_is_refused_without_writes(veil):
+    # Expiry visits only this combat's player participants, so a lifetime written for anyone
+    # else would never end: they would stay hidden, with the hidden-casting discount, silently.
+    h = veil
+    state = h.sd.combat_state
+    state.participants = [p for p in state.participants if p.id != h.players[0]]
+    if state.spatial is not None:
+        state.spatial["positions"].pop(h.players[0])
+        state.spatial["speeds"].pop(h.players[0])
+    await h.persist()
+    before = await row(h)
+    assert "current player combat participant" in await h.command("activate", {"id": GIFT}, error=True)
+    assert await row(h) == before

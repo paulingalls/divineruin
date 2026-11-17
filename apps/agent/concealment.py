@@ -12,32 +12,28 @@ def is_concealed(player: dict) -> bool:
     return flags.get("concealed", False)
 
 
-def gift_lifetime(player):
-    is_concealed(player)
-    flags = player.get("flags", {})
-    keys = ("shadow_veil_combat_id", "shadow_veil_round")
-    if not any(key in flags for key in keys):
-        return None
-    combat_id, round_number = (flags.get(key) for key in keys)
-    if not isinstance(combat_id, str) or not combat_id or type(round_number) is not int or round_number < 1:
+def gift_lifetime(player) -> bool:
+    """True while concealment comes from Shadow Veil and ends at this combat's next wrap or end."""
+    concealed = is_concealed(player)
+    marker = player.get("flags", {}).get("shadow_veil", False)
+    if type(marker) is not bool:
         raise ToolError("Malformed stored Shadow Veil lifetime")
-    if not is_concealed(player):
+    if marker and not concealed:
         raise ToolError("Shadow Veil lifetime requires concealment")
-    return combat_id, round_number
+    return marker
 
 
-async def transition(player, concealed: bool, *, ended_by=None, lifetime: tuple[str, int] | None = None, conn):
+async def transition(player, concealed: bool, *, ended_by=None, lifetime: bool = False, conn):
     before = is_concealed(player)
-    if gift_lifetime(player) is not None:
+    if gift_lifetime(player):
         await conn.execute(
             """UPDATE players SET data=jsonb_set(data, '{flags}',
-            COALESCE(data->'flags','{}'::jsonb) - 'shadow_veil_combat_id' - 'shadow_veil_round')
+            COALESCE(data->'flags','{}'::jsonb) - 'shadow_veil')
             WHERE player_id=$1""",
             player["player_id"],
         )
-    if lifetime is not None:
-        await db_mutations.set_player_flag(player["player_id"], "shadow_veil_combat_id", lifetime[0], conn=conn)
-        await db_mutations.set_player_flag(player["player_id"], "shadow_veil_round", lifetime[1], conn=conn)
+    if lifetime:
+        await db_mutations.set_player_flag(player["player_id"], "shadow_veil", True, conn=conn)
     await db_mutations.set_player_flag(player["player_id"], "concealed", concealed, conn=conn)
     packet = {"player_id": player["player_id"], "before": before, "concealed": concealed}
     if ended_by:
@@ -56,15 +52,11 @@ async def reveal_attacker(player_id, *, conn, queries):
     return None
 
 
-async def expire_gift(state, *, conn, queries, completed_round=None):
+async def expire_gift(state, *, conn, queries):
     ids = sorted(p.id for p in state.participants if p.type == "player")
     players = await queries.get_players_for_update(ids, conn=conn)
-    for player_id in ids:
-        if player_id not in players:
-            raise RuntimeError(f"Player '{player_id}' not found during Shadow Veil expiry")
-        player = players[player_id]
-        lifetime = gift_lifetime(player)
-        if lifetime is not None:
-            combat_id, round_number = lifetime
-            if combat_id == state.combat_id and (completed_round is None or round_number <= completed_round):
-                await transition(player, False, conn=conn)
+    # A seat with no player row holds no lifetime; skipping it keeps the party's wrap and XP
+    # (test_combat_end_xp: one absent row cannot cost the party its end of combat).
+    for player in players.values():
+        if gift_lifetime(player):
+            await transition(player, False, conn=conn)

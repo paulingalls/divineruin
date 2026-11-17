@@ -61,14 +61,13 @@ async def test_produced_activation_spends_durably(veil):
     h = veil
     other = await row(h, 1)
     result = await use(h)
-    state = await h.reload()
+    await h.reload()
     player = await row(h)
     assert result["concealment"]["concealed"] is True
     assert player["flags"] == {
         "keepsake": True,
         "concealed": True,
-        "shadow_veil_combat_id": state.combat_id,
-        "shadow_veil_round": state.round_number,
+        "shadow_veil": True,
     }
     assert player["patron_gifts"] == {"other": {"x": 1}, GIFT: {"spent": True}}
     assert await row(h, 1) == other
