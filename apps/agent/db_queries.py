@@ -423,6 +423,16 @@ async def get_active_player_quests(
     return results
 
 
+async def get_player_quest_decisions(player_id: str) -> dict[str, dict[str, str]]:
+    pool = await db.get_pool()
+    rows = await pool.fetch(
+        "SELECT quest_id, data->'decisions' AS decisions FROM player_quests "
+        "WHERE player_id=$1 AND data ? 'decisions' ORDER BY quest_id",
+        player_id,
+    )
+    return {row["quest_id"]: json.loads(row["decisions"]) for row in rows}
+
+
 async def get_player_flag(
     player_id: str,
     flag: str,

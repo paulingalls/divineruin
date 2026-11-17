@@ -138,7 +138,7 @@
     "name": "Return to Accord",
     "type": "quest",
     "region_type": "city",
-    "instructions": "The player is returning to the Accord of Tides holding the sealed tablet and the journal fragment. The journey back should feel reflective — the weight of discovery settling in. Once at the Accord, guide the player toward Emris the Aelindran scholar. The revelation scene with Emris should be quiet and devastating — recognition, confusion, fear. End the quest with more questions than answers.",
+    "instructions": "The player is returning to the Accord of Tides holding the sealed tablet and the journal fragment. Respect the remembered artifact choice: the companion only knows about the tablet if the player showed it. The journey back should feel reflective — the weight of discovery settling in. Once at the Accord, guide the player toward Emris the Aelindran scholar. The revelation scene with Emris should be quiet and devastating — recognition, confusion, fear. End the quest with more questions than answers.",
     "aftermath": "The tablet's hum drops a note. Paper rustles, then stops in Emris's hands. [SCHOLAR_EMRIS, fearful]: \"This notation. My mentor used it. But Greyvale was only one site.\" Somewhere under the floor, something answers the tablet.",
     "beats": [
       {
@@ -146,7 +146,7 @@
         "description": "The player travels back to the Accord, processing what they found.",
         "completion_condition": "Player begins the return journey",
         "companion_hints": [
-          "Your companion is quiet for a while, then says: 'That tablet is still humming. We need someone who can read the journal. Back to the Accord.'",
+          "Your companion is quiet for a while, then says: 'We need someone who can read the journal. Back to the Accord.'",
           "Your companion mentions: 'The Aelindran scholars in the Dockside Quarter — if anyone can read old academic notation, it's them.'"
         ],
         "hint_delay_seconds": 45

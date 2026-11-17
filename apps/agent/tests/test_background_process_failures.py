@@ -53,6 +53,7 @@ def _background_data():
 
         add("db_queries.get_player", return_value=None)
         add("db_activity_queries.get_player_activities", return_value=[])
+        add("db_queries.get_player_quest_decisions", return_value={})
         mocks.episode = add("db_queries.get_player_flag_value", return_value=None)
         mocks.quests = add("db_queries.get_active_player_quests", return_value=[])
         mocks.location = add("db_content_queries.get_location", return_value={"name": "Guild Hall"})

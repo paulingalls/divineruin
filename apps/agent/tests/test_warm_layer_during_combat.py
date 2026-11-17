@@ -45,6 +45,7 @@ DB_SEAMS = (
 def _mock_db():
     """Mock the warm-layer reads and the NPC disposition lookup."""
     with (
+        patch("background_process.db_queries.get_player_quest_decisions", new_callable=AsyncMock, return_value={}),
         patch("background_process.db_queries.get_player", new_callable=AsyncMock, return_value=None),
         patch("background_process.db_activity_queries.get_player_activities", new_callable=AsyncMock, return_value=[]),
         patch(DB_SEAMS[0], new_callable=AsyncMock, return_value=[]) as quests,

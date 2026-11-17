@@ -342,12 +342,13 @@ class BackgroundProcess:
 
     async def _build_warm_layer(self) -> bool:
         try:
-            quests, location, npcs_raw, training, episode = await asyncio.gather(
+            quests, location, npcs_raw, training, episode, decisions = await asyncio.gather(
                 db_queries.get_active_player_quests(self._sd.primary_player_id),
                 db_content_queries.get_location(self._sd.location_id),
                 db_queries.get_npcs_at_location(self._sd.location_id),
                 db_training.get_player_active_training_activities(self._sd.primary_player_id),
                 db_queries.get_player_flag_value(self._sd.primary_player_id, "first_episode"),
+                db_queries.get_player_quest_decisions(self._sd.primary_player_id),
             )
             self._quest_cache = quests
             self._episode = episode
@@ -392,6 +393,7 @@ class BackgroundProcess:
                 training=training or None,
                 first_episode_phase=episode,
                 party_member_ids=self._sd.present_member_ids,
+                quest_decisions=decisions,
             )
         except TRANSIENT_IO_ERRORS:
             logger.error("Warm layer build failed", exc_info=True)

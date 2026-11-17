@@ -209,6 +209,7 @@ async def build_warm_layer(
     training: list[dict] | None = None,
     first_episode_phase: bool | int | str | None = None,
     party_member_ids: tuple[str, ...] | None = None,
+    quest_decisions: dict[str, dict[str, str]] | None = None,
 ) -> str:
     import asyncio
 
@@ -218,6 +219,17 @@ async def build_warm_layer(
     from tool_support import _location_for_narration, _npc_summary, _resolve_ambient_sounds, apply_time_conditions
 
     sections: list[str] = []
+    for quest_id, decisions in (quest_decisions or {}).items():
+        for decision, option in decisions.items():
+            fact = f"REMEMBERED DECISION — {quest_id}.{decision} = {option}"
+            if quest_id == "greyvale_anomaly" and decision == "artifact_choice":
+                if option == "keep_artifact":
+                    fact += (
+                        ". The companion does not know about the artifact; do not disclose it through companion speech."
+                    )
+                elif option == "show_companion":
+                    fact += ". The companion knows about the artifact."
+            sections.append(fact)
 
     # Use pre-fetched data when available, otherwise query
     if location is None or npcs_raw is None:

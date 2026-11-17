@@ -8,6 +8,9 @@ from acceptance.greyvale_finish_line import WarmArc, assert_finish, refresh, sta
 import db_content_queries
 import db_mutations
 import db_queries
+import event_types as E
+from background_process import BackgroundProcess
+from event_bus import GameEvent
 
 
 class DecisionWalk(WarmArc):
@@ -93,6 +96,7 @@ async def assert_choice(arc, option):
         assert (await command(arc, arc.stage + 1, replay)).is_error
         assert await snapshot(arc) == after and len(arc.events) == count
     if decision == "artifact_choice":
+        await assert_remembered(arc, option)
         receipt = await command(arc, 8)
         assert not receipt.is_error, receipt.output
         row = await db_queries.get_player_quest(arc.player, arc.quest)
@@ -100,3 +104,16 @@ async def assert_choice(arc, option):
         assert row["decisions"] == {decision: option} and row["status"] == "completed"
         player = await db_queries.get_player(arc.player)
         assert player is not None and player["xp"] == 300
+        await assert_remembered(arc, option)
+
+
+async def assert_remembered(arc, option):
+    arc.bg = BackgroundProcess(arc.session, arc.sd)
+    await arc.bg._process_events([GameEvent(E.QUEST_UPDATED, {})], timed_out=False)
+    warm = arc.bg._last_warm_layer
+    assert f"greyvale_anomaly.artifact_choice = {option}" in warm
+    if option == "keep_artifact":
+        assert "The companion does not know about the artifact" in warm
+    else:
+        assert "The companion knows about the artifact" in warm
+    assert "That tablet is still humming" not in warm
