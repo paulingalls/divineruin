@@ -3,7 +3,10 @@
 import ast
 import json
 import re
+from functools import cache
 from pathlib import Path
+
+from proof_content_sql import seed_tables, sql_reads
 
 SHARED_CONTENT = {"content/players.json"}
 SHARED_INPUTS = {"scripts/seed_content.py", "scripts/migrations/**", *SHARED_CONTENT}
@@ -24,6 +27,105 @@ PATH_LOADED = {
 }
 # These imports assert ModuleNotFoundError; there is no runtime module to include.
 ABSENT_IMPORTS = {"apps/agent/tests/acceptance/test_exploration_collapse.py"}
+
+
+# DB readers are explicit: importing db alone does not establish a catalog read.
+CONTENT_LOADERS = {
+    "action_sounds": ("action_sound_content",),
+    "combat_sounds": ("combat_sound_content",),
+    "archetype_abilities": ("abilities",),
+    "archetype_milestones": ("milestones",),
+    "archetypes": ("archetypes",),
+    "companions": ("companion_profiles",),
+    "creatures": ("creature_catalog",),
+    "encounter_templates": ("db_content_queries",),
+    "errand_templates": ("db_content_queries",),
+    "factions": ("db_content_queries",),
+    "locations": ("db_content_queries",),
+    "lore_entries": ("db_content_queries",),
+    "scenes": ("db_content_queries",),
+    "training_programs": ("db_content_queries",),
+    "gathering_nodes": ("db_content_queries", "db_mutations_gathering"),
+    "items": ("db_content_queries", "db_queries", "db_inventory_snapshot"),
+    "materials_catalog": (
+        "materials",
+        "db_content_queries",
+        "db_queries",
+        "db_inventory_snapshot",
+    ),
+    "npcs": ("npcs", "db_content_queries", "db_queries"),
+    "npc_state": ("db_queries",),
+    "quests": ("db_content_queries", "db_queries"),
+    "loot_tables": ("db_content_queries", "creature_schema"),
+    "gods": ("_gods_content",),
+    "mentor_variants": ("mentor_variants",),
+    "pricing": ("pricing_queries",),
+    "quality_outcomes": ("quality_outcomes",),
+    "racial_resonance_bonuses": ("racial_resonance",),
+    "recipes": ("recipes",),
+    "role_archetypes": ("role_archetypes",),
+    "settlement_templates": ("settlement_templates",),
+    "spells": ("spells",),
+    "training_activity_types": ("training_rules", "purification_tools"),
+    "events": (),
+    "inventory_pools": (),
+    "level_progression": (),
+    "voice_registry": (),
+}
+CONTENT_LOADERS = {
+    f"content/{name}.json": {f"apps/agent/{module}.py" for module in modules}
+    for name, modules in CONTENT_LOADERS.items()
+}
+SERVER_CATALOGS = {
+    f"content/{name}.json"
+    for name in (
+        "locations",
+        "spells",
+        "training_activity_types",
+        "training_programs",
+        "errand_templates",
+        "recipes",
+        "items",
+        "archetypes",
+        "archetype_abilities",
+        "mentor_variants",
+        "role_archetypes",
+        "archetype_milestones",
+        "pricing",
+    )
+}
+CONTENT_FIXTURES = {
+    "conftest.py",
+    "_postgres_fixtures.py",
+    "_db_lifecycle.py",
+    "_livekit.py",
+}
+
+
+def behavioral_closure(entry, graph):
+    pending, found = [entry], set()
+    while pending:
+        path = pending.pop()
+        if path in found or Path(path).name in CONTENT_FIXTURES:
+            continue
+        if path not in graph:
+            raise ValueError(f"{entry}: missing behavioral Python root {path}")
+        found.add(path)
+        pending.extend(set(graph[path]["direct"]) - found)
+        pending.extend(explicit_roots(path, graph) - found)
+    return found
+
+
+def content_literals(path, content):
+    tree = ast.parse(Path(path).read_text())
+    for node in ast.walk(tree):
+        body = getattr(node, "body", None)
+        if isinstance(body, list) and body and isinstance(body[0], ast.Expr):
+            value = body[0].value
+            if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                body.pop(0)
+    literals = {n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)}
+    return {source for source in content if source in literals or Path(source).name in literals}
 
 
 def load_families(content):
@@ -65,6 +167,43 @@ def matches(patterns, path):
     return any(pattern.fullmatch(path) for pattern in patterns)
 
 
+@cache
+def path_loaded(text):
+    return any(
+        isinstance(n, ast.Call)
+        and isinstance(n.func, ast.Attribute)
+        and n.func.attr in {"spec_from_file_location", "run_path"}
+        for n in ast.walk(ast.parse(text))
+    )
+
+
+def explicit_roots(path, graph):
+    local = set()
+    text = Path(path).read_text()
+    if graph[path].get("localReason") and path not in ABSENT_IMPORTS:
+        if path == "apps/agent/tests/agent_tool_profiles.py":
+            roots = {str(p) for p in Path("apps/agent").glob("*_agent.py")}
+        else:
+            literals = {
+                node.value
+                for node in ast.walk(ast.parse(text))
+                if isinstance(node, ast.Constant)
+                and isinstance(node.value, str)
+                and re.fullmatch(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*", node.value)
+            }
+            roots = {
+                str(Path(root) / (literal.replace(".", "/") + ".py")) for root in ROOTS for literal in literals
+            } & graph.keys()
+        if not roots:
+            raise ValueError(f"{path}: unrooted dynamic import: {graph[path]['localReason']}")
+        local.update(roots)
+    if path_loaded(text):
+        if path not in PATH_LOADED:
+            raise ValueError(f"{path}: undeclared path-loaded Python root")
+        local.update(PATH_LOADED[path])
+    return local
+
+
 def runtime_closure(entry, graph):
     pending = [entry]
     closure = set()
@@ -76,34 +215,15 @@ def runtime_closure(entry, graph):
             raise ValueError(f"{entry}: missing Python root {path}")
         closure.add(path)
         pending.extend(set(graph[path]["closure"]) - closure)
-        text = Path(path).read_text()
-        if graph[path].get("localReason") and path not in ABSENT_IMPORTS:
-            if path == "apps/agent/tests/agent_tool_profiles.py":
-                roots = {str(p) for p in Path("apps/agent").glob("*_agent.py")}
-            else:
-                literals = {
-                    node.value
-                    for node in ast.walk(ast.parse(text))
-                    if isinstance(node, ast.Constant)
-                    and isinstance(node.value, str)
-                    and re.fullmatch(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*", node.value)
-                }
-                roots = {
-                    str(Path(root) / (literal.replace(".", "/") + ".py")) for root in ROOTS for literal in literals
-                } & graph.keys()
-            if not roots:
-                raise ValueError(f"{path}: unrooted dynamic import: {graph[path]['localReason']}")
-            pending.extend(roots - closure)
-        if "spec_from_file_location" in text or "run_path" in text:
-            if path not in PATH_LOADED:
-                raise ValueError(f"{path}: undeclared path-loaded Python root")
-            pending.extend(set(PATH_LOADED[path]) - closure)
+        pending.extend(explicit_roots(path, graph) - closure)
     return closure
 
 
 def task_inventory(acceptance, e2e, graph, families):
     inventory = {}
     cache = {}
+    behavioral, literals = {}, {}
+    content = content_inventory()
 
     def closure(path):
         if path not in cache:
@@ -134,10 +254,22 @@ def task_inventory(acceptance, e2e, graph, families):
         else:
             entry = paths[0]
             preferred = full = set()
+        if entry in graph:
+            if entry not in behavioral:
+                behavioral[entry] = behavioral_closure(entry, graph)
+            for module in behavioral[entry]:
+                if module not in literals:
+                    literals[module] = content_literals(module, content)
         inventory[task] = {
+            "content_closure": behavioral.get(entry, set()),
+            "content_direct": literals.get(entry, set()) | (sql_reads(entry, content) if entry in graph else set()),
+            "content_reads": set().union(*(literals[p] for p in behavioral.get(entry, set())), set()),
             "path": entry,
             "family": memberships.pop(),
             "preferred": preferred,
+            "direct": (set(graph[entry]["direct"]) - {entry}) | explicit_roots(entry, graph)
+            if entry in graph
+            else set(),
             "closure": full,
         }
     if not inventory or not acceptance or any(not inventory[t]["closure"] for t in acceptance):
@@ -148,67 +280,125 @@ def task_inventory(acceptance, e2e, graph, families):
     return inventory
 
 
-def select_sources(inventory, families, sources, infrastructure):
+NON_PYTHON = {
+    "scripts/worktree-common.sh",
+    "scripts/worktree-docker.sh",
+    "scripts/ensure-db.ts",
+}
+
+
+def harness_source(source):
+    return source.startswith("apps/agent/tests/") or source in NON_PYTHON
+
+
+def select_readers(inventory, source, readers, budget):
+    if sum(task.startswith("agent-acceptance:") for task in readers) <= 10:
+        return set(readers)
+    selected = set()
+    for family in {inventory[t]["family"] for t in readers}:
+        reaching = {t for t in readers if inventory[t]["family"] == family}
+        preferred = {t for t in reaching if source in inventory[t]["preferred"]}
+        candidates = sorted(
+            preferred or reaching,
+            key=lambda t: (len(inventory[t]["closure"]), inventory[t]["path"], t),
+        )
+        selected.update(candidates[:budget])
+    return selected
+
+
+def source_readers(inventory, families, source):
+    readers = {t for t, m in inventory.items() if source in m["closure"]}
+    owners = {name for name, family in families.items() if matches(family["owns"], source)}
+    own = {t for t, m in inventory.items() if m["path"] == source}
+    return readers, owners, own
+
+
+def ordinary_candidates(inventory, source, reaching):
+    direct = {t for t in reaching if source in inventory[t]["direct"]}
+    preferred = {t for t in reaching if source in inventory[t]["preferred"]}
+    return direct or preferred or reaching
+
+
+def first_reader(inventory, candidates):
+    return min(
+        candidates,
+        key=lambda t: (len(inventory[t]["closure"]), inventory[t]["path"], t),
+    )
+
+
+def select_sources(inventory, families, sources):
     assignments = {task: set() for task in inventory}
-    representatives = {}
     for source in sorted(sources):
-        readers = {task for task, meta in inventory.items() if source in meta["closure"]}
-        owners = {name for name, family in families.items() if matches(family["owns"], source)}
-        selected = {task for task, meta in inventory.items() if meta["family"] in owners or meta["path"] == source}
-        shared = sum(task.startswith("agent-acceptance:") for task in readers) > 10
-        by_family = {}
-        if not shared:
-            selected.update(readers)
+        readers, owners, selected = source_readers(inventory, families, source)
+        if harness_source(source):
+            selected |= select_readers(inventory, source, readers, 1)
+            selected.update(t for t, m in inventory.items() if m["family"] in owners)
         else:
-            for family in families:
-                reaching = {task for task in readers if inventory[task]["family"] == family}
-                preferred = {task for task in reaching if source in inventory[task]["preferred"]}
-                candidates = sorted(
-                    preferred or reaching,
-                    key=lambda task: (
-                        len(inventory[task]["closure"]),
-                        inventory[task]["path"],
-                        task,
-                    ),
-                )
-                by_family[family] = set(candidates[:2])
-                selected.update(by_family[family])
-        if source in infrastructure:
-            selected.update(inventory)
+            direct = {t for t, m in inventory.items() if source in m["direct"]}
+            if sum(t.startswith("agent-acceptance:") for t in direct) <= 10:
+                selected |= direct
+            shared = sum(t.startswith("agent-acceptance:") for t in readers) > 10
+            for family in owners | {inventory[t]["family"] for t in readers}:
+                members = {t for t, m in inventory.items() if m["family"] == family}
+                reaching = readers & members
+                if not shared and (family not in owners or reaching):
+                    selected |= reaching
+                elif not selected & members:
+                    candidates = ordinary_candidates(inventory, source, reaching) or members
+                    selected.add(first_reader(inventory, candidates))
         for task in selected:
             assignments[task].add(source)
-        representatives[source] = by_family
-    return assignments, representatives
+    return assignments
 
 
-def audit_selection(tasks, inventory, families, sources, infrastructure, representatives):
-    for source in sorted(sources):
-        readers = {task for task, meta in inventory.items() if source in meta["closure"]}
-        shared = sum(task.startswith("agent-acceptance:") for task in readers) > 10
-        owners = {name for name, family in families.items() if matches(family["owns"], source)}
-        receiving = {t for t in inventory if source in tasks[t]["keyed"] and source in tasks[t]["inputs"]}
-        for task, meta in inventory.items():
-            family = meta["family"]
-            required = family in owners or meta["path"] == source or source in infrastructure
-            if required or (task in readers and not shared):
-                if task not in receiving:
-                    raise ValueError(f"orphan {source}: task {task}, family {family}: missing direct coverage/input")
-            elif task in readers:
-                reps = representatives[source][family]
-                if not reps or not reps <= receiving:
-                    raise ValueError(
-                        f"orphan {source}: task {task}, family {family}: missing representative coverage/input"
-                    )
-        for family, reps in representatives[source].items():
+def audit_readers(source, inventory, readers, receiving, required, budget):
+    shared = sum(t.startswith("agent-acceptance:") for t in readers) > 10
+    expected = required | (set() if shared else readers)
+    if missing := expected - receiving:
+        raise ValueError(f"orphan {source}: missing direct coverage/input: {sorted(missing)}")
+    if extra := receiving - readers - required:
+        raise ValueError(f"{source}: unexpected receivers: {sorted(extra)}")
+    if shared:
+        for family in {inventory[t]["family"] for t in readers}:
             reaching = {t for t in readers if inventory[t]["family"] == family}
-            preferred = {t for t in reaching if source in inventory[t]["preferred"]}
-            if len(reps) > 2 or not reps <= (preferred or reaching):
-                raise ValueError(f"{source}: family {family}: invalid representatives {sorted(reps)}")
-            selected = {t for t in receiving if inventory[t]["family"] == family}
-            if family not in owners and source not in infrastructure:
-                selected -= {t for t in selected if inventory[t]["path"] == source}
-                if len(selected) > 2:
-                    raise ValueError(f"{source}: family {family}: representative cap exceeded {sorted(selected)}")
+            selected = {t for t in receiving - required if inventory[t]["family"] == family}
+            if not receiving & reaching:
+                raise ValueError(f"orphan {source}: family {family}: missing representative coverage/input")
+            if len(selected) > budget:
+                raise ValueError(f"{source}: family {family}: representative cap exceeded {sorted(selected)}")
+
+
+def audit_selection(tasks, inventory, families, sources):
+    for source in sorted(sources):
+        readers, owners, own = source_readers(inventory, families, source)
+        receiving = {t for t in inventory if source in tasks[t]["keyed"] and source in tasks[t]["inputs"]}
+        if harness_source(source):
+            required = own | {t for t, m in inventory.items() if m["family"] in owners}
+            audit_readers(source, inventory, readers, receiving, required, 1)
+            continue
+        direct = {t for t, m in inventory.items() if source in m["direct"]}
+        required = own | (direct if sum(t.startswith("agent-acceptance:") for t in direct) <= 10 else set())
+        if missing := required - receiving:
+            raise ValueError(f"orphan {source}: missing direct coverage/input: {sorted(missing)}")
+        shared = sum(t.startswith("agent-acceptance:") for t in readers) > 10
+        for family in families:
+            members = {t for t, m in inventory.items() if m["family"] == family}
+            reaching = readers & members
+            selected = receiving & members
+            if not shared and (family not in owners or reaching):
+                if selected != (reaching | (required & members)):
+                    raise ValueError(f"{source}: family {family}: reader coverage/input mismatch")
+                continue
+            if family not in owners and not reaching:
+                if selected:
+                    raise ValueError(f"{source}: family {family}: unexpected receivers {sorted(selected)}")
+                continue
+            if not selected:
+                raise ValueError(f"orphan {source}: family {family}: missing representative coverage/input")
+            if reaching and (extra := selected - reaching):
+                raise ValueError(f"{source}: family {family}: representatives do not reach source: {sorted(extra)}")
+            if len(selected - required) > (0 if required & members else 1):
+                raise ValueError(f"{source}: family {family}: representative cap exceeded {sorted(selected)}")
 
 
 def content_inventory():
@@ -220,7 +410,10 @@ def content_inventory():
 
 # A test whose own source names the seed script or the migrations exercises them directly
 # (seed atomicity, a migration's backfill), so it keys them beyond the representatives.
-DIRECT_MARKERS = {"scripts/seed_content.py": "seed_content", "scripts/migrations/**": "migrations"}
+DIRECT_MARKERS = {
+    "scripts/seed_content.py": "seed_content",
+    "scripts/migrations/**": "migrations",
+}
 
 
 def direct_readers(inventory, source):
@@ -230,26 +423,73 @@ def direct_readers(inventory, source):
     return {task for task, meta in inventory.items() if marker in Path(meta["path"]).read_text()}
 
 
+def content_readers(inventory, families, content):
+    if not content >= SHARED_CONTENT or not inventory or not inventory.keys() >= SEED_REPRESENTATIVES:
+        raise ValueError("empty content/task inventory or missing seed representatives")
+    if len(SEED_REPRESENTATIVES) > 2:
+        raise ValueError("excessive seed representatives")
+    if missing := (content - SHARED_CONTENT) - CONTENT_LOADERS.keys():
+        raise ValueError(f"content has no behavioral loader mapping: {sorted(missing)}")
+    for source, roots in CONTENT_LOADERS.items():
+        if source not in content or any(not Path(p).is_file() for p in roots):
+            raise ValueError(f"{source}: absent content or loader: {sorted(roots)}")
+    seeded = {f"content/{name}" for name in seed_tables()}
+    if missing := seeded - content:
+        raise ValueError(f"seed TABLE_MAP names absent content: {sorted(missing)}")
+    readers = {}
+    for source in content:
+        if source in SHARED_CONTENT:
+            readers[source] = set()
+            continue
+        if not any(source in family["reads"] for family in families.values()):
+            raise ValueError(f"content has no reader family: {source}")
+        roots = CONTENT_LOADERS[source] | ({"scripts/seed_content.py"} if source in seeded else set())
+        if source in SERVER_CATALOGS:
+            roots |= {"apps/agent/tests/acceptance/_server.py"}
+        if any(not Path(p).is_file() for p in roots):
+            raise ValueError(f"{source}: missing behavioral loader: {sorted(roots)}")
+        readers[source] = {
+            t
+            for t, m in inventory.items()
+            if source in m["content_direct"]
+            or (
+                source in families[m["family"]]["reads"]
+                and (roots & m["content_closure"] or source in m["content_reads"] or m["family"] == "mobile-e2e")
+            )
+        }
+    return readers
+
+
 def select_content(inventory, families, content):
-    if not inventory.keys() >= SEED_REPRESENTATIVES or len(SEED_REPRESENTATIVES) > 2:
-        raise ValueError("missing or excessive seed representatives")
     assignments = {task: set() for task in inventory}
+    readers = content_readers(inventory, families, content)
     for source in content | SHARED_INPUTS:
-        readers = {task for task, meta in inventory.items() if source in families[meta["family"]]["reads"]}
-        for task in readers | SEED_REPRESENTATIVES | direct_readers(inventory, source):
+        reaching = readers.get(source, set())
+        selected = SEED_REPRESENTATIVES | direct_readers(inventory, source)
+        selected |= {t for t in reaching if source in inventory[t]["content_direct"]}
+        if sum(t.startswith("agent-acceptance:") for t in reaching) <= 10:
+            selected |= reaching
+        else:
+            for family in {inventory[t]["family"] for t in reaching}:
+                members = {t for t in reaching if inventory[t]["family"] == family}
+                if not selected & members:
+                    selected.add(first_reader(inventory, members))
+        for task in selected:
             assignments[task].add(source)
     return assignments
 
 
 def audit_content(tasks, inventory, families, content):
+    readers = content_readers(inventory, families, content)
     for source in sorted(content | SHARED_INPUTS):
-        expected = SEED_REPRESENTATIVES | direct_readers(inventory, source)
-        expected |= {task for task, meta in inventory.items() if source in families[meta["family"]]["reads"]}
-        receiving = {task for task in inventory if source in tasks[task]["keyed"]}
-        missing_inputs = {task for task in expected if source not in tasks[task]["inputs"]}
-        if receiving != expected or missing_inputs:
-            raise ValueError(
-                f"{source}: content coverage/input mismatch: "
-                f"missing keys={sorted(expected - receiving)}, extra keys={sorted(receiving - expected)}, "
-                f"missing inputs={sorted(missing_inputs)}"
-            )
+        reaching = readers.get(source, set())
+        required = SEED_REPRESENTATIVES | direct_readers(inventory, source)
+        required |= {t for t in reaching if source in inventory[t]["content_direct"]}
+        for field in ("keyed", "inputs"):
+            receiving = {t for t in inventory if source in tasks[t][field] and source in tasks[t]["keyed"]}
+            audit_readers(source, inventory, reaching, receiving, required, 1)
+            if sum(t.startswith("agent-acceptance:") for t in reaching) > 10:
+                for family in {inventory[t]["family"] for t in reaching}:
+                    members = {t for t in reaching if inventory[t]["family"] == family}
+                    if required & members and (receiving - required) & members:
+                        raise ValueError(f"{source}: family {family}: redundant {field} representative")
