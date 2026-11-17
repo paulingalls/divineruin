@@ -112,15 +112,15 @@ def assert_finish(line, quest, index):
         assert "when the fight begins" in line
 
 
-async def enter_surfaced_combat(arc, line):
+async def enter_surfaced_combat(arc, line, stage=2, location="greyvale_wilderness_north"):
     encounter = line.split('encounter_id="', 1)[1].split('"', 1)[0]
-    arc.sd.location_id = "greyvale_wilderness_north"
+    arc.sd.location_id = location
     await arc.pool.execute(
         "UPDATE players SET data=jsonb_set(data, '{location_id}', to_jsonb($2::text)) WHERE player_id=$1",
         arc.player,
         arc.sd.location_id,
     )
-    assert await refresh(arc, QUEST, 2) == line
+    assert await refresh(arc, QUEST, stage) == line
     arc.model.commands.append(("enter_mode", {"mode": "combat", "encounter_id": encounter}))
     with arc.sd._bind_authenticated_actor(arc.player, 1, lambda *_: None):
         await arc.session.run(user_input="The fight begins. Execute the command.")

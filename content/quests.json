@@ -85,13 +85,29 @@
           "keep_artifact": {
             "description": "Keep the artifact. Don't show it to anyone yet.",
             "effects": ["player_has_veythar_artifact: true"],
-            "next_stage": "stage_5_return"
+            "next_stage": "stage_ruins_fight"
           },
           "show_companion": {
             "description": "Show the artifact to your companion immediately.",
             "effects": ["companion_knows_artifact: true", "companion_disposition +3"],
-            "next_stage": "stage_5_return"
+            "next_stage": "stage_ruins_fight"
           }
+        }
+      },
+      {
+        "id": "stage_ruins_fight",
+        "name": "The Hush Beyond",
+        "objective": "Defeat the young mawlings in the ruins and reach the sealed inner door.",
+        "target_location_id": "greyvale_ruins_entrance",
+        "completion_conditions": {
+          "type": "combat_completed",
+          "encounter": "ruins_mawling_pair",
+          "outcome": "victory"
+        },
+        "on_complete": {
+          "xp": 100,
+          "world_effects": [],
+          "narrative_beat": "The last wet rasp dies. In the hush after the fight, your breathing sounds too loud. Ahead, the inner door stands sealed; something beyond it gives one low answering hum."
         }
       },
       {
@@ -132,11 +148,11 @@
       },
       {
         "scene_id": "scene_ruins_exploration",
-        "stage_refs": [3]
+        "stage_refs": [3, 4]
       },
       {
         "scene_id": "scene_return_to_accord",
-        "stage_refs": [4]
+        "stage_refs": [5]
       }
     ],
     "failure_conditions": {
@@ -279,7 +295,7 @@
     "type": "side",
     "description": "Emris has been studying artifacts from Aelindra for thirty years. The Greyvale discovery changes everything — the notation matches their missing mentor's work. Helping Emris may unlock deeper understanding of what happened at the ruins, and what Veythar was doing.",
     "giver": "scholar_emris",
-    "prerequisite": "quest:greyvale_anomaly:stage >= 5",
+    "prerequisite": "quest:greyvale_anomaly:stage >= 6",
     "stages": [
       {
         "id": "stage_1_assist_research",

@@ -21,11 +21,9 @@ from combat_end import _end_combat_db
 from combat_events import EventSink
 from session_data import CombatParticipant, CombatState, SessionData
 
-# The ONLY authored stage declaring both rewards: greyvale_anomaly stage index 4
-# ("stage_5_return") pays xp 200 + favor 5. Firing it means seeding current_stage=4 and
-# asking for stage 5 — len(stages) is the completion transition.
+# Greyvale's final return pays both XP and favor.
 _QUEST_ID = "greyvale_anomaly"
-_FINAL_STAGE = 5
+_FINAL_STAGE = 6
 
 # A 2-seat party turns the authored 200 into an exact boundary landing:
 #   party_reward_multiplier(2) = 1.5 -> int(200 * 1.5 / 2) = 150 each

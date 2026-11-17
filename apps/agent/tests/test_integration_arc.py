@@ -117,10 +117,10 @@ class TestQuestArcProgression:
         assert any(e[1]["event_id"] == "ruins_discovery_ripple" for e in world_events)
 
     @pytest.mark.asyncio
-    async def test_stage_5_effects(self):
+    async def test_return_effects(self):
         quest = _load_greyvale_quest()
-        stage_4 = quest["stages"][4]
-        effects = stage_4["on_complete"].get("world_effects", [])
+        return_stage = quest["stages"][5]
+        effects = return_stage["on_complete"].get("world_effects", [])
         assert "emris_disposition +4" in effects
         assert "event:faction_interest_triggered" in effects
         assert "event:god_whisper:player_patron" in effects

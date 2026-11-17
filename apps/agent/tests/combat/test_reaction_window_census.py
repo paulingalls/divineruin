@@ -3,11 +3,14 @@
 import json
 from collections import Counter
 from pathlib import Path
+from random import Random
 
 from sample_fixtures import catalog_encounters
 
 import abilities
 import reaction_windows
+from creature_combat import translate_creature
+from encounter_builder import build_encounter
 
 _CONTENT = Path(__file__).resolve().parents[4] / "content"
 
@@ -57,10 +60,7 @@ _WINDOW_CENSUS = {
     "on_spell_cast": 1,
 }
 
-# The `grapple` branch hangs on two content rows that are the SAME action twice. A content edit
-# dropping Seizing Grab strands rogue_slippery and spy_slippery with nothing going red anywhere
-# else, so the carriers are pinned as a literal.
-_GRAPPLE_CARRIERS = [("mawling_1", "Lunge"), ("mawling_2", "Lunge")]
+_GRAPPLE_CARRIERS = [("generated_2", "Lunge")]
 _COMMAND_CARRIERS = [
     ("ashmark_patrol", "ashmark_sergeant", "Rally"),
     ("cult_cell", "cult_fanatic_1", "Bless"),
@@ -76,14 +76,38 @@ def _reaction_rows() -> list[dict]:
     return [r for r in rows if r.get("ability_type") == "reaction"]
 
 
+def _templates():
+    rows = json.loads((_CONTENT / "creatures.json").read_text())
+    by_id = {row["id"]: row for row in rows}
+    references = build_encounter(
+        rows,
+        2,
+        [
+            {"id": "player", "type": "player", "level": 5},
+            {"id": "companion_kael", "type": "companion", "player_id": "player", "hp_factor": 0.75},
+        ],
+        {"region": "greyvale", "terrain": "forest"},
+        "standard",
+        Random(2),
+    )
+    generated = {
+        "id": "generated_greyvale",
+        "enemies": [
+            translate_creature(
+                by_id[ref["creature_id"]], encounter_id="generated_greyvale", enemy_id=ref["id"], role=ref["role"]
+            )
+            for ref in references
+        ],
+    }
+    return [*catalog_encounters(), generated]
+
+
 def _enemy_actions() -> list[dict]:
-    """Every action_pool entry across all encounter templates — the whole enemy vocabulary."""
-    templates = catalog_encounters()
-    return [action for tpl in templates for enemy in tpl.get("enemies", []) for action in enemy.get("action_pool", [])]
+    return [action for tpl in _templates() for enemy in tpl["enemies"] for action in enemy["action_pool"]]
 
 
 def _grapple_carriers() -> list[tuple[str, str]]:
-    templates = catalog_encounters()
+    templates = _templates()
     return [
         (enemy["id"], action["name"])
         for tpl in templates
@@ -105,7 +129,7 @@ def _kind_carriers(kind: str) -> list[tuple[str, str, str]]:
 
 
 def _produced_windows() -> set[str]:
-    """Every window the derivation opens over the whole enemy action vocabulary, both stages."""
+    """Derive windows from authored encounters and a real generated adult encounter."""
     produced: set[str] = set()
     for action in _enemy_actions():
         produced.update(reaction_windows.pre_roll_triggers(action))
@@ -146,8 +170,7 @@ def test_every_row_the_table_calls_producible_has_its_window_produced():
 
 def test_the_grapple_branch_carriers_are_pinned():
     assert _grapple_carriers() == _GRAPPLE_CARRIERS, (
-        "the only content carriers of the `grapple` property have changed — rogue_slippery and "
-        "spy_slippery reach on_condition_imposed through these entries and nothing else"
+        "authored encounters and the generated adult example must retain a grapple producer"
     )
 
 

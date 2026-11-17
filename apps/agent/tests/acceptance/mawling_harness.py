@@ -25,19 +25,14 @@ class MawlingHarness:
     async def start(self, reactions=False, gear=False, companion=False, role: Any = "standard"):
         self.pool = await db.get_pool()
         await reseed_choir_content(self.pool)
-        self.encounter_id = "ruins_mawling_pair"
-        if role != "standard":
-            template = json.loads(
-                await self.pool.fetchval("SELECT data FROM encounter_templates WHERE id=$1", self.encounter_id)
-            )
-            self.encounter_id = f"maw153_{uuid4().hex}"
-            template["id"] = self.encounter_id
-            template["enemies"][0]["role"] = role
-            await self.pool.execute(
-                "INSERT INTO encounter_templates (id, data) VALUES ($1,$2::jsonb)",
-                self.encounter_id,
-                json.dumps(template),
-            )
+        from adult_mawling_fixture import adult_template
+
+        self.encounter_id = f"adult_mawling_{uuid4().hex}"
+        await self.pool.execute(
+            "INSERT INTO encounter_templates (id, data) VALUES ($1,$2::jsonb)",
+            self.encounter_id,
+            json.dumps(adult_template(self.encounter_id, role)),
+        )
         self.players = [f"maw147_{uuid4().hex}" for _ in range(2)]
         for index, pid in enumerate(self.players):
             await seed_player_with_pools(

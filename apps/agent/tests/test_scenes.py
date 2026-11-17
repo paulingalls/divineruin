@@ -241,7 +241,10 @@ class TestGreyvaleSceneGraph:
         all_refs = []
         for entry in self.greyvale["scene_graph"]:
             all_refs.extend(entry["stage_refs"])
-        assert sorted(all_refs) == [0, 1, 2, 3, 4]
+        assert sorted(all_refs) == [0, 1, 2, 3, 4, 5]
+        mapping = {e["scene_id"]: e["stage_refs"] for e in self.greyvale["scene_graph"]}
+        assert mapping["scene_ruins_exploration"] == [3, 4]
+        assert mapping["scene_return_to_accord"] == [5]
 
     def test_scene_graph_ids_exist_in_scenes_json(self):
         with open(CONTENT_DIR / "scenes.json") as f:
