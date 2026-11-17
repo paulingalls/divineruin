@@ -27,7 +27,6 @@ logger = logging.getLogger("divineruin.tools")
 class PendingQuest:
     response: dict
     events: list[tuple[str, dict]]
-    corruption: dict[str, int]
     notes: list[str]
     party_ids: tuple[str, ...]
     item_recipients: list[tuple[str, str]]
@@ -53,7 +52,6 @@ async def _advance_one(
     milestones_mod=milestones,
     activities=db_activity_queries,
     divine_mutations=db_mutations_divine,
-    prior_corruption=None,
 ) -> tuple[PendingQuest, dict]:
     logger.info("update_quest called: quest_id=%s, new_stage_id=%d", quest_id, new_stage_id)
     _validate_id(quest_id, "quest_id")
@@ -78,7 +76,6 @@ async def _advance_one(
     paid_ids: set[str] = set()
     xp_paid_ids: set[str] = set()
     favor_paid_ids: set[str] = set()
-    pending_corruption: dict[str, int] = dict(prior_corruption or {})
     pending_notes: list[str] = []
 
     session.validate_acting_player(actor_id)
@@ -124,10 +121,8 @@ async def _advance_one(
                 mutations=mutations,
                 queries=queries,
                 content=content,
-                pending_corruption=pending_corruption,
                 pending_notes=pending_notes,
                 party_ids=tuple(eligible_ids),
-                strict=True,
             )
             paid_ids.update(eligible_ids)
 
@@ -212,7 +207,6 @@ async def _advance_one(
                 mutations=mutations,
                 queries=queries,
                 content=content,
-                pending_corruption=pending_corruption,
                 pending_notes=pending_notes,
                 party_ids=tuple(party_ids),
             )
@@ -260,12 +254,19 @@ async def _advance_one(
     }
     if current_stage >= 0 and (narrative_beat := on_complete.get("narrative_beat")):
         response["narrative_beat"] = narrative_beat
+    if is_completion:
+        for entry in quest.get("scene_graph", []):
+            if current_stage in entry["stage_refs"]:
+                scene = await content.get_scene(entry["scene_id"])
+                if scene is None:
+                    raise ValueError(f"Missing completion scene: {entry['scene_id']}")
+                if scene.get("aftermath"):
+                    response["narrative_beat"] = scene["aftermath"]
+                break
     logger.info("update_quest result: %s → stage %d, %d rewards", quest_id, new_stage_id, len(rewards_applied))
 
     await _scene_transition(response, quest, current_stage, content)
-    return PendingQuest(
-        response, pending_events, pending_corruption, pending_notes, tuple(party_ids), item_recipients, outcome
-    ), quest
+    return PendingQuest(response, pending_events, pending_notes, tuple(party_ids), item_recipients, outcome), quest
 
 
 async def _scene_transition(response: dict, quest: dict, original_stage: int, content) -> None:
@@ -328,9 +329,7 @@ async def advance_quest_db(
             break
         if not await item_condition_satisfied(condition, pending.party_ids, conn=conn, queries=queries):
             break
-        following, _ = await _advance_one(
-            session, quest_id, index + 1, None, conn=conn, prior_corruption=pending.corruption, **deps
-        )
+        following, _ = await _advance_one(session, quest_id, index + 1, None, conn=conn, **deps)
         following.response["rewards_applied"] = (
             pending.response["rewards_applied"] + following.response["rewards_applied"]
         )
@@ -351,7 +350,6 @@ async def advance_quest_db(
         following.response["milestone_grants"] = following.xp.milestone_grants if following.xp else []
         following.response["specialization_fork"] = following.xp.specialization_fork if following.xp else False
         following.events = [(t, p) for t, p in pending.events if t != E.QUEST_UPDATED] + following.events
-        following.corruption = pending.corruption | following.corruption
         following.notes = pending.notes + following.notes
         following.item_recipients = pending.item_recipients + following.item_recipients
         pending = following

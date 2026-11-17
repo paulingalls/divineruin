@@ -21,12 +21,6 @@ logger = logging.getLogger("divineruin.tools")
 
 
 _EFFECT_DISPOSITION_RE = re.compile(r"^(\w+)_disposition\s*([+-]\d+)$")
-_EFFECT_CORRUPTION_RE = re.compile(r"^greyvale_corruption\s*([+-]\d+)$")
-_EFFECT_EVENT_RE = re.compile(r"^event:(.+)$")
-_EFFECT_MORALE_RE = re.compile(r"^(\w+)_morale\s*([+-]\d+)$")
-# "<faction_id>_reputation <named_event>" — the faction-scoped analogue of the per-NPC
-# disposition shorthand, but the magnitude comes from the named event (reputation_shift),
-# not an inline number, so the delta lives in one place (story-002 inc 4b).
 _EFFECT_REPUTATION_RE = re.compile(r"^(\w+)_reputation\s+(\w+)$")
 
 
@@ -51,10 +45,8 @@ async def _apply_world_effects(
     queries=db_queries,
     content=db_content_queries,
     reputation_mutations=db_mutations_reputation,
-    pending_corruption: dict[str, int] | None = None,
     party_ids: tuple[str, ...] | None = None,
     pending_notes: list[str] | None = None,
-    strict: bool = False,
 ) -> None:
     """Parse and apply deterministic world_effects from quest on_complete."""
     record_note = session.record_event if pending_notes is None else pending_notes.append
@@ -77,10 +69,7 @@ async def _apply_world_effects(
             shorthand, delta_str = m.group(1), int(m.group(2))
             if shorthand == COMPANION_SHORTHAND:
                 if session.companion is None:
-                    if strict:
-                        raise ToolError("This option requires a bound companion.")
-                    logger.warning("Companion world effect with no bound companion: %s", effect_str)
-                    continue
+                    raise ToolError("This effect requires a bound companion.")
                 npc_id = session.companion.id
             else:
                 npc_id = EFFECT_NPC_MAP.get(shorthand, shorthand)
@@ -100,23 +89,11 @@ async def _apply_world_effects(
             faction_id, event_type = m.group(1), m.group(2)
             faction = await content.get_faction(faction_id)
             if faction is None:
-                # Mirror the DM tool adjust_faction_reputation's fail-on-unknown-faction guard.
-                # A mistyped faction id in authored on_complete content would otherwise silently
-                # write a phantom-faction player_reputation row the real faction never sees.
-                # Warn and skip (a content-authoring error) rather than crash the stage tx.
-                if strict:
-                    raise ValueError(f"Unknown faction in option effect: {effect_str}")
-                logger.warning("Unknown faction in reputation world effect: %s", effect_str)
-                continue
+                raise ValueError(f"Unknown faction in world effect: {effect_str}")
             try:
                 delta = reputation_shift(event_type)
             except ValueError as exc:
-                # A typo'd event in authored content: warn and skip rather than crash the
-                # whole quest-stage transaction over one bad effect string.
-                if strict:
-                    raise ValueError(f"Unknown reputation option effect: {effect_str}") from exc
-                logger.warning("Unknown reputation event in world effect: %s", effect_str)
-                continue
+                raise ValueError(f"Unknown reputation world effect: {effect_str}") from exc
             for pid in party_ids:
                 new_value = await reputation_mutations.adjust_player_faction_reputation(
                     pid, faction_id, delta, f"world_effect: {effect_str}", conn=conn
@@ -126,49 +103,8 @@ async def _apply_world_effects(
                 logger.info("World effect: %s reputation %+d → %s", faction_id, delta, new_value)
             continue
 
-        m = _EFFECT_CORRUPTION_RE.match(effect_str)
-        if m:
-            delta = int(m.group(1))
-            levels_before = pending_corruption if pending_corruption is not None else {}
-            previous_levels = {
-                pid: levels_before.get(pid, session.member_state(pid).corruption_level) for pid in party_ids
-            }
-            levels = {pid: max(0, min(3, previous_levels[pid] + delta)) for pid in party_ids}
-            if pending_corruption is None:
-                for pid, level in levels.items():
-                    session.member_state(pid).corruption_level = level
-            else:
-                pending_corruption.update(levels)
-            for pid in party_ids:
-                pending_events.append(
-                    (
-                        E.HOLLOW_CORRUPTION_CHANGED,
-                        {
-                            "player_id": pid,
-                            "level": levels[pid],
-                            "previous": previous_levels[pid],
-                            "location_id": session.location_id,
-                        },
-                    )
-                )
-            logger.info("World effect: corruption %d → %d", previous_levels[actor_id], levels[actor_id])
+        if effect_str == "event:god_whisper:player_patron":
+            pending_events.append((E.WORLD_EVENT, {"event_id": "god_whisper:player_patron"}))
             continue
 
-        m = _EFFECT_EVENT_RE.match(effect_str)
-        if m:
-            event_id = m.group(1)
-            pending_events.append((E.WORLD_EVENT, {"event_id": event_id}))
-            logger.info("World effect: event %s", event_id)
-            continue
-
-        m = _EFFECT_MORALE_RE.match(effect_str)
-        if m:
-            group_name, delta_str = m.group(1), int(m.group(2))
-            pending_events.append((E.WORLD_EVENT, {"event_id": f"{group_name}_morale_change", "delta": delta_str}))
-            record_note(f"{group_name} morale shifted by {delta_str}")
-            logger.info("World effect: %s morale %+d (logged, no morale system yet)", group_name, delta_str)
-            continue
-
-        if strict:
-            raise ValueError(f"Unknown option effect: {effect_str}")
-        logger.warning("Unknown world effect: %s", effect_str)
+        raise ValueError(f"Unknown world effect: {effect_str}")

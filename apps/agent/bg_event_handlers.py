@@ -270,6 +270,8 @@ def queue_god_whisper(
 ) -> None:
     """Build god-specific whisper instructions and queue as CRITICAL."""
     patron_id = payload.get("patron_id") or sd.party.primary.patron_id
+    if patron_id == "none":
+        return
     profile = get_god_profile(patron_id)
     if displeasure and not profile.displeasure_prompt:
         raise ValueError(f"No displeasure_prompt for patron {patron_id}")

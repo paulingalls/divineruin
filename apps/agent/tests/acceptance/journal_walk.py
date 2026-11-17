@@ -95,11 +95,6 @@ class JournalWalk(ArcWalk):
         assert player is not None
         assert player["flags"][ITEM + ".discovered"] is True
         assert player["xp"] == 200
-        assert self.sd.corruption_level == 1
-        assert (
-            len([e for e in self.events if e["type"] == E.WORLD_EVENT and e["event_id"] == "ruins_discovery_ripple"])
-            == 1
-        )
         assert await self.marker() == 4
         assert await self.quantity("veythar_sealed_artifact") == 0
         quest = await db_content_queries.get_quest(QUEST)
@@ -117,9 +112,9 @@ class JournalWalk(ArcWalk):
         if chained:
             data = await db_content_queries.get_quest(quest)
             assert data is not None
-            data["stages"][0]["on_complete"]["world_effects"] = ["greyvale_corruption +1"]
+            data["stages"][0]["on_complete"]["world_effects"] = ["set_flag:chain_progress:1"]
             data["stages"].insert(
-                1, {**data["stages"][0], "on_complete": {"xp": 60, "world_effects": ["greyvale_corruption +1"]}}
+                1, {**data["stages"][0], "on_complete": {"xp": 60, "world_effects": ["set_flag:chain_progress:2"]}}
             )
             await self.pool.execute("UPDATE quests SET data=$2::jsonb WHERE id=$1", quest, json.dumps(data))
             await self.pool.execute("DELETE FROM player_quests WHERE quest_id=$1", quest)
