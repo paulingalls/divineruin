@@ -359,3 +359,52 @@ async def test_terminal_wrap_expires_hidden_defender(veil):
     assert h.sd.combat_state is None
     assert (await row(h))["flags"] == {"keepsake": True, "concealed": False}
     assert (await row(h))["patron_gifts"][GIFT]["spent"]
+
+
+async def test_fresh_hydration_expires_only_gift_hiding(veil):
+    from types import SimpleNamespace
+    from typing import Any, cast
+
+    import db_mutations_concentration
+    import db_mutations_resonance
+    from participant_lifecycle import PartyLifecycle
+    from session_data import SessionData
+    from session_hydration import hydrate_session_state
+
+    h = veil
+    h.players.reverse()
+    try:
+        await stealth(h, 20)
+    finally:
+        h.players.reverse()
+    await use(h)
+    await h.session.aclose()
+    fresh = SessionData(player_id=h.players[1], location_id=h.sd.location_id, room=h.sd.room)
+    await hydrate_session_state(fresh, await row(h, 1))
+    assert (await row(h, 1))["flags"] == {"keepsake": True, "concealed": True}
+    assert fresh.room is not None
+    lifecycle = PartyLifecycle(
+        fresh.room,
+        fresh,
+        queries=db_queries,
+        resonance_mod=db_mutations_resonance,
+        concentration_mod=db_mutations_concentration,
+    )
+    try:
+        lifecycle._on_connected(cast(Any, SimpleNamespace(identity=h.players[0])))
+        assert await lifecycle.authorize(h.players[0]) is not None
+        assert (await row(h))["flags"] == {"keepsake": True, "concealed": False}
+        assert (await row(h))["patron_gifts"][GIFT] == {"spent": True}
+    finally:
+        await lifecycle.aclose()
+    # Primary startup uses the same cleanup and never restores the abandoned combat.
+    await h.pool.execute(
+        "UPDATE players SET data=jsonb_set(jsonb_set(data,'{flags,concealed}','true'),"
+        "'{flags,shadow_veil}','true') WHERE player_id=$1",
+        h.players[0],
+    )
+    fresh = SessionData(player_id=h.players[0], location_id=h.sd.location_id, room=h.sd.room)
+    await hydrate_session_state(fresh, await row(h))
+    assert not fresh.in_combat
+    assert (await row(h))["flags"] == {"keepsake": True, "concealed": False}
+    assert (await row(h))["patron_gifts"][GIFT] == {"spent": True}

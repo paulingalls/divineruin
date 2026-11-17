@@ -1,8 +1,11 @@
 """Persisted concealment and optional Shadow Veil combat lifetime."""
 
+import asyncpg
 from livekit.agents.llm import ToolError
 
+import db
 import db_mutations
+import db_queries
 
 
 def is_concealed(player: dict) -> bool:
@@ -58,5 +61,25 @@ async def expire_gift(state, *, conn, queries):
     # A seat with no player row holds no lifetime; skipping it keeps the party's wrap and XP
     # (test_combat_end_xp: one absent row cannot cost the party its end of combat).
     for player in players.values():
+        if gift_lifetime(player):
+            await transition(player, False, conn=conn)
+
+
+async def expire_orphaned_gift(player, *, conn=None):
+    if not gift_lifetime(player):
+        return
+    source = conn or await db.get_pool()
+    if isinstance(source, asyncpg.Pool):
+        async with source.acquire() as connection:
+            await _expire_orphaned_gift(player["player_id"], connection)
+    else:
+        await _expire_orphaned_gift(player["player_id"], source)
+
+
+async def _expire_orphaned_gift(player_id, conn):
+    async with conn.transaction():
+        player = await db_queries.get_player(player_id, conn=conn, for_update=True)
+        if player is None:
+            raise ValueError(f"Missing player: {player_id}")
         if gift_lifetime(player):
             await transition(player, False, conn=conn)

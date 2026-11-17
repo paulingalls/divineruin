@@ -22,6 +22,7 @@ from typing import Any
 from livekit import rtc
 from livekit.agents import Agent, AgentSession
 
+import concealment
 import db_mutations_concentration
 import db_mutations_resonance
 import db_queries
@@ -367,6 +368,8 @@ class PartyLifecycle:
                 self._revoke(identity)
             logger.warning("Party-join: no players row for %r; skipping append", identity)
             return
+        if not self.userdata.in_combat:
+            await concealment.expire_orphaned_gift(row)
         # Race guard: a second participant_connected for the same identity may have appended
         # during the await above.
         if self.userdata.party.contains(identity):
