@@ -33,6 +33,11 @@ CLASSIFIED = {
 CALLS = {
     "subprocess.run",
     "subprocess.Popen",
+    "subprocess.call",
+    "subprocess.check_call",
+    "subprocess.check_output",
+    "asyncio.create_subprocess_shell",
+    "os.system",
     "asyncio.create_subprocess_exec",
     "importlib.util.spec_from_file_location",
     "runpy.run_path",
@@ -112,7 +117,10 @@ def runtime_inputs(inventory, runtime):
 
 def assign_runtime(tasks, inventory, runtime):
     readers = runtime_inputs(inventory, runtime)
+    reached = set().union(*({m["path"]} | m["closure"] for m in inventory.values()))
     for path, modules in readers.items():
+        if stale := modules - reached:
+            raise ValueError(f"{path}: named reader reaches no task: {sorted(stale)}")
         direct = {t for t, m in inventory.items() if m["path"] in modules}
         reaching = {t for t, m in inventory.items() if modules & m["closure"]}
         selected = set(direct)
