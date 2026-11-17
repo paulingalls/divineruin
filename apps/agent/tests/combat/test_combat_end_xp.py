@@ -121,6 +121,9 @@ async def _run(session, cs, outcome="victory", *, players_by_id=None, conn=None,
 
     mutations = AsyncMock()
     queries = AsyncMock()
+    queries.get_players_for_update = AsyncMock(
+        side_effect=lambda ids, **kw: {pid: row for pid in ids if (row := _row(pid)) is not None}
+    )
     queries.get_player = AsyncMock(side_effect=lambda pid, conn=None, for_update=False: _row(pid))
     queries.get_player_inventory = AsyncMock(return_value=[])
     queries.get_inventory_snapshot = snapshot_query([])
@@ -225,17 +228,10 @@ async def test_a_share_that_rounds_to_zero_grants_nothing_rather_than_erroring()
     assert _xp_events(sink) == []
 
 
-async def test_a_seat_with_no_player_row_is_skipped():
-    # combat_rewards skips a seat whose players.data row is missing rather than aborting the whole
-    # end-of-combat transaction over a non-critical reward — symmetric with the currency pass's
-    # tolerance. The OTHER seats must still be paid: one absent row cannot cost the party its XP.
+async def test_a_seat_with_no_player_row_aborts_end():
     session = _session(["p1", "p2"])
-    _end, mutations, _q, sink, _c = await _run(
-        session, _cs([_xp_enemy("g1", 100)], ["p1", "p2"]), players_by_id={"p2": None}
-    )
-
-    assert _xp_grants(mutations) == {"p1": 75}
-    assert [(e["player_id"], e["amount"]) for e in _xp_events(sink)] == [("p1", 75)]
+    with pytest.raises(RuntimeError, match=r"p2.*Shadow Veil expiry"):
+        await _run(session, _cs([_xp_enemy("g1", 100)], ["p1", "p2"]), players_by_id={"p2": None})
 
 
 async def test_empty_seat_order_grants_nothing(monkeypatch):

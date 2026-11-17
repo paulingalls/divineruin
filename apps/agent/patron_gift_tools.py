@@ -1,4 +1,4 @@
-"""Durable optional knowledge rerolls, spent with their original outcome."""
+"""Durable patron gift activation and authored rest recharge."""
 
 import json
 

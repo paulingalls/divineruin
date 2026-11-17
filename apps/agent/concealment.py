@@ -61,7 +61,7 @@ async def expire_gift(state, *, conn, queries, completed_round=None):
     players = await queries.get_players_for_update(ids, conn=conn)
     for player_id in ids:
         if player_id not in players:
-            raise ToolError(f"Player '{player_id}' not found during Shadow Veil expiry")
+            raise RuntimeError(f"Player '{player_id}' not found during Shadow Veil expiry")
         player = players[player_id]
         lifetime = gift_lifetime(player)
         if lifetime is not None:
