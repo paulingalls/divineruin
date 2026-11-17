@@ -238,14 +238,17 @@ def test_reroll_uses_current_modifiers_and_consumes_current_inspiration(harness)
     harness.run_sync(scenario())
 
 
-@pytest.mark.parametrize("obstruction", ["moved", "discovered", "malformed"])
+@pytest.mark.parametrize("obstruction", ["moved", "database_moved", "session_moved", "discovered", "malformed"])
 def test_invalid_pending_refuses_without_spending(harness, obstruction):
     async def scenario():
         walk = await GiftWalk().start(harness)
         await walk.search()
-        if obstruction == "moved":
+        if obstruction in {"moved", "database_moved"}:
             await walk.patch(location_id="millhaven")
-            await walk.connect(harness)
+            if obstruction == "moved":
+                await walk.connect(harness)
+        elif obstruction == "session_moved":
+            walk.sd.location_id = "millhaven"
         elif obstruction == "discovered":
             await walk.patch(flags={ITEM + ".discovered": True})
         else:
