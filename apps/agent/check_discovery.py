@@ -13,6 +13,7 @@ Exposes `*_mod=` keyword seams for TEST-ONLY injection.
 import json
 import logging
 import re
+from contextlib import nullcontext
 
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
@@ -34,6 +35,7 @@ from condition_voice_rules import validate_hearing_check
 from db_errors import validated_player_conditions
 from game_events import publish_game_event, publish_hidden_revealed
 from inventory_refresh import publish_inventory
+from patron_gifts import KNOWLEDGE_SKILLS, veythar_gift
 from quest_completion import finish_quest
 from quest_progress import advance_on_item_discovered, lock_discovery_rows
 from session_data import SessionData
@@ -162,41 +164,75 @@ async def _check_discover_impl(
     ]
     candidates = attached if attached else [e for e in skill_candidates if not e.get("attaches_to")]
 
-    if not candidates:
-        # Silence, a sting, an unspent Inspired or a thinner DM response would each tell the
-        # player whether anything is hidden, so an empty search rolls and spends like a failed one.
-        result = check_resolution.resolve_skill_check_dc(
-            condition_voice_rules.roll_data(player, session.combat_state, player_id),
-            skill_lower,
-            DEFAULT_DISCOVER_DC,
-            ally_present=session.ally_present_for(player_id),
-            natural_terrain=await skill_natural_terrain(session, player, skill_lower, content_mod=content),
-            hearing_only=hearing_only,
-        )
-        if result.auto_fail:
-            return json.dumps(_roll_response(result, target, "automatic_failure"))
-        await _publish_roll(session, result)
-        consumed_state = None
-        if result.consumed_conditions:
-            session.validate_acting_player(player_id)
-            consumed_state = await consume_beneficial_conditions(
-                player_id,
-                result.consumed_conditions,
-                conditions_mutations,
-                combat_state=session.combat_state,
-                db_mod=db_mod,
-            )
-        if consumed_state is not None:
-            session.combat_state = consumed_state
-        session.record_event(f"Searched {target} ({skill_lower}): not_found")
-        logger.info("check discover: target=%s skill=%s -> no candidate", target, skill_lower)
-        return json.dumps(_roll_response(result, target, "not_found"))
+    element = min(candidates, key=lambda e: e.get("dc", DEFAULT_DISCOVER_DC)) if candidates else None
+    response, flush = await _resolve_discovery(
+        context,
+        player,
+        skill_lower,
+        target,
+        element,
+        location,
+        hearing_only=hearing_only,
+        content=content,
+        queries=queries,
+        mutations=mutations,
+        conditions_mutations=conditions_mutations,
+        db_mod=db_mod,
+    )
+    await flush()
+    return json.dumps(response)
 
-    # Lowest-DC first: the easiest secret surfaces first, and at most one element can be
-    # revealed per roll, so its id stays an OUTPUT (never an input) per §7.
-    element = min(candidates, key=lambda e: e.get("dc", 13))
-    dc = element.get("dc", DEFAULT_DISCOVER_DC)
 
+async def reroll_discovery(context, player, pending, *, conn):
+    session = context.userdata
+    if session.location_id != pending["location_id"] or player.get("location_id") != pending["location_id"]:
+        raise ToolError("Return to the original search location to use Lorekeeper's Insight.")
+    location = await db_content_queries.get_location(pending["location_id"])
+    if location is None:
+        raise ValueError("Original discovery location is missing")
+    element_id = pending["element_id"]
+    element = None
+    if element_id is not None:
+        element = next((e for e in location.get("hidden_elements", []) if e["id"] == element_id), None)
+        if element is None:
+            raise ValueError("Original discovery element is missing")
+        if player.get("flags", {}).get(f"{element_id}.discovered"):
+            raise ToolError("That discovery has already been revealed; Lorekeeper's Insight cannot reroll it.")
+    validated_player_conditions(player, session.acting_player_id)
+    player = await choir_scene.check_data(session, player, queries=db_queries)
+    return await _resolve_discovery(
+        context,
+        player,
+        pending["skill"],
+        pending["target"],
+        element,
+        location,
+        hearing_only=pending["hearing_only"],
+        conn=conn,
+        reroll_dc=pending["dc"],
+    )
+
+
+async def _resolve_discovery(
+    context,
+    player,
+    skill_lower,
+    target,
+    element,
+    location,
+    *,
+    hearing_only,
+    content=db_content_queries,
+    queries=db_queries,
+    mutations=db_mutations,
+    conditions_mutations=db_mutations_conditions,
+    db_mod=db,
+    conn=None,
+    reroll_dc=None,
+):
+    session = context.userdata
+    player_id = session.acting_player_id
+    dc = reroll_dc if reroll_dc is not None else (element or {}).get("dc", DEFAULT_DISCOVER_DC)
     result = check_resolution.resolve_skill_check_dc(
         condition_voice_rules.roll_data(player, session.combat_state, player_id),
         skill_lower,
@@ -206,107 +242,117 @@ async def _check_discover_impl(
         hearing_only=hearing_only,
     )
     if result.auto_fail:
-        return json.dumps(_roll_response(result, target, "automatic_failure"))
-    await _publish_roll(session, result)
 
-    outcome = "discovered" if result.success else "not_found"
-    session.record_event(f"Searched {target} ({skill_lower}): {outcome}")
+        async def no_effects():
+            pass
 
+        return _roll_response(result, target, "automatic_failure"), no_effects
+
+    outcome = "discovered" if result.success and element else "not_found"
     response = _roll_response(result, target, outcome)
-    element_id = element.get("id")
-    consumed_state = None
+    element_id = element["id"] if element else None
+    item = await content.get_item(element_id) if result.success and element else None
+    can_offer = (
+        reroll_dc is None
+        and not result.success
+        and skill_lower in KNOWLEDGE_SKILLS
+        and veythar_gift(player) is not None
+    )
+    needs_transaction = item is not None or bool(result.success and element and result.consumed_conditions) or can_offer
     pending = []
-    item = await content.get_item(element_id) if result.success else None
-    if item is not None:
-        async with db_mod.transaction() as conn:
-            locked_player = await lock_discovery_rows(session, conn=conn, queries=queries)
+    granted = False
+    consumed_state = None
+    async with db_mod.transaction() if conn is None and needs_transaction else nullcontext(conn) as write_conn:
+        locked_player = player
+        if conn is None and item is not None:
+            locked_player = await lock_discovery_rows(session, conn=write_conn, queries=queries)
+        elif conn is None and can_offer:
+            locked_player = await queries.get_player(player_id, conn=write_conn, for_update=True)
+            if locked_player is None:
+                raise ValueError("Missing discovery actor")
+        session.validate_acting_player(player_id)
+        if result.success and element:
+            assert element_id is not None
             granted = not locked_player.get("flags", {}).get(f"{element_id}.discovered")
             if granted:
-                await mutations.set_player_flag(player_id, f"{element_id}.discovered", True, conn=conn)
-                await mutations.add_inventory_item(player_id, element_id, 1, tainted=False, conn=conn)
-                pending = await advance_on_item_discovered(
-                    session, element_id, conn=conn, queries=queries, mutations=mutations, content=content
-                )
-            if result.consumed_conditions:
-                consumed_state = await consume_beneficial_conditions(
+                await mutations.set_player_flag(
                     player_id,
-                    result.consumed_conditions,
-                    conditions_mutations,
-                    conn=conn,
-                    combat_state=session.combat_state,
-                    db_mod=db_mod,
+                    f"{element_id}.discovered",
+                    True,
+                    **({"conn": write_conn} if write_conn is not None else {}),
                 )
-        response["quest_updates"] = [finish_quest(session, p) for p in pending]
-        for p in pending:
-            for event_type, payload in p.events:
-                await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
-        recipients = {pid for p in pending for pid, _ in p.item_recipients}
-        if granted:
-            recipients.add(player_id)
-            session.record_item_found(player_id, item["name"])
-        for pid in sorted(recipients):
-            await publish_inventory(session, pid, queries=queries)
-    elif result.success and result.consumed_conditions:
-        async with db_mod.transaction() as conn:
-            session.validate_acting_player(player_id)
-            await mutations.set_player_flag(player_id, f"{element_id}.discovered", True, conn=conn)
-            consumed_state = await consume_beneficial_conditions(
-                player_id,
-                result.consumed_conditions,
-                conditions_mutations,
-                conn=conn,
-                combat_state=session.combat_state,
-                db_mod=db_mod,
-            )
-    else:
-        if result.success:
-            session.validate_acting_player(player_id)
-            await mutations.set_player_flag(player_id, f"{element_id}.discovered", True)
+                if item is not None:
+                    await mutations.add_inventory_item(player_id, element_id, 1, tainted=False, conn=write_conn)
+                    pending = await advance_on_item_discovered(
+                        session,
+                        element_id,
+                        conn=write_conn,
+                        queries=queries,
+                        mutations=mutations,
+                        content=content,
+                    )
         if result.consumed_conditions:
-            session.validate_acting_player(player_id)
             consumed_state = await consume_beneficial_conditions(
                 player_id,
                 result.consumed_conditions,
                 conditions_mutations,
+                conn=write_conn,
                 combat_state=session.combat_state,
                 db_mod=db_mod,
             )
+        if can_offer:
+            from patron_gift_tools import offer
 
-    # Block re-rolling THIS element this session for this player (not keyed on the target) — added only
-    # AFTER the persist above succeeds (story-014): if a write raised, the exception propagates before
-    # this line, so a rolled-back discovery flag leaves the element re-attemptable instead of locked
-    # out until next session. A failed attempt (no success flag; consume is a no-op unless a bonus
-    # die was spent on the d20) still reaches here when its writes succeed, so a miss still spends
-    # the session attempt.
-    if consumed_state is not None:
-        session.combat_state = consumed_state
-    session.attempted_discoveries.add(f"{player_id}:{skill_lower}:{element_id}")
+            offered = await offer(
+                session,
+                locked_player,
+                result,
+                {
+                    "kind": "discover",
+                    "skill": skill_lower,
+                    "target": target,
+                    "dc": dc,
+                    "element_id": element_id,
+                    "location_id": session.location_id,
+                    "hearing_only": hearing_only,
+                },
+                conn=write_conn,
+            )
+            if offered:
+                response["reroll_offer"] = offered
 
-    if result.success:
-        await publish_action_sound(session, ACTION_SOUND_EXPORTS["ACTION_DISCOVER_REVEAL"])
-        response["element_id"] = element_id
-        response["description"] = element.get("description", "")
-        loc_name = location.get("name", session.location_id)
-        session.record_companion_memory(f"Discovered {element.get('description', element_id)} at {loc_name}")
-        # Close the Act->Resolve->Stage edge: emit the reveal so story-003's background
-        # consumer can rebuild the warm layer and record this id for the hot layer.
-        await publish_hidden_revealed(
-            session.room,
-            element_id=element_id,
-            attaches_to=element.get("attaches_to"),
-            description=element.get("description", ""),
-            skill=skill_lower,
-            event_bus=session.event_bus,
-        )
+    async def flush():
+        if consumed_state is not None:
+            session.combat_state = consumed_state
+        await _publish_roll(session, result)
+        session.record_event(f"Searched {target} ({skill_lower}): {outcome}")
+        if element:
+            session.attempted_discoveries.add(f"{player_id}:{skill_lower}:{element_id}")
+        if item is not None:
+            response["quest_updates"] = [finish_quest(session, p) for p in pending]
+            for p in pending:
+                for event_type, payload in p.events:
+                    await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
+            recipients = {pid for p in pending for pid, _ in p.item_recipients}
+            if granted:
+                recipients.add(player_id)
+                session.record_item_found(player_id, item["name"])
+            for pid in sorted(recipients):
+                await publish_inventory(session, pid, queries=queries)
+        if result.success and element:
+            assert element_id is not None
+            await publish_action_sound(session, ACTION_SOUND_EXPORTS["ACTION_DISCOVER_REVEAL"])
+            response["element_id"] = element_id
+            response["description"] = element.get("description", "")
+            loc_name = location.get("name", session.location_id)
+            session.record_companion_memory(f"Discovered {element.get('description', element_id)} at {loc_name}")
+            await publish_hidden_revealed(
+                session.room,
+                element_id=element_id,
+                attaches_to=element.get("attaches_to"),
+                description=element.get("description", ""),
+                skill=skill_lower,
+                event_bus=session.event_bus,
+            )
 
-    logger.info(
-        "check discover: target=%s skill=%s d20=%d+%d=%d vs DC %d → %s",
-        target,
-        skill_lower,
-        result.roll,
-        result.modifier,
-        result.total,
-        result.dc,
-        outcome,
-    )
-    return json.dumps(response)
+    return response, flush

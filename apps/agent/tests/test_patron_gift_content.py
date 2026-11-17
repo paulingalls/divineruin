@@ -3,7 +3,7 @@ from collections import Counter
 from _gods_content import load_gods
 
 EXPECTED_GIFTS = {
-    "veythar": ("short_rest", "awaits_rest"),
+    "veythar": ("short_rest", "active"),
     "kaelen": ("per_encounter", "active"),
     "aelora": ("always", "active"),
     "syrath": ("short_rest", "awaits_rest"),

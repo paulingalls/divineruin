@@ -45,6 +45,7 @@ def world(monkeypatch):
     favor = AsyncMock(side_effect=lambda _: queries.get_player.return_value["divine_favor"])
     monkeypatch.setattr(db_activity_queries, "get_divine_favor", favor)
     monkeypatch.setattr(db_mutations, "set_player_flag", AsyncMock())
+    monkeypatch.setattr(db_content_queries, "get_item", AsyncMock(return_value=None))
     return ctx, queries.get_player.return_value, terrain, favor
 
 

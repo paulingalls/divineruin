@@ -55,7 +55,7 @@
   {
     "name": "magic",
     "tests": [
-      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:patron_echo_choice_voice|concentration_persistence|dispel_corruption(?:_atomicity)?|flickering_bonus_persistence|hollow_resonance_commit|m(?:11|17|24|31|32|33|34)_.*|veil_ward_persistence|voice_condition_commands)\\.py"
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:patron_echo_choice_voice|concentration_persistence|dispel_corruption(?:_atomicity)?|veythar_gift(?:_atomicity)?|flickering_bonus_persistence|hollow_resonance_commit|m(?:11|17|24|31|32|33|34)_.*|veil_ward_persistence|voice_condition_commands)\\.py"
     ],
     "owns": [
       "apps/agent/(?:spell[^/]*|condition[^/]*|concentration[^/]*|patron[^/]*|corruption[^/]*|dispel[^/]*|veil_ward[^/]*|hollow_resonance[^/]*)\\.py"

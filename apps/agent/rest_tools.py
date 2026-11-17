@@ -15,6 +15,7 @@ import event_types as E
 from archetypes import get_archetype_chassis
 from db_errors import db_tool
 from game_events import publish_game_event
+from patron_gift_tools import recharge
 from resonance_events import publish_resonance_changed
 from rest_mechanics import RestType, apply_rest, record_last_rested_settlement, reset_resonance_on_rest
 from session_data import SessionData
@@ -80,6 +81,7 @@ async def rest(context: RunContext[SessionData], rest_type: RestType) -> str:
                     await db_mutations.update_player_hp(pid, hp, conn=conn)
                 await ability_persistence.update_player_resources(pid, stamina=stamina, focus=focus, conn=conn)
                 await reset_resonance_on_rest(pid, conn=conn)
+                await recharge(pid, players[pid], rest_type, conn=conn)
         for pid in players:
             session.member_state(pid).resonance.current = 0
         for pid in players:

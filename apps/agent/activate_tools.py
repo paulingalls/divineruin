@@ -31,6 +31,7 @@ import abilities
 import ability_tools
 import draethar_inner_fire
 import mentor_variants
+import patron_gift_tools
 import reaction_gate
 import spell_casting
 import spells
@@ -40,6 +41,7 @@ import veil_ward
 import veil_ward_tools
 from action_sound_content import publish_action_sound
 from db_errors import db_tool
+from patron_gifts import VEYTHAR_INSIGHT
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.tools")
@@ -47,7 +49,9 @@ logger = logging.getLogger("divineruin.tools")
 _VEIL_WARD = "veil_ward"
 _VEIL_WARD_DISMISS = "veil_ward_dismiss"
 _DRAETHAR_INNER_FIRE = "draethar_inner_fire"
-_RESERVED = frozenset({_VEIL_WARD, _VEIL_WARD_DISMISS, _DRAETHAR_INNER_FIRE, unbound_tools.RAW_CHANNELING})
+_RESERVED = frozenset(
+    {_VEIL_WARD, _VEIL_WARD_DISMISS, _DRAETHAR_INNER_FIRE, unbound_tools.RAW_CHANNELING, VEYTHAR_INSIGHT}
+)
 
 
 @function_tool()
@@ -68,6 +72,9 @@ async def activate(
     'veil_ward' raises a Veil Ward, 'veil_ward_dismiss' drops one, and 'draethar_inner_fire'
     triggers a Draethar's racial Inner Fire. 'unbound_raw_channeling' adds exactly 3
     Resonance for an Unbound member, once per encounter; query_info(kind='patron') lists it.
+
+    After an offered failed knowledge check, 'veythar_lorekeepers_insight' rerolls it once;
+    take the new result. A short rest restores this gift.
 
     Pass target_id when the capability affects ONE other entity (a spell/ability target). A Veil
     Ward is always raised or dismissed by the player speaking; omit target_id for it. Pass target_ids (a list)
@@ -161,6 +168,8 @@ async def _activate_impl(
             raise
         raise ToolError(f"{unknown} Reactions that fit the open window: {', '.join(valid)}.") from unknown
 
+    if kind == VEYTHAR_INSIGHT:
+        return await patron_gift_tools.activate_insight(context)
     if kind == unbound_tools.RAW_CHANNELING:
         return await unbound_tools._raw_channeling_impl(context)
     if kind == _VEIL_WARD:
