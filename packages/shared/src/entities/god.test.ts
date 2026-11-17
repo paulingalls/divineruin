@@ -28,6 +28,11 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
   expect(catalog).toHaveLength(10);
   expect(catalog.map((g) => g.god_id).sort()).toEqual([...corpus.patron_ids].sort());
   expect(Object.is(validateGods(catalog), catalog)).toBe(true);
+  expect(validateGods(catalog).find((god) => god.god_id === "syrath")?.layer_1_gift).toMatchObject({
+    id: "syrath_shadow_veil",
+    status: "active",
+    recharge: "short_rest",
+  });
   expect(corpus.valid.length).toBeGreaterThan(0);
   expect(corpus.invalid.length).toBeGreaterThan(0);
   expect(generated.length).toBeGreaterThan(0);

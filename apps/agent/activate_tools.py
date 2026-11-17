@@ -41,7 +41,7 @@ import veil_ward
 import veil_ward_tools
 from action_sound_content import publish_action_sound
 from db_errors import db_tool
-from patron_gifts import VEYTHAR_INSIGHT
+from patron_gifts import SYRATH_SHADOW_VEIL, VEYTHAR_INSIGHT
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.tools")
@@ -50,7 +50,14 @@ _VEIL_WARD = "veil_ward"
 _VEIL_WARD_DISMISS = "veil_ward_dismiss"
 _DRAETHAR_INNER_FIRE = "draethar_inner_fire"
 _RESERVED = frozenset(
-    {_VEIL_WARD, _VEIL_WARD_DISMISS, _DRAETHAR_INNER_FIRE, unbound_tools.RAW_CHANNELING, VEYTHAR_INSIGHT}
+    {
+        _VEIL_WARD,
+        _VEIL_WARD_DISMISS,
+        _DRAETHAR_INNER_FIRE,
+        unbound_tools.RAW_CHANNELING,
+        VEYTHAR_INSIGHT,
+        SYRATH_SHADOW_VEIL,
+    }
 )
 
 
@@ -72,6 +79,9 @@ async def activate(
     'veil_ward' raises a Veil Ward, 'veil_ward_dismiss' drops one, and 'draethar_inner_fire'
     triggers a Draethar's racial Inner Fire. 'unbound_raw_channeling' adds exactly 3
     Resonance for an Unbound member, once per encounter; query_info(kind='patron') lists it.
+
+    'syrath_shadow_veil' is combat-only: hide until the current round ends, or until attacking,
+    casting, or failing Stealth. A short rest restores this gift.
 
     After an offered failed knowledge check, 'veythar_lorekeepers_insight' rerolls it once;
     take the new result. A short rest restores this gift.
@@ -168,6 +178,8 @@ async def _activate_impl(
             raise
         raise ToolError(f"{unknown} Reactions that fit the open window: {', '.join(valid)}.") from unknown
 
+    if kind == SYRATH_SHADOW_VEIL:
+        return await patron_gift_tools.activate_shadow_veil(context)
     if kind == VEYTHAR_INSIGHT:
         return await patron_gift_tools.activate_insight(context)
     if kind == unbound_tools.RAW_CHANNELING:

@@ -149,6 +149,7 @@ async def _end_combat_db(
     ``content`` resolves loot tables (db_content_queries by default; injectable for tests);
     ``rng`` seeds the loot/currency rolls (a fresh system Random by default)."""
     import choir_scene
+    import concealment
 
     quest_updates = await quest_progress.advance_on_combat_end(
         session, cs, outcome, conn=conn, sink=sink, queries=queries, mutations=mutations, content=content
@@ -227,6 +228,7 @@ async def _end_combat_db(
             continue
         await reconcile_member_conditions(player_part, conn=conn)
 
+    await concealment.expire_gift(cs, conn=conn, queries=queries)
     await mutations.delete_combat_state(cs.combat_id, conn=conn)
 
     # Deleting the combat row IS the encounter ward's expiry (scope_model.md §2), so the HUD must be

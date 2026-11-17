@@ -227,6 +227,7 @@ def _boss_resolution_state(*, boss_hp=40):
 
 def _resolve_deps(damage=3):
     queries = MagicMock()
+    queries.get_players_for_update = AsyncMock(side_effect=lambda ids, **kw: {pid: {"player_id": pid} for pid in ids})
     queries.get_player_inventory = AsyncMock(return_value=[])
     queries.get_inventory_snapshot = snapshot_query([])
     queries.get_player = AsyncMock(return_value={"player_id": "player_1", "focus": {"current": 10, "max": 10}})

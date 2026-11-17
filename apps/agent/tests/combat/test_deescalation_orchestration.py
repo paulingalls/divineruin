@@ -234,6 +234,9 @@ class TestDeescalationE2EPhaseLoop:
         # A high-charisma untrained-persuasion player -> argument_total = 20 (forced d20) + 6 = 26,
         # which clears both enemies over 2 rounds regardless of enemy attack noise.
         queries = MagicMock()
+        queries.get_players_for_update = AsyncMock(
+            side_effect=lambda ids, **kw: {pid: {"player_id": pid} for pid in ids}
+        )
         queries.get_player_inventory = AsyncMock(return_value=[])
         queries.get_player = AsyncMock(
             return_value={
