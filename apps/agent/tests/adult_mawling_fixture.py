@@ -14,8 +14,6 @@ def adult_template(encounter_id="adult_mawling_pair", role="standard"):
     template.update(id=encounter_id, recommended_party_level=5)
     for index, enemy in enumerate(template["enemies"]):
         enemy.update(creature_id="hollow_mawling", role=role if index == 0 else "standard")
-    for zone in template["scene_placement"]["zones"].values():
-        zone["radius_ft"] = 10
     return template
 
 
