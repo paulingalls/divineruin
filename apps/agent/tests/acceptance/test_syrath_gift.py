@@ -103,6 +103,15 @@ async def test_expiry_preserves_ordinary_hiding(veil, boundary):
             assert (await row(h))["flags"]["concealed"]
         assert current.round_number == 4
     else:
+        state = await h.reload()
+        guest = state.get_participant(h.players[0])
+        guest.hp_current = 0
+        guest.is_fallen = True
+        await h.persist()
+        await h.pool.execute(
+            "UPDATE players SET data=jsonb_set(data,'{divine_favor,patron}','\"veythar\"') WHERE player_id=$1",
+            h.players[0],
+        )
         combat_id = state.combat_id
         await h.command("end_combat", {"outcome": "fled"})
         assert not await h.pool.fetchval("SELECT 1 FROM combat_instances WHERE combat_id=$1", combat_id)

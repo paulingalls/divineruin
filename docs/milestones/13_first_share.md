@@ -40,7 +40,7 @@ Owner: divineruin clone (taken over from divineruin2, 2026-11-16).
 - [x] The inner chamber holds the discovery — `test_greyvale_arc_walk.py`
 - [x] The artifact choice is applied and persists
 - [x] Emris can be reached, and the reveal closes the arc on a cliffhanger — Emris outline in `test_greyvale_arc_walk.py` (met at `accord_dockside` and `emris_study`; quest closes once, the player's patron whispers, none for Unbound)
-- [ ] Veythar's and Syrath's gifts recharge on rest
+- [x] Veythar's and Syrath's gifts recharge on rest
 
 ## Session Edges
 

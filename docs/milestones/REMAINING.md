@@ -7,7 +7,7 @@ that every designed effect has shipped.
 
 First Share counts its full 36-item checklist; Session 1 is 9/9 after the
 walk from creation to a queued whisper (2026-11-15). Session 2 has seven checked
-criteria; the full phase is 30/36, with 6 criteria open. Fresh recap re-entry
+criteria; the full phase is 31/36, with 5 criteria open. Fresh recap re-entry
 (2026-11-16) exercises takeover, failed/timed-out predecessors and guest saves.
 Finding the journal grants it and completes the search atomically.
 Artifact choices persist once with their effects.
@@ -120,7 +120,7 @@ not schedules or measured implementation costs.
 | **9 · Economy** | 9.1–9.10 | 75 | Phase 7 material/creature integration; Phase 5/6 inputs | large | Shared pricing getters/repair costs, reputation-to-stance and committed material inventory boundaries pass. The migrated pricing table exists. No complete economy certification is implied. |
 | **11 · World Loop** | 11.1–11.6 | 46 | D-A–D-E; M11.4 needs Phase 9, M11.6 needs Phase 8 | ~4–6 sprints | Migrated `region_state`, `npc_state`, `world_events_log`, `god_agent_state`, `world_flags`; direct quest world effects; activity-worker reset harness. These do not establish a world scheduler or cascade. |
 | **12 · Story Content** | 12.1–12.7 | 34 | Phase 11 and its blocking decision section | ~5–7 sprints | Migrated `scenes` (013) and `story_moments` (012); scene-tool and settlement-generation boundaries. `gods.json` has authored secret-agenda text for Veythar and Syrath; a season director is not certified. |
-| **13 · First Share** | Sessions 1–3, session edges, cost, deployment and playtest | 6 | Remaining First Share checklist | Later work unsized | Session 1: 9/9; full phase: 30/36, including seven Session 2 criteria. The walk from creation to a queued whisper and persisted rider re-entry run through real room transport; caster pools and no repeat after consumption and worker restart at favor zero pass; both silence hints, engine settlement on all offered outcomes, replay and rollback are exercised. The first fight pays 25 XP and the shared balance harness scores 20/19/19/20 wins. |
+| **13 · First Share** | Sessions 1–3, session edges, cost, deployment and playtest | 5 | Remaining First Share checklist | Later work unsized | Session 1: 9/9; full phase: 31/36, including seven Session 2 criteria. The walk from creation to a queued whisper and persisted rider re-entry run through real room transport; caster pools and no repeat after consumption and worker restart at favor zero pass; both silence hints, engine settlement on all offered outcomes, replay and rollback are exercised. The first fight pays 25 XP and the shared balance harness scores 20/19/19/20 wins. |
 
 **Hazards before the relevant phase opens:**
 
