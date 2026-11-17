@@ -5,7 +5,7 @@ name: CI
 # on each free patch's trial-merged tree. The scheduled super run proves fresh.
 on:
   pull_request:
-    branches: [main]
+    branches: [develop, main]
     # Documentation-only PRs do not need the lint jobs.
     paths-ignore:
       - "**.md"
