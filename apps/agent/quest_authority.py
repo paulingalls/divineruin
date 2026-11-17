@@ -16,7 +16,7 @@ import event_types as E
 import milestones
 import progression_tools
 from combat_events import EventSink
-from quest_world_effects import _apply_world_effects
+from quest_world_effects import _apply_world_effects, decision_option
 from session_data import SessionData
 from tool_support import _validate_id
 
@@ -44,6 +44,7 @@ async def _advance_one(
     session: SessionData,
     quest_id: str,
     new_stage_id: int,
+    option_id: str | None = None,
     *,
     conn,
     mutations=db_mutations,
@@ -101,6 +102,9 @@ async def _advance_one(
             f"Cannot skip stages. Current: {current_stage}, requested: {new_stage_id}, next valid: {current_stage + 1}."
         )
 
+    condition = stages[current_stage].get("completion_conditions", {}) if current_stage >= 0 else {}
+    selection = decision_option(condition, option_id)
+
     if not is_completion and stages[new_stage_id].get("completion_conditions", {}).get("type") == "item_discovered":
         for pid in party_ids:
             await queries.get_player(pid, conn=conn, for_update=True)
@@ -110,6 +114,22 @@ async def _advance_one(
         on_complete = completing_stage.get("on_complete", {})
 
         eligible_ids = [pid for pid in party_ids if _is_unpaid_for_stage(party_quests[pid], new_stage_id)]
+
+        if selection is not None:
+            await _apply_world_effects(
+                selection["effects"],
+                session,
+                pending_events,
+                conn=conn,
+                mutations=mutations,
+                queries=queries,
+                content=content,
+                pending_corruption=pending_corruption,
+                pending_notes=pending_notes,
+                party_ids=tuple(eligible_ids),
+                strict=True,
+            )
+            paid_ids.update(eligible_ids)
 
         xp_reward = on_complete.get("xp", 0)
         if xp_reward > 0:
@@ -207,7 +227,13 @@ async def _advance_one(
     session.validate_acting_player(actor_id)
     for pid in sorted(paid_ids | {primary_id}):
         if _is_unpaid_for_stage(party_quests[pid], new_stage_id):
-            await mutations.set_player_quest(pid, quest_id, quest_data, conn=conn)
+            decisions = dict((party_quests[pid] or {}).get("decisions", {}))
+            if selection is not None:
+                decisions[condition["decision"]] = option_id
+            data = dict(quest_data)
+            if decisions:
+                data["decisions"] = decisions
+            await mutations.set_player_quest(pid, quest_id, data, conn=conn)
 
     quest_updated_payload: dict = {
         "quest_id": quest_id,
@@ -275,6 +301,7 @@ async def advance_quest_db(
     session: SessionData,
     quest_id: str,
     new_stage_id: int,
+    option_id: str | None = None,
     *,
     conn,
     mutations=db_mutations,
@@ -292,7 +319,7 @@ async def advance_quest_db(
         activities=activities,
         divine_mutations=divine_mutations,
     )
-    pending, quest = await _advance_one(session, quest_id, new_stage_id, conn=conn, **deps)
+    pending, quest = await _advance_one(session, quest_id, new_stage_id, option_id, conn=conn, **deps)
     stages = quest["stages"]
     while pending.response["new_stage"] < len(stages):
         index = pending.response["new_stage"]
@@ -302,7 +329,7 @@ async def advance_quest_db(
         if not await item_condition_satisfied(condition, pending.party_ids, conn=conn, queries=queries):
             break
         following, _ = await _advance_one(
-            session, quest_id, index + 1, conn=conn, prior_corruption=pending.corruption, **deps
+            session, quest_id, index + 1, None, conn=conn, prior_corruption=pending.corruption, **deps
         )
         following.response["rewards_applied"] = (
             pending.response["rewards_applied"] + following.response["rewards_applied"]

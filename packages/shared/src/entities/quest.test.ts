@@ -42,11 +42,24 @@ test("authored quest conditions and rewards satisfy the shared contract", async 
     const stages = records(quest.stages);
     expect(stages.length).toBeGreaterThan(0);
     for (const stage of stages) {
+      expect(Object.hasOwn(stage, "branches")).toBe(false);
       const cc = object(stage.completion_conditions);
       expect(typeof cc.type).toBe("string");
       expect(Object.hasOwn(conditionFields, String(cc.type))).toBe(true);
       const fields = conditionFields[cc.type as keyof typeof conditionFields];
       expect(Object.keys(cc).sort()).toEqual(["type", ...fields].sort());
+      if (cc.type === "decision_made") {
+        const options = object(cc.options);
+        expect(Object.keys(options).length).toBeGreaterThan(0);
+        for (const [id, option] of Object.entries(options)) {
+          expect(id.length).toBeGreaterThan(0);
+          const details = object(option);
+          expect(typeof details.description).toBe("string");
+          expect(String(details.description).length).toBeGreaterThan(0);
+          expect(array(details.effects).length).toBeGreaterThan(0);
+          for (const effect of array(details.effects)) expect(typeof effect).toBe("string");
+        }
+      }
       if (stage.on_complete) {
         const reward = object(stage.on_complete);
         for (const [key, kind] of Object.entries(rewardFields)) {
@@ -58,7 +71,7 @@ test("authored quest conditions and rewards satisfy the shared contract", async 
   }
 });
 
-test("Greyvale seven-stage arc resolves its branches, scenes and fights", async () => {
+test("Greyvale eight-stage arc resolves its decisions, scenes and fights", async () => {
   const quests = await content("quests");
   const quest = quests.find((q) => q.id === "greyvale_anomaly");
   if (!quest) throw new Error("Greyvale quest missing");
@@ -70,6 +83,7 @@ test("Greyvale seven-stage arc resolves its branches, scenes and fights", async 
     "stage_4_the_ruins",
     "stage_ruins_fight",
     "stage_inner_chamber_artifact",
+    "stage_artifact_choice",
     "stage_5_return",
   ]);
   const encounters = await content("encounter_templates");
@@ -79,11 +93,13 @@ test("Greyvale seven-stage arc resolves its branches, scenes and fights", async 
     expect(scenes.some((s) => s.id === entry.scene_id)).toBe(true);
     indices.push(...array(entry.stage_refs));
   }
-  expect(indices.sort()).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  const graph = records(quest.scene_graph);
+  expect(graph.find((e) => e.scene_id === "scene_ruins_exploration")?.stage_refs).toEqual([
+    3, 4, 5, 6,
+  ]);
+  expect(graph.find((e) => e.scene_id === "scene_return_to_accord")?.stage_refs).toEqual([7]);
+  expect(indices.sort()).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
   for (const stage of stages) {
-    for (const branch of Object.values(object(stage.branches ?? {})).map(object)) {
-      expect(stages.some((s) => s.id === branch.next_stage)).toBe(true);
-    }
     const cc = object(stage.completion_conditions);
     if (cc.type === "combat_completed")
       expect(encounters.some((e) => e.id === cc.encounter)).toBe(true);
@@ -115,5 +131,20 @@ test("Greyvale seven-stage arc resolves its branches, scenes and fights", async 
     rewards: [{ item: "veythar_sealed_artifact", quantity: 1 }],
     narrative_beat: expect.any(String),
   });
-  expect([xp(4), xp(5), xp(6), xp(7)]).toEqual([475, 575, 575, 775]);
+  expect([xp(4), xp(5), xp(6), xp(7), xp(8)]).toEqual([475, 575, 575, 575, 775]);
+  for (const [id, decision, expected] of [
+    ["greyvale_anomaly", "artifact_choice", ["keep_artifact", "show_companion"]],
+    [
+      "defend_millhaven",
+      "fortification_choice",
+      ["north_barricade", "watchtower", "evacuation_supplies"],
+    ],
+  ] as const) {
+    const stages = records(quests.find((q) => q.id === id)!.stages);
+    const cc = stages
+      .map((s) => object(s.completion_conditions))
+      .find((c) => c.decision === decision);
+    expect(cc).toBeDefined();
+    expect(Object.keys(object(cc!.options)).sort()).toEqual([...expected].sort());
+  }
 });

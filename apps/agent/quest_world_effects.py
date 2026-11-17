@@ -4,6 +4,7 @@ import logging
 import re
 
 import asyncpg
+from livekit.agents.llm import ToolError
 
 import db_content_queries
 import db_mutations
@@ -29,6 +30,17 @@ _EFFECT_MORALE_RE = re.compile(r"^(\w+)_morale\s*([+-]\d+)$")
 _EFFECT_REPUTATION_RE = re.compile(r"^(\w+)_reputation\s+(\w+)$")
 
 
+def decision_option(condition: dict, option_id: str | None) -> dict | None:
+    if condition.get("type") != "decision_made":
+        if option_id is not None:
+            raise ToolError("This stage is not a decision; omit option_id.")
+        return None
+    options = condition["options"]
+    if option_id not in options:
+        raise ToolError(f"Choose option_id for {condition['decision']}. Valid options: {', '.join(options)}.")
+    return options[option_id]
+
+
 async def _apply_world_effects(
     effects: list[str],
     session: SessionData,
@@ -42,20 +54,31 @@ async def _apply_world_effects(
     pending_corruption: dict[str, int] | None = None,
     party_ids: tuple[str, ...] | None = None,
     pending_notes: list[str] | None = None,
+    strict: bool = False,
 ) -> None:
     """Parse and apply deterministic world_effects from quest on_complete."""
     record_note = session.record_event if pending_notes is None else pending_notes.append
     actor_id = session.acting_player_id
     party_ids = party_ids if party_ids is not None else tuple(session.party.member_ids)
     for effect_str in effects:
+        if effect_str.startswith("set_flag:"):
+            parts = effect_str.split(":")
+            if len(parts) != 3 or not re.fullmatch(r"\w+", parts[1]) or not parts[2].strip():
+                raise ValueError(f"Malformed flag effect: {effect_str}")
+            raw = parts[2]
+            value = {"true": True, "false": False}.get(raw)
+            if value is None:
+                value = int(raw) if re.fullmatch(r"-?\d+", raw) else raw
+            for pid in party_ids:
+                await mutations.set_player_flag(pid, parts[1], value, conn=conn)
+            continue
         m = _EFFECT_DISPOSITION_RE.match(effect_str)
         if m:
             shorthand, delta_str = m.group(1), int(m.group(2))
             if shorthand == COMPANION_SHORTHAND:
                 if session.companion is None:
-                    # Warn-and-skip, matching this function's policy for every other
-                    # unresolvable effect below: this runs inside the quest-stage transaction,
-                    # and refusing to write beats writing against a guessed companion.
+                    if strict:
+                        raise ToolError("This option requires a bound companion.")
                     logger.warning("Companion world effect with no bound companion: %s", effect_str)
                     continue
                 npc_id = session.companion.id
@@ -81,13 +104,17 @@ async def _apply_world_effects(
                 # A mistyped faction id in authored on_complete content would otherwise silently
                 # write a phantom-faction player_reputation row the real faction never sees.
                 # Warn and skip (a content-authoring error) rather than crash the stage tx.
+                if strict:
+                    raise ValueError(f"Unknown faction in option effect: {effect_str}")
                 logger.warning("Unknown faction in reputation world effect: %s", effect_str)
                 continue
             try:
                 delta = reputation_shift(event_type)
-            except ValueError:
+            except ValueError as exc:
                 # A typo'd event in authored content: warn and skip rather than crash the
                 # whole quest-stage transaction over one bad effect string.
+                if strict:
+                    raise ValueError(f"Unknown reputation option effect: {effect_str}") from exc
                 logger.warning("Unknown reputation event in world effect: %s", effect_str)
                 continue
             for pid in party_ids:
@@ -142,4 +169,6 @@ async def _apply_world_effects(
             logger.info("World effect: %s morale %+d (logged, no morale system yet)", group_name, delta_str)
             continue
 
+        if strict:
+            raise ValueError(f"Unknown option effect: {effect_str}")
         logger.warning("Unknown world effect: %s", effect_str)

@@ -3,6 +3,7 @@
 import json
 
 import pytest
+from acceptance.artifact_choice_steps import *  # noqa: F403
 from acceptance.fragment_door_steps import *  # noqa: F403
 from acceptance.greyvale_arc_walk_harness import ROAD, TOWN, ArcWalk
 from acceptance.greyvale_finish_line import (
@@ -43,7 +44,7 @@ def repeats(harness):
         arc = harness.state["arc"]
         await arc.arrive(ROAD)
         await arc.unchanged_arrival()
-        for stage, status in [(1, "active"), (None, "active"), (7, "completed")]:
+        for stage, status in [(1, "active"), (None, "active"), (8, "completed")]:
             other = await ArcWalk().start(harness, arc.tool, stage, status)
             await other.unchanged_arrival()
 

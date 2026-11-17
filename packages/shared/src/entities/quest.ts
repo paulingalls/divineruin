@@ -4,7 +4,7 @@ export type QuestCompletionCondition =
   | { type: "combat_completed"; encounter: string; outcome: string }
   | { type: "item_discovered"; items: string[]; location: string }
   | { type: "npc_interaction"; npc: string; topic: string }
-  | { type: "decision_made"; decision: string; options: string[] };
+  | { type: "decision_made"; decision: string; options: Record<string, QuestDecisionOption> };
 
 export interface QuestReward {
   item: string;
@@ -22,11 +22,9 @@ export interface QuestStageComplete {
   unlocks_quest?: string;
 }
 
-export interface QuestBranch {
-  description?: string;
-  effects?: string[];
-  next_stage: string;
-  world_effects?: string[];
+export interface QuestDecisionOption {
+  description: string;
+  effects: string[];
 }
 
 export interface QuestStage {
@@ -35,7 +33,6 @@ export interface QuestStage {
   objective: string;
   completion_conditions: QuestCompletionCondition;
   on_complete?: QuestStageComplete;
-  branches?: Record<string, QuestBranch>;
 }
 
 export interface QuestFailureCondition {

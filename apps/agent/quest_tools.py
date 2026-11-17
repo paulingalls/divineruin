@@ -28,23 +28,27 @@ async def update_quest(
     context: RunContext[SessionData],
     quest_id: str,
     new_stage_id: int,
+    option_id: str | None = None,
 ) -> str:
     """Advance a quest to a new stage. For starting a quest, use stage 0.
     Stages must advance forward — no skipping or going backward.
     Rewards from the completing stage are automatically applied.
+    For a decision stage, ask the player aloud, present its options and pass the chosen
+    option id as option_id while advancing one beyond that stage. Omit option_id otherwise.
 
     To COMPLETE a quest, advance it one past its last stage: pass new_stage_id equal to
     the number of stages (e.g. a 3-stage quest completes at new_stage_id=3). This final
     call fires the last stage's on_complete rewards and world effects (XP, items, faction
     reputation) and marks the quest finished — so always issue it when the player wraps up
     the last objective, or those final rewards never apply."""
-    return await _update_quest_impl(context, quest_id, new_stage_id)
+    return await _update_quest_impl(context, quest_id, new_stage_id, option_id)
 
 
 async def _update_quest_impl(
     context: RunContext[SessionData],
     quest_id: str,
     new_stage_id: int,
+    option_id: str | None = None,
     *,
     db_mod=db,
     mutations=db_mutations,
@@ -59,6 +63,7 @@ async def _update_quest_impl(
             context.userdata,
             quest_id,
             new_stage_id,
+            option_id,
             conn=conn,
             mutations=mutations,
             queries=queries,

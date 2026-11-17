@@ -26,6 +26,7 @@ Feature: Engine driven Greyvale arrivals
       | 4     |
       | 5     |
       | 6     |
+      | 7     |
 
   Scenario: Every authored finish line reaches the DM
     Given a warm session walking the complete quest corpus
@@ -158,3 +159,39 @@ Feature: Engine driven Greyvale arrivals
       | guest      | allowed |
       | guest_zero | blocked |
       | nonmember  | blocked |
+
+  Scenario Outline: Decisions persist once
+    Given a decision session for <quest> at <stage>
+    Then choosing <option> persists once and survives later advances
+    Examples:
+      | quest             | stage | option              |
+      | greyvale_anomaly  | 6     | keep_artifact       |
+      | greyvale_anomaly  | 6     | show_companion      |
+      | defend_millhaven  | 1     | north_barricade     |
+      | defend_millhaven  | 1     | watchtower          |
+      | defend_millhaven  | 1     | evacuation_supplies |
+
+  Scenario Outline: Invalid decisions leave the database unchanged
+    Given a decision session for greyvale_anomaly at 6
+    When the decision receives <option>
+    Examples:
+      | option     |
+      | omitted    |
+      | unknown    |
+      | watchtower |
+
+  Scenario: Existing callers can omit the option on ordinary stages
+    Given a decision session for defend_millhaven at 0
+    Then an ordinary stage accepts omission and refuses an unexpected option
+
+  Scenario: Showing requires the bound companion
+    Given a decision session for greyvale_anomaly at 6
+    Then showing without a bound companion refuses without writes
+
+  Scenario Outline: Party decisions respect each recipient's marker
+    Given a decision session for greyvale_anomaly at 6
+    Then a <progress> second member keeps independent decision history
+    Examples:
+      | progress |
+      | eligible |
+      | advanced |
