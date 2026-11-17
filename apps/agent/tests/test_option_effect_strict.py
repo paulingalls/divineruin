@@ -25,7 +25,7 @@ def _content(faction: dict | None) -> MagicMock:
         ("no_such_guild_reputation completed_faction_quest", None),
     ],
 )
-async def test_strict_option_effect_refuses(effect: str, faction: dict | None) -> None:
+async def test_unsupported_effect_refuses(effect: str, faction: dict | None) -> None:
     session = SessionData(player_id="player_1", location_id="greyvale_ruins_inner")
     mutations = MagicMock()
     reputation = MagicMock()
