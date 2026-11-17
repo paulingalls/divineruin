@@ -413,7 +413,7 @@
     "region_type": "dungeon",
     "terrain": "underground",
     "tags": ["dungeon", "ancient", "aelindran", "dangerous", "sealed"],
-    "description": "The hum opens into a chord beyond the sealed door. Close air smells of warm stone. Dense Aelindran notation covers the circular chamber, and the central pedestal is worn into a warm, palm-sized hollow.",
+    "description": "The hum opens into a chord beyond the sealed door. Close air smells of warm stone. Dense Aelindran notation covers the circular chamber, and the central pedestal is worn into a palm-sized hollow.",
     "atmosphere": "charged, alien, watching",
     "key_features": [
       "walls covered floor to ceiling in Aelindran academic notation",
