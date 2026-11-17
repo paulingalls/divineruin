@@ -18,6 +18,16 @@ from proof_family_selection import (
     select_sources,
     task_inventory,
 )
+from proof_named_file_readers import (
+    NON_PYTHON,
+    add_provider_readers,
+    audit_named,
+    audit_nonempty,
+    data_inventory,
+    named_readers,
+    select_named,
+)
+from proof_runtime_inputs import CONFIG, LAUNCHES, assign_runtime, calls
 
 ROOT = Path.cwd()
 TESTS = Path("apps/agent/tests/acceptance")
@@ -32,6 +42,7 @@ RUNTIME_DOCUMENTS = {
     ],
 }
 SHARED_KEY = "packages/shared/**/*.{ts,tsx,json}"
+PROVIDER_DRIVER = {"scripts/proof_acceptance_stack.py"}
 MARKERS = "acceptance and not real_llm and not openai_real_llm and not live_voice"
 
 
@@ -178,7 +189,6 @@ def e2e_tasks():
                 "apps/web/index.html",
                 "apps/web/package.json",
                 "apps/web/tsconfig.json",
-                "apps/audio/**",
             ]
         if part == "chromium":
             inputs += [
@@ -234,31 +244,31 @@ def main():
     paths.append("e2e/fixtures/inventory-snapshot.py")
     result = subprocess.run(
         ["bun", "scripts/proof-python-closure.ts"],
-        input=json.dumps(paths),
+        input=json.dumps(
+            {
+                "paths": paths,
+                "launches": sorted({r for roots in LAUNCHES.values() for r in roots}),
+            }
+        ),
         text=True,
         capture_output=True,
         check=True,
     )
-    graph = json.loads(result.stdout)
+    resolved = json.loads(result.stdout)
+    graph = resolved["graph"]
     tests = [Path(p) for p in tracked(str(TESTS), suffix=".py") if Path(p).name.startswith("test_")]
     paid = {str(p) for p in tests if paid_only(p)}
-    # Bun already owns the YAML parser; avoid a generator-only Python dependency.
-    parsed = subprocess.run(
-        [
-            "bun",
-            "-e",
-            'console.log(JSON.stringify(Bun.YAML.parse(await Bun.file("proof.yaml").text())))',
-        ],
-        text=True,
-        capture_output=True,
-        check=True,
-    )
-    root = json.loads(parsed.stdout)
     entries = [str(p) for p in tests if str(p) not in paid]
     if len({Path(p).stem for p in entries}) != len(entries):
         raise ValueError("duplicate acceptance stems")
     sources = set(paths) - {"e2e/fixtures/inventory-snapshot.py"}
+    data = data_inventory()
+    restored = sources | data | NON_PYTHON
+    shared_key = sorted(
+        p for suffix in (".ts", ".tsx", ".json") for p in tracked("packages/shared", suffix=suffix) if p not in data
+    )
     tasks = e2e_tasks()
+    tasks["e2e:home-character"]["keyed"] = list(shared_key)
     e2e = {
         name: [
             item["imports-of"]
@@ -287,36 +297,13 @@ def main():
             "apps/agent/tests/acceptance/**/*.feature",
             "apps/agent/tests/fixtures/**",
             "apps/agent/tests/acceptance/fixtures/**",
-            "apps/mobile/assets/**",
-            "apps/audio/**",
             "content/**",
         ]
-        closure_text = "\n".join(Path(p).read_text() for p in graph[path]["closure"])
-        if "subprocess" in closure_text or "spec_from_file_location" in closure_text or "run_path" in closure_text:
-            inputs += [
-                "scripts/**/*.py",
-                "scripts/**/*.ts",
-                "apps/mobile/scripts/**",
-                "apps/mobile/src/audio/**",
-                "apps/mobile/tsconfig.json",
-                "apps/mobile/package.json",
-                "apps/mobile/bunfig.toml",
-                "apps/server/**",
-                "packages/shared/**",
-                "assets/**",
-                "$bun-config",
-            ]
-        for target in ("use-game-events.parse.test.ts", "sound-registry.test.ts"):
-            if target in closure_text:
-                inputs += [
-                    {"imports-of": f"apps/mobile/src/__tests__/{target}"},
-                    {"imports-of": "apps/mobile/test-preload.ts"},
-                ]
-        if "inventory-db-bridge" in closure_text or "_inventory_bridge" in closure_text:
-            inputs += [
-                {"imports-of": "apps/mobile/scripts/inventory-db-bridge.ts"},
-                {"imports-of": "apps/mobile/test-preload.ts"},
-            ]
+        configuration = any(calls(p) for p in graph[path]["closure"])
+        if configuration:
+            inputs += CONFIG
+        if Path(path).name in {"test_live_material_inventory.py", "test_m17_spell_sfx_capstone.py"}:
+            inputs += [{"imports-of": root} for root in LAUNCHES[path]]
         if "apps/agent/tests/agent_tool_profiles.py" in graph[path]["closure"]:
             inputs += [imports(str(p)) for p in sorted(Path("apps/agent").glob("*_agent.py"))]
         task = {
@@ -325,7 +312,7 @@ def main():
             "needs": ["acceptance-stack"],
             "links": ["node_modules"],
             "inputs": inputs,
-            "keyed": [SHARED_KEY],
+            "keyed": [p for p in CONFIG if p.startswith("packages/shared/")] if configuration else [],
         }
         for suffix, selector, expression in partitions(path):
             part = dict(task)
@@ -341,7 +328,7 @@ def main():
             acceptance[name] = path
     # Root unkeyed policy must preserve the existing Bun tasks and the full unit key.
     for name, task in json.loads(Path("scripts/proof-bun-tasks.json").read_text()).items():
-        tasks[name] = {**task, "keyed": [*sorted(sources), SHARED_KEY]}
+        tasks[name] = {**task, "keyed": [*sorted(restored), SHARED_KEY]}
     tasks["agent-pytest"] = {
         "run": "ALLOW_PAID_TESTS= REQUIRE_REAL_LLM= uv run --frozen --directory apps/agent pytest tests/ -q -m 'not acceptance' -n 8",
         "sets": ["land"],
@@ -367,7 +354,7 @@ def main():
             "$stack",
             "$bun-config",
         ],
-        "keyed": [*sorted(sources), SHARED_KEY],
+        "keyed": [*sorted(restored), SHARED_KEY],
     }
     if unknown := RUNTIME_DOCUMENTS.keys() - tasks.keys():
         raise SystemExit(f"runtime documents name no generated task: {sorted(unknown)}")
@@ -392,17 +379,24 @@ def main():
     content = content_inventory()
     families = load_families(content)
     inventory = task_inventory(acceptance, e2e, graph, families)
-    infrastructure = {item for item in root["inputs"]["stack-shared"] + root["inputs"]["stack"] if item in sources}
-    ordinary_sources = sources - SHARED_INPUTS
-    infrastructure -= SHARED_INPUTS
-    assignments, representatives = select_sources(inventory, families, ordinary_sources, infrastructure)
+    add_provider_readers(inventory)
+    for meta in inventory.values():
+        meta["closure"].add("scripts/worktree-docker.sh")
+    ordinary_sources = (sources | NON_PYTHON) - SHARED_INPUTS - PROVIDER_DRIVER
+    assignments = select_sources(inventory, families, ordinary_sources)
+    readers = named_readers(inventory, data)
+    for name, selected in select_named(inventory, readers).items():
+        assignments[name].update(selected)
+    for selected in assignments.values():
+        selected.update(PROVIDER_DRIVER)
     for name, selected in assignments.items():
         tasks[name]["keyed"] = [*tasks[name]["keyed"], *sorted(selected)]
         tasks[name]["inputs"] = [
             *tasks[name]["inputs"],
             *sorted(selected | inventory[name]["closure"]),
         ]
-    audit_selection(tasks, inventory, families, ordinary_sources, infrastructure, representatives)
+    audit_selection(tasks, inventory, families, ordinary_sources)
+    audit_named(tasks, inventory, readers)
     content_assignments = select_content(inventory, families, content)
     for name, selected in content_assignments.items():
         tasks[name]["keyed"] += sorted(selected)
@@ -410,7 +404,20 @@ def main():
     audit_content(tasks, inventory, families, content)
     for name in tasks.keys() - inventory.keys():
         tasks[name]["keyed"] += sorted(content | SHARED_INPUTS)
-    output = {"unkeyed": sorted(sources | content | SHARED_INPUTS), "tasks": tasks}
+    runtime_sources = assign_runtime(tasks, inventory, resolved["runtime"])
+    for name in tasks.keys() - acceptance.keys():
+        # Restore only contribution: the original inputs still decide delivery.
+        tasks[name]["keyed"] += sorted(runtime_sources - set(shared_key) - content - SHARED_INPUTS - restored)
+    audit_nonempty(
+        tasks,
+        {p for p in sources if p.startswith("apps/agent/tests/")} | NON_PYTHON | data,
+        json.loads(Path("proof.yaml").read_text())["inputs"],
+        graph,
+    )
+    output = {
+        "unkeyed": sorted(restored | content | SHARED_INPUTS | runtime_sources),
+        "tasks": tasks,
+    }
     (Path(os.environ["PROOF_DECLARATIONS"]) / "python.yaml").write_text(json.dumps(output, indent=2) + "\n")
 
 

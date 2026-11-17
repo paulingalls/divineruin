@@ -1,0 +1,202 @@
+{
+  "apps/agent/tests/_db_lifecycle.py": [
+    {
+      "call": "subprocess.run(['bash', str(_OWNER_HELPER), 'authorize', intent], capture_output=True, text=True, check=False, cwd=_REPO_ROOT, env=_authority_env())",
+      "roots": [],
+      "reason": "Checkout ownership shell helper; add_provider_readers keys worktree-common.sh and worktree-docker.sh.",
+      "bindings": [
+        "_OWNER_HELPER = _REPO_ROOT / 'scripts' / 'worktree-common.sh'",
+        "_REPO_ROOT = Path(__file__).resolve().parents[3]",
+        "intent = 'create' if args[:1] == ('up',) else 'destroy' if args[:1] in (('down',), ('stop',)) else 'connect' if args[:1] == ('exec',) else 'reuse'"
+      ]
+    },
+    {
+      "call": "subprocess.run(['bash', str(_OWNER_HELPER), 'authorize-runtime', database_url, redis_url or ''], capture_output=True, text=True, check=False, cwd=_REPO_ROOT)",
+      "roots": [],
+      "reason": "Checkout ownership shell helper; add_provider_readers keys worktree-common.sh and worktree-docker.sh.",
+      "bindings": [
+        "_OWNER_HELPER = _REPO_ROOT / 'scripts' / 'worktree-common.sh'",
+        "_REPO_ROOT = Path(__file__).resolve().parents[3]",
+        "database_url = database_url or resolve_database_url()",
+        "redis_url = _read_env_file(_REPO_ROOT / '.env').get('REDIS_URL')"
+      ]
+    },
+    {
+      "call": "subprocess.run(['bash', str(_OWNER_HELPER), 'compose', intent, *args], capture_output=True, text=True, check=False, env=_authority_env())",
+      "roots": [],
+      "reason": "Checkout ownership shell helper; add_provider_readers keys worktree-common.sh and worktree-docker.sh.",
+      "bindings": [
+        "_OWNER_HELPER = _REPO_ROOT / 'scripts' / 'worktree-common.sh'",
+        "_REPO_ROOT = Path(__file__).resolve().parents[3]",
+        "intent = 'create' if args[:1] == ('up',) else 'destroy' if args[:1] in (('down',), ('stop',)) else 'connect' if args[:1] == ('exec',) else 'reuse'"
+      ]
+    },
+    {
+      "call": "subprocess.run(['bash', str(_OWNER_HELPER), 'lifecycle-identity'], capture_output=True, text=True, check=False, cwd=_REPO_ROOT, env=_authority_env())",
+      "roots": [],
+      "reason": "Checkout ownership shell helper; add_provider_readers keys worktree-common.sh and worktree-docker.sh.",
+      "bindings": [
+        "_OWNER_HELPER = _REPO_ROOT / 'scripts' / 'worktree-common.sh'",
+        "_REPO_ROOT = Path(__file__).resolve().parents[3]"
+      ]
+    }
+  ],
+  "apps/agent/tests/_repo_inventory.py": [
+    {
+      "call": "subprocess.run([*args, '--', *patterns], cwd=root, check=True, capture_output=True, text=True)",
+      "roots": [],
+      "reason": "External git ls-files; reads the sandbox inventory under Proof.",
+      "bindings": [
+        "args += ['--cached', '--others', '--exclude-standard']",
+        "args = ['git', 'ls-files', '-z']"
+      ]
+    }
+  ],
+  "apps/agent/tests/acceptance/_livekit.py": [
+    {
+      "call": "subprocess.run(['bash', str(_OWNER_HELPER), 'livekit-env'], cwd=_OWNER_HELPER.parents[1], capture_output=True, text=True)",
+      "roots": [],
+      "reason": "Checkout ownership shell helper; add_provider_readers keys worktree-common.sh and worktree-docker.sh.",
+      "bindings": [
+        "_OWNER_HELPER = Path(__file__).resolve().parents[4] / 'scripts' / 'worktree-common.sh'"
+      ]
+    }
+  ],
+  "apps/agent/tests/acceptance/_server.py": [
+    {
+      "call": "subprocess.Popen(['bun', 'src/index.ts'], cwd=str(_SERVER_DIR), env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)",
+      "roots": ["apps/server/src/index.ts"],
+      "reason": "Runtime import closure.",
+      "bindings": [
+        "_REPO_ROOT = Path(__file__).parents[4]",
+        "_SERVER_DIR = _REPO_ROOT / 'apps' / 'server'"
+      ]
+    }
+  ],
+  "apps/agent/tests/acceptance/test_combat_spatial_entry.py": [
+    {
+      "call": "subprocess.run(['bun', '--eval', probe], input=json.dumps([row for _, row in cases]), text=True, capture_output=True, cwd=CONTENT_ROOT, check=True)",
+      "roots": ["packages/shared/src/entities/encounter.ts"],
+      "reason": "Runtime import closure.",
+      "bindings": [
+        "probe = 'import { validateScenePlacement } from \"./packages/shared/src/entities/encounter.ts\";\\nconst rows = await Bun.stdin.json();\\nconsole.log(JSON.stringify(rows.map(row => {\\ntry { validateScenePlacement(row); return true; } catch { return false; }\\n})));'"
+      ]
+    }
+  ],
+  "apps/agent/tests/acceptance/test_inventory_taint_migration.py": [
+    {
+      "call": "asyncio.create_subprocess_exec('bun', str(tmp_path / 'migrate.ts'), env={**os.environ, 'DATABASE_URL': dsn}, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)",
+      "roots": ["scripts/migrate.ts"],
+      "reason": "Runtime import closure.",
+      "bindings": []
+    }
+  ],
+  "apps/agent/tests/acceptance/test_leave_summary.py": [
+    {
+      "call": "asyncio.create_subprocess_exec('bun', '--env-file=.env', '--eval', script, cwd=root, env={**os.environ, 'RATE_LIMIT_BYPASS': '1'}, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)",
+      "roots": ["apps/server/src/session-room-process.fixture.ts"],
+      "reason": "Runtime import closure.",
+      "bindings": [
+        "fixture = root / 'apps/server/src/session-room-process.fixture.ts'",
+        "host, guest = (await harness.player(), await harness.player())",
+        "job = await harness.start(host)",
+        "job = await harness.start(pid)",
+        "job.episode.stt.epoch += 1",
+        "job.player = await join(job, pid)",
+        "pid = await harness.player()",
+        "pid = await harness.player(beat=1)",
+        "room = await join(job, guest)",
+        "root = Path(__file__).resolve().parents[4]",
+        "script = f\"\\n        const {{installSeam, Recording, request}} = await import({json.dumps(str(fixture))});\\n        const recording = new Recording();\\n        await installSeam(call => recording.invoke(call));\\n        const result = await request({json.dumps(player)}, {json.dumps(operation)}, {{room_name: {json.dumps(room)}}});\\n        console.log('BOUNDARY:' + JSON.stringify({{...result, calls: recording.calls}}));\\n        Bun.redis.close();\\n    \""
+      ]
+    }
+  ],
+  "apps/agent/tests/acceptance/test_live_material_inventory.py": [
+    {
+      "call": "subprocess.run(['bun', 'test', 'apps/mobile/src/__tests__/use-game-events.parse.test.ts', '-t', 'committed inventory payloads reach independent consumers'], env={**os.environ, 'LIVE_MATERIAL_INVENTORY_FIXTURE': str(path)}, cwd=Path(__file__).resolve().parents[4], capture_output=True, text=True)",
+      "roots": [
+        "apps/mobile/src/__tests__/use-game-events.parse.test.ts",
+        "apps/mobile/test-preload.ts"
+      ],
+      "reason": "Runtime import closure.",
+      "bindings": []
+    }
+  ],
+  "apps/agent/tests/acceptance/test_m17_spell_sfx_capstone.py": [
+    {
+      "call": "subprocess.run([bun, 'test', 'src/__tests__/sound-registry.test.ts'], cwd=_MOBILE_DIR, capture_output=True, text=True, timeout=180)",
+      "roots": ["apps/mobile/src/__tests__/sound-registry.test.ts", "apps/mobile/test-preload.ts"],
+      "reason": "Runtime import closure.",
+      "bindings": [
+        "_APPS_DIR = Path(__file__).resolve().parents[3]",
+        "_MOBILE_DIR = _APPS_DIR / 'mobile'",
+        "bun = shutil.which('bun')"
+      ]
+    }
+  ],
+  "apps/agent/tests/acceptance/test_m22_audio_completeness_capstone.py": [
+    {
+      "call": "subprocess.run([bun, 'scripts/emit-audio-registry-keys.ts'], cwd=_MOBILE_DIR, capture_output=True, text=True, timeout=180)",
+      "roots": ["apps/mobile/scripts/emit-audio-registry-keys.ts"],
+      "reason": "Runtime import closure.",
+      "bindings": [
+        "_APPS_DIR = Path(__file__).resolve().parents[3]",
+        "_MOBILE_DIR = _APPS_DIR / 'mobile'",
+        "bun = shutil.which('bun')"
+      ]
+    },
+    {
+      "call": "importlib.util.spec_from_file_location('generate_spell_sfx', _GENERATOR_PATH)",
+      "roots": [],
+      "reason": "Python load is covered by PATH_LOADED in proof_family_selection.py.",
+      "bindings": [
+        "_APPS_DIR = Path(__file__).resolve().parents[3]",
+        "_GENERATOR_PATH = _REPO_ROOT / 'scripts' / 'audio' / 'generate_spell_sfx.py'",
+        "_REPO_ROOT = _APPS_DIR.parents[0]"
+      ]
+    }
+  ],
+  "apps/agent/tts_prerender.py": [
+    {
+      "call": "subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'a:0', '-show_entries', 'format=duration:stream=codec_name,sample_rate,channels', '-of', 'json', audio_file.name], capture_output=True, text=True, timeout=30)",
+      "roots": [],
+      "reason": "External ffprobe/ffmpeg executable; no launched repository code.",
+      "bindings": []
+    },
+    {
+      "call": "subprocess.run(['ffmpeg', '-y', '-i', tmp_in_path, '-c:a', 'libmp3lame', '-b:a', '128k', tmp_out_path], capture_output=True, timeout=30)",
+      "roots": [],
+      "reason": "External ffprobe/ffmpeg executable; no launched repository code.",
+      "bindings": [
+        "tmp_in_path = tmp_in.name",
+        "tmp_out_path = tmp_in_path.replace('.mp3', '_clean.mp3')"
+      ]
+    },
+    {
+      "call": "subprocess.run(['ffmpeg', '-y', '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=mono', '-t', f'{seconds:.3f}', '-c:a', 'libmp3lame', '-b:a', '128k', tmp_path], capture_output=True, timeout=10)",
+      "roots": [],
+      "reason": "External ffprobe/ffmpeg executable; no launched repository code.",
+      "bindings": ["tmp_path = tmp.name"]
+    }
+  ],
+  "scripts/seed_catalogs.py": [
+    {
+      "call": "asyncio.create_subprocess_exec('bun', '--no-env-file', 'run', str(command), stdin=asyncio.subprocess.PIPE)",
+      "roots": ["scripts/seed_catalogs.ts"],
+      "reason": "Runtime import closure.",
+      "bindings": [
+        "command = Path(__file__).with_name('seed_cache.ts')",
+        "command = Path(__file__).with_name('seed_catalogs.ts')"
+      ]
+    },
+    {
+      "call": "asyncio.create_subprocess_exec('bun', '--no-env-file', 'run', str(command))",
+      "roots": ["scripts/seed_cache.ts"],
+      "reason": "Runtime import closure.",
+      "bindings": [
+        "command = Path(__file__).with_name('seed_cache.ts')",
+        "command = Path(__file__).with_name('seed_catalogs.ts')"
+      ]
+    }
+  ]
+}
