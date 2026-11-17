@@ -197,6 +197,7 @@ async def test_choir_scene_real_checks_use_disadvantage(skill, disadvantage, sce
 
     import choir_scene
 
+    database, _ = make_db_mod()
     ctx = _make_context()
     queries, mutations = _skill_mocks()
     source = {
@@ -224,6 +225,8 @@ async def test_choir_scene_real_checks_use_disadvantage(skill, disadvantage, sce
     disadvantage = disadvantage and scene == "active"
     queries.get_player.return_value = {**SAMPLE_PLAYER, "flags": {source["source_id"]: json.dumps(source)}}
     with patch("check_resolution.dice_roll", side_effect=[_d20(17), _d20(3)]) as rolls:
-        raw = await _check_skill_impl(ctx, skill, "moderate", "wrong voices", queries=queries, mutations=mutations)
+        raw = await _check_skill_impl(
+            ctx, skill, "moderate", "wrong voices", queries=queries, mutations=mutations, db_mod=database
+        )
     assert json.loads(raw)["roll"] == (3 if disadvantage else 17)
     assert rolls.call_count == (2 if disadvantage else 1)
