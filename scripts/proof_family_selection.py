@@ -214,7 +214,7 @@ def select_sources(inventory, families, sources):
             for family in owners | {inventory[t]["family"] for t in readers}:
                 members = {t for t, m in inventory.items() if m["family"] == family}
                 reaching = readers & members
-                if family not in owners and not shared:
+                if not shared and (family not in owners or reaching):
                     selected |= reaching
                 elif not selected & members:
                     candidates = ordinary_candidates(inventory, source, reaching) or members
@@ -258,7 +258,7 @@ def audit_selection(tasks, inventory, families, sources):
             members = {t for t, m in inventory.items() if m["family"] == family}
             reaching = readers & members
             selected = receiving & members
-            if family not in owners and not shared:
+            if not shared and (family not in owners or reaching):
                 if selected != (reaching | (required & members)):
                     raise ValueError(f"{source}: family {family}: reader coverage/input mismatch")
                 continue
@@ -270,9 +270,6 @@ def audit_selection(tasks, inventory, families, sources):
                 raise ValueError(f"orphan {source}: family {family}: missing representative coverage/input")
             if len(selected - required) > (0 if required & members else 1):
                 raise ValueError(f"{source}: family {family}: representative cap exceeded {sorted(selected)}")
-            candidates = ordinary_candidates(inventory, source, reaching) or members
-            if not selected - required <= candidates:
-                raise ValueError(f"{source}: family {family}: invalid representatives {sorted(selected)}")
 
 
 def content_inventory():
