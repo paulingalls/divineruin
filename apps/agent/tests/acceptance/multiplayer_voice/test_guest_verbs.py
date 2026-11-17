@@ -38,7 +38,7 @@ CALLS = [
     ("query_info", {"kind": "inventory"}),
     ("begin_activity", {"activity": {"kind": "training", "program_id": "combat_basics"}}),
     ("travel", {"destination_id": "greyvale_ruins_exterior", "mode": "scenic"}),
-    ("update_quest", {"quest_id": "greyvale_anomaly", "new_stage_id": 6}),
+    ("update_quest", {"quest_id": "greyvale_anomaly", "new_stage_id": 7}),
     ("end_combat", {"outcome": "victory"}),
 ]
 TOOLS: list[llm.Tool | llm.Toolset] = [activate, check, query_info, begin_activity, travel, update_quest, end_combat]
@@ -253,7 +253,7 @@ async def test_guest_verbs_reach_persisted_party_rows(
 
         for player_id in (host, guest):
             await db_mutations.set_player_quest(
-                player_id, "greyvale_anomaly", {"current_stage": 5, "quest_name": "The Greyvale Anomaly"}
+                player_id, "greyvale_anomaly", {"current_stage": 6, "quest_name": "The Greyvale Anomaly"}
             )
         host_before, guest_before = await _player(pool, host), await _player(pool, guest)
         quest_output = json.loads(await turn(5, generation))
@@ -262,7 +262,7 @@ async def test_guest_verbs_reach_persisted_party_rows(
             quest = await pool.fetchval(
                 "SELECT data FROM player_quests WHERE player_id = $1 AND quest_id = 'greyvale_anomaly'", player_id
             )
-            assert json.loads(quest)["current_stage"] == 6
+            assert json.loads(quest)["current_stage"] == 7
             assert json.loads(quest)["status"] == "completed"
             assert (await _player(pool, player_id))["xp"] == before_player["xp"] + 150
 

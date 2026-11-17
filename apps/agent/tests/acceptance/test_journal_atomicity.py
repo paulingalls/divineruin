@@ -37,7 +37,7 @@ def test_journal_rollback_and_retry(harness, entry):
                 assert row is not None
                 assert row["flags"][ITEM + ".discovered"] is True
                 assert row["xp"] == (350 if entry else 200)
-                assert await arc.quantity("veythar_sealed_artifact", conn=conn) == 1
+                assert await arc.quantity("veythar_sealed_artifact", conn=conn) == 0
                 reached.append(True)
                 raise ToolError("injected journal rollback")
 

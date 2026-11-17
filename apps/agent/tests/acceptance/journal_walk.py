@@ -101,7 +101,7 @@ class JournalWalk(ArcWalk):
             == 1
         )
         assert await self.marker() == 4
-        assert await self.quantity("veythar_sealed_artifact") == 1
+        assert await self.quantity("veythar_sealed_artifact") == 0
         quest = await db_content_queries.get_quest(QUEST)
         assert quest is not None
         assert self.observed is not None

@@ -25,6 +25,7 @@ Feature: Engine driven Greyvale arrivals
       | 2     |
       | 4     |
       | 5     |
+      | 6     |
 
   Scenario: Every authored finish line reaches the DM
     Given a warm session walking the complete quest corpus

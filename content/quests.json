@@ -72,14 +72,8 @@
         },
         "on_complete": {
           "xp": 200,
-          "rewards": [
-            {
-              "item": "veythar_sealed_artifact",
-              "quantity": 1
-            }
-          ],
           "world_effects": ["greyvale_corruption +1", "event:ruins_discovery_ripple"],
-          "narrative_beat": "You hold the journal page. The notation is academic, precise. You can't read all of it, but some phrases are clear: 'resonance thinning,' 'controlled aperture,' 'acceptable threshold.' Someone was doing this on purpose. Your companion is very quiet."
+          "narrative_beat": "You hold the journal page. Its precise notation describes resonance thinning and a controlled aperture. A final annotation points to the sealed inner door; the hum behind it answers your breathing."
         },
         "branches": {
           "keep_artifact": {
@@ -108,6 +102,27 @@
           "xp": 100,
           "world_effects": [],
           "narrative_beat": "The last wet rasp dies. In the hush after the fight, your breathing sounds too loud. Ahead, the inner door stands sealed; something beyond it gives one low answering hum."
+        }
+      },
+      {
+        "id": "stage_inner_chamber_artifact",
+        "name": "The Sealed Chamber",
+        "objective": "Enter the sealed inner chamber and take the warm tablet from its pedestal.",
+        "target_location_id": "greyvale_ruins_inner",
+        "completion_conditions": {
+          "type": "location_reached",
+          "location": "greyvale_ruins_inner"
+        },
+        "on_complete": {
+          "xp": 0,
+          "world_effects": [],
+          "rewards": [
+            {
+              "item": "veythar_sealed_artifact",
+              "quantity": 1
+            }
+          ],
+          "narrative_beat": "Your palm fits the pedestal's hollow, and a warm sealed tablet rises into it. The journal called this a controlled aperture: someone did this on purpose. Your companion falls silent."
         }
       },
       {
@@ -148,11 +163,11 @@
       },
       {
         "scene_id": "scene_ruins_exploration",
-        "stage_refs": [3, 4]
+        "stage_refs": [3, 4, 5]
       },
       {
         "scene_id": "scene_return_to_accord",
-        "stage_refs": [5]
+        "stage_refs": [6]
       }
     ],
     "failure_conditions": {
@@ -295,7 +310,7 @@
     "type": "side",
     "description": "Emris has been studying artifacts from Aelindra for thirty years. The Greyvale discovery changes everything — the notation matches their missing mentor's work. Helping Emris may unlock deeper understanding of what happened at the ruins, and what Veythar was doing.",
     "giver": "scholar_emris",
-    "prerequisite": "quest:greyvale_anomaly:stage >= 6",
+    "prerequisite": "quest:greyvale_anomaly:stage >= 7",
     "stages": [
       {
         "id": "stage_1_assist_research",

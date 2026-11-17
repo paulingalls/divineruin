@@ -13,6 +13,7 @@ from acceptance.journal_walk import PLACE
 from sample_fixtures import CONTENT_ROOT
 
 import db
+import db_content_queries
 import db_mutations
 import db_queries
 import event_types as E
@@ -30,7 +31,13 @@ class RuinsFightWalk(FirstBloodWalk):
         harness.stack.enter_context(patch.object(ExplorationAgent, "_enter", new=AsyncMock()))
         harness.stack.enter_context(patch.object(CombatAgent, "_enter", new=AsyncMock()))
         await ArcWalk.start(self, harness, "move_player", agent=ExplorationAgent())
-        await (await db.get_redis()).delete(os.environ.get("CONTENT_CACHE_PREFIX", "") + "location:" + PLACE)
+        for identifier in (PLACE, "greyvale_ruins_inner"):
+            await (await db.get_redis()).delete(os.environ.get("CONTENT_CACHE_PREFIX", "") + "location:" + identifier)
+            authored = next(
+                r for r in json.loads((CONTENT_ROOT / "content/locations.json").read_text()) if r["id"] == identifier
+            )
+            loaded = await db_content_queries.get_location(identifier)
+            assert loaded == authored, (identifier, loaded, authored)
         row = build_character_data(
             "Road traveler", "human", "warrior", None, "", created_at=datetime(2026, 11, 1, tzinfo=UTC)
         )
@@ -47,6 +54,11 @@ class RuinsFightWalk(FirstBloodWalk):
 
     async def publish(self, raw, **kwargs):
         event = json.loads(raw)
+        if event["type"] == E.INVENTORY_UPDATED:
+            async with self.pool.acquire() as conn:
+                assert {
+                    k: event[k] for k in ("player_id", "inventory_revision", "inventory")
+                } == await db_queries.get_inventory_snapshot(event["player_id"], conn=conn)
         if event["type"] in {E.QUEST_UPDATED, E.XP_AWARDED}:
             async with self.pool.acquire() as acquired:
                 conn = cast(asyncpg.Connection, acquired)
@@ -111,6 +123,7 @@ class RuinsFightWalk(FirstBloodWalk):
             },
         )
         assert result["quest_updates"][0]["new_stage"] == 4
+        assert await db_queries.get_inventory_item(self.player, "veythar_sealed_artifact") is None
         player = await db_queries.get_player(self.player)
         assert player is not None
         assert player["xp"] == 475 + self.patrol_xp and player["level"] == 3
@@ -182,19 +195,42 @@ class RuinsFightWalk(FirstBloodWalk):
         self.expected_reward = None
         assert player["class"] == "warrior" and player["level"] == 3
         assert not await db_queries.get_player_flag(self.player, "veythar_seal_mark.discovered")
-        for item in ("greyvale_veil_fragment", "veythar_sealed_artifact"):
-            held = [r for r in await db_queries.get_player_inventory(self.player) if r["id"] == item]
-            assert held and held[0]["slot_info"].get("quantity", 1) > 0
+        held = [r for r in await db_queries.get_player_inventory(self.player) if r["id"] == "greyvale_veil_fragment"]
+        assert held and held[0]["slot_info"].get("quantity", 1) > 0
         from event_bus import GameEvent
 
         await self.bg._process_events([GameEvent(E.QUEST_UPDATED, {})], timed_out=False)
-        await self.arrive("greyvale_ruins_inner")
+        assert await db_queries.get_inventory_item(self.player, "veythar_sealed_artifact") is None
+        self.events.clear()
+        with patch("check_resolution.dice_roll", side_effect=AssertionError("arrival must not roll")):
+            arrival = await self.arrive("greyvale_ruins_inner")
+        assert arrival["location"]["id"] == "greyvale_ruins_inner"
+        (reveal,) = arrival["quest_updates"]
+        assert reveal["new_stage"] == 6
+        assert reveal["narrative_beat"] == quest["stages"][5]["on_complete"]["narrative_beat"]
+        assert reveal["objective"] == quest["stages"][6]["objective"]
+        assert reveal["rewards_applied"] == [{"type": "item", "item_id": "veythar_sealed_artifact", "quantity": 1}]
+        assert len([e for e in self.events if e["type"] == E.QUEST_UPDATED]) == 1
+        assert len([e for e in self.events if e["type"] == E.INVENTORY_UPDATED]) == 1
+        assert not [
+            e for e in self.events if e["type"] in {E.DICE_ROLL, E.XP_AWARDED, E.WORLD_EVENT, E.DISPOSITION_CHANGED}
+        ]
         assert "deeper → greyvale_ruins_inner" in self.bg._last_warm_layer
         assert self.sd.location_id == "greyvale_ruins_inner"
         arrived = await db_queries.get_player(self.player)
         artifact = await db_queries.get_inventory_item(self.player, "veythar_sealed_artifact")
         assert arrived is not None and arrived["location_id"] == "greyvale_ruins_inner"
+        assert arrived["xp"] == player["xp"]
         assert artifact is not None and artifact["quantity"] == 1
+        await self.arrive(PLACE)
+        self.events.clear()
+        again = await self.arrive("greyvale_ruins_inner")
+        assert again["quest_updates"] == []
+        marker = await db_queries.get_player_quest(self.player, QUEST)
+        artifact = await db_queries.get_inventory_item(self.player, "veythar_sealed_artifact")
+        assert marker is not None and marker["current_stage"] == 6
+        assert artifact is not None and artifact["quantity"] == 1
+        assert not [e for e in self.events if e["type"] in {E.QUEST_UPDATED, E.INVENTORY_UPDATED, E.XP_AWARDED}]
         await self.arrive(PLACE)
         await self.replay_refused()
         await self.repeat_victory()

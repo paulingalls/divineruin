@@ -25,7 +25,9 @@ FRAGMENT = "greyvale_veil_fragment"
 class FragmentDoorWalk(FirstBloodWalk):
     async def start(self, harness, holding):
         harness.stack.enter_context(patch.object(ExplorationAgent, "_enter", new=AsyncMock()))
-        await ArcWalk.start(self, harness, "move_player", stage=None, agent=ExplorationAgent())
+        await ArcWalk.start(
+            self, harness, "move_player", stage=5 if holding == "neither" else None, agent=ExplorationAgent()
+        )
         await (await db.get_redis()).delete(os.environ.get("CONTENT_CACHE_PREFIX", "") + "location:" + ENTRANCE)
         self.sd.location_id = ENTRANCE
         await db_mutations.update_player_location(self.player, ENTRANCE)
@@ -50,6 +52,7 @@ class FragmentDoorWalk(FirstBloodWalk):
         if holding not in {"neither", "seal"}:
             held = [r for r in await db_queries.get_player_inventory(owner) if r["id"] == FRAGMENT]
             assert len(held) == 1 and held[0]["slot_info"]["quantity"] == (0 if holding == "guest_zero" else 1)
+        self.marker_before = await db_queries.get_player_quest(self.player, "greyvale_anomaly")
         self.before = await self.inventory()
         self.bg = BackgroundProcess(self.session, self.sd)
         return self
@@ -90,6 +93,9 @@ class FragmentDoorWalk(FirstBloodWalk):
             assert raw not in self.warm
             assert raw not in self.result.get("message", "")
         assert await self.inventory() == self.before
+        assert await db_queries.get_player_quest(self.player, "greyvale_anomaly") == self.marker_before
+        assert await db_queries.get_inventory_item(self.player, "veythar_sealed_artifact") is None
+        assert not [e for e in self.events if e["type"] in {E.QUEST_UPDATED, E.INVENTORY_UPDATED}]
 
 
 @given(parsers.parse("a sealed door party with {holding}"))

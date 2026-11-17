@@ -139,7 +139,7 @@
       ],
       "quest_triggered": {
         "quest": "greyvale_anomaly",
-        "stage": 5,
+        "stage": 6,
         "reveals": "the journal fragment references 'controlled aperture experiments' — someone was deliberately weakening the Veil at that site, and the research predates the Sundering by centuries"
       }
     },

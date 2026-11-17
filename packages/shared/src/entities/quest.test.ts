@@ -58,7 +58,7 @@ test("authored quest conditions and rewards satisfy the shared contract", async 
   }
 });
 
-test("Greyvale six-stage arc resolves its branches, scenes and fights", async () => {
+test("Greyvale seven-stage arc resolves its branches, scenes and fights", async () => {
   const quests = await content("quests");
   const quest = quests.find((q) => q.id === "greyvale_anomaly");
   if (!quest) throw new Error("Greyvale quest missing");
@@ -69,6 +69,7 @@ test("Greyvale six-stage arc resolves its branches, scenes and fights", async ()
     "stage_3_first_contact",
     "stage_4_the_ruins",
     "stage_ruins_fight",
+    "stage_inner_chamber_artifact",
     "stage_5_return",
   ]);
   const encounters = await content("encounter_templates");
@@ -78,7 +79,7 @@ test("Greyvale six-stage arc resolves its branches, scenes and fights", async ()
     expect(scenes.some((s) => s.id === entry.scene_id)).toBe(true);
     indices.push(...array(entry.stage_refs));
   }
-  expect(indices.sort()).toEqual([0, 1, 2, 3, 4, 5]);
+  expect(indices.sort()).toEqual([0, 1, 2, 3, 4, 5, 6]);
   for (const stage of stages) {
     for (const branch of Object.values(object(stage.branches ?? {})).map(object)) {
       expect(stages.some((s) => s.id === branch.next_stage)).toBe(true);
@@ -103,5 +104,16 @@ test("Greyvale six-stage arc resolves its branches, scenes and fights", async ()
       if (typeof amount !== "number") throw new Error("Expected XP number");
       return sum + amount;
     }, 0);
-  expect([xp(4), xp(5), xp(6)]).toEqual([475, 575, 775]);
+  expect(stages[5]!.completion_conditions).toEqual({
+    type: "location_reached",
+    location: "greyvale_ruins_inner",
+  });
+  expect(stages[5]!.target_location_id).toBe("greyvale_ruins_inner");
+  expect(object(stages[5]!.on_complete)).toEqual({
+    xp: 0,
+    world_effects: [],
+    rewards: [{ item: "veythar_sealed_artifact", quantity: 1 }],
+    narrative_beat: expect.any(String),
+  });
+  expect([xp(4), xp(5), xp(6), xp(7)]).toEqual([475, 575, 575, 775]);
 });

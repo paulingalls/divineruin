@@ -43,7 +43,7 @@ def repeats(harness):
         arc = harness.state["arc"]
         await arc.arrive(ROAD)
         await arc.unchanged_arrival()
-        for stage, status in [(1, "active"), (None, "active"), (6, "completed")]:
+        for stage, status in [(1, "active"), (None, "active"), (7, "completed")]:
             other = await ArcWalk().start(harness, arc.tool, stage, status)
             await other.unchanged_arrival()
 
@@ -116,7 +116,7 @@ def finish_lines(harness):
         combat_lines = {}
         for quest in quest_corpus():
             seeded = json.loads(await arc.pool.fetchval("SELECT data FROM quests WHERE id=$1", quest["id"]))
-            assert seeded["stages"] == quest["stages"]
+            assert seeded == quest
             for index in range(len(quest["stages"])):
                 line = await refresh(arc, quest["id"], index)
                 assert_finish(line, quest, index)

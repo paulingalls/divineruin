@@ -23,7 +23,7 @@ from session_data import CombatParticipant, CombatState, SessionData
 
 # Greyvale's final return pays both XP and favor.
 _QUEST_ID = "greyvale_anomaly"
-_FINAL_STAGE = 6
+_FINAL_STAGE = 7
 
 # A 2-seat party turns the authored 200 into an exact boundary landing:
 #   party_reward_multiplier(2) = 1.5 -> int(200 * 1.5 / 2) = 150 each

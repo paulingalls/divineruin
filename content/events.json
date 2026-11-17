@@ -55,7 +55,7 @@
     "id": "faction_interest_triggered",
     "name": "Competing Interests",
     "type": "world_event",
-    "trigger": "quest:greyvale_anomaly:stage == 6 AND player_location STARTS_WITH accord_",
+    "trigger": "quest:greyvale_anomaly:stage == 7 AND player_location STARTS_WITH accord_",
     "description": "Word has spread about what the player found in the ruins. Different factions want the artifact, the information, or both. The player must navigate competing interests.",
     "dm_instructions": {
       "mood": "political pressure, the sense of being watched and wanted",
@@ -77,7 +77,7 @@
     "id": "god_whisper_patron",
     "name": "Divine Recognition",
     "type": "god_whisper",
-    "trigger": "quest:greyvale_anomaly:stage == 6 AND event:faction_interest_triggered:completed",
+    "trigger": "quest:greyvale_anomaly:stage == 7 AND event:faction_interest_triggered:completed",
     "description": "The player's patron deity speaks directly to them about the discovery. The god's perspective reframes what the player found — and hints at a larger significance.",
     "dm_instructions": {
       "mood": "awe, weight of divine attention, the world holding its breath",
