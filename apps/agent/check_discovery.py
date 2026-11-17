@@ -35,7 +35,6 @@ from condition_voice_rules import validate_hearing_check
 from db_errors import validated_player_conditions
 from game_events import publish_game_event, publish_hidden_revealed
 from inventory_refresh import publish_inventory
-from patron_gift_tools import offer
 from patron_gifts import KNOWLEDGE_SKILLS, veythar_gift
 from quest_completion import finish_quest
 from quest_progress import advance_on_item_discovered, lock_discovery_rows
@@ -302,6 +301,8 @@ async def _resolve_discovery(
                 db_mod=db_mod,
             )
         if can_offer:
+            from patron_gift_tools import offer
+
             offered = await offer(
                 session,
                 locked_player,

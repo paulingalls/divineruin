@@ -17,7 +17,6 @@ from combat_terrain import skill_natural_terrain
 from condition_consume import consume_beneficial_conditions
 from condition_voice_rules import validate_hearing_check
 from db_errors import validated_player_conditions
-from patron_gift_tools import offer
 from patron_gifts import KNOWLEDGE_SKILLS
 from session_data import SessionData
 from tool_support import _cap_str
@@ -176,6 +175,8 @@ async def _check_skill_run(
         **({"gift_name": result.gift_name} if result.gift_name else {}),
     }
     if reroll_dc is None and skill.lower() in KNOWLEDGE_SKILLS:
+        from patron_gift_tools import offer
+
         offered = await offer(
             session,
             player,

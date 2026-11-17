@@ -4,10 +4,12 @@ import json
 
 from livekit.agents.llm import ToolError
 
+import check_discovery
 import db
 import db_mutations_conditions
 import db_mutations_skill_advancement
 import db_queries
+from check_skill import _check_skill_run
 from condition_consume import serialize_combat_check
 from patron_gifts import KNOWLEDGE_SKILLS, VEYTHAR_INSIGHT, veythar_gift
 from quest_progress import lock_discovery_rows
@@ -80,9 +82,7 @@ async def recharge(player_id, player, rest_type, *, conn):
 
 @serialize_combat_check
 async def activate_insight(context):
-    import check_discovery
     import check_tools
-    from check_skill import _check_skill_run
 
     session = context.userdata
     effects = SkillCheckEffects()
