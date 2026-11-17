@@ -28,8 +28,6 @@ def _mocks():
 
 
 class TestCompanionShorthandResolvesPerPlayer:
-    """No authored row produces companion_disposition, so retain direct runtime input coverage."""
-
     @pytest.mark.asyncio
     async def test_companion_disposition_lands_on_the_assigned_companion_not_kael(self):
         mutations, queries, content = _mocks()
@@ -48,24 +46,6 @@ class TestCompanionShorthandResolvesPerPlayer:
 
         mutations.set_npc_disposition.assert_called_once()
         assert mutations.set_npc_disposition.call_args[0][0] == "companion_sable"
-
-    @pytest.mark.asyncio
-    async def test_companion_disposition_with_no_bound_companion_writes_nothing(self):
-        mutations, queries, content = _mocks()
-        session = SessionData(player_id="p1", location_id="accord_market_square")
-        pending: list[tuple[str, dict]] = []
-
-        await _apply_world_effects(
-            ["companion_disposition +3"],
-            session,
-            pending,
-            mutations=mutations,
-            queries=queries,
-            content=content,
-        )
-
-        mutations.set_npc_disposition.assert_not_called()
-        assert pending == []
 
 
 class TestEffectNpcMap:

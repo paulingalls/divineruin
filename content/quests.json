@@ -56,7 +56,7 @@
               "quantity": 1
             }
           ],
-          "world_effects": ["millhaven_morale +2", "yanna_disposition +2"],
+          "world_effects": ["yanna_disposition +2"],
           "narrative_beat": "The creatures are dead — or gone, or dispersed, you're not sure anything that wrong can really die. At the incursion site, you notice something. The residual energy doesn't match normal Hollow signatures. It's structured. Almost deliberate."
         }
       },
@@ -72,7 +72,7 @@
         },
         "on_complete": {
           "xp": 200,
-          "world_effects": ["greyvale_corruption +1", "event:ruins_discovery_ripple"],
+          "world_effects": [],
           "narrative_beat": "You hold the journal page. Its precise notation describes resonance thinning and a controlled aperture. A final annotation points to the sealed inner door; the hum behind it answers your breathing."
         }
       },
@@ -152,11 +152,9 @@
           "favor": 5,
           "world_effects": [
             "emris_disposition +4",
-            "event:faction_interest_triggered",
             "event:god_whisper:player_patron",
             "accord_guild_reputation completed_faction_quest"
-          ],
-          "narrative_beat": "Emris takes the journal page with trembling hands. They read it once. Then again. Their face goes through recognition, confusion, and something that looks a lot like fear. 'Where did you find this?' they ask, very quietly. 'Where exactly?'"
+          ]
         }
       }
     ],

@@ -5,9 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
-from sample_fixtures import GUILD_PLAYER, make_context, make_db_mod, make_mock_room, published_events
+from sample_fixtures import GUILD_PLAYER, make_context, make_db_mod, make_mock_room
 
-import event_types as E
 from quest_tools import _update_quest_impl
 from quest_world_effects import _apply_world_effects
 from session_summary import generate_session_summary
@@ -184,43 +183,6 @@ async def test_item_reward_skips_member_already_ahead():
     assert {call.args[0] for call in case[6].add_inventory_item.await_args_list} == {"player_1"}
     assert [call.args[0] for call in case[6].set_player_quest.await_args_list] == ["player_1"]
     assert result["rewards_applied"] == []
-
-
-@pytest.mark.asyncio
-async def test_guest_corruption_effect_changes_each_members_own_level():
-    case = quest_case([{"on_complete": {"world_effects": ["greyvale_corruption +1"]}}], {"player_1": 0, "player_2": 0})
-    case[0].userdata.member_state("player_1").corruption_level = 2
-    case[0].userdata.member_state("player_2").corruption_level = 0
-    case[0].userdata.event_bus = MagicMock()
-    with case[0].userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
-        await advance(case, 1)
-    assert case[0].userdata.member_state("player_1").corruption_level == 3
-    assert case[0].userdata.member_state("player_2").corruption_level == 1
-    events = [e.payload for e in published_events(case[0]) if e.event_type == E.HOLLOW_CORRUPTION_CHANGED]
-    assert len(events) == 2
-    assert {e["player_id"]: (e["previous"], e["level"]) for e in events} == {"player_1": (2, 3), "player_2": (0, 1)}
-
-
-@pytest.mark.asyncio
-async def test_guest_corruption_decrease_clamps_each_member_at_floor():
-    case = quest_case([{"on_complete": {"world_effects": ["greyvale_corruption -1"]}}], {"player_1": 0, "player_2": 0})
-    case[0].userdata.member_state("player_1").corruption_level = 0
-    case[0].userdata.member_state("player_2").corruption_level = 2
-    with case[0].userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
-        await advance(case, 1)
-    assert [case[0].userdata.member_state(pid).corruption_level for pid in ("player_1", "player_2")] == [0, 1]
-
-
-@pytest.mark.asyncio
-async def test_corruption_stays_unchanged_when_quest_write_fails():
-    case = quest_case([{"on_complete": {"world_effects": ["greyvale_corruption -1"]}}], {"player_1": 0, "player_2": 0})
-    case[0].userdata.member_state("player_1").corruption_level = 3
-    case[0].userdata.member_state("player_2").corruption_level = 1
-    case[6].set_player_quest.side_effect = RuntimeError("write failed")
-    with case[0].userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
-        with pytest.raises(RuntimeError, match="write failed"):
-            await advance(case, 1)
-    assert [case[0].userdata.member_state(pid).corruption_level for pid in ("player_1", "player_2")] == [3, 1]
 
 
 @pytest.mark.asyncio

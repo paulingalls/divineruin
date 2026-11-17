@@ -136,13 +136,19 @@ Feature: Engine driven Greyvale arrivals
     Given a journal search at the ruins
     Then starting an already satisfied item quest pays each stage once
 
+  Scenario: A continuous road walk reaches Emris after resuming
+    Given a new road traveler who will finish the ruins through end_combat
+    And the continuous traveler follows Kaelen
+    When they walk through Millhaven and the journal into the ruins fight
+    Then the level three party wins and the ruins quest reward arrives once
+    And the road traveler resumes with the tablet and closes every authored effect
+
   Scenario Outline: A continuous road walk wins the ruins fight once
     Given a new road traveler who will finish the ruins through <route>
     When they walk through Millhaven and the journal into the ruins fight
     Then the level three party wins and the ruins quest reward arrives once
     Examples:
       | route         |
-      | end_combat    |
       | resolve_phase |
 
   Scenario Outline: A fragment opens the seal for the present party
@@ -195,3 +201,12 @@ Feature: Engine driven Greyvale arrivals
       | progress |
       | eligible |
       | advanced |
+
+  Scenario Outline: Emris closes the artifact arc for every patron path
+    Given an artifact bearer of <patron> meeting Emris at <location>
+    Then Emris closes the quest once and the player's patron alone whispers
+    Examples:
+      | patron | location       |
+      | kaelen | accord_dockside |
+      | syrath | emris_study    |
+      | none   | accord_dockside |

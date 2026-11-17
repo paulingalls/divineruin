@@ -4,6 +4,7 @@ import json
 
 import pytest
 from acceptance.artifact_choice_steps import *  # noqa: F403
+from acceptance.emris_reveal_steps import *  # noqa: F403
 from acceptance.fragment_door_steps import *  # noqa: F403
 from acceptance.greyvale_arc_walk_harness import ROAD, TOWN, ArcWalk
 from acceptance.greyvale_finish_line import (
@@ -20,6 +21,19 @@ from acceptance.ruins_fight_steps import *  # noqa: F403
 from pytest_bdd import given, parsers, scenarios, then, when
 
 scenarios("features/greyvale_arc_walk.feature")
+
+
+@pytest.fixture(autouse=True)
+def current_arc_content(harness):
+    import os
+
+    import db
+
+    async def invalidate():
+        prefix = os.environ.get("CONTENT_CACHE_PREFIX", "")
+        await (await db.get_redis()).delete(prefix + "quest:greyvale_anomaly", prefix + "scene:scene_return_to_accord")
+
+    harness.run_sync(invalidate())
 
 
 @given(parsers.parse("a road quest holder using {tool}"))

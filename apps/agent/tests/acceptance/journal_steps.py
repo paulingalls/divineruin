@@ -40,11 +40,6 @@ def journal_rewards(harness):
         assert player is not None
         assert player["xp"] == 200
         assert await arc.quantity("veythar_sealed_artifact") == 0
-        assert arc.sd.corruption_level == 1
-        assert (
-            len([e for e in arc.events if e["type"] == E.WORLD_EVENT and e["event_id"] == "ruins_discovery_ripple"])
-            == 1
-        )
         before = await arc.durable()
         arc.events.clear()
         result = await arc.discover(skill="arcana", target="archway")
@@ -168,8 +163,8 @@ def chain(harness):
         result = await arc.command("update_quest", {"quest_id": quest, "new_stage_id": 0})
         assert result["new_stage"] == await arc.marker(quest) == 2
         assert sum(r["amount"] for r in result["rewards_applied"] if r["type"] == "xp") == 82
-        assert arc.sd.corruption_level == 3
-        assert arc.sd.member_state(arc.guest).corruption_level == 3
+        assert await db_queries.get_player_flag_value(arc.player, "chain_progress") == 2
+        assert await db_queries.get_player_flag_value(arc.guest, "chain_progress") == 2
         before = await arc.durable()
         await arc.command("update_quest", {"quest_id": quest, "new_stage_id": 0}, error=True)
         assert await arc.durable() == before
