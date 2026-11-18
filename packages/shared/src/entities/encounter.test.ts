@@ -147,7 +147,7 @@ describe("encounter_templates.json — enemy action kinds", () => {
     const marks = actions.filter(({ action }) =>
       ["command", "accusation"].includes(encounterActionKind(action)),
     );
-    expect(marks.length).toBe(4);
+    expect(marks.length).toBe(5);
     for (const { action } of marks) {
       expect(Object.keys(action)).not.toContain("damage");
       expect(Object.keys(action)).not.toContain("damage_type");
@@ -155,7 +155,7 @@ describe("encounter_templates.json — enemy action kinds", () => {
     }
   });
 
-  test("the five orders are the command carriers", () => {
+  test("the four orders are the command carriers", () => {
     const carriers = actions
       .filter(({ action }) => encounterActionKind(action) === "command")
       .map(({ encounterId, enemyId, action }) => `${encounterId}/${enemyId}/${action.name}`);
@@ -163,6 +163,7 @@ describe("encounter_templates.json — enemy action kinds", () => {
       "ashmark_patrol/ashmark_sergeant/Rally",
       "cult_cell/cult_fanatic_1/Bless",
       "hollow_corrupted_settlement/hollowed_knight/Command Lesser",
+      "hollow_knight_boss/hollowed_knight/Command Lesser",
     ]);
   });
 
@@ -224,7 +225,7 @@ describe("creature tier player bands", () => {
 describe("authored creature tiers", () => {
   test("every content row has the expected tier", () => {
     const rows = encounters.flatMap((enc) => enc.enemies.map((enemy) => [enc.id, enemy] as const));
-    expect(rows).toHaveLength(34);
+    expect(rows).toHaveLength(37);
     const named: Record<string, number> = {
       Shadeling: 1,
       Mawling: 2,
@@ -334,7 +335,7 @@ test("catalog runtime extensions reject contradictory action shapes", () => {
 
 describe("spatial scene placement", () => {
   test("fifteen shipped templates have valid spatial placement", () => {
-    expect(references.length).toBe(15);
+    expect(references.length).toBe(16);
     for (const row of references) expect(() => validateScenePlacement(row)).not.toThrow();
   });
   test("spatial zone radii follow the creature catalog owner", () => {

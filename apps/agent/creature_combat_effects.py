@@ -5,6 +5,9 @@ from copy import deepcopy
 from combat_damage_affinity import DAMAGE_TYPES
 
 _EXECUTED_PASSIVES = {
+    ("hollow_knight", "Corrupted Resilience"): None,
+    ("war_golem", "Resistance"): None,
+    ("deepstone_guardian", "Resistance"): None,
     ("corrupted_treant", "Vulnerability to Fire"): None,
     ("corrupted_treant", "Resistance"): None,
     ("dire_bear", "Thick Hide"): None,
@@ -22,6 +25,13 @@ def deferred_effects(row, *, composite=False):
     for group in ("attacks", "actives", "passives", "reactions"):
         for source in row[group]:
             key = (row["id"], source["name"])
+            if key in (("hollow_knight", "Corrupted Blade"), ("hollow_knight", "Unholy Fortitude")):
+                continue
+            if key == ("hollow_knight", "Dissolution Strike"):
+                source = {
+                    "name": source["name"],
+                    "description": "On hit, 5 ft of ground becomes corrupted terrain for 1 minute.",
+                }
             if group == "passives" and key in _EXECUTED_PASSIVES:
                 residual = _EXECUTED_PASSIVES[key]
                 if residual is None:

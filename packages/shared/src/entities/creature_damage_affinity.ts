@@ -22,6 +22,29 @@ export interface DamageAffinities {
 const affinities = ["resistant", "immune", "vulnerable"] as const;
 export function validateCreatureTraits(row: Record<string, unknown>): string[] {
   const problems: string[] = [];
+  if ("resist_nonmagical_physical" in row && typeof row.resist_nonmagical_physical !== "boolean")
+    problems.push("resist_nonmagical_physical: expected boolean");
+  if ("unholy_fortitude" in row) {
+    const spec = row.unholy_fortitude;
+    if (typeof spec !== "object" || spec === null || Array.isArray(spec))
+      problems.push("unholy_fortitude: expected object");
+    else {
+      const data = spec as Record<string, unknown>;
+      const fields = ["save", "dc", "increment", "narration_cue"];
+      for (const key of Object.keys(data))
+        if (!fields.includes(key)) problems.push(`unholy_fortitude.${key}: unknown`);
+      for (const key of fields) {
+        const value = data[key];
+        const valid =
+          key === "save"
+            ? ["STR", "DEX", "CON", "INT", "WIS", "CHA"].includes(value as string)
+            : key === "narration_cue"
+              ? typeof value === "string" && value.trim().length > 0
+              : typeof value === "number" && Number.isInteger(value) && value > 0;
+        if (!valid) problems.push(`unholy_fortitude.${key}: invalid`);
+      }
+    }
+  }
   if ("damage_affinities" in row) {
     const traits = row.damage_affinities;
     if (typeof traits !== "object" || traits === null || Array.isArray(traits))

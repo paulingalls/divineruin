@@ -93,6 +93,7 @@ async def land(
     if "damage_dice" in cast.packet:
         cast.packet["damage_dice"] = components[0]["dice"]
     action = {
+        "magical": True,
         "name": spell.name,
         "damage": components[0]["dice"],
         "damage_type": components[0]["damage_type"],

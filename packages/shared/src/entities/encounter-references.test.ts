@@ -25,11 +25,11 @@ for (const row of corpus.valid) {
     expect(() => validateEncounterReferences(row, ids)).not.toThrow();
   });
 }
-test("all fifteen templates", async () => {
+test("all sixteen templates", async () => {
   const rows = (await Bun.file(
     new URL("../../../../content/encounter_templates.json", import.meta.url),
   ).json()) as { id: string; enemies: unknown[] }[];
-  expect(rows).toHaveLength(15);
+  expect(rows).toHaveLength(16);
   expect(new Set(rows.map((row) => row.id))).toEqual(
     new Set([
       "fragment_shadeling",
@@ -47,6 +47,7 @@ test("all fifteen templates", async () => {
       "hollowmoth_swarm",
       "hollow_weaver_ambush",
       "hollow_mawling_pack",
+      "hollow_knight_boss",
     ]),
   );
   for (const row of rows) {

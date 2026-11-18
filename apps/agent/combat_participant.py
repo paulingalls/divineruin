@@ -36,6 +36,8 @@ class CombatParticipant:
     choir_silence_exposed: bool = False
     choir_movement_round: int | None = None
     damage_affinities: dict[str, list[str]] = field(default_factory=dict)
+    resist_nonmagical_physical: bool = False
+    unholy_fortitude: dict | None = None
     tags: list[str] = field(default_factory=list)
     creature_id: str | None = None
     catalog_narration: dict = field(default_factory=dict)

@@ -26,8 +26,9 @@ from combat_attack_roll import deserialize_roll as deserialize_roll
 from combat_attack_roll import serialize_roll as serialize_roll
 from combat_condition_landing import _land_condition_on_one
 from combat_durability import _accrue_durability, _find_equipped
-from combat_enemy_active import apply_prepared_hit, heal
+from combat_enemy_active import apply_critical_save, apply_prepared_hit, heal
 from combat_events import emit_or_publish
+from combat_fortitude import try_fortitude
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from condition_restrictions import cannot_act
 from kaelen_gift import trigger_iron_resolve
@@ -86,6 +87,7 @@ def _handle_hp_zero(
     was_fallen: bool,
     hp_status: str,
     sounds: list[str],
+    outcome: dict | None = None,
 ) -> tuple[str, bool, list[str]]:
     """Resolve a target dropped to 0 HP — Hollowed rise, instant death, fall, or companion KO.
 
@@ -98,6 +100,13 @@ def _handle_hp_zero(
     (``is_fallen``/``is_dead``, or — on a Hollowed rise — ``type``/
     ``hp_current``/``conditions``) and appends the fall/rise sound to ``sounds``. Returns the HP
     status, whether a Hollowed rose, and ids released from this target's grapples."""
+    if (
+        not was_fallen
+        and target.unholy_fortitude is not None
+        and not target.hollow_death_resolved
+        and try_fortitude(target, outcome)
+    ):
+        return combat_resolution.hp_threshold_status(target.hp_current, target.hp_max), False, []
     if not was_fallen and target.type == "player" and conditions.hollowed_stage(target.conditions) >= 2:
         # Temporary Hollowed rise (M4.4 story-008): a Stage-2+ Hollowed player at 0 HP does NOT
         # fall — their corpse rises as a hostile Temporary Hollowed combatant (HP=50% of max,
@@ -332,6 +341,7 @@ async def apply_attack_result(
     hp_status = combat_resolution.hp_threshold_status(target.hp_current, target.hp_max)
     rose_hollowed = False
     released_from_grapple: list[str] = []
+    fortitude_outcome = {}
     if target.hp_current <= 0:
         hp_status, rose_hollowed, released_from_grapple = _handle_hp_zero(
             session,
@@ -341,6 +351,7 @@ async def apply_attack_result(
             was_fallen=was_fallen,
             hp_status=hp_status,
             sounds=sounds,
+            outcome=fortitude_outcome,
         )
     elif hp_status in ("bloodied", "critical") and (not save_damage or attack_result.damage > 0):
         sounds.append(SOUND_HEARTBEAT)
@@ -419,6 +430,10 @@ async def apply_attack_result(
         "context": attack_result.context,
         "target_rose_hollowed": rose_hollowed,
     }
+    if fortitude_outcome:
+        response["unholy_fortitude"] = fortitude_outcome
+        if fortitude_outcome["success"] and response["context"] == "killing_blow":
+            response.update(context="", dramatic=False)
     if "damage_components" in action:
         response["damage_components"] = action["damage_components"]
     if was_fallen:
@@ -450,6 +465,9 @@ async def apply_attack_result(
             sneak_attack_raw_damage=attack_result.sneak_attack_raw_damage,
             bonus_damage=attack_result.bonus_damage,
             bonus_damage_type=attack_result.bonus_damage_type,
+            rider_damage=attack_result.rider_damage,
+            rider_damage_type=attack_result.rider_damage_type,
+            rider_ignores_resistance=attack_result.rider_ignores_resistance,
             consumed_conditions=attack_result.consumed_conditions,
         )
         log_outcome = hit_miss
@@ -458,6 +476,7 @@ async def apply_attack_result(
         response["attacker_hp_status"] = combat_resolution.hp_threshold_status(attacker.hp_current, attacker.hp_max)
     if combat_state is not None and not automatic:
         apply_prepared_hit(combat_state, attacker, target, action, response)
+        apply_critical_save(combat_state, attacker, target, action, response)
     if released_from_grapple:
         response["released_from_grapple"] = released_from_grapple
     logger.info(

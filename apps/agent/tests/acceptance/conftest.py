@@ -19,15 +19,6 @@ from typing import Any
 
 import pytest
 from acceptance._livekit import ensure_livekit_server
-from acceptance._postgres_fixtures import (
-    fresh_migrated_db as fresh_migrated_db,
-)
-from acceptance._postgres_fixtures import (
-    migrated_db as migrated_db,
-)
-from acceptance._postgres_fixtures import (
-    postgres_container as postgres_container,
-)
 from acceptance._real_llm import require_real_llm_key
 
 _ACCEPTANCE_DIR = Path(__file__).parent
@@ -130,24 +121,6 @@ def harness(migrated_db: str) -> Iterator[SimpleNamespace]:
         loop.call_soon_threadsafe(loop.stop)
         thread.join()
         loop.close()
-
-
-@pytest.fixture
-async def reset_db_pool(migrated_db: str) -> AsyncIterator[str]:
-    """Point db.get_pool() at the migrated testcontainer for the test, then restore."""
-    import db
-
-    prior = os.environ.get("DATABASE_URL")
-    os.environ["DATABASE_URL"] = migrated_db
-    await db.close_all()
-    try:
-        yield migrated_db
-    finally:
-        await db.close_all()
-        if prior is None:
-            os.environ.pop("DATABASE_URL", None)
-        else:
-            os.environ["DATABASE_URL"] = prior
 
 
 @pytest.fixture

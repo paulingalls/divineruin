@@ -173,7 +173,10 @@ class TroopFight(MawlingHarness):
                     continue
                 if actor.type == "enemy":
                     action = next((a for a in actions if a["name"] in required - self.hits), actions[0])
-                    if "Lunge" not in required - self.hits:
+                    composite_attacks = {
+                        s["action"] for a in actions if a["kind"] == "multiattack" for s in a["strikes"]
+                    }
+                    if not ((required - self.hits) - composite_attacks):
                         action = next((a for a in actions if a["kind"] == "multiattack"), action)
                 else:
                     action = next(a for a in actions if a["kind"] == "attack")

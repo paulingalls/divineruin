@@ -917,6 +917,7 @@
     "effects": [
       {
         "type": "weapon",
+        "magical": true,
         "damage_type": "slashing",
         "properties": [
           "light",
@@ -2366,6 +2367,7 @@
     "effects": [
       {
         "type": "weapon",
+        "magical": true,
         "damage_type": "slashing",
         "properties": [
           "versatile"
@@ -2541,6 +2543,7 @@
     "effects": [
       {
         "type": "weapon",
+        "magical": true,
         "damage_type": "slashing",
         "properties": [
           "versatile"
@@ -2855,6 +2858,7 @@
     "effects": [
       {
         "type": "weapon",
+        "magical": true,
         "damage_type": "slashing",
         "properties": [
           "heavy",

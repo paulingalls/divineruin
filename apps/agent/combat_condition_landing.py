@@ -40,7 +40,7 @@ def _land_condition_on_one(
             if condition["type"] == cond_type:
                 condition["inflicted_round"] = state.round_number
     landed = conditions.has_condition(cond_target.conditions, cond_type)
-    if landed and cannot_act(({"type": cond_type},)):
+    if landed and cannot_act([c for c in cond_target.conditions if c["type"] == cond_type]):
         released = combat_grapple.release_from_grappler(state, cond_target.id)
         if released:
             packet.setdefault("released_from_grapple", []).extend(released)

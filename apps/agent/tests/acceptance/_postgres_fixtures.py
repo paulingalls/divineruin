@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 from uuid import uuid4
@@ -137,3 +137,21 @@ def fresh_migrated_db(postgres_container: str) -> Iterator[str]:
         yield dsn
     finally:
         asyncio.run(drop())
+
+
+@pytest.fixture
+async def reset_db_pool(migrated_db: str) -> AsyncIterator[str]:
+    """Point db.get_pool() at the migrated testcontainer for the test, then restore."""
+    import db
+
+    prior = os.environ.get("DATABASE_URL")
+    os.environ["DATABASE_URL"] = migrated_db
+    await db.close_all()
+    try:
+        yield migrated_db
+    finally:
+        await db.close_all()
+        if prior is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = prior

@@ -22,6 +22,27 @@ AFFINITIES = ("resistant", "immune", "vulnerable")
 
 def validate_traits(row):
     problems = []
+    if "resist_nonmagical_physical" in row and type(row["resist_nonmagical_physical"]) is not bool:
+        problems.append("resist_nonmagical_physical: expected boolean")
+    if "unholy_fortitude" in row:
+        spec = row["unholy_fortitude"]
+        if not isinstance(spec, dict):
+            problems.append("unholy_fortitude: expected object")
+        else:
+            fields = {"save", "dc", "increment", "narration_cue"}
+            for key in set(spec) - fields:
+                problems.append(f"unholy_fortitude.{key}: unknown")
+            for key in fields:
+                value = spec.get(key)
+                valid = (
+                    value in ("STR", "DEX", "CON", "INT", "WIS", "CHA")
+                    if key == "save"
+                    else isinstance(value, str) and bool(value.strip())
+                    if key == "narration_cue"
+                    else type(value) is int and value > 0
+                )
+                if not valid:
+                    problems.append(f"unholy_fortitude.{key}: invalid")
     if "damage_affinities" in row:
         traits = row["damage_affinities"]
         if not isinstance(traits, dict):
@@ -76,18 +97,37 @@ def amount(traits, damage, damage_type):
 
 def apply(target, action, result):
     traits = target.damage_affinities
+
+    def adjusted(damage, dtype, ignores_resistance=False):
+        conditional = (
+            target.resist_nonmagical_physical
+            and not action.get("magical", False)
+            and dtype in ("slashing", "piercing", "bludgeoning")
+        )
+        if dtype in traits.get("immune", []):
+            return 0
+        if not ignores_resistance and (conditional or dtype in traits.get("resistant", [])):
+            return damage // 2
+        if dtype in traits.get("vulnerable", []):
+            return damage * 2
+        return damage
+
     bonus = getattr(result, "bonus_damage", 0)
-    adjusted_bonus = amount(traits, bonus, getattr(result, "bonus_damage_type", None))
+    rider = getattr(result, "rider_damage", 0)
+    adjusted_bonus = adjusted(bonus, getattr(result, "bonus_damage_type", None))
+    adjusted_rider = adjusted(
+        rider, getattr(result, "rider_damage_type", None), getattr(result, "rider_ignores_resistance", False)
+    )
     components = action.get("damage_components")
     if components is not None:
-        components = [{**c, "damage": amount(traits, c["damage"], c["damage_type"])} for c in components]
+        components = [{**c, "damage": adjusted(c["damage"], c["damage_type"])} for c in components]
         action = {**action, "damage_components": components}
         damage = sum(c["damage"] for c in components)
     else:
-        damage = amount(traits, result.damage - bonus, result.damage_type)
-    changes = {"damage": damage + adjusted_bonus}
+        damage = adjusted(result.damage - bonus - rider, result.damage_type)
+    changes = {"damage": damage + adjusted_bonus + adjusted_rider}
     if hasattr(result, "bonus_damage"):
-        changes["bonus_damage"] = adjusted_bonus
+        changes.update(bonus_damage=adjusted_bonus, rider_damage=adjusted_rider)
     if hasattr(result, "target_hp_remaining") and changes["damage"] != result.damage:
         return action, with_landed_damage(result, changes.pop("damage"), target.hp_current, **changes)
     return action, replace(result, **changes)

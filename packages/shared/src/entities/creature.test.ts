@@ -405,3 +405,68 @@ test("typed damage traits", () => {
     }),
   ).toEqual([]);
 });
+
+test("Knight contracts and the three conditional resistance owners", async () => {
+  const catalog = (await Bun.file(
+    new URL("../../../../content/creatures.json", import.meta.url),
+  ).json()) as Record<string, unknown>[];
+  const knight = structuredClone(catalog.find((row) => row.id === "hollow_knight")!);
+  expect(knight.unholy_fortitude).toEqual({
+    save: "CON",
+    dc: 10,
+    increment: 5,
+    narration_cue: "The armor crashes down. Then it scrapes upright again.",
+  });
+  expect(validateCreatureStatBlock(knight)).toEqual([]);
+  expect(
+    catalog
+      .filter((r) => r.resist_nonmagical_physical)
+      .map((r) => r.id)
+      .sort(),
+  ).toEqual(["deepstone_guardian", "hollow_knight", "war_golem"]);
+  for (const [field, value] of [
+    ["resist_nonmagical_physical", "yes"],
+    ["unholy_fortitude", { save: "CON", dc: 0, increment: 5, narration_cue: "rise" }],
+    ["unholy_fortitude", { save: "bad", dc: 10, increment: 5, narration_cue: "rise" }],
+    ["unholy_fortitude", { save: "CON", dc: 10, increment: 0, narration_cue: "rise" }],
+    ["unholy_fortitude", { dc: 10, increment: 5, narration_cue: "rise" }],
+  ] as const) {
+    expect(
+      validateCreatureStatBlock({ ...knight, [field]: value }).some((e) => e.includes(field)),
+    ).toBe(true);
+  }
+});
+
+test("Knight nested riders reject malformed actual rows", async () => {
+  const rows = (await Bun.file(
+    new URL("../../../../content/creatures.json", import.meta.url),
+  ).json()) as Record<string, unknown>[];
+  const knight = rows.find((r) => r.id === "hollow_knight")!;
+  for (const [field, value] of [
+    ["magical", "yes"],
+    ["bonus_damage", { dice: "bad", damage_type: "necrotic" }],
+    ["bonus_damage", { dice: "1d6", damage_type: "bad" }],
+    ["bonus_damage", { dice: "1d6" }],
+    ["bonus_damage", { dice: "1d6", damage_type: "necrotic", extra: true }],
+    ["critical_save", { save: "BAD", dc: 14, applies_condition: "hollowed" }],
+    ["critical_save", { save: "CON", dc: 0, applies_condition: "hollowed" }],
+    ["critical_save", { save: "CON", dc: 14, applies_condition: "unknown" }],
+  ] as const) {
+    const row = structuredClone(knight);
+    (row.attacks as Record<string, unknown>[])[0]![field] = value;
+    expect(validateCreatureStatBlock(row).some((e) => e.includes(field))).toBe(true);
+  }
+  for (const on_hit of [
+    { damage: "bad", damage_type: "necrotic", ignores_resistance: true },
+    { damage: "3d6", damage_type: "bad", ignores_resistance: true },
+    { damage: "3d6", ignores_resistance: true },
+    { damage: "3d6", damage_type: "necrotic", ignores_resistance: false },
+    { damage: "3d6", damage_type: "necrotic", ignores_resistance: true, extra: true },
+  ]) {
+    const row = structuredClone(knight);
+    (row.actives as Record<string, unknown>[]).find(
+      (a) => a.name === "Dissolution Strike",
+    )!.on_hit = on_hit;
+    expect(validateCreatureStatBlock(row).some((e) => e.includes("on_hit"))).toBe(true);
+  }
+});
