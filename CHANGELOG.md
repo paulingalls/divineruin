@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.45.1
+
+Split spell casting into smaller modules while preserving casting behavior.
+
+Release steps: none.
+
 ## 0.45.0
 
 Crafting now counts toward your patron's favor. When a craft finishes, even with a flaw, the crafter records a crafted-item deed. Aelora, the Hearthkeeper, values that deed, so her followers gain favor at their next twenty-minute judgment in play. A failed craft records nothing.
