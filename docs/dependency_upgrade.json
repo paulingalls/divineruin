@@ -143,10 +143,10 @@
       "project": "apps/agent",
       "group": "dev",
       "name": "pytest",
-      "requested": ">=9.1.1",
-      "resolved": "9.1.1",
-      "installed": "9.1.1",
-      "latest_stable": "9.1.1",
+      "requested": ">=9.2.0",
+      "resolved": "9.2.0",
+      "installed": "9.2.0",
+      "latest_stable": "9.2.0",
       "held_back_by": null
     },
     {
