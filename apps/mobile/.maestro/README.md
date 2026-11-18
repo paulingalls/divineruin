@@ -9,7 +9,7 @@ glyph rendering. Playwright still owns web/HTTP/general UI.
 ```sh
 MAESTRO_APP_LAUNCH_URL=<dev-server-url> bun run test:e2e:mobile   # gated; skips cleanly when no device
 REQUIRE_EMULATOR=1 bun run test:e2e:mobile
-REQUIRE_BACKEND=1 bun run test:e2e:mobile    # additionally run flows that need apps/server reachable
+REQUIRE_EMULATOR=1 REQUIRE_BACKEND=1 bun run test:e2e:mobile # owns the iOS API and Metro
 ```
 
 `bun run test:e2e:mobile` invokes `scripts/maestro-acceptance.ts`, which:
@@ -27,12 +27,20 @@ REQUIRE_BACKEND=1 bun run test:e2e:mobile    # additionally run flows that need 
 3. Runs offline-safe flows by default and adds backend-required flows when
    `REQUIRE_BACKEND=1` is set.
 
-Every flow clears app state and then opens `APP_LAUNCH_URL`, so a development
-build needs a reachable Metro server: export `MAESTRO_APP_LAUNCH_URL` with that
-server's `exp+divineruin://expo-development-client/?url=...` address. Without it
-the flows fall back to the bare `divineruin://` scheme, which only reaches the
-app's own bundle — the dev launcher will never render app content and the flow
-fails rather than passing vacuously.
+With `REQUIRE_BACKEND=1`, the iOS gate starts its own API on a free loopback
+port using the caller's `DATABASE_URL`, mock email and development auth. It
+starts Metro with that API origin and temporarily enrolls
+`acceptance@divineruin.test`. Success, failure and cancellation stop the owned
+processes and remove only membership this run inserted; existing membership stays.
+
+Every flow clears app state and opens `APP_LAUNCH_URL`. Outside the owned iOS
+backend path, export `MAESTRO_APP_LAUNCH_URL` with a reachable Metro server's
+`exp+divineruin://expo-development-client/?url=...` address. Supplying it keeps
+Metro and the backend caller-owned, with no automatic enrollment. That path and
+Android still require a reachable backend and
+`bun run allow acceptance@divineruin.test` against its `DATABASE_URL`.
+Without a Metro launch URL, the bare `divineruin://` fallback cannot render a
+development build's app content.
 
 `verify:native-build` owns the strict lane. It generates native projects in a
 temporary workspace, builds and installs on the requested simulator, starts its
@@ -53,8 +61,9 @@ both surfaces.
 
 - `launch.yaml` — offline-safe smoke: app launches without crashing. Runs by
   default.
-- `auth-form.yaml` — backend-required: first run `bun run allow acceptance@divineruin.test`
-  against the backend's `DATABASE_URL`. Exercises the auth screen form
+- `auth-form.yaml` — backend-required: the owned iOS gate supplies the API and
+  temporary allowlist membership. External launch URLs and Android require the
+  caller-owned backend and enrollment described above. Exercises the auth screen form
   mechanics (input → SEND CODE → phase transition to the code-input view). The
   email→code transition only happens on a 2xx from `/auth/request-code`, so
   this flow requires `apps/server` running and reachable from the device.

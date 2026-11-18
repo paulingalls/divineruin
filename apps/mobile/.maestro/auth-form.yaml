@@ -1,5 +1,6 @@
-# Before REQUIRE_BACKEND=1, run `bun run allow acceptance@divineruin.test`
-# against the backend's DATABASE_URL.
+# REQUIRE_BACKEND=1 owns the iOS API and temporary allowlist membership.
+# With MAESTRO_APP_LAUNCH_URL or on Android, supply the backend and run
+# `bun run allow acceptance@divineruin.test` against its DATABASE_URL.
 appId: com.divineruin.app
 ---
 # Auth-form exercise — REQUIRES apps/server reachable from the device.
