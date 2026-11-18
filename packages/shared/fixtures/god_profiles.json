@@ -13,55 +13,37 @@
   ],
   "vocabulary": {
     "flickering_damage_dice": {
-      "predicates": [
-        "arcane_flickering"
-      ],
+      "predicates": ["arcane_flickering"],
       "value_rule": "positive_integer",
       "sample": 2
     },
     "generation_delta": {
-      "predicates": [
-        "combat_aid",
-        "natural_ground",
-        "hidden_or_stealthed",
-        "unvisited_location"
-      ],
+      "predicates": ["combat_aid", "natural_ground", "hidden_or_stealthed", "unvisited_location"],
       "value_rule": "negative_integer",
       "sample": -1
     },
     "ward_penalty_immunity": {
-      "predicates": [
-        "inside_active_veil_ward"
-      ],
+      "predicates": ["inside_active_veil_ward"],
       "value_rule": "true",
       "sample": true
     },
     "primal_multiplier_steps": {
-      "predicates": [
-        "primal_on_natural_ground"
-      ],
+      "predicates": ["primal_on_natural_ground"],
       "value_rule": "negative_integer",
       "sample": -1
     },
     "generation_override": {
-      "predicates": [
-        "healing",
-        "target_at_zero_hp"
-      ],
+      "predicates": ["healing", "target_at_zero_hp"],
       "value_rule": "nonnegative_integer",
       "sample": 0
     },
     "generation_multiplier": {
-      "predicates": [
-        "wrongdoer_target"
-      ],
+      "predicates": ["wrongdoer_target"],
       "value_rule": "positive_fraction_at_most_one",
       "sample": 0.5
     },
     "echo_roll_choice": {
-      "predicates": [
-        "overreach"
-      ],
+      "predicates": ["overreach"],
       "value_rule": "integer_at_least_two",
       "sample": 2
     }
@@ -87,19 +69,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -128,19 +116,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -169,19 +163,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -210,19 +210,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -243,19 +249,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -275,19 +287,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -308,19 +326,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -421,19 +445,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -463,19 +493,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -499,19 +535,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -542,19 +584,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -585,19 +633,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -628,19 +682,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -671,19 +731,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -708,19 +774,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -752,19 +824,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -789,19 +867,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -831,19 +915,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -873,19 +963,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -915,19 +1011,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -958,19 +1060,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1001,19 +1109,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1044,19 +1158,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1088,19 +1208,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1118,28 +1244,32 @@
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
-          "modifiers": [
-            null
-          ]
+          "modifiers": [null]
         },
         "layer_3_tier_abilities": {
           "acknowledged": {
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1170,19 +1300,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1213,19 +1349,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1256,19 +1398,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1299,19 +1447,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1342,19 +1496,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1385,19 +1545,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1428,19 +1594,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1471,19 +1643,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1514,19 +1692,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1557,19 +1741,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1600,19 +1790,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1643,19 +1839,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1686,19 +1888,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1729,19 +1937,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1772,19 +1986,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1815,19 +2035,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1858,19 +2084,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1901,19 +2133,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1944,19 +2182,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -1987,19 +2231,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2030,19 +2280,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2073,19 +2329,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2116,19 +2378,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2159,19 +2427,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2202,19 +2476,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2245,19 +2525,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2288,19 +2574,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2331,19 +2623,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2374,19 +2672,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2417,19 +2721,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2460,19 +2770,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2503,19 +2819,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2546,19 +2868,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2589,19 +2917,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2632,19 +2966,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2675,19 +3015,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2718,19 +3064,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2761,13 +3113,17 @@
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2799,13 +3155,17 @@
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2836,13 +3196,17 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2873,14 +3237,18 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": null,
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2911,13 +3279,17 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -2948,13 +3320,17 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": null
         },
@@ -2986,18 +3362,24 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -3028,19 +3410,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": " ",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -3071,19 +3459,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": 2,
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -3114,18 +3508,24 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -3156,19 +3556,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": " ",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -3199,19 +3605,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": 2,
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -3242,18 +3654,24 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -3284,19 +3702,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": " ",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -3327,19 +3751,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": 2,
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -3370,18 +3800,24 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
-            "effect": "Synthetic effect."
+            "effect": "Synthetic effect.",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -3412,19 +3848,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": " "
+            "recharge": " ",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -3455,19 +3897,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": 2
+            "recharge": 2,
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -3498,19 +3946,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "other_wrong",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -3541,19 +3995,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_Bad",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -3584,19 +4044,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "short_rest"
+            "recharge": "short_rest",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -3627,20 +4093,26 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
             "recharge": "always",
-            "extra": true
+            "extra": true,
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -3671,25 +4143,33 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "other": {
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -3720,19 +4200,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "layer_4_synergy_matrix": {},
@@ -3763,19 +4249,25 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always"
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
           }
         },
         "legacy_note": {
@@ -3784,6 +4276,102 @@
       },
       "patron": "veythar",
       "field": "layer_4_synergy_matrix"
+    },
+    {
+      "id": "missing_ability_status",
+      "profile": {
+        "god_id": "veythar",
+        "layer_2_resonance": {
+          "name": "Synthetic resonance",
+          "effect": "Synthetic condition.",
+          "modifiers": [
+            {
+              "kind": "flickering_damage_dice",
+              "applies_to": "arcane_flickering",
+              "value": 2
+            }
+          ]
+        },
+        "layer_3_tier_abilities": {
+          "acknowledged": {
+            "id": "veythar_fixture_acknowledged",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
+          },
+          "devoted": {
+            "id": "veythar_fixture_devoted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "resolution": "engine"
+          },
+          "exalted": {
+            "id": "veythar_fixture_exalted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        },
+        "layer_4_synergy_matrix": null,
+        "legacy_note": {
+          "retained": true
+        }
+      },
+      "patron": "veythar",
+      "field": "layer_3_tier_abilities.devoted.status"
+    },
+    {
+      "id": "missing_ability_resolution",
+      "profile": {
+        "god_id": "veythar",
+        "layer_2_resonance": {
+          "name": "Synthetic resonance",
+          "effect": "Synthetic condition.",
+          "modifiers": [
+            {
+              "kind": "flickering_damage_dice",
+              "applies_to": "arcane_flickering",
+              "value": 2
+            }
+          ]
+        },
+        "layer_3_tier_abilities": {
+          "acknowledged": {
+            "id": "veythar_fixture_acknowledged",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
+          },
+          "devoted": {
+            "id": "veythar_fixture_devoted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending"
+          },
+          "exalted": {
+            "id": "veythar_fixture_exalted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        },
+        "layer_4_synergy_matrix": null,
+        "legacy_note": {
+          "retained": true
+        }
+      },
+      "patron": "veythar",
+      "field": "layer_3_tier_abilities.devoted.resolution"
     }
   ]
 }

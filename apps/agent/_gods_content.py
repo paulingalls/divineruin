@@ -99,7 +99,7 @@ def _validate_gods(entries: object) -> list[dict]:
         tiers = _object(row.get("layer_3_tier_abilities"), path, _TIERS)
         for tier, ability in tiers.items():
             ability_path = f"{path}.{tier}"
-            fields = _object(ability, ability_path, {"id", "name", "effect", "recharge"})
+            fields = _object(ability, ability_path, {"id", "name", "effect", "recharge", "status", "resolution"})
             for field, value in fields.items():
                 _text(value, f"{ability_path}.{field}")
             ability_id = fields["id"]

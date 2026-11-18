@@ -10,6 +10,8 @@ export interface GodTierAbility {
   id: string;
   name: string;
   effect: string;
+  status: "active" | "pending";
+  resolution: "narrated" | "engine";
   recharge: "always" | "long_rest" | "per_session";
 }
 export interface GodResonance {
@@ -109,7 +111,14 @@ export function validateGod(profile: unknown): God {
   const tiers = object(row.layer_3_tier_abilities, path, TIERS);
   for (const [tier, entry] of Object.entries(tiers)) {
     const abilityPath = `${path}.${tier}`;
-    const ability = object(entry, abilityPath, ["id", "name", "effect", "recharge"]);
+    const ability = object(entry, abilityPath, [
+      "id",
+      "name",
+      "effect",
+      "recharge",
+      "status",
+      "resolution",
+    ]);
     for (const [field, value] of Object.entries(ability)) text(value, `${abilityPath}.${field}`);
     const id = text(ability.id, `${abilityPath}.id`);
     if (
