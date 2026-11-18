@@ -21,6 +21,31 @@ async def prepare(player, *, deeds=None, autonomy=None):
     return await read(pool, pid)
 
 
+@pytest.mark.parametrize(
+    "fields,kind,amount",
+    [
+        ({"divine_favor": {"patron": None}}, "succeeded_alone", 1),
+        ({}, "won_alone", 4),
+        ({"divine_favor": {}}, "won_alone", 4),
+    ],
+)
+async def test_missing_or_null_patron_awards_autonomy(player, fields, kind, amount):
+    pool, pid = player
+    before = await prepare(player, deeds={kind: "pending"})
+    del before["divine_favor"]
+    before.update(fields)
+    await pool.execute("UPDATE players SET data=$2::jsonb WHERE player_id=$1", pid, json.dumps(before))
+
+    grant, events = await judge(pool, pid)
+
+    assert isinstance(grant, AutonomyGrant)
+    assert (grant.previous_level, grant.new_level) == (0, amount)
+    assert events == []
+    assert await read(pool, pid) == dict(
+        before, patron_deeds={}, unbound_autonomy={"level": amount, "max": 100, "tier": "Self-Reliant"}
+    )
+
+
 async def test_authored_gain_preserves_fields(player):
     pool, pid = player
     before = await prepare(player)
