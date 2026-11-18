@@ -176,6 +176,8 @@ async def assemble_participants(session, encounter, encounter_id, member_players
                 catalog_audio=derived["catalog_audio"],
                 deferred_effects=derived["deferred_effects"],
                 multiattack_sequence=derived.get("multiattack_sequence"),
+                corruption_field=derived.get("corruption_field"),
+                regeneration=derived.get("regeneration"),
                 turn_start_damage=derived.get("turn_start_damage"),
                 condition_immunities=derived["condition_immunities"],
                 choir_reaction=derived.get("choir_reaction"),

@@ -102,6 +102,8 @@ def _translate(row, encounter_id, enemy_id, role):
         damage_affinities=deepcopy(row.get("damage_affinities", {})),
         resist_nonmagical_physical=row.get("resist_nonmagical_physical", False),
         unholy_fortitude=deepcopy(row.get("unholy_fortitude")),
+        corruption_field=deepcopy(row.get("corruption_field")),
+        regeneration=deepcopy(row.get("regeneration")),
         tags=deepcopy(row.get("tags", [])),
         encounter_id=encounter_id,
         category=category,

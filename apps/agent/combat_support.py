@@ -275,6 +275,9 @@ async def apply_attack_result(
                 raise ValueError("Choir core must be exposed before damage")
             attack_result = replace(attack_result, damage=0)
     action, attack_result = combat_damage_affinity.apply(target, action, attack_result)
+    from combat_veilrender import mark_radiant
+
+    mark_radiant(target, action, attack_result)
     automatic = isinstance(attack_result, AutomaticDamageResult)
     save_damage = isinstance(attack_result, (SaveDamageResult, AutomaticDamageResult))
     if save_damage and publish_roll:

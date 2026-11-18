@@ -39,11 +39,11 @@ for (const size of [1, 2]) {
     ).not.toThrow();
   });
 }
-test("all sixteen templates", async () => {
+test("all seventeen templates", async () => {
   const rows = (await Bun.file(
     new URL("../../../../content/encounter_templates.json", import.meta.url),
   ).json()) as { id: string; enemies: unknown[] }[];
-  expect(rows).toHaveLength(16);
+  expect(rows).toHaveLength(17);
   expect(new Set(rows.map((row) => row.id))).toEqual(
     new Set([
       "fragment_shadeling",
@@ -62,6 +62,7 @@ test("all sixteen templates", async () => {
       "hollow_weaver_ambush",
       "hollow_mawling_pack",
       "hollow_knight_boss",
+      "hollow_veilrender_boss",
     ]),
   );
   for (const row of rows) {

@@ -439,6 +439,7 @@
     "description": "The forest goes wrong here. You notice it in the silence first \u2014 no birdsong, no insect hum. The wind moves the branches but stops at a boundary you can feel in your chest. Everything past the tree line has a stillness that doesn't belong to nature.",
     "atmosphere": "tense, unnaturally quiet, watchful",
     "exits": {
+      "northwest": { "destination": "ashmark_corrupted_front" },
       "south": {
         "destination": "millhaven"
       },
@@ -934,5 +935,38 @@
       "a narrow cot behind a wooden screen",
       "a basin of warm water"
     ]
+  },
+  {
+    "id": "ashmark_corrupted_front",
+    "name": "The Ashmark Front",
+    "tier": 2,
+    "district": "ashmark_front",
+    "region": "ashmark",
+    "region_type": "wilderness",
+    "terrain": "grassland",
+    "tags": [
+      "wilderness",
+      "dangerous",
+      "hollow_adjacent",
+      "corruption"
+    ],
+    "description": "A low grinding hum rolls across the dead grass. Ash stings your throat, and each footstep crunches on brittle roots. Armor scrapes somewhere ahead, beneath a sound too deep to hear clearly.",
+    "atmosphere": "muffled, ash-choked, unrelenting",
+    "exits": {
+      "southeast": {
+        "destination": "greyvale_wilderness_north"
+      }
+    },
+    "conditions": {},
+    "ambient_sounds": "hollow_wrongness",
+    "danger_level": 3,
+    "navigation": "unmarked_wilderness",
+    "resource_table": {
+      "common": [
+        "plant_fiber"
+      ],
+      "uncommon": [],
+      "rare": []
+    }
   }
 ]

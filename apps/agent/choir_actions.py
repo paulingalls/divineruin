@@ -13,7 +13,8 @@ def require_targets(state, actor, action, declaration):
         return [
             p
             for p in state.participants
-            if not p.is_fallen
+            if p.id != actor.id
+            and not p.is_fallen
             and not p.is_dead
             and combat_spatial.inside(origin, combat_spatial.position(spatial, p.id), action["reach"])
         ]

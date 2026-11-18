@@ -233,15 +233,28 @@ function validateResolution(action: ActionExtensions, path: string): void {
     if (!Array.isArray(riders)) invalid(`${path}.${key}`);
     const seen = new Set();
     for (const rider of riders) {
-      if (!object(rider) || Object.keys(rider).sort().join(",") !== "applies_condition,duration")
-        invalid(`${path}.${key}`);
+      if (!object(rider)) invalid(`${path}.${key}`);
+      const fields =
+        rider.applies_condition === "hollowed"
+          ? "applies_condition,duration,stage"
+          : "applies_condition,duration";
+      if (Object.keys(rider).sort().join(",") !== fields) invalid(`${path}.${key}`);
+      if (rider.applies_condition === "hollowed" && rider.stage !== 1)
+        invalid(`${path}.${key}.stage`);
       if (
         !(CONDITION_NAMES as readonly unknown[]).includes(rider.applies_condition) ||
         seen.has(rider.applies_condition)
       )
         invalid(`${path}.${key}.applies_condition`);
       seen.add(rider.applies_condition);
-      if (!positive(rider.duration)) invalid(`${path}.${key}.duration`);
+      if (
+        !positive(rider.duration) &&
+        !(
+          rider.duration === null &&
+          ["prone", "hollowed"].includes(rider.applies_condition as string)
+        )
+      )
+        invalid(`${path}.${key}.duration`);
     }
   }
 }

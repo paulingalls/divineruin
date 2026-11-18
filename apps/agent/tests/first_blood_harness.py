@@ -32,12 +32,12 @@ PATROL = "hollow_patrol_greyvale"
 
 
 async def fight(pool, archetype, seed, encounter_id=PATROL, player_level=1, *, policy="basic"):
-    assert policy in ("basic", "caster"), policy
+    assert policy in ("basic", "caster", "veilrender"), policy
     pid = f"balance_{uuid4().hex}"
     row = build_character_data(
         "First Blood", "human", archetype, None, "", created_at=datetime(2026, 11, 1, tzinfo=UTC)
     )
-    row["location_id"] = "greyvale_wilderness_north"
+    row["location_id"] = "ashmark_corrupted_front" if policy == "veilrender" else "greyvale_wilderness_north"
     await db_mutations.create_player(pid, None, row)
     if player_level > 1:
         async with pool.acquire() as conn, conn.transaction():
@@ -54,7 +54,7 @@ async def fight(pool, archetype, seed, encounter_id=PATROL, player_level=1, *, p
         fresh = {name: {**row[name], "current": row[name]["max"]} for name in ("hp", "stamina", "focus") if name in row}
         await pool.execute("UPDATE players SET data=data || $2::jsonb WHERE player_id=$1", pid, json.dumps(fresh))
     cantrip = None
-    if policy == "caster" and archetype in ("mage", "cleric"):
+    if policy in ("caster", "veilrender") and archetype in ("mage", "cleric"):
         library = await character_spells.get_known(pid)
         known = spell_knowledge.castable_spell_ids(archetype, (s["spell_id"] for s in library))
         damage_cantrips = sorted(
@@ -118,7 +118,13 @@ async def fight(pool, archetype, seed, encounter_id=PATROL, player_level=1, *, p
                     victim = pid if actor.type == "enemy" else target.id if target else None
                     if victim is None:
                         continue
-                    if actor.id == pid and cantrip:
+                    if policy == "veilrender":
+                        from veilrender_harness import declaration
+
+                        opponent = state.get_participant(victim)
+                        assert opponent is not None
+                        declarations.append(declaration(state, actor, opponent, cantrip if actor.id == pid else None))
+                    elif actor.id == pid and cantrip:
                         declarations.append(
                             AbilityDecl(
                                 kind="ability", actor_id=pid, action=cantrip, targets=[victim], argument_type=""

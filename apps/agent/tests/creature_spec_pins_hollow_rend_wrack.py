@@ -214,7 +214,7 @@ def test_spec_mechanics():
         "hollow_mawling": ("5-6", "1/encounter"),
         "hollow_weaver": ("1/round", "5-6"),
         "hollow_knight": ({"kind": "round", "uses": 1}, {"kind": "roll", "die": 6, "threshold": 5}, "passive trigger"),
-        "hollow_veilrender": ("5-6", "1/encounter"),
+        "hollow_veilrender": ({"kind": "roll", "die": 6, "threshold": 5}, {"kind": "encounter", "uses": 1}),
     }.items():
         assert tuple(a["recharge"] for a in creatures[key]["actives"]) == recharges
         assert all(

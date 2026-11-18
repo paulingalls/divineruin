@@ -153,6 +153,7 @@ def test_condition_action_inventory_stays_explicit():
         ("cult_cell", "cult_leader", "Hold Person", "paralyzed"),
         ("hollow_corrupted_settlement", "hollowed_knight", "Shield Slam", "prone"),
         ("hollow_knight_boss", "hollowed_knight", "Shield Slam", "prone"),
+        ("hollow_veilrender_boss", "veilrender", "Corruption Wave", "poisoned"),
     ]
     assert {row["id"] for row in _REACTIONS if row["window"] == "on_condition_imposed"} == {
         "rogue_slippery",

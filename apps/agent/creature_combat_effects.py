@@ -32,12 +32,22 @@ def deferred_effects(row, *, composite=False):
                     "name": source["name"],
                     "description": "On hit, 5 ft of ground becomes corrupted terrain for 1 minute.",
                 }
+            if row["id"] == "hollow_veilrender":
+                if source["name"] in {"Regeneration", "Corruption Pulse"}:
+                    continue
+                residuals = {
+                    "Corruption Field": "Organic matter degrades; plants die, water darkens, stone becomes brittle.",
+                    "Reality Crush": "Ground cracks and structures collapse.",
+                    "Corruption Wave": "Single recipient here; the DM narrates the authored cone. Failed save causes Poisoned for 1 round.",
+                }
+                if source["name"] in residuals:
+                    source = {"name": source["name"], "description": residuals[source["name"]]}
             if group == "passives" and key in _EXECUTED_PASSIVES:
                 residual = _EXECUTED_PASSIVES[key]
                 if residual is None:
                     continue
                 source = {**source, "description": residual}
-            text = source.get("special") if group == "attacks" else source.get("description")
+            text = source.get("special", source.get("description")) if group == "attacks" else source.get("description")
             if row["id"] == "hollow_choir" and source["name"] in {
                 "No Physical Form",
                 "Aura of Lost Voices",
