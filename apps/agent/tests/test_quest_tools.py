@@ -16,8 +16,13 @@ from sample_fixtures import (
 )
 
 import event_types as E
-from leveling import build_level_up_payload_for_archetype, get_level_up_rewards
 from quest_tools import _update_quest_impl
+
+
+@pytest.fixture(autouse=True)
+def committed_snapshots(monkeypatch):
+    monkeypatch.setattr("attribute_increase_events.publish_snapshots", AsyncMock())
+
 
 QUEST = {
     "id": "q1",
@@ -100,9 +105,8 @@ async def test_quest_level_up_payload_carries_archetype_hp_gains():
     await _update_quest_impl(ctx, "q1", 2, db_mod=mock_db, mutations=mutations, queries=queries, content=content)
 
     payload = level_up_payload(room)
-    expected = build_level_up_payload_for_archetype(1, get_level_up_rewards(1, 2), "artificer", con_mod=2)
     assert payload is not None
-    assert payload["hp_gains"] == expected["hp_gains"]
+    assert payload["hp_gains"] == [{"level": 2, "hp_gain": 4}]
 
 
 @pytest.mark.asyncio

@@ -74,7 +74,7 @@
   {
     "name": "progression",
     "tests": [
-      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:patron_alignment_session|archetype_chassis|mentor_gating_e2e|mentor_variants|milestone_progression|spell_acquisition|m28_xp_favor_capstone|story_005_m22_ability_capstone)\\.py"
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:attribute_increase_commit|patron_alignment_session|archetype_chassis|mentor_gating_e2e|mentor_variants|milestone_progression|spell_acquisition|m28_xp_favor_capstone|story_005_m22_ability_capstone)\\.py"
     ],
     "owns": [
       "apps/agent/(?:alignment_heartbeat|archetyp[^/]*|role_archetypes|progression[^/]*|mentor[^/]*|milestone[^/]*|level[^/]*|xp[^/]*|favor[^/]*|training[^/]*)\\.py"

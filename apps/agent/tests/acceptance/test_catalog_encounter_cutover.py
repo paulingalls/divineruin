@@ -240,14 +240,12 @@ async def test_actual_companion_boundary_combat(started, companion, encounter_id
 async def test_absent_companion_boundary(started, encounter_id, level):
     ctx, _ = await started(encounter_id, level=level)
     assert not any(p.type == "companion" for p in ctx.userdata.combat_state.participants)
+    import db_queries
+
+    row = await db_queries.get_player(ctx.userdata.player_id)
+    assert row is not None
     assert ctx.userdata.combat_state.get_participant(ctx.userdata.player_id).hp_max == calculate_max_hp(
-        "warrior",
-        level,
-        attribute_modifier(
-            build_character_data(
-                "Reference", "draethar", "warrior", None, "", created_at=datetime(2026, 10, 1, tzinfo=UTC)
-            )["attributes"]["constitution"]
-        ),
+        "warrior", level, attribute_modifier(row["attributes"]["constitution"])
     )
 
 
@@ -387,6 +385,9 @@ async def test_strength_fixture_uses_created_warrior_and_level_grants(started, e
     ctx, _ = await started(encounter_id)
     player = await db_queries.get_player(ctx.userdata.player_id)
     assert player is not None
+    for _ in range(points):
+        attr = "strength" if expected["attributes"]["strength"] < 20 else "constitution"
+        expected["attributes"][attr] += 1
     for field in ("attributes", "equipment", "saving_throw_proficiencies"):
         assert player[field] == expected[field]
     assert player["level"] == level

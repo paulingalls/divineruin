@@ -10,6 +10,7 @@ from livekit.agents.voice import RunContext
 
 import abilities
 import ability_persistence
+import attribute_increases
 import character_spells
 import choir_encounter
 import combat_ability
@@ -91,7 +92,8 @@ async def query_info(
       studiable_spell_ids (no target_id needed).
     - kind="workspaces", target_id=<npc id>: available workspaces and this player's daily
       rental price from that NPC; omit target_id for per-disposition daily prices.
-    - kind="abilities": the current player's owned ability ids, castable spells, reaction windows,
+    - kind="abilities": saved attribute increase choices for select until next long rest,
+      the current player's owned ability ids, castable spells, reaction windows,
       and active learned variant ids (no target_id needed).
     - kind="patron": the current player's patron standing, progress, authored favor action ids,
       Layer 1 gift, and abilities with ids and availability for activate (no target_id needed). Only an active or narrated gift is granted;
@@ -274,7 +276,13 @@ async def _query_abilities_impl(
         spell_rows.append(
             {"id": spell.id, "name": spell.name, "tier": spell.spell_tier, "focus_cost": spell.focus_cost}
         )
-    return json.dumps({"abilities": results, "spells": spell_rows})
+    return json.dumps(
+        {
+            "abilities": results,
+            "spells": spell_rows,
+            "attribute_increases": attribute_increases.offers(player_id, player),
+        }
+    )
 
 
 async def _ecosystem_cue(session: SessionData, favor: dict) -> dict:

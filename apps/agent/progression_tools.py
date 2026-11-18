@@ -5,11 +5,13 @@ quest completion) so rewards are calculated by the rules engine and only NARRATE
 """
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 import asyncpg
 
+import attribute_increase_persistence
+import attribute_increases
 import db_activity_queries
 import db_mutations
 import db_mutations_divine
@@ -20,7 +22,6 @@ import rules_engine
 from companion_profiles import get_companion_profile, select_companion_for_archetype
 from favor_rules import apply_favor_delta
 from leveling import build_level_up_payload_for_archetype, get_level_up_rewards
-from tool_support import con_mod_for_player
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -38,7 +39,7 @@ class FavorGrant:
 
 @dataclass(frozen=True)
 class AwardXpResult:
-    """Outcome of the shared XP/milestone Resolve. Both fields are read by every award path
+    """Outcome of the shared XP/milestone Resolve. Receipts reach every award path
     (update_quest, the combat-end Resolve) to build its tool response.
 
     Carries no L5-fork hand-off state: select re-derives the fork from the player's own
@@ -47,6 +48,7 @@ class AwardXpResult:
 
     result: "rules_engine.LevelUpResult"
     milestone_grants: list[dict]
+    attribute_increases: list[dict] = field(default_factory=list)
 
 
 async def _award_xp_core(
@@ -81,6 +83,11 @@ async def _award_xp_core(
     current_level = player.get("level", 1)
 
     result = rules_engine.check_level_up(current_xp, amount, current_level)
+    increases: list[dict] = []
+    hp_gains: list[dict] = []
+    if result.leveled_up:
+        patch, increases, hp_gains = attribute_increases.advance(player_id, player, result.new_level)
+        await attribute_increase_persistence.patch_player(player_id, patch, conn=conn)
     await mutations.update_player_xp(player_id, result.new_xp, result.new_level, conn=conn)
     logger.info(
         "xp awarded: %s +%d XP → %d total, level %d (leveled_up=%s)",
@@ -111,8 +118,8 @@ async def _award_xp_core(
 
     if result.leveled_up:
         rewards = get_level_up_rewards(current_level, result.new_level)
-        con_mod = con_mod_for_player(player)
-        payload = build_level_up_payload_for_archetype(current_level, rewards, player["class"], con_mod=con_mod)
+        payload = build_level_up_payload_for_archetype(current_level, rewards, player["class"])
+        payload["hp_gains"] = hp_gains
         pending_events.append((E.LEVEL_UP, {**payload, "player_id": player_id}))
 
         # Iterate every level crossed so a multi-level jump still resolves each intervening
@@ -168,7 +175,7 @@ async def _award_xp_core(
                     )
                 )
 
-    return AwardXpResult(result=result, milestone_grants=milestone_grants)
+    return AwardXpResult(result=result, milestone_grants=milestone_grants, attribute_increases=increases)
 
 
 async def _award_divine_favor_core(

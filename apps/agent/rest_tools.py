@@ -13,6 +13,7 @@ import db_queries
 import db_session_queries
 import event_types as E
 from archetypes import get_archetype_chassis
+from attribute_increase_persistence import lock_increases
 from db_errors import db_tool
 from game_events import publish_game_event
 from patron_gift_tools import recharge
@@ -82,6 +83,8 @@ async def rest(context: RunContext[SessionData], rest_type: RestType) -> str:
                 await ability_persistence.update_player_resources(pid, stamina=stamina, focus=focus, conn=conn)
                 await reset_resonance_on_rest(pid, conn=conn)
                 await recharge(pid, players[pid], rest_type, conn=conn)
+                if rest_type == "long":
+                    await lock_increases(pid, players[pid], conn=conn)
         for pid in players:
             session.member_state(pid).resonance.current = 0
         for pid in players:

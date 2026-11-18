@@ -8,7 +8,6 @@ import re
 
 from livekit.agents.llm import ToolError
 
-import rules_engine
 from combat_sound_content import COMBAT_SOUND_EXPORTS
 from role_archetypes import DISPOSITION_INDEX, DISPOSITIONS, disposition_rank
 
@@ -45,7 +44,6 @@ __all__ = [
     "_validate_id",
     "apply_time_conditions",
     "build_item_acquired_payload",
-    "con_mod_for_player",
     "filter_knowledge",
 ]
 
@@ -79,11 +77,6 @@ def build_item_acquired_payload(
         payload["image_url"] = image_url
     payload.update(extra)
     return payload
-
-
-def con_mod_for_player(player: dict) -> int:
-    """Constitution modifier from a player dict, defaulting to 10 (mod 0) if absent."""
-    return rules_engine.attribute_modifier(player.get("attributes", {}).get("constitution", 10))
 
 
 _ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
