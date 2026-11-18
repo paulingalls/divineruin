@@ -62,7 +62,7 @@ async def run(args):
     )
     sd = SessionData(player_id=primary, location_id="millhaven_inn", room=publisher)
     model = ScenarioModel([])
-    voice = AgentSession(llm=model, userdata=sd)
+    voice = AgentSession(llm=model, userdata=sd, max_tool_steps=5)
     current = primary
     loop = asyncio.get_running_loop()
     lock = asyncio.Lock()
