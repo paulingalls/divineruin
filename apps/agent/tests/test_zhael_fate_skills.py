@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 from copy import deepcopy
 from unittest.mock import patch
 from uuid import uuid4
@@ -400,34 +401,45 @@ async def test_departed_roller_cancels_the_held_operation(world, party, producer
     assert event_types(session).count("dice_roll") == events_before
 
 
-@pytest.mark.parametrize("change", ["origin", "roster", "db-location", "revealed"])
+@pytest.mark.parametrize("change", ["origin", "roster", "db-location", "revealed", "foraged-out"])
 async def test_held_operation_surfaces_changed_precondition(world, party, change):
     call, _ = party
     host, guest = world.ids
     session = world.ctx.userdata
     if change == "revealed":
         await prepare_discovery(world)
-    with patch("check_resolution.dice_roll", return_value=_d20(20)):
-        if change == "origin":
-            held = await call(1, "check", roll=SOCIAL)
-            session.location_id = DESTINATION
-            expected = "original location"
-        elif change == "revealed":
-            held = await call(1, "check", roll=DISCOVER)
-            await db_mutations.set_player_flag(guest, f"{JOURNAL}.discovered", True)
-            expected = "already been revealed"
-        else:
-            held = await call(1, "travel", destination_id=DESTINATION, mode="scenic")
-            if change == "roster":
-                session.party.members.extend(PartyState.solo("new_ally").members)
-                expected = "party roster"
-            else:
-                await db_mutations.update_player_location(host, DESTINATION)
+    # Millhaven has no resource_table, so its one finite node is all there is to forage.
+    node = herb_node(world, ORIGIN) if change == "foraged-out" else nullcontext()
+    async with node as node_id:
+        with patch("check_resolution.dice_roll", return_value=_d20(20)):
+            if change == "origin":
+                held = await call(1, "check", roll=SOCIAL)
+                session.location_id = DESTINATION
                 expected = "original location"
-    assert held["fate_offer"]["roller_id"] == guest
-    before = [await row(world, i) for i in range(2)]
-    cancelled = (await call(0, "query_info", kind="inventory"))["settled_fate"]
+            elif change == "revealed":
+                held = await call(1, "check", roll=DISCOVER)
+                await db_mutations.set_player_flag(guest, f"{JOURNAL}.discovered", True)
+                expected = "already been revealed"
+            elif change == "foraged-out":
+                held = await call(1, "check", roll=GATHER)
+                assert node_id is not None
+                await db_mutations_gathering.deplete_node_quantity(node_id, 1, conn=world.pool)
+                expected = "nothing left to forage"
+            else:
+                held = await call(1, "travel", destination_id=DESTINATION, mode="scenic")
+                if change == "roster":
+                    session.party.members.extend(PartyState.solo("new_ally").members)
+                    expected = "party roster"
+                else:
+                    await db_mutations.update_player_location(host, DESTINATION)
+                    expected = "original location"
+            assert held["fate_offer"]["roller_id"] == guest
+            before = [await row(world, i) for i in range(2)]
+            nodes_before = await get_gathering_nodes_at_location(ORIGIN)
+            cancelled = (await call(0, "query_info", kind="inventory"))["settled_fate"]
+            assert await get_gathering_nodes_at_location(ORIGIN) == nodes_before
     assert cancelled["outcome"] == "cancelled" and expected in cancelled["reason"]
     assert [await row(world, i) for i in range(2)] == before
+    assert await db_queries.get_player_inventory(guest) == []
     assert not session.attempted_discoveries
     assert "location_changed" not in event_types(session) and "dice_roll" not in event_types(session)

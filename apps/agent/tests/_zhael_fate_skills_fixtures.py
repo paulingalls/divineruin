@@ -101,10 +101,10 @@ async def travel_quest(world):
 
 
 @asynccontextmanager
-async def herb_node(world):
+async def herb_node(world, location=DESTINATION):
     node_id = "fate_herb_" + uuid4().hex
     data = {
-        "location_id": DESTINATION,
+        "location_id": location,
         "node_type": "herb_garden",
         "resource_type": "plant_fiber",
         "quantity": 1,
