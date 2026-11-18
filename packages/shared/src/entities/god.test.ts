@@ -85,14 +85,18 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
         .map((a) => a.id),
     ),
   ).toEqual(narrated);
-  const engine = new Set(["zhael_lucky"]);
+  const passives = new Set(["veythar_scholars_ward", "kaelen_warriors_endurance"]);
+  const engine = new Set(["zhael_lucky", ...passives]);
   expect(
     new Set(
       abilities.filter((a) => a.status === "active" && a.resolution === "engine").map((a) => a.id),
     ),
   ).toEqual(engine);
   const pending = abilities.filter((a) => !narrated.has(a.id) && !engine.has(a.id));
-  expect(pending).toHaveLength(22);
+  expect(pending).toHaveLength(20);
+  for (const ability of abilities.filter((a) => passives.has(a.id))) {
+    expect([ability.recharge, ability.implementation_id]).toEqual(["always", ability.id]);
+  }
   for (const ability of pending)
     expect([ability.status, ability.resolution]).toEqual(["pending", "engine"]);
   expect(corpus.valid.length).toBeGreaterThan(0);

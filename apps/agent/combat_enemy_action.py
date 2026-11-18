@@ -73,7 +73,7 @@ async def _apply_condition_result(
         duration=duration,
     ):
         summary["condition_inflicted"] = cond_type
-        if target.type == "player" and cannot_act(({"type": cond_type},)):
+        if target.type == "player" and cond_type in cannot_act(target.conditions):
             broken = await concentration_break_mod.break_concentration_on_incapacitation(
                 session, target.id, combat_state=state, conn=conn
             )

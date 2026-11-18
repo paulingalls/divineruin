@@ -78,7 +78,9 @@ class SaveCheck(BaseModel):
     kind: Literal["save"]
     save_type: str = Field(description="The attribute resisting, e.g. constitution.")
     dc: int = Field(description="The save DC, 1-30.")
-    effect_on_fail: str = Field(description="What happens to the player on a failed save.")
+    effect_on_fail: str = Field(
+        description='What happens on failure. Use the condition ID "hollowed" for saves against Hollowed.'
+    )
 
 
 class DiceRoll(BaseModel):

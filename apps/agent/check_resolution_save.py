@@ -74,6 +74,7 @@ def resolve_saving_throw(
     *,
     bonus_dice_eligible: bool = True,
     advantage: bool = False,
+    scholars_ward: bool = False,
 ) -> SavingThrowResult:
     # ``bonus_dice_eligible`` gates the beneficial +1d4 fold/consume (M4.8 story-003). Player-initiated
     # saves keep the default True; engine-auto saves (Beat-4 tick-clear, concentration-break) pass
@@ -133,7 +134,8 @@ def resolve_saving_throw(
         else (0, ())
     )
     save_modifier = mod + flat_mod + bonus
-    d20 = D20Roll(save_modifier, dc, advantage or condition_advantage, disadvantage)
+    ward_advantage = scholars_ward and effect_on_fail.strip().lower() == "hollowed"
+    d20 = D20Roll(save_modifier, dc, advantage or condition_advantage or ward_advantage, disadvantage)
     return _save_result(
         SavingThrowResult(
             save_type=save_lower,
@@ -217,4 +219,5 @@ def roll_participant_save(
         dc_mod=dc_mod,
         bonus_dice_eligible=bonus_dice_eligible,
         advantage=advantage or item_advantage,
+        scholars_ward=participant.scholars_ward,
     )

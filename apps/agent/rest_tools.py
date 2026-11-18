@@ -17,6 +17,7 @@ from archetypes import get_archetype_chassis
 from db_errors import db_tool
 from game_events import publish_game_event
 from patron_gift_tools import recharge
+from patron_passives import warriors_endurance
 from resonance_events import publish_resonance_changed
 from rest_mechanics import RestType, apply_rest, record_last_rested_settlement, reset_resonance_on_rest
 from session_data import SessionData
@@ -68,7 +69,7 @@ async def rest(context: RunContext[SessionData], rest_type: RestType) -> str:
             recovery = {}
             for pid, row in players.items():
                 current_hp, base_max_hp = _pool_values(row, "hp")
-                hp = (current_hp, max(1, base_max_hp + row.get("maxhp_override", 0)))
+                hp = (current_hp, max(1, base_max_hp + row.get("maxhp_override", 0) + warriors_endurance(row)))
                 resource = get_archetype_chassis(row["class"]).resource
                 stamina = _pool_values(row, "stamina") if "stamina" in row or resource.stamina_formula else None
                 focus = _pool_values(row, "focus") if "focus" in row or resource.focus_formula else None

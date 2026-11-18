@@ -84,6 +84,11 @@ async def test_deaths_awareness_reads_colocated_party_and_current_patron(world):
     assert (await call("query_info", kind="patron"))["deaths_awareness"]["creatures"] == []
     await configure(w, "none", "mage", index=1, location_id=location, hp={"current": 7, "max": 30}, maxhp_override=-4)
     assert (await call("query_info", kind="patron"))["deaths_awareness"]["creatures"] == []
+    await configure(w, "kaelen", "mage", index=1)
+    assert (await call("query_info", kind="patron"))["deaths_awareness"]["creatures"] == [
+        {"id": w.ids[1], "name": "Guest"}
+    ]
+    await configure(w, "none", "mage", index=1)
     with session._bind_authenticated_actor(w.ids[1], 1, lambda *_: None):
         packet = await call("query_info", kind="patron")
         assert packet["synergy"] is None

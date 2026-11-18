@@ -33,6 +33,7 @@ from creation_races import RACES
 from creation_rules import build_character_data, infer_culture, select_starting_spells
 from creation_subset import ALLOWED_IDS, DEFAULT_PATRONS, DEFAULT_RACE, remaining_choices
 from game_events import publish_game_event
+from patron_passives import effective_hp
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.creation")
@@ -334,7 +335,7 @@ async def finalize_character(context: RunContext) -> str | tuple:
             "deity": deity_name,
             "culture": culture_name,
             "location": character_data["location_id"],
-            "hp": character_data["hp"],
+            "hp": effective_hp(character_data),
             "ac": character_data["ac"],
         },
         "instruction": (

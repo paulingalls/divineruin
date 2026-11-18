@@ -8,5 +8,7 @@
   "nythera_uncharted_senses": "patron_gifts:skill_gift",
   "nythera_uncharted_handling": "patron_gifts:skill_gift",
   "zhael_fates_thread": "zhael_fate:activate",
-  "zhael_lucky": "zhael_fate:activate"
+  "zhael_lucky": "zhael_fate:activate",
+  "veythar_scholars_ward": "patron_passives:scholars_ward",
+  "kaelen_warriors_endurance": "patron_passives:warriors_endurance"
 }

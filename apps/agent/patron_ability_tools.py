@@ -8,6 +8,7 @@ import db
 import db_queries
 from _gods_content import load_gods
 from patron_favor import get_patron_tier
+from patron_passives import SCHOLARS_WARD, WARRIORS_ENDURANCE
 
 TIERS = ("Acknowledged", "Devoted", "Exalted")
 LUCKY = "zhael_lucky"
@@ -38,8 +39,8 @@ def availability(ability, tier, required, spent):
     if required is not None and TIERS.index(tier) < TIERS.index(required):
         return f"Requires {required} tier.", "locked"
     resolution = ability.get("resolution", "narrated")
-    if ability["id"] == LUCKY:
-        implemented = resolution == "engine" and ability.get("implementation_id") == LUCKY
+    if ability["id"] in (LUCKY, SCHOLARS_WARD, WARRIORS_ENDURANCE):
+        implemented = resolution == "engine" and ability.get("implementation_id") == ability["id"]
     else:
         implemented = resolution == "narrated"
     if ability["status"] != "active" or not implemented:

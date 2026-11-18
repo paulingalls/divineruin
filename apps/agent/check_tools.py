@@ -38,6 +38,7 @@ from condition_consume import consume_beneficial_conditions, serialize_combat_ch
 from db_errors import db_tool, validated_player_conditions
 from game_events import publish_game_event
 from gathering_tools import _check_gather_impl
+from patron_passives import scholars_ward
 from session_data import SessionData
 from skill_check_effects import SkillCheckEffects
 from social_tools import _check_social_impl
@@ -180,7 +181,11 @@ async def _check_save_impl(
 
     try:
         result = check_resolution_save.resolve_saving_throw(
-            condition_voice_rules.roll_data(player, session.combat_state, player_id), save_type, dc, effect_on_fail
+            condition_voice_rules.roll_data(player, session.combat_state, player_id),
+            save_type,
+            dc,
+            effect_on_fail,
+            scholars_ward=scholars_ward(player),
         )
     except ValueError as e:
         raise ToolError(str(e)) from e

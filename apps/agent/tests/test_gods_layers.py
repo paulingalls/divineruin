@@ -63,10 +63,14 @@ def test_authored_layers_match_mechanics():
     abilities = [a for row in rows for a in row["layer_3_tier_abilities"].values()]
     assert len(abilities) == len({a["id"] for a in abilities}) == 30
     assert {a["id"] for a in abilities if (a["status"], a["resolution"]) == ("active", "narrated")} == narrated
-    engine = {"zhael_lucky"}
+    passives = {"veythar_scholars_ward", "kaelen_warriors_endurance"}
+    engine = {"zhael_lucky", *passives}
     assert {a["id"] for a in abilities if (a["status"], a["resolution"]) == ("active", "engine")} == engine
     pending = [a for a in abilities if a["id"] not in narrated | engine]
-    assert len(pending) == 22
+    assert len(pending) == 20
+    for ability in abilities:
+        if ability["id"] in passives:
+            assert (ability["recharge"], ability["implementation_id"]) == ("always", ability["id"])
     assert all((a["status"], a["resolution"]) == ("pending", "engine") for a in pending)
     for row in rows:
         patron = row["god_id"]

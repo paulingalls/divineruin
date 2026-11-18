@@ -10,6 +10,7 @@ from livekit.agents.llm import ToolError
 
 import rules_engine
 from combat_sound_content import COMBAT_SOUND_EXPORTS
+from patron_passives import effective_hp
 from role_archetypes import DISPOSITION_INDEX, DISPOSITIONS, disposition_rank
 
 __all__ = [
@@ -194,7 +195,7 @@ def _npc_for_narration(npc: dict, disposition: str, knowledge: list[str]) -> dic
 
 
 def _player_summary(player: dict) -> dict:
-    hp = player.get("hp", {})
+    hp = effective_hp(player) if "hp" in player else {}
     equipment = player.get("equipment", {})
     weapon = equipment.get("main_hand", {})
     return {
