@@ -71,8 +71,6 @@ def judge_autonomy(deeds: dict, stored: dict | None) -> tuple[dict, AutonomyGran
     state = read_autonomy(stored)
     level, maximum, previous_tier = state["level"], state.get("max", 100), state["tier"]
     new_level = apply_favor_delta(level, maximum, amount)
-    if previous_tier not in tiers:
-        raise ValueError(f"unbound_autonomy.tier: unknown tier {previous_tier!r}")
     if not amount:
         return None
     previous_index = tiers.index(previous_tier)

@@ -77,8 +77,13 @@ async def offer(session, player, result, pending, *, conn):
 async def recharge(player_id, player, rest_type, *, conn):
     from _gods_content import load_gods
     from patron_ability_tools import spent_state
+    from unbound_tools import DIVINE_IMMUNITY, is_unbound
 
     patron_id = (player.get("divine_favor") or {}).get("patron")
+    if is_unbound(patron_id):
+        if rest_type == "long" and spent_state(player, DIVINE_IMMUNITY)["spent"]:
+            await write_state(player_id, {"spent": False}, gift_id=DIVINE_IMMUNITY, conn=conn)
+        return
     patron = next((p for p in load_gods() if p["god_id"] == patron_id), None)
     if patron is None:
         return

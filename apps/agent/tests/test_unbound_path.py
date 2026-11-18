@@ -35,6 +35,7 @@ async def test_guest_discovery_uses_persisted_resonance_and_bypasses_gods(world,
         with patch("query_patron.query_patron", partial(query_patron, gods_loader=forbidden_catalog)):
             packet = json.loads(await _query_info_impl(w.ctx, "patron"))
     assert packet["state"] == "Unbound"
+    assert packet["autonomy"]["tier"] == "Sovereign"
     assert packet["resonance"] == {"current": 9, "state": state}
     assert {c["id"] for c in packet["capabilities"]} == {
         "unbound_veil_clarity",
