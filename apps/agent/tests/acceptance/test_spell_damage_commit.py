@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from _hollow_resonance_fixtures import hollow
 from acceptance._capstone_helpers import _d20, _enemy, _resolve_round
+from acceptance._catalog_cutover_helpers import started as started
 from combat.test_spell_damage_lands import declare_spell, load_combat, prepare_spell, saved_player
 from combat.test_spell_damage_lands import spell_fight as spell_fight
 from voice_condition_fixtures import participant
@@ -118,3 +119,52 @@ async def test_paid_damage_rolls_back_hp_focus_and_events_then_retries_once(spel
     assert (await saved_player(ctx.userdata.player_id))["focus"]["current"] == player["focus"][
         "current"
     ] - spell.focus_cost
+
+
+async def test_redirected_spell_damage_breaks_real_concentration(started):
+    from acceptance.test_choir_encounter import search
+
+    import combat_turn
+    import db_mutations_concentration
+    from declaration_payloads import AbilityDecl, DefendDecl
+
+    ctx, _ = await started("hollow_choir", player_class="mage")
+    await search(ctx)
+    pid = ctx.userdata.player_id
+    ctx.userdata.concentration.spell_id = "divine_bless"
+    await db_mutations_concentration.update_player_concentration(pid, "divine_bless")
+    participant(ctx.userdata.combat_state, pid).conditions = [{"type": "blessed", "source": "divine_bless"}]
+    await combat_turn.declare_phase(
+        ctx,
+        [
+            AbilityDecl(kind="ability", actor_id=pid, action="arcane_bolt", targets=["choir_zone"], argument_type=""),
+            DefendDecl(kind="defend", actor_id="choir_zone"),
+        ],
+    )
+    import random
+
+    import check_resolution_attack
+    import check_resolution_save
+
+    attack = check_resolution_attack.resolve_attack
+    save = check_resolution_save.resolve_saving_throw
+
+    def fixed_attack(*args, **kwargs):
+        return attack(*args, **{**kwargs, "rng": random.Random(0)})
+
+    def fixed_save(*args, **kwargs):
+        return save(*args, **{**kwargs, "rng": random.Random(5 if args[3] == "Aura of Lost Voices" else 31)})
+
+    with (
+        patch("check_resolution_attack.resolve_attack", side_effect=fixed_attack),
+        patch("check_resolution_save.resolve_saving_throw", side_effect=fixed_save),
+    ):
+        result = await _resolve_round(ctx)
+    cast = next(p["cast"] for p in result["packets"] if p["actor_id"] == pid)
+    assert cast["damage_result"]["damage"] > 0
+    assert cast["damage_result"]["target_id"] == pid
+    assert cast["damage_result"]["concentration_broken"] == "divine_bless"
+    assert ctx.userdata.concentration.spell_id is None
+    assert (await saved_player(pid))["concentration"]["spell_id"] is None
+    saved = await load_combat(ctx.userdata.combat_state.combat_id)
+    assert not participant(saved, pid).conditions
