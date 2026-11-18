@@ -48,10 +48,27 @@ class AutonomyGrant:
     reached_tier: str | None
 
 
+SAVES = ("strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma")
+
+
+def read_autonomy(stored: dict | None) -> dict:
+    tiers = load_unbound()[1]
+    state = {"level": 0, "max": 100, "tier": tiers[0]} if stored is None else dict(stored)
+    level, maximum = state["level"], state.get("max", 100)
+    if type(level) is not int or type(maximum) is not int:
+        raise ValueError("unbound_autonomy: level and max must be integers")
+    apply_favor_delta(level, maximum, 0)
+    if state["tier"] not in tiers:
+        raise ValueError(f"unbound_autonomy.tier: unknown tier {state['tier']!r}")
+    if "save_proficiency" in state and state["save_proficiency"] not in SAVES:
+        raise ValueError("unbound_autonomy.save_proficiency: unknown save")
+    return dict(state, max=maximum)
+
+
 def judge_autonomy(deeds: dict, stored: dict | None) -> tuple[dict, AutonomyGrant] | None:
     actions, tiers = load_unbound()
     amount = sum(amount for kind, amount in actions.items() if deeds.get(kind) == "pending")
-    state = stored if stored is not None else {"level": 0, "max": 100, "tier": tiers[0]}
+    state = read_autonomy(stored)
     level, maximum, previous_tier = state["level"], state.get("max", 100), state["tier"]
     new_level = apply_favor_delta(level, maximum, amount)
     if previous_tier not in tiers:

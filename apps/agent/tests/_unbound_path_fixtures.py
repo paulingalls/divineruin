@@ -128,3 +128,35 @@ async def phase(w, *, database=None, echo=None, declare=True):
     raw = await combat_turn._resolve_phase_impl(w.ctx, **deps)
     assert isinstance(raw, str), "combat ended unexpectedly"
     return json.loads(raw)
+
+
+class MilestoneWalk:
+    """Extend the durable command harness with saves and phase commands."""
+
+    def __new__(cls, pool):
+        from patron_ability_walk import AbilityWalk
+
+        class Walk(AbilityWalk):
+            async def connect(self, sd=None):
+                from acceptance.voice_condition_harness import ScenarioModel
+                from livekit.agents import Agent, AgentSession
+
+                from activate_tools import activate
+                from check_tools import check
+                from combat_turn import declare_phase, resolve_phase
+                from query_tools import query_info
+                from rest_tools import rest
+                from session_data import SessionData
+
+                self.sd = sd or SessionData(player_id=self.player, location_id="millhaven_inn", room=make_mock_room())
+                self.model = ScenarioModel([])
+                self.session = AgentSession(llm=self.model, userdata=self.sd)
+                await self.session.start(
+                    Agent(
+                        instructions="Execute the command.",
+                        tools=[activate, query_info, check, rest, declare_phase, resolve_phase],
+                    )
+                )
+                self.stack.push_async_callback(self.session.aclose)
+
+        return Walk(pool)
