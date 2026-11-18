@@ -48,8 +48,11 @@ def skill_gift(
         if gift["status"] == "active":
             adjustment = int(ally_present >= 2 and has_engine_synergy(player, "aelora_common_bond"))
             return gift["mechanics"]["amount"] + adjustment, False, gift["name"]
-    if natural_terrain and skill in NATURES_PULSE_SKILLS and (gift := thyra_gift(favor)):
-        return 0, True, gift["name"]
+    if skill in NATURES_PULSE_SKILLS and (gift := thyra_gift(favor)):
+        if natural_terrain:
+            return 0, True, gift["name"]
+        if has_engine_synergy(player, "thyra_wild_kinship"):
+            return 2, False, gift["name"]
     if first_stay and favor.get("patron") == "nythera":
         if skill in {"investigation", "perception"} and has_engine_synergy(player, "nythera_uncharted_senses"):
             return 3, False, "Uncharted Senses"

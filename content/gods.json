@@ -1949,9 +1949,10 @@
         "name": "Wild Kinship",
         "clauses": [
           {
-            "effect": "Nature's Pulse extends to non-natural terrain (reduced).",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "Nature's Pulse extends to non-natural terrain: +2 to Perception and Survival checks.",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "thyra_wild_kinship"
           },
           {
             "effect": "Wild Shape +5 temp HP",
@@ -1965,9 +1966,10 @@
         "name": "Wild Kinship",
         "clauses": [
           {
-            "effect": "Nature's Pulse extends to non-natural terrain (reduced).",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "Nature's Pulse extends to non-natural terrain: +2 to Perception and Survival checks.",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "thyra_wild_kinship"
           },
           {
             "effect": "Wild Shape +5 temp HP",
@@ -1981,9 +1983,10 @@
         "name": "Wild Kinship",
         "clauses": [
           {
-            "effect": "Nature's Pulse extends to non-natural terrain (reduced).",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "Nature's Pulse extends to non-natural terrain: +2 to Perception and Survival checks.",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "thyra_wild_kinship"
           },
           {
             "effect": "Wild Shape +5 temp HP",

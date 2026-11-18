@@ -435,9 +435,15 @@ async def test_held_operation_surfaces_changed_precondition(world, party, change
                     expected = "original location"
             assert held["fate_offer"]["roller_id"] == guest
             before = [await row(world, i) for i in range(2)]
-            nodes_before = await get_gathering_nodes_at_location(ORIGIN)
+
+            # Other workers' herb_node fixtures come and go at the same location on the shared dev DB.
+            async def nodes():
+                rows = await get_gathering_nodes_at_location(ORIGIN)
+                return [n for n in rows if not n["id"].startswith("fate_herb_") or n["id"] == node_id]
+
+            nodes_before = await nodes()
             cancelled = (await call(0, "query_info", kind="inventory"))["settled_fate"]
-            assert await get_gathering_nodes_at_location(ORIGIN) == nodes_before
+            assert await nodes() == nodes_before
     assert cancelled["outcome"] == "cancelled" and expected in cancelled["reason"]
     assert [await row(world, i) for i in range(2)] == before
     assert await db_queries.get_player_inventory(guest) == []
