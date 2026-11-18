@@ -57,13 +57,12 @@ async def judge_pending_deeds(
         patron = next((god for god in load_gods() if god["god_id"] == favor["patron"]), None)
         if patron is None:
             raise ValueError(f"Unknown patron '{favor['patron']}'")
-        grant = await _award_divine_favor_core(
-            player_id,
-            evaluate_patron_alignment(deeds, patron),
-            "Patron deed judgment",
-            conn=conn,
-            pending_events=pending_events,
-        )
+        # A zero judgment (only foreign or awarded kinds) would publish a "+0" favor change.
+        delta = evaluate_patron_alignment(deeds, patron)
+        if delta != 0:
+            grant = await _award_divine_favor_core(
+                player_id, delta, "Patron deed judgment", conn=conn, pending_events=pending_events
+            )
     await conn.execute(
         "UPDATE players SET data = jsonb_set(data, '{patron_deeds}', '{}'::jsonb) WHERE player_id = $1",
         player_id,

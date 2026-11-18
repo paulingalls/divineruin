@@ -75,6 +75,10 @@ async def test_authored_judgment(player, patron, start, pending, awarded, amount
     before = await read(pool, pid)
     assert before["patron_deeds"] == {**dict.fromkeys(pending, "pending"), **dict.fromkeys(awarded, "awarded")}
     grant, events = await judge(pool, pid)
+    if amount == 0:
+        assert (grant, events) == (None, [])
+        assert await read(pool, pid) == dict(before, patron_deeds={})
+        return
     assert grant is not None
     assert (grant.previous_level, grant.new_level, grant.patron_id) == (start, end, patron)
     assert events == [

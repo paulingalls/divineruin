@@ -171,8 +171,7 @@ async def test_immediate_and_mechanical_deeds_do_not_double_award(dev_db_pool, m
         events = []
         async with dev_db_pool.acquire() as conn, conn.transaction():
             grant = await judge_pending_deeds(pid, conn=conn, pending_events=events)
-        assert grant is not None and grant.previous_level == grant.new_level == 52
-        assert len(events) == 1 and events[0][1]["requested_amount"] == events[0][1]["amount"] == 0
+        assert (grant, events) == (None, [])
         data = json.loads(await dev_db_pool.fetchval("SELECT data FROM players WHERE player_id=$1", pid))
         assert data["patron_deeds"] == {} and data["divine_favor"]["level"] == 52
     finally:
