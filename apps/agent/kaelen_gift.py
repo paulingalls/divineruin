@@ -3,10 +3,13 @@
 from _gods_content import load_gods
 from combat_participant import CombatParticipant
 from conditions import apply_condition
+from patron_synergy import has_engine_synergy
 from session_data import SessionData
 
 
-def trigger_iron_resolve(session: SessionData, target: CombatParticipant, hp_before: int) -> str | None:
+def trigger_iron_resolve(
+    session: SessionData, target: CombatParticipant, hp_before: int, player: dict | None
+) -> str | None:
     if target.type != "player":
         return None
     member = session.party.member(target.id)
@@ -18,7 +21,10 @@ def trigger_iron_resolve(session: SessionData, target: CombatParticipant, hp_bef
     if gift["status"] != "active":
         raise ValueError("Kaelen's Iron Resolve gift is not active")
     mechanics = gift["mechanics"]
-    threshold = target.hp_max * mechanics["threshold"]
+    if player is None:
+        raise ValueError(f"Missing authoritative player {target.id!r}")
+    adjustment = 0.15 if has_engine_synergy(player, "kaelen_tempered_resolve") else 0
+    threshold = target.hp_max * (mechanics["threshold"] + adjustment)
     if not (hp_before >= threshold and 0 < target.hp_current < threshold):
         return None
     target.conditions = apply_condition(

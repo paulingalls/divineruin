@@ -98,7 +98,7 @@ async def _check_social_impl(
         skill_lower,
         base_dc,
         rng,
-        ally_present=session.ally_present_for(player_id),
+        ally_present=session.allies_present_for(player_id),
         natural_terrain=False,
         hearing_only=False,
     )

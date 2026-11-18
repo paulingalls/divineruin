@@ -1,16 +1,16 @@
 import pytest
 
-from check_resolution import (
-    AdvancementResult,
-    SkillCapabilities,
-    check_skill_capabilities,
-    record_skill_use,
-)
 from rules_engine import (
     ADVANCEMENT_THRESHOLDS,
     SKILL_CAPABILITIES,
     SKILLS,
     SkillTier,
+)
+from skill_advancement import (
+    AdvancementResult,
+    SkillCapabilities,
+    check_skill_capabilities,
+    record_skill_use,
 )
 
 

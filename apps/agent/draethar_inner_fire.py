@@ -83,7 +83,7 @@ async def _inner_fire_locked(
         await resonance_mutations_mod.update_player_resonance(player_id, new_resonance, conn=conn)
         session.validate_acting_player(player_id)
         participant.hp_current = new_hp
-        gift_triggered = trigger_iron_resolve(session, participant, hp_before)
+        gift_triggered = trigger_iron_resolve(session, participant, hp_before, player)
 
         sounds: list[str] = []
         rose_hollowed = False

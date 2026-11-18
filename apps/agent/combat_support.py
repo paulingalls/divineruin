@@ -287,6 +287,11 @@ async def apply_attack_result(
     # hides the fall it caused, so every verdict below reads hp_before instead.
     death_resolved_before = target.hollow_death_resolved
     hp_before = target.hp_current
+    player = None
+    if target.type == "player" and not target.iron_resolve_spent:
+        member = session.member_state(target.id)
+        if member.patron_id == "kaelen":
+            player = await queries.get_player(target.id, conn=conn)
     overkill = max(0, attack_result.damage - hp_before)
     target.hp_current = max(0, hp_before - attack_result.damage)
     if (
@@ -310,7 +315,7 @@ async def apply_attack_result(
         target.death_save_failures += failures
         if target.type == "player":
             target.death_save_failures = min(3, target.death_save_failures)
-    gift_triggered = trigger_iron_resolve(session, target, hp_before)
+    gift_triggered = trigger_iron_resolve(session, target, hp_before, player)
 
     target.conditions = condition_sources.clear_charm_from_damage(target.conditions, attacker.id, attack_result.damage)
 

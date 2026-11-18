@@ -21,3 +21,18 @@ def get_archetype_synergy(archetype_id: str, patron_id: str) -> dict | None:
     if patron is None:
         raise ValueError(f"Unknown patron {patron_id!r}.")
     return synergy_for_patron(archetype_id, patron)
+
+
+def has_engine_synergy(player: dict, implementation_id: str) -> bool:
+    """Select an active implementation from the authoritative character's patron and class."""
+    patron = (player.get("divine_favor") or {}).get("patron")
+    if patron in (None, "none"):
+        return False
+    row = get_archetype_synergy(player["class"], patron)
+    assert row is not None
+    return any(
+        clause["status"] == "active"
+        and clause["resolution"] == "engine"
+        and clause.get("implementation_id") == implementation_id
+        for clause in row["clauses"]
+    )

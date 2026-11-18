@@ -5,7 +5,7 @@ table together — same call as db_mutations_reputation / db_mutations_gathering
 use_counter carry the hybrid advancement contract; narrative_moment_ready is the
 Expert->Master gate, set by the DM tool and cleared when the advancement lands.
 
-The pure advancement math is check_resolution.record_skill_use; the orchestration that
+The pure advancement math is skill_advancement.record_skill_use; the orchestration that
 pairs a read with these writes is skill_persistence.py.
 """
 

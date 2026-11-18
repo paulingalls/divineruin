@@ -62,7 +62,7 @@ async def test_m46c_ambient_forage_grants_materials_and_emits_dice_roll(
     ctx = make_context(player_id, location_id=_AMBIENT, room=make_mock_room())
     resolve = gathering_tools.check_resolution.resolve_skill_check_dc
 
-    def fixed_resolve(player, skill, dc, _rng=None, *, ally_present, natural_terrain, hearing_only):
+    def fixed_resolve(player, skill, dc, _rng=None, *, ally_present, natural_terrain, hearing_only, first_stay=False):
         return resolve(
             player,
             skill,
@@ -71,6 +71,7 @@ async def test_m46c_ambient_forage_grants_materials_and_emits_dice_roll(
             ally_present=ally_present,
             natural_terrain=natural_terrain,
             hearing_only=hearing_only,
+            first_stay=first_stay,
         )
 
     monkeypatch.setattr(gathering_tools.check_resolution, "resolve_skill_check_dc", fixed_resolve)

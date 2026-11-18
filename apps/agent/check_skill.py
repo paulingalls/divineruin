@@ -19,6 +19,7 @@ from condition_consume import consume_beneficial_conditions
 from condition_voice_rules import validate_hearing_check
 from db_errors import validated_player_conditions
 from patron_gifts import KNOWLEDGE_SKILLS
+from patron_location import check_first_stay
 from session_data import SessionData
 from tool_support import _cap_str
 
@@ -75,7 +76,8 @@ async def _check_skill_run(
         condition_voice_rules.roll_data(player, session.combat_state, player_id),
         skill,
         difficulty if reroll_dc is None else reroll_dc,
-        ally_present=session.ally_present_for(player_id),
+        ally_present=session.allies_present_for(player_id),
+        first_stay=await check_first_stay(player, session, skill, conn=conn),
         natural_terrain=await skill_natural_terrain(session, player, skill),
         hearing_only=hearing_only,
     )
