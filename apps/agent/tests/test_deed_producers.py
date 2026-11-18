@@ -3,7 +3,8 @@
 import asyncio
 import json
 from contextlib import asynccontextmanager
-from unittest.mock import AsyncMock, patch
+from typing import cast
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -12,6 +13,7 @@ from acceptance.mawling_harness import MawlingHarness
 from acceptance.seeds import seed_player_with_pools
 from livekit.agents import Agent, AgentSession
 from livekit.agents.llm import ToolError
+from test_aelora_gift import _live_party
 
 import alignment_heartbeat
 import db
@@ -136,6 +138,49 @@ async def roll(h, skill, face=20, *, error=False):
             },
             error=error,
         )
+
+
+@pytest.fixture
+async def live_walk(walk):
+    walk.sd.companion = None
+    lifecycle = _live_party(walk.sd, *walk.players)
+    try:
+        assert all(walk.sd.ally_present_for(pid) for pid in walk.players)
+        yield walk, lifecycle
+    finally:
+        await lifecycle.aclose()
+
+
+def disconnect_ally(h, lifecycle):
+    room = cast(MagicMock, lifecycle.room)
+    handlers = dict(call.args for call in room.on.call_args_list)
+    handlers["participant_disconnected"](room.remote_participants[h.players[1]])
+    assert h.sd.party.contains(h.players[1])
+    assert not h.sd.ally_present_for(h.players[0])
+
+
+async def test_skill_deed_with_live_ally_then_disconnected(live_walk):
+    h, lifecycle = live_walk
+    await checks(h, guest=False)
+    assert (await roll(h, "athletics"))["outcome"] == "success"
+    await journals(h, [{}, {}])
+    disconnect_ally(h, lifecycle)
+    assert (await roll(h, "athletics"))["outcome"] == "success"
+    await journals(h, [{"succeeded_alone": "pending"}, {}])
+
+
+@pytest.mark.parametrize("route", ["end_combat", "resolve_phase"])
+async def test_victory_deed_with_live_ally_then_disconnected(live_walk, route):
+    h, lifecycle = live_walk
+    await terminal(h, route, "victory")
+    await h.command(route, end_args(route, "victory"))
+    assert h.sd.combat_state is None
+    await journals(h, [{"won_combat": "pending"}, {"won_combat": "pending"}])
+    disconnect_ally(h, lifecycle)
+    await terminal(h, route, "victory")
+    await h.command(route, end_args(route, "victory"))
+    assert h.sd.combat_state is None
+    await journals(h, [{"won_combat": "pending", "won_alone": "pending"}, {"won_combat": "pending"}])
 
 
 @pytest.mark.parametrize("skill", ["athletics", "stealth", *sorted(KNOWLEDGE_SKILLS)])
