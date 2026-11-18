@@ -1,31 +1,82 @@
 """Member-scoped Unbound capabilities, invoked through existing verbs."""
 
 import json
+from copy import deepcopy
 
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import db
+import db_mutations
 import db_mutations_resonance
 import db_queries
 import hollow_echo
 import patron_deeds
+import patron_gift_tools
 import resonance_events
+from condition_consume import serialize_combat_check
 from party_state import PartyMember
+from patron_ability_tools import spent_state
 from session_data import SessionData
+from unbound_autonomy import SAVES, load_unbound, read_autonomy
 
 VEIL_CLARITY = "unbound_veil_clarity"
 RAW_CHANNELING = "unbound_raw_channeling"
 VEIL_MASTERY = "unbound_veil_mastery"
+DIVINE_IMMUNITY = "unbound_divine_immunity"
+SAVE_IDS = {f"unbound_self_reliant_{save}": save for save in SAVES}
+MILESTONE_IDS = frozenset((*SAVE_IDS, DIVINE_IMMUNITY))
 
 
 def is_unbound(patron: str | None) -> bool:
     return patron in (None, "none")
 
 
-def patron_query(track: dict) -> dict:
+def patron_query(track: dict, player: dict) -> dict:
+    autonomy = read_autonomy(player.get("unbound_autonomy"))
+    tiers = load_unbound()[1]
+    attained = tiers.index(autonomy["tier"])
+    choice = autonomy.get("save_proficiency")
+    proficiencies = {s.lower() for s in player.get("saving_throw_proficiencies", [])}
+    milestones = []
+    for token, save in SAVE_IDS.items():
+        if choice:
+            rule = f"One-time choice consumed: {choice}."
+        elif save in proficiencies:
+            rule = f"Already proficient in {save}; choose another save."
+        else:
+            rule = f"Use activate(id='{token}') to choose {save} proficiency once."
+        milestones.append(
+            dict(
+                id=token,
+                name=f"Self-Reliant: {save.title()}",
+                tier=tiers[0],
+                reached=True,
+                rule=rule,
+                proficient=save in proficiencies,
+                chosen=choice == save,
+            )
+        )
+    spent = spent_state(player, DIVINE_IMMUNITY)["spent"]
+    rule = (
+        f"Requires {tiers[1]}."
+        if attained < 1
+        else "Spent; a long rest restores Divine Immunity."
+        if spent
+        else f"Use activate(id='{DIVINE_IMMUNITY}') to ignore one chosen divine ability; recharges on a long rest."
+    )
+    milestones.append(
+        dict(id=DIVINE_IMMUNITY, name="Divine Immunity", tier=tiers[1], reached=attained >= 1, rule=rule, spent=spent)
+    )
+    mastery_rule = (
+        f"Requires {tiers[2]}. Automatic there: the first Hollow Echo per member session becomes Nothing stirs."
+    )
+    milestones.append(
+        dict(id=VEIL_MASTERY, name="Veil Mastery", tier=tiers[2], reached=attained == 2, rule=mastery_rule)
+    )
     return {
         "state": "Unbound",
+        "autonomy": dict(level=autonomy["level"], tier=autonomy["tier"], milestones=milestones),
         "abilities": [],
         "resonance": {"current": track["current"], "state": track["state"]},
         "capabilities": [
@@ -38,16 +89,16 @@ def patron_query(track: dict) -> dict:
             {
                 "id": VEIL_MASTERY,
                 "name": "Veil Mastery",
-                "rule": "Automatic: the first Hollow Echo per member session becomes Nothing stirs. Granted unconditionally.",
+                "rule": mastery_rule,
             },
         ],
     }
 
 
 def veil_mastery(
-    echo: hollow_echo.HollowEchoResult, patron: str | None, caster: PartyMember
+    echo: hollow_echo.HollowEchoResult, patron: str | None, caster: PartyMember, autonomy_tier: str | None
 ) -> tuple[hollow_echo.HollowEchoResult, bool]:
-    if is_unbound(patron) and not caster.unbound_veil_mastery_used:
+    if is_unbound(patron) and autonomy_tier == load_unbound()[1][2] and not caster.unbound_veil_mastery_used:
         return hollow_echo.nothing_stirs(echo), True
     return echo, False
 
@@ -80,3 +131,66 @@ async def _raw_channeling_impl(context: RunContext[SessionData]) -> str:
         member.unbound_raw_channeling_used = True
         await resonance_events.publish_resonance_changed(session, resonance_track=member.resonance, caster_id=player_id)
         return json.dumps({"resonance_added": 3, "state": member.resonance.state})
+
+
+@serialize_combat_check
+async def activate_milestone(context: RunContext[SessionData], token: str) -> str:
+    return await _activate_milestone_locked(context, token)
+
+
+async def _activate_milestone_locked(context: RunContext[SessionData], token: str) -> str:
+    context.disallow_interruptions()
+    session = context.userdata
+    player_id = session.acting_player_id
+    updated = None
+    async with db.transaction() as conn:
+        player = await db_queries.get_player(player_id, conn=conn, for_update=True)
+        if player is None:
+            raise ToolError(f"Unknown player: {player_id}")
+        if not is_unbound((player.get("divine_favor") or {}).get("patron")):
+            raise ToolError("Only the Unbound can activate Self-Reliance rewards.")
+        autonomy = read_autonomy(player.get("unbound_autonomy"))
+        tiers = load_unbound()[1]
+        if token == DIVINE_IMMUNITY:
+            if tiers.index(autonomy["tier"]) < 1:
+                raise ToolError(f"Divine Immunity requires {tiers[1]}.")
+            if spent_state(player, token)["spent"]:
+                raise ToolError("Divine Immunity is spent; take a long rest to restore it.")
+            session.validate_acting_player(player_id)
+            await patron_gift_tools.write_state(player_id, {"spent": True}, gift_id=token, conn=conn)
+            result = {
+                "effect": "You are unaffected by one chosen divine ability.",
+                "dm_cue": "Narrate Divine Immunity negating the chosen divine ability.",
+                "rule": "Once per long rest.",
+            }
+        else:
+            save = SAVE_IDS[token]
+            if "save_proficiency" in autonomy:
+                raise ToolError(f"Self-Reliant choice already consumed: {autonomy['save_proficiency']}.")
+            proficiencies = player.get("saving_throw_proficiencies", [])
+            if any(p.lower() == save for p in proficiencies):
+                raise ToolError(f"Already proficient in {save}; choose another save.")
+            if session.combat_state is not None:
+                updated = deepcopy(session.combat_state)
+                participant = updated.get_participant(player_id)
+                if participant is None or participant.type != "player":
+                    raise ToolError("Self-Reliant requires the acting player's combat participant.")
+                if not any(p.lower() == save for p in participant.saving_throw_proficiencies):
+                    participant.saving_throw_proficiencies.append(save)
+            session.validate_acting_player(player_id)
+            await conn.execute(
+                """UPDATE players SET data=data || $2::jsonb WHERE player_id=$1""",
+                player_id,
+                json.dumps(
+                    {
+                        "unbound_autonomy": dict(autonomy, save_proficiency=save),
+                        "saving_throw_proficiencies": [*proficiencies, save],
+                    }
+                ),
+            )
+            if updated is not None:
+                await db_mutations.save_combat_state(updated.combat_id, updated.to_dict(), conn=conn)
+            result = {"save_proficiency": save, "effect": f"You gain proficiency in {save} saving throws."}
+    if updated is not None:
+        session.combat_state = updated
+    return json.dumps(result)

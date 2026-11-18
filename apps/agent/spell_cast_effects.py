@@ -116,7 +116,12 @@ async def _finish_cast(
                 session.validate_acting_player(player_id)
             packet["pending_choice"] = await patron_echo_choice.create(player_id, candidates, conn=conn)
         else:
-            echo, mastery_spent = unbound_tools.veil_mastery(candidates[0], patron, caster)
+            autonomy_tier = (
+                unbound_tools.read_autonomy(player.get("unbound_autonomy"))["tier"]
+                if unbound_tools.is_unbound(patron)
+                else None
+            )
+            echo, mastery_spent = unbound_tools.veil_mastery(candidates[0], patron, caster, autonomy_tier)
             packet["hollow_echo"] = {
                 "band": echo.band,
                 "name": echo.name,

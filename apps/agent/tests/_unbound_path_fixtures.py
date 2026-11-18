@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from patron_ability_walk import AbilityWalk
 from sample_fixtures import make_context, make_mock_room
 
 import db_queries
@@ -26,6 +27,7 @@ async def world(dev_db_pool):
             json.dumps(
                 {
                     "class": "mage",
+                    "unbound_autonomy": {"level": 75, "max": 100, "tier": "Sovereign"},
                     "level": 5,
                     "race": "human",
                     "focus": {"current": 100},
@@ -128,3 +130,79 @@ async def phase(w, *, database=None, echo=None, declare=True):
     raw = await combat_turn._resolve_phase_impl(w.ctx, **deps)
     assert isinstance(raw, str), "combat ended unexpectedly"
     return json.loads(raw)
+
+
+class MilestoneWalk(AbilityWalk):
+    """Extend the durable command harness with saves and phase commands."""
+
+    async def connect(self, sd=None):
+        from acceptance.voice_condition_harness import ScenarioModel
+        from livekit.agents import Agent, AgentSession
+
+        from activate_tools import activate
+        from check_tools import check
+        from combat_turn import declare_phase, resolve_phase
+        from query_tools import query_info
+        from rest_tools import rest
+        from session_data import SessionData
+
+        self.sd = sd or SessionData(player_id=self.player, location_id="millhaven_inn", room=make_mock_room())
+        self.model = ScenarioModel([])
+        self.session = AgentSession(llm=self.model, userdata=self.sd)
+        await self.session.start(
+            Agent(
+                instructions="Execute the command.",
+                tools=[activate, query_info, check, rest, declare_phase, resolve_phase],
+            )
+        )
+        self.stack.push_async_callback(self.session.aclose)
+
+    async def encounter(self):
+        from voice_condition_fixtures import place_actors
+
+        import db_mutations
+
+        player = await self.row()
+        state = CombatState(
+            combat_id="milestone_" + uuid4().hex,
+            participants=[
+                CombatParticipant(
+                    id=self.player,
+                    name="Unbound",
+                    type="player",
+                    initiative=10,
+                    hp_current=20,
+                    hp_max=20,
+                    ac=14,
+                    level=player["level"],
+                    attributes=player["attributes"],
+                    saving_throw_proficiencies=player.get("saving_throw_proficiencies", []),
+                ),
+                CombatParticipant(
+                    id="enemy",
+                    name="Enemy",
+                    type="enemy",
+                    initiative=20,
+                    hp_current=20,
+                    hp_max=20,
+                    ac=14,
+                    action_pool=[
+                        {
+                            "name": "Dread",
+                            "save": "wisdom",
+                            "dc": 12,
+                            "applies_condition": "frightened",
+                            "range": "ranged",
+                        }
+                    ],
+                ),
+            ],
+            initiative_order=["enemy", self.player],
+        )
+        place_actors(state)
+        self.sd.combat_state = state
+        await db_mutations.save_combat_state(state.combat_id, state.to_dict())
+        self.stack.push_async_callback(
+            self.pool.execute, "DELETE FROM combat_instances WHERE combat_id=$1", state.combat_id
+        )
+        return state
