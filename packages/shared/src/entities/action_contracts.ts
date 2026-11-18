@@ -15,6 +15,7 @@ export type CriticalSave = {
   save: "STR" | "DEX" | "CON" | "INT" | "WIS" | "CHA";
   dc: number;
   applies_condition: string;
+  stage?: 1;
 };
 export type ActionExtensions = {
   magical?: unknown;
@@ -349,12 +350,14 @@ function validateWeaponRiders(action: ActionExtensions, path: string): void {
     const rider = action.critical_save;
     if (!object(rider)) invalid(`${path}.critical_save`);
     for (const key of Object.keys(rider))
-      if (!["save", "dc", "applies_condition"].includes(key))
+      if (!["save", "dc", "applies_condition", "stage"].includes(key))
         invalid(`${path}.critical_save.${key}`);
     if (!["STR", "DEX", "CON", "INT", "WIS", "CHA"].includes(rider.save as string))
       invalid(`${path}.critical_save.save`);
     if (!positive(rider.dc)) invalid(`${path}.critical_save.dc`);
     if (!(CONDITION_NAMES as readonly unknown[]).includes(rider.applies_condition))
       invalid(`${path}.critical_save.applies_condition`);
+    if (rider.applies_condition === "hollowed" ? rider.stage !== 1 : "stage" in rider)
+      invalid(`${path}.critical_save.stage`);
   }
 }

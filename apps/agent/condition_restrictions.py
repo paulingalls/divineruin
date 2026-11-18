@@ -5,15 +5,15 @@ from condition_voice_rules import auto_fail_hearing_perception, no_spoken_buffs
 from conditions import get_condition_effects
 
 NOT_ENFORCED: dict[str, dict[str, object]] = {
-    "removed_from_combat": {"waits_on": "producer", "carriers": {"petrified"}},
-    "damage_resistance_all": {"waits_on": "producer", "carriers": {"petrified"}},
-    "immune_poison_disease": {"waits_on": "producer", "carriers": {"petrified"}},
-    "damage_reduction": {"waits_on": "producer", "carriers": {"shielded"}},
+    "removed_from_combat": {"waits_on": "producer", "carriers": {"petrified": 1}},
+    "damage_resistance_all": {"waits_on": "producer", "carriers": {"petrified": 1}},
+    "immune_poison_disease": {"waits_on": "producer", "carriers": {"petrified": 1}},
+    "damage_reduction": {"waits_on": "producer", "carriers": {"shielded": 1}},
     "no_approach_source": {"waits_on": "model", "model": "positioning"},
-    "reduced_max_hp": {"waits_on": "producer", "carriers": {"wounded"}},
-    "source_specific_penalty": {"waits_on": "producer", "carriers": {"cursed"}},
-    "hallucinations": {"waits_on": "producer", "carriers": {"hollowed"}},
-    "stat_drain": {"waits_on": "producer", "carriers": {"hollowed"}},
+    "reduced_max_hp": {"waits_on": "producer", "carriers": {"wounded": 1}},
+    "source_specific_penalty": {"waits_on": "producer", "carriers": {"cursed": 1}},
+    "hallucinations": {"waits_on": "producer", "carriers": {"hollowed": 2}},
+    "stat_drain": {"waits_on": "producer", "carriers": {"hollowed": 3}},
 }
 
 

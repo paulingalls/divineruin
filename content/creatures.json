@@ -2589,7 +2589,7 @@
       {
         "name": "Corrupted Blade",
         "bonus_damage": {"dice": "1d6", "damage_type": "necrotic"},
-        "critical_save": {"save": "CON", "dc": 14, "applies_condition": "hollowed"},
+        "critical_save": {"save": "CON", "dc": 14, "applies_condition": "hollowed", "stage": 1},
         "type": "melee",
         "reach": 5,
         "to_hit": 7,

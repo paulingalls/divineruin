@@ -417,6 +417,12 @@ test("Knight contracts and the three conditional resistance owners", async () =>
     increment: 5,
     narration_cue: "The armor crashes down. Then it scrapes upright again.",
   });
+  expect((knight.attacks as Record<string, unknown>[])[0]!.critical_save).toEqual({
+    save: "CON",
+    dc: 14,
+    applies_condition: "hollowed",
+    stage: 1,
+  });
   expect(validateCreatureStatBlock(knight)).toEqual([]);
   expect(
     catalog
@@ -451,6 +457,9 @@ test("Knight nested riders reject malformed actual rows", async () => {
     ["critical_save", { save: "BAD", dc: 14, applies_condition: "hollowed" }],
     ["critical_save", { save: "CON", dc: 0, applies_condition: "hollowed" }],
     ["critical_save", { save: "CON", dc: 14, applies_condition: "unknown" }],
+    ["critical_save", { save: "CON", dc: 14, applies_condition: "hollowed" }],
+    ["critical_save", { save: "CON", dc: 14, applies_condition: "hollowed", stage: 2 }],
+    ["critical_save", { save: "CON", dc: 14, applies_condition: "hollowed", stage: true }],
   ] as const) {
     const row = structuredClone(knight);
     (row.attacks as Record<string, unknown>[])[0]![field] = value;

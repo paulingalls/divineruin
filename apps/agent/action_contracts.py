@@ -270,7 +270,7 @@ def validate_weapon_riders(action, path):
         if not isinstance(rider, dict):
             invalid(f"{path}.critical_save")
         for key in rider:
-            if key not in ("save", "dc", "applies_condition"):
+            if key not in ("save", "dc", "applies_condition", "stage"):
                 invalid(f"{path}.critical_save.{key}")
         if rider.get("save") not in ("STR", "DEX", "CON", "INT", "WIS", "CHA"):
             invalid(f"{path}.critical_save.save")
@@ -281,3 +281,8 @@ def validate_weapon_riders(action, path):
             or rider["applies_condition"] not in conditions.CONDITION_CATALOG
         ):
             invalid(f"{path}.critical_save.applies_condition")
+        if rider.get("applies_condition") == "hollowed":
+            if type(rider.get("stage")) is not int or rider["stage"] != 1:
+                invalid(f"{path}.critical_save.stage")
+        elif "stage" in rider:
+            invalid(f"{path}.critical_save.stage")

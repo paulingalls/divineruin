@@ -30,7 +30,7 @@ def test_knight_authored_mechanics():
     assert enemy["multiattack_sequence"]["attacks"] == ["Corrupted Blade"] * 2
     blade = enemy["action_pool"][0]
     assert blade["bonus_damage"] == {"dice": "1d6", "damage_type": "necrotic"}
-    assert blade["critical_save"] == {"save": "CON", "dc": 14, "applies_condition": "hollowed"}
+    assert blade["critical_save"] == {"save": "CON", "dc": 14, "applies_condition": "hollowed", "stage": 1}
     assert {r["id"] for r in json.loads(CATALOG.read_text()) if r.get("resist_nonmagical_physical")} == {
         "hollow_knight",
         "war_golem",
@@ -113,6 +113,9 @@ async def test_equipment_origin_controls_physical_resistance(catalog_fight, crea
         ("critical_save", {"save": "BAD", "dc": 14, "applies_condition": "hollowed"}),
         ("critical_save", {"save": "CON", "dc": 0, "applies_condition": "hollowed"}),
         ("critical_save", {"save": "CON", "dc": 14, "applies_condition": "unknown"}),
+        ("critical_save", {"save": "CON", "dc": 14, "applies_condition": "hollowed"}),
+        ("critical_save", {"save": "CON", "dc": 14, "applies_condition": "hollowed", "stage": 2}),
+        ("critical_save", {"save": "CON", "dc": 14, "applies_condition": "hollowed", "stage": True}),
     ],
 )
 def test_blade_contract_rejects_malformed(field, value):
