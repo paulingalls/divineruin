@@ -39,6 +39,7 @@ def validate_recharge(value: object, path: str) -> None:
 
 def validate_action_extensions(action: dict, path: str) -> None:
     kind = action.get("kind", "attack")
+    validate_weapon_riders(action, path)
     validate_durability_rider(action, path)
     validate_resolution(action, path)
     if kind not in ("charm", "silence", "spell_redirect") and any(key in action for key in CHOIR_EFFECT_FIELDS):
@@ -95,21 +96,28 @@ def validate_action_extensions(action: dict, path: str) -> None:
                 invalid(f"{path}.healing")
         else:
             forbidden += ("target_group", "healing")
-            if action.get("advantage") is not True:
-                invalid(f"{path}.advantage")
             rider = action.get("on_hit")
             if not isinstance(rider, dict):
                 invalid(f"{path}.on_hit")
-            if (
-                not isinstance(rider.get("applies_condition"), str)
-                or rider["applies_condition"] not in conditions.CONDITION_CATALOG
-            ):
-                invalid(f"{path}.on_hit.applies_condition")
-            if not positive_integer(rider.get("duration")):
-                invalid(f"{path}.on_hit.duration")
-            for key in rider:
-                if key not in ("applies_condition", "duration"):
-                    invalid(f"{path}.on_hit.{key}")
+            if "damage" in rider:
+                if "advantage" in action:
+                    invalid(f"{path}.advantage")
+                validate_damage_rider(rider, f"{path}.on_hit", "damage")
+                if rider.get("ignores_resistance") is not True:
+                    invalid(f"{path}.on_hit.ignores_resistance")
+            else:
+                if action.get("advantage") is not True:
+                    invalid(f"{path}.advantage")
+                if (
+                    not isinstance(rider.get("applies_condition"), str)
+                    or rider["applies_condition"] not in conditions.CONDITION_CATALOG
+                ):
+                    invalid(f"{path}.on_hit.applies_condition")
+                if not positive_integer(rider.get("duration")):
+                    invalid(f"{path}.on_hit.duration")
+                for key in rider:
+                    if key not in ("applies_condition", "duration"):
+                        invalid(f"{path}.on_hit.{key}")
     else:
         forbidden = EFFECT_FIELDS
     for key in forbidden:
@@ -235,3 +243,46 @@ def validate_durability_rider(action, path):
         invalid(f"{path}.dice")
     if rider["target"] != "selected_player_held_item":
         invalid(f"{path}.target")
+
+
+def validate_damage_rider(rider, path, dice_key):
+    from combat_damage_affinity import DAMAGE_TYPES
+
+    if not isinstance(rider, dict):
+        invalid(path)
+    allowed = {dice_key, "damage_type"} | ({"ignores_resistance"} if dice_key == "damage" else set())
+    for key in rider:
+        if key not in allowed:
+            invalid(f"{path}.{key}")
+    if not isinstance(rider.get(dice_key), str) or not re.fullmatch(r"[1-9][0-9]*d[1-9][0-9]*", rider[dice_key]):
+        invalid(f"{path}.{dice_key}")
+    if rider.get("damage_type") not in DAMAGE_TYPES:
+        invalid(f"{path}.damage_type")
+
+
+def validate_weapon_riders(action, path):
+    if "magical" in action and type(action["magical"]) is not bool:
+        invalid(f"{path}.magical")
+    if "bonus_damage" in action:
+        validate_damage_rider(action["bonus_damage"], f"{path}.bonus_damage", "dice")
+    if "critical_save" in action:
+        rider = action["critical_save"]
+        if not isinstance(rider, dict):
+            invalid(f"{path}.critical_save")
+        for key in rider:
+            if key not in ("save", "dc", "applies_condition", "stage"):
+                invalid(f"{path}.critical_save.{key}")
+        if rider.get("save") not in ("STR", "DEX", "CON", "INT", "WIS", "CHA"):
+            invalid(f"{path}.critical_save.save")
+        if not positive_integer(rider.get("dc")):
+            invalid(f"{path}.critical_save.dc")
+        if (
+            not isinstance(rider.get("applies_condition"), str)
+            or rider["applies_condition"] not in conditions.CONDITION_CATALOG
+        ):
+            invalid(f"{path}.critical_save.applies_condition")
+        if rider.get("applies_condition") == "hollowed":
+            if type(rider.get("stage")) is not int or rider["stage"] != 1:
+                invalid(f"{path}.critical_save.stage")
+        elif "stage" in rider:
+            invalid(f"{path}.critical_save.stage")

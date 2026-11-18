@@ -50,7 +50,7 @@ See `audit/phase-7-bestiary.md` for the full 41-item coverage matrix.
 - Tier system constants: Tier 1 (player L1-4), Tier 2 (L5-8), Tier 3 (L9-14), Tier 4 (L15-20)
 - DB migration: `creatures` table with full stat block schema and JSONB fields for nested data
 - Validation: `validate_creature_stat_block(creature)` ensuring all required fields and internal consistency
-- Optional combat fields: attacks may carry `properties[]`, condition/save fields, `escape_dc`, structured `recharge`, boolean `advantage`, and positive integer `duration`. Typed actives distinguish attacks, direct `healing` and `prepare_attack` from social `command`/`accusation`; untyped actives remain narrative. Present catalog signatures require `name`, `description`, and nonblank sound-first `narration_cue`. Both authored signatures now preserve matching cues and mechanics through seed/query. See the bestiary Combat Effect Inventory for every selected species' supported, scheduled, duplicate and deferred effect. Combat executes the supported attack, healing, preparation and limited-use paths; catalog expansion exposes their IDs and authored cues to the DM. All 15 templates now use catalog references. Rows without optional extensions remain valid.
+- Optional combat fields: attacks may carry `properties[]`, condition/save fields, `escape_dc`, structured `recharge`, boolean `advantage`, and positive integer `duration`. Typed actives distinguish attacks, direct `healing` and `prepare_attack` from social `command`/`accusation`; untyped actives remain narrative. Present catalog signatures require `name`, `description`, and nonblank sound-first `narration_cue`. Both authored signatures now preserve matching cues and mechanics through seed/query. See the bestiary Combat Effect Inventory for every selected species' supported, scheduled, duplicate and deferred effect. Combat executes the supported attack, healing, preparation and limited-use paths; catalog expansion exposes their IDs and authored cues to the DM. All 16 templates now use catalog references. Rows without optional extensions remain valid.
 
 **Acceptance criteria:**
 - [x] Schema supports all 6 creature categories with shared base fields <!-- verified apps/agent/tests/test_creature_schema.py::test_shared_creature_corpus; packages/shared/src/entities/creature.test.ts::shared_creature_corpus -->
@@ -149,6 +149,8 @@ The catalog includes all nine spec Hollow creatures, including the three Tier 4 
 - [ ] The Architect has terrain manipulation abilities that alter combat grid state
 - [x] Tier 1-2 Hollow creatures function as standard combat encounters (no custom behavior needed) <!-- verified apps/agent/tests/acceptance/test_hollow_troops_fight.py; apps/agent/tests/combat/test_hollow_troops_balance.py; apps/agent/tests/acceptance/test_encounter_templates_surface_entry.py -->
 - [ ] Tier 3 Hollowed Knight and Veilrender have boss-tier HP and multi-phase mechanics
+
+  Knight: `hollow_knight_boss` has boss HP, paired Blades, typed necrotic riders, magical-weapon resilience and escalating Unholy Fortitude across hold/reload (`test_hollowed_knight_fight.py`, `combat/test_hollowed_knight.py`). Hard at L14 with two mawlings, recommended party 2+. Veilrender remains open. Remnant Tactics, Fragment Voice and the corrupted-terrain patch remain narrated. Discovery is exercised at a test-authored Ashmark location; authored Ashmark/underground locations are not yet available.
 - [ ] Tests cover corruption aura at various distances, resonance_on_death, and all 3 Tier 4 custom behaviors
 
 **Key references:**

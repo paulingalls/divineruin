@@ -3,6 +3,8 @@ import {
   validateActionExtensions,
   validateRecharge,
   type Recharge,
+  type DamageRider,
+  type CriticalSave,
   type DurabilityRider,
   type ChoirEffect,
 } from "./action_contracts";
@@ -26,6 +28,13 @@ export interface CreatureStatBlock {
   name: string;
   category: "hollow" | "beast" | "humanoid" | "construct" | "undead" | "elemental";
   damage_affinities?: DamageAffinities;
+  resist_nonmagical_physical?: boolean;
+  unholy_fortitude?: {
+    save: CriticalSave["save"];
+    dc: number;
+    increment: number;
+    narration_cue: string;
+  };
   tags?: "plant"[];
   tier: 1 | 2 | 3 | 4;
   home_region: RegionId | "multi_region";
@@ -71,6 +80,9 @@ export interface CreatureStatBlock {
 }
 
 export interface Attack {
+  magical?: boolean;
+  bonus_damage?: DamageRider;
+  critical_save?: CriticalSave;
   durability_rider?: DurabilityRider;
   resolution?: "save" | "hit_then_save";
   save_success_damage?: "none" | "half";

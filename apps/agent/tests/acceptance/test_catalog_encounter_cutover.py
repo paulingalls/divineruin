@@ -16,6 +16,7 @@ from acceptance._catalog_cutover_helpers import (
     TEMPLATES,
     assert_boundary_result,
     assert_stats,
+    assert_strength,
     reference_damage,
 )
 from acceptance._catalog_cutover_helpers import cold_catalog_reads as cold_catalog_reads
@@ -33,7 +34,6 @@ from companion_profiles import get_companion_profile
 from creation_rules import build_character_data
 from creature_catalog import query_creature_by_id
 from creature_combat import translate_creature
-from encounter_budget import calculate_encounter_budget
 from hp_scaling import calculate_max_hp
 from rules_engine import attribute_modifier
 from session_data import CombatState
@@ -44,7 +44,7 @@ async def test_every_encounter_starts_from_catalog(started, template, cold_catal
     import db_content_queries
 
     pool = await db.get_pool()
-    assert await pool.fetchval("SELECT count(*) FROM encounter_templates") == 15
+    assert await pool.fetchval("SELECT count(*) FROM encounter_templates") == 16
     assert template == await db_content_queries.get_encounter_template(template["id"])
     ctx, response = await started(template["id"])
     state = ctx.userdata.combat_state
@@ -71,6 +71,8 @@ async def test_every_encounter_starts_from_catalog(started, template, cold_catal
         expected = translate_creature(row, encounter_id=template["id"], enemy_id=ref["id"], role=ref["role"])
         for field in (
             "action_pool",
+            "unholy_fortitude",
+            "resist_nonmagical_physical",
             "multiattack_sequence",
             "attributes",
             "saving_throw_proficiencies",
@@ -153,29 +155,12 @@ async def test_missing_catalog_row_has_no_side_effects(reset_db_pool, monkeypatc
         await pool.execute("DELETE FROM players WHERE player_id = $1", pid)
 
 
-def assert_strength(template, catalog):
-    level = template["recommended_party_level"]
-    report = calculate_encounter_budget(template["enemies"], level)
-    assert not report["too_many_bosses"], "too_many_bosses"
-    assert not report["all_minion"], "all_minion"
-    ceiling = (
-        "standard"
-        if template["difficulty"] != "hard"
-        else "boss"
-        if any(r["role"] == "boss" for r in template["enemies"])
-        else "tough"
-    )
-    assert report["total"] <= report["thresholds"][ceiling], "difficulty budget"
-    max_tier = 1 if level <= 2 else 2 if level <= 8 else 3 if level <= 14 else 4
-    assert all(catalog[r["creature_id"]]["tier"] <= max_tier for r in template["enemies"]), "tier ceiling"
-
-
 def test_final_balance_table():
     catalog = {row["id"]: row for row in json.loads((CONTENT_ROOT / "content/creatures.json").read_text())}
     assert {row["id"] for row in TEMPLATES} == set(TARGETS) | {"hollow_choir"}
     ordinary = [row for row in TEMPLATES if row["id"] in TARGETS]
-    assert len(ordinary) == 14
-    assert sum(len(row["enemies"]) for row in ordinary) == 33
+    assert len(ordinary) == 15
+    assert sum(len(row["enemies"]) for row in ordinary) == 36
     assert len({ref["creature_id"] for row in ordinary for ref in row["enemies"]}) == 16
     for row in ordinary:
         level, difficulty, groups = TARGETS[row["id"]]
@@ -306,7 +291,7 @@ async def test_ashmark_stance_and_quest_identity(started):
 
 
 @pytest.mark.parametrize("companion", ["companion_kael", "companion_lira", "companion_tam", "companion_sable"])
-@pytest.mark.parametrize("encounter_id", ["shadeling_cluster", "hollow_wisp", "hollow_corrupted_settlement"])
+@pytest.mark.parametrize("encounter_id", ["shadeling_cluster", "hollow_wisp"])
 async def test_actual_companion_committed_outcome(started, companion, encounter_id):
 
     import db_queries

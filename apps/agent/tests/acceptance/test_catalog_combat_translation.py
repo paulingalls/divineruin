@@ -107,7 +107,7 @@ async def test_catalog_actions_and_dm_metadata_through_tools(runtime, species, n
     elif action["damage"] == "0":
         assert packet.get("condition_inflicted") == action["applies_condition"] or packet["save_success"] is True
     else:
-        assert packet["hit"] is True and packet["damage"] == 3
+        assert packet["hit"] is True and packet["damage"] == (6 if action.get("bonus_damage") else 3)
         assert packet["attack_total"] == 19 + action["to_hit"]
     saved = await reload(ctx)
     roster = next(p for p in result["participants"] if p["id"] == eid)
@@ -243,7 +243,7 @@ async def test_authored_to_hit_and_saves_reach_resolvers(runtime):
     result = await resolve(ctx)
     packet = next(p for p in result["packets"] if p["actor_id"] == eid)
     assert packet["attack_total"] == 31
-    assert packet["damage"] == 3
+    assert packet["damage"] == 7
     state = await reload(ctx)
     actor = state.get_participant(eid)
     assert actor is not None

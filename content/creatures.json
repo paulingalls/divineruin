@@ -1214,6 +1214,7 @@
   {
     "terrains": ["underground"],
     "id": "war_golem",
+    "resist_nonmagical_physical": true,
     "name": "War Golem",
     "category": "construct",
     "tier": 3,
@@ -1648,6 +1649,7 @@
   {
     "terrains": ["underground"],
     "id": "deepstone_guardian",
+    "resist_nonmagical_physical": true,
     "name": "Deepstone Guardian",
     "category": "construct",
     "tier": 2,
@@ -2559,6 +2561,9 @@
   {
     "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
     "id": "hollow_knight",
+    "resist_nonmagical_physical": true,
+    "unholy_fortitude": {"save": "CON", "dc": 10, "increment": 5, "narration_cue": "The armor crashes down. Then it scrapes upright again."},
+    "multiattack_sequence": {"name": "Multiattack", "attacks": ["Corrupted Blade", "Corrupted Blade"]},
     "name": "Hollowed Knight",
     "category": "hollow",
     "tier": 3,
@@ -2583,6 +2588,8 @@
     "attacks": [
       {
         "name": "Corrupted Blade",
+        "bonus_damage": {"dice": "1d6", "damage_type": "necrotic"},
+        "critical_save": {"save": "CON", "dc": 14, "applies_condition": "hollowed", "stage": 1},
         "type": "melee",
         "reach": 5,
         "to_hit": 7,
@@ -2643,9 +2650,11 @@
       },
       {
         "name": "Dissolution Strike",
+        "kind": "prepare_attack",
+        "on_hit": {"damage": "3d6", "damage_type": "necrotic", "ignores_resistance": true},
         "description": "Next attack adds 3d6 necrotic and ignores resistance. On hit, 5 ft of ground becomes corrupted terrain for 1 minute.",
         "narration_cue": "",
-        "recharge": "5-6",
+        "recharge": {"kind": "roll", "die": 6, "threshold": 5},
         "audio": null
       },
       {

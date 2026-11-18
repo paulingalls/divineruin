@@ -75,6 +75,9 @@ interface EncounterActionBase {
 
 // An attack deals `damage`; condition and half-damage fields select its post-hit or save-only shape.
 export interface EncounterAttackAction extends EncounterActionBase {
+  magical?: boolean;
+  bonus_damage?: import("./action_contracts").DamageRider;
+  critical_save?: import("./action_contracts").CriticalSave;
   durability_rider?: DurabilityRider;
   resolution?: "save" | "hit_then_save";
   save_success_damage?: "none" | "half";
@@ -116,8 +119,9 @@ export interface EncounterHealingAction extends EncounterActionBase {
 
 export interface EncounterPrepareAttackAction extends EncounterActionBase {
   kind: "prepare_attack";
-  advantage: true;
-  on_hit: { applies_condition: string; duration: number };
+  advantage?: true;
+  on_hit:
+    { applies_condition: string; duration: number } | import("./action_contracts").PreparedDamage;
   recharge?: Recharge;
 }
 
@@ -255,6 +259,7 @@ export interface Encounter {
   name: string;
   description?: string;
   recommended_party_level: number;
+  recommended_party_size?: number;
   difficulty: string; // "easy" | "moderate" | "hard"
   enemies: EncounterEnemy[];
   stance_gate?: StanceGate;
@@ -287,6 +292,11 @@ export function validateEncounterReferences(
   const level = row.recommended_party_level;
   if (typeof level !== "number" || !Number.isInteger(level) || level < 1 || level > 20)
     throw new Error(`${label}: recommended_party_level must be an integer 1-20`);
+  if (Object.hasOwn(row, "recommended_party_size")) {
+    const size = row.recommended_party_size;
+    if (typeof size !== "number" || !Number.isInteger(size) || size < 1)
+      throw new Error(`${label}: recommended_party_size must be a positive integer`);
+  }
   if (!Array.isArray(row.enemies) || !row.enemies.length)
     throw new Error(`${label}: enemies must be a nonempty list`);
   const seen = new Set<string>();

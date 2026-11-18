@@ -65,6 +65,7 @@ _COMMAND_CARRIERS = [
     ("ashmark_patrol", "ashmark_sergeant", "Rally"),
     ("cult_cell", "cult_fanatic_1", "Bless"),
     ("hollow_corrupted_settlement", "hollowed_knight", "Command Lesser"),
+    ("hollow_knight_boss", "hollowed_knight", "Command Lesser"),
 ]
 _ACCUSATION_CARRIERS = [("ashmark_patrol", "ashmark_sergeant", "Accusation")]
 

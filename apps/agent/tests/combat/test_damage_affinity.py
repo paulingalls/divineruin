@@ -24,7 +24,7 @@ async def catalog_fight(spell_fight, dev_db_pool):
     original = ctx.userdata.combat_state.combat_id
     created = []
 
-    async def start(creature_id):
+    async def start(creature_id, weapon=None):
         template_id = f"affinity_{uuid4().hex}"
         template = {
             "id": template_id,
@@ -50,7 +50,10 @@ async def catalog_fight(spell_fight, dev_db_pool):
             "UPDATE players SET data=jsonb_set(data,'{equipment}', $2::jsonb) WHERE player_id=$1",
             ctx.userdata.player_id,
             json.dumps(
-                {"main_hand": {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}}
+                {
+                    "main_hand": weapon
+                    or {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}
+                }
             ),
         )
         ctx.userdata.combat_state = None

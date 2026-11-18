@@ -169,6 +169,8 @@ async def assemble_participants(session, encounter, encounter_id, member_players
                 action_pool=derived.get("action_pool", []),
                 creature_id=derived["creature_id"],
                 damage_affinities=derived["damage_affinities"],
+                resist_nonmagical_physical=derived["resist_nonmagical_physical"],
+                unholy_fortitude=derived["unholy_fortitude"],
                 tags=derived["tags"],
                 catalog_narration=derived["catalog_narration"],
                 catalog_audio=derived["catalog_audio"],

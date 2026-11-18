@@ -141,17 +141,18 @@ async def test_countercharm_spent_against_hold_person_claims_no_effect():
 
 def test_condition_action_inventory_stays_explicit():
     condition_actions = sorted(
-        (enemy["id"], action["name"], action.get("applies_condition"))
+        (encounter["id"], enemy["id"], action["name"], action.get("applies_condition"))
         for encounter in _ENCOUNTERS
         for enemy in encounter["enemies"]
         for action in enemy["action_pool"]
         if action.get("applies_condition")
     )
     assert condition_actions == [
-        ("ashmark_soldier_1", "Shield Bash", "prone"),
-        ("ashmark_soldier_2", "Shield Bash", "prone"),
-        ("cult_leader", "Hold Person", "paralyzed"),
-        ("hollowed_knight", "Shield Slam", "prone"),
+        ("ashmark_patrol", "ashmark_soldier_1", "Shield Bash", "prone"),
+        ("ashmark_patrol", "ashmark_soldier_2", "Shield Bash", "prone"),
+        ("cult_cell", "cult_leader", "Hold Person", "paralyzed"),
+        ("hollow_corrupted_settlement", "hollowed_knight", "Shield Slam", "prone"),
+        ("hollow_knight_boss", "hollowed_knight", "Shield Slam", "prone"),
     ]
     assert {row["id"] for row in _REACTIONS if row["window"] == "on_condition_imposed"} == {
         "rogue_slippery",

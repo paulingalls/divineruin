@@ -1,4 +1,5 @@
 export interface ItemEffect {
+  magical?: boolean;
   type: string;
   target?: string;
   value?: number | string;

@@ -177,7 +177,13 @@ def halve(head: dict, target) -> None:
     never handed a dramatic killing blow for a player who is still standing.
     """
     result, held_ac = deserialize_roll(head["roll"])
-    halved = with_landed_damage(result, result.damage // 2, target.hp_current, bonus_damage=result.bonus_damage // 2)
+    halved = with_landed_damage(
+        result,
+        result.damage // 2,
+        target.hp_current,
+        bonus_damage=result.bonus_damage // 2,
+        rider_damage=result.rider_damage // 2,
+    )
     head["roll"] = serialize_roll(halved, held_ac)
 
 

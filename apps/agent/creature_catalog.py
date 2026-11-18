@@ -83,7 +83,10 @@ async def encounter_template_summaries(location: dict, level: int) -> list[dict]
                 continue
             if not all(location["region"] in c["regions"] and location["terrain"] in c["terrains"] for c in species):
                 continue
-            summaries.append({"id": row["id"], "difficulty": difficulty, "description": description})
+            summary = {"id": row["id"], "difficulty": difficulty, "description": description}
+            if "recommended_party_size" in template:
+                summary["recommended_party_size"] = template["recommended_party_size"]
+            summaries.append(summary)
         except (KeyError, TypeError, ValueError, AttributeError) as error:
             raise ToolError(f"Encounter template '{row['id']}' is invalid: {error}") from error
     return summaries

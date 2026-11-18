@@ -2,6 +2,7 @@
 
 import copy
 
+import conditions
 import dice
 from combat_condition_landing import _land_condition_on_one
 from encounter_actions import action_kind
@@ -43,7 +44,12 @@ def resolve_active(state, actor, action, declaration):
 
 def apply_prepared_hit(state, attacker, target, action, summary):
     rider = action.get("prepared_on_hit")
-    if rider is None or not summary.get("hit") or target.is_fallen:
+    if rider is None or not summary.get("hit"):
+        return
+    if "damage" in rider:
+        attacker.pending_preparation = None
+        return
+    if target.is_fallen:
         return
     condition = rider["applies_condition"]
     if _land_condition_on_one(
@@ -52,3 +58,26 @@ def apply_prepared_hit(state, attacker, target, action, summary):
         summary["condition_inflicted"] = condition
     else:
         summary["condition_immune"] = condition
+
+
+def apply_critical_save(state, attacker, target, action, summary):
+    import check_resolution_save
+
+    rider = action.get("critical_save")
+    if rider is None or not summary.get("hit") or not summary.get("critical"):
+        return
+    result = check_resolution_save.roll_participant_save(
+        target,
+        rider["save"],
+        rider["dc"],
+        rider["applies_condition"],
+        dc_mod=attacker.dc_mod,
+        bonus_dice_eligible=False,
+    )
+    summary["critical_save"] = {"dc": result.dc, "roll": result.roll, "total": result.total, "success": result.success}
+    if rider["applies_condition"] == "hollowed" and conditions.has_condition(target.conditions, "hollowed"):
+        return
+    if not result.success and _land_condition_on_one(
+        state, target.id, attacker, rider["applies_condition"], source=action["name"], packet=summary
+    ):
+        summary["condition_inflicted"] = rider["applies_condition"]

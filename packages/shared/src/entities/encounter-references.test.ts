@@ -25,11 +25,25 @@ for (const row of corpus.valid) {
     expect(() => validateEncounterReferences(row, ids)).not.toThrow();
   });
 }
-test("all fifteen templates", async () => {
+for (const size of [0, -1, 1.5, true, "2", null]) {
+  test(`recommended party size rejects ${JSON.stringify(size)}`, () => {
+    expect(() =>
+      validateEncounterReferences({ ...corpus.valid[0], recommended_party_size: size }, ids),
+    ).toThrow("recommended_party_size");
+  });
+}
+for (const size of [1, 2]) {
+  test(`recommended party size accepts ${size}`, () => {
+    expect(() =>
+      validateEncounterReferences({ ...corpus.valid[0], recommended_party_size: size }, ids),
+    ).not.toThrow();
+  });
+}
+test("all sixteen templates", async () => {
   const rows = (await Bun.file(
     new URL("../../../../content/encounter_templates.json", import.meta.url),
   ).json()) as { id: string; enemies: unknown[] }[];
-  expect(rows).toHaveLength(15);
+  expect(rows).toHaveLength(16);
   expect(new Set(rows.map((row) => row.id))).toEqual(
     new Set([
       "fragment_shadeling",
@@ -47,6 +61,7 @@ test("all fifteen templates", async () => {
       "hollowmoth_swarm",
       "hollow_weaver_ambush",
       "hollow_mawling_pack",
+      "hollow_knight_boss",
     ]),
   );
   for (const row of rows) {

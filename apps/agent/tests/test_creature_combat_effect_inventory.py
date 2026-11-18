@@ -94,6 +94,8 @@ def test_executed_affinity_passives_leave_only_residual_guidance():
         ("corrupted_treant", "Resistance"),
         ("dire_bear", "Thick Hide"),
         ("war_golem", "Damage Immunity"),
+        ("war_golem", "Resistance"),
+        ("deepstone_guardian", "Resistance"),
         ("deepstone_guardian", "Damage Immunity"),
         ("hollow_weaver", "Fragile Form"),
     }

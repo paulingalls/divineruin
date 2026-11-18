@@ -42,6 +42,7 @@ EFFECT_KEYS = frozenset(
     {
         "advantage_vs",
         "amount",
+        "magical",
         "bonus",
         "bonus_condition",
         "bonus_damage",
@@ -113,6 +114,8 @@ def combat_traits(inventory: list[dict]) -> CombatItemTraits:
             context = f"inventory item {name!r}.effects[{effect_index}]"
             if not isinstance(effect, dict):
                 raise ValueError(f"{context} must be an object")
+            if "magical" in effect and type(effect["magical"]) is not bool:
+                raise ValueError(f"{context}.magical must be a boolean")
             if unknown := set(effect) - EFFECT_KEYS:
                 raise ValueError(f"{context} has unknown key {sorted(unknown)[0]!r}")
             for field_name, valid_tokens in allowed.items():

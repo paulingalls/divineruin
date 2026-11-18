@@ -217,3 +217,12 @@ def test_structured_effect_token_sets_match_across_languages():
 def test_iron_resolve_cannot_be_blocked():
     with pytest.raises(ValueError, match="iron_resolve"):
         combat_traits([{"name": "Ward", "effects": [{"condition_immunities": ["iron_resolve"]}]}])
+
+
+def test_magical_weapons_and_boolean_contract():
+    items = json.loads(ITEMS_PATH.read_text())
+    expected = {"hollow_edge_blade", "blade_of_the_ashmark", "architects_edge", "veil_forged_greatblade"}
+    assert {r["id"] for r in items if any(e.get("magical") for e in r["effects"])} == expected
+    combat_traits(items)
+    with pytest.raises(ValueError, match="magical"):
+        combat_traits([{"name": "bad weapon", "effects": [{"type": "weapon", "magical": "true"}]}])

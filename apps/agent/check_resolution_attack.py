@@ -56,6 +56,9 @@ class AttackResult:
     bonus_damage_type: str | None = None
     # Conditions spent by this attack. Downstream removes them even on a miss because the roll
     # consumed their benefit.
+    rider_damage: int = 0
+    rider_damage_type: str | None = None
+    rider_ignores_resistance: bool = False
     consumed_conditions: tuple[str, ...] = ()
     sneak_attack_dice: str | None = None
     sneak_attack_raw_damage: int = 0
@@ -169,6 +172,9 @@ def resolve_attack(
     bonus_damage = 0
     bonus_damage_type: str | None = None
 
+    rider_damage = 0
+    rider_damage_type = None
+    rider_ignores_resistance = False
     sneak_attack_dice = None
     sneak_attack_raw_damage = 0
     if hit:
@@ -196,6 +202,21 @@ def resolve_attack(
             bonus_damage = dice_roll(effects.bonus_damage_dice, rng=rng).total
             bonus_damage_type = effects.bonus_damage_type
             damage += bonus_damage
+        authored_bonus = weapon.get("bonus_damage")
+        if authored_bonus is not None:
+            if effects.bonus_damage_dice is not None:
+                raise ValueError("multiple bonus damage sources")
+            bonus_damage = dice_roll(authored_bonus["dice"], rng=rng).total
+            bonus_damage_type = authored_bonus["damage_type"]
+            damage += bonus_damage
+        prepared = weapon.get("prepared_on_hit")
+        if prepared is not None and "damage" in prepared:
+            rider_damage = dice_roll(prepared["damage"], rng=rng).total
+            rider_damage_type = prepared["damage_type"]
+            rider_ignores_resistance = prepared["ignores_resistance"]
+            damage += rider_damage
+        bonus_damage = int(bonus_damage * damage_mult)
+        rider_damage = int(rider_damage * damage_mult)
         # Role damage multiplier (M4.7, story-001): scale the FINAL accumulated total (weapon +
         # crit + attribute + condition + rider) before the floor, so overkill below is computed
         # from the scaled number and instant-death/never-heal semantics still hold.
@@ -241,6 +262,9 @@ def resolve_attack(
         context=verdict.context,
         bonus_damage=bonus_damage,
         bonus_damage_type=bonus_damage_type,
+        rider_damage=rider_damage,
+        rider_damage_type=rider_damage_type,
+        rider_ignores_resistance=rider_ignores_resistance,
         consumed_conditions=consumed,
         sneak_attack_dice=sneak_attack_dice,
         sneak_attack_raw_damage=sneak_attack_raw_damage,

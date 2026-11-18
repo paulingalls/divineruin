@@ -9,6 +9,10 @@ def validate_encounter_references(encounter: dict, creature_ids=None) -> None:
     level = encounter.get("recommended_party_level")
     if type(level) is not int or not 1 <= level <= 20:
         raise ValueError(f"{label}: recommended_party_level must be an integer 1-20")
+    if "recommended_party_size" in encounter:
+        size = encounter["recommended_party_size"]
+        if type(size) is not int or size < 1:
+            raise ValueError(f"{label}: recommended_party_size must be a positive integer")
     enemies = encounter.get("enemies")
     if not isinstance(enemies, list) or not enemies:
         raise ValueError(f"{label}: enemies must be a nonempty list")

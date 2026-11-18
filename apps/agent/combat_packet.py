@@ -442,6 +442,9 @@ async def _resolve_one_packet(
         # the goblin-still-up snapshot from the first — or the DM narrates a fallen foe alive.
         last = next(s for s in reversed(attack_summaries) if "target_hp_status" in s)
         summary["attacks"] = attack_summaries
+        summary.pop("unholy_fortitude", None)
+        for component in ("bonus_damage", "rider_damage"):
+            summary[component] = sum(s.get(component, 0) for s in attack_summaries)
         if movement:
             summary.update(
                 moved_ft=sum(s["moved_ft"] for s in attack_summaries),

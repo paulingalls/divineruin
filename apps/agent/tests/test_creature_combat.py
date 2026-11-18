@@ -224,12 +224,8 @@ def test_dm_inventory_has_no_false_executables():
         "hollow_knight": {
             ("actives", "Command Lesser"),
             ("actives", "Dissolution Strike"),
-            ("actives", "Unholy Fortitude"),
-            ("attacks", "Corrupted Blade"),
             ("attacks", "Shield Slam"),
             ("hollow", "hollow"),
-            ("multiattack", "2 attacks with Corrupted Blade"),
-            ("passives", "Corrupted Resilience"),
             ("passives", "Fragment Voice"),
             ("passives", "Remnant Tactics"),
         },
@@ -266,6 +262,11 @@ def test_dm_inventory_has_no_false_executables():
                 authored["vulnerable_to"] = [
                     v for v in authored["vulnerable_to"] if v not in {"radiant", "fire", "psychic", "physical_damage"}
                 ]
+            if source["id"] == "hollow_knight" and name == "Dissolution Strike":
+                authored = {
+                    "name": name,
+                    "description": "On hit, 5 ft of ground becomes corrupted terrain for 1 minute.",
+                }
             assert effect["source"] == authored
         if source["id"] == "hollow_mawling":
             assert [a["name"] for a in enemy["action_pool"]].count("Lunge") == 1

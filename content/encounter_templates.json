@@ -783,5 +783,74 @@
         }
       }
     }
+  },
+  {
+    "id": "hollow_knight_boss",
+    "name": "The Hollowed Knight",
+    "description": "Armor scrapes over stone. Wet claws answer from the dark. A broken soldier raises its blade, and its mawlings close in.",
+    "difficulty": "hard",
+    "enemies": [
+      {
+        "id": "hollowed_knight",
+        "creature_id": "hollow_knight",
+        "role": "boss"
+      },
+      {
+        "id": "mawling_1",
+        "creature_id": "hollow_mawling",
+        "role": "minion"
+      },
+      {
+        "id": "mawling_2",
+        "creature_id": "hollow_mawling",
+        "role": "minion"
+      }
+    ],
+    "recommended_party_level": 14,
+    "scene_placement": {
+      "party_start": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "companion_start": {
+        "x": 0,
+        "y": 5,
+        "z": 0
+      },
+      "actors": {
+        "hollowed_knight": {
+          "x": 20,
+          "y": -10,
+          "z": 0
+        },
+        "mawling_1": {
+          "x": 20,
+          "y": 0,
+          "z": 0
+        },
+        "mawling_2": {
+          "x": 20,
+          "y": 10,
+          "z": 0
+        }
+      },
+      "locations": {},
+      "zones": {
+        "hollowed_knight_corruption_aura": {
+          "center_id": "hollowed_knight",
+          "radius_ft": 10
+        },
+        "mawling_1_corruption_aura": {
+          "center_id": "mawling_1",
+          "radius_ft": 5
+        },
+        "mawling_2_corruption_aura": {
+          "center_id": "mawling_2",
+          "radius_ft": 5
+        }
+      }
+    },
+    "recommended_party_size": 2
   }
 ]

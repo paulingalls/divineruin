@@ -20,12 +20,14 @@ import db_queries
 import mode_tools
 from companion_profiles import get_companion_profile
 from creation_rules import build_character_data
+from encounter_budget import calculate_encounter_budget
 from progression_tools import _award_xp_core
 from rules_engine import XP_FOR_LEVEL, attribute_modifier
 from session_data import CompanionState
 
 TEMPLATES = json.loads((CONTENT_ROOT / "content/encounter_templates.json").read_text())
 TARGETS = {
+    "hollow_knight_boss": (14, "hard", [("hollow_knight", "boss", 1), ("hollow_mawling", "minion", 2)]),
     "hollow_mawling_pack": (
         10,
         "moderate",
@@ -405,3 +407,20 @@ async def assert_catalog_grapple_release(started):
     assert player is not None and ally is not None
     assert not conditions.has_condition(player.conditions, "grappled")
     assert next(c for c in ally.conditions if c["type"] == "grappled")["source"] == "mawling_2"
+
+
+def assert_strength(template, catalog):
+    level = template["recommended_party_level"]
+    report = calculate_encounter_budget(template["enemies"], level)
+    assert not report["too_many_bosses"], "too_many_bosses"
+    assert not report["all_minion"], "all_minion"
+    ceiling = (
+        "standard"
+        if template["difficulty"] != "hard"
+        else "boss"
+        if any(r["role"] == "boss" for r in template["enemies"])
+        else "tough"
+    )
+    assert report["total"] <= report["thresholds"][ceiling], "difficulty budget"
+    max_tier = 1 if level <= 2 else 2 if level <= 8 else 3 if level <= 14 else 4
+    assert all(catalog[r["creature_id"]]["tier"] <= max_tier for r in template["enemies"]), "tier ceiling"

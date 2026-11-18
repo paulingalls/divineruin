@@ -280,6 +280,7 @@ class TestTheDoorIsTheOnlyDoor:
             # never leaves a participant at 0: an exit from the fallen state, not an entry to it.
             ("combat_death_save.py", "_request_death_save_locked"),
             ("combat_enemy_active.py", "heal"),
+            ("combat_fortitude.py", "try_fortitude"),
         }
 
     def test_is_fallen_is_set_in_one_place_and_cleared_in_one_place(self):

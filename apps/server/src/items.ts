@@ -53,6 +53,7 @@ const ADVANTAGE_VS = new Set(["prone", "push"]);
 const EFFECT_KEYS = new Set([
   "advantage_vs",
   "amount",
+  "magical",
   "bonus",
   "bonus_condition",
   "bonus_damage",
@@ -111,6 +112,8 @@ function parseItemEffect(raw: unknown, ctx: string): ItemEffect {
   if (e.description !== undefined && typeof e.description !== "string") {
     throw new Error(`${ctx}.description is not a string`);
   }
+  if ("magical" in e && typeof e.magical !== "boolean")
+    throw new Error(`${ctx}.magical is not a boolean`);
   validateEffectTokens(e, "condition_immunities", BLOCKABLE_CONDITIONS, ctx);
   validateEffectTokens(e, "save_advantages", SAVE_NAMES, ctx);
   validateEffectTokens(e, "advantage_vs", ADVANTAGE_VS, ctx);
