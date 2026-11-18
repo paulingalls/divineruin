@@ -125,6 +125,7 @@ class RestWalk(ArcWalk):
                 if kind == "long":
                     expected["hp"]["current"] = 30 + i
                     expected["last_rested_settlement_id"] = self.anchor
+                    expected["travel_hours_since_rest"] = 0
                 expected["resonance"]["current"] = 0
                 assert self.sd.member_state(pid).resonance.current == 0
             else:

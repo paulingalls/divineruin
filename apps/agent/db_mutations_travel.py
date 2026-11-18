@@ -1,12 +1,4 @@
-"""DB persistence for player travel state (M4.6b, story-003).
-
-Its own module (not db_mutations.py, already at the 500-line cap) keeps the travel feature
-cohesive — same shape as db_mutations_conditions / db_mutations_concentration. The in-flight
-journey lives in players.data JSONB at {travel_state} (migration 055): null when not travelling,
-or a dict recording an in-flight/lost journey ({destination, mode, wrong_area}). No new table.
-Written by the travel tool on arrival (cleared to null) or a lost segment (the journey dict);
-the read is free via db_queries.get_player. Accepts conn= for transaction participation.
-"""
+"""Transactional persistence for in-flight journeys and hours since a long rest."""
 
 import json
 
@@ -25,4 +17,20 @@ async def update_player_travel_state(
         "UPDATE players SET data = jsonb_set(data, '{travel_state}', $2::jsonb) WHERE player_id = $1",
         player_id,
         json.dumps(travel_state),
+    )
+
+
+async def add_travel_hours(player_id: str, hours: int, *, conn: asyncpg.Connection) -> None:
+    await conn.execute(
+        "UPDATE players SET data = jsonb_set(data, '{travel_hours_since_rest}', "
+        "to_jsonb(COALESCE((data->>'travel_hours_since_rest')::int, 0) + $2)) WHERE player_id = $1",
+        player_id,
+        hours,
+    )
+
+
+async def reset_travel_hours(player_id: str, *, conn: asyncpg.Connection) -> None:
+    await conn.execute(
+        "UPDATE players SET data = jsonb_set(data, '{travel_hours_since_rest}', '0'::jsonb) WHERE player_id = $1",
+        player_id,
     )

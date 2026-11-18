@@ -9,6 +9,7 @@ import ability_persistence
 import db
 import db_content_queries
 import db_mutations
+import db_mutations_travel
 import db_queries
 import db_session_queries
 import event_types as E
@@ -80,6 +81,8 @@ async def rest(context: RunContext[SessionData], rest_type: RestType) -> str:
                 if hp != players[pid]["hp"]["current"]:
                     await db_mutations.update_player_hp(pid, hp, conn=conn)
                 await ability_persistence.update_player_resources(pid, stamina=stamina, focus=focus, conn=conn)
+                if rest_type == "long":
+                    await db_mutations_travel.reset_travel_hours(pid, conn=conn)
                 await reset_resonance_on_rest(pid, conn=conn)
                 await recharge(pid, players[pid], rest_type, conn=conn)
         for pid in players:

@@ -80,7 +80,7 @@ def arrival_mocks(log, *, exit=True, requires=None, navigation="established_road
     mutations = MagicMock(
         update_player_location=AsyncMock(), upsert_map_progress=AsyncMock(), record_departure=AsyncMock()
     )
-    travel = MagicMock(update_player_travel_state=AsyncMock())
+    travel = MagicMock(update_player_travel_state=AsyncMock(), add_travel_hours=AsyncMock())
     queries = MagicMock(
         get_active_player_quests=AsyncMock(return_value=[]),
         get_player=AsyncMock(return_value={"player_id": "player_1", "conditions": []}),

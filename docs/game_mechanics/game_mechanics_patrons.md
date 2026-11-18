@@ -240,7 +240,7 @@ When casting a spell targeting a specific creature that has wronged you or allie
 **Domain:** Death, the afterlife, transition, the boundary between life and what follows
 
 **Layer 1 — Divine Gift: Death's Awareness**
-Sense when creatures within earshot are below 25% HP (DM reveals without check). Sense recent violent death in the area within the last day.
+Sense wounded creatures and party members in your location at or below 25% HP. The DM uses Death's Awareness from query_info patron to reveal their names without a check. The DM narrates signs of violent death in the area within the last day.
 
 **Layer 2 — Resonance Modifier: Threshold Magic**
 Spells cast on creatures at 0 HP (healing fallen allies, finishing dying enemies) generate **0 Resonance**. Magic touching the life-death boundary flows through Mortaen's domain naturally.
@@ -268,7 +268,7 @@ Spells cast on creatures at 0 HP (healing fallen allies, finishing dying enemies
 **Domain:** Sea, travel, exploration, boundaries, the unknown
 
 **Layer 1 — Divine Gift: Horizon Sense**
-Always know north, distance traveled today, approximate distance to nearest unexplored area. Advantage on Survival in unknown territory.
+The DM narrates north. Horizon Sense from query_info patron reveals travel hours since your last long rest and the nearest location you have never visited, measured in exit legs. Advantage on Survival in unknown territory.
 
 **Layer 2 — Resonance Modifier: Boundary Walker**
 Spells cast in locations you've never visited before generate **-1 Resonance** (minimum 0). The frontier Veil is more flexible — it hasn't been stressed by prior casting.
