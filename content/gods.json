@@ -278,7 +278,7 @@
         "name": "Hidden Knowledge",
         "clauses": [
           {
-            "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
+            "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
             "status": "pending",
             "resolution": "engine"
           }
@@ -289,7 +289,7 @@
         "name": "Hidden Knowledge",
         "clauses": [
           {
-            "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
+            "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
             "status": "pending",
             "resolution": "engine"
           }
@@ -491,7 +491,7 @@
             "implementation_id": "kaelen_tempered_resolve"
           },
           {
-            "effect": "Extra Attack (L10) grants +1 permanent weapon damage",
+            "effect": "Extra Attack (L10) grants +1d4 permanent weapon damage",
             "status": "pending",
             "resolution": "engine"
           }
@@ -508,7 +508,7 @@
             "implementation_id": "kaelen_tempered_resolve"
           },
           {
-            "effect": "Extra Attack (L10) grants +1 permanent weapon damage",
+            "effect": "Extra Attack (L10) grants +1d4 permanent weapon damage",
             "status": "pending",
             "resolution": "engine"
           }
@@ -525,7 +525,7 @@
             "implementation_id": "kaelen_tempered_resolve"
           },
           {
-            "effect": "Extra Attack (L10) grants +1 permanent weapon damage",
+            "effect": "Extra Attack (L10) grants +1d4 permanent weapon damage",
             "status": "pending",
             "resolution": "engine"
           }
@@ -979,7 +979,7 @@
         "name": "Honest Hustle",
         "clauses": [
           {
-            "effect": "Commerce Persuasion +3.",
+            "effect": "Commerce Persuasion +1.",
             "status": "pending",
             "resolution": "engine"
           },
@@ -1879,7 +1879,7 @@
         "name": "Nature’s Edge",
         "clauses": [
           {
-            "effect": "Crit strikes deal +1d6 natural-type damage (thorns, stone, lightning)",
+            "effect": "Crit strikes deal +1d4 natural-type damage (thorns, stone, lightning)",
             "status": "pending",
             "resolution": "engine"
           }
@@ -1901,7 +1901,7 @@
         "name": "Nature’s Edge",
         "clauses": [
           {
-            "effect": "Crit strikes deal +1d6 natural-type damage (thorns, stone, lightning)",
+            "effect": "Crit strikes deal +1d4 natural-type damage (thorns, stone, lightning)",
             "status": "pending",
             "resolution": "engine"
           }
@@ -2365,7 +2365,7 @@
             "resolution": "engine"
           },
           {
-            "effect": "Oath-keeping grants +1 to all d20 rolls when justice is at stake",
+            "effect": "Oath-keeping grants +2 to all d20 rolls when justice is at stake",
             "status": "pending",
             "resolution": "engine"
           }
@@ -2376,7 +2376,7 @@
         "name": "Absolute Authority",
         "clauses": [
           {
-            "effect": "Turn Undead/Hollow DC +2. Absolute authority against unnatural things",
+            "effect": "Turn Undead/Hollow DC +1. Absolute authority against unnatural things",
             "status": "pending",
             "resolution": "engine"
           }
@@ -2387,7 +2387,7 @@
         "name": "Absolute Authority",
         "clauses": [
           {
-            "effect": "Turn Undead/Hollow DC +2. Absolute authority against unnatural things",
+            "effect": "Turn Undead/Hollow DC +1. Absolute authority against unnatural things",
             "status": "pending",
             "resolution": "engine"
           }
@@ -2398,7 +2398,7 @@
         "name": "Truth in Disguise",
         "clauses": [
           {
-            "effect": "Deception for just causes (evidence, infiltration) gains +3. Valdris blesses deception in service of truth",
+            "effect": "Deception for just causes (evidence, infiltration) gains +1. Valdris blesses deception in service of truth",
             "status": "pending",
             "resolution": "engine"
           }
@@ -2409,7 +2409,7 @@
         "name": "Truth in Disguise",
         "clauses": [
           {
-            "effect": "Deception for just causes (evidence, infiltration) gains +3. Valdris blesses deception in service of truth",
+            "effect": "Deception for just causes (evidence, infiltration) gains +1. Valdris blesses deception in service of truth",
             "status": "pending",
             "resolution": "engine"
           }
@@ -2733,7 +2733,7 @@
             "resolution": "narrated"
           },
           {
-            "effect": "Animal Handling advantage in unexplored areas",
+            "effect": "Animal Handling +1 in unexplored areas",
             "status": "active",
             "resolution": "engine",
             "implementation_id": "nythera_uncharted_handling"
@@ -2750,7 +2750,7 @@
             "resolution": "narrated"
           },
           {
-            "effect": "Animal Handling advantage in unexplored areas",
+            "effect": "Animal Handling +1 in unexplored areas",
             "status": "active",
             "resolution": "engine",
             "implementation_id": "nythera_uncharted_handling"
