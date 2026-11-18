@@ -11,6 +11,7 @@ import db_queries
 from _gods_content import load_gods
 from db_errors import db_tool
 from game_events import publish_game_event
+from patron_deeds import mark_awarded
 from patron_favor import get_patron_tier
 from progression_tools import _award_divine_favor_core
 from session_data import SessionData
@@ -63,6 +64,8 @@ async def _record_patron_action_impl(context: RunContext[SessionData], action_id
             raise ToolError(str(exc)) from exc
         if grant is None:
             raise ToolError("Player has no patron favor")
+
+        await mark_awarded(player_id, action_id, conn=conn)
 
         result = {
             "action_id": action_id,
