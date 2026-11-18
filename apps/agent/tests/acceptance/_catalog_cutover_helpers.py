@@ -349,7 +349,7 @@ async def assert_catalog_effects(started):
     assert before is not None
     hp_before = ctx.userdata.combat_state.get_participant(pid).hp_current
     await combat_turn._declare_phase_impl(ctx, {"mawling_1": {"type": "attack", "action": "Lunge", "target_id": pid}})
-    with patch("check_resolution.dice_roll", return_value=_d20(13)), reference_damage():
+    with patch("check_resolution.dice_roll", return_value=_d20(20)), reference_damage():
         for _ in range(16):
             raw = await combat_turn._resolve_phase_impl(ctx)
             assert isinstance(raw, str), "reaction combat must continue"
