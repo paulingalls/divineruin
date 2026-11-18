@@ -101,16 +101,33 @@ def _modifier(value: object, path: str) -> None:
 def _readiness(fields: dict, path: str) -> None:
     if fields["status"] not in {"active", "pending"}:
         _fail(f"{path}.status", "unknown status")
-    if fields["resolution"] not in {"narrated", "engine"}:
+    _engine_resolution(fields, path)
+
+
+def _engine_resolution(fields: dict, path: str) -> None:
+    if "resolution" in fields and _text(fields["resolution"], f"{path}.resolution") not in {"narrated", "engine"}:
         _fail(f"{path}.resolution", "unknown resolution")
     if "implementation_id" in fields:
         _text(fields["implementation_id"], f"{path}.implementation_id")
     if (
         fields["status"] == "active"
-        and fields["resolution"] == "engine"
+        and fields.get("resolution") == "engine"
         and fields.get("implementation_id") not in engine_implementations()
     ):
         _fail(f"{path}.implementation_id", "active engine effect requires a registered implementation")
+
+
+def _layer_1(value: object, path: str) -> None:
+    gift = _object(value, path)
+    for field in ("id", "name", "effect", "trigger", "recharge", "status"):
+        if field not in gift:
+            _fail(f"{path}.{field}", "required field")
+        _text(gift[field], f"{path}.{field}")
+    if gift["status"] not in {"active", "narrated", "awaits_healing"}:
+        _fail(f"{path}.status", "unknown status")
+    if gift["recharge"] not in {"always", "per_encounter", "short_rest", "long_rest"}:
+        _fail(f"{path}.recharge", "unknown recharge")
+    _engine_resolution(gift, path)
 
 
 def _matrix(value: object, path: str) -> None:
@@ -154,6 +171,7 @@ def _validate_gods(entries: object) -> list[dict]:
         if patron in patrons:
             _fail(f"{patron}.god_id", "duplicate patron")
         patrons.add(patron)
+        _layer_1(row.get("layer_1_gift"), f"{patron}.layer_1_gift")
         path = f"{patron}.layer_2_resonance"
         layer = _object(row.get("layer_2_resonance"), path, {"name", "effect", "modifiers"})
         for field in ("name", "effect"):

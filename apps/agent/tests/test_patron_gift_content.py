@@ -12,7 +12,7 @@ EXPECTED_GIFTS = {
     "valdris": ("short_rest", "active"),
     "nythera": ("always", "narrated"),
     "orenthel": ("always", "awaits_healing"),
-    "zhael": ("long_rest", "awaits_rest"),
+    "zhael": ("long_rest", "active"),
 }
 GIFT_FIELDS = {"id", "name", "effect", "trigger", "recharge", "status"}
 EXPECTED_MECHANICS = {
@@ -32,6 +32,9 @@ def validate_gifts(rows):
         gift = row["layer_1_gift"]
         assert isinstance(gift, dict), row["god_id"]
         expected_fields = GIFT_FIELDS | ({"mechanics"} if row["god_id"] in EXPECTED_MECHANICS else set())
+        if row["god_id"] == "zhael":
+            expected_fields |= {"resolution", "implementation_id"}
+            assert gift["resolution"] == "engine" and gift["implementation_id"] == gift["id"] == "zhael_fates_thread"
         assert set(gift) == expected_fields, row["god_id"]
         assert all(isinstance(gift[field], str) and gift[field].strip() for field in GIFT_FIELDS), row["god_id"]
         if row["god_id"] in EXPECTED_MECHANICS:

@@ -48,11 +48,56 @@
       "sample": 2
     }
   },
+  "layer_1_cases": [
+    { "id": "legacy", "set": { "status": "active", "recharge": "per_encounter" } },
+    { "id": "awaits_healing", "set": { "status": "awaits_healing" } },
+    {
+      "id": "registered_engine",
+      "set": {
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "zhael_fates_thread",
+        "recharge": "long_rest"
+      }
+    },
+    { "id": "missing_status", "delete": "status", "field": "status" },
+    { "id": "invalid_status", "set": { "status": "invalid_status" }, "field": "status" },
+    { "id": "removed_status", "set": { "status": "awaits_rest" }, "field": "status" },
+    { "id": "removed_recharge", "set": { "recharge": "on_event" }, "field": "recharge" },
+    {
+      "id": "invalid_resolution",
+      "set": { "resolution": "invalid_resolution" },
+      "field": "resolution"
+    },
+    {
+      "id": "missing_id",
+      "set": { "status": "active", "resolution": "engine" },
+      "field": "implementation_id"
+    },
+    {
+      "id": "blank_id",
+      "set": { "status": "active", "resolution": "engine", "implementation_id": " " },
+      "field": "implementation_id"
+    },
+    {
+      "id": "unregistered_id",
+      "set": { "status": "active", "resolution": "engine", "implementation_id": "unregistered" },
+      "field": "implementation_id"
+    }
+  ],
   "valid": [
     {
       "id": "integer",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -304,6 +349,14 @@
       "id": "decimal_integer",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -555,6 +608,14 @@
       "id": "multiplier_min",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -806,6 +867,14 @@
       "id": "multiplier_max",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -1057,6 +1126,14 @@
       "id": "ability_recharge_short_rest",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -1308,6 +1385,14 @@
       "id": "complete_matrix",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -1570,6 +1655,14 @@
       "id": "registered_layer_three",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -1833,6 +1926,14 @@
       "id": "kaelen_tempered_resolve",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -2085,6 +2186,14 @@
       "id": "aelora_common_bond",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -2337,6 +2446,14 @@
       "id": "syrath_silent_casting",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -2589,6 +2706,14 @@
       "id": "nythera_uncharted_senses",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -2841,6 +2966,14 @@
       "id": "nythera_uncharted_handling",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -3095,6 +3228,14 @@
       "id": "null_layer_2_resonance",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": null,
         "layer_3_tier_abilities": {
           "acknowledged": {
@@ -3134,6 +3275,14 @@
       "id": "missing_layer_2_resonance",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_3_tier_abilities": {
           "acknowledged": {
             "id": "veythar_fixture_acknowledged",
@@ -3172,6 +3321,14 @@
       "id": "array_layer_2_resonance",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": [],
         "layer_3_tier_abilities": {
           "acknowledged": {
@@ -3211,6 +3368,14 @@
       "id": "null_layer_3_tier_abilities",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -3235,6 +3400,14 @@
       "id": "missing_layer_3_tier_abilities",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -3258,6 +3431,14 @@
       "id": "array_layer_3_tier_abilities",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -3282,6 +3463,14 @@
       "id": "missing_resonance_name",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "effect": "Synthetic condition.",
           "modifiers": [
@@ -3330,6 +3519,14 @@
       "id": "missing_resonance_effect",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "modifiers": [
@@ -3378,6 +3575,14 @@
       "id": "missing_resonance_modifiers",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition."
@@ -3420,6 +3625,14 @@
       "id": "blank_resonance_name",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": " ",
           "effect": "Synthetic condition.",
@@ -3469,6 +3682,14 @@
       "id": "number_resonance_name",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": 2,
           "effect": "Synthetic condition.",
@@ -3518,6 +3739,14 @@
       "id": "blank_resonance_effect",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": " ",
@@ -3567,6 +3796,14 @@
       "id": "number_resonance_effect",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": 2,
@@ -3616,6 +3853,14 @@
       "id": "empty_modifiers",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -3659,6 +3904,14 @@
       "id": "extra_resonance",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -3709,6 +3962,14 @@
       "id": "object_modifiers",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -3752,6 +4013,14 @@
       "id": "missing_modifier_kind",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -3800,6 +4069,14 @@
       "id": "missing_modifier_applies_to",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -3848,6 +4125,14 @@
       "id": "missing_modifier_value",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -3896,6 +4181,14 @@
       "id": "modifier_kindunknown",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -3945,6 +4238,14 @@
       "id": "modifier_applies_tounknown",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -3994,6 +4295,14 @@
       "id": "modifier_applies_tohealing",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -4043,6 +4352,14 @@
       "id": "modifier_extra1",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -4093,6 +4410,14 @@
       "id": "null_modifier",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -4136,6 +4461,14 @@
       "id": "flickering_damage_dice_string",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -4185,6 +4518,14 @@
       "id": "flickering_damage_dice_boolean",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -4234,6 +4575,14 @@
       "id": "flickering_damage_dice_fraction",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -4283,6 +4632,14 @@
       "id": "flickering_damage_dice_zero",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -4332,6 +4689,14 @@
       "id": "flickering_damage_dice_negative",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -4381,6 +4746,14 @@
       "id": "generation_delta_string",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -4430,6 +4803,14 @@
       "id": "generation_delta_boolean",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -4479,6 +4860,14 @@
       "id": "generation_delta_fraction",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -4528,6 +4917,14 @@
       "id": "generation_delta_zero",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -4577,6 +4974,14 @@
       "id": "generation_delta_positive",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -4626,6 +5031,14 @@
       "id": "ward_penalty_immunity_string",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -4675,6 +5088,14 @@
       "id": "ward_penalty_immunity_boolean",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -4724,6 +5145,14 @@
       "id": "ward_penalty_immunity_fraction",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -4773,6 +5202,14 @@
       "id": "ward_penalty_immunity_zero",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -4822,6 +5259,14 @@
       "id": "ward_penalty_immunity_negative",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -4871,6 +5316,14 @@
       "id": "ward_penalty_immunity_positive",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -4920,6 +5373,14 @@
       "id": "primal_multiplier_steps_string",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -4969,6 +5430,14 @@
       "id": "primal_multiplier_steps_boolean",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -5018,6 +5487,14 @@
       "id": "primal_multiplier_steps_fraction",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -5067,6 +5544,14 @@
       "id": "primal_multiplier_steps_zero",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -5116,6 +5601,14 @@
       "id": "primal_multiplier_steps_positive",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -5165,6 +5658,14 @@
       "id": "generation_override_string",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -5214,6 +5715,14 @@
       "id": "generation_override_boolean",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -5263,6 +5772,14 @@
       "id": "generation_override_fraction",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -5312,6 +5829,14 @@
       "id": "generation_override_negative",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -5361,6 +5886,14 @@
       "id": "generation_multiplier_string",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -5410,6 +5943,14 @@
       "id": "generation_multiplier_boolean",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -5459,6 +6000,14 @@
       "id": "generation_multiplier_fraction",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -5508,6 +6057,14 @@
       "id": "generation_multiplier_zero",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -5557,6 +6114,14 @@
       "id": "generation_multiplier_negative",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -5606,6 +6171,14 @@
       "id": "generation_multiplier_positive",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -5655,6 +6228,14 @@
       "id": "echo_roll_choice_string",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -5704,6 +6285,14 @@
       "id": "echo_roll_choice_boolean",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -5753,6 +6342,14 @@
       "id": "echo_roll_choice_fraction",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -5802,6 +6399,14 @@
       "id": "echo_roll_choice_zero",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -5851,6 +6456,14 @@
       "id": "echo_roll_choice_negative",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -5900,6 +6513,14 @@
       "id": "choice_one",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -5949,6 +6570,14 @@
       "id": "missing_acknowledged",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -5990,6 +6619,14 @@
       "id": "null_acknowledged",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -6032,6 +6669,14 @@
       "id": "missing_devoted",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -6073,6 +6718,14 @@
       "id": "null_devoted",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -6115,6 +6768,14 @@
       "id": "missing_exalted",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -6156,6 +6817,14 @@
       "id": "null_exalted",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -6198,6 +6867,14 @@
       "id": "missing_ability_id",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -6246,6 +6923,14 @@
       "id": "blank_ability_id",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -6295,6 +6980,14 @@
       "id": "number_ability_id",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -6344,6 +7037,14 @@
       "id": "missing_ability_name",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -6392,6 +7093,14 @@
       "id": "blank_ability_name",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -6441,6 +7150,14 @@
       "id": "number_ability_name",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -6490,6 +7207,14 @@
       "id": "missing_ability_effect",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -6538,6 +7263,14 @@
       "id": "blank_ability_effect",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -6587,6 +7320,14 @@
       "id": "number_ability_effect",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -6636,6 +7377,14 @@
       "id": "missing_ability_recharge",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -6684,6 +7433,14 @@
       "id": "blank_ability_recharge",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -6733,6 +7490,14 @@
       "id": "number_ability_recharge",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -6782,6 +7547,14 @@
       "id": "ability_idother_wrong",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -6831,6 +7604,14 @@
       "id": "ability_idveythar_Bad",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -6880,6 +7661,14 @@
       "id": "ability_extraTrue",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -6930,6 +7719,14 @@
       "id": "extra_tier",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -6987,6 +7784,14 @@
       "id": "layer_four",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -7036,6 +7841,14 @@
       "id": "missing_layer_four",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -7084,6 +7897,14 @@
       "id": "missing_ability_status",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -7132,6 +7953,14 @@
       "id": "missing_ability_resolution",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -7180,6 +8009,14 @@
       "id": "ability_status_unknown",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -7229,6 +8066,14 @@
       "id": "ability_status_blank",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -7278,6 +8123,14 @@
       "id": "ability_status_null",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -7327,6 +8180,14 @@
       "id": "ability_status_number",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -7376,6 +8237,14 @@
       "id": "ability_resolution_unknown",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -7425,6 +8294,14 @@
       "id": "ability_resolution_blank",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -7474,6 +8351,14 @@
       "id": "ability_resolution_null",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -7523,6 +8408,14 @@
       "id": "ability_resolution_number",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -7572,6 +8465,14 @@
       "id": "ability_recharge_unknown",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -7621,6 +8522,14 @@
       "id": "ability_recharge_null",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -7670,6 +8579,14 @@
       "id": "ability_active_engine",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -7719,6 +8636,14 @@
       "id": "missing_archetype",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -7972,6 +8897,14 @@
       "id": "unknown_archetype",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -8263,6 +9196,14 @@
       "id": "replaced_archetype",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -8527,6 +9468,14 @@
       "id": "matrix_shape_[]",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -8576,6 +9525,14 @@
       "id": "matrix_shape_1",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -8625,6 +9582,14 @@
       "id": "matrix_shape_matrix",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -8674,6 +9639,14 @@
       "id": "row_shape_None",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -8912,6 +9885,14 @@
       "id": "row_shape_[]",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -9150,6 +10131,14 @@
       "id": "row_shape_1",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -9388,6 +10377,14 @@
       "id": "row_type_0",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -9652,6 +10649,14 @@
       "id": "row_type_1",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -9916,6 +10921,14 @@
       "id": "row_name_0",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -10180,6 +11193,14 @@
       "id": "row_name_1",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -10444,6 +11465,14 @@
       "id": "row_clauses_0",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -10686,6 +11715,14 @@
       "id": "row_clauses_1",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -10928,6 +11965,14 @@
       "id": "row_clauses_2",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -11170,6 +12215,14 @@
       "id": "missing_row_type",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -11433,6 +12486,14 @@
       "id": "missing_row_name",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -11696,6 +12757,14 @@
       "id": "missing_row_clauses",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -11937,6 +13006,14 @@
       "id": "extra_row_field",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -12202,6 +13279,14 @@
       "id": "clause_shape",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -12462,6 +13547,14 @@
       "id": "clause_effect_0",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -12726,6 +13819,14 @@
       "id": "clause_effect_1",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -12990,6 +14091,14 @@
       "id": "clause_status_0",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -13254,6 +14363,14 @@
       "id": "clause_status_1",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -13518,6 +14635,14 @@
       "id": "clause_resolution_0",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -13782,6 +14907,14 @@
       "id": "clause_resolution_1",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -14046,6 +15179,14 @@
       "id": "clause_implementation_id_0",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -14311,6 +15452,14 @@
       "id": "clause_implementation_id_1",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -14576,6 +15725,14 @@
       "id": "missing_clause_effect",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -14839,6 +15996,14 @@
       "id": "missing_clause_status",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -15102,6 +16267,14 @@
       "id": "missing_clause_resolution",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -15365,6 +16538,14 @@
       "id": "extra_clause_field",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -15630,6 +16811,14 @@
       "id": "engine_missing",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -15894,6 +17083,14 @@
       "id": "engine_blank",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -16159,6 +17356,14 @@
       "id": "engine_unknown",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -16424,6 +17629,14 @@
       "id": "layer_three_unknown_id",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -16691,6 +17904,14 @@
       "field": "layer_4_synergy_matrix",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",
@@ -16740,6 +17961,14 @@
       "field": "layer_4_synergy_matrix.warrior.clauses[1].implementation_id",
       "profile": {
         "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "narrated",
+          "recharge": "always"
+        },
         "layer_2_resonance": {
           "name": "Synthetic resonance",
           "effect": "Synthetic condition.",

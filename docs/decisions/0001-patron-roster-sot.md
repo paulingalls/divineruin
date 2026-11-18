@@ -178,15 +178,15 @@ statements above. Layers 2-4 remain future work. The original migration and
 out-of-scope sections record the scope of sprint-003 story-006.
 
 Authored gifts now live in `content/gods.json`. Each `layer_1_gift` has six required,
-nonempty string fields and an optional `mechanics` block. The executable authority
-for the shape, enums, and exact mechanics is
-`apps/agent/tests/test_patron_gift_content.py`.
+nonempty string fields. Both runtime loaders validate readiness metadata.
+An active engine gift requires a registered implementation ID. The gift content
+test pins authored mechanics.
 
 ```text layer_1_gift
 fields: id, name, effect, trigger, recharge, status
-optional_fields: mechanics
-recharge: always, per_encounter, short_rest, long_rest, on_event
-status: active, awaits_binding, awaits_rest, awaits_terrain, awaits_healing, narrated
+optional_fields: mechanics, resolution, implementation_id
+recharge: always, per_encounter, short_rest, long_rest
+status: active, awaits_healing, narrated
 mechanics_kinds: skill_check_bonus, low_hp_surge
 grant: Only an active or narrated gift is granted; an awaits_* gift is the god's promise, not yet a power.
 ```

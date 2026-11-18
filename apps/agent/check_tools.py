@@ -31,6 +31,7 @@ import db_queries
 import dice
 import event_types as E
 import rules_engine
+import zhael_fate
 from check_discovery import _check_discover_impl
 from check_payloads import CheckPayload
 from check_skill import _check_skill_run
@@ -67,7 +68,8 @@ async def check(
     Stealth check when a watcher might notice, using that watcher's difficulty;
     failure reveals the player. Casting or attacking also ends concealment.
 
-    Narrate the result from narrative_hint / narrative_cue. Never speak raw numbers or DCs."""
+    Narrate the result from narrative_hint / narrative_cue. Follow dm_cue when offered Fate's
+    Thread. For other checks, never speak raw numbers or DCs."""
     mode, kwargs = check_payloads.to_impl_args(roll)
     return await _check_impl(context, mode, **kwargs)
 
@@ -146,6 +148,9 @@ async def _check_skill_impl(
             conn=conn,
             effects=effects,
         )
+    if effects.fate_offer is not None:
+        context.userdata.fate_offer = effects.fate_offer
+        return response
     await effects.flush(context.userdata, publish=publish_game_event)
     return response
 
@@ -182,12 +187,41 @@ async def _check_save_impl(
     except ValueError as e:
         raise ToolError(str(e)) from e
 
+    d20 = result.d20
+    followers = await zhael_fate.eligible_followers(session, queries=queries, roller=(player_id, player)) if d20 else ()
+    if d20 is not None and followers:
+
+        async def resume(kept):
+            async with session.combat_state_lock:
+                if player_id not in session.present_member_ids:
+                    return zhael_fate.cancel(session, "The saving throw's roller is no longer present.")
+                return zhael_fate.Resumed(
+                    json.loads(await _finish_save(session, player_id, kept, conditions_mutations, db_mod, resumed=True))
+                )
+
+        offer = zhael_fate.make_offer(
+            "save",
+            player_id,
+            result,
+            followers,
+            numbers=lambda r: (r.roll, r.total),
+            reroll=lambda: check_resolution_save._save_result(result, d20.roll(), effect_on_fail),
+            resume=resume,
+        )
+        session.fate_offer = offer
+        return json.dumps(offer.response())
+
+    return await _finish_save(session, player_id, result, conditions_mutations, db_mod)
+
+
+async def _finish_save(session, player_id, result, conditions_mutations, db_mod, *, resumed=False):
     # Consume the single-use beneficial die (M4.8 story-003): a player-initiated save spends Blessed/
     # Inspired's +1d4, so remove the signalled conditions and persist. One write (no competing
     # mutation here), so no transaction is needed.
     consumed_state = None
     if result.consumed_conditions:
-        session.validate_acting_player(player_id)
+        if not resumed:
+            session.validate_acting_player(player_id)
         consumed_state = await consume_beneficial_conditions(
             player_id,
             result.consumed_conditions,
@@ -198,6 +232,9 @@ async def _check_save_impl(
 
     if consumed_state is not None:
         session.combat_state = consumed_state
+
+    if resumed:
+        zhael_fate.effects_committed(session)
 
     await publish_game_event(
         session.room,
@@ -215,7 +252,7 @@ async def _check_save_impl(
     )
 
     outcome = "success" if result.success else "failure"
-    session.record_event(f"Saving throw ({save_type} DC {dc}): {outcome}")
+    session.record_event(f"Saving throw ({result.save_type} DC {result.dc}): {outcome}")
 
     response = {
         "outcome": outcome,

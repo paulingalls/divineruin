@@ -3181,7 +3181,9 @@
       "effect": "After seeing any d20 result, force a reroll and choose which result stands.",
       "trigger": "After you see your d20 result or someone else's.",
       "recharge": "long_rest",
-      "status": "awaits_rest"
+      "status": "active",
+      "resolution": "engine",
+      "implementation_id": "zhael_fates_thread"
     },
     "layer_2_resonance": {
       "name": "Pattern Weaving",

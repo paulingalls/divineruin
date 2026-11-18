@@ -12,6 +12,7 @@ import character_spells
 import check_resolution_attack
 import check_resolution_save
 import choir_encounter
+import combat_fate
 import combat_hold
 import combat_hollow_resonance
 import combat_phase
@@ -29,6 +30,7 @@ import resonance_events
 import spell_casting
 import veil_ward_events
 import ward_resolution
+import zhael_fate
 from combat_ability import AbilityCastOutcome
 from combat_end import _end_combat_finish
 from combat_events import EventSink, emit_or_publish, isolated_publish
@@ -43,7 +45,7 @@ logger = logging.getLogger("divineruin.tools")
 
 
 async def _resolve_phase_locked(
-    context: RunContext[SessionData],
+    context: RunContext[SessionData] | SessionData,
     *,
     mutations=db_mutations,
     queries=db_queries,
@@ -55,9 +57,11 @@ async def _resolve_phase_locked(
     db_mod=db,
     cast_resolver=spell_casting,
     character_spells_mod=character_spells,
+    kept: check_resolution_attack.D20CheckCore | None = None,
+    resuming: bool = False,
 ) -> str | tuple:
     logger.info("resolve_phase called")
-    session: SessionData = context.userdata
+    session = context if isinstance(context, SessionData) else context.userdata
 
     cs = _require_combat(session)
     if cs.beat not in (combat_phase.PhaseBeat.RESOLUTION, combat_phase.PhaseBeat.NARRATION):
@@ -86,61 +90,55 @@ async def _resolve_phase_locked(
     packet_summaries: list[dict] = []
     async with phase_transaction_with_recovery(session, cs, db_mod=db_mod, mutations=mutations) as conn:
         if resolving_allies:
-            # Reopen declaration on malformed persisted actions instead of retrying them forever.
-            try:
-                state, adv = combat_phase.advance_combat_phase(cs)
-                combat_spatial_declarations.preflight(state, [(p.actor_id, p.declaration) for p in adv.packets])
-            except ValueError as e:
-                raise PrevalidationRefusal(ToolError(str(e))) from e
+            if cs.ally_continuation is None:
+                # Reopen declaration on malformed persisted actions instead of retrying them forever.
+                try:
+                    state, adv = combat_phase.advance_combat_phase(cs)
+                    combat_spatial_declarations.preflight(state, [(p.actor_id, p.declaration) for p in adv.packets])
+                except ValueError as e:
+                    raise PrevalidationRefusal(ToolError(str(e))) from e
 
-            # Defend protects the whole phase, including attacks earlier in initiative.
-            for packet in adv.packets:
-                if packet.declaration.type is not DeclarationType.DEFEND or not packet.declaration.ac_bonus:
-                    continue
-                defender = state.get_participant(packet.actor_id)
-                if defender is not None and not defender.is_fallen:
-                    state.ac_modifiers[packet.actor_id] = packet.declaration.ac_bonus
+                # Defend protects the whole phase, including attacks earlier in initiative.
+                for packet in adv.packets:
+                    if packet.declaration.type is not DeclarationType.DEFEND or not packet.declaration.ac_bonus:
+                        continue
+                    defender = state.get_participant(packet.actor_id)
+                    if defender is not None and not defender.is_fallen:
+                        state.ac_modifiers[packet.actor_id] = packet.declaration.ac_bonus
 
-            # Refuse unaffordable abilities before any actor writes HP; recovery reopens declaration.
-            try:
-                players_by_id = await _prevalidate_ability_focus(
-                    session,
-                    state,
-                    adv,
-                    conn=conn,
-                    queries=queries,
-                    cast_resolver=cast_resolver,
-                    character_spells_mod=character_spells_mod,
-                )
-            except ToolError as error:
-                raise PrevalidationRefusal(error) from error
-
-            ally_packets, enemy_packets = combat_phase.partition_packets(state, adv.packets)
-            from combat_turn_start import ally_turns, turn_start
-
-            for actor, packet in ally_turns(state, ally_packets):
-                if actor is not None:
-                    summary = await turn_start(session, state, actor, conn=conn, sink=sink, **packet_deps)
-                    if summary is not None:
-                        packet_summaries.append(summary)
-                if packet is None:
-                    continue
-                if actor is not None and not actor.is_ally:
-                    packet_summaries.append({"actor_id": actor.id, "resolved": False, "reason": "actor became hostile"})
-                    continue
-                packet_summaries.append(
-                    await _resolve_one_packet(
+                # Refuse unaffordable abilities before any actor writes HP; recovery reopens declaration.
+                try:
+                    players_by_id = await _prevalidate_ability_focus(
                         session,
                         state,
-                        packet,
-                        **packet_deps,
+                        adv,
                         conn=conn,
-                        sink=sink,
-                        cast_outcome=cast_outcome,
-                        players_by_id=players_by_id,
+                        queries=queries,
+                        cast_resolver=cast_resolver,
+                        character_spells_mod=character_spells_mod,
                     )
-                )
-            state.held_actions = combat_hold.hold_enemy_packets(state, enemy_packets)
+                except ToolError as error:
+                    raise PrevalidationRefusal(error) from error
+
+                ally_packets, enemy_packets = combat_phase.partition_packets(state, adv.packets)
+                cursor = combat_fate.begin_ally_pass(state, ally_packets, enemy_packets, players_by_id)
+            else:
+                state = copy.deepcopy(cs)
+                cursor = state.ally_continuation
+                assert cursor is not None
+                players_by_id = await combat_fate.lock_remaining_players(cursor, queries, conn)
+
+            followers = await zhael_fate.eligible_followers(session, queries=queries, conn=conn)
+            packet_summaries = await combat_fate.run_ally_pass(
+                session,
+                state,
+                cursor,
+                followers,
+                players_by_id,
+                kept=kept,
+                resolve_packet=_resolve_one_packet,
+                packet_deps={**packet_deps, "conn": conn, "sink": sink, "cast_outcome": cast_outcome},
+            )
         else:
             state = copy.deepcopy(cs)
             packet_summaries = await combat_hold.pump(
@@ -191,6 +189,33 @@ async def _resolve_phase_locked(
     else:
         assert end_data is not None
         handoff = _end_combat_finish(session, state, ended_outcome, end_data)
+    if resuming:
+        zhael_fate.effects_committed(session)
+    offer = None
+    if state.ally_continuation is not None:
+
+        async def resume(selected):
+            async with session.combat_state_lock:
+                packet = await _resolve_phase_locked(
+                    session,
+                    mutations=mutations,
+                    queries=queries,
+                    resolver=resolver,
+                    save_resolver=save_resolver,
+                    concentration_break_mod=concentration_break_mod,
+                    resonance_mutations=resonance_mutations,
+                    resonance_events_mod=resonance_events_mod,
+                    db_mod=db_mod,
+                    cast_resolver=cast_resolver,
+                    character_spells_mod=character_spells_mod,
+                    kept=selected,
+                    resuming=True,
+                )
+                assert isinstance(packet, str)
+                return zhael_fate.Resumed(json.loads(packet), paused=session.fate_offer is not None)
+
+        offer = combat_fate.offer_held_attack(state.ally_continuation, followers, resume)
+        session.fate_offer = offer
     for m in session.party.members:
         if m.player_id in pending_by_member:
             m.resonance.current = pending_by_member[m.player_id]
@@ -233,11 +258,17 @@ async def _resolve_phase_locked(
         "round": state.round_number,
         "packets": packet_summaries,
         "participants": _participant_roster(state.participants),
-        "next": combat_wrap.next_envelope(state),
+        "next": (
+            {"phase": state.beat, "verbs": ["activate"], "waiting_on": None}
+            if offer is not None
+            else combat_wrap.next_envelope(state)
+        ),
         "death_saves_due": wrap.death_saves_due if wrap else [],
         "exhaustion_narration": exhaustion_narration,
         "legendary_available": wrap_adv.legendary_available,
     }
+    if offer is not None:
+        response.update(offer.response())
     if facts := combat_wrongdoing.aggression_facts(state):
         response["wrongdoing"] = facts
     logger.info(

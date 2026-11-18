@@ -89,7 +89,10 @@ async def test_real_patron_gift_round_trip_from_gods_content(patron_id):
         response = json.loads(await query_tools._query_info_impl(context, "patron"))
 
     assert response["favor_actions"] == patron["favor_actions"]
-    assert response["layer_1_gift"] == patron["layer_1_gift"]
+    expected = patron["layer_1_gift"]
+    if patron_id == "zhael":
+        expected = {**expected, "available": True, "spent": False}
+    assert response["layer_1_gift"] == expected
     rows = response["abilities"]
     assert len(rows) == 3
     for row, tier in zip(rows, ("acknowledged", "devoted", "exalted"), strict=True):
