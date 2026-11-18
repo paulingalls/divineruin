@@ -85,8 +85,10 @@ async def test_only_the_current_follower_can_spend(dev_db_pool, favor, cause):
 
 async def test_pending_and_always_on_refuse_without_writes(dev_db_pool, monkeypatch):
     import copy
+    from functools import partial
 
     import patron_ability_tools
+    import query_tools
     from _gods_content import _validate_gods
 
     async with AbilityWalk(dev_db_pool) as w:
@@ -99,7 +101,10 @@ async def test_pending_and_always_on_refuse_without_writes(dev_db_pool, monkeypa
         monkeypatch.setattr(patron_ability_tools, "load_gods", lambda: rows)
         assert "always-on" in await w.use(LIBRARY, error=True)
         assert await w.row() == before
-        ability = next(a for a in patron_ability_tools.project_abilities(before, rows[0]) if a["id"] == LIBRARY)
+        monkeypatch.setattr(
+            query_tools, "_query_patron_impl", partial(query_tools._query_patron_impl, gods_loader=lambda: rows)
+        )
+        ability = next(a for a in await w.abilities() if a["id"] == LIBRARY)
         assert ability["eligible"] and not ability["available"] and "always-on" in ability["reason"]
 
 
