@@ -30,3 +30,12 @@ def neglect_decay(favor: dict, now: datetime) -> int:
     if not timestamps:
         return 0
     return 5 if now - max(timestamps) >= timedelta(days=7) else 0
+
+
+def evaluate_patron_alignment(deeds: dict[str, str], patron: dict) -> int:
+    return sum(
+        row["amount"]
+        for category in ("positive", "negative")
+        for row in patron["favor_actions"][category]
+        if deeds.get(row["action"]) == "pending"
+    )

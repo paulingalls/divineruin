@@ -84,7 +84,8 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 - [ ] Each patron's Layer 1 passive is mechanically distinct and always active
 - [x] Layer 2 Resonance modifiers integrate with Phase 3 Magic Resonance calculations (sprint patron-favor-mini)
   <!-- Evidence (sprint patron-favor-mini): all 10 patrons through the production cast path. Generation modifiers are in test_patron_resonance_generation.py; the Syrath concealment and Valdris wrongdoing producers are in test_syrath_valdris_producers.py; Veythar Flickering dice, Aelora ward harmony and Zhael's chosen Echo are in test_patron_resonance_effects.py. -->
-- [ ] `evaluate_patron_alignment` produces positive delta for aligned actions and negative for misaligned
+- [x] `evaluate_patron_alignment` produces positive delta for aligned actions and negative for misaligned
+  <!-- Evidence: test_patron_alignment_session.py::test_due_once_and_recent_context and ::test_pause_then_negative_judgment drive real combat tools and the running session loop, persisting Kaelen +2 for victory and -3 for flight. -->
 - [x] Favor tiers transition correctly: Acknowledged at 0%, Devoted at 40%, Exalted at 75% of the patron's maximum (Sprint-101)
 - [x] Favor can decay (not just grow) — neglecting patron values reduces favor over time
   <!-- Evidence: test_favor_decay_hydration.py checks fresh-session persistence, event delivery, join, and handback; use-game-events.character.test.ts checks the shared event fixture on the client. -->
@@ -92,8 +93,8 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
   <!-- Evidence (sprint patron-favor-mini): test_unbound_path.py and test_unbound_commit_integrity.py cover exact Resonance in query_info, the once-per-encounter Raw Channeling push via activate, and once-per-session Veil Mastery. Tier-gating by autonomy milestones belongs to M8.3. -->
 - [x] `content/gods.json` validates with all 10 complete patron profiles (sprint patron-favor-mini)
   <!-- Evidence (sprint patron-favor-mini): the Python loader and the TS validateGods fail loudly on the shared invalid corpus; Layer 4 stays reserved null until M8.3. -->
-- [ ] Background process calls `evaluate_patron_alignment` on 15-30 minute heartbeat
-  <!-- Deferred by the human (2026-11-04) to its own sprint, patron-alignment-heartbeat, with the evaluate_patron_alignment AC above: no production producer records judgeable deeds yet. Decay stays at hydration time; the heartbeat must not apply decay. -->
+- [x] Background process calls `evaluate_patron_alignment` on 15-30 minute heartbeat
+  <!-- Evidence: test_patron_alignment_session.py exercises the real BackgroundProcess at 1199/1200 seconds, post-commit publication, pause/resume, transient rollback/retry, persisted re-entry/current patron, present-party filtering and host handoff. Decay remains hydration-only. -->
 - [x] DB schema supports patron selection, favor tracking, and tier state (sprint patron-favor-mini)
   <!-- Evidence: The lead chose the existing players.data->'divine_favor' JSONB object over player_patron/patron_favor_state tables. patron stores selection; level/max store favor; get_patron_tier derives tier on reload. test_favor_tier_persistence.py verifies the committed round trip. -->
 - [x] Tests cover favor accumulation, decay, tier transitions (up and down), and Unbound Path mechanics (sprint patron-favor-mini)
