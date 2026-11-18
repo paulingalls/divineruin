@@ -4,7 +4,7 @@ import asyncpg
 import pytest
 from _unbound_path_fixtures import row
 from _unbound_path_fixtures import world as world
-from _zhael_fate_skills_fixtures import DESTINATION, FATE, INSPIRED, ORIGIN, quantity, quest_stage
+from _zhael_fate_skills_fixtures import DESTINATION, FATE, INSPIRED, ORIGIN, SKILL, quantity, quest_stage
 from _zhael_fate_skills_fixtures import party as party
 from _zhael_fate_skills_fixtures import travel_quest as travel_quest
 from acceptance._capstone_helpers import _d20
@@ -66,3 +66,27 @@ async def test_travel_settlement_rolls_back_then_retires_before_publication(worl
     assert session.location_id == DESTINATION and agent._agent_type == "wilderness"
     assert session.session_locations_visited.count(DESTINATION) == 1
     assert session.session_quests_progressed == [travel_quest]
+
+
+async def test_departure_while_settlement_waits_for_roller(world, party, monkeypatch):
+    call, _ = party
+    session = world.ctx.userdata
+    guest = world.ids[1]
+    with patch("check_resolution.dice_roll", return_value=_d20(20)):
+        offered = await call(1, "check", roll=SKILL)
+    assert offered["fate_offer"]["roller_id"] == guest
+    before = await row(world)
+    original = db_queries.get_player
+
+    async def revoke_after_lock(player_id, **kwargs):
+        player = await original(player_id, **kwargs)
+        if player_id == guest and kwargs.get("for_update"):
+            session.multiplayer_owner.lifecycle.mark_departed(guest)
+        return player
+
+    monkeypatch.setattr(db_queries, "get_player", revoke_after_lock)
+    result = (await call(0, "query_info", kind="inventory"))["settled_fate"]
+    assert result["outcome"] == "cancelled", result
+    assert await row(world) == before
+    assert session.fate_offer is None
+    assert not published_payloads(session.room)
