@@ -89,6 +89,8 @@ async def _travel_impl(
 ) -> str:
     logger.info("travel: destination=%s, mode=%s, hours=%d, forced_march=%s", destination_id, mode, hours, forced_march)
     _validate_id(destination_id, "destination_id")
+    if hours < 1:
+        raise ToolError("Travel hours must be at least 1.")
     mode_lower = mode.lower()
     # Fail loud off-catalog the same way the pure engine does — an unknown mode is a caller bug.
     try:
@@ -141,6 +143,11 @@ async def _travel_impl(
         forced_march=forced_march,
         raw_die=roll.roll if roll else None,
     )
+
+    async with db_mod.transaction() as conn:
+        session.validate_acting_player(speaker_id)
+        for member_id in member_ids:
+            await travel_mutations.add_travel_hours(member_id, hours, conn=conn)
 
     # Conditions write-back: the exhaustion producer AND the single-use beneficial-die consume share
     # ONE persist (M4.8 story-010 — two saves would clobber each other). Both rebuild the full

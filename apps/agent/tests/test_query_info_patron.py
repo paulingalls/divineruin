@@ -37,7 +37,7 @@ async def test_bound_patron_reports_standing_and_authored_actions():
         "effect": "Guard the boundary.",
         "trigger": "When bound",
         "recharge": "always",
-        "status": "narrated",
+        "status": "active",
     }
 
     def catalog():
@@ -77,7 +77,7 @@ async def test_bound_patron_reports_standing_and_authored_actions():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("patron_id", [p["god_id"] for p in load_gods()])
-async def test_real_patron_gift_round_trip_from_gods_content(patron_id):
+async def test_real_patron_gift_round_trip_from_gods_content(patron_id, monkeypatch):
     context = make_context()
     patron = next(row for row in load_gods() if row["god_id"] == patron_id)
     queries = MagicMock()
@@ -85,6 +85,11 @@ async def test_real_patron_gift_round_trip_from_gods_content(patron_id):
         return_value={"class": "warrior", "divine_favor": {"patron": patron["god_id"], "level": 0, "max": 100}}
     )
 
+    monkeypatch.setattr("db_activity_queries.get_player_map_progress", AsyncMock(return_value=[]))
+    monkeypatch.setattr(
+        "db_content_queries.get_all_locations",
+        AsyncMock(return_value={context.userdata.location_id: {"name": "Guild Hall"}}),
+    )
     with patch("query_tools.db_queries.get_player", queries.get_player):
         response = json.loads(await query_tools._query_info_impl(context, "patron"))
 
@@ -195,8 +200,8 @@ def test_emitted_query_info_schema_advertises_patron():
     assert 'kind="patron"' in tool["description"]
     assert "only its active clauses apply" in tool["description"]
     assert "a pending clause is promised, not yet a power" in tool["description"]
-    assert "Only an active or narrated gift is granted" in tool["description"]
-    assert "an awaits_* gift is the god's promise, not yet a power" in tool["description"]
+    assert "Only an active gift is granted" in tool["description"]
+    assert "Use the facts and narration_cue in deaths_awareness or horizon_sense" in tool["description"]
 
 
 @pytest.fixture(autouse=True)

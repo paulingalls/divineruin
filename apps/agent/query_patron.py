@@ -7,6 +7,7 @@ from livekit.agents.voice import RunContext
 
 import db_mutations_resonance
 import db_queries
+import patron_senses
 import unbound_tools
 import zhael_fate
 from _gods_content import load_gods
@@ -69,6 +70,11 @@ async def query_patron(
     gift = patron["layer_1_gift"]
     if gift["id"] == zhael_fate.FATE:
         gift = {**gift, **zhael_fate.availability(player, gift)}
+    senses = {}
+    if patron_id == "mortaen":
+        senses["deaths_awareness"] = await patron_senses.deaths_awareness(session, player, queries=queries)
+    elif patron_id == "nythera":
+        senses["horizon_sense"] = await patron_senses.horizon_sense(session, player)
     return json.dumps(
         {
             "patron_id": patron_id,
@@ -85,6 +91,7 @@ async def query_patron(
             "layer_1_gift": gift,
             "abilities": project_abilities(player, patron),
             **await ecosystem_cue(session, favor),
+            **senses,
         }
     )
 

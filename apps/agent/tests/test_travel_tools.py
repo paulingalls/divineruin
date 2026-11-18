@@ -26,6 +26,7 @@ def _travel_mocks(player=None):
     conditions_mutations.save_player_conditions = AsyncMock()
     travel_mutations = MagicMock()
     travel_mutations.update_player_travel_state = AsyncMock()
+    travel_mutations.add_travel_hours = AsyncMock()
     content = MagicMock()
     content.get_location = AsyncMock(return_value=_location("known_trail"))
     db_mod = MagicMock()

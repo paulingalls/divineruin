@@ -10,6 +10,7 @@ from base_agent import BaseGameAgent
 def game_tools(session, *tools):
     agent = BaseGameAgent(instructions="Resolve the roll.", tools=list(tools))
     live_session = AgentSession(userdata=session)
+    live_session.update_agent(agent)
     registered = {tool.id: tool for tool in agent.tools}
 
     async def call(name, **arguments):

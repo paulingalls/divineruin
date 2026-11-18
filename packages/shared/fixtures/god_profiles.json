@@ -62,6 +62,7 @@
     },
     { "id": "missing_status", "delete": "status", "field": "status" },
     { "id": "invalid_status", "set": { "status": "invalid_status" }, "field": "status" },
+    { "id": "narrated_status", "set": { "status": "narrated" }, "field": "status" },
     { "id": "removed_status", "set": { "status": "awaits_rest" }, "field": "status" },
     { "id": "removed_recharge", "set": { "recharge": "on_event" }, "field": "recharge" },
     {
@@ -95,7 +96,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -354,7 +355,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -613,7 +614,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -872,7 +873,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -1131,7 +1132,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -1390,7 +1391,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -1660,7 +1661,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -1931,7 +1932,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -2191,7 +2192,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -2451,7 +2452,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -2711,7 +2712,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -2971,7 +2972,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -3233,7 +3234,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": null,
@@ -3280,7 +3281,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_3_tier_abilities": {
@@ -3326,7 +3327,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": [],
@@ -3373,7 +3374,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -3405,7 +3406,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -3436,7 +3437,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -3468,7 +3469,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -3524,7 +3525,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -3580,7 +3581,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -3630,7 +3631,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -3687,7 +3688,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -3744,7 +3745,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -3801,7 +3802,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -3858,7 +3859,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -3909,7 +3910,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -3967,7 +3968,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -4018,7 +4019,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -4074,7 +4075,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -4130,7 +4131,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -4186,7 +4187,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -4243,7 +4244,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -4300,7 +4301,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -4357,7 +4358,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -4415,7 +4416,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -4466,7 +4467,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -4523,7 +4524,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -4580,7 +4581,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -4637,7 +4638,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -4694,7 +4695,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -4751,7 +4752,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -4808,7 +4809,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -4865,7 +4866,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -4922,7 +4923,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -4979,7 +4980,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -5036,7 +5037,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -5093,7 +5094,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -5150,7 +5151,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -5207,7 +5208,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -5264,7 +5265,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -5321,7 +5322,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -5378,7 +5379,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -5435,7 +5436,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -5492,7 +5493,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -5549,7 +5550,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -5606,7 +5607,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -5663,7 +5664,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -5720,7 +5721,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -5777,7 +5778,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -5834,7 +5835,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -5891,7 +5892,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -5948,7 +5949,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -6005,7 +6006,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -6062,7 +6063,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -6119,7 +6120,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -6176,7 +6177,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -6233,7 +6234,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -6290,7 +6291,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -6347,7 +6348,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -6404,7 +6405,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -6461,7 +6462,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -6518,7 +6519,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -6575,7 +6576,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -6624,7 +6625,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -6674,7 +6675,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -6723,7 +6724,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -6773,7 +6774,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -6822,7 +6823,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -6872,7 +6873,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -6928,7 +6929,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -6985,7 +6986,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -7042,7 +7043,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -7098,7 +7099,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -7155,7 +7156,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -7212,7 +7213,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -7268,7 +7269,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -7325,7 +7326,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -7382,7 +7383,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -7438,7 +7439,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -7495,7 +7496,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -7552,7 +7553,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -7609,7 +7610,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -7666,7 +7667,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -7724,7 +7725,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -7789,7 +7790,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -7846,7 +7847,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -7902,7 +7903,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -7958,7 +7959,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -8014,7 +8015,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -8071,7 +8072,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -8128,7 +8129,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -8185,7 +8186,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -8242,7 +8243,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -8299,7 +8300,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -8356,7 +8357,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -8413,7 +8414,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -8470,7 +8471,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -8527,7 +8528,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -8584,7 +8585,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -8641,7 +8642,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -8902,7 +8903,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -9201,7 +9202,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -9473,7 +9474,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -9530,7 +9531,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -9587,7 +9588,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -9644,7 +9645,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -9890,7 +9891,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -10136,7 +10137,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -10382,7 +10383,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -10654,7 +10655,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -10926,7 +10927,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -11198,7 +11199,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -11470,7 +11471,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -11720,7 +11721,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -11970,7 +11971,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -12220,7 +12221,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -12491,7 +12492,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -12762,7 +12763,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -13011,7 +13012,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -13284,7 +13285,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -13552,7 +13553,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -13824,7 +13825,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -14096,7 +14097,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -14368,7 +14369,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -14640,7 +14641,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -14912,7 +14913,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -15184,7 +15185,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -15457,7 +15458,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -15730,7 +15731,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -16001,7 +16002,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -16272,7 +16273,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -16543,7 +16544,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -16816,7 +16817,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -17088,7 +17089,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -17361,7 +17362,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -17634,7 +17635,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -17909,7 +17910,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {
@@ -17966,7 +17967,7 @@
           "name": "Synthetic gift",
           "effect": "Synthetic effect.",
           "trigger": "Synthetic trigger.",
-          "status": "narrated",
+          "status": "active",
           "recharge": "always"
         },
         "layer_2_resonance": {

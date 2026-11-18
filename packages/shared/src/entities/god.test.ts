@@ -29,6 +29,17 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
   expect(catalog).toHaveLength(10);
   expect(catalog.map((g) => g.god_id).sort()).toEqual([...corpus.patron_ids].sort());
   expect(Object.is(validateGods(catalog), catalog)).toBe(true);
+  for (const [patron, id] of [
+    ["mortaen", "mortaen_deaths_awareness"],
+    ["nythera", "nythera_horizon_sense"],
+  ]) {
+    expect(validateGods(catalog).find((god) => god.god_id === patron)?.layer_1_gift).toMatchObject({
+      id,
+      status: "active",
+      resolution: "engine",
+      implementation_id: id,
+    });
+  }
   expect(validateGods(catalog).find((god) => god.god_id === "zhael")?.layer_1_gift).toMatchObject({
     id: "zhael_fates_thread",
     status: "active",

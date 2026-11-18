@@ -29,6 +29,17 @@ EXPECTED_MODIFIERS = {
 def test_authored_layers_match_mechanics():
     rows = load_gods()
     assert len(rows) == len(CORPUS["patron_ids"]) == 10
+    for patron_id, gift_id in (
+        ("mortaen", "mortaen_deaths_awareness"),
+        ("nythera", "nythera_horizon_sense"),
+    ):
+        gift = next(row["layer_1_gift"] for row in rows if row["god_id"] == patron_id)
+        assert (gift["id"], gift["status"], gift["resolution"], gift["implementation_id"]) == (
+            gift_id,
+            "active",
+            "engine",
+            gift_id,
+        )
     doc = (ROOT / "docs/game_mechanics/game_mechanics_patrons.md").read_text()
     sections = {}
     for section in doc.split("### ")[1:]:

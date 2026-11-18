@@ -7,10 +7,10 @@ EXPECTED_GIFTS = {
     "kaelen": ("per_encounter", "active"),
     "aelora": ("always", "active"),
     "syrath": ("short_rest", "active"),
-    "mortaen": ("always", "narrated"),
+    "mortaen": ("always", "active"),
     "thyra": ("always", "active"),
     "valdris": ("short_rest", "active"),
-    "nythera": ("always", "narrated"),
+    "nythera": ("always", "active"),
     "orenthel": ("always", "awaits_healing"),
     "zhael": ("long_rest", "active"),
 }
@@ -18,6 +18,11 @@ GIFT_FIELDS = {"id", "name", "effect", "trigger", "recharge", "status"}
 EXPECTED_MECHANICS = {
     "aelora": {"kind": "skill_check_bonus", "amount": 1, "requires": "ally_present"},
     "kaelen": {"kind": "low_hp_surge", "threshold": 0.25, "amount": 2, "duration_phases": 2},
+}
+ENGINE_GIFTS = {
+    "mortaen": "mortaen_deaths_awareness",
+    "nythera": "nythera_horizon_sense",
+    "zhael": "zhael_fates_thread",
 }
 MECHANICS_KINDS = {mechanics["kind"] for mechanics in EXPECTED_MECHANICS.values()}
 
@@ -32,9 +37,12 @@ def validate_gifts(rows):
         gift = row["layer_1_gift"]
         assert isinstance(gift, dict), row["god_id"]
         expected_fields = GIFT_FIELDS | ({"mechanics"} if row["god_id"] in EXPECTED_MECHANICS else set())
-        if row["god_id"] == "zhael":
+        if row["god_id"] in ENGINE_GIFTS:
             expected_fields |= {"resolution", "implementation_id"}
-            assert gift["resolution"] == "engine" and gift["implementation_id"] == gift["id"] == "zhael_fates_thread"
+            assert (
+                gift["resolution"] == "engine"
+                and gift["implementation_id"] == gift["id"] == ENGINE_GIFTS[row["god_id"]]
+            )
         assert set(gift) == expected_fields, row["god_id"]
         assert all(isinstance(gift[field], str) and gift[field].strip() for field in GIFT_FIELDS), row["god_id"]
         if row["god_id"] in EXPECTED_MECHANICS:

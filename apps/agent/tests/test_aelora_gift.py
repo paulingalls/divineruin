@@ -232,7 +232,7 @@ async def test_tool_response_names_bond_only_with_present_ally(producer, enhance
             else:
                 ctx.userdata.location_id = "hall"
                 content = MagicMock(get_location=AsyncMock(return_value={"id": "dest", "navigation": "dense_forest"}))
-                travel_mutations = MagicMock(update_player_travel_state=AsyncMock())
+                travel_mutations = MagicMock(update_player_travel_state=AsyncMock(), add_travel_hours=AsyncMock())
                 raw = await _travel_impl(
                     ctx,
                     "dest",

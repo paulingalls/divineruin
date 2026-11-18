@@ -186,9 +186,9 @@ test pins authored mechanics.
 fields: id, name, effect, trigger, recharge, status
 optional_fields: mechanics, resolution, implementation_id
 recharge: always, per_encounter, short_rest, long_rest
-status: active, awaits_healing, narrated
+status: active, awaits_healing
 mechanics_kinds: skill_check_bonus, low_hp_surge
-grant: Only an active or narrated gift is granted; an awaits_* gift is the god's promise, not yet a power.
+grant: Only an active gift is granted.
 ```
 
 Aelora's `skill_check_bonus` mechanics has `amount: 1` and
