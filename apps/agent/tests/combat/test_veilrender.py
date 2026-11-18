@@ -63,6 +63,7 @@ async def test_field_turn_start_targets(kind, distance, success, alive):
         assert bool(result["turn_start_effects"])
     if expected and not success:
         rolls.assert_called_once_with("1d4")
+        assert result["turn_start_effects"][0]["damage_type"] == "necrotic"
 
 
 @pytest.mark.parametrize(
@@ -244,6 +245,7 @@ async def test_ward_suppression_each_turn(mode, dev_db_pool):
         ("bonus", False, True),
         ("rider", False, True),
         ("mixed", False, True),
+        ("mixed_zero", False, False),
         ("main", True, False),
         ("zero", False, False),
         ("nonradiant", False, False),
@@ -265,8 +267,12 @@ async def test_landed_radiant_marks_suppression(kind, immune, positive):
     result = replace(_attack_result(hit=kind != "miss"), damage_type="radiant" if kind in ("main", "miss") else "force")
     if kind in ("bonus", "rider"):
         result = replace(result, **{f"{kind}_damage": 2, f"{kind}_damage_type": "radiant"})
-    if kind == "mixed":
-        action["damage_components"] = [{"damage": 2, "damage_type": "radiant"}, {"damage": 2, "damage_type": "force"}]
+    if kind in ("mixed", "mixed_zero"):
+        radiant = 2 if kind == "mixed" else 0
+        action["damage_components"] = [
+            {"damage": radiant, "damage_type": "radiant"},
+            {"damage": 2, "damage_type": "force"},
+        ]
         result = AutomaticDamageResult(4, "force")
     if kind == "zero":
         result = AutomaticDamageResult(0, "radiant")
