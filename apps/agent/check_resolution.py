@@ -3,8 +3,10 @@
 All resolution functions accept an optional `rng` for deterministic testing.
 """
 
+from __future__ import annotations
+
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from condition_bonus import roll_bonus_dice as roll_bonus_dice
 from condition_voice_rules import auto_fail_hearing_perception
@@ -44,6 +46,7 @@ class CheckResult:
     # (story-004 emission sites) stay additive. See dramatic.py.
     dramatic: bool = False
     context: str = ""
+    d20: D20Roll | None = None
 
 
 @dataclass(frozen=True)
@@ -69,6 +72,7 @@ class SkillCheckResult:
     consumed_conditions: tuple[str, ...] = ()
     gift_name: str | None = None
     auto_fail: bool = False
+    d20: D20Roll | None = None
 
 
 @dataclass(frozen=True)
@@ -153,6 +157,22 @@ def _apply_condition_modifiers(effects: ConditionEffects, scopes: set[str]) -> t
 # --- Check resolution ---
 
 
+@dataclass(frozen=True)
+class D20Roll:
+    modifier: int
+    dc: int
+    advantage: bool = False
+    disadvantage: bool = False
+
+    def evaluate(self, face: int) -> D20CheckCore:
+        return _evaluate_d20(face, self.modifier, self.dc)
+
+    def roll(self, rng: random.Random | None = None) -> D20CheckCore:
+        return _roll_d20_check(
+            self.modifier, self.dc, rng=rng, advantage=self.advantage, disadvantage=self.disadvantage
+        )
+
+
 def _roll_d20_check(
     mod: int,
     dc: int,
@@ -179,6 +199,10 @@ def _roll_d20_check(
         d20 = max(first, second) if advantage else min(first, second)
     else:
         d20 = dice_roll("d20", rng=rng).total
+    return _evaluate_d20(d20, mod, dc)
+
+
+def _evaluate_d20(d20: int, mod: int, dc: int) -> D20CheckCore:
     total = d20 + mod
     if d20 == 20:
         success = True
@@ -243,7 +267,8 @@ def resolve_check(
             context=verdict.context,
         )
 
-    core = _roll_d20_check(total_mod, dc, rng=rng, advantage=advantage, disadvantage=disadvantage)
+    d20 = D20Roll(total_mod, dc, advantage, disadvantage)
+    core = d20.roll(rng)
     verdict = evaluate_dramatic_context(DramaticContext(raw_die=core.roll))
 
     return CheckResult(
@@ -259,6 +284,7 @@ def resolve_check(
         narrative_hint=core.narrative_hint,
         dramatic=verdict.dramatic,
         context=verdict.context,
+        d20=d20,
     )
 
 
@@ -354,6 +380,7 @@ def _resolve_skill_check_impl(
         consumed_conditions=consumed,
         auto_fail=check.auto_fail,
         gift_name=gift_name,
+        d20=check.d20,
     )
 
 
@@ -405,4 +432,18 @@ def resolve_skill_check_dc(
         natural_terrain=natural_terrain,
         hearing_only=hearing_only,
         first_stay=first_stay,
+    )
+
+
+def skill_with_roll(result: SkillCheckResult, core: D20CheckCore) -> SkillCheckResult:
+    verdict = evaluate_dramatic_context(DramaticContext(raw_die=core.roll))
+    return replace(
+        result,
+        roll=core.roll,
+        total=core.total,
+        success=core.success,
+        margin=core.margin,
+        narrative_hint=core.narrative_hint,
+        dramatic=verdict.dramatic,
+        context=verdict.context,
     )

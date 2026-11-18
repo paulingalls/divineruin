@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -78,18 +79,19 @@ class TestFinalizeCharacter:
         cs = CreationState(
             race="human",
             class_choice="warrior",
-            deity=None,
+            deity="kaelen",
             name="Aric",
             backstory="Test.",
         )
         ctx = _make_context(cs)
-        await _finalize(ctx)
+        _, result = await _finalize(ctx)
 
         data = mock_create_player.call_args[0][2]
         con_mod = attribute_modifier(data["attributes"]["constitution"])
         expected = calculate_max_hp("warrior", 1, con_mod)
         assert data["hp"]["current"] == expected
         assert data["hp"]["max"] == expected
+        assert json.loads(result)["character"]["hp"] == {"current": expected, "max": expected + 5}
 
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock, side_effect=Exception("DB down"))
     async def test_finalize_db_error(self, mock_create_player):

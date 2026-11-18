@@ -149,7 +149,9 @@ async def test_unbound_refuses_all_patron_abilities(dev_db_pool):
             except AssertionError as error:
                 raise AssertionError(f"{token}: {error}") from error
             expected = (
-                "Unbound"
+                "offer_id"
+                if token in ("zhael_fates_thread", "zhael_lucky")
+                else "Unbound"
                 if token in tiers or token == "valdris_weight_of_truth"
                 else "requires an active Veythar gift"
                 if token == "veythar_lorekeepers_insight"

@@ -87,8 +87,9 @@ async def query_info(
     - kind="abilities": the current player's owned ability ids, castable spells, reaction windows,
       and active learned variant ids (no target_id needed).
     - kind="patron": the current player's patron standing, progress, authored favor action ids,
-      Layer 1 gift, and abilities with ids and availability for activate (no target_id needed). Only an active or narrated gift is granted;
-      an awaits_* gift is the god's promise, not yet a power.
+      Layer 1 gift, and abilities with ids and availability for activate (no target_id needed). Only an active gift is granted.
+      Use the facts and narration_cue in deaths_awareness or horizon_sense when present.
+      Signs of recent violent death and the direction north remain narrated.
       synergy is this archetype's Layer 4 enhancement from the current patron (null when Unbound); only its active clauses apply; a pending clause is promised, not yet a power.
       Unbound Veil Clarity reveals exact
       Resonance; the response lists unbound_raw_channeling for activate and the autonomy milestones with their availability."""

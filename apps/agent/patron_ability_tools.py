@@ -8,8 +8,10 @@ import db
 import db_queries
 from _gods_content import load_gods
 from patron_favor import get_patron_tier
+from patron_passives import SCHOLARS_WARD, WARRIORS_ENDURANCE
 
 TIERS = ("Acknowledged", "Devoted", "Exalted")
+LUCKY = "zhael_lucky"
 WEIGHT_OF_TRUTH = "valdris_weight_of_truth"
 _REST = {"short_rest": "a short rest", "long_rest": "a long rest", "per_session": "a new session"}
 
@@ -36,7 +38,12 @@ def spent_state(player, ability_id):
 def availability(ability, tier, required, spent):
     if required is not None and TIERS.index(tier) < TIERS.index(required):
         return f"Requires {required} tier.", "locked"
-    if ability["status"] != "active" or ability.get("resolution", "narrated") != "narrated":
+    resolution = ability.get("resolution", "narrated")
+    if ability["id"] in (LUCKY, SCHOLARS_WARD, WARRIORS_ENDURANCE):
+        implemented = resolution == "engine" and ability.get("implementation_id") == ability["id"]
+    else:
+        implemented = resolution == "narrated"
+    if ability["status"] != "active" or not implemented:
         return "This ability is pending implementation.", "locked"
     if ability["recharge"] == "always":
         return "This ability is always-on; it cannot be activated.", "locked"
@@ -47,6 +54,16 @@ def availability(ability, tier, required, spent):
 
 def blocking_reason(ability, tier, required, spent):
     return availability(ability, tier, required, spent)[0]
+
+
+def lucky_ready(player, ability):
+    favor = player.get("divine_favor") or {}
+    return (
+        ability["id"] == LUCKY
+        and favor.get("patron") == "zhael"
+        and blocking_reason(ability, get_patron_tier(favor), "Acknowledged", spent_state(player, LUCKY)["spent"])
+        is None
+    )
 
 
 def project_abilities(player, patron):
@@ -72,7 +89,7 @@ def project_abilities(player, patron):
     return rows
 
 
-async def activate(context, ability_id):
+async def spend(session, actor, ability_id):
     from patron_gift_tools import write_state
 
     if ability_id == WEIGHT_OF_TRUTH:
@@ -80,8 +97,6 @@ async def activate(context, ability_id):
         ability = next(p["layer_1_gift"] for p in load_gods() if p["god_id"] == patron_id)
     else:
         patron_id, required, ability = catalog()[ability_id]
-    session = context.userdata
-    actor = session.acting_player_id
     async with db.transaction() as conn:
         player = await db_queries.get_player(actor, conn=conn, for_update=True)
         if player is None:
@@ -97,9 +112,20 @@ async def activate(context, ability_id):
         reason = blocking_reason(ability, tier, required, spent_state(player, ability_id)["spent"])
         if reason:
             raise ToolError(reason)
-        session.validate_acting_player(actor)
+        try:
+            session.validate_acting_player(actor)
+        except (RuntimeError, ValueError) as exc:
+            raise ToolError(str(exc)) from exc
         await write_state(actor, {"spent": True}, gift_id=ability_id, conn=conn)
+    return ability
+
+
+async def activate(context, ability_id):
     from patron_ability_events import publish_patron_abilities
+
+    session = context.userdata
+    actor = session.acting_player_id
+    ability = await spend(session, actor, ability_id)
 
     await publish_patron_abilities(session.room, actor, session.event_bus)
     return json.dumps(

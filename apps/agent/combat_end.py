@@ -24,7 +24,8 @@ from combat_conditions_persist import reconcile_member_conditions
 from combat_durability import _accrue_durability, _find_equipped
 from combat_end_lives import settle_lives
 from combat_events import EventSink, emit_or_publish, isolated_publish
-from combat_support import _publish_sounds, _require_combat
+from combat_sound_events import publish_combat_sounds as _publish_sounds
+from combat_support import _require_combat
 from db_errors import db_tool
 from inventory_refresh import inventory_payload
 from region_types import REGION_CITY
@@ -96,6 +97,8 @@ async def _end_combat_locked(
     # pay the party and delete the combat row with an enemy's turn still queued. Refuse loud and
     # name the next action rather than force-end into a silent data loss (constraint 4). The cost,
     # on the record: end_combat("fled") is unavailable for one beat.
+    if any(cursor is not None for cursor in (cs.ally_continuation, cs.wrap_continuation, cs.inner_fire_continuation)):
+        raise ToolError("A combat roll is still held. Call resolve_phase before ending combat.")
     if cs.held_actions:
         raise ToolError(
             f"{len(cs.held_actions)} enemy action(s) are still held pending at the narration beat — "

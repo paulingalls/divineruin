@@ -18,6 +18,7 @@ import progression_tools
 from combat_events import EventSink
 from quest_world_effects import _apply_world_effects, decision_option
 from session_data import SessionData
+from skill_fate import SkillScope
 from tool_support import _validate_id
 
 logger = logging.getLogger("divineruin.tools")
@@ -52,11 +53,18 @@ async def _advance_one(
     milestones_mod=milestones,
     activities=db_activity_queries,
     divine_mutations=db_mutations_divine,
+    scope: SkillScope | None = None,
 ) -> tuple[PendingQuest, dict]:
     logger.info("update_quest called: quest_id=%s, new_stage_id=%d", quest_id, new_stage_id)
     _validate_id(quest_id, "quest_id")
-    actor_id = session.acting_player_id
-    primary_id = session.primary_player_id
+    actor_id = scope.roller_id if scope else session.acting_player_id
+    primary_id = scope.primary_id if scope else session.primary_player_id
+
+    def validate():
+        if scope is None:
+            session.validate_acting_player(actor_id)
+        else:
+            scope.validate(session)
 
     quest = await content.get_quest(quest_id)
     if quest is None:
@@ -78,9 +86,9 @@ async def _advance_one(
     favor_paid_ids: set[str] = set()
     pending_notes: list[str] = []
 
-    session.validate_acting_player(actor_id)
+    validate()
     # Freeze the roster before awaits and lock quest rows in the same order in every session.
-    party_ids = sorted({primary_id} | set(session.party.member_ids))
+    party_ids = scope.party_ids if scope else tuple(sorted({primary_id} | set(session.party.member_ids)))
     party_quests = {pid: await queries.get_player_quest(pid, quest_id, conn=conn, for_update=True) for pid in party_ids}
     player_quest = party_quests[primary_id]
 
@@ -209,6 +217,7 @@ async def _advance_one(
                 content=content,
                 pending_notes=pending_notes,
                 party_ids=tuple(party_ids),
+                actor_id=actor_id,
             )
 
     new_stage = stages[new_stage_id] if not is_completion else {}
@@ -218,7 +227,7 @@ async def _advance_one(
     }
     if is_completion:
         quest_data["status"] = "completed"
-    session.validate_acting_player(actor_id)
+    validate()
     for pid in sorted(paid_ids | {primary_id}):
         if _is_unpaid_for_stage(party_quests[pid], new_stage_id):
             decisions = dict((party_quests[pid] or {}).get("decisions", {}))
@@ -311,6 +320,7 @@ async def advance_quest_db(
     milestones_mod=milestones,
     activities=db_activity_queries,
     divine_mutations=db_mutations_divine,
+    scope: SkillScope | None = None,
 ) -> PendingQuest:
     deps = dict(
         mutations=mutations,
@@ -320,7 +330,7 @@ async def advance_quest_db(
         activities=activities,
         divine_mutations=divine_mutations,
     )
-    pending, quest = await _advance_one(session, quest_id, new_stage_id, option_id, conn=conn, **deps)
+    pending, quest = await _advance_one(session, quest_id, new_stage_id, option_id, conn=conn, scope=scope, **deps)
     stages = quest["stages"]
     while pending.response["new_stage"] < len(stages):
         index = pending.response["new_stage"]
@@ -329,7 +339,7 @@ async def advance_quest_db(
             break
         if not await item_condition_satisfied(condition, pending.party_ids, conn=conn, queries=queries):
             break
-        following, _ = await _advance_one(session, quest_id, index + 1, None, conn=conn, **deps)
+        following, _ = await _advance_one(session, quest_id, index + 1, None, conn=conn, scope=scope, **deps)
         following.response["rewards_applied"] = (
             pending.response["rewards_applied"] + following.response["rewards_applied"]
         )

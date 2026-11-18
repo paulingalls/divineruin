@@ -116,6 +116,7 @@ async def _resolve_ability_condition_packet(
     conn,
     player: dict | None,
     persistence=ability_persistence,
+    progress=None,
 ) -> dict:
     """Resolve a non-spell condition-applying ABILITY in combat (M4.8 story-005, e.g. bard_inspire).
 
@@ -172,11 +173,21 @@ async def _resolve_ability_condition_packet(
         return waste
     assert target is not None
 
-    await _deduct_ability_cost(attacker.id, player, ability, variant, persistence=persistence, conn=conn)
+    steps = progress.steps if progress is not None else {}
+    if not steps.get("cost_paid"):
+        await _deduct_ability_cost(attacker.id, player, ability, variant, persistence=persistence, conn=conn)
+        steps["cost_paid"] = True
 
     if ability.save is not None:
-        summary = combat_ability_save.resolve_hostile_condition(
-            state, attacker, target, decl, ability, _land_condition_on_one
+        summary = await combat_ability_save.resolve_hostile_condition(
+            session,
+            state,
+            attacker,
+            target,
+            decl,
+            ability,
+            _land_condition_on_one,
+            progress=progress,
         )
         return _with_variant(summary, variant)
 
@@ -264,6 +275,7 @@ async def _resolve_ability_packet(
     player: dict | None,
     cast_outcome: AbilityCastOutcome,
     damage_deps=None,
+    progress=None,
 ) -> dict:
     """Resolve one in-combat ABILITY declaration through the shared cast logic (story-007).
 
@@ -295,35 +307,60 @@ async def _resolve_ability_packet(
     combat_voice_rules.guard_declaration(state, attacker, decl)
     from choir_reaction import effective_declaration
 
-    decl = effective_declaration(state, attacker, decl)
-    result = await cast_resolver._resolve_cast(
+    decl = await effective_declaration(
         session,
-        decl.action,
-        conn=conn,
-        caster=caster,
-        player=player,
-        combat_state=state,
-        target_id=decl.target_id,
-        target_ids=decl.target_ids,
-        suppress_resonance_changed=True,
+        state,
+        attacker,
+        decl,
+        progress=progress.scope("shield") if progress is not None else None,
     )
+    if decl is None:
+        return {}
+    steps = progress.steps if progress is not None else {}
+    cast_packet = steps.get("cast_packet")
+    if cast_packet is None:
+        result = await cast_resolver._resolve_cast(
+            session,
+            decl.action,
+            conn=conn,
+            caster=caster,
+            player=player,
+            combat_state=state,
+            target_id=decl.target_id,
+            target_ids=decl.target_ids,
+            suppress_resonance_changed=True,
+        )
+        cast_outcome.results[attacker.id] = result
+        if result.new_resonance is not None:
+            combat_hollow_resonance.stage_total(state, attacker.id, result.new_resonance)
+        # Sync concentration into the CASTER's SSOT IN-LOOP (not post-commit): a lower-initiative enemy
+        # attack later this same phase runs break_concentration_on_damage, which reads the in-memory
+        # concentration to pick which spell to save for and to clear on a failed save. A post-commit sync
+        # would leave it stale — the break would save against the OLD spell and, on a break, write None to
+        # the DB (clearing the just-cast spell) while the post-commit sync forced memory back to the new
+        # spell, diverging from the DB (story-007). _CombatScratchSnapshot captures concentration, so this
+        # in-tx mutation is reverted if the phase rolls back. break_concentration_on_damage now reads the
+        # DAMAGED member's own concentration (via damaged_player_id, M18 story-004), so a non-primary
+        # caster's break resolves against their own pool — matching this per-member SYNC.
+        if result.concentration_spell_id is not spell_casting._UNCHANGED:
+            caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
+        cast_packet = result.packet
+        steps["cast_packet"] = cast_packet
+
     import choir_spell_damage
 
-    await choir_spell_damage.land(session, state, attacker, decl, result, conn=conn, **(damage_deps or {}))
-    cast_outcome.results[attacker.id] = result
-    if result.new_resonance is not None:
-        combat_hollow_resonance.stage_total(state, attacker.id, result.new_resonance)
-    # Sync concentration into the CASTER's SSOT IN-LOOP (not post-commit): a lower-initiative enemy
-    # attack later this same phase runs break_concentration_on_damage, which reads the in-memory
-    # concentration to pick which spell to save for and to clear on a failed save. A post-commit sync
-    # would leave it stale — the break would save against the OLD spell and, on a break, write None to
-    # the DB (clearing the just-cast spell) while the post-commit sync forced memory back to the new
-    # spell, diverging from the DB (story-007). _CombatScratchSnapshot captures concentration, so this
-    # in-tx mutation is reverted if the phase rolls back. break_concentration_on_damage now reads the
-    # DAMAGED member's own concentration (via damaged_player_id, M18 story-004), so a non-primary
-    # caster's break resolves against their own pool — matching this per-member SYNC.
-    if result.concentration_spell_id is not spell_casting._UNCHANGED:
-        caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
+    await choir_spell_damage.land(
+        session,
+        state,
+        attacker,
+        decl,
+        cast_packet,
+        conn=conn,
+        progress=progress.scope("spell_damage") if progress is not None else None,
+        **(damage_deps or {}),
+    )
+    if progress is not None and progress.paused:
+        return {}
     # Beneficial-condition PRODUCER (M4.8 story-004), in-combat half. _resolve_cast surfaces the
     # produced condition as packet.condition_applied (the OOC players.data write is gated off in
     # combat). In combat the working state is the SSOT, so land it on the TARGET participant here —
@@ -332,30 +369,30 @@ async def _resolve_ability_packet(
     # than crashing the phase, mirroring the wasted-declaration guards. source=decl.action is the
     # spell id (matching the OOC source=spell_id). Resolved here where attacker/decl/result are
     # already in scope — no outcome re-read in the dispatcher.
-    cond_type = result.packet.get("condition_applied")
+    cond_type = cast_packet.get("condition_applied")
     if cond_type:
         if decl.target_ids:
             # Multi-target (M4.8 story-012): land on EACH ally participant (cap already enforced at
             # the declare-gate). Surface the voiced ids so the DM names each blessed companion; drop
             # the signal entirely if NONE landed (all off-state / immune).
             voiced = land_condition_on_participants(
-                state, attacker, decl, cond_type, source=decl.action, packet=result.packet
+                state, attacker, decl, cond_type, source=decl.action, packet=cast_packet
             )
             if voiced:
-                result.packet["condition_targets"] = voiced
+                cast_packet["condition_targets"] = voiced
             else:
-                result.packet.pop("condition_applied", None)
+                cast_packet.pop("condition_applied", None)
         elif not land_condition_on_participant(
-            state, attacker, decl, cond_type, source=decl.action, packet=result.packet
+            state, attacker, decl, cond_type, source=decl.action, packet=cast_packet
         ):
             # Target gone, or apply no-op'd (immunity gate) — don't narrate a buff that never landed.
-            result.packet.pop("condition_applied", None)
+            cast_packet.pop("condition_applied", None)
     summary = {
         "actor_id": attacker.id,
         "resolved": True,
         "declaration_type": str(decl.type),
         "action": decl.action,
-        "cast": result.packet,
+        "cast": cast_packet,
     }
     return _attach_riders(summary, attacker, decl)
 

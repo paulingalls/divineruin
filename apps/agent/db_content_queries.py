@@ -302,10 +302,11 @@ async def list_errand_templates() -> list[dict]:
     return templates
 
 
-async def get_gathering_nodes_at_location(location_id: str, *, pool=None) -> list[dict]:
-    """Return the fixed gathering_nodes at a location, each as {id, **data}. Uncached — node
-    `quantity`/`discovered` are mutable world state (story-003 depletes/marks them), unlike the
-    static, cached get_location. `pool` is a test-injection seam."""
-    _pool = pool or await db.get_pool()
-    rows = await _pool.fetch("SELECT id, data FROM gathering_nodes WHERE data->>'location_id' = $1", location_id)
+async def get_gathering_nodes_at_location(location_id: str, *, pool=None, conn=None, for_update=False) -> list[dict]:
+    """Read mutable node quantities and discovery state directly from the database."""
+    connection = conn or pool or await db.get_pool()
+    sql = "SELECT id, data FROM gathering_nodes WHERE data->>'location_id' = $1 ORDER BY id"
+    if for_update:
+        sql += " FOR UPDATE"
+    rows = await connection.fetch(sql, location_id)
     return [{"id": r["id"], **json.loads(r["data"])} for r in rows]

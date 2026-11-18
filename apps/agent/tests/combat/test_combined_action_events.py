@@ -15,9 +15,9 @@ import combat_hold
 import event_types as E
 import reaction_spend
 from check_resolution_attack import AttackResult
+from combat_damage import SaveDamageResult, apply_attack_result
 from combat_events import EventSink
 from combat_packet import _resolve_one_packet
-from combat_support import SaveDamageResult, apply_attack_result
 from declarations import Declaration, DeclarationType
 from tool_support import SOUND_ATTACK_CRITICAL, SOUND_ATTACK_HIT, SOUND_ATTACK_MISS, SOUND_HEARTBEAT
 
@@ -76,7 +76,7 @@ async def _resolve_save_damage(*, save_seed: int, damage: str = "1d1+6", player_
 
     with (
         patch("check_resolution_save.roll_participant_save", save),
-        patch("combat_support._accrue_durability", side_effect=accrue),
+        patch("combat_damage._accrue_durability", side_effect=accrue),
     ):
         summary = await _resolve_one_packet(
             session,

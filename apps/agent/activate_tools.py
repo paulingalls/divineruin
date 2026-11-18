@@ -40,6 +40,7 @@ import unbound_tools
 import veil_anchor_tools
 import veil_ward
 import veil_ward_tools
+import zhael_fate
 from action_sound_content import publish_action_sound
 from db_errors import db_tool
 from patron_gifts import SYRATH_SHADOW_VEIL, VEYTHAR_INSIGHT
@@ -60,6 +61,7 @@ _RESERVED = frozenset(
         VEYTHAR_INSIGHT,
         SYRATH_SHADOW_VEIL,
         patron_ability_tools.WEIGHT_OF_TRUTH,
+        zhael_fate.FATE,
     }
 )
 
@@ -71,7 +73,9 @@ async def activate(
     id: str,
     target_id: str | None = None,
     target_ids: list[str] | None = None,
-) -> str:
+    offer_id: str | None = None,
+    keep: zhael_fate.Keep | None = None,
+) -> str | tuple:
     """Activate a capability: cast a spell, use an archetype ability, deploy a Veil Anchor, raise
     or dismiss a Veil Ward, or trigger the Draethar's Inner Fire.
 
@@ -94,6 +98,11 @@ async def activate(
 
     After an offered failed knowledge check, 'veythar_lorekeepers_insight' rerolls it once;
     take the new result. A short rest restores this gift.
+
+    For a voiced Fate's Thread offer, activate 'zhael_fates_thread' with offer_id to spend it and
+    show the reroll. Then call again with the same offer_id and keep='original' or 'reroll'.
+    Before spending, keep='original' declines. Any other tool call keeps the original, and an
+    already rolled gift stays spent. For offered 'zhael_lucky', use offer_id alone to flip the die and resolve it.
 
     Patron tier ids come from query_info(kind='patron').abilities: spend only when available;
     narrate refusals. 'valdris_weight_of_truth' spends Weight of Truth until a short rest.
@@ -118,6 +127,10 @@ async def activate(
     answers a different window, or when the round's one reaction is already spent. Outside combat
     reactions activate freely. Cantrips are free and scale
     their damage with level."""
+    if id in zhael_fate.ROLL_ABILITIES:
+        return await zhael_fate.activate(context.userdata, id, offer_id, keep)
+    if offer_id is not None or keep is not None:
+        raise ToolError("offer_id is for a held roll; keep belongs to Fate's Thread.")
     return await _activate_impl(context, id, target_id=target_id, target_ids=target_ids)
 
 
@@ -165,7 +178,6 @@ async def _activate_impl(
     inner_fire_mod=draethar_inner_fire,
 ) -> str:
     logger.info("activate called: id=%s", id)
-
     try:
         kind = _resolve_kind(
             id,

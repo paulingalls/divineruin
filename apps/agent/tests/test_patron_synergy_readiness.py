@@ -2,9 +2,9 @@
 
 from copy import deepcopy
 
+from _patron_engine_fixtures import configure
 from _unbound_path_fixtures import world as world
 from test_aelora_gift import _live_party
-from test_patron_synergy_engine import configure
 from test_unbound_alone_bonus import check
 
 import patron_synergy

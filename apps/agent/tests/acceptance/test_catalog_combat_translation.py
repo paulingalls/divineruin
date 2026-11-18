@@ -145,9 +145,7 @@ async def test_captain_healing_and_prepared_hit(runtime):
         "on_hit": {"applies_condition": "blinded", "duration": 1}
     }
     await declare(ctx, pid, eid, "Longsword")
-    with patch(
-        "check_resolution_attack._roll_d20_check", wraps=__import__("check_resolution_attack")._roll_d20_check
-    ) as consumer:
+    with patch("check_resolution._roll_d20_check", wraps=__import__("check_resolution")._roll_d20_check) as consumer:
         result = await resolve(ctx)
     assert consumer.call_args.kwargs["advantage"] is True
     packet = next(p for p in result["packets"] if p["actor_id"] == eid)
@@ -158,9 +156,7 @@ async def test_captain_healing_and_prepared_hit(runtime):
 async def test_lunge_grapple_advantage_and_recharge(runtime):
     ctx, pid, eid, _ = await runtime("hollow_mawling")
     await declare(ctx, pid, eid, "Lunge")
-    with patch(
-        "check_resolution_attack._roll_d20_check", wraps=__import__("check_resolution_attack")._roll_d20_check
-    ) as consumer:
+    with patch("check_resolution._roll_d20_check", wraps=__import__("check_resolution")._roll_d20_check) as consumer:
         result = await resolve(ctx)
     assert consumer.call_args.kwargs["advantage"] is True
     packet = next(p for p in result["packets"] if p["actor_id"] == eid)

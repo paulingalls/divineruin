@@ -16,6 +16,7 @@ from companion_scaling import companion_attacks_to_action_pool, scale_companion_
 from db_errors import validated_player_conditions
 from encounter_actions import validate_encounter_actions
 from encounter_references import validate_encounter_references
+from patron_passives import effective_hp, scholars_ward
 from session_data import CombatParticipant
 
 
@@ -75,7 +76,7 @@ async def assemble_participants(session, encounter, encounter_id, member_players
             # Hydration assigns the companion to the primary player, even when a guest starts combat.
             owner = dict(member_players)[session.primary_player_id]
             companion_scaled = scale_companion_stats_to_player_level(
-                profile, owner.get("hp", {}).get("max", 1), owner.get("level", 1)
+                profile, effective_hp(owner)["max"] if "hp" in owner else 1, owner.get("level", 1)
             )
             companion_action_pool = companion_attacks_to_action_pool(profile)
         except ValueError as e:
@@ -113,7 +114,7 @@ async def assemble_participants(session, encounter, encounter_id, member_players
             traits = item_effects.combat_traits([item for item in inventory if item.get("type") != "material"])
         except ValueError as error:
             raise ToolError(f"Player {mid!r} has malformed inventory: {error}") from error
-        row_hp = row.get("hp", {})
+        row_hp = effective_hp(row) if "hp" in row else {}
         player_class = row.get("class")
         if not isinstance(player_class, str):
             raise ToolError(f"Player {mid!r} has invalid class {player_class!r}.")
@@ -149,6 +150,7 @@ async def assemble_participants(session, encounter, encounter_id, member_players
                 saving_throw_proficiencies=row.get("saving_throw_proficiencies", []),
                 condition_immunities=traits.condition_immunities,
                 save_advantages=traits.save_advantages,
+                scholars_ward=scholars_ward(row),
                 advantage_vs=traits.advantage_vs,
             )
         )

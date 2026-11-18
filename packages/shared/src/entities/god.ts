@@ -16,10 +16,22 @@ export interface GodSynergyRow {
 
 export interface God {
   god_id: string;
+  layer_1_gift: GodLayer1Gift;
   layer_2_resonance: GodResonance;
   layer_3_tier_abilities: Record<GodTier, GodTierAbility>;
   layer_4_synergy_matrix: Record<string, GodSynergyRow>;
   [legacyField: string]: unknown;
+}
+export interface GodLayer1Gift {
+  id: string;
+  name: string;
+  effect: string;
+  trigger: string;
+  status: "active" | "awaits_healing";
+  recharge: "always" | "per_encounter" | "short_rest" | "long_rest";
+  resolution?: "narrated" | "engine";
+  implementation_id?: string;
+  mechanics?: unknown;
 }
 export type GodTier = "acknowledged" | "devoted" | "exalted";
 export interface GodTierAbility {
@@ -124,7 +136,13 @@ for (const [id, target] of Object.entries(implementations)) {
 function readiness(row: Record<string, unknown>, path: string): void {
   if (!["active", "pending"].includes(text(row.status, `${path}.status`)))
     fail(`${path}.status`, "unknown status");
-  if (!["narrated", "engine"].includes(text(row.resolution, `${path}.resolution`)))
+  engineResolution(row, path);
+}
+function engineResolution(row: Record<string, unknown>, path: string): void {
+  if (
+    Object.hasOwn(row, "resolution") &&
+    !["narrated", "engine"].includes(text(row.resolution, `${path}.resolution`))
+  )
     fail(`${path}.resolution`, "unknown resolution");
   if (Object.hasOwn(row, "implementation_id"))
     text(row.implementation_id, `${path}.implementation_id`);
@@ -135,6 +153,18 @@ function readiness(row: Record<string, unknown>, path: string): void {
       !Object.hasOwn(implementations, row.implementation_id))
   )
     fail(`${path}.implementation_id`, "active engine effect requires a registered implementation");
+}
+function layer1(value: unknown, path: string): void {
+  const gift = object(value, path);
+  for (const field of ["id", "name", "effect", "trigger", "recharge", "status"]) {
+    if (!Object.hasOwn(gift, field)) fail(`${path}.${field}`, "required field");
+    text(gift[field], `${path}.${field}`);
+  }
+  if (!["active", "awaits_healing"].includes(gift.status as string))
+    fail(`${path}.status`, "unknown status");
+  if (!["always", "per_encounter", "short_rest", "long_rest"].includes(gift.recharge as string))
+    fail(`${path}.recharge`, "unknown recharge");
+  engineResolution(gift, path);
 }
 function matrix(value: unknown, path: string): void {
   const rows = object(value, path);
@@ -170,6 +200,7 @@ export function validateGod(profile: unknown): God {
   const identityPath = "god.god_id";
   const row = object(profile, identityPath);
   const patron = text(row.god_id, identityPath);
+  layer1(row.layer_1_gift, `${patron}.layer_1_gift`);
   let path = `${patron}.layer_2_resonance`;
   const resonance = object(row.layer_2_resonance, path, ["name", "effect", "modifiers"]);
   for (const field of ["name", "effect"]) text(resonance[field], `${path}.${field}`);

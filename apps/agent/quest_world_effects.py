@@ -47,10 +47,11 @@ async def _apply_world_effects(
     reputation_mutations=db_mutations_reputation,
     party_ids: tuple[str, ...] | None = None,
     pending_notes: list[str] | None = None,
+    actor_id: str | None = None,
 ) -> None:
     """Parse and apply deterministic world_effects from quest on_complete."""
     record_note = session.record_event if pending_notes is None else pending_notes.append
-    actor_id = session.acting_player_id
+    actor_id = actor_id if actor_id is not None else session.acting_player_id
     party_ids = party_ids if party_ids is not None else tuple(session.party.member_ids)
     for effect_str in effects:
         if effect_str.startswith("set_flag:"):

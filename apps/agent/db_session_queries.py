@@ -16,6 +16,7 @@ import db_queries
 import spell_knowledge
 import spells
 from companion_profiles import get_companion_profile
+from patron_passives import effective_hp
 
 logger = logging.getLogger("divineruin.db")
 
@@ -101,7 +102,9 @@ async def get_session_init_payload(player_id: str) -> dict:
 
     patron_snapshot = snapshot(player_id, player, revision)
     if player is not None:
-        player["player_id"] = player_id
+        player = {**player, "player_id": player_id}
+        if "hp" in player:
+            player["hp"] = effective_hp(player)
         if player.get("divine_favor") is not None:
             player["divine_favor"] = {**player["divine_favor"], **patron_snapshot["divine_favor"]}
     location_id = player.get("location_id", "") if player else ""

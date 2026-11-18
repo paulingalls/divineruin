@@ -9,6 +9,7 @@ from _combat_end_fixtures import (  # noqa: F401  (autouse fixtures)
 )
 from inventory_snapshot_fixture import snapshot_query
 
+import combat_damage
 import combat_durability
 import combat_events
 import combat_resolution
@@ -218,7 +219,7 @@ async def _run_enemy_turn(ctx, inventory, *, shield_reaction=None, hit=True, dam
             return_value=_forced_attack(hit=hit, damage=damage),
         ),
         patch.object(
-            combat_support,
+            combat_damage,
             "_accrue_durability",
             AsyncMock(return_value={"broken": False, "penalty": {}, "current_hits": 9}),
         ) as accrue,

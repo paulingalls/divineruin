@@ -115,8 +115,9 @@
         "name": "Scholar's Ward",
         "effect": "Advantage on saves against the Hollowed condition",
         "recharge": "always",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "veythar_scholars_ward"
       },
       "devoted": {
         "id": "veythar_lorekeepers_library",
@@ -459,8 +460,9 @@
         "name": "Warrior's Endurance",
         "effect": "+5 max HP permanently",
         "recharge": "always",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "kaelen_warriors_endurance"
       },
       "devoted": {
         "id": "kaelen_battle_cry_of_the_ironhand",
@@ -1493,10 +1495,12 @@
     "layer_1_gift": {
       "id": "mortaen_deaths_awareness",
       "name": "Death's Awareness",
-      "effect": "Sense creatures within earshot at 25% HP or below. The DM can also narrate signs of violent death in this area within the past day.",
+      "effect": "Sense wounded creatures and party members within earshot at one quarter health or below, using Death's Awareness from query_info patron. The DM can also narrate signs of violent death in this area within the past day.",
       "trigger": "When a wounded creature is within earshot or you enter a place marked by recent violent death.",
       "recharge": "always",
-      "status": "narrated"
+      "status": "active",
+      "resolution": "engine",
+      "implementation_id": "mortaen_deaths_awareness"
     },
     "layer_2_resonance": {
       "name": "Threshold Magic",
@@ -2505,10 +2509,12 @@
     "layer_1_gift": {
       "id": "nythera_horizon_sense",
       "name": "Horizon Sense",
-      "effect": "Know which way is north, how far you have traveled today, and the approximate distance to the nearest unexplored area.",
+      "effect": "The DM narrates which way is north. Horizon Sense from query_info patron reveals travel hours since your last long rest and the nearest place you have never visited, measured in exit legs.",
       "trigger": "While you travel or seek new ground.",
       "recharge": "always",
-      "status": "narrated"
+      "status": "active",
+      "resolution": "engine",
+      "implementation_id": "nythera_horizon_sense"
     },
     "layer_2_resonance": {
       "name": "Boundary Walker",
@@ -3184,7 +3190,9 @@
       "effect": "After seeing any d20 result, force a reroll and choose which result stands.",
       "trigger": "After you see your d20 result or someone else's.",
       "recharge": "long_rest",
-      "status": "awaits_rest"
+      "status": "active",
+      "resolution": "engine",
+      "implementation_id": "zhael_fates_thread"
     },
     "layer_2_resonance": {
       "name": "Pattern Weaving",
@@ -3203,8 +3211,9 @@
         "name": "Lucky",
         "effect": "Once per long rest, turn a natural 1 into a natural 20, or a natural 20 into a natural 1 (before result is narrated)",
         "recharge": "long_rest",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "zhael_lucky"
       },
       "devoted": {
         "id": "zhael_prophecy_fragment",

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from patron_passives import effective_hp
 from sanitize import sanitize_for_prompt
 from warm_prompts import quest_objective
 
@@ -31,7 +32,7 @@ def build_speaker_context(
     speaker_id: str, player: dict, quests: list[dict], activities: list[dict], training: list[dict]
 ) -> SpeakerSummary:
     name = sanitize_for_prompt(player["name"], max_len=100)
-    hp = player["hp"]
+    hp = effective_hp(player)
     quest = next(
         (
             f"{q['quest_name']}: {quest_objective(q)}"

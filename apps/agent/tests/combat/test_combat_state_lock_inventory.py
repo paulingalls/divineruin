@@ -181,6 +181,7 @@ def test_full_state_save_sites_match_the_inventory():
             ("combat_wrap.py", "wrap_phase", "call"): 1,
             ("combat_death_save.py", "_request_death_save_locked", "call"): 1,
             ("draethar_inner_fire.py", "_inner_fire_locked", "call"): 1,
+            ("draethar_inner_fire.py", "resume_inner_fire", "call"): 1,
             ("ability_tools.py", "_request_ability_activation_unlocked", "call"): 1,
             ("unbound_tools.py", "_activate_milestone_locked", "call"): 1,
         }

@@ -12,6 +12,8 @@ check_resolution.py; this module only does the plumbing + IO.
 import json
 import logging
 import random
+from contextlib import nullcontext
+from functools import partial
 
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
@@ -34,6 +36,7 @@ from db_errors import validated_player_conditions
 from game_events import publish_game_event, publish_hidden_revealed
 from inventory_refresh import publish_inventory
 from session_data import SessionData
+from skill_fate import SkillScope, StaleSkillOperation, prepare_skill_offer
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -102,7 +105,76 @@ async def _check_gather_impl(
         natural_terrain=await skill_natural_terrain(session, player, skill, content_mod=content),
         hearing_only=False,
     )
+    scope = SkillScope.capture(session, player_id)
     resource_table = {rarity: tuple(ids) for rarity, ids in (resource_table_raw or {}).items()}
+
+    finish = partial(
+        _finish_gather,
+        session,
+        player_id,
+        mat=mat,
+        skill=skill,
+        skill_tier=skill_tier,
+        dc=dc,
+        queries=queries,
+        mutations=mutations,
+        content=content,
+        gather_mutations=gather_mutations,
+        conditions_mutations=conditions_mutations,
+        db_mod=db_mod,
+    )
+
+    async def write(kept, conn):
+        current_location = await content.get_location(scope.origin)
+        if current_location is None:
+            raise ValueError(f"Missing gathering location {scope.origin}")
+        current_table = {rarity: tuple(ids) for rarity, ids in (current_location.get("resource_table") or {}).items()}
+        current_nodes = [
+            node
+            for node in await content.get_gathering_nodes_at_location(scope.origin, conn=conn, for_update=True)
+            if node.get("quantity", 0) > 0
+        ]
+        # Ordinary gathering locks nodes before granting inventory to the roller.
+        await scope.lock_roller(session, conn, queries=queries)
+        if not current_table and not current_nodes:
+            raise StaleSkillOperation("There is nothing left to forage at the original location.")
+        return await finish(kept, current_table, current_nodes, conn=conn, scope=scope)
+
+    offer = await prepare_skill_offer(session, scope, roll, player, write, queries=queries, db_mod=db_mod)
+    if offer is not None:
+        session.fate_offer = offer
+        return json.dumps(offer.response())
+
+    flush = await finish(roll, resource_table, nodes)
+    return json.dumps(await flush())
+
+
+async def _finish_gather(
+    session,
+    player_id,
+    roll,
+    resource_table,
+    nodes,
+    *,
+    mat,
+    skill,
+    skill_tier,
+    dc,
+    queries,
+    mutations,
+    content,
+    gather_mutations,
+    conditions_mutations,
+    db_mod,
+    conn=None,
+    scope=None,
+):
+    def validate():
+        if scope is None:
+            session.validate_acting_player(player_id)
+        else:
+            scope.validate(session)
+
     result = gathering.resolve_gathering(
         material_type=mat,
         skill_tier=skill_tier,
@@ -138,24 +210,24 @@ async def _check_gather_impl(
     # materials not granted, or granted without depletion) would dupe or lose items in the
     # persistent economy. The conn= seams on both mutation modules thread the tx connection.
     consumed_state = None
-    async with db_mod.transaction() as conn:
-        session.validate_acting_player(player_id)
+    async with db_mod.transaction() if conn is None else nullcontext(conn) as conn:
+        validate()
         if node is not None:
             await gather_mutations.mark_node_discovered(node["id"], conn=conn)
             # A persistent node (respawn_days == -1) never depletes — it's infinite by design
             # (gathering_respawn contract; e.g. the hollow residue pool). Still discoverable, so
             # mark_node_discovered fires, but skip the depletion write.
             if node.get("respawn_days") != -1:
-                session.validate_acting_player(player_id)
+                validate()
                 await gather_mutations.deplete_node_quantity(node["id"], 1, conn=conn)
         for material_id, qty in counts.items():
-            session.validate_acting_player(player_id)
+            validate()
             await mutations.add_inventory_item(player_id, material_id, qty, tainted=False, conn=conn)
         # The gather roll spends Blessed/Inspired's +1d4 (M4.8 story-009): remove + persist the
         # signalled conditions on the SAME tx connection, so the die-consume commits atomically
         # with the node depletion + inventory grant.
         if roll.consumed_conditions:
-            session.validate_acting_player(player_id)
+            validate()
             consumed_state = await consume_beneficial_conditions(
                 player_id,
                 roll.consumed_conditions,
@@ -165,44 +237,44 @@ async def _check_gather_impl(
                 db_mod=db_mod,
             )
 
-    if consumed_state is not None:
-        session.combat_state = consumed_state
-    for name in found_names:
-        session.record_item_found(player_id, name)
+    async def flush():
+        if consumed_state is not None:
+            session.combat_state = consumed_state
+        for name in found_names:
+            session.record_item_found(player_id, name)
 
-    success = result.result != "nothing"
-    await publish_game_event(
-        session.room,
-        E.DICE_ROLL,
-        {
-            "roll_type": "gathering_check",
-            "skill": skill,
-            "roll": roll.roll,
-            "total": roll.total,
-            "success": success,
-            "dramatic": result.dramatic,
-            "context": result.context,
-        },
-        event_bus=session.event_bus,
-    )
-
-    if node is not None and not node.get("discovered"):
-        await publish_hidden_revealed(
+        session.record_event(f"Gather ({skill}): {result.narrative_cue}")
+        success = result.result != "nothing"
+        await publish_game_event(
             session.room,
-            element_id=node["id"],
-            attaches_to=node.get("location_id"),
-            description=f"a {node['node_type'].replace('_', ' ')} ({node['resource_type']})",
-            skill=skill,
+            E.DICE_ROLL,
+            {
+                "roll_type": "gathering_check",
+                "skill": skill,
+                "roll": roll.roll,
+                "total": roll.total,
+                "success": success,
+                "dramatic": result.dramatic,
+                "context": result.context,
+            },
             event_bus=session.event_bus,
         )
 
-    if counts:
-        await publish_inventory(session, player_id, queries=queries)
-        await publish_action_sound(session, "action_gather")
+        if node is not None and not node.get("discovered"):
+            await publish_hidden_revealed(
+                session.room,
+                element_id=node["id"],
+                attaches_to=node.get("location_id"),
+                description=f"a {node['node_type'].replace('_', ' ')} ({node['resource_type']})",
+                skill=skill,
+                event_bus=session.event_bus,
+            )
 
-    session.record_event(f"Gather ({skill}): {result.narrative_cue}")
-    return json.dumps(
-        {
+        if counts:
+            await publish_inventory(session, player_id, queries=queries)
+            await publish_action_sound(session, "action_gather")
+
+        return {
             "outcome": "success" if success else "failure",
             "result": result.result,
             "skill": skill,
@@ -220,4 +292,5 @@ async def _check_gather_impl(
             "margin": result.margin,
             **({"gift_name": roll.gift_name} if roll.gift_name else {}),
         }
-    )
+
+    return flush
