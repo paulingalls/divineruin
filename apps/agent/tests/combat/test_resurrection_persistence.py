@@ -3,6 +3,8 @@
 import json
 from unittest.mock import AsyncMock
 
+import pytest
+
 import db_mutations_resurrection as dmr
 import db_queries
 
@@ -102,7 +104,16 @@ async def test_resurrection_writes_roundtrip(dev_db_pool):
         await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
 
 
-async def test_resurrect_on_defeat_e2e_persists_cost_and_revives_at_anchor(dev_db_pool):
+@pytest.mark.parametrize(
+    "patron,previous_deaths,override,expected_hp",
+    [
+        ("none", 1, 0, 40),
+        ("kaelen", 6, -2, 38),
+    ],
+)
+async def test_resurrect_on_defeat_e2e_persists_cost_and_revives_at_anchor(
+    dev_db_pool, patron, previous_deaths, override, expected_hp
+):
     import resurrection
 
     pool = dev_db_pool
@@ -118,9 +129,10 @@ async def test_resurrect_on_defeat_e2e_persists_cost_and_revives_at_anchor(dev_d
                 "attributes": {"strength": 14, "charisma": 8, "constitution": 13},
                 "level": 5,
                 "hp": {"current": 0, "max": 40},
-                "maxhp_override": 0,
+                "maxhp_override": override,
+                "divine_favor": {"patron": patron, "level": 0, "max": 100},
                 "location_id": "off_catalog_wilds",  # not a real location -> anchor falls to starter zone
-                "death_history": {"count": 1, "costs": []},  # this will be death #2 = moderate
+                "death_history": {"count": previous_deaths, "costs": []},
             }
         ),
     )
@@ -129,14 +141,18 @@ async def test_resurrect_on_defeat_e2e_persists_cost_and_revives_at_anchor(dev_d
         assert player is not None
         ctx = await resurrection.resurrect_on_defeat(player, combat_cleared=False, conn=pool)
 
-        assert ctx["death_count"] == 2 and ctx["tier"] == "moderate"
+        assert ctx["death_count"] == previous_deaths + 1
         assert ctx["anchor"] == "accord_market_square"  # tier-4 starter fallback
 
         revived = await db_queries.get_player(player_id, conn=pool)
         assert revived is not None
-        assert revived["death_history"]["count"] == 2  # recorded
-        assert revived["attributes"]["charisma"] == 7  # moderate -> -1 lowest (charisma)
+        assert revived["death_history"]["count"] == previous_deaths + 1
+        if previous_deaths == 1:
+            assert ctx["tier"] == "moderate"
+            assert revived["attributes"]["charisma"] == 7
+        else:
+            assert revived["maxhp_override"] == -7
         assert revived["location_id"] == "accord_market_square"  # placed at anchor
-        assert revived["hp"]["current"] == 40  # revived to effective max (no override)
+        assert revived["hp"] == {"current": expected_hp, "max": 40}
     finally:
         await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)

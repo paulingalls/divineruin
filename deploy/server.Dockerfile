@@ -16,7 +16,7 @@ COPY --from=dependencies /app/packages/shared ./packages/shared
 COPY apps/server/src ./apps/server/src
 COPY packages/shared/src ./packages/shared/src
 COPY packages/shared/package.json ./packages/shared/package.json
-COPY content/loot_tables.json ./content/loot_tables.json
+COPY content/loot_tables.json content/gods.json content/archetypes.json content/engine_implementations.json ./content/
 COPY assets/images/ ./assets/images/
 RUN groupadd --gid 10001 media && useradd --uid 10001 --gid media --create-home media \
     && mkdir -p /var/lib/divineruin/media/audio /var/lib/divineruin/media/portraits \

@@ -57,6 +57,29 @@ describe("handleGetCharacter", () => {
     expect(boundValues).toEqual(["player_1"]);
   });
 
+  test.each([
+    ["kaelen", 0, 27],
+    ["kaelen", 80, 27],
+    ["veythar", 0, 22],
+    ["none", 0, 22],
+  ] as const)("projects the HP pool for %s at %d favor", async (patron, level, maximum) => {
+    const data = {
+      name: "Kael",
+      class: "warrior",
+      level: 3,
+      hp: { current: 29, max: 22 },
+      maxhp_override: -7,
+      divine_favor: { patron, level, max: 100 },
+    };
+    mockRows = [{ player_id: "player_1", data, location_name: null }];
+    for (let read = 0; read < 2; read++) {
+      const res = await handleGetCharacter(makeRequest(), "player_1");
+      expect(res.status).toBe(200);
+      expect(await res.json()).toMatchObject({ hp_current: maximum, hp_max: maximum });
+    }
+    expect(data.hp).toEqual({ current: 29, max: 22 });
+  });
+
   test("returns 404 for player with empty data (no character created)", async () => {
     mockRows = [
       {
