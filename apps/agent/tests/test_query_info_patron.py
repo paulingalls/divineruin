@@ -5,6 +5,7 @@ import pytest
 from livekit.agents.llm import ToolContext, ToolError
 from sample_fixtures import make_context
 
+import query_patron
 import query_tools
 from _gods_content import load_gods
 
@@ -12,7 +13,7 @@ from _gods_content import load_gods
 @pytest.mark.asyncio
 async def test_patron_kind_routes_without_target_id():
     context = make_context()
-    with patch("query_tools._query_patron_impl", new_callable=AsyncMock, return_value='{"tier":"Devoted"}') as read:
+    with patch("query_patron.query_patron", new_callable=AsyncMock, return_value='{"tier":"Devoted"}') as read:
         result = await query_tools._query_info_impl(context, "patron")
 
     assert result == '{"tier":"Devoted"}'
@@ -53,7 +54,7 @@ async def test_bound_patron_reports_standing_and_authored_actions():
             }
         ]
 
-    response = json.loads(await query_tools._query_patron_impl(context, queries=queries, gods_loader=catalog))
+    response = json.loads(await query_patron.query_patron(context, queries=queries, gods_loader=catalog))
 
     ability_rows = response.pop("abilities")
     assert len(ability_rows) == 3
@@ -134,7 +135,7 @@ async def test_exalted_has_explicitly_no_next_tier():
             }
         ]
 
-    response = json.loads(await query_tools._query_patron_impl(context, queries=queries, gods_loader=catalog))
+    response = json.loads(await query_patron.query_patron(context, queries=queries, gods_loader=catalog))
 
     assert response["tier"] == "Exalted"
     assert response["next_tier"] is None
@@ -147,7 +148,7 @@ async def test_missing_divine_favor_fails_loud():
     queries.get_player = AsyncMock(return_value={})
 
     with pytest.raises(ToolError, match="divine_favor"):
-        await query_tools._query_patron_impl(make_context(), queries=queries)
+        await query_patron.query_patron(make_context(), queries=queries)
 
 
 @pytest.mark.asyncio
@@ -156,7 +157,7 @@ async def test_unknown_patron_id_fails_loud():
     queries.get_player = AsyncMock(return_value={"divine_favor": {"patron": "missing_patron", "level": 3, "max": 100}})
 
     with pytest.raises(ToolError, match="missing_patron"):
-        await query_tools._query_patron_impl(make_context(), queries=queries, gods_loader=lambda: [])
+        await query_patron.query_patron(make_context(), queries=queries, gods_loader=lambda: [])
 
 
 @pytest.mark.asyncio
@@ -178,7 +179,7 @@ async def test_bound_patron_missing_gift_fails_loud():
         ]
 
     with pytest.raises(KeyError, match="layer_1_gift"):
-        await query_tools._query_patron_impl(make_context(), queries=queries, gods_loader=catalog)
+        await query_patron.query_patron(make_context(), queries=queries, gods_loader=catalog)
 
 
 def test_emitted_query_info_schema_advertises_patron():

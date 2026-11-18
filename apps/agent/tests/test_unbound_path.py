@@ -11,7 +11,8 @@ from _unbound_path_fixtures import world as world
 from livekit.agents.llm import ToolError
 from sample_fixtures import published_payloads
 
-from query_tools import _query_info_impl, _query_patron_impl
+from query_patron import query_patron
+from query_tools import _query_info_impl
 
 
 @pytest.mark.parametrize("bonus,state", [(0, "overreach"), (1, "flickering")])
@@ -31,7 +32,7 @@ async def test_guest_discovery_uses_persisted_resonance_and_bypasses_gods(world,
         raise AssertionError("Unbound read gods")
 
     with w.ctx.userdata._bind_authenticated_actor(w.ids[1], 4, lambda *_: None):
-        with patch("query_tools._query_patron_impl", partial(_query_patron_impl, gods_loader=forbidden_catalog)):
+        with patch("query_patron.query_patron", partial(query_patron, gods_loader=forbidden_catalog)):
             packet = json.loads(await _query_info_impl(w.ctx, "patron"))
     assert packet["state"] == "Unbound"
     assert packet["resonance"] == {"current": 9, "state": state}

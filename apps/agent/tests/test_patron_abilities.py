@@ -88,7 +88,7 @@ async def test_pending_and_always_on_refuse_without_writes(dev_db_pool, monkeypa
     from functools import partial
 
     import patron_ability_tools
-    import query_tools
+    import query_patron
     from _gods_content import _validate_gods
 
     async with AbilityWalk(dev_db_pool) as w:
@@ -100,9 +100,7 @@ async def test_pending_and_always_on_refuse_without_writes(dev_db_pool, monkeypa
         library["status"] = "pending"
         _validate_gods(rows)
         monkeypatch.setattr(patron_ability_tools, "load_gods", lambda: rows)
-        monkeypatch.setattr(
-            query_tools, "_query_patron_impl", partial(query_tools._query_patron_impl, gods_loader=lambda: rows)
-        )
+        monkeypatch.setattr(query_patron, "query_patron", partial(query_patron.query_patron, gods_loader=lambda: rows))
         assert "pending" in await w.use(LIBRARY, error=True)
         assert await w.state() == before
         pending = next(a for a in await w.abilities() if a["id"] == LIBRARY)
