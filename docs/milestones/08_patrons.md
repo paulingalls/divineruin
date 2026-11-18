@@ -125,17 +125,27 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 - Client data: patron ability list for character sheet display, favor bar value for HUD overlay
 
 **Acceptance criteria:**
-- [ ] All 10 patrons have abilities defined for all 3 tiers (Acknowledged, Devoted, Exalted)
-- [ ] Each ability has name, effect, and recharge condition specified
-- [ ] Recharge tracking prevents ability use before recharge completes (short rest / long rest / daily)
-- [ ] Ability unlock triggers automatically when favor tier advances
-- [ ] Higher-tier abilities become unavailable (not deleted) when favor drops below tier threshold
+
+<!-- patron-abilities-on-hud (2026-11-17): test_patron_ability_events.py,
+ test_patron_abilities.py, test_query_info_patron.py, both wire-contract suites,
+ and the strict native patron-abilities.yaml flow pass. Standing derives from
+ players.data.divine_favor; spend persists in players.data.patron_gifts. The
+ historical patron_ability_unlock table is superseded; no unlock table is added.
+ activate_patron_ability maps to registered activate(id=...); check_patron_tier
+ maps to query_info(kind="patron"). Historical daily recharge is per_session.
+ Authored pending effects remain pending; AC6 stays open. -->
+
+- [x] All 10 patrons have abilities defined for all 3 tiers (Acknowledged, Devoted, Exalted)
+- [x] Each ability has name, effect, and recharge condition specified
+- [x] Recharge tracking prevents ability use before recharge completes (short rest / long rest / daily)
+- [x] Ability unlock triggers automatically when favor tier advances
+- [x] Higher-tier abilities become unavailable (not deleted) when favor drops below tier threshold
 - [ ] `activate_patron_ability` validates availability, applies effect, and sets recharge timer
-- [ ] `activate_patron_ability` returns error if ability is on cooldown or tier is insufficient
-- [ ] `check_patron_tier` returns current tier, favor value, and list of available abilities
-- [ ] Client receives patron ability data for character sheet and favor bar for HUD
-- [ ] Unbound Path players have no patron abilities (Unbound benefits come from M8.1 passives)
-- [ ] Tests cover ability activation, recharge, tier-up unlock, tier-down lockout, and Unbound exclusion
+- [x] `activate_patron_ability` returns error if ability is on cooldown or tier is insufficient
+- [x] `check_patron_tier` returns current tier, favor value, and list of available abilities
+- [x] Client receives patron ability data for character sheet and favor bar for HUD
+- [x] Unbound Path players have no patron abilities (Unbound benefits come from M8.1 passives)
+- [x] Tests cover ability activation, recharge, tier-up unlock, tier-down lockout, and Unbound exclusion
 
 **Key references:**
 - *Game Mechanics Patrons — Patron Abilities by Tier*
