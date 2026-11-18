@@ -67,3 +67,11 @@ def test_missing_nested_fields():
             broken = deepcopy(row)
             del broken[key][field]
             assert validate_creature_stat_block(broken)
+
+
+@pytest.mark.parametrize("stage", [None, True, 0, 2, 3])
+def test_pulse_stage_contract(stage):
+    _, _, row = boss_state()
+    rider = row["actives"][1]["conditions_on_failure"][0]
+    rider["stage"] = stage
+    assert validate_creature_stat_block(row)

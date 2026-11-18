@@ -81,8 +81,8 @@ export interface EncounterAttackAction extends EncounterActionBase {
   durability_rider?: DurabilityRider;
   resolution?: "save" | "hit_then_save";
   save_success_damage?: "none" | "half";
-  conditions_on_failure?: { applies_condition: string; duration: number | null }[];
-  conditions_on_success?: { applies_condition: string; duration: number | null }[];
+  conditions_on_failure?: { applies_condition: string; duration: number | null; stage?: 1 }[];
+  conditions_on_success?: { applies_condition: string; duration: number | null; stage?: 1 }[];
   reach?: number;
   type?: "melee" | "ranged" | "area";
   kind?: "attack";

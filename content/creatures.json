@@ -2861,7 +2861,8 @@
         "conditions_on_failure": [
           {
             "applies_condition": "hollowed",
-            "duration": null
+            "duration": null,
+            "stage": 1
           }
         ],
         "conditions_on_success": []

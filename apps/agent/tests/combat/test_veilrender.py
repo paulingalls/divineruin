@@ -133,11 +133,13 @@ async def test_regeneration_and_radiant_receipt_reload(initial):
 
 
 async def test_field_catalog_boundary_stunned_and_hollow():
-    state, boss, _ = boss_state()
+    state, boss, row = boss_state()
     target = state.participants[0]
+    row["hollow"]["corruption_aura"] = 17
+    row["corruption_field"]["dc"] = 19
+    boss = participant(translate_creature(row, encounter_id="test", enemy_id=boss.id, role="standard"))
+    state.participants[1] = boss
     assert boss.hollow is not None and boss.corruption_field is not None
-    boss.hollow["corruption_aura"] = 17
-    boss.corruption_field["dc"] = 19
     target.conditions = [{"type": "stunned", "duration": 1}]
     spatial_record(state)["positions"][target.id]["x"] = 17
     with (

@@ -45,3 +45,12 @@ test("every nested trait key is required", () => {
     }
   }
 });
+
+for (const stage of [null, true, 0, 2, 3])
+  test(`Pulse refuses stage ${stage}`, () => {
+    const broken = structuredClone(row) as unknown as {
+      actives: { conditions_on_failure: { stage: unknown }[] }[];
+    };
+    broken.actives[1]!.conditions_on_failure[0]!.stage = stage;
+    expect(validateCreatureStatBlock(broken).length).toBeGreaterThan(0);
+  });

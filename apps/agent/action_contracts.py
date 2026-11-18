@@ -174,9 +174,18 @@ def validate_resolution(action, path):
             invalid(f"{path}.{key}")
         seen = set()
         for rider in riders:
-            if not isinstance(rider, dict) or set(rider) != {"applies_condition", "duration"}:
+            if not isinstance(rider, dict):
                 invalid(f"{path}.{key}")
-            condition = rider["applies_condition"]
+            condition = rider.get("applies_condition")
+            fields = (
+                {"applies_condition", "duration", "stage"}
+                if condition == "hollowed"
+                else {"applies_condition", "duration"}
+            )
+            if set(rider) != fields:
+                invalid(f"{path}.{key}")
+            if condition == "hollowed" and (type(rider["stage"]) is not int or rider["stage"] != 1):
+                invalid(f"{path}.{key}.stage")
             if not isinstance(condition, str) or condition not in conditions.CONDITION_CATALOG or condition in seen:
                 invalid(f"{path}.{key}.applies_condition")
             seen.add(condition)
