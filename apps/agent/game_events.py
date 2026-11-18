@@ -50,6 +50,21 @@ async def publish_game_event(
     disconnected room, then warn and skip the client send. Skip the event bus
     if event_bus is None.
     """
+    if event_type == E.PATRON_ABILITIES_UPDATED:
+        from patron_ability_wire import validate_snapshot
+
+        validate_snapshot(payload)
+        if destination_identities != [payload["player_id"]]:
+            raise ValueError("Patron snapshot must target its player")
+    if event_type == E.SESSION_INIT:
+        player_id = (payload.get("character") or {}).get("player_id")
+        if player_id and destination_identities != [player_id]:
+            raise ValueError("Session initialization must target its player")
+    if event_type == E.DIVINE_FAVOR_CHANGED:
+        from patron_ability_events import publish_patron_abilities
+
+        await publish_patron_abilities(room, payload["player_id"], event_bus)
+
     if event_bus is not None:
         from event_bus import GameEvent
 

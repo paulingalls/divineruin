@@ -18,6 +18,7 @@ Called once per fresh session by agent.dm_session — reconnects reuse the in-me
 *_mod params are the test seam (mirrors _cast_spell_impl's DI); production uses the defaults.
 """
 
+import asyncio
 import json
 from datetime import UTC, datetime
 
@@ -29,8 +30,10 @@ import db_mutations_concentration
 import db_mutations_divine
 import db_mutations_resonance
 import db_mutations_veil_ward
+import db_queries
 import event_types as E
 import game_events
+import patron_gift_tools
 import player_session
 import racial_resonance
 from favor_rules import apply_favor_delta, neglect_decay
@@ -44,18 +47,15 @@ async def apply_session_favor_decay(
     player: dict,
     *,
     now: datetime | None = None,
-    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    conn: asyncpg.Pool | None = None,
 ) -> tuple[str, int] | None:
     favor = player.get("divine_favor") or {}
     if (favor.get("patron") or "none") == "none":
         return None
     instant = now or datetime.now(UTC)
     source = conn or await db.get_pool()
-    if isinstance(source, asyncpg.Pool):
-        async with source.acquire() as connection:
-            return await _decay_locked(session, player_id, connection, instant)
-    else:
-        return await _decay_locked(session, player_id, source, instant)
+    async with source.acquire() as connection:
+        return await _decay_locked(session, player_id, connection, instant)
 
 
 async def _decay_locked(session: SessionData, player_id: str, connection, now: datetime) -> tuple[str, int] | None:
@@ -100,6 +100,33 @@ async def _decay_locked(session: SessionData, player_id: str, connection, now: d
     return None
 
 
+async def hydrate_patron_ability_session(
+    session: SessionData,
+    player_id: str,
+    *,
+    conn: asyncpg.Pool | None = None,
+) -> None:
+    lock = session.patron_ability_entry_locks.setdefault(player_id, asyncio.Lock())
+    async with lock:
+        if player_id in session.patron_ability_entries:
+            return
+        source = conn or await db.get_pool()
+        async with source.acquire() as connection:
+            await _recharge_session_abilities(player_id, connection)
+        session.patron_ability_entries.add(player_id)
+    from patron_ability_events import publish_patron_abilities
+
+    await publish_patron_abilities(session.room, player_id, session.event_bus)
+
+
+async def _recharge_session_abilities(player_id: str, connection) -> None:
+    async with connection.transaction():
+        player = await db_queries.get_player(player_id, conn=connection, for_update=True)
+        if player is None:
+            raise ValueError(f"missing player row: {player_id}")
+        await patron_gift_tools.recharge(player_id, player, "per_session", conn=connection)
+
+
 async def hydrate_session_state(
     session: SessionData,
     player: dict,
@@ -109,7 +136,7 @@ async def hydrate_session_state(
     concentration_mutations_mod=db_mutations_concentration,
     player_session_mod=player_session,
     racial_mod=racial_resonance,
-    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    conn: asyncpg.Pool | None = None,
     now: datetime | None = None,
 ) -> None:
     """Rehydrate a FRESH session's persisted state and set+persist the gated Thessyn bonus.
@@ -122,6 +149,7 @@ async def hydrate_session_state(
     persisted — a harmless 0).
     """
     player_id = session.primary_player_id
+    await hydrate_patron_ability_session(session, player_id, conn=conn)
     if not session.in_combat:
         await concealment.expire_orphaned_gift(player, conn=conn)
     res = await resonance_mutations_mod.read_player_resonance(player_id, conn=conn)

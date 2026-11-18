@@ -10,7 +10,9 @@ export interface GodTierAbility {
   id: string;
   name: string;
   effect: string;
-  recharge: "always" | "long_rest" | "per_session";
+  status: "active" | "pending";
+  resolution: "narrated" | "engine";
+  recharge: "always" | "short_rest" | "long_rest" | "per_session";
 }
 export interface GodResonance {
   name: string;
@@ -109,7 +111,14 @@ export function validateGod(profile: unknown): God {
   const tiers = object(row.layer_3_tier_abilities, path, TIERS);
   for (const [tier, entry] of Object.entries(tiers)) {
     const abilityPath = `${path}.${tier}`;
-    const ability = object(entry, abilityPath, ["id", "name", "effect", "recharge"]);
+    const ability = object(entry, abilityPath, [
+      "id",
+      "name",
+      "effect",
+      "recharge",
+      "status",
+      "resolution",
+    ]);
     for (const [field, value] of Object.entries(ability)) text(value, `${abilityPath}.${field}`);
     const id = text(ability.id, `${abilityPath}.id`);
     if (
@@ -118,11 +127,17 @@ export function validateGod(profile: unknown): God {
     )
       fail(`${abilityPath}.id`, "expected patron-prefixed snake_case");
     if (
-      !["always", "long_rest", "per_session"].includes(
+      !["always", "short_rest", "long_rest", "per_session"].includes(
         text(ability.recharge, `${abilityPath}.recharge`),
       )
     )
       fail(`${abilityPath}.recharge`, "unknown recharge");
+    if (!["active", "pending"].includes(text(ability.status, `${abilityPath}.status`)))
+      fail(`${abilityPath}.status`, "unknown status");
+    if (!["narrated", "engine"].includes(text(ability.resolution, `${abilityPath}.resolution`)))
+      fail(`${abilityPath}.resolution`, "unknown resolution");
+    if (ability.status === "active" && ability.resolution === "engine")
+      fail(`${abilityPath}.resolution`, `${id} is active but has no engine implementation`);
   }
   if (!Object.hasOwn(row, "layer_4_synergy_matrix") || row.layer_4_synergy_matrix !== null)
     fail(`${patron}.layer_4_synergy_matrix`, "must be null");

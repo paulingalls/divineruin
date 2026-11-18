@@ -4,6 +4,7 @@ import json
 from itertools import combinations
 from pathlib import Path
 
+from _gods_content import load_gods
 from activate_tools import _RESERVED
 from veil_ward import VEIL_ANCHORS
 
@@ -16,7 +17,10 @@ def _ids(filename: str) -> set[str]:
 
 
 def test_activate_routed_namespaces_are_pairwise_disjoint():
+    tier_ids = [a["id"] for p in load_gods() for a in p["layer_3_tier_abilities"].values()]
+    assert len(tier_ids) == len(set(tier_ids)) == 30
     namespaces = {
+        "patron_abilities": set(tier_ids),
         "reserved": set(_RESERVED),
         "anchors": set(VEIL_ANCHORS),
         "spells": _ids("spells.json"),

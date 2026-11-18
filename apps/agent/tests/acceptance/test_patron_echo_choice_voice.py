@@ -37,7 +37,7 @@ class EchoDiagnostic(ChoirEncounterDiagnostic):
         await pool.execute(
             "UPDATE players SET data=data || $2::jsonb WHERE player_id=$1",
             self.player_id,
-            json.dumps({"divine_favor": {"patron": "zhael"}}),
+            json.dumps({"divine_favor": {"patron": "zhael", "level": 0, "max": 100, "last_whisper_level": 0}}),
         )
         self.sd = SessionData(player_id=self.player_id, location_id="accord_guild_hall")
         self.sd.resonance.current = 9

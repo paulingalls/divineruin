@@ -26,6 +26,9 @@ import concealment
 import db_mutations_concentration
 import db_mutations_resonance
 import db_queries
+import db_session_queries
+import event_types as E
+import game_events
 import session_hydration
 from caster_state import ConcentrationState, ResonanceTrack
 from party_state import PartyMember
@@ -309,8 +312,9 @@ class PartyLifecycle:
         self._live[identity] = generation
         self._revocations[(identity, generation)] = asyncio.Event()
         if self.userdata.party.contains(identity):
-            return
-        task = asyncio.create_task(self._hydrate_member(identity, generation))
+            task = asyncio.create_task(self._publish_member_snapshot(identity))
+        else:
+            task = asyncio.create_task(self._hydrate_member(identity, generation))
         self._pending_joins[identity] = task
         self._spawned_joins.add(task)
         task.add_done_callback(self._spawned_joins.discard)
@@ -358,6 +362,13 @@ class PartyLifecycle:
                 exc_info=(type(error), error, error.__traceback__),
             )
 
+    async def _publish_member_snapshot(self, identity: str) -> None:
+        payload = await db_session_queries.get_session_init_payload(identity)
+        payload["world_state"]["time"] = self.userdata.world_time
+        await game_events.publish_game_event(
+            self.room, E.SESSION_INIT, payload, self.userdata.event_bus, destination_identities=[identity]
+        )
+
     async def _hydrate_member(self, identity: str, generation: int) -> None:
         row = await self.queries.get_player(identity)
         if row is None:
@@ -370,6 +381,7 @@ class PartyLifecycle:
             return
         if not self.userdata.in_combat:
             await concealment.expire_orphaned_gift(row)
+        await session_hydration.hydrate_patron_ability_session(self.userdata, identity)
         # Race guard: a second participant_connected for the same identity may have appended
         # during the await above.
         if self.userdata.party.contains(identity):
@@ -398,6 +410,7 @@ class PartyLifecycle:
         # current location corruption rather than a default 0.
         member.corruption_level = self.userdata.party.primary.corruption_level
         favor_loss = await session_hydration.apply_session_favor_decay(self.userdata, identity, row)
+        await self._publish_member_snapshot(identity)
         if favor_loss:
             if self.speech_ready is not None:
                 await self.speech_ready.wait()

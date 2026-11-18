@@ -26,7 +26,7 @@ def _expected_npc_portraits() -> dict[str, dict[str, str]]:
 
 async def _session_init(player: dict) -> dict:
     mock_pool = AsyncMock()
-    mock_pool.fetchrow = AsyncMock(return_value={"data": json.dumps(player)})
+    mock_pool.fetchrow = AsyncMock(return_value={"data": json.dumps(player), "patron_revision": 0})
     mock_pool.fetch = AsyncMock(
         side_effect=lambda query, *args: (
             [{"inventory_revision": "0", "item_id": None}] if "inventory_revision" in query else []

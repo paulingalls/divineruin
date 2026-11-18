@@ -36,6 +36,7 @@
     "test:acceptance:nollm": "TESTCONTAINERS_RYUK_DISABLED=true bun --env-file=../../.env run --cwd apps/agent uv run pytest tests/acceptance -m \"acceptance and not real_llm and not openai_real_llm and not live_voice\" -q",
     "test:acceptance:clean": "bash scripts/clean-livekit-acceptance.sh",
     "test:all": "bun --env-file=.env run scripts/test-all.ts",
+    "test:e2e:mobile": "bun run --cwd apps/mobile test:e2e:mobile",
     "docker:sweep": "bash scripts/sweep-test-containers.sh",
     "worktree:teardown": "bash scripts/teardown-worktree.sh",
     "prepare": "test \"$(git config --get core.hooksPath)\" = .githooks || git config core.hooksPath .githooks"

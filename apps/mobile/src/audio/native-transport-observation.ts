@@ -39,13 +39,7 @@ function requiredString(record: Record<string, unknown>, field: string): string 
   return value;
 }
 
-export function parseTransportFixture(raw: unknown, expectedRunId: string): TransportFixture {
-  if (!raw || typeof raw !== "object") throw new Error("fixture response must be an object");
-  const record = raw as Record<string, unknown>;
-  const runId = requiredString(record, "run_id");
-  if (runId !== expectedRunId)
-    throw new Error(`fixture run ID ${runId} does not match ${expectedRunId}`);
-  const wsUrl = requiredString(record, "ws_url");
+function validateFixtureWebSocket(wsUrl: string): void {
   const ws = new URL(wsUrl);
   if (
     (ws.protocol !== "ws:" && ws.protocol !== "wss:") ||
@@ -53,12 +47,46 @@ export function parseTransportFixture(raw: unknown, expectedRunId: string): Tran
   ) {
     throw new Error("LiveKit fixture URL must use loopback WebSocket");
   }
+}
+
+export function parseTransportFixture(raw: unknown, expectedRunId: string): TransportFixture {
+  if (!raw || typeof raw !== "object") throw new Error("fixture response must be an object");
+  const record = raw as Record<string, unknown>;
+  const runId = requiredString(record, "run_id");
+  if (runId !== expectedRunId)
+    throw new Error(`fixture run ID ${runId} does not match ${expectedRunId}`);
+  const wsUrl = requiredString(record, "ws_url");
+  validateFixtureWebSocket(wsUrl);
   return {
     runId,
     wsUrl,
     token: requiredString(record, "token"),
     mobileIdentity: requiredString(record, "mobile_identity"),
     publisherIdentity: requiredString(record, "publisher_identity"),
+  };
+}
+
+export async function fetchPatronFixture(
+  endpoint: string,
+  runId: string,
+  development: boolean,
+  request: (input: string) => Promise<Pick<Response, "ok" | "status" | "json">> = fetch,
+): Promise<{ run_id: string; player_id: string; token: string; url: string }> {
+  const safeEndpoint = validateFixtureEndpoint(endpoint, development);
+  const response = await request(`${safeEndpoint}?run_id=${encodeURIComponent(runId)}`);
+  if (!response.ok) throw new Error(`Probe fixture HTTP ${response.status}`);
+  const raw: unknown = await response.json();
+  if (!raw || typeof raw !== "object") throw new Error("fixture response must be an object");
+  const record = raw as Record<string, unknown>;
+  const actualRun = requiredString(record, "run_id");
+  if (actualRun !== runId) throw new Error("Stale patron run");
+  const url = requiredString(record, "url");
+  validateFixtureWebSocket(url);
+  return {
+    run_id: actualRun,
+    player_id: requiredString(record, "player_id"),
+    token: requiredString(record, "token"),
+    url,
   };
 }
 

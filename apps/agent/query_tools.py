@@ -28,6 +28,7 @@ import unbound_tools
 from _gods_content import load_gods
 from combat_terrain import resolve_terrain
 from db_errors import db_tool
+from patron_ability_tools import project_abilities
 from patron_favor import get_patron_tier
 from patron_gifts import thyra_gift
 from session_data import SessionData
@@ -93,7 +94,7 @@ async def query_info(
     - kind="abilities": the current player's owned ability ids, castable spells, reaction windows,
       and active learned variant ids (no target_id needed).
     - kind="patron": the current player's patron standing, progress, authored favor action ids,
-      and Layer 1 gift (no target_id needed). Only an active or narrated gift is granted;
+      Layer 1 gift, and abilities with ids and availability for activate (no target_id needed). Only an active or narrated gift is granted;
       an awaits_* gift is the god's promise, not yet a power. Unbound Veil Clarity reveals exact
       Resonance; the response lists unbound_raw_channeling for activate and automatic Veil Mastery."""
     return await _query_info_impl(context, kind, target_id)
@@ -155,12 +156,13 @@ async def _query_info_impl(
 async def _query_patron_impl(
     context: RunContext[SessionData],
     *,
-    activities=db_activity_queries,
+    queries=db_queries,
     gods_loader=load_gods,
 ) -> str:
     session: SessionData = context.userdata
     player_id = session.acting_player_id
-    favor = await activities.get_divine_favor(player_id)
+    player = await queries.get_player(player_id)
+    favor = player.get("divine_favor") if player else None
     if favor is None:
         raise ToolError("Cannot query patron: current player has no divine_favor row.")
 
@@ -196,6 +198,7 @@ async def _query_patron_impl(
             "favor_needed_to_next_tier": favor_needed,
             "favor_actions": patron["favor_actions"],
             "layer_1_gift": patron["layer_1_gift"],
+            "abilities": project_abilities(player, patron),
             **await _ecosystem_cue(session, favor),
         }
     )

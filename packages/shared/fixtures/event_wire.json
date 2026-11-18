@@ -1,15 +1,29 @@
 {
   "_doc": "Canonical wire-shape fixture (story-007). The single source of truth both lanes assert against: the Python agent publishers must serialize these exact shapes, and the TS mobile handlers/parsers must accept them. A key rename on either side fails its lane's wire-contract test instead of silently rendering a blank value (concern 82fc). Each event is the full top-level wire object {type, ...payload} as flat-merged by game_events.publish_game_event.",
   "events": {
-    "session_end_guest": { "type": "session_end", "player_id": "player_1", "summary": "Your journey continues." },
-    "session_end_cancelled": { "type": "session_end", "player_id": "player_1", "cancelled": true },
-    "companion_cue": { "type": "companion_cue", "voice_id": "COMPANION_SABLE" },
+    "session_end_guest": {
+      "type": "session_end",
+      "player_id": "player_1",
+      "summary": "Your journey continues."
+    },
+    "session_end_cancelled": {
+      "type": "session_end",
+      "player_id": "player_1",
+      "cancelled": true
+    },
+    "companion_cue": {
+      "type": "companion_cue",
+      "voice_id": "COMPANION_SABLE"
+    },
     "resonance_changed": {
       "type": "resonance_changed",
       "state": "stable",
       "caster_id": "player_1"
     },
-    "hollow_echo_result": { "type": "hollow_echo_result", "band": "whisper" },
+    "hollow_echo_result": {
+      "type": "hollow_echo_result",
+      "band": "whisper"
+    },
     "xp_awarded": {
       "type": "xp_awarded",
       "amount": 450,
@@ -25,8 +39,16 @@
       "type": "specialization_choice",
       "milestone_id": "warrior_identity",
       "options": [
-        { "id": "battle_master", "name": "Battle Master", "description": "Tactical maneuvers." },
-        { "id": "berserker", "name": "Berserker", "description": "Reckless fury." }
+        {
+          "id": "battle_master",
+          "name": "Battle Master",
+          "description": "Tactical maneuvers."
+        },
+        {
+          "id": "berserker",
+          "name": "Berserker",
+          "description": "Reckless fury."
+        }
       ],
       "player_id": "player_1"
     },
@@ -88,19 +110,134 @@
       "context": ""
     },
     "discover_failed": {
-      "type": "dice_roll", "roll_type": "skill_check", "skill": "perception",
-      "roll": 3, "total": 9, "dramatic": false, "context": ""
+      "type": "dice_roll",
+      "roll_type": "skill_check",
+      "skill": "perception",
+      "roll": 3,
+      "total": 9,
+      "dramatic": false,
+      "context": ""
     },
     "discover_no_candidate": {
-      "type": "dice_roll", "roll_type": "skill_check", "skill": "perception",
-      "roll": 3, "total": 9, "dramatic": false, "context": ""
+      "type": "dice_roll",
+      "roll_type": "skill_check",
+      "skill": "perception",
+      "roll": 3,
+      "total": 9,
+      "dramatic": false,
+      "context": ""
     },
     "discover_success": {
-      "type": "dice_roll", "roll_type": "skill_check", "skill": "perception",
-      "roll": 15, "total": 21, "dramatic": false, "context": ""
+      "type": "dice_roll",
+      "roll_type": "skill_check",
+      "skill": "perception",
+      "roll": 15,
+      "total": 21,
+      "dramatic": false,
+      "context": ""
     },
     "discover_reveal_cue": {
-      "type": "play_sound", "sound_name": "action_discover_reveal"
+      "type": "play_sound",
+      "sound_name": "action_discover_reveal"
+    },
+    "patron_session_init": {
+      "type": "session_init",
+      "character": {
+        "player_id": "wire_patron",
+        "divine_favor": {
+          "patron": "veythar",
+          "level": 40,
+          "max": 61
+        },
+        "patron_gifts": {}
+      },
+      "abilities": [
+        {
+          "id": "veythar_scholars_ward",
+          "name": "Scholar's Ward",
+          "recharge": "always",
+          "status": "pending",
+          "tier": "Acknowledged",
+          "eligible": true,
+          "spent": false,
+          "available": false,
+          "reason": "This ability is pending implementation.",
+          "state": "locked"
+        },
+        {
+          "id": "veythar_lorekeepers_library",
+          "name": "Lorekeeper's Library",
+          "recharge": "long_rest",
+          "status": "active",
+          "tier": "Devoted",
+          "eligible": true,
+          "spent": false,
+          "available": true,
+          "reason": null,
+          "state": "ready"
+        },
+        {
+          "id": "veythar_wellspring_echo",
+          "name": "Wellspring Echo",
+          "recharge": "per_session",
+          "status": "pending",
+          "tier": "Exalted",
+          "eligible": false,
+          "spent": false,
+          "available": false,
+          "reason": "Requires Exalted tier.",
+          "state": "locked"
+        }
+      ],
+      "patron_revision": 0
+    },
+    "patron_abilities_updated": {
+      "type": "patron_abilities_updated",
+      "player_id": "wire_patron",
+      "divine_favor": {
+        "patron": "veythar",
+        "level": 40,
+        "max": 61
+      },
+      "abilities": [
+        {
+          "id": "veythar_scholars_ward",
+          "name": "Scholar's Ward",
+          "recharge": "always",
+          "status": "pending",
+          "tier": "Acknowledged",
+          "eligible": true,
+          "spent": false,
+          "available": false,
+          "reason": "This ability is pending implementation.",
+          "state": "locked"
+        },
+        {
+          "id": "veythar_lorekeepers_library",
+          "name": "Lorekeeper's Library",
+          "recharge": "long_rest",
+          "status": "active",
+          "tier": "Devoted",
+          "eligible": true,
+          "spent": false,
+          "available": true,
+          "reason": null,
+          "state": "ready"
+        },
+        {
+          "id": "veythar_wellspring_echo",
+          "name": "Wellspring Echo",
+          "recharge": "per_session",
+          "status": "pending",
+          "tier": "Exalted",
+          "eligible": false,
+          "spent": false,
+          "available": false,
+          "reason": "Requires Exalted tier.",
+          "state": "locked"
+        }
+      ],
+      "patron_revision": 0
     }
   },
   "hollow_echo_bands": [
@@ -118,5 +255,197 @@
     "spell_tier": "major",
     "focus_cost": 5,
     "is_prepared": true
+  },
+  "malformed_patron_snapshot": {
+    "type": "patron_abilities_updated",
+    "player_id": "wire_patron",
+    "divine_favor": {
+      "patron": "veythar",
+      "level": 40,
+      "max": 61
+    },
+    "abilities": [
+      {
+        "id": "veythar_scholars_ward",
+        "name": "Scholar's Ward",
+        "recharge": "always",
+        "status": "pending",
+        "tier": "Acknowledged",
+        "eligible": true,
+        "spent": false,
+        "available": false,
+        "reason": "This ability is pending implementation.",
+        "state": "locked"
+      },
+      {
+        "id": "veythar_lorekeepers_library",
+        "name": "Lorekeeper's Library",
+        "recharge": "long_rest",
+        "status": "active",
+        "tier": "Devoted",
+        "eligible": true,
+        "spent": "false",
+        "available": true,
+        "reason": null,
+        "state": "ready"
+      },
+      {
+        "id": "veythar_wellspring_echo",
+        "name": "Wellspring Echo",
+        "recharge": "per_session",
+        "status": "pending",
+        "tier": "Exalted",
+        "eligible": false,
+        "spent": false,
+        "available": false,
+        "reason": "Requires Exalted tier.",
+        "state": "locked"
+      }
+    ],
+    "patron_revision": 1
+  },
+  "patron_spent_snapshot": {
+    "type": "patron_abilities_updated",
+    "player_id": "wire_patron",
+    "divine_favor": {
+      "patron": "veythar",
+      "level": 40,
+      "max": 61
+    },
+    "abilities": [
+      {
+        "id": "veythar_scholars_ward",
+        "name": "Scholar's Ward",
+        "recharge": "always",
+        "status": "pending",
+        "tier": "Acknowledged",
+        "eligible": true,
+        "spent": false,
+        "available": false,
+        "reason": "This ability is pending implementation.",
+        "state": "locked"
+      },
+      {
+        "id": "veythar_lorekeepers_library",
+        "name": "Lorekeeper's Library",
+        "recharge": "long_rest",
+        "status": "active",
+        "tier": "Devoted",
+        "eligible": true,
+        "spent": true,
+        "available": false,
+        "reason": "Already spent; requires a long rest to restore it.",
+        "state": "spent"
+      },
+      {
+        "id": "veythar_wellspring_echo",
+        "name": "Wellspring Echo",
+        "recharge": "per_session",
+        "status": "pending",
+        "tier": "Exalted",
+        "eligible": false,
+        "spent": false,
+        "available": false,
+        "reason": "Requires Exalted tier.",
+        "state": "locked"
+      }
+    ],
+    "patron_revision": 1
+  },
+  "unknown_tier_patron_snapshot": {
+    "type": "patron_abilities_updated",
+    "player_id": "wire_patron",
+    "divine_favor": {
+      "patron": "veythar",
+      "level": 40,
+      "max": 61
+    },
+    "abilities": [
+      {
+        "id": "veythar_scholars_ward",
+        "name": "Scholar's Ward",
+        "recharge": "always",
+        "status": "pending",
+        "tier": "Unknown",
+        "eligible": true,
+        "spent": false,
+        "available": false,
+        "reason": "This ability is pending implementation.",
+        "state": "locked"
+      },
+      {
+        "id": "veythar_lorekeepers_library",
+        "name": "Lorekeeper's Library",
+        "recharge": "long_rest",
+        "status": "active",
+        "tier": "Devoted",
+        "eligible": true,
+        "spent": false,
+        "available": true,
+        "reason": null,
+        "state": "ready"
+      },
+      {
+        "id": "veythar_wellspring_echo",
+        "name": "Wellspring Echo",
+        "recharge": "per_session",
+        "status": "pending",
+        "tier": "Exalted",
+        "eligible": false,
+        "spent": false,
+        "available": false,
+        "reason": "Requires Exalted tier.",
+        "state": "locked"
+      }
+    ],
+    "patron_revision": 1
+  },
+  "malformed_patron_revision": {
+    "type": "patron_abilities_updated",
+    "player_id": "wire_patron",
+    "divine_favor": {
+      "patron": "veythar",
+      "level": 40,
+      "max": 61
+    },
+    "abilities": [
+      {
+        "id": "veythar_scholars_ward",
+        "name": "Scholar's Ward",
+        "recharge": "always",
+        "status": "pending",
+        "tier": "Acknowledged",
+        "eligible": true,
+        "spent": false,
+        "available": false,
+        "reason": "This ability is pending implementation.",
+        "state": "locked"
+      },
+      {
+        "id": "veythar_lorekeepers_library",
+        "name": "Lorekeeper's Library",
+        "recharge": "long_rest",
+        "status": "active",
+        "tier": "Devoted",
+        "eligible": true,
+        "spent": false,
+        "available": true,
+        "reason": null,
+        "state": "ready"
+      },
+      {
+        "id": "veythar_wellspring_echo",
+        "name": "Wellspring Echo",
+        "recharge": "per_session",
+        "status": "pending",
+        "tier": "Exalted",
+        "eligible": false,
+        "spent": false,
+        "available": false,
+        "reason": "Requires Exalted tier.",
+        "state": "locked"
+      }
+    ],
+    "patron_revision": -1
   }
 }

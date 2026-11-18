@@ -1,11 +1,19 @@
 """Inject database seams but use the real seeded racial catalog for the flickering-bonus gate."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 import racial_resonance
 import session_hydration
 from session_data import SessionData
 from veil_ward import WardScope
+
+
+@pytest.fixture(autouse=True)
+def isolated_patron_ability_entry():
+    with patch("session_hydration.hydrate_patron_ability_session", new_callable=AsyncMock):
+        yield
 
 
 def _mods(*, current=0, persisted_bonus=0, active=False, source=None, spell_id=None, count=1):

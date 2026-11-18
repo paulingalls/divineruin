@@ -54,7 +54,10 @@ _CATALOG = {
 def _mage_pool() -> AsyncMock:
     pool = AsyncMock()
     pool.fetchrow = AsyncMock(
-        return_value={"data": json.dumps({"name": "Lyra", "location_id": "tavern", "class": "mage"})}
+        return_value={
+            "data": json.dumps({"name": "Lyra", "location_id": "tavern", "class": "mage"}),
+            "patron_revision": 0,
+        }
     )
     pool.fetch = AsyncMock(
         side_effect=lambda query, *args: (

@@ -25,6 +25,7 @@ def is_unbound(patron: str | None) -> bool:
 def patron_query(track: dict) -> dict:
     return {
         "state": "Unbound",
+        "abilities": [],
         "resonance": {"current": track["current"], "state": track["state"]},
         "capabilities": [
             {"id": VEIL_CLARITY, "name": "Veil Clarity", "rule": "Know your exact Resonance."},

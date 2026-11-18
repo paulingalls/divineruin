@@ -300,7 +300,7 @@ async def test_flight_condition_write_overlaps_due_judgment(walk, monkeypatch, c
         await h.pool.execute(
             "UPDATE players SET data=data || $2::jsonb WHERE player_id=$1",
             pid,
-            json.dumps({"divine_favor": {"patron": "kaelen", "level": 50}}),
+            json.dumps({"divine_favor": {"patron": "kaelen", "level": 50, "max": 100}}),
         )
     monkeypatch.setattr(type(h.sd), "present_member_ids", property(lambda sd: tuple(h.players)))
     reached = asyncio.Event()

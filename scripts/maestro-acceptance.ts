@@ -1,3 +1,4 @@
+import { runPatronAbilitiesFlow } from "../apps/mobile/scripts/verify-patron-abilities";
 import {
   createRealOwnedSimulatorDeps,
   resolveOwnedSimulator,
@@ -29,7 +30,7 @@ export interface GateResult {
 }
 
 const OFFLINE_SAFE_FLOWS = ["launch.yaml"];
-const BACKEND_REQUIRED_FLOWS = ["auth-form.yaml"];
+const BACKEND_REQUIRED_FLOWS = ["auth-form.yaml", "patron-abilities.yaml"];
 function isToolMissing(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return /ENOENT|not found|No such file/i.test(message);
@@ -107,7 +108,11 @@ export async function runGate(deps: GateDeps): Promise<GateResult> {
 
   let exitCode = 0;
   for (const device of targets) {
-    const exit = await deps.runMaestro(device, flows);
+    const isIos = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(device);
+    const exit = await deps.runMaestro(
+      device,
+      isIos ? flows : flows.filter((f) => f !== "patron-abilities.yaml"),
+    );
     if (exitCode === 0) exitCode = typeof exit === "number" ? exit : 130;
   }
   return { exitCode, stdout, stderr: "", maestroInvoked: targets.length > 0 };
@@ -164,7 +169,24 @@ export function createRealGateDeps(
     runAdb: () => spawnText(["adb", "devices"]),
     probeRequestedIos: async (udid) => requestedDeviceIsBooted(await listSimulatorDevices(), udid),
     runMaestro: (udid, flows) =>
-      spawnInherit(maestroCommand(udid, flows, maestroDir, env.MAESTRO_APP_LAUNCH_URL), mobileDir),
+      flows.includes("patron-abilities.yaml")
+        ? runPatronAbilitiesFlow(repoRoot, udid, env, (launch, scope) =>
+            scope.wait(
+              scope.spawn(
+                maestroCommand(
+                  udid,
+                  flows.filter((f) => f !== "patron-abilities.yaml"),
+                  maestroDir,
+                  launch,
+                ),
+                { cwd: mobileDir },
+              ).exited,
+            ),
+          )
+        : spawnInherit(
+            maestroCommand(udid, flows, maestroDir, env.MAESTRO_APP_LAUNCH_URL),
+            mobileDir,
+          ),
   };
 }
 

@@ -4,7 +4,10 @@ import type { SpellRow } from "@/utils/spell-display";
 
 export type PanelTab = "character" | "inventory" | "quests" | "map";
 
+import type { PatronAbility, PatronSnapshot } from "@/audio/patron-abilities";
+
 export interface CharacterDetail {
+  abilities?: PatronAbility[];
   race: string;
   attributes: {
     strength: number;
@@ -74,6 +77,7 @@ interface PanelState {
   activeTab: PanelTab;
 
   characterDetail: CharacterDetail | null;
+  patronSnapshot: PatronSnapshot | null;
   inventory: InventoryItem[];
   inventoryGeneration: number;
   inventoryOwner: string | null;
@@ -106,6 +110,7 @@ const INITIAL_STATE = {
   isOpen: false,
   activeTab: "character" as PanelTab,
   characterDetail: null,
+  patronSnapshot: null,
   inventory: [],
   inventoryOwner: null,
   inventoryRevision: null,

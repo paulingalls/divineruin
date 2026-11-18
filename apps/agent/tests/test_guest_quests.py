@@ -152,7 +152,10 @@ async def test_guest_completion_pays_xp_favor_and_items_to_both():
         )
     )
     divine = MagicMock(update_divine_favor=AsyncMock())
-    with case[0].userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
+    with (
+        case[0].userdata._bind_authenticated_actor("player_2", 1, lambda *_: None),
+        patch("patron_ability_events.publish_patron_abilities", new_callable=AsyncMock),
+    ):
         result = await advance(case, 1, activities=activities, divine_mutations=divine)
     assert {call.args[0] for call in case[6].update_player_xp.await_args_list} == {"player_1", "player_2"}
     metrics = case[0].userdata.player_summary_metrics
