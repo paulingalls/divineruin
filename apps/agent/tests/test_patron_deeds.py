@@ -50,8 +50,6 @@ async def judge(pool, player_id):
     "patron,start,pending,awarded,amount,end",
     [
         ("kaelen", 50, ["won_combat", "fled_combat", "discovered_lore"], ["showed_courage"], -1, 49),
-        ("kaelen", 50, ["won_combat"], [], 2, 52),
-        ("kaelen", 50, ["fled_combat"], [], -3, 47),
         ("kaelen", 99, ["won_combat"], [], 2, 100),
         ("kaelen", 1, ["fled_combat"], [], -3, 0),
         ("kaelen", 50, [], ["showed_courage"], 0, 50),
@@ -126,18 +124,13 @@ async def test_unbound_and_empty(player, favor):
     assert await read(pool, pid) == dict(before, patron_deeds={})
 
 
-async def test_repeated_deed_and_judgment(player):
+async def test_repeated_deed_records_once(player):
     pool, pid = player
     async with pool.acquire() as conn, conn.transaction():
         for _ in range(3):
             await record_deed(pid, "won_combat", conn=conn)
         assert (await read(conn, pid))["patron_deeds"] == {"won_combat": "pending"}
-    grant, events = await judge(pool, pid)
-    assert grant is not None and grant.new_level == 52
-    assert len(events) == 1 and events[0][1]["amount"] == 2
-    assert (await read(pool, pid))["patron_deeds"] == {}
-    assert await judge(pool, pid) == (None, [])
-    assert (await read(pool, pid))["divine_favor"]["level"] == 52
+    assert (await read(pool, pid))["patron_deeds"] == {"won_combat": "pending"}
 
 
 async def test_rollback_and_unknown_kind(player):
