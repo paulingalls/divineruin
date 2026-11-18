@@ -196,7 +196,8 @@ async def test_calling_and_name_finalize(
         assert player["divine_favor"]["patron"] == patron
         assert player["backstory"] == ""
         payload = run.packets(E.SESSION_INIT)[0]
-        assert payload["character"] == player
+        # session_init names its recipient: publish_game_event targets the packet by character.player_id.
+        assert payload["character"] == {**player, "player_id": run.player_id}
         assert payload["companion"]["id"] == companion
         pool = await db.get_pool()
         rows = await pool.fetch("SELECT companion_id FROM companion_relationships WHERE player_id=$1", run.player_id)
