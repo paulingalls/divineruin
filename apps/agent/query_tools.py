@@ -31,6 +31,7 @@ from db_errors import db_tool
 from patron_ability_tools import project_abilities
 from patron_favor import get_patron_tier
 from patron_gifts import thyra_gift
+from patron_synergy import synergy_for_patron
 from session_data import SessionData
 from settlement_generation import generate_settlement_npcs, generate_settlement_roster
 from terrain import is_natural
@@ -95,7 +96,10 @@ async def query_info(
       and active learned variant ids (no target_id needed).
     - kind="patron": the current player's patron standing, progress, authored favor action ids,
       Layer 1 gift, and abilities with ids and availability for activate (no target_id needed). Only an active or narrated gift is granted;
-      an awaits_* gift is the god's promise, not yet a power. Unbound Veil Clarity reveals exact
+      an awaits_* gift is the god's promise, not yet a power.
+      synergy is this archetype's Layer 4 enhancement from the current patron (null when Unbound
+      or not yet authored); only its active clauses apply; a pending clause is promised, not yet a power.
+      Unbound Veil Clarity reveals exact
       Resonance; the response lists unbound_raw_channeling for activate and automatic Veil Mastery."""
     return await _query_info_impl(context, kind, target_id)
 
@@ -169,12 +173,19 @@ async def _query_patron_impl(
     track = await db_mutations_resonance.read_player_resonance(player_id)
     tier = get_patron_tier(favor)
     if tier is None:
-        return json.dumps(unbound_tools.patron_query(track))
+        return json.dumps({**unbound_tools.patron_query(track), "synergy": None})
 
     patron_id = favor["patron"]
     patron = next((row for row in gods_loader() if row["god_id"] == patron_id), None)
     if patron is None:
         raise ToolError(f"Cannot query patron: unknown patron id {patron_id!r}.")
+
+    synergy = None
+    if patron["layer_4_synergy_matrix"] is not None:
+        try:
+            synergy = synergy_for_patron(player.get("class"), patron)
+        except ValueError as error:
+            raise ToolError(f"Cannot query patron: {error}") from error
 
     next_tier = None
     favor_needed = None
@@ -188,6 +199,7 @@ async def _query_patron_impl(
     return json.dumps(
         {
             "patron_id": patron_id,
+            "synergy": synergy,
             "resonance": {"state": track["state"]},
             "short_name": patron["short_name"],
             "title": patron["title"],

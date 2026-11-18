@@ -41,6 +41,7 @@ async def test_bound_patron_reports_standing_and_authored_actions():
         return [
             {
                 "god_id": "sentinel",
+                "layer_4_synergy_matrix": None,
                 "short_name": "Sentinel",
                 "title": "the Boundary",
                 "favor_actions": actions,
@@ -56,6 +57,7 @@ async def test_bound_patron_reports_standing_and_authored_actions():
     assert len(ability_rows) == 3
     assert response == {
         "patron_id": "sentinel",
+        "synergy": None,
         "resonance": {"state": "stable"},
         "short_name": "Sentinel",
         "title": "the Boundary",
@@ -76,7 +78,9 @@ async def test_real_patron_gift_round_trip_from_gods_content(patron_id):
     context = make_context()
     patron = next(row for row in load_gods() if row["god_id"] == patron_id)
     queries = MagicMock()
-    queries.get_player = AsyncMock(return_value={"divine_favor": {"patron": patron["god_id"], "level": 0, "max": 100}})
+    queries.get_player = AsyncMock(
+        return_value={"class": "warrior", "divine_favor": {"patron": patron["god_id"], "level": 0, "max": 100}}
+    )
 
     with patch("query_tools.db_queries.get_player", queries.get_player):
         response = json.loads(await query_tools._query_info_impl(context, "patron"))
@@ -117,6 +121,7 @@ async def test_exalted_has_explicitly_no_next_tier():
         return [
             {
                 "god_id": "sentinel",
+                "layer_4_synergy_matrix": None,
                 "short_name": "Sentinel",
                 "title": "the Boundary",
                 "favor_actions": {"positive": [], "negative": []},
@@ -159,6 +164,7 @@ async def test_bound_patron_missing_gift_fails_loud():
         return [
             {
                 "god_id": "sentinel",
+                "layer_4_synergy_matrix": None,
                 "short_name": "Sentinel",
                 "title": "the Boundary",
                 "favor_actions": {"positive": [], "negative": []},
@@ -177,6 +183,8 @@ def test_emitted_query_info_schema_advertises_patron():
     assert len(kinds) == 12
     assert kinds.count("patron") == 1
     assert 'kind="patron"' in tool["description"]
+    assert "only its active clauses apply" in tool["description"]
+    assert "a pending clause is promised, not yet a power" in tool["description"]
     assert "Only an active or narrated gift is granted" in tool["description"]
     assert "an awaits_* gift is the god's promise, not yet a power" in tool["description"]
 
