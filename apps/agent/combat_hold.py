@@ -20,6 +20,7 @@ from uuid import uuid4
 
 import combat_enhancers
 import combat_marks as combat_marks
+import combat_melee_approach
 import combat_reaction_contest
 import combat_reaction_effect
 import combat_recharge
@@ -242,7 +243,9 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
                 strike_summary(
                     reacted,
                     {
+                        **reacted.get("melee_approach", {}),
                         "actor_id": reacted["actor_id"],
+                        "attack_resolved": False,
                         "resolved": False,
                         "hesitated": True,
                         "reason": hesitation_reason,
@@ -267,6 +270,15 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
         summary_start = len(summaries)
         opens = _opens_windows(state, head)
         action = _attack_action(state, head) if opens else None
+        if opens:
+            actor = state.get_participant(head["actor_id"])
+            movement = combat_melee_approach.prepare_held(
+                state, head, _find_action(actor, _held_declaration(head).action)
+            )
+            if movement.get("attack_resolved") is False:
+                summaries.append(strike_summary(head, movement))
+                state.held_actions.pop(0)
+                continue
 
         try:
             if opens:
@@ -277,6 +289,10 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
                     assert window_action is not None
                     candidate = _window(state, head, PRE_ROLL, reaction_windows.pre_roll_triggers(window_action))
                     if reaction_gate.offers_for_window(state, candidate):
+                        if head.get("melee_approach", {}).get("closed_distance"):
+                            summaries.append(
+                                {**head["melee_approach"], "attack_resolved": False, "attack_pending": True}
+                            )
                         _open(state, candidate)
                         _assert_iteration_progress(state, head, summaries, summary_start)
                         return summaries
@@ -303,6 +319,10 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
                             event_bus=session.event_bus,
                         )
                         head["roll_published"] = True
+                        if head.get("melee_approach", {}).get("closed_distance"):
+                            summaries.append(
+                                {**head["melee_approach"], "attack_resolved": False, "attack_pending": True}
+                            )
                         _open(state, candidate)
                         _assert_iteration_progress(state, head, summaries, summary_start)
                         return summaries
@@ -401,7 +421,7 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict, mark_c
     deps = dict(packet_deps)
     if head["roll"] is not None:
         deps["resolver"] = _replay_resolver(head)
-    return await _resolve_one_packet(
+    summary = await _resolve_one_packet(
         session,
         state,
         packet,
@@ -418,5 +438,11 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict, mark_c
         mark_cancelled=mark_cancelled,
         publish_roll=not head.get("roll_published", False),
         _held_head=head if head.get("execution_receipt") is not None else None,
+        _melee_approach=head.get("melee_approach"),
         **deps,
     )
+    if movement := head.get("melee_approach"):
+        summary = {**movement, **summary}
+        if not summary["resolved"]:
+            summary["attack_resolved"] = False
+    return summary

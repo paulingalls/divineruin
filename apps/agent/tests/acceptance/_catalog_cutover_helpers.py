@@ -244,7 +244,7 @@ async def assert_catalog_effects(started):
         )
         with patch("check_resolution.dice_roll", return_value=_d20(face)), reference_damage():
             result = await _resolve_round(ctx)
-        packet = next(p for p in result["packets"] if p["actor_id"] == enemy_id)
+        packet = next(p for p in result["packets"] if p["actor_id"] == enemy_id and not p.get("attack_pending"))
         assert packet["condition_inflicted"] == condition
         state = ctx.userdata.combat_state
         saved = await db_mutations.load_combat_state(state.combat_id)
@@ -301,7 +301,7 @@ async def assert_catalog_effects(started):
         result = await _resolve_round(ctx)
     mark.assert_called_once()
     assert any(p.get("kind") == "command" for p in result["packets"])
-    attack = next(p for p in result["packets"] if p["actor_id"] == soldier["id"])
+    attack = next(p for p in result["packets"] if p["actor_id"] == soldier["id"] and not p.get("attack_pending"))
     assert attack["attack_total"] == 21, attack
     assert attack["damage"] > 0
     assert ctx.userdata.combat_state.focus_marks == {}
@@ -365,6 +365,8 @@ async def assert_catalog_grapple_release(started):
     pid = ctx.userdata.player_id
     declarations = {pid: {"type": "defend"}, "companion_kael": {"type": "defend"}}
     for source, target in [("mawling_1", pid), ("mawling_2", "companion_kael")]:
+        state = ctx.userdata.combat_state
+        state.spatial["positions"][source] = dict(state.spatial["positions"][target])
         produced = next(p for p in roster["participants"] if p["id"] == source)
         name = next(name for name in produced["actions"] if name == "Lunge")
         declarations[source] = {"type": "attack", "action": name, "target_id": target}

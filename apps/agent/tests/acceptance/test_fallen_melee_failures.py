@@ -80,12 +80,13 @@ async def strike(maw, target, action="Claw", actor=None):
     return packet
 
 
-@pytest.mark.parametrize("distance,initial,expected", [(5, 0, 2), (5, 2, 3), (5.01, 0, 1), (10, 0, 1)])
+@pytest.mark.parametrize("distance,initial,expected", [(5, 0, 2), (5, 2, 3), (5.01, 0, 1), (10, 0, 1), (15, 0, 1)])
 async def test_claw_distance_and_player_death(maw, dice, distance, initial, expected):
     await fallen(maw, maw.players[0], initial, distance)
     packet = await strike(maw, maw.players[0])
     assert packet["hit"] and packet["damage"] > 0
     victim = (await maw.reload()).get_participant(maw.players[0])
+    assert maw.sd.combat_state.spatial["positions"][maw.enemies[0]]["x"] == min(distance, 10)
     assert victim.death_save_failures == expected
     assert is_terminally_down(victim) == (expected == 3)
 
@@ -145,6 +146,7 @@ async def test_companion_impact_and_wrap(maw, dice, initial):
 async def test_equipment_melee_from_real_hollowed_echo(maw, dice):
     victim = maw.sd.combat_state.get_participant(maw.players[1])
     victim.hp_current = 1
+    maw.sd.combat_state.spatial["positions"][victim.id] = dict(maw.sd.combat_state.spatial["positions"][maw.enemies[0]])
     victim.conditions.append({"type": "hollowed", "stage": 2, "duration": None})
     await maw.persist()
     packet = await strike(maw, victim.id)

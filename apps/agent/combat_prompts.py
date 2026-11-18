@@ -148,6 +148,7 @@ one. A cue that has the attacker grunting in pain, or the blade finding only air
 where "mechanical_effect" and the enemy's own packet say it is — read the outcome off those two \
 and let the cue give you the picture, never the result.
 
+For an attack packet, closed_distance, moved_ft and destination report its charge; attack_resolved: false means no swing happened, never a miss.
 For a maneuver packet, moved_ft and destination report movement; stood_up and shove are authoritative outcomes; prone_immunity names the \
 skill capability that resisted a knockdown, and advantage_vs names the carried item that aided \
 the shove defence.

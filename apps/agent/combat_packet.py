@@ -12,6 +12,7 @@ state and write through injected mutation/query modules, but own no transaction.
 import combat_enhancers
 import combat_maneuver
 import combat_marks
+import combat_melee_approach
 import combat_recharge
 import combat_resolution
 import combat_spatial_declarations
@@ -99,6 +100,7 @@ async def _resolve_one_packet(
     mark_cancelled: bool = False,
     publish_roll: bool = True,
     _held_head=None,
+    _melee_approach=None,
 ) -> dict:
     """Resolve a single initiative-ordered ResolutionPacket against ``state``.
 
@@ -180,6 +182,8 @@ async def _resolve_one_packet(
         else None
     )
 
+    movement = {}
+    movement_budget = {}
     if action is not None:
         replay = _held_head is not None and replay_valid(state, _held_head, attacker, action, decl)
         pending_execution = any(
@@ -202,6 +206,14 @@ async def _resolve_one_packet(
                 session, state, attacker, action, decl, reaction_save_advantage=reaction_save_advantage
             )
         target = state.get_participant(decl.target_id) if decl.target_id else None
+        if target is not None and not target_unavailable(target, action):
+            movement = (
+                _melee_approach
+                if _melee_approach is not None
+                else combat_melee_approach.prepare(state, attacker, target, action, movement_budget)
+            )
+            if movement.get("attack_resolved") is False:
+                return movement
         if replay:
             assert _held_head is not None
             action = _held_head["executed_action"]
@@ -258,7 +270,7 @@ async def _resolve_one_packet(
             publish_roll=publish_roll,
         )
         if enemy_summary is not None:
-            return enemy_summary
+            return {**movement, **enemy_summary}
 
     if decl.type is DeclarationType.ABILITY:
         # (Enemy condition-infliction ABILITY is handled by the type-agnostic branch above, which
@@ -347,7 +359,17 @@ async def _resolve_one_packet(
     if attacker.type == "player":
         concealment_packet = await concealment.reveal_attacker(attacker.id, conn=conn, queries=queries)
     attack_summaries: list[dict] = []
-    for act in actions:
+    for index, act in enumerate(actions):
+        swing_move = (
+            movement
+            if index == 0 or act == action
+            else combat_melee_approach.prepare(state, attacker, target, act, movement_budget)
+        )
+        if index > 0 and act == action and swing_move:
+            swing_move = {**swing_move, "moved_ft": 0, "closed_distance": False}
+        if swing_move.get("attack_resolved") is False:
+            attack_summaries.append(swing_move)
+            break
         sub = await _resolve_attack_packet(
             session,
             attacker,
@@ -383,6 +405,7 @@ async def _resolve_one_packet(
                 sink=sink,
                 reaction_save_advantage=reaction_save_advantage,
             )
+        sub.update(swing_move)
         attack_summaries.append(sub)
         # Remove attack-spent conditions before the next swing in an expanded declaration. The
         # first consuming swing leaves later consumed_conditions empty. Persistence rides the
@@ -417,22 +440,28 @@ async def _resolve_one_packet(
         # Damage/hit/critical/concentration accumulate across swings; the target-state keys
         # (hp_status, fallen) must reflect the FINAL swing — the kill on the second hit, not
         # the goblin-still-up snapshot from the first — or the DM narrates a fallen foe alive.
-        last = attack_summaries[-1]
+        last = next(s for s in reversed(attack_summaries) if "target_hp_status" in s)
         summary["attacks"] = attack_summaries
-        summary["damage"] = sum(s["damage"] for s in attack_summaries)
-        summary["hit"] = any(s["hit"] for s in attack_summaries)
-        summary["critical"] = any(s["critical"] for s in attack_summaries)
+        if movement:
+            summary.update(
+                moved_ft=sum(s["moved_ft"] for s in attack_summaries),
+                closed_distance=any(s["closed_distance"] for s in attack_summaries),
+                destination=attack_summaries[-1]["destination"],
+            )
+        summary["damage"] = sum(s.get("damage", 0) for s in attack_summaries)
+        summary["hit"] = any(s.get("hit", False) for s in attack_summaries)
+        summary["critical"] = any(s.get("critical", False) for s in attack_summaries)
         summary["target_hp_status"] = last["target_hp_status"]
         summary["target_fallen"] = last["target_fallen"]
         summary["concentration_broken"] = next(
-            (s["concentration_broken"] for s in attack_summaries if s["concentration_broken"]), None
+            (s["concentration_broken"] for s in attack_summaries if s.get("concentration_broken")), None
         )
         # Any swing being dramatic makes the declaration dramatic. Each swing rolls its
         # own d20 and runs its own killing-blow check, so a later swing can be dramatic
         # while the first is routine — take the FIRST dramatic swing's context so the
         # aggregated dramatic flag and its reason label never disagree (story-004).
-        summary["dramatic"] = any(s["dramatic"] for s in attack_summaries)
-        summary["context"] = next((s["context"] for s in attack_summaries if s["dramatic"]), "")
+        summary["dramatic"] = any(s.get("dramatic", False) for s in attack_summaries)
+        summary["context"] = next((s["context"] for s in attack_summaries if s.get("dramatic")), "")
     if concealment_packet is not None:
         summary["concealment"] = concealment_packet
     summary["actor_id"] = packet.actor_id
