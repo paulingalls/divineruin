@@ -746,18 +746,13 @@
   },
   {
     "id": "hollow_mawling_pack",
-    "name": "Mawling Pack",
-    "description": "Heavy claws scrape stone, answered by a lighter skitter. An adult mawling probes forward while its young circles, feinting and retreating. Their maws rasp like wet cloth tearing; the air tastes of iron.",
+    "name": "Lone Adult Mawling",
+    "description": "Heavy claws scrape stone. An adult mawling probes forward, feinting and retreating. Its maw rasps like wet cloth tearing; the air tastes of iron.",
     "difficulty": "moderate",
     "enemies": [
       {
         "id": "mawling_pack_adult",
         "creature_id": "hollow_mawling",
-        "role": "standard"
-      },
-      {
-        "id": "mawling_pack_young",
-        "creature_id": "hollow_mawling_young",
         "role": "standard"
       }
     ],
@@ -778,21 +773,12 @@
           "x": 25,
           "y": -10,
           "z": 0
-        },
-        "mawling_pack_young": {
-          "x": 25,
-          "y": 10,
-          "z": 0
         }
       },
       "locations": {},
       "zones": {
         "mawling_pack_adult_corruption_aura": {
           "center_id": "mawling_pack_adult",
-          "radius_ft": 5
-        },
-        "mawling_pack_young_corruption_aura": {
-          "center_id": "mawling_pack_young",
           "radius_ft": 5
         }
       }

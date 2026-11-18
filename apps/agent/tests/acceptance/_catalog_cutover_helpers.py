@@ -29,7 +29,7 @@ TARGETS = {
     "hollow_mawling_pack": (
         8,
         "moderate",
-        [("hollow_mawling", "standard", 1), ("hollow_mawling_young", "standard", 1)],
+        [("hollow_mawling", "standard", 1)],
     ),
     "hollowmoth_swarm": (3, "moderate", [("hollow_hollowmoth", "standard", 3)]),
     "hollow_weaver_ambush": (10, "moderate", [("hollow_weaver", "standard", 1), ("hollow_shadeling", "minion", 2)]),
