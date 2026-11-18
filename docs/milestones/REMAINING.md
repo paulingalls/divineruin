@@ -91,7 +91,7 @@ its triggers and legal IDs. This does not certify natural spoken Beat-3 pauses.
   quest effects; neither proves a world tick or scheduled event evaluation.
   Those runtime capabilities remain **unverified**.
 - **Patron layers:** Layers 1–3 are authored and validated in Python and TypeScript
-  (`test_gods_layers.py`, `god.test.ts`). Layer 4 now loads 180 pairings (22 Natural, 62 Divine, 96 Unexpected); 12 clauses are active/engine, 85 active/narrated and 103 pending/engine. Registered lookup and stacking boundaries pass `test_patron_synergy.py`, `test_patron_synergy_engine.py` and `test_patron_synergy_readiness.py`; pending effects remain unavailable. Human magnitude review is open, with three Veythar Natural rows proposing +2 cantrip damage dice outside Flickering, pending the combat seam. The other 52 design-authored rows remain verbatim; the revised table flags inherited magnitude exceptions for human review.
+  (`test_gods_layers.py`, `god.test.ts`). Layer 4 now loads 180 pairings (22 Natural, 62 Divine, 96 Unexpected); 12 clauses are active/engine, 85 active/narrated and 103 pending/engine. Registered lookup and stacking boundaries pass `test_patron_synergy.py`, `test_patron_synergy_engine.py` and `test_patron_synergy_readiness.py`; pending effects remain unavailable. Final human magnitude review is open. The human approved the re-authored rows and Veythar’s +2 cantrip dice outside Flickering (still pending the combat seam), then requested design-row rebalancing on 2026-11-18. Content and design now agree on those corrections, including Nythera’s live Animal Handling +1 instead of advantage; the regenerated table lists all number changes for final approval.
 
 ## 4. Documentation decisions still open
 
