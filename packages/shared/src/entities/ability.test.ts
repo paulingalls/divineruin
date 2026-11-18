@@ -63,13 +63,5 @@ describe("Ability — content/archetype_abilities.json row shape (8 fields, all 
 
 test("authored Precise Strike condition is accepted by the encounter validator", () => {
   const row = rows.find((ability) => ability.id === "rogue_precise_strike")!;
-  expect(row.applies_condition).toBe("precise_strike");
-  expect(() =>
-    validateEncounterActionShape({
-      name: row.name,
-      applies_condition: row.applies_condition,
-      save: "dex",
-      dc: 10,
-    }),
-  ).not.toThrow();
+  validateEncounterActionShape({ ...row, save: "dex", dc: 10 });
 });

@@ -23,14 +23,8 @@ def _assert_no_hostile_condition_ability_omits_its_save(rows: list[dict[str, obj
 
 
 def _assert_exempt_conditions_are_catalog_buffs(exempt: frozenset[str]) -> None:
-    not_buffs = {
-        condition
-        for condition in exempt
-        if not (
-            conditions.CONDITION_CATALOG[condition].bonus_die
-            or conditions.CONDITION_CATALOG[condition].advantage_scopes
-        )
-    }
+    effects = [conditions.CONDITION_CATALOG[condition] for condition in exempt]
+    not_buffs = [effect for effect in effects if not (effect.bonus_die or effect.advantage_scopes)]
     assert not not_buffs, not_buffs
 
 
