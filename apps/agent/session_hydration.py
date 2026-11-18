@@ -29,8 +29,10 @@ import db_mutations_concentration
 import db_mutations_divine
 import db_mutations_resonance
 import db_mutations_veil_ward
+import db_queries
 import event_types as E
 import game_events
+import patron_gift_tools
 import player_session
 import racial_resonance
 from favor_rules import apply_favor_delta, neglect_decay
@@ -100,6 +102,31 @@ async def _decay_locked(session: SessionData, player_id: str, connection, now: d
     return None
 
 
+async def hydrate_patron_ability_session(
+    session: SessionData,
+    player_id: str,
+    *,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+) -> None:
+    if player_id in session.patron_ability_entries:
+        return
+    source = conn or await db.get_pool()
+    if isinstance(source, asyncpg.Pool):
+        async with source.acquire() as connection:
+            await _recharge_session_abilities(player_id, connection)
+    else:
+        await _recharge_session_abilities(player_id, source)
+    session.patron_ability_entries.add(player_id)
+
+
+async def _recharge_session_abilities(player_id: str, connection) -> None:
+    async with connection.transaction():
+        player = await db_queries.get_player(player_id, conn=connection, for_update=True)
+        if player is None:
+            raise ValueError(f"missing player row: {player_id}")
+        await patron_gift_tools.recharge(player_id, player, "per_session", conn=connection)
+
+
 async def hydrate_session_state(
     session: SessionData,
     player: dict,
@@ -122,6 +149,7 @@ async def hydrate_session_state(
     persisted — a harmless 0).
     """
     player_id = session.primary_player_id
+    await hydrate_patron_ability_session(session, player_id, conn=conn)
     if not session.in_combat:
         await concealment.expire_orphaned_gift(player, conn=conn)
     res = await resonance_mutations_mod.read_player_resonance(player_id, conn=conn)

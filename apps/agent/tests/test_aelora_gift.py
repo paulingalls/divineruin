@@ -295,3 +295,9 @@ async def test_guest_deescalation_uses_guest_presence_when_host_drops():
     handlers["participant_disconnected"](host)
     assert "gift_name" not in await invoke()
     await lifecycle.aclose()
+
+
+@pytest.fixture(autouse=True)
+def isolated_patron_ability_entry():
+    with patch("session_hydration.hydrate_patron_ability_session", new_callable=AsyncMock):
+        yield

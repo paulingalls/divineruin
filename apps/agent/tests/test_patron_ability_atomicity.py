@@ -50,7 +50,7 @@ async def test_independent_sessions_wait_for_player_lock_and_spend_once(dev_db_p
 
 async def test_failure_after_write_rolls_back_spend(dev_db_pool):
     async with AbilityWalk(dev_db_pool) as w:
-        before = await w.row()
+        before = await w.state()
         write = patron_gift_tools.write_state
         reached = []
 
@@ -61,7 +61,7 @@ async def test_failure_after_write_rolls_back_spend(dev_db_pool):
 
         with patch.object(patron_gift_tools, "write_state", fail_after_write):
             assert "injected after spend" in await w.use(LIBRARY, error=True)
-        assert reached == [True] and await w.row() == before
+        assert reached == [True] and await w.state() == before
         await w.use(LIBRARY)
         assert (await w.row())["patron_gifts"][LIBRARY] == {"spent": True}
 
@@ -70,7 +70,7 @@ async def test_departure_during_player_read_cannot_spend(dev_db_pool, monkeypatc
     import db_queries
 
     async with AbilityWalk(dev_db_pool) as w:
-        before = await w.row()
+        before = await w.state()
         revoked = False
         read = db_queries.get_player
 
@@ -88,4 +88,4 @@ async def test_departure_during_player_read_cannot_spend(dev_db_pool, monkeypatc
         with monkeypatch.context() as m:
             m.setattr(db_queries, "get_player", revoke_after_read)
             assert "actor revoked" in await w.use(LIBRARY, error=True)
-        assert await w.row() == before
+        assert await w.state() == before

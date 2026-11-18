@@ -106,3 +106,9 @@ async def test_second_player_joins_then_both_enter_combat_as_participants():
     assert {p["id"] for p in players} == {"player_1", "player_2"}
     assert next(p for p in players if p["id"] == "player_2")["name"] == "Bren"
     mock_queries.get_players_for_update.assert_awaited_once()
+
+
+@pytest.fixture(autouse=True)
+def isolated_patron_ability_entry():
+    with patch("session_hydration.hydrate_patron_ability_session", new_callable=AsyncMock):
+        yield

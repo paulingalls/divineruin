@@ -83,6 +83,8 @@ async def recharge(player_id, player, rest_type, *, conn):
     if patron is None:
         return
     recharges = {"short_rest", "long_rest"} if rest_type == "long" else {f"{rest_type}_rest"}
+    if rest_type == "per_session":
+        recharges = {"per_session"}
     uses = [patron["layer_1_gift"], *patron["layer_3_tier_abilities"].values()]
     for use in uses:
         if use["recharge"] not in recharges:

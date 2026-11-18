@@ -20,10 +20,10 @@ async def test_library_spends_durably_and_requires_long_rest(dev_db_pool):
         assert 'query_info(kind="creature", target_id=' in result["dm_cue"]
         assert "number" in result["dm_cue"]
         assert (await w.row())["patron_gifts"] == {"other": {"x": 1}, LIBRARY: {"spent": True}}
-        before = await w.row()
+        before = await w.state()
         await w.connect()
         assert "long rest" in await w.use(LIBRARY, error=True)
-        assert await w.row() == before
+        assert await w.state() == before
         await w.command("rest", {"rest_type": "short"})
         assert next(a for a in await w.abilities() if a["id"] == LIBRARY)["spent"]
         await w.command("rest", {"rest_type": "long"})
@@ -51,9 +51,9 @@ async def test_promotion_is_visible_without_capability_write(dev_db_pool):
 
     async with AbilityWalk(dev_db_pool) as w:
         await w.patch(divine_favor={"patron": "veythar", "level": 39, "max": 100})
-        before = await w.row()
+        before = await w.state()
         assert "Devoted" in await w.use(LIBRARY, error=True)
-        assert await w.row() == before
+        assert await w.state() == before
         assert not next(a for a in await w.abilities() if a["id"] == LIBRARY)["eligible"]
         async with db.transaction() as conn:
             await db_queries.get_player(w.player, conn=conn, for_update=True)
@@ -76,9 +76,9 @@ async def test_promotion_is_visible_without_capability_write(dev_db_pool):
 async def test_only_the_current_follower_can_spend(dev_db_pool, favor, cause):
     async with AbilityWalk(dev_db_pool) as w:
         await w.patch(divine_favor=favor)
-        before = await w.row()
+        before = await w.state()
         assert cause in await w.use(LIBRARY, error=True)
-        assert await w.row() == before
+        assert await w.state() == before
         if favor is not None and favor.get("patron") in (None, "none"):
             assert await w.abilities() == []
 
@@ -93,14 +93,14 @@ async def test_pending_and_always_on_refuse_without_writes(dev_db_pool, monkeypa
 
     async with AbilityWalk(dev_db_pool) as w:
         await w.patch(divine_favor={"patron": "veythar", "level": 100, "max": 100})
-        before = await w.row()
+        before = await w.state()
         assert "pending" in await w.use("veythar_scholars_ward", error=True)
         rows = copy.deepcopy(load_gods())
         rows[0]["layer_3_tier_abilities"]["devoted"]["recharge"] = "always"
         _validate_gods(rows)
         monkeypatch.setattr(patron_ability_tools, "load_gods", lambda: rows)
         assert "always-on" in await w.use(LIBRARY, error=True)
-        assert await w.row() == before
+        assert await w.state() == before
         monkeypatch.setattr(
             query_tools, "_query_patron_impl", partial(query_tools._query_patron_impl, gods_loader=lambda: rows)
         )
@@ -163,7 +163,67 @@ async def test_guest_does_not_borrow_hosts_patron(dev_db_pool):
     async with AbilityWalk(dev_db_pool) as host, AbilityWalk(dev_db_pool) as guest:
         await guest.patch(divine_favor={"patron": "none", "level": 0, "max": 100})
         host.sd.party.members.append(guest.sd.party.primary)
-        before = await guest.row()
+        before = await guest.state()
         assert "Unbound" in await host.use(LIBRARY, error=True, actor=guest.player)
-        assert await guest.row() == before
+        assert await guest.state() == before
         assert LIBRARY not in (await host.row())["patron_gifts"]
+
+
+async def test_primary_entry_restores_once_and_new_session_restores_again(dev_db_pool):
+    from test_favor_decay_hydration import _mods
+
+    from session_hydration import hydrate_session_state
+
+    ability = "zhael_prophecy_fragment"
+    async with AbilityWalk(dev_db_pool) as w:
+        await w.patch(divine_favor={"patron": "zhael", "level": 100, "max": 100})
+        stale = await w.row()
+        await w.use(ability)
+        await hydrate_session_state(w.sd, stale, conn=dev_db_pool, **_mods())
+        assert (await w.row())["patron_gifts"][ability] == {"spent": False}
+        await w.use(ability)
+        await hydrate_session_state(w.sd, stale, conn=dev_db_pool, **_mods())
+        await w.connect(w.sd)
+        assert "new session" in await w.use(ability, error=True)
+        await w.connect()
+        await hydrate_session_state(w.sd, stale, conn=dev_db_pool, **_mods())
+        await w.use(ability)
+        assert (await w.row())["patron_gifts"][ability] == {"spent": True}
+
+
+async def test_guest_entry_restores_once_across_reconnect_and_rejoin(dev_db_pool):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, MagicMock
+
+    import db_queries
+    from participant_lifecycle import _setup_party_join
+
+    ability = "zhael_prophecy_fragment"
+    async with AbilityWalk(dev_db_pool) as host, AbilityWalk(dev_db_pool) as guest:
+        for w in (host, guest):
+            await w.patch(divine_favor={"patron": "zhael", "level": 100, "max": 100})
+            await w.use(ability)
+        room, handlers = MagicMock(), {}
+        room.remote_participants = {}
+        room.on.side_effect = lambda event, callback: handlers.setdefault(event, callback)
+        res = MagicMock(read_player_resonance=AsyncMock(return_value={"current": 0, "flickering_bonus": 0}))
+        conc = MagicMock(read_player_concentration=AsyncMock(return_value={"spell_id": None}))
+        lifecycle = _setup_party_join(room, host.sd, queries=db_queries, resonance_mod=res, concentration_mod=conc)
+        participant = SimpleNamespace(identity=guest.player)
+        try:
+            handlers["participant_connected"](participant)
+            assert await lifecycle.authorize(guest.player) is not None
+            assert (await guest.row())["patron_gifts"][ability] == {"spent": False}
+            assert (await host.row())["patron_gifts"][ability] == {"spent": True}
+            await host.use(ability, actor=guest.player)
+            handlers["participant_disconnected"](participant)
+            handlers["participant_connected"](participant)
+            assert await lifecycle.authorize(guest.player) is not None
+            assert "new session" in await host.use(ability, actor=guest.player, error=True)
+            lifecycle.mark_departed(guest.player)
+            host.sd.party.members.remove(host.sd.member_state(guest.player))
+            handlers["participant_connected"](participant)
+            assert await lifecycle.authorize(guest.player) is not None
+            assert "new session" in await host.use(ability, actor=guest.player, error=True)
+        finally:
+            await lifecycle.aclose()

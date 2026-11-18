@@ -59,6 +59,10 @@ class AbilityWalk:
         assert row is not None
         return row
 
+    async def state(self):
+        row = await self.row()
+        return {key: row.get(key) for key in ("patron_gifts", "divine_favor", "keepsake")}
+
     async def command(self, name, args, *, error: bool | None = False, actor=None):
         self.model.commands.append((name, args))
         with self.sd._bind_authenticated_actor(actor or self.player, 1, self.validator):
