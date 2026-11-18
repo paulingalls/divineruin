@@ -254,3 +254,46 @@ async def test_resolution_checks_live_conditions_and_exposure(maw, changed):
         assert packet["closed_distance"]
         assert live.get_participant(target.id).choir_silence_exposed
         assert live.get_participant(target.id).choir_suppression["active"]
+
+
+@pytest.mark.parametrize("maw", [True], indirect=True)
+async def test_interrupted_charge_keeps_movement_receipt(maw):
+    state = maw.sd.combat_state
+    actor, target = state.get_participant(maw.enemies[0]), state.get_participant(maw.players[0])
+    state.spatial["positions"][actor.id] = {"x": 0, "y": 0, "z": 0}
+    state.spatial["positions"][target.id] = {"x": 25, "y": 0, "z": 0}
+    await maw.persist()
+    await maw.command(
+        "declare_phase",
+        {
+            "declarations": [
+                {
+                    "kind": "attack",
+                    "actor_id": actor.id,
+                    "action": "Claw",
+                    "target_id": target.id,
+                    "held_item_id": "",
+                    "rider": "",
+                },
+                *[{"kind": "defend", "actor_id": p.id} for p in state.participants if p.id != actor.id],
+            ]
+        },
+    )
+    with patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=15)):
+        for _ in range(4):
+            paused = await maw.command("resolve_phase", {})
+            if maw.sd.combat_state.open_window is not None:
+                break
+    assert any(p.get("closed_distance") for p in paused["packets"])
+    live = await maw.reload()
+    assert live.open_window is not None
+    hp = live.get_participant(target.id).hp_current
+    live.get_participant(actor.id).conditions = [{"type": "stunned", "duration": 3}]
+    await maw.persist()
+    packets = await maw.drain()
+    packet = next(p for p in packets if p.get("actor_id") == actor.id)
+    assert not packet["resolved"] and "stunned" in packet["reason"]
+    assert packet["closed_distance"] and not packet["attack_resolved"]
+    assert packet["moved_ft"] == 15
+    assert packet["destination"] == maw.sd.combat_state.spatial["positions"][actor.id]
+    assert maw.sd.combat_state.get_participant(target.id).hp_current == hp

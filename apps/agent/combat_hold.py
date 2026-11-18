@@ -243,7 +243,9 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
                 strike_summary(
                     reacted,
                     {
+                        **reacted.get("melee_approach", {}),
                         "actor_id": reacted["actor_id"],
+                        "attack_resolved": False,
                         "resolved": False,
                         "hesitated": True,
                         "reason": hesitation_reason,
@@ -419,7 +421,7 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict, mark_c
     deps = dict(packet_deps)
     if head["roll"] is not None:
         deps["resolver"] = _replay_resolver(head)
-    return await _resolve_one_packet(
+    summary = await _resolve_one_packet(
         session,
         state,
         packet,
@@ -439,3 +441,8 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict, mark_c
         _melee_approach=head.get("melee_approach"),
         **deps,
     )
+    if movement := head.get("melee_approach"):
+        summary = {**movement, **summary}
+        if not summary["resolved"]:
+            summary["attack_resolved"] = False
+    return summary
