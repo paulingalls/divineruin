@@ -57,6 +57,8 @@ async def test_each_authored_action_persists_and_publishes_real_delta(dev_db_poo
     stored = await db_activity_queries.get_divine_favor(player_id)
     assert stored is not None
     assert stored["level"] == expected
+    journal = await dev_db_pool.fetchval("SELECT data->'patron_deeds' FROM players WHERE player_id=$1", player_id)
+    assert json.loads(journal) == {row["action"]: "awarded"}
     assert response == {
         "action_id": row["action"],
         "amount_applied": expected - 10,
@@ -144,3 +146,48 @@ def test_openai_strict_schema_requires_one_string_id():
 
 def test_system_prompt_names_the_id_producer():
     assert 'favor action id from query_info(kind="patron"), call record_patron_action' in build_system_prompt("x")
+
+
+@pytest.mark.parametrize("mechanical_first", [True, False])
+async def test_immediate_and_mechanical_deeds_do_not_double_award(dev_db_pool, mechanical_first):
+    from patron_deeds import judge_pending_deeds, record_deed
+
+    pid = await seed_favor(dev_db_pool, 50, "kaelen")
+    try:
+
+        async def mechanical():
+            async with dev_db_pool.acquire() as conn, conn.transaction():
+                await record_deed(pid, "won_combat", conn=conn)
+
+        if mechanical_first:
+            await mechanical()
+        response, published, _ = await invoke(pid, "won_combat")
+        if not mechanical_first:
+            await mechanical()
+        assert response["amount_applied"] == 2 and response["level"] == 52
+        assert len(published) == 1 and published[0][1]["amount"] == 2
+        data = json.loads(await dev_db_pool.fetchval("SELECT data FROM players WHERE player_id=$1", pid))
+        assert data["patron_deeds"] == {"won_combat": "awarded"}
+        events = []
+        async with dev_db_pool.acquire() as conn, conn.transaction():
+            grant = await judge_pending_deeds(pid, conn=conn, pending_events=events)
+        assert grant is not None and grant.previous_level == grant.new_level == 52
+        assert len(events) == 1 and events[0][1]["requested_amount"] == events[0][1]["amount"] == 0
+        data = json.loads(await dev_db_pool.fetchval("SELECT data FROM players WHERE player_id=$1", pid))
+        assert data["patron_deeds"] == {} and data["divine_favor"]["level"] == 52
+    finally:
+        await dev_db_pool.execute("DELETE FROM players WHERE player_id=$1", pid)
+
+
+async def test_repeated_immediate_actions_still_both_award(dev_db_pool):
+    pid = await seed_favor(dev_db_pool, 50, "kaelen")
+    try:
+        for level in (52, 54):
+            response, published, _ = await invoke(pid, "won_combat")
+            assert response["amount_applied"] == 2 and response["level"] == level
+            assert len(published) == 1 and published[0][1]["amount"] == 2 and published[0][2] == level
+        data = json.loads(await dev_db_pool.fetchval("SELECT data FROM players WHERE player_id=$1", pid))
+        assert data["divine_favor"]["level"] == 54
+        assert data["patron_deeds"] == {"won_combat": "awarded"}
+    finally:
+        await dev_db_pool.execute("DELETE FROM players WHERE player_id=$1", pid)
