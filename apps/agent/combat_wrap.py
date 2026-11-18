@@ -119,12 +119,18 @@ async def wrap_phase(
     resonance_mutations,
     fate_rolls=None,
 ) -> tuple:
-    """Advance to wrap once, then drain clearing saves before round finalization."""
+    """Advance to wrap once, then drain clearing saves before round finalization.
+
+    Wrap rides the LAST commit of the phase rather than the first because an enemy blow can be
+    what ends the fight, so the end-condition cannot be computed before the enemies have acted.
+    """
     fate_rolls = fate_rolls if fate_rolls is not None else PhaseRolls()
     end_data: dict | None = None
     cursor = state.wrap_continuation
     if cursor is None:
         state, _ = combat_phase.advance_combat_phase(state)
+        # Read exhaustion narration here, before the pure wrap tick, so a save-to-clear tick
+        # cannot erase a participant's narration mid-beat.
         exhaustion_narration = {
             p.id: narrative
             for p in state.participants
