@@ -11,7 +11,7 @@ import db_mutations
 import db_queries
 from quest_tools import _update_quest_impl
 from session_data import SessionData
-from skill_fate import SkillScope, StaleSkillOperation
+from skill_fate import SkillScope
 
 if TYPE_CHECKING:
     from quest_authority import PendingQuest
@@ -210,8 +210,6 @@ async def lock_discovery_rows(
     if scope is not None:
         players = await queries.get_players_for_update(list(party_ids), conn=conn)
         scope.validate(session)
-        if missing := set(party_ids) - players.keys():
-            raise StaleSkillOperation(f"Party members are unavailable for discovery: {', '.join(sorted(missing))}.")
         player = players[actor]
         scope.validate_location(actor, player)
         return player

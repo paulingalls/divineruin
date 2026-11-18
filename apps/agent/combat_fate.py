@@ -313,14 +313,11 @@ def held_argument(cursor):
 async def lock_remaining_players(cursor, queries, conn):
     remaining = {packet_id for _, packet_id in cursor["turns"]}
     players = {}
-    argument = held_argument(cursor)
     for player_id in cursor["prevalidated"]:
         if player_id not in remaining:
             continue
         player = await queries.get_player(player_id, conn=conn, for_update=True)
         if player is None:
-            if argument and player_id == argument["scope"]["roller_id"]:
-                continue
             raise ToolError(f"Unknown player: {player_id}")
         players[player_id] = player
     return players

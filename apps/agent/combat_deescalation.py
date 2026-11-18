@@ -188,8 +188,6 @@ async def resume_deescalation(session, state, actor_id, decl, player, *, progres
             raise StaleSkillOperation(f"The original speaker is {blocked[0]}.")
         if decl is None or decl.type is not DeclarationType.ABILITY or (decl.action or "").lower() != "de_escalate":
             raise StaleSkillOperation("The original argument is no longer declared.")
-        if state.deescalated:
-            raise StaleSkillOperation("The group has already stood down.")
         eligible = {target.id: target for target in eligible_argument_targets(state, actor_id)}
         targets = [eligible[enemy_id] for enemy_id in prepared["targets"] if enemy_id in eligible]
         if not targets:

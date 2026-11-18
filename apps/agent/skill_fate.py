@@ -20,7 +20,6 @@ class SkillScope:
     origin: str
     primary_id: str
     party_ids: tuple[str, ...]
-    combat_id: str | None
 
     @classmethod
     def capture(cls, session: SessionData, roller_id: str, *, party: bool = False) -> "SkillScope":
@@ -29,21 +28,17 @@ class SkillScope:
             session.location_id,
             session.primary_player_id,
             tuple(sorted(session.party.member_ids)) if party else (),
-            session.combat_state.combat_id if session.combat_state is not None else None,
         )
 
     @classmethod
     def restored(cls, data: dict) -> "SkillScope":
-        return cls(data["roller_id"], data["origin"], data["primary_id"], tuple(data["party_ids"]), data["combat_id"])
+        return cls(data["roller_id"], data["origin"], data["primary_id"], tuple(data["party_ids"]))
 
     def validate(self, session: SessionData) -> None:
         if self.roller_id == session.departing_player_id or self.roller_id not in session.present_member_ids:
             raise StaleSkillOperation("The roller is no longer present.")
         if session.location_id != self.origin:
             raise StaleSkillOperation("The party left the original location.")
-        combat = session.combat_state
-        if self.combat_id != (combat.combat_id if combat is not None else None):
-            raise StaleSkillOperation("The combat encounter changed.")
         if self.party_ids and (
             self.primary_id != session.primary_player_id or self.party_ids != tuple(sorted(session.party.member_ids))
         ):
@@ -84,7 +79,6 @@ async def prepare_skill_offer(
                 scope.validate(session)
                 async with db_mod.transaction() as write_conn:
                     flush = await write(kept, write_conn)
-                    scope.validate(session)
             except StaleSkillOperation as error:
                 return zhael_fate.cancel(session, str(error))
             zhael_fate.effects_committed(session)

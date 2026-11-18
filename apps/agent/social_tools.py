@@ -33,7 +33,7 @@ from db_errors import validated_player_conditions
 from disposition import resolve_disposition
 from game_events import publish_game_event
 from session_data import SessionData
-from skill_fate import SkillScope, StaleSkillOperation, prepare_skill_offer
+from skill_fate import SkillScope, prepare_skill_offer
 from tool_support import _validate_id
 
 logger = logging.getLogger("divineruin.tools")
@@ -122,17 +122,7 @@ async def _check_social_impl(
     )
 
     async def write(kept, conn):
-        current_player = await scope.lock_roller(session, conn, queries=queries)
-        try:
-            communication_voice_rules.require_delivery(
-                communication_voice_rules.CommunicationKind.SPOKEN,
-                session.combat_state,
-                player_id,
-                [npc_id],
-                rows={player_id: current_player},
-            )
-        except communication_voice_rules.DeliveryRefused as error:
-            raise StaleSkillOperation(str(error)) from error
+        await scope.lock_roller(session, conn, queries=queries)
         return await finish(kept, conn=conn, scope=scope)
 
     offer = await prepare_skill_offer(session, scope, roll, player, write, queries=queries, db_mod=db_mod)
