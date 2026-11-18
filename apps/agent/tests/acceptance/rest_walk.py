@@ -22,6 +22,8 @@ from session_startup import GameplayInputOwner
 
 
 class RestWalk(ArcWalk):
+    resting = False
+
     async def setup(self, harness, location="millhaven_inn"):
         await self.start(harness, "rest", stage=None)
         self.sd.location_id = location
@@ -76,6 +78,8 @@ class RestWalk(ArcWalk):
 
     async def publish(self, raw, **kwargs):
         event = json.loads(raw)
+        if event["type"] == E.SESSION_INIT and not self.resting:
+            return  # join and reconnect also send session_init (participant_lifecycle); only rest's are walked
         if event["type"] == E.SESSION_INIT:
             character = event["character"]
             persisted = await self.row(character["player_id"])
@@ -90,8 +94,12 @@ class RestWalk(ArcWalk):
 
     async def command(self, kind):
         self.model.commands.append(("rest", {"rest_type": kind}))
-        with self.sd._bind_authenticated_actor(self.player, 1, self.validator):
-            await self.session.run(user_input="Rest now.")
+        self.resting = True
+        try:
+            with self.sd._bind_authenticated_actor(self.player, 1, self.validator):
+                await self.session.run(user_input="Rest now.")
+        finally:
+            self.resting = False
         return list(self.model.receipts.values())[-1]
 
     async def restored(self, kind, receipt=None):
