@@ -46,6 +46,18 @@ PROVIDER_DRIVER = {"scripts/proof_acceptance_stack.py"}
 MARKERS = "acceptance and not real_llm and not openai_real_llm and not live_voice"
 
 
+def agent_environment(run):
+    # Linked environments belong to the checkout, not the sandbox. Only uv may
+    # decide whether their installed distributions satisfy this tree's lock.
+    return (
+        "export PYTHONDONTWRITEBYTECODE=1; "
+        "if ! uv sync --check --frozen --project apps/agent; then "
+        "if [ -L apps/agent/.venv ]; then unlink apps/agent/.venv || exit; fi; "
+        "uv sync --frozen --project apps/agent || exit; fi; "
+        f"export UV_NO_SYNC=1; {run}"
+    )
+
+
 def paid_only(path):
     value = None
     for node in ast.parse(path.read_text()).body:
@@ -207,7 +219,7 @@ def e2e_tasks():
         python = part == "chromium"
         run = f"bash scripts/proof-e2e.sh {part} --project={project} {filters}"
         tasks[f"e2e:{part}"] = {
-            "run": f"uv sync --project apps/agent --frozen && {run}" if python else run,
+            "run": agent_environment(run) if python else run,
             "sets": ["sprint"],
             "lane": "e2e",
             "needs": ["e2e-stack"],
@@ -302,15 +314,20 @@ def main():
         configuration = any(calls(p) for p in graph[path]["closure"])
         if configuration:
             inputs += CONFIG
-        if Path(path).name in {"test_live_material_inventory.py", "test_m17_spell_sfx_capstone.py"}:
+        if Path(path).name in {
+            "test_live_material_inventory.py",
+            "test_m17_spell_sfx_capstone.py",
+        }:
             inputs += [{"imports-of": root} for root in LAUNCHES[path]]
         if "apps/agent/tests/agent_tool_profiles.py" in graph[path]["closure"]:
             inputs += [imports(str(p)) for p in sorted(Path("apps/agent").glob("*_agent.py"))]
         task = {
-            "run": f"ALLOW_PAID_TESTS= REQUIRE_REAL_LLM= uv run --frozen --directory apps/agent pytest {path.removeprefix('apps/agent/')} -q -m '{MARKERS}'",
+            "run": agent_environment(
+                f"ALLOW_PAID_TESTS= REQUIRE_REAL_LLM= uv run --frozen --directory apps/agent pytest {path.removeprefix('apps/agent/')} -q -m '{MARKERS}'"
+            ),
             "sets": ["sprint"],
             "needs": ["acceptance-stack"],
-            "links": ["node_modules"],
+            "links": ["node_modules", "apps/agent/.venv"],
             "inputs": inputs,
             "keyed": [p for p in CONFIG if p.startswith("packages/shared/")] if configuration else [],
         }
@@ -329,11 +346,18 @@ def main():
     # Root unkeyed policy must preserve the existing Bun tasks and the full unit key.
     for name, task in json.loads(Path("scripts/proof-bun-tasks.json").read_text()).items():
         tasks[name] = {**task, "keyed": [*sorted(restored), SHARED_KEY]}
+        if "apps/agent/.venv" in task.get("links", []):
+            prefix, separator, run = task["run"].partition(" && ")
+            if prefix != "uv sync --project apps/agent --frozen" or not separator:
+                raise ValueError(f"{name}: expected agent environment setup")
+            tasks[name]["run"] = agent_environment(run)
     tasks["agent-pytest"] = {
-        "run": "ALLOW_PAID_TESTS= REQUIRE_REAL_LLM= uv run --frozen --directory apps/agent pytest tests/ -q -m 'not acceptance' -n 8",
+        "run": agent_environment(
+            "ALLOW_PAID_TESTS= REQUIRE_REAL_LLM= uv run --frozen --directory apps/agent pytest tests/ -q -m 'not acceptance' -n 8"
+        ),
         "sets": ["land"],
         "needs": ["agent-db"],
-        "links": ["node_modules"],
+        "links": ["node_modules", "apps/agent/.venv"],
         "inputs": [
             "apps/agent/**",
             "apps/mobile/assets/**",
