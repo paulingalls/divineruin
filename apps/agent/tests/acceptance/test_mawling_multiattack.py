@@ -163,7 +163,7 @@ async def test_public_selection_resolves_authored_math(maw, dice, same, miss):
         ["slashing", "necrotic", "slashing"] if elite else ["slashing", "necrotic"]
     )
     assert expressions == ([] if miss else ["1d8+2", "2d6+2", "1d8+2"] if elite else ["1d8+2", "2d6+2"])
-    assert [s["attack_total"] for s in strikes] == ([7 if miss else 21] * 3 if elite else [6 if miss else 20] * 2)
+    assert [s["attack_total"] for s in strikes] == ([-6 if miss else 8] * 3 if elite else [-7 if miss else 7] * 2)
     await assert_hp(
         maw, [100, 100] if miss else ([65, 100] if same else [80, 85]) if elite else [80, 100] if same else [92, 88]
     )

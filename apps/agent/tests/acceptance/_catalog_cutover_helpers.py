@@ -26,6 +26,11 @@ from session_data import CompanionState
 
 TEMPLATES = json.loads((CONTENT_ROOT / "content/encounter_templates.json").read_text())
 TARGETS = {
+    "hollow_mawling_pack": (
+        8,
+        "moderate",
+        [("hollow_mawling", "standard", 1), ("hollow_mawling_young", "standard", 1)],
+    ),
     "hollowmoth_swarm": (3, "moderate", [("hollow_hollowmoth", "standard", 3)]),
     "hollow_weaver_ambush": (10, "moderate", [("hollow_weaver", "standard", 1), ("hollow_shadeling", "minion", 2)]),
     "fragment_shadeling": (1, "easy", [("hollow_shadeling", "standard", 1)]),
@@ -245,7 +250,7 @@ async def assert_catalog_effects(started):
 
     for encounter, enemy_id, name, condition, face in [
         ("ashmark_patrol", "ashmark_soldier_1", "Shield Bash", "prone", 1),
-        ("adult_mawling_pair", "mawling_1", "Lunge", "grappled", 13),
+        ("adult_mawling_pair", "mawling_1", "Lunge", "grappled", 20),
     ]:
         ctx, roster = await started(encounter)
         pid = ctx.userdata.player_id

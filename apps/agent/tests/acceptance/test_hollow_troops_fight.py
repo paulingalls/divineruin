@@ -3,6 +3,7 @@
 import json
 import random
 from datetime import UTC, datetime
+from itertools import pairwise
 from unittest.mock import patch
 
 import pytest
@@ -23,6 +24,7 @@ from rules_engine import XP_FOR_LEVEL, attribute_modifier, calculate_max_pools
 CASES = [
     ("shadeling_cluster", 1, {"Corrosive Touch"}),
     ("ruins_mawling_pair", 2, {"Claw", "Dissolution Maw"}),
+    ("hollow_mawling_pack", 8, {"Lunge", "Claw", "Dissolution Maw"}),
     ("hollowmoth_swarm", 3, {"Distortion Flutter"}),
     ("hollow_weaver_ambush", 10, {"Spatial Lash", "Corrosive Touch"}),
     ("hollow_corrupted_settlement", 14, {"Claw", "Corrosive Touch", "Corrupted Blade", "Shield Slam"}),
@@ -40,6 +42,9 @@ class TroopFight(MawlingHarness):
         self.encounter_id = encounter_id
         self.hits = set()
         self.packets = []
+        self.adult_id = None
+        self.adult_grapple = False
+        self.adult_multiattack = False
         for index, pid in enumerate(self.players):
             row = build_character_data(
                 f"Fighter {index}", "draethar", "warrior", None, "", created_at=datetime(2026, 11, 17, tzinfo=UTC)
@@ -69,6 +74,15 @@ class TroopFight(MawlingHarness):
         assert self.enemies
         assert self.sd.combat_state is not None
         self.combat_id = self.sd.combat_state.combat_id
+        if encounter_id == "hollow_mawling_pack":
+            adults = [p for p in self.sd.combat_state.participants if p.creature_id == "hollow_mawling"]
+            assert len(adults) == 1 and adults[0].role == "standard"
+            self.adult_id = adults[0].id
+            # Mechanics targets expose ordinary hits; the solo balance test owns player defenses.
+            for actor in self.sd.combat_state.participants:
+                if actor.type == "player":
+                    actor.ac = 0
+            await self.persist()
 
     async def command(self, name, arguments, **kwargs):
         count = len(self.model.receipts)
@@ -90,12 +104,33 @@ class TroopFight(MawlingHarness):
                 hp = before[target]
                 before[target] = max(0, hp - packet["damage"])
                 if hp > 0 and packet["actor_id"] in self.enemies:
-                    self.hits.add(packet["action"])
+                    if self.adult_id is None or packet["actor_id"] == self.adult_id:
+                        self.hits.add(packet["action"])
                     if packet["action"] == "Distortion Flutter":
                         authored = int(self.catalog["hollow_hollowmoth"]["attacks"][0]["damage"])
                         assert packet["damage"] == authored * (2 if packet["critical"] else 1)
         if self.sd.combat_state is not None:
             state = await self.reload()
+            if self.adult_id:
+                for packet in packets:
+                    if (
+                        packet.get("actor_id") == self.adult_id
+                        and packet.get("action") == "Lunge"
+                        and packet.get("hit")
+                    ):
+                        target = next(p for p in state.participants if p.name == packet["target"])
+                        assert any(c["type"] == "grappled" and c["source"] == self.adult_id for c in target.conditions)
+                        self.adult_grapple = True
+                strikes = [
+                    p
+                    for p in self.packets
+                    if p.get("actor_id") == self.adult_id and p.get("composite") == "Multiattack"
+                ]
+                for first, second in pairwise(strikes):
+                    if first["strike_index"] == 0 and second["strike_index"] == 1:
+                        assert [first["action"], second["action"]] == ["Claw", "Dissolution Maw"]
+                        assert first["execution_id"] != second["execution_id"]
+                        self.adult_multiattack = True
             for actor in state.participants:
                 if actor.type == "player":
                     row = await db_queries.get_player(actor.id)
@@ -104,6 +139,9 @@ class TroopFight(MawlingHarness):
                     if any(p.get("target") == actor.name and p.get("hit") for p in packets):
                         assert actor.hp_current == before[actor.name]
         return result
+
+    def evidence_complete(self, required):
+        return required <= self.hits and (self.adult_id is None or (self.adult_grapple and self.adult_multiattack))
 
     async def fight(self, required):
         for turn in range(40):
@@ -135,7 +173,7 @@ class TroopFight(MawlingHarness):
                     declarations.append({"kind": "move", "actor_id": actor.id, "destination": destination})
                     continue
                 actions = [a for a in manifest[actor.id] if a["available"]]
-                if actor.type == "player" and not required <= self.hits:
+                if actor.type == "player" and not self.evidence_complete(required):
                     declarations.append({"kind": "defend", "actor_id": actor.id})
                     continue
                 if actor.type == "enemy":
@@ -160,7 +198,7 @@ class TroopFight(MawlingHarness):
             self.roster = self.last_result["participants"]
         else:
             pytest.fail(f"{self.encounter_id}: no terminal outcome in 40 rounds; hits={self.hits}")
-        assert required <= self.hits
+        assert self.evidence_complete(required)
         assert any(p.get("moved_ft", 0) > 0 for p in self.packets)
         assert await self.pool.fetchval("SELECT 1 FROM combat_instances WHERE combat_id=$1", self.combat_id) is None
         assert not self.sd.in_combat

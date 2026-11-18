@@ -323,7 +323,9 @@ async def test_concentration_tick_and_queued_cast(maw, field_dice, holds):
     row = await db_queries.get_player(victim.id)
     assert row is not None
     assert row.get("concentration", {}).get("spell_id") == ("divine_bless" if holds else None)
-    assert any(c["type"] == "blessed" for c in maw.sd.combat_state.get_participant(victim.id).conditions) is holds
+    cast = next(p["cast"] for p in packets if p.get("actor_id") == victim.id and "cast" in p)
+    assert list(cast["damage_result"]["consumed_conditions"]) == (["blessed"] if holds else [])
+    assert not any(c["type"] == "blessed" for c in maw.sd.combat_state.get_participant(victim.id).conditions)
 
 
 async def test_stunned_declaration_refused_but_boundary_runs(maw, field_dice):
