@@ -33,6 +33,36 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     status: "active",
     recharge: "short_rest",
   });
+  const narrated = new Set([
+    "veythar_lorekeepers_library",
+    "syrath_whisper_network",
+    "syrath_the_veilwatchers_eye",
+    "mortaen_speak_with_dead",
+    "nythera_charted_course",
+    "valdris_discern_lies",
+    "zhael_prophecy_fragment",
+  ]);
+  const abilities = validateGods(catalog).flatMap((god) => {
+    expect(Object.keys(god.layer_3_tier_abilities).sort()).toEqual([
+      "acknowledged",
+      "devoted",
+      "exalted",
+    ]);
+    return Object.values(god.layer_3_tier_abilities);
+  });
+  expect(abilities).toHaveLength(30);
+  expect(new Set(abilities.map((a) => a.id)).size).toBe(30);
+  expect(
+    new Set(
+      abilities
+        .filter((a) => a.status === "active" && a.resolution === "narrated")
+        .map((a) => a.id),
+    ),
+  ).toEqual(narrated);
+  const pending = abilities.filter((a) => !narrated.has(a.id));
+  expect(pending).toHaveLength(23);
+  for (const ability of pending)
+    expect([ability.status, ability.resolution]).toEqual(["pending", "engine"]);
   expect(corpus.valid.length).toBeGreaterThan(0);
   expect(corpus.invalid.length).toBeGreaterThan(0);
   expect(generated.length).toBeGreaterThan(0);

@@ -40,6 +40,21 @@ def test_authored_layers_match_mechanics():
             )
     assert len(sections) == 10
     assert sum(len(tiers) for tiers in sections.values()) == 30
+    narrated = {
+        "veythar_lorekeepers_library",
+        "valdris_discern_lies",
+        "syrath_whisper_network",
+        "nythera_charted_course",
+        "mortaen_speak_with_dead",
+        "zhael_prophecy_fragment",
+        "syrath_the_veilwatchers_eye",
+    }
+    abilities = [a for row in rows for a in row["layer_3_tier_abilities"].values()]
+    assert len(abilities) == len({a["id"] for a in abilities}) == 30
+    assert {a["id"] for a in abilities if (a["status"], a["resolution"]) == ("active", "narrated")} == narrated
+    pending = [a for a in abilities if a["id"] not in narrated]
+    assert len(pending) == 23
+    assert all((a["status"], a["resolution"]) == ("pending", "engine") for a in pending)
     for row in rows:
         patron = row["god_id"]
         layer = row["layer_2_resonance"]
