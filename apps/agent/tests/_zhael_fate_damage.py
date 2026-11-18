@@ -4,10 +4,11 @@ import pytest
 from _patron_engine_fixtures import configure
 from _unbound_path_fixtures import row
 from _zhael_fate_fixtures import attack, defend, game_tools
-from acceptance._capstone_helpers import _build_state, _d20, _damage_die, _enemy
+from acceptance._capstone_helpers import _build_state, _d20, _damage_die, _enemy, _player
 from acceptance.test_kaelen_iron_resolve_capstone import required_player
 from livekit.agents.llm import ToolError
 from test_aelora_gift import _live_party
+from voice_condition_fixtures import place_actors
 
 import db_mutations
 from activate_tools import activate
@@ -21,8 +22,12 @@ from session_data import SessionData
 
 async def inner_fire(world, reload):
     await configure(world, "zhael", "mage", race="draethar", hp={"current": 100, "max": 100})
-    pid = world.ids[0]
+    await configure(world, "none", "mage", index=1, race="draethar")
+    pid, other = world.ids
     state = _build_state(pid, pid, [_enemy("foe", 30)])
+    state.participants.append(_player(other))
+    state.initiative_order.append(other)
+    place_actors(state)
     session = world.ctx.userdata
     session.combat_state = state
     required_player(state, pid).conditions = apply_condition([], "blessed", source="divine_bless")
@@ -47,6 +52,15 @@ async def inner_fire(world, reload):
                 fresh = game_tools(session, activate, resolve_phase, end_combat)
                 with pytest.raises(ToolError, match="spent"):
                     await fresh("activate", id="draethar_inner_fire")
+                assert session.combat_state is not None
+                held_save = session.combat_state.inner_fire_continuation
+                assert held_save is not None
+                second = SessionData(player_id=other, location_id=state.location_id)
+                second.combat_state = await db_mutations.load_combat_state(state.combat_id)
+                with pytest.raises(ToolError, match="resolve_phase"):
+                    await game_tools(second, activate)("activate", id="draethar_inner_fire")
+                stored = await db_mutations.load_combat_state(state.combat_id)
+                assert stored is not None and stored.inner_fire_continuation == held_save
                 with pytest.raises(ToolError, match="resolve_phase"):
                     await fresh("end_combat", outcome="fled")
                 result = await fresh("resolve_phase")
