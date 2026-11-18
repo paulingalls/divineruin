@@ -206,7 +206,6 @@ def test_dm_inventory_has_no_false_executables():
             ("actives", "Spatial Fold"),
             ("passives", "Spatial Distortion"),
             ("passives", "Anchored"),
-            ("passives", "Fragile Form"),
             ("hollow", "hollow"),
         },
         "ashmark_sergeant": {("actives", "Accusation"), ("actives", "Rally")},
@@ -264,6 +263,9 @@ def test_dm_inventory_has_no_false_executables():
                 authored = next(entry for entry in authored if entry["name"] == name)
             elif group == "hollow":
                 authored = {k: v for k, v in authored.items() if k not in {"corruption_aura", "resonance_on_death"}}
+                authored["vulnerable_to"] = [
+                    v for v in authored["vulnerable_to"] if v not in {"radiant", "fire", "psychic", "physical_damage"}
+                ]
             assert effect["source"] == authored
         if source["id"] == "hollow_mawling":
             assert [a["name"] for a in enemy["action_pool"]].count("Lunge") == 1

@@ -65,6 +65,8 @@ def test_every_spec_field_is_required():
         if not case.get("spec_derived"):
             continue
         for path in key_paths(case["block"]):
+            if path[0] in {"damage_affinities", "tags"}:
+                continue
             block = copy.deepcopy(case["block"])
             parent = block
             for part in path[:-1]:
@@ -158,3 +160,46 @@ def test_role_sequence_rejects_ambiguous_reference():
     assert validate_creature_stat_block(row) == [
         "multiattack_sequence.attacks_by_role.elite: expected unambiguous attack reference"
     ]
+
+
+# Expected traits are independent of the prose-to-content authoring step.
+CATALOG_TRAITS = {
+    "corrupted_treant": ("bludgeoning piercing", "", "fire"),
+    "cave_wyrm": ("acid", "", ""),
+    "dire_bear": ("cold", "", ""),
+    "war_golem": ("", "poison psychic", ""),
+    "deepstone_guardian": ("", "poison psychic", ""),
+    "tidecaller_eel": ("", "lightning", ""),
+    "thunderbird": ("", "lightning", ""),
+    "hollow_shadeling": ("", "poison", "radiant fire"),
+    "hollow_hollowmoth": ("", "poison", "fire radiant"),
+    "hollow_mawling": ("", "poison", "radiant"),
+    "hollow_weaver": ("", "poison", "slashing piercing bludgeoning radiant"),
+    "hollow_knight": ("", "poison", "radiant"),
+    "hollow_veilrender": ("", "poison", "radiant"),
+    "hollow_choir": ("", "acid bludgeoning cold fire lightning necrotic piercing poison slashing", "psychic radiant"),
+    "hollow_still": ("", "poison", "radiant fire"),
+    "hollow_architect": ("", "poison", "radiant"),
+    "hollowed_scout": ("", "poison", "radiant"),
+    "hollow_wisp": ("", "poison", "radiant fire"),
+    "hollow_warden": ("", "poison", "radiant"),
+    "hollow_mawling_young": ("", "poison", "radiant fire"),
+}
+
+
+def test_catalog_damage_traits_and_shared_hollow_floor():
+    rows = catalog()
+    assert len(rows) >= 37 and len(CATALOG_TRAITS) == 20
+    assert {r["id"] for r in rows if "damage_affinities" in r} == set(CATALOG_TRAITS)
+    for row in rows:
+        assert validate_creature_stat_block(row) == [], row["id"]
+        if row["id"] in CATALOG_TRAITS:
+            assert row["damage_affinities"] == dict(
+                zip(("resistant", "immune", "vulnerable"), (v.split() for v in CATALOG_TRAITS[row["id"]]), strict=True)
+            )
+    hollows = [r for r in rows if r["category"] == "hollow"]
+    assert len(hollows) >= 13
+    for row in hollows:
+        assert "poison" in row["damage_affinities"]["immune"]
+        assert "radiant" in row["damage_affinities"]["vulnerable"]
+    assert {r["id"] for r in rows if "plant" in r.get("tags", [])} == {"corrupted_treant"}

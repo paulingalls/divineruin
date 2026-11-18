@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 from action_contracts import CHOIR_EFFECT_FIELDS, STRUCTURED_FIELDS, validate_action_extensions, validate_recharge
+from combat_damage_affinity import validate_traits
 from combat_init_validation import validate_enemy_action_shapes, validate_enemy_resistance_tags
 from encounter_actions import validate_encounter_actions
 from terrain import TerrainType
@@ -293,4 +294,4 @@ def validate_creature_stat_block(creature: object) -> list[str]:
         if loot_id not in ids:
             problems.append("loot_table_id: unknown loot table")
     field(creature, "xp_reward", "", "integer")
-    return problems
+    return problems + validate_traits(creature)

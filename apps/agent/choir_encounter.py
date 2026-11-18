@@ -2,6 +2,7 @@
 
 import check_resolution
 import condition_voice_rules
+from combat_damage_affinity import DAMAGE_TYPES
 from combat_terrain import skill_natural_terrain
 from declarations import DeclarationType
 
@@ -66,12 +67,12 @@ def facts(state):
     elif phase == "exposed":
         result.update(
             core_id=source.id,
-            engine_damage_spell_ids=engine_damage_spell_ids(),
+            engine_damage_spell_ids=engine_damage_spell_ids(source),
             core_defenses={
                 "ac": 18,
                 "hp_pool": 200,
-                "allowed_damage": ["psychic", "radiant", "thunder", "force"],
-                "vulnerable_to": ["psychic", "radiant"],
+                "allowed_damage": [t for t in DAMAGE_TYPES if t not in source.damage_affinities.get("immune", [])],
+                "vulnerable_to": list(source.damage_affinities.get("vulnerable", [])),
                 "no_touch_grapple_restraint": True,
             },
             cue=exposure_cue(state, source),
@@ -171,14 +172,6 @@ async def search(session, state, actor, declaration, *, queries, conn):
     return packet
 
 
-def damage(target, amount, damage_type):
-    if target.creature_id != "hollow_choir":
-        return amount
-    if damage_type not in {"psychic", "radiant", "thunder", "force"}:
-        return 0
-    return amount * (2 if damage_type in {"psychic", "radiant"} else 1)
-
-
 def destroyed(state):
     source = owner(state)
     if source is None or not source.hollow_death_resolved:
@@ -244,10 +237,10 @@ async def turn_start(session, state, actor, *, conn, concentration_break_mod):
     }
 
 
-def engine_damage_spell_ids():
+def engine_damage_spell_ids(participant):
     import spells
 
-    allowed = {"psychic", "radiant", "thunder", "force"}
+    allowed = set(DAMAGE_TYPES) - set(participant.damage_affinities.get("immune", []))
     return [
         spell.id
         for source in ("arcane", "divine", "primal")

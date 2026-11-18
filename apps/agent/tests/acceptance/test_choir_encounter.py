@@ -4,6 +4,7 @@ from unittest.mock import patch
 import pytest
 from acceptance._capstone_helpers import _d20, _resolve_round
 from acceptance._catalog_cutover_helpers import started as started
+from acceptance._choir_spell_helpers import assert_core_defenses
 from acceptance._choir_spell_helpers import bolt as bolt
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
@@ -466,15 +467,7 @@ async def test_choir_audio_entry_and_reload_queries(started):
         else:
             assert facts["core_id"] == "choir_zone"
             assert "30 feet east" in facts["cue"]
-            assert facts["engine_damage_spell_ids"] == [
-                "arcane_bolt",
-                "arcane_magic_missile",
-                "arcane_disintegrate",
-                "divine_sacred_flame",
-                "divine_sacred_word",
-                "divine_flame_strike",
-                "divine_divine_judgment",
-            ]
+            await assert_core_defenses(ctx, facts, _query_info_impl)
 
 
 async def test_choir_lethal_spell_preserves_later_companion_action(started):

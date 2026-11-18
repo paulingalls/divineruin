@@ -1,3 +1,4 @@
+import { validateCreatureTraits, type DamageAffinities } from "./creature_damage_affinity";
 import {
   validateActionExtensions,
   validateRecharge,
@@ -24,6 +25,8 @@ export interface CreatureStatBlock {
   id: string;
   name: string;
   category: "hollow" | "beast" | "humanoid" | "construct" | "undead" | "elemental";
+  damage_affinities?: DamageAffinities;
+  tags?: "plant"[];
   tier: 1 | 2 | 3 | 4;
   home_region: RegionId | "multi_region";
   regions: RegionId[];
@@ -441,7 +444,7 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
     if (!LOOT_IDS.has(lootId)) problems.push("loot_table_id: unknown loot table");
   }
   field(creature, "xp_reward", "", "integer");
-  return problems;
+  return problems.concat(validateCreatureTraits(creature));
 }
 
 // JSON.parse reads 8.0 as 8, while Python's json keeps it a float that fails "expected integer".

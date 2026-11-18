@@ -21,7 +21,11 @@ def test_hollow_metadata_retains_only_unimplemented_claims():
         translated = translate_creature(row, encounter_id="metadata", enemy_id=row["id"], role="standard")
         assert translated["hollow"] == {k: row["hollow"][k] for k in ("corruption_aura", "resonance_on_death")}
         source = next(e["source"] for e in translated["deferred_effects"] if e["group"] == "hollow")
-        assert source == {k: v for k, v in row["hollow"].items() if k not in translated["hollow"]}
+        expected = {k: v for k, v in row["hollow"].items() if k not in translated["hollow"]}
+        expected["vulnerable_to"] = [
+            v for v in expected["vulnerable_to"] if v not in {"radiant", "fire", "psychic", "physical_damage"}
+        ]
+        assert source == expected
     named = [row for row in rows if row["hollow"] and row["hollow"]["class"] == "named"]
     assert named
     for row in named:
@@ -29,7 +33,9 @@ def test_hollow_metadata_retains_only_unimplemented_claims():
         if row["id"] == "hollow_choir":
             for field in ("corruption_aura", "resonance_on_death"):
                 expected.pop(field)
-            expected.pop("vulnerable_to")
+        expected["vulnerable_to"] = [
+            v for v in expected["vulnerable_to"] if v not in {"radiant", "fire", "psychic", "physical_damage"}
+        ]
         assert next(e["source"] for e in deferred_effects(row) if e["group"] == "hollow") == expected
 
 
@@ -77,4 +83,30 @@ def test_choir_metadata_retains_only_unimplemented_guidance():
         key: value
         for key, value in choir["hollow"].items()
         if key not in {"corruption_aura", "resonance_on_death", "vulnerable_to"}
+    } | {"vulnerable_to": ["silence_effects"]}
+
+
+def test_executed_affinity_passives_leave_only_residual_guidance():
+    from creature_combat_effects import deferred_effects
+
+    executed = {
+        ("corrupted_treant", "Vulnerability to Fire"),
+        ("corrupted_treant", "Resistance"),
+        ("dire_bear", "Thick Hide"),
+        ("war_golem", "Damage Immunity"),
+        ("deepstone_guardian", "Damage Immunity"),
+        ("hollow_weaver", "Fragile Form"),
     }
+    residual = {
+        ("cave_wyrm", "Scales"): "Climbs 30 ft and burrows 10 ft.",
+        ("tidecaller_eel", "Electricity Absorption"): "Heals HP equal to lightning damage dealt to it.",
+        ("thunderbird", "Lightning Absorption"): "Heals equal to lightning damage dealt to it.",
+    }
+    for row in catalog():
+        effects = {e["name"]: e["source"] for e in deferred_effects(row)}
+        for cid, name in executed:
+            if cid == row["id"]:
+                assert name not in effects
+        for (cid, name), description in residual.items():
+            if cid == row["id"]:
+                assert effects[name]["description"] == description
