@@ -43,7 +43,10 @@ async def test_hp_lowering_writers_trigger_gift(writer):
             roll,
             target.ac,
             mutations=MagicMock(update_player_hp=AsyncMock()),
-            queries=MagicMock(get_player_inventory=AsyncMock(return_value=[])),
+            queries=MagicMock(
+                get_player=AsyncMock(return_value=deepcopy(SAMPLE_PLAYER)),
+                get_player_inventory=AsyncMock(return_value=[]),
+            ),
             concentration_break_mod=MagicMock(break_concentration_on_damage=AsyncMock(return_value=None)),
             combat_state=ctx.userdata.combat_state,
         )

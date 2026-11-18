@@ -105,7 +105,7 @@ async def test_encounter_end_drops_gift_and_recharges(reset_db_pool):
     pc.conditions = conditions.apply_condition([], "exhausted", source="march")
     ctx = make_context(pid, room=make_mock_room())
     ctx.userdata.party.primary.patron_id = "kaelen"
-    assert trigger_iron_resolve(ctx.userdata, pc, 10)
+    assert trigger_iron_resolve(ctx.userdata, pc, 10, {"class": "bard", "divine_favor": {"patron": "kaelen"}})
     try:
         await _start_combat(pool, pid, state, ctx)
         await _declare_attacks(ctx, pid, "goblin_a", ["goblin_a"])
@@ -125,7 +125,10 @@ async def test_encounter_end_drops_gift_and_recharges(reset_db_pool):
         assert not fresh.iron_resolve_spent
         assert fresh.conditions == []
         fresh.hp_current, fresh.hp_max = 4, 20
-        assert trigger_iron_resolve(ctx.userdata, fresh, 10) == "Iron Resolve"
+        assert (
+            trigger_iron_resolve(ctx.userdata, fresh, 10, {"class": "bard", "divine_favor": {"patron": "kaelen"}})
+            == "Iron Resolve"
+        )
         await db_mutations.delete_combat_state(new_state.combat_id, conn=pool)
     finally:
         await db_mutations.delete_combat_state(state.combat_id, conn=pool)

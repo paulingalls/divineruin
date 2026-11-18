@@ -80,7 +80,7 @@ async def test_guest_speech_drives_luna_check_travel_and_activity(
     monkeypatch.setattr(
         check_resolution,
         "resolve_skill_check_dc",
-        lambda player, skill, dc, rng=None, *, ally_present, natural_terrain, hearing_only: resolve(
+        lambda player, skill, dc, rng=None, *, ally_present, natural_terrain, hearing_only, first_stay=False: resolve(
             player,
             skill,
             dc,
@@ -88,6 +88,7 @@ async def test_guest_speech_drives_luna_check_travel_and_activity(
             ally_present=ally_present,
             natural_terrain=natural_terrain,
             hearing_only=hearing_only,
+            first_stay=first_stay,
         ),
     )
     pool = await db.get_pool()

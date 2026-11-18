@@ -144,7 +144,7 @@ async def search(session, state, actor, declaration, *, queries, conn):
         condition_voice_rules.roll_data(player, state, actor.id),
         skill,
         18,
-        ally_present=session.ally_present_for(actor.id),
+        ally_present=session.allies_present_for(actor.id),
         natural_terrain=await skill_natural_terrain(session, player, skill, combat_state=state),
         hearing_only=skill == "perception",
     )

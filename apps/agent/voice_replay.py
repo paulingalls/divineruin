@@ -308,7 +308,7 @@ async def _run_row(
         closers.append(lambda: cancel_task(capture_task))
         original_resolve = check_resolution.resolve_skill_check_dc
 
-        def resolver(player, skill, dc, rng=None, *, ally_present, natural_terrain, hearing_only):
+        def resolver(player, skill, dc, rng=None, *, ally_present, natural_terrain, hearing_only, first_stay=False):
             return original_resolve(
                 player,
                 skill,
@@ -317,6 +317,7 @@ async def _run_row(
                 ally_present=ally_present,
                 natural_terrain=natural_terrain,
                 hearing_only=hearing_only,
+                first_stay=first_stay,
             )
 
         with patch("check_resolution.resolve_skill_check_dc", side_effect=resolver):

@@ -147,7 +147,7 @@ async def _resolve_deescalation_packet(
         "persuasion",
         combat_resolution.DEESCALATE_BASE_DC,
         rng,
-        ally_present=session.ally_present_for(attacker.id),
+        ally_present=session.allies_present_for(attacker.id),
         natural_terrain=False,
         hearing_only=False,
     )

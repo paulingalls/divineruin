@@ -6,6 +6,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING
 
 from _gods_content import load_gods
+from patron_synergy import has_engine_synergy
 from spells import Spell
 from terrain import is_earth_or_stone, is_natural, resonance_base
 
@@ -62,6 +63,7 @@ def apply_patron_generation(
     *,
     terrain: str | None = None,
     facts: PatronCastFacts,
+    player: dict,
 ) -> tuple[int, list[str]]:
     predicates = {
         "combat_aid": spell.combat_aid,
@@ -80,6 +82,12 @@ def apply_patron_generation(
         kind, value = modifier["kind"], modifier["value"]
         if kind == "generation_delta":
             generated += value
+            if (
+                patron == "syrath"
+                and modifier["applies_to"] == "hidden_or_stealthed"
+                and has_engine_synergy(player, "syrath_silent_casting")
+            ):
+                generated -= 1
         elif kind == "generation_override":
             generated = value
         elif kind == "generation_multiplier":

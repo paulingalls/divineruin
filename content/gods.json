@@ -175,8 +175,8 @@
         "clauses": [
           {
             "effect": "Flickering bonus damage applies to cantrips. Arcane mastery extends to simplest spells",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "narrated"
           }
         ]
       },
@@ -186,8 +186,8 @@
         "clauses": [
           {
             "effect": "Flickering bonus damage applies to cantrips. Arcane mastery extends to simplest spells",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "narrated"
           }
         ]
       },
@@ -197,8 +197,8 @@
         "clauses": [
           {
             "effect": "Flickering bonus damage applies to cantrips. Arcane mastery extends to simplest spells",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "narrated"
           }
         ]
       },
@@ -486,8 +486,9 @@
         "clauses": [
           {
             "effect": "Iron Resolve triggers at 40% HP.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "kaelen_tempered_resolve"
           },
           {
             "effect": "Extra Attack (L10) grants +1 permanent weapon damage",
@@ -502,8 +503,9 @@
         "clauses": [
           {
             "effect": "Iron Resolve triggers at 40% HP.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "kaelen_tempered_resolve"
           },
           {
             "effect": "Extra Attack (L10) grants +1 permanent weapon damage",
@@ -518,8 +520,9 @@
         "clauses": [
           {
             "effect": "Iron Resolve triggers at 40% HP.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "kaelen_tempered_resolve"
           },
           {
             "effect": "Extra Attack (L10) grants +1 permanent weapon damage",
@@ -883,8 +886,9 @@
         "clauses": [
           {
             "effect": "Bond bonus +2 near 2+ allies.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "aelora_common_bond"
           },
           {
             "effect": "Crafting Focus costs -1 (min 1)",
@@ -1014,8 +1018,9 @@
         "clauses": [
           {
             "effect": "Bond bonus +2 near 2+ allies.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "aelora_common_bond"
           },
           {
             "effect": "Crafting Focus costs -1 (min 1)",
@@ -1030,8 +1035,9 @@
         "clauses": [
           {
             "effect": "Bond bonus +2 near 2+ allies.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "aelora_common_bond"
           },
           {
             "effect": "Crafting Focus costs -1 (min 1)",
@@ -1229,8 +1235,9 @@
         "clauses": [
           {
             "effect": "Hidden Casting reduction increases to -3. Lowest-Resonance arcane caster possible",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "syrath_silent_casting"
           }
         ]
       },
@@ -1251,8 +1258,9 @@
         "clauses": [
           {
             "effect": "Hidden Casting reduction increases to -3. Lowest-Resonance arcane caster possible",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "syrath_silent_casting"
           }
         ]
       },
@@ -2675,8 +2683,9 @@
         "clauses": [
           {
             "effect": "Investigation and Perception +3 in unexplored locations",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "nythera_uncharted_senses"
           }
         ]
       },
@@ -2686,8 +2695,9 @@
         "clauses": [
           {
             "effect": "Investigation and Perception +3 in unexplored locations",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "nythera_uncharted_senses"
           }
         ]
       },
@@ -2724,8 +2734,9 @@
           },
           {
             "effect": "Animal Handling advantage in unexplored areas",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "nythera_uncharted_handling"
           }
         ]
       },
@@ -2740,8 +2751,9 @@
           },
           {
             "effect": "Animal Handling advantage in unexplored areas",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "nythera_uncharted_handling"
           }
         ]
       }

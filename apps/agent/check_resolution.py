@@ -271,9 +271,10 @@ def _resolve_skill_check_impl(
     dc: int,
     rng: random.Random | None = None,
     *,
-    ally_present: bool,
+    ally_present: int,
     natural_terrain: bool,
     hearing_only: bool,
+    first_stay: bool = False,
 ) -> SkillCheckResult:
     skill_lower = skill.lower()
     if auto_fail_hearing_perception(player_data.get("conditions") or [], skill=skill, hearing_only=hearing_only):
@@ -323,7 +324,7 @@ def _resolve_skill_check_impl(
     gift_name = None
     if not _check_auto_fail(dc, tier):
         gift_bonus, gift_advantage, gift_name = skill_gift(
-            player_data, skill_lower, ally_present=ally_present, natural_terrain=natural_terrain
+            player_data, skill_lower, ally_present=ally_present, natural_terrain=natural_terrain, first_stay=first_stay
         )
         bonus += gift_bonus
         advantage = advantage or gift_advantage
@@ -362,9 +363,10 @@ def resolve_skill_check(
     difficulty: str,
     rng: random.Random | None = None,
     *,
-    ally_present: bool,
+    ally_present: int,
     natural_terrain: bool,
     hearing_only: bool,
+    first_stay: bool = False,
 ) -> SkillCheckResult:
     return _resolve_skill_check_impl(
         player_data,
@@ -374,6 +376,7 @@ def resolve_skill_check(
         ally_present=ally_present,
         natural_terrain=natural_terrain,
         hearing_only=hearing_only,
+        first_stay=first_stay,
     )
 
 
@@ -383,9 +386,10 @@ def resolve_skill_check_dc(
     dc: int,
     rng: random.Random | None = None,
     *,
-    ally_present: bool,
+    ally_present: int,
     natural_terrain: bool,
     hearing_only: bool,
+    first_stay: bool = False,
 ) -> SkillCheckResult:
     """Like resolve_skill_check but accepts a numeric DC directly.
 
@@ -400,4 +404,5 @@ def resolve_skill_check_dc(
         ally_present=ally_present,
         natural_terrain=natural_terrain,
         hearing_only=hearing_only,
+        first_stay=first_stay,
     )

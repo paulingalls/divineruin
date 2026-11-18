@@ -98,7 +98,7 @@ async def _check_gather_impl(
         skill,
         dc,
         rng,
-        ally_present=session.ally_present_for(player_id),
+        ally_present=session.allies_present_for(player_id),
         natural_terrain=await skill_natural_terrain(session, player, skill, content_mod=content),
         hearing_only=False,
     )

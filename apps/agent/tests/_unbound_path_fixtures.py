@@ -61,7 +61,7 @@ def encounter(w):
     )
 
 
-async def cast(w, *, sid="arcane_bolt", roll=1, database=None, echo=None, die=None):
+async def cast(w, *, sid="arcane_bolt", roll=1, database=None, echo=None, die=None, ward=False):
     async def entry(ctx, spell_id, **kw):
         return await spell_casting._cast_spell_impl(
             ctx,
@@ -69,7 +69,7 @@ async def cast(w, *, sid="arcane_bolt", roll=1, database=None, echo=None, die=No
             **kw,
             db_mod=database or w.db,
             character_spells_mod=MagicMock(get_known=AsyncMock(return_value=[{"spell_id": sid}])),
-            ward_resolution_mod=MagicMock(resolve_scope_ward=AsyncMock(return_value=None)),
+            ward_resolution_mod=MagicMock(resolve_scope_ward=AsyncMock(return_value={} if ward else None)),
             dice_mod=die or MagicMock(roll=MagicMock(return_value=SimpleNamespace(total=roll))),
             **({"echo_events_mod": echo} if echo else {}),
         )
