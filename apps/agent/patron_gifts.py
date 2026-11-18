@@ -2,6 +2,7 @@
 
 from _gods_content import load_gods
 
+UNBOUND_ALONE_BONUS = 1
 NATURES_PULSE_SKILLS = frozenset({"perception", "survival"})
 KNOWLEDGE_SKILLS = frozenset({"arcana", "history", "investigation", "nature", "religion"})
 SYRATH_SHADOW_VEIL = "syrath_shadow_veil"
@@ -35,6 +36,8 @@ def thyra_gift(favor: dict) -> dict | None:
 
 def skill_gift(player: dict, skill: str, *, ally_present: bool, natural_terrain: bool) -> tuple[int, bool, str | None]:
     favor = player.get("divine_favor") or {}
+    if not ally_present and favor.get("patron") in (None, "none"):
+        return UNBOUND_ALONE_BONUS, False, None
     if ally_present and favor.get("patron") == "aelora":
         gift = next(row["layer_1_gift"] for row in load_gods() if row["god_id"] == "aelora")
         if gift["mechanics"]["requires"] != "ally_present":

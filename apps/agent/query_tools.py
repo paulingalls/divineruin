@@ -30,7 +30,7 @@ from combat_terrain import resolve_terrain
 from db_errors import db_tool
 from patron_ability_tools import project_abilities
 from patron_favor import get_patron_tier
-from patron_gifts import thyra_gift
+from patron_gifts import UNBOUND_ALONE_BONUS, thyra_gift
 from patron_synergy import synergy_for_patron
 from session_data import SessionData
 from settlement_generation import generate_settlement_npcs, generate_settlement_roster
@@ -172,7 +172,17 @@ async def _query_patron_impl(
     track = await db_mutations_resonance.read_player_resonance(player_id)
     tier = get_patron_tier(favor)
     if tier is None:
-        return json.dumps({**unbound_tools.patron_query(track), "synergy": None})
+        return json.dumps(
+            {
+                **unbound_tools.patron_query(track),
+                "synergy": None,
+                "alone_bonus": {
+                    "amount": UNBOUND_ALONE_BONUS,
+                    "description": "+1 to all skill checks when no ally is present.",
+                    "applies_now": not session.ally_present_for(player_id),
+                },
+            }
+        )
 
     patron_id = favor["patron"]
     patron = next((row for row in gods_loader() if row["god_id"] == patron_id), None)

@@ -8,8 +8,11 @@ import pytest
 from check_discovery import _check_discover_impl
 from check_tools import _check_skill_impl
 from conditions import apply_condition
-from tools._discover_fixtures import DISCOVER_PLAYER, _make_discover_mocks, _roll
+from tools._discover_fixtures import DISCOVER_PLAYER as BASE_PLAYER
+from tools._discover_fixtures import _make_discover_mocks, _roll
 from tools._helpers import _make_context, _make_mock_room, _skill_mocks
+
+DISCOVER_PLAYER = {**BASE_PLAYER, "divine_favor": {"patron": "valdris", "level": 0, "max": 100}}
 
 FIXTURE = json.loads((Path(__file__).resolve().parents[4] / "packages/shared/fixtures/event_wire.json").read_text())[
     "events"
