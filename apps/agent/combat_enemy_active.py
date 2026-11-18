@@ -2,6 +2,7 @@
 
 import copy
 
+import conditions
 import dice
 from combat_condition_landing import _land_condition_on_one
 from encounter_actions import action_kind
@@ -74,6 +75,8 @@ def apply_critical_save(state, attacker, target, action, summary):
         bonus_dice_eligible=False,
     )
     summary["critical_save"] = {"dc": result.dc, "roll": result.roll, "total": result.total, "success": result.success}
+    if rider["applies_condition"] == "hollowed" and conditions.has_condition(target.conditions, "hollowed"):
+        return
     if not result.success and _land_condition_on_one(
         state, target.id, attacker, rider["applies_condition"], source=action["name"], packet=summary
     ):

@@ -258,22 +258,22 @@ def test_dissolution_rejects_malformed_damage_form(rider):
     assert any("on_hit" in error for error in validate_creature_stat_block(row))
 
 
-async def test_blade_critical_escalates_existing_hollowed():
+@pytest.mark.parametrize("stage", [1, 2, 3])
+async def test_blade_critical_preserves_existing_hollowed(stage):
     import random
     from unittest.mock import patch
 
     from combat._catalog_fixtures import deps, setup
     from sample_fixtures import make_context
 
-    import conditions
     from combat_packet import _resolve_one_packet
 
     enemy = translate_creature(knight(), encounter_id="k", enemy_id="k", role="standard")
     state, _actor, packet = setup(enemy["action_pool"][0])
     target = state.participants[0]
     target.hp_current = target.hp_max = 100
-    target.conditions = conditions.apply_condition([], "hollowed")
+    target.conditions = [{"type": "hollowed", "stage": stage, "duration": None, "source": "prior"}]
     with patch("dice.random.SystemRandom", return_value=random.Random(1)):
         result = await _resolve_one_packet(make_context().userdata, state, packet, **deps(5))
     assert result["critical_save"]["success"] is False
-    assert conditions.hollowed_stage(target.conditions) == 2
+    assert target.conditions == [{"type": "hollowed", "stage": stage, "duration": None, "source": "prior"}]
