@@ -18,6 +18,7 @@ Called once per fresh session by agent.dm_session — reconnects reuse the in-me
 *_mod params are the test seam (mirrors _cast_spell_impl's DI); production uses the defaults.
 """
 
+import asyncio
 import json
 from datetime import UTC, datetime
 
@@ -105,12 +106,14 @@ async def hydrate_patron_ability_session(
     *,
     conn: asyncpg.Pool | None = None,
 ) -> None:
-    if player_id in session.patron_ability_entries:
-        return
-    source = conn or await db.get_pool()
-    async with source.acquire() as connection:
-        await _recharge_session_abilities(player_id, connection)
-    session.patron_ability_entries.add(player_id)
+    lock = session.patron_ability_entry_locks.setdefault(player_id, asyncio.Lock())
+    async with lock:
+        if player_id in session.patron_ability_entries:
+            return
+        source = conn or await db.get_pool()
+        async with source.acquire() as connection:
+            await _recharge_session_abilities(player_id, connection)
+        session.patron_ability_entries.add(player_id)
     from patron_ability_events import publish_patron_abilities
 
     await publish_patron_abilities(session.room, player_id, session.event_bus)
