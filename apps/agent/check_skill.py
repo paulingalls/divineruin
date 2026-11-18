@@ -14,7 +14,6 @@ import event_types as E
 import patron_deeds
 import rules_engine
 import skill_persistence
-import zhael_fate
 from combat_terrain import skill_natural_terrain
 from condition_consume import consume_beneficial_conditions
 from condition_voice_rules import validate_hearing_check
@@ -23,6 +22,7 @@ from patron_gifts import KNOWLEDGE_SKILLS
 from patron_location import check_first_stay
 from session_data import SessionData
 from skill_check_effects import SkillCheckEffects
+from skill_fate import SkillScope, prepare_skill_offer
 from tool_support import _cap_str
 
 logger = logging.getLogger("divineruin.tools")
@@ -84,56 +84,42 @@ async def _check_skill_run(
         hearing_only=hearing_only,
     )
 
-    d20 = result.d20
-    if reroll_dc is None and d20 is not None:
-        candidates = await zhael_fate.candidates(session, queries=queries, conn=conn, roller=(player_id, player))
-        location_id = session.location_id
+    scope = SkillScope.capture(session, player_id)
 
-        async def resume(kept):
-            from check_tools import publish_game_event
+    async def write(kept, write_conn):
+        from check_tools import publish_game_event
 
-            async with session.combat_state_lock:
-                if player_id not in session.present_member_ids or session.location_id != location_id:
-                    return zhael_fate.cancel(session, "The skill check's roller is no longer present for this check.")
-                deferred = SkillCheckEffects()
-                async with db_mod.transaction() as write_conn:
-                    current = await queries.get_player(player_id, conn=write_conn, for_update=True)
-                    if current is None:
-                        raise ToolError(f"Player '{player_id}' not found.")
-                    packet = await _finish_skill(
-                        session,
-                        player_id,
-                        current,
-                        kept,
-                        skill,
-                        difficulty,
-                        context_description,
-                        hearing_only=hearing_only,
-                        queries=queries,
-                        mutations=mutations,
-                        db_mod=db_mod,
-                        conditions_mutations=conditions_mutations,
-                        effects=deferred,
-                        conn=write_conn,
-                        resumed=True,
-                    )
-                zhael_fate.effects_committed(session)
-                await deferred.flush(session, publish=publish_game_event)
-                return zhael_fate.Resumed(json.loads(packet))
-
-        offer = zhael_fate.make_offer(
-            "skill",
+        current = await scope.lock_roller(session, write_conn, queries=queries)
+        deferred = SkillCheckEffects()
+        packet = await _finish_skill(
+            session,
             player_id,
-            result,
-            candidates,
-            numbers=lambda r: (r.roll, r.total),
-            reroll=lambda: check_resolution.skill_with_roll(result, d20.roll()),
-            flip=lambda face: check_resolution.skill_with_roll(result, d20.evaluate(face)),
-            resume=resume,
+            current,
+            kept,
+            skill,
+            difficulty,
+            context_description,
+            hearing_only=hearing_only,
+            queries=queries,
+            mutations=mutations,
+            db_mod=db_mod,
+            conditions_mutations=conditions_mutations,
+            effects=deferred,
+            conn=write_conn,
+            reroll_dc=reroll_dc,
+            resumed=True,
         )
-        if offer is not None:
-            effects.fate_offer = offer
-            return json.dumps(offer.response())
+
+        async def flush():
+            await deferred.flush(session, publish=publish_game_event)
+            return json.loads(packet)
+
+        return flush
+
+    offer = await prepare_skill_offer(session, scope, result, player, write, conn=conn, queries=queries, db_mod=db_mod)
+    if offer is not None:
+        effects.fate_offer = offer
+        return json.dumps(offer.response())
 
     return await _finish_skill(
         session,

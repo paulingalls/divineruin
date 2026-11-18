@@ -38,8 +38,9 @@ from inventory_refresh import publish_inventory
 from patron_gifts import KNOWLEDGE_SKILLS, veythar_gift
 from patron_location import check_first_stay
 from quest_completion import finish_quest
-from quest_progress import advance_on_item_discovered, lock_discovery_rows
+from quest_progress import advance_on_item_discovered, discovery_quest_ids, lock_discovery_rows
 from session_data import SessionData
+from skill_fate import SkillScope, StaleSkillOperation, prepare_skill_offer
 from tool_support import _cap_str
 
 logger = logging.getLogger("divineruin.tools")
@@ -166,7 +167,7 @@ async def _check_discover_impl(
     candidates = attached if attached else [e for e in skill_candidates if not e.get("attaches_to")]
 
     element = min(candidates, key=lambda e: e.get("dc", DEFAULT_DISCOVER_DC)) if candidates else None
-    response, flush = await _resolve_discovery(
+    response, flush, offer = await _resolve_discovery(
         context,
         player,
         skill_lower,
@@ -180,7 +181,11 @@ async def _check_discover_impl(
         conditions_mutations=conditions_mutations,
         db_mod=db_mod,
     )
-    await flush()
+    if offer is not None:
+        session.fate_offer = offer
+    else:
+        assert flush is not None
+        await flush()
     return json.dumps(response)
 
 
@@ -248,12 +253,119 @@ async def _resolve_discovery(
         async def no_effects():
             pass
 
-        return _roll_response(result, target, "automatic_failure"), no_effects
+        return _roll_response(result, target, "automatic_failure"), no_effects, None
 
+    element_id = element["id"] if element else None
+    scope = SkillScope.capture(session, player_id)
+    party_scope = SkillScope.capture(session, player_id, party=True)
+
+    async def finish(current, kept, found, current_location, item, *, write_conn, auth=None, locked_quests=None):
+        return await _finish_discovery(
+            session,
+            player_id,
+            current,
+            kept,
+            skill_lower,
+            target,
+            found,
+            current_location,
+            item,
+            hearing_only=hearing_only,
+            dc=dc,
+            reroll_dc=reroll_dc,
+            content=content,
+            queries=queries,
+            mutations=mutations,
+            conditions_mutations=conditions_mutations,
+            db_mod=db_mod,
+            conn=write_conn,
+            scope=auth,
+            locked_quests=locked_quests,
+        )
+
+    async def write(kept, write_conn):
+        current_location = await content.get_location(scope.origin)
+        if current_location is None:
+            raise ValueError(f"Missing discovery location {scope.origin}")
+        current_element = None
+        if element_id is not None:
+            current_element = next(
+                (entry for entry in current_location.get("hidden_elements", []) if entry["id"] == element_id), None
+            )
+            if current_element is None:
+                raise ValueError(f"Missing discovery element {element_id}")
+        item = await content.get_item(element_id) if kept.success and element_id is not None else None
+        locked_quests = (
+            await discovery_quest_ids(party_scope, element_id, conn=write_conn, queries=queries)
+            if item is not None
+            else set()
+        )
+        authorization = party_scope if locked_quests else scope
+        if locked_quests:
+            authorization.validate(session)
+            current = await lock_discovery_rows(
+                session,
+                conn=write_conn,
+                queries=queries,
+                scope=authorization,
+                quest_ids=locked_quests,
+            )
+        else:
+            current = await scope.lock_roller(session, write_conn, queries=queries)
+        if element_id is not None and current.get("flags", {}).get(f"{element_id}.discovered"):
+            raise StaleSkillOperation("The hidden element has already been revealed.")
+        response, flush = await finish(
+            current,
+            kept,
+            current_element,
+            current_location,
+            item,
+            write_conn=write_conn,
+            auth=authorization,
+            locked_quests=locked_quests,
+        )
+        authorization.validate(session)
+
+        async def publish():
+            await flush()
+            return response
+
+        return publish
+
+    offer = await prepare_skill_offer(session, scope, result, player, write, conn=conn, queries=queries, db_mod=db_mod)
+    if offer is not None:
+        return offer.response(), None, offer
+    item = await content.get_item(element_id) if result.success and element_id is not None else None
+    response, flush = await finish(player, result, element, location, item, write_conn=conn)
+    return response, flush, None
+
+
+async def _finish_discovery(
+    session,
+    player_id,
+    player,
+    result,
+    skill_lower,
+    target,
+    element,
+    location,
+    item,
+    *,
+    hearing_only,
+    dc,
+    reroll_dc,
+    content,
+    queries,
+    mutations,
+    conditions_mutations,
+    db_mod,
+    conn,
+    scope=None,
+    locked_quests=None,
+):
     outcome = "discovered" if result.success and element else "not_found"
     response = _roll_response(result, target, outcome)
     element_id = element["id"] if element else None
-    item = await content.get_item(element_id) if result.success and element else None
     can_offer = (
         reroll_dc is None
         and not result.success
@@ -272,7 +384,10 @@ async def _resolve_discovery(
             locked_player = await queries.get_player(player_id, conn=write_conn, for_update=True)
             if locked_player is None:
                 raise ValueError("Missing discovery actor")
-        session.validate_acting_player(player_id)
+        if scope is None:
+            session.validate_acting_player(player_id)
+        else:
+            scope.validate(session)
         if result.success and element:
             assert element_id is not None
             granted = not locked_player.get("flags", {}).get(f"{element_id}.discovered")
@@ -285,14 +400,17 @@ async def _resolve_discovery(
                 )
                 if item is not None:
                     await mutations.add_inventory_item(player_id, element_id, 1, tainted=False, conn=write_conn)
-                    pending = await advance_on_item_discovered(
-                        session,
-                        element_id,
-                        conn=write_conn,
-                        queries=queries,
-                        mutations=mutations,
-                        content=content,
-                    )
+                    if locked_quests is None or locked_quests:
+                        pending = await advance_on_item_discovered(
+                            session,
+                            element_id,
+                            conn=write_conn,
+                            queries=queries,
+                            mutations=mutations,
+                            content=content,
+                            scope=scope,
+                            locked_quests=locked_quests,
+                        )
         if result.consumed_conditions:
             consumed_state = await consume_beneficial_conditions(
                 player_id,
@@ -319,6 +437,7 @@ async def _resolve_discovery(
                     "hearing_only": hearing_only,
                 },
                 conn=write_conn,
+                authorized_roller=scope.roller_id if scope else None,
             )
             if offered:
                 response["reroll_offer"] = offered
@@ -326,28 +445,31 @@ async def _resolve_discovery(
     async def flush():
         if consumed_state is not None:
             session.combat_state = consumed_state
-        await _publish_roll(session, result)
         session.record_event(f"Searched {target} ({skill_lower}): {outcome}")
         if element:
             session.attempted_discoveries.add(f"{player_id}:{skill_lower}:{element_id}")
+        recipients = {pid for p in pending for pid, _ in p.item_recipients}
         if item is not None:
             response["quest_updates"] = [finish_quest(session, p) for p in pending]
-            for p in pending:
-                for event_type, payload in p.events:
-                    await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
-            recipients = {pid for p in pending for pid, _ in p.item_recipients}
             if granted:
                 recipients.add(player_id)
                 session.record_item_found(player_id, item["name"])
-            for pid in sorted(recipients):
-                await publish_inventory(session, pid, queries=queries)
         if result.success and element:
             assert element_id is not None
-            await publish_action_sound(session, ACTION_SOUND_EXPORTS["ACTION_DISCOVER_REVEAL"])
             response["element_id"] = element_id
             response["description"] = element.get("description", "")
             loc_name = location.get("name", session.location_id)
             session.record_companion_memory(f"Discovered {element.get('description', element_id)} at {loc_name}")
+
+        await _publish_roll(session, result)
+        for p in pending:
+            for event_type, payload in p.events:
+                await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
+        for pid in sorted(recipients):
+            await publish_inventory(session, pid, queries=queries)
+        if result.success and element:
+            assert element_id is not None
+            await publish_action_sound(session, ACTION_SOUND_EXPORTS["ACTION_DISCOVER_REVEAL"])
             await publish_hidden_revealed(
                 session.room,
                 element_id=element_id,

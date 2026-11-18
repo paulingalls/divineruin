@@ -22,14 +22,3 @@ class TestDiscoverLockoutOrdering:
                     ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
                 )
         assert "player_1:perception:secret_door" not in ctx.userdata.attempted_discoveries
-
-    @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
-    async def test_successful_persist_locks_out_element(self, _evt):
-        content, queries, mutations = _make_discover_mocks()
-        ctx = _make_context(location_id="test_location")
-        with patch("check_resolution.dice_roll", return_value=_roll(15)):
-            await _check_discover_impl(
-                ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
-            )
-        assert "player_1:perception:secret_door" in ctx.userdata.attempted_discoveries

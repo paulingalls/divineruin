@@ -4,6 +4,8 @@ Split out of combat_ability (sprint-036 retro debt dafdf5575b0f): the
 social/de-escalation cluster is a self-contained concern, unrelated to the
 ability-cast / condition resolvers that remain there."""
 
+from dataclasses import asdict
+
 from livekit.agents.llm import ToolError
 
 import ability_persistence
@@ -15,7 +17,10 @@ import conditions
 import event_types as E
 import social_resolution
 from combat_events import emit_or_publish
+from condition_restrictions import cannot_act
+from declarations import DeclarationType
 from session_data import CombatParticipant, CombatState, SessionData
+from skill_fate import SkillScope, StaleSkillOperation
 
 # Diplomat de-escalation (M4.6a story-004, spec game_mechanics_combat.md:175-183).
 _DEESCALATE_FOCUS_COST = 3
@@ -82,6 +87,7 @@ async def _resolve_deescalation_packet(
     sink=None,
     persistence=ability_persistence,
     rng=None,
+    progress=None,
 ) -> dict:
     """Resolve ONE round of a Tier-3 GROUP de-escalation in combat (M15 story-002).
 
@@ -130,27 +136,86 @@ async def _resolve_deescalation_packet(
         if isinstance(session.combat_state, CombatState)
         else state.deescalation_scene.round_counter
     )
-    _gate_deescalation(player, state, round_counter=pre_phase_round)
     argument_type = _validate_argument_type(decl)
 
-    have = (player.get("focus") or {}).get("current", 0)
-    # Deduct against the declaring member (M14 story-004, was the session primary), per round.
-    await persistence.update_player_resources(attacker.id, focus=have - _DEESCALATE_FOCUS_COST, conn=conn)
+    if progress is not None and progress.deescalation_round is not None:
+        pre_phase_round = progress.deescalation_round
+    _gate_deescalation(player, state, round_counter=pre_phase_round)
 
-    # ONE persuasion roll for the round, applied to every enemy. Source the beneficial die (Inspired's
-    # +1d4) from the in-combat SSOT — the attacker participant's conditions — not the stale DB row, so
-    # an in-combat-applied Inspired folds and an OOC one cannot double-dip with a later attack swing
-    # (M4.8 story-011). Consume the signalled die ONCE off the participant; the mutation rides the
-    # phase's save_combat_state, so there is no permanent +1d4 and it applies to at most one round.
-    argument = check_resolution.resolve_skill_check_dc(
-        condition_voice_rules.roll_data(player, state, attacker.id),
-        "persuasion",
-        combat_resolution.DEESCALATE_BASE_DC,
-        rng,
-        ally_present=session.allies_present_for(attacker.id),
-        natural_terrain=False,
-        hearing_only=False,
+    async def roll_argument():
+        have = (player.get("focus") or {}).get("current", 0)
+        await persistence.update_player_resources(attacker.id, focus=have - _DEESCALATE_FOCUS_COST, conn=conn)
+        return check_resolution.resolve_skill_check_dc(
+            condition_voice_rules.roll_data(player, state, attacker.id),
+            "persuasion",
+            combat_resolution.DEESCALATE_BASE_DC,
+            rng,
+            ally_present=session.allies_present_for(attacker.id),
+            natural_terrain=False,
+            hearing_only=False,
+        )
+
+    if progress is not None:
+        scope = SkillScope.capture(session, attacker.id)
+        argument = await progress.skill(session, attacker.id, roll_argument)
+        if argument is None:
+            progress.steps["argument"] = {
+                "scope": asdict(scope),
+                "targets": [target.id for target in targets],
+                "argument_type": argument_type,
+                "round": pre_phase_round,
+            }
+            return {}
+    else:
+        argument = await roll_argument()
+
+    return await _finish_argument(
+        session, state, attacker, targets, living, argument, argument_type, pre_phase_round, sink
     )
+
+
+async def resume_deescalation(session, state, actor_id, decl, player, *, progress, sink):
+    prepared = progress.steps.pop("argument")
+    scope = SkillScope.restored(prepared["scope"])
+    assert scope.roller_id == actor_id
+    actor = state.get_participant(actor_id)
+    try:
+        scope.validate(session)
+        if actor is None or not actor.is_ally or actor.is_fallen or player is None:
+            raise StaleSkillOperation("The original speaker is unavailable.")
+        scope.validate_location(actor_id, player)
+        if blocked := cannot_act(actor.conditions):
+            raise StaleSkillOperation(f"The original speaker is {blocked[0]}.")
+        if decl is None or decl.type is not DeclarationType.ABILITY or (decl.action or "").lower() != "de_escalate":
+            raise StaleSkillOperation("The original argument is no longer declared.")
+        if state.deescalated:
+            raise StaleSkillOperation("The group has already stood down.")
+        eligible = {target.id: target for target in eligible_argument_targets(state, actor_id)}
+        targets = [eligible[enemy_id] for enemy_id in prepared["targets"] if enemy_id in eligible]
+        if not targets:
+            raise StaleSkillOperation("The original enemies can no longer hear the argument.")
+    except (StaleSkillOperation, communication_voice_rules.DeliveryRefused) as error:
+        progress.steps.pop("skill")
+        progress.phase.kept = None
+        return {"actor_id": actor_id, "resolved": False, "outcome": "cancelled", "reason": str(error)}
+
+    argument = progress.take_skill()
+    assert argument is not None
+    living = [p for p in state.participants if p.type == "enemy" and not p.is_fallen]
+    return await _finish_argument(
+        session,
+        state,
+        actor,
+        targets,
+        living,
+        argument,
+        prepared["argument_type"],
+        prepared["round"],
+        sink,
+    )
+
+
+async def _finish_argument(session, state, attacker, targets, living, argument, argument_type, pre_phase_round, sink):
     argument_total = argument.total
     if argument.consumed_conditions:
         attacker.conditions = conditions.remove_conditions(attacker.conditions, argument.consumed_conditions)
@@ -228,7 +293,7 @@ async def _resolve_deescalation_packet(
     return {
         "actor_id": attacker.id,
         "resolved": True,
-        "declaration_type": str(decl.type),
+        "declaration_type": str(DeclarationType.ABILITY),
         "action": "de_escalate",
         **({"gift_name": argument.gift_name} if argument.gift_name else {}),
         "deescalation": {

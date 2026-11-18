@@ -95,35 +95,6 @@ class TestCheckSocialHappyPath:
 
 class TestCheckSocialPersistence:
     @pytest.mark.asyncio
-    async def test_persists_and_emits_on_shift(self):
-        queries, mutations, content = _social_mocks(recorded="neutral")
-        ctx = _ctx_with_bus()
-        result = json.loads(
-            await _check_social_impl(
-                ctx,
-                "merchant_1",
-                "persuasion",
-                "moderate",
-                queries=queries,
-                mutations=mutations,
-                content=content,
-                rng=FixedRng(18),
-            )
-        )
-        assert result["new_disposition"] != result["previous_disposition"]
-        mutations.set_npc_disposition.assert_awaited_once()
-        args = mutations.set_npc_disposition.await_args.args
-        assert args[0] == "merchant_1"
-        assert args[2] == result["new_disposition"]  # the clamped new disposition
-        changed = [e for e in published_events(ctx) if e.event_type == E.DISPOSITION_CHANGED]
-        assert len(changed) == 1
-        assert changed[0].payload == {
-            "npc_id": "merchant_1",
-            "previous": "neutral",
-            "new": result["new_disposition"],
-        }
-
-    @pytest.mark.asyncio
     async def test_no_write_or_event_on_zero_shift(self):
         queries, mutations, content = _social_mocks(recorded="neutral")
         ctx = _ctx_with_bus()

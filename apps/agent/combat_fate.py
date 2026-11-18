@@ -301,24 +301,33 @@ def begin_ally_pass(state, allies, hostiles, players_by_id):
         ],
         "hostiles": [packet.actor_id for packet in hostiles],
         "prevalidated": list(players_by_id),
+        "deescalation_round": state.deescalation_scene.round_counter,
         "attack": {},
     }
+
+
+def held_argument(cursor):
+    return (cursor or {}).get("steps", {}).get("deescalation", {}).get("argument")
 
 
 async def lock_remaining_players(cursor, queries, conn):
     remaining = {packet_id for _, packet_id in cursor["turns"]}
     players = {}
+    argument = held_argument(cursor)
     for player_id in cursor["prevalidated"]:
         if player_id not in remaining:
             continue
         player = await queries.get_player(player_id, conn=conn, for_update=True)
         if player is None:
+            if argument and player_id == argument["scope"]["roller_id"]:
+                continue
             raise ToolError(f"Unknown player: {player_id}")
         players[player_id] = player
     return players
 
 
 async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_packet, packet_deps):
+    from combat_deescalation import resume_deescalation
     from combat_hold import hold_enemy_packets
     from combat_phase import PhaseBeat, _resolve_packets
     from combat_turn_start import turn_start
@@ -331,11 +340,25 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
         attack = cursor["attack"]
         steps = cursor.setdefault("steps", {})
         progress = (
-            PacketRolls(fate_rolls, steps, packet_deps["queries"], packet_deps["conn"])
+            PacketRolls(
+                fate_rolls, steps, packet_deps["queries"], packet_deps["conn"], cursor.get("deescalation_round")
+            )
             if session.fate_lock.locked() or steps or attack
             else None
         )
-        if attack:
+        if held_argument(cursor) is not None:
+            assert progress is not None and packet_id is not None
+            packet = packets.get(packet_id)
+            summary = await resume_deescalation(
+                session,
+                state,
+                packet_id,
+                packet.declaration if packet is not None else None,
+                players.get(packet_id),
+                progress=progress.scope("deescalation"),
+                sink=packet_deps["sink"],
+            )
+        elif attack:
             packet = packets[packet_id]
             attacker = state.get_participant(packet_id)
             target = state.get_participant(attack["target_id"])

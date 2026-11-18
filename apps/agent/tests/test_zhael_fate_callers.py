@@ -82,7 +82,9 @@ async def test_death_save_holds_revive_and_counters(world):
 async def test_ally_stealth_uses_original_roller_for_concealment_and_advancement(world):
     host, guest = world.ids
     await configure(world, "zhael", "mage", flags={"concealed": False})
-    await configure(world, "aelora", "mage", index=1, flags={"concealed": False})
+    await configure(
+        world, "aelora", "mage", index=1, location_id=world.ctx.userdata.location_id, flags={"concealed": False}
+    )
     session = world.ctx.userdata
     lifecycle = _live_party(session, *world.ids)
     call = game_tools(session, check, activate)
