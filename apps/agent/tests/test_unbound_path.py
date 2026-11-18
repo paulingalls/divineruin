@@ -6,9 +6,10 @@ from typing import cast as type_cast
 from unittest.mock import MagicMock, patch
 
 import pytest
-from _unbound_path_fixtures import cast, encounter, phase, push, row
+from _unbound_path_fixtures import MilestoneWalk, cast, encounter, phase, push, row
 from _unbound_path_fixtures import world as world
 from livekit.agents.llm import ToolError
+from patron_ability_walk import AbilityWalk
 from sample_fixtures import published_payloads
 
 from query_patron import query_patron
@@ -16,32 +17,149 @@ from query_tools import _query_info_impl
 
 
 @pytest.mark.parametrize("bonus,state", [(0, "overreach"), (1, "flickering")])
-async def test_guest_discovery_uses_persisted_resonance_and_bypasses_gods(world, bonus, state):
-    w = world
-    w.ctx.userdata.party.members[1].resonance.current = 1
-    await w.pool.execute(
-        "UPDATE players SET data=jsonb_set(data, '{resonance,current}', '2') WHERE player_id=$1", w.ids[0]
-    )
-    await w.pool.execute(
-        "UPDATE players SET data=jsonb_set(data, '{resonance,flickering_bonus}', $2::jsonb) WHERE player_id=$1",
-        w.ids[1],
-        json.dumps(bonus),
-    )
+async def test_guest_discovery_uses_persisted_resonance_and_bypasses_gods(dev_db_pool, bonus, state):
+    async with AbilityWalk(dev_db_pool) as w, AbilityWalk(dev_db_pool) as guest:
+        await w.patch(divine_favor={"patron": "kaelen", "level": 40, "max": 100}, resonance={"current": 2})
+        await guest.patch(
+            divine_favor={"patron": "none", "level": 0, "max": 100},
+            unbound_autonomy={"level": 75, "max": 100, "tier": "Sovereign"},
+            resonance={"current": 9, "flickering_bonus": bonus},
+        )
+        guest.sd.party.primary.resonance.current = 1
+        w.sd.party.members.append(guest.sd.party.primary)
 
-    def forbidden_catalog():
-        raise AssertionError("Unbound read gods")
+        def forbidden_catalog():
+            raise AssertionError("Unbound read gods")
 
-    with w.ctx.userdata._bind_authenticated_actor(w.ids[1], 4, lambda *_: None):
         with patch("query_patron.query_patron", partial(query_patron, gods_loader=forbidden_catalog)):
-            packet = json.loads(await _query_info_impl(w.ctx, "patron"))
-    assert packet["state"] == "Unbound"
-    assert packet["resonance"] == {"current": 9, "state": state}
-    assert {c["id"] for c in packet["capabilities"]} == {
-        "unbound_veil_clarity",
-        "unbound_raw_channeling",
-        "unbound_veil_mastery",
-    }
-    assert "activate" in str(packet["capabilities"])
+            packet = await w.command("query_info", {"kind": "patron"}, actor=guest.player)
+        assert packet["state"] == "Unbound"
+        assert packet["autonomy"]["tier"] == "Sovereign"
+        assert packet["resonance"] == {"current": 9, "state": state}
+        assert packet["abilities"] == []
+        assert {c["id"] for c in packet["capabilities"]} == {
+            "unbound_veil_clarity",
+            "unbound_raw_channeling",
+            "unbound_veil_mastery",
+        }
+        assert "activate" in str(packet["capabilities"])
+        follower = await w.command("query_info", {"kind": "patron"})
+        assert follower["patron_id"] == "kaelen"
+        assert follower["resonance"] == {"state": "stable"}
+
+
+async def test_raw_channeling_preserves_action_and_reaction(dev_db_pool):
+    import db_mutations
+    import reaction_spend
+
+    async with MilestoneWalk(dev_db_pool) as w:
+        await w.patch(
+            **{
+                "class": "skirmisher",
+                "stamina": {"current": 100, "max": 100},
+                "divine_favor": {"patron": "none", "level": 0, "max": 100},
+                "resonance": {"current": 3},
+            }
+        )
+        state = await w.encounter()
+        state.current_turn_index = state.initiative_order.index(w.player)
+        actor = state.get_participant(w.player)
+        assert actor is not None
+        actor.has_reaction_ability = True
+        actor.reaction_ids = ["skirmisher_sidestep"]
+        enemy = state.get_participant("enemy")
+        assert enemy is not None
+        enemy.action_pool = [
+            {"name": "Scimitar", "damage": "1d6", "damage_type": "slashing", "attack_bonus": 4, "range": "melee"}
+        ]
+        state.reactions_available[w.player] = reaction_spend.unspent()
+        await db_mutations.save_combat_state(state.combat_id, state.to_dict())
+        before = state.to_dict()
+        query = await w.command("query_info", {"kind": "patron"})
+        token = next(c["id"] for c in query["capabilities"] if c["name"] == "Raw Channeling")
+        result = await w.use(token)
+        assert result["resonance_added"] == 3
+        assert (await w.row())["resonance"]["current"] == 6
+        assert w.sd.party.primary.unbound_raw_channeling_used
+        assert w.sd.combat_state is not None
+        assert w.sd.combat_state.to_dict() == before
+        assert not reaction_spend.is_spent(w.sd.combat_state.reactions_available[w.player])
+        assert "spent this encounter" in await w.use(token, error=True)
+        assert (await w.row())["resonance"]["current"] == 6
+        assert w.sd.combat_state.to_dict() == before
+        result = await w.command(
+            "declare_phase",
+            {
+                "declarations": [
+                    {"kind": "defend", "actor_id": w.player},
+                    {
+                        "kind": "attack",
+                        "actor_id": "enemy",
+                        "action": "Scimitar",
+                        "target_id": w.player,
+                        "held_item_id": "",
+                        "rider": "",
+                    },
+                ]
+            },
+        )
+        assert w.player in result["accepted_actors"]
+        assert w.sd.combat_state is not None
+        assert w.sd.combat_state.pending_declarations[w.player] == {"type": "defend"}
+        assert w.sd.combat_state.round_number == state.round_number
+        for _ in range(8):
+            result = await w.command("resolve_phase", {})
+            waiting = result["next"]["waiting_on"]
+            if waiting and any(r["id"] == "skirmisher_sidestep" for r in waiting["reactions"]):
+                break
+        else:
+            pytest.fail(f"No Sidestep offered: {result}")
+        assert waiting["target_id"] == w.player
+        await w.use(next(r["id"] for r in waiting["reactions"] if r["id"] == "skirmisher_sidestep"))
+        assert w.sd.combat_state is not None
+        spend = w.sd.combat_state.reactions_available[w.player]
+        assert reaction_spend.is_spent(spend)
+        assert spend["ability_id"] == "skirmisher_sidestep"
+        assert spend["window_id"] == waiting["window_id"]
+        saved = await db_mutations.load_combat_state(state.combat_id)
+        assert saved is not None
+        assert saved.reactions_available[w.player] == spend
+
+
+async def test_unbound_refuses_all_patron_abilities(dev_db_pool):
+    from _gods_content import load_gods
+
+    catalog = load_gods()
+    assert len(catalog) == 10
+    tiers, gifts = set(), set()
+    for god in catalog:
+        assert set(god["layer_3_tier_abilities"]) == {"acknowledged", "devoted", "exalted"}
+        tiers.update(a["id"] for a in god["layer_3_tier_abilities"].values())
+        gifts.add(god["layer_1_gift"]["id"])
+    assert len(tiers) == 30 and len(gifts) == 10 and len(tiers | gifts) == 40
+    assert all(tiers | gifts)
+    async with MilestoneWalk(dev_db_pool) as w:
+        await w.patch(divine_favor={"patron": "none", "level": 0, "max": 100})
+        await w.encounter()
+        assert await w.abilities() == []
+        before = await w.row()
+        for token in sorted(tiers | gifts):
+            try:
+                refusal = await w.use(token, error=True)
+            except AssertionError as error:
+                raise AssertionError(f"{token}: {error}") from error
+            expected = (
+                "Unbound"
+                if token in tiers or token == "valdris_weight_of_truth"
+                else "requires an active Veythar gift"
+                if token == "veythar_lorekeepers_insight"
+                else "requires an active Syrath gift"
+                if token == "syrath_shadow_veil"
+                else "not an activatable capability"
+            )
+            assert expected in refusal, (token, refusal)
+        assert await w.row() == before
+        assert await w.abilities() == []
 
 
 async def test_guest_push_and_first_echo_are_independent_member_uses(world):
@@ -59,18 +177,12 @@ async def test_guest_push_and_first_echo_are_independent_member_uses(world):
     assert [p["band"] for p in echoes] == ["nothing"]
 
 
-async def test_follower_sees_state_only_and_cannot_push(world):
+async def test_follower_cannot_push(world):
     w = world
     await w.pool.execute(
         "UPDATE players SET data=jsonb_set(data, '{divine_favor,patron}', '\"veythar\"') WHERE player_id=$1", w.ids[1]
     )
-    await w.pool.execute(
-        "UPDATE players SET data=jsonb_set(data, '{resonance,flickering_bonus}', '1') WHERE player_id=$1", w.ids[1]
-    )
     with w.ctx.userdata._bind_authenticated_actor(w.ids[1], 4, lambda *_: None):
-        packet = json.loads(await _query_info_impl(w.ctx, "patron"))
-        assert packet["resonance"] == {"state": "flickering"}
-        assert "capabilities" not in packet
         encounter(w)
         with pytest.raises(ToolError, match="Unbound"):
             await push(w)

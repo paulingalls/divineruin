@@ -3,7 +3,8 @@
 import asyncio
 import json
 from contextlib import asynccontextmanager
-from unittest.mock import AsyncMock, patch
+from typing import cast
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -12,6 +13,7 @@ from acceptance.mawling_harness import MawlingHarness
 from acceptance.seeds import seed_player_with_pools
 from livekit.agents import Agent, AgentSession
 from livekit.agents.llm import ToolError
+from test_aelora_gift import _live_party
 
 import alignment_heartbeat
 import db
@@ -22,6 +24,7 @@ from caster_state import ConcentrationState, ResonanceTrack
 from check_tools import check
 from party_state import PartyMember
 from patron_gifts import KNOWLEDGE_SKILLS
+from unbound_autonomy import load_unbound
 
 GIFT = "veythar_lorekeepers_insight"
 
@@ -54,7 +57,7 @@ async def rows(h, conn=None):
 
 async def journals(h, expected, conn=None):
     for kind in {k for journal in expected for k in journal}:
-        assert any(
+        assert kind in load_unbound()[0] or any(
             a["action"] == kind for g in load_gods() for c in ("positive", "negative") for a in g["favor_actions"][c]
         ), kind
     assert [r.get("patron_deeds", {}) for r in await rows(h, conn)] == expected
@@ -137,14 +140,62 @@ async def roll(h, skill, face=20, *, error=False):
         )
 
 
-@pytest.mark.parametrize("skill", ["stealth", *sorted(KNOWLEDGE_SKILLS)])
+@pytest.fixture
+async def live_walk(walk):
+    walk.sd.companion = None
+    lifecycle = _live_party(walk.sd, *walk.players)
+    try:
+        assert all(walk.sd.ally_present_for(pid) for pid in walk.players)
+        yield walk, lifecycle
+    finally:
+        await lifecycle.aclose()
+
+
+def disconnect_ally(h, lifecycle):
+    room = cast(MagicMock, lifecycle.room)
+    handlers = dict(call.args for call in room.on.call_args_list)
+    handlers["participant_disconnected"](room.remote_participants[h.players[1]])
+    assert h.sd.party.contains(h.players[1])
+    assert not h.sd.ally_present_for(h.players[0])
+
+
+async def test_skill_deed_with_live_ally_then_disconnected(live_walk):
+    h, lifecycle = live_walk
+    await checks(h, guest=False)
+    assert (await roll(h, "athletics"))["outcome"] == "success"
+    await journals(h, [{}, {}])
+    disconnect_ally(h, lifecycle)
+    assert (await roll(h, "athletics"))["outcome"] == "success"
+    await journals(h, [{"succeeded_alone": "pending"}, {}])
+
+
+@pytest.mark.parametrize("route", ["end_combat", "resolve_phase"])
+async def test_victory_deed_with_live_ally_then_disconnected(live_walk, route):
+    h, lifecycle = live_walk
+    await terminal(h, route, "victory")
+    await h.command(route, end_args(route, "victory"))
+    assert h.sd.combat_state is None
+    await journals(h, [{"won_combat": "pending"}, {"won_combat": "pending"}])
+    disconnect_ally(h, lifecycle)
+    await terminal(h, route, "victory")
+    await h.command(route, end_args(route, "victory"))
+    assert h.sd.combat_state is None
+    await journals(h, [{"won_combat": "pending", "won_alone": "pending"}, {"won_combat": "pending"}])
+
+
+@pytest.mark.parametrize("skill", ["athletics", "stealth", *sorted(KNOWLEDGE_SKILLS)])
 @pytest.mark.parametrize("face", [20, 1])
 async def test_skill_deed(walk, skill, face):
     await checks(walk)
+    walk.sd.companion = None
     result = await roll(walk, skill, face)
+    assert (result["skill"], result["dc"]) == (skill, 16)
+    assert "narrative_hint" in result
     assert result["outcome"] == ("success" if face == 20 else "failure")
-    kind = "successful_stealth" if skill == "stealth" else "discovered_lore"
-    await journals(walk, [{kind: "pending"} if face == 20 else {}, {}])
+    expected = {"succeeded_alone": "pending"}
+    if skill != "athletics":
+        expected["successful_stealth" if skill == "stealth" else "discovered_lore"] = "pending"
+    await journals(walk, [expected if face == 20 else {}, {}])
     if skill == "stealth":
         assert (await rows(walk))[0]["flags"]["concealed"] is (face == 20)
 
@@ -233,20 +284,23 @@ async def test_combat_rollback(walk, route, outcome, kind):
     assert await h.pool.fetchrow("SELECT * FROM combat_instances WHERE combat_id=$1", cid) is None
 
 
-@pytest.mark.parametrize("producer", ["stealth", "history", "gift"])
+@pytest.mark.parametrize("producer", ["athletics", "stealth", "history", "gift"])
 async def test_check_rollback(walk, producer):
     h = walk
     await checks(h)
+    h.sd.companion = None
     if producer == "gift":
         await offer(h)
     if producer != "stealth":
         await patch_player(h, conditions=[{"type": "inspired", "duration": 2, "source": "ally"}])
     before = await rows(h)
     skill_rows = await advancement(h)
-    kind = "successful_stealth" if producer == "stealth" else "discovered_lore"
+    expected = {"succeeded_alone": "pending"}
+    if producer != "athletics":
+        expected["successful_stealth" if producer == "stealth" else "discovered_lore"] = "pending"
 
     async def inspect(conn):
-        await journals(h, [{kind: "pending"}, {}], conn)
+        await journals(h, [expected, {}], conn)
         current = await rows(h, conn)
         assert current[1] == before[1]
         if producer == "stealth":
@@ -282,7 +336,7 @@ async def test_check_rollback(walk, producer):
     assert await advancement(h) == skill_rows
     h.sd.room.local_participant.publish_data.assert_not_called()
     assert (await invoke())["outcome"] == "success"
-    await journals(h, [{kind: "pending"}, {}])
+    await journals(h, [expected, {}])
     async with h.pool.acquire() as conn:
         await inspect(conn)
 
@@ -353,3 +407,49 @@ async def test_flight_condition_write_overlaps_due_judgment(walk, monkeypatch, c
     now = 2400
     await heartbeat.maybe_tick()
     assert [r["divine_favor"]["level"] for r in await rows(h)] == [47, 47]
+
+
+@pytest.mark.parametrize("route", ["end_combat", "resolve_phase"])
+@pytest.mark.parametrize("patron", ["none", "kaelen"])
+async def test_lone_victory(dev_db_pool, route, patron):
+    h = MawlingHarness()
+    with (
+        patch("combat_agent.CombatAgent._enter", new_callable=AsyncMock),
+        patch("exploration_agent.ExplorationAgent._enter", new_callable=AsyncMock),
+    ):
+        try:
+            await h.prepare((3,), companion="")
+            await patch_player(h, divine_favor={"patron": patron, "level": 0, "max": 100})
+            await terminal(h, route, "victory")
+            await h.command(route, end_args(route, "victory"))
+            await journals(h, [{"won_combat": "pending", "won_alone": "pending"}])
+        finally:
+            await h.close()
+
+
+async def test_raw_channeling_rollback_and_retry(walk):
+    h = walk
+    await terminal(h, "end_combat", "standing")
+    await checks(h)
+    await patch_player(h, divine_favor={"patron": "none", "level": 0, "max": 100})
+    member = h.sd.member_state(h.players[0])
+    before = await rows(h)
+    resonance = member.resonance.current
+
+    async def inspect(conn):
+        await journals(h, [{"channeled_raw": "pending"}, {}], conn)
+        assert (await rows(h, conn))[0]["resonance"]["current"] == before[0].get("resonance", {}).get("current", 0) + 3
+
+    h.sd.room.local_participant.publish_data.reset_mock()
+    async with abort_after(inspect):
+        result = await h.command("activate", {"id": "unbound_raw_channeling"}, error=True)
+    assert "deed rollback probe" in result
+    assert await rows(h) == before
+    assert member.resonance.current == resonance and not member.unbound_raw_channeling_used
+    h.sd.room.local_participant.publish_data.assert_not_called()
+    result = await h.command("activate", {"id": "unbound_raw_channeling"})
+    assert result["resonance_added"] == 3 and member.unbound_raw_channeling_used
+    async with h.pool.acquire() as conn:
+        await inspect(conn)
+    result = await h.command("activate", {"id": "unbound_raw_channeling"}, error=True)
+    assert "spent" in result

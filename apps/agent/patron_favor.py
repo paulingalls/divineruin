@@ -26,9 +26,14 @@ def get_patron_tier(favor: dict) -> PatronTier | None:
     make this the one reader that turns an Unbound row into a KeyError, which ``db_tool``
     deliberately does not translate into a ToolError.
     """
-    max_level = favor["max"]
-    level = favor["level"]
+    index = tier_index(favor["level"], favor["max"])
+    if (favor.get("patron") or "none") == "none":
+        return None
+    return ("Acknowledged", "Devoted", "Exalted")[index]
 
+
+def tier_index(level: int, max_level: int) -> int:
+    """Shared tier boundaries round up against the track's own maximum."""
     if max_level <= 0:
         raise ValueError(f"max must be positive, got {max_level}")
     if level < 0:
@@ -36,14 +41,11 @@ def get_patron_tier(favor: dict) -> PatronTier | None:
     if level > max_level:
         raise ValueError(f"level must not exceed max, got {level}")
 
-    if (favor.get("patron") or "none") == "none":
-        return None
-
     devoted_level = (max_level * _DEVOTED_PERCENT + 99) // 100
     exalted_level = (max_level * _EXALTED_PERCENT + 99) // 100
 
     if level >= exalted_level:
-        return "Exalted"
+        return 2
     if level >= devoted_level:
-        return "Devoted"
-    return "Acknowledged"
+        return 1
+    return 0

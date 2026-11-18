@@ -267,6 +267,8 @@ async def _end_combat_db(
     if deed is not None:
         for player_id in sorted(p.id for p in cs.participants if p.type == "player"):
             await patron_deeds.record_deed(player_id, deed, conn=conn)
+            if deed == "won_combat" and not session.ally_present_for(player_id):
+                await patron_deeds.record_deed(player_id, "won_alone", conn=conn)
     death_context = await settle_lives(cs, outcome, primary_id, combat_cleared, queries, mutations, conn)
 
     # Faction reputation from the combat OUTCOME (story-002 inc 5/6): killing an encounter

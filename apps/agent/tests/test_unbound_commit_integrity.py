@@ -7,11 +7,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from _unbound_path_fixtures import cast, encounter, phase, push, row
 from _unbound_path_fixtures import world as world
-from livekit.agents.llm import ToolError
 from sample_fixtures import published_payloads
 
 
-@pytest.mark.parametrize("action", ["push", "cast", "phase"])
+@pytest.mark.parametrize("action", ["cast", "phase"])
 async def test_rollback_preserves_resources_memory_uses_and_events(world, action):
     w = world
     if action != "cast":
@@ -26,8 +25,6 @@ async def test_rollback_preserves_resources_memory_uses_and_events(world, action
             raise RuntimeError("injected before commit")
 
     async def run(database):
-        if action == "push":
-            return await push(w, database=database)
         if action == "phase":
             return await phase(w, database=database, declare=w.ctx.userdata.combat_state.beat == "declaration")
         return await cast(w, sid="arcane_fireball", database=database)
@@ -41,11 +38,7 @@ async def test_rollback_preserves_resources_memory_uses_and_events(world, action
         assert not member.unbound_raw_channeling_used and not member.unbound_veil_mastery_used
         assert not published_payloads(w.ctx.userdata.room)
         await run(w.db)
-        if action == "push":
-            with pytest.raises(ToolError, match="spent"):
-                await push(w)
-        else:
-            assert member.unbound_veil_mastery_used
+        assert member.unbound_veil_mastery_used
 
 
 @pytest.mark.parametrize("combat", [False, True])

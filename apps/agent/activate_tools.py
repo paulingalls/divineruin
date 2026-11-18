@@ -52,6 +52,7 @@ _VEIL_WARD_DISMISS = "veil_ward_dismiss"
 _DRAETHAR_INNER_FIRE = "draethar_inner_fire"
 _RESERVED = frozenset(
     {
+        *unbound_tools.MILESTONE_IDS,
         _VEIL_WARD,
         _VEIL_WARD_DISMISS,
         _DRAETHAR_INNER_FIRE,
@@ -81,6 +82,12 @@ async def activate(
     'veil_ward' raises a Veil Ward, 'veil_ward_dismiss' drops one, and 'draethar_inner_fire'
     triggers a Draethar's racial Inner Fire. 'unbound_raw_channeling' adds exactly 3
     Resonance for an Unbound member, once per encounter; query_info(kind='patron') lists it.
+
+    Self-Reliant chooses one save proficiency once: 'unbound_self_reliant_strength',
+    'unbound_self_reliant_dexterity', 'unbound_self_reliant_constitution',
+    'unbound_self_reliant_intelligence', 'unbound_self_reliant_wisdom',
+    'unbound_self_reliant_charisma'. 'unbound_divine_immunity' at Self-Forged negates
+    one chosen divine ability once per long rest. query_info(kind='patron') lists availability.
 
     'syrath_shadow_veil' is combat-only: hide until the current round ends, or until attacking,
     casting, or failing Stealth. A short rest restores this gift.
@@ -191,6 +198,8 @@ async def _activate_impl(
         return await patron_gift_tools.activate_shadow_veil(context)
     if kind == VEYTHAR_INSIGHT:
         return await patron_gift_tools.activate_insight(context)
+    if kind in unbound_tools.MILESTONE_IDS:
+        return await unbound_tools.activate_milestone(context, id)
     if kind == unbound_tools.RAW_CHANNELING:
         return await unbound_tools._raw_channeling_impl(context)
     if kind == _VEIL_WARD:

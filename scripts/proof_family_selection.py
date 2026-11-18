@@ -58,6 +58,7 @@ CONTENT_LOADERS = {
     "quests": ("db_content_queries", "db_queries"),
     "loot_tables": ("db_content_queries", "creature_schema"),
     "gods": ("_gods_content",),
+    "unbound": ("unbound_autonomy",),
     "engine_implementations": ("_gods_content",),
     "mentor_variants": ("mentor_variants",),
     "pricing": ("pricing_queries",),

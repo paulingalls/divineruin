@@ -19,6 +19,15 @@ FIXTURE = json.loads((Path(__file__).resolve().parents[4] / "packages/shared/fix
 ]
 
 
+@pytest.fixture(autouse=True)
+def skill_transaction_seams(monkeypatch):
+    from sample_fixtures import make_db_mod
+
+    database, _ = make_db_mod()
+    monkeypatch.setattr("db.transaction", database.transaction)
+    monkeypatch.setattr("patron_deeds.record_deed", AsyncMock())
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("case", "die", "player", "expected"),

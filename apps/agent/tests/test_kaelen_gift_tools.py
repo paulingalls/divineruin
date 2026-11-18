@@ -70,7 +70,8 @@ def check_context():
     )
     place_actors(ctx.userdata.combat_state)
     queries = MagicMock(
-        get_player=AsyncMock(side_effect=lambda pid: rows[pid]), get_player_inventory=AsyncMock(return_value=[])
+        get_player=AsyncMock(side_effect=lambda pid, *, conn=None, for_update=False: rows[pid]),
+        get_player_inventory=AsyncMock(return_value=[]),
     )
     queries.get_single_skill_advancement = AsyncMock(
         return_value={"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False}
@@ -79,7 +80,12 @@ def check_context():
 
 
 @pytest.mark.parametrize("surface", ["save", "skill"])
-async def test_check_tool_uses_only_guest_iron_resolve_for_saves(surface):
+async def test_check_tool_uses_only_guest_iron_resolve_for_saves(surface, monkeypatch):
+    from sample_fixtures import make_db_mod
+
+    database, _ = make_db_mod()
+    monkeypatch.setattr("db.transaction", database.transaction)
+    monkeypatch.setattr("patron_deeds.record_deed", AsyncMock())
     ctx, rows, queries = check_context()
     original = deepcopy(rows)
     args: dict[str, Any] = (
