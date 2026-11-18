@@ -183,7 +183,8 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
   <!-- Evidence (sprint archetype-synergies): test_patron_synergy.py walks all 180 loaded pairs through get_archetype_synergy and registered query_info; god.test.ts validates all ten matrices against the eighteen-archetype roster. -->
 - [x] Each pairing has exactly one synergy type assigned (Natural, Divine, or Unexpected)
   <!-- Evidence (sprint archetype-synergies): test_patron_synergy.py and god.test.ts validate the loaded matrix: 22 Natural, 62 Divine, 96 Unexpected rows, each with one type. -->
-- [ ] Natural synergies provide the largest mechanical bonus, Unexpected the most unique
+- [x] Natural synergies provide the largest mechanical bonus, Unexpected the most unique
+  <!-- Evidence (sprint archetype-synergies): human approved the final 180-row review table on 2026-11-18 (table SHA-256 5dee713a…, content SHA-256 c3238a53…, commit 903ac541). test_patron_synergy.py requires a mechanical clause on every Natural row and keeps Natural rows to the design roster. -->
 - [x] `get_archetype_synergy` returns correct synergy for any archetype/patron pair
   <!-- Evidence (sprint archetype-synergies): test_patron_synergy.py compares each of the 180 lookups and registered query responses to validated content; god.test.ts validates the shared catalog. -->
 - [x] Layer 4 bonuses apply on top of existing Layer 1-3 mechanics without overriding them
