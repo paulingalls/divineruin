@@ -226,7 +226,7 @@ def test_missing_configuration_keeps_nonzero_exit(entry, service):
     proc = subprocess.run(
         [sys.executable, entry, "start"],
         cwd=ROOT / "apps/agent",
-        env={"PATH": os.environ["PATH"], "AGENT_ENV": "production"},
+        env={"PATH": os.environ["PATH"], "AGENT_ENV": "production", "PYTHONDONTWRITEBYTECODE": "1"},
         capture_output=True,
         text=True,
         timeout=15,
