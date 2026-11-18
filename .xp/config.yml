@@ -18,7 +18,7 @@ roles:               # harness/model[/effort]; a card's Executor: line overrides
   # The executor runs GPT-6.2 Sol: its 7-card trial (sprint patron-fate-and-facts, v0.50.0) had honest
   # handbacks, 6.1-level token cost and fewer post-review defects; its recurring miss is guards
   # shipped without a failing test. Fixer and slate-reviewer trial 6.2 from the heal-slate sprint
-  (human 2026-11-18); planner and angle-reviewer stay on GPT-6.1 Sol until evidence says otherwise. Astra cost ~6-7x Sol on these seats (10x on cached
+  # (human 2026-11-18); planner and angle-reviewer stay on GPT-6.1 Sol until evidence says otherwise. Astra cost ~6-7x Sol on these seats (10x on cached
   # input, which dominates) and was 77% of a sprint's codex spend at 21% of its tokens.
   # Effort buys back judgment where a miss is silent: planner and angle-reviewer at high.
   # Medium elsewhere; low effort on executor/fixer cuts corners that surface only at land.
