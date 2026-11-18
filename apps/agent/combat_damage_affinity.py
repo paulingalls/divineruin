@@ -88,4 +88,29 @@ def apply(target, action, result):
     changes = {"damage": damage + adjusted_bonus}
     if hasattr(result, "bonus_damage"):
         changes["bonus_damage"] = adjusted_bonus
+    if hasattr(result, "target_hp_remaining") and changes["damage"] != result.damage:
+        return action, with_landed_damage(result, changes.pop("damage"), target.hp_current, **changes)
     return action, replace(result, **changes)
+
+
+def with_landed_damage(result, damage, hp_before, **changes):
+    """Rewrite a hit's damage after the roll and keep its kill verdict true to the HP it lands.
+
+    A post-roll rewrite (a reaction's halving, a target's resistance or vulnerability) can save a
+    target the raw roll killed, or kill one it spared; the DM must never hear a killing blow on a
+    creature still standing, nor miss one that falls.
+    """
+    remaining = max(0, hp_before - damage)
+    killed = result.hit and remaining == 0
+    fields = {
+        "damage": damage,
+        "target_hp_remaining": remaining,
+        "overkill": max(0, damage - hp_before) if result.hit else 0,
+        "target_killed": killed,
+        **changes,
+    }
+    if killed:
+        fields["dramatic"], fields["context"] = True, "killing_blow"
+    elif result.context == "killing_blow":
+        fields["dramatic"], fields["context"] = False, ""
+    return replace(result, **fields)

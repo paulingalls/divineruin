@@ -264,3 +264,16 @@ async def test_held_roll_reload_lands_affinity_once():
     assert participant(ctx.userdata.combat_state, "player_1").hp_current == 15
     assert any(p.get("damage") == 10 for p in packet["packets"])
     assert state.held_actions[0]["roll"] == raw
+
+
+@pytest.mark.parametrize("trait,hp,killed", [("resistant", 4, False), ("vulnerable", 8, True)])
+async def test_killing_blow_context_follows_adjusted_damage(catalog_fight, trait, hp, killed):
+    ctx = await catalog_fight("hollow_weaver")
+    target = participant(ctx.userdata.combat_state, "foe")
+    target.damage_affinities = {"resistant": [], "immune": [], "vulnerable": []}
+    target.damage_affinities[trait] = ["slashing"]
+    target.hp_current = hp
+    await declare_weapon(ctx)
+    packet = await resolve(ctx)
+    assert (packet["context"] == "killing_blow") is killed
+    assert packet["target_fallen"] is killed
