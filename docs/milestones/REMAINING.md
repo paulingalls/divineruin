@@ -13,8 +13,8 @@ Finding the journal grants it and completes the search atomically.
 Artifact choices persist once with their effects.
 Leave now requests a recap before disconnect, with a 15-second home fallback.
 
-**Position: 383 / 574 acceptance criteria — 67%** (the sum of the per-phase
-counts in `README.md`). **191 criteria remain unchecked.** Phases 1, 2, 4, 5,
+**Position: 394 / 574 acceptance criteria — 69%** (the sum of the per-phase
+counts in `README.md`). **180 criteria remain unchecked.** Phases 1, 2, 4, 5,
 6 and 10 have all recorded criteria checked. Phase 3 is still Partial at 34/34:
 casting infrastructure is exercised, but complete deterministic spell-effect
 coverage is **unverified**. All 87 spell rows carry textual `mechanics`; this
