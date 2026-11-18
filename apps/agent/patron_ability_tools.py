@@ -33,16 +33,20 @@ def spent_state(player, ability_id):
     return state
 
 
-def blocking_reason(ability, tier, required, spent):
+def availability(ability, tier, required, spent):
     if required is not None and TIERS.index(tier) < TIERS.index(required):
-        return f"Requires {required} tier."
+        return f"Requires {required} tier.", "locked"
     if ability["status"] != "active" or ability.get("resolution", "narrated") != "narrated":
-        return "This ability is pending implementation."
+        return "This ability is pending implementation.", "locked"
     if ability["recharge"] == "always":
-        return "This ability is always-on; it cannot be activated."
+        return "This ability is always-on; it cannot be activated.", "locked"
     if spent:
-        return f"Already spent; requires {_REST[ability['recharge']]} to restore it."
-    return None
+        return f"Already spent; requires {_REST[ability['recharge']]} to restore it.", "spent"
+    return None, "ready"
+
+
+def blocking_reason(ability, tier, required, spent):
+    return availability(ability, tier, required, spent)[0]
 
 
 def project_abilities(player, patron):
@@ -53,7 +57,7 @@ def project_abilities(player, patron):
     for required in TIERS:
         ability = patron["layer_3_tier_abilities"][required.lower()]
         spent = spent_state(player, ability["id"])["spent"]
-        reason = blocking_reason(ability, tier, required, spent)
+        reason, state = availability(ability, tier, required, spent)
         rows.append(
             {
                 **{key: ability[key] for key in ("id", "name", "recharge", "status")},
@@ -62,6 +66,7 @@ def project_abilities(player, patron):
                 "spent": spent,
                 "available": reason is None,
                 "reason": reason,
+                "state": state,
             }
         )
     return rows
@@ -94,6 +99,9 @@ async def activate(context, ability_id):
             raise ToolError(reason)
         session.validate_acting_player(actor)
         await write_state(actor, {"spent": True}, gift_id=ability_id, conn=conn)
+    from patron_ability_events import publish_patron_abilities
+
+    await publish_patron_abilities(session.room, actor, session.event_bus)
     return json.dumps(
         {
             "id": ability_id,

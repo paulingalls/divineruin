@@ -1,3 +1,4 @@
+import { handlePatronAbilitiesUpdated } from "./patron-abilities";
 import { playSfx } from "./sfx-player";
 import { hapticDiceRoll, hapticItemAcquired, hapticLevelUp } from "./haptics";
 import { overrideMusicState } from "./music-player";
@@ -108,6 +109,9 @@ export function handleGameEvent(event: DataChannelEvent): void {
           : null;
       break;
 
+    case E.PATRON_ABILITIES_UPDATED:
+      handlePatronAbilitiesUpdated(event);
+      break;
     case E.SESSION_INIT:
       if (!isEventForLocalPlayer((event.character as Record<string, unknown> | null)?.player_id))
         break;

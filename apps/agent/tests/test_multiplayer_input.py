@@ -425,5 +425,13 @@ async def test_the_real_party_gate_revokes_an_in_flight_turn_on_disconnect() -> 
 
 @pytest.fixture(autouse=True)
 def isolated_patron_ability_entry():
-    with patch("session_hydration.hydrate_patron_ability_session", new_callable=AsyncMock):
+    with (
+        patch("session_hydration.hydrate_patron_ability_session", new_callable=AsyncMock),
+        patch(
+            "db_session_queries.get_session_init_payload",
+            new_callable=AsyncMock,
+            return_value={"world_state": {}},
+        ),
+        patch("game_events.publish_game_event", new_callable=AsyncMock),
+    ):
         yield

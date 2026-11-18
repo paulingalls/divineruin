@@ -1,5 +1,5 @@
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from livekit.agents.llm import ToolError
@@ -364,3 +364,9 @@ async def test_a_partially_paid_member_is_marked_but_warned_about(caplog):
     assert marked == {"player_1", "player_2"}, "the partially-paid member is still marked"
     warnings = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
     assert any("player_2" in m and "marked fully paid" in m for m in warnings), warnings
+
+
+@pytest.fixture(autouse=True)
+def isolate_patron_snapshot_transport():
+    with patch("patron_ability_events.publish_patron_abilities", new_callable=AsyncMock):
+        yield

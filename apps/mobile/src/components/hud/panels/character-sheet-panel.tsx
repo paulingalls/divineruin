@@ -200,10 +200,39 @@ export function CharacterSheetPanel() {
             <ThemedText style={styles.goldValue}>{detail.gold}</ThemedText>
           </View>
 
+          {!!detail.abilities?.length && (
+            <View style={styles.section}>
+              <ThemedText style={styles.sectionLabel}>PATRON ABILITIES</ThemedText>
+              {detail.abilities.map((ability) => (
+                <ThemedText key={ability.id} style={styles.equipItem}>
+                  {ability.name} — {ability.tier} — {ability.state}
+                </ThemedText>
+              ))}
+            </View>
+          )}
           {/* Divine Favor */}
           {detail.divineFavor && (
             <View style={styles.section}>
               <ThemedText style={styles.sectionLabel}>DIVINE FAVOR</ThemedText>
+              <View
+                accessible
+                accessibilityRole="progressbar"
+                accessibilityLabel="Divine favor"
+                accessibilityValue={{
+                  min: 0,
+                  max: detail.divineFavor.max,
+                  now: detail.divineFavor.level,
+                }}
+                style={{ height: 4, backgroundColor: "#333" }}
+              >
+                <View
+                  style={{
+                    height: 4,
+                    backgroundColor: "#bfa76a",
+                    width: `${(detail.divineFavor.level / detail.divineFavor.max) * 100}%`,
+                  }}
+                />
+              </View>
               <ThemedText style={styles.equipItem}>
                 {detail.divineFavor.patron} — {detail.divineFavor.level}/{detail.divineFavor.max}
               </ThemedText>
