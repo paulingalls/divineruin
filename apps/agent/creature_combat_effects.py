@@ -33,7 +33,7 @@ def deferred_effects(row, *, composite=False):
                     "description": "On hit, 5 ft of ground becomes corrupted terrain for 1 minute.",
                 }
             if row["id"] == "hollow_veilrender":
-                if source["name"] in {"Regeneration", "Corruption Pulse"}:
+                if source["name"] in {"Regeneration", "Corruption Pulse", "Absorb Magic"}:
                     continue
                 residuals = {
                     "Corruption Field": "Organic matter degrades; plants die, water darkens, stone becomes brittle.",
