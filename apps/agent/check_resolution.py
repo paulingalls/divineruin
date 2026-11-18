@@ -164,6 +164,9 @@ class D20Roll:
     advantage: bool = False
     disadvantage: bool = False
 
+    def evaluate(self, face: int) -> D20CheckCore:
+        return _evaluate_d20(face, self.modifier, self.dc)
+
     def roll(self, rng: random.Random | None = None) -> D20CheckCore:
         return _roll_d20_check(
             self.modifier, self.dc, rng=rng, advantage=self.advantage, disadvantage=self.disadvantage
@@ -196,6 +199,10 @@ def _roll_d20_check(
         d20 = max(first, second) if advantage else min(first, second)
     else:
         d20 = dice_roll("d20", rng=rng).total
+    return _evaluate_d20(d20, mod, dc)
+
+
+def _evaluate_d20(d20: int, mod: int, dc: int) -> D20CheckCore:
     total = d20 + mod
     if d20 == 20:
         success = True

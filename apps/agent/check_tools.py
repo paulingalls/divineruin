@@ -188,8 +188,8 @@ async def _check_save_impl(
         raise ToolError(str(e)) from e
 
     d20 = result.d20
-    followers = await zhael_fate.eligible_followers(session, queries=queries, roller=(player_id, player)) if d20 else ()
-    if d20 is not None and followers:
+    if d20 is not None:
+        candidates = await zhael_fate.candidates(session, queries=queries, roller=(player_id, player))
 
         async def resume(kept):
             async with session.combat_state_lock:
@@ -203,13 +203,15 @@ async def _check_save_impl(
             "save",
             player_id,
             result,
-            followers,
+            candidates,
             numbers=lambda r: (r.roll, r.total),
             reroll=lambda: check_resolution_save._save_result(result, d20.roll(), effect_on_fail),
+            flip=lambda face: check_resolution_save._save_result(result, d20.evaluate(face), effect_on_fail),
             resume=resume,
         )
-        session.fate_offer = offer
-        return json.dumps(offer.response())
+        if offer is not None:
+            session.fate_offer = offer
+            return json.dumps(offer.response())
 
     return await _finish_save(session, player_id, result, conditions_mutations, db_mod)
 

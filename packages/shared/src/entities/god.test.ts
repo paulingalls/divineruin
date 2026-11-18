@@ -74,8 +74,14 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
         .map((a) => a.id),
     ),
   ).toEqual(narrated);
-  const pending = abilities.filter((a) => !narrated.has(a.id));
-  expect(pending).toHaveLength(23);
+  const engine = new Set(["zhael_lucky"]);
+  expect(
+    new Set(
+      abilities.filter((a) => a.status === "active" && a.resolution === "engine").map((a) => a.id),
+    ),
+  ).toEqual(engine);
+  const pending = abilities.filter((a) => !narrated.has(a.id) && !engine.has(a.id));
+  expect(pending).toHaveLength(22);
   for (const ability of pending)
     expect([ability.status, ability.resolution]).toEqual(["pending", "engine"]);
   expect(corpus.valid.length).toBeGreaterThan(0);

@@ -171,3 +171,31 @@ async def test_reload_applies_original_and_preserves_spend(world):
         assert fresh.combat_state.ally_continuation is None and len(fresh.combat_state.held_actions) == 1
     finally:
         await db_mutations.delete_combat_state(state.combat_id)
+
+
+async def test_second_swing_after_a_rerolled_held_swing_uses_its_own_die(world):
+    await configure(world, "zhael", "mage")
+    pid = world.ids[0]
+    target = _enemy("foe", 60)
+    state = _build_state(pid, pid, [target])
+    attacker = required_player(state, pid)
+    attacker.attack_mod = 25
+    attacker.enhancers = ["extra_attack"]
+    session = world.ctx.userdata
+    session.combat_state = state
+    call = game_tools(session, declare_phase, resolve_phase, activate)
+    try:
+        await call("declare_phase", declarations=[attack(pid, "foe"), defend("foe")])
+        with (
+            patch("check_resolution.dice_roll", side_effect=[_d20(20), _d20(15), _d20(14)]),
+            patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
+        ):
+            offer = (await call("resolve_phase"))["fate_offer"]
+            fate = {"id": "zhael_fates_thread", "offer_id": offer["offer_id"]}
+            await call("activate", **fate)
+            result = await call("activate", **fate, keep="reroll")
+        assert "fate_offer" not in result
+        rolls = [e["roll"] for e in published_payloads(session.room) if e["type"] == "dice_roll"]
+        assert rolls == [15, 14]
+    finally:
+        await db_mutations.delete_combat_state(state.combat_id)

@@ -95,7 +95,7 @@ async def _resolve_one_packet(
     mark_cancelled: bool = False,
     publish_roll: bool = True,
     _held_head=None,
-    fate_followers=(),
+    fate_candidates=None,
     attack_cursor=None,
 ) -> dict:
     """Resolve a single initiative-ordered ResolutionPacket against ``state``.
@@ -338,7 +338,7 @@ async def _resolve_one_packet(
         target,
         action,
         attack_cursor=attack_cursor,
-        fate_followers=fate_followers,
+        fate_candidates=fate_candidates,
         mutations=mutations,
         queries=queries,
         resolver=resolver,

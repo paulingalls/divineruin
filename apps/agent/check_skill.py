@@ -85,12 +85,8 @@ async def _check_skill_run(
     )
 
     d20 = result.d20
-    followers = (
-        await zhael_fate.eligible_followers(session, queries=queries, conn=conn, roller=(player_id, player))
-        if reroll_dc is None and d20 is not None
-        else ()
-    )
-    if d20 is not None and followers:
+    if reroll_dc is None and d20 is not None:
+        candidates = await zhael_fate.candidates(session, queries=queries, conn=conn, roller=(player_id, player))
         location_id = session.location_id
 
         async def resume(kept):
@@ -129,13 +125,15 @@ async def _check_skill_run(
             "skill",
             player_id,
             result,
-            followers,
+            candidates,
             numbers=lambda r: (r.roll, r.total),
             reroll=lambda: check_resolution.skill_with_roll(result, d20.roll()),
+            flip=lambda face: check_resolution.skill_with_roll(result, d20.evaluate(face)),
             resume=resume,
         )
-        effects.fate_offer = offer
-        return json.dumps(offer.response())
+        if offer is not None:
+            effects.fate_offer = offer
+            return json.dumps(offer.response())
 
     return await _finish_skill(
         session,

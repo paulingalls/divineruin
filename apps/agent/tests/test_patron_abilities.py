@@ -111,6 +111,12 @@ async def test_pending_and_always_on_refuse_without_writes(dev_db_pool, monkeypa
         assert await w.state() == before
         ability = next(a for a in await w.abilities() if a["id"] == LIBRARY)
         assert ability["eligible"] and not ability["available"] and "always-on" in ability["reason"]
+        library.update(status="active", recharge="long_rest", resolution="engine", implementation_id="zhael_lucky")
+        _validate_gods(rows)
+        assert "pending" in await w.use(LIBRARY, error=True)
+        assert await w.state() == before
+        ability = next(a for a in await w.abilities() if a["id"] == LIBRARY)
+        assert not ability["available"] and ability["state"] == "locked"
 
 
 async def test_per_session_spend_survives_both_rests(dev_db_pool):

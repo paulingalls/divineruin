@@ -3202,8 +3202,9 @@
         "name": "Lucky",
         "effect": "Once per long rest, turn a natural 1 into a natural 20, or a natural 20 into a natural 1 (before result is narrated)",
         "recharge": "long_rest",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "zhael_lucky"
       },
       "devoted": {
         "id": "zhael_prophecy_fragment",
