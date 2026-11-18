@@ -141,27 +141,16 @@ for (const value of [Infinity, -Infinity, NaN]) {
   });
 }
 
-test("five complete matrices cover the shared eighteen-archetype roster", () => {
+test("ten complete matrices cover the exact eighteen-archetype roster", () => {
   const gods = validateGods(catalog);
-  const authored = gods.filter((g) => g.layer_4_synergy_matrix !== null);
-  expect(authored.map((g) => g.god_id).sort()).toEqual([
-    "aelora",
-    "kaelen",
-    "syrath",
-    "thyra",
-    "veythar",
-  ]);
-  expect(
-    gods
-      .filter((g) => g.layer_4_synergy_matrix === null)
-      .map((g) => g.god_id)
-      .sort(),
-  ).toEqual(["mortaen", "nythera", "orenthel", "valdris", "zhael"]);
+  expect(gods.map((g) => g.god_id).sort()).toEqual([...corpus.patron_ids].sort());
   expect(roster).toHaveLength(18);
   expect(new Set(roster.map((a) => a.id)).size).toBe(18);
-  for (const god of authored)
-    expect(Object.keys(god.layer_4_synergy_matrix!).sort()).toEqual(roster.map((a) => a.id).sort());
-  expect(
-    authored.reduce((sum, god) => sum + Object.keys(god.layer_4_synergy_matrix!).length, 0),
-  ).toBe(90);
+  for (const god of gods) {
+    expect(god.layer_4_synergy_matrix).not.toBeNull();
+    expect(Object.keys(god.layer_4_synergy_matrix).sort()).toEqual(roster.map((a) => a.id).sort());
+  }
+  expect(gods.reduce((sum, god) => sum + Object.keys(god.layer_4_synergy_matrix).length, 0)).toBe(
+    180,
+  );
 });

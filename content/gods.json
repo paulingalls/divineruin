@@ -1527,7 +1527,211 @@
         "resolution": "engine"
       }
     },
-    "layer_4_synergy_matrix": null
+    "layer_4_synergy_matrix": {
+      "warrior": {
+        "type": "divine",
+        "name": "Last Vigil",
+        "clauses": [
+          {
+            "effect": "Gain +1 damage against a creature that has reduced an ally to 0 HP this encounter.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "guardian": {
+        "type": "divine",
+        "name": "Threshold Shield",
+        "clauses": [
+          {
+            "effect": "Gain +2 AC while guarding an ally at 0 HP.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "skirmisher": {
+        "type": "unexpected",
+        "name": "Passing Step",
+        "clauses": [
+          {
+            "effect": "Hear which exit a funeral procession used most recently.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "mage": {
+        "type": "divine",
+        "name": "Ashen Formula",
+        "clauses": [
+          {
+            "effect": "Gain +1 to spell attack rolls against undead.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "artificer": {
+        "type": "unexpected",
+        "name": "Last Keepsake",
+        "clauses": [
+          {
+            "effect": "Touch a dead person's cherished tool to hear the task they last hoped to finish.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "seeker": {
+        "type": "unexpected",
+        "name": "Grave Witness",
+        "clauses": [
+          {
+            "effect": "Hear whether an abandoned grave was opened from within or without.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "beastcaller": {
+        "type": "unexpected",
+        "name": "Mourning Call",
+        "clauses": [
+          {
+            "effect": "Recognize the mourning call of a beast whose companion died nearby.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "paladin": {
+        "type": "divine",
+        "name": "Final Mercy",
+        "clauses": [
+          {
+            "effect": "Healing an ally at 0 HP restores 2 additional HP.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "oracle": {
+        "type": "unexpected",
+        "name": "Closing Whisper",
+        "clauses": [
+          {
+            "effect": "Hear the farewell a willing spirit wishes carried to the living.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "spy": {
+        "type": "unexpected",
+        "name": "Empty Chair",
+        "clauses": [
+          {
+            "effect": "Recognize which place at a gathering is customarily reserved for someone who has died.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "bard": {
+        "type": "unexpected",
+        "name": "Elegy Bearer",
+        "clauses": [
+          {
+            "effect": "Your funeral song can carry a willing spirit's final greeting in its own voice.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "diplomat": {
+        "type": "divine",
+        "name": "Peace at Parting",
+        "clauses": [
+          {
+            "effect": "Gain +1 Persuasion when negotiating the return of a body for burial.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "marshal": {
+        "type": "divine",
+        "name": "Hold the Crossing",
+        "clauses": [
+          {
+            "effect": "Allies at 0 HP within earshot gain +1 to death saving throws.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "cleric": {
+        "type": "natural",
+        "name": "Threshold Mercy",
+        "clauses": [
+          {
+            "effect": "Sacred Flame deals necrotic.",
+            "status": "pending",
+            "resolution": "engine"
+          },
+          {
+            "effect": "Healing on 0 HP allies restores double. Best at pulling people back from the edge",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "rogue": {
+        "type": "unexpected",
+        "name": "Death's Touch",
+        "clauses": [
+          {
+            "effect": "Death's Touch: Sneak Attack that drops target to 0 HP makes no sound or mark. The perfect silent kill",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "whisper": {
+        "type": "unexpected",
+        "name": "Death's Touch",
+        "clauses": [
+          {
+            "effect": "Death's Touch: Sneak Attack that drops target to 0 HP makes no sound or mark. The perfect silent kill",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "druid": {
+        "type": "divine",
+        "name": "Death Feeds Renewal",
+        "clauses": [
+          {
+            "effect": "When a creature dies within earshot, regain 2 Focus. Death feeds renewal",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "warden": {
+        "type": "divine",
+        "name": "Death Feeds Renewal",
+        "clauses": [
+          {
+            "effect": "When a creature dies within earshot, regain 2 Focus. Death feeds renewal",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      }
+    }
   },
   {
     "god_id": "thyra",
@@ -1999,7 +2203,211 @@
         "resolution": "engine"
       }
     },
-    "layer_4_synergy_matrix": null
+    "layer_4_synergy_matrix": {
+      "warrior": {
+        "type": "divine",
+        "name": "Measured Reprisal",
+        "clauses": [
+          {
+            "effect": "Gain +1 damage against a creature that attacked a surrendering ally this encounter.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "guardian": {
+        "type": "divine",
+        "name": "Witness Shield",
+        "clauses": [
+          {
+            "effect": "Gain +1 AC while protecting a witness from an attacker named in their testimony.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "skirmisher": {
+        "type": "unexpected",
+        "name": "Bailiff's Courtesy",
+        "clauses": [
+          {
+            "effect": "Recognize the customary warning given before a lawful arrest in a settlement.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "mage": {
+        "type": "divine",
+        "name": "Ordered Testimony",
+        "clauses": [
+          {
+            "effect": "Gain +1 Arcana when examining magical evidence of a broken oath.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "artificer": {
+        "type": "divine",
+        "name": "Honest Measure",
+        "clauses": [
+          {
+            "effect": "Gain +2 Investigation when examining tampered scales or measuring tools.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "seeker": {
+        "type": "divine",
+        "name": "Chain of Evidence",
+        "clauses": [
+          {
+            "effect": "Gain +2 Investigation when tracing ownership of evidence in a public hearing.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "druid": {
+        "type": "unexpected",
+        "name": "Old Boundaries",
+        "clauses": [
+          {
+            "effect": "Hear the traditional boundary oath associated with a settlement's oldest living tree.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "beastcaller": {
+        "type": "unexpected",
+        "name": "Witness of Fur",
+        "clauses": [
+          {
+            "effect": "Recognize whether a trained court beast is signaling fear of its own handler.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "warden": {
+        "type": "divine",
+        "name": "Common Ground",
+        "clauses": [
+          {
+            "effect": "Gain +2 Survival when tracing an unlawful incursion into protected land.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "whisper": {
+        "type": "unexpected",
+        "name": "Unheard Objection",
+        "clauses": [
+          {
+            "effect": "Hear the customary phrase a silenced witness may use to request a hearing.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "bard": {
+        "type": "unexpected",
+        "name": "Ballad of Account",
+        "clauses": [
+          {
+            "effect": "Recall the local verse that names the obligations of a host to a guest.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "diplomat": {
+        "type": "divine",
+        "name": "Fair Terms",
+        "clauses": [
+          {
+            "effect": "Gain +2 Persuasion when securing equal terms for opposing petitioners.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "marshal": {
+        "type": "divine",
+        "name": "Lawful Command",
+        "clauses": [
+          {
+            "effect": "Gain +1 initiative when defending a publicly declared sanctuary from an aggressor.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "paladin": {
+        "type": "natural",
+        "name": "Oath of Justice",
+        "clauses": [
+          {
+            "effect": "Oath of Justice: oath-breaking loses all favor abilities for a session.",
+            "status": "pending",
+            "resolution": "engine"
+          },
+          {
+            "effect": "Oath-keeping grants +1 to all d20 rolls when justice is at stake",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "cleric": {
+        "type": "divine",
+        "name": "Absolute Authority",
+        "clauses": [
+          {
+            "effect": "Turn Undead/Hollow DC +2. Absolute authority against unnatural things",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "oracle": {
+        "type": "divine",
+        "name": "Absolute Authority",
+        "clauses": [
+          {
+            "effect": "Turn Undead/Hollow DC +2. Absolute authority against unnatural things",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "rogue": {
+        "type": "unexpected",
+        "name": "Truth in Disguise",
+        "clauses": [
+          {
+            "effect": "Deception for just causes (evidence, infiltration) gains +3. Valdris blesses deception in service of truth",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "spy": {
+        "type": "unexpected",
+        "name": "Truth in Disguise",
+        "clauses": [
+          {
+            "effect": "Deception for just causes (evidence, infiltration) gains +3. Valdris blesses deception in service of truth",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      }
+    }
   },
   {
     "god_id": "nythera",
@@ -2128,7 +2536,216 @@
         "resolution": "engine"
       }
     },
-    "layer_4_synergy_matrix": null
+    "layer_4_synergy_matrix": {
+      "warrior": {
+        "type": "divine",
+        "name": "Deckborn Balance",
+        "clauses": [
+          {
+            "effect": "Gain +1 to melee attack rolls while aboard a moving vessel.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "guardian": {
+        "type": "divine",
+        "name": "Harbor Watch",
+        "clauses": [
+          {
+            "effect": "Gain +1 AC while defending an ally boarding or leaving a vessel.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "mage": {
+        "type": "divine",
+        "name": "Saltwind Casting",
+        "clauses": [
+          {
+            "effect": "Gain +1 to spell attack rolls in a coastal location you have never visited.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "artificer": {
+        "type": "divine",
+        "name": "Voyager's Tools",
+        "clauses": [
+          {
+            "effect": "Gain +2 to checks to repair a vessel during a journey.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "warden": {
+        "type": "divine",
+        "name": "Shoreline Keeper",
+        "clauses": [
+          {
+            "effect": "Gain +2 Survival when finding safe shelter along an unfamiliar coast.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "cleric": {
+        "type": "divine",
+        "name": "Traveler's Blessing",
+        "clauses": [
+          {
+            "effect": "Healing a creature in an unexplored location restores 1 additional HP.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "paladin": {
+        "type": "unexpected",
+        "name": "Pilgrim's Welcome",
+        "clauses": [
+          {
+            "effect": "Hear the traditional greeting offered to pilgrims at an unfamiliar harbor.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "oracle": {
+        "type": "unexpected",
+        "name": "Farshore Dreams",
+        "clauses": [
+          {
+            "effect": "Dream of a local seafarer's warning before your first landing at a new harbor.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "whisper": {
+        "type": "unexpected",
+        "name": "Shellbound Secret",
+        "clauses": [
+          {
+            "effect": "A discarded shell repeats the last farewell spoken beside it.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "bard": {
+        "type": "unexpected",
+        "name": "Songs Across Water",
+        "clauses": [
+          {
+            "effect": "Recognize the home port named in a sailor's work song.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "diplomat": {
+        "type": "divine",
+        "name": "Harbor Courtesy",
+        "clauses": [
+          {
+            "effect": "Gain +2 Persuasion when seeking peaceful passage through an unfamiliar port.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "marshal": {
+        "type": "divine",
+        "name": "Landfall Orders",
+        "clauses": [
+          {
+            "effect": "Allies who hear your first order in an unexplored location gain +1 initiative.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "seeker": {
+        "type": "natural",
+        "name": "Uncharted Senses",
+        "clauses": [
+          {
+            "effect": "Investigation and Perception +3 in unexplored locations",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "spy": {
+        "type": "natural",
+        "name": "Uncharted Senses",
+        "clauses": [
+          {
+            "effect": "Investigation and Perception +3 in unexplored locations",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "skirmisher": {
+        "type": "unexpected",
+        "name": "Unmoored Step",
+        "clauses": [
+          {
+            "effect": "Once per encounter, reposition to any visible unoccupied space without provoking reactions",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "rogue": {
+        "type": "unexpected",
+        "name": "Unmoored Step",
+        "clauses": [
+          {
+            "effect": "Once per encounter, reposition to any visible unoccupied space without provoking reactions",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "druid": {
+        "type": "divine",
+        "name": "Wild Welcome",
+        "clauses": [
+          {
+            "effect": "Wild creatures in new territory predisposed friendly.",
+            "status": "active",
+            "resolution": "narrated"
+          },
+          {
+            "effect": "Animal Handling advantage in unexplored areas",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "beastcaller": {
+        "type": "divine",
+        "name": "Wild Welcome",
+        "clauses": [
+          {
+            "effect": "Wild creatures in new territory predisposed friendly.",
+            "status": "active",
+            "resolution": "narrated"
+          },
+          {
+            "effect": "Animal Handling advantage in unexplored areas",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      }
+    }
   },
   {
     "god_id": "orenthel",
@@ -2257,7 +2874,211 @@
         "resolution": "engine"
       }
     },
-    "layer_4_synergy_matrix": null
+    "layer_4_synergy_matrix": {
+      "warrior": {
+        "type": "divine",
+        "name": "Dawnward Strike",
+        "clauses": [
+          {
+            "effect": "Gain +1 damage against undead while an ally within earshot is below half HP.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "guardian": {
+        "type": "divine",
+        "name": "Sheltering Light",
+        "clauses": [
+          {
+            "effect": "Gain +1 AC while guarding an ally below half HP.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "skirmisher": {
+        "type": "unexpected",
+        "name": "Lantern Trail",
+        "clauses": [
+          {
+            "effect": "Your footsteps briefly sound like the chime of a sanctuary bell to a lost child you guide home.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "mage": {
+        "type": "divine",
+        "name": "Renewing Spark",
+        "clauses": [
+          {
+            "effect": "Your healing spells restore 1 additional HP.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "artificer": {
+        "type": "divine",
+        "name": "Mender's Dawn",
+        "clauses": [
+          {
+            "effect": "Gain +2 to checks to repair equipment for a damaged sanctuary.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "seeker": {
+        "type": "unexpected",
+        "name": "Signs of Renewal",
+        "clauses": [
+          {
+            "effect": "Recognize the sound of running water beneath the ruins of a healing shrine.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "warden": {
+        "type": "divine",
+        "name": "Green Morning",
+        "clauses": [
+          {
+            "effect": "Gain +2 Nature when restoring a blighted grove.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "oracle": {
+        "type": "unexpected",
+        "name": "Hope's Witness",
+        "clauses": [
+          {
+            "effect": "Hear which act of kindness a willing supplicant most needs remembered.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "rogue": {
+        "type": "unexpected",
+        "name": "Borrowed Sunrise",
+        "clauses": [
+          {
+            "effect": "A stolen sacred lamp sounds a soft welcoming hum when returned to its rightful shrine.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "spy": {
+        "type": "unexpected",
+        "name": "Mercy's Password",
+        "clauses": [
+          {
+            "effect": "Recognize a local healer's discreet signal offering refuge.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "whisper": {
+        "type": "unexpected",
+        "name": "Quiet Benediction",
+        "clauses": [
+          {
+            "effect": "A willing frightened stranger can hear your reassuring whisper through a closed sanctuary door.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "diplomat": {
+        "type": "divine",
+        "name": "Reconciliation",
+        "clauses": [
+          {
+            "effect": "Gain +2 Persuasion when negotiating care for wounded enemies.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "marshal": {
+        "type": "divine",
+        "name": "Rally at Dawn",
+        "clauses": [
+          {
+            "effect": "An ally healed by your rallying ability regains 1 additional HP.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "cleric": {
+        "type": "natural",
+        "name": "Dawn's Mercy",
+        "clauses": [
+          {
+            "effect": "All healing spells +WIS or +CHA mod extra HP. Most powerful healing in the game",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "paladin": {
+        "type": "natural",
+        "name": "Dawn's Mercy",
+        "clauses": [
+          {
+            "effect": "All healing spells +WIS or +CHA mod extra HP. Most powerful healing in the game",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "druid": {
+        "type": "unexpected",
+        "name": "Cleansing Touch",
+        "clauses": [
+          {
+            "effect": "Healing Touch also removes 1 Resonance from target. Active party Resonance management",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "beastcaller": {
+        "type": "unexpected",
+        "name": "Cleansing Touch",
+        "clauses": [
+          {
+            "effect": "Healing Touch also removes 1 Resonance from target. Active party Resonance management",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "bard": {
+        "type": "divine",
+        "name": "Restoring Song",
+        "clauses": [
+          {
+            "effect": "Song of Rest +1d6 HP.",
+            "status": "pending",
+            "resolution": "engine"
+          },
+          {
+            "effect": "Inspire dice can heal instead of buffing rolls",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      }
+    }
   },
   {
     "god_id": "zhael",
@@ -2387,6 +3208,210 @@
         "resolution": "engine"
       }
     },
-    "layer_4_synergy_matrix": null
+    "layer_4_synergy_matrix": {
+      "warrior": {
+        "type": "divine",
+        "name": "Threaded Blade",
+        "clauses": [
+          {
+            "effect": "Once per encounter, gain +1 damage on a melee hit after missing the same target.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "guardian": {
+        "type": "divine",
+        "name": "Second Before",
+        "clauses": [
+          {
+            "effect": "Gain +1 AC against the first attack made against you each encounter.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "skirmisher": {
+        "type": "unexpected",
+        "name": "Crossed Footsteps",
+        "clauses": [
+          {
+            "effect": "Hear a brief echo of your own footsteps when you revisit a crossroads from a recurring dream.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "artificer": {
+        "type": "divine",
+        "name": "Patient Gear",
+        "clauses": [
+          {
+            "effect": "Gain +2 to checks to repair a clock or timing mechanism.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "seeker": {
+        "type": "divine",
+        "name": "Converging Clues",
+        "clauses": [
+          {
+            "effect": "Gain +1 Investigation when comparing two accounts of the same foretold event.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "druid": {
+        "type": "unexpected",
+        "name": "Season's Thread",
+        "clauses": [
+          {
+            "effect": "Recognize which seasonal rite a willing elder remembers whenever its festival returns.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "beastcaller": {
+        "type": "unexpected",
+        "name": "Familiar Omen",
+        "clauses": [
+          {
+            "effect": "Recognize the animal call named in a local omen when you first hear it.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "warden": {
+        "type": "unexpected",
+        "name": "Ring of Years",
+        "clauses": [
+          {
+            "effect": "Hear the season of a remembered disaster when touching a tree that survived it.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "cleric": {
+        "type": "divine",
+        "name": "Appointed Mercy",
+        "clauses": [
+          {
+            "effect": "Healing an ally who succeeded on a death saving throw this round restores 1 additional HP.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "paladin": {
+        "type": "divine",
+        "name": "Promised Hour",
+        "clauses": [
+          {
+            "effect": "Gain +1 to saving throws while fulfilling an oath at its promised time.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "spy": {
+        "type": "unexpected",
+        "name": "Chance Meeting",
+        "clauses": [
+          {
+            "effect": "Recognize a stranger's repeated greeting from a dream without learning their motives.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "whisper": {
+        "type": "unexpected",
+        "name": "Loose Thread",
+        "clauses": [
+          {
+            "effect": "Hear an echo of a willing speaker's unfinished sentence at the place they abandoned it.",
+            "status": "active",
+            "resolution": "narrated"
+          }
+        ]
+      },
+      "marshal": {
+        "type": "divine",
+        "name": "Moment to Rally",
+        "clauses": [
+          {
+            "effect": "Once per encounter, an ally who follows your order gains +1 on their next saving throw.",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "oracle": {
+        "type": "natural",
+        "name": "Woven Prophecy",
+        "clauses": [
+          {
+            "effect": "Prophecy Fragment becomes 2-sentence vision with more detail.",
+            "status": "active",
+            "resolution": "narrated"
+          },
+          {
+            "effect": "Fate's Thread usable twice per long rest",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "bard": {
+        "type": "unexpected",
+        "name": "Foretold Words",
+        "clauses": [
+          {
+            "effect": "Social encounters: once per encounter, know the exact DC of the next social check before attempting",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "diplomat": {
+        "type": "unexpected",
+        "name": "Foretold Words",
+        "clauses": [
+          {
+            "effect": "Social encounters: once per encounter, know the exact DC of the next social check before attempting",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "rogue": {
+        "type": "divine",
+        "name": "Bent Probability",
+        "clauses": [
+          {
+            "effect": "Critical hits on natural 19–20 (expanded crit range). Zhael bends probability",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      },
+      "mage": {
+        "type": "divine",
+        "name": "Bent Probability",
+        "clauses": [
+          {
+            "effect": "Critical hits on natural 19–20 (expanded crit range). Zhael bends probability",
+            "status": "pending",
+            "resolution": "engine"
+          }
+        ]
+      }
+    }
   }
 ]

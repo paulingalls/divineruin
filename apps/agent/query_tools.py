@@ -97,8 +97,7 @@ async def query_info(
     - kind="patron": the current player's patron standing, progress, authored favor action ids,
       Layer 1 gift, and abilities with ids and availability for activate (no target_id needed). Only an active or narrated gift is granted;
       an awaits_* gift is the god's promise, not yet a power.
-      synergy is this archetype's Layer 4 enhancement from the current patron (null when Unbound
-      or not yet authored); only its active clauses apply; a pending clause is promised, not yet a power.
+      synergy is this archetype's Layer 4 enhancement from the current patron (null when Unbound); only its active clauses apply; a pending clause is promised, not yet a power.
       Unbound Veil Clarity reveals exact
       Resonance; the response lists unbound_raw_channeling for activate and automatic Veil Mastery."""
     return await _query_info_impl(context, kind, target_id)
@@ -180,12 +179,10 @@ async def _query_patron_impl(
     if patron is None:
         raise ToolError(f"Cannot query patron: unknown patron id {patron_id!r}.")
 
-    synergy = None
-    if patron["layer_4_synergy_matrix"] is not None:
-        try:
-            synergy = synergy_for_patron(player.get("class"), patron)
-        except ValueError as error:
-            raise ToolError(f"Cannot query patron: {error}") from error
+    try:
+        synergy = synergy_for_patron(player.get("class"), patron)
+    except ValueError as error:
+        raise ToolError(f"Cannot query patron: {error}") from error
 
     next_tier = None
     favor_needed = None

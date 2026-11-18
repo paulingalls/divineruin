@@ -23,7 +23,9 @@ async def test_patron_kind_routes_without_target_id():
 async def test_bound_patron_reports_standing_and_authored_actions():
     context = make_context(player_id="sentinel_player")
     queries = MagicMock()
-    queries.get_player = AsyncMock(return_value={"divine_favor": {"patron": "sentinel", "level": 24, "max": 61}})
+    queries.get_player = AsyncMock(
+        return_value={"class": "warrior", "divine_favor": {"patron": "sentinel", "level": 24, "max": 61}}
+    )
     actions = {
         "positive": [{"action": "kept_promise", "description": "Keeping a difficult promise", "amount": 3}],
         "negative": [{"action": "broke_promise", "description": "Breaking a sworn promise", "amount": -4}],
@@ -41,7 +43,7 @@ async def test_bound_patron_reports_standing_and_authored_actions():
         return [
             {
                 "god_id": "sentinel",
-                "layer_4_synergy_matrix": None,
+                "layer_4_synergy_matrix": load_gods()[0]["layer_4_synergy_matrix"],
                 "short_name": "Sentinel",
                 "title": "the Boundary",
                 "favor_actions": actions,
@@ -57,7 +59,7 @@ async def test_bound_patron_reports_standing_and_authored_actions():
     assert len(ability_rows) == 3
     assert response == {
         "patron_id": "sentinel",
-        "synergy": None,
+        "synergy": load_gods()[0]["layer_4_synergy_matrix"]["warrior"],
         "resonance": {"state": "stable"},
         "short_name": "Sentinel",
         "title": "the Boundary",
@@ -115,13 +117,15 @@ async def test_real_patron_gift_round_trip_from_gods_content(patron_id):
 async def test_exalted_has_explicitly_no_next_tier():
     context = make_context()
     queries = MagicMock()
-    queries.get_player = AsyncMock(return_value={"divine_favor": {"patron": "sentinel", "level": 50, "max": 61}})
+    queries.get_player = AsyncMock(
+        return_value={"class": "warrior", "divine_favor": {"patron": "sentinel", "level": 50, "max": 61}}
+    )
 
     def catalog():
         return [
             {
                 "god_id": "sentinel",
-                "layer_4_synergy_matrix": None,
+                "layer_4_synergy_matrix": load_gods()[0]["layer_4_synergy_matrix"],
                 "short_name": "Sentinel",
                 "title": "the Boundary",
                 "favor_actions": {"positive": [], "negative": []},
@@ -158,13 +162,15 @@ async def test_unknown_patron_id_fails_loud():
 @pytest.mark.asyncio
 async def test_bound_patron_missing_gift_fails_loud():
     queries = MagicMock()
-    queries.get_player = AsyncMock(return_value={"divine_favor": {"patron": "sentinel", "level": 1, "max": 100}})
+    queries.get_player = AsyncMock(
+        return_value={"class": "warrior", "divine_favor": {"patron": "sentinel", "level": 1, "max": 100}}
+    )
 
     def catalog():
         return [
             {
                 "god_id": "sentinel",
-                "layer_4_synergy_matrix": None,
+                "layer_4_synergy_matrix": load_gods()[0]["layer_4_synergy_matrix"],
                 "short_name": "Sentinel",
                 "title": "the Boundary",
                 "favor_actions": {"positive": [], "negative": []},
