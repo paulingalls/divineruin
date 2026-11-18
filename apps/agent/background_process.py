@@ -8,8 +8,6 @@ import time
 from functools import partial
 from typing import TYPE_CHECKING, cast
 
-import asyncpg
-
 import db_activity_queries
 import db_content_queries
 import db_mutations_divine
@@ -17,6 +15,7 @@ import db_queries
 import db_training
 import event_types as E
 import first_episode
+from alignment_heartbeat import TRANSIENT_IO_ERRORS, AlignmentHeartbeat
 from bg_event_handlers import handle_events
 from bg_speech import COMPANION_IDLE_SECS, PendingSpeech, SpeechPriority
 from companion_cue_events import publish_companion_cue
@@ -36,7 +35,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger("divineruin.background")
 
 TIMER_FALLBACK_SECS = 30.0
-TRANSIENT_IO_ERRORS = (OSError, TimeoutError, asyncpg.PostgresError, asyncpg.InterfaceError)
 
 
 class BackgroundProcess:
@@ -63,6 +61,7 @@ class BackgroundProcess:
         self._last_target: BaseGameAgent | None = None
         self._paused: bool = False
         self._warm_lock = asyncio.Lock()
+        self._alignment = AlignmentHeartbeat(session_data)
 
     def start(self) -> None:
         self._task = asyncio.create_task(self._run())
@@ -130,6 +129,7 @@ class BackgroundProcess:
             if self._paused:
                 continue
 
+            await self._alignment.maybe_tick()
             self._check_companion_idle()
             self._check_scene_beat_hints()
 

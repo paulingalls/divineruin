@@ -78,6 +78,7 @@ class Episode:
     session: AgentSession[SessionData]
     source: rtc.AudioSource
     reconnect: Callable[[], Awaitable[None]]
+    connect_member: Callable[[str], Awaitable[tuple[rtc.Room, list]]]
 
     def __init__(self):
         self.player_id = f"episode-{uuid.uuid4().hex}"
@@ -178,10 +179,10 @@ async def episode(
         run.requests.append(kwargs)
         return chat(**kwargs)
 
-    async def receive():
+    async def receive(queue=queue, events=run.events):
         while True:
             payload, sender = await queue.get()
-            run.events.append((json.loads(payload), sender))
+            events.append((json.loads(payload), sender))
 
     async def reconnect():
         nonlocal player, unregister
@@ -196,6 +197,27 @@ async def episode(
         run.source, _, _ = await create_microphone_track(player, sample_rate=16000, channels=1, name="episode-voice")
         await until(lambda: not owner.is_disconnected(run.player_id))
 
+    added_members = []
+
+    async def connect_member(identity):
+        member = await connect(identity)
+        events = []
+        packets = asyncio.Queue()
+        off = register_data_packet_collector(member, topic="game_events", queue=packets)
+        task = asyncio.create_task(receive(packets, events))
+        added_members.append((member, off, task))
+        owner = run.session.userdata.multiplayer_owner
+        assert owner is not None
+        lifecycle = owner.lifecycle
+        await until(
+            lambda: (
+                (generation := lifecycle.current_generation(identity)) is not None
+                and lifecycle.is_authorized(identity, generation)
+            )
+        )
+        return member, events
+
+    run.connect_member = connect_member
     run.reconnect = reconnect
     receiver = asyncio.create_task(receive())
     with (
@@ -225,6 +247,11 @@ async def episode(
                     await run.session.userdata.multiplayer_close_task
             if hasattr(run, "session") and run.session.userdata.reconnection_owner:
                 await run.session.userdata.reconnection_owner.aclose()
+            for member, off, task in added_members:
+                off()
+                task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
+                await aclose_room(member)
             receiver.cancel()
             await asyncio.gather(receiver, return_exceptions=True)
             unregister()
