@@ -204,6 +204,7 @@ async def test_guest_entry_restores_once_across_reconnect_and_rejoin(dev_db_pool
             await w.patch(divine_favor={"patron": "zhael", "level": 100, "max": 100})
             await w.use(ability)
         room, handlers = MagicMock(), {}
+        room.local_participant.publish_data = AsyncMock()
         room.remote_participants = {}
         room.on.side_effect = lambda event, callback: handlers.setdefault(event, callback)
         res = MagicMock(read_player_resonance=AsyncMock(return_value={"current": 0, "flickering_bonus": 0}))

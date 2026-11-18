@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from speech_handles import completed_handle
 
+import event_types as E
 import session_hydration
 from base_agent import BaseGameAgent
 from exploration_agent import ExplorationAgent
@@ -194,7 +195,7 @@ async def test_join_callback_decays_only_joiner(dev_db_pool):
     conc.read_player_concentration = AsyncMock(return_value={"spell_id": None})
     events = []
 
-    async def capture(_room, kind, payload, _bus):
+    async def capture(_room, kind, payload, _bus, **_kwargs):
         events.append({"type": kind, **payload})
         assert (await _favor(dev_db_pool, joiner_id))["level"] == 7
 
@@ -215,7 +216,7 @@ async def test_join_callback_decays_only_joiner(dev_db_pool):
             handlers["participant_connected"](participant)
             release_reads.set()
             await asyncio.gather(*(asyncio.all_tasks() - {asyncio.current_task()}))
-        assert events == [FIXTURE["joiner"]]
+        assert [event for event in events if event["type"] == E.DIVINE_FAVOR_CHANGED] == [FIXTURE["joiner"]]
         assert session.favor_loss is None
         instruction = voice_session.generate_reply.call_args.kwargs["instructions"]
         assert "Aric" in instruction

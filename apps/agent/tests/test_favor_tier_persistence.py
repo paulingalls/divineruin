@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timedelta
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 from acceptance.seeds import seed_player
@@ -87,6 +87,7 @@ async def test_favor_and_selection_round_trip_by_action_and_neglect(dev_db_pool)
         voice = MagicMock()
         voice.generate_reply.return_value = completed_handle()
         room = MagicMock()
+        room.local_participant.publish_data = AsyncMock()
         room.remote_participants = {}
         handlers = {}
         room.on.side_effect = lambda name, callback: handlers.setdefault(name, callback)

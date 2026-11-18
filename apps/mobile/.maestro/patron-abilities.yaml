@@ -53,8 +53,10 @@ appId: com.divineruin.app
     timeout: 15000
 - tapOn:
     id: "patron-entry"
-- extendedWaitUntil:
-    visible: ".*Prophecy Fragment.*ready"
+- scrollUntilVisible:
+    element:
+      text: ".*Prophecy Fragment.*ready"
+    direction: DOWN
     timeout: 15000
 - takeScreenshot: entry
 - tapOn:
