@@ -57,6 +57,9 @@ class RestWalk(ArcWalk):
         self.validator = lifecycle.require_authorized
         harness.stack.callback(lambda: harness.run_sync(lifecycle.aclose()))
         self.sd.multiplayer_owner = GameplayInputOwner(lifecycle, MagicMock(), MagicMock())
+        # Joins hydrate in background tasks; settle them (raising on failure) before the walk records events.
+        for pid in room.remote_participants:
+            await lifecycle.authorize(pid)
         self.before = await self.rows()
         self.events.clear()
         return self
