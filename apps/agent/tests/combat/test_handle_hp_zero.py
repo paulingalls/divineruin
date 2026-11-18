@@ -71,7 +71,7 @@ class TestResolveAbilityPacket:
 
         session = make_context().userdata
         attacker = self._player()
-        decl = Declaration(type=DeclarationType.ABILITY, action="arcane_bolt")
+        decl = Declaration(type=DeclarationType.ABILITY, action="arcane_detect_magic")
         result = CastResult(
             packet={"effect": "zap", "state": "stable"},
             new_resonance=6,
@@ -96,7 +96,7 @@ class TestResolveAbilityPacket:
         assert summary["resolved"] is True
         assert summary["actor_id"] == "player_1"
         assert summary["declaration_type"] == "ability"
-        assert summary["action"] == "arcane_bolt"
+        assert summary["action"] == "arcane_detect_magic"
         assert summary["cast"] == {"effect": "zap", "state": "stable"}
         assert outcome.results["player_1"] is result
         _args, kwargs = cast_resolver._resolve_cast.call_args

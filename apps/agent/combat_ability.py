@@ -309,21 +309,12 @@ async def _resolve_ability_packet(
     )
     import choir_spell_damage
 
-    await choir_spell_damage.land(session, state, attacker, decl, result, conn=conn, **(damage_deps or {}))
-    cast_outcome.results[attacker.id] = result
     if result.new_resonance is not None:
         combat_hollow_resonance.stage_total(state, attacker.id, result.new_resonance)
-    # Sync concentration into the CASTER's SSOT IN-LOOP (not post-commit): a lower-initiative enemy
-    # attack later this same phase runs break_concentration_on_damage, which reads the in-memory
-    # concentration to pick which spell to save for and to clear on a failed save. A post-commit sync
-    # would leave it stale — the break would save against the OLD spell and, on a break, write None to
-    # the DB (clearing the just-cast spell) while the post-commit sync forced memory back to the new
-    # spell, diverging from the DB (story-007). _CombatScratchSnapshot captures concentration, so this
-    # in-tx mutation is reverted if the phase rolls back. break_concentration_on_damage now reads the
-    # DAMAGED member's own concentration (via damaged_player_id, M18 story-004), so a non-primary
-    # caster's break resolves against their own pool — matching this per-member SYNC.
     if result.concentration_spell_id is not spell_casting._UNCHANGED:
         caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
+    await choir_spell_damage.land(session, state, attacker, decl, result, conn=conn, **(damage_deps or {}))
+    cast_outcome.results[attacker.id] = result
     # Beneficial-condition PRODUCER (M4.8 story-004), in-combat half. _resolve_cast surfaces the
     # produced condition as packet.condition_applied (the OOC players.data write is gated off in
     # combat). In combat the working state is the SSOT, so land it on the TARGET participant here —

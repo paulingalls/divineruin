@@ -212,6 +212,7 @@ async def test_hostile_condition_spell_refuses_an_ally_before_resolution(monkeyp
         spells.get_spell("arcane_bolt"),
         id="scratch_spell",
         name="Beguiling Call",
+        combat_damage=None,
         applies_condition="charmed",
         verbal=False,
     )

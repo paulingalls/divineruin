@@ -92,6 +92,7 @@ class Spell:
     sound_id: str = ""
     combat_aid: bool = False
     healing: bool = False
+    combat_damage: dict | None = None
 
 
 # Module-level runtime-loaded spells, keyed by spell id. Populated by load_spells()
@@ -112,6 +113,8 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
     ignored, so the loader stays forward-compatible for future schema additions. Generic
     field validation reuses the shared catalog_parse primitives.
     """
+    from combat_spell_profile import parse_profile
+
     try:
         source = data["source"]
         if source not in _SPELL_SOURCES:
@@ -158,6 +161,7 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
             applies_condition=applies_condition,
             max_targets=max_targets,
             sound_id=sound_id,
+            combat_damage=parse_profile(data.get("combat_damage")),
         )
     except (KeyError, TypeError) as e:
         raise ValueError(f"Malformed spells row {spell_id!r}: {e}") from e

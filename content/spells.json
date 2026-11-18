@@ -1,6 +1,18 @@
 [
   {
     "id": "arcane_frost_touch",
+    "combat_damage": {
+      "resolution": "attack",
+      "components": [{ "dice": "1d6", "damage_type": "cold" }],
+      "attribute": "intelligence",
+      "damage_attribute": false,
+      "ranged": false,
+      "scaling": [
+        [5, 2],
+        [11, 3],
+        [17, 4]
+      ]
+    },
     "name": "Frost Touch",
     "source": "arcane",
     "spell_tier": "cantrip",
@@ -20,6 +32,18 @@
   },
   {
     "id": "arcane_bolt",
+    "combat_damage": {
+      "resolution": "attack",
+      "components": [{ "dice": "1d6", "damage_type": "force" }],
+      "attribute": "intelligence",
+      "damage_attribute": true,
+      "ranged": true,
+      "scaling": [
+        [5, 2],
+        [11, 3],
+        [17, 4]
+      ]
+    },
     "name": "Arcane Bolt",
     "source": "arcane",
     "spell_tier": "cantrip",
@@ -39,6 +63,18 @@
   },
   {
     "id": "arcane_spark",
+    "combat_damage": {
+      "resolution": "attack",
+      "components": [{ "dice": "1d4", "damage_type": "lightning" }],
+      "attribute": "intelligence",
+      "damage_attribute": false,
+      "ranged": true,
+      "scaling": [
+        [5, 2],
+        [11, 3],
+        [17, 4]
+      ]
+    },
     "name": "Spark",
     "source": "arcane",
     "spell_tier": "cantrip",
@@ -153,6 +189,17 @@
   },
   {
     "id": "arcane_magic_missile",
+    "combat_damage": {
+      "resolution": "automatic",
+      "components": [{ "dice": "1d4+1", "damage_type": "force" }],
+      "projectiles": 3,
+      "projectile_scaling": [
+        [5, 4],
+        [11, 5],
+        [17, 6]
+      ],
+      "other_recipients": true
+    },
     "name": "Magic Missile",
     "source": "arcane",
     "spell_tier": "minor",
@@ -210,6 +257,19 @@
   },
   {
     "id": "arcane_elemental_burst",
+    "combat_damage": {
+      "resolution": "save",
+      "components": [{ "dice": "2d6", "damage_type": "choice" }],
+      "attribute": "intelligence",
+      "save": "dexterity",
+      "half": true,
+      "scaling": [
+        [7, 3],
+        [13, 4]
+      ],
+      "other_recipients": true,
+      "choices": ["fire", "cold", "lightning"]
+    },
     "name": "Elemental Burst",
     "source": "arcane",
     "spell_tier": "standard",
@@ -324,6 +384,18 @@
   },
   {
     "id": "arcane_fireball",
+    "combat_damage": {
+      "resolution": "save",
+      "components": [{ "dice": "3d6", "damage_type": "fire" }],
+      "attribute": "intelligence",
+      "save": "dexterity",
+      "half": true,
+      "scaling": [
+        [11, 4],
+        [17, 5]
+      ],
+      "other_recipients": true
+    },
     "name": "Fireball",
     "source": "arcane",
     "spell_tier": "major",
@@ -343,6 +415,18 @@
   },
   {
     "id": "arcane_lightning_bolt",
+    "combat_damage": {
+      "resolution": "save",
+      "components": [{ "dice": "3d6", "damage_type": "lightning" }],
+      "attribute": "intelligence",
+      "save": "dexterity",
+      "half": true,
+      "scaling": [
+        [11, 4],
+        [17, 5]
+      ],
+      "other_recipients": true
+    },
     "name": "Lightning Bolt",
     "source": "arcane",
     "spell_tier": "major",
@@ -438,6 +522,14 @@
   },
   {
     "id": "arcane_chain_lightning",
+    "combat_damage": {
+      "resolution": "save",
+      "components": [{ "dice": "4d6", "damage_type": "lightning" }],
+      "attribute": "intelligence",
+      "save": "dexterity",
+      "half": true,
+      "other_recipients": true
+    },
     "name": "Chain Lightning",
     "source": "arcane",
     "spell_tier": "supreme",
@@ -457,6 +549,13 @@
   },
   {
     "id": "arcane_disintegrate",
+    "combat_damage": {
+      "resolution": "attack",
+      "components": [{ "dice": "5d6+20", "damage_type": "force" }],
+      "attribute": "intelligence",
+      "damage_attribute": false,
+      "ranged": true
+    },
     "name": "Disintegrate",
     "source": "arcane",
     "spell_tier": "supreme",
@@ -533,6 +632,18 @@
   },
   {
     "id": "arcane_meteor_swarm",
+    "combat_damage": {
+      "resolution": "save",
+      "components": [
+        { "dice": "4d6", "damage_type": "fire" },
+        { "dice": "4d6", "damage_type": "bludgeoning" }
+      ],
+      "attribute": "intelligence",
+      "save": "dexterity",
+      "half": true,
+      "other_recipients": true,
+      "deferred": "Only one sphere lands. Additional spheres and overlaps require area selection."
+    },
     "name": "Meteor Swarm",
     "source": "arcane",
     "spell_tier": "supreme",
@@ -571,6 +682,19 @@
   },
   {
     "id": "divine_sacred_flame",
+    "combat_damage": {
+      "resolution": "save",
+      "components": [{ "dice": "1d6", "damage_type": "radiant" }],
+      "attribute": "wisdom",
+      "save": "wisdom",
+      "half": false,
+      "damage_attribute": true,
+      "scaling": [
+        [5, 2],
+        [11, 3],
+        [17, 4]
+      ]
+    },
     "name": "Sacred Flame",
     "source": "divine",
     "spell_tier": "cantrip",
@@ -628,6 +752,17 @@
   },
   {
     "id": "divine_sacred_word",
+    "combat_damage": {
+      "resolution": "automatic",
+      "components": [{ "dice": "1d4", "damage_type": "radiant" }],
+      "scaling": [
+        [5, 2],
+        [11, 3],
+        [17, 4]
+      ],
+      "restriction": "undead_hollow",
+      "other_recipients": true
+    },
     "name": "Sacred Word",
     "source": "divine",
     "spell_tier": "cantrip",
@@ -782,6 +917,10 @@
   },
   {
     "id": "divine_spiritual_weapon",
+    "combat_damage": {
+      "resolution": "deferred",
+      "deferred": "Independent weapon attacks need a spell actor and lifetime; no attack lands on cast."
+    },
     "name": "Spiritual Weapon",
     "source": "divine",
     "spell_tier": "standard",
@@ -915,6 +1054,17 @@
   },
   {
     "id": "divine_flame_strike",
+    "combat_damage": {
+      "resolution": "save",
+      "components": [
+        { "dice": "2d6", "damage_type": "fire" },
+        { "dice": "2d6", "damage_type": "radiant" }
+      ],
+      "attribute": "wisdom",
+      "save": "dexterity",
+      "half": true,
+      "other_recipients": true
+    },
     "name": "Flame Strike",
     "source": "divine",
     "spell_tier": "major",
@@ -1067,6 +1217,14 @@
   },
   {
     "id": "divine_divine_judgment",
+    "combat_damage": {
+      "resolution": "save",
+      "components": [{ "dice": "6d8", "damage_type": "radiant" }],
+      "attribute": "wisdom",
+      "save": "wisdom",
+      "half": true,
+      "hollow_dice": 8
+    },
     "name": "Divine Judgment",
     "source": "divine",
     "spell_tier": "supreme",
@@ -1105,6 +1263,18 @@
   },
   {
     "id": "primal_thorn_whip",
+    "combat_damage": {
+      "resolution": "attack",
+      "components": [{ "dice": "1d6", "damage_type": "piercing" }],
+      "attribute": "wisdom",
+      "damage_attribute": true,
+      "ranged": false,
+      "scaling": [
+        [5, 2],
+        [11, 3],
+        [17, 4]
+      ]
+    },
     "name": "Thorn Whip",
     "source": "primal",
     "spell_tier": "cantrip",
@@ -1143,6 +1313,19 @@
   },
   {
     "id": "primal_produce_flame",
+    "combat_damage": {
+      "resolution": "attack",
+      "components": [{ "dice": "1d6", "damage_type": "fire" }],
+      "attribute": "wisdom",
+      "damage_attribute": false,
+      "ranged": true,
+      "scaling": [
+        [5, 2],
+        [11, 3],
+        [17, 4]
+      ],
+      "optional_target": true
+    },
     "name": "Produce Flame",
     "source": "primal",
     "spell_tier": "cantrip",
@@ -1314,6 +1497,15 @@
   },
   {
     "id": "primal_call_lightning",
+    "combat_damage": {
+      "resolution": "save",
+      "components": [{ "dice": "2d8", "damage_type": "lightning" }],
+      "attribute": "wisdom",
+      "other_recipients": true,
+      "save": "dexterity",
+      "half": true,
+      "deferred": "Later strikes are not affected: recurring spell actions are not implemented."
+    },
     "name": "Call Lightning",
     "source": "primal",
     "spell_tier": "standard",
@@ -1447,6 +1639,10 @@
   },
   {
     "id": "primal_wall_of_thorns",
+    "combat_damage": {
+      "resolution": "deferred",
+      "deferred": "Damage requires a barrier-crossing trigger; no crossing is resolved on cast."
+    },
     "name": "Wall of Thorns",
     "source": "primal",
     "spell_tier": "major",
@@ -1485,6 +1681,13 @@
   },
   {
     "id": "primal_blight",
+    "combat_damage": {
+      "resolution": "save",
+      "components": [{ "dice": "4d8", "damage_type": "necrotic" }],
+      "attribute": "wisdom",
+      "save": "constitution",
+      "half": true
+    },
     "name": "Blight",
     "source": "primal",
     "spell_tier": "major",
@@ -1523,6 +1726,17 @@
   },
   {
     "id": "primal_ice_storm",
+    "combat_damage": {
+      "resolution": "save",
+      "components": [
+        { "dice": "2d8", "damage_type": "bludgeoning" },
+        { "dice": "2d6", "damage_type": "cold" }
+      ],
+      "attribute": "wisdom",
+      "save": "dexterity",
+      "half": true,
+      "other_recipients": true
+    },
     "name": "Ice Storm",
     "source": "primal",
     "spell_tier": "major",
@@ -1542,6 +1756,10 @@
   },
   {
     "id": "primal_earthquake",
+    "combat_damage": {
+      "resolution": "deferred",
+      "deferred": "Damage requires a persistent zone and round trigger; no round damage is resolved on cast."
+    },
     "name": "Earthquake",
     "source": "primal",
     "spell_tier": "supreme",
@@ -1561,6 +1779,15 @@
   },
   {
     "id": "primal_tsunami",
+    "combat_damage": {
+      "resolution": "save",
+      "components": [{ "dice": "3d8", "damage_type": "bludgeoning" }],
+      "attribute": "wisdom",
+      "save": "strength",
+      "half": true,
+      "other_recipients": true,
+      "deferred": "Later waves are not affected: recurring spell actions are not implemented."
+    },
     "name": "Tsunami",
     "source": "primal",
     "spell_tier": "supreme",
@@ -1637,6 +1864,10 @@
   },
   {
     "id": "primal_storm_of_vengeance",
+    "combat_damage": {
+      "resolution": "deferred",
+      "deferred": "First round deafens; later damage requires a persistent zone and round trigger."
+    },
     "name": "Storm of Vengeance",
     "source": "primal",
     "spell_tier": "supreme",

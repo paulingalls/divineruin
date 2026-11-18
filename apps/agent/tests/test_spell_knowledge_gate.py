@@ -220,9 +220,14 @@ async def test_combat_prevalidation_reads_a_players_library_once_for_two_spells(
             initiative_order=["caster"],
         )
     )
+    state.participants.append(CombatParticipant("foe", "Foe", "enemy", 5, 100, 100, 10))
+    state.initiative_order.append("foe")
+    place_actors(state)
     adv = SimpleNamespace(
         packets=[
-            SimpleNamespace(actor_id="caster", declaration=Declaration(type=DeclarationType.ABILITY, action=action))
+            SimpleNamespace(
+                actor_id="caster", declaration=Declaration(type=DeclarationType.ABILITY, action=action, target_id="foe")
+            )
             for action in ("arcane_bolt", "arcane_fireball")
         ]
     )

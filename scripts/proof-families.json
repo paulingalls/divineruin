@@ -25,7 +25,7 @@
   {
     "name": "combat",
     "tests": [
-      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:catalog_action_runtime|catalog_combat_translation|catalog_encounter_cutover|choir_.*|combat_spatial_entry|hollow_troops_fight|fallen_melee_failures|first_blood_atomicity|generated_combat(?:_movement)?|mawling_.*|m(?:12|13|41|42|43|44|47|48)_.*)\\.py"
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:spell_damage_commit|catalog_action_runtime|catalog_combat_translation|catalog_encounter_cutover|choir_.*|combat_spatial_entry|hollow_troops_fight|fallen_melee_failures|first_blood_atomicity|generated_combat(?:_movement)?|mawling_.*|m(?:12|13|41|42|43|44|47|48)_.*)\\.py"
     ],
     "owns": [
       "apps/agent/(?:combat[^/]*|choir[^/]*|encounter[^/]*|durability[^/]*|damage[^/]*|death[^/]*|enemy[^/]*|initiative[^/]*|reaction[^/]*|monster[^/]*)\\.py"
