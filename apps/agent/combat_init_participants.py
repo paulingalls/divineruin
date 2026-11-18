@@ -76,7 +76,7 @@ async def assemble_participants(session, encounter, encounter_id, member_players
             # Hydration assigns the companion to the primary player, even when a guest starts combat.
             owner = dict(member_players)[session.primary_player_id]
             companion_scaled = scale_companion_stats_to_player_level(
-                profile, owner.get("hp", {}).get("max", 1), owner.get("level", 1)
+                profile, effective_hp(owner)["max"] if "hp" in owner else 1, owner.get("level", 1)
             )
             companion_action_pool = companion_attacks_to_action_pool(profile)
         except ValueError as e:
