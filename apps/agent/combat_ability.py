@@ -14,6 +14,7 @@ import combat_ability_save
 import combat_enhancers
 import combat_hollow_resonance
 import combat_spell_damage
+import combat_veilrender
 import combat_voice_rules
 import condition_voice_rules
 import spell_casting
@@ -313,33 +314,18 @@ async def _resolve_ability_packet(
         combat_hollow_resonance.stage_total(state, attacker.id, result.new_resonance)
     if result.concentration_spell_id is not spell_casting._UNCHANGED:
         caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
-    await combat_spell_damage.land(session, state, attacker, decl, result, conn=conn, **(damage_deps or {}))
+    landing = combat_veilrender.absorb_spell(state, attacker, decl, result.packet)
+    if landing is not None:
+        await combat_spell_damage.land(session, state, attacker, landing, result, conn=conn, **(damage_deps or {}))
     cast_outcome.results[attacker.id] = result
-    # Beneficial-condition PRODUCER (M4.8 story-004), in-combat half. _resolve_cast surfaces the
-    # produced condition as packet.condition_applied (the OOC players.data write is gated off in
-    # combat). In combat the working state is the SSOT, so land it on the TARGET participant here —
-    # the mutation rides this phase's save_combat_state. Self-cast (no target_id) falls back to the
-    # caster; a target not on the working state narrates nothing (condition_applied dropped) rather
-    # than crashing the phase, mirroring the wasted-declaration guards. source=decl.action is the
-    # spell id (matching the OOC source=spell_id). Resolved here where attacker/decl/result are
-    # already in scope — no outcome re-read in the dispatcher.
     cond_type = result.packet.get("condition_applied")
-    if cond_type:
-        if decl.target_ids:
-            # Multi-target (M4.8 story-012): land on EACH ally participant (cap already enforced at
-            # the declare-gate). Surface the voiced ids so the DM names each blessed companion; drop
-            # the signal entirely if NONE landed (all off-state / immune).
-            voiced = land_condition_on_participants(
-                state, attacker, decl, cond_type, source=decl.action, packet=result.packet
-            )
-            if voiced:
-                result.packet["condition_targets"] = voiced
-            else:
-                result.packet.pop("condition_applied", None)
-        elif not land_condition_on_participant(
-            state, attacker, decl, cond_type, source=decl.action, packet=result.packet
-        ):
-            # Target gone, or apply no-op'd (immunity gate) — don't narrate a buff that never landed.
+    if cond_type and landing is not None:
+        voiced = land_condition_on_participants(
+            state, attacker, landing, cond_type, source=landing.action, packet=result.packet
+        )
+        if voiced:
+            result.packet["condition_targets"] = voiced
+        else:
             result.packet.pop("condition_applied", None)
     summary = {
         "actor_id": attacker.id,

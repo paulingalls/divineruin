@@ -13,14 +13,14 @@ Finding the journal grants it and completes the search atomically.
 Artifact choices persist once with their effects.
 Leave now requests a recap before disconnect, with a 15-second home fallback.
 
-**Position: 395 / 574 acceptance criteria — 69%** (the sum of the per-phase
-counts in `README.md`). **179 criteria remain unchecked.** Phases 1, 2, 4, 5,
+**Position: 396 / 574 acceptance criteria — 69%** (the sum of the per-phase
+counts in `README.md`). **178 criteria remain unchecked.** Phases 1, 2, 4, 5,
 6 and 10 have all recorded criteria checked. Phase 3 is still Partial at 34/34:
 casting infrastructure is exercised, but complete deterministic spell-effect
 coverage is **unverified**. All 87 spell rows carry textual `mechanics`; this
 refresh does not classify every effect's execution path.
 
-M7.3 remains partial: the Knight and Veilrender turn/action mechanics are exercised; Still, Architect, Absorb Magic and remaining narrated troop/Tier-3 effects are
+M7.3 remains partial: the Knight and Veilrender turn/action mechanics are exercised; Absorb Magic is exercised; Still, Architect and remaining narrated troop/Tier-3 effects are
 open in the phase doc. Deterministic catalog/encounter and Choir checks do not
 certify those outstanding effects or complete native audio.
 

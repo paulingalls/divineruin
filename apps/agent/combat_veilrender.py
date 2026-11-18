@@ -1,10 +1,14 @@
 """Once-per-actor turn effects carried by the committed combat snapshot."""
 
+from dataclasses import replace
+
 import check_resolution_save
 import combat_spatial
 import dice
+import spells
 import ward_resolution
 from combat_enemy_active import heal
+from condition_produce import resolve_effective_targets
 
 
 def mark_radiant(target, action, result):
@@ -27,6 +31,49 @@ def mark_radiant(target, action, result):
 
 def living(actor):
     return actor.hp_current > 0 and not actor.is_fallen and not actor.is_dead
+
+
+def absorb_spell(state, caster, declaration, packet):
+    """Consume only living Veilrender recipients; caster bookkeeping has already run."""
+    spell = spells.get_spell(declaration.action)
+    profile = spell.combat_damage
+    if (
+        profile
+        and profile["resolution"] != "deferred"
+        and any(c["damage_type"] == "radiant" for c in profile["components"])
+    ):
+        return declaration
+    targets = resolve_effective_targets(declaration.target_ids, declaration.target_id, self_value=caster.id, dedup=True)
+    remaining, absorbed = [], []
+    for target_id in targets:
+        target = state.get_participant(target_id)
+        if target is None or target.creature_id != "hollow_veilrender" or not living(target):
+            remaining.append(target_id)
+            continue
+        absorbed.append(
+            {
+                "effect": "Absorb Magic",
+                "target_id": target_id,
+                "healed": heal(target, 3 * spell.focus_cost),
+                "hp_current": target.hp_current,
+            }
+        )
+    if not absorbed:
+        return declaration
+    packet["absorbed"] = absorbed
+    cue = " ".join(
+        f"Absorb Magic: {a['target_id']} absorbed the spell; it had no effect on this recipient. "
+        f"Regained {a['healed']} HP, now {a['hp_current']} HP."
+        for a in absorbed
+    )
+    if remaining:
+        packet["narration_cue"] += " " + cue
+        packet["effect"] += " Apply only to: " + ", ".join(remaining) + ". " + cue
+        return replace(declaration, target_id=None, target_ids=remaining)
+    for key in ("condition_applied", "condition_targets", "damage_result", "deferred"):
+        packet.pop(key, None)
+    packet["effect"] = packet["narration_cue"] = cue
+    return None
 
 
 async def turn_start(
