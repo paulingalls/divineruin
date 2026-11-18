@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.50.2
+
+The XP workflow's fixer and slate-reviewer now run on GPT-6.2 Sol, as a trial.
+
+Release steps: none.
+
+Fixes a broken comment line in the XP workflow config.
+
+Release steps: none.
+
 ## 0.50.1
 
 The XP workflow's code-writing agent (executor) now defaults to GPT-6.2 Sol.
