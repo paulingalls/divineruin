@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.48.1
+
+Move the patron query into a dedicated module to make future patron updates easier to maintain.
+
+Release steps: none.
+
 ## 0.48.0
 
 Every archetype now has a synergy with every patron: 180 pairings, each Natural, Divine or Unexpected. Natural pairings fit the god's domain and give the largest mechanical bonus. Divine pairings give a moderate one. Unexpected pairings give a small, unusual edge, often something only that character notices. A player can ask the DM about their synergy, and the DM can look it up.
