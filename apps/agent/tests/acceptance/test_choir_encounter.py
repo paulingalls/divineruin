@@ -4,6 +4,7 @@ from unittest.mock import patch
 import pytest
 from acceptance._capstone_helpers import _d20, _resolve_round
 from acceptance._catalog_cutover_helpers import started as started
+from acceptance._choir_spell_helpers import bolt as bolt
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 
@@ -88,15 +89,6 @@ async def test_choir_discovery_rollback_is_invisible(started, monkeypatch):
     with patch("check_resolution.dice_roll", return_value=_d20(20)):
         await _resolve_round(ctx)
     assert ctx.userdata.combat_state.choir_encounter["phase"] == "exposed"
-
-
-async def bolt(ctx, face=20):
-    state = ctx.userdata.combat_state
-    declarations = {p.id: {"type": "defend"} for p in state.participants if not p.is_fallen}
-    declarations[ctx.userdata.player_id] = {"type": "ability", "action": "arcane_bolt", "target_id": "choir_zone"}
-    await combat_turn._declare_phase_impl(ctx, declarations)
-    with patch("check_resolution.dice_roll", return_value=_d20(face)):
-        return await _resolve_round(ctx)
 
 
 @pytest.mark.parametrize("face,redirect", [(20, False), (10, False), (20, True)])

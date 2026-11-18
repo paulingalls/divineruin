@@ -104,9 +104,9 @@ async def phase(w, *, database=None, echo=None, declare=True):
         place_actors(state)
         state.beat = "declaration"
         declarations = {pid: {"type": "defend"} for pid in w.ids}
-        declarations[w.ids[1]] = {"type": "ability", "action": "arcane_fireball"}
+        declarations[w.ids[1]] = {"type": "ability", "action": "arcane_haste"}
         await combat_turn._declare_phase_impl(w.ctx, declarations, mutations=MagicMock(save_combat_state=AsyncMock()))
-    known = MagicMock(get_known=AsyncMock(return_value=[{"spell_id": "arcane_fireball"}]))
+    known = MagicMock(get_known=AsyncMock(return_value=[{"spell_id": "arcane_haste"}]))
     resolver = SimpleNamespace(
         _gate_spell=spell_casting._gate_spell,
         _resolve_cast=partial(

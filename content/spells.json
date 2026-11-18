@@ -1501,6 +1501,7 @@
       "resolution": "save",
       "components": [{ "dice": "2d8", "damage_type": "lightning" }],
       "attribute": "wisdom",
+      "other_recipients": true,
       "save": "dexterity",
       "half": true,
       "deferred": "Later strikes are not affected: recurring spell actions are not implemented."

@@ -15,6 +15,7 @@ import db_mutations
 import db_queries
 import spells
 from declaration_payloads import AbilityDecl, DefendDecl
+from spell_voice_rules import AREA_SPELLS
 
 
 async def saved_player(pid, *, conn=None):
@@ -161,7 +162,7 @@ async def test_catalog_damage_lands_once_on_declared_recipient(spell_fight, spel
     assert participant(saved, "foe").hp_current == 100 - expected
     after = await saved_player(ctx.userdata.player_id)
     assert after["focus"]["current"] == before["focus"]["current"] - spell.focus_cost
-    if spell.combat_damage.get("other_recipients"):
+    if spell_id in AREA_SPELLS or spell_id == "arcane_magic_missile":
         assert any(d["not_affected"] and "NOT affected" in d["reason"] for d in cast["deferred"])
 
 
@@ -214,7 +215,9 @@ async def test_area_spell_names_untouched_other_recipient(spell_fight):
         result = await _resolve_round(ctx)
     cast = next(p["cast"] for p in result["packets"] if p["actor_id"] == ctx.userdata.player_id)
     assert cast["damage_result"]["damage"] > 0
-    assert participant(state, "other").hp_current == 100
+    assert participant(ctx.userdata.combat_state, "other").hp_current == 100
+    persisted = await load_combat(state.combat_id)
+    assert participant(persisted, "other").hp_current == 100
     deferred = next(d for d in cast["deferred"] if d["effect"] == "other_recipients")
     assert deferred["target_ids"] == ["other"] and deferred["targets"] == ["Other"] and deferred["not_affected"]
 

@@ -121,7 +121,10 @@ async def test_paid_damage_rolls_back_hp_focus_and_events_then_retries_once(spel
     ] - spell.focus_cost
 
 
-async def test_redirected_spell_damage_breaks_real_concentration(started):
+@pytest.mark.parametrize(
+    "spell_id,broken", [("arcane_bolt", "divine_bless"), ("primal_call_lightning", "primal_call_lightning")]
+)
+async def test_redirected_spell_damage_breaks_real_concentration(started, spell_id, broken):
     from acceptance.test_choir_encounter import search
 
     import combat_turn
@@ -131,13 +134,21 @@ async def test_redirected_spell_damage_breaks_real_concentration(started):
     ctx, _ = await started("hollow_choir", player_class="mage")
     await search(ctx)
     pid = ctx.userdata.player_id
-    ctx.userdata.concentration.spell_id = "divine_bless"
-    await db_mutations_concentration.update_player_concentration(pid, "divine_bless")
-    participant(ctx.userdata.combat_state, pid).conditions = [{"type": "blessed", "source": "divine_bless"}]
+    if spell_id != "arcane_bolt":
+        import character_spells
+
+        await prepare_spell(ctx, spell_id)
+        await character_spells.record_learned(pid, spell_id, "discovery")
+    prior = "divine_bless" if spell_id == "arcane_bolt" else None
+    ctx.userdata.concentration.spell_id = prior
+    await db_mutations_concentration.update_player_concentration(pid, prior)
+    participant(ctx.userdata.combat_state, pid).conditions = (
+        [{"type": "blessed", "source": "divine_bless"}] if prior else []
+    )
     await combat_turn.declare_phase(
         ctx,
         [
-            AbilityDecl(kind="ability", actor_id=pid, action="arcane_bolt", targets=["choir_zone"], argument_type=""),
+            AbilityDecl(kind="ability", actor_id=pid, action=spell_id, targets=["choir_zone"], argument_type=""),
             DefendDecl(kind="defend", actor_id="choir_zone"),
         ],
     )
@@ -163,8 +174,53 @@ async def test_redirected_spell_damage_breaks_real_concentration(started):
     cast = next(p["cast"] for p in result["packets"] if p["actor_id"] == pid)
     assert cast["damage_result"]["damage"] > 0
     assert cast["damage_result"]["target_id"] == pid
-    assert cast["damage_result"]["concentration_broken"] == "divine_bless"
+    assert cast["damage_result"]["concentration_broken"] == broken
     assert ctx.userdata.concentration.spell_id is None
     assert (await saved_player(pid))["concentration"]["spell_id"] is None
     saved = await load_combat(ctx.userdata.combat_state.combat_id)
     assert not participant(saved, pid).conditions
+
+
+async def test_mixed_spell_filters_choir_components_before_one_hp_landing(started):
+    import random
+
+    from acceptance.test_choir_encounter import search
+
+    import character_spells
+    import check_resolution_save
+    import combat_turn
+    from declaration_payloads import AbilityDecl, DefendDecl
+
+    ctx, _ = await started("hollow_choir", player_class="mage")
+    await search(ctx)
+    spell = await prepare_spell(ctx, "divine_flame_strike")
+    await character_spells.record_learned(ctx.userdata.player_id, spell.id, "discovery")
+    await combat_turn.declare_phase(
+        ctx,
+        [
+            AbilityDecl(
+                kind="ability",
+                actor_id=ctx.userdata.player_id,
+                action=spell.id,
+                targets=["choir_zone"],
+                argument_type="",
+            ),
+            DefendDecl(kind="defend", actor_id="choir_zone"),
+        ],
+    )
+    save = check_resolution_save.resolve_saving_throw
+
+    def fixed_save(*args, **kwargs):
+        return save(*args, **{**kwargs, "rng": random.Random(31 if args[3] == spell.name else 5)})
+
+    with (
+        patch("check_resolution_save.resolve_saving_throw", side_effect=fixed_save),
+        patch("dice.roll", return_value=SimpleNamespace(total=3)),
+    ):
+        result = await _resolve_round(ctx)
+    cast = next(p["cast"] for p in result["packets"] if p["actor_id"] == ctx.userdata.player_id)
+    damage = cast["damage_result"]
+    assert damage["target_id"] == "choir_zone" and damage["damage"] == 6
+    assert [(c["damage_type"], c["damage"]) for c in damage["damage_components"]] == [("fire", 0), ("radiant", 6)]
+    saved = await load_combat(ctx.userdata.combat_state.combat_id)
+    assert participant(saved, "choir_zone").hp_current == 194
