@@ -180,7 +180,9 @@ def validate_resolution(action, path):
             if not isinstance(condition, str) or condition not in conditions.CONDITION_CATALOG or condition in seen:
                 invalid(f"{path}.{key}.applies_condition")
             seen.add(condition)
-            if not positive_integer(rider["duration"]):
+            if not positive_integer(rider["duration"]) and not (
+                rider["duration"] is None and condition in ("prone", "hollowed")
+            ):
                 invalid(f"{path}.{key}.duration")
 
 

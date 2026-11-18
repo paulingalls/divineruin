@@ -75,9 +75,13 @@ def apply_critical_save(state, attacker, target, action, summary):
         bonus_dice_eligible=False,
     )
     summary["critical_save"] = {"dc": result.dc, "roll": result.roll, "total": result.total, "success": result.success}
-    if rider["applies_condition"] == "hollowed" and conditions.has_condition(target.conditions, "hollowed"):
+    if already_hollowed(target, rider["applies_condition"]):
         return
     if not result.success and _land_condition_on_one(
         state, target.id, attacker, rider["applies_condition"], source=action["name"], packet=summary
     ):
         summary["condition_inflicted"] = rider["applies_condition"]
+
+
+def already_hollowed(target, condition):
+    return condition == "hollowed" and conditions.has_condition(target.conditions, "hollowed")

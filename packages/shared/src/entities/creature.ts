@@ -1,3 +1,8 @@
+import {
+  validateTurnTraits,
+  type CorruptionField,
+  type Regeneration,
+} from "./creature_turn_traits";
 import { validateCreatureTraits, type DamageAffinities } from "./creature_damage_affinity";
 import {
   validateActionExtensions,
@@ -27,6 +32,8 @@ export interface CreatureStatBlock {
   id: string;
   name: string;
   category: "hollow" | "beast" | "humanoid" | "construct" | "undead" | "elemental";
+  corruption_field?: CorruptionField;
+  regeneration?: Regeneration;
   damage_affinities?: DamageAffinities;
   resist_nonmagical_physical?: boolean;
   unholy_fortitude?: {
@@ -86,8 +93,8 @@ export interface Attack {
   durability_rider?: DurabilityRider;
   resolution?: "save" | "hit_then_save";
   save_success_damage?: "none" | "half";
-  conditions_on_failure?: { applies_condition: string; duration: number }[];
-  conditions_on_success?: { applies_condition: string; duration: number }[];
+  conditions_on_failure?: { applies_condition: string; duration: number | null }[];
+  conditions_on_success?: { applies_condition: string; duration: number | null }[];
   name: string;
   type: "melee" | "ranged" | "area";
   reach: number;
@@ -456,7 +463,7 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
     if (!LOOT_IDS.has(lootId)) problems.push("loot_table_id: unknown loot table");
   }
   field(creature, "xp_reward", "", "integer");
-  return problems.concat(validateCreatureTraits(creature));
+  return problems.concat(validateCreatureTraits(creature), validateTurnTraits(creature));
 }
 
 // JSON.parse reads 8.0 as 8, while Python's json keeps it a float that fails "expected integer".

@@ -241,7 +241,14 @@ function validateResolution(action: ActionExtensions, path: string): void {
       )
         invalid(`${path}.${key}.applies_condition`);
       seen.add(rider.applies_condition);
-      if (!positive(rider.duration)) invalid(`${path}.${key}.duration`);
+      if (
+        !positive(rider.duration) &&
+        !(
+          rider.duration === null &&
+          ["prone", "hollowed"].includes(rider.applies_condition as string)
+        )
+      )
+        invalid(`${path}.${key}.duration`);
     }
   }
 }

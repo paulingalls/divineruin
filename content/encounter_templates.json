@@ -852,5 +852,46 @@
       }
     },
     "recommended_party_size": 2
+  },
+  {
+    "id": "hollow_veilrender_boss",
+    "name": "The Veilrender",
+    "description": "A low hum swallows your footsteps. Stone grinds as a vast mass seals its wounds. Radiant light leaves cracks that stay open.",
+    "difficulty": "hard",
+    "enemies": [
+      {
+        "id": "veilrender",
+        "creature_id": "hollow_veilrender",
+        "role": "standard"
+      }
+    ],
+    "recommended_party_level": 14,
+    "recommended_party_size": 2,
+    "scene_placement": {
+      "party_start": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "companion_start": {
+        "x": 0,
+        "y": 5,
+        "z": 0
+      },
+      "actors": {
+        "veilrender": {
+          "x": 20,
+          "y": 0,
+          "z": 0
+        }
+      },
+      "locations": {},
+      "zones": {
+        "veilrender_corruption_aura": {
+          "center_id": "veilrender",
+          "radius_ft": 60
+        }
+      }
+    }
   }
 ]

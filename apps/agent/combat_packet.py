@@ -79,7 +79,17 @@ def _resolve_tick_saves(state, tick_conditions_due, save_resolver):
             actor.conditions = conditions.remove_condition(actor.conditions, event["type"])
 
 
-async def _resolve_one_packet(
+async def _resolve_one_packet(session, state, packet, **deps) -> dict:
+    from combat_veilrender import turn_start
+
+    effects = await turn_start(session, state, state.get_participant(packet.actor_id), **deps)
+    result = await _resolve_action_packet(session, state, packet, **deps)
+    if effects:
+        result["turn_start_effects"] = effects
+    return result
+
+
+async def _resolve_action_packet(
     session: SessionData,
     state,
     packet,

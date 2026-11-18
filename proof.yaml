@@ -38,6 +38,7 @@
       "apps/agent/condition_voice_rules.py",
       "apps/agent/conditions.py",
       "apps/agent/creature_schema.py",
+      "apps/agent/creature_turn_traits.py",
       "apps/agent/creature_tiers.py",
       "apps/agent/dice.py",
       "apps/agent/dramatic.py",

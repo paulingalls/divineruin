@@ -27,6 +27,7 @@ from session_data import CompanionState
 
 TEMPLATES = json.loads((CONTENT_ROOT / "content/encounter_templates.json").read_text())
 TARGETS = {
+    "hollow_veilrender_boss": (14, "hard", [("hollow_veilrender", "standard", 1)]),
     "hollow_knight_boss": (14, "hard", [("hollow_knight", "boss", 1), ("hollow_mawling", "minion", 2)]),
     "hollow_mawling_pack": (
         10,

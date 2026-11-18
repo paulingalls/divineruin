@@ -266,6 +266,11 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
             conn=packet_deps.get("conn"),
             concentration_break_mod=packet_deps["concentration_break_mod"],
         )
+        from combat_veilrender import turn_start
+
+        effects = await turn_start(session, state, state.get_participant(head["actor_id"]), **packet_deps)
+        if effects:
+            summaries.append({"actor_id": head["actor_id"], "turn_start_effects": effects})
         approach(state, state.get_participant(head["actor_id"]))
         summary_start = len(summaries)
         opens = _opens_windows(state, head)

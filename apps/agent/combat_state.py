@@ -131,6 +131,9 @@ class CombatState:
         from combat_turn_start import validate_turn_start_damage
 
         validate_turn_start_damage(data)
+        from creature_turn_traits import validate_snapshot
+
+        validate_snapshot(data)
 
         state = cls(
             encounter_id=data.get("encounter_id", ""),

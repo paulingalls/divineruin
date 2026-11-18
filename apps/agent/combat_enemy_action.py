@@ -59,7 +59,10 @@ async def _apply_condition_result(
         summary["condition_resisted"] = cond_type
         return
     from combat_condition_landing import _land_condition_on_one
+    from combat_enemy_active import already_hollowed
 
+    if already_hollowed(target, cond_type):
+        return
     if _land_condition_on_one(
         state,
         target.id,
@@ -70,7 +73,7 @@ async def _apply_condition_result(
         duration=duration,
     ):
         summary["condition_inflicted"] = cond_type
-        if target.type == "player" and cannot_act(({"type": cond_type},)):
+        if target.type == "player" and cannot_act([c for c in target.conditions if c["type"] == cond_type]):
             broken = await concentration_break_mod.break_concentration_on_incapacitation(
                 session, target.id, combat_state=state, conn=conn
             )

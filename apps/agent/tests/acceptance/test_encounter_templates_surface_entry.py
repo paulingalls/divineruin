@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from acceptance.mawling_harness import MawlingHarness
-from sample_fixtures import published_payloads
+from sample_fixtures import CONTENT_ROOT, published_payloads
 
 import event_types as E
 from combat_agent import CombatAgent
@@ -121,4 +121,36 @@ async def test_authored_inventory_and_bindings(reset_db_pool):
                 assert await listed(h) == {}
         finally:
             await transaction.rollback()
+            await h.close()
+
+
+async def test_shipped_boss_discovery(reset_db_pool):
+    from acceptance._catalog_cutover_helpers import assert_strength
+
+    locations = json.loads((CONTENT_ROOT / "content/locations.json").read_text())
+    front = next(r for r in locations if r["id"] == "ashmark_corrupted_front")
+    north = next(r for r in locations if r["id"] == "greyvale_wilderness_north")
+    assert north["exits"]["northwest"]["destination"] == front["id"]
+    assert front["exits"]["southeast"]["destination"] == north["id"]
+    catalog = {r["id"]: r for r in json.loads((CONTENT_ROOT / "content/creatures.json").read_text())}
+    for boss in ("hollow_veilrender_boss", "hollow_knight_boss"):
+        h = MawlingHarness()
+        try:
+            await h.prepare((14, 14), companion=None, location=front["id"])
+            discovery = await h.command("query_info", {"kind": "creature"})
+            entry = next(r for r in discovery["encounter_templates"] if r["id"] == boss)
+            assert entry["recommended_party_size"] == 2
+            result = await h.command("enter_mode", {"mode": "combat", "encounter_id": entry["id"]})
+            state = await h.reload()
+            assert state.encounter_id == boss
+            if boss == "hollow_veilrender_boss":
+                source = next(p for p in state.participants if p.type == "enemy")
+                assert source.regeneration and source.corruption_field
+                assert (source.hp_max, source.ac, source.role) == (120, 14, "standard")
+                template = json.loads(await h.pool.fetchval("SELECT data FROM encounter_templates WHERE id=$1", boss))
+                assert_strength(template, catalog)
+                assert {"Reality Crush", "Corruption Pulse"} <= set(
+                    next(p for p in result["participants"] if p["id"] == source.id)["actions"]
+                )
+        finally:
             await h.close()
