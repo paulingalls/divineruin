@@ -107,8 +107,7 @@ def test_valid_profiles_reach_loader(case, read_catalog):
 def test_invalid_profiles_reach_loader(case, read_catalog):
     with pytest.raises(ValueError) as error:
         read_catalog(with_profile(case["profile"]))
-    assert case["patron"] in str(error.value)
-    assert case["field"] in str(error.value)
+    assert f"{case['patron']}.{case['field']}:" in str(error.value)
 
 
 @pytest.mark.parametrize("shape", [None, {}, [], [None]])

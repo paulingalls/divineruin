@@ -48,7 +48,8 @@ async def test_guest_patron_describes_guest_standing():
     queries = MagicMock(
         get_player=AsyncMock(
             side_effect=lambda pid: {
-                "divine_favor": {"patron": "veythar", "level": 24 if pid == "player_2" else 0, "max": 61}
+                "class": "warrior",
+                "divine_favor": {"patron": "veythar", "level": 24 if pid == "player_2" else 0, "max": 61},
             }
         )
     )

@@ -9,6 +9,29 @@ import re
 from pathlib import Path
 
 _GODS_JSON_PATH = Path(__file__).resolve().parents[2] / "content" / "gods.json"
+_CONTENT = _GODS_JSON_PATH.parent
+
+
+@functools.cache
+def archetype_ids() -> frozenset[str]:
+    rows = json.loads((_CONTENT / "archetypes.json").read_text())
+    ids = [_text(row.get("id"), f"archetypes[{i}].id") for i, row in enumerate(rows)]
+    if not ids or len(ids) != len(set(ids)):
+        _fail("archetypes", "expected nonempty unique roster")
+    return frozenset(ids)
+
+
+@functools.cache
+def engine_implementations() -> dict[str, str]:
+    registry = _object(json.loads((_CONTENT / "engine_implementations.json").read_text()), "engine_implementations")
+    if not registry:
+        _fail("engine_implementations", "expected nonempty registry")
+    for key, target in registry.items():
+        _text(key, "engine_implementations.id")
+        _text(target, f"engine_implementations.{key}")
+    return registry
+
+
 _TIERS = {"acknowledged", "devoted", "exalted"}
 _MODIFIERS = {
     "flickering_damage_dice": ({"arcane_flickering"}, "positive_integer"),
@@ -75,7 +98,54 @@ def _modifier(value: object, path: str) -> None:
         _fail(f"{path}.value", f"expected {rule}")
 
 
+def _readiness(fields: dict, path: str) -> None:
+    if fields["status"] not in {"active", "pending"}:
+        _fail(f"{path}.status", "unknown status")
+    if fields["resolution"] not in {"narrated", "engine"}:
+        _fail(f"{path}.resolution", "unknown resolution")
+    if "implementation_id" in fields:
+        _text(fields["implementation_id"], f"{path}.implementation_id")
+    if (
+        fields["status"] == "active"
+        and fields["resolution"] == "engine"
+        and fields.get("implementation_id") not in engine_implementations()
+    ):
+        _fail(f"{path}.implementation_id", "active engine effect requires a registered implementation")
+
+
+def _matrix(value: object, path: str) -> None:
+    if value is None:
+        return
+    matrix = _object(value, path)
+    if matrix.keys() != archetype_ids():
+        _fail(
+            path,
+            "expected exact archetype roster; missing="
+            + str(sorted(archetype_ids() - matrix.keys()))
+            + "; unknown="
+            + str(sorted(matrix.keys() - archetype_ids())),
+        )
+    for archetype, entry in matrix.items():
+        row_path = f"{path}.{archetype}"
+        row = _object(entry, row_path, {"type", "name", "clauses"})
+        if row["type"] not in ("natural", "divine", "unexpected"):
+            _fail(f"{row_path}.type", "unknown synergy type")
+        _text(row["name"], f"{row_path}.name")
+        if not isinstance(row["clauses"], list) or not row["clauses"]:
+            _fail(f"{row_path}.clauses", "expected nonempty array")
+        for i, entry in enumerate(row["clauses"]):
+            clause_path = f"{row_path}.clauses[{i}]"
+            clause = _object(entry, clause_path)
+            _object(clause, clause_path, {"effect", "status", "resolution"} | ({"implementation_id"} & clause.keys()))
+            _text(clause["effect"], f"{clause_path}.effect")
+            _text(clause["status"], f"{clause_path}.status")
+            _text(clause["resolution"], f"{clause_path}.resolution")
+            _readiness(clause, clause_path)
+
+
 def _validate_gods(entries: object) -> list[dict]:
+    archetype_ids()
+    engine_implementations()
     if not isinstance(entries, list) or not entries:
         raise ValueError("gods: expected nonempty array")
     patrons: set[str] = set()
@@ -99,7 +169,12 @@ def _validate_gods(entries: object) -> list[dict]:
         tiers = _object(row.get("layer_3_tier_abilities"), path, _TIERS)
         for tier, ability in tiers.items():
             ability_path = f"{path}.{tier}"
-            fields = _object(ability, ability_path, {"id", "name", "effect", "recharge", "status", "resolution"})
+            fields = _object(
+                ability,
+                ability_path,
+                {"id", "name", "effect", "recharge", "status", "resolution"}
+                | ({"implementation_id"} & _object(ability, ability_path).keys()),
+            )
             for field, value in fields.items():
                 _text(value, f"{ability_path}.{field}")
             ability_id = fields["id"]
@@ -110,14 +185,11 @@ def _validate_gods(entries: object) -> list[dict]:
             ability_ids.add(ability_id)
             if fields["recharge"] not in {"always", "short_rest", "long_rest", "per_session"}:
                 _fail(f"{ability_path}.recharge", "unknown recharge")
-            if fields["status"] not in {"active", "pending"}:
-                _fail(f"{ability_path}.status", "unknown status")
-            if fields["resolution"] not in {"narrated", "engine"}:
-                _fail(f"{ability_path}.resolution", "unknown resolution")
-            if fields["status"] == "active" and fields["resolution"] == "engine":
-                _fail(f"{ability_path}.resolution", f"{ability_id} is active but has no engine implementation")
-        if "layer_4_synergy_matrix" not in row or row["layer_4_synergy_matrix"] is not None:
-            _fail(f"{patron}.layer_4_synergy_matrix", "must be null")
+            _readiness(fields, ability_path)
+        path = f"{patron}.layer_4_synergy_matrix"
+        if "layer_4_synergy_matrix" not in row:
+            _fail(path, "required field")
+        _matrix(row["layer_4_synergy_matrix"], path)
     return entries
 
 
