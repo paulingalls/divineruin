@@ -628,5 +628,120 @@
       "locations": {},
       "zones": {}
     }
+  },
+  {
+    "id": "hollowmoth_swarm",
+    "name": "Hollowmoth Swarm",
+    "description": "A thin whine trembles inside your teeth. Three moth-shaped gaps flutter above the sour-smelling grass, their wings tugging at the air.",
+    "difficulty": "moderate",
+    "enemies": [
+      {
+        "id": "hollowmoth_swarm_1",
+        "creature_id": "hollow_hollowmoth",
+        "role": "standard"
+      },
+      {
+        "id": "hollowmoth_swarm_2",
+        "creature_id": "hollow_hollowmoth",
+        "role": "standard"
+      },
+      {
+        "id": "hollowmoth_swarm_3",
+        "creature_id": "hollow_hollowmoth",
+        "role": "standard"
+      }
+    ],
+    "recommended_party_level": 3,
+    "scene_placement": {
+      "party_start": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "companion_start": {
+        "x": 0,
+        "y": 5,
+        "z": 0
+      },
+      "actors": {
+        "hollowmoth_swarm_1": {
+          "x": 20,
+          "y": -5,
+          "z": 0
+        },
+        "hollowmoth_swarm_2": {
+          "x": 20,
+          "y": 0,
+          "z": 0
+        },
+        "hollowmoth_swarm_3": {
+          "x": 20,
+          "y": 5,
+          "z": 0
+        }
+      },
+      "locations": {},
+      "zones": {}
+    }
+  },
+  {
+    "id": "hollow_weaver_ambush",
+    "name": "Hollow Weaver Ambush",
+    "description": "A dry clicking comes from a place your ears cannot settle on. A Weaver draws the air taut while two Drifts seep through the cold beneath it.",
+    "difficulty": "moderate",
+    "enemies": [
+      {
+        "id": "hollow_weaver_ambush_1",
+        "creature_id": "hollow_weaver",
+        "role": "standard"
+      },
+      {
+        "id": "hollow_weaver_ambush_2",
+        "creature_id": "hollow_shadeling",
+        "role": "minion"
+      },
+      {
+        "id": "hollow_weaver_ambush_3",
+        "creature_id": "hollow_shadeling",
+        "role": "minion"
+      }
+    ],
+    "recommended_party_level": 10,
+    "scene_placement": {
+      "party_start": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "companion_start": {
+        "x": 0,
+        "y": 5,
+        "z": 0
+      },
+      "actors": {
+        "hollow_weaver_ambush_1": {
+          "x": 20,
+          "y": -5,
+          "z": 0
+        },
+        "hollow_weaver_ambush_2": {
+          "x": 20,
+          "y": 0,
+          "z": 0
+        },
+        "hollow_weaver_ambush_3": {
+          "x": 20,
+          "y": 5,
+          "z": 0
+        }
+      },
+      "locations": {},
+      "zones": {
+        "hollow_weaver_ambush_1_corruption_aura": {
+          "center_id": "hollow_weaver_ambush_1",
+          "radius_ft": 30
+        }
+      }
+    }
   }
 ]
