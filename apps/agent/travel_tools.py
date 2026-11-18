@@ -40,7 +40,7 @@ from condition_consume import persist_combat_consumption, serialize_combat_check
 from db_errors import db_tool, validated_player_conditions
 from game_events import publish_game_event
 from inventory_refresh import publish_inventory
-from movement_tools import apply_arrival, write_arrival
+from movement_tools import write_arrival
 from quest_completion import finish_quest
 from session_data import SessionData
 from skill_fate import SkillScope, StaleSkillOperation, prepare_skill_offer
@@ -228,37 +228,27 @@ async def _travel_impl(
             return json.dumps(offer.response())
 
     result = resolve_segment(roll, mode_lower, navigation, hours, forced_march)
+    consumed = roll.consumed_conditions if roll else ()
+    arrived = result.success and not result.wrong_area
+    apply_arrival_mirrors = None
     async with db_mod.transaction() as conn:
         session.validate_acting_player(speaker_id)
         for member_id in member_ids:
             await travel_mutations.add_travel_hours(member_id, hours, conn=conn)
-
-    consumed = roll.consumed_conditions if roll else ()
-    consumed_state = None
-    if result.exhaustion_delta > 0 or consumed:
-        session.validate_acting_player(speaker_id)
-        async with db_mod.transaction() as conn:
-            consumed_state = await write_conditions(member_ids, result, consumed, conn=conn)
-    if consumed_state is not None:
-        session.combat_state = consumed_state
-
-    arrived = result.success and not result.wrong_area
-    quest_updates = []
-    if arrived:
-        # Reuse move_player's full arrival path (LOCATION_CHANGED for the HUD, map progress,
-        # corruption tracking) — not just the location setter — so a travelled arrival updates
-        # the client exactly like a walked one.
-        await apply_arrival(
-            session, destination_id, destination, db_mod=db_mod, mutations=mutations, travel_mutations=travel_mutations
-        )
-        quest_updates = await quest_progress.advance_on_arrival(
-            context, destination_id, db_mod=db_mod, mutations=mutations, queries=queries, content=content
-        )
-        if roll is None:
-            await publish_action_sound(session, "action_travel")
-    else:
-        session.validate_acting_player(speaker_id)
-        async with db_mod.transaction() as conn:
+        consumed_state = await write_conditions(member_ids, result, consumed, conn=conn)
+        if arrived:
+            apply_arrival_mirrors = await write_arrival(
+                session,
+                destination_id,
+                destination,
+                session.location_id,
+                member_ids,
+                conn=conn,
+                db_mod=db_mod,
+                mutations=mutations,
+                travel_mutations=travel_mutations,
+            )
+        else:
             await _write_lost_travel(
                 member_ids,
                 destination_id,
@@ -267,6 +257,17 @@ async def _travel_impl(
                 travel_mutations=travel_mutations,
                 conn=conn,
             )
+    if consumed_state is not None:
+        session.combat_state = consumed_state
+    quest_updates = []
+    if apply_arrival_mirrors is not None:
+        publish_arrival = apply_arrival_mirrors()
+        await publish_arrival()
+        quest_updates = await quest_progress.advance_on_arrival(
+            context, destination_id, db_mod=db_mod, mutations=mutations, queries=queries, content=content
+        )
+        if roll is None:
+            await publish_action_sound(session, "action_travel")
 
     session.record_event(f"Travel to {destination_id} ({mode_lower}): {result.narrative_cue}")
     return json.dumps(await _publish_travel_result(session, destination_id, mode_lower, roll, result, quest_updates))
