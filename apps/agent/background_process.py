@@ -291,9 +291,6 @@ class BackgroundProcess:
         for top in ordered:
             if not any(s is top for s in self._speech_queue):
                 continue
-            if top.recipient_id is not None and top.recipient_id not in self._sd.present_member_ids:
-                self._speech_queue = [s for s in self._speech_queue if s is not top]
-                continue
             instructions = top.instructions
             if top.stinger_sound is not None:
                 try:

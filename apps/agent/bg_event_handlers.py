@@ -221,8 +221,6 @@ def handle_events(
 
         elif ev.event_type == E.DIVINE_FAVOR_CHANGED:
             recipient = ev.payload.get("player_id") or sd.primary_player_id
-            if recipient not in sd.present_member_ids:
-                continue
             new_level = ev.payload.get("new_level", 0)
             last_whisper = ev.payload.get("last_whisper_level", 0)
             amount = ev.payload["amount"]

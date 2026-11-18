@@ -153,25 +153,22 @@ async def test_two_recipients_serialize_and_same_recipient_keeps_newest_winner()
 
 
 @pytest.mark.parametrize("negative", [False, True])
-@pytest.mark.parametrize("departure", ["before", "stinger", "membership", "enqueue"])
+@pytest.mark.parametrize("departure", ["before", "stinger", "membership"])
 async def test_departure_skips_only_absent_whisper_with_present_control(negative, departure):
     async with table() as t:
         event = crossing(negative=negative)
-        if departure == "enqueue":
-            t.live.remove("guest")
+        t.bg._handle_events([event])
+        if departure == "stinger":
+
+            async def leave(_seconds):
+                t.live.discard("guest")
+
+            t.delay.side_effect = leave
+        elif departure == "membership":
+            t.sd.party.members[:] = [m for m in t.sd.party.members if m.player_id != "guest"]
         else:
-            t.bg._handle_events([event])
-            if departure == "stinger":
-
-                async def leave(_seconds):
-                    t.live.discard("guest")
-
-                t.delay.side_effect = leave
-            elif departure == "membership":
-                t.sd.party.members[:] = [m for m in t.sd.party.members if m.player_id != "guest"]
-            else:
-                t.live.remove("guest")
-        await tick(t, event if departure == "enqueue" else GameEvent(E.PLAY_SOUND, {}))
+            t.live.remove("guest")
+        await tick(t, GameEvent(E.PLAY_SOUND, {}))
         t.session.generate_reply.assert_not_called()
         t.mark.assert_not_awaited()
         assert not t.sd.displeasure_heard_by
@@ -186,6 +183,22 @@ async def test_departure_skips_only_absent_whisper_with_present_control(negative
         assert "Name guest" in " ".join(c.kwargs["instructions"] for c in t.session.generate_reply.call_args_list)
         assert ("guest" in t.sd.displeasure_heard_by) == negative
         assert ("guest", 40) in [c.args for c in t.mark.await_args_list] or negative
+
+
+async def test_guest_leaving_during_host_whisper_gets_no_whisper():
+    async with table() as t:
+        t.bg._handle_events([crossing(), crossing("host")])
+
+        def reply(**kwargs):
+            t.live.discard("guest")
+            return completed_handle()
+
+        t.session.generate_reply.side_effect = reply
+        await tick(t, GameEvent(E.PLAY_SOUND, {}))
+        assert t.session.generate_reply.call_count == 1
+        assert "Name host" in t.session.generate_reply.call_args.kwargs["instructions"]
+        assert [c.args for c in t.mark.await_args_list] == [("host", 40)]
+        assert t.sound.await_count == 1
 
 
 async def test_handoff_keeps_present_third_players_whisper():
