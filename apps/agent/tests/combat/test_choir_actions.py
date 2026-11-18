@@ -48,14 +48,15 @@ async def test_memory_scream_save_negates(success):
     ):
         result = await _resolve_one_packet(make_context().userdata, state, packet, **d)
     assert result["resolved"]
-    assert saved.call_count == 2
+    assert saved.call_count == 1
     assert all(not t["half_on_success"] and not t["damage_halved"] for t in result["targets"])
     assert all(call.args[1:3] == ("WIS", 18) for call in saved.call_args_list)
     assert all(call.args == ("3d8",) for call in damage_rolls.call_args_list)
     assert not d["resolver"].resolve_attack.called
     assert state.participants[0].hp_current == (25 if success else 13)
-    assert actor.hp_current == (100 if success else 88)
-    for target in state.participants:
+    assert actor.hp_current == 100
+    assert actor.conditions == []
+    for target in [state.participants[0]]:
         assert any(c["type"] == "stunned" for c in target.conditions) is not success
 
 
@@ -161,7 +162,8 @@ async def test_cacophony_branch_conditions(success):
     ):
         result = await _resolve_one_packet(make_context().userdata, state, packet, **d)
     assert result["resolved"] and not d["resolver"].resolve_attack.called
-    for target, hp in [(actor, 100), (state.participants[0], 25)]:
+    assert actor.hp_current == 100 and actor.conditions == []
+    for target, hp in [(state.participants[0], 25)]:
         assert target.hp_current == hp - (6 if success else 12)
         assert {c["type"] for c in target.conditions} == ({"deafened"} if success else {"deafened", "stunned"})
         assert next(c for c in target.conditions if c["type"] == "deafened")["duration"] == 10
@@ -192,7 +194,7 @@ async def test_choir_range_target_boundaries(distance, included):
     ):
         await _resolve_one_packet(make_context().userdata, state, packet, **d)
     assert state.participants[0].hp_current == (13 if included else 25)
-    assert actor.hp_current == 88
+    assert actor.hp_current == 100
 
 
 @pytest.mark.parametrize("hit,success", [(False, False), (True, True), (True, False)])
