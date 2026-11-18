@@ -14,7 +14,7 @@ Artifact choices persist once with their effects.
 Leave now requests a recap before disconnect, with a 15-second home fallback.
 
 **Position: 398 / 574 acceptance criteria — 69%** (the sum of the per-phase
-counts in `README.md`). **177 criteria remain unchecked.** Phases 1, 2, 4, 5,
+counts in `README.md`). **176 criteria remain unchecked.** Phases 1, 2, 4, 5,
 6 and 10 have all recorded criteria checked. Phase 3 is still Partial at 34/34:
 casting infrastructure is exercised, but complete deterministic spell-effect
 coverage is **unverified**. All 87 spell rows carry textual `mechanics`; this
@@ -91,7 +91,7 @@ its triggers and legal IDs. This does not certify natural spoken Beat-3 pauses.
   quest effects; neither proves a world tick or scheduled event evaluation.
   Those runtime capabilities remain **unverified**.
 - **Patron layers:** Layers 1–3 are authored and validated in Python and TypeScript
-  (`test_gods_layers.py`, `god.test.ts`). Layer 4 now loads 180 pairings (22 Natural, 62 Divine, 96 Unexpected); 12 clauses are active/engine, 85 active/narrated and 103 pending/engine. Registered lookup and stacking boundaries pass `test_patron_synergy.py`, `test_patron_synergy_engine.py` and `test_patron_synergy_readiness.py`; pending effects remain unavailable. Final human magnitude review is open. The human approved the re-authored rows and Veythar’s +2 cantrip dice outside Flickering (still pending the combat seam), then requested design-row rebalancing on 2026-11-18. Content and design now agree on those corrections, including Nythera’s live Animal Handling +1 instead of advantage; the regenerated table lists all number changes for final approval.
+  (`test_gods_layers.py`, `god.test.ts`). Layer 4 now loads 180 pairings (22 Natural, 62 Divine, 96 Unexpected); 12 clauses are active/engine, 85 active/narrated and 103 pending/engine. Registered lookup and stacking boundaries pass `test_patron_synergy.py`, `test_patron_synergy_engine.py` and `test_patron_synergy_readiness.py`; pending effects remain unavailable. The human approved the final magnitude table on 2026-11-18 (table SHA-256 `5dee713a…`, content SHA-256 `c3238a53…`, commit `903ac541`), closing M8.3 AC3. Content and design share the approved corrections, including Nythera’s live Animal Handling +1 instead of advantage; Veythar’s +2 cantrip dice outside Flickering remain pending on the combat seam.
 
 ## 4. Documentation decisions still open
 

@@ -198,7 +198,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 - [ ] All 10 patrons + Unbound Path are fully implemented and playable after this milestone
 - [ ] Tests cover synergy lookup for all combinations, Unbound mechanics, and Layer 4 bonus stacking
 
-**Review:** The generated 180-row table is retained in sprint DATA at `sprints/archetype-synergies/synergy-review.md`; magnitude approval remains pending. The human approved the re-authored rows and Veythar’s +2 cantrip dice outside Flickering on 2026-11-18, then requested design-row rebalancing. Content and design now share those corrections, including Nythera’s live Animal Handling +1 instead of advantage. Veythar’s three Natural rows remain pending on the combat seam. The regenerated table lists every changed number and requests final approval of this exact revision; AC3 stays open. Pending clauses are unavailable.
+**Review:** The human approved the final 180-row table on 2026-11-18 (table SHA-256 `5dee713a…`, content SHA-256 `c3238a53…`, commit `903ac541`), closing AC3. The approved table is retained in sprint DATA at `sprints/archetype-synergies/synergy-review.md` with every changed number. Content and design share the approved corrections, including Nythera’s live Animal Handling +1 instead of advantage. Veythar’s three Natural rows remain pending on the combat seam. Pending clauses are unavailable.
 
 **Key references:**
 - *Game Mechanics Patrons — Archetype Synergies*
