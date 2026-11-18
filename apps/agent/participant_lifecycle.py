@@ -26,6 +26,9 @@ import concealment
 import db_mutations_concentration
 import db_mutations_resonance
 import db_queries
+import db_session_queries
+import event_types as E
+import game_events
 import session_hydration
 from caster_state import ConcentrationState, ResonanceTrack
 from party_state import PartyMember
@@ -399,6 +402,11 @@ class PartyLifecycle:
         # current location corruption rather than a default 0.
         member.corruption_level = self.userdata.party.primary.corruption_level
         favor_loss = await session_hydration.apply_session_favor_decay(self.userdata, identity, row)
+        payload = await db_session_queries.get_session_init_payload(identity)
+        payload["world_state"]["time"] = self.userdata.world_time
+        await game_events.publish_game_event(
+            self.room, E.SESSION_INIT, payload, self.userdata.event_bus, destination_identities=[identity]
+        )
         if favor_loss:
             if self.speech_ready is not None:
                 await self.speech_ready.wait()

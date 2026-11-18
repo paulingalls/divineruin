@@ -93,7 +93,8 @@ async def run(args):
         nonlocal current
         async with lock:
             if name == "initial":
-                await initial()
+                if current == primary:
+                    await initial()
             elif name == "activate":
                 await command("activate", {"id": "veythar_lorekeepers_library"})
             elif name in ("short", "long"):
@@ -125,6 +126,7 @@ async def run(args):
             elif name == "secondary":
                 current = secondary
             elif name == "entry":
+                await wait_for_peer(publisher, identity=secondary, timeout=15)
                 owner = _setup_party_join(publisher, sd)
                 try:
                     if await owner.authorize(secondary) is None:

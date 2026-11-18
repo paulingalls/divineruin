@@ -51,11 +51,6 @@ appId: com.divineruin.app
 - extendedWaitUntil:
     visible: "Completed secondary"
     timeout: 15000
-- scrollUntilVisible:
-    element:
-      text: ".*Prophecy Fragment.*spent"
-    direction: DOWN
-    timeout: 15000
 - tapOn:
     id: "patron-entry"
 - extendedWaitUntil:

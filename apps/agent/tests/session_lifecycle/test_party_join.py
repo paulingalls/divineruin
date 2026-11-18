@@ -238,3 +238,35 @@ async def test_existing_remote_is_hydrated_while_primary_and_non_player_are_reje
     assert lifecycle.current_generation("player_2") is not None
     assert lifecycle.current_generation("divineruin-dm") is None
     assert [call.args[0] for call in mods[0].get_player.await_args_list] == ["player_2", "divineruin-dm"]
+
+
+@pytest.mark.asyncio
+async def test_join_delivers_own_snapshot_after_entry_and_decay(isolated_join_snapshot):
+    build, publish = isolated_join_snapshot
+    order = []
+    payload = {"character": {"player_id": "player_2"}, "world_state": {}}
+
+    async def snapshot(pid):
+        order.append(("snapshot", pid))
+        return payload
+
+    build.side_effect = snapshot
+    room, _ = _recording_room("player_2")
+    sd = SessionData(player_id="player_1", location_id="loc")
+    sd.world_time = "dusk"
+    mods = _make_mods({"player_id": "player_2"})
+    with (
+        patch("session_hydration.hydrate_patron_ability_session", new_callable=AsyncMock) as entry,
+        patch("session_hydration.apply_session_favor_decay", new_callable=AsyncMock) as decay,
+    ):
+        entry.side_effect = lambda _, pid: order.append(("entry", pid))
+        decay.side_effect = lambda _, pid, row: order.append(("decay", pid))
+        lifecycle = _setup_party_join(room, sd, queries=mods[0], resonance_mod=mods[1], concentration_mod=mods[2])
+        try:
+            assert await lifecycle.authorize("player_2") is not None
+        finally:
+            await lifecycle.aclose()
+
+    assert order == [("entry", "player_2"), ("decay", "player_2"), ("snapshot", "player_2")]
+    assert payload["world_state"]["time"] == "dusk"
+    publish.assert_awaited_once_with(room, "session_init", payload, sd.event_bus, destination_identities=["player_2"])
