@@ -24,7 +24,8 @@ from combat_conditions_persist import reconcile_member_conditions
 from combat_durability import _accrue_durability, _find_equipped
 from combat_end_lives import settle_lives
 from combat_events import EventSink, emit_or_publish, isolated_publish
-from combat_support import _publish_sounds, _require_combat
+from combat_sound_events import publish_combat_sounds as _publish_sounds
+from combat_support import _require_combat
 from db_errors import db_tool
 from inventory_refresh import inventory_payload
 from region_types import REGION_CITY

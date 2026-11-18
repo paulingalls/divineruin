@@ -17,7 +17,8 @@ import db
 import db_mutations
 import event_types as E
 import zhael_fate
-from combat_support import _publish_sounds, _require_combat
+from combat_sound_events import publish_combat_sounds as _publish_sounds
+from combat_support import _require_combat
 from db_errors import db_tool
 from game_events import publish_game_event
 from session_data import CombatState, SessionData

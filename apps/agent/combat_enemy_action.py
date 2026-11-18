@@ -8,9 +8,10 @@ import concentration_break
 import conditions
 import event_types as E
 from combat_ability import _attach_riders, _resolve_condition_target
+from combat_damage import SaveDamageResult, apply_attack_result
 from combat_down import damage_target_unavailable, has_damage
 from combat_events import emit_or_publish
-from combat_support import SaveDamageResult, _resolve_attack_packet, apply_attack_result
+from combat_support import _resolve_attack_packet
 from condition_restrictions import cannot_act
 from dice import roll as dice_roll
 from session_data import CombatParticipant, SessionData

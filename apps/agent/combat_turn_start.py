@@ -2,9 +2,9 @@
 
 from livekit.agents.llm import ToolError
 
+import combat_damage
 import combat_grapple
 import combat_phase
-import combat_support
 from combat_down import is_terminally_down
 from condition_restrictions import cannot_act
 from dice import roll as dice_roll
@@ -54,8 +54,8 @@ async def turn_start(session, state, victim, *, conn, sink, mutations, queries, 
         return None
     effect = owner.turn_start_damage
     damage = dice_roll(effect["damage"]).total
-    result = combat_support.AutomaticDamageResult(damage, effect["damage_type"])
-    summary = await combat_support.apply_attack_result(
+    result = combat_damage.AutomaticDamageResult(damage, effect["damage_type"])
+    summary = await combat_damage.apply_attack_result(
         session,
         owner,
         {"name": "Dissolution Field"},

@@ -31,11 +31,11 @@ import reaction_spend
 import reaction_windows
 from combat_ability import _find_action
 from combat_action_availability import begin_execution, replay_valid
+from combat_attack_roll import build_attack_dice_roll_payload, deserialize_roll, roll_attack, serialize_roll
 from combat_down import target_unavailable
 from combat_enemy_action import is_combined_attack_action, is_save_damage_action
 from combat_multiattack import held_declarations, strike_summary
 from combat_packet import _resolve_one_packet
-from combat_support import build_attack_dice_roll_payload, deserialize_roll, roll_attack, serialize_roll
 from condition_restrictions import cannot_act
 from condition_sources import DeliveryRefused
 from declarations import DeclarationType, resolve_declaration

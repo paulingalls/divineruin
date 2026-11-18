@@ -12,9 +12,9 @@ import abilities
 import combat_ability_save
 import conditions
 from combat_condition_landing import _land_condition_on_one
+from combat_damage import _handle_hp_zero
 from combat_packet import _resolve_one_packet
 from combat_phase import ResolutionPacket
-from combat_support import _handle_hp_zero
 from declarations import Declaration, DeclarationType
 from session_data import CombatParticipant
 

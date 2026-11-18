@@ -15,7 +15,7 @@ import conditions
 import event_types as E
 from check_resolution_attack import resolve_attack
 from check_tools import _check_impl
-from combat_support import apply_attack_result
+from combat_damage import apply_attack_result
 from session_data import CombatState
 from system_prompts import COMBAT_SYSTEM_PROMPT
 

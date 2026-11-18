@@ -18,8 +18,9 @@ import dice
 import event_types as E
 import racial_resonance
 import resonance_events
+from combat_damage import _handle_hp_zero
 from combat_events import scratch_guard
-from combat_support import _handle_hp_zero, _publish_sounds
+from combat_sound_events import publish_combat_sounds as _publish_sounds
 from combat_ui_update import build_combat_ui_update
 from game_events import publish_game_event
 from kaelen_gift import trigger_iron_resolve
