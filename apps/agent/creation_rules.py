@@ -16,7 +16,15 @@ from rules_engine import attribute_modifier, calculate_max_pools
 from spells import get_spells_by_source
 from starter_zone import STARTER_ZONE_ID
 
-BASE_ATTRIBUTE = 10
+STANDARD_ARRAY = (16, 14, 13, 12, 10, 8)
+CATEGORY_ATTRIBUTE_ORDER = {
+    "martial": ("strength", "constitution", "dexterity", "wisdom", "charisma", "intelligence"),
+    "arcane": ("intelligence", "dexterity", "constitution", "wisdom", "charisma", "strength"),
+    "primal": ("wisdom", "constitution", "strength", "dexterity", "intelligence", "charisma"),
+    "divine": ("wisdom", "constitution", "charisma", "strength", "dexterity", "intelligence"),
+    "shadow": ("dexterity", "charisma", "constitution", "intelligence", "wisdom", "strength"),
+    "support": ("charisma", "dexterity", "wisdom", "constitution", "intelligence", "strength"),
+}
 
 # The 9 single-source casters the spec grants L1 elective spells (per-archetype L1
 # elective tables, game_mechanics_archetypes.md). Cross-source (Bard), hybrid (Whisper),
@@ -131,30 +139,17 @@ DEFAULT_START_LOCATION = STARTER_ZONE_ID
 
 
 def generate_attributes(race_id: str, class_id: str) -> dict[str, int]:
-    """Base 10 + race bonuses. Thessyn gets +1 to class primary attribute."""
-    attrs = {
-        "strength": BASE_ATTRIBUTE,
-        "dexterity": BASE_ATTRIBUTE,
-        "constitution": BASE_ATTRIBUTE,
-        "intelligence": BASE_ATTRIBUTE,
-        "wisdom": BASE_ATTRIBUTE,
-        "charisma": BASE_ATTRIBUTE,
-    }
+    """Category-recommended standard array, then racial and Thessyn class-primary bonuses."""
+    cls = CLASSES[class_id]
+    race = RACES[race_id]
+    attrs: dict[str, int] = dict(zip(CATEGORY_ATTRIBUTE_ORDER[cls.category], STANDARD_ARRAY, strict=True))
 
-    race = RACES.get(race_id)
-    if race is None:
-        return attrs
-
-    # Apply race bonuses
     for attr, bonus in race.attribute_bonuses.items():
         if attr in attrs:
             attrs[attr] += bonus
 
-    # Thessyn adaptive bonus: +1 to class primary attribute
     if race_id == "thessyn":
-        cls = CLASSES.get(class_id)
-        if cls and cls.primary_attribute in attrs:
-            attrs[cls.primary_attribute] += 1
+        attrs[cls.primary_attribute] += 1
 
     return attrs
 
