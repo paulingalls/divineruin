@@ -27,6 +27,7 @@ class LootHarness(MawlingHarness):
     async def start_loot(self, creature, tiers, count):
         self.pool = await db.get_pool()
         self.encounter_id = f"loot_{uuid4().hex}"
+        self.owns_template = True
         template = {
             "id": self.encounter_id,
             "name": "Harvest test",

@@ -25,12 +25,34 @@ for (const row of corpus.valid) {
     expect(() => validateEncounterReferences(row, ids)).not.toThrow();
   });
 }
-test("all twelve templates", async () => {
+test("all fifteen templates", async () => {
   const rows = (await Bun.file(
     new URL("../../../../content/encounter_templates.json", import.meta.url),
-  ).json()) as unknown[];
-  expect(rows).toHaveLength(12);
-  for (const row of rows) validateEncounterReferences(row, ids);
+  ).json()) as { id: string; enemies: unknown[] }[];
+  expect(rows).toHaveLength(15);
+  expect(new Set(rows.map((row) => row.id))).toEqual(
+    new Set([
+      "fragment_shadeling",
+      "shadeling_cluster",
+      "hollow_wisp",
+      "hollow_patrol_greyvale",
+      "hollowed_scout",
+      "ruins_mawling_pair",
+      "bandit_ambush",
+      "ashmark_patrol",
+      "ruins_guardian",
+      "cult_cell",
+      "hollow_corrupted_settlement",
+      "hollow_choir",
+      "hollowmoth_swarm",
+      "hollow_weaver_ambush",
+      "hollow_mawling_pack",
+    ]),
+  );
+  for (const row of rows) {
+    expect(row.enemies.length).toBeGreaterThan(0);
+    validateEncounterReferences(row, ids);
+  }
 });
 
 // Runs the TypeScript compiler in a child process: ~2s alone, past Bun's 5s default when the

@@ -25,6 +25,9 @@ from query_tools import _query_info_impl
 
 TEMPLATES = json.loads((CONTENT_ROOT / "content/encounter_templates.json").read_text())
 LEVELS = {
+    "hollowmoth_swarm": 3,
+    "hollow_weaver_ambush": 5,
+    "hollow_mawling_pack": 5,
     "fragment_shadeling": 1,
     "shadeling_cluster": 1,
     "ruins_mawling_pair": 2,
@@ -129,7 +132,7 @@ async def test_created_and_migrated_speed_limits_movement(spatial_entry, migrate
 
 @pytest.mark.parametrize("template", TEMPLATES, ids=lambda row: row["id"])
 async def test_actual_catalog_entry_persists_placement_and_zone_ids(spatial_entry, template, mock_combat_agent_factory):
-    assert len(TEMPLATES) == 12 and {row["id"] for row in TEMPLATES} == set(LEVELS)
+    assert len(TEMPLATES) == 15 and {row["id"] for row in TEMPLATES} == set(LEVELS)
     assert any(row["scene_placement"]["zones"] for row in TEMPLATES)
     assert template["recommended_party_level"] == LEVELS[template["id"]]
     ctx, response = await spatial_entry(members=2, companion="companion_tam", encounter=template["id"])
@@ -339,7 +342,7 @@ async def test_corrupt_pending_and_held_destination_refuses_before_roll(spatial_
 
 
 def test_spatial_contract_parity_has_nonempty_floor():
-    assert len(TEMPLATES) == 12
+    assert len(TEMPLATES) == 15
     assert any(row["scene_placement"]["zones"] for row in TEMPLATES)
     cases = []
     for row in TEMPLATES:

@@ -22,12 +22,15 @@ from session_data import CompanionState, SessionData
 
 
 class MawlingHarness:
+    owns_template = False
+
     async def start(self, reactions=False, gear=False, companion=False, role: Any = "standard"):
         self.pool = await db.get_pool()
         await reseed_choir_content(self.pool)
         from adult_mawling_fixture import adult_template
 
         self.encounter_id = f"adult_mawling_{uuid4().hex}"
+        self.owns_template = True
         await self.pool.execute(
             "INSERT INTO encounter_templates (id, data) VALUES ($1,$2::jsonb)",
             self.encounter_id,
@@ -99,7 +102,9 @@ class MawlingHarness:
         self.enemies = [p["id"] for p in self.roster if p["type"] == "enemy"]
         return self
 
-    async def prepare(self, levels=(3,), companion="companion_kael", location="greyvale_wilderness_north"):
+    async def prepare(
+        self, levels=(3,), companion: str | None = "companion_kael", location="greyvale_wilderness_north"
+    ):
         from query_tools import query_info
 
         self.pool = await db.get_pool()
@@ -182,6 +187,10 @@ class MawlingHarness:
         round_number = state.round_number
         for _ in range(12):
             result = await self.command("resolve_phase", {})
+            if self.sd.combat_state is None:
+                assert result["outcome"] in ("victory", "defeat")
+                self.last_result = result
+                return packets
             packets.extend(result["packets"])
             state = await self.reload()
             if state.round_number != round_number:
@@ -194,7 +203,7 @@ class MawlingHarness:
         return state.to_dict(), [await db_queries.get_player(p) for p in self.players]
 
     async def close(self):
-        if self.encounter_id != "ruins_mawling_pair":
+        if self.owns_template:
             await self.pool.execute("DELETE FROM encounter_templates WHERE id=$1", self.encounter_id)
             if os.environ.get("REDIS_URL"):
                 await (await db.get_redis()).delete(f"encounter:{self.encounter_id}")

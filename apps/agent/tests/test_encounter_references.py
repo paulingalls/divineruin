@@ -32,8 +32,26 @@ def test_recommended_party_level_cases(encounter):
 
 def test_all_twelve_reference_templates():
     templates = json.loads((ROOT / "content/encounter_templates.json").read_text())
-    assert len(templates) == 12
+    assert len(templates) == 15
+    assert {row["id"] for row in templates} == {
+        "fragment_shadeling",
+        "shadeling_cluster",
+        "hollow_wisp",
+        "hollow_patrol_greyvale",
+        "hollowed_scout",
+        "ruins_mawling_pair",
+        "bandit_ambush",
+        "ashmark_patrol",
+        "ruins_guardian",
+        "cult_cell",
+        "hollow_corrupted_settlement",
+        "hollow_choir",
+        "hollowmoth_swarm",
+        "hollow_weaver_ambush",
+        "hollow_mawling_pack",
+    }
     for template in templates:
+        assert template["enemies"]
         assert all(set(enemy) == {"id", "creature_id", "role"} for enemy in template["enemies"])
         validate_encounter_references(template, CATALOG)
 
