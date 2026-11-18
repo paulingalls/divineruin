@@ -30,7 +30,7 @@ def test_recommended_party_level_cases(encounter):
     validate_encounter_references(encounter, CATALOG)
 
 
-def test_all_twelve_reference_templates():
+def test_all_reference_templates():
     templates = json.loads((ROOT / "content/encounter_templates.json").read_text())
     assert len(templates) == 15
     assert {row["id"] for row in templates} == {
