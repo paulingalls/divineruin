@@ -136,43 +136,82 @@ async def hostile_condition_ability(world):
         await db_mutations.delete_combat_state(state.combat_id)
 
 
-async def melody(world, save_succeeds):
+async def melody(world, save_succeeds, countercharm):
+    from contextlib import nullcontext
+
     import pytest
     from livekit.agents.llm import ToolError
+    from test_aelora_gift import _live_party
+    from voice_condition_fixtures import place_actors
 
     from conditions import has_condition
 
     await configure(world, "zhael", "mage")
-    pid = world.ids[0]
+    await configure(world, "none", "bard", index=1)
+    pid, bard = world.ids
     session, state, choir = await _choir_state(world)
+    lifecycle = _live_party(session, *world.ids) if countercharm else None
+
+    def acting(player_id):
+        return (
+            session._bind_authenticated_actor(player_id, 1, lifecycle.require_authorized)
+            if lifecycle
+            else nullcontext()
+        )
+
+    if countercharm:
+        reactor = _player(bard)
+        reactor.level, reactor.reaction_ids, reactor.has_reaction_ability = 5, ["bard_countercharm"], True
+        state.participants.append(reactor)
+        state.initiative_order.append(bard)
+        place_actors(state)
     call = game_tools(session, declare_phase, resolve_phase, activate)
+    # The bard makes their own aura save; Countercharm's advantage rolls a second Melody die.
+    aura_dice = [_d20(19)] * (2 if countercharm else 1)
+    melody_dice = [_d20(20 if save_succeeds else 8)] + ([_d20(8)] if countercharm else [])
     try:
         await call(
             "declare_phase",
             declarations=[
                 defend(pid),
                 {**defend(choir.id), "kind": "ability", "action": "Stolen Melody", "targets": [pid]},
+                *([defend(bard)] if countercharm else []),
             ],
         )
         with (
-            patch("check_resolution.dice_roll", side_effect=[_d20(19), _d20(20 if save_succeeds else 8)]),
+            patch("check_resolution.dice_roll", side_effect=[*aura_dice, *melody_dice]) as dice,
             patch("dice.roll", return_value=_damage_die(3)) as duration,
             patch("combat_recharge.roll", return_value=_damage_die(3)),
         ):
             aura = (await call("resolve_phase"))["fate_offer"]
-            await _keep(call, aura)
-            offer = (await call("resolve_phase"))["fate_offer"]
+            with acting(pid):
+                await _keep(call, aura)
+            held = await call("resolve_phase")
+            if countercharm:
+                assert held["next"]["waiting_on"]["stage"] == "pre_roll"
+                with acting(bard):
+                    await call("activate", id="bard_countercharm")
+                held = await call("resolve_phase")
+                assert not [
+                    packet for packet in held.get("packets", []) if packet.get("declaration_type") == "reaction"
+                ]
+            offer = held["fate_offer"]
             assert offer["roller_id"] == pid and offer["roll_kind"] == "save"
-            assert duration.call_count == 0
+            assert duration.call_count == 0 and dice.call_count == len(aura_dice) + len(melody_dice)
             assert required_player(session.combat_state, choir.id).action_ledger["stolen melody"]["remaining"] == 0
-            result = await _keep(call, offer)
-        assert result["packets"][0]["save_success"] is save_succeeds
+            with acting(pid):
+                result = await _keep(call, offer)
+        reactions = [packet for packet in result["packets"] if packet.get("declaration_type") == "reaction"]
+        assert [packet["mechanical_effect"] for packet in reactions] == (["save_advantage"] if countercharm else [])
+        assert result["packets"][-1]["save_success"] is save_succeeds
         assert duration.call_count == (0 if save_succeeds else 1)
         target = required_player(session.combat_state, pid)
         assert has_condition(target.conditions, "charmed") is not save_succeeds
-        with pytest.raises(ToolError, match="current Fate"):
+        with acting(pid), pytest.raises(ToolError, match="current Fate"):
             await _keep(call, offer)
     finally:
+        if lifecycle:
+            await lifecycle.aclose()
         await db_mutations.delete_combat_state(state.combat_id)
 
 

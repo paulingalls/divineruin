@@ -370,11 +370,12 @@ async def test_hostile_ability_holds_foes_save_after_one_charge(world):
     await hostile_condition_ability(world)
 
 
+@pytest.mark.parametrize("countercharm", [False, True])
 @pytest.mark.parametrize("save_succeeds", [True, False])
-async def test_choir_melody_waits_before_duration(world, save_succeeds):
+async def test_choir_melody_waits_before_duration(world, save_succeeds, countercharm):
     from _zhael_fate_choir import melody
 
-    await melody(world, save_succeeds)
+    await melody(world, save_succeeds, countercharm)
 
 
 @pytest.mark.parametrize("reload", [False, True])
