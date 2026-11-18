@@ -35,9 +35,9 @@ SPEC = {
 }
 ATTACKS = {
     "hollow_mawling": (
-        ("Claw", "melee", 10, -8, "1d8+2", "slashing"),
-        ("Dissolution Maw", "melee", 5, -8, "2d6+2", "necrotic"),
-        ("Lunge", "melee", 10, -8, "1d8+2", "slashing"),
+        ("Claw", "melee", 10, 5, "1d8+2", "slashing"),
+        ("Dissolution Maw", "melee", 5, 5, "2d6+2", "necrotic"),
+        ("Lunge", "melee", 10, 5, "1d8+2", "slashing"),
     ),
     "hollow_weaver": (("Spatial Lash", "melee", 15, 4, "1d6+2", "force"),),
     "hollow_knight": (

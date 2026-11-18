@@ -78,11 +78,6 @@ class TroopFight(MawlingHarness):
             adults = [p for p in self.sd.combat_state.participants if p.creature_id == "hollow_mawling"]
             assert len(adults) == 1 and adults[0].role == "standard"
             self.adult_id = adults[0].id
-            # Mechanics targets expose ordinary hits; the solo balance test owns player defenses.
-            for actor in self.sd.combat_state.participants:
-                if actor.type == "player":
-                    actor.ac = 0
-            await self.persist()
 
     async def command(self, name, arguments, **kwargs):
         count = len(self.model.receipts)

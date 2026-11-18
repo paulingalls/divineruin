@@ -139,9 +139,6 @@ async def test_catalog_attack_math_commit_and_reload(runtime):
     row = await query_creature_by_id("hollow_mawling")
     action = {**row["attacks"][0], "attack_source": "catalog"}
     ctx, pid, eid = await runtime("hollow_mawling", [action], role="elite")
-    state = ctx.userdata.combat_state
-    participant(state, pid).ac = 0
-    await db_mutations.save_combat_state(state.combat_id, state.to_dict())
     await declare(ctx, pid, eid, action["name"])
     with (
         patch("check_resolution.dice_roll", return_value=_d20(13)),
@@ -149,14 +146,14 @@ async def test_catalog_attack_math_commit_and_reload(runtime):
     ):
         result = await _resolve_round(ctx)
     summary = next(p for p in result["packets"] if p["actor_id"] == eid)
-    assert summary["attack_total"] == 6
+    assert summary["attack_total"] == 19
     assert summary["damage"] == 11
     state = await reload(ctx)
     assert participant(state, pid).hp_current == 17
     player = await db_queries.get_player(pid)
     assert player is not None
     assert player["hp"]["current"] == 17
-    assert [e for e in events(ctx) if e["type"] == E.DICE_ROLL][-1]["modifier"] == -7
+    assert [e for e in events(ctx) if e["type"] == E.DICE_ROLL][-1]["modifier"] == 6
 
 
 async def test_catalog_lunge_recharge_and_held_reload(runtime):
@@ -169,7 +166,6 @@ async def test_catalog_lunge_recharge_and_held_reload(runtime):
     }
     ctx, pid, eid = await runtime("hollow_mawling", [action])
     player = ctx.userdata.combat_state.get_participant(pid)
-    player.ac = 0
     player.has_reaction_ability = True
     player.reaction_ids = ["skirmisher_sidestep", "rogue_uncanny_dodge"]
     await declare(ctx, pid, eid, "Lunge")

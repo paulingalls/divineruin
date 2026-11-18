@@ -98,13 +98,6 @@ class MawlingHarness:
         await self.session.start(Agent(instructions="Execute the command.", tools=[enter_mode]))
         result = await self.command("enter_mode", {"mode": "combat", "encounter_id": self.encounter_id})
         assert isinstance(self.session.current_agent, CombatAgent)
-        # Low-AC targets keep ordinary-hit mechanics reachable with the adult's catalog accuracy.
-        state = self.sd.combat_state
-        assert state is not None
-        for actor in state.participants:
-            if actor.type in ("player", "companion"):
-                actor.ac = 0
-        await db_mutations.save_combat_state(state.combat_id, state.to_dict())
         self.roster = result["participants"]
         self.enemies = [p["id"] for p in self.roster if p["type"] == "enemy"]
         return self
