@@ -135,6 +135,10 @@ async def _raw_channeling_impl(context: RunContext[SessionData]) -> str:
 
 @serialize_combat_check
 async def activate_milestone(context: RunContext[SessionData], token: str) -> str:
+    return await _activate_milestone_locked(context, token)
+
+
+async def _activate_milestone_locked(context: RunContext[SessionData], token: str) -> str:
     context.disallow_interruptions()
     session = context.userdata
     player_id = session.acting_player_id
