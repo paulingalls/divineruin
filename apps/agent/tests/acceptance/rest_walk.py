@@ -38,6 +38,7 @@ class RestWalk(ArcWalk):
                 "location_id": "millhaven" if i == 2 else location,
                 "hp": {"current": 5 + i, "max": 30 + i},
                 "last_rested_settlement_id": "old_anchor",
+                "attribute_increases": {"4": {"allocation": {"strength": 2}, "locked": False}},
                 "resonance": {"current": 7, "flickering_bonus": 1},
             }
             if i == 4:
@@ -125,6 +126,7 @@ class RestWalk(ArcWalk):
                 if kind == "long":
                     expected["hp"]["current"] = 30 + i
                     expected["last_rested_settlement_id"] = self.anchor
+                    expected["attribute_increases"]["4"]["locked"] = True
                 expected["resonance"]["current"] = 0
                 assert self.sd.member_state(pid).resonance.current == 0
             else:

@@ -10,6 +10,7 @@ from sample_fixtures import make_context, make_mock_room
 
 import combat_end
 import db_mutations
+import db_queries
 from combat_death_save import request_death_save
 from combat_down import is_terminally_down
 from combat_turn import declare_phase, resolve_phase
@@ -18,10 +19,9 @@ from companion_scaling import scale_companion_stats_to_player_level
 from condition_restrictions import cannot_act
 from creation_rules import build_character_data
 from declaration_payloads import AttackDecl, MultiattackDecl, StrikeSelection
-from hp_scaling import calculate_max_hp
 from mode_tools import enter_mode
 from progression_tools import _award_xp_core
-from rules_engine import XP_FOR_LEVEL, attribute_modifier, calculate_max_pools
+from rules_engine import XP_FOR_LEVEL
 
 SEEDS = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19)
 ARCHETYPES = ("warrior", "mage", "rogue", "cleric")
@@ -45,15 +45,9 @@ async def fight(pool, archetype, seed, encounter_id=PATROL, player_level=1):
                 conn=conn,
                 pending_events=[],
             )
-        hp = calculate_max_hp(archetype, player_level, attribute_modifier(row["attributes"]["constitution"]))
-        pools = calculate_max_pools(
-            archetype, player_level, {k: attribute_modifier(v) for k, v in row["attributes"].items()}
-        )
-        fresh = {"hp": {"current": hp, "max": hp}}
-        for name in ("stamina", "focus"):
-            maximum = getattr(pools, name)
-            if maximum is not None:
-                fresh[name] = {"current": maximum, "max": maximum}
+        row = await db_queries.get_player(pid)
+        assert row is not None
+        fresh = {name: {**row[name], "current": row[name]["max"]} for name in ("hp", "stamina", "focus") if name in row}
         await pool.execute("UPDATE players SET data=data || $2::jsonb WHERE player_id=$1", pid, json.dumps(fresh))
     companion = select_companion_for_archetype(archetype)
     ctx = make_context(pid, room=make_mock_room(), companion_id=companion)

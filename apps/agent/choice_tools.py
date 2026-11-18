@@ -13,6 +13,8 @@ import logging
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
+import attribute_increase_tools
+import attribute_increases
 import db
 import db_queries
 import milestone_persistence
@@ -33,7 +35,8 @@ async def select(
     choice_id: str,
     option: str,
 ) -> str:
-    """Resolve a pending specialization or Hollow Echo choice. Use the emitted choice_id
+    """Resolve a pending attribute increase, specialization or Hollow Echo choice.
+    query_info(kind="abilities") recovers attribute increase choices until the next long rest. Use the emitted choice_id
     and option id. For Hollow Echo, offer both descriptions aloud and wait for the
     player's spoken choice before selecting. Level 10/15/20 grants apply automatically."""
     return await _select_impl(context, choice_id, option)
@@ -71,6 +74,9 @@ async def _select_impl(
     session: SessionData = context.userdata
     target_id = session.acting_player_id
     logger.info("select called: choice_id=%s option=%s caller=%s", choice_id, option, target_id)
+
+    if choice_id.startswith(attribute_increases.PREFIX):
+        return await attribute_increase_tools.select(session, choice_id, option, db_mod=db_mod, queries_mod=queries_mod)
 
     if choice_id.startswith(patron_echo_choice.PREFIX):
         return await patron_echo_choice.select(session, choice_id, option, db_mod=db_mod, queries_mod=queries_mod)

@@ -200,6 +200,11 @@ async def _resolve_phase_locked(
             session.member_state(caster_id).unbound_veil_mastery_used = True
 
     # Isolate each publish: a failed mirror must not block handoff or another member's update.
+    if end_data is not None:
+        from attribute_increase_events import publish_snapshots
+
+        with isolated_publish("resolve_phase level snapshots"):
+            await publish_snapshots(session, end_data["level_up_recipients"])
     with isolated_publish("resolve_phase sink flush"):
         await sink.flush()
 

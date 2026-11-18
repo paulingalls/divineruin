@@ -19,6 +19,12 @@ import event_types as E
 from leveling import build_level_up_payload_for_archetype, get_level_up_rewards
 from quest_tools import _update_quest_impl
 
+
+@pytest.fixture(autouse=True)
+def committed_snapshots(monkeypatch):
+    monkeypatch.setattr("attribute_increase_events.publish_snapshots", AsyncMock())
+
+
 QUEST = {
     "id": "q1",
     "name": "Test Quest",

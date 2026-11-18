@@ -157,7 +157,7 @@ def _event_types(pending_events):
 
 def test_core_result_carries_exactly_its_read_fields():
     """Selection rederives the fork under the row lock rather than trusting handoff state."""
-    assert {f.name for f in dataclasses.fields(AwardXpResult)} == {"result", "milestone_grants"}
+    assert {f.name for f in dataclasses.fields(AwardXpResult)} == {"result", "milestone_grants", "attribute_increases"}
 
 
 @pytest.mark.asyncio
