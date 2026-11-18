@@ -243,6 +243,11 @@ async def test_concurrent_journal_operations(player, scenario, unbound):
         result = await task
     stored = await read(pool, pid)
     assert stored["sentinel"] == {"nested": [1, 2]}
+    if unbound:
+        assert (
+            stored.get("unbound_autonomy", {"level": 0})["level"]
+            == {"writer_first": 4, "judge_first": 2, "two_writers": 0}[scenario]
+        )
     if scenario == "writer_first":
         assert result is not None and result.new_level == (4 if unbound else 52)
         assert stored["patron_deeds"] == {}
@@ -257,4 +262,9 @@ async def test_concurrent_journal_operations(player, scenario, unbound):
             assert events == []
         else:
             assert events[0][1]["amount"] == (2 if scenario == "judge_first" else -1)
+    settled = await read(pool, pid)
+    assert settled["unbound_autonomy" if unbound else "divine_favor"]["level"] == (
+        (4 if scenario == "writer_first" else 6) if unbound else (52 if scenario == "writer_first" else 49)
+    )
     assert await judge(pool, pid) == (None, [])
+    assert await read(pool, pid) == settled

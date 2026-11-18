@@ -12,6 +12,15 @@ from check_tools import _check_skill_impl
 from tests.test_mechanics_tools import SAMPLE_PLAYER, _make_context, _make_mock_room
 
 
+@pytest.fixture(autouse=True)
+def skill_transaction_seams(monkeypatch):
+    from sample_fixtures import make_db_mod
+
+    database, _ = make_db_mod()
+    monkeypatch.setattr("db.transaction", database.transaction)
+    monkeypatch.setattr("patron_deeds.record_deed", AsyncMock())
+
+
 def _fake_training():
     """Stub the worker accrual ledger so these skill-practice tests stay hermetic.
 
@@ -61,7 +70,7 @@ def _shared_skill_advancement_store():
     store: dict[tuple[str, str], dict] = {}
 
     async def fake_get_single_skill_advancement(
-        player_id: str, skill: str, *, conn=None, default_tier="untrained"
+        player_id: str, skill: str, *, conn=None, default_tier="untrained", for_update=False
     ) -> dict:
         key = (player_id, skill)
         return dict(

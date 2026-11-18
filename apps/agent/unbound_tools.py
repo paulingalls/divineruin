@@ -9,6 +9,7 @@ import db
 import db_mutations_resonance
 import db_queries
 import hollow_echo
+import patron_deeds
 import resonance_events
 from party_state import PartyMember
 from session_data import SessionData
@@ -73,6 +74,7 @@ async def _raw_channeling_impl(context: RunContext[SessionData]) -> str:
             current = track["current"] + 3
             session.validate_acting_player(player_id)
             await db_mutations_resonance.update_player_resonance(player_id, current, conn=conn)
+            await patron_deeds.record_deed(player_id, "channeled_raw", conn=conn)
         member.resonance.current = current
         member.resonance.flickering_bonus = track["flickering_bonus"]
         member.unbound_raw_channeling_used = True

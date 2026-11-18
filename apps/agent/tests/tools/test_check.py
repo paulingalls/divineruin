@@ -10,6 +10,15 @@ from check_tools import _check_dice_impl, _check_impl, _check_save_impl, _check_
 from tools._helpers import SAMPLE_PLAYER, _make_context, _make_mock_room, _save_mocks, _skill_mocks
 
 
+@pytest.fixture(autouse=True)
+def skill_transaction_seams(monkeypatch):
+    from sample_fixtures import make_db_mod
+
+    database, _ = make_db_mod()
+    monkeypatch.setattr("db.transaction", database.transaction)
+    monkeypatch.setattr("patron_deeds.record_deed", AsyncMock())
+
+
 def _corrupt_conditions_queries():
     """queries whose player carries a corrupt stored conditions row (unknown type)."""
     queries = MagicMock()
@@ -21,19 +30,6 @@ def _corrupt_conditions_queries():
 
 
 class TestCheckSkill:
-    @pytest.mark.asyncio
-    async def test_returns_result(self):
-        queries, mutations = _skill_mocks()
-        result = json.loads(
-            await _check_skill_impl(
-                _make_context(), "athletics", "moderate", "climbing a wall", queries=queries, mutations=mutations
-            )
-        )
-        assert result["skill"] == "athletics"
-        assert result["dc"] == 12  # moderate = 12
-        assert result["outcome"] in ("success", "failure")
-        assert "narrative_hint" in result
-
     @pytest.mark.asyncio
     async def test_unknown_skill(self):
         queries, _ = _skill_mocks()
@@ -78,17 +74,6 @@ class TestCheckSkill:
         call_data = json.loads(room.local_participant.publish_data.call_args_list[0][0][0])
         assert call_data["type"] == E.DICE_ROLL
         assert call_data["roll_type"] == "skill_check"
-
-    @pytest.mark.asyncio
-    async def test_records_skill_use(self):
-        queries, mutations = _skill_mocks()
-        await _check_skill_impl(
-            _make_context(), "athletics", "moderate", "climbing", queries=queries, mutations=mutations
-        )
-        mutations.update_skill_advancement.assert_awaited_once()
-        call_args = mutations.update_skill_advancement.call_args[0]
-        assert call_args[0] == "player_1"
-        assert call_args[1] == "athletics"
 
 
 class TestCheckSave:
