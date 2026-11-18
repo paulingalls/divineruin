@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.48.2
+
+The agent test tooling moves to pytest 9.2.0 and pytest-bdd 9.0.1. One pytest run that mixes acceptance and regular test files no longer loses the acceptance fixtures. Nothing players see changes.
+
+Release steps: none. After pulling, run `uv sync --project apps/agent --frozen` in each local checkout.
+
 ## 0.48.1
 
 Move the patron query into a dedicated module to make future patron updates easier to maintain.
