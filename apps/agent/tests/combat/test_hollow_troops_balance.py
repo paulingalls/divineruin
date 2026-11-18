@@ -16,7 +16,6 @@ import db_content_queries
     [
         ("hollowmoth_swarm", 3),
         ("hollow_weaver_ambush", 10),
-        ("hollow_mawling_pack", 8),
     ],
 )
 async def test_hollow_troops_balance(dev_db_pool, monkeypatch, encounter_id, level):

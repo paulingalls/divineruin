@@ -743,59 +743,5 @@
         }
       }
     }
-  },
-  {
-    "id": "hollow_mawling_pack",
-    "name": "Mawling Pack",
-    "description": "Two sets of claws scrape stone, then fall silent together. Iron coats your tongue as a pair of grown mawlings crouch to spring, their maws pulling open like torn seams.",
-    "difficulty": "moderate",
-    "enemies": [
-      {
-        "id": "hollow_mawling_pack_1",
-        "creature_id": "hollow_mawling",
-        "role": "standard"
-      },
-      {
-        "id": "hollow_mawling_pack_2",
-        "creature_id": "hollow_mawling",
-        "role": "standard"
-      }
-    ],
-    "recommended_party_level": 8,
-    "scene_placement": {
-      "party_start": {
-        "x": 0,
-        "y": 0,
-        "z": 0
-      },
-      "companion_start": {
-        "x": 0,
-        "y": 5,
-        "z": 0
-      },
-      "actors": {
-        "hollow_mawling_pack_1": {
-          "x": 20,
-          "y": -5,
-          "z": 0
-        },
-        "hollow_mawling_pack_2": {
-          "x": 20,
-          "y": 0,
-          "z": 0
-        }
-      },
-      "locations": {},
-      "zones": {
-        "hollow_mawling_pack_1_corruption_aura": {
-          "center_id": "hollow_mawling_pack_1",
-          "radius_ft": 5
-        },
-        "hollow_mawling_pack_2_corruption_aura": {
-          "center_id": "hollow_mawling_pack_2",
-          "radius_ft": 5
-        }
-      }
-    }
   }
 ]

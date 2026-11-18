@@ -25,7 +25,7 @@ CASES = [
     ("ruins_mawling_pair", 2, {"Claw", "Dissolution Maw"}),
     ("hollowmoth_swarm", 3, {"Distortion Flutter"}),
     ("hollow_weaver_ambush", 10, {"Spatial Lash", "Corrosive Touch"}),
-    ("hollow_mawling_pack", 8, {"Claw", "Dissolution Maw", "Lunge"}),
+    ("hollow_corrupted_settlement", 14, {"Claw", "Corrosive Touch", "Corrupted Blade", "Shield Slam"}),
 ]
 
 
@@ -36,7 +36,7 @@ def mock_combat_agent_factory():
 
 class TroopFight(MawlingHarness):
     async def start_catalog(self, encounter_id, level):
-        await self.prepare(levels=(level,) * (6 if encounter_id == "hollow_mawling_pack" else 4), companion=None)
+        await self.prepare(levels=(level,) * 4, companion=None)
         self.encounter_id = encounter_id
         self.hits = set()
         self.packets = []
@@ -214,8 +214,6 @@ async def test_catalog_troop_terminal_fight(reset_db_pool, encounter_id, level, 
             assert expressions
             if encounter_id == "hollowmoth_swarm":
                 assert "1d1+0" in expressions
-            if encounter_id == "hollow_mawling_pack":
-                assert any(p.get("composite") == "Multiattack" for p in harness.packets)
         finally:
             if hasattr(harness, "session"):
                 await harness.close()

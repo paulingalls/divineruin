@@ -54,7 +54,7 @@ def test_shipped_zone_radii_follow_catalog_owner():
 
     templates = json.loads((CONTENT_ROOT / "content/encounter_templates.json").read_text())
     creatures = {row["id"]: row for row in json.loads((CONTENT_ROOT / "content/creatures.json").read_text())}
-    assert len(templates) == 15
+    assert len(templates) == 14
     for template in templates:
         expected = {}
         for ref in template["enemies"]:

@@ -334,7 +334,7 @@ class TestLootAndCurrencyContent:
         encounters = catalog_encounters()
         assert encounters
         rows = [(enc["id"], enemy) for enc in encounters for enemy in enc.get("enemies", [])]
-        assert len(rows) == 35
+        assert len(rows) == 33
         named = {"Shadeling": 1, "Mawling": 2, "Hollowed Knight": 3, "Cult Fanatic": 1, "The Choir": 4}
         carriers = {name: 0 for name in named}
         for enc_id, enemy in rows:

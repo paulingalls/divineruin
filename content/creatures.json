@@ -2178,7 +2178,7 @@
     "tier": 2,
     "description": "Probes defenses, feints, retreats from strong resistance, returns from different angle. In groups of 3+, one flanks while others engage. Uses Lunge to grab isolated targets.",
     "level": 4,
-    "hp": 14,
+    "hp": 38,
     "ac": 13,
     "speed": 35,
     "attributes": {
@@ -2199,7 +2199,7 @@
         "type": "melee",
         "reach": 10,
         "to_hit": 5,
-        "damage": "1d2",
+        "damage": "1d8+2",
         "damage_type": "slashing",
         "special": "Reach 10 ft (unnaturally long limbs)",
         "audio": "hlw_claw"
@@ -2215,7 +2215,7 @@
         "type": "melee",
         "reach": 5,
         "to_hit": 5,
-        "damage": "1d2+1",
+        "damage": "2d6+2",
         "damage_type": "necrotic",
         "special": "DC 13 CON save or item in hand takes 1d4 durability damage",
         "audio": "hlw_dissolution_maw"
@@ -2225,7 +2225,7 @@
         "type": "melee",
         "reach": 10,
         "to_hit": 5,
-        "damage": "1d2",
+        "damage": "1d8+2",
         "damage_type": "slashing",
         "special": "Recharge 5-6. Move 15 ft toward target and strike with Claw with advantage; hit grapples target.",
         "audio": "hlw_lunge",

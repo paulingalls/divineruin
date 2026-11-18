@@ -32,7 +32,7 @@ def test_recommended_party_level_cases(encounter):
 
 def test_all_reference_templates():
     templates = json.loads((ROOT / "content/encounter_templates.json").read_text())
-    assert len(templates) == 15
+    assert len(templates) == 14
     assert {row["id"] for row in templates} == {
         "fragment_shadeling",
         "shadeling_cluster",
@@ -48,7 +48,6 @@ def test_all_reference_templates():
         "hollow_choir",
         "hollowmoth_swarm",
         "hollow_weaver_ambush",
-        "hollow_mawling_pack",
     }
     for template in templates:
         assert template["enemies"]
