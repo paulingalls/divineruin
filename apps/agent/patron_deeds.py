@@ -53,11 +53,12 @@ async def judge_pending_deeds(
     if not deeds:
         return None
     favor = data.get("divine_favor")
+    patron_id = favor.get("patron") if favor is not None else None
     grant: FavorGrant | AutonomyGrant | None = None
-    if favor is not None and favor.get("patron", "none") != "none":
-        patron = next((god for god in load_gods() if god["god_id"] == favor["patron"]), None)
+    if patron_id not in (None, "none"):
+        patron = next((god for god in load_gods() if god["god_id"] == patron_id), None)
         if patron is None:
-            raise ValueError(f"Unknown patron '{favor['patron']}'")
+            raise ValueError(f"Unknown patron '{patron_id}'")
         # A zero judgment (only foreign or awarded kinds) would publish a "+0" favor change.
         delta = evaluate_patron_alignment(deeds, patron)
         if delta != 0:

@@ -174,7 +174,7 @@ async def test_missing_player(dev_db_pool, operation):
                 await operation("missing_deeds_player", "won_combat", conn=conn)
 
 
-@pytest.mark.parametrize("patron", [None, "unknown"])
+@pytest.mark.parametrize("patron", ["unknown_god", ""])
 async def test_unknown_patron_preserves_journal(player, patron):
     pool, pid = player
     await pool.execute(
