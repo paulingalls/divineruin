@@ -11,6 +11,7 @@ from combat.test_spell_damage_lands import spell_fight as spell_fight
 from sample_fixtures import make_context
 from voice_condition_fixtures import participant
 
+import check_resolution_attack
 import combat_turn
 import db_mutations
 from combat_support import _resolve_attack_packet
@@ -139,3 +140,11 @@ async def test_precise_strike_and_held_reload(rogue_fight, dev_db_pool):
     assert len([e for e in _dice_events(ctx.userdata.room) if e.get("attacker") == actor.name]) == count
     await declare_weapon(ctx)
     assert (await finish(ctx, (15, 15)))["sneak_attack_dice"] == "1d6"
+
+
+def test_disadvantage_cancels_and_critical_doubles():
+    rogue, weapon = {"level": 1, "attributes": {}, "sneak_attack_available": True}, {"damage": "1d8", "advantage": True}
+    with rolls((15, 20, 20)):
+        canceled = check_resolution_attack.resolve_attack({**rogue, "conditions": [{"type": "prone"}]}, weapon, 10, 50)
+        critical = check_resolution_attack.resolve_attack(rogue, weapon, 10, 50)
+    assert (canceled.hit, canceled.sneak_attack_dice, critical.sneak_attack_dice) == (True, None, "2d6")
