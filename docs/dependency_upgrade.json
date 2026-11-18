@@ -163,10 +163,10 @@
       "project": "apps/agent",
       "group": "dev",
       "name": "pytest-bdd",
-      "requested": ">=8.1.0",
-      "resolved": "8.1.0",
-      "installed": "8.1.0",
-      "latest_stable": "8.1.0",
+      "requested": ">=9.0.1",
+      "resolved": "9.0.1",
+      "installed": "9.0.1",
+      "latest_stable": "9.0.1",
       "held_back_by": null
     },
     {

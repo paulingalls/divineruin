@@ -24,7 +24,7 @@ Execution evidence: historical record accepted at 795cec97832a7fe2d7567b36d0343e
 | dev | pyright | `>=1.1.414` | 1.1.414 / 1.1.414 | 1.1.414 | — |
 | dev | pytest | `>=9.2.0` | 9.2.0 / 9.2.0 | 9.2.0 | — |
 | dev | pytest-asyncio | `>=1.4.0` | 1.4.0 / 1.4.0 | 1.4.0 | — |
-| dev | pytest-bdd | `>=8.1.0` | 8.1.0 / 8.1.0 | 8.1.0 | — |
+| dev | pytest-bdd | `>=9.0.1` | 9.0.1 / 9.0.1 | 9.0.1 | — |
 | dev | pytest-cov | `>=7.1.0` | 7.1.0 / 7.1.0 | 7.1.0 | — |
 | dev | pytest-xdist | `>=3.8.0` | 3.8.0 / 3.8.0 | 3.8.0 | — |
 | dev | ruff | `>=0.16.8` | 0.16.8 / 0.16.8 | 0.16.8 | — |
