@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.50.1
+
+The XP workflow's code-writing agent (executor) now defaults to GPT-6.2 Sol.
+
+Release steps: none.
+
 ## 0.50.0
 
 Zhael's followers can bend fate. Fate's Thread lets a follower force a reroll after any check, attack, saving throw or death save they or an ally makes, then choose which result stands; the outcome waits until they decide. Lucky turns a follower's own natural 1 into a 20, or a 20 into a 1. Initiative, shoves and grapples, reaction contests, crafting experiments, Echo rolls and free-form dice are outside fate's reach.
