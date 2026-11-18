@@ -24,6 +24,9 @@ Each divine patron provides four mechanical layers. Any archetype can follow any
 
 Divine favor is tracked per-player by the god-agent heartbeat (simulation layer 3, every 15–30 minutes). It fluctuates based on player behavior alignment with patron values.
 
+**Deed journal:** A persisted per-kind pending/awarded journal keeps directly awarded actions from paying twice.
+Present players are judged every 20 minutes against current persisted patrons; journals are consumed, and decay runs only at hydration.
+
 | Tier | Threshold | How Earned | How Lost |
 |---|---|---|---|
 | **Acknowledged** | Low favor (default after choosing patron) | Basic alignment with god's values | Sustained contrary behavior |
