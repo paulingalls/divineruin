@@ -142,10 +142,10 @@ The catalog includes all nine spec Hollow creatures, including the three Tier 4 
 **Acceptance criteria:**
 - [x] All 9 Hollow creatures have complete stat blocks with hollow nested fields populated <!-- verified apps/agent/tests/test_hollow_catalog.py::test_all_spec_hollow_ids_have_complete_blocks -->
 - [ ] Corruption aura applies correctly based on distance and target saves
-- [ ] `resolve_resonance_on_death` feeds correct Resonance deltas to nearby casters
+- [x] `resolve_resonance_on_death` feeds correct Resonance deltas to nearby casters <!-- verified apps/agent/tests/combat/test_hollow_resonance_lifecycle.py::test_death_recipients_and_cross_source_caster apps/agent/tests/acceptance/test_hollow_resonance_commit.py::test_commit_routes_qualitative_states_and_resume_is_once -->
 - [x] Each Hollow creature has a distinct veil_effect and vulnerability <!-- verified apps/agent/tests/test_hollow_catalog.py::test_all_hollow_veil_effects_and_vulnerabilities_are_pairwise_distinct -->
 - [ ] The Choir has custom multi-phase audio-zone combat behavior (not standard attack loop)
-- [ ] The Still has passive-until-attacked behavior with damage reflection
+- [ ] The Still has passive-until-attacked behavior with anchor-based Rejection (spec `game_mechanics_bestiary.md` Rejection; the spec has no damage reflection — human 2026-11-17)
 - [ ] The Architect has terrain manipulation abilities that alter combat grid state
 - [ ] Tier 1-2 Hollow creatures function as standard combat encounters (no custom behavior needed)
 - [ ] Tier 3 Hollowed Knight and Veilrender have boss-tier HP and multi-phase mechanics
