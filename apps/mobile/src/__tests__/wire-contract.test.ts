@@ -315,7 +315,11 @@ test("patron fixture initializes the sheet and malformed snapshots reject atomic
   );
   const before = panelStore.getState().characterDetail;
   expect(before?.divineFavor).toEqual(EVENTS.patron_abilities_updated.divine_favor);
-  for (const bad of [FIXTURE.malformed_patron_snapshot, FIXTURE.unknown_tier_patron_snapshot]) {
+  for (const bad of [
+    FIXTURE.malformed_patron_snapshot,
+    FIXTURE.unknown_tier_patron_snapshot,
+    FIXTURE.malformed_patron_revision,
+  ]) {
     expect(() => parsePatronSnapshot(bad)).toThrow();
     send(bad);
     expect(panelStore.getState().characterDetail).toBe(before);

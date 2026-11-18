@@ -134,7 +134,7 @@ async def get_player(
     for_update: bool = False,
 ) -> dict | None:
     _conn = conn or await db.get_pool()
-    sql = "SELECT data FROM players WHERE player_id = $1"
+    sql = "SELECT data, patron_revision FROM players WHERE player_id = $1"
     if for_update:
         sql += " FOR UPDATE"
     row = await _conn.fetchrow(sql, player_id)
@@ -149,7 +149,7 @@ async def get_player(
         logger.warning("Player %s has non-dict data: %s", player_id, type(data).__name__)
         return None
     await _hydrate_skill_tiers({player_id: data}, _conn)
-    return data
+    return {**data, "patron_revision": row.get("patron_revision", 0)}
 
 
 async def get_players_for_update(

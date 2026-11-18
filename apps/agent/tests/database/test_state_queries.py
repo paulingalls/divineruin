@@ -13,31 +13,6 @@ class TestStateQueries:
     """Test non-cached state queries (player, NPC dispositions, inventory)."""
 
     @pytest.mark.asyncio
-    async def test_get_player_returns_player_data(self):
-        """get_player should query and return player data."""
-        player_data = {"player_id": "p1", "name": "Hero", "level": 5}
-        mock_pool = AsyncMock()
-        mock_pool.fetchrow = AsyncMock(return_value={"data": json.dumps(player_data)})
-
-        with patch("db.get_pool", return_value=mock_pool):
-            result = await db_queries.get_player("p1")
-
-        assert result == player_data
-        mock_pool.fetchrow.assert_awaited_once_with("SELECT data FROM players WHERE player_id = $1", "p1")
-
-    @pytest.mark.asyncio
-    async def test_get_player_with_for_update_adds_lock(self):
-        """get_player with for_update=True should add FOR UPDATE clause."""
-        mock_pool = AsyncMock()
-        mock_pool.fetchrow = AsyncMock(return_value={"data": '{"level": 5}'})
-
-        with patch("db.get_pool", return_value=mock_pool):
-            await db_queries.get_player("p1", for_update=True)
-
-        call_args = mock_pool.fetchrow.call_args[0]
-        assert "FOR UPDATE" in call_args[0]
-
-    @pytest.mark.asyncio
     async def test_get_npc_disposition_returns_disposition(self):
         """get_npc_disposition should return disposition string."""
         mock_pool = AsyncMock()

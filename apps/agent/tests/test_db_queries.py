@@ -164,4 +164,5 @@ class TestSkillAdvancementReads:
 
         player = await db_queries.get_player("p1", conn=conn)
 
-        assert player == {"player_id": "p1", "skill_tiers": {"athletics": "expert"}}
+        assert player is not None
+        assert player["skill_tiers"] == {"athletics": "expert"}

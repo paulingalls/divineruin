@@ -132,6 +132,7 @@ async def get_session_init_payload(player_id: str) -> dict:
     return {
         "character": player,
         "abilities": patron_snapshot["abilities"],
+        "patron_revision": patron_snapshot["patron_revision"],
         "location": location if location_id else None,
         "quests": quests,
         **inventory,

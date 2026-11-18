@@ -198,6 +198,7 @@ test("patron snapshots initialize and replace sheet favor and server ability sta
   ];
   handleGameEvent({
     type: "session_init",
+    patron_revision: 0,
     character: {
       player_id: SAMPLE_CHARACTER.playerId,
       divine_favor: { patron: "veythar", level: 40, max: 61 },
@@ -211,6 +212,7 @@ test("patron snapshots initialize and replace sheet favor and server ability sta
   ];
   handleGameEvent({
     type: "patron_abilities_updated",
+    patron_revision: 1,
     player_id: SAMPLE_CHARACTER.playerId,
     divine_favor: { patron: "veythar", level: 39, max: 61 },
     abilities: spent,
@@ -220,6 +222,7 @@ test("patron snapshots initialize and replace sheet favor and server ability sta
   const before = panelStore.getState().characterDetail;
   handleGameEvent({
     type: "patron_abilities_updated",
+    patron_revision: 1,
     player_id: "someone_else",
     divine_favor: { patron: "veythar", level: 1, max: 61 },
     abilities: [],
@@ -250,9 +253,11 @@ test("encoded patron updates preserve server states and reject unknown recipient
   };
   send({
     type: "session_init",
+    patron_revision: 0,
     character: { player_id: pid, divine_favor: favor },
     abilities: [row],
   });
+  let revision = 0;
   for (const state of ["spent", "ready", "locked", "ready"]) {
     const next = {
       ...row,
@@ -263,6 +268,7 @@ test("encoded patron updates preserve server states and reject unknown recipient
     };
     send({
       type: "patron_abilities_updated",
+      patron_revision: ++revision,
       player_id: pid,
       divine_favor: { ...favor, level: state === "locked" ? 20 : 40 },
       abilities: [next],
@@ -275,6 +281,7 @@ test("encoded patron updates preserve server states and reject unknown recipient
   const before = panelStore.getState().characterDetail;
   send({
     type: "session_init",
+    patron_revision: 0,
     character: { player_id: "foreign", divine_favor: favor },
     abilities: [],
   });
@@ -286,6 +293,7 @@ test("encoded patron updates preserve server states and reject unknown recipient
   authStore.setState({ playerId: pid });
   send({
     type: "session_init",
+    patron_revision: 10,
     character: { player_id: pid, divine_favor: { patron: "none", level: 0, max: 61 } },
     abilities: [],
   });

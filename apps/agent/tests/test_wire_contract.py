@@ -299,7 +299,11 @@ async def test_patron_wire_uses_projection_and_rejects_malformed_before_delivery
     assert payload["abilities"] == initial["abilities"]
     room.local_participant.publish_data.reset_mock()
     bus.reset_mock()
-    for key, field in (("malformed_patron_snapshot", "spent"), ("unknown_tier_patron_snapshot", "tier")):
+    for key, field in (
+        ("malformed_patron_snapshot", "spent"),
+        ("unknown_tier_patron_snapshot", "tier"),
+        ("malformed_patron_revision", "revision"),
+    ):
         bad = {k: v for k, v in FIXTURE[key].items() if k != "type"}
         with pytest.raises(ValueError, match=field):
             await game_events.publish_game_event(
@@ -308,7 +312,7 @@ async def test_patron_wire_uses_projection_and_rejects_malformed_before_delivery
         room.local_participant.publish_data.assert_not_awaited()
         bus.publish.assert_not_called()
 
-    player = {**player, "patron_gifts": {"veythar_lorekeepers_library": {"spent": True}}}
+    player = {**player, "patron_revision": 1, "patron_gifts": {"veythar_lorekeepers_library": {"spent": True}}}
     await game_events.publish_game_event(
         room,
         event_types.PATRON_ABILITIES_UPDATED,

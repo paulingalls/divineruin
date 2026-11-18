@@ -8,9 +8,10 @@ from patron_ability_wire import validate_snapshot
 
 
 def snapshot(player_id: str, player: dict | None) -> dict:
+    revision = player.get("patron_revision", 0) if player else 0
     favor = player.get("divine_favor") if player else None
     if favor is None:
-        return {"player_id": player_id, "divine_favor": None, "abilities": []}
+        return {"player_id": player_id, "patron_revision": revision, "divine_favor": None, "abilities": []}
     if not isinstance(favor, dict):
         raise ValueError("Malformed divine_favor")
     patron_id = favor.get("patron") or "none"
@@ -21,7 +22,7 @@ def snapshot(player_id: str, player: dict | None) -> dict:
         if patron is None:
             raise ValueError(f"Unknown patron: {patron_id}")
         rows = project_abilities(player, patron)
-    result = {"player_id": player_id, "divine_favor": summary, "abilities": rows}
+    result = {"patron_revision": revision, "player_id": player_id, "divine_favor": summary, "abilities": rows}
     validate_snapshot(result)
     return result
 

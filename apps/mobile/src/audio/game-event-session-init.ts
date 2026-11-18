@@ -1,4 +1,4 @@
-import { acceptPatronSnapshot } from "./patron-abilities";
+import { acceptPatronSnapshot, rememberPatronSnapshot } from "./patron-abilities";
 import { applyInventorySnapshot } from "./inventory-refresh";
 import { parseSpellRows } from "@/utils/spell-display";
 import { sessionStore } from "@/stores/session-store";
@@ -12,18 +12,17 @@ import type { DataChannelEvent } from "./game-event-parsing";
 
 export function handleSessionInit(event: DataChannelEvent): void {
   const character = event.character as Record<string, unknown> | null | undefined;
-  const absentFavor = character?.divine_favor == null;
-  const emptySnapshot =
-    absentFavor && Array.isArray(event.abilities) && event.abilities.length === 0;
-  const snapshot =
-    event.abilities === undefined || emptySnapshot
+  const parsedSnapshot =
+    event.abilities === undefined
       ? null
       : acceptPatronSnapshot({
           player_id: character?.player_id,
-          divine_favor: character?.divine_favor,
+          patron_revision: event.patron_revision,
+          divine_favor: character?.divine_favor ?? null,
           abilities: event.abilities,
         });
-  if (event.abilities !== undefined && !snapshot && !emptySnapshot) return;
+  if (event.abilities !== undefined && !parsedSnapshot) return;
+  const snapshot = parsedSnapshot ? rememberPatronSnapshot(parsedSnapshot) : null;
   if (character && typeof character === "object") {
     characterStore.getState().setCharacter({
       playerId: typeof character.player_id === "string" ? character.player_id : "",
@@ -91,13 +90,15 @@ export function handleSessionInit(event: DataChannelEvent): void {
         shield: (equip?.shield as Record<string, unknown> | null) ?? null,
       },
       gold: typeof character.gold === "number" ? character.gold : 0,
-      divineFavor: favor
-        ? {
-            patron: typeof favor.patron === "string" ? favor.patron : "",
-            level: typeof favor.level === "number" ? favor.level : 0,
-            max: typeof favor.max === "number" ? favor.max : 0,
-          }
-        : null,
+      divineFavor: snapshot
+        ? snapshot.divine_favor
+        : favor
+          ? {
+              patron: typeof favor.patron === "string" ? favor.patron : "",
+              level: typeof favor.level === "number" ? favor.level : 0,
+              max: typeof favor.max === "number" ? favor.max : 0,
+            }
+          : null,
     };
     // Spells are a top-level session_init sibling (event.spells), not nested under
     // character — publish_game_event flat-merges the payload. (story-007)
