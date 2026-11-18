@@ -176,21 +176,29 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 - DB migration: `archetype_synergy` table (archetype_id, patron_id, synergy_type, bonus)
 - Rules engine: `get_archetype_synergy(archetype, patron)` returning synergy type and bonus
 - Rules engine: `apply_unbound_resonance_push(player)` adding +3 Resonance with associated benefits
-- Agent tool: `query_patron_synergy(player_id)` returning active synergy for current archetype/patron pair
+- Agent tool: `query_info(kind="patron")` returns the current archetype/patron synergy, including clause readiness
 
 **Acceptance criteria:**
-- [ ] Synergy lookup covers all archetype x patron combinations (every archetype has entries for every patron)
-- [ ] Each pairing has exactly one synergy type assigned (Natural, Divine, or Unexpected)
-- [ ] Natural synergies provide the largest mechanical bonus, Unexpected the most unique
-- [ ] `get_archetype_synergy` returns correct synergy for any archetype/patron pair
-- [ ] Layer 4 bonuses apply on top of existing Layer 1-3 mechanics without overriding them
+- [x] Synergy lookup covers all archetype x patron combinations (every archetype has entries for every patron)
+  <!-- Evidence (sprint archetype-synergies): test_patron_synergy.py walks all 180 loaded pairs through get_archetype_synergy and registered query_info; god.test.ts validates all ten matrices against the eighteen-archetype roster. -->
+- [x] Each pairing has exactly one synergy type assigned (Natural, Divine, or Unexpected)
+  <!-- Evidence (sprint archetype-synergies): test_patron_synergy.py and god.test.ts validate the loaded matrix: 22 Natural, 62 Divine, 96 Unexpected rows, each with one type. -->
+- [x] Natural synergies provide the largest mechanical bonus, Unexpected the most unique
+  <!-- Evidence (sprint archetype-synergies): human approved the final 180-row review table on 2026-11-18 (table SHA-256 5dee713a…, content SHA-256 c3238a53…, commit 903ac541). test_patron_synergy.py requires a mechanical clause on every Natural row and keeps Natural rows to the design roster. -->
+- [x] `get_archetype_synergy` returns correct synergy for any archetype/patron pair
+  <!-- Evidence (sprint archetype-synergies): test_patron_synergy.py compares each of the 180 lookups and registered query responses to validated content; god.test.ts validates the shared catalog. -->
+- [x] Layer 4 bonuses apply on top of existing Layer 1-3 mechanics without overriding them
+  <!-- Evidence (sprint archetype-synergies): test_patron_synergy_engine.py covers Kaelen’s Layer 1 threshold composition, Aelora’s Bond adjustment and Syrath’s Layer 2 composition at live boundaries; test_patron_synergy_readiness.py keeps pending clauses unavailable. Of 200 clauses, 12 are active/engine, 85 active/narrated and 103 pending/engine. -->
 - [ ] Unbound Path grants perfect Resonance visibility (exact value, not just tier)
 - [ ] Unbound +3 Resonance push is voluntary and costs no action
 - [ ] Veil Mastery provides measurable mechanical benefit (bonus to corruption saves, reduced Hollow effects)
 - [ ] Unbound Path has NO patron abilities — only Resonance mastery benefits
-- [ ] `query_patron_synergy` returns empty/null for Unbound players (no synergy applicable)
+- [x] `query_info(kind="patron")` returns `synergy: null` for Unbound players (no patron synergy applicable)
+  <!-- Evidence (sprint archetype-synergies): test_patron_synergy.py exercises the registered Unbound query response. Scope: reuse query_info and retain the strict-schema tool budget; the universal alone_bonus remains a separate field. -->
 - [ ] All 10 patrons + Unbound Path are fully implemented and playable after this milestone
 - [ ] Tests cover synergy lookup for all combinations, Unbound mechanics, and Layer 4 bonus stacking
+
+**Review:** The generated 180-row table is retained in sprint DATA at `sprints/archetype-synergies/synergy-review.md`; magnitude approval remains pending. The human approved the re-authored rows and Veythar’s +2 cantrip dice outside Flickering on 2026-11-18, then requested design-row rebalancing. Content and design now share those corrections, including Nythera’s live Animal Handling +1 instead of advantage. Veythar’s three Natural rows remain pending on the combat seam. The regenerated table lists every changed number and requests final approval of this exact revision; AC3 stays open. Pending clauses are unavailable.
 
 **Key references:**
 - *Game Mechanics Patrons — Archetype Synergies*

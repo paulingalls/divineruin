@@ -87,8 +87,8 @@ async def test_uncharted_senses_uses_map_history(world, archetype, skill, bonus)
     assert (await check(w, skill))["total"] == 11
 
 
-@pytest.mark.parametrize("archetype,expected,calls", [("druid", 17, 2), ("beastcaller", 17, 2), ("bard", 4, 1)])
-async def test_uncharted_handling_rolls_advantage(world, archetype, expected, calls):
+@pytest.mark.parametrize("archetype,bonus", [("druid", 1), ("beastcaller", 1), ("bard", 0)])
+async def test_uncharted_handling_adds_minor_bonus(world, archetype, bonus):
     from check_tools import _check_impl
 
     w = world
@@ -100,7 +100,9 @@ async def test_uncharted_handling_rolls_advantage(world, archetype, expected, ca
     )
     with patch("check_resolution.dice_roll", side_effect=[_d20(4), _d20(17)]) as dice:
         packet = json.loads(await _check_impl(w.ctx, "skill", skill="animal_handling", difficulty="moderate"))
-    assert packet["roll"] == expected and dice.call_count == calls
+    assert packet["roll"] == 4 and dice.call_count == 1
+    assert packet["total"] == 4 + packet["modifier"]
+    assert packet["modifier"] == bonus
 
 
 @pytest.mark.parametrize(

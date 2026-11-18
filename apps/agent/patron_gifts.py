@@ -54,5 +54,5 @@ def skill_gift(
         if skill in {"investigation", "perception"} and has_engine_synergy(player, "nythera_uncharted_senses"):
             return 3, False, "Uncharted Senses"
         if skill == "animal_handling" and has_engine_synergy(player, "nythera_uncharted_handling"):
-            return 0, True, "Uncharted Handling"
+            return 1, False, "Uncharted Handling"
     return 0, False, None

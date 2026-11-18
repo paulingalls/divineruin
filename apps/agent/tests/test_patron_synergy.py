@@ -50,6 +50,17 @@ def test_doc_authored_effects_are_verbatim():
         assert " ".join(c["effect"] for c in row["clauses"]) == effect, (patron, archetype)
 
 
+def test_natural_rows_have_mechanics_and_stay_close_to_domain_roster():
+    authored = doc_rows()
+    for god in load_gods():
+        patron = god["god_id"]
+        natural = {a: r for a, r in god["layer_4_synergy_matrix"].items() if r["type"] == "natural"}
+        baseline = sum(p == patron and kind == "natural" for (p, _), (kind, _) in authored.items())
+        assert len(natural) <= baseline + 2, patron
+        for archetype, row in natural.items():
+            assert any(c["resolution"] == "engine" for c in row["clauses"]), (patron, archetype)
+
+
 def test_registry_targets_are_real_callables():
     registry = json.loads((ROOT / "content/engine_implementations.json").read_text())
     assert "kaelen_iron_resolve" in registry
