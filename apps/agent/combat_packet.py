@@ -251,7 +251,14 @@ async def _resolve_one_packet(
         # in _prevalidate_ability_focus, and ``player`` is the for_update row from there.
         if (decl.action or "").lower() == "de_escalate":
             return await _resolve_deescalation_packet(
-                session, attacker, decl, state=state, conn=conn, player=player, sink=sink
+                session,
+                attacker,
+                decl,
+                state=state,
+                conn=conn,
+                player=player,
+                sink=sink,
+                progress=progress.scope("deescalation") if progress is not None else None,
             )
         # A non-spell condition ability (M4.8 story-005, e.g. bard_inspire) resolves via the dedicated
         # ability-condition path — deduct its cost and land the condition on the target participant —

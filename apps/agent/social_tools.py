@@ -11,6 +11,8 @@ social_resolution.py / check_resolution.py; this module only does the plumbing +
 import json
 import logging
 import random
+from contextlib import nullcontext
+from functools import partial
 
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
@@ -31,6 +33,7 @@ from db_errors import validated_player_conditions
 from disposition import resolve_disposition
 from game_events import publish_game_event
 from session_data import SessionData
+from skill_fate import SkillScope, prepare_skill_offer
 from tool_support import _validate_id
 
 logger = logging.getLogger("divineruin.tools")
@@ -102,94 +105,122 @@ async def _check_social_impl(
         natural_terrain=False,
         hearing_only=False,
     )
-    current = await resolve_disposition(npc_id, player_id, queries_mod=queries, content_mod=content)
-    # The pure resolver fail-louds with ValueError on an off-ladder disposition (a corrupt
-    # npc_dispositions row). db_tool only narrows ValueError-free errors, so convert it to a
-    # DM-narratable ToolError here — the same boundary the skill/save modes apply to their resolvers.
+    scope = SkillScope.capture(session, player_id)
+
+    finish = partial(
+        _finish_social,
+        session,
+        player_id,
+        npc_id,
+        skill_lower,
+        base_dc,
+        queries=queries,
+        content=content,
+        mutations=mutations,
+        conditions_mutations=conditions_mutations,
+        db_mod=db_mod,
+    )
+
+    async def write(kept, conn):
+        await scope.lock_roller(session, conn, queries=queries)
+        return await finish(kept, conn=conn, scope=scope)
+
+    offer = await prepare_skill_offer(session, scope, roll, player, write, queries=queries, db_mod=db_mod)
+    if offer is not None:
+        session.fate_offer = offer
+        return json.dumps(offer.response())
+
+    flush = await finish(roll)
+    return json.dumps(await flush())
+
+
+async def _finish_social(
+    session,
+    player_id,
+    npc_id,
+    skill,
+    base_dc,
+    roll,
+    *,
+    queries,
+    content,
+    mutations,
+    conditions_mutations,
+    db_mod,
+    conn=None,
+    scope=None,
+):
+    current = await resolve_disposition(
+        npc_id, player_id, conn=conn, for_update=conn is not None, queries_mod=queries, content_mod=content
+    )
     try:
         outcome = social_resolution.resolve_social_check(
-            disposition=current, skill=skill_lower, roll_total=roll.total, base_dc=base_dc
+            disposition=current, skill=skill, roll_total=roll.total, base_dc=base_dc
         )
-    except ValueError as e:
-        raise ToolError(str(e)) from e
+    except ValueError as error:
+        raise ToolError(str(error)) from error
 
-    await publish_game_event(
-        session.room,
-        E.DICE_ROLL,
-        {
-            "roll_type": "social_check",
-            "skill": skill_lower,
-            "roll": roll.roll,
-            "total": roll.total,
-            "success": outcome.success,
-            "dramatic": outcome.dramatic,
-            "context": outcome.context,
-        },
-        event_bus=session.event_bus,
-    )
-
-    # Persist + signal the client only when the disposition actually moves — a no-shift
-    # outcome (e.g. persuasion bare success) writes nothing and emits no state change.
     shift = outcome.new_disposition != current
-    # The social roll spends Blessed/Inspired's +1d4 (M4.8 story-009). Wrap a tx ONLY when BOTH
-    # writes fire — the disposition shift AND the die-consume — so they commit atomically; a lone
-    # write (shift-only, or consume-only on a no-shift outcome) takes the plain autocommit path,
-    # matching the save tool's single-write precedent (no needless BEGIN/COMMIT).
     consumed_state = None
-    if shift and roll.consumed_conditions:
-        async with db_mod.transaction() as conn:
-            session.validate_acting_player(player_id)
-            await mutations.set_npc_disposition(
-                npc_id, player_id, outcome.new_disposition, f"social_check: {skill_lower}", conn=conn
-            )
-            consumed_state = await consume_beneficial_conditions(
-                player_id,
-                roll.consumed_conditions,
-                conditions_mutations,
-                conn=conn,
-                combat_state=session.combat_state,
-                db_mod=db_mod,
-            )
-    else:
-        if shift:
-            session.validate_acting_player(player_id)
-            await mutations.set_npc_disposition(
-                npc_id, player_id, outcome.new_disposition, f"social_check: {skill_lower}"
-            )
-        if roll.consumed_conditions:
-            session.validate_acting_player(player_id)
-            consumed_state = await consume_beneficial_conditions(
-                player_id,
-                roll.consumed_conditions,
-                conditions_mutations,
-                combat_state=session.combat_state,
-                db_mod=db_mod,
-            )
+    if shift or roll.consumed_conditions:
+        async with (
+            db_mod.transaction()
+            if conn is None and shift and roll.consumed_conditions
+            else nullcontext(conn) as write_conn
+        ):
+            if scope is None:
+                session.validate_acting_player(player_id)
+            else:
+                scope.validate(session)
+            # Match held settlement's player-before-disposition lock order.
+            if roll.consumed_conditions:
+                consumed_state = await consume_beneficial_conditions(
+                    player_id,
+                    roll.consumed_conditions,
+                    conditions_mutations,
+                    conn=write_conn,
+                    combat_state=session.combat_state,
+                    db_mod=db_mod,
+                )
+            if shift:
+                await mutations.set_npc_disposition(
+                    npc_id,
+                    player_id,
+                    outcome.new_disposition,
+                    f"social_check: {skill}",
+                    **({"conn": write_conn} if write_conn is not None else {}),
+                )
 
-    if consumed_state is not None:
-        session.combat_state = consumed_state
-    if shift:
+    async def flush():
+        if consumed_state is not None:
+            session.combat_state = consumed_state
+        verdict = "success" if outcome.success else "failure"
+        session.record_event(f"Social check ({skill} vs {npc_id}): {verdict}")
         await publish_game_event(
             session.room,
-            E.DISPOSITION_CHANGED,
-            {"npc_id": npc_id, "previous": current, "new": outcome.new_disposition},
+            E.DICE_ROLL,
+            {
+                "roll_type": "social_check",
+                "skill": skill,
+                "roll": roll.roll,
+                "total": roll.total,
+                "success": outcome.success,
+                "dramatic": outcome.dramatic,
+                "context": outcome.context,
+            },
             event_bus=session.event_bus,
         )
-
-    session.record_event(f"Social check ({skill_lower} vs {npc_id}): {'success' if outcome.success else 'failure'}")
-    logger.info(
-        "check social result: total=%d vs DC %d → %s (%s → %s)",
-        roll.total,
-        outcome.dc,
-        "success" if outcome.success else "failure",
-        current,
-        outcome.new_disposition,
-    )
-    return json.dumps(
-        {
-            "outcome": "success" if outcome.success else "failure",
+        if shift:
+            await publish_game_event(
+                session.room,
+                E.DISPOSITION_CHANGED,
+                {"npc_id": npc_id, "previous": current, "new": outcome.new_disposition},
+                event_bus=session.event_bus,
+            )
+        return {
+            "outcome": verdict,
             "npc_id": npc_id,
-            "skill": skill_lower,
+            "skill": skill,
             "roll": roll.roll,
             "total": roll.total,
             "dc": outcome.dc,
@@ -202,4 +233,5 @@ async def _check_social_impl(
             "new_disposition": outcome.new_disposition,
             **({"gift_name": roll.gift_name} if roll.gift_name else {}),
         }
-    )
+
+    return flush

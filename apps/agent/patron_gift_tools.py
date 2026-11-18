@@ -109,6 +109,7 @@ async def activate_insight(context):
 
     session = context.userdata
     effects = SkillCheckEffects()
+    discovery_effects = None
     async with db.transaction() as conn:
         # Quest locks precede player locks even if a concurrent check replaces the offer kind.
         player = await lock_discovery_rows(session, conn=conn)
@@ -141,10 +142,16 @@ async def activate_insight(context):
                 reroll_dc=pending["dc"],
             )
         else:
-            response, discovery_effects = await check_discovery.reroll_discovery(context, player, pending, conn=conn)
+            response, discovery_effects, effects.fate_offer = await check_discovery.reroll_discovery(
+                context, player, pending, conn=conn
+            )
+    if effects.fate_offer is not None:
+        session.fate_offer = effects.fate_offer
+        return json.dumps(effects.fate_offer.response())
     if pending["kind"] == "skill":
         await effects.flush(session, publish=check_tools.publish_game_event)
     else:
+        assert discovery_effects is not None
         await discovery_effects()
     return response if isinstance(response, str) else json.dumps(response)
 

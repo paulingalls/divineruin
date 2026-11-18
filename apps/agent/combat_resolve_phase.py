@@ -160,7 +160,9 @@ async def _resolve_phase_locked(
                 fate_rolls=fate_rolls,
             )
 
-        if not resolving_allies and state.open_window is None and fate_rolls.pending is None:
+        # A held argument that ends combat must hand off before the incoming tool can run.
+        ended_on_argument = state.deescalated and combat_fate.held_argument(cs.ally_continuation) is not None
+        if (not resolving_allies or ended_on_argument) and state.open_window is None and fate_rolls.pending is None:
             (
                 state,
                 wrap,
@@ -182,7 +184,11 @@ async def _resolve_phase_locked(
                 fate_rolls=fate_rolls,
             )
 
-        if resolving_allies or state.open_window is not None or fate_rolls.pending is not None:
+        if (
+            (resolving_allies and not ended_on_argument)
+            or state.open_window is not None
+            or fate_rolls.pending is not None
+        ):
             exhaustion_narration: dict[str, str] = {}
             wrap = None
             wrap_adv = combat_phase.PhaseAdvance(beat_completed=combat_phase.PhaseBeat.NARRATION)
@@ -211,9 +217,13 @@ async def _resolve_phase_locked(
         handoff = _end_combat_finish(session, state, ended_outcome, end_data)
     offer = None
     if fate_rolls.pending is not None:
+        combat_id = state.combat_id
 
         async def resume(selected):
             async with session.combat_state_lock:
+                current = session.combat_state
+                if current is None or current.combat_id != combat_id:
+                    return zhael_fate.cancel(session, "The original encounter is no longer active.")
                 packet = await _resolve_phase_locked(
                     session,
                     mutations=mutations,

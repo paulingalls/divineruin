@@ -301,8 +301,13 @@ def begin_ally_pass(state, allies, hostiles, players_by_id):
         ],
         "hostiles": [packet.actor_id for packet in hostiles],
         "prevalidated": list(players_by_id),
+        "deescalation_round": state.deescalation_scene.round_counter,
         "attack": {},
     }
+
+
+def held_argument(cursor):
+    return (cursor or {}).get("steps", {}).get("deescalation", {}).get("argument")
 
 
 async def lock_remaining_players(cursor, queries, conn):
@@ -319,6 +324,7 @@ async def lock_remaining_players(cursor, queries, conn):
 
 
 async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_packet, packet_deps):
+    from combat_deescalation import resume_deescalation
     from combat_hold import hold_enemy_packets
     from combat_phase import PhaseBeat, _resolve_packets
     from combat_turn_start import turn_start
@@ -331,11 +337,25 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
         attack = cursor["attack"]
         steps = cursor.setdefault("steps", {})
         progress = (
-            PacketRolls(fate_rolls, steps, packet_deps["queries"], packet_deps["conn"])
+            PacketRolls(
+                fate_rolls, steps, packet_deps["queries"], packet_deps["conn"], cursor.get("deescalation_round")
+            )
             if session.fate_lock.locked() or steps or attack
             else None
         )
-        if attack:
+        if held_argument(cursor) is not None:
+            assert progress is not None and packet_id is not None
+            packet = packets.get(packet_id)
+            summary = await resume_deescalation(
+                session,
+                state,
+                packet_id,
+                packet.declaration if packet is not None else None,
+                players.get(packet_id),
+                progress=progress.scope("deescalation"),
+                sink=packet_deps["sink"],
+            )
+        elif attack:
             packet = packets[packet_id]
             attacker = state.get_participant(packet_id)
             target = state.get_participant(attack["target_id"])

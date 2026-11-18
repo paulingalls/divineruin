@@ -75,24 +75,32 @@ class PacketRolls:
     steps: dict
     queries: object
     conn: object
+    deescalation_round: int | None = None
 
     @property
     def paused(self) -> bool:
         return self.phase.pending is not None
 
     def scope(self, name: str) -> "PacketRolls":
-        return PacketRolls(self.phase, self.steps.setdefault(name, {}), self.queries, self.conn)
+        return PacketRolls(
+            self.phase, self.steps.setdefault(name, {}), self.queries, self.conn, self.deescalation_round
+        )
 
     async def save(self, session, roller_id, effect, roll):
         return await self.phase.save(session, self.steps, roller_id, effect, roll, queries=self.queries, conn=self.conn)
 
+    def take_skill(self):
+        if "skill" not in self.steps:
+            return None
+        fields = dict(self.steps.pop("skill"))
+        d20 = D20Roll(**fields.pop("d20"))
+        fields["consumed_conditions"] = tuple(fields["consumed_conditions"])
+        original = SkillCheckResult(**fields, d20=d20)
+        return skill_with_roll(original, self.phase.select(d20.evaluate(original.roll)))
+
     async def skill(self, session, roller_id, roll):
-        if "skill" in self.steps:
-            fields = dict(self.steps.pop("skill"))
-            d20 = D20Roll(**fields.pop("d20"))
-            fields["consumed_conditions"] = tuple(fields["consumed_conditions"])
-            original = SkillCheckResult(**fields, d20=d20)
-            return skill_with_roll(original, self.phase.select(d20.evaluate(original.roll)))
+        if (kept := self.take_skill()) is not None:
+            return kept
         original = await roll()
         d20 = original.d20 if session.fate_lock.locked() else None
         if d20 is not None and await self.phase.hold(

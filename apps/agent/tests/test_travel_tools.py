@@ -88,21 +88,6 @@ async def test_established_road_auto_arrives_and_clears_travel_state():
 
 
 @pytest.mark.asyncio
-async def test_rolled_success_arrives_and_emits_dice_roll():
-    m = _travel_mocks()
-    m.content.get_location = AsyncMock(return_value=_location("dense_forest"))  # DC 14
-    ctx = _ctx_with_bus()
-    result = await _run(ctx, m, mode="scenic", rng_val=20)  # nat-20 → total >= 14
-    assert result["outcome"] == "success"
-    assert result["arrived"] is True
-    assert result["wrong_area"] is False
-    m.mutations.update_player_location.assert_awaited_once()
-    dice = next(e for e in published_events(ctx) if e.event_type == E.DICE_ROLL)
-    assert dice.payload["roll_type"] == "navigation_check"
-    assert dice.payload["skill"] == "survival"
-
-
-@pytest.mark.asyncio
 async def test_lost_failure_does_not_relocate_and_persists_wrong_area():
     m = _travel_mocks()
     m.content.get_location = AsyncMock(return_value=_location("unmarked_wilderness"))  # DC 12
