@@ -1,10 +1,13 @@
 """Selected player-held gear: one eligibility rule and the existing durability writer."""
 
+from functools import partial
+
 import check_resolution_save
 import db_queries
 import durability
 from combat_ability import _find_action
 from combat_durability import _accrue_durability
+from combat_fate_rolls import packet_save
 from combat_multiattack import expand_declaration
 from declarations import DeclarationType, resolve_declaration
 from dice import roll as dice_roll
@@ -55,7 +58,18 @@ async def preflight(session, state, *, queries=db_queries):
 
 
 async def resolve_rider(
-    session, attacker, target, action, declaration, summary, *, queries, conn, sink, reaction_save_advantage=False
+    session,
+    attacker,
+    target,
+    action,
+    declaration,
+    summary,
+    *,
+    queries,
+    conn,
+    sink,
+    reaction_save_advantage=False,
+    progress=None,
 ):
     rider = action["durability_rider"]
     outcome = {"item_id": declaration.held_item_id, "applied": False}
@@ -75,15 +89,24 @@ async def resolve_rider(
     if selected is None:
         outcome["reason"] = "selected_item_unavailable" if declaration.held_item_id else "no_eligible_item"
         return
-    result = check_resolution_save.roll_participant_save(
-        target,
-        rider["save"],
-        rider["dc"],
+    result = await packet_save(
+        progress,
+        session,
+        target.id,
         action["name"],
-        dc_mod=attacker.dc_mod,
-        bonus_dice_eligible=False,
-        advantage=reaction_save_advantage,
+        partial(
+            check_resolution_save.roll_participant_save,
+            target,
+            rider["save"],
+            rider["dc"],
+            action["name"],
+            dc_mod=attacker.dc_mod,
+            bonus_dice_eligible=False,
+            advantage=reaction_save_advantage,
+        ),
     )
+    if result is None:
+        return
     outcome.update(
         save_type=result.save_type,
         save_roll=result.roll,

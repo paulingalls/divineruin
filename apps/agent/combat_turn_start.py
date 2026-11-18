@@ -31,7 +31,9 @@ def ally_turns(state, packets):
         yield None, packet
 
 
-async def turn_start(session, state, victim, *, conn, sink, mutations, queries, concentration_break_mod, **unused):
+async def turn_start(
+    session, state, victim, *, conn, sink, mutations, queries, concentration_break_mod, progress=None, **unused
+):
     # Once per round comes from the beat machine: Beat 2 commits with the move to NARRATION,
     # and Beat-3 pauses and reloads re-enter only combat_hold.pump, never this boundary.
     # A Hollowed echo is an already-dead player-life, outside the ally band.
@@ -53,8 +55,10 @@ async def turn_start(session, state, victim, *, conn, sink, mutations, queries, 
     ):
         return None
     effect = owner.turn_start_damage
-    damage = dice_roll(effect["damage"]).total
-    result = combat_damage.AutomaticDamageResult(damage, effect["damage_type"])
+    result = None
+    if progress is None or "damage_receipt" not in progress.steps:
+        damage = dice_roll(effect["damage"]).total
+        result = combat_damage.AutomaticDamageResult(damage, effect["damage_type"])
     summary = await combat_damage.apply_attack_result(
         session,
         owner,
@@ -69,7 +73,10 @@ async def turn_start(session, state, victim, *, conn, sink, mutations, queries, 
         conn=conn,
         sink=sink,
         publish_roll=False,
+        progress=progress,
     )
+    if progress is not None and progress.paused:
+        return None
     if not victim.is_ally or victim.is_fallen or cannot_act(victim.conditions):
         state.ac_modifiers.pop(victim.id, None)
     return {

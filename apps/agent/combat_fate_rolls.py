@@ -52,10 +52,9 @@ class PhaseRolls:
 
     async def save(self, session, checkpoint, roller_id, effect, roll, *, queries, conn):
         if "save" in checkpoint:
-            fields = dict(checkpoint.pop("save"))
-            d20 = D20Roll(**fields.pop("d20"))
-            fields["consumed_conditions"] = tuple(fields["consumed_conditions"])
-            original = SavingThrowResult(**fields, d20=d20)
+            original = saved_throw(checkpoint.pop("save"))
+            d20 = original.d20
+            assert d20 is not None
             kept = self.select(d20.evaluate(original.roll))
             return _save_result(original, kept, effect)
         original = roll()
@@ -65,8 +64,43 @@ class PhaseRolls:
         if d20 is not None and await self.hold(
             session, "save", roller_id, d20.evaluate(original.roll), d20, queries=queries, conn=conn
         ):
-            stored = asdict(original)
-            stored["consumed_conditions"] = list(original.consumed_conditions)
-            checkpoint["save"] = stored
+            checkpoint["save"] = store_throw(original)
             return None
         return original
+
+
+@dataclass(frozen=True)
+class PacketRolls:
+    phase: PhaseRolls
+    steps: dict
+    queries: object
+    conn: object
+
+    @property
+    def paused(self) -> bool:
+        return self.phase.pending is not None
+
+    def scope(self, name: str) -> "PacketRolls":
+        return PacketRolls(self.phase, self.steps.setdefault(name, {}), self.queries, self.conn)
+
+    async def save(self, session, roller_id, effect, roll):
+        return await self.phase.save(session, self.steps, roller_id, effect, roll, queries=self.queries, conn=self.conn)
+
+
+async def packet_save(progress, session, roller_id, effect, roll):
+    if progress is None:
+        return roll()
+    return await progress.save(session, roller_id, effect, roll)
+
+
+def store_throw(result: SavingThrowResult) -> dict:
+    fields = asdict(result)
+    fields["consumed_conditions"] = list(result.consumed_conditions)
+    return fields
+
+
+def saved_throw(data: dict) -> SavingThrowResult:
+    fields = dict(data)
+    d20 = fields.pop("d20")
+    fields["consumed_conditions"] = tuple(fields["consumed_conditions"])
+    return SavingThrowResult(**fields, d20=D20Roll(**d20) if d20 is not None else None)

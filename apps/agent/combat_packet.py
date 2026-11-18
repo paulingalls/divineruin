@@ -99,8 +99,8 @@ async def _resolve_one_packet(
     mark_cancelled: bool = False,
     publish_roll: bool = True,
     _held_head=None,
-    fate_candidates=None,
     attack_cursor=None,
+    progress=None,
 ) -> dict:
     """Resolve a single initiative-ordered ResolutionPacket against ``state``.
 
@@ -189,7 +189,7 @@ async def _resolve_one_packet(
             for head in state.held_actions
         )
         if (
-            (_held_head is not None and not replay)
+            (_held_head is not None and _held_head.get("execution_receipt") is not None and not replay)
             or (_held_head is None and pending_execution)
             or (not replay and not combat_recharge.available(attacker, action))
         ):
@@ -201,7 +201,14 @@ async def _resolve_one_packet(
             from choir_actions import resolve_effect
 
             return await resolve_effect(
-                session, state, attacker, action, decl, reaction_save_advantage=reaction_save_advantage
+                session,
+                state,
+                attacker,
+                action,
+                decl,
+                reaction_save_advantage=reaction_save_advantage,
+                progress=progress,
+                head=_held_head,
             )
         target = state.get_participant(decl.target_id) if decl.target_id else None
         if replay:
@@ -217,7 +224,7 @@ async def _resolve_one_packet(
                 or action.get("half_on_success") is True
             )
         ):
-            action = begin_execution(state, attacker, action, decl)
+            action = begin_execution(state, attacker, action, decl, _held_head)
 
     if (
         not attacker.is_ally
@@ -239,6 +246,8 @@ async def _resolve_one_packet(
             concentration_break_mod=concentration_break_mod,
             sink=sink,
             reaction_save_advantage=reaction_save_advantage,
+            progress=progress,
+            head=_held_head,
         )
     if not attacker.is_ally and action is not None:
         enemy_summary = await resolve_enemy_strike(
@@ -257,6 +266,7 @@ async def _resolve_one_packet(
             reaction_ac_bonus=reaction_ac_bonus,
             shield_reaction=shield_reaction,
             reaction_save_advantage=reaction_save_advantage,
+            progress=progress,
             publish_roll=publish_roll,
         )
         if enemy_summary is not None:
@@ -342,7 +352,7 @@ async def _resolve_one_packet(
         target,
         action,
         attack_cursor=attack_cursor,
-        fate_candidates=fate_candidates,
+        progress=progress,
         mutations=mutations,
         queries=queries,
         resolver=resolver,

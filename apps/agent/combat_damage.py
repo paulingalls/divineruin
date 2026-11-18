@@ -115,6 +115,86 @@ async def apply_attack_result(
     attacker,
     action: dict,
     target,
+    attack_result: check_resolution_attack.AttackResult | SaveDamageResult | AutomaticDamageResult | None,
+    effective_ac: int,
+    *,
+    shield_reaction: str | None = None,
+    mutations=db_mutations,
+    queries=db_queries,
+    concentration_break_mod=concentration_break,
+    combat_state=None,
+    conn=None,
+    sink=None,
+    publish_roll: bool = True,
+    progress=None,
+) -> dict:
+    if progress is None:
+        assert attack_result is not None
+        return await _apply_damage(
+            session,
+            attacker,
+            action,
+            target,
+            attack_result,
+            effective_ac,
+            shield_reaction=shield_reaction,
+            mutations=mutations,
+            queries=queries,
+            concentration_break_mod=concentration_break_mod,
+            combat_state=combat_state,
+            conn=conn,
+            sink=sink,
+            publish_roll=publish_roll,
+        )
+
+    receipt = progress.steps.get("damage_receipt")
+    if receipt is None:
+        assert attack_result is not None
+        response = await _apply_damage(
+            session,
+            attacker,
+            action,
+            target,
+            attack_result,
+            effective_ac,
+            shield_reaction=shield_reaction,
+            mutations=mutations,
+            queries=queries,
+            concentration_break_mod=concentration_break_mod,
+            combat_state=combat_state,
+            conn=conn,
+            sink=sink,
+            publish_roll=publish_roll,
+            defer_concentration=True,
+        )
+        if "consumed_conditions" in response:
+            response["consumed_conditions"] = list(response["consumed_conditions"])
+        receipt = {"response": response, "automatic": isinstance(attack_result, AutomaticDamageResult)}
+        progress.steps["damage_receipt"] = receipt
+    response = receipt["response"]
+    if target.type == "player":
+        response["concentration_broken"] = await concentration_break_mod.break_concentration_on_damage(
+            session,
+            response["damage"],
+            incapacitated=target.hp_current <= 0,
+            damaged_player_id=target.id,
+            combat_state=combat_state,
+            conn=conn,
+            progress=progress.scope("concentration"),
+        )
+        if progress.paused:
+            return {}
+    if combat_state is not None and not receipt["automatic"]:
+        apply_prepared_hit(combat_state, attacker, target, action, response)
+    del progress.steps["damage_receipt"]
+    return response
+
+
+async def _apply_damage(
+    session: SessionData,
+    attacker,
+    action: dict,
+    target,
     attack_result: check_resolution_attack.AttackResult | SaveDamageResult | AutomaticDamageResult,
     effective_ac: int,
     *,
@@ -126,6 +206,7 @@ async def apply_attack_result(
     conn=None,
     sink=None,
     publish_roll: bool = True,
+    defer_concentration: bool = False,
 ) -> dict:
     """Apply already-rolled attack or save damage and its shared combat effects.
 
@@ -242,7 +323,7 @@ async def apply_attack_result(
     # (incapacitated) — ends concentration. The helper no-ops when the player isn't concentrating
     # or the attack dealt no damage; its return (the broken spell id, or None) is narrated below.
     concentration_broken = None
-    if target.type == "player":
+    if target.type == "player" and not defer_concentration:
         # Thread the phase loop's WORKING combat state so the concentration break strips the linked
         # condition (Bless → blessed) from the state that actually gets persisted — during resolution
         # session.combat_state is still the pristine pre-phase copy (combat_turn adopts the working
@@ -335,7 +416,7 @@ async def apply_attack_result(
     if action.get("self_heal") == "damage_dealt":
         response["self_healed"] = self_healed
         response["attacker_hp_status"] = combat_resolution.hp_threshold_status(attacker.hp_current, attacker.hp_max)
-    if combat_state is not None and not automatic:
+    if combat_state is not None and not automatic and not defer_concentration:
         apply_prepared_hit(combat_state, attacker, target, action, response)
     if released_from_grapple:
         response["released_from_grapple"] = released_from_grapple

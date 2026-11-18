@@ -34,6 +34,7 @@ from combat_attack_roll import build_attack_dice_roll_payload, deserialize_roll
 from combat_down import target_unavailable
 from combat_enemy_action import is_combined_attack_action, is_save_damage_action
 from combat_fate_hostile import roll_hostile
+from combat_fate_rolls import PacketRolls
 from combat_multiattack import held_declarations, strike_summary
 from combat_packet import _resolve_one_packet
 from condition_restrictions import cannot_act
@@ -315,6 +316,7 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None, fate_roll
                 head,
                 packet_deps=packet_deps,
                 mark_cancelled=combat_reaction_contest.mark_cancelled(head),
+                fate_rolls=fate_rolls,
             )
         except HeldActionUnresolvable as exc:
             summary = {"actor_id": head["actor_id"], "resolved": False, "reason": str(exc)}
@@ -323,6 +325,9 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None, fate_roll
             _assert_iteration_progress(state, head, summaries, summary_start)
             state.held_actions.pop(0)
             continue
+
+        if fate_rolls is not None and fate_rolls.pending is not None:
+            return summaries
 
         if head is reacted:
             combat_reaction_effect.record_shield_wear(reaction_packets, state, head, summary)
@@ -362,7 +367,9 @@ def _open(state, candidate: dict) -> None:
     )
 
 
-async def _resolve_held(session, state, head: dict, *, packet_deps: dict, mark_cancelled: bool = False) -> dict:
+async def _resolve_held(
+    session, state, head: dict, *, packet_deps: dict, mark_cancelled: bool = False, fate_rolls=None
+) -> dict:
     """Apply one held action through the ordinary packet resolver.
 
     A rolled attack replays its held roll (see ``_replay_resolver``); everything else — a wasted
@@ -382,6 +389,8 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict, mark_c
     deps = dict(packet_deps)
     if head["roll"] is not None:
         deps["resolver"] = _replay_resolver(head)
+    if fate_rolls is not None and (session.fate_lock.locked() or head.get("roll_steps")):
+        deps["progress"] = PacketRolls(fate_rolls, head.setdefault("roll_steps", {}), deps["queries"], deps["conn"])
     return await _resolve_one_packet(
         session,
         state,
@@ -398,6 +407,6 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict, mark_c
         grapple_blocked=combat_reaction_effect.grapple_blocked(state, head),
         mark_cancelled=mark_cancelled,
         publish_roll=not head.get("roll_published", False),
-        _held_head=head if head.get("execution_receipt") is not None else None,
+        _held_head=head if head.get("execution_receipt") is not None or "progress" in deps else None,
         **deps,
     )

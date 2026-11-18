@@ -87,7 +87,7 @@ async def _resolve_phase_locked(
         "concentration_break_mod": concentration_break_mod,
         "cast_resolver": cast_resolver,
     }
-    fate_rolls = PhaseRolls(kept=kept if not resolving_allies else None)
+    fate_rolls = PhaseRolls(kept=kept)
     cast_outcome = AbilityCastOutcome()
     packet_summaries: list[dict] = []
     async with phase_transaction_with_recovery(session, cs, db_mod=db_mod, mutations=mutations) as conn:
@@ -130,14 +130,12 @@ async def _resolve_phase_locked(
                 assert cursor is not None
                 players_by_id = await combat_fate.lock_remaining_players(cursor, queries, conn)
 
-            candidates = await zhael_fate.candidates(session, queries=queries, conn=conn)
             packet_summaries = await combat_fate.run_ally_pass(
                 session,
                 state,
                 cursor,
-                candidates,
                 players_by_id,
-                kept=kept,
+                fate_rolls=fate_rolls,
                 resolve_packet=_resolve_one_packet,
                 packet_deps={**packet_deps, "conn": conn, "sink": sink, "cast_outcome": cast_outcome},
             )
@@ -199,7 +197,7 @@ async def _resolve_phase_locked(
     if resuming:
         zhael_fate.effects_committed(session)
     offer = None
-    if (resolving_allies and state.ally_continuation is not None) or fate_rolls.pending is not None:
+    if fate_rolls.pending is not None:
 
         async def resume(selected):
             async with session.combat_state_lock:
@@ -225,11 +223,7 @@ async def _resolve_phase_locked(
                     or (session.combat_state is not None and session.combat_state.open_window is not None),
                 )
 
-        if fate_rolls.pending is not None:
-            offer = fate_rolls.pending.offer(resume)
-        else:
-            offer = combat_fate.offer_held_attack(state.ally_continuation, candidates, resume)
-        assert offer is not None, "Held attack has no eligible ability"
+        offer = fate_rolls.pending.offer(resume)
         session.fate_offer = offer
     for m in session.party.members:
         if m.player_id in pending_by_member:

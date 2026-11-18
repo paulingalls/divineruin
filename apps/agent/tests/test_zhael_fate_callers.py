@@ -277,3 +277,122 @@ async def test_wrap_holds_clearing_saves_and_recovers_next_original(world):
         assert not has_condition(required_player(persisted, foe.id).conditions, "frightened")
     finally:
         await db_mutations.delete_combat_state(state.combat_id)
+
+
+async def test_area_holds_each_catalog_target_in_order_across_reload(world):
+    from sample_fixtures import make_context
+
+    from conditions import has_condition
+    from creature_combat_loader import load_creature_enemy
+
+    host, guest = world.ids
+    await configure(world, "zhael", "mage")
+    catalog = await load_creature_enemy("hollow_choir", encounter_id="choir", enemy_id="choir", role="named")
+    choir = _enemy("choir", 200)
+    choir.creature_id = "hollow_choir"
+    choir.action_pool = catalog["action_pool"]
+    state = _build_state(host, host, [choir])
+    companion = _player("ally_companion")
+    companion.type = "companion"
+    state.participants[1:1] = [_player(guest), companion]
+    target_ids = [host, guest, companion.id, choir.id]
+    state.initiative_order = target_ids
+    place_actors(state)
+    session = world.ctx.userdata
+    session.combat_state = state
+    call = game_tools(session, declare_phase, resolve_phase, activate, check)
+
+    def hp(current):
+        return [required_player(current, pid).hp_current for pid in target_ids]
+
+    try:
+        await call(
+            "declare_phase",
+            declarations=[
+                defend(host),
+                defend(guest),
+                defend(companion.id),
+                {**attack(choir.id, host), "action": "Memory Scream"},
+            ],
+        )
+        await call("resolve_phase")
+        before = hp(session.combat_state)
+        with (
+            patch("check_resolution.dice_roll", side_effect=[_d20(7), _d20(15), _d20(19), _d20(20)]) as dice,
+            patch("combat_enemy_action.dice_roll", return_value=_damage_die(8)) as damage,
+        ):
+            first = (await call("resolve_phase"))["fate_offer"]
+            assert first["roller_id"] == host and hp(session.combat_state) == before
+            second = (await call("check", roll={"kind": "dice", "notation": "1d4"}))["fate_offer"]
+            assert second["roller_id"] == guest and second["offer_id"] != first["offer_id"]
+            assert hp(session.combat_state) == [before[0] - 8, *before[1:]]
+            assert not any(e.get("roll_type") == "narrative" for e in published_payloads(session.room))
+            fresh = make_context(player_id=host, party_member_ids=[guest]).userdata
+            fresh.combat_state = await db_mutations.load_combat_state(state.combat_id)
+            restored = game_tools(fresh, resolve_phase, activate)
+            third = (await restored("resolve_phase"))["fate_offer"]
+            assert third["roller_id"] == companion.id
+            last = (await restored("activate", id="zhael_fates_thread", offer_id=third["offer_id"], keep="original"))[
+                "fate_offer"
+            ]
+            assert last["roller_id"] == choir.id
+            result = await restored("activate", id="zhael_fates_thread", offer_id=last["offer_id"], keep="original")
+            assert dice.call_count == damage.call_count == 4
+        assert [target["target_id"] for target in result["packets"][0]["targets"]] == target_ids
+        assert hp(fresh.combat_state) == [before[0] - 8, before[1] - 8, *before[2:]]
+        assert has_condition(required_player(fresh.combat_state, guest).conditions, "stunned")
+    finally:
+        await db_mutations.delete_combat_state(state.combat_id)
+
+
+async def test_combined_attack_pauses_concentration_before_condition_save(world):
+    from conditions import apply_condition, has_condition
+    from db_mutations_concentration import update_player_concentration
+
+    await configure(world, "zhael", "mage")
+    pid = world.ids[0]
+    foe = _enemy("foe", 30)
+    foe.action_pool = [
+        {
+            **foe.action_pool[0],
+            "applies_condition": "deafened",
+            "save": "constitution",
+            "dc": 15,
+        }
+    ]
+    state = _build_state(pid, pid, [foe])
+    required_player(state, pid).conditions = apply_condition([], "blessed", source="divine_bless")
+    session = world.ctx.userdata
+    session.combat_state = state
+    session.concentration.spell_id = "divine_bless"
+    await update_player_concentration(pid, "divine_bless")
+    call = game_tools(session, declare_phase, resolve_phase, activate)
+
+    async def keep(offer):
+        return await call("activate", id="zhael_fates_thread", offer_id=offer["offer_id"], keep="original")
+
+    try:
+        await call("declare_phase", declarations=[defend(pid), {**attack(foe.id, pid), "action": "Scimitar"}])
+        await call("resolve_phase")
+        with (
+            patch("check_resolution.dice_roll", side_effect=[_d20(19), _d20(7), _d20(11)]) as dice,
+            patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)) as damage,
+        ):
+            strike = (await call("resolve_phase"))["fate_offer"]
+            held_concentration = (await keep(strike))["fate_offer"]
+            assert held_concentration["roller_id"] == pid and held_concentration["die"] == 7
+            assert session.concentration.spell_id == "divine_bless"
+            assert required_player(session.combat_state, pid).hp_current == 96
+            assert has_condition(required_player(session.combat_state, pid).conditions, "blessed")
+            held_condition = (await keep(held_concentration))["fate_offer"]
+            assert held_condition["die"] == 11 and held_condition["offer_id"] != held_concentration["offer_id"]
+            assert session.concentration.spell_id is None
+            assert not has_condition(required_player(session.combat_state, pid).conditions, "deafened")
+            result = await keep(held_condition)
+            assert dice.call_count == 3 and damage.call_count == 1
+        player = required_player(await db_mutations.load_combat_state(state.combat_id), pid)
+        assert player.hp_current == 96
+        assert has_condition(player.conditions, "deafened") and not has_condition(player.conditions, "blessed")
+        assert result["packets"][0]["concentration_broken"] == "divine_bless"
+    finally:
+        await db_mutations.delete_combat_state(state.combat_id)

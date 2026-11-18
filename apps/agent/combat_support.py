@@ -76,17 +76,21 @@ async def _resolve_attack_packet(
     conn=None,
     sink=None,
     publish_roll: bool = True,
+    progress=None,
 ) -> dict:
-    attack_result, effective_ac = roll_attack(
-        attacker,
-        action,
-        target,
-        target_ac_bonus=target_ac_bonus,
-        enemies_remaining=enemies_remaining,
-        is_first_attack_of_combat=is_first_attack_of_combat,
-        resolver=resolver,
-        combat_state=combat_state,
-    )
+    if progress is not None and "damage_receipt" in progress.steps:
+        attack_result, effective_ac = None, target.ac
+    else:
+        attack_result, effective_ac = roll_attack(
+            attacker,
+            action,
+            target,
+            target_ac_bonus=target_ac_bonus,
+            enemies_remaining=enemies_remaining,
+            is_first_attack_of_combat=is_first_attack_of_combat,
+            resolver=resolver,
+            combat_state=combat_state,
+        )
     return await apply_rolled_attack(
         session,
         attacker,
@@ -103,6 +107,7 @@ async def _resolve_attack_packet(
         conn=conn,
         sink=sink,
         publish_roll=publish_roll,
+        progress=progress,
     )
 
 
@@ -123,8 +128,10 @@ async def apply_rolled_attack(
     conn=None,
     sink=None,
     publish_roll=True,
+    progress=None,
 ):
-    combat_wrongdoing.record_attack(combat_state, attacker, target)
+    if attack_result is not None:
+        combat_wrongdoing.record_attack(combat_state, attacker, target)
     summary = await apply_attack_result(
         session,
         attacker,
@@ -140,9 +147,10 @@ async def apply_rolled_attack(
         conn=conn,
         sink=sink,
         publish_roll=publish_roll,
+        progress=progress,
     )
     if (
-        attack_result.hit
+        summary.get("hit")
         and reaction_windows.GRAPPLE_PROPERTY in action.get("properties", [])
         and not grapple_blocked
         and combat_state is not None
