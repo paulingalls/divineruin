@@ -17,10 +17,15 @@ GIFT = "veythar_lorekeepers_insight"
 CALL = f'activate(id="{GIFT}")'
 
 
+def favor(patron: str) -> dict:
+    """A follower's divine_favor in the shape character creation writes (level and max always present)."""
+    return {"patron": patron, "level": 0, "max": 100, "last_whisper_level": 0}
+
+
 class GiftWalk(JournalWalk):
     async def start(self, harness, stage=3):
         await super().start(harness, stage)
-        await self.patch(divine_favor={"patron": "veythar"}, keepsake="unchanged", patron_gifts={"other": {"x": 1}})
+        await self.patch(divine_favor=favor("veythar"), keepsake="unchanged", patron_gifts={"other": {"x": 1}})
         await self.connect(harness)
         return self
 

@@ -9,7 +9,7 @@ import pytest
 from acceptance._capstone_helpers import _d20
 from acceptance.journal_walk import ITEM
 from acceptance.rest_walk import RestWalk
-from acceptance.veythar_walk import CALL, GIFT, GiftWalk
+from acceptance.veythar_walk import CALL, GIFT, GiftWalk, favor
 
 import db_queries
 import event_types as E
@@ -141,7 +141,7 @@ def test_exclusions_and_pending_policy(harness):
             ("discover", "history", 20, "veythar"),
         ]:
             walk = await GiftWalk().start(harness)
-            await walk.patch(divine_favor={"patron": patron})
+            await walk.patch(divine_favor=favor(patron))
             result = await (walk.skill(skill, face) if mode == "skill" else walk.search(face, skill=skill))
             assert "reroll_offer" not in result and await walk.state() is None
         walk = await GiftWalk().start(harness)
@@ -189,7 +189,7 @@ def test_rest_recharges_only_authored_type_and_party_recipient(harness):
                 {
                     "location_id": "millhaven_inn",
                     "stamina": {"current": 1, "max": 10},
-                    "divine_favor": {"patron": "veythar"},
+                    "divine_favor": favor("veythar"),
                     "patron_gifts": {GIFT: {"spent": True, "pending": None}},
                 }
             ),
