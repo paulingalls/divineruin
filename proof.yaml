@@ -43,6 +43,7 @@
       "apps/agent/encounter_actions.py",
       "apps/agent/encounter_references.py",
       "apps/agent/patron_gifts.py",
+      "apps/agent/patron_synergy.py",
       "apps/agent/reaction_windows.py",
       "apps/agent/region_types.py",
       "apps/agent/role_archetypes.py",

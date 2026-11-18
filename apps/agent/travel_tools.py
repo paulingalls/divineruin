@@ -128,7 +128,7 @@ async def _travel_impl(
             _NAV_SKILL,
             dc,
             rng,
-            ally_present=session.ally_present_for(speaker_id),
+            ally_present=session.allies_present_for(speaker_id),
             natural_terrain=await skill_natural_terrain(session, player, _NAV_SKILL, content_mod=content),
             hearing_only=False,
         )

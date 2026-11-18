@@ -27,6 +27,7 @@ def world(monkeypatch):
         "level": 3,
         "attributes": {},
         "conditions": [],
+        "class": "druid",
         "divine_favor": {"patron": "thyra", "level": 0, "max": 100},
         "flags": {},
     }

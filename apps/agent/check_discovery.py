@@ -36,6 +36,7 @@ from db_errors import validated_player_conditions
 from game_events import publish_game_event, publish_hidden_revealed
 from inventory_refresh import publish_inventory
 from patron_gifts import KNOWLEDGE_SKILLS, veythar_gift
+from patron_location import check_first_stay
 from quest_completion import finish_quest
 from quest_progress import advance_on_item_discovered, lock_discovery_rows
 from session_data import SessionData
@@ -237,7 +238,8 @@ async def _resolve_discovery(
         condition_voice_rules.roll_data(player, session.combat_state, player_id),
         skill_lower,
         dc,
-        ally_present=session.ally_present_for(player_id),
+        ally_present=session.allies_present_for(player_id),
+        first_stay=await check_first_stay(player, session, skill_lower, conn=conn),
         natural_terrain=await skill_natural_terrain(session, player, skill_lower, content_mod=content),
         hearing_only=hearing_only,
     )

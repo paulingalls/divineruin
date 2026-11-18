@@ -86,6 +86,7 @@ async def test_choir_search_success_and_failure_spend_action(skill, face, succes
 
     player = {
         **queries.get_player.return_value,
+        "divine_favor": {"patron": "valdris", "level": 0, "max": 100},
         "level": 16,
         "attributes": {"wisdom": 14, "intelligence": 18},
         "skill_tiers": {skill: tier},

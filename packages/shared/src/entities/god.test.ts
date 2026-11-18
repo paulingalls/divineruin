@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import corpus from "../../fixtures/god_profiles.json";
+import roster from "../../../../content/archetypes.json";
 import catalog from "../../../../content/gods.json";
 import { validateGods } from "./index";
 
@@ -85,7 +86,7 @@ for (const entry of [...corpus.valid, ...generated]) {
 for (const entry of corpus.invalid) {
   test(`invalid profile: ${entry.id}`, () => {
     expect(() => validateGods(withProfile(entry.profile))).toThrow(
-      `${entry.patron}.${entry.field}`,
+      `${entry.patron}.${entry.field}:`,
     );
   });
 }
@@ -139,3 +140,17 @@ for (const value of [Infinity, -Infinity, NaN]) {
     );
   });
 }
+
+test("ten complete matrices cover the exact eighteen-archetype roster", () => {
+  const gods = validateGods(catalog);
+  expect(gods.map((g) => g.god_id).sort()).toEqual([...corpus.patron_ids].sort());
+  expect(roster).toHaveLength(18);
+  expect(new Set(roster.map((a) => a.id)).size).toBe(18);
+  for (const god of gods) {
+    expect(god.layer_4_synergy_matrix).not.toBeNull();
+    expect(Object.keys(god.layer_4_synergy_matrix).sort()).toEqual(roster.map((a) => a.id).sort());
+  }
+  expect(gods.reduce((sum, god) => sum + Object.keys(god.layer_4_synergy_matrix).length, 0)).toBe(
+    180,
+  );
+});

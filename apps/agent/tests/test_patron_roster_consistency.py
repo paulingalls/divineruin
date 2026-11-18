@@ -97,8 +97,7 @@ def test_load_deities_rejects_none_god_id_in_gods_json(tmp_path, monkeypatch):
         _gods_content.load_gods.cache_clear()
 
 
-def test_authored_layers_and_reserved_layer_four():
+def test_authored_resonance_and_tier_layers():
     for entry in GODS_ENTRIES:
         assert entry["layer_2_resonance"] is not None, entry["god_id"]
         assert entry["layer_3_tier_abilities"] is not None, entry["god_id"]
-        assert entry["layer_4_synergy_matrix"] is None, entry["god_id"]

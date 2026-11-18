@@ -342,12 +342,18 @@ class SessionData:
         return tuple(pid for pid in self.party.member_ids if owner.lifecycle.is_live(pid))
 
     def ally_present_for(self, actor_id: str) -> bool:
-        if self.has_companion:
-            return True
+        return self.allies_present_for(actor_id) > 0
+
+    def allies_present_for(self, actor_id: str) -> int:
         owner = self.multiplayer_owner
-        return owner is not None and any(
-            member_id != actor_id and owner.lifecycle.is_live(member_id) for member_id in self.party.member_ids
+        others = (
+            0
+            if owner is None
+            else sum(
+                member_id != actor_id and owner.lifecycle.is_live(member_id) for member_id in self.party.member_ids
+            )
         )
+        return int(self.has_companion) + others
 
     @property
     def companion_can_act(self) -> bool:
