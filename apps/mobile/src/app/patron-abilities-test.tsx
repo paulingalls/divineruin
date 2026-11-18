@@ -5,6 +5,7 @@ import { ThemedText } from "@/components/themed-text";
 import { CharacterSheetPanel } from "@/components/hud/panels/character-sheet-panel";
 import { LiveKitRoom, useDataChannel, type ReceivedDataMessage } from "@/livekit";
 import { handleGameEventMessage } from "@/audio/game-event-handler";
+import { fetchPatronFixture, validateFixtureEndpoint } from "@/audio/native-transport-observation";
 import { authStore } from "@/stores/auth-store";
 import { panelStore } from "@/stores/panel-store";
 import { characterStore } from "@/stores/character-store";
@@ -57,10 +58,9 @@ export default function PatronAbilitiesTest() {
   const runId = params.run_id ?? "";
   const load = useCallback(
     async (signal?: AbortSignal) => {
-      const response = await fetch(`${endpoint}?run_id=${runId}`, { signal });
-      if (!response.ok) throw new Error(`Probe fixture HTTP ${response.status}`);
-      const next = (await response.json()) as Fixture;
-      if (next.run_id !== runId) throw new Error("Stale patron run");
+      const next = await fetchPatronFixture(endpoint, runId, __DEV__, (url) =>
+        fetch(url, { signal }),
+      );
       if (signal?.aborted) throw new Error("Patron fixture load cancelled");
       authStore.setState({ playerId: next.player_id });
       setFixture(next);
@@ -89,7 +89,11 @@ export default function PatronAbilitiesTest() {
   }, [load]);
   if (!__DEV__) return null;
   const advance = async (step: string) => {
-    const response = await fetch(`${endpoint}?run_id=${runId}&step=${step}`, { method: "POST" });
+    const safeEndpoint = validateFixtureEndpoint(endpoint, __DEV__);
+    const response = await fetch(
+      `${safeEndpoint}?run_id=${encodeURIComponent(runId)}&step=${step}`,
+      { method: "POST" },
+    );
     if (!response.ok) throw new Error(await response.text());
     if (step === "secondary") {
       setFixture(null);

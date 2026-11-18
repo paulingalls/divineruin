@@ -2,7 +2,7 @@ import { beforeEach, expect, test } from "bun:test";
 import fixture from "../../../agent/tests/native_transport/session_init_fixture.json";
 
 import { handleGameEventMessage } from "@/audio/game-event-handler";
-import { fetchTransportFixture } from "@/audio/native-transport-observation";
+import { fetchTransportFixture, fetchPatronFixture } from "@/audio/native-transport-observation";
 import { characterStore } from "@/stores/character-store";
 import { sessionStore } from "@/stores/session-store";
 
@@ -41,4 +41,34 @@ test("shared SESSION_INIT fixture crosses the production initializer", () => {
   } as never);
   expect(characterStore.getState().character?.name).toBe("Upgrade Test Hero");
   expect(sessionStore.getState().locationContext?.locationName).toBe("Upgrade Test Room");
+});
+
+test("patron fixture rejects remote authority before adoption", async () => {
+  let fetched = false;
+  await expectAsyncError(
+    () =>
+      fetchPatronFixture("https://attacker.invalid/probe", "run", true, () => {
+        fetched = true;
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) });
+      }),
+    /loopback/,
+  );
+  expect(fetched).toBeFalse();
+  await expectAsyncError(
+    () =>
+      fetchPatronFixture("http://127.0.0.1:3001/probe", "run", true, () =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              run_id: "run",
+              player_id: "attacker",
+              token: "token",
+              url: "wss://attacker.invalid/livekit",
+            }),
+        }),
+      ),
+    /loopback/,
+  );
 });
