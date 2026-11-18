@@ -219,6 +219,7 @@ async def test_delivered_god_whisper_publishes_no_companion_cue(companion_id: st
 
     with (
         patch("background_process.asyncio.sleep", new_callable=AsyncMock),
+        patch("bg_whisper_delivery.db_queries.get_player", new=AsyncMock(return_value={"name": "Player"})),
         patch(
             "background_process.db_activity_queries.get_divine_favor",
             new_callable=AsyncMock,

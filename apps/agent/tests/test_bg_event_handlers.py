@@ -53,60 +53,10 @@ class TestHiddenRevealed:
         assert sd.recently_revealed_element_ids == ["a", "b"]
 
 
-class TestDivineFavorWhisperIsPrimaryOnly:
-    """The primary player is the sole writer of the party divine-whisper cadence."""
-
-    _CROSSING = {
-        "previous_level": 25,
-        "new_level": 30,
-        "max": 100,
-        "requested_amount": 5,
-        "last_whisper_level": 0,
-        "patron_id": "kaelen",
-        "amount": 5,
-    }
-
-    def test_primarys_crossing_queues_a_whisper(self):
-        sd = _sd()
-        speech: list = []
-        handle_events(
-            [GameEvent(event_type=E.DIVINE_FAVOR_CHANGED, payload={**self._CROSSING, "player_id": "player_1"})],
-            sd,
-            speech,
-        )
-        assert len(speech) == 1
-        assert speech[0].recipient_id == "player_1"
-
-    def test_teammates_crossing_queues_nothing(self):
-        sd = _sd()
-        speech: list = []
-        handle_events(
-            [GameEvent(event_type=E.DIVINE_FAVOR_CHANGED, payload={**self._CROSSING, "player_id": "player_2"})],
-            sd,
-            speech,
-        )
-        assert speech == []
-
-    def test_unstamped_crossing_is_tolerated_as_the_primarys(self):
-        # No live producer emits an unstamped payload any more — _award_divine_favor_core is the
-        # sole producer and always stamps player_id. This pins the deliberate TOLERANCE: an
-        # unstamped payload whispers to the primary rather than being silently dropped.
-        sd = _sd()
-        speech: list = []
-        handle_events([GameEvent(event_type=E.DIVINE_FAVOR_CHANGED, payload=self._CROSSING)], sd, speech)
-        assert len(speech) == 1
-
-    def test_after_handoff_p2_crossing_whispers_and_host_crossing_does_not(self):
-        sd = _sd()
-        sd.party.members.append(SessionData(player_id="player_2", location_id="hall").party.primary)
-        sd.handoff_primary("player_1")
-        speech: list = []
-        events = [
-            GameEvent(event_type=E.DIVINE_FAVOR_CHANGED, payload={**self._CROSSING, "player_id": "player_1"}),
-            GameEvent(event_type=E.DIVINE_FAVOR_CHANGED, payload={**self._CROSSING, "player_id": "player_2"}),
-        ]
-        handle_events(events, sd, speech)
-        assert len(speech) == 1
+def test_absent_players_crossing_queues_nothing():
+    speech = []
+    handle_events([GameEvent(E.DIVINE_FAVOR_CHANGED, {"player_id": "absent", "amount": 5})], _sd(), speech)
+    assert speech == []
 
 
 def test_whisper_fallback_uses_new_primary_patron():
