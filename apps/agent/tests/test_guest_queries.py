@@ -4,7 +4,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from sample_fixtures import make_context
 
-from query_tools import _query_abilities_impl, _query_inventory_impl, _query_npc_impl, _query_patron_impl
+from query_patron import query_patron
+from query_tools import _query_abilities_impl, _query_inventory_impl, _query_npc_impl
 
 
 def guest_context():
@@ -54,7 +55,7 @@ async def test_guest_patron_describes_guest_standing():
         )
     )
     with ctx.userdata._bind_authenticated_actor("player_2", 4, lambda *_: None):
-        result = json.loads(await _query_patron_impl(ctx, queries=queries, gods_loader=load_gods))
+        result = json.loads(await query_patron(ctx, queries=queries, gods_loader=load_gods))
     assert result["level"] == 24
     queries.get_player.assert_awaited_once_with("player_2")
 
