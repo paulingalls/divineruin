@@ -414,7 +414,8 @@ async def test_melody_pending_move_single_speed(kind):
     if kind == "defend":
         assert result["declaration_type"] == kind and result["ac_bonus"] == 2
     else:
-        assert "hit" in result
+        assert result["attack_resolved"] is False and not result["closed_distance"]
+        assert "speed" in result["reason"]
     assert spatial_record(state)["positions"][target.id]["x"] == 30
     state = CombatState.from_dict(state.to_dict())
     move = Declaration(

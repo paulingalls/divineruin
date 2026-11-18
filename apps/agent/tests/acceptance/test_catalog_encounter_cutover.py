@@ -224,7 +224,12 @@ async def test_actual_companion_boundary_combat(started, companion, encounter_id
         assert saved is not None
         struck = saved.get_participant(selected.id)
         assert struck is not None
-        assert struck.hp_current < selected.hp_max
+        if struck.hp_current == selected.hp_max:
+            approaches = [p for p in result["packets"] if p.get("actor_id") in (player.id, companion)]
+            assert len(approaches) == 2
+            assert all(p["closed_distance"] and p["attack_resolved"] is False and p["moved_ft"] > 0 for p in approaches)
+        else:
+            assert struck.hp_current < selected.hp_max
 
 
 @pytest.mark.parametrize(
@@ -401,6 +406,10 @@ async def test_strength_fixture_uses_created_warrior_and_level_grants(started, e
     assert ("extra_attack" in actor.enhancers) == (level >= 10)
     if level >= 10:
         enemy = next(p for p in ctx.userdata.combat_state.participants if p.type == "enemy")
+        ctx.userdata.combat_state.spatial["positions"][enemy.id] = dict(
+            ctx.userdata.combat_state.spatial["positions"][actor.id]
+        )
+        await db_mutations.save_combat_state(ctx.userdata.combat_state.combat_id, ctx.userdata.combat_state.to_dict())
         await combat_turn._declare_phase_impl(
             ctx, {actor.id: {"type": "attack", "action": actor.action_pool[0]["name"], "target_id": enemy.id}}
         )

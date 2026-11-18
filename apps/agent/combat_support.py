@@ -9,6 +9,7 @@ import check_resolution_attack
 import combat_damage_affinity
 import combat_grapple
 import combat_hollow_death
+import combat_melee_approach
 import combat_resolution
 import combat_spatial
 import combat_wrongdoing
@@ -299,8 +300,7 @@ async def apply_attack_result(
         if (
             isinstance(attack_result, check_resolution_attack.AttackResult)
             and attack_result.hit
-            and not check_resolution_attack._is_ranged(action)
-            and "aoe" not in action.get("properties", [])
+            and combat_melee_approach.is_melee(action)
         ):
             spatial = combat_spatial.require_spatial(combat_state)
             if combat_spatial.inside(
