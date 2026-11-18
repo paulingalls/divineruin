@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from session_limits import SessionLimits
     from session_startup import GameplayInputOwner
     from speaker_context import SpeakerSummary
+    from zhael_fate import FateOffer
 
 MAX_RECENT_EVENTS = 20
 MAX_COMPANION_MEMORIES = 20
@@ -118,6 +119,8 @@ class SessionData:
     # commit lets a retried end pay the party twice, and a writer that took it inside a transaction
     # could hold a row a lock-holding resolver is waiting on. Combat is session-scoped and lives in
     # one process; a combat resumed by a second agent process would still need a DB-level token.
+    fate_offer: FateOffer | None = field(default=None, repr=False, compare=False)
+    fate_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False, compare=False)
     combat_state_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False, compare=False)
 
     # Per-encounter weapon durability state moved PER MEMBER onto PartyMember (M18 story-003):

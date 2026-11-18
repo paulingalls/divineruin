@@ -8,6 +8,7 @@ from livekit.agents.voice import RunContext
 import db_mutations_resonance
 import db_queries
 import unbound_tools
+import zhael_fate
 from _gods_content import load_gods
 from combat_terrain import resolve_terrain
 from patron_ability_tools import project_abilities
@@ -65,6 +66,9 @@ async def query_patron(
             favor_needed = level - favor["level"]
             break
 
+    gift = patron["layer_1_gift"]
+    if gift["id"] == zhael_fate.FATE:
+        gift = {**gift, **zhael_fate.availability(player, gift)}
     return json.dumps(
         {
             "patron_id": patron_id,
@@ -78,7 +82,7 @@ async def query_patron(
             "next_tier": next_tier,
             "favor_needed_to_next_tier": favor_needed,
             "favor_actions": patron["favor_actions"],
-            "layer_1_gift": patron["layer_1_gift"],
+            "layer_1_gift": gift,
             "abilities": project_abilities(player, patron),
             **await ecosystem_cue(session, favor),
         }

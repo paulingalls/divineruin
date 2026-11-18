@@ -148,3 +148,18 @@ def test_nonfinite_runtime_values(value, read_catalog):
     profile["layer_2_resonance"]["modifiers"][0]["value"] = value
     with pytest.raises(ValueError, match=r"veythar.layer_2_resonance.modifiers\[0\].value"):
         read_catalog(with_profile(profile))
+
+
+@pytest.mark.parametrize("case", CORPUS["layer_1_cases"], ids=lambda c: c["id"])
+def test_layer_1_profile_reaches_loader(case, read_catalog):
+    profile = copy.deepcopy(CORPUS["valid"][0]["profile"])
+    gift = profile["layer_1_gift"]
+    gift.update(case.get("set", {}))
+    if "delete" in case:
+        del gift[case["delete"]]
+    rows = with_profile(profile)
+    if "field" in case:
+        with pytest.raises(ValueError, match=re.escape("veythar.layer_1_gift." + case["field"] + ":")):
+            read_catalog(rows)
+    else:
+        assert read_catalog(rows) == rows

@@ -61,16 +61,16 @@ async def write_state(player_id, state, *, gift_id, conn):
     )
 
 
-async def offer(session, player, result, pending, *, conn):
+async def offer(session, player, result, pending, *, conn, authorized_roller=None):
     if result.auto_fail or result.success or result.skill.lower() not in KNOWLEDGE_SKILLS:
         return None
     gift = veythar_gift(player)
     if gift is None or gift_state(player)["spent"]:
         return None
-    session.validate_acting_player(session.acting_player_id)
-    await write_state(
-        session.acting_player_id, {"spent": False, "pending": pending}, gift_id=VEYTHAR_INSIGHT, conn=conn
-    )
+    player_id = authorized_roller or session.acting_player_id
+    if authorized_roller is None:
+        session.validate_acting_player(player_id)
+    await write_state(player_id, {"spent": False, "pending": pending}, gift_id=VEYTHAR_INSIGHT, conn=conn)
     return f'{gift["name"]}: optionally invoke activate(id="{gift["id"]}") to reroll. Take the new result.'
 
 

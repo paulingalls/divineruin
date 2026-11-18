@@ -79,6 +79,7 @@ class CombatState:
     # encounter duration, so nothing has to tear this down. story-006 seeds it in combat_init and ticks
     # rounds_remaining at the WRAP beat, beside tick_conditions.
     veil_ward: dict | None = None
+    ally_continuation: dict | None = None
     # Enemy declarations HELD for Beat 3 (M29, story-016), initiative-ordered, popped as each
     # resolves. The ally band commits first and the enemy band waits here, so a reload mid-window
     # finds the enemy's turn still pending rather than silently deleted. Each entry:
@@ -162,6 +163,7 @@ class CombatState:
             veil_ward=data.get("veil_ward"),
             # Plain dicts — no rebuild. Absent on rows written before story-016, which rehydrate
             # with no held actions and no open window: a legacy combat is simply not mid-pause.
+            ally_continuation=data.get("ally_continuation"),
             held_actions=held_actions,
             open_window=reaction_windows.upgrade_legacy_window(
                 data.get("open_window"), data.get("held_actions", []), data["participants"]

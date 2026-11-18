@@ -21,6 +21,21 @@ def roll_attack(
     combat_state=None,
 ) -> tuple:
     """Roll without applying HP changes; held reactions pause before impact."""
+    attacker_data, effective_ac, attack_mod = attack_roll_inputs(attacker, target, target_ac_bonus, combat_state)
+    attack_result = resolver.resolve_attack(
+        attacker_data,
+        action,
+        effective_ac,
+        target.hp_current,
+        target_conditions=target.conditions,
+        attack_mod=attack_mod,
+        damage_mult=attacker.damage_mult,
+    )
+
+    return promote_attack(attack_result, enemies_remaining, is_first_attack_of_combat), effective_ac
+
+
+def attack_roll_inputs(attacker, target, target_ac_bonus, combat_state):
     attacker_data = {
         "attributes": attacker.attributes,
         "level": attacker.level,
@@ -30,17 +45,13 @@ def roll_attack(
     attacker_data = condition_voice_rules.roll_data(attacker_data, combat_state, attacker.id)
     target_condition_ac = conditions.get_condition_effects(target.conditions).ac_modifier
     effective_ac = target.ac + target_ac_bonus + target_condition_ac
-    attack_result = resolver.resolve_attack(
-        attacker_data,
-        action,
-        effective_ac,
-        target.hp_current,
-        target_conditions=target.conditions,
-        attack_mod=attacker.attack_mod
-        + (combat_marks.attack_bonus(combat_state, attacker, target) if combat_state is not None else 0),
-        damage_mult=attacker.damage_mult,
-    )
+    attack_mod = attacker.attack_mod
+    if combat_state is not None:
+        attack_mod += combat_marks.attack_bonus(combat_state, attacker, target)
+    return attacker_data, effective_ac, attack_mod
 
+
+def promote_attack(attack_result, enemies_remaining, is_first_attack_of_combat):
     if not attack_result.dramatic:
         verdict = evaluate_dramatic_context(
             DramaticContext(
@@ -52,7 +63,7 @@ def roll_attack(
         if verdict.dramatic:
             attack_result = replace(attack_result, dramatic=True, context=verdict.context)
 
-    return attack_result, effective_ac
+    return attack_result
 
 
 def serialize_roll(attack_result, effective_ac: int) -> dict:

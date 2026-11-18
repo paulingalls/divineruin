@@ -151,21 +151,6 @@ async def _resolve_attack_packet(
     sink=None,
     publish_roll: bool = True,
 ) -> dict:
-    """Resolve ONE declared attack against CombatParticipant HP.
-
-    The composition of ``roll_attack`` and ``apply_attack_result`` — the unpaused path, which
-    resolves exactly as it did before the two halves were separable (M29, story-016). Callers
-    that must PAUSE between the roll and the damage (the Beat-3 hold) drive the halves directly.
-
-    Mutates ``target`` in place (hp_current, is_fallen), publishes sounds and durability hits,
-    and returns a per-packet narration summary. The DICE_ROLL publishes here unless ``publish_roll``
-    says a held replay already announced it at the POST_ROLL pause. It does not persist; the
-    caller owns the phase save. ``attacker``/``target`` are CombatParticipants and ``action`` is
-    weapon-shaped.
-
-    ``shield_reaction`` names the shield-bearing reaction the target spent against THIS blow, and
-    is what accrues a durability hit on their shield. Its live producer is the Beat-3 window close
-    (combat_reaction_effect.shield_reaction, story-018); ``None`` on every unpaused path."""
     attack_result, effective_ac = roll_attack(
         attacker,
         action,
@@ -176,6 +161,43 @@ async def _resolve_attack_packet(
         resolver=resolver,
         combat_state=combat_state,
     )
+    return await apply_rolled_attack(
+        session,
+        attacker,
+        action,
+        target,
+        attack_result,
+        effective_ac,
+        shield_reaction=shield_reaction,
+        grapple_blocked=grapple_blocked,
+        mutations=mutations,
+        queries=queries,
+        concentration_break_mod=concentration_break_mod,
+        combat_state=combat_state,
+        conn=conn,
+        sink=sink,
+        publish_roll=publish_roll,
+    )
+
+
+async def apply_rolled_attack(
+    session,
+    attacker,
+    action,
+    target,
+    attack_result,
+    effective_ac,
+    *,
+    shield_reaction=None,
+    grapple_blocked=False,
+    mutations=db_mutations,
+    queries=db_queries,
+    concentration_break_mod=concentration_break,
+    combat_state=None,
+    conn=None,
+    sink=None,
+    publish_roll=True,
+):
     combat_wrongdoing.record_attack(combat_state, attacker, target)
     summary = await apply_attack_result(
         session,

@@ -101,9 +101,11 @@ class BaseGameAgent(ReportingEntry):
         chat_ctx: Any = None,
         tts_instance_callback: Callable[[inworld.TTS], None] | None = None,
     ) -> None:
+        from fate_tool_boundary import wrap_tool
+
         init_kwargs: dict[str, Any] = {
             "instructions": instructions,
-            "tools": tools or [],
+            "tools": [wrap_tool(tool) for tool in tools or []],
         }
         if chat_ctx is not None:
             init_kwargs["chat_ctx"] = chat_ctx

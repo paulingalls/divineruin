@@ -14,6 +14,7 @@ import event_types as E
 import patron_deeds
 import rules_engine
 import skill_persistence
+import zhael_fate
 from combat_terrain import skill_natural_terrain
 from condition_consume import consume_beneficial_conditions
 from condition_voice_rules import validate_hearing_check
@@ -21,6 +22,7 @@ from db_errors import validated_player_conditions
 from patron_gifts import KNOWLEDGE_SKILLS
 from patron_location import check_first_stay
 from session_data import SessionData
+from skill_check_effects import SkillCheckEffects
 from tool_support import _cap_str
 
 logger = logging.getLogger("divineruin.tools")
@@ -82,9 +84,106 @@ async def _check_skill_run(
         hearing_only=hearing_only,
     )
 
+    d20 = result.d20
+    followers = (
+        await zhael_fate.eligible_followers(session, queries=queries, conn=conn, roller=(player_id, player))
+        if reroll_dc is None and d20 is not None
+        else ()
+    )
+    if d20 is not None and followers:
+        location_id = session.location_id
+
+        async def resume(kept):
+            from check_tools import publish_game_event
+
+            async with session.combat_state_lock:
+                if player_id not in session.present_member_ids or session.location_id != location_id:
+                    return zhael_fate.cancel(session, "The skill check's roller is no longer present for this check.")
+                deferred = SkillCheckEffects()
+                async with db_mod.transaction() as write_conn:
+                    current = await queries.get_player(player_id, conn=write_conn, for_update=True)
+                    if current is None:
+                        raise ToolError(f"Player '{player_id}' not found.")
+                    packet = await _finish_skill(
+                        session,
+                        player_id,
+                        current,
+                        kept,
+                        skill,
+                        difficulty,
+                        context_description,
+                        hearing_only=hearing_only,
+                        queries=queries,
+                        mutations=mutations,
+                        db_mod=db_mod,
+                        conditions_mutations=conditions_mutations,
+                        effects=deferred,
+                        conn=write_conn,
+                        resumed=True,
+                    )
+                zhael_fate.effects_committed(session)
+                await deferred.flush(session, publish=publish_game_event)
+                return zhael_fate.Resumed(json.loads(packet))
+
+        offer = zhael_fate.make_offer(
+            "skill",
+            player_id,
+            result,
+            followers,
+            numbers=lambda r: (r.roll, r.total),
+            reroll=lambda: check_resolution.skill_with_roll(result, d20.roll()),
+            resume=resume,
+        )
+        effects.fate_offer = offer
+        return json.dumps(offer.response())
+
+    return await _finish_skill(
+        session,
+        player_id,
+        player,
+        result,
+        skill,
+        difficulty,
+        context_description,
+        hearing_only=hearing_only,
+        queries=queries,
+        mutations=mutations,
+        db_mod=db_mod,
+        conditions_mutations=conditions_mutations,
+        effects=effects,
+        conn=conn,
+        reroll_dc=reroll_dc,
+    )
+
+
+async def _finish_skill(
+    session,
+    player_id,
+    player,
+    result,
+    skill,
+    difficulty,
+    context_description,
+    *,
+    hearing_only,
+    queries,
+    mutations,
+    db_mod,
+    conditions_mutations,
+    effects,
+    conn,
+    reroll_dc=None,
+    resumed=False,
+):
+    def validate():
+        if resumed:
+            session.member_state(player_id)
+        else:
+            session.validate_acting_player(player_id)
+
     concealment_packet = None
     if skill.lower() == "stealth":
-        session.validate_acting_player(player_id)
+        validate()
         concealment_packet = await concealment.transition(
             player, result.success, ended_by=None if result.success else "failed_stealth", conn=conn
         )
@@ -121,7 +220,7 @@ async def _check_skill_run(
     adv = None
     if result.consumed_conditions:
         async with nullcontext(conn) if conn is not None else db_mod.transaction() as write_conn:
-            session.validate_acting_player(player_id)
+            validate()
             if reroll_dc is None:
                 adv = await skill_persistence.apply_skill_use_with_persistence(
                     player_id,
@@ -141,7 +240,7 @@ async def _check_skill_run(
                 db_mod=db_mod,
             )
     elif reroll_dc is None:
-        session.validate_acting_player(player_id)
+        validate()
         adv = await skill_persistence.apply_skill_use_with_persistence(
             player_id,
             skill,
@@ -163,7 +262,7 @@ async def _check_skill_run(
         )
         if deed is not None:
             assert conn is not None
-            session.validate_acting_player(player_id)
+            validate()
             await patron_deeds.record_deed(player_id, deed, conn=conn)
 
     effects.combat_state = consumed_state
@@ -208,6 +307,7 @@ async def _check_skill_run(
                 "location_id": session.location_id,
             },
             conn=conn,
+            authorized_roller=player_id if resumed else None,
         )
         if offered:
             response["reroll_offer"] = offered

@@ -24,7 +24,7 @@ import json
 from unittest.mock import MagicMock
 
 import pytest
-from livekit.agents.llm import ToolError
+from livekit.agents.llm import FunctionTool, RawFunctionTool, ToolError
 from livekit.agents.llm.utils import prepare_function_arguments
 from livekit.agents.voice import RunContext
 
@@ -32,6 +32,7 @@ import activity_payloads
 import check_payloads
 import declaration_payloads
 from activity_tools import begin_activity
+from base_agent import BaseGameAgent
 from check_tools import check
 from combat_turn import declare_phase
 from session_data import SessionData
@@ -51,8 +52,10 @@ def _call_ctx() -> RunContext:
 
 def _bind(tool, arguments: dict) -> dict:
     """Run one raw tool call through LiveKit's validation and name what the tool would receive."""
-    args, kwargs = prepare_function_arguments(fnc=tool, json_arguments=json.dumps(arguments), call_ctx=_call_ctx())
-    return dict(inspect.signature(tool).bind(*args, **kwargs).arguments)
+    (wrapped,) = BaseGameAgent(instructions="Resolve the action.", tools=[tool]).tools
+    assert isinstance(wrapped, (FunctionTool, RawFunctionTool))
+    args, kwargs = prepare_function_arguments(fnc=wrapped, json_arguments=json.dumps(arguments), call_ctx=_call_ctx())
+    return dict(inspect.signature(wrapped).bind(*args, **kwargs).arguments)
 
 
 def test_declare_phase_binds_raw_json_declarations_to_the_engine_dict():

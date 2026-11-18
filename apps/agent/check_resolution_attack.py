@@ -9,7 +9,7 @@ resolve_attack accepts an optional `rng` for deterministic testing.
 import random
 from dataclasses import dataclass
 
-from check_resolution import _roll_d20_check, roll_bonus_dice
+from check_resolution import D20CheckCore, D20Roll, roll_bonus_dice
 from condition_restrictions import (
     attack_consumed_conditions,
     incoming_advantage,
@@ -93,6 +93,17 @@ def attack_modifier(player_data: dict, weapon: dict) -> int:
     return weapon_attribute_modifier(player_data, weapon) + proficiency_bonus(level)
 
 
+@dataclass(frozen=True)
+class PreparedAttack:
+    d20: D20Roll
+    original: D20CheckCore
+    consumed: tuple[str, ...]
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "PreparedAttack":
+        return cls(D20Roll(**data["d20"]), D20CheckCore(**data["original"]), tuple(data["consumed"]))
+
+
 def resolve_attack(
     attacker_data: dict,
     weapon: dict,
@@ -103,6 +114,28 @@ def resolve_attack(
     damage_mult: float = 1.0,
     target_conditions: list[dict] | tuple = (),
 ) -> AttackResult:
+    prepared = prepare_attack(attacker_data, weapon, target_ac, rng, attack_mod, target_conditions)
+    return finish_attack(
+        attacker_data,
+        weapon,
+        target_ac,
+        target_hp,
+        prepared,
+        prepared.original,
+        rng=rng,
+        damage_mult=damage_mult,
+        target_conditions=target_conditions,
+    )
+
+
+def prepare_attack(
+    attacker_data: dict,
+    weapon: dict,
+    target_ac: int,
+    rng: random.Random | None = None,
+    attack_mod: int = 0,
+    target_conditions: list[dict] | tuple = (),
+) -> PreparedAttack:
     # Attacker condition effects (M4.3): Exhausted -1/stack folds into the attack roll,
     # Prone/Blinded etc. impose disadvantage (scope "attack"), Enraged adds +2 damage below.
     # The defender's AC modifier (e.g. Enraged -2 AC) is the caller's concern (combat_support),
@@ -143,14 +176,23 @@ def resolve_attack(
             )
         )
     )
-    atk_mod += bonus
-    # Attack uses the same d20+mod-vs-target rule as skill checks/saves: nat-20
-    # always hits, nat-1 always misses, else total >= AC. Route through the shared
-    # primitive (target_ac is the attack-side DC) so the rule can't drift; attack
-    # vocab (hit/critical) and the crit-doubles-damage side-effect stay here.
-    core = _roll_d20_check(
-        mod=atk_mod, dc=target_ac, rng=rng, advantage=attack_advantage, disadvantage=attack_disadvantage
-    )
+    d20 = D20Roll(atk_mod + bonus, target_ac, attack_advantage, attack_disadvantage)
+    return PreparedAttack(d20, d20.roll(rng), consumed)
+
+
+def finish_attack(
+    attacker_data: dict,
+    weapon: dict,
+    target_ac: int,
+    target_hp: int,
+    prepared: PreparedAttack,
+    core: D20CheckCore,
+    *,
+    rng: random.Random | None = None,
+    damage_mult: float = 1.0,
+    target_conditions: list[dict] | tuple = (),
+) -> AttackResult:
+    effects = get_condition_effects(attacker_data.get("conditions") or [])
     d20 = core.roll
     attack_total = core.total
     hit = core.success
@@ -168,7 +210,7 @@ def resolve_attack(
         if critical:
             crit_result = dice_roll(damage_notation, rng=rng)
             damage += crit_result.total
-        if not catalog:
+        if weapon.get("attack_source") != "catalog":
             damage += weapon_attribute_modifier(attacker_data, weapon)
         # Condition damage modifier (M4.3): Enraged adds +2 damage. Applied once, like
         # the attribute mod, before the floor.
@@ -210,7 +252,7 @@ def resolve_attack(
     return AttackResult(
         hit=hit,
         roll=d20,
-        attack_modifier=atk_mod,
+        attack_modifier=prepared.d20.modifier,
         attack_total=attack_total,
         target_ac=target_ac,
         damage=damage,
@@ -225,5 +267,5 @@ def resolve_attack(
         context=verdict.context,
         bonus_damage=bonus_damage,
         bonus_damage_type=bonus_damage_type,
-        consumed_conditions=consumed,
+        consumed_conditions=prepared.consumed,
     )
