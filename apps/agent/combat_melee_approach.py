@@ -3,6 +3,7 @@
 import math
 
 from check_resolution_attack import _is_ranged
+from combat_down import has_damage
 from combat_spatial import distance, number, position, require_spatial
 from combat_spatial_declarations import apply_move, ineligible
 from declarations import Declaration, DeclarationType
@@ -14,7 +15,7 @@ def is_melee(action):
         action_kind(action) == "attack"
         and (
             action.get("type") == "melee"
-            or ("damage" in action and action.get("resolution") != "save" and action.get("half_on_success") is not True)
+            or (has_damage(action) and action.get("resolution") != "save" and action.get("half_on_success") is not True)
         )
         and not _is_ranged(action)
         and action.get("type") not in ("ranged", "area")
