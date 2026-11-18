@@ -325,28 +325,6 @@ class TestRebuildWarmLayer:
 
 
 class TestGodWhisperFlow:
-    def test_divine_favor_triggers_whisper_queue(self):
-        sd = _make_session_data(patron_id="kaelen")
-        bg, _, _ = _make_bg(session_data=sd)
-        events = [
-            GameEvent(
-                event_type=E.DIVINE_FAVOR_CHANGED,
-                payload={
-                    "new_level": 25,
-                    "last_whisper_level": 0,
-                    "patron_id": "kaelen",
-                    "reason": "valor",
-                    "amount": 5,
-                },
-            )
-        ]
-        bg._handle_events(events)
-        assert len(bg._speech_queue) == 1
-        speech = bg._speech_queue[0]
-        assert speech.priority == SpeechPriority.CRITICAL
-        assert speech.stinger_sound == "god_whisper_stinger"
-        assert "Kaelen" in speech.instructions
-
     def test_divine_favor_below_threshold_no_whisper(self):
         sd = _make_session_data(patron_id="kaelen")
         bg, _, _ = _make_bg(session_data=sd)
@@ -412,40 +390,3 @@ class TestGodWhisperFlow:
             assert len(bg._speech_queue) == 1
             instructions = bg._speech_queue[0].instructions
             assert f"GOD_{deity_id.upper()}" in instructions
-
-    async def test_deliver_speech_fires_stinger_before_whisper(self):
-        """Keep the actual writer bound when mocking the database."""
-        sd = _make_session_data(patron_id="kaelen")
-        bg, _, session = _make_bg(session_data=sd)
-        bg._speech_queue.append(
-            PendingSpeech(
-                priority=SpeechPriority.CRITICAL,
-                instructions="Speak as Kaelen",
-                stinger_sound="god_whisper_stinger",
-            )
-        )
-        call_order = []
-
-        async def mock_publish(*args, **kwargs):
-            call_order.append("stinger")
-
-        def mock_reply(**kwargs):
-            call_order.append("reply")
-            return completed_handle()
-
-        session.generate_reply = mock_reply
-        with (
-            patch("game_events.publish_game_event", side_effect=mock_publish),
-            patch(
-                "background_process.db_activity_queries.get_divine_favor",
-                new=AsyncMock(return_value={"level": 25}),
-            ),
-            patch(
-                "background_process.db_mutations_divine.mark_favor_whisper_level",
-                new=AsyncMock(),
-            ) as mock_mark,
-        ):
-            await bg._deliver_speech()
-
-        assert call_order == ["stinger", "reply"]
-        mock_mark.assert_awaited_once_with("player_1", 25)

@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, cast
 
 import db_activity_queries
 import db_content_queries
-import db_mutations_divine
 import db_queries
 import db_training
 import event_types as E
@@ -18,6 +17,7 @@ import first_episode
 from alignment_heartbeat import TRANSIENT_IO_ERRORS, AlignmentHeartbeat
 from bg_event_handlers import handle_events
 from bg_speech import COMPANION_IDLE_SECS, PendingSpeech, SpeechPriority
+from bg_whisper_delivery import mark_whisper, named_whisper
 from companion_cue_events import publish_companion_cue
 from companion_prompts import build_companion_cue, is_companion_cue
 from sanitize import sanitize_for_prompt
@@ -86,7 +86,7 @@ class BackgroundProcess:
         self._speech_queue = [
             speech
             for speech in self._speech_queue
-            if speech.recipient_id is None or speech.recipient_id == self._sd.primary_player_id
+            if speech.recipient_id is None or speech.recipient_id in self._sd.present_member_ids
         ]
         self._quest_cache.clear()
         self._scene_cache.clear()
@@ -276,13 +276,32 @@ class BackgroundProcess:
         if not speakable:
             return
 
-        # Newest wins a tie, which matters only because of the hold above: `max` returns the FIRST
-        # maximal element, so a cue carried through the whole fight would outrank the same-priority
-        # cue the fight's END raises — on a defeat, a held god whisper spoken in place of "the
-        # player has fallen". At equal urgency the most recent event is the one the player is in.
-        top = max(speakable, key=lambda s: (s.priority, s.created))
-        self._speech_queue = held
+        # Keep today's newest highest-priority cue for each recipient. Other players'
+        # whispers must survive the selection and await the room's single voice in turn.
+        winners: dict[str, PendingSpeech] = {}
+        for speech in speakable:
+            if speech.recipient_id is not None and speech.recipient_id not in self._sd.present_member_ids:
+                continue
+            key = speech.recipient_id or self._sd.primary_player_id
+            previous = winners.get(key)
+            if previous is None or (speech.priority, speech.created) > (previous.priority, previous.created):
+                winners[key] = speech
+        ordered = sorted(winners.values(), key=lambda s: (s.priority, s.created), reverse=True)
+        self._speech_queue = held + ordered
+        for top in ordered:
+            if not any(s is top for s in self._speech_queue):
+                continue
+            instructions = top.instructions
+            if top.stinger_sound is not None:
+                try:
+                    instructions = await named_whisper(top)
+                except TRANSIENT_IO_ERRORS:
+                    logger.warning("Failed to read whisper recipient name", exc_info=True)
+                    return
+            self._speech_queue = [s for s in self._speech_queue if s is not top]
+            await self._deliver_one(top, instructions)
 
+    async def _deliver_one(self, top: PendingSpeech, instructions: str) -> None:
         revoked = None
         suppression = None
         if top.silence_generated and self._sd.limits is not None:
@@ -294,6 +313,8 @@ class BackgroundProcess:
         if companion and is_companion_cue(top.instructions, companion):
             await publish_companion_cue(self._sd, companion)
 
+        if top.recipient_id is not None and top.recipient_id not in self._sd.present_member_ids:
+            return
         # Fire stinger SFX before god whisper speech
         if top.stinger_sound is not None:
             from game_events import publish_game_event
@@ -308,9 +329,11 @@ class BackgroundProcess:
 
         if suppression is not None and suppression.is_set():
             return
+        if top.recipient_id is not None and top.recipient_id not in self._sd.present_member_ids:
+            return
         delivered = await deliver_speech(
             self._session,
-            top.instructions,
+            instructions,
             logger,
             f"Proactive speech (priority={top.priority.name})",
             revoked=revoked,
@@ -319,20 +342,7 @@ class BackgroundProcess:
             return
 
         logger.info("Proactive speech delivered (priority=%s)", top.priority.name)
-        if top.is_displeasure:
-            assert top.recipient_id is not None
-            self._sd.displeasure_heard_by.add(top.recipient_id)
-
-        # Mark last_whisper_level after delivering (deferred from critical path)
-        if top.stinger_sound is not None and not top.is_displeasure:
-            try:
-                favor = await db_activity_queries.get_divine_favor(self._sd.primary_player_id)
-                if favor:
-                    await db_mutations_divine.mark_favor_whisper_level(
-                        self._sd.primary_player_id, favor.get("level", 0)
-                    )
-            except TRANSIENT_IO_ERRORS:
-                logger.warning("Failed to mark favor whisper level", exc_info=True)
+        await mark_whisper(top, self._sd)
         if self._sd.companion and is_companion_cue(top.instructions, self._sd.companion):
             self._sd.companion.last_speech_time = time.time()
 
