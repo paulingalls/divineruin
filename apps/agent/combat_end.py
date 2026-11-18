@@ -17,6 +17,7 @@ import db_mutations_veil_ward
 import db_queries
 import event_types as E
 import first_episode
+import patron_deeds
 import pricing_queries
 import quest_progress
 from combat_conditions_persist import reconcile_member_conditions
@@ -260,6 +261,12 @@ async def _end_combat_db(
 
     enemies = [p for p in cs.participants if p.type == "enemy"]
     combat_cleared = bool(enemies) and all(p.is_fallen for p in enemies)
+    deed = {"fled": "fled_combat", "deescalated": "offered_mercy"}.get(outcome)
+    if outcome == "victory" and combat_cleared:
+        deed = "won_combat"
+    if deed is not None:
+        for player_id in sorted(p.id for p in cs.participants if p.type == "player"):
+            await patron_deeds.record_deed(player_id, deed, conn=conn)
     death_context = await settle_lives(cs, outcome, primary_id, combat_cleared, queries, mutations, conn)
 
     # Faction reputation from the combat OUTCOME (story-002 inc 5/6): killing an encounter

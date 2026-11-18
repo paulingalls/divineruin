@@ -1,7 +1,7 @@
 """Shared test fixtures — auto-mock agent factories, seed training config."""
 
 import os
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 from _db_lifecycle import configure_provider_redis, ensure_db_up, resolve_database_url, stop_if_started
@@ -109,6 +109,20 @@ def _paid_call_guard(request: pytest.FixtureRequest):
     attempts = finish_paid_calls()
     if attempts:
         pytest.fail("\n".join(attempts), pytrace=False)
+
+
+@pytest.fixture(autouse=True)
+def mock_connection_deeds():
+    import patron_deeds
+
+    record_deed = patron_deeds.record_deed
+
+    async def record(player_id, kind, *, conn):
+        if not isinstance(conn, Mock):
+            await record_deed(player_id, kind, conn=conn)
+
+    with patch.object(patron_deeds, "record_deed", record):
+        yield
 
 
 @pytest.fixture(autouse=True)
