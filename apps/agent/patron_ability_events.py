@@ -7,8 +7,7 @@ from patron_ability_tools import project_abilities
 from patron_ability_wire import validate_snapshot
 
 
-def snapshot(player_id: str, player: dict | None) -> dict:
-    revision = player.get("patron_revision", 0) if player else 0
+def snapshot(player_id: str, player: dict | None, revision: int) -> dict:
     favor = player.get("divine_favor") if player else None
     if favor is None:
         return {"player_id": player_id, "patron_revision": revision, "divine_favor": None, "abilities": []}
@@ -30,10 +29,10 @@ def snapshot(player_id: str, player: dict | None) -> dict:
 async def publish_patron_abilities(room, player_id: str, event_bus=None) -> None:
     from game_events import publish_game_event
 
-    player = await db_queries.get_player(player_id)
+    player, revision = await db_queries.get_player_at_patron_revision(player_id)
     if player is None:
         raise ValueError(f"Missing player: {player_id}")
-    payload = snapshot(player_id, player)
+    payload = snapshot(player_id, player, revision)
     if payload["divine_favor"] is None or payload["divine_favor"]["patron"] == "none":
         return
     await publish_game_event(room, E.PATRON_ABILITIES_UPDATED, payload, event_bus, destination_identities=[player_id])

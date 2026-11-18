@@ -134,10 +134,29 @@ async def get_player(
     for_update: bool = False,
 ) -> dict | None:
     _conn = conn or await db.get_pool()
-    sql = "SELECT data, patron_revision FROM players WHERE player_id = $1"
+    sql = "SELECT data FROM players WHERE player_id = $1"
     if for_update:
         sql += " FOR UPDATE"
     row = await _conn.fetchrow(sql, player_id)
+    return await _player_data(player_id, row, _conn)
+
+
+async def get_player_at_patron_revision(
+    player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> tuple[dict | None, int]:
+    """One read of a player's data and the ``patron_revision`` it was committed at.
+
+    The revision is a row column, not character data: it orders patron snapshots on the wire and
+    never joins the data dict that callers compare or write back.
+    """
+    _conn = conn or await db.get_pool()
+    row = await _conn.fetchrow("SELECT data, patron_revision FROM players WHERE player_id = $1", player_id)
+    if row is None:
+        return None, 0
+    return await _player_data(player_id, row, _conn), row["patron_revision"]
+
+
+async def _player_data(player_id: str, row, _conn: asyncpg.Connection | asyncpg.Pool) -> dict | None:
     if row is None:
         return None
     data = json.loads(row["data"])
@@ -149,7 +168,7 @@ async def get_player(
         logger.warning("Player %s has non-dict data: %s", player_id, type(data).__name__)
         return None
     await _hydrate_skill_tiers({player_id: data}, _conn)
-    return {**data, "patron_revision": row.get("patron_revision", 0)}
+    return data
 
 
 async def get_players_for_update(

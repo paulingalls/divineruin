@@ -50,16 +50,16 @@ async def test_patron_revision_rolls_back_with_state(dev_db_pool):
     from progression_tools import _award_divine_favor_core
 
     async with AbilityWalk(dev_db_pool) as w:
-        revision = (await w.row())["patron_revision"]
+        revision = await w.revision()
         with pytest.raises(RuntimeError, match="rollback"):
             async with db.transaction() as conn:
                 await db_queries.get_player(w.player, conn=conn, for_update=True)
                 await _award_divine_favor_core(w.player, 2, "served", conn=conn, pending_events=[])
-                changed = await db_queries.get_player(w.player, conn=conn)
-                assert changed is not None and changed["patron_revision"] > revision
+                changed = await db_queries.get_player_at_patron_revision(w.player, conn=conn)
+                assert changed[0] is not None and changed[1] > revision
                 raise RuntimeError("rollback")
-        assert (await w.row())["patron_revision"] == revision
+        assert await w.revision() == revision
         async with db.transaction() as conn:
             await db_queries.get_player(w.player, conn=conn, for_update=True)
             await _award_divine_favor_core(w.player, 2, "served", conn=conn, pending_events=[])
-        assert (await w.row())["patron_revision"] > revision
+        assert await w.revision() > revision

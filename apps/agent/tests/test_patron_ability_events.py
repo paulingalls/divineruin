@@ -55,7 +55,10 @@ async def test_rest_entry_and_decay_snapshots_follow_committed_state(dev_db_pool
             event = json.loads(data)
             if event["type"] == "patron_abilities_updated":
                 assert kwargs["destination_identities"] == [event["player_id"]]
-                assert event["abilities"] == patron_ability_events.snapshot(w.player, await w.row())["abilities"]
+                assert (
+                    event["abilities"]
+                    == patron_ability_events.snapshot(w.player, await w.row(), await w.revision())["abilities"]
+                )
                 events.append(event)
 
         cast(MagicMock, w.sd.room).local_participant.publish_data.side_effect = sent
@@ -181,7 +184,7 @@ async def test_party_quest_favor_publishes_each_committed_recipient(dev_db_pool)
             w = primary if event["player_id"] == primary.player else secondary
             assert event == {
                 "type": "patron_abilities_updated",
-                **patron_ability_events.snapshot(w.player, await w.row()),
+                **patron_ability_events.snapshot(w.player, await w.row(), await w.revision()),
             }
             assert event["abilities"][1]["state"] == "ready"
             events.append(event)

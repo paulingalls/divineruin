@@ -59,6 +59,9 @@ class AbilityWalk:
         assert row is not None
         return row
 
+    async def revision(self) -> int:
+        return (await db_queries.get_player_at_patron_revision(self.player))[1]
+
     async def state(self):
         row = await self.row()
         return {key: row.get(key) for key in ("patron_gifts", "divine_favor", "keepsake")}

@@ -279,7 +279,7 @@ async def test_patron_wire_uses_projection_and_rejects_malformed_before_delivery
 
     initial = FIXTURE["events"]["patron_session_init"]
     player = initial["character"]
-    payload = snapshot(player["player_id"], player)
+    payload = snapshot(player["player_id"], player, initial["patron_revision"])
     room = MagicMock()
     room.isconnected.return_value = True
     room.local_participant.publish_data = AsyncMock()
@@ -312,11 +312,11 @@ async def test_patron_wire_uses_projection_and_rejects_malformed_before_delivery
         room.local_participant.publish_data.assert_not_awaited()
         bus.publish.assert_not_called()
 
-    player = {**player, "patron_revision": 1, "patron_gifts": {"veythar_lorekeepers_library": {"spent": True}}}
+    player = {**player, "patron_gifts": {"veythar_lorekeepers_library": {"spent": True}}}
     await game_events.publish_game_event(
         room,
         event_types.PATRON_ABILITIES_UPDATED,
-        snapshot(player["player_id"], player),
+        snapshot(player["player_id"], player, 1),
         bus,
         destination_identities=[player["player_id"]],
     )
