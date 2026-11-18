@@ -5,8 +5,7 @@ resolve_phase (in combat_turn) orchestrates the per-phase transaction; the
 helpers here do the actual resolution work it drives: _prevalidate_ability_focus
 gates player ability Focus before the loop, _resolve_one_packet dispatches a
 single initiative-ordered packet to the right resolver (attack / ability /
-de-escalate / defend), and _resolve_tick_saves resolves the Beat-4 save-to-clear
-conditions the wrap surfaces. All are pure-ish helpers — they mutate in-memory
+de-escalate / defend). The helpers mutate in-memory
 state and write through injected mutation/query modules, but own no transaction."""
 
 import combat_fate
@@ -15,7 +14,6 @@ import combat_marks
 import combat_recharge
 import combat_spatial_declarations
 import combat_voice_rules
-import conditions
 import spell_casting
 from combat_ability import (
     AbilityCastOutcome,
@@ -40,39 +38,6 @@ from declarations import DeclarationType
 from encounter_actions import action_kind
 from session_data import SessionData
 
-# Beat-4 save-to-clear DC (M4.3, story-004): the spec's end-of-turn condition saves (Frightened's
-# WIS save) have no per-condition DC, so use a fixed moderate DC. A seam: a future per-condition DC
-# would replace this constant (assumption f760751a1109).
-_CONDITION_CLEAR_DC = 10
-
-
-def _resolve_tick_saves(state, tick_conditions_due, save_resolver):
-    """Resolve the Beat-4 save-to-clear conditions the wrap surfaced (M4.3, story-004).
-
-    For each {actor_id, type, save, source}, roll the actor's save against the clear DC; on a SUCCESS
-    remove that condition from the actor (it clears), on a failure it persists. Pure in-memory: the
-    removal rides the phase's existing save_combat_state / end-combat write — no extra persist here,
-    no client event (narration-only). The engine never rolls; this is where the roll happens.
-    """
-    for event in tick_conditions_due:
-        actor = state.get_participant(event["actor_id"])
-        if actor is None:
-            continue
-        # Shared participant-save SSOT (roll_participant_save): builds player_data from the actor and
-        # expands the 3-letter tick_save ("wis" -> "wisdom"). Engine-auto tick-clear: never spends the
-        # actor's +1d4 (bonus_dice_eligible=False, M4.8 story-003), and include_proficiency=False keeps
-        # the pre-M13 clear odds — folding proficiency in here would be an untested M4.3 balance shift.
-        result = save_resolver.roll_participant_save(
-            actor,
-            event["save"],
-            _CONDITION_CLEAR_DC,
-            event["type"],
-            bonus_dice_eligible=False,
-            include_proficiency=False,
-        )
-        if result.success:
-            actor.conditions = conditions.remove_condition(actor.conditions, event["type"])
-
 
 async def _resolve_one_packet(
     session: SessionData,
@@ -95,8 +60,8 @@ async def _resolve_one_packet(
     mark_cancelled: bool = False,
     publish_roll: bool = True,
     _held_head=None,
-    fate_candidates=None,
     attack_cursor=None,
+    progress=None,
 ) -> dict:
     """Resolve a single initiative-ordered ResolutionPacket against ``state``.
 
@@ -128,16 +93,17 @@ async def _resolve_one_packet(
     if stale is None:
         choir_encounter.guard_declaration(state, packet.actor_id, decl)
 
-    aura = await choir_encounter.turn_start(
-        session, state, attacker, conn=conn, concentration_break_mod=concentration_break_mod
+    await choir_encounter.turn_start(
+        session,
+        state,
+        attacker,
+        conn=conn,
+        concentration_break_mod=concentration_break_mod,
+        sink=sink,
+        progress=progress.scope("choir_aura") if progress is not None else None,
     )
-    if aura is not None and sink is not None:
-        import event_types as E
-        from combat_events import emit_or_publish
-
-        await emit_or_publish(
-            sink, session.room, E.DICE_ROLL, {"roll_type": "choir_aura", **aura}, event_bus=session.event_bus
-        )
+    if progress is not None and progress.paused:
+        return {}
 
     from choir_effects import approach
 
@@ -162,7 +128,15 @@ async def _resolve_one_packet(
         return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}
 
     if decl.type is DeclarationType.INTERACT and decl.action in choir_encounter.SEARCH_ACTIONS:
-        return await choir_encounter.search(session, state, attacker, decl, queries=queries, conn=conn)
+        return await choir_encounter.search(
+            session,
+            state,
+            attacker,
+            decl,
+            queries=queries,
+            conn=conn,
+            progress=progress.scope("choir_search") if progress is not None else None,
+        )
 
     if decl.type is DeclarationType.DEFEND:
         return {
@@ -185,7 +159,7 @@ async def _resolve_one_packet(
             for head in state.held_actions
         )
         if (
-            (_held_head is not None and not replay)
+            (_held_head is not None and _held_head.get("execution_receipt") is not None and not replay)
             or (_held_head is None and pending_execution)
             or (not replay and not combat_recharge.available(attacker, action))
         ):
@@ -197,7 +171,14 @@ async def _resolve_one_packet(
             from choir_actions import resolve_effect
 
             return await resolve_effect(
-                session, state, attacker, action, decl, reaction_save_advantage=reaction_save_advantage
+                session,
+                state,
+                attacker,
+                action,
+                decl,
+                reaction_save_advantage=reaction_save_advantage,
+                progress=progress,
+                head=_held_head,
             )
         target = state.get_participant(decl.target_id) if decl.target_id else None
         if replay:
@@ -213,7 +194,7 @@ async def _resolve_one_packet(
                 or action.get("half_on_success") is True
             )
         ):
-            action = begin_execution(state, attacker, action, decl)
+            action = begin_execution(state, attacker, action, decl, _held_head)
 
     if (
         not attacker.is_ally
@@ -235,6 +216,8 @@ async def _resolve_one_packet(
             concentration_break_mod=concentration_break_mod,
             sink=sink,
             reaction_save_advantage=reaction_save_advantage,
+            progress=progress,
+            head=_held_head,
         )
     if not attacker.is_ally and action is not None:
         enemy_summary = await resolve_enemy_strike(
@@ -253,6 +236,7 @@ async def _resolve_one_packet(
             reaction_ac_bonus=reaction_ac_bonus,
             shield_reaction=shield_reaction,
             reaction_save_advantage=reaction_save_advantage,
+            progress=progress,
             publish_roll=publish_roll,
         )
         if enemy_summary is not None:
@@ -275,7 +259,7 @@ async def _resolve_one_packet(
         cond_ability = condition_ability(declared_ability(decl.action))
         if cond_ability is not None:
             return await _resolve_ability_condition_packet(
-                session, attacker, decl, cond_ability, state=state, conn=conn, player=player
+                session, attacker, decl, cond_ability, state=state, conn=conn, player=player, progress=progress
             )
         return await _resolve_ability_packet(
             session,
@@ -286,6 +270,7 @@ async def _resolve_one_packet(
             conn=conn,
             player=player,
             cast_outcome=cast_outcome if cast_outcome is not None else AbilityCastOutcome(),
+            progress=progress,
             damage_deps={
                 "mutations": mutations,
                 "queries": queries,
@@ -338,7 +323,7 @@ async def _resolve_one_packet(
         target,
         action,
         attack_cursor=attack_cursor,
-        fate_candidates=fate_candidates,
+        progress=progress,
         mutations=mutations,
         queries=queries,
         resolver=resolver,

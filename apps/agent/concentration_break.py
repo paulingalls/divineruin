@@ -4,12 +4,15 @@ There is no concentration HUD element, so a break is returned for the caller to 
 DM-facing response rather than pushed as a client event nothing would consume.
 """
 
+from functools import partial
+
 import check_resolution_save
 import concentration
 import conditions
 import db_mutations_concentration
 import db_queries
 import spells
+from combat_fate_rolls import packet_save
 from session_data import SessionData
 
 
@@ -25,6 +28,7 @@ async def break_concentration_on_damage(
     spells_mod=spells,
     combat_state=None,
     conn=None,
+    progress=None,
 ) -> str | None:
     """Resolve the DAMAGED party member's (``damaged_player_id``) CON save after taking ``damage``;
     end concentration on a failed save or incapacitation. Returns the spell_id that broke (for the
@@ -77,9 +81,18 @@ async def break_concentration_on_damage(
         player["conditions"] = participant.conditions if participant is not None else []
         # Damage-triggered CON save is engine-auto: it never spends the caster's beneficial +1d4
         # (M4.8 story-003) — only player-initiated saves do.
-        save_total = resolver.resolve_saving_throw(
-            player, "constitution", dc, "concentration", bonus_dice_eligible=False
-        ).total
+        save = await packet_save(
+            progress,
+            session,
+            damaged_player_id,
+            "concentration",
+            partial(
+                resolver.resolve_saving_throw, player, "constitution", dc, "concentration", bonus_dice_eligible=False
+            ),
+        )
+        if save is None:
+            return None
+        save_total = save.total
 
     if concentration.concentration_holds(save_total, dc, incapacitated=incapacitated):
         return None

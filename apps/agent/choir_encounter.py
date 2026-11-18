@@ -1,7 +1,12 @@
 """The Choir's searchable sound and single damage owner."""
 
+from functools import partial
+
 import check_resolution
 import condition_voice_rules
+import event_types as E
+from combat_events import emit_or_publish
+from combat_fate_rolls import packet_save
 from combat_terrain import skill_natural_terrain
 from declarations import DeclarationType
 from patron_location import check_first_stay
@@ -135,21 +140,28 @@ def stale_reason(state, actor_id, declaration):
     return None
 
 
-async def search(session, state, actor, declaration, *, queries, conn):
+async def search(session, state, actor, declaration, *, queries, conn, progress=None):
     guard_declaration(state, actor.id, declaration)
     skill = SEARCH_ACTIONS[declaration.action]
-    player = await queries.get_player(actor.id, conn=conn, for_update=True)
-    if player is None:
-        raise ValueError(f"Missing Choir search actor {actor.id!r}")
-    result = check_resolution.resolve_skill_check_dc(
-        condition_voice_rules.roll_data(player, state, actor.id),
-        skill,
-        18,
-        ally_present=session.allies_present_for(actor.id),
-        natural_terrain=await skill_natural_terrain(session, player, skill, combat_state=state),
-        hearing_only=skill == "perception",
-        first_stay=await check_first_stay(player, session, skill, conn=conn),
-    )
+
+    async def roll():
+        player = await queries.get_player(actor.id, conn=conn, for_update=True)
+        if player is None:
+            raise ValueError(f"Missing Choir search actor {actor.id!r}")
+        return check_resolution.resolve_skill_check_dc(
+            condition_voice_rules.roll_data(player, state, actor.id),
+            skill,
+            18,
+            ally_present=session.allies_present_for(actor.id),
+            natural_terrain=await skill_natural_terrain(session, player, skill, combat_state=state),
+            hearing_only=skill == "perception",
+            first_stay=await check_first_stay(player, session, skill, conn=conn),
+        )
+
+    result = await progress.skill(session, actor.id, roll) if progress is not None else await roll()
+    if result is None:
+        return {}
+
     import conditions
 
     actor.conditions = conditions.remove_conditions(actor.conditions, result.consumed_conditions)
@@ -200,7 +212,7 @@ def destroyed(state):
         actor.conditions = [condition for condition in actor.conditions if condition.get("source") != source.id]
 
 
-async def turn_start(session, state, actor, *, conn, concentration_break_mod):
+async def turn_start(session, state, actor, *, conn, concentration_break_mod, progress=None, sink=None):
     if state.choir_encounter is None or state.choir_encounter["phase"] == "destroyed":
         return None
     from condition_restrictions import cannot_act
@@ -215,20 +227,30 @@ async def turn_start(session, state, actor, *, conn, concentration_break_mod):
     import check_resolution_save
     import combat_spatial
 
-    receipts[actor.id] = state.round_number
     if not combat_spatial.inside(
         combat_spatial.position(state.spatial, source.id),
         combat_spatial.position(state.spatial, actor.id),
         600,
     ):
+        receipts[actor.id] = state.round_number
         return None
-    save = check_resolution_save.roll_participant_save(
-        actor,
-        "wisdom",
-        15,
+    save = await packet_save(
+        progress,
+        session,
+        actor.id,
         "Aura of Lost Voices",
-        bonus_dice_eligible=False,
+        partial(
+            check_resolution_save.roll_participant_save,
+            actor,
+            "wisdom",
+            15,
+            "Aura of Lost Voices",
+            bonus_dice_eligible=False,
+        ),
     )
+    if save is None:
+        return None
+    receipts[actor.id] = state.round_number
     broken = None
     if (
         not save.success
@@ -236,7 +258,7 @@ async def turn_start(session, state, actor, *, conn, concentration_break_mod):
         and session.member_state(actor.id).concentration.spell_id is not None
     ):
         broken = await concentration_break_mod.end_concentration(session, actor.id, combat_state=state, conn=conn)
-    return {
+    result = {
         "actor_id": actor.id,
         "save_type": "wisdom",
         "dc": 15,
@@ -244,3 +266,9 @@ async def turn_start(session, state, actor, *, conn, concentration_break_mod):
         "concentration_broken": broken,
         "cue": "Lost voices tug at your focus.",
     }
+
+    if sink is not None:
+        await emit_or_publish(
+            sink, session.room, E.DICE_ROLL, {"roll_type": "choir_aura", **result}, event_bus=session.event_bus
+        )
+    return result

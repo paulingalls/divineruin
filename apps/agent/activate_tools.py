@@ -75,7 +75,7 @@ async def activate(
     target_ids: list[str] | None = None,
     offer_id: str | None = None,
     keep: zhael_fate.Keep | None = None,
-) -> str:
+) -> str | tuple:
     """Activate a capability: cast a spell, use an archetype ability, deploy a Veil Anchor, raise
     or dismiss a Veil Ward, or trigger the Draethar's Inner Fire.
 
@@ -127,7 +127,11 @@ async def activate(
     answers a different window, or when the round's one reaction is already spent. Outside combat
     reactions activate freely. Cantrips are free and scale
     their damage with level."""
-    return await _activate_impl(context, id, target_id=target_id, target_ids=target_ids, offer_id=offer_id, keep=keep)
+    if id in zhael_fate.ROLL_ABILITIES:
+        return await zhael_fate.activate(context.userdata, id, offer_id, keep)
+    if offer_id is not None or keep is not None:
+        raise ToolError("offer_id is for a held roll; keep belongs to Fate's Thread.")
+    return await _activate_impl(context, id, target_id=target_id, target_ids=target_ids)
 
 
 def _resolve_kind(id: str, *, spells_mod, abilities_mod, variants_mod, anchors_mod) -> str:
@@ -163,8 +167,6 @@ async def _activate_impl(
     *,
     target_id: str | None = None,
     target_ids: list[str] | None = None,
-    offer_id: str | None = None,
-    keep: zhael_fate.Keep | None = None,
     spells_mod=spells,
     abilities_mod=abilities,
     variants_mod=mentor_variants,
@@ -176,11 +178,6 @@ async def _activate_impl(
     inner_fire_mod=draethar_inner_fire,
 ) -> str:
     logger.info("activate called: id=%s", id)
-    if id in zhael_fate.ROLL_ABILITIES:
-        return await zhael_fate.activate(context.userdata, id, offer_id, keep)
-    if offer_id is not None or keep is not None:
-        raise ToolError("offer_id is for a held roll; keep belongs to Fate's Thread.")
-
     try:
         kind = _resolve_kind(
             id,

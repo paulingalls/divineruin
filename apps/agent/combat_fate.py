@@ -13,6 +13,7 @@ import zhael_fate
 from combat_ability import _attach_riders
 from combat_attack_roll import attack_roll_inputs, promote_attack
 from combat_down import damage_target_unavailable
+from combat_fate_rolls import PacketRolls
 from combat_item_rider import resolve_rider
 from combat_support import _resolve_attack_packet, apply_rolled_attack
 
@@ -26,7 +27,6 @@ async def attack_sequence(
     action,
     *,
     attack_cursor,
-    fate_candidates,
     **deps,
 ):
     # Enhancers EXPAND a single declaration: extra_attack/shield_bash turn one ATTACK into a
@@ -52,7 +52,6 @@ async def attack_sequence(
         enemies_remaining,
         is_first_attack,
         attack_cursor=attack_cursor,
-        fate_candidates=fate_candidates,
         **deps,
     )
 
@@ -68,7 +67,6 @@ async def continue_attack(
     is_first_attack,
     *,
     attack_cursor,
-    fate_candidates,
     mutations,
     queries,
     resolver,
@@ -80,26 +78,42 @@ async def continue_attack(
     shield_reaction=None,
     grapple_blocked=False,
     publish_roll=True,
-    kept=None,
+    progress=None,
 ):
     decl = packet.declaration
     attack_summaries = attack_cursor.get("summaries", [])
     concealment_packet = attack_cursor.get("concealment")
     start = len(attack_summaries)
     for act in actions[start:]:
+        swing = progress.scope("swing") if progress is not None else None
         prepared_data = attack_cursor.get("prepared")
         prepared = None
         if prepared_data is not None:
             prepared = check_resolution_attack.PreparedAttack.from_dict(prepared_data)
             attacker_data = attack_cursor["attacker_data"]
-        elif fate_candidates is not None and fate_candidates.choices(attacker.id):
+        elif (
+            swing is not None
+            and "damage_receipt" not in swing.steps
+            and "attack_summary" not in swing.steps
+            and attacker.is_ally
+            and (candidates := await zhael_fate.candidates(session, queries=queries, conn=conn)).choices(attacker.id)
+        ):
             attacker_data, target_ac, attack_mod = attack_roll_inputs(
                 attacker, target, state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus, state
             )
             prepared = check_resolution_attack.prepare_attack(
                 attacker_data, act, target_ac, attack_mod=attack_mod, target_conditions=target.conditions
             )
-            if fate_candidates.choices(attacker.id, prepared.original.roll):
+            if await swing.phase.hold(
+                session,
+                "attack",
+                attacker.id,
+                prepared.original,
+                prepared.d20,
+                queries=queries,
+                conn=conn,
+                candidates=candidates,
+            ):
                 stored = asdict(prepared)
                 stored["consumed"] = list(prepared.consumed)
                 attack_cursor.update(
@@ -113,9 +127,13 @@ async def continue_attack(
                     attacker_data=attacker_data,
                 )
                 return {"actor_id": attacker.id, "resolved": False, "reason": "awaiting a Zhael roll choice"}
-        if start == 0 and not attack_summaries and attacker.type == "player":
+        resumed_swing = swing is not None and ("damage_receipt" in swing.steps or "attack_summary" in swing.steps)
+        if start == 0 and not attack_summaries and attacker.type == "player" and not resumed_swing:
             concealment_packet = await concealment.reveal_attacker(attacker.id, conn=conn, queries=queries)
-        if prepared is None:
+        stored_summary = swing.steps.get("attack_summary") if swing is not None else None
+        if stored_summary is not None:
+            sub = stored_summary
+        elif prepared is None:
             sub = await _resolve_attack_packet(
                 session,
                 attacker,
@@ -137,6 +155,7 @@ async def continue_attack(
                 conn=conn,
                 sink=sink,
                 publish_roll=publish_roll,
+                progress=swing,
             )
         else:
             result = check_resolution_attack.finish_attack(
@@ -145,7 +164,7 @@ async def continue_attack(
                 prepared.d20.dc,
                 target.hp_current,
                 prepared,
-                kept or prepared.original,
+                swing.phase.select(prepared.original) if swing is not None else prepared.original,
                 damage_mult=attacker.damage_mult,
                 target_conditions=target.conditions,
             )
@@ -166,10 +185,16 @@ async def continue_attack(
                 conn=conn,
                 sink=sink,
                 publish_roll=publish_roll,
+                progress=swing,
             )
             if prepared_data is not None:
                 del attack_cursor["prepared"], attack_cursor["attacker_data"]
-                kept = None
+
+        if swing is not None and swing.paused:
+            store_swing(
+                attack_cursor, actions, target, enemies_remaining, is_first_attack, attack_summaries, concealment_packet
+            )
+            return {}
         if "durability_rider" in act:
             await resolve_rider(
                 session,
@@ -182,7 +207,22 @@ async def continue_attack(
                 conn=conn,
                 sink=sink,
                 reaction_save_advantage=reaction_save_advantage,
+                progress=swing.scope("rider") if swing is not None else None,
             )
+            if swing is not None and swing.paused:
+                swing.steps["attack_summary"] = sub
+                store_swing(
+                    attack_cursor,
+                    actions,
+                    target,
+                    enemies_remaining,
+                    is_first_attack,
+                    attack_summaries,
+                    concealment_packet,
+                )
+                return {}
+        if progress is not None:
+            progress.steps.pop("swing", None)
         attack_summaries.append(sub)
         # Remove attack-spent conditions before the next swing in an expanded declaration. The
         # first consuming swing leaves later consumed_conditions empty. Persistence rides the
@@ -240,6 +280,17 @@ async def continue_attack(
     return _attach_riders(summary, attacker, decl)
 
 
+def store_swing(cursor, actions, target, enemies_remaining, is_first_attack, summaries, concealment):
+    cursor.update(
+        actions=actions,
+        target_id=target.id,
+        enemies_remaining=enemies_remaining,
+        is_first_attack=is_first_attack,
+        summaries=summaries,
+        concealment=concealment,
+    )
+
+
 def begin_ally_pass(state, allies, hostiles, players_by_id):
     from combat_turn_start import ally_turns
 
@@ -267,7 +318,7 @@ async def lock_remaining_players(cursor, queries, conn):
     return players
 
 
-async def run_ally_pass(session, state, cursor, candidates, players, *, kept, resolve_packet, packet_deps):
+async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_packet, packet_deps):
     from combat_hold import hold_enemy_packets
     from combat_phase import PhaseBeat, _resolve_packets
     from combat_turn_start import turn_start
@@ -278,6 +329,12 @@ async def run_ally_pass(session, state, cursor, candidates, players, *, kept, re
         actor_id, packet_id = cursor["turns"][0]
         actor = state.get_participant(actor_id) if actor_id is not None else None
         attack = cursor["attack"]
+        steps = cursor.setdefault("steps", {})
+        progress = (
+            PacketRolls(fate_rolls, steps, packet_deps["queries"], packet_deps["conn"])
+            if session.fate_lock.locked() or steps or attack
+            else None
+        )
         if attack:
             packet = packets[packet_id]
             attacker = state.get_participant(packet_id)
@@ -293,20 +350,30 @@ async def run_ally_pass(session, state, cursor, candidates, players, *, kept, re
                 attack["enemies_remaining"],
                 attack["is_first_attack"],
                 attack_cursor=attack,
-                fate_candidates=candidates,
-                kept=kept,
+                progress=progress,
                 **{
                     key: packet_deps[key]
                     for key in ("mutations", "queries", "resolver", "concentration_break_mod", "conn", "sink")
                 },
             )
-            kept = None
         else:
-            if actor is not None:
-                started = await turn_start(session, state, actor, **packet_deps)
+            if actor is not None and not steps.get("turn_started"):
+                started = await turn_start(
+                    session,
+                    state,
+                    actor,
+                    progress=progress.scope("turn_start") if progress is not None else None,
+                    **packet_deps,
+                )
+                if fate_rolls.pending is not None:
+                    state.beat = PhaseBeat.RESOLUTION
+                    state.ally_continuation = cursor
+                    return summaries
+                steps["turn_started"] = True
                 if started is not None:
                     summaries.append(started)
             if packet_id is None:
+                cursor.pop("steps", None)
                 cursor["turns"].pop(0)
                 continue
             if actor is not None and not actor.is_ally:
@@ -319,32 +386,18 @@ async def run_ally_pass(session, state, cursor, candidates, players, *, kept, re
                     **packet_deps,
                     players_by_id=players,
                     attack_cursor=attack,
-                    fate_candidates=candidates,
+                    progress=progress,
                 )
-        if "prepared" in attack:
+        if fate_rolls.pending is not None:
             state.beat = PhaseBeat.RESOLUTION
             state.ally_continuation = cursor
             return summaries
         summaries.append(summary)
         cursor["attack"] = {}
+        cursor.pop("steps", None)
         cursor["turns"].pop(0)
 
     state.held_actions = hold_enemy_packets(state, [packets[pid] for pid in cursor["hostiles"]])
     state.ally_continuation = None
     state.beat = PhaseBeat.NARRATION
     return summaries
-
-
-def offer_held_attack(cursor, candidates, resume):
-    prepared = check_resolution_attack.PreparedAttack.from_dict(cursor["attack"]["prepared"])
-    _, roller_id = cursor["turns"][0]
-    return zhael_fate.make_offer(
-        "attack",
-        roller_id,
-        prepared.original,
-        candidates,
-        numbers=lambda roll: (roll.roll, roll.total),
-        reroll=prepared.d20.roll,
-        flip=prepared.d20.evaluate,
-        resume=resume,
-    )

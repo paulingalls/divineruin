@@ -17,9 +17,13 @@ import db_queries
 import dice
 import event_types as E
 import racial_resonance
+import resonance
 import resonance_events
-from combat_events import scratch_guard
-from combat_support import _handle_hp_zero, _publish_sounds
+import zhael_fate
+from combat_damage import _handle_hp_zero
+from combat_events import isolated_publish, scratch_guard
+from combat_fate_rolls import PacketRolls, PhaseRolls
+from combat_sound_events import publish_combat_sounds as _publish_sounds
 from combat_ui_update import build_combat_ui_update
 from game_events import publish_game_event
 from kaelen_gift import trigger_iron_resolve
@@ -56,10 +60,13 @@ async def _inner_fire_locked(
 
     if session.combat_state is None:
         raise ToolError("Inner Fire can only be used in combat.")
-    if member.draethar_inner_fire_used:
+    if member.draethar_inner_fire_used or player_id in session.combat_state.inner_fire_used_by:
         raise ToolError("Inner Fire is already spent this encounter.")
 
+    if session.combat_state.inner_fire_continuation is not None:
+        raise ToolError("Call resolve_phase to finish the held Inner Fire roll.")
     state = deepcopy(session.combat_state)
+    fate_rolls = PhaseRolls()
     async with scratch_guard(session), db_mod.transaction() as conn:
         player = await queries_mod.get_player(player_id, conn=conn, for_update=True)
         if player is None:
@@ -107,43 +114,90 @@ async def _inner_fire_locked(
         participant.conditions = condition_sources.clear_charm_from_damage(
             participant.conditions, player_id, fire_damage
         )
-        concentration_broken = None
+        facts = {
+            **({"gift_triggered": gift_triggered} if gift_triggered else {}),
+            "resonance_reduced": member.resonance.current - new_resonance,
+            "fire_damage": fire_damage,
+            "hp_remaining": participant.hp_current,
+            "rose_hollowed": rose_hollowed,
+            "state": resonance.get_resonance_state(new_resonance, flickering_bonus=member.resonance.flickering_bonus),
+            "concentration_broken": None,
+        }
+        steps: dict = {}
         if participant.type == "player":
-            concentration_broken = await concentration_break_mod.break_concentration_on_damage(
+            kwargs = (
+                {"progress": PacketRolls(fate_rolls, steps, queries_mod, conn)} if session.fate_lock.locked() else {}
+            )
+            facts["concentration_broken"] = await concentration_break_mod.break_concentration_on_damage(
                 session,
                 fire_damage,
                 incapacitated=new_hp <= 0,
                 damaged_player_id=player_id,
                 combat_state=state,
                 conn=conn,
+                **kwargs,
             )
+        state.inner_fire_used_by.append(player_id)
+        if fate_rolls.pending is not None:
+            state.inner_fire_continuation = {"player_id": player_id, "facts": facts, "steps": steps}
         await hp_mutations_mod.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
 
     session.combat_state = state
-    resonance_reduced = member.resonance.current - new_resonance
     member.resonance.current = new_resonance
     member.draethar_inner_fire_used = True
-    await resonance_events_mod.publish_resonance_changed(session, resonance_track=member.resonance, caster_id=player_id)
-    await _publish_sounds(session, sounds)
+    if fate_rolls.pending is not None:
 
-    if gift_triggered:
-        await publish_game_event(
-            session.room,
-            E.COMBAT_UI_UPDATE,
-            build_combat_ui_update(session.combat_state),
-            event_bus=session.event_bus,
+        async def resume(selected):
+            async with session.combat_state_lock:
+                return zhael_fate.Resumed(
+                    await resume_inner_fire(
+                        session,
+                        db_mod=db_mod,
+                        queries=queries_mod,
+                        mutations=hp_mutations_mod,
+                        concentration_break_mod=concentration_break_mod,
+                        kept=selected,
+                    )
+                )
+
+        session.fate_offer = fate_rolls.pending.offer(resume)
+        facts = {**facts, **session.fate_offer.response()}
+
+    with isolated_publish("Inner Fire resonance push"):
+        await resonance_events_mod.publish_resonance_changed(
+            session, resonance_track=member.resonance, caster_id=player_id
         )
+    with isolated_publish("Inner Fire sounds"):
+        await _publish_sounds(session, sounds)
+    if gift_triggered:
+        with isolated_publish("Inner Fire combat UI"):
+            await publish_game_event(
+                session.room, E.COMBAT_UI_UPDATE, build_combat_ui_update(state), event_bus=session.event_bus
+            )
+    return json.dumps(facts)
 
-    return json.dumps(
-        {
-            **({"gift_triggered": gift_triggered} if gift_triggered else {}),
-            "resonance_reduced": resonance_reduced,
-            "fire_damage": fire_damage,
-            # The participant's HP, not the burn's arithmetic: a Hollowed rise restores the echo
-            # to half its max, and that is what stands on the board.
-            "hp_remaining": participant.hp_current,
-            "rose_hollowed": rose_hollowed,
-            "state": member.resonance.state,
-            "concentration_broken": concentration_broken,
-        }
-    )
+
+async def resume_inner_fire(session, *, db_mod, queries, mutations, concentration_break_mod, kept=None) -> dict:
+    state = deepcopy(session.combat_state)
+    assert state is not None and state.inner_fire_continuation is not None
+    cursor = state.inner_fire_continuation
+    player_id = cursor["player_id"]
+    facts = cursor["facts"]
+    fate_rolls = PhaseRolls(kept=kept)
+    async with scratch_guard(session), db_mod.transaction() as conn:
+        facts["concentration_broken"] = await concentration_break_mod.break_concentration_on_damage(
+            session,
+            facts["fire_damage"],
+            incapacitated=False,
+            damaged_player_id=player_id,
+            combat_state=state,
+            conn=conn,
+            progress=PacketRolls(fate_rolls, cursor["steps"], queries, conn),
+        )
+        assert fate_rolls.pending is None and fate_rolls.kept is None
+        state.inner_fire_continuation = None
+        await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
+    session.combat_state = state
+    session.member_state(player_id).draethar_inner_fire_used = True
+    zhael_fate.effects_committed(session)
+    return facts
