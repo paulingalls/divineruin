@@ -2,6 +2,7 @@
   "kaelen_iron_resolve": "kaelen_gift:trigger_iron_resolve",
   "kaelen_tempered_resolve": "kaelen_gift:trigger_iron_resolve",
   "aelora_common_bond": "patron_gifts:skill_gift",
+  "thyra_wild_kinship": "patron_gifts:skill_gift",
   "syrath_silent_casting": "cast_modifiers:apply_patron_generation",
   "nythera_uncharted_senses": "patron_gifts:skill_gift",
   "nythera_uncharted_handling": "patron_gifts:skill_gift"
