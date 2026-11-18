@@ -147,7 +147,7 @@ The catalog includes all nine spec Hollow creatures, including the three Tier 4 
 - [ ] The Choir has custom multi-phase audio-zone combat behavior (not standard attack loop)
 - [ ] The Still has passive-until-attacked behavior with anchor-based Rejection (spec `game_mechanics_bestiary.md` Rejection; the spec has no damage reflection — human 2026-11-17)
 - [ ] The Architect has terrain manipulation abilities that alter combat grid state
-- [x] Tier 1-2 Hollow creatures function as standard combat encounters (no custom behavior needed) <!-- verified apps/agent/tests/acceptance/test_hollow_troops_fight.py; authored Hollowmoth swarm, Weaver with Drift support, and standard adult Mawling pack -->
+- [x] Tier 1-2 Hollow creatures function as standard combat encounters (no custom behavior needed) <!-- verified apps/agent/tests/acceptance/test_hollow_troops_fight.py; apps/agent/tests/combat/test_hollow_troops_balance.py; solo with companion passes both 16/20 bars at recommended levels 3/10/8 for Hollowmoth swarm, Weaver with Drift support, and standard adult Mawling pack -->
 - [ ] Tier 3 Hollowed Knight and Veilrender have boss-tier HP and multi-phase mechanics
 - [ ] Tests cover corruption aura at various distances, resonance_on_death, and all 3 Tier 4 custom behaviors
 

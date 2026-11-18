@@ -63,7 +63,7 @@ _WINDOW_CENSUS = {
 _GRAPPLE_CARRIERS = [
     ("hollow_mawling_pack_1", "Lunge"),
     ("hollow_mawling_pack_2", "Lunge"),
-    ("generated_2", "Lunge"),
+    ("generated_1", "Lunge"),
 ]
 _COMMAND_CARRIERS = [
     ("ashmark_patrol", "ashmark_sergeant", "Rally"),
@@ -92,7 +92,7 @@ def _templates():
         ],
         {"region": "greyvale", "terrain": "forest"},
         "standard",
-        Random(2),
+        Random(4),
     )
     generated = {
         "id": "generated_greyvale",

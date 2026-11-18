@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 seed_content = importlib.import_module("seed_content")
 
 SPEC = {
-    "hollow_mawling": ("Mawling", 2, 4, 38, 13, 35, 100, (14, 15, 13, 3, 10, 1), ("DEX", "CON"), "rend", 5, 1),
+    "hollow_mawling": ("Mawling", 2, 4, 14, 13, 35, 100, (14, 15, 13, 3, 10, 1), ("DEX", "CON"), "rend", 5, 1),
     "hollow_weaver": ("Hollow Weaver", 2, 5, 28, 11, 10, 150, (6, 8, 14, 6, 14, 1), ("CON", "WIS"), "rend", 30, 1),
     "hollow_knight": (
         "Hollowed Knight",
@@ -34,9 +34,9 @@ SPEC = {
 }
 ATTACKS = {
     "hollow_mawling": (
-        ("Claw", "melee", 10, 5, "1d8+2", "slashing"),
-        ("Dissolution Maw", "melee", 5, 5, "2d6+2", "necrotic"),
-        ("Lunge", "melee", 10, 5, "1d8+2", "slashing"),
+        ("Claw", "melee", 10, 5, "1d2", "slashing"),
+        ("Dissolution Maw", "melee", 5, 5, "1d2+1", "necrotic"),
+        ("Lunge", "melee", 10, 5, "1d2", "slashing"),
     ),
     "hollow_weaver": (("Spatial Lash", "melee", 15, 4, "1d6+2", "force"),),
     "hollow_knight": (

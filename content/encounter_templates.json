@@ -706,7 +706,7 @@
         "role": "minion"
       }
     ],
-    "recommended_party_level": 5,
+    "recommended_party_level": 10,
     "scene_placement": {
       "party_start": {
         "x": 0,
@@ -761,7 +761,7 @@
         "role": "standard"
       }
     ],
-    "recommended_party_level": 5,
+    "recommended_party_level": 8,
     "scene_placement": {
       "party_start": {
         "x": 0,

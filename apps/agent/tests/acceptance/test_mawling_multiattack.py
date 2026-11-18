@@ -82,7 +82,7 @@ def dice():
 
     def damage(expression, **kwargs):
         expressions.append(expression)
-        return SimpleNamespace(total={"1d8+2": 8, "2d6+2": 12}[expression])
+        return SimpleNamespace(total={"1d2": 8, "1d2+1": 12}[expression])
 
     with (
         patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=15)) as d20,
@@ -162,7 +162,7 @@ async def test_public_selection_resolves_authored_math(maw, dice, same, miss):
     assert [s["damage_type"] for s in strikes] == (
         ["slashing", "necrotic", "slashing"] if elite else ["slashing", "necrotic"]
     )
-    assert expressions == ([] if miss else ["1d8+2", "2d6+2", "1d8+2"] if elite else ["1d8+2", "2d6+2"])
+    assert expressions == ([] if miss else ["1d2", "1d2+1", "1d2"] if elite else ["1d2", "1d2+1"])
     assert [s["attack_total"] for s in strikes] == ([7 if miss else 21] * 3 if elite else [6 if miss else 20] * 2)
     await assert_hp(
         maw, [100, 100] if miss else ([65, 100] if same else [80, 85]) if elite else [80, 100] if same else [92, 88]
@@ -251,7 +251,7 @@ async def test_every_strike_pause_reloads_without_reroll(maw, dice):
     ]
     assert len(ids) == len(names) and len(set(ids.values())) == len(names)
     assert [s["strike_index"] for s in blows(packets)] == list(range(len(names)))
-    assert dice[0] == (["1d8+2", "2d6+2", "1d8+2"] if elite else ["1d8+2", "2d6+2"])
+    assert dice[0] == (["1d2", "1d2+1", "1d2"] if elite else ["1d2", "1d2+1"])
     await assert_hp(maw, [65 if elite else 80, 100])
 
 
@@ -289,7 +289,7 @@ async def test_first_strike_reaction_spend_cannot_leak_to_second(maw, dice):
     assert [s["damage"] for s in blows(packets)] == [5, 15, 10]
     assert [(w["action"], w["stage"]) for w in windows] == [("Dissolution Maw", "post_roll"), ("Claw", "post_roll")]
     assert [s["strike_index"] for s in blows(packets)] == [0, 1, 2]
-    assert dice[0] == ["1d8+2", "2d6+2", "1d8+2"]
+    assert dice[0] == ["1d2", "1d2+1", "1d2"]
     await assert_hp(maw, [70, 100])
 
 
@@ -320,7 +320,7 @@ async def test_fallen_first_target_does_not_cancel_other_target(maw, dice, same)
         assert strikes[1]["damage"] == maw_damage
         assert (await maw.reload()).get_participant(maw.players[0]).death_save_failures == (3 if elite else 2)
         assert strikes[1]["target_id"] == maw.players[0]
-        assert dice[0] == (["1d8+2", "2d6+2", "1d8+2"] if elite else ["1d8+2", "2d6+2"])
+        assert dice[0] == (["1d2", "1d2+1", "1d2"] if elite else ["1d2", "1d2+1"])
     else:
         assert strikes[1]["damage"] == maw_damage
     if elite:
@@ -363,7 +363,7 @@ async def test_unavailable_strikes_drain_independently_after_reload(maw, dice, u
     wasted = strikes[0 if unavailable == "first_target" else 1]
     assert wasted["resolved"] is False and wasted["reason"]
     assert wasted["target_id"] == maw.players[0 if unavailable == "first_target" else 1]
-    assert dice[0] == (["2d6+2"] if unavailable == "first_target" else ["1d8+2"])
+    assert dice[0] == (["1d2+1"] if unavailable == "first_target" else ["1d2"])
     await assert_hp(
         maw, [0, 88] if unavailable == "first_target" else [92, 0 if unavailable == "second_target" else 100]
     )

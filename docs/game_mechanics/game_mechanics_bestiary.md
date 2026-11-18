@@ -240,7 +240,7 @@ Hollow creatures can emerge through Veil breaches in any habitat. Their catalog 
 
 > *Humanoid-sized but wrong in every proportion. Limbs too long, joints bending backwards. Where a face should be — a dissolution field.*
 
-**Level:** 4 | **HP:** 38 | **AC:** 13 | **Speed:** 35 ft
+**Level:** 4 | **HP:** 14 | **AC:** 13 | **Speed:** 35 ft
 **STR** 14 (+2) **DEX** 15 (+2) **CON** 13 (+1) **INT** 3 (-4) **WIS** 10 (+0) **CHA** 1 (-5)
 **Save Prof:** DEX, CON | **XP:** 100
 **Multiattack:** 2 attacks — one Claw and one Dissolution Maw
@@ -248,8 +248,8 @@ Hollow creatures can emerge through Veil breaches in any habitat. Their catalog 
 **Attacks:**
 | Name | Type | Reach | Hit | Damage | Special |
 |---|---|---|---|---|---|
-| Claw | Melee | 10 ft | +5 | 1d8+2 slashing | Reach 10 ft (unnaturally long limbs) |
-| Dissolution Maw | Melee | 5 ft | +5 | 2d6+2 necrotic | DC 13 CON save or item in hand takes 1d4 durability damage |
+| Claw | Melee | 10 ft | +5 | 1d2 slashing | Reach 10 ft (unnaturally long limbs) |
+| Dissolution Maw | Melee | 5 ft | +5 | 1d2+1 necrotic | DC 13 CON save or item in hand takes 1d4 durability damage |
 
 **Passives:**
 - **Unsettling Silence.** Mawlings make no vocalizations. Advantage on Stealth in low-light.
@@ -1450,9 +1450,9 @@ This inventory binds selected encounter species to their delivered combat consum
 | bandit_captain | passives | Leadership Aura | {"name":"Leadership Aura","description":"Bandits within 30 ft gain +1 to attack rolls.","narration_cue":"","recharge":null,"audio":null} | deferred | Allied bandits within30 ft attack plus1 | future custom mechanics | No dedicated consumer for these authored passive effects | none |
 | bandit_captain | passives | Cunning Action | {"name":"Cunning Action","description":"Can Dash, Disengage, or Hide as a bonus action.","narration_cue":"","recharge":null,"audio":null} | deferred | Bonus action Dash/Disengage/Hide | future custom mechanics | No dedicated consumer for these authored passive effects | none |
 | bandit_captain | multiattack | 2 attacks with Longsword or 2 Crossbow shots | "2 attacks with Longsword or 2 Crossbow shots" | deferred | Specified weapon count and composition | future multiattack mechanics | No catalog multiattack consumer | none |
-| hollow_mawling | attacks | Claw | {"name":"Claw","type":"melee","reach":10,"to_hit":5,"damage":"1d8+2","damage_type":"slashing","special":"Reach 10 ft (unnaturally long limbs)","audio":"hlw_claw"} | executable | Base damage; reach 10 ft DM adjudicated | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
-| hollow_mawling | attacks | Dissolution Maw | {"name":"Dissolution Maw","durability_rider":{"save":"CON","dc":13,"dice":"1d4","target":"selected_player_held_item"},"type":"melee","reach":5,"to_hit":5,"damage":"2d6+2","damage_type":"necrotic","special":"DC 13 CON save or item in hand takes 1d4 durability damage","audio":"hlw_dissolution_maw"} | executable | Base damage; CON DC13 item durability 1d4 | combat_packet / combat_durability_rider | none | test_mawling_durability.py |
-| hollow_mawling | attacks | Lunge | {"name":"Lunge","type":"melee","reach":10,"to_hit":5,"damage":"1d8+2","damage_type":"slashing","special":"Recharge 5-6. Move 15 ft toward target and strike with Claw with advantage; hit grapples target.","audio":"hlw_lunge","properties":["grapple"],"escape_dc":13,"advantage":true,"recharge":{"kind":"roll","die":6,"threshold":5}} | mixed | Single Claw damage; grapple escape_dc13; advantage true; recharge roll d6 threshold5; 15 ft movement DM adjudicated | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137; combat_grapple; advantage/recharge136 | 15 ft movement is DM adjudicated | none |
+| hollow_mawling | attacks | Claw | {"name":"Claw","type":"melee","reach":10,"to_hit":5,"damage":"1d2","damage_type":"slashing","special":"Reach 10 ft (unnaturally long limbs)","audio":"hlw_claw"} | executable | Base damage; reach 10 ft DM adjudicated | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
+| hollow_mawling | attacks | Dissolution Maw | {"name":"Dissolution Maw","durability_rider":{"save":"CON","dc":13,"dice":"1d4","target":"selected_player_held_item"},"type":"melee","reach":5,"to_hit":5,"damage":"1d2+1","damage_type":"necrotic","special":"DC 13 CON save or item in hand takes 1d4 durability damage","audio":"hlw_dissolution_maw"} | executable | Base damage; CON DC13 item durability 1d4 | combat_packet / combat_durability_rider | none | test_mawling_durability.py |
+| hollow_mawling | attacks | Lunge | {"name":"Lunge","type":"melee","reach":10,"to_hit":5,"damage":"1d2","damage_type":"slashing","special":"Recharge 5-6. Move 15 ft toward target and strike with Claw with advantage; hit grapples target.","audio":"hlw_lunge","properties":["grapple"],"escape_dc":13,"advantage":true,"recharge":{"kind":"roll","die":6,"threshold":5}} | mixed | Single Claw damage; grapple escape_dc13; advantage true; recharge roll d6 threshold5; 15 ft movement DM adjudicated | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137; combat_grapple; advantage/recharge136 | 15 ft movement is DM adjudicated | none |
 | hollow_mawling | actives | Lunge | {"name":"Lunge","description":"Move 15 ft toward target + Claw with advantage. Hit: target grappled (STR DC 13 escape).","narration_cue":"","recharge":"5-6","audio":null} | duplicate | Same grapple/advantage/recharge Claw; zero additional executable actions | attacks/Lunge; producer137 deduplicates | 15 ft movement DM adjudicated | attacks/Lunge |
 | hollow_mawling | actives | Scatter | {"name":"Scatter","description":"Requires 3+ mawlings. All mawlings reposition 15 ft without provoking reactions. Coordinated flank.","narration_cue":"","recharge":"1/encounter","audio":null} | deferred | Requires3+ mawlings; all reposition15 ft; no reactions; coordinated flank | future custom mechanics | No group reposition/flank/reaction suppression consumer | none |
 | hollow_mawling | passives | Unsettling Silence | {"name":"Unsettling Silence","description":"Mawlings make no vocalizations. Advantage on Stealth in low-light.","narration_cue":"","recharge":null,"audio":null} | deferred | No vocalization; low-light Stealth advantage | future custom mechanics | No dedicated consumer for these authored passive effects | none |

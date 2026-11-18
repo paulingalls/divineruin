@@ -56,7 +56,7 @@ def rolls():
         patch("check_resolution.dice_roll", side_effect=lambda *a, **kw: SimpleNamespace(total=control.attack_roll)),
         patch(
             "check_resolution_attack.dice_roll",
-            side_effect=lambda expr, **kw: SimpleNamespace(total=12 if expr == "2d6+2" else 8),
+            side_effect=lambda expr, **kw: SimpleNamespace(total=12 if expr == "1d2+1" else 8),
         ),
         patch("check_resolution_save.roll_participant_save", side_effect=save),
         patch("combat_item_rider.dice_roll", return_value=SimpleNamespace(total=3)) as rider,

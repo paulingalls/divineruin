@@ -24,8 +24,8 @@ CASES = [
     ("shadeling_cluster", 1, {"Corrosive Touch"}),
     ("ruins_mawling_pair", 2, {"Claw", "Dissolution Maw"}),
     ("hollowmoth_swarm", 3, {"Distortion Flutter"}),
-    ("hollow_weaver_ambush", 5, {"Spatial Lash", "Corrosive Touch"}),
-    ("hollow_mawling_pack", 5, {"Claw", "Dissolution Maw", "Lunge"}),
+    ("hollow_weaver_ambush", 10, {"Spatial Lash", "Corrosive Touch"}),
+    ("hollow_mawling_pack", 8, {"Claw", "Dissolution Maw", "Lunge"}),
 ]
 
 
