@@ -60,7 +60,7 @@ _WINDOW_CENSUS = {
     "on_spell_cast": 1,
 }
 
-_GRAPPLE_CARRIERS = [("generated_2", "Lunge")]
+_GRAPPLE_CARRIERS = [("mawling_pack_adult", "Lunge"), ("generated_2", "Lunge")]
 _COMMAND_CARRIERS = [
     ("ashmark_patrol", "ashmark_sergeant", "Rally"),
     ("cult_cell", "cult_fanatic_1", "Bless"),

@@ -743,5 +743,45 @@
         }
       }
     }
+  },
+  {
+    "id": "hollow_mawling_pack",
+    "name": "Lone Adult Mawling",
+    "description": "Heavy claws scrape stone. An adult mawling probes forward, feinting and retreating. Its maw rasps like wet cloth tearing; the air tastes of iron.",
+    "difficulty": "moderate",
+    "enemies": [
+      {
+        "id": "mawling_pack_adult",
+        "creature_id": "hollow_mawling",
+        "role": "standard"
+      }
+    ],
+    "recommended_party_level": 10,
+    "scene_placement": {
+      "party_start": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "companion_start": {
+        "x": 0,
+        "y": 5,
+        "z": 0
+      },
+      "actors": {
+        "mawling_pack_adult": {
+          "x": 25,
+          "y": -10,
+          "z": 0
+        }
+      },
+      "locations": {},
+      "zones": {
+        "mawling_pack_adult_corruption_aura": {
+          "center_id": "mawling_pack_adult",
+          "radius_ft": 5
+        }
+      }
+    }
   }
 ]

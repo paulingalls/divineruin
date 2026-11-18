@@ -26,6 +26,11 @@ from session_data import CompanionState
 
 TEMPLATES = json.loads((CONTENT_ROOT / "content/encounter_templates.json").read_text())
 TARGETS = {
+    "hollow_mawling_pack": (
+        10,
+        "moderate",
+        [("hollow_mawling", "standard", 1)],
+    ),
     "hollowmoth_swarm": (3, "moderate", [("hollow_hollowmoth", "standard", 3)]),
     "hollow_weaver_ambush": (10, "moderate", [("hollow_weaver", "standard", 1), ("hollow_shadeling", "minion", 2)]),
     "fragment_shadeling": (1, "easy", [("hollow_shadeling", "standard", 1)]),
