@@ -12,13 +12,14 @@ from _gods_content import engine_implementations
     [
         pytest.param(key, args, id=f"{key}-{i}")
         for key in sorted(set(engine_implementations()) | set(ENGINE_SCENARIOS))
-        for i, args in enumerate(ENGINE_SCENARIOS.get(key, (None, None, [()]))[2])
+        for i, args in enumerate(ENGINE_SCENARIOS.get(key, (None, None, [()]))[2] or [()])
     ],
 )
 async def test_registered_engine_implementation(world, implementation_id, args):
     registry = engine_implementations()
     assert registry
     assert set(registry) == set(ENGINE_SCENARIOS), "Every engine ID needs a production scenario"
-    target, scenario, _ = ENGINE_SCENARIOS[implementation_id]
+    target, scenario, cases = ENGINE_SCENARIOS[implementation_id]
+    assert cases, f"{implementation_id} needs at least one executable production scenario"
     assert registry[implementation_id] == target
     await scenario(world, *args)
