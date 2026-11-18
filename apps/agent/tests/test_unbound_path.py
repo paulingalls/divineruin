@@ -2,7 +2,8 @@
 
 import json
 from functools import partial
-from unittest.mock import patch
+from typing import cast as type_cast
+from unittest.mock import MagicMock, patch
 
 import pytest
 from _unbound_path_fixtures import cast, encounter, phase, push, row
@@ -233,3 +234,43 @@ async def test_encounter_end_and_start_refill_only_raw_channeling(world):
         with w.ctx.userdata._bind_authenticated_actor(member.player_id, 4, lambda *_: None):
             await push(w)
     assert all(m.unbound_raw_channeling_used for m in members)
+
+
+async def test_patron_query_reports_actor_alone_bonus_without_abilities(world):
+    from test_aelora_gift import _live_party
+
+    from session_data import CompanionState
+
+    w = world
+
+    async def query(applies):
+        packet = json.loads(await _query_info_impl(w.ctx, "patron"))
+        assert packet["alone_bonus"] == {
+            "amount": 1,
+            "description": "+1 to all skill checks when no ally is present.",
+            "applies_now": applies,
+        }
+        assert packet["abilities"] == [] and packet["synergy"] is None
+        assert {c["id"] for c in packet["capabilities"]} == {
+            "unbound_veil_clarity",
+            "unbound_raw_channeling",
+            "unbound_veil_mastery",
+        }
+
+    await query(True)
+    w.ctx.userdata.companion = CompanionState(id="ally", name="Ally", is_present=True)
+    await query(False)
+    w.ctx.userdata.companion.is_present = False
+    await query(True)
+    lifecycle = _live_party(w.ctx.userdata, *w.ids)
+    handlers = dict(call.args for call in type_cast(MagicMock, lifecycle.room).on.call_args_list)
+    try:
+        await query(False)
+        handlers["participant_disconnected"](lifecycle.room.remote_participants[w.ids[1]])
+        await query(True)
+        handlers["participant_connected"](lifecycle.room.remote_participants[w.ids[1]])
+        handlers["participant_disconnected"](lifecycle.room.remote_participants[w.ids[0]])
+        with w.ctx.userdata._bind_authenticated_actor(w.ids[1], 4, lambda *_: None):
+            await query(True)
+    finally:
+        await lifecycle.aclose()
