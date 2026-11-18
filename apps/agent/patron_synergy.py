@@ -8,8 +8,6 @@ def synergy_for_patron(archetype_id: str, patron: dict) -> dict:
     if archetype_id not in archetype_ids():
         raise ValueError(f"Unknown archetype {archetype_id!r}.")
     matrix = patron["layer_4_synergy_matrix"]
-    if matrix is None:
-        raise ValueError(f"Patron {patron['god_id']!r} synergy is not yet authored.")
     return matrix[archetype_id]
 
 

@@ -18,7 +18,7 @@ export interface God {
   god_id: string;
   layer_2_resonance: GodResonance;
   layer_3_tier_abilities: Record<GodTier, GodTierAbility>;
-  layer_4_synergy_matrix: Record<string, GodSynergyRow> | null;
+  layer_4_synergy_matrix: Record<string, GodSynergyRow>;
   [legacyField: string]: unknown;
 }
 export type GodTier = "acknowledged" | "devoted" | "exalted";
@@ -137,7 +137,6 @@ function readiness(row: Record<string, unknown>, path: string): void {
     fail(`${path}.implementation_id`, "active engine effect requires a registered implementation");
 }
 function matrix(value: unknown, path: string): void {
-  if (value === null) return;
   const rows = object(value, path);
   if (
     Object.keys(rows).length !== ARCHETYPE_IDS.length ||

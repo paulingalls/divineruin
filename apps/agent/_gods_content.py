@@ -114,8 +114,6 @@ def _readiness(fields: dict, path: str) -> None:
 
 
 def _matrix(value: object, path: str) -> None:
-    if value is None:
-        return
     matrix = _object(value, path)
     if matrix.keys() != archetype_ids():
         _fail(
