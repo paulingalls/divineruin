@@ -104,6 +104,7 @@ async def test_all_authored_pairs_and_guest_selection(dev_db_pool):
             result = await w.command("query_info", {"kind": "patron"})
             assert result["synergy"] is None and result["state"] == "Unbound"
             assert result["resonance"] == {"current": 0, "state": "stable"}
+            assert result["autonomy"]["tier"] == "Self-Reliant"
             assert {c["id"] for c in result["capabilities"]} == {
                 "unbound_veil_clarity",
                 "unbound_raw_channeling",

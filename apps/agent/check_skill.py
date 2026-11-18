@@ -250,6 +250,10 @@ async def _finish_skill(
         )
 
     if result.success:
+        assert conn is not None
+        validate()
+        if not session.ally_present_for(player_id):
+            await patron_deeds.record_deed(player_id, "succeeded_alone", conn=conn)
         skill_name = skill.lower()
         deed = (
             "successful_stealth"
@@ -259,8 +263,6 @@ async def _finish_skill(
             else None
         )
         if deed is not None:
-            assert conn is not None
-            validate()
             await patron_deeds.record_deed(player_id, deed, conn=conn)
 
     effects.combat_state = consumed_state

@@ -92,7 +92,7 @@ async def query_info(
       Signs of recent violent death and the direction north remain narrated.
       synergy is this archetype's Layer 4 enhancement from the current patron (null when Unbound); only its active clauses apply; a pending clause is promised, not yet a power.
       Unbound Veil Clarity reveals exact
-      Resonance; the response lists unbound_raw_channeling for activate and automatic Veil Mastery."""
+      Resonance; the response lists unbound_raw_channeling for activate and the autonomy milestones with their availability."""
     return await _query_info_impl(context, kind, target_id)
 
 

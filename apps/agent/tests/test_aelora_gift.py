@@ -27,6 +27,15 @@ from tools._discover_fixtures import _roll
 from travel_tools import _travel_impl
 
 
+@pytest.fixture(autouse=True)
+def skill_transaction_seams(monkeypatch):
+    from sample_fixtures import make_db_mod
+
+    database, _ = make_db_mod()
+    monkeypatch.setattr("db.transaction", database.transaction)
+    monkeypatch.setattr("patron_deeds.record_deed", AsyncMock())
+
+
 def player(patron):
     return {"attributes": {"strength": 12}, "level": 3, "divine_favor": {"patron": patron}}
 

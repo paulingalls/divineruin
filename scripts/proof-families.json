@@ -42,6 +42,7 @@
       "content/events.json",
       "content/factions.json",
       "content/gods.json",
+      "content/unbound.json",
       "content/items.json",
       "content/level_progression.json",
       "content/locations.json",
@@ -67,6 +68,7 @@
       "content/companions.json",
       "content/engine_implementations.json",
       "content/gods.json",
+      "content/unbound.json",
       "content/items.json",
       "content/locations.json",
       "content/racial_resonance_bonuses.json",
@@ -79,7 +81,7 @@
       "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:patron_alignment_session|archetype_chassis|mentor_gating_e2e|mentor_variants|milestone_progression|spell_acquisition|m28_xp_favor_capstone|story_005_m22_ability_capstone)\\.py"
     ],
     "owns": [
-      "apps/agent/(?:alignment_heartbeat|archetyp[^/]*|role_archetypes|progression[^/]*|mentor[^/]*|milestone[^/]*|level[^/]*|xp[^/]*|favor[^/]*|training[^/]*)\\.py"
+      "apps/agent/(?:unbound_autonomy|alignment_heartbeat|archetyp[^/]*|role_archetypes|progression[^/]*|mentor[^/]*|milestone[^/]*|level[^/]*|xp[^/]*|favor[^/]*|training[^/]*)\\.py"
     ],
     "reads": [
       "content/archetype_abilities.json",
@@ -87,6 +89,7 @@
       "content/archetypes.json",
       "content/engine_implementations.json",
       "content/gods.json",
+      "content/unbound.json",
       "content/level_progression.json",
       "content/mentor_variants.json",
       "content/racial_resonance_bonuses.json",
@@ -215,6 +218,7 @@
       "content/engine_implementations.json",
       "content/events.json",
       "content/gods.json",
+      "content/unbound.json",
       "content/items.json",
       "content/level_progression.json",
       "content/locations.json",
@@ -303,6 +307,7 @@
       "content/errand_templates.json",
       "content/factions.json",
       "content/gods.json",
+      "content/unbound.json",
       "content/items.json",
       "content/locations.json",
       "content/materials_catalog.json",
@@ -336,6 +341,7 @@
       "content/factions.json",
       "content/gathering_nodes.json",
       "content/gods.json",
+      "content/unbound.json",
       "content/inventory_pools.json",
       "content/items.json",
       "content/level_progression.json",

@@ -14,7 +14,6 @@ keyword seams for TEST-ONLY injection; production uses the `@function_tool` wrap
 
 import json
 import logging
-from contextlib import nullcontext
 
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
@@ -39,7 +38,6 @@ from condition_consume import consume_beneficial_conditions, serialize_combat_ch
 from db_errors import db_tool, validated_player_conditions
 from game_events import publish_game_event
 from gathering_tools import _check_gather_impl
-from patron_gifts import KNOWLEDGE_SKILLS
 from session_data import SessionData
 from skill_check_effects import SkillCheckEffects
 from social_tools import _check_social_impl
@@ -134,7 +132,7 @@ async def _check_skill_impl(
     conditions_mutations=db_mutations_conditions,
 ) -> str:
     effects = SkillCheckEffects()
-    async with db_mod.transaction() if skill.lower() in KNOWLEDGE_SKILLS | {"stealth"} else nullcontext(None) as conn:
+    async with db_mod.transaction() as conn:
         response = await _check_skill_run(
             context,
             skill,

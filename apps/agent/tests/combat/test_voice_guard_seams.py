@@ -12,6 +12,15 @@ import condition_voice_rules
 from declarations import resolve_declaration
 
 
+@pytest.fixture(autouse=True)
+def skill_transaction_seams(monkeypatch):
+    from sample_fixtures import make_db_mod
+
+    database, _ = make_db_mod()
+    monkeypatch.setattr("db.transaction", database.transaction)
+    monkeypatch.setattr("patron_deeds.record_deed", AsyncMock())
+
+
 @pytest.mark.asyncio
 async def test_spell_ability_boundary_refuses_before_cast_delegate():
     state = charm_state()

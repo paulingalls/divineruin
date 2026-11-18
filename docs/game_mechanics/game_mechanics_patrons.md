@@ -329,15 +329,29 @@ Unique interaction: instead of modifying generation rates, Zhael alters the Holl
 You can sense your **own exact Resonance value** as a number (DM shares on request). No other character gets this — even Elari sense states, not numbers. This enables perfectly informed risk decisions.
 
 **Layer 2 — Resonance Modifier: Raw Channeling**
-Standard Resonance generation (no divine reduction). But once per encounter, you can **voluntarily raise your Resonance by 3** — pushing yourself into Flickering or Overreach deliberately. Patron characters reach high Resonance through accumulation; the Unbound *choose* it.
+Standard Resonance generation (no divine reduction). But once per encounter, you can **voluntarily raise your Resonance by 3** — pushing yourself into Flickering or Overreach deliberately. Patron characters reach high Resonance through accumulation; the Unbound *choose* it. Raw Channeling consumes neither an action nor a reaction.
 
 **Layer 3 — Self-Reliance Milestones** (replace divine favor, tracked by autonomy instead of patron alignment)
 
+Autonomy persists on the player, starting at 0 with a default maximum of 100. The existing 20-minute deed judgment awards each deed kind once per judgment window:
+
+| Deed | Autonomy | Qualification |
+|---|---|---|
+| `won_alone` | +4 | Victory with enemies cleared and no ally present for the actor |
+| `succeeded_alone` | +1 | A successful check without an ally |
+| `channeled_raw` | +2 | Use Raw Channeling |
+
+Self-Reliant starts at 0, Self-Forged at 40% and Sovereign at 75% of the track's maximum. Fractional thresholds round upward. Autonomy never decays and attained tiers never regress.
+
 | Tier | Name | Effect |
 |---|---|---|
-| Self-Reliant | Additional Save Proficiency | Gain proficiency in one additional saving throw of your choice |
+| Self-Reliant | Additional Save Proficiency | Gain proficiency in one additional saving throw of your choice; a durable, one-time choice |
 | Self-Forged | Divine Immunity | Once per long rest, choose to be unaffected by any divine ability (ally boon, enemy smite, god-agent intervention). You exist outside the gods' direct influence |
-| Sovereign | Veil Mastery | Once per session, treat any Hollow Echo result as "Nothing stirs." You've mastered your relationship with the Veil through pure understanding |
+| Sovereign | Veil Mastery | At Sovereign, automatically convert the first Hollow Echo of each session to "Nothing stirs." Later Echoes apply normally |
+
+A naturally harmless first Echo also consumes Veil Mastery. Rest does not restore it; a fresh session does. Divine Immunity recharges on a long rest.
+
+Human decision 2026-11-18, sprint `unbound-self-reliance`, Scope: “Veil Mastery follows the design doc.” This retains once-per-session Echo conversion, gated behind Sovereign.
 
 **Layer 4 — Archetype Resonance: Universal**
 +1 to all skill checks when alone or no allies within earshot. The inverse of Aelora's community bonus. The Unbound are strongest self-reliant.
@@ -366,4 +380,4 @@ When the Veythar reveal occurs:
 | Mortaen | Death | Sense creatures below 25% HP | 0 Resonance on 0 HP targets | Incorporeal for 1 round |
 | Nythera | Exploration | Always know direction and distance | -1 Resonance in new locations | Gateway to visited location |
 | Zhael | Fate | Force reroll any d20 | Choose between 2 Echo results | Undo 1 round of time (8 Resonance) |
-| **Unbound** | Self | Know exact Resonance number | Voluntary +3 Resonance on demand | Ignore any Hollow Echo result |
+| **Unbound** | Self | Know exact Resonance number | Voluntary +3 Resonance on demand | At Sovereign, first Hollow Echo per session becomes "Nothing stirs" |

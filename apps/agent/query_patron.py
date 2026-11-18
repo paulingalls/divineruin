@@ -38,7 +38,7 @@ async def query_patron(
     if tier is None:
         return json.dumps(
             {
-                **unbound_tools.patron_query(track),
+                **unbound_tools.patron_query(track, player),
                 "synergy": None,
                 "alone_bonus": {
                     "amount": UNBOUND_ALONE_BONUS,
