@@ -306,3 +306,14 @@ async def test_patron_wire_uses_projection_and_rejects_malformed_before_delivery
         )
     room.local_participant.publish_data.assert_not_awaited()
     bus.publish.assert_not_called()
+
+    player = {**player, "patron_gifts": {"veythar_lorekeepers_library": {"spent": True}}}
+    await game_events.publish_game_event(
+        room,
+        event_types.PATRON_ABILITIES_UPDATED,
+        snapshot(player["player_id"], player),
+        bus,
+        destination_identities=[player["player_id"]],
+    )
+    assert room.local_participant.publish_data.await_args is not None
+    assert json.loads(room.local_participant.publish_data.await_args.args[0]) == FIXTURE["patron_spent_snapshot"]
