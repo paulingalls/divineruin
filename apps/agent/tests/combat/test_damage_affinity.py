@@ -86,6 +86,23 @@ async def resolve(ctx, *, face=15, raw=5, no_save=False):
     return next(p for p in result["packets"] if p["actor_id"] == ctx.userdata.player_id)
 
 
+async def declare_weapon(ctx):
+    await combat_turn.declare_phase(
+        ctx,
+        [
+            AttackDecl(
+                kind="attack",
+                actor_id=ctx.userdata.player_id,
+                action="Longsword",
+                target_id="foe",
+                held_item_id="",
+                rider="",
+            ),
+            DefendDecl(kind="defend", actor_id="foe"),
+        ],
+    )
+
+
 @pytest.mark.parametrize("path", ["weapon", "attack_spell", "save_spell"])
 @pytest.mark.parametrize("trait,expected", [("vulnerable", 10), ("resistant", 2), ("immune", 0), ("unmatched", 5)])
 async def test_typed_damage_packet_and_hp(catalog_fight, dev_db_pool, path, trait, expected):
@@ -100,20 +117,7 @@ async def test_typed_damage_packet_and_hp(catalog_fight, dev_db_pool, path, trai
     target.conditions = [{"type": "charmed", "source": ctx.userdata.player_id, "duration": 3}]
     hp = target.hp_current
     if path == "weapon":
-        await combat_turn.declare_phase(
-            ctx,
-            [
-                AttackDecl(
-                    kind="attack",
-                    actor_id=ctx.userdata.player_id,
-                    action="Longsword",
-                    target_id="foe",
-                    held_item_id="",
-                    rider="",
-                ),
-                DefendDecl(kind="defend", actor_id="foe"),
-            ],
-        )
+        await declare_weapon(ctx)
     else:
         spell_id = "arcane_bolt" if path == "attack_spell" else "arcane_elemental_burst"
         await prepare_spell(ctx, spell_id)
@@ -189,20 +193,7 @@ async def test_shared_hollow_poison_immunity(catalog_fight, monkeypatch, path):
     hp = participant(state, "foe").hp_current
     if path == "weapon":
         participant(state, ctx.userdata.player_id).action_pool[0]["damage_type"] = "poison"
-        await combat_turn.declare_phase(
-            ctx,
-            [
-                AttackDecl(
-                    kind="attack",
-                    actor_id=ctx.userdata.player_id,
-                    action="Longsword",
-                    target_id="foe",
-                    held_item_id="",
-                    rider="",
-                ),
-                DefendDecl(kind="defend", actor_id="foe"),
-            ],
-        )
+        await declare_weapon(ctx)
     else:
         # No authored poison spell exists; retain the real cast contract with a typed test profile.
         original = spells.get_spell("arcane_bolt")
@@ -248,15 +239,7 @@ async def test_bonus_rider_uses_its_own_type(catalog_fight):
     target = participant(state, "foe")
     target.damage_affinities = {"immune": [], "resistant": ["slashing"], "vulnerable": ["necrotic"]}
     hp = target.hp_current
-    await combat_turn.declare_phase(
-        ctx,
-        [
-            AttackDecl(
-                kind="attack", actor_id=actor.id, action="Longsword", target_id="foe", held_item_id="", rider=""
-            ),
-            DefendDecl(kind="defend", actor_id="foe"),
-        ],
-    )
+    await declare_weapon(ctx)
     damage = await resolve(ctx, raw=5)
     # Raw base 5 and raw necrotic rider 5 must be adjusted independently.
     assert (damage["damage"], damage["bonus_damage"], damage["bonus_damage_type"]) == (12, 10, "necrotic")
