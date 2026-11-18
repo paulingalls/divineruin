@@ -167,6 +167,8 @@ async def assemble_participants(session, encounter, encounter_id, member_players
                 level=derived.get("level", 1),
                 action_pool=derived.get("action_pool", []),
                 creature_id=derived["creature_id"],
+                damage_affinities=derived["damage_affinities"],
+                tags=derived["tags"],
                 catalog_narration=derived["catalog_narration"],
                 catalog_audio=derived["catalog_audio"],
                 deferred_effects=derived["deferred_effects"],

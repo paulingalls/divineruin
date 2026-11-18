@@ -33,6 +33,8 @@ class CombatParticipant:
     choir_suppression: dict | None = None
     choir_silence_exposed: bool = False
     choir_movement_round: int | None = None
+    damage_affinities: dict[str, list[str]] = field(default_factory=dict)
+    tags: list[str] = field(default_factory=list)
     creature_id: str | None = None
     catalog_narration: dict = field(default_factory=dict)
     catalog_audio: dict = field(default_factory=dict)

@@ -6,7 +6,7 @@ from dataclasses import dataclass, replace
 from livekit.agents.llm import ToolError
 
 import check_resolution_attack
-import combat_ability
+import combat_damage_affinity
 import combat_grapple
 import combat_hollow_death
 import combat_resolution
@@ -23,6 +23,7 @@ from combat_action_availability import action_summary
 from combat_attack_roll import build_attack_dice_roll_payload, roll_attack
 from combat_attack_roll import deserialize_roll as deserialize_roll
 from combat_attack_roll import serialize_roll as serialize_roll
+from combat_condition_landing import _land_condition_on_one
 from combat_durability import _accrue_durability, _find_equipped
 from combat_enemy_active import apply_prepared_hit, heal
 from combat_events import emit_or_publish
@@ -202,9 +203,7 @@ async def _resolve_attack_packet(
     ):
         if conditions.has_condition(target.conditions, "grappled"):
             summary["grapple_held"] = True
-        elif combat_ability._land_condition_on_one(
-            combat_state, target.id, attacker, "grappled", source=attacker.id, packet=summary
-        ):
+        elif _land_condition_on_one(combat_state, target.id, attacker, "grappled", source=attacker.id, packet=summary):
             summary["condition_inflicted"] = "grappled"
         else:
             summary["condition_immune"] = "grappled"
@@ -257,25 +256,13 @@ async def apply_attack_result(
     import choir_encounter
 
     if target.creature_id == "hollow_choir" and combat_state is not None and combat_state.choir_encounter is not None:
+        if not target.damage_affinities.get("immune"):
+            raise ValueError("Choir damage traits missing: reset/reseed old snapshots")
         if combat_state.choir_encounter["phase"] != "exposed":
             if attacker.id != target.id:
                 raise ValueError("Choir core must be exposed before damage")
             attack_result = replace(attack_result, damage=0)
-        components = action.get("damage_components")
-        if components is not None:
-            components = [
-                {**c, "damage": choir_encounter.damage(target, c["damage"], c["damage_type"])} for c in components
-            ]
-            action = {**action, "damage_components": components}
-            attack_result = replace(attack_result, damage=sum(c["damage"] for c in components))
-        bonus = getattr(attack_result, "bonus_damage", 0)
-        allowed = (
-            attack_result.damage
-            if components is not None
-            else choir_encounter.damage(target, attack_result.damage - bonus, attack_result.damage_type)
-        )
-        allowed += choir_encounter.damage(target, bonus, getattr(attack_result, "bonus_damage_type", None))
-        attack_result = replace(attack_result, damage=allowed)
+    action, attack_result = combat_damage_affinity.apply(target, action, attack_result)
     automatic = isinstance(attack_result, AutomaticDamageResult)
     save_damage = isinstance(attack_result, (SaveDamageResult, AutomaticDamageResult))
     if save_damage and publish_roll:

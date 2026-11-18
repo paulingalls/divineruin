@@ -13,6 +13,7 @@ import ability_persistence
 import combat_ability_save
 import combat_enhancers
 import combat_hollow_resonance
+import combat_spell_damage
 import combat_voice_rules
 import condition_voice_rules
 import spell_casting
@@ -307,13 +308,12 @@ async def _resolve_ability_packet(
         target_ids=decl.target_ids,
         suppress_resonance_changed=True,
     )
-    import choir_spell_damage
 
     if result.new_resonance is not None:
         combat_hollow_resonance.stage_total(state, attacker.id, result.new_resonance)
     if result.concentration_spell_id is not spell_casting._UNCHANGED:
         caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
-    await choir_spell_damage.land(session, state, attacker, decl, result, conn=conn, **(damage_deps or {}))
+    await combat_spell_damage.land(session, state, attacker, decl, result, conn=conn, **(damage_deps or {}))
     cast_outcome.results[attacker.id] = result
     # Beneficial-condition PRODUCER (M4.8 story-004), in-combat half. _resolve_cast surfaces the
     # produced condition as packet.condition_applied (the OOC players.data write is gated off in

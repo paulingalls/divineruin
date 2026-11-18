@@ -119,7 +119,8 @@ async def land(
     else:
         save = None
         dc = None
-        if profile["resolution"] == "save":
+        plant_blight = spell.id == "primal_blight" and "plant" in target.tags
+        if profile["resolution"] == "save" and not plant_blight:
             dc = (
                 8
                 + proficiency_bonus(caster.level)
@@ -131,7 +132,11 @@ async def land(
         multiplier = scaled(profile, "projectile_scaling", profile.get("projectiles", 1), caster.level)
         rolled = []
         for i, component in enumerate(components):
-            total = dice.roll(component["dice"]).total if component["dice"] != "0" else 0
+            total = (
+                dice.maximum(component["dice"])
+                if plant_blight
+                else (dice.roll(component["dice"]).total if component["dice"] != "0" else 0)
+            )
             # Resonance changes the first dart only, not every projectile.
             if multiplier > 1:
                 base = profile["components"][i]["dice"]

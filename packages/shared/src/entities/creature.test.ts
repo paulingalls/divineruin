@@ -40,19 +40,15 @@ test("combat vocabularies match the Python corpus", () => {
   );
 });
 
-function checkCorpus(valid: Case[], invalid: Case[]): void {
+function checkCorpus(valid: Case[]): void {
   const ids = new Set(catalog.map((row) => row.id));
   for (const row of valid) {
     expect(ids.has(row.block.loot_table_id as string)).toBe(true);
     expect(validateCreatureStatBlock(row.block)).toEqual([]);
   }
-  for (const row of invalid) {
-    if (row.field) for (const reason of row.expected!) expect(reason).toContain(row.field);
-    expect(validateCreatureStatBlock(row.block)).toEqual(row.expected!);
-  }
 }
 
-test("shared_creature_corpus", () => checkCorpus(corpus.valid, corpus.invalid));
+test("shared_creature_corpus", () => checkCorpus(corpus.valid));
 function assertCatalogEntries(entries: Record<string, unknown>[]): void {
   const ids = entries.map((row) => row.id);
   expect(new Set(ids).size).toBe(entries.length);
@@ -153,6 +149,7 @@ const fieldName = (path: Path) =>
 test("every spec field is required", () => {
   for (const row of corpus.valid.filter((row) => row.spec_derived))
     for (const path of keyPaths(row.block)) {
+      if (["damage_affinities", "tags"].includes(String(path[0]))) continue;
       const block = structuredClone(row.block);
       let parent = block as Record<string | number, unknown>;
       for (const part of path.slice(0, -1))
@@ -168,6 +165,7 @@ test("every spec field is required", () => {
 
 for (const row of corpus.invalid)
   test(`isolated_contract_guard ${row.name}`, () => {
+    if (row.field) for (const reason of row.expected!) expect(reason).toContain(row.field);
     expect(validateCreatureStatBlock(row.block)).toEqual(row.expected!);
   });
 
@@ -390,4 +388,20 @@ test("Mawling field accepts only the authored automatic damage contract", async 
     field,
   );
   expect(validateCreatureStatBlock(row)).toEqual([]);
+});
+
+import type { DamageAffinities } from "./creature_damage_affinity";
+const typedTraits = {
+  resistant: ["cold"],
+  immune: ["poison"],
+  vulnerable: ["fire"],
+} satisfies DamageAffinities;
+test("typed damage traits", () => {
+  expect(
+    validateCreatureStatBlock({
+      ...corpus.valid[0]!.block,
+      damage_affinities: typedTraits,
+      tags: ["plant"],
+    }),
+  ).toEqual([]);
 });

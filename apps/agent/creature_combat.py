@@ -99,6 +99,8 @@ def _translate(row, encounter_id, enemy_id, role):
     enemy.update(
         id=enemy_id,
         creature_id=row["id"],
+        damage_affinities=deepcopy(row.get("damage_affinities", {})),
+        tags=deepcopy(row.get("tags", [])),
         encounter_id=encounter_id,
         category=category,
         xp_value=row["xp_reward"],
