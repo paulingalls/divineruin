@@ -1,6 +1,5 @@
 """Authored patron enhancements through the content and registered command boundaries."""
 
-import importlib
 import itertools
 import json
 import re
@@ -59,15 +58,6 @@ def test_natural_rows_have_mechanics_and_stay_close_to_domain_roster():
         assert len(natural) <= baseline + 2, patron
         for archetype, row in natural.items():
             assert any(c["resolution"] == "engine" for c in row["clauses"]), (patron, archetype)
-
-
-def test_registry_targets_are_real_callables():
-    registry = json.loads((ROOT / "content/engine_implementations.json").read_text())
-    assert "kaelen_iron_resolve" in registry
-    for target in registry.values():
-        module, symbol = target.split(":")
-        assert callable(getattr(importlib.import_module(module), symbol))
-    assert registry["kaelen_iron_resolve"] == "kaelen_gift:trigger_iron_resolve"
 
 
 async def test_all_authored_pairs_and_guest_selection(dev_db_pool):

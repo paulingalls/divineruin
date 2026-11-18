@@ -22,6 +22,7 @@ from test_aelora_gift import _live_party
 from test_unbound_alone_bonus import check
 
 import db_mutations
+from _gods_content import engine_implementations
 from activate_tools import _activate_impl
 from query_tools import _query_info_impl
 from session_data import CompanionState
@@ -43,8 +44,7 @@ async def configure(w, patron, archetype, *, index=0, **fields):
     w.ctx.userdata.party.members[index].patron_id = patron
 
 
-@pytest.mark.parametrize("archetype", ["artificer", "bard", "diplomat", "warrior"])
-async def test_bond_counts_live_allies(world, archetype):
+async def bond_counts_live_allies(world, archetype):
     w = world
     await configure(w, "aelora", archetype)
     assert (await check(w))["total"] == 11
@@ -65,12 +65,7 @@ async def test_bond_counts_live_allies(world, archetype):
         await lifecycle.aclose()
 
 
-@pytest.mark.parametrize(
-    "archetype,skill,bonus",
-    [(a, s, 3) for a in ("seeker", "spy") for s in ("investigation", "perception")]
-    + [("bard", "investigation", 0), ("seeker", "athletics", 0)],
-)
-async def test_uncharted_senses_uses_map_history(world, archetype, skill, bonus):
+async def uncharted_senses_uses_map_history(world, archetype, skill, bonus):
     w = world
     await configure(w, "nythera", archetype)
     await w.pool.execute(
@@ -87,8 +82,7 @@ async def test_uncharted_senses_uses_map_history(world, archetype, skill, bonus)
     assert (await check(w, skill))["total"] == 11
 
 
-@pytest.mark.parametrize("archetype,bonus", [("druid", 1), ("beastcaller", 1), ("bard", 0)])
-async def test_uncharted_handling_adds_minor_bonus(world, archetype, bonus):
+async def uncharted_handling_adds_minor_bonus(world, archetype, bonus):
     from check_tools import _check_impl
 
     w = world
@@ -115,10 +109,7 @@ async def test_uncharted_handling_adds_minor_bonus(world, archetype, bonus):
     assert revisited["total"] == 4
 
 
-@pytest.mark.parametrize(
-    "archetype,hidden,expected", [("mage", True, 0), ("seeker", True, 0), ("bard", True, 1), ("mage", False, 3)]
-)
-async def test_hidden_casting_composes_and_persists(world, archetype, hidden, expected):
+async def hidden_casting_composes_and_persists(world, archetype, hidden, expected):
     w = world
     await configure(w, "syrath", archetype, flags={"concealed": hidden})
     packet = await cast(w, sid="arcane_fireball")
@@ -138,20 +129,8 @@ async def test_hidden_guest_declared_cast(world):
     assert (await row(w, 0))["resonance"]["current"] == 9
 
 
-@pytest.mark.parametrize(
-    "archetype,before,damage,fires",
-    [
-        ("warrior", 50, 15, True),
-        ("guardian", 50, 15, True),
-        ("skirmisher", 50, 15, True),
-        ("bard", 50, 15, False),
-        ("warrior", 40, 5, True),
-        ("warrior", 50, 10, False),
-        ("warrior", 35, 5, False),
-        ("warrior", 50, 50, False),
-    ],
-)
-async def test_iron_resolve_through_enemy_attack(dev_db_pool, archetype, before, damage, fires):
+async def iron_resolve_through_enemy_attack(world, archetype, before, damage, fires):
+    dev_db_pool = world.pool
     pid = f"synergy_iron_{archetype}_{before}_{damage}"
     state = _build_state(f"combat_{pid}", pid, [_enemy("goblin_a", hp=100)])
     pc = required_player(state, pid)
@@ -363,3 +342,63 @@ async def test_choir_search_carries_uncharted_senses(first_stay, bonus, mock_com
         )
     assert packet["total"] == 13 + bonus
     assert (packet.get("gift_name") == "Uncharted Senses") is first_stay
+
+
+ENGINE_SCENARIOS = {
+    "kaelen_iron_resolve": (
+        "kaelen_gift:trigger_iron_resolve",
+        iron_resolve_through_enemy_attack,
+        [("bard", 30, 10, True), ("bard", 30, 5, False)],
+    ),
+    "kaelen_tempered_resolve": (
+        "kaelen_gift:trigger_iron_resolve",
+        iron_resolve_through_enemy_attack,
+        [
+            ("warrior", 50, 15, True),
+            ("guardian", 50, 15, True),
+            ("skirmisher", 50, 15, True),
+            ("bard", 50, 15, False),
+            ("warrior", 40, 5, True),
+            ("warrior", 50, 10, False),
+            ("warrior", 35, 5, False),
+            ("warrior", 50, 50, False),
+        ],
+    ),
+    "aelora_common_bond": (
+        "patron_gifts:skill_gift",
+        bond_counts_live_allies,
+        [(a,) for a in ("artificer", "bard", "diplomat", "warrior")],
+    ),
+    "syrath_silent_casting": (
+        "cast_modifiers:apply_patron_generation",
+        hidden_casting_composes_and_persists,
+        [("mage", True, 0), ("seeker", True, 0), ("bard", True, 1), ("mage", False, 3)],
+    ),
+    "nythera_uncharted_senses": (
+        "patron_gifts:skill_gift",
+        uncharted_senses_uses_map_history,
+        [(a, s, 3) for a in ("seeker", "spy") for s in ("investigation", "perception")]
+        + [("bard", "investigation", 0), ("seeker", "athletics", 0)],
+    ),
+    "nythera_uncharted_handling": (
+        "patron_gifts:skill_gift",
+        uncharted_handling_adds_minor_bonus,
+        [("druid", 1), ("beastcaller", 1), ("bard", 0)],
+    ),
+}
+
+
+@pytest.mark.parametrize(
+    "implementation_id,args",
+    [
+        pytest.param(key, args, id=f"{key}-{i}")
+        for key in sorted(set(engine_implementations()) | set(ENGINE_SCENARIOS))
+        for i, args in enumerate(ENGINE_SCENARIOS.get(key, (None, None, [()]))[2])
+    ],
+)
+async def test_registered_engine_implementation(world, implementation_id, args):
+    registry = engine_implementations()
+    assert set(registry) == set(ENGINE_SCENARIOS), "Every engine ID needs a production scenario"
+    target, scenario, _ = ENGINE_SCENARIOS[implementation_id]
+    assert registry[implementation_id] == target
+    await scenario(world, *args)
