@@ -117,7 +117,7 @@ async def test_close_before_damage(maw, identity, separation):
         ("numeric", 40, 10, 30),
         ("property", 40, 10, 30),
         ("numeric", 45, 15, 30),
-        ("diagonal", 35, 5, 30),
+        ("diagonal", 1227**0.5, 5, 30),
         ("grappled", 25, 5, 0),
         ("restrained", 25, 5, 0),
         ("zero", 25, 5, 0),
@@ -156,7 +156,7 @@ async def test_geometry_and_allowance(maw, mode, separation, reach, expected):
     origin = {"x": 0, "y": 0, "z": 0}
     state.spatial["positions"][actor.id] = origin
     state.spatial["positions"][target.id] = (
-        {"x": 10, "y": 15, "z": 30} if mode == "diagonal" else {"x": separation, "y": 0, "z": 0}
+        {"x": 1, "y": 1, "z": 35} if mode == "diagonal" else {"x": separation, "y": 0, "z": 0}
     )
     await maw.persist()
     with (
