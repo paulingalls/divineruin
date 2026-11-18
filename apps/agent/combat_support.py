@@ -6,7 +6,6 @@ from dataclasses import dataclass, replace
 from livekit.agents.llm import ToolError
 
 import check_resolution_attack
-import combat_ability
 import combat_grapple
 import combat_hollow_death
 import combat_resolution
@@ -23,6 +22,7 @@ from combat_action_availability import action_summary
 from combat_attack_roll import build_attack_dice_roll_payload, roll_attack
 from combat_attack_roll import deserialize_roll as deserialize_roll
 from combat_attack_roll import serialize_roll as serialize_roll
+from combat_condition_landing import _land_condition_on_one
 from combat_durability import _accrue_durability, _find_equipped
 from combat_enemy_active import apply_prepared_hit, heal
 from combat_events import emit_or_publish
@@ -202,9 +202,7 @@ async def _resolve_attack_packet(
     ):
         if conditions.has_condition(target.conditions, "grappled"):
             summary["grapple_held"] = True
-        elif combat_ability._land_condition_on_one(
-            combat_state, target.id, attacker, "grappled", source=attacker.id, packet=summary
-        ):
+        elif _land_condition_on_one(combat_state, target.id, attacker, "grappled", source=attacker.id, packet=summary):
             summary["condition_inflicted"] = "grappled"
         else:
             summary["condition_immune"] = "grappled"
