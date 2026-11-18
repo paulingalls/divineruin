@@ -27,7 +27,7 @@ from session_data import CompanionState
 TEMPLATES = json.loads((CONTENT_ROOT / "content/encounter_templates.json").read_text())
 TARGETS = {
     "hollow_mawling_pack": (
-        8,
+        10,
         "moderate",
         [("hollow_mawling", "standard", 1)],
     ),

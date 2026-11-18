@@ -25,7 +25,7 @@ from query_tools import _query_info_impl
 
 TEMPLATES = json.loads((CONTENT_ROOT / "content/encounter_templates.json").read_text())
 LEVELS = {
-    "hollow_mawling_pack": 8,
+    "hollow_mawling_pack": 10,
     "hollowmoth_swarm": 3,
     "hollow_weaver_ambush": 10,
     "fragment_shadeling": 1,
