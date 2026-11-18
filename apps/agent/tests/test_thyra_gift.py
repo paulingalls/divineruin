@@ -3,7 +3,7 @@ import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from sample_fixtures import make_context
+from sample_fixtures import make_context, make_db_mod
 
 import check_tools
 import db_activity_queries
@@ -20,6 +20,9 @@ from tools._helpers import _skill_mocks
 
 @pytest.fixture
 def world(monkeypatch):
+    database, _ = make_db_mod()
+    monkeypatch.setattr("db.transaction", database.transaction)
+    monkeypatch.setattr("patron_deeds.record_deed", AsyncMock())
     ctx = make_context(location_id="forest_here")
     queries, mutations = _skill_mocks()
     queries.get_player.return_value = {

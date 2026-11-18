@@ -2,7 +2,7 @@ import json
 from contextlib import contextmanager
 from copy import deepcopy
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
 
 import pytest
 from inventory_snapshot_fixture import snapshot_query
@@ -13,6 +13,15 @@ from check_tools import _check_save_impl, _check_skill_impl
 from conditions import apply_condition
 from gathering_tools import _check_gather_impl
 from social_tools import _check_social_impl
+
+
+@pytest.fixture(autouse=True)
+def skill_transaction_seams(monkeypatch):
+    from sample_fixtures import make_db_mod
+
+    database, _ = make_db_mod()
+    monkeypatch.setattr("db.transaction", database.transaction)
+    monkeypatch.setattr("patron_deeds.record_deed", AsyncMock())
 
 
 def actors():
@@ -41,7 +50,7 @@ def setup(rows):
     ctx = make_context(party_member_ids=["player_2"])
     ctx.userdata.event_bus = MagicMock()
     queries = MagicMock(get_player_inventory=AsyncMock(return_value=[]), get_inventory_snapshot=snapshot_query([]))
-    queries.get_player = AsyncMock(side_effect=lambda pid, *, conn=None: rows[pid])
+    queries.get_player = AsyncMock(side_effect=lambda pid, *, conn=None, for_update=False: rows[pid])
     return ctx, queries
 
 
@@ -82,7 +91,10 @@ async def test_guest_skill_roll_and_advancement():
         )
     assert result["modifier"] > 5
     assert result["total"] == 15 + result["modifier"]
-    assert queries.get_player.await_args_list == [call("player_2"), call("player_1", conn=None)]
+    assert queries.get_player.await_args_list == [
+        call("player_2", conn=ANY, for_update=True),
+        call("player_1", conn=None),
+    ]
     assert queries.get_single_skill_advancement.await_args.args[0] == "player_2"
     assert mutations.update_skill_advancement.await_args.args[0] == "player_2"
 
