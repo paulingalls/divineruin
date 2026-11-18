@@ -8,6 +8,7 @@ import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_mock_room, published_payloads
 
+import db
 import db_mutations
 import db_queries
 import event_types as E
@@ -173,8 +174,6 @@ async def test_combat_and_other_actor_refused(character):
             await _select_impl(make_context(other, room=make_mock_room()), "attribute_increase_4", "wisdom")
         assert await db_queries.get_player(ctx.userdata.player_id) == before
     finally:
-        import db
-
         await (await db.get_pool()).execute("DELETE FROM players WHERE player_id=$1", other)
 
 

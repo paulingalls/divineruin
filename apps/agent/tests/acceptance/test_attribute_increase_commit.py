@@ -24,6 +24,9 @@ def test_award_commits_attributes_and_produces_redirect(harness):
         assert offer["redirect_until"] == "next_long_rest"
         assert offer["resolve_with"] == "select" and "wisdom" in offer["options"]
         assert [e for e in walk.events if e["type"] == E.SESSION_INIT]
+        walk.events.clear()
+        retry = await walk.command("update_quest", {"quest_id": "greyvale_anomaly", "new_stage_id": 8})
+        assert retry.is_error and await walk.row() == row and not walk.events
 
     harness.run_sync(check())
 
@@ -61,22 +64,6 @@ def test_reload_redirect_and_long_rest_deadline(harness):
         assert await walk.row() == before
         query = await walk.command("query_info", {"kind": "abilities"})
         assert json.loads(query.output)["attribute_increases"] == []
-
-    harness.run_sync(check())
-
-
-def test_quest_replay_cannot_repeat_the_increase(harness):
-    async def check():
-        walk = await IncreaseWalk().setup(harness)
-        args = {"quest_id": "greyvale_anomaly", "new_stage_id": 8}
-        paid = await walk.command("update_quest", args)
-        assert not paid.is_error and json.loads(paid.output)["attribute_increases"]
-        before = await walk.row()
-        walk.events.clear()
-        retry = await walk.command("update_quest", args)
-        assert retry.is_error
-        assert await walk.row() == before
-        assert not walk.events
 
     harness.run_sync(check())
 
@@ -134,6 +121,5 @@ def test_combat_exit_surfaces_guest_increase_and_private_snapshot(harness, monke
         snapshots = [e["character"]["player_id"] for e in walk.events if e["type"] == E.SESSION_INIT]
         assert sorted(snapshots) == sorted([walk.player, guest])
         assert walk.sd.combat_state is None
-        await walk.session.aclose()
 
     harness.run_sync(check())

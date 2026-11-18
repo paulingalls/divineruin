@@ -41,7 +41,6 @@ class IncreaseWalk(ArcWalk):
         row["hp"] = {"current": 5, "max": hp}
         await self.pool.execute("UPDATE players SET data=$2::jsonb WHERE player_id=$1", self.player, json.dumps(row))
         self.sd.location_id = "millhaven_inn"
-        return await self.row()
 
     async def row(self):
         row = await db_queries.get_player(self.player)
@@ -76,4 +75,3 @@ class IncreaseWalk(ArcWalk):
         await self.session.start(
             Agent(instructions="Execute the spoken command.", tools=[update_quest, select, query_info, rest])
         )
-        harness.stack.callback(lambda: harness.run_sync(self.session.aclose()))

@@ -76,7 +76,7 @@ def test_production_requires_server_url(script, url):
 def test_development_agent_reaches_livekit_without_dependencies(tmp_path):
     with (tmp_path / "startup.log").open("w+") as log:
         process = subprocess.Popen(
-            [sys.executable, str(AGENT / "agent.py"), "start"],
+            [sys.executable, str(AGENT / "agent.py"), "start", "--dev"],
             env=startup_env(),
             stdout=log,
             stderr=log,
