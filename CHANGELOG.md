@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.46.0
+
+In multiplayer, every player now hears their own god. When a guest's favor crosses a tier, the guest's patron whispers to them by name, and a guest whose favor drops hears that god's displeasure once a session, as the host always has. When two players cross at once, both whispers play in turn. A player who leaves before their whisper plays hears nothing, and their whisper is not counted as delivered.
+
+Release steps: none.
+
 ## 0.45.2
 
 The test runner is pinned to proof v0.34.1. Before the fix, staged runs (every free patch's acceptance and every commit hook) read every input file through git for every task, so setup on a staged sprint run took 25 minutes or more. Setup now takes about 24 seconds. There is no player-facing change.
