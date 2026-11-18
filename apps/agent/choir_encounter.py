@@ -4,6 +4,7 @@ import check_resolution
 import condition_voice_rules
 from combat_terrain import skill_natural_terrain
 from declarations import DeclarationType
+from patron_location import check_first_stay
 
 SEARCH_TARGET = "choir_sound"
 SEARCH_ACTIONS = {"choir_search_perception": "perception", "choir_search_arcana": "arcana"}
@@ -147,6 +148,7 @@ async def search(session, state, actor, declaration, *, queries, conn):
         ally_present=session.allies_present_for(actor.id),
         natural_terrain=await skill_natural_terrain(session, player, skill, combat_state=state),
         hearing_only=skill == "perception",
+        first_stay=await check_first_stay(player, session, skill, conn=conn),
     )
     import conditions
 

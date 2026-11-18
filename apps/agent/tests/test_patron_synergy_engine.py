@@ -318,3 +318,36 @@ async def test_guest_discovery_and_reroll_use_first_stay(world):
                 )
             )
         assert packet["total"] == 14 and effects.events[0][1]["total"] == 14
+
+
+@pytest.mark.parametrize("first_stay,bonus", [(True, 3), (False, 0)])
+async def test_choir_search_carries_uncharted_senses(first_stay, bonus, mock_combat_agent_factory):
+    import combat_packet
+    from combat_phase import ResolutionPacket
+    from declarations import resolve_declaration
+    from tests.combat.test_choir_encounter import start_choir
+
+    ctx, _, mutations, queries = await start_choir()
+    state = ctx.userdata.combat_state
+    actor = state.get_participant("player_1")
+    queries.get_player.return_value = {
+        **queries.get_player.return_value,
+        "class": "seeker",
+        "divine_favor": {"patron": "nythera", "level": 40, "max": 100},
+    }
+    decl = resolve_declaration({"type": "interact", "action": "choir_search_perception", "target_id": "choir_sound"})
+    with (
+        patch("check_resolution.dice_roll", return_value=_d20(10)),
+        patch("choir_encounter.check_first_stay", return_value=first_stay),
+    ):
+        packet = await combat_packet._resolve_one_packet(
+            ctx.userdata,
+            state,
+            ResolutionPacket(actor_id=actor.id, declaration=decl, initiative=actor.initiative),
+            mutations=mutations,
+            queries=queries,
+            resolver=None,
+            concentration_break_mod=None,
+        )
+    assert packet["total"] == 13 + bonus
+    assert (packet.get("gift_name") == "Uncharted Senses") is first_stay
