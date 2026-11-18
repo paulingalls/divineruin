@@ -24,16 +24,16 @@ import combat_reaction_contest
 import combat_reaction_effect
 import combat_recharge
 import combat_voice_rules
-import combat_wrongdoing
 import event_types as E
 import reaction_gate
 import reaction_spend
 import reaction_windows
 from combat_ability import _find_action
-from combat_action_availability import begin_execution, replay_valid
-from combat_attack_roll import build_attack_dice_roll_payload, deserialize_roll, roll_attack, serialize_roll
+from combat_action_availability import replay_valid
+from combat_attack_roll import build_attack_dice_roll_payload, deserialize_roll
 from combat_down import target_unavailable
 from combat_enemy_action import is_combined_attack_action, is_save_damage_action
+from combat_fate_hostile import roll_hostile
 from combat_multiattack import held_declarations, strike_summary
 from combat_packet import _resolve_one_packet
 from condition_restrictions import cannot_act
@@ -216,7 +216,7 @@ def _assert_iteration_progress(state, head: dict, summaries: list[dict], summary
         raise RuntimeError(f"held action for {head['actor_id']!r} made no progress")
 
 
-async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[dict]:
+async def pump(session, state, *, packet_deps: dict, contest_rng=None, fate_rolls=None) -> list[dict]:
     """Step the Beat-3 queue until it pauses on a window or the queue drains.
 
     Returns the resolution summaries produced by THIS call. When it returns with
@@ -284,8 +284,10 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
                 if action is not None and head["roll"] is None:
                     _assert_single_swing(state, head, action)
                     contribution = combat_reaction_effect.ac_bonus(state, head)
-                    rolled = _roll(state, head, action, packet_deps["resolver"], contribution)
-                    head.update(roll=serialize_roll(*rolled), reaction_ac_bonus=contribution)
+                    if not await roll_hostile(
+                        session, state, head, _held_declaration(head), action, contribution, packet_deps, fate_rolls
+                    ):
+                        return summaries
 
                 if head["roll"] is not None and POST_ROLL not in head["opened"]:
                     head["opened"].append(POST_ROLL)
@@ -330,27 +332,6 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
         _assert_iteration_progress(state, head, summaries, summary_start)
 
     return summaries
-
-
-def _roll(state, head: dict, action: dict, resolver, reaction_ac_bonus):
-    """Roll the held swing WITHOUT touching HP — the post-roll window is pre-damage."""
-    declaration = _held_declaration(head)
-    attacker = state.get_participant(head["actor_id"])
-    target = state.get_participant(declaration.target_id)
-    action = begin_execution(state, attacker, action, declaration, head)
-    rolled = roll_attack(
-        attacker,
-        action,
-        target,
-        target_ac_bonus=state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus,
-        enemies_remaining=sum(1 for p in state.participants if p.type == "enemy" and not p.is_fallen),
-        is_first_attack_of_combat=not state.first_attack_resolved,
-        resolver=resolver,
-        combat_state=state,
-    )
-
-    combat_wrongdoing.record_attack(state, attacker, target)
-    return rolled
 
 
 def _window(state, head: dict, stage: str, triggers: tuple[str, ...]) -> dict:

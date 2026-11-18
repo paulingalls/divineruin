@@ -1,11 +1,13 @@
 from unittest.mock import patch
 
+import pytest
 from _patron_engine_fixtures import configure
 from _unbound_path_fixtures import row
 from _unbound_path_fixtures import world as world
 from _zhael_fate_fixtures import attack, defend, game_tools
 from acceptance._capstone_helpers import _build_state, _d20, _damage_die, _enemy, _player
 from acceptance.test_kaelen_iron_resolve_capstone import required_player
+from livekit.agents.llm import ToolError
 from sample_fixtures import published_payloads
 from test_aelora_gift import _live_party
 from voice_condition_fixtures import place_actors
@@ -14,6 +16,7 @@ import db_mutations
 from activate_tools import activate
 from check_tools import check
 from combat_death_save import request_death_save
+from combat_end import end_combat
 from combat_turn import declare_phase, resolve_phase
 from session_data import SessionData
 
@@ -161,6 +164,9 @@ async def test_reload_applies_original_and_preserves_spend(world):
             await call("activate", id="zhael_fates_thread", offer_id=offer["offer_id"])
             fresh = SessionData(player_id=host, location_id="accord_guild_hall")
             fresh.combat_state = await db_mutations.load_combat_state(state.combat_id)
+            with pytest.raises(ToolError, match="resolve_phase"):
+                await game_tools(fresh, end_combat)("end_combat", outcome="fled")
+            assert await db_mutations.load_combat_state(state.combat_id) is not None
             with patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)):
                 done = await game_tools(fresh, resolve_phase)("resolve_phase")
             assert dice.call_count == 2
@@ -197,5 +203,77 @@ async def test_second_swing_after_a_rerolled_held_swing_uses_its_own_die(world):
         assert "fate_offer" not in result
         rolls = [e["roll"] for e in published_payloads(session.room) if e["type"] == "dice_roll"]
         assert rolls == [15, 14]
+    finally:
+        await db_mutations.delete_combat_state(state.combat_id)
+
+
+@pytest.mark.parametrize(("original", "kept", "damage"), [(1, 19, 4), (19, 1, 0)])
+async def test_hostile_attack_holds_before_impact(world, original, kept, damage):
+    await configure(world, "zhael", "mage")
+    player_id = world.ids[0]
+    state = _build_state(player_id, player_id, [_enemy("foe", 30)])
+    session = world.ctx.userdata
+    session.combat_state = state
+    call = game_tools(session, declare_phase, resolve_phase, activate)
+    strike = {**attack("foe", player_id), "action": "Scimitar"}
+    try:
+        await call("declare_phase", declarations=[defend(player_id), strike])
+        await call("resolve_phase")
+        with (
+            patch("check_resolution.dice_roll", side_effect=[_d20(original), _d20(kept)]),
+            patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)) as damage_die,
+        ):
+            offered = await call("resolve_phase")
+            offer = offered["fate_offer"]
+            assert offer["roller_id"] == "foe" and offer["roll_kind"] == "attack"
+            assert offer["die"] == original and player_id in offer["eligible_followers"]
+            held = await db_mutations.load_combat_state(state.combat_id)
+            assert required_player(held, player_id).hp_current == 100
+            args = {"id": "zhael_fates_thread", "offer_id": offer["offer_id"]}
+            await call("activate", **args)
+            assert not damage_die.called
+            settled = await call("activate", **args, keep="reroll")
+        assert settled["packets"][0]["roll"] == kept
+        assert settled["packets"][0]["damage"] == damage
+        persisted = await db_mutations.load_combat_state(state.combat_id)
+        assert required_player(persisted, player_id).hp_current == 100 - damage
+        with pytest.raises(ToolError, match="current"):
+            await call("activate", **args, keep="reroll")
+    finally:
+        await db_mutations.delete_combat_state(state.combat_id)
+
+
+async def test_wrap_holds_clearing_saves_and_recovers_next_original(world):
+    from conditions import apply_condition, has_condition
+
+    await configure(world, "zhael", "mage")
+    pid = world.ids[0]
+    foe = _enemy("foe", 30)
+    state = _build_state(pid, pid, [foe])
+    player = required_player(state, pid)
+    player.conditions = apply_condition([], "frightened", source=foe.id, duration=3)
+    foe.conditions = apply_condition([], "frightened", source=pid, duration=3)
+    session = world.ctx.userdata
+    session.combat_state = state
+    call = game_tools(session, declare_phase, resolve_phase, activate)
+    try:
+        await call("declare_phase", declarations=[defend(pid), defend(foe.id)])
+        await call("resolve_phase")
+        with patch("check_resolution.dice_roll", side_effect=[_d20(19), _d20(18)]) as dice:
+            held = (await call("resolve_phase"))["fate_offer"]
+            assert held["roll_kind"] == "save" and held["roller_id"] == pid
+            assert has_condition(required_player(session.combat_state, pid).conditions, "frightened")
+            next_result = await call("activate", id="zhael_fates_thread", offer_id=held["offer_id"], keep="original")
+            next_offer = next_result["fate_offer"]
+            assert next_offer["roller_id"] == foe.id and next_offer["offer_id"] != held["offer_id"]
+            fresh = SessionData(player_id=pid, location_id="accord_guild_hall")
+            fresh.combat_state = await db_mutations.load_combat_state(state.combat_id)
+            assert not has_condition(required_player(fresh.combat_state, pid).conditions, "frightened")
+            assert has_condition(required_player(fresh.combat_state, foe.id).conditions, "frightened")
+            result = await game_tools(fresh, resolve_phase)("resolve_phase")
+            assert dice.call_count == 2
+        assert result["round"] == 2 and result["beat"] == "declaration"
+        persisted = await db_mutations.load_combat_state(state.combat_id)
+        assert not has_condition(required_player(persisted, foe.id).conditions, "frightened")
     finally:
         await db_mutations.delete_combat_state(state.combat_id)

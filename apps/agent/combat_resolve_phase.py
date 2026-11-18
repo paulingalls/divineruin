@@ -34,6 +34,7 @@ import zhael_fate
 from combat_ability import AbilityCastOutcome
 from combat_end import _end_combat_finish
 from combat_events import EventSink, emit_or_publish, isolated_publish
+from combat_fate_rolls import PhaseRolls
 from combat_packet import _prevalidate_ability_focus, _resolve_one_packet
 from combat_phase_recovery import PrevalidationRefusal, phase_transaction_with_recovery
 from combat_support import _participant_roster, _require_combat
@@ -86,6 +87,7 @@ async def _resolve_phase_locked(
         "concentration_break_mod": concentration_break_mod,
         "cast_resolver": cast_resolver,
     }
+    fate_rolls = PhaseRolls(kept=kept if not resolving_allies else None)
     cast_outcome = AbilityCastOutcome()
     packet_summaries: list[dict] = []
     async with phase_transaction_with_recovery(session, cs, db_mod=db_mod, mutations=mutations) as conn:
@@ -142,24 +144,13 @@ async def _resolve_phase_locked(
         else:
             state = copy.deepcopy(cs)
             packet_summaries = await combat_hold.pump(
-                session, state, packet_deps={**packet_deps, "conn": conn, "sink": sink, "cast_outcome": cast_outcome}
+                session,
+                state,
+                packet_deps={**packet_deps, "conn": conn, "sink": sink, "cast_outcome": cast_outcome},
+                fate_rolls=fate_rolls,
             )
 
-        if resolving_allies or state.open_window is not None:
-            exhaustion_narration: dict[str, str] = {}
-            wrap = None
-            wrap_adv = combat_phase.PhaseAdvance(beat_completed=combat_phase.PhaseBeat.NARRATION)
-            ended_outcome = None
-            pending_by_member = combat_hollow_resonance.take_totals(state)
-            await emit_or_publish(
-                sink,
-                session.room,
-                E.COMBAT_UI_UPDATE,
-                build_combat_ui_update(state),
-                event_bus=session.event_bus,
-            )
-            await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
-        else:
+        if not resolving_allies and state.open_window is None and fate_rolls.pending is None:
             (
                 state,
                 wrap,
@@ -178,7 +169,23 @@ async def _resolve_phase_locked(
                 queries=queries,
                 save_resolver=save_resolver,
                 resonance_mutations=resonance_mutations,
+                fate_rolls=fate_rolls,
             )
+
+        if resolving_allies or state.open_window is not None or fate_rolls.pending is not None:
+            exhaustion_narration: dict[str, str] = {}
+            wrap = None
+            wrap_adv = combat_phase.PhaseAdvance(beat_completed=combat_phase.PhaseBeat.NARRATION)
+            ended_outcome = None
+            pending_by_member = combat_hollow_resonance.take_totals(state)
+            await emit_or_publish(
+                sink,
+                session.room,
+                E.COMBAT_UI_UPDATE,
+                build_combat_ui_update(state),
+                event_bus=session.event_bus,
+            )
+            await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
 
     # Sync and tear down before fallible publishes, preventing a second reward payout.
     # Capture the combat location before teardown can move the party to its death anchor.
@@ -192,7 +199,7 @@ async def _resolve_phase_locked(
     if resuming:
         zhael_fate.effects_committed(session)
     offer = None
-    if resolving_allies and state.ally_continuation is not None:
+    if (resolving_allies and state.ally_continuation is not None) or fate_rolls.pending is not None:
 
         async def resume(selected):
             async with session.combat_state_lock:
@@ -212,9 +219,16 @@ async def _resolve_phase_locked(
                     resuming=True,
                 )
                 assert isinstance(packet, str)
-                return zhael_fate.Resumed(json.loads(packet), paused=session.fate_offer is not None)
+                return zhael_fate.Resumed(
+                    json.loads(packet),
+                    paused=session.fate_offer is not None
+                    or (session.combat_state is not None and session.combat_state.open_window is not None),
+                )
 
-        offer = combat_fate.offer_held_attack(state.ally_continuation, candidates, resume)
+        if fate_rolls.pending is not None:
+            offer = fate_rolls.pending.offer(resume)
+        else:
+            offer = combat_fate.offer_held_attack(state.ally_continuation, candidates, resume)
         assert offer is not None, "Held attack has no eligible ability"
         session.fate_offer = offer
     for m in session.party.members:

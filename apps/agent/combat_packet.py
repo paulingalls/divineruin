@@ -62,16 +62,20 @@ def _resolve_tick_saves(state, tick_conditions_due, save_resolver):
         # expands the 3-letter tick_save ("wis" -> "wisdom"). Engine-auto tick-clear: never spends the
         # actor's +1d4 (bonus_dice_eligible=False, M4.8 story-003), and include_proficiency=False keeps
         # the pre-M13 clear odds — folding proficiency in here would be an untested M4.3 balance shift.
-        result = save_resolver.roll_participant_save(
-            actor,
-            event["save"],
-            _CONDITION_CLEAR_DC,
-            event["type"],
-            bonus_dice_eligible=False,
-            include_proficiency=False,
-        )
+        result = roll_tick_save(actor, event, save_resolver)
         if result.success:
             actor.conditions = conditions.remove_condition(actor.conditions, event["type"])
+
+
+def roll_tick_save(actor, event, save_resolver):
+    return save_resolver.roll_participant_save(
+        actor,
+        event["save"],
+        _CONDITION_CLEAR_DC,
+        event["type"],
+        bonus_dice_eligible=False,
+        include_proficiency=False,
+    )
 
 
 async def _resolve_one_packet(
