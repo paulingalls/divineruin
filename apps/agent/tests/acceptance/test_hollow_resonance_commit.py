@@ -19,7 +19,7 @@ import db_mutations_concentration
 import db_mutations_resonance
 import db_queries
 import resonance_events
-import spell_casting
+import spell_cast_effects
 from combat_participant import CombatParticipant
 from combat_state import CombatState
 
@@ -62,7 +62,7 @@ async def encounter(reset_db_pool, monkeypatch):
     async def transport(room, kind, payload, *args, **kwargs):
         events.append((kind, deepcopy(payload)))
 
-    for module in (combat_events, resonance_events, spell_casting):
+    for module in (combat_events, resonance_events, spell_cast_effects):
         monkeypatch.setattr(module, "publish_game_event", transport)
     try:
         yield ctx, ids, events
