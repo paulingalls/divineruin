@@ -75,28 +75,34 @@ async def skill_roll(ctx, skill="perception", dice=(2, 18), difficulty="moderate
 async def test_natures_pulse_rolls_with_advantage(world, skill):
     result, count = await skill_roll(world[0], skill)
     assert (result["roll"], count, result.get("gift_name")) == (18, 2, "Nature's Pulse")
+    assert (result["modifier"], result["total"]) == (0, 18)
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "patron,terrain,skill",
+    "patron,archetype,terrain,skill",
     [
-        ("thyra", "city", "perception"),
-        ("thyra", "village", "perception"),
-        ("aelora", "forest", "perception"),
-        ("none", "forest", "perception"),
-        ("thyra", "forest", "athletics"),
+        ("thyra", "warrior", "city", "perception"),
+        ("thyra", "warrior", "village", "perception"),
+        ("aelora", "druid", "forest", "perception"),
+        ("none", "druid", "forest", "perception"),
+        ("thyra", "druid", "forest", "athletics"),
+        ("thyra", "druid", "city", "athletics"),
+        ("kaelen", "druid", "city", "perception"),
     ],
 )
-async def test_exclusions(world, patron, terrain, skill):
+async def test_exclusions(world, patron, archetype, terrain, skill):
     ctx, player, terrain_read, _ = world
     positive, count = await skill_roll(ctx)
     assert (positive["roll"], count, positive.get("gift_name")) == (18, 2, "Nature's Pulse")
     player["divine_favor"]["patron"] = patron
+    player["class"] = archetype
     terrain_read.return_value = terrain
     terrain_read.reset_mock()
     result, count = await skill_roll(ctx, skill)
     assert (result["roll"], count) == (2, 1)
+    bonus = 1 if patron == "none" else 0
+    assert (result["modifier"], result["total"]) == (bonus, 2 + bonus)
     assert "gift_name" not in result
     if patron != "thyra" or skill == "athletics":
         terrain_read.assert_not_awaited()
@@ -143,9 +149,11 @@ async def test_inactive_gift_grants_neither_half(world, monkeypatch):
     rows = copy.deepcopy(load_gods())
     next(row for row in rows if row["god_id"] == "thyra")["layer_1_gift"]["status"] = "awaits_terrain"
     monkeypatch.setattr("patron_gifts.load_gods", lambda: rows)
-    result, count = await skill_roll(ctx)
-    assert (result["roll"], count) == (2, 1)
-    assert "gift_name" not in result
+    for terrain in ("forest", "city"):
+        world[2].return_value = terrain
+        result, count = await skill_roll(ctx)
+        assert (result["roll"], count, result["modifier"]) == (2, 1, 0)
+        assert "gift_name" not in result
     for kind in ("location", "patron"):
         assert "ecosystem_health_cue" not in json.loads(await query_tools.query_info(ctx, kind, "forest_here"))
 

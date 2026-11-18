@@ -145,7 +145,7 @@ In natural terrain: primal Resonance multiplier improves by one step (0.3→0.2,
 
 | Archetypes | Synergy Type | Enhancement |
 |---|---|---|
-| Druid, Beastcaller, Warden | Natural | Nature's Pulse extends to non-natural terrain (reduced). Wild Shape +5 temp HP |
+| Druid, Beastcaller, Warden | Natural | Nature's Pulse extends to non-natural terrain: +2 to Perception and Survival checks. Wild Shape +5 temp HP |
 | Warrior, Skirmisher | Unexpected | Crit strikes deal +1d4 natural-type damage (thorns, stone, lightning) |
 | Cleric | Divine | Healing in natural terrain +1d4 extra HP |
 
