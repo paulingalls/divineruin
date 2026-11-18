@@ -92,7 +92,7 @@ def deserialize_roll(data: dict) -> tuple:
 
 
 def build_attack_dice_roll_payload(attacker, attack_result) -> dict:
-    return {
+    payload = {
         "roll_type": "attack",
         "attacker": attacker.name,
         "roll": attack_result.roll,
@@ -101,13 +101,17 @@ def build_attack_dice_roll_payload(attacker, attack_result) -> dict:
         "success": attack_result.hit,
         "narrative": attack_result.narrative_hint,
         "damage": attack_result.damage,
-        "damage_type": attack_result.damage_type,
-        "sneak_attack_dice": attack_result.sneak_attack_dice,
-        "sneak_attack_raw_damage": attack_result.sneak_attack_raw_damage,
         "critical": attack_result.critical_success,
         "dramatic": attack_result.dramatic,
         "context": attack_result.context,
     }
+    if attack_result.sneak_attack_dice is not None:
+        payload.update(
+            damage_type=attack_result.damage_type,
+            sneak_attack_dice=attack_result.sneak_attack_dice,
+            sneak_attack_raw_damage=attack_result.sneak_attack_raw_damage,
+        )
+    return payload
 
 
 def held_reaction_ac(head: dict) -> int:
