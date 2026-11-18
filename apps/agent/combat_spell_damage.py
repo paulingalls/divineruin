@@ -106,6 +106,7 @@ async def land(
             caster,
             action,
             target,
+            weapon_attack=False,
             target_ac_bonus=state.ac_modifiers.get(target.id, 0),
             combat_state=state,
             conn=conn,

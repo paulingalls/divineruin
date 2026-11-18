@@ -7,7 +7,7 @@ import conditions
 REPO_ROOT = Path(__file__).resolve().parents[4]
 ABILITIES_PATH = REPO_ROOT / "content" / "archetype_abilities.json"
 SPELLS_PATH = REPO_ROOT / "content" / "spells.json"
-NO_SAVE_BUFF_CONDITIONS = frozenset({"inspired"})
+NO_SAVE_BUFF_CONDITIONS = frozenset({"inspired", "precise_strike"})
 SPELL_BUFF_CONDITIONS = combat_ability_save.BENEFICIAL_CONDITIONS
 
 
@@ -23,9 +23,8 @@ def _assert_no_hostile_condition_ability_omits_its_save(rows: list[dict[str, obj
 
 
 def _assert_exempt_conditions_are_catalog_buffs(exempt: frozenset[str]) -> None:
-    # The exemption is this guard's own escape hatch: a one-word edit would otherwise silence it
-    # for a hostile condition. Only a catalog bonus-die buff may sit in the set.
-    not_buffs = {condition for condition in exempt if not conditions.CONDITION_CATALOG[condition].bonus_die}
+    effects = [conditions.CONDITION_CATALOG[condition] for condition in exempt]
+    not_buffs = [effect for effect in effects if not (effect.bonus_die or effect.advantage_scopes)]
     assert not not_buffs, not_buffs
 
 
@@ -53,4 +52,4 @@ def test_exempt_conditions_are_catalog_buffs():
 
 
 def test_spell_exemptions_are_exactly_the_runtime_beneficial_conditions():
-    assert {"blessed", "shielded", "enraged", "inspired"} == SPELL_BUFF_CONDITIONS
+    assert {"blessed", "shielded", "enraged", "inspired", "precise_strike"} == SPELL_BUFF_CONDITIONS

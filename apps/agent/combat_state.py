@@ -124,6 +124,10 @@ class CombatState:
         for participant in data["participants"]:
             if "tier" not in participant:
                 raise ValueError(f"participant {participant.get('id', '?')} missing tier")
+            if participant["type"] == "player" and "archetype_id" not in participant:
+                raise ValueError(
+                    f"player participant {participant.get('id', '?')} missing archetype_id: reset/reseed old snapshots"
+                )
         from combat_turn_start import validate_turn_start_damage
 
         validate_turn_start_damage(data)

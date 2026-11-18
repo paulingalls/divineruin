@@ -36,6 +36,7 @@ const CATALOG_KEYS = [
   "petrified",
   "cursed",
   "inspired",
+  "precise_strike",
   "hollowed",
   "iron_resolve",
 ];

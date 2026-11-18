@@ -34,6 +34,7 @@ export const CONDITION_TYPES = [
   "petrified",
   "cursed",
   "inspired",
+  "precise_strike",
   "hollowed",
   "iron_resolve",
 ] as const;
@@ -69,6 +70,7 @@ export const CONDITION_DISPLAY: Record<ConditionType, ConditionDisplay> = {
   shaken: { label: "Shaken", icon: "alert-octagon", color: BrandColors.ember },
   petrified: { label: "Petrified", icon: "grave-stone", color: BrandColors.ash },
   cursed: { label: "Cursed", icon: "skull", color: BrandColors.ember },
+  precise_strike: { label: "Precise Strike", icon: "target", color: BrandColors.hollow },
   inspired: { label: "Inspired", icon: "lightbulb-on", color: BrandColors.hollow },
   hollowed: { label: "Hollowed", icon: "moon-waning-crescent", color: BrandColors.hollow },
 };

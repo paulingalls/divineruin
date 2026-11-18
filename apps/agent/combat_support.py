@@ -151,6 +151,7 @@ async def _resolve_attack_packet(
     conn=None,
     sink=None,
     publish_roll: bool = True,
+    weapon_attack: bool = True,
 ) -> dict:
     """Resolve ONE declared attack against CombatParticipant HP.
 
@@ -176,6 +177,7 @@ async def _resolve_attack_packet(
         is_first_attack_of_combat=is_first_attack_of_combat,
         resolver=resolver,
         combat_state=combat_state,
+        weapon_attack=weapon_attack,
     )
     combat_wrongdoing.record_attack(combat_state, attacker, target)
     summary = await apply_attack_result(
@@ -444,6 +446,8 @@ async def apply_attack_result(
             attack_total=attack_result.attack_total,
             target_ac=effective_ac,
             critical=attack_result.critical_success,
+            sneak_attack_dice=attack_result.sneak_attack_dice,
+            sneak_attack_raw_damage=attack_result.sneak_attack_raw_damage,
             bonus_damage=attack_result.bonus_damage,
             bonus_damage_type=attack_result.bonus_damage_type,
             consumed_conditions=attack_result.consumed_conditions,

@@ -57,6 +57,8 @@ class AttackResult:
     # Conditions spent by this attack. Downstream removes them even on a miss because the roll
     # consumed their benefit.
     consumed_conditions: tuple[str, ...] = ()
+    sneak_attack_dice: str | None = None
+    sneak_attack_raw_damage: int = 0
 
 
 def _is_ranged(weapon: dict) -> bool:
@@ -93,6 +95,19 @@ def attack_modifier(player_data: dict, weapon: dict) -> int:
     return weapon_attribute_modifier(player_data, weapon) + proficiency_bonus(level)
 
 
+def attack_modes(attacker_data: dict, weapon: dict, target_conditions=()) -> tuple[bool, bool]:
+    effects = get_condition_effects(attacker_data.get("conditions") or [])
+    incoming_mode_advantage, incoming_disadvantage = incoming_attack_modes(target_conditions, ranged=_is_ranged(weapon))
+    disadvantage = "attack" in effects.disadvantage_scopes or incoming_disadvantage
+    advantage = (
+        weapon.get("advantage") is True
+        or "attack" in effects.advantage_scopes
+        or incoming_advantage(target_conditions)
+        or incoming_mode_advantage
+    )
+    return advantage, disadvantage
+
+
 def resolve_attack(
     attacker_data: dict,
     weapon: dict,
@@ -111,7 +126,6 @@ def resolve_attack(
     # to-hit bonus and a damage multiplier the role-derived attacker carries (Elite +1/x1.25,
     # Boss +2/x1.5, Minion x0.75). They default to identity, so the player path is unchanged.
     effects = get_condition_effects(attacker_data.get("conditions") or [])
-    incoming_mode_advantage, incoming_disadvantage = incoming_attack_modes(target_conditions, ranged=_is_ranged(weapon))
     if "attack_source" in weapon and weapon["attack_source"] != "catalog":
         raise ValueError("invalid attack_source")
     catalog = weapon.get("attack_source") == "catalog"
@@ -119,13 +133,7 @@ def resolve_attack(
         raise ValueError("catalog attack requires integer to_hit")
     base_modifier = weapon["to_hit"] if catalog else attack_modifier(attacker_data, weapon)
     atk_mod = base_modifier + effects.check_modifier + attack_mod
-    attack_disadvantage = "attack" in effects.disadvantage_scopes or incoming_disadvantage
-    attack_advantage = (
-        weapon.get("advantage") is True
-        or "attack" in effects.advantage_scopes
-        or incoming_advantage(target_conditions)
-        or incoming_mode_advantage
-    )
+    attack_advantage, attack_disadvantage = attack_modes(attacker_data, weapon, target_conditions)
     # Beneficial bonus die (M4.8 story-002): Blessed/Inspired add +1d4 to the TO-HIT roll (roll-kind
     # "attack"), folded into atk_mod BEFORE the d20 so it can turn a miss into a hit. Rolls nothing
     # when the attacker has no beneficial condition (existing seeded-rng attack tests unshifted).
@@ -161,6 +169,8 @@ def resolve_attack(
     bonus_damage = 0
     bonus_damage_type: str | None = None
 
+    sneak_attack_dice = None
+    sneak_attack_raw_damage = 0
     if hit:
         damage_notation = weapon.get("damage", "1d4")
         damage = dice_roll(damage_notation, rng=rng).total if damage_notation != "0" else 0
@@ -169,6 +179,13 @@ def resolve_attack(
             damage += crit_result.total
         if not catalog and weapon.get("damage_attribute", True) and damage_notation != "0":
             damage += weapon_attribute_modifier(attacker_data, weapon)
+        if attacker_data.get("sneak_attack_available") and (
+            (attack_advantage and not attack_disadvantage) or attacker_data.get("sneak_attack_adjacent_ally")
+        ):
+            count = 1 + (attacker_data.get("level", 1) - 1) // 4
+            sneak_attack_dice = f"{count * (2 if critical else 1)}d6"
+            sneak_attack_raw_damage = dice_roll(sneak_attack_dice, rng=rng).total
+            damage += sneak_attack_raw_damage
         # Condition damage modifier (M4.3): Enraged adds +2 damage. Applied once, like
         # the attribute mod, before the floor.
         damage += effects.damage_modifier
@@ -225,4 +242,6 @@ def resolve_attack(
         bonus_damage=bonus_damage,
         bonus_damage_type=bonus_damage_type,
         consumed_conditions=consumed,
+        sneak_attack_dice=sneak_attack_dice,
+        sneak_attack_raw_damage=sneak_attack_raw_damage,
     )

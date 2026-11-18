@@ -1338,7 +1338,7 @@ sequence for its round. The finite rotation options are:
 | Warrior | Devastating Strike costs 3 Stamina, adds 1d8 once on that round's attack; 2d8 at L10, 3d8 at L17. Extra Attack does not double this bonus. |
 | Guardian | Protective Strike has ordinary weapon damage; no extra damage for its defensive rider. |
 | Skirmisher | Flanking Strike costs 3 Stamina: one attack with advantage and +1d6, other swing ordinary. Assume the reference companion can flank. |
-| Rogue | Ordinary weapon; Precise Strike can spend 3 Stamina for advantage. Sneak Attack has no authored content row and contributes no damage. |
+| Rogue | Weapon hits add Sneak Attack once per round with advantage or a standing ally within 5 ft of the target: +1d6 at L1, 2d6 at L5, 3d6 at L9, 4d6 at L13, 5d6 at L17, using the weapon damage type. Precise Strike spends a declaration and 3 Stamina to prepare advantage on the next attack. |
 | Spy | Ordinary weapon; betrayal-dependent Backstab is not routine against a hostile enemy. |
 | Warden | Core Shillelagh substitutes a 1d8 staff. Guardian Strike's defensive rider adds no damage. |
 | Paladin | Minimum Divine Smite costs 2 Focus for +1d8 once that round, excluding Hollow bonus. Competes with spell options. |
