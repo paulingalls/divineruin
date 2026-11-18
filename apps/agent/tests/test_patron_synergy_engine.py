@@ -103,6 +103,16 @@ async def test_uncharted_handling_adds_minor_bonus(world, archetype, bonus):
     assert packet["roll"] == 4 and dice.call_count == 1
     assert packet["total"] == 4 + packet["modifier"]
     assert packet["modifier"] == bonus
+    await w.pool.execute(
+        "UPDATE player_map_progress SET data=$2::jsonb WHERE player_id=$1",
+        w.ids[0],
+        json.dumps({"revisited": True}),
+    )
+    with patch("check_resolution.dice_roll", return_value=_d20(4)):
+        revisited = json.loads(await _check_impl(w.ctx, "skill", skill="animal_handling", difficulty="moderate"))
+    assert revisited["roll"] == 4
+    assert revisited["modifier"] == 0
+    assert revisited["total"] == 4
 
 
 @pytest.mark.parametrize(
