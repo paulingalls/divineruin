@@ -257,9 +257,12 @@ async def test_resolution_checks_live_conditions_and_exposure(maw, changed):
 
 
 @pytest.mark.parametrize("maw", [True], indirect=True)
-async def test_interrupted_charge_keeps_movement_receipt(maw):
+@pytest.mark.parametrize("interruption", ["stunned", "hesitation"])
+async def test_interrupted_charge_keeps_movement_receipt(maw, interruption):
     state = maw.sd.combat_state
     actor, target = state.get_participant(maw.enemies[0]), state.get_participant(maw.players[0])
+    if interruption == "hesitation":
+        actor.category = "humanoid"
     state.spatial["positions"][actor.id] = {"x": 0, "y": 0, "z": 0}
     state.spatial["positions"][target.id] = {"x": 25, "y": 0, "z": 0}
     await maw.persist()
@@ -288,11 +291,28 @@ async def test_interrupted_charge_keeps_movement_receipt(maw):
     live = await maw.reload()
     assert live.open_window is not None
     hp = live.get_participant(target.id).hp_current
-    live.get_participant(actor.id).conditions = [{"type": "stunned", "duration": 3}]
+    if interruption == "stunned":
+        live.get_participant(actor.id).conditions = [{"type": "stunned", "duration": 3}]
+    else:
+        import reaction_spend
+
+        assert live.open_window["stage"] == "pre_roll"
+        live.reactions_available[target.id] = reaction_spend.spend(
+            "diplomat_objection", live.open_window, held_seq=live.held_actions[0]["seq"]
+        )
+        live.get_participant(target.id).attributes["charisma"] = 16
+        live.get_participant(actor.id).attributes["wisdom"] = 10
     await maw.persist()
-    packets = await maw.drain()
+    with patch("combat_reaction_contest.random.randint", side_effect=[20, 1]):
+        packets = await maw.drain()
     packet = next(p for p in packets if p.get("actor_id") == actor.id)
-    assert not packet["resolved"] and "stunned" in packet["reason"]
+    assert not packet["resolved"]
+    if interruption == "stunned":
+        assert "stunned" in packet["reason"]
+    else:
+        assert packet["hesitated"] and packet["reason"] == f"Objection raised by {target.id}"
+        reaction = next(p for p in packets if p.get("declaration_type") == "reaction")
+        assert reaction["mechanical_effect"] == "action_hesitated"
     assert packet["closed_distance"] and not packet["attack_resolved"]
     assert packet["moved_ft"] == 15
     assert packet["destination"] == maw.sd.combat_state.spatial["positions"][actor.id]

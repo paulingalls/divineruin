@@ -270,7 +270,7 @@ async def _resolve_one_packet(
             publish_roll=publish_roll,
         )
         if enemy_summary is not None:
-            return {**enemy_summary, **movement}
+            return {**movement, **enemy_summary}
 
     if decl.type is DeclarationType.ABILITY:
         # (Enemy condition-infliction ABILITY is handled by the type-agnostic branch above, which

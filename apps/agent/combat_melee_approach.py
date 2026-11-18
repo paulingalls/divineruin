@@ -70,26 +70,11 @@ def prepare_held(state, head, action):
     if action is None or target is None or not is_melee(action):
         return {}
     previous = head.get("melee_approach", {})
-    target_position = dict(position(require_spatial(state), target.id))
-    if previous and (
-        head["roll"] is not None
-        or (
-            head.get("approach_target") == target_position
-            and head.get("approach_position") == position(state.spatial, actor.id)
-        )
-    ):
+    if previous:
         return previous
     budget = {"remaining": head.get("movement_remaining", require_spatial(state)["speeds"][actor.id])}
     facts = prepare(state, actor, target, action, budget)
-    if previous:
-        facts["moved_ft"] += previous["moved_ft"]
-        facts["closed_distance"] |= previous["closed_distance"]
-    head.update(
-        melee_approach=facts,
-        approach_target=target_position,
-        movement_remaining=budget["remaining"],
-        approach_position=dict(position(state.spatial, actor.id)),
-    )
+    head.update(melee_approach=facts, movement_remaining=budget["remaining"])
     if "composite" in head:
         for sibling in state.held_actions:
             if sibling["actor_id"] == actor.id and sibling.get("composite") == head["composite"]:
