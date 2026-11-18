@@ -421,3 +421,22 @@ async def test_choir_melody_waits_before_duration(world, save_succeeds):
     from _zhael_fate_choir import melody
 
     await melody(world, save_succeeds)
+
+
+@pytest.mark.parametrize("reload", [False, True])
+async def test_inner_fire_applies_one_burn_before_concentration_choice(world, reload):
+    from _zhael_fate_damage import inner_fire
+
+    await inner_fire(world, reload)
+
+
+async def test_mawling_turn_start_resumes_after_concentration_without_reburn(world):
+    from _zhael_fate_damage import mawling_turn_start
+
+    await mawling_turn_start(world)
+
+
+async def test_default_hostile_fate_leaves_the_new_reaction_unspent(world):
+    from _zhael_fate_damage import post_roll_window
+
+    await post_roll_window(world)

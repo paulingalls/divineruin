@@ -97,7 +97,7 @@ async def _end_combat_locked(
     # pay the party and delete the combat row with an enemy's turn still queued. Refuse loud and
     # name the next action rather than force-end into a silent data loss (constraint 4). The cost,
     # on the record: end_combat("fled") is unavailable for one beat.
-    if cs.ally_continuation is not None or cs.wrap_continuation is not None:
+    if any(cursor is not None for cursor in (cs.ally_continuation, cs.wrap_continuation, cs.inner_fire_continuation)):
         raise ToolError("A combat roll is still held. Call resolve_phase before ending combat.")
     if cs.held_actions:
         raise ToolError(

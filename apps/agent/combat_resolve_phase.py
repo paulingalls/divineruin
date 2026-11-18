@@ -25,6 +25,7 @@ import db
 import db_mutations
 import db_mutations_resonance
 import db_queries
+import draethar_inner_fire
 import event_types as E
 import resonance_events
 import spell_casting
@@ -65,6 +66,17 @@ async def _resolve_phase_locked(
     session = context if isinstance(context, SessionData) else context.userdata
 
     cs = _require_combat(session)
+    if cs.inner_fire_continuation is not None:
+        return json.dumps(
+            await draethar_inner_fire.resume_inner_fire(
+                session,
+                db_mod=db_mod,
+                queries=queries,
+                mutations=mutations,
+                concentration_break_mod=concentration_break_mod,
+                kept=kept,
+            )
+        )
     if cs.beat not in (combat_phase.PhaseBeat.RESOLUTION, combat_phase.PhaseBeat.NARRATION):
         raise ToolError(f"Not at the resolution or narration beat (current beat: {cs.beat}). Call declare_phase first.")
     try:
