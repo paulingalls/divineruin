@@ -140,6 +140,7 @@ async def assemble_participants(session, encounter, encounter_id, member_players
                 ac=row.get("ac", 10),
                 attributes=row.get("attributes", {}),
                 level=player_level,
+                archetype_id=player_class,
                 action_pool=row_action_pool,
                 enhancers=combat_enhancers.enhancers_from_flags(row.get("flags")),
                 conditions=row_conditions,

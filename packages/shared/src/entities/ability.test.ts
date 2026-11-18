@@ -1,3 +1,5 @@
+import rows from "../../../../content/archetype_abilities.json";
+import { validateEncounterActionShape } from "./encounter";
 import { test, expect, describe } from "bun:test";
 import type { Ability, Cost, AbilityType } from "./ability";
 
@@ -57,4 +59,17 @@ describe("Ability — content/archetype_abilities.json row shape (8 fields, all 
     expect(variable.focus).toBe(0);
     expect(variable.scaling).toBe("+1d8 radiant per spell level spent");
   });
+});
+
+test("authored Precise Strike condition is accepted by the encounter validator", () => {
+  const row = rows.find((ability) => ability.id === "rogue_precise_strike")!;
+  expect(row.applies_condition).toBe("precise_strike");
+  expect(() =>
+    validateEncounterActionShape({
+      name: row.name,
+      applies_condition: row.applies_condition,
+      save: "dex",
+      dc: 10,
+    }),
+  ).not.toThrow();
 });

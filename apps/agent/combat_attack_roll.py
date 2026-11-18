@@ -4,6 +4,7 @@ from dataclasses import asdict, replace
 
 import check_resolution_attack
 import combat_marks
+import combat_spatial
 import condition_voice_rules
 import conditions
 from dramatic import DramaticContext, evaluate_dramatic_context
@@ -19,6 +20,7 @@ def roll_attack(
     is_first_attack_of_combat: bool = False,
     resolver=check_resolution_attack,
     combat_state=None,
+    weapon_attack: bool = True,
 ) -> tuple:
     """Roll without applying HP changes; held reactions pause before impact."""
     attacker_data = {
@@ -27,6 +29,23 @@ def roll_attack(
         "conditions": attacker.conditions,
     }
 
+    if weapon_attack and attacker.type == "player" and attacker.archetype_id == "rogue":
+        if combat_state is None:
+            raise ValueError("rogue weapon attack requires combat state")
+        attacker_data["sneak_attack_available"] = attacker.sneak_attack_round != combat_state.round_number
+        advantage, disadvantage = check_resolution_attack.attack_modes(attacker_data, action, target.conditions)
+        if attacker_data["sneak_attack_available"] and not (advantage and not disadvantage):
+            spatial = combat_spatial.require_spatial(combat_state)
+            attacker_data["sneak_attack_adjacent_ally"] = any(
+                ally.id not in (attacker.id, target.id)
+                and ally.is_ally
+                and not ally.is_fallen
+                and not ally.is_dead
+                and combat_spatial.inside(
+                    combat_spatial.position(spatial, ally.id), combat_spatial.position(spatial, target.id), 5
+                )
+                for ally in combat_state.participants
+            )
     attacker_data = condition_voice_rules.roll_data(attacker_data, combat_state, attacker.id)
     target_condition_ac = conditions.get_condition_effects(target.conditions).ac_modifier
     effective_ac = target.ac + target_ac_bonus + target_condition_ac
@@ -40,6 +59,9 @@ def roll_attack(
         + (combat_marks.attack_bonus(combat_state, attacker, target) if combat_state is not None else 0),
         damage_mult=attacker.damage_mult,
     )
+
+    if combat_state is not None and attack_result.sneak_attack_dice is not None:
+        attacker.sneak_attack_round = combat_state.round_number
 
     if not attack_result.dramatic:
         verdict = evaluate_dramatic_context(
@@ -79,6 +101,9 @@ def build_attack_dice_roll_payload(attacker, attack_result) -> dict:
         "success": attack_result.hit,
         "narrative": attack_result.narrative_hint,
         "damage": attack_result.damage,
+        "damage_type": attack_result.damage_type,
+        "sneak_attack_dice": attack_result.sneak_attack_dice,
+        "sneak_attack_raw_damage": attack_result.sneak_attack_raw_damage,
         "critical": attack_result.critical_success,
         "dramatic": attack_result.dramatic,
         "context": attack_result.context,
