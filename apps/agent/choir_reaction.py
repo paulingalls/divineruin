@@ -1,15 +1,17 @@
 """Harmonic Shield changes the effective declaration before the single real cast."""
 
 from dataclasses import replace
+from functools import partial
 
 import check_resolution_save
 import spells
 from choir_effects import suppressed
+from combat_fate_rolls import packet_save
 from condition_restrictions import cannot_act
 from spell_voice_rules import is_silenced
 
 
-def effective_declaration(state, caster, declaration):
+async def effective_declaration(session, state, caster, declaration, *, progress=None):
     spell = spells.get_spell(declaration.action)
     if not spell.verbal:
         return declaration
@@ -18,8 +20,8 @@ def effective_declaration(state, caster, declaration):
         if declaration.target_ids is not None
         else [declaration.target_id or caster.id]
     )
-    redirected = []
-    for target_id in targets:
+    redirected = progress.steps.setdefault("targets", []) if progress is not None else []
+    for target_id in targets[len(redirected) :]:
         target = state.get_participant(target_id)
         if (
             target is not None
@@ -31,9 +33,22 @@ def effective_declaration(state, caster, declaration):
             and not is_silenced(state, target.id)
         ):
             action = target.choir_reaction
-            save = check_resolution_save.roll_participant_save(
-                caster, action["save"], action["dc"], action["name"], bonus_dice_eligible=False
+            save = await packet_save(
+                progress,
+                session,
+                caster.id,
+                action["name"],
+                partial(
+                    check_resolution_save.roll_participant_save,
+                    caster,
+                    action["save"],
+                    action["dc"],
+                    action["name"],
+                    bonus_dice_eligible=False,
+                ),
             )
+            if save is None:
+                return None
             if not save.success:
                 target_id = caster.id
         redirected.append(target_id)

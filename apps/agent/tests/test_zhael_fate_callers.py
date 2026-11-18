@@ -396,3 +396,28 @@ async def test_combined_attack_pauses_concentration_before_condition_save(world)
         assert result["packets"][0]["concentration_broken"] == "divine_bless"
     finally:
         await db_mutations.delete_combat_state(state.combat_id)
+
+
+async def test_choir_aura_and_search_offer_in_order(world):
+    from _zhael_fate_choir import aura_and_search
+
+    await aura_and_search(world)
+
+
+async def test_choir_shield_saves_before_arcane_bolt_attacks(world):
+    from _zhael_fate_choir import shield_and_bolt
+
+    await shield_and_bolt(world)
+
+
+async def test_hostile_ability_holds_foes_save_after_one_charge(world):
+    from _zhael_fate_choir import hostile_condition_ability
+
+    await hostile_condition_ability(world)
+
+
+@pytest.mark.parametrize("save_succeeds", [True, False])
+async def test_choir_melody_waits_before_duration(world, save_succeeds):
+    from _zhael_fate_choir import melody
+
+    await melody(world, save_succeeds)

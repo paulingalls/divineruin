@@ -136,7 +136,7 @@ async def test_cannot_act_condition_releases_only_when_it_lands(save_success, re
     assert conditions.has_condition(_participant(state, "player_2").conditions, "grappled")
 
 
-def test_player_hostile_cannot_act_condition_reports_released_grapple():
+async def test_player_hostile_cannot_act_condition_reports_released_grapple():
     state = _release_state()
     attacker = _participant(state, "player_1")
     target = _participant(state, "mawling_1")
@@ -144,8 +144,8 @@ def test_player_hostile_cannot_act_condition_reports_released_grapple():
     decl = Declaration(type=DeclarationType.ABILITY, action=ability.id, target_id=target.id)
 
     with patch("check_resolution_save.roll_participant_save", return_value=SimpleNamespace(success=False)):
-        summary = combat_ability_save.resolve_hostile_condition(
-            state, attacker, target, decl, ability, _land_condition_on_one
+        summary = await combat_ability_save.resolve_hostile_condition(
+            None, state, attacker, target, decl, ability, _land_condition_on_one
         )
 
     assert conditions.has_condition(target.conditions, "stunned")

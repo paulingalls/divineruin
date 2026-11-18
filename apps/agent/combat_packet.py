@@ -132,16 +132,17 @@ async def _resolve_one_packet(
     if stale is None:
         choir_encounter.guard_declaration(state, packet.actor_id, decl)
 
-    aura = await choir_encounter.turn_start(
-        session, state, attacker, conn=conn, concentration_break_mod=concentration_break_mod
+    await choir_encounter.turn_start(
+        session,
+        state,
+        attacker,
+        conn=conn,
+        concentration_break_mod=concentration_break_mod,
+        sink=sink,
+        progress=progress.scope("choir_aura") if progress is not None else None,
     )
-    if aura is not None and sink is not None:
-        import event_types as E
-        from combat_events import emit_or_publish
-
-        await emit_or_publish(
-            sink, session.room, E.DICE_ROLL, {"roll_type": "choir_aura", **aura}, event_bus=session.event_bus
-        )
+    if progress is not None and progress.paused:
+        return {}
 
     from choir_effects import approach
 
@@ -166,7 +167,15 @@ async def _resolve_one_packet(
         return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}
 
     if decl.type is DeclarationType.INTERACT and decl.action in choir_encounter.SEARCH_ACTIONS:
-        return await choir_encounter.search(session, state, attacker, decl, queries=queries, conn=conn)
+        return await choir_encounter.search(
+            session,
+            state,
+            attacker,
+            decl,
+            queries=queries,
+            conn=conn,
+            progress=progress.scope("choir_search") if progress is not None else None,
+        )
 
     if decl.type is DeclarationType.DEFEND:
         return {
@@ -289,7 +298,7 @@ async def _resolve_one_packet(
         cond_ability = condition_ability(declared_ability(decl.action))
         if cond_ability is not None:
             return await _resolve_ability_condition_packet(
-                session, attacker, decl, cond_ability, state=state, conn=conn, player=player
+                session, attacker, decl, cond_ability, state=state, conn=conn, player=player, progress=progress
             )
         return await _resolve_ability_packet(
             session,
@@ -300,6 +309,7 @@ async def _resolve_one_packet(
             conn=conn,
             player=player,
             cast_outcome=cast_outcome if cast_outcome is not None else AbilityCastOutcome(),
+            progress=progress,
             damage_deps={
                 "mutations": mutations,
                 "queries": queries,

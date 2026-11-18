@@ -257,13 +257,22 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None, fate_roll
         import choir_encounter
         from choir_effects import approach
 
+        aura = None
+        if fate_rolls is not None and session.fate_lock.locked() and state.choir_encounter is not None:
+            aura = PacketRolls(
+                fate_rolls, head.setdefault("roll_steps", {}), packet_deps["queries"], packet_deps["conn"]
+            ).scope("choir_aura")
         await choir_encounter.turn_start(
             session,
             state,
             state.get_participant(head["actor_id"]),
             conn=packet_deps.get("conn"),
             concentration_break_mod=packet_deps["concentration_break_mod"],
+            progress=aura,
+            sink=packet_deps.get("sink"),
         )
+        if aura is not None and aura.paused:
+            return summaries
         approach(state, state.get_participant(head["actor_id"]))
         summary_start = len(summaries)
         opens = _opens_windows(state, head)

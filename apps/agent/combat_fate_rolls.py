@@ -4,7 +4,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass
 
 import zhael_fate
-from check_resolution import D20CheckCore, D20Roll
+from check_resolution import D20CheckCore, D20Roll, SkillCheckResult, skill_with_roll
 from check_resolution_save import SavingThrowResult, _save_result
 
 
@@ -85,6 +85,24 @@ class PacketRolls:
 
     async def save(self, session, roller_id, effect, roll):
         return await self.phase.save(session, self.steps, roller_id, effect, roll, queries=self.queries, conn=self.conn)
+
+    async def skill(self, session, roller_id, roll):
+        if "skill" in self.steps:
+            fields = dict(self.steps.pop("skill"))
+            d20 = D20Roll(**fields.pop("d20"))
+            fields["consumed_conditions"] = tuple(fields["consumed_conditions"])
+            original = SkillCheckResult(**fields, d20=d20)
+            return skill_with_roll(original, self.phase.select(d20.evaluate(original.roll)))
+        original = await roll()
+        d20 = original.d20 if session.fate_lock.locked() else None
+        if d20 is not None and await self.phase.hold(
+            session, "skill", roller_id, d20.evaluate(original.roll), d20, queries=self.queries, conn=self.conn
+        ):
+            stored = asdict(original)
+            stored["consumed_conditions"] = list(original.consumed_conditions)
+            self.steps["skill"] = stored
+            return None
+        return original
 
 
 async def packet_save(progress, session, roller_id, effect, roll):
