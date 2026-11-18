@@ -108,8 +108,14 @@ def _validate_gods(entries: object) -> list[dict]:
             if ability_id in ability_ids:
                 _fail(f"{ability_path}.id", "duplicate ability id")
             ability_ids.add(ability_id)
-            if fields["recharge"] not in {"always", "long_rest", "per_session"}:
+            if fields["recharge"] not in {"always", "short_rest", "long_rest", "per_session"}:
                 _fail(f"{ability_path}.recharge", "unknown recharge")
+            if fields["status"] not in {"active", "pending"}:
+                _fail(f"{ability_path}.status", "unknown status")
+            if fields["resolution"] not in {"narrated", "engine"}:
+                _fail(f"{ability_path}.resolution", "unknown resolution")
+            if fields["status"] == "active" and fields["resolution"] == "engine":
+                _fail(f"{ability_path}.resolution", f"{ability_id} is active but has no engine implementation")
         if "layer_4_synergy_matrix" not in row or row["layer_4_synergy_matrix"] is not None:
             _fail(f"{patron}.layer_4_synergy_matrix", "must be null")
     return entries

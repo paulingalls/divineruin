@@ -12,7 +12,7 @@ export interface GodTierAbility {
   effect: string;
   status: "active" | "pending";
   resolution: "narrated" | "engine";
-  recharge: "always" | "long_rest" | "per_session";
+  recharge: "always" | "short_rest" | "long_rest" | "per_session";
 }
 export interface GodResonance {
   name: string;
@@ -127,11 +127,17 @@ export function validateGod(profile: unknown): God {
     )
       fail(`${abilityPath}.id`, "expected patron-prefixed snake_case");
     if (
-      !["always", "long_rest", "per_session"].includes(
+      !["always", "short_rest", "long_rest", "per_session"].includes(
         text(ability.recharge, `${abilityPath}.recharge`),
       )
     )
       fail(`${abilityPath}.recharge`, "unknown recharge");
+    if (!["active", "pending"].includes(text(ability.status, `${abilityPath}.status`)))
+      fail(`${abilityPath}.status`, "unknown status");
+    if (!["narrated", "engine"].includes(text(ability.resolution, `${abilityPath}.resolution`)))
+      fail(`${abilityPath}.resolution`, "unknown resolution");
+    if (ability.status === "active" && ability.resolution === "engine")
+      fail(`${abilityPath}.resolution`, `${id} is active but has no engine implementation`);
   }
   if (!Object.hasOwn(row, "layer_4_synergy_matrix") || row.layer_4_synergy_matrix !== null)
     fail(`${patron}.layer_4_synergy_matrix`, "must be null");

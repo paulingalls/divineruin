@@ -70,8 +70,8 @@
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
             "recharge": "always",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "narrated"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
@@ -87,7 +87,7 @@
             "effect": "Synthetic effect.",
             "recharge": "always",
             "status": "pending",
-            "resolution": "engine"
+            "resolution": "narrated"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -117,14 +117,14 @@
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
             "recharge": "always",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "narrated"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always",
+            "recharge": "short_rest",
             "status": "pending",
             "resolution": "engine"
           },
@@ -134,7 +134,7 @@
             "effect": "Synthetic effect.",
             "recharge": "always",
             "status": "pending",
-            "resolution": "engine"
+            "resolution": "narrated"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -164,14 +164,14 @@
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
             "recharge": "always",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "narrated"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always",
+            "recharge": "long_rest",
             "status": "pending",
             "resolution": "engine"
           },
@@ -181,7 +181,7 @@
             "effect": "Synthetic effect.",
             "recharge": "always",
             "status": "pending",
-            "resolution": "engine"
+            "resolution": "narrated"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -211,14 +211,14 @@
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
             "recharge": "always",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "narrated"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always",
+            "recharge": "per_session",
             "status": "pending",
             "resolution": "engine"
           },
@@ -228,7 +228,54 @@
             "effect": "Synthetic effect.",
             "recharge": "always",
             "status": "pending",
+            "resolution": "narrated"
+          }
+        },
+        "layer_4_synergy_matrix": null,
+        "legacy_note": {
+          "retained": true
+        }
+      }
+    },
+    {
+      "id": "ability_recharge_short_rest",
+      "profile": {
+        "god_id": "veythar",
+        "layer_2_resonance": {
+          "name": "Synthetic resonance",
+          "effect": "Synthetic condition.",
+          "modifiers": [
+            {
+              "kind": "flickering_damage_dice",
+              "applies_to": "arcane_flickering",
+              "value": 2
+            }
+          ]
+        },
+        "layer_3_tier_abilities": {
+          "acknowledged": {
+            "id": "veythar_fixture_acknowledged",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "active",
+            "resolution": "narrated"
+          },
+          "devoted": {
+            "id": "veythar_fixture_devoted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "short_rest",
+            "status": "pending",
             "resolution": "engine"
+          },
+          "exalted": {
+            "id": "veythar_fixture_exalted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "narrated"
           }
         },
         "layer_4_synergy_matrix": null,
@@ -4025,55 +4072,6 @@
       "field": "layer_3_tier_abilities.devoted.id"
     },
     {
-      "id": "ability_rechargeshort_rest",
-      "profile": {
-        "god_id": "veythar",
-        "layer_2_resonance": {
-          "name": "Synthetic resonance",
-          "effect": "Synthetic condition.",
-          "modifiers": [
-            {
-              "kind": "flickering_damage_dice",
-              "applies_to": "arcane_flickering",
-              "value": 2
-            }
-          ]
-        },
-        "layer_3_tier_abilities": {
-          "acknowledged": {
-            "id": "veythar_fixture_acknowledged",
-            "name": "Synthetic ability",
-            "effect": "Synthetic effect.",
-            "recharge": "always",
-            "status": "pending",
-            "resolution": "engine"
-          },
-          "devoted": {
-            "id": "veythar_fixture_devoted",
-            "name": "Synthetic ability",
-            "effect": "Synthetic effect.",
-            "recharge": "short_rest",
-            "status": "pending",
-            "resolution": "engine"
-          },
-          "exalted": {
-            "id": "veythar_fixture_exalted",
-            "name": "Synthetic ability",
-            "effect": "Synthetic effect.",
-            "recharge": "always",
-            "status": "pending",
-            "resolution": "engine"
-          }
-        },
-        "layer_4_synergy_matrix": null,
-        "legacy_note": {
-          "retained": true
-        }
-      },
-      "patron": "veythar",
-      "field": "layer_3_tier_abilities.devoted.recharge"
-    },
-    {
       "id": "ability_extraTrue",
       "profile": {
         "god_id": "veythar",
@@ -4372,6 +4370,545 @@
       },
       "patron": "veythar",
       "field": "layer_3_tier_abilities.devoted.resolution"
+    },
+    {
+      "id": "ability_status_unknown",
+      "profile": {
+        "god_id": "veythar",
+        "layer_2_resonance": {
+          "name": "Synthetic resonance",
+          "effect": "Synthetic condition.",
+          "modifiers": [
+            {
+              "kind": "flickering_damage_dice",
+              "applies_to": "arcane_flickering",
+              "value": 2
+            }
+          ]
+        },
+        "layer_3_tier_abilities": {
+          "acknowledged": {
+            "id": "veythar_fixture_acknowledged",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "active",
+            "resolution": "narrated"
+          },
+          "devoted": {
+            "id": "veythar_fixture_devoted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "unknown",
+            "resolution": "engine"
+          },
+          "exalted": {
+            "id": "veythar_fixture_exalted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "narrated"
+          }
+        },
+        "layer_4_synergy_matrix": null,
+        "legacy_note": {
+          "retained": true
+        }
+      },
+      "patron": "veythar",
+      "field": "layer_3_tier_abilities.devoted.status"
+    },
+    {
+      "id": "ability_status_blank",
+      "profile": {
+        "god_id": "veythar",
+        "layer_2_resonance": {
+          "name": "Synthetic resonance",
+          "effect": "Synthetic condition.",
+          "modifiers": [
+            {
+              "kind": "flickering_damage_dice",
+              "applies_to": "arcane_flickering",
+              "value": 2
+            }
+          ]
+        },
+        "layer_3_tier_abilities": {
+          "acknowledged": {
+            "id": "veythar_fixture_acknowledged",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "active",
+            "resolution": "narrated"
+          },
+          "devoted": {
+            "id": "veythar_fixture_devoted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": " ",
+            "resolution": "engine"
+          },
+          "exalted": {
+            "id": "veythar_fixture_exalted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "narrated"
+          }
+        },
+        "layer_4_synergy_matrix": null,
+        "legacy_note": {
+          "retained": true
+        }
+      },
+      "patron": "veythar",
+      "field": "layer_3_tier_abilities.devoted.status"
+    },
+    {
+      "id": "ability_status_null",
+      "profile": {
+        "god_id": "veythar",
+        "layer_2_resonance": {
+          "name": "Synthetic resonance",
+          "effect": "Synthetic condition.",
+          "modifiers": [
+            {
+              "kind": "flickering_damage_dice",
+              "applies_to": "arcane_flickering",
+              "value": 2
+            }
+          ]
+        },
+        "layer_3_tier_abilities": {
+          "acknowledged": {
+            "id": "veythar_fixture_acknowledged",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "active",
+            "resolution": "narrated"
+          },
+          "devoted": {
+            "id": "veythar_fixture_devoted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": null,
+            "resolution": "engine"
+          },
+          "exalted": {
+            "id": "veythar_fixture_exalted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "narrated"
+          }
+        },
+        "layer_4_synergy_matrix": null,
+        "legacy_note": {
+          "retained": true
+        }
+      },
+      "patron": "veythar",
+      "field": "layer_3_tier_abilities.devoted.status"
+    },
+    {
+      "id": "ability_status_number",
+      "profile": {
+        "god_id": "veythar",
+        "layer_2_resonance": {
+          "name": "Synthetic resonance",
+          "effect": "Synthetic condition.",
+          "modifiers": [
+            {
+              "kind": "flickering_damage_dice",
+              "applies_to": "arcane_flickering",
+              "value": 2
+            }
+          ]
+        },
+        "layer_3_tier_abilities": {
+          "acknowledged": {
+            "id": "veythar_fixture_acknowledged",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "active",
+            "resolution": "narrated"
+          },
+          "devoted": {
+            "id": "veythar_fixture_devoted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": 2,
+            "resolution": "engine"
+          },
+          "exalted": {
+            "id": "veythar_fixture_exalted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "narrated"
+          }
+        },
+        "layer_4_synergy_matrix": null,
+        "legacy_note": {
+          "retained": true
+        }
+      },
+      "patron": "veythar",
+      "field": "layer_3_tier_abilities.devoted.status"
+    },
+    {
+      "id": "ability_resolution_unknown",
+      "profile": {
+        "god_id": "veythar",
+        "layer_2_resonance": {
+          "name": "Synthetic resonance",
+          "effect": "Synthetic condition.",
+          "modifiers": [
+            {
+              "kind": "flickering_damage_dice",
+              "applies_to": "arcane_flickering",
+              "value": 2
+            }
+          ]
+        },
+        "layer_3_tier_abilities": {
+          "acknowledged": {
+            "id": "veythar_fixture_acknowledged",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "active",
+            "resolution": "narrated"
+          },
+          "devoted": {
+            "id": "veythar_fixture_devoted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "unknown"
+          },
+          "exalted": {
+            "id": "veythar_fixture_exalted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "narrated"
+          }
+        },
+        "layer_4_synergy_matrix": null,
+        "legacy_note": {
+          "retained": true
+        }
+      },
+      "patron": "veythar",
+      "field": "layer_3_tier_abilities.devoted.resolution"
+    },
+    {
+      "id": "ability_resolution_blank",
+      "profile": {
+        "god_id": "veythar",
+        "layer_2_resonance": {
+          "name": "Synthetic resonance",
+          "effect": "Synthetic condition.",
+          "modifiers": [
+            {
+              "kind": "flickering_damage_dice",
+              "applies_to": "arcane_flickering",
+              "value": 2
+            }
+          ]
+        },
+        "layer_3_tier_abilities": {
+          "acknowledged": {
+            "id": "veythar_fixture_acknowledged",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "active",
+            "resolution": "narrated"
+          },
+          "devoted": {
+            "id": "veythar_fixture_devoted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending",
+            "resolution": " "
+          },
+          "exalted": {
+            "id": "veythar_fixture_exalted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "narrated"
+          }
+        },
+        "layer_4_synergy_matrix": null,
+        "legacy_note": {
+          "retained": true
+        }
+      },
+      "patron": "veythar",
+      "field": "layer_3_tier_abilities.devoted.resolution"
+    },
+    {
+      "id": "ability_resolution_null",
+      "profile": {
+        "god_id": "veythar",
+        "layer_2_resonance": {
+          "name": "Synthetic resonance",
+          "effect": "Synthetic condition.",
+          "modifiers": [
+            {
+              "kind": "flickering_damage_dice",
+              "applies_to": "arcane_flickering",
+              "value": 2
+            }
+          ]
+        },
+        "layer_3_tier_abilities": {
+          "acknowledged": {
+            "id": "veythar_fixture_acknowledged",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "active",
+            "resolution": "narrated"
+          },
+          "devoted": {
+            "id": "veythar_fixture_devoted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending",
+            "resolution": null
+          },
+          "exalted": {
+            "id": "veythar_fixture_exalted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "narrated"
+          }
+        },
+        "layer_4_synergy_matrix": null,
+        "legacy_note": {
+          "retained": true
+        }
+      },
+      "patron": "veythar",
+      "field": "layer_3_tier_abilities.devoted.resolution"
+    },
+    {
+      "id": "ability_resolution_number",
+      "profile": {
+        "god_id": "veythar",
+        "layer_2_resonance": {
+          "name": "Synthetic resonance",
+          "effect": "Synthetic condition.",
+          "modifiers": [
+            {
+              "kind": "flickering_damage_dice",
+              "applies_to": "arcane_flickering",
+              "value": 2
+            }
+          ]
+        },
+        "layer_3_tier_abilities": {
+          "acknowledged": {
+            "id": "veythar_fixture_acknowledged",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "active",
+            "resolution": "narrated"
+          },
+          "devoted": {
+            "id": "veythar_fixture_devoted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending",
+            "resolution": 2
+          },
+          "exalted": {
+            "id": "veythar_fixture_exalted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "narrated"
+          }
+        },
+        "layer_4_synergy_matrix": null,
+        "legacy_note": {
+          "retained": true
+        }
+      },
+      "patron": "veythar",
+      "field": "layer_3_tier_abilities.devoted.resolution"
+    },
+    {
+      "id": "ability_recharge_unknown",
+      "profile": {
+        "god_id": "veythar",
+        "layer_2_resonance": {
+          "name": "Synthetic resonance",
+          "effect": "Synthetic condition.",
+          "modifiers": [
+            {
+              "kind": "flickering_damage_dice",
+              "applies_to": "arcane_flickering",
+              "value": 2
+            }
+          ]
+        },
+        "layer_3_tier_abilities": {
+          "acknowledged": {
+            "id": "veythar_fixture_acknowledged",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "active",
+            "resolution": "narrated"
+          },
+          "devoted": {
+            "id": "veythar_fixture_devoted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "weekly_rest",
+            "status": "pending",
+            "resolution": "engine"
+          },
+          "exalted": {
+            "id": "veythar_fixture_exalted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "narrated"
+          }
+        },
+        "layer_4_synergy_matrix": null,
+        "legacy_note": {
+          "retained": true
+        }
+      },
+      "patron": "veythar",
+      "field": "layer_3_tier_abilities.devoted.recharge"
+    },
+    {
+      "id": "ability_recharge_null",
+      "profile": {
+        "god_id": "veythar",
+        "layer_2_resonance": {
+          "name": "Synthetic resonance",
+          "effect": "Synthetic condition.",
+          "modifiers": [
+            {
+              "kind": "flickering_damage_dice",
+              "applies_to": "arcane_flickering",
+              "value": 2
+            }
+          ]
+        },
+        "layer_3_tier_abilities": {
+          "acknowledged": {
+            "id": "veythar_fixture_acknowledged",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "active",
+            "resolution": "narrated"
+          },
+          "devoted": {
+            "id": "veythar_fixture_devoted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": null,
+            "status": "pending",
+            "resolution": "engine"
+          },
+          "exalted": {
+            "id": "veythar_fixture_exalted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "narrated"
+          }
+        },
+        "layer_4_synergy_matrix": null,
+        "legacy_note": {
+          "retained": true
+        }
+      },
+      "patron": "veythar",
+      "field": "layer_3_tier_abilities.devoted.recharge"
+    },
+    {
+      "id": "ability_active_engine",
+      "profile": {
+        "god_id": "veythar",
+        "layer_2_resonance": {
+          "name": "Synthetic resonance",
+          "effect": "Synthetic condition.",
+          "modifiers": [
+            {
+              "kind": "flickering_damage_dice",
+              "applies_to": "arcane_flickering",
+              "value": 2
+            }
+          ]
+        },
+        "layer_3_tier_abilities": {
+          "acknowledged": {
+            "id": "veythar_fixture_acknowledged",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "active",
+            "resolution": "narrated"
+          },
+          "devoted": {
+            "id": "veythar_fixture_devoted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "active",
+            "resolution": "engine"
+          },
+          "exalted": {
+            "id": "veythar_fixture_exalted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "narrated"
+          }
+        },
+        "layer_4_synergy_matrix": null,
+        "legacy_note": {
+          "retained": true
+        }
+      },
+      "patron": "veythar",
+      "field": "layer_3_tier_abilities.devoted.resolution: veythar_fixture_devoted"
     }
   ]
 }
