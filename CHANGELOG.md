@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.49.2
+
+Thyra's Natural synergy for Druids, Beastcallers and Wardens now works away from the wild. Outside natural terrain, Nature's Pulse gives them +2 on Perception and Survival checks. In natural terrain it still gives advantage, and the two never stack.
+
+Release steps: none.
+
 ## 0.49.1
 
 Fixed: an Unbound player whose patron was stored as empty, rather than "none", made the twenty-minute deed judgment fail, which stopped that session's background loop. Such players are now judged as Unbound and earn autonomy normally. A patron id that names no god still fails loudly.
