@@ -169,7 +169,7 @@ async def test_public_creature_queries(reset_db_pool, location, levels, region, 
                             tier,
                         )
                     }
-                    assert expected and {r["id"] for r in result} == expected
+                    assert expected and {r["id"] for r in result["creatures"]} == expected
                     assert ("hollow_shadeling" in expected) == (region == "greyvale" and tier == 1)
                     assert ("scratch_tier_two" in expected) == (region == "greyvale" and tier == 2)
                     explicit = await h.command("query_info", {"kind": "creature", "target_id": "tidecaller_eel"})

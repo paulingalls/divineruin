@@ -13,8 +13,8 @@ Finding the journal grants it and completes the search atomically.
 Artifact choices persist once with their effects.
 Leave now requests a recap before disconnect, with a 15-second home fallback.
 
-**Position: 382 / 574 acceptance criteria — 67%** (the sum of the per-phase
-counts in `README.md`). **192 criteria remain unchecked.** Phases 1, 2, 4, 5,
+**Position: 383 / 574 acceptance criteria — 67%** (the sum of the per-phase
+counts in `README.md`). **191 criteria remain unchecked.** Phases 1, 2, 4, 5,
 6 and 10 have all recorded criteria checked. Phase 3 is still Partial at 34/34:
 casting infrastructure is exercised, but complete deterministic spell-effect
 coverage is **unverified**. All 87 spell rows carry textual `mechanics`; this
@@ -102,7 +102,7 @@ rewriting those criteria.
 
 The M4.7/M4.8 capstones exercise encounter roles and beneficial conditions;
 Phase 4 records 73/73. Beat-3 natural narration pauses remain unverified here.
-Phase 7 M7.4 is reconciled on 2026-11-06 (`mbp-generated-combat`): generated entry and creature queries use player-derived tiers, active companion profile factors and difficulty-specific HP/DPR windows. The seven remaining Phase 7 criteria belong to M7.3; native Choir audio certification remains separate.
+Phase 7 M7.4 is reconciled on 2026-11-06 (`mbp-generated-combat`): generated entry and creature queries use player-derived tiers, active companion profile factors and difficulty-specific HP/DPR windows. The six remaining Phase 7 criteria belong to M7.3; native Choir audio certification remains separate.
 
 The story-111 retired-tool-name guard was deleted in `cb5dd18e`; it no longer
 protects milestone prose. Historical repair narratives are omitted from this
@@ -115,7 +115,7 @@ not schedules or measured implementation costs.
 
 | Phase | Milestones | Open ACs | Dependencies / decisions | Size estimate | Exercised or inventoried substrate |
 |---|---|---|---|---|---|
-| **7 · Bestiary** | 7.3 | 7 | Remaining Hollow effects and native Choir certification | ~2 sprints | Every dropped item has an exclusive recipe link or trade marker on its catalog owner. Guaranteed drops and party skill gates exercised through persisted combat victory; roles/budgets/loot exercised through combat; 37 catalog rows, 15 catalog-backed encounter templates referencing 16 ordinary species (17 including Choir); seeded/queryable catalog and Python/TypeScript contracts. Generated entry, persisted resume, victory loot and public creature summaries are exercised. All six categories have persisted victory coverage, including a test-only undead fixture; remaining M7.3 effects stay open. |
+| **7 · Bestiary** | 7.3 | 6 | Remaining Hollow effects and native Choir certification | ~2 sprints | Every dropped item has an exclusive recipe link or trade marker on its catalog owner. Guaranteed drops and party skill gates exercised through persisted combat victory; roles/budgets/loot exercised through combat; 37 catalog rows, 15 catalog-backed encounter templates referencing 16 ordinary species (17 including Choir); seeded/queryable catalog and Python/TypeScript contracts. Generated entry, persisted resume, victory loot and public creature summaries and party-fit template discovery are exercised. All six categories have persisted victory coverage, including a test-only undead fixture; remaining M7.3 effects stay open. |
 | **8 · Patrons** | 8.1 AC1; 8.2 AC6; 8.3 | 14 | M8.1: the remaining rest/heal-gated gifts (Zhael's d20 offer; Orenthel waits on the #642 heal landing) and the human's Mortaen/Nythera narrated ruling. M8.2: 23 pending engine effects (damage/heal effects wait on #641/#642). Phase 2 archetype detail for M8.3 | ~2 sprints | 20-minute persisted deed-journal judgment exercised through real sessions; Layers 1–3 authored for all ten patrons; all ten Layer 2 effects apply on the production cast path; Thyra, Kaelen and Aelora gifts are live; tier-drop loss whispers; Unbound Veil Clarity, Raw Channeling and Veil Mastery. Favor persists in players.data JSONB (no separate tables). M8.2 standing, durable recharge and recipient-scoped, revision-ordered character-sheet snapshots pass Python/TypeScript contracts and the strict native patron-abilities flow; 20/34 ACs are checked. |
 | **9 · Economy** | 9.1–9.10 | 75 | Phase 7 material/creature integration; Phase 5/6 inputs | large | Shared pricing getters/repair costs, reputation-to-stance and committed material inventory boundaries pass. The migrated pricing table exists. No complete economy certification is implied. |
 | **11 · World Loop** | 11.1–11.6 | 46 | D-A–D-E; M11.4 needs Phase 9, M11.6 needs Phase 8 | ~4–6 sprints | Migrated `region_state`, `npc_state`, `world_events_log`, `god_agent_state`, `world_flags`; direct quest world effects; activity-worker reset harness. These do not establish a world scheduler or cascade. |
