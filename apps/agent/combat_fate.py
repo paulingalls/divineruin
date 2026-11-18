@@ -360,22 +360,33 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
             attacker = state.get_participant(packet_id)
             target = state.get_participant(attack["target_id"])
             assert attacker is not None and target is not None
-            summary = await continue_attack(
-                session,
-                state,
-                packet,
-                attacker,
-                target,
-                attack["actions"],
-                attack["enemies_remaining"],
-                attack["is_first_attack"],
-                attack_cursor=attack,
-                progress=progress,
-                **{
-                    key: packet_deps[key]
-                    for key in ("mutations", "queries", "resolver", "concentration_break_mod", "conn", "sink")
-                },
-            )
+            if attacker.type == "player" and (
+                attacker.id == session.departing_player_id or attacker.id not in session.present_member_ids
+            ):
+                fate_rolls.kept = None
+                summary = {
+                    "actor_id": attacker.id,
+                    "resolved": False,
+                    "outcome": "cancelled",
+                    "reason": "The original roller is no longer present.",
+                }
+            else:
+                summary = await continue_attack(
+                    session,
+                    state,
+                    packet,
+                    attacker,
+                    target,
+                    attack["actions"],
+                    attack["enemies_remaining"],
+                    attack["is_first_attack"],
+                    attack_cursor=attack,
+                    progress=progress,
+                    **{
+                        key: packet_deps[key]
+                        for key in ("mutations", "queries", "resolver", "concentration_break_mod", "conn", "sink")
+                    },
+                )
         else:
             if actor is not None and not steps.get("turn_started"):
                 started = await turn_start(

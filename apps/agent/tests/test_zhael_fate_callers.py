@@ -125,6 +125,7 @@ async def test_nested_ally_offers_delay_incoming_tool_until_both_settle(world):
     place_actors(state)
     session = world.ctx.userdata
     session.combat_state = state
+    lifecycle = _live_party(session, host, guest)
     call = game_tools(session, declare_phase, resolve_phase, check)
     narrative = {"kind": "dice", "notation": "1d4"}
     try:
@@ -150,6 +151,7 @@ async def test_nested_ally_offers_delay_incoming_tool_until_both_settle(world):
             "narrative",
         ]
     finally:
+        await lifecycle.aclose()
         await db_mutations.delete_combat_state(state.combat_id)
 
 

@@ -1,5 +1,6 @@
 import asyncio
 from unittest.mock import patch
+from uuid import uuid4
 
 import asyncpg
 import pytest
@@ -7,10 +8,11 @@ from _patron_engine_fixtures import configure
 from _unbound_path_fixtures import row
 from _unbound_path_fixtures import world as world
 from _zhael_fate_fixtures import attack, defend, game_tools
-from acceptance._capstone_helpers import _build_state, _d20, _damage_die, _enemy
+from acceptance._capstone_helpers import _build_state, _d20, _damage_die, _enemy, _player
 from acceptance.test_kaelen_iron_resolve_capstone import required_player
 from livekit.agents.llm import ToolError
 from test_aelora_gift import _live_party
+from voice_condition_fixtures import place_actors
 
 import db_mutations
 import patron_gift_tools
@@ -222,6 +224,50 @@ async def test_concentration_settlement_retries_without_replaying_committed_dama
         assert target.hp_current == 96 and not has_condition(target.conditions, "blessed")
         assert (await row(world))["hp"]["current"] == 96
         assert session.member_state(victim).concentration.spell_id is None
+    finally:
+        await lifecycle.aclose()
+        await db_mutations.delete_combat_state(state.combat_id)
+
+
+@pytest.mark.parametrize("reload", [False, True])
+async def test_departed_attack_roller_cancels(world, reload):
+    host, guest = world.ids
+    await configure(world, "zhael", "mage")
+    await configure(world, "aelora", "mage", index=1)
+    sd = world.ctx.userdata
+    state = _build_state(uuid4().hex, host, [_enemy("foe", 30)])
+    state.participants.append(_player(guest))
+    state.initiative_order.insert(1, guest)
+    place_actors(state)
+    sd.combat_state = state
+    lifecycle = _live_party(sd, host, guest)
+    call = game_tools(sd, declare_phase, resolve_phase, activate)
+    try:
+        await call("declare_phase", declarations=[defend(host), attack(guest, "foe"), defend("foe")])
+        with (
+            patch("check_resolution.dice_roll", return_value=_d20(19)),
+            patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
+        ):
+            offer = (await call("resolve_phase"))["fate_offer"]
+            assert offer["roller_id"] == guest
+            lifecycle.mark_departed(guest)
+            if reload:
+                sd.fate_offer = None
+                sd.combat_state = await db_mutations.load_combat_state(state.combat_id)
+                settled = await call("resolve_phase")
+            else:
+                with sd._bind_authenticated_actor(host, 1, lifecycle.require_authorized):
+                    settled = await call(
+                        "activate", id="zhael_fates_thread", offer_id=offer["offer_id"], keep="original"
+                    )
+        saved = await db_mutations.load_combat_state(state.combat_id)
+        assert required_player(saved, "foe").hp_current == 30
+        assert any(p.get("outcome") == "cancelled" and "present" in p["reason"] for p in settled["packets"])
+        assert saved is not None and saved.ally_continuation is None
+        assert sd.fate_offer is None
+        await call("resolve_phase")
+        saved = await db_mutations.load_combat_state(state.combat_id)
+        assert required_player(saved, "foe").hp_current == 30
     finally:
         await lifecycle.aclose()
         await db_mutations.delete_combat_state(state.combat_id)
