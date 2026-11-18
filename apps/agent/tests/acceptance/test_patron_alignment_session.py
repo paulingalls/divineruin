@@ -3,6 +3,7 @@
 import asyncio
 import json
 from contextlib import asynccontextmanager
+from pathlib import Path
 from uuid import uuid4
 
 import asyncpg
@@ -404,6 +405,10 @@ async def test_handoff_keeps_clock_and_excludes_departed(
 async def test_unbound_autonomy_memory_after_commit(
     livekit_server, reset_db_pool, tmp_path, clock, monkeypatch, caplog
 ):
+    config = json.loads((Path(__file__).resolve().parents[4] / "content" / "unbound.json").read_text())
+    gain = next(row["amount"] for row in config["autonomy_actions"] if row["action"] == "won_alone")
+    tier = config["tiers"][1]
+
     async def prepare(pid):
         await prepared(pid)
         pool = await db.get_pool()
@@ -444,10 +449,10 @@ async def test_unbound_autonomy_memory_after_commit(
         await clock.tick(1200)
         after = await db_queries.get_player(run.player_id)
         assert after is not None
-        assert after["unbound_autonomy"] == {"level": 42, "max": 100, "tier": "Self-Forged"}
+        assert after["unbound_autonomy"] == {"level": 38 + gain, "max": 100, "tier": tier}
         assert after["patron_deeds"] == {}
         memory = next(line for line in clock.sd.recent_events if "Autonomy" in line)
-        assert all(text in memory for text in (run.player_id, "+4", "42", "Self-Forged"))
+        assert all(text in memory for text in (run.player_id, f"+{gain}", str(38 + gain), tier))
         await until(lambda: run.session.current_speech is None and not clock.sd.background._speech_queue)
         receipt = await run.turn("query_info", kind="location", target_id=clock.sd.location_id)
         assert not receipt.is_error, receipt.output
