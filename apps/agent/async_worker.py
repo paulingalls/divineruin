@@ -19,6 +19,7 @@ import db_mutations
 import db_mutations_divine
 import db_queries
 import db_training
+import patron_deeds
 from async_worker_claim import claim_resolving, mark_resolved, reset_stale_resolving, revert_claim_safe
 from async_worker_config import POLL_INTERVAL
 from async_worker_training import advance_training_cycles
@@ -192,6 +193,12 @@ async def _resolve_single_activity(activity: dict) -> None:
             )
             if applied and activity_type == "purification":
                 await credit_purification(conn, activity, outcome_dict)
+            if (
+                applied
+                and activity_type == "crafting"
+                and outcome_dict["tier"] in ("exceptional", "success", "partial")
+            ):
+                await patron_deeds.record_deed(player_id, "crafted_item", conn=conn)
         if not applied:
             # The stale-recovery sweep reverted this row to in_progress while we
             # rendered (work outran STALE_RESOLVING_THRESHOLD). The CAS guard kept

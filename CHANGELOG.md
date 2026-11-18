@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.45.2
+
+The test runner is pinned to proof v0.34.1. Before the fix, staged runs (every free patch's acceptance and every commit hook) read every input file through git for every task, so setup on a staged sprint run took 25 minutes or more. Setup now takes about 24 seconds. There is no player-facing change.
+
+Release steps: none.
+
+## 0.45.1
+
+Split spell casting into smaller modules while preserving casting behavior.
+
+Release steps: none.
+
+## 0.45.0
+
+Crafting now counts toward your patron's favor. When a craft finishes, even with a flaw, the crafter records a crafted-item deed. Aelora, the Hearthkeeper, values that deed, so her followers gain favor at their next twenty-minute judgment in play. A failed craft records nothing.
+
+Release steps: none.
+
 ## 0.44.0
 
 Your patron now notices what you do in play. Winning a fight with every enemy down, fleeing, talking a fight down, slipping past on a stealth check and uncovering lore on a knowledge check are recorded as deeds. Every twenty minutes of play, your patron judges them. A deed your god values raises favor, a deed against its values lowers it, and another god's deed is ignored. Each kind of deed counts once per twenty minutes, so repeating it earns nothing more, and a deed the DM has already rewarded is not paid again. Deeds left unjudged when a session ends are judged early in the next one. When favor moves, the DM hears about it and your favor bar updates.

@@ -220,18 +220,7 @@ def handle_events(
                 queue_god_whisper(ev.payload, sd, speech_queue)
 
         elif ev.event_type == E.DIVINE_FAVOR_CHANGED:
-            # PRIMARY only. Quest favor is party-wide (story-002), so one stage publishes an event
-            # per member, and the whisper bookkeeping is primary-keyed (background_process marks
-            # last_whisper_level on sd.player_id whoever crossed). Ungated, a teammate's crossing
-            # takes the tick's single CRITICAL slot and advances the PRIMARY's cadence while never
-            # advancing its own. Both producers — _award_divine_favor_core and session_hydration's
-            # neglect decay — stamp player_id, so an unstamped payload should be unreachable — the
-            # None branch is kept deliberately as tolerance, not as support for a live producer.
-            # Dropping it would make any future unstamped payload silently swallow the whisper,
-            # which is strictly worse than treating it as the primary's.
-            recipient = ev.payload.get("player_id")
-            if recipient is not None and recipient != sd.primary_player_id:
-                continue
+            recipient = ev.payload.get("player_id") or sd.primary_player_id
             new_level = ev.payload.get("new_level", 0)
             last_whisper = ev.payload.get("last_whisper_level", 0)
             amount = ev.payload["amount"]
@@ -244,12 +233,12 @@ def handle_events(
                 != get_patron_tier(
                     {"patron": ev.payload["patron_id"], "max": ev.payload["max"], "level": ev.payload["new_level"]}
                 )
-                and sd.primary_player_id not in sd.displeasure_heard_by
-                and not any(speech.is_displeasure for speech in speech_queue)
+                and recipient not in sd.displeasure_heard_by
+                and not any(speech.is_displeasure and speech.recipient_id == recipient for speech in speech_queue)
             ):
-                queue_god_whisper(ev.payload, sd, speech_queue, displeasure=True)
+                queue_god_whisper(ev.payload, sd, speech_queue, recipient_id=recipient, displeasure=True)
             elif amount > 0 and should_trigger_whisper(new_level, last_whisper):
-                queue_god_whisper(ev.payload, sd, speech_queue)
+                queue_god_whisper(ev.payload, sd, speech_queue, recipient_id=recipient)
 
         elif ev.event_type == E.HIDDEN_REVEALED:
             # Record the revealed element for story-003's hot-layer assembly (same-turn
@@ -267,9 +256,12 @@ def queue_god_whisper(
     speech_queue: list[PendingSpeech],
     *,
     displeasure: bool = False,
+    recipient_id: str | None = None,
 ) -> None:
     """Build god-specific whisper instructions and queue as CRITICAL."""
-    patron_id = payload.get("patron_id") or sd.party.primary.patron_id
+    patron_id = (
+        payload["patron_id"] if recipient_id is not None else payload.get("patron_id") or sd.party.primary.patron_id
+    )
     if patron_id == "none":
         return
     profile = get_god_profile(patron_id)
@@ -311,6 +303,6 @@ def queue_god_whisper(
         SpeechPriority.CRITICAL,
         instructions,
         stinger_sound=profile.stinger_sound,
-        recipient_id=sd.primary_player_id,
+        recipient_id=recipient_id or sd.primary_player_id,
         is_displeasure=displeasure,
     )

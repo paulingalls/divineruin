@@ -67,9 +67,14 @@ def _publish_rebuild(sd):
     sd.event_bus.publish(GameEvent(event_type=E.QUEST_UPDATED, payload={"quest_name": "Changed"}))
 
 
+@contextmanager
 def _delivery_data(process):
     process._rebuild_warm_layer = AsyncMock()
-    return patch("background_process.db_content_queries.get_scene", new_callable=AsyncMock, return_value=None)
+    with (
+        patch("background_process.db_content_queries.get_scene", new_callable=AsyncMock, return_value=None),
+        patch("bg_whisper_delivery.db_queries.get_player", new=AsyncMock(return_value={"name": "Player"})),
+    ):
+        yield
 
 
 def _start_delivery(process, sd, speech):
@@ -133,7 +138,7 @@ def _assert_failure_record(caplog, exception):
 async def test_stinger_publish_typeerror_ends_loop_and_logs(caplog):
     process, sd, _ = _make_process()
     failure = TypeError("stinger broke")
-    speech = PendingSpeech(SpeechPriority.CRITICAL, "divine cue", stinger_sound="stinger")
+    speech = PendingSpeech(SpeechPriority.CRITICAL, "divine cue", stinger_sound="stinger", recipient_id="player-1")
     with (
         _delivery_data(process),
         patch("game_events.publish_game_event", new_callable=AsyncMock, side_effect=failure) as publish,
@@ -176,18 +181,18 @@ async def test_post_delivery_cue_keyerror_ends_loop_and_logs(caplog):
 async def test_favor_mark_typeerror_ends_loop_and_logs(caplog):
     process, sd, _ = _make_process()
     failure = TypeError("mark broke")
-    speech = PendingSpeech(SpeechPriority.CRITICAL, "divine cue", stinger_sound="stinger")
+    speech = PendingSpeech(SpeechPriority.CRITICAL, "divine cue", stinger_sound="stinger", recipient_id="player-1")
     with (
         _delivery_data(process),
         patch("game_events.publish_game_event", new_callable=AsyncMock),
         patch("background_process.asyncio.sleep", side_effect=_skip_delay),
         patch(
-            "background_process.db_activity_queries.get_divine_favor",
+            "bg_whisper_delivery.db_activity_queries.get_divine_favor",
             new_callable=AsyncMock,
             return_value={"level": 25},
         ),
         patch(
-            "background_process.db_mutations_divine.mark_favor_whisper_level",
+            "bg_whisper_delivery.db_mutations_divine.mark_favor_whisper_level",
             new_callable=AsyncMock,
             side_effect=failure,
         ) as mark,
@@ -251,14 +256,14 @@ async def test_failed_speech_handle_warns_and_loop_survives(caplog):
     sd.companion = MagicMock(last_speech_time=0)
     failure = OSError("generation failed")
     process._session.generate_reply.side_effect = lambda **_kwargs: completed_handle(failure)  # type: ignore[attr-defined]
-    speech = PendingSpeech(SpeechPriority.CRITICAL, "failed cue", stinger_sound="stinger")
+    speech = PendingSpeech(SpeechPriority.CRITICAL, "failed cue", stinger_sound="stinger", recipient_id="player-1")
     with (
         _delivery_data(process),
         patch("game_events.publish_game_event", new_callable=AsyncMock),
         patch("background_process.asyncio.sleep", side_effect=_skip_delay),
         patch("background_process.is_companion_cue", return_value=False) as cue_check,
         patch(
-            "background_process.db_activity_queries.get_divine_favor", new_callable=AsyncMock, return_value=None
+            "bg_whisper_delivery.db_activity_queries.get_divine_favor", new_callable=AsyncMock, return_value=None
         ) as get_favor,
         caplog.at_level(logging.INFO, logger=BACKGROUND_LOGGER),
     ):
@@ -281,13 +286,13 @@ async def test_failed_speech_handle_warns_and_loop_survives(caplog):
 async def test_transient_favor_read_failure_warns_and_loop_survives(caplog):
     process, sd, _ = _make_process()
     failure = asyncpg.PostgresError("favor unavailable")
-    speech = PendingSpeech(SpeechPriority.CRITICAL, "divine cue", stinger_sound="stinger")
+    speech = PendingSpeech(SpeechPriority.CRITICAL, "divine cue", stinger_sound="stinger", recipient_id="player-1")
     with (
         _delivery_data(process),
         patch("game_events.publish_game_event", new_callable=AsyncMock),
         patch("background_process.asyncio.sleep", side_effect=_skip_delay),
         patch(
-            "background_process.db_activity_queries.get_divine_favor",
+            "bg_whisper_delivery.db_activity_queries.get_divine_favor",
             new_callable=AsyncMock,
             side_effect=failure,
         ),
