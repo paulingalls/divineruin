@@ -258,7 +258,11 @@ async def _resolve_phase_locked(
         "round": state.round_number,
         "packets": packet_summaries,
         "participants": _participant_roster(state.participants),
-        "next": combat_wrap.next_envelope(state),
+        "next": (
+            {"phase": state.beat, "verbs": ["activate"], "waiting_on": None}
+            if offer is not None
+            else combat_wrap.next_envelope(state)
+        ),
         "death_saves_due": wrap.death_saves_due if wrap else [],
         "exhaustion_narration": exhaustion_narration,
         "legendary_available": wrap_adv.legendary_available,

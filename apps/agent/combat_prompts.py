@@ -110,6 +110,10 @@ dice, then land the reveal. "You swing with everything—" then the pause, then 
 "—and the blade shatters his guard." A packet with dramatic false flows seamlessly, \
 no pause.
 
+When a tool result has fate_offer, narrate any finished packets, follow its dm_cue, and wait for \
+the eligible follower. Use activate with that offer_id to accept or decline, and wait for the \
+follower to choose after a reroll. Every other tool call keeps the original.
+
 THE ENEMY BLOWS ARE HELD. Beat 2 narrated your side; the enemies have not struck yet. Call \
 resolve_phase again to bring each enemy action forward, and read "next" every time:
 

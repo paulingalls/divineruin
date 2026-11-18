@@ -32,6 +32,7 @@ async def attack_choice(world):
             patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)) as damage,
         ):
             offered = await call("resolve_phase")
+            assert offered["next"] == {"phase": "resolution", "verbs": ["activate"], "waiting_on": None}
             offer = offered["fate_offer"]
             assert offer["roll_kind"] == "attack" and offer["roller_id"] == player_id
             assert offer["die"] == 1 and required_player(session.combat_state, "foe").hp_current == 30
