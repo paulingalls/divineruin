@@ -3,6 +3,7 @@
 import json
 import logging
 from contextlib import nullcontext
+from functools import partial
 
 from livekit.agents.llm import ToolError
 
@@ -86,29 +87,27 @@ async def _check_skill_run(
 
     scope = SkillScope.capture(session, player_id)
 
+    finish = partial(
+        _finish_skill,
+        session,
+        player_id,
+        skill=skill,
+        difficulty=difficulty,
+        context_description=context_description,
+        hearing_only=hearing_only,
+        queries=queries,
+        mutations=mutations,
+        db_mod=db_mod,
+        conditions_mutations=conditions_mutations,
+        reroll_dc=reroll_dc,
+    )
+
     async def write(kept, write_conn):
         from check_tools import publish_game_event
 
         current = await scope.lock_roller(session, write_conn, queries=queries)
         deferred = SkillCheckEffects()
-        packet = await _finish_skill(
-            session,
-            player_id,
-            current,
-            kept,
-            skill,
-            difficulty,
-            context_description,
-            hearing_only=hearing_only,
-            queries=queries,
-            mutations=mutations,
-            db_mod=db_mod,
-            conditions_mutations=conditions_mutations,
-            effects=deferred,
-            conn=write_conn,
-            reroll_dc=reroll_dc,
-            resumed=True,
-        )
+        packet = await finish(current, kept, effects=deferred, conn=write_conn, resumed=True)
 
         async def flush():
             await deferred.flush(session, publish=publish_game_event)
@@ -121,23 +120,7 @@ async def _check_skill_run(
         effects.fate_offer = offer
         return json.dumps(offer.response())
 
-    return await _finish_skill(
-        session,
-        player_id,
-        player,
-        result,
-        skill,
-        difficulty,
-        context_description,
-        hearing_only=hearing_only,
-        queries=queries,
-        mutations=mutations,
-        db_mod=db_mod,
-        conditions_mutations=conditions_mutations,
-        effects=effects,
-        conn=conn,
-        reroll_dc=reroll_dc,
-    )
+    return await finish(player, result, effects=effects, conn=conn)
 
 
 async def _finish_skill(

@@ -16,6 +16,7 @@ Spec: docs/game_mechanics/game_mechanics_combat.md §Travel and Exploration (L85
 import json
 import logging
 import random
+from functools import partial
 
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
@@ -138,6 +139,9 @@ async def _travel_impl(
             hearing_only=False,
         )
 
+    write_conditions = partial(
+        _write_travel_conditions, session, speaker_id, queries=queries, conditions_mutations=conditions_mutations
+    )
     if roll is not None:
         scope = SkillScope.capture(session, speaker_id, party=True)
         agent_session = context.session
@@ -159,16 +163,8 @@ async def _travel_impl(
                 scope.validate_location(member_id, locked)
             for member_id in scope.party_ids:
                 await travel_mutations.add_travel_hours(member_id, hours, conn=conn)
-            consumed_state = await _write_travel_conditions(
-                session,
-                speaker_id,
-                scope.party_ids,
-                result,
-                kept.consumed_conditions,
-                queries=queries,
-                conditions_mutations=conditions_mutations,
-                conn=conn,
-                players=players,
+            consumed_state = await write_conditions(
+                scope.party_ids, result, kept.consumed_conditions, conn=conn, players=players
             )
             apply_arrival_mirrors = None
             pending = []
@@ -242,16 +238,7 @@ async def _travel_impl(
     if result.exhaustion_delta > 0 or consumed:
         session.validate_acting_player(speaker_id)
         async with db_mod.transaction() as conn:
-            consumed_state = await _write_travel_conditions(
-                session,
-                speaker_id,
-                member_ids,
-                result,
-                consumed,
-                queries=queries,
-                conditions_mutations=conditions_mutations,
-                conn=conn,
-            )
+            consumed_state = await write_conditions(member_ids, result, consumed, conn=conn)
     if consumed_state is not None:
         session.combat_state = consumed_state
 

@@ -12,6 +12,7 @@ import json
 import logging
 import random
 from contextlib import nullcontext
+from functools import partial
 
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
@@ -106,6 +107,20 @@ async def _check_social_impl(
     )
     scope = SkillScope.capture(session, player_id)
 
+    finish = partial(
+        _finish_social,
+        session,
+        player_id,
+        npc_id,
+        skill_lower,
+        base_dc,
+        queries=queries,
+        content=content,
+        mutations=mutations,
+        conditions_mutations=conditions_mutations,
+        db_mod=db_mod,
+    )
+
     async def write(kept, conn):
         current_player = await scope.lock_roller(session, conn, queries=queries)
         try:
@@ -118,40 +133,14 @@ async def _check_social_impl(
             )
         except communication_voice_rules.DeliveryRefused as error:
             raise StaleSkillOperation(str(error)) from error
-        return await _finish_social(
-            session,
-            player_id,
-            npc_id,
-            skill_lower,
-            base_dc,
-            kept,
-            queries=queries,
-            content=content,
-            mutations=mutations,
-            conditions_mutations=conditions_mutations,
-            db_mod=db_mod,
-            conn=conn,
-            scope=scope,
-        )
+        return await finish(kept, conn=conn, scope=scope)
 
     offer = await prepare_skill_offer(session, scope, roll, player, write, queries=queries, db_mod=db_mod)
     if offer is not None:
         session.fate_offer = offer
         return json.dumps(offer.response())
 
-    flush = await _finish_social(
-        session,
-        player_id,
-        npc_id,
-        skill_lower,
-        base_dc,
-        roll,
-        queries=queries,
-        content=content,
-        mutations=mutations,
-        conditions_mutations=conditions_mutations,
-        db_mod=db_mod,
-    )
+    flush = await finish(roll)
     return json.dumps(await flush())
 
 

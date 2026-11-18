@@ -317,7 +317,14 @@ async def lucky_death_save(world):
 
 
 async def lucky_skill(world):
-    await configure(world, "zhael", "mage", flags={"concealed": False}, patron_gifts={FATE: SPENT})
+    await configure(
+        world,
+        "zhael",
+        "mage",
+        location_id=world.ctx.userdata.location_id,
+        flags={"concealed": False},
+        patron_gifts={FATE: SPENT},
+    )
     pid = world.ids[0]
     call = game_tools(world.ctx.userdata, check, activate)
     counter = "SELECT use_counter FROM skill_advancement WHERE player_id=$1 AND skill_id='stealth'"

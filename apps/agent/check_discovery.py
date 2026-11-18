@@ -14,6 +14,7 @@ import json
 import logging
 import re
 from contextlib import nullcontext
+from functools import partial
 
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
@@ -259,29 +260,21 @@ async def _resolve_discovery(
     scope = SkillScope.capture(session, player_id)
     party_scope = SkillScope.capture(session, player_id, party=True)
 
-    async def finish(current, kept, found, current_location, item, *, write_conn, auth=None, locked_quests=None):
-        return await _finish_discovery(
-            session,
-            player_id,
-            current,
-            kept,
-            skill_lower,
-            target,
-            found,
-            current_location,
-            item,
-            hearing_only=hearing_only,
-            dc=dc,
-            reroll_dc=reroll_dc,
-            content=content,
-            queries=queries,
-            mutations=mutations,
-            conditions_mutations=conditions_mutations,
-            db_mod=db_mod,
-            conn=write_conn,
-            scope=auth,
-            locked_quests=locked_quests,
-        )
+    finish = partial(
+        _finish_discovery,
+        session,
+        player_id,
+        skill_lower=skill_lower,
+        target=target,
+        hearing_only=hearing_only,
+        dc=dc,
+        reroll_dc=reroll_dc,
+        content=content,
+        queries=queries,
+        mutations=mutations,
+        conditions_mutations=conditions_mutations,
+        db_mod=db_mod,
+    )
 
     async def write(kept, write_conn):
         current_location = await content.get_location(scope.origin)
@@ -320,8 +313,8 @@ async def _resolve_discovery(
             current_element,
             current_location,
             item,
-            write_conn=write_conn,
-            auth=authorization,
+            conn=write_conn,
+            scope=authorization,
             locked_quests=locked_quests,
         )
         authorization.validate(session)
@@ -336,7 +329,7 @@ async def _resolve_discovery(
     if offer is not None:
         return offer.response(), None, offer
     item = await content.get_item(element_id) if result.success and element_id is not None else None
-    response, flush = await finish(player, result, element, location, item, write_conn=conn)
+    response, flush = await finish(player, result, element, location, item, conn=conn)
     return response, flush, None
 
 
@@ -345,12 +338,12 @@ async def _finish_discovery(
     player_id,
     player,
     result,
-    skill_lower,
-    target,
     element,
     location,
     item,
     *,
+    skill_lower,
+    target,
     hearing_only,
     dc,
     reroll_dc,

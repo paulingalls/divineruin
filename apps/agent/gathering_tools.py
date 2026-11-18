@@ -13,6 +13,7 @@ import json
 import logging
 import random
 from contextlib import nullcontext
+from functools import partial
 
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
@@ -107,26 +108,21 @@ async def _check_gather_impl(
     scope = SkillScope.capture(session, player_id)
     resource_table = {rarity: tuple(ids) for rarity, ids in (resource_table_raw or {}).items()}
 
-    async def finish(kept, table, current_nodes, *, conn=None):
-        return await _finish_gather(
-            session,
-            player_id,
-            kept,
-            mat,
-            skill,
-            skill_tier,
-            dc,
-            table,
-            current_nodes,
-            queries=queries,
-            mutations=mutations,
-            content=content,
-            gather_mutations=gather_mutations,
-            conditions_mutations=conditions_mutations,
-            db_mod=db_mod,
-            conn=conn,
-            scope=scope if conn is not None else None,
-        )
+    finish = partial(
+        _finish_gather,
+        session,
+        player_id,
+        mat=mat,
+        skill=skill,
+        skill_tier=skill_tier,
+        dc=dc,
+        queries=queries,
+        mutations=mutations,
+        content=content,
+        gather_mutations=gather_mutations,
+        conditions_mutations=conditions_mutations,
+        db_mod=db_mod,
+    )
 
     async def write(kept, conn):
         current_location = await content.get_location(scope.origin)
@@ -142,7 +138,7 @@ async def _check_gather_impl(
         await scope.lock_roller(session, conn, queries=queries)
         if not current_table and not current_nodes:
             raise StaleSkillOperation("There is nothing left to forage at the original location.")
-        return await finish(kept, current_table, current_nodes, conn=conn)
+        return await finish(kept, current_table, current_nodes, conn=conn, scope=scope)
 
     offer = await prepare_skill_offer(session, scope, roll, player, write, queries=queries, db_mod=db_mod)
     if offer is not None:
@@ -157,21 +153,21 @@ async def _finish_gather(
     session,
     player_id,
     roll,
+    resource_table,
+    nodes,
+    *,
     mat,
     skill,
     skill_tier,
     dc,
-    resource_table,
-    nodes,
-    *,
     queries,
     mutations,
     content,
     gather_mutations,
     conditions_mutations,
     db_mod,
-    conn,
-    scope,
+    conn=None,
+    scope=None,
 ):
     def validate():
         if scope is None:
