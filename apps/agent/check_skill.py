@@ -11,6 +11,7 @@ import choir_scene
 import concealment
 import condition_voice_rules
 import event_types as E
+import patron_deeds
 import rules_engine
 import skill_persistence
 from combat_terrain import skill_natural_terrain
@@ -148,6 +149,20 @@ async def _check_skill_run(
             queries=queries,
             mutations=mutations,
         )
+
+    if result.success:
+        skill_name = skill.lower()
+        deed = (
+            "successful_stealth"
+            if skill_name == "stealth"
+            else "discovered_lore"
+            if skill_name in KNOWLEDGE_SKILLS
+            else None
+        )
+        if deed is not None:
+            assert conn is not None
+            session.validate_acting_player(player_id)
+            await patron_deeds.record_deed(player_id, deed, conn=conn)
 
     effects.combat_state = consumed_state
     if adv is not None and adv.advanced:
