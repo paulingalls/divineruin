@@ -182,12 +182,12 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 - [x] Synergy lookup covers all archetype x patron combinations (every archetype has entries for every patron)
   <!-- Evidence (sprint archetype-synergies): test_patron_synergy.py walks all 180 loaded pairs through get_archetype_synergy and registered query_info; god.test.ts validates all ten matrices against the eighteen-archetype roster. -->
 - [x] Each pairing has exactly one synergy type assigned (Natural, Divine, or Unexpected)
-  <!-- Evidence (sprint archetype-synergies): test_patron_synergy.py and god.test.ts validate the loaded matrix: 42 Natural, 62 Divine, 76 Unexpected rows, each with one type. -->
+  <!-- Evidence (sprint archetype-synergies): test_patron_synergy.py and god.test.ts validate the loaded matrix: 22 Natural, 62 Divine, 96 Unexpected rows, each with one type. -->
 - [ ] Natural synergies provide the largest mechanical bonus, Unexpected the most unique
 - [x] `get_archetype_synergy` returns correct synergy for any archetype/patron pair
   <!-- Evidence (sprint archetype-synergies): test_patron_synergy.py compares each of the 180 lookups and registered query responses to validated content; god.test.ts validates the shared catalog. -->
 - [x] Layer 4 bonuses apply on top of existing Layer 1-3 mechanics without overriding them
-  <!-- Evidence (sprint archetype-synergies): test_patron_synergy_engine.py covers Kaelen’s Layer 1 threshold composition, Aelora’s Bond adjustment and Syrath’s Layer 2 composition at live boundaries; test_patron_synergy_readiness.py keeps pending clauses unavailable. Of 200 clauses, 12 are active/engine, 99 active/narrated and 89 pending/engine. -->
+  <!-- Evidence (sprint archetype-synergies): test_patron_synergy_engine.py covers Kaelen’s Layer 1 threshold composition, Aelora’s Bond adjustment and Syrath’s Layer 2 composition at live boundaries; test_patron_synergy_readiness.py keeps pending clauses unavailable. Of 200 clauses, 12 are active/engine, 85 active/narrated and 103 pending/engine. -->
 - [ ] Unbound Path grants perfect Resonance visibility (exact value, not just tier)
 - [ ] Unbound +3 Resonance push is voluntary and costs no action
 - [ ] Veil Mastery provides measurable mechanical benefit (bonus to corruption saves, reduced Hollow effects)
@@ -197,7 +197,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 - [ ] All 10 patrons + Unbound Path are fully implemented and playable after this milestone
 - [ ] Tests cover synergy lookup for all combinations, Unbound mechanics, and Layer 4 bonus stacking
 
-**Review:** The generated 180-row table is retained in sprint DATA at `sprints/archetype-synergies/synergy-review.md`; magnitude approval remains pending. Veythar’s mage, artificer and seeker Natural rows are flagged as giving no added archetype edge. Pending clauses are unavailable.
+**Review:** The generated 180-row table is retained in sprint DATA at `sprints/archetype-synergies/synergy-review.md`; magnitude approval remains pending. Veythar’s mage, artificer and seeker Natural rows now propose +2 cantrip damage dice outside Flickering, without stacking Layer 2 dice; all three remain pending on the combat seam and are flagged for human review. The other 52 design-authored rows remain verbatim, including magnitude exceptions; the revised table requests approval again (2026-11-18). Pending clauses are unavailable.
 
 **Key references:**
 - *Game Mechanics Patrons — Archetype Synergies*

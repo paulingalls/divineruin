@@ -137,7 +137,7 @@
     },
     "layer_4_synergy_matrix": {
       "warrior": {
-        "type": "natural",
+        "type": "unexpected",
         "name": "Remembered Steel",
         "clauses": [
           {
@@ -148,7 +148,7 @@
         ]
       },
       "guardian": {
-        "type": "natural",
+        "type": "unexpected",
         "name": "Watchful Memory",
         "clauses": [
           {
@@ -174,9 +174,9 @@
         "name": "Simplest Mysteries",
         "clauses": [
           {
-            "effect": "Flickering bonus damage applies to cantrips. Arcane mastery extends to simplest spells",
-            "status": "active",
-            "resolution": "narrated"
+            "effect": "Your arcane cantrips gain Veythar's +2 Flickering bonus damage dice even when you are not Flickering. This replaces, rather than stacks with, the Layer 2 Flickering bonus.",
+            "status": "pending",
+            "resolution": "engine"
           }
         ]
       },
@@ -185,9 +185,9 @@
         "name": "Simplest Mysteries",
         "clauses": [
           {
-            "effect": "Flickering bonus damage applies to cantrips. Arcane mastery extends to simplest spells",
-            "status": "active",
-            "resolution": "narrated"
+            "effect": "Your arcane cantrips gain Veythar's +2 Flickering bonus damage dice even when you are not Flickering. This replaces, rather than stacks with, the Layer 2 Flickering bonus.",
+            "status": "pending",
+            "resolution": "engine"
           }
         ]
       },
@@ -196,9 +196,9 @@
         "name": "Simplest Mysteries",
         "clauses": [
           {
-            "effect": "Flickering bonus damage applies to cantrips. Arcane mastery extends to simplest spells",
-            "status": "active",
-            "resolution": "narrated"
+            "effect": "Your arcane cantrips gain Veythar's +2 Flickering bonus damage dice even when you are not Flickering. This replaces, rather than stacks with, the Layer 2 Flickering bonus.",
+            "status": "pending",
+            "resolution": "engine"
           }
         ]
       },
@@ -225,7 +225,7 @@
         ]
       },
       "warden": {
-        "type": "natural",
+        "type": "unexpected",
         "name": "Boundary Lore",
         "clauses": [
           {
@@ -256,9 +256,9 @@
         "name": "Witnessed Oath",
         "clauses": [
           {
-            "effect": "Recognize which patron an ancient oath invokes when you hear its words.",
-            "status": "active",
-            "resolution": "narrated"
+            "effect": "Gain +1 Religion when interpreting an ancient oath.",
+            "status": "pending",
+            "resolution": "engine"
           }
         ]
       },
@@ -267,9 +267,9 @@
         "name": "Remembered Vision",
         "clauses": [
           {
-            "effect": "Recall the exact spoken words of your most recent vision.",
-            "status": "active",
-            "resolution": "narrated"
+            "effect": "Gain +1 Arcana when interpreting a remembered vision.",
+            "status": "pending",
+            "resolution": "engine"
           }
         ]
       },
@@ -307,7 +307,7 @@
         ]
       },
       "bard": {
-        "type": "natural",
+        "type": "unexpected",
         "name": "Lost Refrain",
         "clauses": [
           {
@@ -318,7 +318,7 @@
         ]
       },
       "diplomat": {
-        "type": "natural",
+        "type": "unexpected",
         "name": "Customs Remembered",
         "clauses": [
           {
@@ -329,7 +329,7 @@
         ]
       },
       "marshal": {
-        "type": "natural",
+        "type": "unexpected",
         "name": "Lessons of Command",
         "clauses": [
           {
@@ -543,7 +543,7 @@
         ]
       },
       "artificer": {
-        "type": "natural",
+        "type": "unexpected",
         "name": "Arsenal Memory",
         "clauses": [
           {
@@ -576,7 +576,7 @@
         ]
       },
       "beastcaller": {
-        "type": "natural",
+        "type": "unexpected",
         "name": "Pack Discipline",
         "clauses": [
           {
@@ -587,7 +587,7 @@
         ]
       },
       "warden": {
-        "type": "natural",
+        "type": "unexpected",
         "name": "Sentinel’s Charge",
         "clauses": [
           {
@@ -602,9 +602,9 @@
         "name": "Last Salute",
         "clauses": [
           {
-            "effect": "Hear the customary words of honor for a fallen soldier’s martial tradition.",
-            "status": "active",
-            "resolution": "narrated"
+            "effect": "Gain +1 Religion when conducting a fallen soldier’s funeral rites.",
+            "status": "pending",
+            "resolution": "engine"
           }
         ]
       },
@@ -624,9 +624,9 @@
         "name": "Battle Omen",
         "clauses": [
           {
-            "effect": "Recognize which remembered battle a martial omen evokes.",
-            "status": "active",
-            "resolution": "narrated"
+            "effect": "Gain +1 History when interpreting a martial omen.",
+            "status": "pending",
+            "resolution": "engine"
           }
         ]
       },
@@ -675,7 +675,7 @@
         ]
       },
       "diplomat": {
-        "type": "natural",
+        "type": "unexpected",
         "name": "Terms of Honor",
         "clauses": [
           {
@@ -686,7 +686,7 @@
         ]
       },
       "marshal": {
-        "type": "natural",
+        "type": "unexpected",
         "name": "Commanding Heritage",
         "clauses": [
           {
@@ -837,7 +837,7 @@
     },
     "layer_4_synergy_matrix": {
       "warrior": {
-        "type": "natural",
+        "type": "unexpected",
         "name": "Common Defense",
         "clauses": [
           {
@@ -920,7 +920,7 @@
         ]
       },
       "beastcaller": {
-        "type": "natural",
+        "type": "unexpected",
         "name": "Working Companion",
         "clauses": [
           {
@@ -946,9 +946,9 @@
         "name": "Shared Table",
         "clauses": [
           {
-            "effect": "Hear the customary blessing that welcomes strangers to a community’s table.",
-            "status": "active",
-            "resolution": "narrated"
+            "effect": "Gain +1 Religion when blessing a shared meal.",
+            "status": "pending",
+            "resolution": "engine"
           }
         ]
       },
@@ -957,9 +957,9 @@
         "name": "Civic Promise",
         "clauses": [
           {
-            "effect": "Recognize the communal duty invoked by a local oath of service.",
-            "status": "active",
-            "resolution": "narrated"
+            "effect": "Gain +1 Persuasion when negotiating a community’s shared duties.",
+            "status": "pending",
+            "resolution": "engine"
           }
         ]
       },
@@ -968,9 +968,9 @@
         "name": "Hearth Omen",
         "clauses": [
           {
-            "effect": "Recognize which household concern a domestic omen addresses.",
-            "status": "active",
-            "resolution": "narrated"
+            "effect": "Gain +1 Insight when interpreting a household omen.",
+            "status": "pending",
+            "resolution": "engine"
           }
         ]
       },
@@ -1047,7 +1047,7 @@
         ]
       },
       "marshal": {
-        "type": "natural",
+        "type": "unexpected",
         "name": "Many Hands",
         "clauses": [
           {
@@ -1219,7 +1219,7 @@
         ]
       },
       "skirmisher": {
-        "type": "natural",
+        "type": "unexpected",
         "name": "Shadowed Passage",
         "clauses": [
           {
@@ -1287,7 +1287,7 @@
         ]
       },
       "warden": {
-        "type": "natural",
+        "type": "unexpected",
         "name": "Veiled Boundary",
         "clauses": [
           {
@@ -1302,9 +1302,9 @@
         "name": "Secret Devotion",
         "clauses": [
           {
-            "effect": "Recognize the patron invoked by a deliberately concealed devotional symbol.",
-            "status": "active",
-            "resolution": "narrated"
+            "effect": "Gain +1 Religion when interpreting a concealed devotional symbol.",
+            "status": "pending",
+            "resolution": "engine"
           }
         ]
       },
@@ -1313,9 +1313,9 @@
         "name": "Unspoken Vow",
         "clauses": [
           {
-            "effect": "Hear which tradition claims a discovered oath whose patron’s name was erased.",
-            "status": "active",
-            "resolution": "narrated"
+            "effect": "Gain +1 History when identifying an oath whose patron’s name was erased.",
+            "status": "pending",
+            "resolution": "engine"
           }
         ]
       },
@@ -1390,7 +1390,7 @@
         ]
       },
       "diplomat": {
-        "type": "natural",
+        "type": "unexpected",
         "name": "Veiled Courtesy",
         "clauses": [
           {
@@ -1552,7 +1552,7 @@
         "name": "Threshold Shield",
         "clauses": [
           {
-            "effect": "Gain +2 AC while guarding an ally at 0 HP.",
+            "effect": "Gain +1 AC while guarding an ally at 0 HP.",
             "status": "pending",
             "resolution": "engine"
           }
@@ -1618,7 +1618,7 @@
         "name": "Final Mercy",
         "clauses": [
           {
-            "effect": "Healing an ally at 0 HP restores 2 additional HP.",
+            "effect": "Healing an ally at 0 HP restores 1 additional HP.",
             "status": "pending",
             "resolution": "engine"
           }
@@ -1886,7 +1886,7 @@
         ]
       },
       "guardian": {
-        "type": "natural",
+        "type": "unexpected",
         "name": "Living Shelter",
         "clauses": [
           {
@@ -1930,7 +1930,7 @@
         ]
       },
       "seeker": {
-        "type": "natural",
+        "type": "unexpected",
         "name": "Season’s Trail",
         "clauses": [
           {
@@ -2004,9 +2004,9 @@
         "name": "Wild Covenant",
         "clauses": [
           {
-            "effect": "Hear the local tradition for honoring a sacred grove before entering it.",
-            "status": "active",
-            "resolution": "narrated"
+            "effect": "Gain +1 Religion when honoring a sacred grove.",
+            "status": "pending",
+            "resolution": "engine"
           }
         ]
       },
@@ -2015,9 +2015,9 @@
         "name": "Seasonal Omen",
         "clauses": [
           {
-            "effect": "Recognize which part of a natural omen belongs to the ordinary turning of the seasons.",
-            "status": "active",
-            "resolution": "narrated"
+            "effect": "Gain +1 Nature when interpreting a seasonal omen.",
+            "status": "pending",
+            "resolution": "engine"
           }
         ]
       },
@@ -2055,7 +2055,7 @@
         ]
       },
       "bard": {
-        "type": "natural",
+        "type": "unexpected",
         "name": "Wild Refrain",
         "clauses": [
           {
@@ -2261,7 +2261,7 @@
         "name": "Honest Measure",
         "clauses": [
           {
-            "effect": "Gain +2 Investigation when examining tampered scales or measuring tools.",
+            "effect": "Gain +1 Investigation when examining tampered scales or measuring tools.",
             "status": "pending",
             "resolution": "engine"
           }
@@ -2272,7 +2272,7 @@
         "name": "Chain of Evidence",
         "clauses": [
           {
-            "effect": "Gain +2 Investigation when tracing ownership of evidence in a public hearing.",
+            "effect": "Gain +1 Investigation when tracing ownership of evidence in a public hearing.",
             "status": "pending",
             "resolution": "engine"
           }
@@ -2305,7 +2305,7 @@
         "name": "Common Ground",
         "clauses": [
           {
-            "effect": "Gain +2 Survival when tracing an unlawful incursion into protected land.",
+            "effect": "Gain +1 Survival when tracing an unlawful incursion into protected land.",
             "status": "pending",
             "resolution": "engine"
           }
@@ -2338,7 +2338,7 @@
         "name": "Fair Terms",
         "clauses": [
           {
-            "effect": "Gain +2 Persuasion when securing equal terms for opposing petitioners.",
+            "effect": "Gain +1 Persuasion when securing equal terms for opposing petitioners.",
             "status": "pending",
             "resolution": "engine"
           }
@@ -2583,7 +2583,7 @@
         "name": "Voyager's Tools",
         "clauses": [
           {
-            "effect": "Gain +2 to checks to repair a vessel during a journey.",
+            "effect": "Gain +1 to checks to repair a vessel during a journey.",
             "status": "pending",
             "resolution": "engine"
           }
@@ -2594,7 +2594,7 @@
         "name": "Shoreline Keeper",
         "clauses": [
           {
-            "effect": "Gain +2 Survival when finding safe shelter along an unfamiliar coast.",
+            "effect": "Gain +1 Survival when finding safe shelter along an unfamiliar coast.",
             "status": "pending",
             "resolution": "engine"
           }
@@ -2660,7 +2660,7 @@
         "name": "Harbor Courtesy",
         "clauses": [
           {
-            "effect": "Gain +2 Persuasion when seeking peaceful passage through an unfamiliar port.",
+            "effect": "Gain +1 Persuasion when seeking peaceful passage through an unfamiliar port.",
             "status": "pending",
             "resolution": "engine"
           }
@@ -2936,7 +2936,7 @@
         "name": "Mender's Dawn",
         "clauses": [
           {
-            "effect": "Gain +2 to checks to repair equipment for a damaged sanctuary.",
+            "effect": "Gain +1 to checks to repair equipment for a damaged sanctuary.",
             "status": "pending",
             "resolution": "engine"
           }
@@ -2958,7 +2958,7 @@
         "name": "Green Morning",
         "clauses": [
           {
-            "effect": "Gain +2 Nature when restoring a blighted grove.",
+            "effect": "Gain +1 Nature when restoring a blighted grove.",
             "status": "pending",
             "resolution": "engine"
           }
@@ -3013,7 +3013,7 @@
         "name": "Reconciliation",
         "clauses": [
           {
-            "effect": "Gain +2 Persuasion when negotiating care for wounded enemies.",
+            "effect": "Gain +1 Persuasion when negotiating care for wounded enemies.",
             "status": "pending",
             "resolution": "engine"
           }
@@ -3259,7 +3259,7 @@
         "name": "Patient Gear",
         "clauses": [
           {
-            "effect": "Gain +2 to checks to repair a clock or timing mechanism.",
+            "effect": "Gain +1 to checks to repair a clock or timing mechanism.",
             "status": "pending",
             "resolution": "engine"
           }

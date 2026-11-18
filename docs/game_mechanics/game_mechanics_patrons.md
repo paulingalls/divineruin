@@ -61,7 +61,7 @@ Arcane casters under Veythar: Flickering threshold bonus damage increases to **+
 
 | Archetypes | Synergy Type | Enhancement |
 |---|---|---|
-| Mage, Artificer, Seeker | Natural | Flickering bonus damage applies to cantrips. Arcane mastery extends to simplest spells |
+| Mage, Artificer, Seeker | Natural | Your arcane cantrips gain Veythar's +2 Flickering bonus damage dice even when you are not Flickering. This replaces, rather than stacks with, the Layer 2 Flickering bonus. |
 | Cleric | Divine | Arcana as bonus starting skill. Divine magic auto-identifies magical effects (no check) |
 | Rogue, Spy, Seeker | Unexpected | Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers |
 
