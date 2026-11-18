@@ -11,7 +11,6 @@ from sample_fixtures import (
 )
 
 import event_types as E
-from leveling import build_level_up_payload_for_archetype, get_level_up_rewards
 from milestones import Milestone
 from progression_tools import (
     AwardXpResult,
@@ -45,9 +44,8 @@ async def test_level_up_payload_carries_archetype_hp_gains():
     player = {**GUILD_PLAYER, "class": "artificer", "attributes": {**GUILD_PLAYER["attributes"], "constitution": 14}}
     payload = await _award_crossing_threshold(player)
 
-    expected = build_level_up_payload_for_archetype(1, get_level_up_rewards(1, 2), "artificer", con_mod=2)
     assert payload is not None
-    assert payload["hp_gains"] == expected["hp_gains"]
+    assert payload["hp_gains"] == [{"level": 2, "hp_gain": 4}]
 
 
 @pytest.mark.asyncio
@@ -55,10 +53,9 @@ async def test_level_up_payload_zero_con_mod_still_carries_hp_gains():
     player = {**GUILD_PLAYER, "class": "artificer", "attributes": {**GUILD_PLAYER["attributes"], "constitution": 10}}
     payload = await _award_crossing_threshold(player)
 
-    expected = build_level_up_payload_for_archetype(1, get_level_up_rewards(1, 2), "artificer", con_mod=0)
     assert payload is not None
     assert "hp_gains" in payload
-    assert payload["hp_gains"] == expected["hp_gains"]
+    assert payload["hp_gains"] == [{"level": 2, "hp_gain": 3}]
 
 
 @pytest.mark.asyncio
