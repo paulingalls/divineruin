@@ -86,11 +86,13 @@ async def rest(context: RunContext[SessionData], rest_type: RestType) -> str:
             session.member_state(pid).resonance.current = 0
         for pid in players:
             payload = await db_session_queries.get_session_init_payload(pid)
-            payload["character"]["player_id"] = pid
             payload["world_state"]["time"] = session.world_time
             await publish_game_event(
                 session.room, E.SESSION_INIT, payload, session.event_bus, destination_identities=[pid]
             )
+            from patron_ability_events import publish_patron_abilities
+
+            await publish_patron_abilities(session.room, pid, session.event_bus)
             await publish_resonance_changed(session, resonance_track=session.member_state(pid).resonance, caster_id=pid)
         return json.dumps(
             {

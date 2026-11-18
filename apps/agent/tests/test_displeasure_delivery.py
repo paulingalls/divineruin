@@ -12,6 +12,12 @@ from progression_tools import _award_divine_favor_core
 from session_data import SessionData
 
 
+@pytest.fixture(autouse=True)
+def recipient_names():
+    with patch("bg_whisper_delivery.db_queries.get_player", new=AsyncMock(return_value={"name": "Player"})):
+        yield
+
+
 @pytest.mark.parametrize("amount,should_mark", [(-5, False), (5, True)])
 async def test_whisper_delivery_marks_only_ordinary_favor(amount, should_mark):
     sd = SessionData(player_id="player_1", location_id="accord_guild_hall", patron_id="kaelen")
@@ -53,7 +59,7 @@ async def test_whisper_delivery_marks_only_ordinary_favor(amount, should_mark):
             "background_process.db_activity_queries.get_divine_favor",
             new=AsyncMock(return_value={"level": 35 if amount < 0 else 30}),
         ),
-        patch("background_process.db_mutations_divine.mark_favor_whisper_level", new=AsyncMock()) as mark,
+        patch("bg_whisper_delivery.db_mutations_divine.mark_favor_whisper_level", new=AsyncMock()) as mark,
     ):
         await bg._deliver_speech()
     assert order == ["sound", "speech"]
@@ -89,7 +95,7 @@ async def test_failed_whisper_delivery_never_marks_favor():
         patch("game_events.publish_game_event", new_callable=AsyncMock),
         patch("background_process.asyncio.sleep", new_callable=AsyncMock),
         patch("background_process.deliver_speech", new=AsyncMock(return_value=False)),
-        patch("background_process.db_mutations_divine.mark_favor_whisper_level", new_callable=AsyncMock) as mark,
+        patch("bg_whisper_delivery.db_mutations_divine.mark_favor_whisper_level", new_callable=AsyncMock) as mark,
     ):
         await bg._deliver_speech()
     mark.assert_not_awaited()
@@ -276,12 +282,15 @@ async def test_recipientless_displeasure_fails_loudly(successful_delivery):
         (75, 70, 100, "contrary", "player_1", True),
         (0, 0, 100, "contrary", "player_1", False),
         (40, 35, 100, "neglect", "player_1", False),
-        (40, 35, 100, "contrary", "player_2", False),
+        (40, 35, 100, "contrary", "player_2", True),
     ],
 )
 def test_only_tier_drops_queue_displeasure(previous, new, maximum, reason, recipient, queued):
     sd = SessionData(player_id="player_1", location_id="hall", patron_id="kaelen")
     bg = BackgroundProcess(session=MagicMock(), session_data=sd)
+    sd.party.members.append(SessionData(player_id="player_2", location_id="hall").party.primary)
+    sd.multiplayer_owner = MagicMock()
+    sd.multiplayer_owner.lifecycle.is_live.return_value = True
     event = _contrary(recipient)
     event.payload.update(previous_level=previous, new_level=new, max=maximum, amount=new - previous, reason=reason)
     bg._handle_events([event, event])
@@ -289,7 +298,7 @@ def test_only_tier_drops_queue_displeasure(previous, new, maximum, reason, recip
     assert sd.displeasure_heard_by == set()
     if queued:
         speech = bg._speech_queue[0]
-        assert speech.is_displeasure and speech.recipient_id == "player_1"
+        assert speech.is_displeasure and speech.recipient_id == recipient
         assert speech.priority == SpeechPriority.CRITICAL
         assert speech.stinger_sound == "god_whisper_stinger"
         assert "Something shifts. The air thickens." in speech.instructions

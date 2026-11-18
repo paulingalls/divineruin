@@ -96,7 +96,14 @@ async def _build_player_spells(player_id: str, player: dict | None) -> dict:
 async def get_session_init_payload(player_id: str) -> dict:
     """Build the full session_init payload for a player."""
     # Fetch player first (need location_id), then parallelize the rest
-    player = await db_queries.get_player(player_id)
+    player, revision = await db_queries.get_player_at_patron_revision(player_id)
+    from patron_ability_events import snapshot
+
+    patron_snapshot = snapshot(player_id, player, revision)
+    if player is not None:
+        player["player_id"] = player_id
+        if player.get("divine_favor") is not None:
+            player["divine_favor"] = {**player["divine_favor"], **patron_snapshot["divine_favor"]}
     location_id = player.get("location_id", "") if player else ""
 
     location, inventory, quests, map_progress = await asyncio.gather(
@@ -124,6 +131,8 @@ async def get_session_init_payload(player_id: str) -> dict:
 
     return {
         "character": player,
+        "abilities": patron_snapshot["abilities"],
+        "patron_revision": patron_snapshot["patron_revision"],
         "location": location if location_id else None,
         "quests": quests,
         **inventory,

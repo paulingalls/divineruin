@@ -183,7 +183,8 @@ async def test_already_hidden_and_other_patron_refuse_without_spending(veil):
     assert await row(h) == before
 
 
-async def test_reconnect_rest_and_combat_only(veil):
+@pytest.mark.parametrize("rest_type", ["short", "long"])
+async def test_reconnect_rest_and_combat_only(veil, rest_type):
     from livekit.agents import Agent, AgentSession
 
     from exploration_agent import EXPLORATION_TOOLS
@@ -203,9 +204,7 @@ async def test_reconnect_rest_and_combat_only(veil):
     h.session = AgentSession(llm=h.model, userdata=h.sd)
     await h.session.start(Agent(instructions="Execute the command.", tools=EXPLORATION_TOOLS))
     assert "combat-only" in await h.command("activate", {"id": GIFT}, error=True)
-    await h.command("rest", {"rest_type": "long"})
-    assert (await row(h))["patron_gifts"][GIFT]["spent"] is True
-    await h.command("rest", {"rest_type": "short"})
+    await h.command("rest", {"rest_type": rest_type})
     assert (await row(h))["patron_gifts"] == {"other": {"x": 1}, GIFT: {"spent": False}}
     assert not (await row(h))["flags"]["concealed"]
     await h.command("enter_mode", {"mode": "combat", "encounter_id": h.encounter_id})

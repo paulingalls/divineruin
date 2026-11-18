@@ -110,3 +110,5 @@ export const CREATION_CARD_TAP = "creation_card_tap" as const;
 // Agent-side consumption of this hint is a future wire-up; the DM voice path already
 // resolves via the generic `select` verb (M4 story-004 removed resolve_milestone).
 export const SPECIALIZATION_CHOICE_TAP = "specialization_choice_tap" as const;
+
+export const PATRON_ABILITIES_UPDATED = "patron_abilities_updated";

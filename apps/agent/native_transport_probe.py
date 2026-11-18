@@ -251,7 +251,12 @@ async def run_probe(
         if fault != "withhold-audio":
             audio_source, _track, _publication = await publish_audio_frames(room, build_tone_frames())
         if fault != "withhold-event":
-            await publish_game_event(room, E.SESSION_INIT, SESSION_INIT_FIXTURE)
+            await publish_game_event(
+                room,
+                E.SESSION_INIT,
+                SESSION_INIT_FIXTURE,
+                destination_identities=[SESSION_INIT_FIXTURE["character"]["player_id"]],
+            )
 
         microphone_frames = await microphone_task
         mobile_result = await wait_for_mobile_result(state)

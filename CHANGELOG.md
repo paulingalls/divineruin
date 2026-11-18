@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.47.0
+
+Patron tier abilities are in play. A follower at Acknowledged, Devoted or Exalted favor can now ask the DM to use the seven abilities the DM resolves by narration: Veythar's Lorekeeper's Library, Syrath's Whisper Network and Veilwatcher's Eye, Mortaen's Speak with Dead, Nythera's Charted Course, Valdris's Discern Lies and Zhael's Prophecy Fragment. Valdris's Layer 1 gift, Weight of Truth, works the same way. Each use is spent and comes back on its authored rest or, for once-per-session abilities, at the next session. Abilities lock when favor drops below their tier and come back, with the same spent state, when it climbs again. The other 23 tier abilities are listed as not yet in play.
+
+Rule change: a long rest now also restores abilities and gifts that recharge on a short rest. This includes Veythar's Lorekeeper's Insight and Syrath's Shadow Veil, which before came back only on a short rest.
+
+The character sheet lists the follower's patron abilities as ready, spent or locked, and the favor bar stays current. A player who joins someone else's session now gets their own sheet and favor bar right away, and a reconnect refreshes them. Session start data is sent only to its own player.
+
+Under the hood, spell_casting.py is split into smaller modules with no behavior change.
+
+Release steps:
+- Apply migration 065_patron_revision.sql (adds players.patron_revision and its update trigger) with the normal migrate step before deploying the agent and server. Free; it writes the production schema.
+
+## 0.46.0
+
+In multiplayer, every player now hears their own god. When a guest's favor crosses a tier, the guest's patron whispers to them by name, and a guest whose favor drops hears that god's displeasure once a session, as the host always has. When two players cross at once, both whispers play in turn. A player who leaves before their whisper plays hears nothing, and their whisper is not counted as delivered.
+
+Release steps: none.
+
+## 0.45.2
+
+The test runner is pinned to proof v0.34.1. Before the fix, staged runs (every free patch's acceptance and every commit hook) read every input file through git for every task, so setup on a staged sprint run took 25 minutes or more. Setup now takes about 24 seconds. There is no player-facing change.
+
+Release steps: none.
+
+## 0.45.1
+
+Split spell casting into smaller modules while preserving casting behavior.
+
+Release steps: none.
+
 ## 0.45.0
 
 Crafting now counts toward your patron's favor. When a craft finishes, even with a flaw, the crafter records a crafted-item deed. Aelora, the Hearthkeeper, values that deed, so her followers gain favor at their next twenty-minute judgment in play. A failed craft records nothing.

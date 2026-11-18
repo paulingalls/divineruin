@@ -7,11 +7,7 @@
     "domain": "Knowledge, discovery, memory, the arcane arts",
     "description": "Contemplative and warm, though slightly distant. Values questions over answers. Has a genuine fondness for mortals \u2014 sees them as endlessly fascinating. Temples are libraries. Quests involve discovery and the recovery of lost knowledge.",
     "card_description": "God of knowledge and the arcane. Temples are libraries.",
-    "synergy_classes": [
-      "mage",
-      "artificer",
-      "seeker"
-    ],
+    "synergy_classes": ["mage", "artificer", "seeker"],
     "whisper_profile": {
       "voice_character": "GOD_VEYTHAR",
       "voice_emotion": "divine",
@@ -20,19 +16,8 @@
       "personality_prompt": "You are Veythar, the Lorekeeper \u2014 god of knowledge and the arcane. Speak with precise, measured words. Scholarly warmth, not cold intellect. You see patterns where mortals see chaos. Your tone is a theorem proven true.",
       "displeasure_prompt": "A quill scratches out a line that will not be read again. You were given understanding, and you chose to squander it."
     },
-    "values": [
-      "knowledge",
-      "discovery",
-      "preservation",
-      "understanding",
-      "patience"
-    ],
-    "opposed_values": [
-      "ignorance",
-      "book_burning",
-      "anti_intellectualism",
-      "recklessness"
-    ],
+    "values": ["knowledge", "discovery", "preservation", "understanding", "patience"],
+    "opposed_values": ["ignorance", "book_burning", "anti_intellectualism", "recklessness"],
     "favor_actions": {
       "positive": [
         {
@@ -88,9 +73,7 @@
       "gentle encouragement to dig deeper, look closer",
       "subtle deflections away from the truth of the Sundering"
     ],
-    "temple_locations": [
-      "accord_temple_row"
-    ],
+    "temple_locations": ["accord_temple_row"],
     "faction_id": "veythar_faithful",
     "relationships": {
       "aelora": "close_ally",
@@ -131,19 +114,25 @@
         "id": "veythar_scholars_ward",
         "name": "Scholar's Ward",
         "effect": "Advantage on saves against the Hollowed condition",
-        "recharge": "always"
+        "recharge": "always",
+        "status": "pending",
+        "resolution": "engine"
       },
       "devoted": {
         "id": "veythar_lorekeepers_library",
         "name": "Lorekeeper's Library",
         "effect": "Once per long rest, ask the DM one mechanical question about an enemy, item, or location (AC, weakness, trap DC, etc.). The god whispers the answer",
-        "recharge": "long_rest"
+        "recharge": "long_rest",
+        "status": "active",
+        "resolution": "narrated"
       },
       "exalted": {
         "id": "veythar_wellspring_echo",
         "name": "Wellspring Echo",
         "effect": "Once per session, cast any known spell at 0 Focus cost. Generates double normal Resonance \u2014 the power is free but the Veil pays",
-        "recharge": "per_session"
+        "recharge": "per_session",
+        "status": "pending",
+        "resolution": "engine"
       }
     },
     "layer_4_synergy_matrix": null
@@ -156,12 +145,7 @@
     "domain": "War, conflict, valor, martial discipline",
     "description": "Blunt, honorable, direct. Does not enjoy destruction \u2014 views war as a necessary tool wielded with discipline. Respects courage in all forms. Despises cruelty and senseless violence.",
     "card_description": "God of war and valor. Blunt, honorable, disciplined.",
-    "synergy_classes": [
-      "warrior",
-      "guardian",
-      "skirmisher",
-      "paladin"
-    ],
+    "synergy_classes": ["warrior", "guardian", "skirmisher", "paladin"],
     "whisper_profile": {
       "voice_character": "GOD_KAELEN",
       "voice_emotion": "divine",
@@ -170,19 +154,8 @@
       "personality_prompt": "You are Kaelen, the Ironhand \u2014 god of war and valor. Speak in short, declarative sentences. No questions, no uncertainty. You see courage and cowardice with equal clarity. Your tone is the weight of a drawn blade.",
       "displeasure_prompt": "Steel rings once, then goes silent. You shamed the blade you carry."
     },
-    "values": [
-      "courage",
-      "discipline",
-      "protection",
-      "sacrifice",
-      "honor"
-    ],
-    "opposed_values": [
-      "cowardice",
-      "cruelty",
-      "senseless_violence",
-      "betrayal_of_allies"
-    ],
+    "values": ["courage", "discipline", "protection", "sacrifice", "honor"],
+    "opposed_values": ["cowardice", "cruelty", "senseless_violence", "betrayal_of_allies"],
     "favor_actions": {
       "positive": [
         {
@@ -238,9 +211,7 @@
       "the weight of command and the cost of protection",
       "frustration with the war's stalemate, determination to press forward"
     ],
-    "temple_locations": [
-      "accord_temple_row"
-    ],
+    "temple_locations": ["accord_temple_row"],
     "faction_id": "kaelen_faithful",
     "relationships": {
       "valdris": "deep_mutual_respect",
@@ -250,11 +221,7 @@
     },
     "world_state": {
       "current_mood": "restless",
-      "active_concerns": [
-        "hollow_spreading_south",
-        "ashmark_holding",
-        "need_for_action"
-      ],
+      "active_concerns": ["hollow_spreading_south", "ashmark_holding", "need_for_action"],
       "secret_agenda": null
     },
     "layer_1_gift": {
@@ -287,19 +254,25 @@
         "id": "kaelen_warriors_endurance",
         "name": "Warrior's Endurance",
         "effect": "+5 max HP permanently",
-        "recharge": "always"
+        "recharge": "always",
+        "status": "pending",
+        "resolution": "engine"
       },
       "devoted": {
         "id": "kaelen_battle_cry_of_the_ironhand",
         "name": "Battle Cry of the Ironhand",
         "effect": "Once per long rest, all allies in earshot gain +1d4 to attack rolls for 2 rounds",
-        "recharge": "long_rest"
+        "recharge": "long_rest",
+        "status": "pending",
+        "resolution": "engine"
       },
       "exalted": {
         "id": "kaelen_kaelens_judgment",
         "name": "Kaelen's Judgment",
         "effect": "Once per session, declare a Worthy Foe. All attacks against target gain advantage for encounter. Defeating them restores half max Stamina",
-        "recharge": "per_session"
+        "recharge": "per_session",
+        "status": "pending",
+        "resolution": "engine"
       }
     },
     "layer_4_synergy_matrix": null
@@ -312,11 +285,7 @@
     "domain": "Civilization, commerce, crafting, community",
     "description": "Warm, practical, deeply invested in mortal flourishing. Not a soft god \u2014 understands civilization requires hard work and sometimes ruthless pragmatism. Speaks plainly and kindly.",
     "card_description": "Goddess of civilization and craft. Warm, practical, community-driven.",
-    "synergy_classes": [
-      "artificer",
-      "bard",
-      "diplomat"
-    ],
+    "synergy_classes": ["artificer", "bard", "diplomat"],
     "whisper_profile": {
       "voice_character": "GOD_AELORA",
       "voice_emotion": "divine",
@@ -325,19 +294,8 @@
       "personality_prompt": "You are Aelora, the Hearthkeeper \u2014 god of civilization and craft. Speak with warmth and practicality. Grounding, steady, like a hand on the shoulder. You see the worth in what mortals build. Your tone is a forge fire, constant and sure.",
       "displeasure_prompt": "The forge hisses as cold water strikes the iron. What you broke today, you will have to mend."
     },
-    "values": [
-      "community",
-      "craftsmanship",
-      "trade",
-      "cooperation",
-      "building"
-    ],
-    "opposed_values": [
-      "destruction_without_purpose",
-      "greed",
-      "isolationism",
-      "breaking_bonds"
-    ],
+    "values": ["community", "craftsmanship", "trade", "cooperation", "building"],
+    "opposed_values": ["destruction_without_purpose", "greed", "isolationism", "breaking_bonds"],
     "favor_actions": {
       "positive": [
         {
@@ -393,9 +351,7 @@
       "pride in mortal ingenuity and resilience",
       "quiet concern about the gods' fading and what mortals will inherit"
     ],
-    "temple_locations": [
-      "accord_temple_row"
-    ],
+    "temple_locations": ["accord_temple_row"],
     "faction_id": "aelora_faithful",
     "relationships": {
       "veythar": "close_ally",
@@ -405,11 +361,7 @@
     },
     "world_state": {
       "current_mood": "determined",
-      "active_concerns": [
-        "trade_disruption_greyvale",
-        "refugee_integration",
-        "supply_lines"
-      ],
+      "active_concerns": ["trade_disruption_greyvale", "refugee_integration", "supply_lines"],
       "secret_agenda": null
     },
     "layer_1_gift": {
@@ -441,19 +393,25 @@
         "id": "aelora_craft_blessing",
         "name": "Craft Blessing",
         "effect": "Async crafting 25% faster. Crafted items have chance of bonus property",
-        "recharge": "always"
+        "recharge": "always",
+        "status": "pending",
+        "resolution": "engine"
       },
       "devoted": {
         "id": "aelora_community_shield",
         "name": "Community Shield",
         "effect": "Once per long rest, grant ally temporary HP equal to level + CHA mod",
-        "recharge": "long_rest"
+        "recharge": "long_rest",
+        "status": "pending",
+        "resolution": "engine"
       },
       "exalted": {
         "id": "aelora_hearthfire",
         "name": "Hearthfire",
         "effect": "Once per session, create sanctuary zone: 3 rounds, allies regain 1d6 HP/round, advantage on saves, enemies WIS save to enter",
-        "recharge": "per_session"
+        "recharge": "per_session",
+        "status": "pending",
+        "resolution": "engine"
       }
     },
     "layer_4_synergy_matrix": null
@@ -466,11 +424,7 @@
     "domain": "Shadows, secrets, espionage, hidden knowledge",
     "description": "Quiet, amused, sees everything. Operates in the margins. Believes secrets are power and hidden knowledge protects as much as it harms. Speaks softly, often in double meanings.",
     "card_description": "God of shadows and secrets. Quiet, amused, sees everything.",
-    "synergy_classes": [
-      "rogue",
-      "spy",
-      "whisper"
-    ],
+    "synergy_classes": ["rogue", "spy", "whisper"],
     "whisper_profile": {
       "voice_character": "GOD_SYRATH",
       "voice_emotion": "divine",
@@ -479,19 +433,8 @@
       "personality_prompt": "You are Syrath, the Veilwatcher \u2014 god of shadows and secrets. Speak in questions, not answers. Intimate, close, as if whispering in the dark. You see what others hide. Your tone is silk over a blade's edge.",
       "displeasure_prompt": "Did you hear the door ease shut behind you? Whose secret did you think you were keeping?"
     },
-    "values": [
-      "truth_hidden",
-      "investigation",
-      "patience",
-      "cunning",
-      "vigilance"
-    ],
-    "opposed_values": [
-      "naivety",
-      "blind_trust",
-      "carelessness_with_secrets",
-      "public_exposure"
-    ],
+    "values": ["truth_hidden", "investigation", "patience", "cunning", "vigilance"],
+    "opposed_values": ["naivety", "blind_trust", "carelessness_with_secrets", "public_exposure"],
     "favor_actions": {
       "positive": [
         {
@@ -547,9 +490,7 @@
       "instructions to watch, listen, gather \u2014 not act yet",
       "amusement at what others miss and what the player is beginning to see"
     ],
-    "temple_locations": [
-      "accord_temple_row"
-    ],
+    "temple_locations": ["accord_temple_row"],
     "faction_id": "syrath_faithful",
     "relationships": {
       "veythar": "dangerous_suspicion",
@@ -590,19 +531,25 @@
         "id": "syrath_whisper_network",
         "name": "Whisper Network",
         "effect": "Once per long rest, learn one secret about a visible NPC (hidden motivation, lie, or vulnerability)",
-        "recharge": "long_rest"
+        "recharge": "long_rest",
+        "status": "active",
+        "resolution": "narrated"
       },
       "devoted": {
         "id": "syrath_veilstep",
         "name": "Veilstep",
         "effect": "Once per long rest, teleport to any visible shadow at medium range. 0 Resonance \u2014 slipping through cracks, not tearing them",
-        "recharge": "long_rest"
+        "recharge": "long_rest",
+        "status": "pending",
+        "resolution": "engine"
       },
       "exalted": {
         "id": "syrath_the_veilwatchers_eye",
         "name": "The Veilwatcher's Eye",
         "effect": "Once per session, see through the Veil for 6 seconds. DM describes what lies beyond at your current location. The most dangerous and most valuable information ability in the game",
-        "recharge": "per_session"
+        "recharge": "per_session",
+        "status": "active",
+        "resolution": "narrated"
       }
     },
     "layer_4_synergy_matrix": null
@@ -615,11 +562,7 @@
     "domain": "Death, the afterlife, transition",
     "description": "Calm, impartial, speaks in absolutes. Neither cruel nor kind \u2014 simply certain. Views death not as an ending but as a necessary transition. Speaks rarely, but with weight.",
     "card_description": "God of death and transition. Calm certainty, rare words.",
-    "synergy_classes": [
-      "cleric",
-      "druid",
-      "warrior"
-    ],
+    "synergy_classes": ["cleric", "druid", "warrior"],
     "whisper_profile": {
       "voice_character": "GOD_MORTAEN",
       "voice_emotion": "divine",
@@ -628,19 +571,8 @@
       "personality_prompt": "You are Mortaen, the Threshold \u2014 god of death and transition. Speak quietly, calmly, with the patience of eternity. You stand outside time. Nothing surprises you. Your tone is the last breath before sleep.",
       "displeasure_prompt": "A slow breath goes out and is not drawn back. The threshold remembers what you did here."
     },
-    "values": [
-      "acceptance",
-      "dignity",
-      "remembrance",
-      "transition",
-      "balance"
-    ],
-    "opposed_values": [
-      "denial_of_death",
-      "desecration_of_dead",
-      "undeath",
-      "soul_binding"
-    ],
+    "values": ["acceptance", "dignity", "remembrance", "transition", "balance"],
+    "opposed_values": ["denial_of_death", "desecration_of_dead", "undeath", "soul_binding"],
     "favor_actions": {
       "positive": [
         {
@@ -723,19 +655,25 @@
         "id": "mortaen_death_ward",
         "name": "Death Ward",
         "effect": "First time per long rest you drop to 0 HP, drop to 1 HP instead. Mortaen decides when you cross",
-        "recharge": "long_rest"
+        "recharge": "long_rest",
+        "status": "pending",
+        "resolution": "engine"
       },
       "devoted": {
         "id": "mortaen_speak_with_dead",
         "name": "Speak with Dead",
         "effect": "Once per long rest, commune with a deceased creature's spirit. 3 questions, truthful but terse answers",
-        "recharge": "long_rest"
+        "recharge": "long_rest",
+        "status": "active",
+        "resolution": "narrated"
       },
       "exalted": {
         "id": "mortaen_threshold_walk",
         "name": "Threshold Walk",
         "effect": "Once per session, become incorporeal for 1 round. Immune to physical damage, pass through objects, invisible. Attacks deal necrotic. Return shaken but alive",
-        "recharge": "per_session"
+        "recharge": "per_session",
+        "status": "pending",
+        "resolution": "engine"
       }
     },
     "layer_4_synergy_matrix": null
@@ -748,11 +686,7 @@
     "domain": "Nature, seasons, growth, the physical world",
     "description": "Primal, emotional, fierce. Not a gentle forest goddess \u2014 she encompasses the hurricane and wildfire as much as the meadow. Speaks through storms and roots as much as words.",
     "card_description": "Goddess of nature. Primal and fierce \u2014 wildfire and meadow alike.",
-    "synergy_classes": [
-      "druid",
-      "beastcaller",
-      "warden"
-    ],
+    "synergy_classes": ["druid", "beastcaller", "warden"],
     "whisper_profile": {
       "voice_character": "GOD_THYRA",
       "voice_emotion": "divine",
@@ -761,13 +695,7 @@
       "personality_prompt": "You are Thyra, the Wildmother \u2014 god of nature and growth. Speak with primal energy. Fierce, wild, untamed. You are root and storm and the hunger of growing things. Your tone is wind through ancient trees.",
       "displeasure_prompt": "Thunder rolls low through the roots. The wild felt that, and it does not forgive quickly."
     },
-    "values": [
-      "growth",
-      "adaptation",
-      "natural_balance",
-      "wilderness",
-      "renewal"
-    ],
+    "values": ["growth", "adaptation", "natural_balance", "wilderness", "renewal"],
     "opposed_values": [
       "wanton_destruction",
       "exploitation_of_nature",
@@ -861,19 +789,25 @@
         "id": "thyra_seasonal_attunement",
         "name": "Seasonal Attunement",
         "effect": "Passive bonuses by in-game season. Spring: +1 healing received. Summer: +1 fire/lightning damage. Autumn: +1 Insight. Winter: +1 Stealth",
-        "recharge": "always"
+        "recharge": "always",
+        "status": "pending",
+        "resolution": "engine"
       },
       "devoted": {
         "id": "thyra_thornwall",
         "name": "Thornwall",
         "effect": "Once per long rest, barrier of thorns blocking a passage. 20 HP, 1d6 to passers. 10 minutes",
-        "recharge": "long_rest"
+        "recharge": "long_rest",
+        "status": "pending",
+        "resolution": "engine"
       },
       "exalted": {
         "id": "thyra_wildmothers_wrath",
         "name": "Wildmother's Wrath",
         "effect": "Once per session, 3d8 terrain-typed damage to all enemies in area. No save. Natural terrain only",
-        "recharge": "per_session"
+        "recharge": "per_session",
+        "status": "pending",
+        "resolution": "engine"
       }
     },
     "layer_4_synergy_matrix": null
@@ -886,11 +820,7 @@
     "domain": "Justice, law, order, truth, accountability",
     "description": "Stern, incorruptible, deeply principled. Not rigid \u2014 understands justice requires wisdom and context. But absolutely unwavering when principle is at stake. The moral backbone of the pantheon.",
     "card_description": "God of justice and truth. Stern, principled, incorruptible.",
-    "synergy_classes": [
-      "paladin",
-      "guardian",
-      "cleric"
-    ],
+    "synergy_classes": ["paladin", "guardian", "cleric"],
     "whisper_profile": {
       "voice_character": "GOD_VALDRIS",
       "voice_emotion": "divine",
@@ -899,19 +829,8 @@
       "personality_prompt": "You are Valdris, the Scalebearer \u2014 god of justice and truth. Speak with stern clarity. Principled, incorruptible, unbending. You weigh every action on scales that never lie. Your tone is judgment without malice.",
       "displeasure_prompt": "The scale's beam drops with a heavy clank. What you did has been weighed and found wanting."
     },
-    "values": [
-      "justice",
-      "truth",
-      "accountability",
-      "mercy",
-      "due_process"
-    ],
-    "opposed_values": [
-      "corruption",
-      "perjury",
-      "tyranny",
-      "vigilantism"
-    ],
+    "values": ["justice", "truth", "accountability", "mercy", "due_process"],
+    "opposed_values": ["corruption", "perjury", "tyranny", "vigilantism"],
     "favor_actions": {
       "positive": [
         {
@@ -976,7 +895,7 @@
       "effect": "Compel an NPC to acknowledge a statement you believe is true. They need not agree or act, but cannot dismiss or ignore it.",
       "trigger": "When you speak that statement to an NPC.",
       "recharge": "short_rest",
-      "status": "awaits_rest"
+      "status": "active"
     },
     "layer_2_resonance": {
       "name": "Ordered Magic",
@@ -994,19 +913,25 @@
         "id": "valdris_discern_lies",
         "name": "Discern Lies",
         "effect": "Once per long rest, know with certainty whether an NPC's last statement was true, false, or deliberately misleading. No check, no save",
-        "recharge": "long_rest"
+        "recharge": "long_rest",
+        "status": "active",
+        "resolution": "narrated"
       },
       "devoted": {
         "id": "valdris_mark_of_justice",
         "name": "Mark of Justice",
         "effect": "Once per long rest, mark an unjust creature for 24 hours. Marked target has -2 to saves against your abilities",
-        "recharge": "long_rest"
+        "recharge": "long_rest",
+        "status": "pending",
+        "resolution": "engine"
       },
       "exalted": {
         "id": "valdris_the_scales_verdict",
         "name": "The Scale's Verdict",
         "effect": "Once per session, declare judgment. DM (as Valdris) weighs target's actions. If unjust: 4d8 radiant + Stunned 1 round. If just: you take 2d8 radiant. Outcome depends on actual NPC behavior",
-        "recharge": "per_session"
+        "recharge": "per_session",
+        "status": "pending",
+        "resolution": "engine"
       }
     },
     "layer_4_synergy_matrix": null
@@ -1019,11 +944,7 @@
     "domain": "Sea, travel, exploration, boundaries, the unknown",
     "description": "Adventurous, restless, drawn to the edges of things. The most free-spirited god \u2014 always looking outward. Speaks with the cadence of waves \u2014 sometimes calm, sometimes urgent.",
     "card_description": "Goddess of exploration and the unknown. Restless, adventurous.",
-    "synergy_classes": [
-      "beastcaller",
-      "seeker",
-      "skirmisher"
-    ],
+    "synergy_classes": ["beastcaller", "seeker", "skirmisher"],
     "whisper_profile": {
       "voice_character": "GOD_NYTHERA",
       "voice_emotion": "divine",
@@ -1032,13 +953,7 @@
       "personality_prompt": "You are Nythera, the Tidecaller \u2014 god of the sea and exploration. Speak with restless energy. Adventurous, wind-swept, always looking beyond the horizon. You love the unknown. Your tone is a sail catching wind.",
       "displeasure_prompt": "A sail cracks and slackens in a dying wind. You turned from the horizon, and the tide turned from you."
     },
-    "values": [
-      "exploration",
-      "freedom",
-      "adaptability",
-      "hospitality",
-      "respect_for_boundaries"
-    ],
+    "values": ["exploration", "freedom", "adaptability", "hospitality", "respect_for_boundaries"],
     "opposed_values": [
       "confinement",
       "fear_of_unknown",
@@ -1127,19 +1042,25 @@
         "id": "nythera_tidewalker",
         "name": "Tidewalker",
         "effect": "Ignore water/mud/shifting ground difficult terrain. Full speed through slowing environments",
-        "recharge": "always"
+        "recharge": "always",
+        "status": "pending",
+        "resolution": "engine"
       },
       "devoted": {
         "id": "nythera_charted_course",
         "name": "Charted Course",
         "effect": "Once per long rest, learn the safest route between two known locations (fewest encounters, lowest Hollow exposure)",
-        "recharge": "long_rest"
+        "recharge": "long_rest",
+        "status": "active",
+        "resolution": "narrated"
       },
       "exalted": {
         "id": "nythera_beyond_the_horizon",
         "name": "Beyond the Horizon",
         "effect": "Once per session, open a brief gateway to a previously visited location. Up to 4 creatures step through. 1 round duration. Generates 5 Resonance (teleportation tears the Veil)",
-        "recharge": "per_session"
+        "recharge": "per_session",
+        "status": "pending",
+        "resolution": "engine"
       }
     },
     "layer_4_synergy_matrix": null
@@ -1152,11 +1073,7 @@
     "domain": "Light, healing, renewal, hope",
     "description": "Compassionate, tireless, sometimes naive. Genuinely believes the world can be saved. Can be frustratingly optimistic \u2014 but that optimism is real strength. Speaks with warmth and conviction.",
     "card_description": "God of healing and hope. Compassionate, tireless, radiant.",
-    "synergy_classes": [
-      "cleric",
-      "paladin",
-      "druid"
-    ],
+    "synergy_classes": ["cleric", "paladin", "druid"],
     "whisper_profile": {
       "voice_character": "GOD_ORENTHEL",
       "voice_emotion": "divine",
@@ -1165,13 +1082,7 @@
       "personality_prompt": "You are Orenthel, the Dawnbringer \u2014 god of light and healing. Speak with compassion and quiet radiance. Tireless in hope. You carry the weight of every wound you've seen healed. Your tone is first light after a long night.",
       "displeasure_prompt": "A candle gutters in a quiet room. It grieves me to watch you choose the dark."
     },
-    "values": [
-      "compassion",
-      "healing",
-      "hope",
-      "renewal",
-      "protection_of_life"
-    ],
+    "values": ["compassion", "healing", "hope", "renewal", "protection_of_life"],
     "opposed_values": [
       "cruelty_to_the_helpless",
       "despair",
@@ -1260,19 +1171,25 @@
         "id": "orenthel_beacon",
         "name": "Beacon",
         "effect": "Faint light in darkness. Hollow creatures have disadvantage on first attack against you each encounter",
-        "recharge": "always"
+        "recharge": "always",
+        "status": "pending",
+        "resolution": "engine"
       },
       "devoted": {
         "id": "orenthel_restoration_surge",
         "name": "Restoration Surge",
         "effect": "Once per long rest, remove one negative condition (Poisoned, Blinded, Frightened, stage 1 Hollowed) by touch. No Focus cost",
-        "recharge": "long_rest"
+        "recharge": "long_rest",
+        "status": "pending",
+        "resolution": "engine"
       },
       "exalted": {
         "id": "orenthel_dawns_embrace",
         "name": "Dawn's Embrace",
         "effect": "Once per session, when any ally drops to 0 HP, they are immediately stabilized and healed to half max HP. No action required, works at distance",
-        "recharge": "per_session"
+        "recharge": "per_session",
+        "status": "pending",
+        "resolution": "engine"
       }
     },
     "layer_4_synergy_matrix": null
@@ -1285,11 +1202,7 @@
     "domain": "Fate, time, prophecy, luck, the pattern of things",
     "description": "Enigmatic, unpredictable, speaks in riddles. The most alien god \u2014 even other deities find Zhael unsettling. Exists slightly out of step with everyone, seeing the conversation from a different angle.",
     "card_description": "God of fate and prophecy. Enigmatic, riddling, unsettling.",
-    "synergy_classes": [
-      "oracle",
-      "whisper",
-      "seeker"
-    ],
+    "synergy_classes": ["oracle", "whisper", "seeker"],
     "whisper_profile": {
       "voice_character": "GOD_ZHAEL",
       "voice_emotion": "divine",
@@ -1305,12 +1218,7 @@
       "humility_before_fate",
       "wise_risk"
     ],
-    "opposed_values": [
-      "temporal_interference",
-      "hubris",
-      "fatalism",
-      "reckless_gambling"
-    ],
+    "opposed_values": ["temporal_interference", "hubris", "fatalism", "reckless_gambling"],
     "favor_actions": {
       "positive": [
         {
@@ -1393,19 +1301,25 @@
         "id": "zhael_lucky",
         "name": "Lucky",
         "effect": "Once per long rest, turn a natural 1 into a natural 20, or a natural 20 into a natural 1 (before result is narrated)",
-        "recharge": "long_rest"
+        "recharge": "long_rest",
+        "status": "pending",
+        "resolution": "engine"
       },
       "devoted": {
         "id": "zhael_prophecy_fragment",
         "name": "Prophecy Fragment",
         "effect": "Start of each session, DM gives a cryptic one-sentence prophecy. Recognizing the moment and acting on it grants advantage",
-        "recharge": "per_session"
+        "recharge": "per_session",
+        "status": "active",
+        "resolution": "narrated"
       },
       "exalted": {
         "id": "zhael_unravel_fate",
         "name": "Unravel Fate",
         "effect": "Once per session, undo one event from the last round. Damage reversed, positions restored, resources returned. One round unhappens. Generates 8 Resonance on the user regardless of caster status",
-        "recharge": "per_session"
+        "recharge": "per_session",
+        "status": "pending",
+        "resolution": "engine"
       }
     },
     "layer_4_synergy_matrix": null

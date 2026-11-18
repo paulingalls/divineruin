@@ -1,5 +1,8 @@
 import { test, expect, beforeEach } from "bun:test";
+import { handleGameEventMessage } from "@/audio/game-event-handler";
+import { authStore } from "@/stores/auth-store";
 import { handleGameEvent } from "@/audio/game-event-handler";
+import { panelStore } from "@/stores/panel-store";
 import { sessionStore } from "@/stores/session-store";
 import { characterStore } from "@/stores/character-store";
 import { hudStore } from "@/stores/hud-store";
@@ -175,4 +178,124 @@ test("divine_favor_changed updates character store", () => {
   });
   expect(characterStore.getState().divineFavorLevel).toBe(30);
   expect(characterStore.getState().divineFavorMax).toBe(100);
+});
+
+test("patron snapshots initialize and replace sheet favor and server ability states", () => {
+  characterStore.getState().setCharacter(SAMPLE_CHARACTER);
+  const abilities: import("@/audio/patron-abilities").PatronAbility[] = [
+    {
+      id: "gift",
+      name: "Gift",
+      tier: "Devoted",
+      recharge: "long_rest",
+      status: "active",
+      eligible: true,
+      available: true,
+      spent: false,
+      reason: null,
+      state: "ready",
+    },
+  ];
+  handleGameEvent({
+    type: "session_init",
+    patron_revision: 0,
+    character: {
+      player_id: SAMPLE_CHARACTER.playerId,
+      divine_favor: { patron: "veythar", level: 40, max: 61 },
+    },
+    abilities,
+  });
+  expect(panelStore.getState().characterDetail?.abilities).toEqual(abilities);
+  expect(panelStore.getState().characterDetail?.divineFavor?.max).toBe(61);
+  const spent: import("@/audio/patron-abilities").PatronAbility[] = [
+    { ...abilities[0], available: false, spent: true, reason: "Spent", state: "spent" },
+  ];
+  handleGameEvent({
+    type: "patron_abilities_updated",
+    patron_revision: 1,
+    player_id: SAMPLE_CHARACTER.playerId,
+    divine_favor: { patron: "veythar", level: 39, max: 61 },
+    abilities: spent,
+  });
+  expect(panelStore.getState().characterDetail?.abilities).toEqual(spent);
+  expect(panelStore.getState().characterDetail?.divineFavor?.level).toBe(39);
+  const before = panelStore.getState().characterDetail;
+  handleGameEvent({
+    type: "patron_abilities_updated",
+    patron_revision: 1,
+    player_id: "someone_else",
+    divine_favor: { patron: "veythar", level: 1, max: 61 },
+    abilities: [],
+  });
+  expect(panelStore.getState().characterDetail).toBe(before);
+});
+
+test("encoded patron updates preserve server states and reject unknown recipients", () => {
+  const pid = SAMPLE_CHARACTER.playerId;
+  authStore.setState({ playerId: pid });
+  const send = (event: unknown) =>
+    handleGameEventMessage({
+      payload: new TextEncoder().encode(JSON.stringify(event)),
+      from: { isAgent: true },
+    } as Parameters<typeof handleGameEventMessage>[0]);
+  const favor = { patron: "veythar", level: 40, max: 61 };
+  const row = {
+    id: "gift",
+    name: "Gift",
+    tier: "Devoted",
+    recharge: "long_rest",
+    status: "active",
+    eligible: true,
+    available: true,
+    spent: false,
+    reason: null,
+    state: "ready",
+  };
+  send({
+    type: "session_init",
+    patron_revision: 0,
+    character: { player_id: pid, divine_favor: favor },
+    abilities: [row],
+  });
+  let revision = 0;
+  for (const state of ["spent", "ready", "locked", "ready"]) {
+    const next = {
+      ...row,
+      state,
+      spent: state === "spent" || state === "locked",
+      available: state === "ready",
+      reason: state === "ready" ? null : "Blocked",
+    };
+    send({
+      type: "patron_abilities_updated",
+      patron_revision: ++revision,
+      player_id: pid,
+      divine_favor: { ...favor, level: state === "locked" ? 20 : 40 },
+      abilities: [next],
+    });
+    expect(panelStore.getState().characterDetail?.abilities as unknown).toEqual([next]);
+    expect(panelStore.getState().characterDetail?.divineFavor?.level).toBe(
+      state === "locked" ? 20 : 40,
+    );
+  }
+  const before = panelStore.getState().characterDetail;
+  send({
+    type: "session_init",
+    patron_revision: 0,
+    character: { player_id: "foreign", divine_favor: favor },
+    abilities: [],
+  });
+  expect(panelStore.getState().characterDetail).toBe(before);
+  characterStore.setState({ character: null });
+  authStore.setState({ playerId: null });
+  send({ type: "patron_abilities_updated", player_id: pid, divine_favor: favor, abilities: [] });
+  expect(panelStore.getState().characterDetail).toBe(before);
+  authStore.setState({ playerId: pid });
+  send({
+    type: "session_init",
+    patron_revision: 10,
+    character: { player_id: pid, divine_favor: { patron: "none", level: 0, max: 61 } },
+    abilities: [],
+  });
+  expect(panelStore.getState().characterDetail?.abilities).toEqual([]);
 });

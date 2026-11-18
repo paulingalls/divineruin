@@ -5,6 +5,12 @@ appId: com.divineruin.app
 # still starting, leaving it on its server list instead of the app.
 - clearState
 - openLink: ${APP_LAUNCH_URL}
+- tapOn:
+    text: "Open"
+    optional: true
+- tapOn:
+    text: "Open"
+    optional: true
 # Wait out the first bundle load (slow on Intel emulators) so the tap
 # reaches the dev-menu tutorial instead of timing out before it appears.
 - extendedWaitUntil:

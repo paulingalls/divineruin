@@ -337,17 +337,20 @@ async def test_favor_whisper_mark_uses_host_during_guest_turn():
     sd = party_session()
     background = BackgroundProcess(MagicMock(), sd)
     background._speech_queue.append(
-        PendingSpeech(priority=SpeechPriority.IMPORTANT, instructions="A whisper", stinger_sound="divine")
+        PendingSpeech(
+            priority=SpeechPriority.IMPORTANT, instructions="A whisper", stinger_sound="divine", recipient_id="host"
+        )
     )
     with (
         patch("background_process.publish_companion_cue", new_callable=AsyncMock),
         patch("game_events.publish_game_event", new_callable=AsyncMock),
         patch("background_process.asyncio.sleep", new_callable=AsyncMock),
+        patch("bg_whisper_delivery.db_queries.get_player", new=AsyncMock(return_value={"name": "Host"})),
         patch("background_process.deliver_speech", new_callable=AsyncMock, return_value=True),
         patch(
             "background_process.db_activity_queries.get_divine_favor", new_callable=AsyncMock, return_value={"level": 2}
         ) as favor,
-        patch("background_process.db_mutations_divine.mark_favor_whisper_level", new_callable=AsyncMock) as mark,
+        patch("bg_whisper_delivery.db_mutations_divine.mark_favor_whisper_level", new_callable=AsyncMock) as mark,
     ):
         with sd._bind_authenticated_actor("guest", 1, lambda *_: None):
             await background._deliver_speech()

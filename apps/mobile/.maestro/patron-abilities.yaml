@@ -1,0 +1,69 @@
+appId: com.divineruin.app
+---
+- openLink: ${PATRON_ROUTE}
+- tapOn:
+    text: "Open"
+    optional: true
+- tapOn:
+    text: "Open"
+    optional: true
+- extendedWaitUntil:
+    visible: "Transport received"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: ".*veythar.*40/61"
+    direction: DOWN
+    timeout: 15000
+- assertVisible: ".*Scholar's Ward.*locked"
+- assertVisible: ".*veythar.*40/61"
+- assertVisible: ".*Lorekeeper.*Library.*Devoted.*ready"
+- takeScreenshot: initial
+- tapOn:
+    id: "patron-activate"
+- extendedWaitUntil:
+    visible: ".*Lorekeeper.*Library.*spent"
+    timeout: 15000
+- tapOn:
+    id: "patron-short"
+- extendedWaitUntil:
+    visible: "Completed short"
+    timeout: 15000
+- assertVisible: ".*Lorekeeper.*Library.*spent"
+- tapOn:
+    id: "patron-long"
+- extendedWaitUntil:
+    visible: ".*Lorekeeper.*Library.*ready"
+    timeout: 15000
+- tapOn:
+    id: "patron-promote"
+- extendedWaitUntil:
+    visible: ".*veythar.*60/61"
+    timeout: 15000
+- tapOn:
+    id: "patron-regress"
+- extendedWaitUntil:
+    visible: ".*Lorekeeper.*Library.*locked"
+    timeout: 15000
+- assertVisible: ".*veythar.*20/61"
+- tapOn:
+    id: "patron-secondary"
+- extendedWaitUntil:
+    visible: "Completed secondary"
+    timeout: 15000
+- tapOn:
+    id: "patron-entry"
+- scrollUntilVisible:
+    element:
+      text: ".*Prophecy Fragment.*ready"
+    direction: DOWN
+    timeout: 15000
+- takeScreenshot: entry
+- tapOn:
+    id: "patron-unbound"
+- extendedWaitUntil:
+    visible: "Completed unbound"
+    timeout: 15000
+- assertNotVisible: "PATRON ABILITIES"
+- assertNotVisible: ".*Prophecy Fragment.*"
+- takeScreenshot: unbound

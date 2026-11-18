@@ -1,3 +1,6 @@
+import { panelStore } from "@/stores/panel-store";
+import { parsePatronSnapshot } from "@/audio/patron-abilities";
+import { handleGameEventMessage } from "@/audio/game-event-handler";
 import { test, expect, beforeEach, spyOn } from "bun:test";
 
 import FIXTURE from "../../../../packages/shared/fixtures/event_wire.json";
@@ -49,7 +52,7 @@ test("fixture event types match the TS wire constants", () => {
     expect(EVENTS[name].type).toBe(E.DICE_ROLL);
   }
   expect(EVENTS.discover_reveal_cue.type).toBe(E.PLAY_SOUND);
-  expect(Object.keys(EVENTS)).toHaveLength(16);
+  expect(Object.keys(EVENTS)).toHaveLength(18);
 });
 
 test("recipient-scoped session end and cancellation use the Python wire fixture", () => {
@@ -293,4 +296,40 @@ test("a teammate's item_acquired does NOT pop the local item card", () => {
   characterStore.getState().setCharacter({ ...SAMPLE_CHARACTER, playerId: "player_local" });
   handleGameEvent({ ...EVENTS.item_acquired, player_id: "player_teammate" });
   expect(hudStore.getState().overlays).toHaveLength(0);
+});
+
+test("patron fixture initializes the sheet and malformed snapshots reject atomically", () => {
+  const initial = EVENTS.patron_session_init;
+  authStore.setState({ playerId: initial.character.player_id });
+  const send = (event: unknown) =>
+    handleGameEventMessage({
+      payload: new TextEncoder().encode(JSON.stringify(event)),
+      from: { isAgent: true },
+    } as Parameters<typeof handleGameEventMessage>[0]);
+  send(initial);
+  expect(panelStore.getState().characterDetail?.abilities as unknown).toEqual(initial.abilities);
+  send(EVENTS.patron_abilities_updated);
+  send(FIXTURE.patron_spent_snapshot);
+  expect(panelStore.getState().characterDetail?.abilities as unknown).toEqual(
+    FIXTURE.patron_spent_snapshot.abilities,
+  );
+  const before = panelStore.getState().characterDetail;
+  expect(before?.divineFavor).toEqual(EVENTS.patron_abilities_updated.divine_favor);
+  for (const bad of [
+    FIXTURE.malformed_patron_snapshot,
+    FIXTURE.unknown_tier_patron_snapshot,
+    FIXTURE.malformed_patron_revision,
+  ]) {
+    expect(() => parsePatronSnapshot(bad)).toThrow();
+    send(bad);
+    expect(panelStore.getState().characterDetail).toBe(before);
+  }
+  const characterBefore = characterStore.getState().character;
+  send({
+    ...initial,
+    character: { ...initial.character, name: "Must not apply" },
+    abilities: FIXTURE.malformed_patron_snapshot.abilities,
+  });
+  expect(characterStore.getState().character).toBe(characterBefore);
+  expect(panelStore.getState().characterDetail).toBe(before);
 });
