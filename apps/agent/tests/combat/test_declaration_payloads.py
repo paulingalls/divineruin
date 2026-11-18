@@ -80,6 +80,7 @@ async def test_catalog_condition_action_is_invocable_from_the_produced_name():
         ("ashmark_patrol", "ashmark_soldier_2", "Shield Bash", "prone"),
         ("cult_cell", "cult_leader", "Hold Person", "paralyzed"),
         ("hollow_corrupted_settlement", "hollowed_knight", "Shield Slam", "prone"),
+        ("hollow_knight_boss", "hollowed_knight", "Shield Slam", "prone"),
     ]
     for encounter_id, enemy_id, name, condition in inventory:
         encounter = next(item for item in catalog if item["id"] == encounter_id)

@@ -39,6 +39,10 @@ def _encounter(encounter_id: str) -> dict:
             },
         ),
         (
+            "hollow_knight_boss",
+            {"hollowed_knight": [{"name": "Command Lesser", "kind": "command"}]},
+        ),
+        (
             "hollow_corrupted_settlement",
             {"hollowed_knight": [{"name": "Command Lesser", "kind": "command"}]},
         ),
@@ -69,7 +73,10 @@ async def test_start_combat_hands_each_command_to_the_dm_as_a_mark_action(
 
     produced = next(row for row in catalog_encounters() if row["id"] == encounter_id)
     for enemy in produced["enemies"]:
-        assert roster[enemy["id"]]["actions"] == [action["name"] for action in enemy["action_pool"]]
+        actions = [action["name"] for action in enemy["action_pool"]]
+        if enemy.get("multiattack_sequence"):
+            actions.append(enemy["multiattack_sequence"]["name"])
+        assert roster[enemy["id"]]["actions"] == actions
         assert roster[enemy["id"]]["mark_actions"] == expected.get(enemy["id"], [])
     assert roster["player_1"]["mark_actions"] == []
 

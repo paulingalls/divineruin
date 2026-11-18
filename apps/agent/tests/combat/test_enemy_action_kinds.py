@@ -48,7 +48,7 @@ def test_no_authored_attack_crashes_the_real_resolver_on_a_hit():
             )
 
 
-def test_the_five_orders_are_the_command_carriers():
+def test_command_carrier_inventory():
     carriers = sorted(
         (encounter_id, enemy_id, action["name"])
         for encounter_id, enemy_id, action in _content_actions()
@@ -58,6 +58,7 @@ def test_the_five_orders_are_the_command_carriers():
         ("ashmark_patrol", "ashmark_sergeant", "Rally"),
         ("cult_cell", "cult_fanatic_1", "Bless"),
         ("hollow_corrupted_settlement", "hollowed_knight", "Command Lesser"),
+        ("hollow_knight_boss", "hollowed_knight", "Command Lesser"),
     ]
 
 
