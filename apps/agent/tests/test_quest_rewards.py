@@ -16,6 +16,11 @@ from party_state import PartyMember
 from quest_tools import _update_quest_impl
 
 
+@pytest.fixture(autouse=True)
+def committed_snapshots(monkeypatch):
+    monkeypatch.setattr("attribute_increase_events.publish_snapshots", AsyncMock())
+
+
 def _marker_store(member_ids, progress=None):
     """A stand-in for the `player_quests` table: player_id -> stored blob. `progress` maps a
     player_id to the `current_stage` their row already carries; None means NO row at all (the

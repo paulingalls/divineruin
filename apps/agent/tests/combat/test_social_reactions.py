@@ -288,6 +288,7 @@ async def test_objection_win_pops_the_attack_and_loss_allows_it(won, effect, dam
             "resolved": False,
             "hesitated": True,
             "reason": "Objection raised by player_1",
+            "attack_resolved": False,
         }
         deps["resolver"].resolve_attack.assert_not_called()
 

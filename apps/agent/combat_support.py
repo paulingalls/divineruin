@@ -9,6 +9,7 @@ import check_resolution_attack
 import combat_damage_affinity
 import combat_grapple
 import combat_hollow_death
+import combat_melee_approach
 import combat_resolution
 import combat_spatial
 import combat_wrongdoing
@@ -151,6 +152,7 @@ async def _resolve_attack_packet(
     conn=None,
     sink=None,
     publish_roll: bool = True,
+    weapon_attack: bool = True,
 ) -> dict:
     """Resolve ONE declared attack against CombatParticipant HP.
 
@@ -176,6 +178,7 @@ async def _resolve_attack_packet(
         is_first_attack_of_combat=is_first_attack_of_combat,
         resolver=resolver,
         combat_state=combat_state,
+        weapon_attack=weapon_attack,
     )
     combat_wrongdoing.record_attack(combat_state, attacker, target)
     summary = await apply_attack_result(
@@ -297,8 +300,7 @@ async def apply_attack_result(
         if (
             isinstance(attack_result, check_resolution_attack.AttackResult)
             and attack_result.hit
-            and not check_resolution_attack._is_ranged(action)
-            and "aoe" not in action.get("properties", [])
+            and combat_melee_approach.is_melee(action)
         ):
             spatial = combat_spatial.require_spatial(combat_state)
             if combat_spatial.inside(
@@ -444,6 +446,8 @@ async def apply_attack_result(
             attack_total=attack_result.attack_total,
             target_ac=effective_ac,
             critical=attack_result.critical_success,
+            sneak_attack_dice=attack_result.sneak_attack_dice,
+            sneak_attack_raw_damage=attack_result.sneak_attack_raw_damage,
             bonus_damage=attack_result.bonus_damage,
             bonus_damage_type=attack_result.bonus_damage_type,
             consumed_conditions=attack_result.consumed_conditions,

@@ -254,6 +254,7 @@ def test_combat_end_resets_every_member_after_use():
         "item_recipients": [],
         "defeated_enemies": [],
         "milestone_grants": [],
+        "attribute_increases": [],
         "specialization_fork": None,
         "weapon_durability": [],
     }

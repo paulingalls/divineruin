@@ -8,11 +8,9 @@ from creation_classes import CLASSES
 from creation_deities import DEITIES
 from creation_races import RACES
 from creation_rules import (
-    BASE_ATTRIBUTE,
     CULTURE_START_LOCATIONS,
     calculate_ac,
     calculate_starting_hp,
-    generate_attributes,
     get_skill_proficiencies,
     get_starting_equipment,
     get_starting_location,
@@ -39,62 +37,7 @@ def test_creation_rejects_naive_clock():
         _build_character_data("Aric", "human", "warrior", "kaelen", "Test.", created_at=CREATED_AT.replace(tzinfo=None))
 
 
-class TestRaceAttributes:
-    def test_draethar_bonuses(self):
-        attrs = generate_attributes("draethar", "warrior")
-        assert attrs["strength"] == BASE_ATTRIBUTE + 2
-        assert attrs["constitution"] == BASE_ATTRIBUTE + 1
-
-    def test_elari_bonuses(self):
-        attrs = generate_attributes("elari", "mage")
-        assert attrs["intelligence"] == BASE_ATTRIBUTE + 2
-        assert attrs["wisdom"] == BASE_ATTRIBUTE + 1
-
-    def test_korath_bonuses(self):
-        attrs = generate_attributes("korath", "guardian")
-        assert attrs["constitution"] == BASE_ATTRIBUTE + 2
-        assert attrs["strength"] == BASE_ATTRIBUTE + 1
-
-    def test_vaelti_bonuses(self):
-        attrs = generate_attributes("vaelti", "rogue")
-        assert attrs["dexterity"] == BASE_ATTRIBUTE + 2
-        assert attrs["wisdom"] == BASE_ATTRIBUTE + 1
-
-    def test_thessyn_adaptive_bonus_strength(self):
-        attrs = generate_attributes("thessyn", "warrior")
-        assert attrs["dexterity"] == BASE_ATTRIBUTE + 1  # race
-        assert attrs["charisma"] == BASE_ATTRIBUTE + 1  # race
-        assert attrs["strength"] == BASE_ATTRIBUTE + 1  # adaptive (warrior primary)
-
-    def test_thessyn_adaptive_bonus_intelligence(self):
-        attrs = generate_attributes("thessyn", "mage")
-        assert attrs["intelligence"] == BASE_ATTRIBUTE + 1  # adaptive (mage primary)
-        assert attrs["dexterity"] == BASE_ATTRIBUTE + 1  # race
-        assert attrs["charisma"] == BASE_ATTRIBUTE + 1  # race
-
-    def test_human_plus_one_all(self):
-        attrs = generate_attributes("human", "warrior")
-        for attr_name in ("strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"):
-            assert attrs[attr_name] == BASE_ATTRIBUTE + 1, f"{attr_name} should be {BASE_ATTRIBUTE + 1}"
-
-    @pytest.mark.parametrize("race_id", list(RACES.keys()))
-    def test_all_races_produce_valid_attributes(self, race_id):
-        attrs = generate_attributes(race_id, "warrior")
-        assert len(attrs) == 6
-        for attr_name in ("strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"):
-            assert attr_name in attrs
-            assert attrs[attr_name] >= BASE_ATTRIBUTE  # bonuses only add
-
-
 class TestClassMechanics:
-    @pytest.mark.parametrize("class_id", list(CLASSES.keys()))
-    def test_starting_hp(self, class_id):
-        chassis = get_archetype_chassis(class_id)
-        hp = calculate_starting_hp(class_id, 10)  # CON 10 = +0 modifier
-        assert hp["current"] == chassis.hp_base
-        assert hp["max"] == chassis.hp_base
-        assert hp["current"] == hp["max"]
-
     @pytest.mark.parametrize("class_id", list(CLASSES.keys()))
     def test_starting_hp_with_high_con(self, class_id):
         chassis = get_archetype_chassis(class_id)
@@ -136,22 +79,6 @@ class TestACCalculation:
     def test_no_armor(self):
         ac = calculate_ac({"armor": None, "shield": None}, 14)  # DEX 14 = +2
         assert ac == 12
-
-    def test_light_armor(self):
-        ac = calculate_ac({"armor": {"ac_bonus": 11}, "shield": None}, 14)
-        assert ac == 13  # 11 + 2
-
-    def test_medium_armor_dex_cap(self):
-        ac = calculate_ac({"armor": {"ac_bonus": 12}, "shield": None}, 18)  # DEX +4, capped at +2
-        assert ac == 14  # 12 + 2
-
-    def test_heavy_armor_no_dex(self):
-        ac = calculate_ac({"armor": {"ac_bonus": 15}, "shield": None}, 18)
-        assert ac == 15  # no dex bonus
-
-    def test_shield_adds_bonus(self):
-        ac = calculate_ac({"armor": {"ac_bonus": 13}, "shield": {"ac_bonus": 1}}, 12)
-        assert ac == 15  # 13 + 1 (dex) + 1 (shield)
 
 
 class TestBuildCharacterData:

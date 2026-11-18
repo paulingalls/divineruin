@@ -120,6 +120,10 @@ async def _end_combat_locked(
     # flush costs nothing; its one fallible step (building the handoff agent) is isolated and
     # fallback-guarded in _build_handoff_agent so it cannot strand the session either.
     result = _end_combat_finish(session, cs, outcome, end_data)
+    from attribute_increase_events import publish_snapshots
+
+    with isolated_publish("end_combat snapshots"):
+        await publish_snapshots(session, end_data["level_up_recipients"])
     with isolated_publish("end_combat"):
         await sink.flush()
     return result
@@ -316,6 +320,8 @@ async def _end_combat_db(
         "xp_granted": rewards.xp.xp_granted,
         "summary_xp_granted": rewards.xp.summary_xp_granted,
         "xp_by_player": rewards.xp.granted_by_player,
+        "attribute_increases": rewards.xp.attribute_increases,
+        "level_up_recipients": {ev.payload["player_id"] for ev in sink.captured if ev.event_type == E.LEVEL_UP},
         "milestone_grants": rewards.xp.milestone_grants,
         "specialization_fork": rewards.xp.specialization_fork,
         "defeated_enemies": rewards.spoils.defeated_enemies,
@@ -397,6 +403,7 @@ def _end_combat_finish(
         # milestone_grants voices each L10/15/20 auto-grant, and specialization_fork cues the L5
         # choice the generic select verb resolves.
         "xp_granted": xp_granted,
+        "attribute_increases": end_data["attribute_increases"],
         "milestone_grants": end_data["milestone_grants"],
         "specialization_fork": end_data["specialization_fork"],
         "defeated_enemies": defeated_enemies,

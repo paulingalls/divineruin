@@ -2415,7 +2415,16 @@
       "ashmark",
       "greyvale",
       "underground"
-    ]
+    ],
+    "damage_affinities": {
+      "resistant": [],
+      "immune": [
+        "poison"
+      ],
+      "vulnerable": [
+        "radiant"
+      ]
+    }
   },
   {
     "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],

@@ -14,6 +14,8 @@ class CombatParticipant:
     ac: int
     attributes: dict = field(default_factory=lambda: {"strength": 10, "dexterity": 10})
     level: int = 1
+    archetype_id: str | None = None
+    sneak_attack_round: int | None = None
     iron_resolve_spent: bool = False
     is_fallen: bool = False
     # Instant death (M4.4 story-002): a single hit whose overkill (excess damage past 0) >= hp_max

@@ -224,7 +224,12 @@ async def test_actual_companion_boundary_combat(started, companion, encounter_id
         assert saved is not None
         struck = saved.get_participant(selected.id)
         assert struck is not None
-        assert struck.hp_current < selected.hp_max
+        if struck.hp_current == selected.hp_max:
+            approaches = [p for p in result["packets"] if p.get("actor_id") in (player.id, companion)]
+            assert len(approaches) == 2
+            assert all(p["closed_distance"] and p["attack_resolved"] is False and p["moved_ft"] > 0 for p in approaches)
+        else:
+            assert struck.hp_current < selected.hp_max
 
 
 @pytest.mark.parametrize(
@@ -240,14 +245,12 @@ async def test_actual_companion_boundary_combat(started, companion, encounter_id
 async def test_absent_companion_boundary(started, encounter_id, level):
     ctx, _ = await started(encounter_id, level=level)
     assert not any(p.type == "companion" for p in ctx.userdata.combat_state.participants)
+    import db_queries
+
+    row = await db_queries.get_player(ctx.userdata.player_id)
+    assert row is not None
     assert ctx.userdata.combat_state.get_participant(ctx.userdata.player_id).hp_max == calculate_max_hp(
-        "warrior",
-        level,
-        attribute_modifier(
-            build_character_data(
-                "Reference", "draethar", "warrior", None, "", created_at=datetime(2026, 10, 1, tzinfo=UTC)
-            )["attributes"]["constitution"]
-        ),
+        "warrior", level, attribute_modifier(row["attributes"]["constitution"])
     )
 
 
@@ -387,6 +390,9 @@ async def test_strength_fixture_uses_created_warrior_and_level_grants(started, e
     ctx, _ = await started(encounter_id)
     player = await db_queries.get_player(ctx.userdata.player_id)
     assert player is not None
+    for _ in range(points):
+        attr = "strength" if expected["attributes"]["strength"] < 20 else "constitution"
+        expected["attributes"][attr] += 1
     for field in ("attributes", "equipment", "saving_throw_proficiencies"):
         assert player[field] == expected[field]
     assert player["level"] == level
@@ -400,6 +406,10 @@ async def test_strength_fixture_uses_created_warrior_and_level_grants(started, e
     assert ("extra_attack" in actor.enhancers) == (level >= 10)
     if level >= 10:
         enemy = next(p for p in ctx.userdata.combat_state.participants if p.type == "enemy")
+        ctx.userdata.combat_state.spatial["positions"][enemy.id] = dict(
+            ctx.userdata.combat_state.spatial["positions"][actor.id]
+        )
+        await db_mutations.save_combat_state(ctx.userdata.combat_state.combat_id, ctx.userdata.combat_state.to_dict())
         await combat_turn._declare_phase_impl(
             ctx, {actor.id: {"type": "attack", "action": actor.action_pool[0]["name"], "target_id": enemy.id}}
         )

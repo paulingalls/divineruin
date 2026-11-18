@@ -72,7 +72,10 @@ async def _update_quest_impl(
             activities=activities,
             divine_mutations=divine_mutations,
         )
+    from attribute_increase_events import award_recipients, publish_snapshots
+
     response = finish_quest(context.userdata, pending)
+    await publish_snapshots(context.userdata, award_recipients(pending.events))
     for event_type, payload in pending.events:
         await publish_game_event(context.userdata.room, event_type, payload, event_bus=context.userdata.event_bus)
     for pid in sorted({pid for pid, _ in pending.item_recipients}):

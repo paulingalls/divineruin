@@ -41,7 +41,7 @@ def test_catalog_has_all_21_spec_conditions():
     assert set(ALL_CONDITIONS) <= set(CONDITION_CATALOG)
     assert len(ALL_CONDITIONS) == 21
     assert "temporary_hollowed" in CONDITION_CATALOG
-    assert len(CONDITION_CATALOG) == 23
+    assert len(CONDITION_CATALOG) == 24
 
 
 @pytest.mark.parametrize("condition_type", ALL_CONDITIONS)

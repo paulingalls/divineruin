@@ -16,10 +16,10 @@ from sample_fixtures import CONTENT_ROOT, make_context, make_mock_room
 import combat_resolution
 import db
 import db_mutations
+import db_queries
 import mode_tools
 from companion_profiles import get_companion_profile
 from creation_rules import build_character_data
-from hp_scaling import calculate_max_hp
 from progression_tools import _award_xp_core
 from rules_engine import XP_FOR_LEVEL, attribute_modifier
 from session_data import CompanionState
@@ -125,26 +125,14 @@ async def started(reset_db_pool, monkeypatch):
                 conn=cast(asyncpg.Connection, conn),
                 pending_events=pending_events,
             )
-        hp = calculate_max_hp(player_class, level, attribute_modifier(created["attributes"]["constitution"]))
-        await pool.execute(
-            "UPDATE players SET data = jsonb_set(data, '{hp}', $2::jsonb) WHERE player_id = $1",
-            pid,
-            json.dumps({"current": hp, "max": hp}),
-        )
-        from rules_engine import calculate_max_pools
-
-        pools = calculate_max_pools(
-            player_class, level, {k: attribute_modifier(v) for k, v in created["attributes"].items()}
-        )
-        for pool_name in ("stamina", "focus"):
-            maximum = getattr(pools, pool_name)
-            if maximum is not None:
-                await pool.execute(
-                    "UPDATE players SET data = jsonb_set(data, ARRAY[$2], $3::jsonb) WHERE player_id = $1",
-                    pid,
-                    pool_name,
-                    json.dumps({"current": maximum, "max": maximum}),
-                )
+        awarded = await db_queries.get_player(pid)
+        assert awarded is not None
+        fresh = {
+            name: {**awarded[name], "current": awarded[name]["max"]}
+            for name in ("hp", "stamina", "focus")
+            if name in awarded
+        }
+        await pool.execute("UPDATE players SET data=data || $2::jsonb WHERE player_id=$1", pid, json.dumps(fresh))
         ctx = make_context(pid, room=make_mock_room())
         if companion:
             profile = get_companion_profile(companion)
@@ -261,7 +249,7 @@ async def assert_catalog_effects(started):
         )
         with patch("check_resolution.dice_roll", return_value=_d20(face)), reference_damage():
             result = await _resolve_round(ctx)
-        packet = next(p for p in result["packets"] if p["actor_id"] == enemy_id)
+        packet = next(p for p in result["packets"] if p["actor_id"] == enemy_id and not p.get("attack_pending"))
         assert packet["condition_inflicted"] == condition
         state = ctx.userdata.combat_state
         saved = await db_mutations.load_combat_state(state.combat_id)
@@ -318,7 +306,7 @@ async def assert_catalog_effects(started):
         result = await _resolve_round(ctx)
     mark.assert_called_once()
     assert any(p.get("kind") == "command" for p in result["packets"])
-    attack = next(p for p in result["packets"] if p["actor_id"] == soldier["id"])
+    attack = next(p for p in result["packets"] if p["actor_id"] == soldier["id"] and not p.get("attack_pending"))
     assert attack["attack_total"] == 21, attack
     assert attack["damage"] > 0
     assert ctx.userdata.combat_state.focus_marks == {}
@@ -382,6 +370,8 @@ async def assert_catalog_grapple_release(started):
     pid = ctx.userdata.player_id
     declarations = {pid: {"type": "defend"}, "companion_kael": {"type": "defend"}}
     for source, target in [("mawling_1", pid), ("mawling_2", "companion_kael")]:
+        state = ctx.userdata.combat_state
+        state.spatial["positions"][source] = dict(state.spatial["positions"][target])
         produced = next(p for p in roster["participants"] if p["id"] == source)
         name = next(name for name in produced["actions"] if name == "Lunge")
         declarations[source] = {"type": "attack", "action": name, "target_id": target}

@@ -37,6 +37,7 @@ async def mock_txn(conn):
 
 def make_db_mod():
     mock_conn = MagicMock()
+    mock_conn.execute = AsyncMock()
     mock_db = MagicMock()
     mock_db.transaction = lambda: mock_txn(mock_conn)
     return mock_db, mock_conn

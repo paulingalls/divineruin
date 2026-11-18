@@ -448,6 +448,7 @@
     "ability_type": "core",
     "level_requirement": 1,
     "cost": { "stamina": 3, "focus": 0, "scaling": null },
+    "applies_condition": "precise_strike",
     "effect": "Gain advantage on your next attack. Enables Sneak Attack solo.",
     "narration_cue": "You find the soft spot and wait for the opening."
   },
