@@ -45,6 +45,9 @@
         "imports-of": "packages/shared/src/entities/encounter.test.ts"
       },
       {
+        "imports-of": "packages/shared/src/entities/god.test.ts"
+      },
+      {
         "imports-of": "packages/shared/src/entities/item.test.ts"
       },
       {
@@ -65,7 +68,7 @@
       {
         "imports-of": "packages/shared/src/entities/terrain.test.ts"
       },
-      "content/{companions,npcs,role_archetypes,locations,encounter_templates,creatures,loot_tables}.json",
+      "content/{companions,npcs,role_archetypes,locations,encounter_templates,creatures,loot_tables,gods,archetypes,engine_implementations}.json",
       "packages/shared/fixtures/**",
       "assets/images/{companion,npc}_*.png",
       "apps/agent/terrain.py",
