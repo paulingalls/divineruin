@@ -28,7 +28,8 @@ class AlignmentHeartbeat:
         now = self._now()
         if now - self._last_tick < self._interval_s:
             return
-        member_ids = self._sd.present_member_ids
+        # Sorted: end_combat locks party rows in sorted order, so the same order cannot deadlock.
+        member_ids = sorted(self._sd.present_member_ids)
         events = []
         grants = []
         try:
