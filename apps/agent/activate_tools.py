@@ -31,6 +31,7 @@ import abilities
 import ability_tools
 import draethar_inner_fire
 import mentor_variants
+import patron_ability_tools
 import patron_gift_tools
 import reaction_gate
 import spell_casting
@@ -57,6 +58,7 @@ _RESERVED = frozenset(
         unbound_tools.RAW_CHANNELING,
         VEYTHAR_INSIGHT,
         SYRATH_SHADOW_VEIL,
+        patron_ability_tools.WEIGHT_OF_TRUTH,
     }
 )
 
@@ -86,6 +88,9 @@ async def activate(
     After an offered failed knowledge check, 'veythar_lorekeepers_insight' rerolls it once;
     take the new result. A short rest restores this gift.
 
+    Patron tier ids come from query_info(kind='patron').abilities: spend only when available;
+    narrate refusals. 'valdris_weight_of_truth' spends Weight of Truth until a short rest.
+
     Pass target_id when the capability affects ONE other entity (a spell/ability target). A Veil
     Ward is always raised or dismissed by the player speaking; omit target_id for it. Pass target_ids (a list)
     for a spell or ability that hits several allies/enemies at once — not both. Omit both for a
@@ -114,6 +119,8 @@ def _resolve_kind(id: str, *, spells_mod, abilities_mod, variants_mod, anchors_m
     dispatch when the id matches nothing (AC4)."""
     if id in _RESERVED:
         return id
+    if id in patron_ability_tools.catalog():
+        return "patron_ability"
     if id in anchors_mod.VEIL_ANCHORS:
         return "anchor"
     try:
@@ -178,6 +185,8 @@ async def _activate_impl(
             raise
         raise ToolError(f"{unknown} Reactions that fit the open window: {', '.join(valid)}.") from unknown
 
+    if kind in {"patron_ability", patron_ability_tools.WEIGHT_OF_TRUTH}:
+        return await patron_ability_tools.activate(context, id)
     if kind == SYRATH_SHADOW_VEIL:
         return await patron_gift_tools.activate_shadow_veil(context)
     if kind == VEYTHAR_INSIGHT:

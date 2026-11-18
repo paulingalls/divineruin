@@ -179,9 +179,8 @@ def test_rest_recharges_only_authored_type_and_party_recipient(harness):
         walk.validator = lambda *_: None
         receipt = await RestWalk.command(cast(Any, walk), "long")
         assert not receipt.is_error, receipt.output
-        assert (await walk.state())["spent"] is True
+        assert await walk.state() == {"spent": False, "pending": None}
         await walk.connect(harness)
-        assert "spent" in await walk.use(error=True)
         walk.add_guest()
         await walk.pool.execute(
             "UPDATE players SET data=data || $2::jsonb WHERE player_id=$1",

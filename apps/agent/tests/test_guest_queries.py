@@ -43,27 +43,19 @@ async def test_guest_abilities_read_guest_class_ownership_spells_and_variant():
 
 async def test_guest_patron_describes_guest_standing():
     ctx = guest_context()
-    activities = MagicMock(
-        get_divine_favor=AsyncMock(
-            side_effect=lambda pid: {"patron": "sentinel", "level": 24 if pid == "player_2" else 0, "max": 61}
+    from _gods_content import load_gods
+
+    queries = MagicMock(
+        get_player=AsyncMock(
+            side_effect=lambda pid: {
+                "divine_favor": {"patron": "veythar", "level": 24 if pid == "player_2" else 0, "max": 61}
+            }
         )
     )
-
-    def catalog():
-        return [
-            {
-                "god_id": "sentinel",
-                "short_name": "Sentinel",
-                "title": "the Boundary",
-                "favor_actions": {},
-                "layer_1_gift": {"id": "sentinel_gift"},
-            }
-        ]
-
     with ctx.userdata._bind_authenticated_actor("player_2", 4, lambda *_: None):
-        result = json.loads(await _query_patron_impl(ctx, activities=activities, gods_loader=catalog))
+        result = json.loads(await _query_patron_impl(ctx, queries=queries, gods_loader=load_gods))
     assert result["level"] == 24
-    activities.get_divine_favor.assert_awaited_once_with("player_2")
+    queries.get_player.assert_awaited_once_with("player_2")
 
 
 async def test_guest_npc_disposition_filters_knowledge_for_guest():

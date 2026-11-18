@@ -75,16 +75,25 @@ async def offer(session, player, result, pending, *, conn):
 
 
 async def recharge(player_id, player, rest_type, *, conn):
-    if (gift := syrath_gift(player)) is not None:
-        if gift["recharge"] == f"{rest_type}_rest" and shadow_veil_state(player)["spent"]:
-            await write_state(player_id, {"spent": False}, gift_id=SYRATH_SHADOW_VEIL, conn=conn)
+    from _gods_content import load_gods
+    from patron_ability_tools import spent_state
+
+    patron_id = (player.get("divine_favor") or {}).get("patron")
+    patron = next((p for p in load_gods() if p["god_id"] == patron_id), None)
+    if patron is None:
         return
-    gift = veythar_gift(player)
-    if gift is None or gift["recharge"] != f"{rest_type}_rest":
-        return
-    state = gift_state(player)
-    if state != {"spent": False, "pending": None}:
-        await write_state(player_id, {"spent": False, "pending": None}, gift_id=VEYTHAR_INSIGHT, conn=conn)
+    recharges = {"short_rest", "long_rest"} if rest_type == "long" else {f"{rest_type}_rest"}
+    uses = [patron["layer_1_gift"], *patron["layer_3_tier_abilities"].values()]
+    for use in uses:
+        if use["recharge"] not in recharges:
+            continue
+        ability_id = use["id"]
+        if ability_id == VEYTHAR_INSIGHT:
+            state, default = gift_state(player), {"spent": False, "pending": None}
+        else:
+            state, default = spent_state(player, ability_id), {"spent": False}
+        if state != default:
+            await write_state(player_id, default, gift_id=ability_id, conn=conn)
 
 
 @serialize_combat_check

@@ -1,0 +1,107 @@
+"""Authored patron uses: derived eligibility, durable spend and shared projection."""
+
+import json
+
+from livekit.agents.llm import ToolError
+
+import db
+import db_queries
+from _gods_content import load_gods
+from patron_favor import get_patron_tier
+
+TIERS = ("Acknowledged", "Devoted", "Exalted")
+WEIGHT_OF_TRUTH = "valdris_weight_of_truth"
+_REST = {"short_rest": "a short rest", "long_rest": "a long rest", "per_session": "a new session"}
+
+
+def catalog():
+    return {
+        ability["id"]: (patron["god_id"], tier, ability)
+        for patron in load_gods()
+        for tier in TIERS
+        for ability in [patron["layer_3_tier_abilities"][tier.lower()]]
+    }
+
+
+def spent_state(player, ability_id):
+    namespace = player.get("patron_gifts", {})
+    if not isinstance(namespace, dict):
+        raise ValueError("Malformed patron_gifts")
+    state = namespace.get(ability_id, {"spent": False})
+    if not isinstance(state, dict) or set(state) != {"spent"} or type(state["spent"]) is not bool:
+        raise ValueError(f"Malformed patron ability state: {ability_id}")
+    return state
+
+
+def blocking_reason(ability, tier, required, spent):
+    if required is not None and TIERS.index(tier) < TIERS.index(required):
+        return f"Requires {required} tier."
+    if ability["status"] != "active" or ability.get("resolution", "narrated") != "narrated":
+        return "This ability is pending implementation."
+    if ability["recharge"] == "always":
+        return "This ability is always-on; it cannot be activated."
+    if spent:
+        return f"Already spent; requires {_REST[ability['recharge']]} to restore it."
+    return None
+
+
+def project_abilities(player, patron):
+    tier = get_patron_tier(player["divine_favor"])
+    if tier is None:
+        return []
+    rows = []
+    for required in TIERS:
+        ability = patron["layer_3_tier_abilities"][required.lower()]
+        spent = spent_state(player, ability["id"])["spent"]
+        reason = blocking_reason(ability, tier, required, spent)
+        rows.append(
+            {
+                **{key: ability[key] for key in ("id", "name", "recharge", "status")},
+                "tier": required,
+                "eligible": TIERS.index(tier) >= TIERS.index(required),
+                "spent": spent,
+                "available": reason is None,
+                "reason": reason,
+            }
+        )
+    return rows
+
+
+async def activate(context, ability_id):
+    from patron_gift_tools import write_state
+
+    if ability_id == WEIGHT_OF_TRUTH:
+        patron_id, required = "valdris", None
+        ability = next(p["layer_1_gift"] for p in load_gods() if p["god_id"] == patron_id)
+    else:
+        patron_id, required, ability = catalog()[ability_id]
+    session = context.userdata
+    actor = session.acting_player_id
+    async with db.transaction() as conn:
+        player = await db_queries.get_player(actor, conn=conn, for_update=True)
+        if player is None:
+            raise ToolError(f"Player {actor!r} not found.")
+        favor = player.get("divine_favor")
+        if favor is None:
+            raise ToolError("Cannot activate: no patron or divine_favor row.")
+        if (favor.get("patron") or "none") == "none":
+            raise ToolError("Cannot activate patron abilities: Unbound.")
+        tier = get_patron_tier(favor)
+        if favor["patron"] != patron_id:
+            raise ToolError(f"This ability requires a follower of {patron_id}.")
+        reason = blocking_reason(ability, tier, required, spent_state(player, ability_id)["spent"])
+        if reason:
+            raise ToolError(reason)
+        session.validate_acting_player(actor)
+        await write_state(actor, {"spent": True}, gift_id=ability_id, conn=conn)
+    return json.dumps(
+        {
+            "id": ability_id,
+            "name": ability["name"],
+            "effect": ability["effect"],
+            "recharge": ability["recharge"],
+            "dm_cue": "Narrate the authored answer or effect. Obtain mechanical facts from engine/query tools "
+            'before stating any number; for enemy AC use query_info(kind="creature", target_id=<enemy id>). '
+            "Never invent an unavailable number.",
+        }
+    )

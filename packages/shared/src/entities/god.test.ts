@@ -33,6 +33,13 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     status: "active",
     recharge: "short_rest",
   });
+  expect(validateGods(catalog).find((god) => god.god_id === "valdris")?.layer_1_gift).toMatchObject(
+    {
+      id: "valdris_weight_of_truth",
+      status: "active",
+      recharge: "short_rest",
+    },
+  );
   const narrated = new Set([
     "veythar_lorekeepers_library",
     "syrath_whisper_network",

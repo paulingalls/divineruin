@@ -895,7 +895,7 @@
       "effect": "Compel an NPC to acknowledge a statement you believe is true. They need not agree or act, but cannot dismiss or ignore it.",
       "trigger": "When you speak that statement to an NPC.",
       "recharge": "short_rest",
-      "status": "awaits_rest"
+      "status": "active"
     },
     "layer_2_resonance": {
       "name": "Ordered Magic",
