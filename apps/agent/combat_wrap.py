@@ -21,7 +21,6 @@ from combat_ability import _find_action
 from combat_end import _end_combat_db
 from combat_events import emit_or_publish
 from combat_fate_rolls import PhaseRolls
-from combat_packet import roll_tick_save
 from combat_ui_update import build_combat_ui_update
 from condition_restrictions import cannot_act
 from declarations import DeclarationType, resolve_declaration
@@ -100,6 +99,13 @@ def next_envelope(state) -> dict:
     }
 
 
+def _roll_tick_save(actor, event, save_resolver):
+    # Clearing saves predate proficiency and never consume a limited-use bonus die.
+    return save_resolver.roll_participant_save(
+        actor, event["save"], 10, event["type"], bonus_dice_eligible=False, include_proficiency=False
+    )
+
+
 async def wrap_phase(
     session: SessionData,
     state,
@@ -113,18 +119,7 @@ async def wrap_phase(
     resonance_mutations,
     fate_rolls=None,
 ) -> tuple:
-    """Beat 3 -> Beat 4, in the LAST commit of the phase (M29, story-016).
-
-    Runs exactly once per round, when the held enemy queue has drained — never on a pause commit
-    and never in both. It rides the last commit rather than the first because an enemy blow can be
-    what ends the fight, so the end-condition cannot be computed before the enemies have acted.
-
-    Returns ``(state, wrap, wrap_adv, exhaustion_narration, ended_outcome, end_data,
-    pending_by_member)``. The Resonance map is BUILT here rather than taken as a parameter: the
-    caller's copy is only ever populated on the pause branch, which is the branch that does not
-    reach this function, so accepting one would have been a value this function always discarded.
-    It comes back because the post-commit in-memory sync reads it.
-    """
+    """Advance to wrap once, then drain clearing saves before round finalization."""
     fate_rolls = fate_rolls if fate_rolls is not None else PhaseRolls()
     end_data: dict | None = None
     cursor = state.wrap_continuation
@@ -135,7 +130,7 @@ async def wrap_phase(
             for p in state.participants
             if (narrative := fatigue_narration.exhaustion_narrative_for_conditions(p.conditions))
         }
-        state, wrap_adv = combat_phase.advance_combat_phase(state)
+        state, wrap_adv = combat_phase.advance_combat_phase(state, defer_legendary=True)
         assert wrap_adv.wrap is not None
         wrap = wrap_adv.wrap
         cursor = {"wrap": asdict(wrap), "exhaustion": exhaustion_narration, "index": 0}
@@ -153,7 +148,7 @@ async def wrap_phase(
                 cursor,
                 actor.id,
                 event["type"],
-                partial(roll_tick_save, actor, event, save_resolver),
+                partial(_roll_tick_save, actor, event, save_resolver),
                 queries=queries,
                 conn=conn,
             )
@@ -165,8 +160,7 @@ async def wrap_phase(
                 actor.conditions = conditions.remove_condition(actor.conditions, event["type"])
             cursor["index"] += 1
         state.beat = combat_phase.PhaseBeat.DECLARATION
-        if wrap.tick_conditions_due:
-            combat_phase._reset_legendary_actions(state)
+        combat_phase._reset_legendary_actions(state)
     state.wrap_continuation = None
     wrap_adv = combat_phase.PhaseAdvance(
         beat_completed=combat_phase.PhaseBeat.WRAP,

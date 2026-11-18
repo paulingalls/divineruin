@@ -196,18 +196,19 @@ async def _resolve_phase_locked(
                 event_bus=session.event_bus,
             )
             await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
+        assert fate_rolls.kept is None, "Selected Fate roll was not consumed"
 
     # Sync and tear down before fallible publishes, preventing a second reward payout.
     # Capture the combat location before teardown can move the party to its death anchor.
     ward_location_id = session.location_id
     handoff: tuple | None = None
+    if resuming:
+        zhael_fate.effects_committed(session)
     if ended_outcome is None:
         session.combat_state = state
     else:
         assert end_data is not None
         handoff = _end_combat_finish(session, state, ended_outcome, end_data)
-    if resuming:
-        zhael_fate.effects_committed(session)
     offer = None
     if fate_rolls.pending is not None:
 
@@ -228,7 +229,8 @@ async def _resolve_phase_locked(
                     kept=selected,
                     resuming=True,
                 )
-                assert isinstance(packet, str)
+                if isinstance(packet, tuple):
+                    return zhael_fate.Resumed(json.loads(packet[1]), handoff=packet)
                 return zhael_fate.Resumed(
                     json.loads(packet),
                     paused=session.fate_offer is not None

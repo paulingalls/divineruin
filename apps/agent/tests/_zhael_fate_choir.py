@@ -2,8 +2,8 @@ from unittest.mock import patch
 
 from _patron_engine_fixtures import configure
 from _unbound_path_fixtures import row
-from _zhael_fate_fixtures import defend, game_tools
-from acceptance._capstone_helpers import _build_state, _d20, _damage_die, _enemy
+from _zhael_fate_fixtures import attack, defend, game_tools
+from acceptance._capstone_helpers import _build_state, _d20, _damage_die, _enemy, _player
 from acceptance.test_kaelen_iron_resolve_capstone import required_player
 
 import choir_encounter
@@ -172,5 +172,128 @@ async def melody(world, save_succeeds):
         assert has_condition(target.conditions, "charmed") is not save_succeeds
         with pytest.raises(ToolError, match="current Fate"):
             await _keep(call, offer)
+    finally:
+        await db_mutations.delete_combat_state(state.combat_id)
+
+
+async def hostile_aura_reload(world):
+    from sample_fixtures import make_context
+    from voice_condition_fixtures import place_actors
+
+    await configure(world, "zhael", "mage")
+    pid = world.ids[0]
+    session, state, choir = await _choir_state(world)
+    guard = _enemy("guard", 30)
+    state.participants.append(guard)
+    state.initiative_order.append(guard.id)
+    place_actors(state)
+    call = game_tools(session, declare_phase, resolve_phase, activate)
+    try:
+        await call("declare_phase", declarations=[defend(pid), defend(choir.id), defend(guard.id)])
+        with patch("check_resolution.dice_roll", side_effect=[_d20(19), _d20(17)]) as dice:
+            ally = (await call("resolve_phase"))["fate_offer"]
+            await _keep(call, ally)
+            hostile = (await call("resolve_phase"))["fate_offer"]
+            assert hostile["roller_id"] == guard.id and hostile["die"] == 17
+            assert session.combat_state is not None and session.combat_state.choir_encounter is not None
+            assert session.combat_state.choir_encounter["aura_receipts"] == {pid: 1}
+            fresh = make_context(player_id=pid).userdata
+            fresh.combat_state = await db_mutations.load_combat_state(state.combat_id)
+            done = await game_tools(fresh, resolve_phase)("resolve_phase")
+            assert dice.call_count == 2
+        assert done["round"] == 2 and "fate_offer" not in done
+        stored = await db_mutations.load_combat_state(state.combat_id)
+        assert stored is not None and stored.choir_encounter is not None
+        assert stored.choir_encounter["aura_receipts"] == {pid: 1, guard.id: 1}
+    finally:
+        await db_mutations.delete_combat_state(state.combat_id)
+
+
+async def area_across_reload(world):
+    from sample_fixtures import make_context, published_payloads
+    from voice_condition_fixtures import place_actors
+
+    from check_tools import check
+    from conditions import has_condition
+
+    host, guest = world.ids
+    await configure(world, "zhael", "mage", hp={"current": 100, "max": 100})
+    await configure(world, "aelora", "mage", index=1, hp={"current": 100, "max": 100})
+    catalog = await load_creature_enemy("hollow_choir", encounter_id="choir", enemy_id="choir", role="named")
+    choir = _enemy("choir", 200)
+    choir.creature_id = "hollow_choir"
+    choir.action_pool = catalog["action_pool"]
+    state = _build_state(host, host, [choir])
+    companion = _player("ally_companion")
+    companion.type = "companion"
+    state.participants[1:1] = [_player(guest), companion]
+    target_ids = [host, guest, companion.id, choir.id]
+    state.initiative_order = target_ids
+    place_actors(state)
+    session = world.ctx.userdata
+    session.combat_state = state
+    session.concentration.spell_id = "divine_bless"
+    await update_player_concentration(host, "divine_bless")
+    call = game_tools(session, declare_phase, resolve_phase, activate, check)
+
+    def hp(current):
+        return [required_player(current, pid).hp_current for pid in target_ids]
+
+    try:
+        await call(
+            "declare_phase",
+            declarations=[
+                defend(host),
+                defend(guest),
+                defend(companion.id),
+                {**attack(choir.id, host), "action": "Cacophony"},
+            ],
+        )
+        await call("resolve_phase")
+        before = hp(session.combat_state)
+        with (
+            patch(
+                "check_resolution.dice_roll", side_effect=[_d20(7), _d20(19), _d20(15), _d20(19), _d20(8), _d20(20)]
+            ) as dice,
+            patch("combat_enemy_action.dice_roll", return_value=_damage_die(8)) as damage,
+        ):
+            first = (await call("resolve_phase"))["fate_offer"]
+            assert first["roller_id"] == host and hp(session.combat_state) == before
+            nested = (await call("check", roll={"kind": "dice", "notation": "1d4"}))["fate_offer"]
+            assert nested["roller_id"] == host and nested["die"] == 19 and nested["offer_id"] != first["offer_id"]
+            assert session.concentration.spell_id == "divine_bless"
+            assert not has_condition(required_player(session.combat_state, host).conditions, "stunned")
+            second = (await call("activate", id="zhael_fates_thread", offer_id=nested["offer_id"], keep="original"))[
+                "fate_offer"
+            ]
+            assert second["roller_id"] == guest and second["offer_id"] != nested["offer_id"]
+            assert hp(session.combat_state) == [before[0] - 8, *before[1:]]
+            assert not any(e.get("roll_type") == "narrative" for e in published_payloads(session.room))
+            fresh = make_context(player_id=host, party_member_ids=[guest], room=session.room).userdata
+            fresh.combat_state = await db_mutations.load_combat_state(state.combat_id)
+            restored = game_tools(fresh, resolve_phase, activate)
+            third = (await restored("resolve_phase"))["fate_offer"]
+            assert third["roller_id"] == companion.id
+            last = (await restored("activate", id="zhael_fates_thread", offer_id=third["offer_id"], keep="original"))[
+                "fate_offer"
+            ]
+            assert last["roller_id"] == choir.id
+            await restored("activate", id="zhael_fates_thread", offer_id=last["offer_id"])
+            result = await restored("activate", id="zhael_fates_thread", offer_id=last["offer_id"], keep="reroll")
+            assert dice.call_count == 6 and damage.call_count == 4
+        assert [target["target_id"] for target in result["packets"][0]["targets"]] == target_ids
+        assert hp(fresh.combat_state) == [initial - loss for initial, loss in zip(before, [8, 8, 4, 4], strict=True)]
+        source = required_player(fresh.combat_state, choir.id)
+        assert source.action_ledger["cacophony"]["remaining"] == 0
+        assert has_condition(source.conditions, "deafened") and not has_condition(source.conditions, "stunned")
+        assert [
+            entry["roll"] for entry in published_payloads(session.room) if entry.get("roll_type") == "saving_throw"
+        ] == [
+            7,
+            15,
+            19,
+            20,
+        ]
+        assert has_condition(required_player(fresh.combat_state, guest).conditions, "stunned")
     finally:
         await db_mutations.delete_combat_state(state.combat_id)

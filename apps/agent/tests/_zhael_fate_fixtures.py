@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 from livekit.agents.llm import FunctionCall, FunctionTool, RawFunctionTool
 from livekit.agents.llm.utils import prepare_function_arguments
@@ -10,15 +11,20 @@ from base_agent import BaseGameAgent
 def game_tools(session, *tools):
     agent = BaseGameAgent(instructions="Resolve the roll.", tools=list(tools))
     live_session = AgentSession(userdata=session)
+    live_session.update_agent(agent)
     registered = {tool.id: tool for tool in agent.tools}
 
-    async def call(name, **arguments):
+    async def call(name, **arguments) -> Any:
         tool = registered[name]
         assert isinstance(tool, (FunctionTool, RawFunctionTool))
         function_call = FunctionCall(name=name, call_id=name, arguments=json.dumps(arguments))
         context = RunContext(session=live_session, speech_handle=SpeechHandle.create(), function_call=function_call)
         args, kwargs = prepare_function_arguments(fnc=tool, json_arguments=arguments, call_ctx=context)
-        return json.loads(await tool(*args, **kwargs))
+        result = await tool(*args, **kwargs)
+        if isinstance(result, tuple):
+            agent, payload = result
+            return agent, json.loads(payload)
+        return json.loads(result)
 
     return call
 

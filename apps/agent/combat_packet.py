@@ -5,8 +5,7 @@ resolve_phase (in combat_turn) orchestrates the per-phase transaction; the
 helpers here do the actual resolution work it drives: _prevalidate_ability_focus
 gates player ability Focus before the loop, _resolve_one_packet dispatches a
 single initiative-ordered packet to the right resolver (attack / ability /
-de-escalate / defend), and _resolve_tick_saves resolves the Beat-4 save-to-clear
-conditions the wrap surfaces. All are pure-ish helpers — they mutate in-memory
+de-escalate / defend). The helpers mutate in-memory
 state and write through injected mutation/query modules, but own no transaction."""
 
 import combat_fate
@@ -15,7 +14,6 @@ import combat_marks
 import combat_recharge
 import combat_spatial_declarations
 import combat_voice_rules
-import conditions
 import spell_casting
 from combat_ability import (
     AbilityCastOutcome,
@@ -39,43 +37,6 @@ from condition_sources import DeliveryRefused
 from declarations import DeclarationType
 from encounter_actions import action_kind
 from session_data import SessionData
-
-# Beat-4 save-to-clear DC (M4.3, story-004): the spec's end-of-turn condition saves (Frightened's
-# WIS save) have no per-condition DC, so use a fixed moderate DC. A seam: a future per-condition DC
-# would replace this constant (assumption f760751a1109).
-_CONDITION_CLEAR_DC = 10
-
-
-def _resolve_tick_saves(state, tick_conditions_due, save_resolver):
-    """Resolve the Beat-4 save-to-clear conditions the wrap surfaced (M4.3, story-004).
-
-    For each {actor_id, type, save, source}, roll the actor's save against the clear DC; on a SUCCESS
-    remove that condition from the actor (it clears), on a failure it persists. Pure in-memory: the
-    removal rides the phase's existing save_combat_state / end-combat write — no extra persist here,
-    no client event (narration-only). The engine never rolls; this is where the roll happens.
-    """
-    for event in tick_conditions_due:
-        actor = state.get_participant(event["actor_id"])
-        if actor is None:
-            continue
-        # Shared participant-save SSOT (roll_participant_save): builds player_data from the actor and
-        # expands the 3-letter tick_save ("wis" -> "wisdom"). Engine-auto tick-clear: never spends the
-        # actor's +1d4 (bonus_dice_eligible=False, M4.8 story-003), and include_proficiency=False keeps
-        # the pre-M13 clear odds — folding proficiency in here would be an untested M4.3 balance shift.
-        result = roll_tick_save(actor, event, save_resolver)
-        if result.success:
-            actor.conditions = conditions.remove_condition(actor.conditions, event["type"])
-
-
-def roll_tick_save(actor, event, save_resolver):
-    return save_resolver.roll_participant_save(
-        actor,
-        event["save"],
-        _CONDITION_CLEAR_DC,
-        event["type"],
-        bonus_dice_eligible=False,
-        include_proficiency=False,
-    )
 
 
 async def _resolve_one_packet(

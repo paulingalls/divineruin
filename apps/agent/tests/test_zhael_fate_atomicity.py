@@ -149,3 +149,79 @@ async def test_accept_rechecks_speaker_after_waiting_for_row(world):
         assert FATE not in (await row(world, 0)).get("patron_gifts", {})
     finally:
         await lifecycle.aclose()
+
+
+async def test_concentration_settlement_retries_without_replaying_committed_damage(world):
+    from acceptance._capstone_helpers import _player
+    from sample_fixtures import published_payloads
+    from voice_condition_fixtures import place_actors
+
+    from conditions import apply_condition, has_condition
+    from db_mutations_concentration import update_player_concentration
+
+    host, victim = world.ids
+    await configure(world, "zhael", "mage")
+    await configure(world, "aelora", "mage", index=1, hp={"current": 100, "max": 100})
+    state = _build_state(host, host, [_enemy("foe", 30)])
+    state.participants.append(_player(victim))
+    state.initiative_order.insert(1, victim)
+    required_player(state, victim).conditions = apply_condition([], "blessed", source="divine_bless")
+    place_actors(state)
+    session = world.ctx.userdata
+    session.combat_state = state
+    caster = session.member_state(victim)
+    caster.concentration.spell_id = "divine_bless"
+    await update_player_concentration(victim, "divine_bless")
+    lifecycle = _live_party(session, host, victim)
+    call = game_tools(session, declare_phase, resolve_phase, activate)
+    save_combat_state = db_mutations.save_combat_state
+
+    async def abort_after_write(*args, conn, **kwargs):
+        await save_combat_state(*args, conn=conn, **kwargs)
+        await conn.execute("SELECT 1 / 0")
+
+    def keep(offer):
+        return call("activate", id=FATE, offer_id=offer["offer_id"], keep="original")
+
+    try:
+        await call(
+            "declare_phase",
+            declarations=[
+                defend(host),
+                defend(victim),
+                {**attack("foe", victim), "action": "Scimitar"},
+            ],
+        )
+        await call("resolve_phase")
+        with (
+            session._bind_authenticated_actor(host, 1, lifecycle.require_authorized),
+            patch("check_resolution.dice_roll", side_effect=[_d20(19), _d20(7)]) as dice,
+            patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)) as damage,
+        ):
+            attack_offer = (await call("resolve_phase"))["fate_offer"]
+            save_offer = (await keep(attack_offer))["fate_offer"]
+            assert save_offer["roller_id"] == victim and save_offer["die"] == 7
+            before = session.combat_state.to_dict()
+            published = published_payloads(session.room)
+            assert (await row(world))["hp"]["current"] == 96
+            with patch("db_mutations.save_combat_state", abort_after_write), pytest.raises(asyncpg.DivisionByZeroError):
+                await keep(save_offer)
+            saved = await db_mutations.load_combat_state(state.combat_id)
+            assert saved is not None and saved.to_dict() == session.combat_state.to_dict() == before
+            assert caster.concentration.spell_id == "divine_bless"
+            assert published_payloads(session.room) == published
+            with patch("combat_events.publish_game_event", side_effect=RuntimeError("publication fault")) as publish:
+                settled = await keep(save_offer)
+            assert publish.called
+            assert settled["packets"][0]["concentration_broken"] == "divine_bless"
+            assert dice.call_count == 2 and damage.call_count == 1
+            with pytest.raises(ToolError, match="current Fate"):
+                await keep(save_offer)
+        persisted = await db_mutations.load_combat_state(state.combat_id)
+        target = required_player(persisted, victim)
+        assert target.hp_current == 96 and not has_condition(target.conditions, "blessed")
+        assert (await row(world))["hp"]["current"] == 96
+        assert session.member_state(victim).concentration.spell_id is None
+    finally:
+        await lifecycle.aclose()
+        await db_mutations.delete_combat_state(state.combat_id)

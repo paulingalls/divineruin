@@ -26,6 +26,10 @@ Keep = Literal["original"] | Literal["reroll"]
 class Resumed:
     facts: dict
     paused: bool = False
+    handoff: tuple | None = None
+
+    def tool_result(self) -> str | tuple:
+        return self.handoff if self.handoff is not None else json.dumps(self.facts)
 
 
 @dataclass(frozen=True)
@@ -170,7 +174,7 @@ async def settle(session: SessionData, keep: Keep = "original") -> Resumed:
     return result
 
 
-async def activate(session: SessionData, ability_id: str, offer_id: str | None, keep: Keep | None) -> str:
+async def activate(session: SessionData, ability_id: str, offer_id: str | None, keep: Keep | None) -> str | tuple:
     offer = session.fate_offer
     if not offer_id or offer is None or offer_id != offer.id:
         raise ToolError("Supply the current Fate's Thread offer_id.")
@@ -195,7 +199,7 @@ async def activate(session: SessionData, ability_id: str, offer_id: str | None, 
     if keep is not None:
         if keep not in ("original", "reroll"):
             raise ToolError("Keep must be original or reroll.")
-        return json.dumps((await settle(session, keep)).facts)
+        return (await settle(session, keep)).tool_result()
 
     from patron_gift_tools import write_state
 
@@ -221,11 +225,11 @@ async def activate(session: SessionData, ability_id: str, offer_id: str | None, 
     )
 
 
-async def _activate_lucky(session: SessionData, actor: str, offer: FateOffer) -> str:
+async def _activate_lucky(session: SessionData, actor: str, offer: FateOffer) -> str | tuple:
     from patron_ability_events import publish_patron_abilities
 
     flipped = offer.flip(21 - offer.die)
     await spend(session, actor, LUCKY)
     offer.accepted_by, offer.accepted_flip = actor, flipped
     await publish_patron_abilities(session.room, actor, session.event_bus)
-    return json.dumps((await settle(session)).facts)
+    return (await settle(session)).tool_result()

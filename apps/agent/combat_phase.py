@@ -120,6 +120,8 @@ def advance_combat_phase(
     state: CombatState,
     declarations: dict[str, dict] | None = None,
     rng: random.Random | None = None,
+    *,
+    defer_legendary: bool = False,
 ) -> tuple[CombatState, PhaseAdvance]:
     """Advance the combat phase machine by exactly one beat.
 
@@ -170,8 +172,9 @@ def advance_combat_phase(
             next_state.focus_marks = {}
             # Refresh each living Boss's 1/round legendary budget for the round just entered,
             # then surface what's available so the DM can narrate the extra Boss beat.
-            _reset_legendary_actions(next_state)
-            legendary_available = _boss_legendaries(next_state)
+            if not defer_legendary:
+                _reset_legendary_actions(next_state)
+                legendary_available = _boss_legendaries(next_state)
             next_state.beat = PhaseBeat.DECLARATION
         return next_state, PhaseAdvance(
             beat_completed=PhaseBeat.WRAP, wrap=wrap, legendary_available=legendary_available

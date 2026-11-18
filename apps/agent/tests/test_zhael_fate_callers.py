@@ -244,14 +244,20 @@ async def test_hostile_attack_holds_before_impact(world, original, kept, damage)
 
 
 async def test_wrap_holds_clearing_saves_and_recovers_next_original(world):
+    from combat_turn import consume_legendary_action
     from conditions import apply_condition, has_condition
+    from encounter_roles import EncounterRole
 
     await configure(world, "zhael", "mage")
     pid = world.ids[0]
     foe = _enemy("foe", 30)
+    foe.role = EncounterRole.BOSS
     state = _build_state(pid, pid, [foe])
+    state.veil_ward = {"source": "paladin", "rounds_remaining": 3}
     player = required_player(state, pid)
     player.conditions = apply_condition([], "frightened", source=foe.id, duration=3)
+    player.conditions = apply_condition(player.conditions, "blessed", source="divine_bless")
+    player.saving_throw_proficiencies = ["wisdom"]
     foe.conditions = apply_condition([], "frightened", source=pid, duration=3)
     session = world.ctx.userdata
     session.combat_state = state
@@ -259,7 +265,7 @@ async def test_wrap_holds_clearing_saves_and_recovers_next_original(world):
     try:
         await call("declare_phase", declarations=[defend(pid), defend(foe.id)])
         await call("resolve_phase")
-        with patch("check_resolution.dice_roll", side_effect=[_d20(19), _d20(18)]) as dice:
+        with patch("check_resolution.dice_roll", side_effect=[_d20(9), _d20(18)]) as dice:
             held = (await call("resolve_phase"))["fate_offer"]
             assert held["roll_kind"] == "save" and held["roller_id"] == pid
             assert has_condition(required_player(session.combat_state, pid).conditions, "frightened")
@@ -268,81 +274,29 @@ async def test_wrap_holds_clearing_saves_and_recovers_next_original(world):
             assert next_offer["roller_id"] == foe.id and next_offer["offer_id"] != held["offer_id"]
             fresh = SessionData(player_id=pid, location_id="accord_guild_hall")
             fresh.combat_state = await db_mutations.load_combat_state(state.combat_id)
-            assert not has_condition(required_player(fresh.combat_state, pid).conditions, "frightened")
+            player = required_player(fresh.combat_state, pid)
+            assert has_condition(player.conditions, "frightened") and has_condition(player.conditions, "blessed")
             assert has_condition(required_player(fresh.combat_state, foe.id).conditions, "frightened")
-            result = await game_tools(fresh, resolve_phase)("resolve_phase")
+            fresh.resonance.current = 9
+            resumed = game_tools(fresh, resolve_phase, consume_legendary_action)
+            with pytest.raises(ToolError, match="resolve_phase"):
+                await resumed("consume_legendary_action", boss_id=foe.id)
+            result = await resumed("resolve_phase")
             assert dice.call_count == 2
         assert result["round"] == 2 and result["beat"] == "declaration"
+        assert fresh.resonance.current == 8
+        assert result["legendary_available"][0]["actor_id"] == foe.id
         persisted = await db_mutations.load_combat_state(state.combat_id)
+        assert persisted is not None and persisted.veil_ward == {"source": "paladin", "rounds_remaining": 2}
         assert not has_condition(required_player(persisted, foe.id).conditions, "frightened")
     finally:
         await db_mutations.delete_combat_state(state.combat_id)
 
 
 async def test_area_holds_each_catalog_target_in_order_across_reload(world):
-    from sample_fixtures import make_context
+    from _zhael_fate_choir import area_across_reload
 
-    from conditions import has_condition
-    from creature_combat_loader import load_creature_enemy
-
-    host, guest = world.ids
-    await configure(world, "zhael", "mage")
-    catalog = await load_creature_enemy("hollow_choir", encounter_id="choir", enemy_id="choir", role="named")
-    choir = _enemy("choir", 200)
-    choir.creature_id = "hollow_choir"
-    choir.action_pool = catalog["action_pool"]
-    state = _build_state(host, host, [choir])
-    companion = _player("ally_companion")
-    companion.type = "companion"
-    state.participants[1:1] = [_player(guest), companion]
-    target_ids = [host, guest, companion.id, choir.id]
-    state.initiative_order = target_ids
-    place_actors(state)
-    session = world.ctx.userdata
-    session.combat_state = state
-    call = game_tools(session, declare_phase, resolve_phase, activate, check)
-
-    def hp(current):
-        return [required_player(current, pid).hp_current for pid in target_ids]
-
-    try:
-        await call(
-            "declare_phase",
-            declarations=[
-                defend(host),
-                defend(guest),
-                defend(companion.id),
-                {**attack(choir.id, host), "action": "Memory Scream"},
-            ],
-        )
-        await call("resolve_phase")
-        before = hp(session.combat_state)
-        with (
-            patch("check_resolution.dice_roll", side_effect=[_d20(7), _d20(15), _d20(19), _d20(20)]) as dice,
-            patch("combat_enemy_action.dice_roll", return_value=_damage_die(8)) as damage,
-        ):
-            first = (await call("resolve_phase"))["fate_offer"]
-            assert first["roller_id"] == host and hp(session.combat_state) == before
-            second = (await call("check", roll={"kind": "dice", "notation": "1d4"}))["fate_offer"]
-            assert second["roller_id"] == guest and second["offer_id"] != first["offer_id"]
-            assert hp(session.combat_state) == [before[0] - 8, *before[1:]]
-            assert not any(e.get("roll_type") == "narrative" for e in published_payloads(session.room))
-            fresh = make_context(player_id=host, party_member_ids=[guest]).userdata
-            fresh.combat_state = await db_mutations.load_combat_state(state.combat_id)
-            restored = game_tools(fresh, resolve_phase, activate)
-            third = (await restored("resolve_phase"))["fate_offer"]
-            assert third["roller_id"] == companion.id
-            last = (await restored("activate", id="zhael_fates_thread", offer_id=third["offer_id"], keep="original"))[
-                "fate_offer"
-            ]
-            assert last["roller_id"] == choir.id
-            result = await restored("activate", id="zhael_fates_thread", offer_id=last["offer_id"], keep="original")
-            assert dice.call_count == damage.call_count == 4
-        assert [target["target_id"] for target in result["packets"][0]["targets"]] == target_ids
-        assert hp(fresh.combat_state) == [before[0] - 8, before[1] - 8, *before[2:]]
-        assert has_condition(required_player(fresh.combat_state, guest).conditions, "stunned")
-    finally:
-        await db_mutations.delete_combat_state(state.combat_id)
+    await area_across_reload(world)
 
 
 async def test_combined_attack_pauses_concentration_before_condition_save(world):
@@ -440,3 +394,38 @@ async def test_default_hostile_fate_leaves_the_new_reaction_unspent(world):
     from _zhael_fate_damage import post_roll_window
 
     await post_roll_window(world)
+
+
+@pytest.mark.parametrize(("original", "kept"), [(8, 19), (19, 8)])
+async def test_hostile_multiattack_and_corrosion_hold_each_roll(world, original, kept):
+    from _zhael_fate_damage import hostile_multiattack_and_held_item
+
+    await hostile_multiattack_and_held_item(world, original, kept)
+
+
+@pytest.mark.parametrize(
+    "producer", ["initiative", "shove", "reaction_contest", "experimentation", "echo_and_narrative"]
+)
+async def test_excluded_rolls_reach_their_effect_without_a_fate_offer(world, producer):
+    import _zhael_fate_exclusions
+
+    await getattr(_zhael_fate_exclusions, producer)(world)
+
+
+@pytest.mark.parametrize("target_hp", [3, 9])
+async def test_ally_swings_reoffer_until_the_target_falls(world, target_hp):
+    from _zhael_fate_damage import ally_swings
+
+    await ally_swings(world, target_hp)
+
+
+async def test_terminal_hostile_settlement_skips_clearing_rolls_and_dispatch(world):
+    from _zhael_fate_damage import terminal_hostile_save
+
+    await terminal_hostile_save(world)
+
+
+async def test_choir_hostile_aura_recovers_an_outstanding_original(world):
+    from _zhael_fate_choir import hostile_aura_reload
+
+    await hostile_aura_reload(world)

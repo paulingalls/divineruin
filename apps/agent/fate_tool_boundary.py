@@ -45,8 +45,8 @@ def wrap_tool(tool):
             ):
                 return await tool(*args, **kwargs)
             settled = await zhael_fate.settle(session)
-            if settled.paused:
-                return json.dumps(settled.facts)
+            if settled.paused or settled.handoff is not None:
+                return settled.tool_result()
             try:
                 result = await tool(*args, **kwargs)
             except ToolError as error:

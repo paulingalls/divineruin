@@ -336,11 +336,17 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None, fate_roll
             continue
 
         if fate_rolls is not None and fate_rolls.pending is not None:
+            if head is reacted and reaction_packets:
+                head["pending_reaction_packets"] = reaction_packets
+                del summaries[: len(reaction_packets)]
             return summaries
 
-        if head is reacted:
-            combat_reaction_effect.record_shield_wear(reaction_packets, state, head, summary)
-            combat_reaction_effect.record_save_advantage(reaction_packets, summary)
+        deferred_reactions = head.pop("pending_reaction_packets", [])
+        recorded_reactions = reaction_packets if head is reacted else deferred_reactions
+        if recorded_reactions:
+            combat_reaction_effect.record_shield_wear(recorded_reactions, state, head, summary)
+            combat_reaction_effect.record_save_advantage(recorded_reactions, summary)
+        summaries.extend(deferred_reactions)
         summaries.append(strike_summary(head, summary))
         state.held_actions.pop(0)
         _assert_iteration_progress(state, head, summaries, summary_start)

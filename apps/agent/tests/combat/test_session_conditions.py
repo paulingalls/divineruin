@@ -11,7 +11,6 @@ import db_queries
 from check_resolution import resolve_skill_check
 from combat_end import _end_combat_db
 from combat_events import EventSink
-from combat_packet import _resolve_tick_saves
 from conditions import apply_condition
 from session_data import SessionData
 
@@ -65,20 +64,6 @@ async def test_save_empty_clears_conditions(dev_db_pool):
         assert player["conditions"] == []
     finally:
         await pool.execute("DELETE FROM players WHERE player_id = $1", player_id)
-
-
-def test_tick_save_expands_abbreviated_save_type_for_real_resolver():
-    import check_resolution_save
-
-    state = _make_combat_state()
-    player = state.get_participant("player_1")
-    assert player is not None
-    player.attributes = {"wisdom": 14}
-    player.conditions = apply_condition([], "frightened", source="wraith")
-    due = [{"actor_id": "player_1", "type": "frightened", "save": "wis", "source": "wraith"}]
-
-    _resolve_tick_saves(state, due, check_resolution_save)
-    assert [c["type"] for c in player.conditions] in ([], ["frightened"])
 
 
 def _end_combat_mocks():

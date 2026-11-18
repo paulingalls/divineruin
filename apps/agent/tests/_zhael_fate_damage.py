@@ -142,3 +142,140 @@ async def post_roll_window(world):
     finally:
         await lifecycle.aclose()
         await db_mutations.delete_combat_state(state.combat_id)
+
+
+async def hostile_multiattack_and_held_item(world, original, kept):
+    from acceptance.test_inventory_taint import seed_stack
+
+    await configure(world, "zhael", "mage", hp={"current": 100, "max": 100})
+    pid = world.ids[0]
+    item = "shortsword_basic"
+    await seed_stack(world.pool, pid, item, 1, False, equipped=True, current_hits=10)
+    catalog = await load_creature_enemy("hollow_mawling", encounter_id="maw", enemy_id="maw", role="standard")
+    maw = _enemy("maw", 30)
+    maw.creature_id = "hollow_mawling"
+    maw.action_pool = catalog["action_pool"]
+    maw.multiattack_sequence = catalog["multiattack_sequence"]
+    assert maw.multiattack_sequence is not None
+    strikes = [
+        {"action": action, "target_id": pid, "held_item_id": item if action == "Dissolution Maw" else ""}
+        for action in maw.multiattack_sequence["attacks"]
+    ]
+    state = _build_state(pid, pid, [maw])
+    session = world.ctx.userdata
+    session.combat_state = state
+    call = game_tools(session, declare_phase, resolve_phase, activate)
+
+    async def hits():
+        return await world.pool.fetchval(
+            "SELECT (data->>'current_hits')::int FROM player_inventory WHERE player_id=$1 AND item_id=$2", pid, item
+        )
+
+    def fate(offer, **kwargs):
+        return call("activate", id="zhael_fates_thread", offer_id=offer["offer_id"], **kwargs)
+
+    try:
+        await call(
+            "declare_phase",
+            declarations=[
+                defend(pid),
+                {
+                    "kind": "multiattack",
+                    "actor_id": maw.id,
+                    "action": maw.multiattack_sequence["name"],
+                    "strikes": strikes,
+                },
+            ],
+        )
+        await call("resolve_phase")
+        with (
+            patch("check_resolution.dice_roll", side_effect=[_d20(19), _d20(18), _d20(original), _d20(kept)]),
+            patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
+            patch("combat_item_rider.dice_roll", return_value=_damage_die(2)) as corrosion,
+        ):
+            one = (await call("resolve_phase"))["fate_offer"]
+            first_id = session.combat_state.held_actions[0]["execution_id"]
+            assert required_player(session.combat_state, pid).hp_current == 100
+            two = (await fate(one, keep="original"))["fate_offer"]
+            assert [one["die"], two["die"]] == [19, 18] and one["offer_id"] != two["offer_id"]
+            assert session.combat_state.held_actions[0]["execution_id"] != first_id
+            assert required_player(session.combat_state, pid).hp_current < 100
+            rider = (await fate(two, keep="original"))["fate_offer"]
+            after_hits = required_player(session.combat_state, pid).hp_current
+            assert rider["roll_kind"] == "save" and rider["die"] == original and await hits() == 10
+            await fate(rider)
+            assert not corrosion.called
+            result = await fate(rider, keep="reroll")
+            assert required_player(session.combat_state, pid).hp_current == after_hits
+        packet = result["packets"][0]["durability_rider"]
+        assert packet["save_roll"] == kept and packet["applied"] is (kept < 13)
+        assert await hits() == (6 if kept < 13 else 10)
+        assert corrosion.call_count == (1 if kept < 13 else 0)
+    finally:
+        await world.pool.execute("DELETE FROM player_inventory WHERE player_id=$1 AND item_id=$2", pid, item)
+        await db_mutations.delete_combat_state(state.combat_id)
+
+
+async def ally_swings(world, target_hp):
+    await configure(world, "zhael", "mage")
+    pid = world.ids[0]
+    foe = _enemy("foe", target_hp)
+    state = _build_state(pid, pid, [foe])
+    required_player(state, pid).enhancers = ["extra_attack"]
+    session = world.ctx.userdata
+    session.combat_state = state
+    call = game_tools(session, declare_phase, resolve_phase, activate)
+
+    def decline(offer):
+        return call("activate", id="zhael_fates_thread", offer_id=offer["offer_id"], keep="original")
+
+    try:
+        await call("declare_phase", declarations=[attack(pid, foe.id), defend(foe.id)])
+        with (
+            patch("check_resolution.dice_roll", side_effect=[_d20(19), _d20(18)]) as dice,
+            patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
+        ):
+            first = (await call("resolve_phase"))["fate_offer"]
+            assert required_player(session.combat_state, foe.id).hp_current == target_hp
+            result = await decline(first)
+            if target_hp > 4:
+                second = result["fate_offer"]
+                assert second["die"] == 18 and second["offer_id"] != first["offer_id"]
+                assert required_player(session.combat_state, foe.id).hp_current == target_hp - 4
+                result = await decline(second)
+                assert [hit["roll"] for hit in result["packets"][0]["attacks"]] == [19, 18]
+            else:
+                assert "fate_offer" not in result
+            assert dice.call_count == (2 if target_hp > 4 else 1)
+        assert required_player(session.combat_state, foe.id).hp_current == max(0, target_hp - 8)
+    finally:
+        await db_mutations.delete_combat_state(state.combat_id)
+
+
+async def terminal_hostile_save(world):
+
+    from check_tools import check
+
+    await configure(world, "zhael", "mage", hp={"current": 100, "max": 100})
+    pid = world.ids[0]
+    foe = _enemy("foe", 30)
+    state = _build_state(pid, pid, [foe])
+    state.deescalated = True
+    required_player(state, pid).conditions = apply_condition([], "frightened", source=foe.id, duration=3)
+    session = world.ctx.userdata
+    session.combat_state = state
+    call = game_tools(session, declare_phase, resolve_phase, activate, check)
+    try:
+        await call("declare_phase", declarations=[defend(pid), {**attack(foe.id, pid), "action": "Scimitar"}])
+        await call("resolve_phase")
+        with patch("check_resolution.dice_roll", return_value=_d20(1)) as dice:
+            offer = (await call("resolve_phase"))["fate_offer"]
+            _, result = await call("check", roll={"kind": "dice", "notation": "1d20"})
+            assert dice.call_count == 1
+        assert result["outcome"] == "deescalated" and "notation" not in result
+        assert session.combat_state is None
+        assert await db_mutations.load_combat_state(state.combat_id) is None
+        with pytest.raises(ToolError, match="current Fate"):
+            await call("activate", id="zhael_fates_thread", offer_id=offer["offer_id"], keep="original")
+    finally:
+        await db_mutations.delete_combat_state(state.combat_id)

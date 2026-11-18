@@ -35,24 +35,6 @@ def test_save_eligible_false_skips_fold_and_consume():
     assert res.consumed_conditions == ()
 
 
-def test_tick_save_loop_passes_eligible_false():
-    from combat_packet import _resolve_tick_saves
-
-    save_resolver = MagicMock()
-    save_resolver.roll_participant_save = MagicMock(return_value=SimpleNamespace(success=False, consumed_conditions=()))
-    actor = SimpleNamespace(
-        attributes=_ATTRS, level=3, conditions=apply_condition(BLESSED, "frightened"), saving_throw_proficiencies=[]
-    )
-    state = MagicMock()
-    state.get_participant = MagicMock(return_value=actor)
-
-    _resolve_tick_saves(state, [{"actor_id": "p1", "type": "frightened", "save": "wis", "source": "x"}], save_resolver)
-
-    _, kwargs = save_resolver.roll_participant_save.call_args
-    assert kwargs.get("bonus_dice_eligible") is False
-    assert "blessed" in [c["type"] for c in actor.conditions]
-
-
 @pytest.mark.asyncio
 async def test_concentration_break_save_passes_eligible_false():
     import concentration_break
