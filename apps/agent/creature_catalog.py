@@ -1,6 +1,7 @@
 """Internal reads of the seeded creature catalog."""
 
 import json
+import re
 
 import db
 from world_regions import REGION_IDS
@@ -31,6 +32,63 @@ async def query_creatures_by_region(region_id: str, tier: int | None = None) -> 
     return [json.loads(row["data"]) for row in rows]
 
 
+async def encounter_template_summaries(location: dict, level: int) -> list[dict]:
+    from livekit.agents.llm import ToolError
+
+    pool = await db.get_pool()
+    templates = await pool.fetch("SELECT id, data FROM encounter_templates ORDER BY id")
+    quests = await pool.fetch("SELECT data FROM quests")
+    scenes = await pool.fetch("SELECT data FROM scenes")
+    catalog = {row["id"]: json.loads(row["data"]) for row in await pool.fetch("SELECT id, data FROM creatures")}
+    bound = {
+        stage["completion_conditions"]["encounter"]
+        for row in quests
+        for stage in json.loads(row["data"])["stages"]
+        if "encounter" in stage.get("completion_conditions", {})
+    }
+
+    def scene_bindings(value):
+        if isinstance(value, str):
+            yield from re.findall(
+                r"encounter_id\s*=\s*[\"']([^\"']+)[\"']", value.replace('\\"', '"').replace("\\'", "'")
+            )
+        elif isinstance(value, dict):
+            for child in value.values():
+                yield from scene_bindings(child)
+        elif isinstance(value, list):
+            for child in value:
+                yield from scene_bindings(child)
+
+    for row in scenes:
+        bound.update(scene_bindings(json.loads(row["data"])))
+    summaries = []
+    for row in templates:
+        try:
+            template = json.loads(row["data"])
+            recommended = template["recommended_party_level"]
+            if type(recommended) is not int or recommended < 1:
+                raise ValueError("invalid recommended_party_level")
+            species = [catalog[enemy["creature_id"]] for enemy in template["enemies"]]
+            if not species:
+                raise ValueError("no enemy species")
+            for creature in species:
+                for field in ("regions", "terrains"):
+                    if not isinstance(creature[field], list) or not creature[field]:
+                        raise ValueError(f"invalid {field} for {creature['id']}")
+            description = re.split(r"(?<=[.!?])\s+", species[0]["narration"]["first_sighting"].strip())[0]
+            difficulty = template["difficulty"]
+            if not description or not isinstance(difficulty, str) or not difficulty:
+                raise ValueError("missing description or difficulty")
+            if row["id"] in bound or recommended > level:
+                continue
+            if not all(location["region"] in c["regions"] and location["terrain"] in c["terrains"] for c in species):
+                continue
+            summaries.append({"id": row["id"], "difficulty": difficulty, "description": description})
+        except (KeyError, TypeError, ValueError, AttributeError) as error:
+            raise ToolError(f"Encounter template '{row['id']}' is invalid: {error}") from error
+    return summaries
+
+
 async def creature_summary(session, target_id):
     from livekit.agents.llm import ToolError
 
@@ -50,11 +108,15 @@ async def creature_summary(session, target_id):
             if player is None:
                 raise ToolError(f"Player '{session.acting_player_id}' not found.")
             members = await load_party_players(session, player, queries=db_queries)
-            tier = tier_for_player_level(mean_player_level(members))
+            level = mean_player_level(members)
+            tier = tier_for_player_level(level)
             region = location.get("region")
             if not isinstance(region, str):
                 raise ValueError(f"Location '{session.location_id}' has invalid region {region!r}")
             rows = await query_creatures_by_region(region, tier)
+            if not isinstance(location.get("terrain"), str):
+                raise ValueError(f"Location '{session.location_id}' has invalid terrain")
+            templates = await encounter_template_summaries(location, level)
     except (CreatureNotFoundError, ValueError) as error:
         raise ToolError(f"Creature query failed: {error}") from error
     keys = (
@@ -74,4 +136,4 @@ async def creature_summary(session, target_id):
         "signature_ability",
     )
     summaries = [{key: row[key] for key in keys if key in row} for row in rows]
-    return json.dumps(summaries[0] if target_id else summaries)
+    return json.dumps(summaries[0] if target_id else {"creatures": summaries, "encounter_templates": templates})

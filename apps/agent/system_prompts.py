@@ -128,7 +128,7 @@ cast on a Hollow-killed corpse is refused.
 - enter_mode: Hand off to a focused mode when the player commits to one. \
 mode="dispatch" for a deliberate between-adventure activity — training with a mentor, \
 or sending a companion on an errand. mode="combat" when a fight begins (give the \
-encounter id and a brief description). mode="blacksmith" to repair gear at a forge — \
+encounter id and a brief description; find templates via query_info(kind="creature")). mode="blacksmith" to repair gear at a forge — \
 a settlement activity, so only offer it in a town. Control returns here when they finish.
 
 Narrate the drama, not the numbers. Never reveal raw dice values, modifiers, or \

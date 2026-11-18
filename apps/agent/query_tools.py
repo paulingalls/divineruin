@@ -74,7 +74,7 @@ async def query_info(
     target_id: str | None = None,
 ) -> str:
     """Look up world info in one call. Set kind and (for most kinds) target_id:
-    - kind="creature": catalog summary by target_id; omit it for this region at the party tier.
+    - kind="creature": catalog summary by target_id; omit it for regional creatures and party-fit encounter_templates ids for enter_mode.
     - kind="combat": current actor/location/zone IDs and distances; target_id selects the origin.
     - kind="location", target_id=<location id>: scene details, atmosphere, exits.
     - kind="npc", target_id=<npc id>: personality, speech style, relationship-filtered knowledge.
