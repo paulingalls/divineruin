@@ -277,3 +277,18 @@ async def test_ward_reduces_cantrip_to_zero_dice_without_an_attribute_bonus(spel
         result = await _resolve_round(ctx)
     cast = next(p["cast"] for p in result["packets"] if p["actor_id"] == ctx.userdata.player_id)
     assert cast["damage_result"]["hit"] and cast["damage_result"]["damage"] == 0
+
+
+async def test_divine_judgment_rolls_its_authored_hollow_dice(spell_fight):
+    from _hollow_resonance_fixtures import hollow
+
+    ctx = spell_fight
+    await prepare_spell(ctx, "divine_divine_judgment")
+    target = hollow("foe")
+    target.hp_current = target.hp_max = 100
+    ctx.userdata.combat_state.participants[1] = target
+    await declare_spell(ctx, "divine_divine_judgment")
+    with patch("check_resolution.dice_roll", return_value=_d20(1)), patch("dice.roll", side_effect=minimum_roll):
+        result = await _resolve_round(ctx)
+    cast = next(p["cast"] for p in result["packets"] if p["actor_id"] == ctx.userdata.player_id)
+    assert cast["damage_result"]["damage"] == 8 + cast["resonance_modifiers"]["damage_dice"]
