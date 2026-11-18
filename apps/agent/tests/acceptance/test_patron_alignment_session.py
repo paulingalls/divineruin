@@ -158,6 +158,20 @@ async def test_due_once_and_recent_context(livekit_server, reset_db_pool, tmp_pa
         assert await state(run.player_id) == (52, {})
         assert len(run.packets(E.DIVINE_FAVOR_CHANGED)) == 1
         assert [line for line in clock.sd.recent_events if "Patron deed judgment" in line] == [memory]
+        await produce(run, "fled")
+        assert await state(run.player_id) == (52, {"fled_combat": "pending"})
+        await clock.tick(3599)
+        assert await state(run.player_id) == (52, {"fled_combat": "pending"})
+        assert len(published) == 1
+        await clock.tick(3600)
+        assert await state(run.player_id) == (49, {})
+        assert len(published) == 2 and published[1][1] == (49, {})
+        await until(lambda: len(run.packets(E.DIVINE_FAVOR_CHANGED)) == 2)
+        packet = run.packets(E.DIVINE_FAVOR_CHANGED)[1]
+        assert (packet["player_id"], packet["amount"], packet["patron_id"]) == (run.player_id, -3, "kaelen")
+        judgments = [line for line in clock.sd.recent_events if "Patron deed judgment" in line]
+        assert len(judgments) == 2 and judgments[0] == memory
+        assert all(text in judgments[1] for text in (run.player_id, "kaelen", "-3", "49"))
 
 
 async def test_pause_then_negative_judgment(livekit_server, reset_db_pool, tmp_path, clock, published):
