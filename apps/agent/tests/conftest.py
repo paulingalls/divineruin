@@ -12,7 +12,6 @@ from _paid_tests import (
     paid_skip_reason,
 )
 from _repo_inventory import snapshot_repository
-from acceptance import _postgres_fixtures
 from archetype_abilities_config_fixture import setup_archetype_abilities_config_fixture
 from archetype_milestones_config_fixture import setup_archetype_milestones_config_fixture
 from archetypes_config_fixture import setup_archetypes_config_fixture
@@ -26,10 +25,6 @@ from spells_config_fixture import setup_spells_config_fixture
 from training_config_fixture import setup_training_config_fixture
 
 import db
-
-# A mixed explicit file selection can collect acceptance directory nodes more than once.
-# Session plugin registration keeps their database fixtures visible and their provider shared.
-pytest_plugins = (_postgres_fixtures.__name__,)
 
 # Tracks whether THIS process started docker compose, so sessionfinish only
 # stops what sessionstart started, plus the DSN sessionstart resolved — the

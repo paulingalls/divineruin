@@ -25,6 +25,20 @@ for (const row of corpus.valid) {
     expect(() => validateEncounterReferences(row, ids)).not.toThrow();
   });
 }
+for (const size of [0, -1, 1.5, true, "2", null]) {
+  test(`recommended party size rejects ${JSON.stringify(size)}`, () => {
+    expect(() =>
+      validateEncounterReferences({ ...corpus.valid[0], recommended_party_size: size }, ids),
+    ).toThrow("recommended_party_size");
+  });
+}
+for (const size of [1, 2]) {
+  test(`recommended party size accepts ${size}`, () => {
+    expect(() =>
+      validateEncounterReferences({ ...corpus.valid[0], recommended_party_size: size }, ids),
+    ).not.toThrow();
+  });
+}
 test("all sixteen templates", async () => {
   const rows = (await Bun.file(
     new URL("../../../../content/encounter_templates.json", import.meta.url),

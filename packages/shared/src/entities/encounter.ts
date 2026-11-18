@@ -292,6 +292,11 @@ export function validateEncounterReferences(
   const level = row.recommended_party_level;
   if (typeof level !== "number" || !Number.isInteger(level) || level < 1 || level > 20)
     throw new Error(`${label}: recommended_party_level must be an integer 1-20`);
+  if (Object.hasOwn(row, "recommended_party_size")) {
+    const size = row.recommended_party_size;
+    if (typeof size !== "number" || !Number.isInteger(size) || size < 1)
+      throw new Error(`${label}: recommended_party_size must be a positive integer`);
+  }
   if (!Array.isArray(row.enemies) || !row.enemies.length)
     throw new Error(`${label}: enemies must be a nonempty list`);
   const seen = new Set<string>();

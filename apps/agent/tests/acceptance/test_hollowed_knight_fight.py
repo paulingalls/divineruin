@@ -87,7 +87,8 @@ class KnightFight(MawlingHarness):
                     row[key]["current"] = row[key]["max"]
             await self.pool.execute("UPDATE players SET data=$2::jsonb WHERE player_id=$1", pid, json.dumps(row))
         discovery = await self.command("query_info", {"kind": "creature"})
-        assert self.template["id"] in {r["id"] for r in discovery["encounter_templates"]}
+        summary = next(r for r in discovery["encounter_templates"] if r["id"] == self.template["id"])
+        assert summary["recommended_party_size"] == 2
         result = await self.command("enter_mode", {"mode": "combat", "encounter_id": self.template["id"]})
         self.roster = result["participants"]
         assert self.sd.combat_state is not None
