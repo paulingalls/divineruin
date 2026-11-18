@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.47.2
+
+Native backend acceptance on iOS owns its API server, Metro and temporary sign-in enrollment, cleaning up after each run.
+
+Release steps: none.
+
 ## 0.47.1
 
 A test now covers the HUD inventory showing tainted and clean stacks of the same material as separate rows, each with its own quantity, in the phone-sized web build. Nothing players see changes.
