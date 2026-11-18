@@ -54,7 +54,7 @@ async def _cast(spell: Spell):
     spells_mod.get_spell = MagicMock(return_value=spell)
     library = MagicMock()
     library.get_known = AsyncMock(return_value=[{"spell_id": spell.id}])
-    with patch("spell_casting.publish_game_event", new=AsyncMock()) as publish_mock:
+    with patch("spell_cast_effects.publish_game_event", new=AsyncMock()) as publish_mock:
         raw = await _cast_spell_impl(
             ctx,
             spell.id,
@@ -104,7 +104,7 @@ class TestCastSpellPlaySound:
         library = MagicMock()
         library.get_known = AsyncMock(return_value=[{"spell_id": spell.id}])
         with (
-            patch("spell_casting.publish_game_event", new=AsyncMock()) as publish_mock,
+            patch("spell_cast_effects.publish_game_event", new=AsyncMock()) as publish_mock,
             patch("spell_casting.CastResult.flush_events", new=AsyncMock()),
         ):
             await _cast_spell_impl(

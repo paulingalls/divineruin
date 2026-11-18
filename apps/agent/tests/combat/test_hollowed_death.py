@@ -7,6 +7,7 @@ import pytest
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
 
+import spell_cast_validation
 import spell_casting
 from spells import Spell
 
@@ -71,15 +72,15 @@ def _player(*, hollow_killed: bool = False) -> dict:
 
 class TestRevivifyRefused:
     def test_refused_when_hollow_killed(self):
-        assert spell_casting.revivify_refused({"hollow_killed": True}) is True
+        assert spell_cast_validation.revivify_refused({"hollow_killed": True}) is True
 
     def test_allowed_when_not_hollow_killed(self):
-        assert spell_casting.revivify_refused({"hollow_killed": False}) is False
-        assert spell_casting.revivify_refused({}) is False
+        assert spell_cast_validation.revivify_refused({"hollow_killed": False}) is False
+        assert spell_cast_validation.revivify_refused({}) is False
 
     def test_revival_spell_ids_membership(self):
-        assert "divine_revivify" in spell_casting.REVIVAL_SPELL_IDS
-        assert "arcane_bolt" not in spell_casting.REVIVAL_SPELL_IDS
+        assert "divine_revivify" in spell_cast_validation.REVIVAL_SPELL_IDS
+        assert "arcane_bolt" not in spell_cast_validation.REVIVAL_SPELL_IDS
 
 
 class TestRevivifyGateLive:
@@ -255,7 +256,7 @@ class TestHollowedDeathE2E:
 
             reloaded = await db_queries.get_player(pid, conn=pool)
             assert reloaded is not None
-            assert spell_casting.revivify_refused(reloaded) is True
+            assert spell_cast_validation.revivify_refused(reloaded) is True
         finally:
             await pool.execute("DELETE FROM players WHERE player_id = $1", pid)
 
