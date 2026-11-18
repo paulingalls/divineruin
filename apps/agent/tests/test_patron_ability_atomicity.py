@@ -4,8 +4,12 @@ import asyncio
 import copy
 from unittest.mock import patch
 
+import pytest
+from _unbound_path_fixtures import row
+from _unbound_path_fixtures import world as world
 from livekit.agents.llm import ToolError
 from patron_ability_walk import AbilityWalk
+from test_zhael_fate import LUCKY, SPENT, dice_events, lucky_projection, lucky_save_setup, open_lucky_save
 
 import patron_gift_tools
 
@@ -89,3 +93,46 @@ async def test_departure_during_player_read_cannot_spend(dev_db_pool, monkeypatc
             m.setattr(db_queries, "get_player", revoke_after_read)
             assert "actor revoked" in await w.use(LIBRARY, error=True)
         assert await w.state() == before
+
+
+async def test_concurrent_lucky_calls_apply_one_flip(world):
+    call = await lucky_save_setup(world)
+    args, _ = await open_lucky_save(call)
+    results = await asyncio.gather(*(call("activate", **args) for _ in range(2)), return_exceptions=True)
+    successes = [r for r in results if isinstance(r, dict)]
+    refusals = [r for r in results if isinstance(r, ToolError)]
+    assert len(successes) == len(refusals) == 1
+    assert successes[0]["roll"] == 20 and "current" in str(refusals[0])
+    after = await row(world, 0)
+    assert after["patron_gifts"] == {LUCKY: SPENT}
+    assert [c["type"] for c in after["conditions"]] == ["hollowed"]
+    assert [e["roll"] for e in dice_events(world)] == [20]
+
+
+@pytest.mark.parametrize("stage", ["before_commit", "after_commit"])
+async def test_fault_during_lucky_settlement_never_applies_original(world, stage):
+    import check_tools
+
+    call = await lucky_save_setup(world)
+    args, _ = await open_lucky_save(call)
+    effect = "consume_beneficial_conditions" if stage == "before_commit" else "publish_game_event"
+    with (
+        patch.object(check_tools, effect, side_effect=ToolError("injected settlement failure")),
+        patch.object(patron_gift_tools, "write_state", wraps=patron_gift_tools.write_state) as write,
+    ):
+        with pytest.raises(ToolError, match="injected settlement failure"):
+            await call("activate", **args)
+        assert (await row(world, 0))["patron_gifts"] == {LUCKY: SPENT}
+        assert not dice_events(world)
+        with pytest.raises(ToolError):
+            await call("activate", **args)
+        assert write.await_count == 1
+
+    queried = await call("query_info", kind="patron")
+    assert lucky_projection(queried)["state"] == "spent"
+    if stage == "before_commit":
+        assert queried["settled_fate"]["roll"] == 20
+        assert [e["roll"] for e in dice_events(world)] == [20]
+    else:
+        assert "settled_fate" not in queried and not dice_events(world)
+    assert [c["type"] for c in (await row(world, 0))["conditions"]] == ["hollowed"]

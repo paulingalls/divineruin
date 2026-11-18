@@ -128,12 +128,12 @@ async def _resolve_phase_locked(
                 assert cursor is not None
                 players_by_id = await combat_fate.lock_remaining_players(cursor, queries, conn)
 
-            followers = await zhael_fate.eligible_followers(session, queries=queries, conn=conn)
+            candidates = await zhael_fate.candidates(session, queries=queries, conn=conn)
             packet_summaries = await combat_fate.run_ally_pass(
                 session,
                 state,
                 cursor,
-                followers,
+                candidates,
                 players_by_id,
                 kept=kept,
                 resolve_packet=_resolve_one_packet,
@@ -192,7 +192,7 @@ async def _resolve_phase_locked(
     if resuming:
         zhael_fate.effects_committed(session)
     offer = None
-    if state.ally_continuation is not None:
+    if resolving_allies and state.ally_continuation is not None:
 
         async def resume(selected):
             async with session.combat_state_lock:
@@ -214,7 +214,8 @@ async def _resolve_phase_locked(
                 assert isinstance(packet, str)
                 return zhael_fate.Resumed(json.loads(packet), paused=session.fate_offer is not None)
 
-        offer = combat_fate.offer_held_attack(state.ally_continuation, followers, resume)
+        offer = combat_fate.offer_held_attack(state.ally_continuation, candidates, resume)
+        assert offer is not None, "Held attack has no eligible ability"
         session.fate_offer = offer
     for m in session.party.members:
         if m.player_id in pending_by_member:

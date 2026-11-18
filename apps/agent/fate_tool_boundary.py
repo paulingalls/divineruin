@@ -40,7 +40,9 @@ def wrap_tool(tool):
             return await tool(*args, **kwargs)
         session = context.userdata
         async with session.fate_lock:
-            if session.fate_offer is None or (tool.id == "activate" and bound.arguments.get("id") == zhael_fate.FATE):
+            if session.fate_offer is None or (
+                tool.id == "activate" and bound.arguments.get("id") in zhael_fate.ROLL_ABILITIES
+            ):
                 return await tool(*args, **kwargs)
             settled = await zhael_fate.settle(session)
             if settled.paused:

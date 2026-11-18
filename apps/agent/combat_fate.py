@@ -9,6 +9,7 @@ import combat_enhancers
 import combat_resolution
 import concealment
 import conditions
+import zhael_fate
 from combat_ability import _attach_riders
 from combat_attack_roll import attack_roll_inputs, promote_attack
 from combat_down import damage_target_unavailable
@@ -25,7 +26,7 @@ async def attack_sequence(
     action,
     *,
     attack_cursor,
-    fate_followers,
+    fate_candidates,
     **deps,
 ):
     # Enhancers EXPAND a single declaration: extra_attack/shield_bash turn one ATTACK into a
@@ -51,7 +52,7 @@ async def attack_sequence(
         enemies_remaining,
         is_first_attack,
         attack_cursor=attack_cursor,
-        fate_followers=fate_followers,
+        fate_candidates=fate_candidates,
         **deps,
     )
 
@@ -67,7 +68,7 @@ async def continue_attack(
     is_first_attack,
     *,
     attack_cursor,
-    fate_followers,
+    fate_candidates,
     mutations,
     queries,
     resolver,
@@ -87,29 +88,34 @@ async def continue_attack(
     start = len(attack_summaries)
     for act in actions[start:]:
         prepared_data = attack_cursor.get("prepared")
-        if fate_followers and prepared_data is None:
+        prepared = None
+        if prepared_data is not None:
+            prepared = check_resolution_attack.PreparedAttack.from_dict(prepared_data)
+            attacker_data = attack_cursor["attacker_data"]
+        elif fate_candidates is not None and fate_candidates.choices(attacker.id):
             attacker_data, target_ac, attack_mod = attack_roll_inputs(
                 attacker, target, state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus, state
             )
             prepared = check_resolution_attack.prepare_attack(
                 attacker_data, act, target_ac, attack_mod=attack_mod, target_conditions=target.conditions
             )
-            stored = asdict(prepared)
-            stored["consumed"] = list(prepared.consumed)
-            attack_cursor.update(
-                actions=actions,
-                target_id=target.id,
-                enemies_remaining=enemies_remaining,
-                is_first_attack=is_first_attack,
-                summaries=attack_summaries,
-                concealment=concealment_packet,
-                prepared=stored,
-                attacker_data=attacker_data,
-            )
-            return {"actor_id": attacker.id, "resolved": False, "reason": "awaiting Fate's Thread"}
+            if fate_candidates.choices(attacker.id, prepared.original.roll):
+                stored = asdict(prepared)
+                stored["consumed"] = list(prepared.consumed)
+                attack_cursor.update(
+                    actions=actions,
+                    target_id=target.id,
+                    enemies_remaining=enemies_remaining,
+                    is_first_attack=is_first_attack,
+                    summaries=attack_summaries,
+                    concealment=concealment_packet,
+                    prepared=stored,
+                    attacker_data=attacker_data,
+                )
+                return {"actor_id": attacker.id, "resolved": False, "reason": "awaiting a Zhael roll choice"}
         if start == 0 and not attack_summaries and attacker.type == "player":
             concealment_packet = await concealment.reveal_attacker(attacker.id, conn=conn, queries=queries)
-        if prepared_data is None:
+        if prepared is None:
             sub = await _resolve_attack_packet(
                 session,
                 attacker,
@@ -133,9 +139,8 @@ async def continue_attack(
                 publish_roll=publish_roll,
             )
         else:
-            prepared = check_resolution_attack.PreparedAttack.from_dict(prepared_data)
             result = check_resolution_attack.finish_attack(
-                attack_cursor.pop("attacker_data"),
+                attacker_data,
                 act,
                 prepared.d20.dc,
                 target.hp_current,
@@ -162,7 +167,9 @@ async def continue_attack(
                 sink=sink,
                 publish_roll=publish_roll,
             )
-            del attack_cursor["prepared"]
+            if prepared_data is not None:
+                del attack_cursor["prepared"], attack_cursor["attacker_data"]
+                kept = None
         if "durability_rider" in act:
             await resolve_rider(
                 session,
@@ -260,7 +267,7 @@ async def lock_remaining_players(cursor, queries, conn):
     return players
 
 
-async def run_ally_pass(session, state, cursor, followers, players, *, kept, resolve_packet, packet_deps):
+async def run_ally_pass(session, state, cursor, candidates, players, *, kept, resolve_packet, packet_deps):
     from combat_hold import hold_enemy_packets
     from combat_phase import PhaseBeat, _resolve_packets
     from combat_turn_start import turn_start
@@ -286,7 +293,7 @@ async def run_ally_pass(session, state, cursor, followers, players, *, kept, res
                 attack["enemies_remaining"],
                 attack["is_first_attack"],
                 attack_cursor=attack,
-                fate_followers=followers,
+                fate_candidates=candidates,
                 kept=kept,
                 **{
                     key: packet_deps[key]
@@ -312,7 +319,7 @@ async def run_ally_pass(session, state, cursor, followers, players, *, kept, res
                     **packet_deps,
                     players_by_id=players,
                     attack_cursor=attack,
-                    fate_followers=followers,
+                    fate_candidates=candidates,
                 )
         if "prepared" in attack:
             state.beat = PhaseBeat.RESOLUTION
@@ -328,17 +335,16 @@ async def run_ally_pass(session, state, cursor, followers, players, *, kept, res
     return summaries
 
 
-def offer_held_attack(cursor, followers, resume):
-    import zhael_fate
-
+def offer_held_attack(cursor, candidates, resume):
     prepared = check_resolution_attack.PreparedAttack.from_dict(cursor["attack"]["prepared"])
     _, roller_id = cursor["turns"][0]
     return zhael_fate.make_offer(
         "attack",
         roller_id,
         prepared.original,
-        followers,
+        candidates,
         numbers=lambda roll: (roll.roll, roll.total),
         reroll=prepared.d20.roll,
+        flip=prepared.d20.evaluate,
         resume=resume,
     )

@@ -95,7 +95,7 @@ async def activate(
     For a voiced Fate's Thread offer, activate 'zhael_fates_thread' with offer_id to spend it and
     show the reroll. Then call again with the same offer_id and keep='original' or 'reroll'.
     Before spending, keep='original' declines. Any other tool call keeps the original, and an
-    already rolled gift stays spent.
+    already rolled gift stays spent. For offered 'zhael_lucky', use offer_id alone to flip the die and resolve it.
 
     Patron tier ids come from query_info(kind='patron').abilities: spend only when available;
     narrate refusals. 'valdris_weight_of_truth' spends Weight of Truth until a short rest.
@@ -169,10 +169,10 @@ async def _activate_impl(
     inner_fire_mod=draethar_inner_fire,
 ) -> str:
     logger.info("activate called: id=%s", id)
-    if id == zhael_fate.FATE:
-        return await zhael_fate.activate(context.userdata, offer_id, keep)
+    if id in zhael_fate.ROLL_ABILITIES:
+        return await zhael_fate.activate(context.userdata, id, offer_id, keep)
     if offer_id is not None or keep is not None:
-        raise ToolError("offer_id and keep belong to Fate's Thread.")
+        raise ToolError("offer_id is for a held roll; keep belongs to Fate's Thread.")
 
     try:
         kind = _resolve_kind(

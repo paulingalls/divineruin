@@ -118,12 +118,12 @@ async def _roll_death_save(
     successes, failures = faller.death_save_successes, faller.death_save_failures
     faller_id = faller.id
 
-    def roll():
-        return combat_resolution.resolve_death_save(successes, failures, bonus=bonus)
+    def roll(face=None):
+        return combat_resolution.resolve_death_save(successes, failures, bonus=bonus, face=face)
 
     result = roll()
-    followers = await zhael_fate.eligible_followers(session)
-    if followers:
+    candidates = await zhael_fate.candidates(session)
+    if candidates.choices(faller_id):
 
         async def resume(kept):
             async with session.combat_state_lock:
@@ -148,13 +148,15 @@ async def _roll_death_save(
             "death_save",
             faller_id,
             result,
-            followers,
+            candidates,
             numbers=lambda r: (r.roll, r.roll + bonus),
             reroll=roll,
+            flip=roll,
             resume=resume,
         )
-        session.fate_offer = offer
-        return json.dumps(offer.response())
+        if offer is not None:
+            session.fate_offer = offer
+            return json.dumps(offer.response())
 
     return await _request_death_save_locked(session, cs, faller_id, result, mutations, db_mod)
 
