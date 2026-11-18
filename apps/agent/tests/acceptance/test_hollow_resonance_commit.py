@@ -52,7 +52,7 @@ async def encounter(reset_db_pool, monkeypatch):
     )
     state.pending_declarations = {
         ids[0]: {"type": "attack", "action": "Strike", "target_id": "victim_0"},
-        ids[1]: {"type": "ability", "action": "arcane_magic_missile"},
+        ids[1]: {"type": "ability", "action": "arcane_magic_missile", "target_id": "survivor"},
         ids[2]: {"type": "attack", "action": "Strike", "target_id": "victim_1"},
     }
     ctx.userdata.combat_state = state

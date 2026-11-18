@@ -309,10 +309,10 @@ async def _resolve_ability_packet(
     )
     import choir_spell_damage
 
-    await choir_spell_damage.land(session, state, attacker, decl, result, conn=conn, **(damage_deps or {}))
-    cast_outcome.results[attacker.id] = result
     if result.new_resonance is not None:
         combat_hollow_resonance.stage_total(state, attacker.id, result.new_resonance)
+    await choir_spell_damage.land(session, state, attacker, decl, result, conn=conn, **(damage_deps or {}))
+    cast_outcome.results[attacker.id] = result
     # Sync concentration into the CASTER's SSOT IN-LOOP (not post-commit): a lower-initiative enemy
     # attack later this same phase runs break_concentration_on_damage, which reads the in-memory
     # concentration to pick which spell to save for and to clear on a failed save. A post-commit sync

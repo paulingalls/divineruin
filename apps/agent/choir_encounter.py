@@ -66,7 +66,7 @@ def facts(state):
     elif phase == "exposed":
         result.update(
             core_id=source.id,
-            engine_damage_spell_ids=["arcane_bolt"],
+            engine_damage_spell_ids=engine_damage_spell_ids(),
             core_defenses={
                 "ac": 18,
                 "hp_pool": 200,
@@ -242,3 +242,15 @@ async def turn_start(session, state, actor, *, conn, concentration_break_mod):
         "concentration_broken": broken,
         "cue": "Lost voices tug at your focus.",
     }
+
+
+def engine_damage_spell_ids():
+    import spells
+
+    allowed = {"psychic", "radiant", "thunder", "force"}
+    return [
+        spell.id
+        for source in ("arcane", "divine", "primal")
+        for spell in spells.get_spells_by_source(source)
+        if spell.combat_damage and any(c["damage_type"] in allowed for c in spell.combat_damage.get("components", []))
+    ]

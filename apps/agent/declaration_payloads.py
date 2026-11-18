@@ -70,7 +70,7 @@ class AbilityDecl(BaseModel):
     )
     argument_type: str = Field(
         description='Only for action "de_escalate": the kind of case made this round — reason, '
-        "emotion, self_interest, threat, bluff or evidence. Empty string for every other ability."
+        "emotion, self_interest, threat, bluff or evidence. For arcane_elemental_burst: fire, cold, or lightning. Empty string for other abilities."
     )
 
 

@@ -62,6 +62,15 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
     if pool_action is not None and declaration.type in (DeclarationType.ATTACK, DeclarationType.ABILITY):
         require_available(actor, pool_action)
     if declaration.type is DeclarationType.ABILITY and actor.type == "player":
+        import combat_spell_profile
+        import spells
+
+        try:
+            spell = spells.get_spell(declaration.action)
+        except ValueError:
+            spell = None
+        if spell is not None:
+            combat_spell_profile.validate_target(next_state, actor, declaration, spell)
         resolved_ability = declared_ability(declaration.action)
         if resolved_ability is not None and condition_ability(resolved_ability) is None:
             ability, _variant = resolved_ability

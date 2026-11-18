@@ -163,12 +163,11 @@ def resolve_attack(
 
     if hit:
         damage_notation = weapon.get("damage", "1d4")
-        damage_result = dice_roll(damage_notation, rng=rng)
-        damage = damage_result.total
-        if critical:
+        damage = dice_roll(damage_notation, rng=rng).total if damage_notation != "0" else 0
+        if critical and damage_notation != "0":
             crit_result = dice_roll(damage_notation, rng=rng)
             damage += crit_result.total
-        if not catalog:
+        if not catalog and weapon.get("damage_attribute", True) and damage_notation != "0":
             damage += weapon_attribute_modifier(attacker_data, weapon)
         # Condition damage modifier (M4.3): Enraged adds +2 damage. Applied once, like
         # the attribute mod, before the floor.

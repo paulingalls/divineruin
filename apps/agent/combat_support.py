@@ -261,8 +261,19 @@ async def apply_attack_result(
             if attacker.id != target.id:
                 raise ValueError("Choir core must be exposed before damage")
             attack_result = replace(attack_result, damage=0)
+        components = action.get("damage_components")
+        if components is not None:
+            components = [
+                {**c, "damage": choir_encounter.damage(target, c["damage"], c["damage_type"])} for c in components
+            ]
+            action = {**action, "damage_components": components}
+            attack_result = replace(attack_result, damage=sum(c["damage"] for c in components))
         bonus = getattr(attack_result, "bonus_damage", 0)
-        allowed = choir_encounter.damage(target, attack_result.damage - bonus, attack_result.damage_type)
+        allowed = (
+            attack_result.damage
+            if components is not None
+            else choir_encounter.damage(target, attack_result.damage - bonus, attack_result.damage_type)
+        )
         allowed += choir_encounter.damage(target, bonus, getattr(attack_result, "bonus_damage_type", None))
         attack_result = replace(attack_result, damage=allowed)
     automatic = isinstance(attack_result, AutomaticDamageResult)
@@ -419,6 +430,8 @@ async def apply_attack_result(
         "context": attack_result.context,
         "target_rose_hollowed": rose_hollowed,
     }
+    if "damage_components" in action:
+        response["damage_components"] = action["damage_components"]
     if was_fallen:
         response["death_save_failures"] = target.death_save_failures
     if gift_triggered:

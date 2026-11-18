@@ -63,7 +63,7 @@ class TestAbilityForwardsTargetId:
     @pytest.mark.asyncio
     async def test_normalizes_missing_target_to_self(self):
         session = make_context(player_id="caster_1").userdata
-        decl = Declaration(type=DeclarationType.ABILITY, action="arcane_bolt")  # no target_id
+        decl = Declaration(type=DeclarationType.ABILITY, action="arcane_detect_magic")
         cast_resolver = _cast_resolver({})
         outcome = AbilityCastOutcome()
 
