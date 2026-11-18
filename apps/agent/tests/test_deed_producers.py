@@ -1,5 +1,6 @@
 """Authored deeds through registered tools and caller-owned transactions."""
 
+import asyncio
 import json
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, patch
@@ -12,7 +13,9 @@ from acceptance.seeds import seed_player_with_pools
 from livekit.agents import Agent, AgentSession
 from livekit.agents.llm import ToolError
 
+import alignment_heartbeat
 import db
+import db_mutations_conditions
 from _gods_content import load_gods
 from activate_tools import activate
 from caster_state import ConcentrationState, ResonanceTrack
@@ -282,3 +285,71 @@ async def test_check_rollback(walk, producer):
     await journals(h, [{kind: "pending"}, {}])
     async with h.pool.acquire() as conn:
         await inspect(conn)
+
+
+async def test_flight_condition_write_overlaps_due_judgment(walk, monkeypatch, caplog):
+    h = walk
+    await terminal(h, "end_combat", "fled")
+    first, second = sorted(h.players)
+    cs = h.sd.combat_state
+    assert cs is not None
+    cs.participants.sort(key=lambda p: p.id, reverse=True)
+    exhausted = {"type": "exhausted", "stacks": 1, "duration": -1, "source": "combat"}
+    next(p for p in cs.participants if p.id == second).conditions.append(exhausted)
+    for pid in h.players:
+        await h.pool.execute(
+            "UPDATE players SET data=data || $2::jsonb WHERE player_id=$1",
+            pid,
+            json.dumps({"divine_favor": {"patron": "kaelen", "level": 50}}),
+        )
+    monkeypatch.setattr(type(h.sd), "present_member_ids", property(lambda sd: tuple(h.players)))
+    reached = asyncio.Event()
+
+    class ObservedLock(asyncio.Lock):
+        async def __aenter__(self):
+            task = asyncio.current_task()
+            if task is not None and task.get_name() == "due-judgment":
+                reached.set()
+            return await super().__aenter__()
+
+    h.sd.combat_state_lock = ObservedLock()
+    judge = alignment_heartbeat.judge_pending_deeds
+
+    async def observed_judge(pid, **kwargs):
+        grant = await judge(pid, **kwargs)
+        if pid == first:
+            reached.set()
+        return grant
+
+    monkeypatch.setattr(alignment_heartbeat, "judge_pending_deeds", observed_judge)
+    now = 0
+    heartbeat = alignment_heartbeat.AlignmentHeartbeat(h.sd, now=lambda: now)
+    now = 1200
+    save = db_mutations_conditions.save_player_conditions
+    tick = None
+
+    async def overlap(pid, conditions, **kwargs):
+        nonlocal tick
+        await save(pid, conditions, **kwargs)
+        if pid == second:
+            # Combat owns B; let the tick reach either the session lock or row A before continuing.
+            tick = asyncio.create_task(heartbeat.maybe_tick(), name="due-judgment")
+            await asyncio.wait_for(reached.wait(), 5)
+
+    monkeypatch.setattr(db_mutations_conditions, "save_player_conditions", overlap)
+    try:
+        await asyncio.wait_for(h.command("end_combat", {"outcome": "fled"}), 15)
+        assert tick is not None
+        await asyncio.wait_for(tick, 15)
+    finally:
+        if tick is not None and not tick.done():
+            tick.cancel()
+            await asyncio.gather(tick, return_exceptions=True)
+    assert "Patron deed judgment failed" not in caplog.text
+    assert h.sd.combat_state is None
+    await journals(h, [{}, {}])
+    assert [r["divine_favor"]["level"] for r in await rows(h)] == [47, 47]
+    assert exhausted in (await db_mutations_conditions.read_player_conditions(second))
+    now = 2400
+    await heartbeat.maybe_tick()
+    assert [r["divine_favor"]["level"] for r in await rows(h)] == [47, 47]

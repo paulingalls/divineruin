@@ -28,16 +28,17 @@ class AlignmentHeartbeat:
         now = self._now()
         if now - self._last_tick < self._interval_s:
             return
-        # Sorted: end_combat locks party rows in sorted order, so the same order cannot deadlock.
         member_ids = sorted(self._sd.present_member_ids)
         events = []
         grants = []
         try:
-            async with db.transaction() as conn:
-                for player_id in member_ids:
-                    grant = await judge_pending_deeds(player_id, conn=conn, pending_events=events)
-                    if grant is not None and grant.new_level != grant.previous_level:
-                        grants.append((player_id, grant))
+            # Combat condition writeback locks rows in participant order; serialize before taking DB locks.
+            async with self._sd.combat_state_lock:
+                async with db.transaction() as conn:
+                    for player_id in member_ids:
+                        grant = await judge_pending_deeds(player_id, conn=conn, pending_events=events)
+                        if grant is not None and grant.new_level != grant.previous_level:
+                            grants.append((player_id, grant))
         except TRANSIENT_IO_ERRORS:
             logger.exception("Patron deed judgment failed; retrying next iteration")
             return
