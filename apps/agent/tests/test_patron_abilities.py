@@ -96,14 +96,21 @@ async def test_pending_and_always_on_refuse_without_writes(dev_db_pool, monkeypa
         before = await w.state()
         assert "pending" in await w.use("veythar_scholars_ward", error=True)
         rows = copy.deepcopy(load_gods())
-        rows[0]["layer_3_tier_abilities"]["devoted"]["recharge"] = "always"
+        library = rows[0]["layer_3_tier_abilities"]["devoted"]
+        library["status"] = "pending"
         _validate_gods(rows)
         monkeypatch.setattr(patron_ability_tools, "load_gods", lambda: rows)
-        assert "always-on" in await w.use(LIBRARY, error=True)
-        assert await w.state() == before
         monkeypatch.setattr(
             query_tools, "_query_patron_impl", partial(query_tools._query_patron_impl, gods_loader=lambda: rows)
         )
+        assert "pending" in await w.use(LIBRARY, error=True)
+        assert await w.state() == before
+        pending = next(a for a in await w.abilities() if a["id"] == LIBRARY)
+        assert not pending["available"] and pending["state"] == "locked" and "pending" in pending["reason"]
+        library.update(status="active", recharge="always")
+        _validate_gods(rows)
+        assert "always-on" in await w.use(LIBRARY, error=True)
+        assert await w.state() == before
         ability = next(a for a in await w.abilities() if a["id"] == LIBRARY)
         assert ability["eligible"] and not ability["available"] and "always-on" in ability["reason"]
 
