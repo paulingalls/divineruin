@@ -7,6 +7,7 @@ from acceptance.seeds import seed_player
 
 import event_types as E
 from patron_deeds import judge_pending_deeds, mark_awarded, record_deed
+from progression_tools import FavorGrant
 
 
 async def read(conn, player_id):
@@ -77,7 +78,7 @@ async def test_authored_judgment(player, patron, start, pending, awarded, amount
         assert (grant, events) == (None, [])
         assert await read(pool, pid) == dict(before, patron_deeds={})
         return
-    assert grant is not None
+    assert isinstance(grant, FavorGrant)
     assert (grant.previous_level, grant.new_level, grant.patron_id) == (start, end, patron)
     assert events == [
         (
@@ -120,6 +121,17 @@ async def test_unbound_and_empty(player, favor):
     assert await read(pool, pid) == before
     async with pool.acquire() as conn, conn.transaction():
         await record_deed(pid, "won_combat", conn=conn)
+    assert await judge(pool, pid) == (None, [])
+    assert await read(pool, pid) == dict(before, patron_deeds={})
+
+
+async def test_follower_ignores_autonomy(player):
+    pool, pid = player
+    async with pool.acquire() as conn, conn.transaction():
+        for kind in ("won_alone", "succeeded_alone", "channeled_raw"):
+            await record_deed(pid, kind, conn=conn)
+    before = await read(pool, pid)
+    assert before["patron_deeds"] == dict.fromkeys(("won_alone", "succeeded_alone", "channeled_raw"), "pending")
     assert await judge(pool, pid) == (None, [])
     assert await read(pool, pid) == dict(before, patron_deeds={})
 
@@ -187,27 +199,33 @@ async def blocked(observer, task, waiter, holder):
             await asyncio.sleep(0.01)
 
 
+@pytest.mark.parametrize("unbound", [False, True])
 @pytest.mark.parametrize("scenario", ["writer_first", "judge_first", "two_writers"])
-async def test_concurrent_journal_operations(player, scenario):
+async def test_concurrent_journal_operations(player, scenario, unbound):
     pool, pid = player
+    positive, other = ("won_alone", "channeled_raw") if unbound else ("won_combat", "fled_combat")
+    if unbound:
+        await pool.execute(
+            "UPDATE players SET data=jsonb_set(data, '{divine_favor,patron}', '\"none\"') WHERE player_id=$1", pid
+        )
     async with pool.acquire() as a, pool.acquire() as b, pool.acquire() as observer:
         if scenario == "judge_first":
-            await record_deed(pid, "fled_combat", conn=a)
+            await record_deed(pid, other, conn=a)
         tx = a.transaction()
         await tx.start()
         task = None
         try:
             if scenario == "judge_first":
                 grant = await judge_pending_deeds(pid, conn=a, pending_events=[])
-                assert grant is not None and grant.new_level == 47
+                assert grant is not None and grant.new_level == (2 if unbound else 47)
             else:
-                await record_deed(pid, "won_combat", conn=a)
+                await record_deed(pid, positive, conn=a)
 
             async def contender():
                 async with b.transaction():
                     if scenario == "writer_first":
                         return await judge_pending_deeds(pid, conn=b, pending_events=[])
-                    await record_deed(pid, "won_combat" if scenario == "judge_first" else "fled_combat", conn=b)
+                    await record_deed(pid, positive if scenario == "judge_first" else other, conn=b)
 
             task = asyncio.create_task(contender())
             await blocked(observer, task, b.get_server_pid(), a.get_server_pid())
@@ -226,14 +244,17 @@ async def test_concurrent_journal_operations(player, scenario):
     stored = await read(pool, pid)
     assert stored["sentinel"] == {"nested": [1, 2]}
     if scenario == "writer_first":
-        assert result is not None and result.new_level == 52
+        assert result is not None and result.new_level == (4 if unbound else 52)
         assert stored["patron_deeds"] == {}
     else:
-        expected = {"won_combat": "pending"}
+        expected = {positive: "pending"}
         if scenario == "two_writers":
-            expected["fled_combat"] = "pending"
+            expected[other] = "pending"
         assert stored["patron_deeds"] == expected
         grant, events = await judge(pool, pid)
-        assert grant is not None and grant.new_level == 49
-        assert events[0][1]["amount"] == (2 if scenario == "judge_first" else -1)
+        assert grant is not None and grant.new_level == (6 if unbound else 49)
+        if unbound:
+            assert events == []
+        else:
+            assert events[0][1]["amount"] == (2 if scenario == "judge_first" else -1)
     assert await judge(pool, pid) == (None, [])
