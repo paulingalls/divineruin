@@ -347,5 +347,52 @@
         "state": "locked"
       }
     ]
+  },
+  "unknown_tier_patron_snapshot": {
+    "type": "patron_abilities_updated",
+    "player_id": "wire_patron",
+    "divine_favor": {
+      "patron": "veythar",
+      "level": 40,
+      "max": 61
+    },
+    "abilities": [
+      {
+        "id": "veythar_scholars_ward",
+        "name": "Scholar's Ward",
+        "recharge": "always",
+        "status": "pending",
+        "tier": "Unknown",
+        "eligible": true,
+        "spent": false,
+        "available": false,
+        "reason": "This ability is pending implementation.",
+        "state": "locked"
+      },
+      {
+        "id": "veythar_lorekeepers_library",
+        "name": "Lorekeeper's Library",
+        "recharge": "long_rest",
+        "status": "active",
+        "tier": "Devoted",
+        "eligible": true,
+        "spent": false,
+        "available": true,
+        "reason": null,
+        "state": "ready"
+      },
+      {
+        "id": "veythar_wellspring_echo",
+        "name": "Wellspring Echo",
+        "recharge": "per_session",
+        "status": "pending",
+        "tier": "Exalted",
+        "eligible": false,
+        "spent": false,
+        "available": false,
+        "reason": "Requires Exalted tier.",
+        "state": "locked"
+      }
+    ]
   }
 }
