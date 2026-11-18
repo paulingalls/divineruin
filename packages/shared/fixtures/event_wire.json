@@ -156,12 +156,12 @@
           "id": "veythar_scholars_ward",
           "name": "Scholar's Ward",
           "recharge": "always",
-          "status": "pending",
+          "status": "active",
           "tier": "Acknowledged",
           "eligible": true,
           "spent": false,
           "available": false,
-          "reason": "This ability is pending implementation.",
+          "reason": "This ability is always-on; it cannot be activated.",
           "state": "locked"
         },
         {
@@ -204,12 +204,12 @@
           "id": "veythar_scholars_ward",
           "name": "Scholar's Ward",
           "recharge": "always",
-          "status": "pending",
+          "status": "active",
           "tier": "Acknowledged",
           "eligible": true,
           "spent": false,
           "available": false,
-          "reason": "This ability is pending implementation.",
+          "reason": "This ability is always-on; it cannot be activated.",
           "state": "locked"
         },
         {
@@ -269,12 +269,12 @@
         "id": "veythar_scholars_ward",
         "name": "Scholar's Ward",
         "recharge": "always",
-        "status": "pending",
+        "status": "active",
         "tier": "Acknowledged",
         "eligible": true,
         "spent": false,
         "available": false,
-        "reason": "This ability is pending implementation.",
+        "reason": "This ability is always-on; it cannot be activated.",
         "state": "locked"
       },
       {
@@ -317,12 +317,12 @@
         "id": "veythar_scholars_ward",
         "name": "Scholar's Ward",
         "recharge": "always",
-        "status": "pending",
+        "status": "active",
         "tier": "Acknowledged",
         "eligible": true,
         "spent": false,
         "available": false,
-        "reason": "This ability is pending implementation.",
+        "reason": "This ability is always-on; it cannot be activated.",
         "state": "locked"
       },
       {
@@ -365,12 +365,12 @@
         "id": "veythar_scholars_ward",
         "name": "Scholar's Ward",
         "recharge": "always",
-        "status": "pending",
+        "status": "active",
         "tier": "Unknown",
         "eligible": true,
         "spent": false,
         "available": false,
-        "reason": "This ability is pending implementation.",
+        "reason": "This ability is always-on; it cannot be activated.",
         "state": "locked"
       },
       {
@@ -413,12 +413,12 @@
         "id": "veythar_scholars_ward",
         "name": "Scholar's Ward",
         "recharge": "always",
-        "status": "pending",
+        "status": "active",
         "tier": "Acknowledged",
         "eligible": true,
         "spent": false,
         "available": false,
-        "reason": "This ability is pending implementation.",
+        "reason": "This ability is always-on; it cannot be activated.",
         "state": "locked"
       },
       {
