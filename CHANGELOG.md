@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.47.1
+
+A test now covers the HUD inventory showing tainted and clean stacks of the same material as separate rows, each with its own quantity, in the phone-sized web build. Nothing players see changes.
+
+Release steps: none.
+
 ## 0.47.0
 
 Patron tier abilities are in play. A follower at Acknowledged, Devoted or Exalted favor can now ask the DM to use the seven abilities the DM resolves by narration: Veythar's Lorekeeper's Library, Syrath's Whisper Network and Veilwatcher's Eye, Mortaen's Speak with Dead, Nythera's Charted Course, Valdris's Discern Lies and Zhael's Prophecy Fragment. Valdris's Layer 1 gift, Weight of Truth, works the same way. Each use is spent and comes back on its authored rest or, for once-per-session abilities, at the next session. Abilities lock when favor drops below their tier and come back, with the same spent state, when it climbs again. The other 23 tier abilities are listed as not yet in play.
