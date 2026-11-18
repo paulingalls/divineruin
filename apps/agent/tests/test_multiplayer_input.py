@@ -2,7 +2,7 @@ import asyncio
 import logging
 from types import SimpleNamespace
 from typing import Any, cast
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from livekit.agents import Agent, stt
@@ -421,3 +421,9 @@ async def test_the_real_party_gate_revokes_an_in_flight_turn_on_disconnect() -> 
         _ = sd.actor_player_id
     await owner.aclose()
     await lifecycle.aclose()
+
+
+@pytest.fixture(autouse=True)
+def isolated_patron_ability_entry():
+    with patch("session_hydration.hydrate_patron_ability_session", new_callable=AsyncMock):
+        yield

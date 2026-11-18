@@ -8,3 +8,9 @@ from session_outcome_fixture import isolated_outcome_completion as isolated_outc
 def isolated_room_ownership():
     with patch("host_handoff.transfer_room", new_callable=AsyncMock):
         yield
+
+
+@pytest.fixture(autouse=True)
+def isolated_patron_ability_entry():
+    with patch("session_hydration.hydrate_patron_ability_session", new_callable=AsyncMock):
+        yield

@@ -240,10 +240,12 @@ async def test_combat_handback_enter_does_not_decay_again():
         patch.object(ExplorationAgent, "_publish_session_init", new_callable=AsyncMock),
         patch("exploration_agent.start_specialization_tap"),
         patch("session_hydration.apply_session_favor_decay", new_callable=AsyncMock) as decay,
+        patch("session_hydration.hydrate_patron_ability_session", new_callable=AsyncMock) as entry,
         patch("game_events.publish_game_event", new_callable=AsyncMock) as publish,
     ):
         agent = ExplorationAgent(region_type="wilderness")
         await agent._enter()
         await asyncio.gather(*agent._bg_tasks)
         decay.assert_not_awaited()
+        entry.assert_not_awaited()
         publish.assert_not_awaited()

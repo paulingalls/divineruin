@@ -103,6 +103,7 @@ class SessionData:
     attempted_discoveries: set[str] = field(default_factory=set)
     companion: CompanionState | None = None
     patron_id: str = "none"
+    patron_ability_entries: set[str] = field(default_factory=set)
     favor_loss: tuple[str, int] | None = None
     displeasure_heard_by: set[str] = field(default_factory=set)
     creation_state: CreationState | None = None
