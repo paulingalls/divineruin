@@ -46,18 +46,15 @@ async def apply_session_favor_decay(
     player: dict,
     *,
     now: datetime | None = None,
-    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    conn: asyncpg.Pool | None = None,
 ) -> tuple[str, int] | None:
     favor = player.get("divine_favor") or {}
     if (favor.get("patron") or "none") == "none":
         return None
     instant = now or datetime.now(UTC)
     source = conn or await db.get_pool()
-    if isinstance(source, asyncpg.Pool):
-        async with source.acquire() as connection:
-            return await _decay_locked(session, player_id, connection, instant)
-    else:
-        return await _decay_locked(session, player_id, source, instant)
+    async with source.acquire() as connection:
+        return await _decay_locked(session, player_id, connection, instant)
 
 
 async def _decay_locked(session: SessionData, player_id: str, connection, now: datetime) -> tuple[str, int] | None:
@@ -106,17 +103,17 @@ async def hydrate_patron_ability_session(
     session: SessionData,
     player_id: str,
     *,
-    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    conn: asyncpg.Pool | None = None,
 ) -> None:
     if player_id in session.patron_ability_entries:
         return
     source = conn or await db.get_pool()
-    if isinstance(source, asyncpg.Pool):
-        async with source.acquire() as connection:
-            await _recharge_session_abilities(player_id, connection)
-    else:
-        await _recharge_session_abilities(player_id, source)
+    async with source.acquire() as connection:
+        await _recharge_session_abilities(player_id, connection)
     session.patron_ability_entries.add(player_id)
+    from patron_ability_events import publish_patron_abilities
+
+    await publish_patron_abilities(session.room, player_id, session.event_bus)
 
 
 async def _recharge_session_abilities(player_id: str, connection) -> None:
@@ -136,7 +133,7 @@ async def hydrate_session_state(
     concentration_mutations_mod=db_mutations_concentration,
     player_session_mod=player_session,
     racial_mod=racial_resonance,
-    conn: asyncpg.Connection | asyncpg.Pool | None = None,
+    conn: asyncpg.Pool | None = None,
     now: datetime | None = None,
 ) -> None:
     """Rehydrate a FRESH session's persisted state and set+persist the gated Thessyn bonus.

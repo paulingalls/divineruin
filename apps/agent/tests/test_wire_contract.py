@@ -271,3 +271,38 @@ async def test_item_acquired_serializes_to_fixture() -> None:
     captured = [ev for ev in sink.captured if ev.event_type == event_types.ITEM_ACQUIRED]
     assert len(captured) == 1
     assert {"type": captured[0].event_type, **captured[0].payload} == expected
+
+
+async def test_patron_wire_uses_projection_and_rejects_malformed_before_delivery():
+    import game_events
+    from patron_ability_events import snapshot
+
+    initial = FIXTURE["events"]["patron_session_init"]
+    player = initial["character"]
+    payload = snapshot(player["player_id"], player)
+    room = MagicMock()
+    room.isconnected.return_value = True
+    room.local_participant.publish_data = AsyncMock()
+    bus = MagicMock()
+    await game_events.publish_game_event(
+        room,
+        event_types.PATRON_ABILITIES_UPDATED,
+        payload,
+        bus,
+        destination_identities=[player["player_id"]],
+    )
+    assert room.local_participant.publish_data.await_args is not None
+    assert (
+        json.loads(room.local_participant.publish_data.await_args.args[0])
+        == FIXTURE["events"]["patron_abilities_updated"]
+    )
+    assert payload["abilities"] == initial["abilities"]
+    room.local_participant.publish_data.reset_mock()
+    bus.reset_mock()
+    bad = {k: v for k, v in FIXTURE["malformed_patron_snapshot"].items() if k != "type"}
+    with pytest.raises(ValueError, match="spent"):
+        await game_events.publish_game_event(
+            room, event_types.PATRON_ABILITIES_UPDATED, bad, bus, destination_identities=[player["player_id"]]
+        )
+    room.local_participant.publish_data.assert_not_awaited()
+    bus.publish.assert_not_called()

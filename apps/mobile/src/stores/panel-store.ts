@@ -4,7 +4,10 @@ import type { SpellRow } from "@/utils/spell-display";
 
 export type PanelTab = "character" | "inventory" | "quests" | "map";
 
+import type { PatronAbility } from "@/audio/patron-abilities";
+
 export interface CharacterDetail {
+  abilities?: PatronAbility[];
   race: string;
   attributes: {
     strength: number;

@@ -78,7 +78,7 @@ async def test_favor_and_selection_round_trip_by_action_and_neglect(dev_db_pool)
             await hydrate_session_state(fresh, player, now=instant)
             assert fresh.patron_id == "veythar"
             assert fresh.favor_loss == ("veythar", 5)
-            events = fresh.event_bus.drain()
+            events = [e for e in fresh.event_bus.drain() if e.event_type == E.DIVINE_FAVOR_CHANGED]
             assert len(events) == 1 and events[0].event_type == E.DIVINE_FAVOR_CHANGED
             assert events[0].payload["reason"] == "neglect"
             player = await _reload(dev_db_pool, player_id, level, "Devoted")

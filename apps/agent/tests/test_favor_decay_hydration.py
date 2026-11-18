@@ -249,3 +249,9 @@ async def test_combat_handback_enter_does_not_decay_again():
         decay.assert_not_awaited()
         entry.assert_not_awaited()
         publish.assert_not_awaited()
+
+
+@pytest.fixture(autouse=True)
+def isolate_patron_snapshot_transport():
+    with patch("patron_ability_events.publish_patron_abilities", new_callable=AsyncMock):
+        yield

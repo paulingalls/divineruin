@@ -87,7 +87,18 @@ async def test_real_patron_gift_round_trip_from_gods_content(patron_id):
     assert len(rows) == 3
     for row, tier in zip(rows, ("acknowledged", "devoted", "exalted"), strict=True):
         authored = patron["layer_3_tier_abilities"][tier]
-        assert set(row) == {"id", "name", "tier", "recharge", "status", "eligible", "available", "spent", "reason"}
+        assert set(row) == {
+            "id",
+            "name",
+            "tier",
+            "recharge",
+            "status",
+            "eligible",
+            "available",
+            "spent",
+            "reason",
+            "state",
+        }
         assert row["id"] == authored["id"] and row["tier"] == tier.title()
         assert row["status"] == authored["status"] and row["spent"] is False
         assert row["eligible"] is (tier == "acknowledged")

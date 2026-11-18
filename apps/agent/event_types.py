@@ -124,3 +124,5 @@ CREATION_CARD_TAP = "creation_card_tap"
 # L5 specialization card tapped on the HUD during gameplay (story-008). Wire value
 # matches apps/mobile/src/audio/event-types.ts SPECIALIZATION_CHOICE_TAP.
 SPECIALIZATION_CHOICE_TAP = "specialization_choice_tap"
+
+PATRON_ABILITIES_UPDATED = "patron_abilities_updated"

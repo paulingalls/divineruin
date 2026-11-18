@@ -1,3 +1,4 @@
+import { acceptPatronSnapshot } from "./patron-abilities";
 import { applyInventorySnapshot } from "./inventory-refresh";
 import { parseSpellRows } from "@/utils/spell-display";
 import { sessionStore } from "@/stores/session-store";
@@ -11,6 +12,18 @@ import type { DataChannelEvent } from "./game-event-parsing";
 
 export function handleSessionInit(event: DataChannelEvent): void {
   const character = event.character as Record<string, unknown> | null | undefined;
+  const absentFavor = character?.divine_favor == null;
+  const emptySnapshot =
+    absentFavor && Array.isArray(event.abilities) && event.abilities.length === 0;
+  const snapshot =
+    event.abilities === undefined || emptySnapshot
+      ? null
+      : acceptPatronSnapshot({
+          player_id: character?.player_id,
+          divine_favor: character?.divine_favor,
+          abilities: event.abilities,
+        });
+  if (event.abilities !== undefined && !snapshot && !emptySnapshot) return;
   if (character && typeof character === "object") {
     characterStore.getState().setCharacter({
       playerId: typeof character.player_id === "string" ? character.player_id : "",
@@ -55,6 +68,7 @@ export function handleSessionInit(event: DataChannelEvent): void {
     const equip = character.equipment as Record<string, unknown> | undefined;
     const favor = character.divine_favor as Record<string, unknown> | undefined;
     const detail: CharacterDetail = {
+      abilities: snapshot?.abilities ?? [],
       race: typeof character.race === "string" ? character.race : "",
       attributes: {
         strength: attrs?.strength ?? 10,
