@@ -35,6 +35,7 @@
       "apps/agent/combat_init_validation.py",
       "apps/agent/combat_spatial.py",
       "apps/agent/condition_bonus.py",
+      "apps/agent/condition_catalog.py",
       "apps/agent/condition_sources.py",
       "apps/agent/condition_voice_rules.py",
       "apps/agent/conditions.py",
