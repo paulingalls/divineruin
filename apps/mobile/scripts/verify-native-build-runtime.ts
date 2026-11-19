@@ -368,10 +368,13 @@ export function createProofNativeBuildDeps(
     startMetro: (cwd, port, env) => {
       console.log(`Owned Metro: http://127.0.0.1:${port}`);
       return Promise.resolve(
-        scope.spawn(["bun", "expo", "start", "--dev-client", "--port", String(port)], {
-          cwd,
-          env: definedEnv({ ...env, CI: "1" }),
-        }),
+        scope.spawn(
+          ["bun", "expo", "start", "--dev-client", "--localhost", "--port", String(port)],
+          {
+            cwd,
+            env: definedEnv({ ...env, CI: "1" }),
+          },
+        ),
       );
     },
     waitForMetro: (process, port) => waitForMetro(process as OwnedProcess, port, scope.signal),

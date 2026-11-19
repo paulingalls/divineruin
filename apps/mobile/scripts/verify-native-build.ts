@@ -110,18 +110,47 @@ export async function runNativeBuild(options: NativeBuildOptions): Promise<void>
     );
     await deps.requireGeneratedNativeProjects(mobileRoot);
 
-    await runChecked(
-      deps,
-      "iOS development build",
-      ["bun", "expo", "run:ios", "--device", udid, "--no-bundler"],
-      mobileRoot,
-      env,
-    );
+    const port = await deps.reservePort();
+    if (options.prepared) {
+      const output = join(workspace, "native-build");
+      // Expo's device launch uses System Events and opens its default dev server.
+      await runChecked(
+        deps,
+        "iOS development build",
+        [
+          "bun",
+          "expo",
+          "run:ios",
+          "--device",
+          "generic",
+          "--output",
+          output,
+          "--port",
+          String(port),
+        ],
+        mobileRoot,
+        env,
+      );
+      await runChecked(
+        deps,
+        "iOS development app install",
+        ["xcrun", "simctl", "install", udid, join(output, "divineruin.app")],
+        mobileRoot,
+        env,
+      );
+    } else {
+      await runChecked(
+        deps,
+        "iOS development build",
+        ["bun", "expo", "run:ios", "--device", udid, "--no-bundler"],
+        mobileRoot,
+        env,
+      );
+    }
     if (!(await deps.isAppInstalled(udid, BUNDLE_ID))) {
       throw new Error(`${BUNDLE_ID} is not installed on requested simulator ${udid}`);
     }
 
-    const port = await deps.reservePort();
     metro = await deps.startMetro(mobileRoot, port, env);
     await deps.waitForMetro(metro, port);
     const appLaunchUrl = developmentClientUrl(port);
