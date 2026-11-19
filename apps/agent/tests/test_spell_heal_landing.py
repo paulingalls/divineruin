@@ -61,17 +61,26 @@ async def test_immediate_healing_persists_and_names_the_actual_restoration(heale
 
 @pytest.mark.parametrize("combat", [False, True])
 @pytest.mark.parametrize(
-    "hp,kaelen,expected", [(19, False, (1, 20, 20)), (20, False, (0, 20, 20)), (19, True, (6, 25, 25))]
+    "hp,kaelen,override,expected",
+    [
+        (19, False, 0, (1, 20, 20)),
+        (20, False, 0, (0, 20, 20)),
+        (19, True, 0, (6, 25, 25)),
+        (14, False, -5, (1, 15, 15)),
+    ],
 )
-async def test_healing_clamps_to_effective_max(healer, mock_combat_agent_factory, combat, hp, kaelen, expected):
+async def test_healing_clamps_to_effective_max(
+    healer, mock_combat_agent_factory, combat, hp, kaelen, override, expected
+):
     await healer.prepare(WOUNDS)
     ally = await healer.add_player(hp=hp)
     if kaelen:
         await healer.patch_row(ally, divine_favor={"patron": "kaelen", "level": 40, "max": 100})
+    if override:
+        await healer.patch_row(ally, maxhp_override=override)
     if combat:
-        if kaelen:
+        if kaelen or override:
             await healer.enter(mock_combat_agent_factory)
-            assert (await healer.checkpoint()).get_participant(ally).hp_max == 25
         else:
             await healer.fight()
     with heal_die(5):

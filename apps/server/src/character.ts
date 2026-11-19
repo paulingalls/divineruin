@@ -27,6 +27,7 @@ interface CharacterRow {
     xp?: number;
     location_id?: string;
     hp?: { current?: number; max?: number };
+    maxhp_override?: number;
     portrait_url?: string;
     divine_favor?: { patron?: string };
   };
@@ -62,7 +63,12 @@ export async function handleGetCharacter(_req: Request, playerId: string): Promi
     const maximum =
       baseMax === undefined
         ? undefined
-        : baseMax + (data.divine_favor?.patron === "kaelen" ? enduranceBonus : 0);
+        : Math.max(
+            1,
+            baseMax +
+              (data.maxhp_override ?? 0) +
+              (data.divine_favor?.patron === "kaelen" ? enduranceBonus : 0),
+          );
     const current = hp.current ?? 0;
     const locationId = data.location_id ?? "unknown";
 

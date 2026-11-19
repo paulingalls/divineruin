@@ -51,11 +51,15 @@ def warriors_endurance(player: dict) -> int:
     return 5 if _acknowledged_passive(player, "kaelen", WARRIORS_ENDURANCE) else 0
 
 
+def effective_max_hp(player: dict, base_max: int, *, override_delta: int = 0) -> int:
+    return max(1, base_max + player.get("maxhp_override", 0) + override_delta + warriors_endurance(player))
+
+
 def effective_hp(player: dict) -> dict:
     """Project the stored base pool without changing the player row."""
     hp = dict(player["hp"])
     if "max" in hp:
-        hp["max"] += warriors_endurance(player)
+        hp["max"] = effective_max_hp(player, hp["max"])
         if "current" in hp:
             hp["current"] = min(hp["current"], hp["max"])
     return hp

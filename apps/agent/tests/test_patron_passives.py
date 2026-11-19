@@ -127,13 +127,14 @@ async def endurance(world):
         divine_favor=favor("kaelen"),
     )
     call = game_tools(session, enter_location, enter_mode)
+    effective = base + 5 - 7
     for level in (0, 40, 35):
         initial = await get_session_init_payload(guest)
-        assert initial["character"]["hp"] == {"current": base + 3, "max": base + 5}
+        assert initial["character"]["hp"] == {"current": effective, "max": effective}
         assert initial["character"]["divine_favor"]["level"] == level
         with session._bind_authenticated_actor(guest, 1, lambda *_: None):
             summary = (await call("enter_location", location_id=session.location_id))["player"]
-        assert (summary["hp_current"], summary["hp_max"]) == (base + 3, base + 5)
+        assert (summary["hp_current"], summary["hp_max"]) == (effective, effective)
         if level == 0:
             async with world.db.transaction() as conn:
                 await _award_divine_favor_core(guest, 40, "served", conn=conn, pending_events=[])
@@ -149,9 +150,9 @@ async def endurance(world):
         saved = await db_mutations.load_combat_state(combat_id)
         assert required_player(saved, host).hp_max == 15
         guest_combatant = required_player(saved, guest)
-        assert (guest_combatant.hp_current, guest_combatant.hp_max) == (base + 3, base + 5)
+        assert (guest_combatant.hp_current, guest_combatant.hp_max) == (effective, effective)
         guest_ui = ui_player(world.ctx, guest)
-        assert (guest_ui["hpCurrent"], guest_ui["hpMax"]) == (base + 3, base + 5)
+        assert (guest_ui["hpCurrent"], guest_ui["hpMax"]) == (effective, effective)
         assert (await row(world))["hp"] == stored
     finally:
         await db_mutations.delete_combat_state(combat_id)
@@ -168,7 +169,7 @@ async def endurance(world):
             )
         initial = await get_session_init_payload(guest)
         assert initial["character"]["level"] == level
-        assert initial["character"]["hp"] == {"current": base + 3, "max": level_four + 5}
+        assert initial["character"]["hp"] == {"current": base + 3, "max": level_four + 5 - 7}
         assert (await row(world))["hp"] == {"current": base + 3, "max": level_four}
 
 
