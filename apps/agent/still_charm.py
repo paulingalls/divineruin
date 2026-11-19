@@ -81,11 +81,7 @@ async def save_on_arrival(players, location_id, *, mutations, conn):
     for player_id, player in players.items():
         current = read(player, player_id, location_id)
         save = check_resolution_save.resolve_saving_throw(player, "wisdom", 18, "charmed", bonus_dice_eligible=False)
-        if (
-            current is None
-            and not save.success
-            and "charmed" not in conditions.get_condition_effects(player.get("conditions") or []).immunities
-        ):
+        if current is None and not save.success:
             await grant(player_id, player, location_id, PARADISE_TRAP, mutations=mutations, conn=conn)
 
 
