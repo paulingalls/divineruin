@@ -1,7 +1,7 @@
 # Dependency upgrade
 
 Registry snapshot: 2026-09-19  
-Toolchain: CPython 3.14.7; uv 0.13.7; Bun 1.4.4
+Toolchain: CPython 3.14.7; uv 0.13.7; Bun 1.4.5
 Execution evidence: historical record accepted at 795cec97832a7fe2d7567b36d0343e476e236b76 on 2026-09-19T14:14:59Z.
 
 ## Python environments
@@ -43,7 +43,7 @@ Release age policy: 604800 seconds.
 | Project | Group | Dependency | Requested | Locked / installed | Candidate | Registry latest | Decision |
 |---|---|---|---|---|---|---|---|
 | . | devDependencies | @eslint/js | `^10.0.1` | 10.0.1 / 10.0.1 | 10.0.1 | 10.0.1 | Current |
-| . | devDependencies | @pi-innovations/proof | `git+https://github.com/paulingalls/proof.git#v0.33.2` | github:paulingalls/proof#b91f55c / github:paulingalls/proof#b91f55c | 0.33.2 | 0.34.0 | git tag pin; v0.34.0 not yet evaluated |
+| . | devDependencies | @pi-innovations/proof | `git+https://github.com/paulingalls/proof.git#v0.34.1` | github:paulingalls/proof#059e14b / github:paulingalls/proof#059e14b | 0.34.1 | 0.34.1 | git tag pin |
 | . | devDependencies | @types/bun | `1.4.4` | 1.4.4 / 1.4.4 | 1.4.4 | 1.4.4 | Current |
 | . | devDependencies | eslint | `^10.10.0` | 10.10.0 / 10.10.0 | 10.10.0 | 10.11.0 | Registry latest is inside the unchanged seven-day minimum release age; the candidate is the newest eligible stable release. |
 | . | devDependencies | eslint-config-prettier | `^10.1.8` | 10.1.8 / 10.1.8 | 10.1.8 | 10.1.8 | Current |
