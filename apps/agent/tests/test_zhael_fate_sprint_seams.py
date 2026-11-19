@@ -2,17 +2,23 @@
 
 from unittest.mock import patch
 
+import pytest
 from _patron_engine_fixtures import configure
 from _unbound_path_fixtures import world as world
 from _zhael_fate_fixtures import attack, defend, game_tools
-from acceptance._capstone_helpers import _build_state, _d20, _damage_die, _enemy
+from acceptance._capstone_helpers import _build_state, _d20, _damage_die, _enemy, _player
 from acceptance.test_kaelen_iron_resolve_capstone import required_player
 
 import check_resolution_attack
 import db_mutations
 from activate_tools import activate
-from combat_attack_roll import attack_roll_inputs, spend_sneak_attack
+from combat_attack_roll import attack_roll_inputs, roll_attack, spend_sneak_attack
 from combat_turn import declare_phase, resolve_phase
+from conditions import has_condition
+
+
+async def _keep(call, offer):
+    return await call("activate", id="zhael_fates_thread", offer_id=offer["offer_id"], keep="original")
 
 
 async def test_held_melee_swing_closes_distance_once_before_the_offer(world):
@@ -107,3 +113,88 @@ def test_finished_attack_keeps_the_prepared_disadvantage_cancel():
     with patch("check_resolution_attack.dice_roll", return_value=_damage_die(5)):
         result = check_resolution_attack.finish_attack(rogue, weapon, 10, 50, prepared, prepared.d20.evaluate(15))
     assert result.hit and result.sneak_attack_dice is None
+
+
+async def _rogue_swings(world):
+    """A Zhael rogue with Extra Attack and an ally beside the target: both swings are held and kept."""
+    await configure(world, "zhael", "rogue")
+    pid = world.ids[0]
+    state = _build_state(pid, pid, [_enemy("foe", 60)])
+    rogue = required_player(state, pid)
+    rogue.archetype_id, rogue.level, rogue.attack_mod, rogue.enhancers = "rogue", 5, 25, ["extra_attack"]
+    ally = _player("ally")
+    state.participants.append(ally)
+    state.initiative_order.append(ally.id)
+    assert state.spatial is not None
+    state.spatial["positions"].update(foe={"x": 5, "y": 0, "z": 0}, ally={"x": 10, "y": 0, "z": 0})
+    state.spatial["speeds"]["ally"] = 30
+    session = world.ctx.userdata
+    session.combat_state = state
+    call = game_tools(session, declare_phase, resolve_phase, activate)
+    try:
+        await call("declare_phase", declarations=[attack(pid, "foe"), defend("foe"), defend("ally")])
+        with (
+            patch("check_resolution.dice_roll", side_effect=[_d20(15), _d20(14)]),
+            patch("check_resolution_attack.dice_roll", return_value=_damage_die(3)),
+        ):
+            first = (await call("resolve_phase"))["fate_offer"]
+            second = (await _keep(call, first))["fate_offer"]
+            assert second["roller_id"] == pid and second["roll_kind"] == "attack"
+            return (await _keep(call, second))["packets"][0], state
+    finally:
+        await db_mutations.delete_combat_state(state.combat_id)
+
+
+async def test_held_extra_attack_swings_land_sneak_attack_once(world):
+    """F2: the held ally swing spends the round's Sneak Attack, so the second held swing gets none."""
+    packet, _ = await _rogue_swings(world)
+    assert [(a["sneak_attack_dice"], a["damage"]) for a in packet["attacks"]] == [("2d6", 6), (None, 3)]
+
+
+async def test_receipt_branch_lands_the_critical_save_rider(world):
+    """F3: with a Zhael follower present the blow lands through the damage receipt, which must still
+    roll the Hollowed Knight's on-crit save and land its condition."""
+    await configure(world, "zhael", "mage")
+    pid = world.ids[0]
+    knight = _enemy("knight", 30)
+    rider = {"save": "CON", "dc": 14, "applies_condition": "hollowed", "stage": 1}
+    knight.action_pool = [{**knight.action_pool[0], "critical_save": rider}]
+    state = _build_state(pid, pid, [knight])
+    session = world.ctx.userdata
+    session.combat_state = state
+    call = game_tools(session, declare_phase, resolve_phase, activate)
+    try:
+        await call("declare_phase", declarations=[defend(pid), {**attack("knight", pid), "action": "Scimitar"}])
+        with (
+            patch("check_resolution.dice_roll", side_effect=[_d20(20), _d20(3)]),
+            patch("check_resolution_attack.dice_roll", return_value=_damage_die(2)),
+        ):
+            await call("resolve_phase")
+            blow = (await call("resolve_phase"))["fate_offer"]
+            save = (await _keep(call, blow))["fate_offer"]
+            result = await _keep(call, save)
+        packet = next(p for p in result["packets"] if p.get("actor_id") == "knight" and p.get("hit"))
+        assert packet["critical"] and packet["critical_save"] == {"dc": 14, "roll": 3, "total": 3, "success": False}
+        assert packet["condition_inflicted"] == "hollowed"
+        assert has_condition(required_player(session.combat_state, pid).conditions, "hollowed")
+    finally:
+        await db_mutations.delete_combat_state(state.combat_id)
+
+
+@pytest.mark.parametrize("first_face", [2, 15], ids=["miss", "hit_without_advantage"])
+def test_sneak_attack_is_spent_only_when_its_dice_land(first_face):
+    """F5: a swing that adds no Sneak dice (a miss, or a hit with no advantage or adjacent ally)
+    leaves the round's allowance for a later swing that earns it."""
+    state = _build_state("rogue", "rogue", [_enemy("foe", 50)])
+    rogue, foe = required_player(state, "rogue"), required_player(state, "foe")
+    rogue.archetype_id, rogue.level = "rogue", 1
+    plain = rogue.action_pool[0]
+    with (
+        patch("check_resolution.dice_roll", side_effect=[_d20(first_face), _d20(15), _d20(15)]),
+        patch("check_resolution_attack.dice_roll", return_value=_damage_die(3)),
+    ):
+        first, _ = roll_attack(rogue, plain, foe, combat_state=state)
+        assert first.sneak_attack_dice is None and rogue.sneak_attack_round != state.round_number
+        earned, _ = roll_attack(rogue, {**plain, "advantage": True}, foe, combat_state=state)
+    assert earned.hit and earned.sneak_attack_dice == "1d6"
+    assert rogue.sneak_attack_round == state.round_number
