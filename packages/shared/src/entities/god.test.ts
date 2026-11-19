@@ -32,6 +32,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
   for (const [patron, id] of [
     ["mortaen", "mortaen_deaths_awareness"],
     ["nythera", "nythera_horizon_sense"],
+    ["orenthel", "orenthel_dawns_resilience"],
   ]) {
     expect(validateGods(catalog).find((god) => god.god_id === patron)?.layer_1_gift).toMatchObject({
       id,

@@ -14,6 +14,21 @@ def is_terminally_down(p) -> bool:
     return p.is_dead or p.death_save_failures >= DEATH_SAVE_LIMIT
 
 
+def revive(participant, hp: int) -> None:
+    participant.hp_current = hp
+    participant.is_fallen = False
+    participant.death_save_successes = 0
+    participant.death_save_failures = 0
+
+
+def sync_companion_consciousness(session, state) -> None:
+    companion = session.companion
+    if companion is not None:
+        participant = state.get_participant(companion.id)
+        if participant is not None and participant.type == "companion":
+            companion.is_conscious = not participant.is_fallen and not is_terminally_down(participant)
+
+
 def has_damage(action: dict) -> bool:
     return action.get("damage") not in (None, "", "0", 0)
 

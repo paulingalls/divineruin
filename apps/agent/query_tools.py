@@ -353,6 +353,7 @@ async def _query_inventory_impl(
 ) -> str:
     session: SessionData = context.userdata
     from combat_item_rider import eligible_items, party_player
+    from item_effects import CONSUME_PREFIX, heal_profile
 
     player_id = target_id or session.acting_player_id
     if target_id and not party_player(session, player_id):
@@ -370,12 +371,18 @@ async def _query_inventory_impl(
 
     results = []
     for item in items:
+        profile = heal_profile(item["id"], item)
         results.append(
             {
                 "name": item.get("name"),
                 "type": item.get("type"),
                 "id": item.get("id"),
                 "item_target_id": f"item:{player_id}:{item['id']}",
+                **(
+                    {"consume_id": f"{CONSUME_PREFIX}{item['id']}"}
+                    if profile is not None and not item.get("tainted")
+                    else {}
+                ),
                 "subtype": item.get("subtype"),
                 "durability_tier": item.get("durability_tier"),
                 "quantity": item.get("slot_info", {}).get("quantity", 1),

@@ -1,13 +1,17 @@
 """Cached content lookup queries (locations, NPCs, items, lore, quests, scenes, encounters, training programs, errand templates).
 
 All functions use db._cache_get() / db._cache_set() for Redis caching.
+Item lookups can reuse the caller's transaction on a cache miss.
 """
 
 import json
 import logging
 
+import asyncpg
+
 import db
 from creature_combat_loader import load_creature_enemy as load_creature_enemy
+from item_effects import heal_profile
 
 logger = logging.getLogger("divineruin.db")
 
@@ -108,18 +112,21 @@ async def get_npc(npc_id: str) -> dict | None:
     return data
 
 
-async def get_item(item_id: str) -> dict | None:
+async def get_item(item_id: str, *, conn: asyncpg.Connection | None = None) -> dict | None:
     cache_key = f"item:{item_id}"
     cached = await db._cache_get(cache_key)
     if cached is not None:
-        return json.loads(cached)
+        data = json.loads(cached)
+        heal_profile(item_id, data)
+        return data
 
-    pool = await db.get_pool()
-    row = await pool.fetchrow("SELECT data FROM items WHERE id = $1", item_id)
+    connection = conn or await db.get_pool()
+    row = await connection.fetchrow("SELECT data FROM items WHERE id = $1", item_id)
     if row is None:
         return None
 
     data = json.loads(row["data"])
+    heal_profile(item_id, data)
     await db._cache_set(cache_key, json.dumps(data))
     return data
 

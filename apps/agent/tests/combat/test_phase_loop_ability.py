@@ -1,5 +1,4 @@
 import json
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -9,7 +8,7 @@ from combat.test_phase_loop import _resonance_deps
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 
-_CONDITION_FREE_SPELL = SimpleNamespace(name="Detect Magic", applies_condition=None)
+import spells
 
 
 class TestResolvePhaseAbility:
@@ -22,7 +21,7 @@ class TestResolvePhaseAbility:
 
     def _cast_resolver(self, result):
         mod = MagicMock()
-        mod._gate_spell = MagicMock(return_value=_CONDITION_FREE_SPELL)
+        mod._gate_spell = MagicMock(return_value=spells.get_spell("arcane_detect_magic"))
         mod._resolve_cast = AsyncMock(return_value=result)
         return mod
 
@@ -70,7 +69,7 @@ class TestResolvePhaseAbilityResonance:
             events=events or [],
         )
         mod = MagicMock()
-        mod._gate_spell = MagicMock(return_value=_CONDITION_FREE_SPELL)
+        mod._gate_spell = MagicMock(return_value=spells.get_spell("arcane_detect_magic"))
         mod._resolve_cast = AsyncMock(return_value=result)
         return mod
 
@@ -229,7 +228,7 @@ class TestResolvePhaseAbilityFocusGate:
         deps["queries"].get_player = AsyncMock(return_value=player_row)
         res = _resonance_deps()
         cast_resolver = MagicMock()
-        cast_resolver._gate_spell = MagicMock(return_value=_CONDITION_FREE_SPELL)
+        cast_resolver._gate_spell = MagicMock(return_value=spells.get_spell("arcane_detect_magic"))
         cast_resolver._resolve_cast = AsyncMock(
             return_value=CastResult(
                 packet={"effect": "ward"}, new_resonance=None, concentration_spell_id=_UNCHANGED, generated=0, events=[]

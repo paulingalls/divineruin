@@ -27,6 +27,7 @@ import db_mutations_resonance
 import db_queries
 import draethar_inner_fire
 import event_types as E
+import item_heal
 import lost_scout_combat
 import resonance_events
 import spell_casting
@@ -35,6 +36,7 @@ import veil_ward_events
 import ward_resolution
 import zhael_fate
 from combat_ability import AbilityCastOutcome
+from combat_down import sync_companion_consciousness
 from combat_end import _end_combat_finish
 from combat_events import EventSink, emit_or_publish, isolated_publish
 from combat_fate_rolls import PhaseRolls
@@ -134,6 +136,9 @@ async def _resolve_phase_locked(
                         cast_resolver=cast_resolver,
                         character_spells_mod=character_spells_mod,
                     )
+                    await item_heal.preflight(
+                        session, state, ((p.actor_id, p.declaration) for p in adv.packets), conn=conn, queries=queries
+                    )
                 except ToolError as error:
                     raise PrevalidationRefusal(error) from error
 
@@ -217,6 +222,7 @@ async def _resolve_phase_locked(
     if resuming:
         zhael_fate.effects_committed(session)
     if ended_outcome is None:
+        sync_companion_consciousness(session, state)
         session.combat_state = state
     else:
         assert end_data is not None

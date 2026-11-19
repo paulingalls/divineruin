@@ -17,6 +17,7 @@ import db
 import db_mutations
 import event_types as E
 import zhael_fate
+from combat_down import revive, sync_companion_consciousness
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from combat_support import _require_combat
 from db_errors import db_tool
@@ -173,11 +174,7 @@ async def _request_death_save_locked(session, cs, faller_id, result, mutations, 
     revive_player_id: str | None = None
 
     if result.critical_success:
-        # Nat 20: regain 1 HP, no longer fallen
-        working.hp_current = 1
-        working.is_fallen = False
-        working.death_save_successes = 0
-        working.death_save_failures = 0
+        revive(working, 1)
         # Only a player has a players.data HP row. A companion's HP lives on the combat row alone;
         # writing here would have restored the PLAYER's HP for a companion's lucky roll.
         if working.type == "player":
@@ -201,6 +198,7 @@ async def _request_death_save_locked(session, cs, faller_id, result, mutations, 
         await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
 
     # Committed — now adopt the rolled state and release its events.
+    sync_companion_consciousness(session, state)
     session.combat_state = state
     if resumed:
         zhael_fate.effects_committed(session)

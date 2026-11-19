@@ -1,6 +1,7 @@
-"""Catalog-owned spell damage formulas and combat recipient preflight."""
+"""Catalog-owned spell formulas and combat recipient preflight."""
 
 import re
+from typing import Literal, NotRequired, TypedDict, cast
 
 ATTRIBUTES = frozenset({"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"})
 DAMAGE_TYPES = frozenset(
@@ -21,6 +22,60 @@ DAMAGE_TYPES = frozenset(
     }
 )
 DICE = re.compile(r"([1-9][0-9]*)d([1-9][0-9]*)(?:\+([0-9]+))?")
+
+
+class HealProfile(TypedDict):
+    dice: str
+    recipients: Literal["single", "selected", "all_allies"]
+    attribute: NotRequired[str]
+    out_of_combat_only: NotRequired[bool]
+    regeneration_rounds: NotRequired[int]
+
+
+class ItemCreationProfile(TypedDict):
+    item_id: str
+    quantity: int
+
+
+def parse_heal_profile(raw: object, max_targets: int | None) -> HealProfile | None:
+    if raw is None:
+        return None
+    if not isinstance(raw, dict) or raw.keys() - {
+        "dice",
+        "recipients",
+        "attribute",
+        "out_of_combat_only",
+        "regeneration_rounds",
+    }:
+        raise ValueError("heal must contain only supported fields")
+    dice = raw.get("dice")
+    if not isinstance(dice, str) or not DICE.fullmatch(dice):
+        raise ValueError("heal requires valid dice")
+    recipients = raw.get("recipients")
+    if recipients not in ("single", "selected", "all_allies"):
+        raise ValueError("heal requires a recipient policy")
+    if (recipients == "selected") != (max_targets is not None):
+        raise ValueError("heal requires max_targets only for selected recipients")
+    if "attribute" in raw and (not isinstance(raw["attribute"], str) or raw["attribute"] not in ATTRIBUTES):
+        raise ValueError("heal attribute must be a known attribute")
+    if "out_of_combat_only" in raw and not isinstance(raw["out_of_combat_only"], bool):
+        raise ValueError("heal out_of_combat_only must be boolean")
+    if "regeneration_rounds" in raw:
+        rounds = raw["regeneration_rounds"]
+        if type(rounds) is not int or rounds <= 0:
+            raise ValueError("heal regeneration_rounds must be a positive integer")
+    return cast(HealProfile, dict(raw))
+
+
+def parse_item_creation(raw: object) -> ItemCreationProfile | None:
+    if raw is None:
+        return None
+    if not isinstance(raw, dict) or raw.keys() != {"item_id", "quantity"}:
+        raise ValueError("creates_item requires item_id and quantity")
+    item_id, quantity = raw["item_id"], raw["quantity"]
+    if not isinstance(item_id, str) or not item_id.strip() or type(quantity) is not int or quantity < 1:
+        raise ValueError("creates_item requires a nonempty item_id and positive integer quantity")
+    return {"item_id": item_id, "quantity": quantity}
 
 
 def parse_profile(raw):
@@ -125,6 +180,11 @@ def scaled(profile, key, base, level):
 
 
 def validate_target(state, caster, declaration, spell):
+    if (heal := spell.heal) is not None:
+        from combat_spell_heal import combat_recipients
+
+        combat_recipients(state, caster, declaration, spell, heal)
+        return
     profile = getattr(spell, "combat_damage", None)
     if profile is None or profile["resolution"] == "deferred":
         return

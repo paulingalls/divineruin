@@ -3,10 +3,12 @@
 import json
 import logging
 import random
+from copy import deepcopy
 
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
+import combat_regeneration
 import combat_resolution
 import combat_rewards
 import db
@@ -21,9 +23,11 @@ import patron_deeds
 import pricing_queries
 import quest_progress
 from combat_conditions_persist import reconcile_member_conditions
+from combat_down import sync_companion_consciousness
 from combat_durability import _accrue_durability, _find_equipped
 from combat_end_lives import settle_lives
 from combat_events import EventSink, emit_or_publish, isolated_publish
+from combat_handoff import build_handoff_agent as _build_handoff_agent
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from combat_support import _require_combat
 from db_errors import db_tool
@@ -109,6 +113,7 @@ async def _end_combat_locked(
         raise ToolError(f"Invalid outcome. Must be one of: {_VALID_OUTCOMES}")
     outcome = outcome.lower()
 
+    cs = deepcopy(cs)
     sink = EventSink()
     async with db_mod.transaction() as conn:
         end_data = await _end_combat_db(
@@ -232,6 +237,8 @@ async def _end_combat_db(
         if member.player_id == actor_id:
             weapon_durability = member_durability
 
+    regenerated = await combat_regeneration.settle(session, cs, conn=conn, mutations=mutations, sink=sink)
+
     # Persist cross-encounter conditions (M4.3, story-004; per-member M18 story-003): reconcile
     # EVERY player member's persistent conditions + surviving beneficial dice into their OWN
     # players.data row, not just the primary's — see reconcile_member_conditions. Same tx as the
@@ -282,7 +289,9 @@ async def _end_combat_db(
             await patron_deeds.record_deed(player_id, deed, conn=conn)
             if deed == "won_combat" and not session.ally_present_for(player_id):
                 await patron_deeds.record_deed(player_id, "won_alone", conn=conn)
-    death_context = await settle_lives(cs, outcome, primary_id, combat_cleared, queries, mutations, conn)
+    death_context = await settle_lives(
+        cs, outcome, primary_id, combat_cleared, queries, mutations, conn, primary_regenerated=primary_id in regenerated
+    )
 
     # Faction reputation from the combat OUTCOME (story-002 inc 5/6): killing an encounter
     # faction's members (victory) lowers standing; talking them down (deescalated) raises it.
@@ -370,6 +379,7 @@ def _end_combat_finish(
         member.weapon_crit_vs_heavy = False
         member.draethar_inner_fire_used = False
         member.unbound_raw_channeling_used = False
+    sync_companion_consciousness(session, cs)
     session.combat_state = None
 
     # Post-commit sync of the location-ward mirror: only when the dying encounter ward changed
@@ -470,31 +480,3 @@ def _end_combat_finish(
     agent_type = session.pre_combat_agent_type or REGION_CITY
     session.pre_combat_agent_type = None
     return _build_handoff_agent(session, agent_type, summary_ctx), json.dumps(response)
-
-
-def _build_handoff_agent(session: SessionData, agent_type: str, summary_ctx):
-    """Construct the exploration agent the party returns to — the ONE fallible step in an
-    otherwise in-memory teardown, isolated here with a fallback (concern 9e2685165f07).
-
-    It runs AFTER ``combat_state`` has been cleared (which it must, or a retried end pays the
-    party twice), and the agent it returns is the only exit from CombatAgent. So a raise out of
-    here would strand the session in combat forever with its rewards already banked — the exact
-    outcome the post-commit ordering exists to prevent. Agent construction reaches real work
-    (system-prompt assembly over the companion profile, toolset composition, the summary
-    ChatContext), so "it is just a constructor" is not a guarantee.
-
-    The fallback drops every optional input and rebuilds at the default region: losing the combat
-    summary and the companion's voice for one turn is survivable, being unable to leave combat is
-    not. If even that raises, the process is broken and the exception is the honest answer.
-    """
-    from gameplay_agent import create_gameplay_agent
-
-    try:
-        return create_gameplay_agent(agent_type, session.location_id, companion=session.companion, chat_ctx=summary_ctx)
-    except Exception:
-        logger.exception(
-            "Combat handoff agent (%s) failed to build; falling back to a bare exploration agent so the "
-            "party can leave combat. The combat summary and companion context are lost for this handoff.",
-            agent_type,
-        )
-        return create_gameplay_agent(REGION_CITY, session.location_id)

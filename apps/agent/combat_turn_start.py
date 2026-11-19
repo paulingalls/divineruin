@@ -6,6 +6,7 @@ import combat_damage
 import combat_damage_results
 import combat_grapple
 import combat_phase
+import combat_regeneration
 from combat_down import is_terminally_down
 from condition_restrictions import cannot_act
 from dice import roll as dice_roll
@@ -35,6 +36,28 @@ def ally_turns(state, packets):
 async def turn_start(
     session, state, victim, *, conn, sink, mutations, queries, concentration_break_mod, progress=None, **unused
 ):
+    packet = await _damage(
+        session,
+        state,
+        victim,
+        conn=conn,
+        sink=sink,
+        mutations=mutations,
+        queries=queries,
+        concentration_break_mod=concentration_break_mod,
+        progress=progress,
+    )
+    if progress is not None and progress.paused:
+        return None
+    effect = await combat_regeneration.tick(victim, conn=conn, mutations=mutations)
+    if effect is not None:
+        if packet is None:
+            packet = {"actor_id": victim.id, "round": state.round_number}
+        packet["turn_start_effects"] = [effect]
+    return packet
+
+
+async def _damage(session, state, victim, *, conn, sink, mutations, queries, concentration_break_mod, progress):
     # Once per round comes from the beat machine: Beat 2 commits with the move to NARRATION,
     # and Beat-3 pauses and reloads re-enter only combat_hold.pump, never this boundary.
     # A Hollowed echo is an already-dead player-life, outside the ally band.

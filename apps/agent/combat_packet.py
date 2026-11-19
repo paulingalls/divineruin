@@ -15,6 +15,7 @@ import combat_melee_approach
 import combat_recharge
 import combat_spatial_declarations
 import combat_voice_rules
+import item_heal
 import spell_casting
 from action_contracts_still import STILL_ZONE_KINDS
 from combat_ability import (
@@ -159,6 +160,9 @@ async def _resolve_action_packet(
         combat_voice_rules.guard_declaration(state, attacker, decl)
     except DeliveryRefused as e:
         return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}
+
+    if item_heal.is_consume(decl):
+        return await item_heal.resolve_combat(session, state, attacker, decl, conn=conn, sink=sink, queries=queries)
 
     if decl.type is DeclarationType.INTERACT and decl.action in choir_encounter.SEARCH_ACTIONS:
         return await choir_encounter.search(

@@ -214,6 +214,7 @@ CONDITION_CATALOG: dict[str, ConditionSpec] = {
         bonus_die_scopes=("attack", "save", "check"),
         restrictions=("consumed_on_use",),
     ),
+    "regenerating": ConditionSpec(clearance="regeneration_expired"),
     "hollowed": ConditionSpec(
         clearance="greater_restoration_or_sanctified_rest",
         persists_across_encounters=True,

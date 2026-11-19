@@ -6,7 +6,7 @@ import db
 import db_activity_queries
 import db_content_queries
 import db_queries
-from patron_passives import warriors_endurance
+from patron_passives import effective_max_hp
 from session_data import SessionData
 
 
@@ -27,7 +27,7 @@ async def deaths_awareness(session: SessionData, player: dict, *, queries=db_que
                 raise ValueError(f"Death's Awareness is missing party member {member_id!r}")
             if member.get("location_id") == session.location_id:
                 hp = member["hp"]
-                maximum = max(1, hp["max"] + member.get("maxhp_override", 0) + warriors_endurance(member))
+                maximum = effective_max_hp(member, hp["max"])
                 if hp["current"] * 4 <= maximum:
                     creatures.append({"id": member_id, "name": member["name"]})
     cue = (

@@ -3,6 +3,7 @@
 from livekit.agents.llm import ToolError
 
 import cast_modifiers
+import combat_spell_heal
 import combat_voice_rules
 import patron_echo_choice
 import spell_item_resolution
@@ -72,20 +73,20 @@ async def _prepare_cast(
     except ValueError as e:
         raise ToolError(str(e)) from e
 
+    if voice_spell.heal is not None and combat_state is None and session.in_combat:
+        raise ToolError(f"{voice_spell.name} is cast in combat with declare_phase")
+    heal = voice_spell.heal if combat_state is None else None
     locked_rows: dict[str, dict] | None = None
     if player is None:
-        # Lock the caster/target union in one order to avoid deadlocks. Unknown spells
-        # still reach the knowledge gate below, which supplies the refusal.
-        try:
-            spell_def = spells_mod.get_spell(spell_id)
-        except ValueError:
-            spell_def = None
-        produces_ooc = spell_def is not None and spell_def.applies_condition is not None and not session.in_combat
+        produces_ooc = voice_spell.applies_condition is not None and not session.in_combat
+        lock_target_ids = (
+            session.party.member_ids if heal is not None and heal["recipients"] == "all_allies" else target_ids
+        )
         locked_rows, player = await condition_produce_mod.lock_ooc_caster_and_targets(
-            produces_ooc=produces_ooc or item_target is not None,
+            produces_ooc=produces_ooc or item_target is not None or heal is not None,
             player_id=player_id,
             target_id=item_target[0] if item_target else target_id,
-            target_ids=target_ids,
+            target_ids=lock_target_ids,
             party_member_ids=session.party.member_ids,
             queries_mod=queries_mod,
             conn=conn,
@@ -111,11 +112,17 @@ async def _prepare_cast(
     except ValueError as e:
         raise ToolError(str(e)) from e
 
-    # Normalize before resource writes; this also prevents target_ids bypassing
-    # the single-target revival gate.
-    if target_ids is not None:
-        try:
+    heal_rows = None
+    try:
+        if heal is not None:
+            assert locked_rows is not None
+            heal_rows = combat_spell_heal.exploration_recipients(
+                spell, heal, player_id, player, target_id, target_ids, locked_rows
+            )
+            if target_ids is not None:
+                target_ids = list(heal_rows)
+        elif target_ids is not None:
             target_ids = spells_mod.normalize_target_list(spell, target_id, target_ids)
-        except ValueError as e:
-            raise ToolError(str(e)) from e
-    return spell, player, target_ids, item_target, locked_rows
+    except ValueError as e:
+        raise ToolError(str(e)) from e
+    return spell, player, target_ids, item_target, locked_rows, heal_rows
