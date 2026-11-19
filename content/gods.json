@@ -1886,8 +1886,9 @@
         "clauses": [
           {
             "effect": "Crit strikes deal +1d4 natural-type damage (thorns, stone, lightning)",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "thyra_natures_edge"
           }
         ]
       },
@@ -1908,8 +1909,9 @@
         "clauses": [
           {
             "effect": "Crit strikes deal +1d4 natural-type damage (thorns, stone, lightning)",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "thyra_natures_edge"
           }
         ]
       },
@@ -3424,8 +3426,9 @@
         "clauses": [
           {
             "effect": "Critical hits on natural 19–20 (expanded crit range). Zhael bends probability",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_bent_probability"
           }
         ]
       },
@@ -3435,8 +3438,9 @@
         "clauses": [
           {
             "effect": "Critical hits on natural 19–20 (expanded crit range). Zhael bends probability",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_bent_probability"
           }
         ]
       }

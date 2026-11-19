@@ -251,7 +251,7 @@ async def test_combat_support_threads_attacker_conditions_and_target_ac():
         action,
         target,
         mutations=MagicMock(update_item_durability=AsyncMock()),
-        queries=MagicMock(),
+        queries=MagicMock(get_player=AsyncMock(return_value={"class": "warrior"})),
         resolver=resolver,
         concentration_break_mod=MagicMock(break_concentration_on_damage=AsyncMock(return_value=None)),
     )

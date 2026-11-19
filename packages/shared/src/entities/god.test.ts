@@ -216,3 +216,19 @@ for (const entry of corpus.layer_1_cases) {
     }
   });
 }
+
+test("the authored critical synergies are active engine clauses", () => {
+  const gods = validateGods(catalog);
+  for (const [patron, archetype, type, implementation_id] of [
+    ["zhael", "rogue", "divine", "zhael_bent_probability"],
+    ["zhael", "mage", "divine", "zhael_bent_probability"],
+    ["thyra", "warrior", "unexpected", "thyra_natures_edge"],
+    ["thyra", "skirmisher", "unexpected", "thyra_natures_edge"],
+  ] as const) {
+    const god = gods.find((entry) => entry.god_id === patron);
+    expect(god?.layer_4_synergy_matrix[archetype]).toMatchObject({
+      type,
+      clauses: [{ status: "active", resolution: "engine", implementation_id }],
+    });
+  }
+});

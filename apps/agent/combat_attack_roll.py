@@ -7,6 +7,7 @@ import combat_marks
 import combat_spatial
 import condition_voice_rules
 import conditions
+import patron_synergy_combat
 from dramatic import DramaticContext, evaluate_dramatic_context
 
 BEACON = "Beacon"
@@ -23,10 +24,11 @@ def roll_attack(
     resolver=check_resolution_attack,
     combat_state=None,
     weapon_attack: bool = True,
+    player: dict | None = None,
 ) -> tuple:
     """Roll without applying HP changes; held reactions pause before impact."""
     attacker_data, effective_ac, attack_mod = attack_roll_inputs(
-        attacker, target, target_ac_bonus, combat_state, action, weapon_attack=weapon_attack
+        attacker, target, target_ac_bonus, combat_state, action, weapon_attack=weapon_attack, player=player
     )
     attack_result = resolver.resolve_attack(
         attacker_data,
@@ -42,7 +44,7 @@ def roll_attack(
     return promote_attack(attack_result, enemies_remaining, is_first_attack_of_combat), effective_ac
 
 
-def attack_roll_inputs(attacker, target, target_ac_bonus, combat_state, action, *, weapon_attack=True):
+def attack_roll_inputs(attacker, target, target_ac_bonus, combat_state, action, *, weapon_attack=True, player=None):
     """The attacker data, effective AC and to-hit bonus a d20 attack is prepared from.
 
     Only reads state: a rogue's Sneak Attack allowance is offered here and spent by
@@ -52,6 +54,9 @@ def attack_roll_inputs(attacker, target, target_ac_bonus, combat_state, action, 
         "level": attacker.level,
         "conditions": attacker.conditions,
     }
+
+    if player is not None:
+        attacker_data.update(patron_synergy_combat.attack_flags(player))
 
     if weapon_attack and attacker.type == "player" and attacker.archetype_id == "rogue":
         if combat_state is None:
@@ -147,6 +152,10 @@ def build_attack_dice_roll_payload(attacker, attack_result) -> dict:
             damage_type=attack_result.damage_type,
             sneak_attack_dice=attack_result.sneak_attack_dice,
             sneak_attack_raw_damage=attack_result.sneak_attack_raw_damage,
+        )
+    if attack_result.synergy_damage_type is not None:
+        payload.update(
+            synergy_damage=attack_result.synergy_damage, synergy_damage_type=attack_result.synergy_damage_type
         )
     return payload
 

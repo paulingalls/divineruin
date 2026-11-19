@@ -16,6 +16,7 @@ from combat_damage_results import AutomaticDamageResult, SaveDamageResult
 from combat_fate_rolls import packet_save
 from combat_spell_profile import DICE, scaled
 from combat_support import _resolve_attack_packet, apply_attack_result, apply_rolled_attack
+from patron_synergy_combat import attack_player
 from rules_engine import attribute_modifier, proficiency_bonus
 from zhael_fate import candidates
 
@@ -282,8 +283,9 @@ async def _land_attack(
     elif progress is not None and "damage_receipt" not in progress.steps:
         eligible = await candidates(session, queries=queries, conn=conn)
         if eligible.choices(caster.id):
+            player = await attack_player(caster, queries=queries, conn=conn)
             attacker_data, ac, modifier = attack_roll_inputs(
-                caster, target, ac_bonus, state, action, weapon_attack=False
+                caster, target, ac_bonus, state, action, weapon_attack=False, player=player
             )
             prepared = check_resolution_attack.prepare_attack(
                 attacker_data, action, ac, attack_mod=modifier, target_conditions=target.conditions

@@ -17,6 +17,7 @@ from combat_down import damage_target_unavailable
 from combat_fate_rolls import PacketRolls
 from combat_item_rider import resolve_rider
 from combat_support import _resolve_attack_packet, apply_rolled_attack
+from patron_synergy_combat import attack_player
 
 
 async def attack_sequence(
@@ -119,8 +120,9 @@ async def continue_attack(
             and attacker.is_ally
             and (candidates := await zhael_fate.candidates(session, queries=queries, conn=conn)).choices(attacker.id)
         ):
+            player = await attack_player(attacker, queries=queries, conn=conn)
             attacker_data, target_ac, attack_mod = attack_roll_inputs(
-                attacker, target, state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus, state, act
+                attacker, target, state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus, state, act, player=player
             )
             prepared = check_resolution_attack.prepare_attack(
                 attacker_data, act, target_ac, attack_mod=attack_mod, target_conditions=target.conditions
@@ -287,8 +289,10 @@ async def continue_attack(
         last = next(s for s in reversed(attack_summaries) if "target_hp_status" in s)
         summary["attacks"] = attack_summaries
         summary.pop("unholy_fortitude", None)
-        for component in ("bonus_damage", "rider_damage"):
+        for component in ("bonus_damage", "rider_damage", "synergy_damage"):
             summary[component] = sum(s.get(component, 0) for s in attack_summaries)
+            type_key = f"{component}_type"
+            summary[type_key] = next((s[type_key] for s in attack_summaries if s.get(type_key) is not None), None)
         if movement:
             summary.update(
                 moved_ft=sum(s["moved_ft"] for s in attack_summaries),

@@ -20,6 +20,7 @@ from combat_attack_roll import serialize_roll as serialize_roll
 from combat_condition_landing import _land_condition_on_one
 from combat_damage import apply_attack_result
 from condition_restrictions import cannot_act
+from patron_synergy_combat import attack_player
 from session_data import CombatParticipant, CombatState, SessionData
 
 logger = logging.getLogger("divineruin.tools")
@@ -82,6 +83,7 @@ async def _resolve_attack_packet(
     if progress is not None and "damage_receipt" in progress.steps:
         attack_result, effective_ac = None, target.ac
     else:
+        player = await attack_player(attacker, queries=queries, conn=conn)
         attack_result, effective_ac = roll_attack(
             attacker,
             action,
@@ -92,6 +94,7 @@ async def _resolve_attack_packet(
             resolver=resolver,
             combat_state=combat_state,
             weapon_attack=weapon_attack,
+            player=player,
         )
     return await apply_rolled_attack(
         session,
