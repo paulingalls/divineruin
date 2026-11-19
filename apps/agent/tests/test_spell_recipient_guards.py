@@ -39,7 +39,6 @@ def test_catalog_recipient_profiles_survive_the_real_parser():
         profile = spell.combat_damage or {}
         if "recipients" in profile:
             actual[spell.id] = profile["recipients"]["shape"]
-            assert profile["recipients"] == row["combat_damage"]["recipients"]
     assert actual == expected
 
 

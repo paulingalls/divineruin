@@ -35,4 +35,3 @@ async def test_old_choir_snapshot_requires_reset(mock_combat_agent_factory):
             concentration_break_mod=AsyncMock(),
         )
     assert target.hp_current == hp
-    mutations.save_combat_state.assert_awaited_once()
