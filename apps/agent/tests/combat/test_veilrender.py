@@ -257,7 +257,8 @@ async def test_landed_radiant_marks_suppression(kind, immune, positive):
 
     from combat.test_combined_actions import _attack_result
 
-    from combat_damage import AutomaticDamageResult, apply_attack_result
+    from combat_damage import apply_attack_result
+    from combat_damage_results import AutomaticDamageResult
 
     state, boss, _ = boss_state()
     boss.hp_current = 80

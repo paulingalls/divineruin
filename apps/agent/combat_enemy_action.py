@@ -9,7 +9,8 @@ import concentration_break
 import conditions
 import event_types as E
 from combat_ability import _attach_riders, _resolve_condition_target
-from combat_damage import SaveDamageResult, apply_attack_result
+from combat_damage import apply_attack_result
+from combat_damage_results import SaveDamageResult
 from combat_down import damage_target_unavailable, has_damage
 from combat_events import emit_or_publish
 from combat_fate_rolls import packet_save, saved_throw, store_throw

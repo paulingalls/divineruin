@@ -1,7 +1,7 @@
 """Apply damage, including zero-HP transitions and their consequences."""
 
 import logging
-from dataclasses import asdict, dataclass, replace
+from dataclasses import replace
 from functools import partial
 
 import check_resolution_attack
@@ -18,6 +18,7 @@ import db_mutations
 import db_queries
 import event_types as E
 from combat_attack_roll import build_attack_dice_roll_payload
+from combat_damage_results import AutomaticDamageResult, SaveDamageResult, freeze_blow, thaw_blow
 from combat_durability import _accrue_durability, _find_equipped
 from combat_enemy_active import (
     apply_critical_save,
@@ -111,26 +112,6 @@ def _handle_hp_zero(
     return hp_status, False, released
 
 
-@dataclass(frozen=True)
-class SaveDamageResult:
-    save_type: str
-    save_success: bool
-    damage: int
-    damage_type: str
-    narrative_hint: str
-    dramatic: bool
-    context: str
-
-
-@dataclass(frozen=True)
-class AutomaticDamageResult:
-    damage: int
-    damage_type: str
-    narrative_hint: str = "Automatic damage"
-    dramatic: bool = False
-    context: str = "turn_start"
-
-
 async def apply_attack_result(
     session: SessionData,
     attacker,
@@ -173,7 +154,7 @@ async def apply_attack_result(
     receipt = progress.steps.get("damage_receipt")
     if receipt is not None and "pending" in receipt:
         # A held Unholy Fortitude save paused before HP changed; land the same blow now.
-        action, attack_result, effective_ac = _thaw_blow(receipt["pending"])
+        action, attack_result, effective_ac = thaw_blow(receipt["pending"])
         receipt = None
     if receipt is None:
         assert attack_result is not None
@@ -197,7 +178,7 @@ async def apply_attack_result(
         )
         if response is None:
             # Callers treat a present receipt as "already rolled" and resume without re-rolling.
-            progress.steps["damage_receipt"] = {"pending": _freeze_blow(action, attack_result, effective_ac)}
+            progress.steps["damage_receipt"] = {"pending": freeze_blow(action, attack_result, effective_ac)}
             return {}
         if "consumed_conditions" in response:
             response["consumed_conditions"] = list(response["consumed_conditions"])
@@ -235,23 +216,6 @@ async def apply_attack_result(
             land_critical_save(combat_state, attacker, target, action, response, rider, save)
     del progress.steps["damage_receipt"]
     return response
-
-
-def _freeze_blow(action, attack_result, effective_ac) -> dict:
-    fields = asdict(attack_result)
-    if "consumed_conditions" in fields:
-        fields["consumed_conditions"] = list(fields["consumed_conditions"])
-    return {"action": action, "kind": type(attack_result).__name__, "fields": fields, "effective_ac": effective_ac}
-
-
-def _thaw_blow(data: dict):
-    kinds = {
-        cls.__name__: cls for cls in (check_resolution_attack.AttackResult, SaveDamageResult, AutomaticDamageResult)
-    }
-    fields = dict(data["fields"])
-    if "consumed_conditions" in fields:
-        fields["consumed_conditions"] = tuple(fields["consumed_conditions"])
-    return data["action"], kinds[data["kind"]](**fields), data["effective_ac"]
 
 
 async def _apply_damage(

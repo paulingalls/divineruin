@@ -12,7 +12,7 @@ import db_queries
 import dice
 import spells
 from combat_attack_roll import attack_roll_inputs
-from combat_damage import AutomaticDamageResult, SaveDamageResult
+from combat_damage_results import AutomaticDamageResult, SaveDamageResult
 from combat_fate_rolls import packet_save
 from combat_spell_profile import DICE, scaled
 from combat_support import _resolve_attack_packet, apply_attack_result, apply_rolled_attack

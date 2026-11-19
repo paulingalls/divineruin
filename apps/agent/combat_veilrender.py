@@ -85,7 +85,8 @@ async def turn_start(
 
     With ``progress`` the field save (and its damage receipt) may be Zhael-held: None is returned
     while a choice is pending, and the resumed call finishes from the effects kept in its steps."""
-    from combat_damage import AutomaticDamageResult, apply_attack_result
+    from combat_damage import apply_attack_result
+    from combat_damage_results import AutomaticDamageResult
 
     sources = [p for p in state.participants if p.corruption_field is not None and living(p)]
     steps = progress.steps if progress is not None else {}

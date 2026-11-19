@@ -15,7 +15,8 @@ import combat_hold
 import event_types as E
 import reaction_spend
 from check_resolution_attack import AttackResult
-from combat_damage import SaveDamageResult, apply_attack_result
+from combat_damage import apply_attack_result
+from combat_damage_results import SaveDamageResult
 from combat_events import EventSink
 from combat_packet import _resolve_one_packet
 from declarations import Declaration, DeclarationType
