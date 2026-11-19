@@ -21,6 +21,7 @@ from mode_tools import enter_mode
 from movement_tools import move_player
 from party_state import PartyMember
 from query_tools import query_info
+from scene_tools import enter_location
 from session_data import SessionData
 from travel_tools import travel
 
@@ -69,7 +70,7 @@ async def exploration(walk):
     await walk.session.start(
         Agent(
             instructions="Execute the command.",
-            tools=[wrap_tool(tool) for tool in (enter_mode, query_info, move_player, travel)],
+            tools=[wrap_tool(tool) for tool in (enter_mode, query_info, enter_location, move_player, travel)],
         )
     )
 

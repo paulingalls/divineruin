@@ -13,18 +13,24 @@ from creature_combat_loader import load_creature_enemy as load_creature_enemy
 logger = logging.getLogger("divineruin.db")
 
 
+def _validate_location(location_id: str, data: dict) -> dict:
+    if "recommended_level" in data and type(data["recommended_level"]) is not int:
+        raise ValueError(f"Location {location_id!r} recommended_level is not an integer")
+    return data
+
+
 async def get_location(location_id: str) -> dict | None:
     cache_key = f"location:{location_id}"
     cached = await db._cache_get(cache_key)
     if cached is not None:
-        return json.loads(cached)
+        return _validate_location(location_id, json.loads(cached))
 
     pool = await db.get_pool()
     row = await pool.fetchrow("SELECT data FROM locations WHERE id = $1", location_id)
     if row is None:
         return None
 
-    data = json.loads(row["data"])
+    data = _validate_location(location_id, json.loads(row["data"]))
     await db._cache_set(cache_key, json.dumps(data))
     return data
 
@@ -44,11 +50,11 @@ async def get_all_locations() -> dict[str, dict]:
     cache_key = "locations:all"
     cached = await db._cache_get(cache_key)
     if cached is not None:
-        return json.loads(cached)
+        return {location_id: _validate_location(location_id, data) for location_id, data in json.loads(cached).items()}
 
     pool = await db.get_pool()
     rows = await pool.fetch("SELECT id, data FROM locations")
-    out = {row["id"]: json.loads(row["data"]) for row in rows}
+    out = {row["id"]: _validate_location(row["id"], json.loads(row["data"])) for row in rows}
     await db._cache_set(cache_key, json.dumps(out))
     return out
 

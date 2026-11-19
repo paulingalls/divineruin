@@ -109,7 +109,7 @@ async def end(session, state, outcome, *, mutations, queries, conn):
         await write(session, state, "dormant", snapshot=state.to_dict(), mutations=mutations, conn=conn)
 
 
-async def facts(session, *, queries, location_id):
+async def facts(session, *, queries, location_id, location):
     if session.combat_state is not None and session.combat_state.location_id == location_id:
         details = still_encounter.facts(session.combat_state)
         if details is not None:
@@ -117,6 +117,9 @@ async def facts(session, *, queries, location_id):
     owner = await queries.get_player(session.primary_player_id)
     record = read(owner, location_id)
     details = {}
+    if "still" in location.get("tags", []) and (record is None or record["status"] == "dormant"):
+        encounter_id = still_encounter.CREATURE_ID
+        details.update(encounter_id=encounter_id, entry=f'enter_mode(mode="combat", encounter_id="{encounter_id}")')
     if record is not None and record["status"] != "destroyed":
         if record["status"] == "combat":
             raise ValueError("Active Still combat must be hydrated before scene narration")
@@ -124,7 +127,7 @@ async def facts(session, *, queries, location_id):
         if retained is None or retained["phase"] != "active":
             raise ValueError("Invalid dormant Still encounter")
         retained.pop("charmed_player_ids")
-        details = {**retained, "encounter_id": still_encounter.CREATURE_ID}
+        details.update(retained)
     charmed = []
     for player_id in session.party.member_ids:
         player = owner if player_id == session.primary_player_id else await queries.get_player(player_id)
