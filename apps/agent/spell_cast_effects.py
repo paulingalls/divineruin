@@ -92,6 +92,12 @@ async def _finish_cast(
     if patron_resonance is not None:
         packet["patron_resonance"] = patron_resonance
     spell_item_resolution.defer_inventory(session, purified, packet, events)
+    if spell.creates_item is not None:
+        packet["created_items"] = [
+            await spell_item_resolution.create_item(
+                session, player_id, spell.creates_item, events, conn=conn, revalidate_actor=revalidate_actor
+            )
+        ]
     if target_id is not None:
         packet["target_id"] = target_id
     # The background process voices the Vaelti warning before the echo, so its

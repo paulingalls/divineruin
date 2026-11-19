@@ -24,6 +24,8 @@ from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, Field
 
+from item_effects import CONSUME_PREFIX
+
 
 class AttackDecl(BaseModel):
     """Strike a target with an equipped weapon."""
@@ -79,11 +81,20 @@ class AbilityDecl(BaseModel):
 
 
 class InteractDecl(BaseModel):
-    """Use an object or take a non-attack action in the scene."""
+    """Interact with the scene. For healing items, use consume."""
 
     kind: Literal["interact"]
     actor_id: str = Field(description="The participant declaring this action.")
     action: str = Field(description="What they interact with.")
+
+
+class ConsumeDecl(BaseModel):
+    """Spend the holder's action and one healing item to heal an ally."""
+
+    kind: Literal["consume"]
+    actor_id: str = Field(description="The conscious party player holding the item.")
+    item_id: str = Field(description="The healing item's inventory ID from query_info.")
+    target_id: str = Field(description='The ally receiving the item. Empty string ("") for the holder.')
 
 
 class ManeuverDecl(BaseModel):
@@ -125,7 +136,7 @@ class RetreatDecl(BaseModel):
 
 
 DeclVariant = Union[
-    MultiattackDecl, AttackDecl, AbilityDecl, InteractDecl, ManeuverDecl, MoveDecl, DefendDecl, RetreatDecl
+    MultiattackDecl, AttackDecl, AbilityDecl, InteractDecl, ConsumeDecl, ManeuverDecl, MoveDecl, DefendDecl, RetreatDecl
 ]
 DeclPayload = Annotated[DeclVariant, Field(discriminator="kind")]
 
@@ -134,6 +145,7 @@ DECL_VARIANTS: tuple[type[BaseModel], ...] = (
     MultiattackDecl,
     AbilityDecl,
     InteractDecl,
+    ConsumeDecl,
     ManeuverDecl,
     MoveDecl,
     DefendDecl,
@@ -166,6 +178,12 @@ def _raw(decl: DeclVariant) -> dict:
         if decl.argument_type:
             raw["argument_type"] = decl.argument_type
         return raw
+    if isinstance(decl, ConsumeDecl):
+        return {
+            "type": "interact",
+            "action": f"{CONSUME_PREFIX}{decl.item_id}",
+            "target_id": decl.target_id or decl.actor_id,
+        }
     if isinstance(decl, InteractDecl):
         import choir_encounter
 

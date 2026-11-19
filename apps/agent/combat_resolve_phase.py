@@ -27,6 +27,7 @@ import db_mutations_resonance
 import db_queries
 import draethar_inner_fire
 import event_types as E
+import item_heal
 import resonance_events
 import spell_casting
 import veil_ward_events
@@ -131,6 +132,9 @@ async def _resolve_phase_locked(
                         queries=queries,
                         cast_resolver=cast_resolver,
                         character_spells_mod=character_spells_mod,
+                    )
+                    await item_heal.preflight(
+                        session, state, ((p.actor_id, p.declaration) for p in adv.packets), conn=conn, queries=queries
                     )
                 except ToolError as error:
                     raise PrevalidationRefusal(error) from error

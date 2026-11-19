@@ -20,6 +20,7 @@ from declaration_payloads import (
     DECL_VARIANTS,
     AbilityDecl,
     AttackDecl,
+    ConsumeDecl,
     DefendDecl,
     Destination,
     InteractDecl,
@@ -330,13 +331,14 @@ def test_a_repeated_actor_fails_loud():
 
 def test_variant_kinds_match_the_engine_declaration_types():
     kinds = {typing.get_args(v.model_fields["kind"].annotation)[0] for v in DECL_VARIANTS}
-    assert kinds == {t.value for t in DeclarationType} | {"move"}
+    assert kinds == {t.value for t in DeclarationType} | {"move", "consume"}
 
 
 _ENGINE_CASES = [
     AttackDecl(kind="attack", actor_id="a", action="Longsword", target_id="goblin_1", held_item_id="", rider=""),
     AbilityDecl(kind="ability", actor_id="a", action="arcane_bolt", targets=["goblin_1"], argument_type=""),
     InteractDecl(kind="interact", actor_id="a", action="lever"),
+    ConsumeDecl(kind="consume", actor_id="a", item_id="healing_potion", target_id=""),
     ManeuverDecl(kind="maneuver", actor_id="a", target_id="goblin_1"),
     MoveDecl(kind="move", actor_id="a", destination=Destination(x=30, y=0, z=0)),
     DefendDecl(kind="defend", actor_id="a"),
@@ -356,7 +358,7 @@ def test_declare_phase_offers_no_reaction_kind():
     schema = next(tool["input_schema"] for tool in parsed if tool["name"] == "declare_phase")
 
     kinds = _kind_consts(schema)
-    assert kinds == {t.value for t in DeclarationType} | {"move"}
+    assert kinds == {t.value for t in DeclarationType} | {"move", "consume"}
     assert "reaction" not in kinds
     assert "trigger" not in json.dumps(schema)
 
