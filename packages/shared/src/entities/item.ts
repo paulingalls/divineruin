@@ -2,6 +2,7 @@ export interface ItemEffect {
   magical?: boolean;
   type: string;
   target?: string;
+  amount?: string;
   value?: number | string;
   trigger?: string;
   description?: string;

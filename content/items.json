@@ -125,6 +125,25 @@
     ]
   },
   {
+    "id": "goodberry",
+    "name": "Goodberry",
+    "tier": 1,
+    "type": "consumable",
+    "rarity": "common",
+    "description": "A sweet berry that tastes of rain. One berry nourishes you for a full day.",
+    "tags": ["healing", "consumable"],
+    "weight": 0.01,
+    "effects": [
+      {
+        "type": "heal",
+        "amount": "1d1"
+      }
+    ],
+    "value_base": 0,
+    "value_modifiers": {},
+    "found_in": []
+  },
+  {
     "id": "healing_potion",
     "name": "Healing Potion",
     "tier": 1,

@@ -22,6 +22,30 @@ describe("content/items.json — parseItemRow conformance", () => {
     }
   });
 
+  test("every authored healing item preserves its amount", async () => {
+    const rows = await loadItemsJson();
+    const seen = new Set<string>();
+    for (const row of rows) {
+      const id = row.id as string;
+      const effects = row.effects as { type: string; amount?: string }[];
+      if (effects.some((effect) => effect.type === "heal")) {
+        seen.add(id);
+        expect(parseItemRow(id, row).effects).toEqual(effects);
+      }
+    }
+    for (const id of [
+      "healing_potion",
+      "healing_potion_minor",
+      "healing_potion_standard",
+      "healing_potion_greater",
+      "healing_salve",
+      "healing_poultice",
+      "restoration_salve",
+      "goodberry",
+    ])
+      expect(seen.has(id)).toBe(true);
+  });
+
   test("the veil fragment carries quest-only metadata and zero value", async () => {
     const rows = await loadItemsJson();
     const row = rows.find((r) => r.id === "greyvale_veil_fragment");
@@ -163,6 +187,12 @@ describe("parseItemRow — fail-loud validation", () => {
     effects: [],
     value_base: 0,
   };
+
+  test("rejects a non-string effect amount", () => {
+    expect(() =>
+      parseItemRow("x", { ...base, effects: [{ type: "heal", amount: false }] }),
+    ).toThrow(/effects\[0\]\.amount/);
+  });
 
   test("accepts a minimal valid row", () => {
     expect(() => parseItemRow("test_item", base)).not.toThrow();
