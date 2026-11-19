@@ -182,7 +182,11 @@ function TransportRoom({
             });
           }
           setGuard(state.choir_guard ?? "");
-          setComplete(state.choir_complete === true);
+          if (state.choir_complete === true) {
+            clearInterval(timer);
+            await postResult(endpoint, fixture.runId, { choir_complete_ack: true });
+            setComplete(true);
+          }
         })
         .catch((error) => setStatus(`Choir status failed: ${String(error)}`));
     }, 100);

@@ -220,6 +220,12 @@ async def receive_commands(
                         "missing owned acoustic source"
                     )
             state.extra_status["choir_complete"] = True
+            try:
+                async with asyncio.timeout(15):
+                    while (state.mobile_result or {}).get("choir_complete_ack") is not True:
+                        await asyncio.sleep(0.05)
+            except TimeoutError as exc:
+                raise RuntimeError("native Choir did not acknowledge completion") from exc
             if isinstance(diagnostic, ChoirProbeTurns):
                 assert len(diagnostic.submitted) == len(diagnostic.model.receipts) > 2
                 return frames

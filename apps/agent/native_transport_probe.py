@@ -156,11 +156,11 @@ def make_handler(state: ProbeState, run_id: str) -> type[BaseHTTPRequestHandler]
                 result = json.loads(self.rfile.read(length))
                 if not isinstance(result, dict):
                     raise ValueError("result must be an object")
-                state.set_mobile_result(result)
             except (ValueError, json.JSONDecodeError) as exc:
                 self._write(400, {"error": str(exc)})
                 return
             self._write(200, {"accepted": True})
+            state.set_mobile_result(result)
 
         def log_message(self, _format: str, *_args: object) -> None:
             return
