@@ -193,7 +193,7 @@ async def test_two_party_attacks_replace_the_pending_origin_and_thunder_doubles(
         await party.close()
 
 
-async def test_only_the_illusion_target_may_investigate_it(reset_db_pool):
+async def test_illusion_is_target_only_and_clears_on_reentry_without_guest(reset_db_pool):
     from acceptance.mawling_harness import MawlingHarness
 
     party = MawlingHarness()
@@ -204,11 +204,23 @@ async def test_only_the_illusion_target_may_investigate_it(reset_db_pool):
         await declare(party, **strike(state.still_encounter["anchor_ids"][0]))
         with patch("check_resolution.dice_roll", return_value=_d20(1)):
             await party.drain()
+        state = await party.reload()
+        primary, guest = party.players
+        assert state.still_encounter is not None
+        owner = state.get_participant(state.still_encounter["owner_id"])
+        assert owner is not None and owner.hollow is not None
+        positions = combat_spatial.require_spatial(state)["positions"]
+        center = positions[owner.id]
+        positions[primary] = {**center, "x": center["x"] + owner.hollow["corruption_aura"] + 1}
+        positions[guest] = center.copy()
+        await party.persist()
+        await declare(party, kind="defend")
+        await party.drain()
         illusion = party.last_result["still"]["illusion"]
-        (bystander,) = [pid for pid in party.players if pid != illusion["target_id"]]
+        assert illusion["target_id"] == guest
         party.model.commands.append(("check", {"roll": illusion["check"]}))
         with (
-            party.sd._bind_authenticated_actor(bystander, 1, lambda *_: None),
+            party.sd._bind_authenticated_actor(primary, 1, lambda *_: None),
             patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(20)),
         ):
             await party.session.run(user_input="Execute the next command.")
@@ -217,5 +229,11 @@ async def test_only_the_illusion_target_may_investigate_it(reset_db_pool):
         assert "Only the creature experiencing the Still illusion" in receipt.output
         record = (await party.reload()).still_encounter
         assert record is not None and record["illusion"]["seen_through"] is False
+
+        await party.command("end_combat", {"outcome": "fled"})
+        await fresh_session(party)
+        _response, reentered = await enter(party)
+        assert reentered.get_participant(guest) is None
+        assert reentered.still_encounter == {**record, "illusion": None}
     finally:
         await party.close()

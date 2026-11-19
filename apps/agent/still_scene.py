@@ -73,7 +73,7 @@ def restore(state, record):
             previous.initiative = participant.initiative
             state.participants[index] = previous
             state.spatial["positions"][participant.id] = spatial["positions"][participant.id]
-    state.still_encounter = old
+    state.still_encounter = {**old, "illusion": None}
     state.round_number = retained.round_number
     combat_spatial.require_spatial(state)
     still_encounter.validate(state)

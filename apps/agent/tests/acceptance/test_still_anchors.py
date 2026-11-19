@@ -222,7 +222,7 @@ async def test_still_flee_reload_and_settle_once(still):
     await fresh_session(still)
     _, reentered = await enter(still)
     assert enemy_snapshot(reentered) == enemy_snapshot(saved)
-    assert reentered.still_encounter == saved.still_encounter
+    assert reentered.still_encounter == {**saved.still_encounter, "illusion": None}
 
     accrue_death = combat_hollow_death.accrue_death
     awards = []
