@@ -124,6 +124,8 @@ async def test_paid_damage_rolls_back_hp_focus_and_events_then_retries_once(area
     result = await _resolve_round(ctx)
     cast = next(p["cast"] for p in result["packets"] if p["actor_id"] == ctx.userdata.player_id)
     loaded = await load_combat(state["combat_id"])
+    covered = {"foe", "second", ally} if spell_id == "arcane_fireball" else {"foe"}
+    assert {damage["target_id"] for damage in cast["damage_results"]} == covered
     for damage in cast["damage_results"]:
         target_id = damage["target_id"]
         before_hp = next(p["hp_current"] for p in state["participants"] if p["id"] == target_id)

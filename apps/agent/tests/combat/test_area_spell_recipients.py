@@ -106,7 +106,11 @@ async def test_assigned_darts_keep_multiplicity_and_scale(spell_fight, level, co
     participant(ctx.userdata.combat_state, ctx.userdata.player_id).level = level
     await add_enemies(ctx, {"foe": (0, 0, 0), "other": (10, 0, 0)})
     await declare_spell(ctx, spell.id, targets=["foe", "other"] + ["foe"] * (count - 2))
-    with patch("dice.roll", side_effect=[SimpleNamespace(total=i) for i in range(1, count + 1)]) as rolls:
+    import resonance
+
+    modifiers = resonance.get_state_modifiers
+    rigged = patch("resonance.get_state_modifiers", side_effect=lambda s: {**modifiers(s), "damage_dice": 1})
+    with rigged, patch("dice.roll", side_effect=[SimpleNamespace(total=i) for i in range(1, count + 1)]) as rolls:
         from check_resolution_save import roll_participant_save
 
         with patch("check_resolution_save.roll_participant_save", wraps=roll_participant_save) as saves:
@@ -118,7 +122,7 @@ async def test_assigned_darts_keep_multiplicity_and_scale(spell_fight, level, co
     saved = await load_combat(ctx.userdata.combat_state.combat_id)
     assert participant(saved, "foe").hp_current == 100 - (sum(range(1, count + 1)) - 2)
     assert participant(saved, "other").hp_current == 100 - 2
-    assert rolls.call_args_list[0].args[0] == f"{1 + cast['resonance_modifiers']['damage_dice']}d4+1"
+    assert rolls.call_args_list[0].args[0] == "2d4+1"
     assert all(c.args[0] == "1d4+1" for c in rolls.call_args_list[1:])
 
 
