@@ -26,6 +26,7 @@ from background_process import BackgroundProcess
 from check_resolution import D20Roll
 from dice import DiceResult
 from event_bus import GameEvent
+from movement_tools import party_level_warning
 
 HOUR = 120
 DAY = 24 * HOUR
@@ -132,6 +133,18 @@ async def background(walk):
             walk.sd.background = None
 
 
+@asynccontextmanager
+async def independent_guest(walk, guest, zone):
+    other = SimpleNamespace(sd=type(walk.sd)(player_id=guest, location_id=zone, room=walk.sd.room), players=[guest])
+    other.session = AgentSession(llm=walk.model, userdata=other.sd)
+    await other.session.start(Agent(instructions="Describe the effects."))
+    try:
+        async with background(other) as tick:
+            yield tick
+    finally:
+        await other.session.aclose()
+
+
 async def advance(clock, tick, seconds):
     while seconds:
         step = min(seconds, HOUR // 2)
@@ -158,7 +171,6 @@ async def test_hourly_save_resets_on_success_and_reentry(paradise, clock, save_f
     await arrive(walk, "move_player", zone)
     face, rolls = save_faces
     face.value = 17
-
     async with background(walk) as tick:
         await advance(clock, tick, HOUR - 1)
         assert not rolls and await charm(guest, zone)
@@ -170,9 +182,14 @@ async def test_hourly_save_resets_on_success_and_reentry(paradise, clock, save_f
         assert rolls == [(18, 0, 17), (18, 1, 18)]
         assert await charm(guest, zone) is None
         assert f"still_dwell:{zone}" not in (await player_row(guest))["flags"]
-        assert (await command(walk, "move_player", origin))["moved"]
-        await tick()
-        assert await charm(guest, origin) is None
+
+        async def interposed_tick(*args, **kwargs):
+            await tick()
+            assert await charm(guest, zone) is None
+            return await party_level_warning(*args, **kwargs)
+
+        with patch("travel_tools.party_level_warning", side_effect=interposed_tick):
+            assert (await arrive(walk, "travel", origin))["arrived"]
         await arrive(walk, "move_player", zone)
         await advance(clock, tick, HOUR)
         assert rolls[-1] == (18, 0, 17)
@@ -235,7 +252,6 @@ async def test_daily_drain_concurrent_and_restarted(paradise, clock, save_faces,
     await set_attributes(walk, guest, strength=14, dexterity=13, wisdom=10)
     await arrive(walk, "move_player", zone)
     _, rolls = save_faces
-
     async with background(walk) as tick:
         await advance(clock, tick, DAY - 1)
         assert len(rolls) == 23 and not losses
@@ -245,28 +261,21 @@ async def test_daily_drain_concurrent_and_restarted(paradise, clock, save_faces,
         await walk.command("end_combat", {"outcome": "fled"})
         await tick()
         assert len(rolls) == 23 and not losses
-        other = SimpleNamespace(sd=type(walk.sd)(player_id=guest, location_id=zone, room=walk.sd.room), players=[guest])
-        other.session = AgentSession(llm=walk.model, userdata=other.sd)
-        await other.session.start(Agent(instructions="Describe the effects."))
-        try:
-            async with background(other) as simultaneous:
-                await simultaneous()
-                barrier = asyncio.Barrier(2)
-                connections = set()
-                get_player = still_dwell.db_queries.get_player
+        async with independent_guest(walk, guest, zone) as simultaneous:
+            barrier = asyncio.Barrier(2)
+            connections = set()
+            get_player = still_dwell.db_queries.get_player
 
-                async def lock_together(pid, *, for_update=False, conn=None):
-                    if pid == guest and for_update and len(connections) < 2:
-                        connections.add(conn)
-                        await barrier.wait()
-                    return await get_player(pid, for_update=for_update, conn=conn)
+            async def lock_together(pid, *, for_update=False, conn=None):
+                if pid == guest and for_update and len(connections) < 2:
+                    connections.add(conn)
+                    await barrier.wait()
+                return await get_player(pid, for_update=for_update, conn=conn)
 
-                clock.now += 1
-                with patch.object(still_dwell.db_queries, "get_player", side_effect=lock_together):
-                    await asyncio.gather(tick(), simultaneous())
-                assert len(connections) == 2
-        finally:
-            await other.session.aclose()
+            clock.now += 1
+            with patch.object(still_dwell.db_queries, "get_player", side_effect=lock_together):
+                await asyncio.gather(tick(), simultaneous())
+            assert len(connections) == 2
         assert len(rolls) == 24 and losses == [4]
         assert (await player_row(guest))["attributes"] == {"strength": 10, "dexterity": 13, "wisdom": 10}
         assert sum("Iona loses 4 strength" in call.args[1] for call in speech_transport.call_args_list) == 1
@@ -364,7 +373,8 @@ async def test_combat_resurrection_clears_the_guest_charm(paradise, clock):
     assert await charm(guest, zone) is None and f"still_dwell:{zone}" not in row["flags"]
 
 
-async def test_destroyed_still_stops_dwell_for_guest(paradise, clock, save_faces, losses):
+@pytest.mark.parametrize("cleanup_first", [False, True])
+async def test_destroyed_still_stops_dwell_for_guest(paradise, clock, save_faces, losses, cleanup_first):
     walk, _, zone = paradise
     guest = walk.players[1]
     await arrive(walk, "move_player", zone)
@@ -372,20 +382,65 @@ async def test_destroyed_still_stops_dwell_for_guest(paradise, clock, save_faces
     async with background(walk) as tick:
         await advance(clock, tick, DAY)
         assert len(rolls) == 24 and losses == [4]
-
     with patch.object(D20Roll, "roll", ROLL_D20):
         response, initial = await enter(walk)
         search = response["still"]["search_actions"][0]
-        for anchor in initial.still_encounter["anchor_ids"]:
+        *earlier, last = initial.still_encounter["anchor_ids"]
+        for anchor in earlier:
             await search_round(walk, search)
             await destroy(walk, anchor)
-    before_rolls = len(rolls)
-    assert walk.last_result["still"]["charmed_player_ids"] == []
-    before = await player_row(guest)
-    assert await charm(guest, zone) is None
-    assert f"still_dwell:{zone}" not in before["flags"]
-    await exploration(walk)
-    async with background(walk) as tick:
+        await search_round(walk, search)
+    async with independent_guest(walk, guest, zone) as tick:
+        await advance(clock, tick, HOUR - 1)
+        first_locked = asyncio.Event()
+        second_requested = asyncio.Event()
+        get_player, get_players = db_queries.get_player, db_queries.get_players_for_update
+        clear = still_charm.clear
+
+        async def lock_member(pid, *, for_update=False, conn=None):
+            due_tick = pid == guest and for_update
+            if due_tick and cleanup_first:
+                second_requested.set()
+            row = await get_player(pid, for_update=for_update, conn=conn)
+            if due_tick and not cleanup_first:
+                first_locked.set()
+                await second_requested.wait()
+            return row
+
+        async def clear_after_lock(*args, **kwargs):
+            if cleanup_first:
+                first_locked.set()
+                await second_requested.wait()
+            return await clear(*args, **kwargs)
+
+        async def lock_party(*args, **kwargs):
+            if not cleanup_first:
+                second_requested.set()
+            return await get_players(*args, **kwargs)
+
+        track_dwell = D20Roll.roll
+
+        def roll_during_race(roll, rng=None):
+            return track_dwell(roll, rng) if roll.dc == 18 else ROLL_D20(roll, rng)
+
+        clock.now += 1
+        with (
+            patch.object(D20Roll, "roll", roll_during_race),
+            patch.object(db_queries, "get_player", side_effect=lock_member),
+            patch.object(still_charm, "clear", side_effect=clear_after_lock),
+            patch.object(db_queries, "get_players_for_update", side_effect=lock_party),
+        ):
+            async with asyncio.timeout(5), asyncio.TaskGroup() as race:
+                race.create_task(destroy(walk, last) if cleanup_first else tick())
+                await first_locked.wait()
+                race.create_task(tick() if cleanup_first else destroy(walk, last))
+
+        expected_saves = 24 if cleanup_first else 25
+        assert len(rolls) == expected_saves and losses == [4]
+        assert walk.last_result["still"]["charmed_player_ids"] == []
+        before = await player_row(guest)
+        assert still_charm.read(before, guest, zone) is None
+        assert f"still_dwell:{zone}" not in before["flags"]
         await advance(clock, tick, DAY)
-    assert await player_row(guest) == before
-    assert len(rolls) == before_rolls and losses == [4]
+        assert await player_row(guest) == before
+        assert len(rolls) == expected_saves and losses == [4]
