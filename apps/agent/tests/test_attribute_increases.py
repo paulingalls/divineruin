@@ -14,6 +14,7 @@ import db_queries
 import event_types as E
 from choice_tools import _select_impl
 from creation_rules import build_character_data
+from party_state import PartyState
 from quest_tools import _update_quest_impl
 from rules_engine import XP_FOR_LEVEL
 from session_data import CombatState
@@ -170,8 +171,12 @@ async def test_combat_and_other_actor_refused(character):
     other = ctx.userdata.player_id + "_other"
     await db_mutations.create_player(other, None, {**before, "attribute_increases": {}})
     try:
-        with pytest.raises(ToolError, match="available"):
-            await _select_impl(make_context(other, room=make_mock_room()), "attribute_increase_4", "wisdom")
+        ctx.userdata.party.members.append(PartyState.solo(other).primary)
+        with (
+            ctx.userdata._bind_authenticated_actor(other, 1, lambda *_: None),
+            pytest.raises(ToolError, match="available"),
+        ):
+            await _select_impl(ctx, "attribute_increase_4", "wisdom")
         assert await db_queries.get_player(ctx.userdata.player_id) == before
     finally:
         await (await db.get_pool()).execute("DELETE FROM players WHERE player_id=$1", other)
