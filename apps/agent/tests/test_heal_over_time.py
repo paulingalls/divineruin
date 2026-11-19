@@ -103,8 +103,8 @@ async def test_exploration_resolves_the_surge_and_hour(healer, kaelen, maximum):
     assert {"type": "hp_changed", "current": maximum, "max": maximum} in published_payloads(healer.sd.room)
 
 
-@pytest.mark.parametrize("outcome", ["victory", "fled", "defeat"])
-async def test_combat_end_settles_regeneration_before_life_settlement(healer, outcome):
+@pytest.mark.parametrize("outcome,down", [("victory", True), ("fled", True), ("defeat", True), ("defeat", False)])
+async def test_combat_end_settles_regeneration_before_life_settlement(healer, outcome, down):
     await healer.prepare(REGENERATE)
     ally = await healer.add_player(hp=10, maximum=40)
     unmarked = await healer.add_player(hp=8, maximum=40)
@@ -125,8 +125,9 @@ async def test_combat_end_settles_regeneration_before_life_settlement(healer, ou
         await healer.register_end()
 
     saved = healer.fight_state
-    saved.get_participant(recipient).is_fallen = True
-    await set_hp(healer, recipient, 0)
+    if down:
+        saved.get_participant(recipient).is_fallen = True
+        await set_hp(healer, recipient, 0)
     if outcome == "victory":
         result = await healer.command("resolve_phase", {})
     else:

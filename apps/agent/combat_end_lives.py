@@ -14,7 +14,7 @@ async def settle_lives(
     mutations,
     conn,
     *,
-    primary_revived: bool,
+    primary_regenerated: bool,
 ) -> dict | None:
     """Return the dead and stabilize the savable, inside the combat-end transaction.
 
@@ -45,8 +45,9 @@ async def settle_lives(
         )
         death_context = next((ctx for (pid, _), ctx in zip(rows, contexts, strict=True) if pid == primary_id), None)
 
-    # A declared defeat sends even a standing primary through Mortaen, unless Regenerate just raised them.
-    if outcome == "defeat" and death_context is None and not primary_revived:
+    # A declared defeat sends even a standing primary through Mortaen, unless Regenerate was still healing
+    # them, standing or down (human 2026-11-19).
+    if outcome == "defeat" and death_context is None and not primary_regenerated:
         primary_row = await queries.get_player(primary_id, conn=conn)
         if primary_row is None:
             raise RuntimeError(f"Primary player {primary_id!r} has no players.data row on defeat")

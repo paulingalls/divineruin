@@ -230,7 +230,7 @@ async def _end_combat_db(
         if member.player_id == actor_id:
             weapon_durability = member_durability
 
-    revived = await combat_regeneration.settle(session, cs, conn=conn, mutations=mutations, sink=sink)
+    regenerated = await combat_regeneration.settle(session, cs, conn=conn, mutations=mutations, sink=sink)
 
     # Persist cross-encounter conditions (M4.3, story-004; per-member M18 story-003): reconcile
     # EVERY player member's persistent conditions + surviving beneficial dice into their OWN
@@ -282,7 +282,7 @@ async def _end_combat_db(
             if deed == "won_combat" and not session.ally_present_for(player_id):
                 await patron_deeds.record_deed(player_id, "won_alone", conn=conn)
     death_context = await settle_lives(
-        cs, outcome, primary_id, combat_cleared, queries, mutations, conn, primary_revived=primary_id in revived
+        cs, outcome, primary_id, combat_cleared, queries, mutations, conn, primary_regenerated=primary_id in regenerated
     )
 
     # Faction reputation from the combat OUTCOME (story-002 inc 5/6): killing an encounter

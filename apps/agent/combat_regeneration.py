@@ -38,7 +38,7 @@ async def tick(target, *, conn, mutations) -> dict | None:
 
 
 async def settle(session, state, *, conn, mutations, sink) -> set[str]:
-    revived = set()
+    regenerated = set()
     for target in state.participants:
         condition = _condition(target)
         if condition is None:
@@ -46,10 +46,8 @@ async def settle(session, state, *, conn, mutations, sink) -> set[str]:
         target.conditions = remove_condition(target.conditions, "regenerating")
         if not target.is_ally or is_terminally_down(target):
             continue
-        was_fallen = target.is_fallen
         healed = await restore(target, _remaining(condition), conn=conn, mutations=mutations)
-        if was_fallen and not target.is_fallen:
-            revived.add(target.id)
+        regenerated.add(target.id)
         if healed and target.type == "player":
             await sink.emit(
                 session.room,
@@ -58,4 +56,4 @@ async def settle(session, state, *, conn, mutations, sink) -> set[str]:
                 event_bus=session.event_bus,
                 destination_identities=[target.id],
             )
-    return revived
+    return regenerated
