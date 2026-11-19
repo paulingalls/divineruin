@@ -18,7 +18,7 @@ import db_mutations
 import db_queries
 import event_types as E
 from combat_attack_roll import build_attack_dice_roll_payload
-from combat_damage_results import AutomaticDamageResult, SaveDamageResult, freeze_blow, thaw_blow
+from combat_damage_results import AutomaticDamageResult, SaveDamageResult, attack_fields, freeze_blow, thaw_blow
 from combat_durability import _accrue_durability, _find_equipped
 from combat_enemy_active import (
     apply_critical_save,
@@ -461,23 +461,7 @@ async def _apply_damage(
     else:
         hit_miss = "hit" if attack_result.hit else "miss"
         session.record_event(f"{attacker.name} attacks {target.name}: {hit_miss}, {attack_result.damage} damage")
-        response.update(
-            hit=attack_result.hit,
-            roll=attack_result.roll,
-            attack_total=attack_result.attack_total,
-            target_ac=effective_ac,
-            critical=attack_result.critical_success,
-            sneak_attack_dice=attack_result.sneak_attack_dice,
-            sneak_attack_raw_damage=attack_result.sneak_attack_raw_damage,
-            bonus_damage=attack_result.bonus_damage,
-            bonus_damage_type=attack_result.bonus_damage_type,
-            rider_damage=attack_result.rider_damage,
-            rider_damage_type=attack_result.rider_damage_type,
-            rider_ignores_resistance=attack_result.rider_ignores_resistance,
-            consumed_conditions=attack_result.consumed_conditions,
-        )
-        if attack_result.attack_disadvantage_source is not None:
-            response["attack_disadvantage_source"] = attack_result.attack_disadvantage_source
+        response.update(attack_fields(attack_result, effective_ac))
         log_outcome = hit_miss
     if action.get("self_heal") == "damage_dealt":
         response["self_healed"] = self_healed

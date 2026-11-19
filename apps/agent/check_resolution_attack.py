@@ -9,6 +9,7 @@ resolve_attack accepts an optional `rng` for deterministic testing.
 import random
 from dataclasses import dataclass
 
+import patron_synergy_combat
 from check_resolution import D20CheckCore, D20Roll, roll_bonus_dice
 from condition_restrictions import (
     attack_consumed_conditions,
@@ -39,14 +40,8 @@ class AttackResult:
     # instant-death verdict (combat_support) compares it against the target's max HP. Defaulted
     # for direct constructors (tests); the resolver always sets it explicitly.
     overkill: int = 0
-    # A critical success is a natural 20 or a melee hit on an autocrit target (Paralyzed);
-    # a critical failure is a natural 1. Defaulted for direct constructors (tests).
     critical_success: bool = False
     critical_failure: bool = False
-    # Intrinsic dramatic-dice verdict (M4.5): nat-20/nat-1 or killing_blow. The
-    # killing-blow inputs are gated on `hit` in resolve_attack, so this label
-    # equals target_killed by construction. Defaulted + appended so story-004
-    # encounter-context signals stay additive. See dramatic.py.
     dramatic: bool = False
     context: str = ""
     # Bonus-damage rider (M4.4 story-008): the necrotic die a Temporary Hollowed attacker adds to a
@@ -63,6 +58,8 @@ class AttackResult:
     sneak_attack_dice: str | None = None
     sneak_attack_raw_damage: int = 0
     attack_disadvantage_source: str | None = None
+    synergy_damage: int = 0
+    synergy_damage_type: str | None = None
 
 
 def _is_ranged(weapon: dict) -> bool:
@@ -217,8 +214,13 @@ def finish_attack(
     effects = get_condition_effects(attacker_data.get("conditions") or [])
     d20 = core.roll
     attack_total = core.total
-    hit = core.success
-    critical = core.critical_success or (hit and incoming_melee_autocrit(target_conditions) and not _is_ranged(weapon))
+    expanded = patron_synergy_combat.expanded_critical(attacker_data, d20)
+    hit = core.success or expanded
+    critical = (
+        core.critical_success
+        or expanded
+        or (hit and incoming_melee_autocrit(target_conditions) and not _is_ranged(weapon))
+    )
 
     damage = 0
     damage_type = weapon.get("damage_type", "bludgeoning")
@@ -230,6 +232,7 @@ def finish_attack(
     rider_ignores_resistance = False
     sneak_attack_dice = None
     sneak_attack_raw_damage = 0
+    synergy_damage, synergy_damage_type = 0, None
     if hit:
         damage_notation = weapon.get("damage", "1d4")
         damage = dice_roll(damage_notation, rng=rng).total if damage_notation != "0" else 0
@@ -269,6 +272,9 @@ def finish_attack(
             rider_damage_type = on_hit["damage_type"]
             rider_ignores_resistance = on_hit["ignores_resistance"]
             damage += rider_damage
+        synergy_damage, synergy_damage_type = patron_synergy_combat.critical_rider(attacker_data, critical, rng=rng)
+        damage += synergy_damage
+        synergy_damage = int(synergy_damage * damage_mult)
         bonus_damage = int(bonus_damage * damage_mult)
         rider_damage = int(rider_damage * damage_mult)
         # Role damage multiplier (M4.7, story-001): scale the FINAL accumulated total (weapon +
@@ -311,9 +317,9 @@ def finish_attack(
         target_hp_remaining=new_hp,
         target_killed=new_hp == 0 and hit,
         overkill=overkill,
-        narrative_hint=core.narrative_hint,
-        dramatic=verdict.dramatic,
-        context=verdict.context,
+        narrative_hint="critical success" if expanded else core.narrative_hint,
+        dramatic=expanded or verdict.dramatic,
+        context="critical_hit" if expanded else verdict.context,
         bonus_damage=bonus_damage,
         bonus_damage_type=bonus_damage_type,
         rider_damage=rider_damage,
@@ -323,4 +329,6 @@ def finish_attack(
         sneak_attack_dice=sneak_attack_dice,
         sneak_attack_raw_damage=sneak_attack_raw_damage,
         attack_disadvantage_source=prepared.attack_disadvantage_source,
+        synergy_damage=synergy_damage,
+        synergy_damage_type=synergy_damage_type,
     )

@@ -3,6 +3,7 @@ from typing import Any, cast
 from voice_condition_fixtures import place_actors
 
 import check_resolution_attack
+import db_queries
 from combat_attack_roll import deserialize_roll
 from combat_fate_hostile import roll_hostile
 from combat_marks import FOCUS_ATTACK_BONUS
@@ -108,7 +109,14 @@ async def test_marked_held_melee_attack_keeps_focus_bonus_and_prone_advantage():
 
     place_actors(state)
     assert await roll_hostile(
-        None, state, head, resolve_declaration(head["declaration"]), action, 0, {"resolver": RealResolver(rng)}, None
+        None,
+        state,
+        head,
+        resolve_declaration(head["declaration"]),
+        action,
+        0,
+        {"resolver": RealResolver(rng), "queries": db_queries, "conn": None},
+        None,
     )
     result, _ = deserialize_roll(head["roll"])
 
