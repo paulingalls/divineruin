@@ -1,6 +1,8 @@
 """Persist the Still's zone charm on the player who holds it."""
 
 import json
+import math
+import time
 from typing import Literal, TypedDict
 
 from livekit.agents.llm import ToolError
@@ -12,6 +14,8 @@ CharmKind = Literal["paradise_trap", "serenitys_touch", "final_stillness"]
 PARADISE_TRAP: CharmKind = "paradise_trap"
 SERENITYS_TOUCH: CharmKind = "serenitys_touch"
 FINAL_STILLNESS: CharmKind = "final_stillness"
+CHARM_PREFIX = "still_charm:"
+DWELL_PREFIX = "still_dwell:"
 
 
 class Charm(TypedDict):
@@ -20,8 +24,45 @@ class Charm(TypedDict):
     remaining_zone_hours: int | None
 
 
+class DwellClock(TypedDict):
+    checkpoint_at: float
+    elapsed: float
+    saves: int
+
+
 def key(location_id: str) -> str:
-    return f"still_charm:{location_id}"
+    return CHARM_PREFIX + location_id
+
+
+def dwell_key(location_id: str) -> str:
+    return DWELL_PREFIX + location_id
+
+
+def read_clock(player: dict, player_id: str, location_id: str) -> DwellClock | None:
+    flag = dwell_key(location_id)
+    flags = player.get("flags", {})
+    if flag not in flags:
+        return None
+    error = f"Invalid Still dwell clock for {player_id} at {location_id}."
+    try:
+        record = json.loads(flags[flag])
+    except (TypeError, ValueError) as exc:
+        raise ValueError(error) from exc
+    if (
+        not isinstance(record, dict)
+        or set(record) != {"checkpoint_at", "elapsed", "saves"}
+        or any(
+            type(record[k]) not in (int, float) or not 0 <= record[k] < math.inf for k in ("checkpoint_at", "elapsed")
+        )
+        or type(record["saves"]) is not int
+        or record["saves"] < 0
+    ):
+        raise ValueError(error)
+    return DwellClock(checkpoint_at=record["checkpoint_at"], elapsed=record["elapsed"], saves=record["saves"])
+
+
+async def write_clock(player_id: str, location_id: str, clock: DwellClock, *, mutations, conn) -> None:
+    await mutations.set_player_flag(player_id, dwell_key(location_id), json.dumps(clock), conn=conn)
 
 
 def read(player: dict, player_id: str, location_id: str) -> Charm | None:
@@ -75,6 +116,14 @@ async def grant(player_id, player, location_id, kind: CharmKind, *, mutations, c
     record = Charm(location_id=location_id, kind=kind, remaining_zone_hours=1 if kind == SERENITYS_TOUCH else None)
     if record != current:
         await mutations.set_player_flag(player_id, key(location_id), json.dumps(record), conn=conn)
+        if current is None:
+            await write_clock(
+                player_id,
+                location_id,
+                DwellClock(checkpoint_at=time.time(), elapsed=0, saves=0),
+                mutations=mutations,
+                conn=conn,
+            )
 
 
 async def save_on_arrival(players, location_id, *, mutations, conn):
@@ -96,12 +145,12 @@ def project(state, owner_id, players):
 
 
 async def clear(player_ids, location_id: str, *, conn):
-    flag = key(location_id)
     await conn.execute(
-        """UPDATE players SET data = data #- ARRAY['flags', $2]
-           WHERE player_id = ANY($1) AND data->'flags' ? $2""",
+        """UPDATE players SET data = data #- ARRAY['flags', $2] #- ARRAY['flags', $3]
+           WHERE player_id = ANY($1) AND data->'flags' ?| ARRAY[$2, $3]""",
         sorted(player_ids),
-        flag,
+        key(location_id),
+        dwell_key(location_id),
     )
 
 

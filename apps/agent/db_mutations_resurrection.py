@@ -16,6 +16,7 @@ import asyncpg
 
 import db
 from catalog_parse import ATTRIBUTE_KEYS
+from still_charm import CHARM_PREFIX, DWELL_PREFIX
 
 # Gate the dynamic jsonb path so a bad key can't be written. Canonical six (catalog_parse SSOT).
 _VALID_ATTRS = frozenset(ATTRIBUTE_KEYS)
@@ -66,16 +67,22 @@ async def revive_player(
     *,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> None:
-    """Place the returning character: set data.location_id and data.hp.current. ``hp_current`` is the
+    """Place the returning character and clear Still charms and clocks. ``hp_current`` is the
     caller's already-clamped value (trigger_character_death clamps to the post-override effective max)."""
     _conn = conn or await db.get_pool()
     await _conn.execute(
-        "UPDATE players SET data = jsonb_set("
-        "jsonb_set(data, '{location_id}', $2::jsonb), '{hp,current}', $3::jsonb) "
-        "WHERE player_id = $1",
+        """UPDATE players SET data = jsonb_set(
+               jsonb_set(jsonb_set(data, '{location_id}', $2::jsonb), '{hp,current}', $3::jsonb),
+               '{flags}', CASE WHEN jsonb_typeof(data->'flags') = 'object' THEN (data->'flags') - ARRAY(
+                   SELECT flag FROM jsonb_object_keys(data->'flags') AS flag
+                   WHERE starts_with(flag, $4) OR starts_with(flag, $5)
+               ) ELSE COALESCE(data->'flags', '{}'::jsonb) END, false)
+           WHERE player_id = $1""",
         player_id,
         json.dumps(location_id),
         json.dumps(hp_current),
+        CHARM_PREFIX,
+        DWELL_PREFIX,
     )
 
 
