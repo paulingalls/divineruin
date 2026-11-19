@@ -31,8 +31,8 @@ revival, several allies for a spell that blesses a group; leave targets empty fo
 self-cast. Areas center on named participants; lines and cones aim from the source toward one. \
 Meteor Swarm accepts up to four centers. Chain Lightning names its primary then optional arcs; \
 without explicit arcs the engine chooses nearest enemies. Repeat Magic Missile target ids in dart order, \
-or name one recipient for all darts. Send argument_type as an empty string for every ability but de_escalate \
-(below). This is how a caster acts IN COMBAT: resolve_phase \
+or name one recipient for all darts. Send argument_type as an empty string except for Elemental Burst \
+(fire, cold, or lightning) and de_escalate (below). This is how a caster acts IN COMBAT: resolve_phase \
 deducts the Focus and generates the Resonance in initiative order, the same pipeline as an attack. \
 defend — the actor makes no attack and gains +2 AC until the next \
 phase (use it when the player guards, takes cover, or braces). \
