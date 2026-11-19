@@ -92,6 +92,7 @@ export interface EncounterAttackAction extends EncounterActionBase {
   applies_condition?: string;
   save?: string;
   dc?: number;
+  shape?: "cone";
   half_on_success?: boolean;
   escape_dc?: number;
   attack_source?: "catalog";

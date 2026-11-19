@@ -441,3 +441,13 @@ for (const row of choirCorpus)
     if (row.name === "choir_catalog") expect(validate).not.toThrow();
     else expect(validate).toThrow();
   });
+
+test("Wave cone extension survives encounter validation and rejects malformed shapes", () => {
+  const wave = catalog
+    .find((r) => r.id === "hollow_veilrender")!
+    .attacks.find((a) => a.name === "Corruption Wave")!;
+  const action = { ...wave, properties: [] } as EncounterAction;
+  expect(() => validateEncounterActionShape(action)).not.toThrow();
+  for (const change of [{ shape: "sphere" }, { type: "melee" }, { reach: 0 }])
+    expect(() => validateEncounterActionShape({ ...action, ...change })).toThrow("shape");
+});

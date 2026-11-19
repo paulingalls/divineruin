@@ -18,6 +18,7 @@ export type CriticalSave = {
   stage?: 1;
 };
 export type ActionExtensions = {
+  shape?: unknown;
   magical?: unknown;
   bonus_damage?: unknown;
   critical_save?: unknown;
@@ -73,6 +74,11 @@ export function validateRecharge(value: unknown, path: string): void {
 }
 
 export function validateActionExtensions(action: ActionExtensions, path: string): void {
+  if (
+    "shape" in action &&
+    (action.shape !== "cone" || action.type !== "area" || !positive(action.reach))
+  )
+    invalid(`${path}.shape`);
   const kind = action.kind === undefined ? "attack" : action.kind;
   validateWeaponRiders(action, path);
   validateDurabilityRider(action, path);

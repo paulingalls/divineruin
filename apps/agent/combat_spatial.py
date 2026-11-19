@@ -153,3 +153,28 @@ def response_facts(state, acting_id, primary_id):
         return None
     # A member who joined mid-fight has no position; the session owner entered with the party.
     return facts(state, acting_id if acting_id in state.spatial["positions"] else primary_id)
+
+
+def axis_projection(origin, aim, candidate):
+    origin, aim, candidate = point(origin), point(aim), point(candidate)
+    length = distance(origin, aim)
+    if length == 0:
+        raise ValueError("Area aim must differ from its source position")
+    direction = [(aim[k] - origin[k]) / length for k in origin]
+    offset = [candidate[k] - origin[k] for k in origin]
+    axial = number(sum(a * b for a, b in zip(direction, offset, strict=True)), "axial distance")
+    perpendicular = math.hypot(*(b - axial * a for a, b in zip(direction, offset, strict=True)))
+    return axial, number(perpendicular, "perpendicular distance")
+
+
+def in_line(origin, aim, candidate, length_ft, width_ft):
+    axial, perpendicular = axis_projection(origin, aim, candidate)
+    return (
+        0 <= axial <= number(length_ft, "length", nonnegative=True)
+        and perpendicular <= number(width_ft, "width", nonnegative=True) / 2
+    )
+
+
+def in_cone(origin, aim, candidate, length_ft):
+    axial, perpendicular = axis_projection(origin, aim, candidate)
+    return 0 < axial <= number(length_ft, "length", nonnegative=True) and perpendicular <= axial / 2

@@ -54,6 +54,7 @@ def action_summary(actor):
                 if a not in actions
                 else None,
             }
+            | ({"shape": a["shape"], "reach": a["reach"], "aim": "declared participant"} if "shape" in a else {})
             | item_rider_facts(a)
             for a in actor.action_pool
         ],

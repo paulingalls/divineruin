@@ -198,7 +198,9 @@
         [11, 5],
         [17, 6]
       ],
-      "other_recipients": true
+      "recipients": {
+        "shape": "projectiles"
+      }
     },
     "name": "Magic Missile",
     "source": "arcane",
@@ -215,7 +217,8 @@
     "verbal": true,
     "hostile": true,
     "combat_aid": true,
-    "healing": false
+    "healing": false,
+    "max_targets": 6
   },
   {
     "id": "arcane_mist_step",
@@ -267,8 +270,12 @@
         [7, 3],
         [13, 4]
       ],
-      "other_recipients": true,
-      "choices": ["fire", "cold", "lightning"]
+      "choices": ["fire", "cold", "lightning"],
+      "recipients": {
+        "shape": "radius",
+        "radius_ft": 15,
+        "placements": 1
+      }
     },
     "name": "Elemental Burst",
     "source": "arcane",
@@ -394,7 +401,11 @@
         [11, 4],
         [17, 5]
       ],
-      "other_recipients": true
+      "recipients": {
+        "shape": "radius",
+        "radius_ft": 20,
+        "placements": 1
+      }
     },
     "name": "Fireball",
     "source": "arcane",
@@ -425,7 +436,11 @@
         [11, 4],
         [17, 5]
       ],
-      "other_recipients": true
+      "recipients": {
+        "shape": "line",
+        "length_ft": 100,
+        "width_ft": 5
+      }
     },
     "name": "Lightning Bolt",
     "source": "arcane",
@@ -528,7 +543,12 @@
       "attribute": "intelligence",
       "save": "dexterity",
       "half": true,
-      "other_recipients": true
+      "recipients": {
+        "shape": "chain",
+        "cap": 4,
+        "range_ft": 30,
+        "secondary_dice": "2d6"
+      }
     },
     "name": "Chain Lightning",
     "source": "arcane",
@@ -545,7 +565,8 @@
     "verbal": true,
     "hostile": true,
     "combat_aid": true,
-    "healing": false
+    "healing": false,
+    "max_targets": 4
   },
   {
     "id": "arcane_disintegrate",
@@ -641,8 +662,12 @@
       "attribute": "intelligence",
       "save": "dexterity",
       "half": true,
-      "other_recipients": true,
-      "deferred": "Only one sphere lands. Additional spheres and overlaps require area selection."
+      "deferred": "Only one sphere lands. Additional spheres and overlaps require area selection.",
+      "recipients": {
+        "shape": "radius",
+        "radius_ft": 20,
+        "placements": 4
+      }
     },
     "name": "Meteor Swarm",
     "source": "arcane",
@@ -761,7 +786,10 @@
         [17, 4]
       ],
       "restriction": "undead_hollow",
-      "other_recipients": true
+      "recipients": {
+        "shape": "caster_radius",
+        "radius_ft": 10
+      }
     },
     "name": "Sacred Word",
     "source": "divine",
@@ -1063,7 +1091,12 @@
       "attribute": "wisdom",
       "save": "dexterity",
       "half": true,
-      "other_recipients": true
+      "recipients": {
+        "shape": "cylinder",
+        "radius_ft": 10,
+        "height_ft": 40,
+        "placements": 1
+      }
     },
     "name": "Flame Strike",
     "source": "divine",
@@ -1501,7 +1534,6 @@
       "resolution": "save",
       "components": [{ "dice": "2d8", "damage_type": "lightning" }],
       "attribute": "wisdom",
-      "other_recipients": true,
       "save": "dexterity",
       "half": true,
       "deferred": "Later strikes are not affected: recurring spell actions are not implemented."
@@ -1735,7 +1767,11 @@
       "attribute": "wisdom",
       "save": "dexterity",
       "half": true,
-      "other_recipients": true
+      "recipients": {
+        "shape": "radius",
+        "radius_ft": 20,
+        "placements": 1
+      }
     },
     "name": "Ice Storm",
     "source": "primal",

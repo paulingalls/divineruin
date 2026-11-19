@@ -61,6 +61,10 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
     pool_action = _find_action(actor, declaration.action)
     if pool_action is not None and declaration.type in (DeclarationType.ATTACK, DeclarationType.ABILITY):
         require_available(actor, pool_action)
+        if pool_action.get("shape") == "cone":
+            from choir_actions import require_targets
+
+            require_targets(next_state, actor, pool_action, declaration)
     if declaration.type is DeclarationType.ABILITY and actor.type == "player":
         import combat_spell_profile
         import spells

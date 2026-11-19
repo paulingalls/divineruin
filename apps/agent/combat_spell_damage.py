@@ -13,7 +13,7 @@ from combat_support import AutomaticDamageResult, SaveDamageResult, _resolve_att
 from rules_engine import attribute_modifier, proficiency_bonus
 
 
-def _components(profile, caster, target, cast, choice):
+def _components(profile, caster, target, cast, choice, *, resonance=True):
     result = []
     for i, component in enumerate(profile["components"]):
         match = DICE.fullmatch(component["dice"])
@@ -23,7 +23,8 @@ def _components(profile, caster, target, cast, choice):
             count = scaled(profile, "scaling", count, caster.level)
             if target.hollow and "hollow_dice" in profile:
                 count = profile["hollow_dice"]
-            count += cast.packet["resonance_modifiers"]["damage_dice"]
+            if resonance:
+                count += cast.packet["resonance_modifiers"]["damage_dice"]
         if count < 0:
             raise ValueError("Spell damage dice became negative")
         notation = f"{count}d{sides}" if count else "0"
@@ -58,7 +59,7 @@ def _deferred(state, caster, target, profile):
     return result
 
 
-async def land(
+async def _land_one(
     session,
     state,
     caster,
@@ -66,6 +67,7 @@ async def land(
     cast,
     *,
     conn,
+    delivery=None,
     sink=None,
     mutations=db_mutations,
     queries=db_queries,
@@ -89,7 +91,18 @@ async def land(
             "reason": "Declared recipient is no longer available; no damage landed.",
         }
         return
-    components = _components(profile, caster, target, cast, declaration.argument_type)
+    profile = dict(profile)
+    if delivery and delivery.get("secondary"):
+        profile["components"] = [{**c, "dice": profile["recipients"]["secondary_dice"]} for c in profile["components"]]
+    dart_indices = delivery.get("dart_indices") if delivery else None
+    components = _components(
+        profile,
+        caster,
+        target,
+        cast,
+        declaration.argument_type,
+        resonance=dart_indices is None or 0 in dart_indices,
+    )
     if "damage_dice" in cast.packet:
         cast.packet["damage_dice"] = components[0]["dice"]
     action = {
@@ -131,18 +144,27 @@ async def land(
             )
             save = check_resolution_save.roll_participant_save(target, profile["save"], dc, spell.name)
             target.conditions = conditions.remove_conditions(target.conditions, save.consumed_conditions)
-        multiplier = scaled(profile, "projectile_scaling", profile.get("projectiles", 1), caster.level)
+        multiplier = (
+            len(dart_indices)
+            if dart_indices is not None
+            else scaled(profile, "projectile_scaling", profile.get("projectiles", 1), caster.level)
+        )
+        darts = []
         rolled = []
         for i, component in enumerate(components):
-            total = (
-                dice.maximum(component["dice"])
-                if plant_blight
-                else (dice.roll(component["dice"]).total if component["dice"] != "0" else 0)
-            )
-            # Resonance changes the first dart only, not every projectile.
-            if multiplier > 1:
-                base = profile["components"][i]["dice"]
-                total += sum(dice.roll(base).total for _ in range(multiplier - 1))
+            if dart_indices is not None:
+                assert delivery is not None
+                darts = [{"index": index, "damage": delivery["dart_rolls"][index]} for index in dart_indices]
+                total = sum(dart["damage"] for dart in darts)
+            else:
+                total = (
+                    dice.maximum(component["dice"])
+                    if plant_blight
+                    else (dice.roll(component["dice"]).total if component["dice"] != "0" else 0)
+                )
+                if multiplier > 1:
+                    base = profile["components"][i]["dice"]
+                    total += sum(dice.roll(base).total for _ in range(multiplier - 1))
             if i == 0 and component["dice"] != "0" and profile.get("damage_attribute"):
                 total += attribute_modifier(caster.attributes.get(profile["attribute"], 10))
             total = max(0, total)
@@ -190,7 +212,58 @@ async def land(
             }
     result["target_id"] = target.id
     result["target_hp_current"] = target.hp_current
+    if delivery and "dart_indices" in delivery:
+        result["darts"] = darts
+        result["dart_indices"] = delivery["dart_indices"]
     cast.packet["damage_result"] = result
     deferred = _deferred(state, caster, target, profile)
     if deferred:
         cast.packet["deferred"] = deferred
+
+
+async def land(session, state, caster, declaration, cast, *, conn, deliveries=None, **deps):
+    from dataclasses import replace
+
+    if deliveries is None:
+        await _land_one(session, state, caster, declaration, cast, conn=conn, **deps)
+        if "damage_result" in cast.packet:
+            cast.packet["damage_results"] = [cast.packet["damage_result"]]
+        return
+    grouped = {}
+    for delivery in deliveries:
+        target_id = delivery["target_id"]
+        if target_id in grouped and "dart_indices" in delivery:
+            grouped[target_id]["dart_indices"].extend(delivery["dart_indices"])
+        elif target_id not in grouped:
+            grouped[target_id] = dict(delivery)
+    deliveries = list(grouped.values())
+    profile = spells.get_spell(declaration.action).combat_damage
+    assert profile is not None
+    if deliveries and "dart_indices" in deliveries[0]:
+        indices = sorted(index for delivery in deliveries for index in delivery["dart_indices"])
+        first_target = state.get_participant(deliveries[0]["target_id"])
+        first_dice = _components(profile, caster, first_target, cast, declaration.argument_type)[0]["dice"]
+        base = profile["components"][0]["dice"]
+        rolls = {index: dice.roll(first_dice if index == 0 else base).total for index in indices}
+        deliveries = [{**delivery, "dart_rolls": rolls} for delivery in deliveries]
+    results = []
+    for delivery in deliveries:
+        await _land_one(
+            session,
+            state,
+            caster,
+            replace(declaration, target_id=delivery["target_id"], target_ids=None),
+            cast,
+            conn=conn,
+            delivery=delivery,
+            **deps,
+        )
+        if "damage_result" in cast.packet:
+            result = cast.packet.pop("damage_result")
+            if result.get("resolved") is not False:
+                results.append(result)
+    cast.packet["damage_results"] = results
+    if results:
+        cast.packet["damage_result"] = results[0]
+    else:
+        cast.packet["recipient_status"] = "No effective recipients; no damage landed."

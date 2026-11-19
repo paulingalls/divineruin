@@ -15,7 +15,6 @@ import db_mutations
 import db_queries
 import spells
 from declaration_payloads import AbilityDecl, DefendDecl
-from spell_voice_rules import AREA_SPELLS
 
 
 async def saved_player(pid, *, conn=None):
@@ -145,6 +144,7 @@ async def test_catalog_damage_lands_once_on_declared_recipient(spell_fight, spel
     spell = await prepare_spell(ctx, spell_id)
     assert spell.combat_damage is not None
     participant(ctx.userdata.combat_state, "foe").category = "undead"
+    ctx.userdata.combat_state.spatial["positions"]["foe"]["x"] = 10 if spell_id == "divine_sacred_word" else 40
     before = await saved_player(ctx.userdata.player_id)
     await declare_spell(ctx, spell_id, "cold")
     with (
@@ -162,7 +162,7 @@ async def test_catalog_damage_lands_once_on_declared_recipient(spell_fight, spel
     assert participant(saved, "foe").hp_current == 100 - expected
     after = await saved_player(ctx.userdata.player_id)
     assert after["focus"]["current"] == before["focus"]["current"] - spell.focus_cost
-    if spell_id in AREA_SPELLS or spell_id == "arcane_magic_missile":
+    if spell.combat_damage.get("other_recipients"):
         assert any(d["not_affected"] and "NOT affected" in d["reason"] for d in cast["deferred"])
 
 
@@ -200,28 +200,6 @@ async def test_event_spells_report_deferred_damage_and_spend_authored_focus(spel
     assert (await saved_player(ctx.userdata.player_id))["focus"]["current"] == 100 - spell.focus_cost
 
 
-async def test_area_spell_names_untouched_other_recipient(spell_fight):
-    from voice_condition_fixtures import place_actors
-
-    ctx = spell_fight
-    await prepare_spell(ctx, "arcane_fireball")
-    other = _enemy("other", 100)
-    state = ctx.userdata.combat_state
-    state.participants.append(other)
-    state.initiative_order.append(other.id)
-    place_actors(state)
-    await declare_spell(ctx, "arcane_fireball")
-    with patch("check_resolution.dice_roll", return_value=_d20(1)):
-        result = await _resolve_round(ctx)
-    cast = next(p["cast"] for p in result["packets"] if p["actor_id"] == ctx.userdata.player_id)
-    assert cast["damage_result"]["damage"] > 0
-    assert participant(ctx.userdata.combat_state, "other").hp_current == 100
-    persisted = await load_combat(state.combat_id)
-    assert participant(persisted, "other").hp_current == 100
-    deferred = next(d for d in cast["deferred"] if d["effect"] == "other_recipients")
-    assert deferred["target_ids"] == ["other"] and deferred["targets"] == ["Other"] and deferred["not_affected"]
-
-
 @pytest.mark.parametrize(
     "targets,choice", [([], "cold"), (["missing"], "cold"), (["foe", "other"], "cold"), (["foe"], "")]
 )
@@ -242,7 +220,8 @@ async def test_sacred_word_living_recipient_is_unharmed(spell_fight):
     await declare_spell(ctx, "divine_sacred_word")
     result = await _resolve_round(ctx)
     cast = next(p["cast"] for p in result["packets"] if p["actor_id"] == ctx.userdata.player_id)
-    assert cast["damage_result"]["damage"] == 0
+    assert cast["damage_results"] == []
+    assert "No effective recipients" in cast["recipient_status"]
     assert participant(ctx.userdata.combat_state, "foe").hp_current == 100
 
 
