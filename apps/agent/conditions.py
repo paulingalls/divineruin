@@ -148,7 +148,6 @@ def apply_condition(
     if existing is not None:
         if condition_type == "charmed":
             existing.pop("choir_melody", None)
-        existing.pop("originating_participant_id", None)
         existing.update(applied)
         return result
 
