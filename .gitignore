@@ -76,6 +76,9 @@ assets/images/img_*.png
 .agents/
 skills-lock.json
 
+# Codex
+.codex/
+
 # Watchman cookie files (transient probes dropped in the repo root by watchman)
 .watchman-cookie-*
 
