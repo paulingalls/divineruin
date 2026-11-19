@@ -1,8 +1,10 @@
+import json
 from copy import deepcopy
 from unittest.mock import patch
 
 import pytest
 from acceptance._capstone_helpers import _d20, _damage_die
+from acceptance.seeds import seed_player
 from acceptance.test_still_anchors import declare, destroy, enter, hit, search_round, strike
 from acceptance.test_still_anchors import mock_combat_agent_factory as mock_combat_agent_factory
 from acceptance.test_still_anchors import still as still
@@ -10,6 +12,8 @@ from sample_fixtures import published_payloads
 
 import db_mutations
 import db_queries
+from caster_state import ConcentrationState, ResonanceTrack
+from party_state import PartyMember
 
 
 async def test_load_rejects_corrupt_still_snapshots(still):
@@ -115,7 +119,18 @@ async def test_final_anchor_write_failure_rolls_back_before_retry(still, monkeyp
         raise AssertionError("Could not stage the final weapon hit")
 
     await declare(still, **strike(target))
+    location = still.sd.location_id
+    guest = f"{still.players[0]}_guest"
+    outsider = f"{still.players[0]}_outsider"
+    key = f"still_charm:{location}"
+    charm = json.dumps(dict(location_id=location, kind="paradise_trap", remaining_zone_hours=None))
+    for pid in (guest, outsider):
+        await seed_player(still.pool, player_id=pid, location_id=location)
+        await db_mutations.set_player_flag(pid, key, charm)
+    still.sd.party.members.append(PartyMember(guest, ResonanceTrack(), ConcentrationState()))
+    assert state.get_participant(guest) is None
     before, player = await still.snapshot()
+    guest_before = await db_queries.get_player(guest)
     events = published_payloads(still.sd.room)
     with (
         patch("check_resolution.dice_roll", return_value=_d20(20)),
@@ -126,8 +141,13 @@ async def test_final_anchor_write_failure_rolls_back_before_retry(still, monkeyp
             await still.command("resolve_phase", {}, error=True)
         assert failed == [state.combat_id]
         assert await still.snapshot() == (before, player)
+        assert await db_queries.get_player(guest) == guest_before
         assert published_payloads(still.sd.room) == events
         await still.drain()
+    guest_after = await db_queries.get_player(guest)
+    outsider_after = await db_queries.get_player(outsider)
+    assert guest_after is not None and key not in guest_after["flags"]
+    assert outsider_after is not None and outsider_after["flags"][key] == charm
     assert still.last_result["outcome"] == "victory"
     assert still.last_result["xp_granted"] == 5000
     assert {drop["item_id"] for drop in still.last_result["loot"]} == {"absorbed_memories"}

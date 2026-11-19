@@ -13,6 +13,8 @@ import db_mutations_travel
 import db_queries
 import event_types as E
 import quest_progress
+import still_charm
+import still_scene
 import ward_resolution
 from action_sound_content import publish_action_sound
 from db_errors import db_tool
@@ -65,9 +67,11 @@ async def apply_arrival(
     destination_id: str,
     destination_location: dict | None,
     *,
+    queries=db_queries,
     db_mod=db,
     mutations=db_mutations,
     travel_mutations=db_mutations_travel,
+    check_departure: bool = False,
 ) -> str:
     """Apply party arrival at `destination_id`: persist location, map progress and travel state atomically,
     emit LOCATION_CHANGED + corruption tracking, sync session location/corruption, and record the
@@ -79,6 +83,9 @@ async def apply_arrival(
     member_ids = tuple(sorted(session.party.member_ids))
     async with db_mod.transaction() as conn:
         session.validate_acting_player(speaker_id)
+        if check_departure and destination_id != previous_location_id:
+            players = await still_charm.lock_players(member_ids, queries=queries, conn=conn)
+            still_charm.require_departure(players, previous_location_id)
         apply = await write_arrival(
             session,
             destination_id,
@@ -86,6 +93,7 @@ async def apply_arrival(
             previous_location_id,
             member_ids,
             conn=conn,
+            queries=queries,
             db_mod=db_mod,
             mutations=mutations,
             travel_mutations=travel_mutations,
@@ -103,6 +111,7 @@ async def write_arrival(
     member_ids: tuple[str, ...],
     *,
     conn,
+    queries=db_queries,
     db_mod=db,
     mutations=db_mutations,
     travel_mutations=db_mutations_travel,
@@ -110,6 +119,16 @@ async def write_arrival(
     destination_exits = destination_location.get("exits", {}) if destination_location else {}
     exit_connections = db_mod.extract_exit_connections(destination_exits)
     pending_events: list[tuple[str, dict]] = []
+
+    if (
+        destination_id != previous_location_id
+        and destination_location
+        and "still" in destination_location.get("tags", [])
+    ):
+        players = await still_charm.lock_players(member_ids, queries=queries, conn=conn)
+        scene = still_scene.read(players[session.primary_player_id], destination_id)
+        if scene is None or scene["status"] != "destroyed":
+            await still_charm.save_on_arrival(players, destination_id, mutations=mutations, conn=conn)
 
     for member_id in member_ids:
         await mutations.update_player_location(member_id, destination_id, conn=conn)
@@ -284,9 +303,11 @@ async def _move_player_locked(
         session,
         destination_id,
         destination_location,
+        queries=queries,
         db_mod=db_mod,
         mutations=mutations,
         travel_mutations=travel_mutations,
+        check_departure=True,
     )
     quest_updates = await quest_progress.advance_on_arrival(
         context, destination_id, db_mod=db_mod, mutations=mutations, queries=queries, content=content
