@@ -127,7 +127,8 @@ def apply(target, action, result):
         damage = sum(c["damage"] for c in components)
     else:
         damage = adjusted(result.damage - bonus - rider - synergy, result.damage_type)
-    changes = {"damage": damage + adjusted_bonus + adjusted_rider + adjusted_synergy}
+    # Resistance can remove a rider that offset a negative attribute modifier.
+    changes = {"damage": max(0, damage + adjusted_bonus + adjusted_rider + adjusted_synergy)}
     if hasattr(result, "bonus_damage"):
         changes.update(bonus_damage=adjusted_bonus, rider_damage=adjusted_rider, synergy_damage=adjusted_synergy)
     if hasattr(result, "target_hp_remaining") and changes["damage"] != result.damage:

@@ -165,6 +165,17 @@ async def test_thyra_weapon_edges(world, archetype, face, resistant):
     await thyra_weapon(world, archetype, face=face, resistant=resistant)
 
 
+async def test_resisted_lightning_cannot_turn_critical_damage_into_healing(world):
+    await configure(world, "thyra", "warrior")
+    async with fight(world, ac=10, hp=90) as state:
+        participant(state, world.ids[0]).attributes = {"strength": 5}
+        participant(state, "foe").hp_max = 100
+        participant(state, "foe").damage_affinities = {"resistant": ["lightning"]}
+        packet, rolls = await weapon_round(world, face=20, damage=[_damage_die(1)] * 3)
+        assert [c.args[0] for c in rolls.call_args_list] == ["1d8", "1d8", "1d4"]
+        assert (packet["damage"], packet["synergy_damage"], await saved_hp(state)) == (0, 0, 90)
+
+
 async def assert_active_clause(world, patron, archetype, synergy_type, implementation):
     authored = next(g for g in load_gods() if g["god_id"] == patron)["layer_4_synergy_matrix"][archetype]
     reported = (await game_tools(world.ctx.userdata, query_info)("query_info", kind="patron"))["synergy"]
