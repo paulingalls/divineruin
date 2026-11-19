@@ -439,7 +439,10 @@ def main():
         graph,
     )
     unkeyed = restored | content | SHARED_INPUTS | runtime_sources
-    tasks["native-maestro"]["keyed"] = [*sorted(unkeyed), SHARED_KEY]
+    # Proof drains earlier tasks and releases their providers before admitting a solo task.
+    native = tasks.pop("native-maestro")
+    native["keyed"] = [*sorted(unkeyed), SHARED_KEY]
+    tasks["native-maestro"] = native
     output = {
         "unkeyed": sorted(unkeyed),
         "tasks": tasks,

@@ -1,7 +1,8 @@
 # Maestro acceptance flows
 
-The scheduled Proof `super` set runs all nine iOS journeys. To run just that
-task from the repository root:
+The scheduled Proof `super` set runs all nine iOS journeys in one task after
+the other tasks and their providers finish. To run just the native task from
+the repository root:
 
 ```sh
 bunx proof run --fresh --tasks native-maestro

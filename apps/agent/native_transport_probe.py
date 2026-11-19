@@ -104,6 +104,7 @@ def safe_result(result: dict[str, Any]) -> dict[str, Any]:
 class ProbeState:
     def __init__(self, fixture: dict[str, str]) -> None:
         self.fixture = fixture
+        self.fixture_requested = threading.Event()
         self.microphone_frames = 0
         self.mobile_result: dict[str, Any] | None = None
         self.extra_status: dict[str, Any] = {}
@@ -140,6 +141,7 @@ def make_handler(state: ProbeState, run_id: str) -> type[BaseHTTPRequestHandler]
                 self._write(409, {"error": "stale run ID"})
             elif path == "/fixture":
                 self._write(200, state.fixture)
+                state.fixture_requested.set()
             elif path == "/status":
                 self._write(200, {"run_id": run_id, "microphone_frames": state.microphone_frames, **state.extra_status})
             else:
@@ -241,6 +243,10 @@ async def run_probe(
     marker: dict[str, str | int] | None = None
     try:
         room = await connect_room(server.ws_url, publisher_token)
+        if require_marker:
+            async with asyncio.timeout(120):
+                while not state.fixture_requested.is_set():
+                    await asyncio.sleep(0.1)
         await wait_for_peer(room, identity=mobile_identity, timeout=30)
 
         async def receive_microphone() -> int:

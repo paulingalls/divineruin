@@ -213,7 +213,7 @@ def main():
     else:
         device, speaker = select_speaker(listed.stderr)
         waveform = generate_speech(args.artifacts, args.run_id, speaker)
-    wait_for_microphone(endpoint, args.run_id, timeout=60 if args.loopback_uid else 20)
+    wait_for_microphone(endpoint, args.run_id, timeout=180 if args.loopback_uid else 20)
     command = [
         "ffmpeg",
         "-nostdin",

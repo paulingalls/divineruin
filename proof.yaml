@@ -181,7 +181,6 @@
     }
   },
   "lanes": {
-    "native": 1,
     "e2e": 1
   },
   "unkeyed": [

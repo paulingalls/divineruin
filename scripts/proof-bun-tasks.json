@@ -774,7 +774,7 @@
   "native-maestro": {
     "run": "REQUIRE_EMULATOR=1 REQUIRE_BACKEND=1 exec bun --no-env-file scripts/native-maestro.ts",
     "sets": ["super"],
-    "lane": "native",
+    "lane": "solo",
     "needs": ["native-stack"],
     "links": ["node_modules"],
     "artifacts": ["test-results/native-maestro/**"],
