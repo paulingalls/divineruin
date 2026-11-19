@@ -8,6 +8,7 @@ import db_mutations
 import dice
 import patron_passives
 from combat_down import is_terminally_down, revive
+from combat_enemy_active import heal, healed_hp
 from rules_engine import attribute_modifier
 from spells import normalize_target_list
 
@@ -87,14 +88,13 @@ def _healing_roll(profile: HealProfile, attributes: dict[str, int], dice_mod) ->
     return rolled, modifier
 
 
-def _receipt(target_id: str, current: int, maximum: int, rolled: int, modifier: int) -> HealingResult:
-    new_hp = min(current + max(0, rolled + modifier), maximum)
+def _receipt(target_id: str, before: int, hp: int, maximum: int, rolled: int, modifier: int) -> HealingResult:
     return {
         "target_id": target_id,
         "rolled": rolled,
         "modifier": modifier,
-        "healed": max(0, new_hp - current),
-        "hp_current": new_hp,
+        "healed": max(0, hp - before),
+        "hp_current": hp,
         "hp_max": maximum,
     }
 
@@ -105,16 +105,14 @@ async def land(
     rolled, modifier = _healing_roll(profile, caster.attributes, dice)
     results = []
     for target in recipients:
-        result = _receipt(target.id, target.hp_current, target.hp_max, rolled, modifier)
-        hp = result["hp_current"]
-        if hp != target.hp_current:
-            if target.type == "player":
-                await db_mutations.update_player_hp(target.id, hp, conn=conn)
-            if target.is_fallen and hp > 0:
-                revive(target, hp)
-            else:
-                target.hp_current = hp
-        results.append(result)
+        before = target.hp_current
+        restored = heal(target, rolled + modifier)
+        hp = target.hp_current
+        if target.is_fallen and restored > 0:
+            revive(target, hp)
+        if hp != before and target.type == "player":
+            await db_mutations.update_player_hp(target.id, hp, conn=conn)
+        results.append(_receipt(target.id, before, hp, target.hp_max, rolled, modifier))
     return results
 
 
@@ -126,8 +124,8 @@ async def land_exploration(
     for pid, row in recipients.items():
         current = row["hp"]["current"]
         maximum = patron_passives.effective_hp(row)["max"]
-        result = _receipt(pid, current, maximum, rolled, modifier)
-        if result["hp_current"] != current:
-            await db_mutations.update_player_hp(pid, result["hp_current"], conn=conn)
-        results.append(result)
+        hp = healed_hp(current, maximum, rolled + modifier)
+        if hp != current:
+            await db_mutations.update_player_hp(pid, hp, conn=conn)
+        results.append(_receipt(pid, current, hp, maximum, rolled, modifier))
     return results

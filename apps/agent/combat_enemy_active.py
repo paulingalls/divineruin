@@ -8,9 +8,13 @@ from combat_condition_landing import _land_condition_on_one
 from encounter_actions import action_kind
 
 
+def healed_hp(current: int, maximum: int, amount: int) -> int:
+    return min(maximum, current + max(0, amount))
+
+
 def heal(actor, amount):
     before = actor.hp_current
-    actor.hp_current = min(actor.hp_max, before + max(0, amount))
+    actor.hp_current = healed_hp(before, actor.hp_max, amount)
     return actor.hp_current - before
 
 

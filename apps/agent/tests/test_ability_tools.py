@@ -183,14 +183,16 @@ class TestActivation:
             if match is None:
                 continue
             compared += 1
-            if ability.spell_id is not None:
-                spells.get_spell(match.group(1))
+            spell = spells.get_spell(match.group(1)) if ability.spell_id is not None else None
             state = _make_combat_state()
             from voice_condition_fixtures import place_actors
 
             place_actors(state)
             state.beat = PhaseBeat.DECLARATION
-            declaration = {"player_1": {"type": "ability", "action": match.group(1), "target_id": "goblin_scout_1"}}
+            action = {"type": "ability", "action": match.group(1)}
+            if spell is None or spell.heal is None:
+                action["target_id"] = "goblin_scout_1"
+            declaration = {"player_1": action}
             advance_combat_phase(state, declaration)  # ValueError here = the two gates disagree
 
         assert compared >= 15, f"declare-phase comparison set went thin ({compared})"
