@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.50.5
+
+Fixes a creation test left expecting the old 12/17 starting HP for a Kaelen warrior.
+
+Release steps: none.
+
+## 0.50.4
+
+A new Kaelen follower now starts at full HP, including Warrior's Endurance (17/17 instead of 12/17).
+
+Release steps: none.
+
+## 0.50.3
+
+Proof's agent test sandboxes now reuse the checkout's agent virtualenv when it already matches the tree's lock, instead of building a cold one per sandbox; a tree with a different lock still gets its own fresh venv, and the shared one is never modified. A full sprint run on the Intel Mac dropped from 63 to 19 minutes. Two test races that the faster run exposed are fixed: the Choir refusal guard no longer counts the startup `session_init` as a gameplay effect, and the Leave summary spec pauses the browser clock at the browser's own time.
+
+Release steps: run `uv sync --project apps/agent --frozen` in each checkout so its venv matches the lock and can be shared.
+
 ## 0.50.2
 
 The XP workflow's fixer and slate-reviewer now run on GPT-6.2 Sol, as a trial.
