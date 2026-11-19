@@ -1,3 +1,4 @@
+import asyncio
 from unittest.mock import patch
 
 import pytest
@@ -43,3 +44,37 @@ async def test_judgment_checkpoint_failure_rolls_back_reward(world):
             result = await call("resolve_phase")
         assert [r["stamina_restored"] for r in result["judgment_rewards"]] == [5]
         assert (await row(world, 0))["stamina"]["current"] == 7
+
+
+async def test_judgment_restores_stamina_from_the_committed_player_row(world):
+    async with judgment_fight(world, hp=1) as (call, state):
+        source, ally = world.ids
+        await update_player_resources(source, stamina=2, conn=world.pool)
+        maximum = (await row(world, 0))["stamina"]["max"]
+        await mark(call)
+        await declare_finish(call, state, ally)
+        rolls, damage = combat_rolls([3, 17], 1)
+        with rolls, damage:
+            task = None
+            try:
+                async with world.pool.acquire() as writer, writer.transaction():
+                    await writer.fetchval("SELECT player_id FROM players WHERE player_id=$1 FOR UPDATE", source)
+                    writer_pid = await writer.fetchval("SELECT pg_backend_pid()")
+                    task = asyncio.create_task(call("resolve_phase"))
+                    async with asyncio.timeout(5):
+                        while not await world.pool.fetchval(
+                            "SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE $1=ANY(pg_blocking_pids(pid)))",
+                            writer_pid,
+                        ):
+                            if task.done():
+                                await task
+                                pytest.fail("Judgment resolved before the follower row unlocked")
+                    await update_player_resources(source, stamina=maximum - 1, conn=writer)
+                result = await asyncio.wait_for(task, timeout=5)
+            finally:
+                if task is not None and not task.done():
+                    task.cancel()
+                    await asyncio.gather(task, return_exceptions=True)
+
+        assert [r["stamina_restored"] for r in result["judgment_rewards"]] == [1]
+        assert (await row(world, 0))["stamina"]["current"] == maximum
