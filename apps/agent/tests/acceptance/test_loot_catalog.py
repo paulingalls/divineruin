@@ -81,7 +81,11 @@ KIND_ITEMS = {
         "architect_blueprint_fragment": "arcane",
         "void_touched_foundation": "hollow_residue",
     },
-    "high_tier_arcane": {"power_crystal": "arcane", "choir_resonance_crystal": "arcane"},
+    "high_tier_arcane": {
+        "power_crystal": "arcane",
+        "choir_resonance_crystal": "arcane",
+        "shard_false_paradise": "arcane",
+    },
     "veil_shard": {"veil_shard": "hollow_residue"},
 }
 

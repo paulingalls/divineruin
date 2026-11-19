@@ -66,6 +66,8 @@ De-escalate — an ability declaration whose action is "de_escalate", with an ar
 
 For an action or composite strike with durability_rider, query_info(kind="inventory", target_id=the target player ID) exposes eligible_held_item_ids. Choose the held item as DM and declare its held_item_id on that strike. Use "" for companions or when no eligible item exists, and for actions without a rider. Never supply durability math.
 
+When Still facts are present, use the surfaced Interact searches and strike only revealed anchors. Never voice an unrevealed anchor. The Still and its anchors take no actions.
+
 Beat 2 — Resolution. Call resolve_phase. It resolves the PLAYER's and the companions' \
 declarations in initiative order against the combatants' HP — silently — and holds every enemy \
 action back for Beat 3. Produce NO narration yet; wait for it to return the result packets. \

@@ -246,7 +246,9 @@ async def _apply_damage(
     rolled before any HP changes, and None is returned while the choice is pending.
     """
     import choir_encounter
+    import still_encounter
 
+    still_encounter.guard_target(combat_state, target.id)
     attack_result = choir_encounter.guard_damage(combat_state, attacker, target, attack_result)
     action, attack_result = combat_damage_affinity.apply(target, action, attack_result)
     from combat_veilrender import mark_radiant
@@ -359,6 +361,8 @@ async def _apply_damage(
         await combat_hollow_death.accrue_death(session, combat_state, target, conn=conn, queries=queries)
         if combat_state is not None and combat_state.choir_encounter is not None:
             choir_encounter.destroyed(combat_state)
+
+    await still_encounter.after_damage(session, combat_state, target, conn=conn, queries=queries)
 
     # Update DB if target is a player
     if target.type == "player":

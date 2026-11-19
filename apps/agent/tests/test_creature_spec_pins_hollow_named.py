@@ -64,7 +64,10 @@ LOOT = {
         ("named_fragment", 1, 1.0, (("arcana", "expert"),)),
         ("freed_memories", "1d6", 1.0, ()),
     ),
-    "hollow_still": (("named_fragment", 1, 1.0, (("arcana", "expert"),)),),
+    "hollow_still": (
+        ("named_fragment", 1, 1.0, (("arcana", "expert"),)),
+        ("absorbed_memories", "1d6", 1.0, ()),
+    ),
     "hollow_architect": (
         ("architect_blueprint_fragment", "1d4", 1.0, (("arcana", "expert"),)),
         ("living_stone", "2d6", 1.0, (("crafting", "expert"),)),
@@ -108,7 +111,7 @@ def catalog(name):
 
 def assert_loot(table, key):
     actual = tuple(
-        (d["item_id"], d["quantity"], d["chance"], tuple((r["skill"], r["tier"]) for r in d["requires"]))
+        (d["item_id"], d["quantity"], d["chance"], tuple((r["skill"], r["tier"]) for r in d.get("requires", [])))
         for d in table["drops"]
     )
     assert actual == LOOT[key]

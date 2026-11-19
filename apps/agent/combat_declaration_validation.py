@@ -3,6 +3,7 @@
 import combat_grapple
 import combat_spatial_declarations
 import combat_voice_rules
+import still_encounter
 from combat_ability import _find_action, condition_ability
 from combat_ability_gate import declared_ability
 from combat_action_availability import require_available
@@ -16,6 +17,7 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
     if actor is None:
         participant_ids = [participant.id for participant in next_state.participants]
         raise ValueError(f"Unknown actor {actor_id!r}; participants: {participant_ids}")
+    still_encounter.guard_declaration(next_state, actor_id, declaration)
     if declaration.type is DeclarationType.MULTIATTACK:
         from combat_multiattack import expand_declaration
 

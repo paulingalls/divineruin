@@ -117,6 +117,9 @@ async def _resolve_action_packet(
     player = players_by_id.get(packet.actor_id) if players_by_id else None
 
     import choir_encounter
+    import still_encounter
+
+    still_encounter.guard_declaration(state, packet.actor_id, decl)
 
     stale = choir_encounter.stale_reason(state, packet.actor_id, decl)
     if stale is None:
@@ -165,6 +168,17 @@ async def _resolve_action_packet(
             queries=queries,
             conn=conn,
             progress=progress.scope("choir_search") if progress is not None else None,
+        )
+
+    if decl.type is DeclarationType.INTERACT and decl.action in still_encounter.SEARCH_ACTIONS:
+        return await still_encounter.search(
+            session,
+            state,
+            attacker,
+            decl,
+            queries=queries,
+            conn=conn,
+            progress=progress.scope("still_search") if progress is not None else None,
         )
 
     if decl.type is DeclarationType.DEFEND:

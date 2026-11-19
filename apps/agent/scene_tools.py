@@ -10,6 +10,7 @@ from livekit.agents.voice import RunContext
 import choir_scene
 import db_content_queries
 import db_queries
+import still_scene
 from db_errors import db_tool
 from session_data import SessionData
 from tool_support import (
@@ -100,6 +101,7 @@ async def _build_scene_context(
 
     return {
         "choir": await choir_scene.facts(session, queries=queries, location_id=location_id),
+        "still": await still_scene.facts(session, queries=queries, location_id=location_id),
         "location": _location_for_narration(location),
         "npcs": npcs,
         "targets": targets,
