@@ -102,6 +102,7 @@ async def _resolve_phase_locked(
     fate_rolls = PhaseRolls(kept=kept)
     cast_outcome = AbilityCastOutcome()
     packet_summaries: list[dict] = []
+    previous_judgments = len(cs.judgment_rewards)
     async with phase_transaction_with_recovery(session, cs, db_mod=db_mod, mutations=mutations) as conn:
         if resolving_allies:
             if cs.ally_continuation is None:
@@ -300,6 +301,8 @@ async def _resolve_phase_locked(
         "exhaustion_narration": exhaustion_narration,
         "legendary_available": wrap_adv.legendary_available,
     }
+    if rewards := state.judgment_rewards[previous_judgments:]:
+        response["judgment_rewards"] = rewards
     if offer is not None:
         response.update(offer.response())
     if facts := combat_wrongdoing.aggression_facts(state):

@@ -58,6 +58,7 @@ class CombatState:
     # Set during resolution, cleared at the wrap loop-back so a stance lasts one phase.
     ac_modifiers: dict[str, int] = field(default_factory=dict)
     focus_marks: dict[str, dict[str, str]] = field(default_factory=dict)
+    judgment_rewards: list[dict] = field(default_factory=list)
     # Combat-scoped (NOT phase-scoped): flips True after the first attack of the whole
     # encounter resolves, never resets. Feeds the M4.5 dramatic-dice "first_attack"
     # signal so the opening strike earns the dice (story-004).
@@ -158,6 +159,7 @@ class CombatState:
             reactions_available=reactions_available,
             ac_modifiers=data.get("ac_modifiers", {}),
             focus_marks=data.get("focus_marks", {}),
+            judgment_rewards=data.get("judgment_rewards", []),
             first_attack_resolved=data.get("first_attack_resolved", False),
             first_hostility=combat_wrongdoing.validate_ledger(data.get("first_hostility", {}), data["participants"]),
             deescalated=data.get("deescalated", False),

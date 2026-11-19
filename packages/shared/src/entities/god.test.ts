@@ -87,19 +87,22 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
   ).toEqual(narrated);
   const passives = new Set(["veythar_scholars_ward", "kaelen_warriors_endurance"]);
   const battleCry = "kaelen_battle_cry_of_the_ironhand";
-  const engine = new Set(["zhael_lucky", battleCry, ...passives]);
+  const judgment = "kaelen_kaelens_judgment";
+  const engine = new Set(["zhael_lucky", battleCry, judgment, ...passives]);
   expect(
     new Set(
       abilities.filter((a) => a.status === "active" && a.resolution === "engine").map((a) => a.id),
     ),
   ).toEqual(engine);
   const pending = abilities.filter((a) => !narrated.has(a.id) && !engine.has(a.id));
-  expect(pending).toHaveLength(19);
+  expect(pending).toHaveLength(18);
   for (const ability of abilities.filter((a) => passives.has(a.id))) {
     expect([ability.recharge, ability.implementation_id]).toEqual(["always", ability.id]);
   }
   const cry = abilities.find((a) => a.id === battleCry);
   expect([cry?.recharge, cry?.implementation_id]).toEqual(["long_rest", battleCry]);
+  const worthyFoe = abilities.find((a) => a.id === judgment);
+  expect([worthyFoe?.recharge, worthyFoe?.implementation_id]).toEqual(["per_session", judgment]);
   for (const ability of pending)
     expect([ability.status, ability.resolution]).toEqual(["pending", "engine"]);
   expect(corpus.valid.length).toBeGreaterThan(0);

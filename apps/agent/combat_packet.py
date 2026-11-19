@@ -266,7 +266,15 @@ async def _resolve_one_packet(
         cond_ability = condition_ability(declared_ability(decl.action))
         if cond_ability is not None:
             return await _resolve_ability_condition_packet(
-                session, attacker, decl, cond_ability, state=state, conn=conn, player=player, progress=progress
+                session,
+                attacker,
+                decl,
+                cond_ability,
+                state=state,
+                conn=conn,
+                player=player,
+                queries=queries,
+                progress=progress,
             )
         return await _resolve_ability_packet(
             session,

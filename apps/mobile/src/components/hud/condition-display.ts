@@ -37,6 +37,7 @@ export const CONDITION_TYPES = [
   "hollowed",
   "iron_resolve",
   "battle_cry",
+  "worthy_foe",
 ] as const;
 
 export type ConditionType = (typeof CONDITION_TYPES)[number];
@@ -51,6 +52,7 @@ export interface ConditionDisplay {
 // neutral/structural ones the muted ash. Labels are short for a smartwatch-level HUD.
 export const CONDITION_DISPLAY: Record<ConditionType, ConditionDisplay> = {
   battle_cry: { label: "Battle Cry", icon: "bullhorn", color: BrandColors.hollow },
+  worthy_foe: { label: "Worthy Foe", icon: "target", color: BrandColors.ember },
   iron_resolve: { label: "Iron Resolve", icon: "shield-plus", color: BrandColors.hollow },
   wounded: { label: "Wounded", icon: "heart-broken", color: BrandColors.ember },
   stunned: { label: "Stunned", icon: "star-circle", color: BrandColors.ember },

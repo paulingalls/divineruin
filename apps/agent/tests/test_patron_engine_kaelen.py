@@ -150,16 +150,16 @@ CRY_GIFTS = {"kaelen_kaelens_judgment": {"spent": True}}
 COMPANION = "companion_kael"
 
 
-async def battle_cry_setup(world):
+async def battle_cry_setup(world, *, favor=40, patron_gifts=CRY_GIFTS, foe_hp=100, other_enemies=()):
     session = world.ctx.userdata
     session.companion = CompanionState(id=COMPANION, name="Kael")
-    foe = _enemy("foe", hp=100)
+    foe = _enemy("foe", hp=foe_hp)
     foe.ac = 13
     state = _build_state(world.ids[0], world.ids[0], [foe])
     host, foe = state.participants
     guest, companion = _player(world.ids[1]), _player(COMPANION)
     allies = [host, guest, companion]
-    state.participants = [*allies, foe]
+    state.participants = [*allies, foe, *other_enemies]
     state.initiative_order = [p.id for p in state.participants]
     for p, name, strength, mod in zip(allies, ("Rook", "Iris", "Kael"), (14, 12, 16), (0, 1, -1), strict=True):
         p.name, p.attributes, p.level, p.attack_mod = name, {"strength": strength}, 2, mod
@@ -175,7 +175,8 @@ async def battle_cry_setup(world):
             name=p.name,
             attributes=p.attributes,
             equipment={"main_hand": p.action_pool[0]},
-            patron_gifts=CRY_GIFTS if index == 0 else {},
+            patron_gifts=patron_gifts if index == 0 else {},
+            divine_favor={"patron": patron, "level": favor, "max": 100},
         )
     place_actors(state)
     await db_mutations.save_combat_state(state.combat_id, state.to_dict(), conn=world.pool)

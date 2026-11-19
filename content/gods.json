@@ -478,8 +478,9 @@
         "name": "Kaelen's Judgment",
         "effect": "Once per session, declare a Worthy Foe. All attacks against target gain advantage for encounter. Defeating them restores half max Stamina",
         "recharge": "per_session",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "kaelen_kaelens_judgment"
       }
     },
     "layer_4_synergy_matrix": {

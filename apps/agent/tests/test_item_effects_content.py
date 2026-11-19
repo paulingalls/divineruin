@@ -155,6 +155,7 @@ def test_blockable_conditions_partition_the_condition_catalog():
         "temporary_hollowed",
         "iron_resolve",
         "battle_cry",
+        "worthy_foe",
     }
 
 
