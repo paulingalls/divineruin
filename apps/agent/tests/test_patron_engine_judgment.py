@@ -141,8 +141,18 @@ async def reward_scenario(world, current, restored, victory, charge=False):
                 session.combat_state = await db_mutations.load_combat_state(state.combat_id, conn=world.pool)
                 state = session.combat_state
                 assert state is not None
-                await call("declare_phase", declarations=[defend(p.id) for p in state.participants])
-                continued = await finish_phase(world, call, state.round_number)
+                foe = state.get_participant("foe")
+                assert foe is not None and foe.is_fallen and foe.hp_current == 0
+                foe.hp_current = 1
+                foe.is_fallen = False
+                await declare_finish(call, state, ally)
+                rolls, damage = combat_rolls([3, 17], 1)
+                with rolls, damage:
+                    continued = await call("resolve_phase")
+                saved = await db_mutations.load_combat_state(state.combat_id, conn=world.pool)
+                assert saved is not None and saved.judgment_rewards == [receipt]
+                foe = saved.get_participant("foe")
+                assert foe is not None and foe.is_fallen and foe.hp_current == 0
                 assert isinstance(continued, dict) and not continued.get("judgment_rewards")
         assert (await row(world, 0)).get("stamina") == paid.get("stamina")
 
