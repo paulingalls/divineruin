@@ -341,7 +341,8 @@ async def land(session, state, caster, declaration, cast_packet, *, conn, delive
         first_target = state.get_participant(deliveries[0]["target_id"])
         first_dice = _components(profile, caster, first_target, cast_packet, declaration.argument_type)[0]["dice"]
         base = profile["components"][0]["dice"]
-        rolls = {index: dice.roll(first_dice if index == 0 else base).total for index in indices}
+        notations = {index: first_dice if index == 0 else base for index in indices}
+        rolls = {index: dice.roll(n).total if n != "0" else 0 for index, n in notations.items()}
         deliveries = [{**delivery, "dart_rolls": rolls} for delivery in deliveries]
     results = []
     for delivery in deliveries:

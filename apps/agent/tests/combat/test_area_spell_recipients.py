@@ -473,3 +473,21 @@ async def test_cone_refuses_coincident_aim_before_writes(area_party):
             ],
         )
     assert ctx.userdata.combat_state.to_dict() == before
+
+
+async def test_first_dart_reduced_to_no_dice_lands_zero(spell_fight):
+    """A -1 damage die (e.g. a Veil Ward) leaves dart 0 with no dice: it deals 0, later darts still roll."""
+    ctx = spell_fight
+    spell = await prepare_spell(ctx, "arcane_magic_missile")
+    await add_enemies(ctx, {"foe": (0, 0, 0), "other": (10, 0, 0)})
+    await declare_spell(ctx, spell.id, targets=["foe", "other", "foe", "foe"])
+    import resonance
+
+    modifiers = resonance.get_state_modifiers
+    rigged = patch("resonance.get_state_modifiers", side_effect=lambda s: {**modifiers(s), "damage_dice": -1})
+    with rigged, patch("dice.roll", side_effect=[SimpleNamespace(total=i) for i in (5, 6, 7)]) as rolls:
+        await _resolve_round(ctx)
+    assert [c.args[0] for c in rolls.call_args_list] == ["1d4+1"] * 3
+    saved = await load_combat(ctx.userdata.combat_state.combat_id)
+    assert participant(saved, "foe").hp_current == 100 - 13
+    assert participant(saved, "other").hp_current == 100 - 5
