@@ -38,6 +38,7 @@ const CATALOG_KEYS = [
   "inspired",
   "hollowed",
   "iron_resolve",
+  "battle_cry",
 ];
 
 describe("CONDITION_DISPLAY completeness", () => {

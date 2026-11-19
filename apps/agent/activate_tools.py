@@ -205,7 +205,7 @@ async def _activate_impl(
         raise ToolError(f"{unknown} Reactions that fit the open window: {', '.join(valid)}.") from unknown
 
     if kind in {"patron_ability", patron_ability_tools.WEIGHT_OF_TRUTH}:
-        return await patron_ability_tools.activate(context, id)
+        return await patron_ability_tools.activate(context, id, target_id=target_id)
     if kind == SYRATH_SHADOW_VEIL:
         return await patron_gift_tools.activate_shadow_veil(context)
     if kind == VEYTHAR_INSIGHT:
