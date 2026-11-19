@@ -71,7 +71,13 @@ async def test_authored_inventory_and_bindings(reset_db_pool):
             with patch("db.get_pool", AsyncMock(return_value=conn)):
                 templates = [json.loads(r["data"]) for r in await conn.fetch("SELECT data FROM encounter_templates")]
                 creatures = {r["id"]: json.loads(r["data"]) for r in await conn.fetch("SELECT id,data FROM creatures")}
-                bound = {"hollow_patrol_greyvale", "ruins_mawling_pair", "fragment_shadeling", "hollow_still"}
+                bound = {
+                    "hollow_patrol_greyvale",
+                    "ruins_mawling_pair",
+                    "fragment_shadeling",
+                    "hollow_still",
+                    "hollowed_scout",
+                }
                 unbound = {t["id"] for t in templates} - bound
                 assert {"hollowmoth_swarm", "hollow_weaver_ambush", "hollow_mawling_pack", "hollow_choir"} <= unbound
                 for template in templates:

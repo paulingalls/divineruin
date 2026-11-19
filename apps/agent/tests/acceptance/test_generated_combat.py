@@ -213,3 +213,35 @@ async def test_infeasible_environment_starts_nothing(reset_db_pool):
         assert not any(e["type"] == "combat_started" for e in published_payloads(h.sd.room))
     finally:
         await h.close()
+
+
+async def test_generated_pool_excludes_scene_only_creatures(reset_db_pool):
+    import encounter_builder
+
+    h = LootHarness()
+    calls = []
+    real_build = encounter_builder.build_encounter
+
+    def spy(*args):
+        calls.append(args)
+        return real_build(*args)
+
+    try:
+        await h.prepare((3,), None)
+        scene_only = {"hollowed_scout", "hollow_still"}
+        raw = await h.pool.fetch("SELECT id FROM creatures WHERE data->'regions' @> '[\"greyvale\"]'::jsonb")
+        assert "hollowed_scout" in {row["id"] for row in raw}
+        with (
+            patch("encounter_builder.build_encounter", side_effect=spy),
+            patch("combat_entry.Random", return_value=Random(0)),
+        ):
+            await h.command("enter_mode", {"mode": "combat", "difficulty": "standard", "tier": 2})
+        catalog, tier, party, environment, difficulty, _ = calls[0]
+        assert environment == {"region": "greyvale", "terrain": "forest"}
+        assert {row["id"] for row in catalog} & scene_only == set()
+        assert len(catalog) == len(raw) - 1
+        for seed in range(50):
+            refs = real_build(catalog, tier, party, environment, difficulty, Random(seed))
+            assert not {ref["creature_id"] for ref in refs} & scene_only
+    finally:
+        await h.close()

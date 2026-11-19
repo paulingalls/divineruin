@@ -20,6 +20,7 @@ import creature_catalog
 import db_activity_queries
 import db_content_queries
 import db_queries
+import lost_scout_scene
 import query_patron
 import recipe_tools
 import spell_knowledge
@@ -313,6 +314,8 @@ async def _query_npc_impl(
 
     knowledge = filter_knowledge(npc.get("knowledge", {}), disposition)
     narration = _npc_for_narration(npc, disposition, knowledge)
+    if npc_id == lost_scout_scene.TORIN:
+        await lost_scout_scene.torin_facts(session, npc, narration, queries=queries)
     return json.dumps(narration)
 
 

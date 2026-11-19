@@ -20,6 +20,7 @@ import json
 import logging
 
 from catalog_parse import parse_dict, parse_str, parse_str_list
+from lost_scout_scene import report_lines
 from role_archetypes import DISPOSITIONS
 from social_resolution import RESISTANCE_TAGS
 
@@ -57,6 +58,8 @@ def parse_npc_row(npc_id: str, data: dict) -> dict:
         parse_str(data["faction"], f"{npc_id}.faction")
         parse_str_list(data["personality"], f"{npc_id}.personality")
         parse_dict(data["knowledge"], f"{npc_id}.knowledge")
+        if "lost_scout_reports" in data:
+            report_lines(npc_id, data)
         parse_dict(data["schedule"], f"{npc_id}.schedule")
         disposition = parse_str(data["default_disposition"], f"{npc_id}.default_disposition")
         if disposition not in DISPOSITIONS:

@@ -134,9 +134,17 @@
     "key_features": [
       "Aelindran script carved into the archway \u2014 partially defaced but legible to a scholar",
       "old sconces that once held arcane lights, now dark",
-      "a research station with scattered papers and broken glass, more recent than the ruins themselves"
+      "a research station with scattered papers and broken glass, more recent than the ruins themselves",
+      "loose rubble at the foot of the stairs scrapes under your boots"
     ],
     "hidden_elements": [
+      {
+        "id": "ressa_corrow_scout_token",
+        "discover_skill": "investigation",
+        "dc": 10,
+        "description": "A brass scout token clicks against the stone. Its Ashmark issue stamp is rough under your thumb. The name cut below it is Ressa Corrow.",
+        "attaches_to": "rubble"
+      },
       {
         "id": "ruins_journal_fragment",
         "discover_skill": "investigation",

@@ -171,6 +171,7 @@ def test_full_state_save_sites_match_the_inventory():
     expected = Counter(
         {
             ("choir_scene.py", "start", "call"): 2,
+            ("lost_scout_combat.py", "start", "call"): 1,
             ("still_scene.py", "start", "call"): 1,
             ("still_illusions.py", "investigate", "call"): 1,
             ("condition_consume.py", "persist_combat_consumption", "call"): 1,

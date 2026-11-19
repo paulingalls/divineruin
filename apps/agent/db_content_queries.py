@@ -177,14 +177,14 @@ async def get_quest(quest_id: str) -> dict | None:
     return data
 
 
-async def get_scene(scene_id: str) -> dict | None:
+async def get_scene(scene_id: str, *, conn=None) -> dict | None:
     cache_key = f"scene:{scene_id}"
     cached = await db._cache_get(cache_key)
     if cached is not None:
         return json.loads(cached)
 
-    pool = await db.get_pool()
-    row = await pool.fetchrow("SELECT data FROM scenes WHERE id = $1", scene_id)
+    executor = conn or await db.get_pool()
+    row = await executor.fetchrow("SELECT data FROM scenes WHERE id = $1", scene_id)
     if row is None:
         return None
 

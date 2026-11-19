@@ -10,6 +10,7 @@ from livekit.agents.voice import RunContext
 import choir_scene
 import db_content_queries
 import db_queries
+import lost_scout_scene
 import still_scene
 from db_errors import db_tool
 from session_data import SessionData
@@ -101,6 +102,7 @@ async def _build_scene_context(
 
     return {
         "choir": await choir_scene.facts(session, queries=queries, location_id=location_id),
+        "lost_scout": await lost_scout_scene.facts(session, location_id, queries=queries, content=content),
         "still": await still_scene.facts(session, queries=queries, location_id=location_id, location=location),
         "location": _location_for_narration(location),
         "npcs": npcs,

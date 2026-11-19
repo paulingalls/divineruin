@@ -1511,8 +1511,8 @@ resistance, Dire Bear cold resistance and construct poison/psychic immunities ex
 | hollow_knight | passives | Corrupted Resilience | {"name":"Corrupted Resilience","description":"Resists non-magical slashing, piercing, and bludgeoning. Magical weapons deal full damage.","narration_cue":"","recharge":null,"audio":null} | deferred | Resistance nonmagical slashing/piercing/bludgeoning; magic full damage | future custom mechanics | No dedicated consumer for these authored passive effects | none |
 | hollow_knight | passives | Fragment Voice | {"name":"Fragment Voice","description":"Occasionally speaks from its former life. First time former allies hear this: WIS save DC 12 or Shaken, disadvantage on next attack. Cosmetic thereafter.","narration_cue":"","recharge":null,"audio":null} | deferred | First former-ally contact WIS DC12 Shaken; next attack disadvantage; later cosmetic | future custom mechanics | No dedicated consumer for these authored passive effects | none |
 | hollow_knight | multiattack | 2 attacks with Corrupted Blade | "2 attacks with Corrupted Blade" | deferred | Specified weapon count and composition | future multiattack mechanics | No catalog multiattack consumer | none |
-| hollowed_scout | attacks | Corrupted Blade | {"name":"Corrupted Blade","type":"melee","reach":5,"to_hit":6,"damage":"1d8+2","damage_type":"slashing","special":null,"audio":"hollowed-scout-corrupted-blade"} | executable | Base 1d8+2 slashing damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
-| hollowed_scout | attacks | Hollow Echo | {"name":"Hollow Echo","type":"melee","reach":5,"to_hit":6,"damage":"1d6","damage_type":"psychic","special":null,"audio":"hollowed-scout-hollow-echo"} | executable | Base 1d6 psychic damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
+| hollowed_scout | attacks | Corrupted Blade | {"name":"Corrupted Blade","type":"melee","reach":5,"to_hit":6,"damage":"1d4","damage_type":"slashing","special":null,"audio":"hollowed-scout-corrupted-blade"} | executable | Base 1d4 slashing damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
+| hollowed_scout | attacks | Hollow Echo | {"name":"Hollow Echo","type":"melee","reach":5,"to_hit":6,"damage":"1d4","damage_type":"psychic","special":null,"audio":"hollowed-scout-hollow-echo"} | executable | Base 1d4 psychic damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
 | hollowed_scout | attacks | Relentless Advance | {"name":"Relentless Advance","type":"melee","reach":5,"to_hit":6,"damage":"1d4","damage_type":"bludgeoning","special":null,"audio":"hollowed-scout-relentless-advance"} | executable | Base 1d4 bludgeoning damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
 | hollow_wisp | attacks | Draining Touch | {"name":"Draining Touch","type":"ranged","reach":30,"to_hit":4,"damage":"2d6","damage_type":"necrotic","special":null,"audio":"hollow-wisp-draining-touch"} | executable | Ranged base damage; no inferred healing | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
 | hollow_wisp | attacks | Hollow Drain | {"name":"Hollow Drain","type":"ranged","reach":30,"to_hit":4,"damage":"1d8","damage_type":"necrotic","special":null,"audio":"hollow-wisp-hollow-drain"} | executable | Ranged base damage; no inferred healing | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
@@ -1582,7 +1582,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. All eight
   ],
   "description": "A scout returned from the Veil with practiced footwork and an empty voice.",
   "level": 5,
-  "hp": 32,
+  "hp": 24,
   "ac": 13,
   "speed": 30,
   "attributes": {
@@ -1603,7 +1603,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. All eight
       "type": "melee",
       "reach": 5,
       "to_hit": 6,
-      "damage": "1d8+2",
+      "damage": "1d4",
       "damage_type": "slashing",
       "special": null,
       "audio": "hollowed-scout-corrupted-blade"
@@ -1613,7 +1613,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. All eight
       "type": "melee",
       "reach": 5,
       "to_hit": 6,
-      "damage": "1d6",
+      "damage": "1d4",
       "damage_type": "psychic",
       "special": null,
       "audio": "hollowed-scout-hollow-echo"
@@ -1655,7 +1655,7 @@ These authored spec blocks adapt the eight encounter-only enemy types. All eight
   },
   "narration": {
     "first_sighting": "Wrong footsteps scrape the stone before a familiar scout steps into view.",
-    "attack_cue": "A blade whistles through the air as its voice repeats a lost name.",
+    "attack_cue": "A blade whistles through the air over the scrape of a boot.",
     "wounded_cue": "A hollow rasp leaks from the rents in its armor.",
     "death_cue": "A brittle crack sounds as the scout folds into ash.",
     "ambient_cue": "A scrape of uneven footsteps carries along an empty route."

@@ -134,14 +134,14 @@ async def test_ally_discovery_waits_before_granting_and_advances_primary_quest(w
     with patch("check_resolution.dice_roll", side_effect=[_d20(21 - kept_face), _d20(kept_face)]):
         offer = (await call(1, "check", roll=DISCOVER))["fate_offer"]
         assert offer["roller_id"] == guest
-        assert not (await row(world))["flags"]
+        assert not (await row(world))["flags"].get(f"{JOURNAL}.discovered")
         assert (await row(world))["conditions"] == INSPIRED
         if party_quest:
             assert await quest_stage(host, quest_id) == 3
         else:
             session.party.members.extend(PartyState.solo("new_ally").members)
         assert not session.attempted_discoveries
-        assert not event_types(session)
+        assert event_types(session) == ["hidden_revealed"]
         kept = await keep(call, offer)
     discovered = kept_face == 20
     assert kept["outcome"] == ("discovered" if discovered else "not_found")
@@ -153,7 +153,7 @@ async def test_ally_discovery_waits_before_granting_and_advances_primary_quest(w
     assert session.attempted_discoveries == {f"{guest}:investigation:{JOURNAL}"}
     assert (await row(world))["conditions"] == []
     assert event_types(session).count("dice_roll") == 1
-    assert event_types(session).count("hidden_revealed") == int(discovered)
+    assert event_types(session).count("hidden_revealed") == 1 + int(discovered)
     assert event_types(session).count("quest_updated") == int(discovered and party_quest)
 
 

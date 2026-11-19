@@ -162,10 +162,10 @@
   {
     "name": "world",
     "tests": [
-      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:deep_ashmark|location_recommended_level_guard|exploration_collapse|first_episode_settlement|greyvale_arc_walk|journal_atomicity|quest_decision_atomicity|m15_deescalation_scene_capstone|m46b_.*|m62_settlement_capstone|reputation_writer_stance|terrain_commands)\\.py"
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:deep_ashmark|location_recommended_level_guard|exploration_collapse|first_episode_settlement|greyvale_arc_walk|lost_scout(?:_atomicity)?|journal_atomicity|quest_decision_atomicity|m15_deescalation_scene_capstone|m46b_.*|m62_settlement_capstone|reputation_writer_stance|terrain_commands)\\.py"
     ],
     "owns": [
-      "apps/agent/(?:world[^/]*|region[^/]*|terrain[^/]*|explor[^/]*|settlement[^/]*|reputation[^/]*|npc[^/]*|location[^/]*|travel[^/]*|social[^/]*)\\.py"
+      "apps/agent/(?:world[^/]*|region[^/]*|terrain[^/]*|explor[^/]*|settlement[^/]*|reputation[^/]*|npc[^/]*|location[^/]*|travel[^/]*|social[^/]*|lost_scout_[^/]*|check_discovery|choice_tools|combat_init|combat_resolve_phase|combat_end|movement_tools|query_tools|scene_tools)\\.py"
     ],
     "reads": [
       "content/archetype_abilities.json",
@@ -178,6 +178,7 @@
       "content/gathering_nodes.json",
       "content/locations.json",
       "content/lore_entries.json",
+      "content/npcs.json",
       "content/quests.json",
       "content/racial_resonance_bonuses.json",
       "content/role_archetypes.json",

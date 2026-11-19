@@ -19,6 +19,7 @@ import db_content_queries
 import db_mutations
 import db_queries
 import event_types as E
+import lost_scout_combat
 import still_encounter
 import still_scene
 from combat_entry import generated_encounter, load_party_players, validate_entry_form
@@ -197,6 +198,8 @@ async def _start_combat_locked(
         await still_scene.start(
             session, combat_state, retained_still, mutations=mutations, queries=queries, db_mod=db_mod
         )
+    elif lost_scout_combat.owns(combat_state):
+        await lost_scout_combat.start(session, combat_state, mutations=mutations, queries=queries, db_mod=db_mod)
     else:
         choir_facts = await choir_scene.start(
             session, combat_state, retained_choir, mutations=mutations, queries=queries, db_mod=db_mod

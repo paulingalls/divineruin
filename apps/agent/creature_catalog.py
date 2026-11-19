@@ -2,6 +2,7 @@
 
 import json
 import re
+from collections.abc import Iterable, Iterator
 
 import db
 from world_regions import REGION_IDS
@@ -32,6 +33,41 @@ async def query_creatures_by_region(region_id: str, tier: int | None = None) -> 
     return [json.loads(row["data"]) for row in rows]
 
 
+def _scene_bindings(value) -> Iterator[str]:
+    if isinstance(value, str):
+        yield from re.findall(r"encounter_id\s*=\s*[\"']([^\"']+)[\"']", value.replace('\\"', '"').replace("\\'", "'"))
+    elif isinstance(value, dict):
+        for child in value.values():
+            yield from _scene_bindings(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _scene_bindings(child)
+
+
+def scene_encounter_ids(scenes: Iterable[dict]) -> set[str]:
+    """Encounter template ids that scenes start by an `encounter_id="..."` string."""
+    return {encounter_id for scene in scenes for encounter_id in _scene_bindings(scene)}
+
+
+def scene_only_creature_ids(templates: dict[str, dict], scenes: Iterable[dict]) -> set[str]:
+    """Creature ids whose every template is scene-bound; generated encounters must not spawn them."""
+    bound = scene_encounter_ids(scenes)
+    used = {tid: {enemy["creature_id"] for enemy in t["enemies"]} for tid, t in templates.items()}
+    in_bound = set().union(*(ids for tid, ids in used.items() if tid in bound))
+    elsewhere = set().union(*(ids for tid, ids in used.items() if tid not in bound))
+    return in_bound - elsewhere
+
+
+async def query_scene_only_creature_ids() -> set[str]:
+    pool = await db.get_pool()
+    templates = await pool.fetch("SELECT id, data FROM encounter_templates")
+    scenes = await pool.fetch("SELECT data FROM scenes")
+    return scene_only_creature_ids(
+        {row["id"]: json.loads(row["data"]) for row in templates},
+        (json.loads(row["data"]) for row in scenes),
+    )
+
+
 async def encounter_template_summaries(location: dict, level: int) -> list[dict]:
     from livekit.agents.llm import ToolError
 
@@ -47,20 +83,7 @@ async def encounter_template_summaries(location: dict, level: int) -> list[dict]
         if "encounter" in stage.get("completion_conditions", {})
     }
 
-    def scene_bindings(value):
-        if isinstance(value, str):
-            yield from re.findall(
-                r"encounter_id\s*=\s*[\"']([^\"']+)[\"']", value.replace('\\"', '"').replace("\\'", "'")
-            )
-        elif isinstance(value, dict):
-            for child in value.values():
-                yield from scene_bindings(child)
-        elif isinstance(value, list):
-            for child in value:
-                yield from scene_bindings(child)
-
-    for row in scenes:
-        bound.update(scene_bindings(json.loads(row["data"])))
+    bound |= scene_encounter_ids(json.loads(row["data"]) for row in scenes)
     summaries = []
     for row in templates:
         try:

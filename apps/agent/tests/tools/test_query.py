@@ -75,6 +75,7 @@ class TestQueryNpc:
         mock_content = MagicMock()
         mock_content.get_npc = AsyncMock(return_value=SAMPLE_NPC)
         mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value={"flags": {}})
         mock_queries.get_npc_disposition = AsyncMock(return_value=None)  # falls back to default_disposition
         ctx = _make_context()
         result = json.loads(
@@ -91,6 +92,7 @@ class TestQueryNpc:
         mock_content = MagicMock()
         mock_content.get_npc = AsyncMock(return_value=SAMPLE_NPC)
         mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value={"flags": {}})
         mock_queries.get_npc_disposition = AsyncMock(return_value="friendly")
         ctx = _make_context()
         result = json.loads(
@@ -105,6 +107,7 @@ class TestQueryNpc:
         mock_content = MagicMock()
         mock_content.get_npc = AsyncMock(return_value=SAMPLE_NPC)
         mock_queries = MagicMock()
+        mock_queries.get_player = AsyncMock(return_value={"flags": {}})
         mock_queries.get_npc_disposition = AsyncMock(return_value="trusted")
         ctx = _make_context()
         result = json.loads(
