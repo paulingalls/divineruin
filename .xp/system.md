@@ -21,7 +21,7 @@ Story land runs Proof selection for the `land` set (including `commit`) on the m
 checks in two lint jobs. Sprint close owns deterministic acceptance and
 Playwright. Free-patch Acceptance runs staged land then sprint selections via
 `scripts/free-acceptance.sh`. The scheduled fresh super tier revalidates all
-generated tasks on a detached checkout. Push scans outgoing secrets only.
+generated tasks on a dedicated clone of develop. Push scans outgoing secrets only.
 
 **Check ownership and cost (story-157, 2026-10-13).** Recorded PR #607 merge:
 `67fe361ebe813e55d14a8892faa34728b95491b9`, tree
@@ -53,7 +53,7 @@ CI uses separate Ubuntu runners; its step timestamps have one-second precision
 | Story land / free-patch Acceptance | Python non-acceptance (`test:python`, eight workers) | 88.571 land | Proof staged `land` selection; keyed proofs reused |
 | Sprint close / free-patch Acceptance | Deterministic acceptance (`test:acceptance`) | 657.676 local | Proof `sprint` selection; keyed proofs reused |
 | Sprint close / free-patch Acceptance | Playwright | 160.286 local | Proof `sprint` selection; keyed proofs reused |
-| Scheduled fresh super | `scripts/super-test.sh`: `proof run --fresh --set super` | Not measured | All generated tasks on a detached checkout, paid approvals empty; installer defines Tuesday/Thursday/Saturday 02:00; host installation not checked here |
+| Scheduled fresh super | `scripts/super-test.sh`: `proof run --fresh --set super` | Not measured | All generated tasks on a dedicated clone of develop, paid approvals empty; installer defines Tuesday/Thursday/Saturday 02:00; host installation not checked here |
 | Explicit approval | Paid acceptance / speech recognition | Not measured; approval empty | No automatic tier enables it |
 | Setup | Root/e2e frozen Bun graphs, cached browser | 1.470 / 0.441 / 0.505 | Local setup installs both graphs; CI lint installs root/e2e |
 | Setup | Agent/scripts frozen uv graphs | 0.498 / 0.020 | Local setup installs both graphs; CI lint installs agent only |
