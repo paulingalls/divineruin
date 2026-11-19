@@ -29,6 +29,7 @@ import db_mutations_conditions
 import db_queries
 import event_types as E
 import rules_engine
+import still_encounter
 from action_sound_content import ACTION_SOUND_EXPORTS, publish_action_sound
 from combat_terrain import skill_natural_terrain
 from condition_consume import consume_beneficial_conditions, serialize_combat_check
@@ -125,6 +126,11 @@ async def _check_discover_impl(
         assert source is not None
         if target in {choir_encounter.SEARCH_TARGET, source.id, f"{source.id}_core"}:
             raise ToolError("Choir discovery requires a declared Interact search action.")
+    state = session.combat_state
+    if state is not None and state.still_encounter is not None:
+        record = state.still_encounter
+        if target in {still_encounter.SEARCH_TARGET, record["owner_id"], *record["anchor_ids"]}:
+            raise ToolError("Still discovery requires a declared Interact search action.")
     if skill_lower not in VALID_SKILLS:
         raise ToolError(f"Unknown skill: '{skill}'. Valid: {sorted(VALID_SKILLS)}")
 

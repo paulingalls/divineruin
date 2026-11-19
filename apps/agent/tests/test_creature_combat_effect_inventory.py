@@ -29,6 +29,9 @@ def test_hollow_metadata_retains_only_unimplemented_claims():
     named = [row for row in rows if row["hollow"] and row["hollow"]["class"] == "named"]
     assert named
     for row in named:
+        if row["id"] == "hollow_still":
+            assert deferred_effects(row) == []
+            continue
         expected = dict(row["hollow"])
         if row["id"] == "hollow_choir":
             for field in ("corruption_aura", "resonance_on_death"):

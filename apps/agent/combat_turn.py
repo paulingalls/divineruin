@@ -13,6 +13,7 @@ import combat_spatial
 import combat_spatial_declarations
 import db_mutations
 import declaration_payloads
+import still_encounter
 from combat_resolve_phase import _resolve_phase_locked
 from combat_support import _participant_roster, _require_combat
 from db_errors import db_tool
@@ -85,6 +86,7 @@ async def _declare_phase_locked(
         "beat": next_state.beat,
         "round": next_state.round_number,
         "choir": choir_encounter.facts(next_state),
+        "still": still_encounter.facts(next_state),
         "participants": _participant_roster(next_state.participants),
         "accepted_actors": list(next_state.pending_declarations.keys()),
     }

@@ -307,7 +307,9 @@ async def _resolve_ability_packet(
         }
 
     import choir_encounter
+    import still_encounter
 
+    still_encounter.guard_declaration(state, attacker.id, decl)
     choir_encounter.guard_declaration(state, attacker.id, decl)
     caster = session.member_state(attacker.id)
     combat_voice_rules.guard_declaration(state, attacker, decl)

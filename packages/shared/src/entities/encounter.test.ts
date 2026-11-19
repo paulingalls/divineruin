@@ -225,7 +225,7 @@ describe("creature tier player bands", () => {
 describe("authored creature tiers", () => {
   test("every content row has the expected tier", () => {
     const rows = encounters.flatMap((enc) => enc.enemies.map((enemy) => [enc.id, enemy] as const));
-    expect(rows).toHaveLength(38);
+    expect(rows).toHaveLength(39);
     const named: Record<string, number> = {
       Shadeling: 1,
       Mawling: 2,
@@ -334,8 +334,8 @@ test("catalog runtime extensions reject contradictory action shapes", () => {
 });
 
 describe("spatial scene placement", () => {
-  test("seventeen shipped templates have valid spatial placement", () => {
-    expect(references.length).toBe(17);
+  test("eighteen shipped templates have valid spatial placement", () => {
+    expect(references.length).toBe(18);
     for (const row of references) expect(() => validateScenePlacement(row)).not.toThrow();
   });
   test("spatial zone radii follow the creature catalog owner", () => {

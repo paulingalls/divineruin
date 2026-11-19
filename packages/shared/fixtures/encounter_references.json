@@ -37,6 +37,17 @@
           "role": "named"
         }
       ]
+    },
+    {
+      "id": "fixture",
+      "recommended_party_level": 16,
+      "enemies": [
+        {
+          "id": "one",
+          "creature_id": "hollow_still",
+          "role": "named"
+        }
+      ]
     }
   ],
   "invalid": [
@@ -774,21 +785,6 @@
       }
     },
     {
-      "name": "named_hollow_still",
-      "field": "role",
-      "encounter": {
-        "id": "fixture",
-        "recommended_party_level": 16,
-        "enemies": [
-          {
-            "id": "one",
-            "creature_id": "hollow_still",
-            "role": "named"
-          }
-        ]
-      }
-    },
-    {
       "name": "named_hollow_architect",
       "field": "role",
       "encounter": {
@@ -852,11 +848,56 @@
           }
         ]
       }
+    },
+    {
+      "name": "still_with_bandit",
+      "field": "solitary",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 16,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_still",
+            "role": "named"
+          },
+          {
+            "id": "two",
+            "creature_id": "bandit",
+            "role": "standard"
+          }
+        ]
+      }
+    },
+    {
+      "name": "two_still_owners",
+      "field": "solitary",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 16,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_still",
+            "role": "named"
+          },
+          {
+            "id": "two",
+            "creature_id": "hollow_still",
+            "role": "named"
+          }
+        ]
+      }
     }
   ],
   "fixture_catalog": [
     {
-      "terrains": ["forest", "grassland", "underground", "farmland"],
+      "terrains": [
+        "forest",
+        "grassland",
+        "underground",
+        "farmland"
+      ],
       "id": "fixture_goblin",
       "name": "Goblin Scout",
       "category": "humanoid",
@@ -942,7 +983,11 @@
       ]
     },
     {
-      "terrains": ["forest", "grassland", "underground"],
+      "terrains": [
+        "forest",
+        "grassland",
+        "underground"
+      ],
       "id": "fixture_wolf",
       "name": "Dire Wolf",
       "category": "humanoid",

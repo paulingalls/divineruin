@@ -876,11 +876,34 @@
   },
   {
     "id": "loot_hollow_still",
-    "description": "The Still: non-integer per-anchor and varies drops omitted.",
+    "description": "Fragments and memories released when the Still falls.",
     "hollow_residue": true,
     "drops": [
       {
         "item_id": "named_fragment",
+        "quantity": 1,
+        "chance": 1,
+        "requires": [
+          {
+            "skill": "arcana",
+            "tier": "expert"
+          }
+        ]
+      },
+      {
+        "item_id": "absorbed_memories",
+        "quantity": "1d6",
+        "chance": 1
+      }
+    ]
+  },
+  {
+    "id": "loot_still_anchor",
+    "description": "One shard recovered from a destroyed Still anchor.",
+    "hollow_residue": true,
+    "drops": [
+      {
+        "item_id": "shard_false_paradise",
         "quantity": 1,
         "chance": 1,
         "requires": [
