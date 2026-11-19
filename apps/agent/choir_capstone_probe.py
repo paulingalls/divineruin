@@ -22,6 +22,7 @@ from game_events import publish_game_event
 from multiplayer_transcription import MultiParticipantTranscriber
 from native_transport.lifecycle import run_cancellable
 from native_transport_probe import SESSION_INIT_FIXTURE, ProbeState, run_probe
+from npcs import load_npcs
 
 
 async def receive_commands(room: rtc.Room, identity: str, state: ProbeState, evidence_path: Path, fault="none") -> int:
@@ -116,6 +117,7 @@ async def receive_commands(room: rtc.Room, identity: str, state: ProbeState, evi
         async with utils.http_context.open():
             await diagnostic.start(room)
             assert diagnostic.lifecycle is not None
+            assert await diagnostic.lifecycle.authorize(identity), "native Choir participant was not authorized"
             manager = MultiParticipantTranscriber(room, stt=speech, authorizer=diagnostic.lifecycle.authorize)
             manager.start()
             diagnostic.attach(manager)
@@ -267,6 +269,7 @@ def main():
 
         transport_path = args.result.with_name("transport.json")
         try:
+            await load_npcs()
             await run_probe(args.run_id, args.fault, args.control, transport_path, receiver)
         finally:
             await db.close_all()

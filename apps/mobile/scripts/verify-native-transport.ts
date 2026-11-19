@@ -311,12 +311,17 @@ export async function runScenario(
           ],
           { cwd: mobileRoot, env: definedEnv(env) },
         );
-    await deps.stimulateMicrophone?.(scope, repoRoot, { controlPath, runId, artifactDir });
-    const maestroExit = await scope.wait(maestro.exited);
-    if (maestroExit !== 0)
-      throw new Error(`Maestro native transport failed with status ${maestroExit}`);
-    const probeExit = await scope.wait(probe.exited);
-    if (probeExit !== 0) throw new Error(`native transport probe failed with status ${probeExit}`);
+    const maestroCompletion = scope.wait(maestro.exited).then((exit) => {
+      if (exit !== 0) throw new Error(`Maestro native transport failed with status ${exit}`);
+    });
+    const probeCompletion = scope.wait(probe.exited).then((exit) => {
+      if (exit !== 0) throw new Error(`Native transport probe failed with status ${exit}`);
+    });
+    await Promise.all([
+      maestroCompletion,
+      probeCompletion,
+      deps.stimulateMicrophone?.(scope, repoRoot, { controlPath, runId, artifactDir }),
+    ]);
     const rawResult = await waitForJson(scope, resultPath, 10_000);
     const result = (deps.validateResult ?? validateScenarioResult)(rawResult, runId, fault);
     const screenshotMatches = await Array.fromAsync(
