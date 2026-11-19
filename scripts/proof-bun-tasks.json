@@ -654,7 +654,7 @@
   "server-inventory-taint": {
     "run": "uv sync --project apps/agent --frozen && bun scripts/proof-db-clone.ts REQUIRE_DB=1 bun --env-file=../../.env test --cwd apps/server src/inventory-taint.integration.test.ts",
     "sets": ["commit", "land"],
-    "links": ["node_modules", ".env"],
+    "links": ["node_modules", ".env", "apps/agent/.venv"],
     "inputs": [
       "$bun-config",
       "apps/server/package.json",
