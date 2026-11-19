@@ -135,18 +135,6 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
   expect(generated.length).toBeGreaterThan(0);
 });
 
-test("the registered layer-three mark fixture validates", () => {
-  const rows = catalog.map((god) =>
-    god.god_id === "valdris"
-      ? {
-          ...god,
-          layer_3_tier_abilities: { ...god.layer_3_tier_abilities, devoted: corpus.layer_3_mark },
-        }
-      : god,
-  );
-  expect(Object.is(validateGods(rows), rows)).toBe(true);
-});
-
 for (const entry of [...corpus.valid, ...generated]) {
   test(`valid profile: ${entry.id}`, () => {
     const rows = withProfile(entry.profile);

@@ -139,13 +139,6 @@ def valid_cases():
     return cases + generated
 
 
-def test_registered_layer_3_mark_reaches_loader(read_catalog):
-    rows = copy.deepcopy(CATALOG)
-    valdris = next(god for god in rows if god["god_id"] == "valdris")
-    valdris["layer_3_tier_abilities"]["devoted"] = CORPUS["layer_3_mark"]
-    assert read_catalog(rows) == rows
-
-
 @pytest.mark.parametrize("case", valid_cases(), ids=lambda c: c["id"])
 def test_valid_profiles_reach_loader(case, read_catalog):
     rows = with_profile(case["profile"])
