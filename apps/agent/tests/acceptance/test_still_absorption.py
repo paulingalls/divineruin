@@ -15,6 +15,7 @@ from acceptance.test_still_paradise_trap import paradise as paradise
 from livekit.agents import Agent, AgentSession
 from sample_fixtures import published_payloads
 
+import db_content_queries
 import db_mutations
 import db_mutations_conditions
 import db_queries
@@ -351,9 +352,18 @@ async def test_interrupted_drain_rolls_back_before_retry(paradise, clock, save_f
 
 @pytest.mark.parametrize(("index", "score"), [(0, 4), (1, 3)])
 async def test_absorption_death_uses_resurrection_once(paradise, clock, save_faces, losses, index, score):
-    walk, _, zone = paradise
+    walk, origin, zone = paradise
     pid = walk.players[index]
+    guest = walk.players[1]
     await set_attributes(walk, pid, strength=score, wisdom=2)
+    if index == 0:
+        await set_attributes(walk, guest, strength=14, wisdom=2)
+        walk.dwell_generations = {pid: 1}
+        await walk.pool.execute(
+            "UPDATE locations SET data=jsonb_set(data, '{navigation}', $2::jsonb) WHERE id=$1",
+            origin,
+            json.dumps("established_road"),
+        )
     await db_mutations.set_player_flag(pid, "unrelated", True)
     await db_mutations_conditions.save_player_conditions(pid, [{"type": "charmed", "source": "unrelated", "stacks": 1}])
     with patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(1 if self.modifier < 0 else 20)):
@@ -372,6 +382,18 @@ async def test_absorption_death_uses_resurrection_once(paradise, clock, save_fac
             assert not any(flag.startswith(("still_charm:", "still_dwell:")) for flag in row["flags"])
             assert walk.sd.location_id == (row["location_id"] if index == 0 else zone)
             assert any(p["type"] == E.SESSION_INIT for p in published_payloads(walk.sd.room))
+            if index == 0:
+                guest_before = await player_row(guest)
+                assert guest_before["location_id"] == zone and await charm(guest, zone)
+                anchor = await db_content_queries.get_location(row["location_id"])
+                assert anchor is not None
+                destination = next(
+                    entry["destination"] for entry in anchor["exits"].values() if not entry.get("requires")
+                )
+                for verb, target in (("move_player", destination), ("travel", origin)):
+                    assert "Iona does not want to leave" in await command(walk, verb, target)
+                    assert await player_row(pid) == row
+                    assert await player_row(guest) == guest_before
         await exploration(walk)
         async with background(walk) as restarted:
             await advance(clock, restarted, DAY)

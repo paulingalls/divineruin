@@ -109,9 +109,9 @@ async def apply_arrival(
     member_ids = tuple(sorted(session.party.member_ids))
     async with db_mod.transaction() as conn:
         session.validate_acting_player(speaker_id)
-        if check_departure and destination_id != previous_location_id:
+        if check_departure:
             players = await still_charm.lock_players(member_ids, queries=queries, conn=conn)
-            still_charm.require_departure(players, previous_location_id)
+            still_charm.require_departure(players, destination_id)
         apply = await write_arrival(
             session,
             destination_id,

@@ -103,9 +103,10 @@ def unwilling(player: dict, player_id: str) -> str:
     return f"{player.get('name') or player_id} does not want to leave the Still."
 
 
-def require_departure(players, location_id):
+def require_departure(players: dict[str, dict], destination_id: str) -> None:
     for player_id, player in players.items():
-        if read(player, player_id, location_id) is not None:
+        location_id = player.get("location_id")
+        if location_id and location_id != destination_id and read(player, player_id, location_id) is not None:
             raise ToolError(unwilling(player, player_id))
 
 

@@ -130,12 +130,10 @@ async def _travel_impl(
     except ValueError as e:
         raise ToolError(str(e)) from e
 
-    players = {speaker_id: player}
-    if destination_id != session.location_id:
-        async with db_mod.transaction() as conn:
-            session.validate_acting_player(speaker_id)
-            players = await still_charm.lock_players(member_ids, queries=queries, conn=conn)
-            still_charm.require_departure(players, session.location_id)
+    async with db_mod.transaction() as conn:
+        session.validate_acting_player(speaker_id)
+        players = await still_charm.lock_players(member_ids, queries=queries, conn=conn)
+        still_charm.require_departure(players, destination_id)
 
     warning = await party_level_warning(destination, member_ids, queries=queries, known_players=players)
     roll = None
