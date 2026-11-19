@@ -187,8 +187,18 @@ async def test_two_party_attacks_replace_the_pending_origin_and_thunder_doubles(
         assert persisted is not None and persisted["pending_rejection"]["anchor_id"] == second
         owner_id = state.still_encounter["owner_id"]
         await declare(party, actor_id=owner_id, **spell("Rejection"))
-        packets = await party.drain()
+        with (
+            patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(1)),
+            patch("combat_recharge.roll", return_value=SimpleNamespace(total=6)) as dice,
+        ):
+            packets = await party.drain()
+            persisted = (await party.reload()).still_encounter
+            assert persisted is not None and persisted["pending_rejection"] is None
+            await declare(party, kind="defend")
+            await party.drain()
+        dice.assert_not_called()
         assert next(packet for packet in packets if packet.get("action") == "Rejection")["origin_anchor_id"] == second
+        await declare(party, actor_id=owner_id, error=True, **spell("Rejection"))
     finally:
         await party.close()
 
