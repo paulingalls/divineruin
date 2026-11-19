@@ -37,6 +37,7 @@ describe.skipIf(!hasDb)("loadLocations — DB row-fetch path", () => {
       tags: ["test"],
       exits: { out: { destination: "test_load_beta" } },
       danger_level: 2,
+      recommended_level: 14,
     },
     test_load_beta: {
       name: "Beta Hall",
@@ -81,9 +82,11 @@ describe.skipIf(!hasDb)("loadLocations — DB row-fetch path", () => {
     expect(alpha!.name).toBe("Alpha Vault");
     expect(alpha!.tier).toBe(1);
     expect(alpha!.danger_level).toBe(2);
+    expect(alpha!.recommended_level).toBe(14);
 
     // The gated exit's requires gate round-trips through the DB JSONB -> parseLocationRow.
     const beta = getLocation("test_load_beta");
+    expect(beta).not.toHaveProperty("recommended_level");
     expect(beta!.exits.back?.requires).toBe("alpha_key.discovered");
     // The per-condition danger override round-trips too (the M6 Stage conditions field).
     expect(beta!.conditions?.time_night?.danger_level).toBe(0);
@@ -93,6 +96,26 @@ describe.skipIf(!hasDb)("loadLocations — DB row-fetch path", () => {
     const loadedIds = new Set(listLocations().map((l) => l.id));
     expect(loadedIds.has("test_load_alpha")).toBe(true);
     expect(loadedIds.has("test_load_beta")).toBe(true);
+  });
+  test("rejects malformed recommended levels before publishing the map", async () => {
+    await loadLocations();
+    const published = getLocation("test_load_alpha");
+    try {
+      for (const recommended_level of [14.5, true, "14", null]) {
+        const data = { ...testRows.test_load_alpha, recommended_level };
+        await sql`UPDATE locations SET data=${data} WHERE id='test_load_alpha'`;
+        const error = await loadLocations().then(
+          () => null,
+          (reason: unknown) => reason,
+        );
+        expect(error).toEqual(
+          new Error("locations[test_load_alpha].recommended_level is not an integer"),
+        );
+        expect(getLocation("test_load_alpha")).toBe(published);
+      }
+    } finally {
+      await sql`UPDATE locations SET data=${testRows.test_load_alpha} WHERE id='test_load_alpha'`;
+    }
   });
   test("item requirements validate every branch before publishing the map", async () => {
     const [item] = await sql<{ id: string }[]>`SELECT id FROM items ORDER BY id LIMIT 1`;

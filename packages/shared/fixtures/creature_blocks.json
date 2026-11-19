@@ -1,6 +1,210 @@
 {
   "valid": [
     {
+      "name": "still_catalog",
+      "block": {
+        "terrains": [
+          "ancient_forest",
+          "forest",
+          "grassland",
+          "mountain",
+          "coast",
+          "wetland",
+          "underground",
+          "farmland",
+          "village",
+          "city"
+        ],
+        "id": "hollow_still",
+        "name": "The Still",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A beautiful square-mile zone that absorbs those who stay.",
+        "level": 18,
+        "hp": 250,
+        "ac": 20,
+        "speed": 0,
+        "attributes": {
+          "STR": 1,
+          "DEX": 1,
+          "CON": 22,
+          "INT": 16,
+          "WIS": 22,
+          "CHA": 24
+        },
+        "save_proficiencies": [
+          "CON",
+          "WIS",
+          "CHA"
+        ],
+        "attacks": [
+          {
+            "name": "Serenity's Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 0,
+            "auto_hit": true,
+            "applies_condition": "charmed",
+            "damage": "2d6",
+            "damage_type": "psychic",
+            "special": "Auto-hit (no roll) from any zone surface. WIS save DC 20 or Charmed for 1 hour; sit, rest, and refuse to leave.",
+            "audio": "hlw_serenitys_touch",
+            "save": "WIS",
+            "dc": 20
+          },
+          {
+            "name": "Perfect Memory",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 12,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 20 or take no actions next turn, lost in a perfect memory.",
+            "audio": "hlw_perfect_memory",
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [],
+            "save": "WIS",
+            "dc": 20
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Zone Entity",
+            "description": "Occupies about 1 square mile. Six hidden anchors hold 40-45 HP each, AC 20. Damage must target anchors; destroy all six to destroy the Still.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Paradise Trap",
+            "description": "Entering creatures WIS save DC 18 or Charmed and unwilling to leave; re-save hourly with cumulative +1 bonus.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Gentle Absorption",
+            "description": "After 24 continuous Charmed hours, lose 1d4 from highest attribute per day; at 0 in any attribute, absorbed.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "No Hostility",
+            "description": "Does not attack creatures unless they try to destroy it; passive absorption continues.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Illusory Perfection",
+            "description": "1/round free action: tailored loved one, home, or happy memory. Investigation DC 22 sees through it.",
+            "narration_cue": "",
+            "kind": "illusion",
+            "check_skill": "investigation",
+            "dc": 22,
+            "recharge": {
+              "kind": "round",
+              "uses": 1
+            },
+            "audio": null
+          },
+          {
+            "name": "Rejection",
+            "description": "Recharge 5-6 when anchor attacked. Within 30 ft of anchor WIS save DC 20: fail teleported to zone edge; success remain but Stunned 1 round.",
+            "narration_cue": "",
+            "kind": "rejection",
+            "radius_ft": 30,
+            "save": "WIS",
+            "dc": 20,
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": 5
+            },
+            "audio": null
+          },
+          {
+            "name": "Final Stillness",
+            "description": "1/encounter when 4+ anchors destroyed. All in zone WIS save DC 22: fail Stunned 1d4 rounds and Charmed; success half stun, no charm.",
+            "narration_cue": "",
+            "kind": "final_stillness",
+            "minimum_destroyed_anchors": 4,
+            "duration_dice": "1d4",
+            "save": "WIS",
+            "dc": 22,
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null
+          }
+        ],
+        "reactions": [],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 2980,
+          "resonance_on_death": 6,
+          "veil_effect": "Perfect birdsong, water and warmth make paradise sound like a trap.",
+          "vulnerable_to": [
+            "radiant",
+            "divine",
+            "fire",
+            "loud_sound"
+          ]
+        },
+        "behavior": {
+          "tactics": "Lures creatures with comfort and absorbs them slowly; destroying each anchor erases part of its beauty.",
+          "morale": "cannot_flee",
+          "group_size": "solitary_stationary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edge"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A whistle of impossibly perfect birdsong rises over the grass; every instinct says stay.",
+          "attack_cue": "A whistle changes key as an anchor is threatened.",
+          "wounded_cue": "A crack runs through an anchor; a sector greys and falls silent.",
+          "death_cue": "A hum fades with the beauty, revealing corrupted earth and those it consumed.",
+          "ambient_cue": "A hum settles into precisely what you want to hear."
+        },
+        "audio": {
+          "ambient": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "attack": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "hit": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "death": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_still",
+        "xp_reward": 5000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ],
+        "damage_affinities": {
+          "resistant": [],
+          "immune": [
+            "poison"
+          ],
+          "vulnerable": [
+            "radiant",
+            "fire",
+            "thunder"
+          ]
+        }
+      }
+    },
+    {
       "name": "spec_shadeling",
       "spec_derived": "game_mechanics_bestiary.md:147",
       "completed": [
@@ -3793,6 +3997,1462 @@
   ],
   "invalid": [
     {
+      "name": "still_auto_hit",
+      "field": "auto_hit",
+      "block": {
+        "terrains": [
+          "ancient_forest",
+          "forest",
+          "grassland",
+          "mountain",
+          "coast",
+          "wetland",
+          "underground",
+          "farmland",
+          "village",
+          "city"
+        ],
+        "id": "hollow_still",
+        "name": "The Still",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A beautiful square-mile zone that absorbs those who stay.",
+        "level": 18,
+        "hp": 250,
+        "ac": 20,
+        "speed": 0,
+        "attributes": {
+          "STR": 1,
+          "DEX": 1,
+          "CON": 22,
+          "INT": 16,
+          "WIS": 22,
+          "CHA": 24
+        },
+        "save_proficiencies": [
+          "CON",
+          "WIS",
+          "CHA"
+        ],
+        "attacks": [
+          {
+            "name": "Serenity's Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 0,
+            "auto_hit": false,
+            "applies_condition": "charmed",
+            "damage": "2d6",
+            "damage_type": "psychic",
+            "special": "Auto-hit (no roll) from any zone surface. WIS save DC 20 or Charmed for 1 hour; sit, rest, and refuse to leave.",
+            "audio": "hlw_serenitys_touch",
+            "save": "WIS",
+            "dc": 20
+          },
+          {
+            "name": "Perfect Memory",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 12,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 20 or take no actions next turn, lost in a perfect memory.",
+            "audio": "hlw_perfect_memory",
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [],
+            "save": "WIS",
+            "dc": 20
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Zone Entity",
+            "description": "Occupies about 1 square mile. Six hidden anchors hold 40-45 HP each, AC 20. Damage must target anchors; destroy all six to destroy the Still.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Paradise Trap",
+            "description": "Entering creatures WIS save DC 18 or Charmed and unwilling to leave; re-save hourly with cumulative +1 bonus.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Gentle Absorption",
+            "description": "After 24 continuous Charmed hours, lose 1d4 from highest attribute per day; at 0 in any attribute, absorbed.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "No Hostility",
+            "description": "Does not attack creatures unless they try to destroy it; passive absorption continues.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Illusory Perfection",
+            "description": "1/round free action: tailored loved one, home, or happy memory. Investigation DC 22 sees through it.",
+            "narration_cue": "",
+            "kind": "illusion",
+            "check_skill": "investigation",
+            "dc": 22,
+            "recharge": {
+              "kind": "round",
+              "uses": 1
+            },
+            "audio": null
+          },
+          {
+            "name": "Rejection",
+            "description": "Recharge 5-6 when anchor attacked. Within 30 ft of anchor WIS save DC 20: fail teleported to zone edge; success remain but Stunned 1 round.",
+            "narration_cue": "",
+            "kind": "rejection",
+            "radius_ft": 30,
+            "save": "WIS",
+            "dc": 20,
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": 5
+            },
+            "audio": null
+          },
+          {
+            "name": "Final Stillness",
+            "description": "1/encounter when 4+ anchors destroyed. All in zone WIS save DC 22: fail Stunned 1d4 rounds and Charmed; success half stun, no charm.",
+            "narration_cue": "",
+            "kind": "final_stillness",
+            "minimum_destroyed_anchors": 4,
+            "duration_dice": "1d4",
+            "save": "WIS",
+            "dc": 22,
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null
+          }
+        ],
+        "reactions": [],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 2980,
+          "resonance_on_death": 6,
+          "veil_effect": "Perfect birdsong, water and warmth make paradise sound like a trap.",
+          "vulnerable_to": [
+            "radiant",
+            "divine",
+            "fire",
+            "loud_sound"
+          ]
+        },
+        "behavior": {
+          "tactics": "Lures creatures with comfort and absorbs them slowly; destroying each anchor erases part of its beauty.",
+          "morale": "cannot_flee",
+          "group_size": "solitary_stationary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edge"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A whistle of impossibly perfect birdsong rises over the grass; every instinct says stay.",
+          "attack_cue": "A whistle changes key as an anchor is threatened.",
+          "wounded_cue": "A crack runs through an anchor; a sector greys and falls silent.",
+          "death_cue": "A hum fades with the beauty, revealing corrupted earth and those it consumed.",
+          "ambient_cue": "A hum settles into precisely what you want to hear."
+        },
+        "audio": {
+          "ambient": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "attack": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "hit": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "death": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_still",
+        "xp_reward": 5000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ],
+        "damage_affinities": {
+          "resistant": [],
+          "immune": [
+            "poison"
+          ],
+          "vulnerable": [
+            "radiant",
+            "fire",
+            "thunder"
+          ]
+        }
+      },
+      "expected": [
+        "attacks[0].auto_hit: invalid"
+      ]
+    },
+    {
+      "name": "still_rejection_radius",
+      "field": "radius_ft",
+      "block": {
+        "terrains": [
+          "ancient_forest",
+          "forest",
+          "grassland",
+          "mountain",
+          "coast",
+          "wetland",
+          "underground",
+          "farmland",
+          "village",
+          "city"
+        ],
+        "id": "hollow_still",
+        "name": "The Still",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A beautiful square-mile zone that absorbs those who stay.",
+        "level": 18,
+        "hp": 250,
+        "ac": 20,
+        "speed": 0,
+        "attributes": {
+          "STR": 1,
+          "DEX": 1,
+          "CON": 22,
+          "INT": 16,
+          "WIS": 22,
+          "CHA": 24
+        },
+        "save_proficiencies": [
+          "CON",
+          "WIS",
+          "CHA"
+        ],
+        "attacks": [
+          {
+            "name": "Serenity's Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 0,
+            "auto_hit": true,
+            "applies_condition": "charmed",
+            "damage": "2d6",
+            "damage_type": "psychic",
+            "special": "Auto-hit (no roll) from any zone surface. WIS save DC 20 or Charmed for 1 hour; sit, rest, and refuse to leave.",
+            "audio": "hlw_serenitys_touch",
+            "save": "WIS",
+            "dc": 20
+          },
+          {
+            "name": "Perfect Memory",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 12,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 20 or take no actions next turn, lost in a perfect memory.",
+            "audio": "hlw_perfect_memory",
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [],
+            "save": "WIS",
+            "dc": 20
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Zone Entity",
+            "description": "Occupies about 1 square mile. Six hidden anchors hold 40-45 HP each, AC 20. Damage must target anchors; destroy all six to destroy the Still.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Paradise Trap",
+            "description": "Entering creatures WIS save DC 18 or Charmed and unwilling to leave; re-save hourly with cumulative +1 bonus.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Gentle Absorption",
+            "description": "After 24 continuous Charmed hours, lose 1d4 from highest attribute per day; at 0 in any attribute, absorbed.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "No Hostility",
+            "description": "Does not attack creatures unless they try to destroy it; passive absorption continues.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Illusory Perfection",
+            "description": "1/round free action: tailored loved one, home, or happy memory. Investigation DC 22 sees through it.",
+            "narration_cue": "",
+            "kind": "illusion",
+            "check_skill": "investigation",
+            "dc": 22,
+            "recharge": {
+              "kind": "round",
+              "uses": 1
+            },
+            "audio": null
+          },
+          {
+            "name": "Rejection",
+            "description": "Recharge 5-6 when anchor attacked. Within 30 ft of anchor WIS save DC 20: fail teleported to zone edge; success remain but Stunned 1 round.",
+            "narration_cue": "",
+            "kind": "rejection",
+            "radius_ft": 0,
+            "save": "WIS",
+            "dc": 20,
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": 5
+            },
+            "audio": null
+          },
+          {
+            "name": "Final Stillness",
+            "description": "1/encounter when 4+ anchors destroyed. All in zone WIS save DC 22: fail Stunned 1d4 rounds and Charmed; success half stun, no charm.",
+            "narration_cue": "",
+            "kind": "final_stillness",
+            "minimum_destroyed_anchors": 4,
+            "duration_dice": "1d4",
+            "save": "WIS",
+            "dc": 22,
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null
+          }
+        ],
+        "reactions": [],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 2980,
+          "resonance_on_death": 6,
+          "veil_effect": "Perfect birdsong, water and warmth make paradise sound like a trap.",
+          "vulnerable_to": [
+            "radiant",
+            "divine",
+            "fire",
+            "loud_sound"
+          ]
+        },
+        "behavior": {
+          "tactics": "Lures creatures with comfort and absorbs them slowly; destroying each anchor erases part of its beauty.",
+          "morale": "cannot_flee",
+          "group_size": "solitary_stationary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edge"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A whistle of impossibly perfect birdsong rises over the grass; every instinct says stay.",
+          "attack_cue": "A whistle changes key as an anchor is threatened.",
+          "wounded_cue": "A crack runs through an anchor; a sector greys and falls silent.",
+          "death_cue": "A hum fades with the beauty, revealing corrupted earth and those it consumed.",
+          "ambient_cue": "A hum settles into precisely what you want to hear."
+        },
+        "audio": {
+          "ambient": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "attack": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "hit": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "death": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_still",
+        "xp_reward": 5000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ],
+        "damage_affinities": {
+          "resistant": [],
+          "immune": [
+            "poison"
+          ],
+          "vulnerable": [
+            "radiant",
+            "fire",
+            "thunder"
+          ]
+        }
+      },
+      "expected": [
+        "actives[1].radius_ft: invalid"
+      ]
+    },
+    {
+      "name": "still_rejection_recharge",
+      "field": "recharge",
+      "block": {
+        "terrains": [
+          "ancient_forest",
+          "forest",
+          "grassland",
+          "mountain",
+          "coast",
+          "wetland",
+          "underground",
+          "farmland",
+          "village",
+          "city"
+        ],
+        "id": "hollow_still",
+        "name": "The Still",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A beautiful square-mile zone that absorbs those who stay.",
+        "level": 18,
+        "hp": 250,
+        "ac": 20,
+        "speed": 0,
+        "attributes": {
+          "STR": 1,
+          "DEX": 1,
+          "CON": 22,
+          "INT": 16,
+          "WIS": 22,
+          "CHA": 24
+        },
+        "save_proficiencies": [
+          "CON",
+          "WIS",
+          "CHA"
+        ],
+        "attacks": [
+          {
+            "name": "Serenity's Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 0,
+            "auto_hit": true,
+            "applies_condition": "charmed",
+            "damage": "2d6",
+            "damage_type": "psychic",
+            "special": "Auto-hit (no roll) from any zone surface. WIS save DC 20 or Charmed for 1 hour; sit, rest, and refuse to leave.",
+            "audio": "hlw_serenitys_touch",
+            "save": "WIS",
+            "dc": 20
+          },
+          {
+            "name": "Perfect Memory",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 12,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 20 or take no actions next turn, lost in a perfect memory.",
+            "audio": "hlw_perfect_memory",
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [],
+            "save": "WIS",
+            "dc": 20
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Zone Entity",
+            "description": "Occupies about 1 square mile. Six hidden anchors hold 40-45 HP each, AC 20. Damage must target anchors; destroy all six to destroy the Still.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Paradise Trap",
+            "description": "Entering creatures WIS save DC 18 or Charmed and unwilling to leave; re-save hourly with cumulative +1 bonus.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Gentle Absorption",
+            "description": "After 24 continuous Charmed hours, lose 1d4 from highest attribute per day; at 0 in any attribute, absorbed.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "No Hostility",
+            "description": "Does not attack creatures unless they try to destroy it; passive absorption continues.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Illusory Perfection",
+            "description": "1/round free action: tailored loved one, home, or happy memory. Investigation DC 22 sees through it.",
+            "narration_cue": "",
+            "kind": "illusion",
+            "check_skill": "investigation",
+            "dc": 22,
+            "recharge": {
+              "kind": "round",
+              "uses": 1
+            },
+            "audio": null
+          },
+          {
+            "name": "Rejection",
+            "description": "Recharge 5-6 when anchor attacked. Within 30 ft of anchor WIS save DC 20: fail teleported to zone edge; success remain but Stunned 1 round.",
+            "narration_cue": "",
+            "kind": "rejection",
+            "radius_ft": 30,
+            "save": "WIS",
+            "dc": 20,
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null
+          },
+          {
+            "name": "Final Stillness",
+            "description": "1/encounter when 4+ anchors destroyed. All in zone WIS save DC 22: fail Stunned 1d4 rounds and Charmed; success half stun, no charm.",
+            "narration_cue": "",
+            "kind": "final_stillness",
+            "minimum_destroyed_anchors": 4,
+            "duration_dice": "1d4",
+            "save": "WIS",
+            "dc": 22,
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null
+          }
+        ],
+        "reactions": [],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 2980,
+          "resonance_on_death": 6,
+          "veil_effect": "Perfect birdsong, water and warmth make paradise sound like a trap.",
+          "vulnerable_to": [
+            "radiant",
+            "divine",
+            "fire",
+            "loud_sound"
+          ]
+        },
+        "behavior": {
+          "tactics": "Lures creatures with comfort and absorbs them slowly; destroying each anchor erases part of its beauty.",
+          "morale": "cannot_flee",
+          "group_size": "solitary_stationary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edge"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A whistle of impossibly perfect birdsong rises over the grass; every instinct says stay.",
+          "attack_cue": "A whistle changes key as an anchor is threatened.",
+          "wounded_cue": "A crack runs through an anchor; a sector greys and falls silent.",
+          "death_cue": "A hum fades with the beauty, revealing corrupted earth and those it consumed.",
+          "ambient_cue": "A hum settles into precisely what you want to hear."
+        },
+        "audio": {
+          "ambient": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "attack": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "hit": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "death": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_still",
+        "xp_reward": 5000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ],
+        "damage_affinities": {
+          "resistant": [],
+          "immune": [
+            "poison"
+          ],
+          "vulnerable": [
+            "radiant",
+            "fire",
+            "thunder"
+          ]
+        }
+      },
+      "expected": [
+        "actives[1].recharge: invalid"
+      ]
+    },
+    {
+      "name": "still_final_threshold",
+      "field": "minimum_destroyed_anchors",
+      "block": {
+        "terrains": [
+          "ancient_forest",
+          "forest",
+          "grassland",
+          "mountain",
+          "coast",
+          "wetland",
+          "underground",
+          "farmland",
+          "village",
+          "city"
+        ],
+        "id": "hollow_still",
+        "name": "The Still",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A beautiful square-mile zone that absorbs those who stay.",
+        "level": 18,
+        "hp": 250,
+        "ac": 20,
+        "speed": 0,
+        "attributes": {
+          "STR": 1,
+          "DEX": 1,
+          "CON": 22,
+          "INT": 16,
+          "WIS": 22,
+          "CHA": 24
+        },
+        "save_proficiencies": [
+          "CON",
+          "WIS",
+          "CHA"
+        ],
+        "attacks": [
+          {
+            "name": "Serenity's Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 0,
+            "auto_hit": true,
+            "applies_condition": "charmed",
+            "damage": "2d6",
+            "damage_type": "psychic",
+            "special": "Auto-hit (no roll) from any zone surface. WIS save DC 20 or Charmed for 1 hour; sit, rest, and refuse to leave.",
+            "audio": "hlw_serenitys_touch",
+            "save": "WIS",
+            "dc": 20
+          },
+          {
+            "name": "Perfect Memory",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 12,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 20 or take no actions next turn, lost in a perfect memory.",
+            "audio": "hlw_perfect_memory",
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [],
+            "save": "WIS",
+            "dc": 20
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Zone Entity",
+            "description": "Occupies about 1 square mile. Six hidden anchors hold 40-45 HP each, AC 20. Damage must target anchors; destroy all six to destroy the Still.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Paradise Trap",
+            "description": "Entering creatures WIS save DC 18 or Charmed and unwilling to leave; re-save hourly with cumulative +1 bonus.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Gentle Absorption",
+            "description": "After 24 continuous Charmed hours, lose 1d4 from highest attribute per day; at 0 in any attribute, absorbed.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "No Hostility",
+            "description": "Does not attack creatures unless they try to destroy it; passive absorption continues.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Illusory Perfection",
+            "description": "1/round free action: tailored loved one, home, or happy memory. Investigation DC 22 sees through it.",
+            "narration_cue": "",
+            "kind": "illusion",
+            "check_skill": "investigation",
+            "dc": 22,
+            "recharge": {
+              "kind": "round",
+              "uses": 1
+            },
+            "audio": null
+          },
+          {
+            "name": "Rejection",
+            "description": "Recharge 5-6 when anchor attacked. Within 30 ft of anchor WIS save DC 20: fail teleported to zone edge; success remain but Stunned 1 round.",
+            "narration_cue": "",
+            "kind": "rejection",
+            "radius_ft": 30,
+            "save": "WIS",
+            "dc": 20,
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": 5
+            },
+            "audio": null
+          },
+          {
+            "name": "Final Stillness",
+            "description": "1/encounter when 4+ anchors destroyed. All in zone WIS save DC 22: fail Stunned 1d4 rounds and Charmed; success half stun, no charm.",
+            "narration_cue": "",
+            "kind": "final_stillness",
+            "minimum_destroyed_anchors": 7,
+            "duration_dice": "1d4",
+            "save": "WIS",
+            "dc": 22,
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null
+          }
+        ],
+        "reactions": [],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 2980,
+          "resonance_on_death": 6,
+          "veil_effect": "Perfect birdsong, water and warmth make paradise sound like a trap.",
+          "vulnerable_to": [
+            "radiant",
+            "divine",
+            "fire",
+            "loud_sound"
+          ]
+        },
+        "behavior": {
+          "tactics": "Lures creatures with comfort and absorbs them slowly; destroying each anchor erases part of its beauty.",
+          "morale": "cannot_flee",
+          "group_size": "solitary_stationary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edge"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A whistle of impossibly perfect birdsong rises over the grass; every instinct says stay.",
+          "attack_cue": "A whistle changes key as an anchor is threatened.",
+          "wounded_cue": "A crack runs through an anchor; a sector greys and falls silent.",
+          "death_cue": "A hum fades with the beauty, revealing corrupted earth and those it consumed.",
+          "ambient_cue": "A hum settles into precisely what you want to hear."
+        },
+        "audio": {
+          "ambient": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "attack": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "hit": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "death": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_still",
+        "xp_reward": 5000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ],
+        "damage_affinities": {
+          "resistant": [],
+          "immune": [
+            "poison"
+          ],
+          "vulnerable": [
+            "radiant",
+            "fire",
+            "thunder"
+          ]
+        }
+      },
+      "expected": [
+        "actives[2].minimum_destroyed_anchors: invalid"
+      ]
+    },
+    {
+      "name": "still_final_duration",
+      "field": "duration_dice",
+      "block": {
+        "terrains": [
+          "ancient_forest",
+          "forest",
+          "grassland",
+          "mountain",
+          "coast",
+          "wetland",
+          "underground",
+          "farmland",
+          "village",
+          "city"
+        ],
+        "id": "hollow_still",
+        "name": "The Still",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A beautiful square-mile zone that absorbs those who stay.",
+        "level": 18,
+        "hp": 250,
+        "ac": 20,
+        "speed": 0,
+        "attributes": {
+          "STR": 1,
+          "DEX": 1,
+          "CON": 22,
+          "INT": 16,
+          "WIS": 22,
+          "CHA": 24
+        },
+        "save_proficiencies": [
+          "CON",
+          "WIS",
+          "CHA"
+        ],
+        "attacks": [
+          {
+            "name": "Serenity's Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 0,
+            "auto_hit": true,
+            "applies_condition": "charmed",
+            "damage": "2d6",
+            "damage_type": "psychic",
+            "special": "Auto-hit (no roll) from any zone surface. WIS save DC 20 or Charmed for 1 hour; sit, rest, and refuse to leave.",
+            "audio": "hlw_serenitys_touch",
+            "save": "WIS",
+            "dc": 20
+          },
+          {
+            "name": "Perfect Memory",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 12,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 20 or take no actions next turn, lost in a perfect memory.",
+            "audio": "hlw_perfect_memory",
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [],
+            "save": "WIS",
+            "dc": 20
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Zone Entity",
+            "description": "Occupies about 1 square mile. Six hidden anchors hold 40-45 HP each, AC 20. Damage must target anchors; destroy all six to destroy the Still.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Paradise Trap",
+            "description": "Entering creatures WIS save DC 18 or Charmed and unwilling to leave; re-save hourly with cumulative +1 bonus.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Gentle Absorption",
+            "description": "After 24 continuous Charmed hours, lose 1d4 from highest attribute per day; at 0 in any attribute, absorbed.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "No Hostility",
+            "description": "Does not attack creatures unless they try to destroy it; passive absorption continues.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Illusory Perfection",
+            "description": "1/round free action: tailored loved one, home, or happy memory. Investigation DC 22 sees through it.",
+            "narration_cue": "",
+            "kind": "illusion",
+            "check_skill": "investigation",
+            "dc": 22,
+            "recharge": {
+              "kind": "round",
+              "uses": 1
+            },
+            "audio": null
+          },
+          {
+            "name": "Rejection",
+            "description": "Recharge 5-6 when anchor attacked. Within 30 ft of anchor WIS save DC 20: fail teleported to zone edge; success remain but Stunned 1 round.",
+            "narration_cue": "",
+            "kind": "rejection",
+            "radius_ft": 30,
+            "save": "WIS",
+            "dc": 20,
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": 5
+            },
+            "audio": null
+          },
+          {
+            "name": "Final Stillness",
+            "description": "1/encounter when 4+ anchors destroyed. All in zone WIS save DC 22: fail Stunned 1d4 rounds and Charmed; success half stun, no charm.",
+            "narration_cue": "",
+            "kind": "final_stillness",
+            "minimum_destroyed_anchors": 4,
+            "duration_dice": "0d4",
+            "save": "WIS",
+            "dc": 22,
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null
+          }
+        ],
+        "reactions": [],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 2980,
+          "resonance_on_death": 6,
+          "veil_effect": "Perfect birdsong, water and warmth make paradise sound like a trap.",
+          "vulnerable_to": [
+            "radiant",
+            "divine",
+            "fire",
+            "loud_sound"
+          ]
+        },
+        "behavior": {
+          "tactics": "Lures creatures with comfort and absorbs them slowly; destroying each anchor erases part of its beauty.",
+          "morale": "cannot_flee",
+          "group_size": "solitary_stationary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edge"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A whistle of impossibly perfect birdsong rises over the grass; every instinct says stay.",
+          "attack_cue": "A whistle changes key as an anchor is threatened.",
+          "wounded_cue": "A crack runs through an anchor; a sector greys and falls silent.",
+          "death_cue": "A hum fades with the beauty, revealing corrupted earth and those it consumed.",
+          "ambient_cue": "A hum settles into precisely what you want to hear."
+        },
+        "audio": {
+          "ambient": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "attack": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "hit": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "death": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_still",
+        "xp_reward": 5000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ],
+        "damage_affinities": {
+          "resistant": [],
+          "immune": [
+            "poison"
+          ],
+          "vulnerable": [
+            "radiant",
+            "fire",
+            "thunder"
+          ]
+        }
+      },
+      "expected": [
+        "actives[2].duration_dice: invalid"
+      ]
+    },
+    {
+      "name": "still_illusion_skill",
+      "field": "check_skill",
+      "block": {
+        "terrains": [
+          "ancient_forest",
+          "forest",
+          "grassland",
+          "mountain",
+          "coast",
+          "wetland",
+          "underground",
+          "farmland",
+          "village",
+          "city"
+        ],
+        "id": "hollow_still",
+        "name": "The Still",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A beautiful square-mile zone that absorbs those who stay.",
+        "level": 18,
+        "hp": 250,
+        "ac": 20,
+        "speed": 0,
+        "attributes": {
+          "STR": 1,
+          "DEX": 1,
+          "CON": 22,
+          "INT": 16,
+          "WIS": 22,
+          "CHA": 24
+        },
+        "save_proficiencies": [
+          "CON",
+          "WIS",
+          "CHA"
+        ],
+        "attacks": [
+          {
+            "name": "Serenity's Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 0,
+            "auto_hit": true,
+            "applies_condition": "charmed",
+            "damage": "2d6",
+            "damage_type": "psychic",
+            "special": "Auto-hit (no roll) from any zone surface. WIS save DC 20 or Charmed for 1 hour; sit, rest, and refuse to leave.",
+            "audio": "hlw_serenitys_touch",
+            "save": "WIS",
+            "dc": 20
+          },
+          {
+            "name": "Perfect Memory",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 12,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 20 or take no actions next turn, lost in a perfect memory.",
+            "audio": "hlw_perfect_memory",
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [],
+            "save": "WIS",
+            "dc": 20
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Zone Entity",
+            "description": "Occupies about 1 square mile. Six hidden anchors hold 40-45 HP each, AC 20. Damage must target anchors; destroy all six to destroy the Still.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Paradise Trap",
+            "description": "Entering creatures WIS save DC 18 or Charmed and unwilling to leave; re-save hourly with cumulative +1 bonus.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Gentle Absorption",
+            "description": "After 24 continuous Charmed hours, lose 1d4 from highest attribute per day; at 0 in any attribute, absorbed.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "No Hostility",
+            "description": "Does not attack creatures unless they try to destroy it; passive absorption continues.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Illusory Perfection",
+            "description": "1/round free action: tailored loved one, home, or happy memory. Investigation DC 22 sees through it.",
+            "narration_cue": "",
+            "kind": "illusion",
+            "check_skill": "perception",
+            "dc": 22,
+            "recharge": {
+              "kind": "round",
+              "uses": 1
+            },
+            "audio": null
+          },
+          {
+            "name": "Rejection",
+            "description": "Recharge 5-6 when anchor attacked. Within 30 ft of anchor WIS save DC 20: fail teleported to zone edge; success remain but Stunned 1 round.",
+            "narration_cue": "",
+            "kind": "rejection",
+            "radius_ft": 30,
+            "save": "WIS",
+            "dc": 20,
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": 5
+            },
+            "audio": null
+          },
+          {
+            "name": "Final Stillness",
+            "description": "1/encounter when 4+ anchors destroyed. All in zone WIS save DC 22: fail Stunned 1d4 rounds and Charmed; success half stun, no charm.",
+            "narration_cue": "",
+            "kind": "final_stillness",
+            "minimum_destroyed_anchors": 4,
+            "duration_dice": "1d4",
+            "save": "WIS",
+            "dc": 22,
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null
+          }
+        ],
+        "reactions": [],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 2980,
+          "resonance_on_death": 6,
+          "veil_effect": "Perfect birdsong, water and warmth make paradise sound like a trap.",
+          "vulnerable_to": [
+            "radiant",
+            "divine",
+            "fire",
+            "loud_sound"
+          ]
+        },
+        "behavior": {
+          "tactics": "Lures creatures with comfort and absorbs them slowly; destroying each anchor erases part of its beauty.",
+          "morale": "cannot_flee",
+          "group_size": "solitary_stationary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edge"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A whistle of impossibly perfect birdsong rises over the grass; every instinct says stay.",
+          "attack_cue": "A whistle changes key as an anchor is threatened.",
+          "wounded_cue": "A crack runs through an anchor; a sector greys and falls silent.",
+          "death_cue": "A hum fades with the beauty, revealing corrupted earth and those it consumed.",
+          "ambient_cue": "A hum settles into precisely what you want to hear."
+        },
+        "audio": {
+          "ambient": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "attack": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "hit": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "death": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_still",
+        "xp_reward": 5000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ],
+        "damage_affinities": {
+          "resistant": [],
+          "immune": [
+            "poison"
+          ],
+          "vulnerable": [
+            "radiant",
+            "fire",
+            "thunder"
+          ]
+        }
+      },
+      "expected": [
+        "actives[0].check_skill: invalid"
+      ]
+    },
+    {
+      "name": "still_wrong_carrier",
+      "field": "minimum_destroyed_anchors",
+      "block": {
+        "terrains": [
+          "ancient_forest",
+          "forest",
+          "grassland",
+          "mountain",
+          "coast",
+          "wetland",
+          "underground",
+          "farmland",
+          "village",
+          "city"
+        ],
+        "id": "hollow_still",
+        "name": "The Still",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A beautiful square-mile zone that absorbs those who stay.",
+        "level": 18,
+        "hp": 250,
+        "ac": 20,
+        "speed": 0,
+        "attributes": {
+          "STR": 1,
+          "DEX": 1,
+          "CON": 22,
+          "INT": 16,
+          "WIS": 22,
+          "CHA": 24
+        },
+        "save_proficiencies": [
+          "CON",
+          "WIS",
+          "CHA"
+        ],
+        "attacks": [
+          {
+            "name": "Serenity's Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 0,
+            "auto_hit": true,
+            "applies_condition": "charmed",
+            "damage": "2d6",
+            "damage_type": "psychic",
+            "special": "Auto-hit (no roll) from any zone surface. WIS save DC 20 or Charmed for 1 hour; sit, rest, and refuse to leave.",
+            "audio": "hlw_serenitys_touch",
+            "save": "WIS",
+            "dc": 20
+          },
+          {
+            "name": "Perfect Memory",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 12,
+            "damage": "3d8",
+            "damage_type": "psychic",
+            "special": "WIS save DC 20 or take no actions next turn, lost in a perfect memory.",
+            "audio": "hlw_perfect_memory",
+            "resolution": "hit_then_save",
+            "conditions_on_failure": [
+              {
+                "applies_condition": "stunned",
+                "duration": 1
+              }
+            ],
+            "conditions_on_success": [],
+            "save": "WIS",
+            "dc": 20,
+            "minimum_destroyed_anchors": 4
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Zone Entity",
+            "description": "Occupies about 1 square mile. Six hidden anchors hold 40-45 HP each, AC 20. Damage must target anchors; destroy all six to destroy the Still.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Paradise Trap",
+            "description": "Entering creatures WIS save DC 18 or Charmed and unwilling to leave; re-save hourly with cumulative +1 bonus.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Gentle Absorption",
+            "description": "After 24 continuous Charmed hours, lose 1d4 from highest attribute per day; at 0 in any attribute, absorbed.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "No Hostility",
+            "description": "Does not attack creatures unless they try to destroy it; passive absorption continues.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Illusory Perfection",
+            "description": "1/round free action: tailored loved one, home, or happy memory. Investigation DC 22 sees through it.",
+            "narration_cue": "",
+            "kind": "illusion",
+            "check_skill": "investigation",
+            "dc": 22,
+            "recharge": {
+              "kind": "round",
+              "uses": 1
+            },
+            "audio": null
+          },
+          {
+            "name": "Rejection",
+            "description": "Recharge 5-6 when anchor attacked. Within 30 ft of anchor WIS save DC 20: fail teleported to zone edge; success remain but Stunned 1 round.",
+            "narration_cue": "",
+            "kind": "rejection",
+            "radius_ft": 30,
+            "save": "WIS",
+            "dc": 20,
+            "recharge": {
+              "kind": "roll",
+              "die": 6,
+              "threshold": 5
+            },
+            "audio": null
+          },
+          {
+            "name": "Final Stillness",
+            "description": "1/encounter when 4+ anchors destroyed. All in zone WIS save DC 22: fail Stunned 1d4 rounds and Charmed; success half stun, no charm.",
+            "narration_cue": "",
+            "kind": "final_stillness",
+            "minimum_destroyed_anchors": 4,
+            "duration_dice": "1d4",
+            "save": "WIS",
+            "dc": 22,
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null
+          }
+        ],
+        "reactions": [],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 2980,
+          "resonance_on_death": 6,
+          "veil_effect": "Perfect birdsong, water and warmth make paradise sound like a trap.",
+          "vulnerable_to": [
+            "radiant",
+            "divine",
+            "fire",
+            "loud_sound"
+          ]
+        },
+        "behavior": {
+          "tactics": "Lures creatures with comfort and absorbs them slowly; destroying each anchor erases part of its beauty.",
+          "morale": "cannot_flee",
+          "group_size": "solitary_stationary",
+          "environment": [
+            "Ashmark deep territory",
+            "Voidmaw edge"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A whistle of impossibly perfect birdsong rises over the grass; every instinct says stay.",
+          "attack_cue": "A whistle changes key as an anchor is threatened.",
+          "wounded_cue": "A crack runs through an anchor; a sector greys and falls silent.",
+          "death_cue": "A hum fades with the beauty, revealing corrupted earth and those it consumed.",
+          "ambient_cue": "A hum settles into precisely what you want to hear."
+        },
+        "audio": {
+          "ambient": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "attack": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "hit": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "death": "Perfect nature layers peel away with anchors; final HLW-002 drone",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_still",
+        "xp_reward": 5000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ],
+        "damage_affinities": {
+          "resistant": [],
+          "immune": [
+            "poison"
+          ],
+          "vulnerable": [
+            "radiant",
+            "fire",
+            "thunder"
+          ]
+        }
+      },
+      "expected": [
+        "attacks[1].minimum_destroyed_anchors: invalid"
+      ]
+    },
+    {
       "name": "missing_reactions",
       "block": {
         "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
@@ -6378,7 +8038,7 @@
         ]
       },
       "expected": [
-        "action 'Order' has unknown kind 'decree'; expected one of ('attack', 'command', 'accusation', 'healing', 'prepare_attack', 'charm', 'silence', 'spell_redirect')"
+        "action 'Order' has unknown kind 'decree'; expected one of ('attack', 'command', 'accusation', 'healing', 'prepare_attack', 'charm', 'silence', 'spell_redirect', 'rejection', 'final_stillness', 'illusion')"
       ]
     },
     {
@@ -33717,7 +35377,10 @@
     "prepare_attack",
     "charm",
     "silence",
-    "spell_redirect"
+    "spell_redirect",
+    "rejection",
+    "final_stillness",
+    "illusion"
   ],
   "contract_cases": [
     "recharge_roll_kind_0",

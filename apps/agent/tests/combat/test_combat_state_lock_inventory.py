@@ -171,6 +171,8 @@ def test_full_state_save_sites_match_the_inventory():
     expected = Counter(
         {
             ("choir_scene.py", "start", "call"): 2,
+            ("still_scene.py", "start", "call"): 1,
+            ("still_illusions.py", "investigate", "call"): 1,
             ("condition_consume.py", "persist_combat_consumption", "call"): 1,
             ("veil_ward_tools.py", "_activate_veil_ward_locked", "call"): 1,
             ("veil_ward_tools.py", "_dismiss_impl", "call"): 1,

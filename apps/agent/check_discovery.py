@@ -29,6 +29,7 @@ import db_mutations_conditions
 import db_queries
 import event_types as E
 import rules_engine
+import still_encounter
 from action_sound_content import ACTION_SOUND_EXPORTS, publish_action_sound
 from combat_terrain import skill_natural_terrain
 from condition_consume import consume_beneficial_conditions, serialize_combat_check
@@ -42,6 +43,7 @@ from quest_completion import finish_quest
 from quest_progress import advance_on_item_discovered, discovery_quest_ids, lock_discovery_rows
 from session_data import SessionData
 from skill_fate import SkillScope, StaleSkillOperation, prepare_skill_offer
+from still_illusions import ID_PREFIX, investigate
 from tool_support import _cap_str
 
 logger = logging.getLogger("divineruin.tools")
@@ -125,6 +127,22 @@ async def _check_discover_impl(
         assert source is not None
         if target in {choir_encounter.SEARCH_TARGET, source.id, f"{source.id}_core"}:
             raise ToolError("Choir discovery requires a declared Interact search action.")
+    state = session.combat_state
+    if state is not None and state.still_encounter is not None:
+        if target.startswith(ID_PREFIX):
+            return await investigate(
+                session,
+                skill_lower,
+                target,
+                queries=queries,
+                mutations=mutations,
+                conditions_mutations=conditions_mutations,
+                db_mod=db_mod,
+                publish_roll=_publish_roll,
+            )
+        record = state.still_encounter
+        if target in {still_encounter.SEARCH_TARGET, record["owner_id"], *record["anchor_ids"]}:
+            raise ToolError("Still discovery requires a declared Interact search action.")
     if skill_lower not in VALID_SKILLS:
         raise ToolError(f"Unknown skill: '{skill}'. Valid: {sorted(VALID_SKILLS)}")
 

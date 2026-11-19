@@ -21,6 +21,8 @@ _EXECUTED_PASSIVES = {
 
 
 def deferred_effects(row, *, composite=False):
+    if row["id"] == "hollow_still":
+        return []
     effects = []
     for group in ("attacks", "actives", "passives", "reactions"):
         for source in row[group]:

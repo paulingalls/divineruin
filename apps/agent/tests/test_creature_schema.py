@@ -178,7 +178,7 @@ CATALOG_TRAITS = {
     "hollow_knight": ("", "poison", "radiant"),
     "hollow_veilrender": ("", "poison", "radiant"),
     "hollow_choir": ("", "acid bludgeoning cold fire lightning necrotic piercing poison slashing", "psychic radiant"),
-    "hollow_still": ("", "poison", "radiant fire"),
+    "hollow_still": ("", "poison", "radiant fire thunder"),
     "hollow_architect": ("", "poison", "radiant"),
     "hollowed_scout": ("", "poison", "radiant"),
     "hollow_wisp": ("", "poison", "radiant fire"),

@@ -4,8 +4,9 @@ import re
 from typing import Never
 
 import conditions
+from action_contracts_still import STILL_ACTION_KINDS, validate_still_action
 
-EXECUTABLE_KINDS = ("attack", "healing", "prepare_attack", "charm", "silence", "spell_redirect")
+EXECUTABLE_KINDS = ("attack", "healing", "prepare_attack", "charm", "silence", "spell_redirect", *STILL_ACTION_KINDS)
 STRIKE_FIELDS = ("damage", "damage_type", "applies_condition", "save", "dc", "half_on_success", "escape_dc")
 EFFECT_FIELDS = ("target_group", "healing", "advantage", "on_hit")
 
@@ -43,6 +44,9 @@ def validate_action_extensions(action: dict, path: str) -> None:
     ):
         invalid(f"{path}.shape")
     kind = action.get("kind", "attack")
+    validate_still_action(action, path, kind, invalid, positive_integer, validate_recharge)
+    if kind in STILL_ACTION_KINDS:
+        return
     validate_weapon_riders(action, path)
     validate_durability_rider(action, path)
     validate_resolution(action, path)

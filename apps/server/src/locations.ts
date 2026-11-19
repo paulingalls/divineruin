@@ -145,6 +145,12 @@ export function parseLocationRow(id: string, raw: unknown, itemIds: ReadonlySet<
     }
     location.danger_level = data.danger_level;
   }
+  if (data.recommended_level !== undefined) {
+    if (typeof data.recommended_level !== "number" || !Number.isInteger(data.recommended_level)) {
+      throw new Error(`${ctx}.recommended_level is not an integer`);
+    }
+    location.recommended_level = data.recommended_level;
+  }
   if (data.navigation !== undefined) {
     // Travel navigation (M4.6b). Shape-only guard here — a non-empty string. The
     // canonical key set (travel.NAVIGATION_DC) is owned + enforced Python-side (the agent's

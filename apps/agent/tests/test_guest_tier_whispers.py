@@ -60,6 +60,7 @@ async def table():
 
     bg._deliver_speech = pass_delivery
     with (
+        patch("background_process.still_dwell.advance", new_callable=AsyncMock, return_value=""),
         patch("db_queries.get_player", new=AsyncMock(side_effect=lambda pid: {"name": f"Name {pid}"})) as names,
         patch("db_activity_queries.get_divine_favor", new=AsyncMock(return_value={"level": 40})) as favor,
         patch("db_mutations_divine.mark_favor_whisper_level", new_callable=AsyncMock) as mark,

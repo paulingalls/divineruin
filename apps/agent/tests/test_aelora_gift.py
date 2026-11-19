@@ -183,6 +183,7 @@ async def test_tool_response_names_bond_only_with_present_ally(producer, enhance
             get_player_inventory=AsyncMock(return_value=[]),
             get_inventory_snapshot=snapshot_query([]),
             get_player=AsyncMock(return_value=row),
+            get_players_for_update=AsyncMock(side_effect=lambda ids, **_: {pid: row for pid in ids}),
         )
         mutations = MagicMock(
             update_skill_advancement=AsyncMock(),

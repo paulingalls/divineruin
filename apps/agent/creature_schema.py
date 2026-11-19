@@ -4,7 +4,14 @@ import json
 import re
 from pathlib import Path
 
-from action_contracts import CHOIR_EFFECT_FIELDS, STRUCTURED_FIELDS, validate_action_extensions, validate_recharge
+from action_contracts import (
+    CHOIR_EFFECT_FIELDS,
+    EXECUTABLE_KINDS,
+    STRUCTURED_FIELDS,
+    validate_action_extensions,
+    validate_recharge,
+)
+from action_contracts_still import STILL_FIELDS
 from combat_damage_affinity import validate_traits
 from combat_init_validation import validate_enemy_action_shapes, validate_enemy_resistance_tags
 from creature_turn_traits import validate_turn_traits
@@ -198,7 +205,7 @@ def validate_creature_stat_block(creature: object) -> list[str]:
                     field(ability, key, path, "string")
                 field(ability, "audio", path, "string", True)
                 if (group != "actives" and ability.get("kind") != "spell_redirect") or (
-                    ability.get("kind") not in ("attack", "healing", "prepare_attack", "charm", "silence")
+                    ability.get("kind") not in EXECUTABLE_KINDS
                     and not (
                         ability.get("kind") in ("command", "accusation") and isinstance(ability.get("recharge"), dict)
                     )
@@ -207,7 +214,7 @@ def validate_creature_stat_block(creature: object) -> list[str]:
                 if (
                     group != "actives"
                     and "kind" not in ability
-                    and any(k in ability for k in (*STRUCTURED_FIELDS, *CHOIR_EFFECT_FIELDS))
+                    and any(k in ability for k in (*STRUCTURED_FIELDS, *CHOIR_EFFECT_FIELDS, *STILL_FIELDS))
                 ):
                     problems.append(f"{path}.kind: required")
                 if group == "reactions" and "kind" in ability:
@@ -222,7 +229,9 @@ def validate_creature_stat_block(creature: object) -> list[str]:
                     properties = field(ability, "properties", path, "array", required=False)
                     if isinstance(properties, list):
                         strings(properties, f"{path}.properties")
-                    if kind is None and any(k in ability for k in (*STRUCTURED_FIELDS, *CHOIR_EFFECT_FIELDS)):
+                    if kind is None and any(
+                        k in ability for k in (*STRUCTURED_FIELDS, *CHOIR_EFFECT_FIELDS, *STILL_FIELDS)
+                    ):
                         problems.append(f"{path}.kind: required")
                     if kind is not None and len(problems) == before:
                         if (

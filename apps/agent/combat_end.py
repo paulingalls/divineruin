@@ -26,6 +26,7 @@ from combat_conditions_persist import reconcile_member_conditions
 from combat_durability import _accrue_durability, _find_equipped
 from combat_end_lives import settle_lives
 from combat_events import EventSink, emit_or_publish, isolated_publish
+from combat_handoff import build_handoff_agent as _build_handoff_agent
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from combat_support import _require_combat
 from db_errors import db_tool
@@ -161,6 +162,10 @@ async def _end_combat_db(
     ``rng`` seeds the loot/currency rolls (a fresh system Random by default)."""
     import choir_scene
     import concealment
+    import still_encounter
+    import still_scene
+
+    await still_scene.end(session, cs, outcome, mutations=mutations, queries=queries, conn=conn)
 
     quest_updates = await quest_progress.advance_on_combat_end(
         session, cs, outcome, conn=conn, sink=sink, queries=queries, mutations=mutations, content=content
@@ -328,6 +333,7 @@ async def _end_combat_db(
         "quest_updates": quest_updates,
         "episode": episode,
         "choir": choir_encounter.facts(cs),
+        "still": still_encounter.settlement_facts(cs, rewards.spoils.loot_pool),
         "xp_total": rewards.spoils.xp_total,
         "xp_granted": rewards.xp.xp_granted,
         "summary_xp_granted": rewards.xp.summary_xp_granted,
@@ -408,6 +414,7 @@ def _end_combat_finish(
     response = {
         "first_episode": episode_facts,
         "choir": end_data.get("choir"),
+        "still": end_data.get("still"),
         "outcome": outcome,
         "xp_total": xp_total,
         # The XP is already GRANTED (M28 story-001) — there is no follow-up award call to cue.
@@ -440,8 +447,9 @@ def _end_combat_finish(
     summary_parts = [f"Combat resolved: {outcome}."]
     if episode_facts:
         summary_parts.append(episode_facts["aftermath"])
-    if end_data.get("choir"):
-        summary_parts.append(end_data["choir"]["cue"])
+    for encounter in ("choir", "still"):
+        if end_data.get(encounter):
+            summary_parts.append(end_data[encounter]["cue"])
     # The player's OWN share, not the encounter total — in a party the two differ, and narrating
     # the total would promise XP nobody received.
     if xp_granted > 0:
@@ -465,31 +473,3 @@ def _end_combat_finish(
     agent_type = session.pre_combat_agent_type or REGION_CITY
     session.pre_combat_agent_type = None
     return _build_handoff_agent(session, agent_type, summary_ctx), json.dumps(response)
-
-
-def _build_handoff_agent(session: SessionData, agent_type: str, summary_ctx):
-    """Construct the exploration agent the party returns to — the ONE fallible step in an
-    otherwise in-memory teardown, isolated here with a fallback (concern 9e2685165f07).
-
-    It runs AFTER ``combat_state`` has been cleared (which it must, or a retried end pays the
-    party twice), and the agent it returns is the only exit from CombatAgent. So a raise out of
-    here would strand the session in combat forever with its rewards already banked — the exact
-    outcome the post-commit ordering exists to prevent. Agent construction reaches real work
-    (system-prompt assembly over the companion profile, toolset composition, the summary
-    ChatContext), so "it is just a constructor" is not a guarantee.
-
-    The fallback drops every optional input and rebuilds at the default region: losing the combat
-    summary and the companion's voice for one turn is survivable, being unable to leave combat is
-    not. If even that raises, the process is broken and the exception is the honest answer.
-    """
-    from gameplay_agent import create_gameplay_agent
-
-    try:
-        return create_gameplay_agent(agent_type, session.location_id, companion=session.companion, chat_ctx=summary_ctx)
-    except Exception:
-        logger.exception(
-            "Combat handoff agent (%s) failed to build; falling back to a bare exploration agent so the "
-            "party can leave combat. The combat summary and companion context are lost for this handoff.",
-            agent_type,
-        )
-        return create_gameplay_agent(REGION_CITY, session.location_id)
