@@ -1,7 +1,7 @@
 # Dependency upgrade
 
 Registry snapshot: 2026-09-19  
-Toolchain: CPython 3.14.7; uv 0.13.7; Bun 1.4.5
+Toolchain: CPython 3.14.7; uv 0.13.9; Bun 1.4.5
 Execution evidence: historical record accepted at 795cec97832a7fe2d7567b36d0343e476e236b76 on 2026-09-19T14:14:59Z.
 
 ## Python environments

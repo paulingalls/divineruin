@@ -56,7 +56,7 @@ jobs:
           python-version-file: .python-version
       - uses: astral-sh/setup-uv@v7
         with:
-          version: 0.13.7
+          version: 0.13.9
           python-version: 3.14.7
       - run: uv sync --project apps/agent --frozen
       - run: cd apps/agent && uv run ruff check .
