@@ -1,5 +1,6 @@
 """Participant-anchored areas land through the phase transaction."""
 
+from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -134,6 +135,10 @@ async def test_chain_primary_range_cap_and_secondary_damage(spell_fight, explici
         ctx,
         {"foe": (0, 0, 0), "a": (20, 0, 0), "b": (30, 0, 0), "c": (0, 30, 0), "d": (0, 0, 30), "out": (30.01, 0, 0)},
     )
+    state = ctx.userdata.combat_state
+    state.participants.append(replace(_enemy("near_ally", 100), type="companion"))
+    state.spatial["positions"]["near_ally"] = {"x": 5, "y": 0, "z": 0}
+    state.spatial["speeds"]["near_ally"] = 30
     targets = ["foe", "d", "b"] if explicit else ["foe"]
     await declare_spell(ctx, "arcane_chain_lightning", targets=targets)
     from combat.test_spell_damage_lands import minimum_roll
@@ -148,7 +153,7 @@ async def test_chain_primary_range_cap_and_secondary_damage(spell_fight, explici
     saved = await load_combat(ctx.userdata.combat_state.combat_id)
     for r in results:
         assert participant(saved, r["target_id"]).hp_current == 100 - r["damage"]
-    assert participant(saved, "out").hp_current == 100
+    assert participant(saved, "out").hp_current == participant(saved, "near_ally").hp_current == 100
 
 
 @pytest.mark.parametrize(

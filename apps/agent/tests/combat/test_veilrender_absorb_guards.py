@@ -29,6 +29,7 @@ async def test_fallen_veilrender_is_not_healed(spell_fight, monkeypatch):
     assert participant(state, "foe").hp_current == 0
     assert participant(state, "foe").is_fallen
     assert "absorbed" not in cast
+    assert cast["damage_results"] == [] and "No effective recipients" in cast["recipient_status"]
 
 
 async def test_duplicate_recipients_heal_once_per_cast(spell_fight, monkeypatch):
