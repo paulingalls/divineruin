@@ -44,9 +44,12 @@ describe("getConditionDisplay", () => {
     expect(getConditionDisplay("exhausted")).toBe(CONDITION_DISPLAY.exhausted);
   });
 
-  test("displays Worthy Foe as a debuff", () => {
-    expect(getConditionDisplay("worthy_foe")).toEqual({
-      label: "Worthy Foe",
+  test.each([
+    ["worthy_foe", "Worthy Foe"],
+    ["mark_of_justice", "Mark of Justice"],
+  ])("displays %s as a debuff", (condition, label) => {
+    expect(getConditionDisplay(condition)).toEqual({
+      label,
       icon: "target",
       color: BrandColors.ember,
     });

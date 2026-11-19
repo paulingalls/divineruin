@@ -32,8 +32,13 @@ def _land_condition_on_one(
         cond_target.conditions, state=state, actor_id=cond_target.id
     ):
         return False
+    spec = conditions.CONDITION_CATALOG.get(cond_type)
     cond_target.conditions = conditions.apply_condition(
-        cond_target.conditions, cond_type, source=attacker.id if cond_type == "charmed" else source, duration=duration
+        cond_target.conditions,
+        cond_type,
+        source=attacker.id if cond_type == "charmed" else source,
+        duration=duration,
+        originating_participant_id=attacker.id if spec is not None and spec.tick_save is not None else None,
     )
     if duration is not None and not attacker.is_ally and attacker.type == "enemy":
         for condition in cond_target.conditions:

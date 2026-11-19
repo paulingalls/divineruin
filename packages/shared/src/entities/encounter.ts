@@ -61,6 +61,7 @@ export const CONDITION_NAMES = [
   "iron_resolve",
   "battle_cry",
   "worthy_foe",
+  "mark_of_justice",
 ] as const;
 export const RESISTANCE_TAG_VALUES = [
   "pragmatic",

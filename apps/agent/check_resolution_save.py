@@ -17,6 +17,7 @@ from check_resolution import (
     _apply_condition_modifiers,
     roll_bonus_dice,
 )
+from condition_restrictions import mark_save_penalty
 from conditions import get_condition_effects
 from dramatic import DramaticContext, evaluate_dramatic_context
 from rules_engine import attribute_modifier, proficiency_bonus
@@ -76,6 +77,7 @@ def resolve_saving_throw(
     advantage: bool = False,
     scholars_ward: bool = False,
     modifier_bonus: int = 0,
+    originating_participant_id: str | None = None,
 ) -> SavingThrowResult:
     # ``bonus_dice_eligible`` gates the beneficial +1d4 fold/consume (M4.8 story-003). Player-initiated
     # saves keep the default True; engine-auto saves (Beat-4 tick-clear, concentration-break) pass
@@ -93,7 +95,8 @@ def resolve_saving_throw(
 
     attributes = player_data.get("attributes", {})
     score = attributes.get(save_lower, 10)
-    mod = attribute_modifier(score) + modifier_bonus
+    conditions = player_data.get("conditions") or []
+    mod = attribute_modifier(score) + modifier_bonus + mark_save_penalty(conditions, originating_participant_id)
 
     save_proficiencies = player_data.get("saving_throw_proficiencies", [])
     if any(p.lower() == save_lower for p in save_proficiencies):
@@ -102,7 +105,7 @@ def resolve_saving_throw(
 
     # Condition effects (M4.3): a condition can auto-fail this save (Stunned/Paralyzed
     # auto-fail STR/DEX), flatly modify it (Exhausted -1/stack), or impose disadvantage.
-    effects = get_condition_effects(player_data.get("conditions") or [])
+    effects = get_condition_effects(conditions)
     scopes = {_ATTR_ABBREV.get(save_lower, save_lower)}
     flat_mod, condition_advantage, disadvantage, auto_fail = _apply_condition_modifiers(effects, scopes)
     if auto_fail:
@@ -185,6 +188,7 @@ def roll_participant_save(
     include_proficiency: bool = True,
     rng: random.Random | None = None,
     advantage: bool = False,
+    originating_participant_id: str | None = None,
 ) -> SavingThrowResult:
     """Roll a CombatParticipant's saving throw against ``dc`` (+ ``dc_mod``).
 
@@ -221,4 +225,5 @@ def roll_participant_save(
         bonus_dice_eligible=bonus_dice_eligible,
         advantage=advantage or item_advantage,
         scholars_ward=participant.scholars_ward,
+        originating_participant_id=originating_participant_id,
     )

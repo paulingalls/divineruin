@@ -1,5 +1,6 @@
 """Restriction classification and shared condition-derived combat predicates."""
 
+from condition_catalog import MARK_OF_JUSTICE
 from condition_sources import no_hostile_source
 from condition_voice_rules import auto_fail_hearing_perception, no_spoken_buffs
 from conditions import get_condition_effects
@@ -23,6 +24,14 @@ def _carriers(active_conditions: list[dict] | tuple[dict, ...], restriction: str
         for condition in active_conditions
         if restriction in get_condition_effects([condition]).restrictions
     )
+
+
+def mark_save_penalty(active_conditions: list[dict], originating_participant_id: str | None) -> int:
+    if originating_participant_id is not None and any(
+        c["type"] == MARK_OF_JUSTICE and c.get("source") == originating_participant_id for c in active_conditions
+    ):
+        return -2
+    return 0
 
 
 def incoming_advantage(active_conditions: list[dict] | tuple[dict, ...]) -> bool:

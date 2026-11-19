@@ -222,7 +222,7 @@ When casting a spell targeting a specific creature that has wronged you or allie
 | Tier | Name | Effect |
 |---|---|---|
 | Acknowledged | Discern Lies | Once per long rest, know with certainty whether an NPC's last statement was true, false, or deliberately misleading. No check, no save |
-| Devoted | Mark of Justice | Once per long rest, mark an unjust creature for 24 hours. Marked target has -2 to saves against your abilities |
+| Devoted | Mark of Justice | Once per long rest, mark an unjust creature for the rest of the encounter. It takes -2 on saves against your spells and abilities. |
 | Exalted | The Scale's Verdict | Once per session, declare judgment. DM (as Valdris) weighs target's actions. If unjust: 4d8 radiant + Stunned 1 round. If just: you take 2d8 radiant. Outcome depends on actual NPC behavior |
 
 **Layer 4 — Archetype Resonance**

@@ -76,10 +76,19 @@ def test_authored_layers_match_mechanics():
         surge,
         "long_rest",
     )
-    engine = {"zhael_lucky", battle_cry, judgment, surge, *passives}
+    mark = "valdris_mark_of_justice"
+    valdris = next(row["layer_3_tier_abilities"]["devoted"] for row in rows if row["god_id"] == "valdris")
+    assert (
+        valdris["id"],
+        valdris["status"],
+        valdris["resolution"],
+        valdris.get("implementation_id"),
+        valdris["recharge"],
+    ) == (mark, "active", "engine", mark, "long_rest")
+    engine = {"zhael_lucky", battle_cry, judgment, surge, mark, *passives}
     assert {a["id"] for a in abilities if (a["status"], a["resolution"]) == ("active", "engine")} == engine
     pending = [a for a in abilities if a["id"] not in narrated | engine]
-    assert len(pending) == 16
+    assert len(pending) == 15
     for ability in abilities:
         if ability["id"] in passives:
             assert (ability["recharge"], ability["implementation_id"]) == ("always", ability["id"])
@@ -128,6 +137,13 @@ def valid_cases():
             generated.append(dict(id=f"{kind}/{predicate}", profile=profile))
     assert cases and generated and CORPUS["invalid"]
     return cases + generated
+
+
+def test_registered_layer_3_mark_reaches_loader(read_catalog):
+    rows = copy.deepcopy(CATALOG)
+    valdris = next(god for god in rows if god["god_id"] == "valdris")
+    valdris["layer_3_tier_abilities"]["devoted"] = CORPUS["layer_3_mark"]
+    assert read_catalog(rows) == rows
 
 
 @pytest.mark.parametrize("case", valid_cases(), ids=lambda c: c["id"])
