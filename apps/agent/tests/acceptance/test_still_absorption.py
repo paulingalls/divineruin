@@ -203,8 +203,9 @@ async def test_hourly_save_resets_on_success_and_reentry(paradise, clock, save_f
         assert len(rolls) == 3 and await charm(guest, zone)
 
 
-async def test_touch_expires_after_combat(still, clock):
-    state = await reveal_and_wake(still)
+async def test_touch_expires_after_combat(still, clock, save_faces):
+    with patch.object(D20Roll, "roll", ROLL_D20):
+        state = await reveal_and_wake(still)
     pid, zone = still.players[0], state.location_id
     owner = state.still_encounter["owner_id"]
     state.spatial["positions"][pid] = {**state.spatial["positions"][owner], "x": 120}
@@ -226,6 +227,8 @@ async def test_touch_expires_after_combat(still, clock):
         assert await charm(pid, zone)
         await advance(clock, tick, 1)
         assert await charm(pid, zone) is None
+        _, rolls = save_faces
+        assert rolls == []
         result, resumed = await enter(still)
         assert result["still"]["charmed_player_ids"] == []
         assert all(c["source"] != owner for c in resumed.get_participant(pid).conditions)
