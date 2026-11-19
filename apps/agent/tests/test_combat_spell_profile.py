@@ -118,11 +118,14 @@ def test_all_catalog_rows_are_accounted_for_and_damage_profiles_exist():
         {"recipients": {"shape": "cone"}},
         {"components": [{"dice": "1d6", "damage_type": "choice"}]},
         {"resolution": "save", "save": "wisdom", "half": "yes"},
-        {"resolution": "deferred", "deferred": ""},
+        {"resolution": "deferred", "deferred": " "},
     ],
 )
 def test_malformed_profile_fails_at_real_spell_parser(change):
     row = deepcopy(next(r for r in json.loads(CONTENT.read_text()) if r["id"] == "arcane_bolt"))
-    row["combat_damage"].update(change)
+    if change.get("resolution") == "deferred":
+        row["combat_damage"] = change
+    else:
+        row["combat_damage"].update(change)
     with pytest.raises(ValueError, match="combat_damage"):
         parse_spell_row(row["id"], row)
