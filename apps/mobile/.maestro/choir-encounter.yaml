@@ -79,7 +79,8 @@ appId: com.divineruin.app
     - tapOn: "Confirm checkpoint"
     - extendedWaitUntil:
         visible: "Checkpoint: destruction"
-        timeout: 240000
+        # Each legal cast takes several physical microphone turns.
+        timeout: 720000
     - assertVisible: ${RUN_ID_TEXT}
     - tapOn: "Confirm checkpoint"
     - extendedWaitUntil:
