@@ -188,7 +188,7 @@ LEVEL_PROGRESSION: dict[int, LevelProgression] = {
         0,
         False,
         "archetype_milestone",
-        "ARCHETYPE MILESTONE — major new ability. Extra Attack for Warrior, Skirmisher, Paladin. Companion major upgrade",
+        "ARCHETYPE MILESTONE — major new ability. Extra Attack for Warrior, Skirmisher, Paladin, Guardian. Companion major upgrade",
         "Companion major upgrade",
     ),
     11: LevelProgression(

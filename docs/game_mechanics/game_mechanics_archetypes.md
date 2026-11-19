@@ -478,7 +478,7 @@ Bards are the only archetype that can choose electives from **any** source catal
 | Level | Name | Effect |
 |---|---|---|
 | 5 | Specialization | **Bulwark** (max personal defense: damage resistance, HP recovery, nearly unkillable) or **Warden-Commander** (party defense: larger auras, stronger buffs, Intercept range to 10 ft) |
-| 10 | Shield Mastery | Shield AC +1. Intercept reduces damage by 1d8 before applying |
+| 10 | Extra Attack and Shield Mastery | Make 2 attacks per round instead of 1. Shield AC +1; Intercept reduces incoming damage by 1d8 before it applies. |
 | 15 | Last Stand | Below 25% HP: all allies advantage on attacks 2 rounds + you gain +4 AC |
 | 20 | Immortal Sentinel | Once per session: when you'd drop to 0 HP, drop to 1 HP + immune to all damage until end of next turn |
 

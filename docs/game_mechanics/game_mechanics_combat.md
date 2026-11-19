@@ -112,7 +112,7 @@ These are NOT separate actions. They expand what a single declaration resolves i
 | Ability | Archetype | Enhancement |
 |---|---|---|
 | Cunning Action | Rogue | Any attack declaration also includes Dash, Disengage, or Hide |
-| Extra Attack (L10) | Warrior, Skirmisher, Paladin | Attack declarations resolve as 2 attacks instead of 1 |
+| Extra Attack (L10) | Warrior, Skirmisher, Paladin, Guardian | Attack declarations resolve as 2 attacks instead of 1 |
 | Hit and Run | Skirmisher | Attack declaration includes free 15 ft reposition |
 | Command Lesser | Hollowed Knight | Attack declaration also directs up to 4 lesser Hollow |
 | Quick Change | Spy | Any social declaration can include identity swap |
