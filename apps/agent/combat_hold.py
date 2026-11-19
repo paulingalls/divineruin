@@ -460,8 +460,9 @@ async def _resolve_held(
         _melee_approach=head.get("melee_approach"),
         **deps,
     )
-    # A paused (Zhael-held) resolution returns {}; its movement facts join the summary on resume.
-    if summary and (movement := head.get("melee_approach")):
+    # A paused (Zhael-held) resolution's summary is discarded by the pump; on resume the movement
+    # facts join the finished summary.
+    if movement := head.get("melee_approach"):
         summary = {**movement, **summary}
         if not summary["resolved"]:
             summary["attack_resolved"] = False

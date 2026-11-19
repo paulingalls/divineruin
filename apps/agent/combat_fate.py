@@ -96,19 +96,15 @@ async def continue_attack(
     movement_budget = attack_cursor.get("movement_budget", movement_budget if movement_budget is not None else {})
     start = len(attack_summaries)
     for index, act in enumerate(actions[start:], start):
-        swing_move = attack_cursor.get("swing_move")
-        if swing_move is None:
-            swing_move = (
-                movement
-                if index == 0 or act == actions[0]
-                else combat_melee_approach.prepare(state, attacker, target, act, movement_budget)
-            )
-            if index > 0 and act == actions[0] and swing_move:
-                swing_move = {**swing_move, "moved_ft": 0, "closed_distance": False}
-            attack_cursor["swing_move"] = swing_move
+        swing_move = (
+            movement
+            if index == 0 or act == actions[0]
+            else combat_melee_approach.prepare(state, attacker, target, act, movement_budget)
+        )
+        if index > 0 and act == actions[0] and swing_move:
+            swing_move = {**swing_move, "moved_ft": 0, "closed_distance": False}
         if swing_move.get("attack_resolved") is False:
             attack_summaries.append(swing_move)
-            attack_cursor.pop("swing_move")
             break
         swing = progress.scope("swing") if progress is not None else None
         prepared_data = attack_cursor.get("prepared")
@@ -254,7 +250,6 @@ async def continue_attack(
         if progress is not None:
             progress.steps.pop("swing", None)
         sub.update(swing_move)
-        attack_cursor.pop("swing_move")
         attack_summaries.append(sub)
         # Remove attack-spent conditions before the next swing in an expanded declaration. The
         # first consuming swing leaves later consumed_conditions empty. Persistence rides the

@@ -338,8 +338,6 @@ async def _resolve_ability_packet(
                 return {}
             redirects[target_id] = redirected.target_id
         deliveries = [{**d, "target_id": redirects[d["target_id"]]} for d in selected]
-        if decl.target_id in redirects:
-            decl = replace(decl, target_id=redirects[decl.target_id])
     else:
         decl = await effective_declaration(session, state, attacker, decl, progress=shield)
         if decl is None:
