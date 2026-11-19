@@ -9,7 +9,7 @@ import db_mutations
 import db_queries
 import event_types as E
 import patron_combat_edges
-from _gods_content import engine_implementations, load_gods
+from _gods_content import load_gods
 from combat_ui_update import build_combat_ui_update
 from game_events import publish_game_event
 from patron_favor import get_patron_tier
@@ -44,9 +44,7 @@ def availability(ability, tier, required, spent):
         return f"Requires {required} tier.", "locked"
     resolution = ability.get("resolution", "narrated")
     implemented = resolution == "narrated" or (
-        resolution == "engine"
-        and ability.get("implementation_id") == ability["id"]
-        and ability["id"] in engine_implementations()
+        resolution == "engine" and ability.get("implementation_id") == ability["id"]
     )
     if ability["status"] != "active" or not implemented:
         return "This ability is pending implementation.", "locked"

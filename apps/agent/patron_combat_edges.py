@@ -20,7 +20,7 @@ def battle_cry(state: CombatState | None, actor: str, *, target_id: str | None) 
     updated = deepcopy(state)
     allies = []
     for ally in updated.participants:
-        if ally.is_ally:
+        if ally.is_ally and not ally.is_dead:
             ally.conditions = apply_condition(ally.conditions, "battle_cry", duration=2, source=actor)
             allies.append({"id": ally.id, "name": ally.name})
     return updated, {"allies": allies}

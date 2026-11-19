@@ -336,3 +336,16 @@ SCENARIOS = {
         ],
     ),
 }
+
+
+def test_battle_cry_skips_dead_allies():
+    from patron_combat_edges import battle_cry
+
+    living, dead = _player("living"), _player("dead")
+    dead.is_dead = True
+    state = _build_state("living", "living", [_enemy("foe", hp=10)])
+    state.participants = [living, dead, *state.participants[1:]]
+    updated, result = battle_cry(state, "living", target_id=None)
+    assert [a["id"] for a in result["allies"]] == ["living"]
+    corpse = updated.get_participant("dead")
+    assert corpse is not None and corpse.conditions == []
