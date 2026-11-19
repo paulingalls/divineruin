@@ -20,9 +20,9 @@ import { createInventoryProxy } from "../apps/mobile/scripts/verify-http-invento
 import { runPreparedLiveMaterial } from "../apps/mobile/scripts/verify-live-material-inventory";
 
 const flows = [
+  "native-transport.yaml",
   "launch.yaml",
   "auth-form.yaml",
-  "native-transport.yaml",
   "choir-encounter.yaml",
   "patron-abilities.yaml",
   "iron-resolve-hud.yaml",
@@ -156,9 +156,8 @@ async function runJourneys(
   if (JSON.stringify(files) !== JSON.stringify([...flows].sort()))
     throw new Error(`Native Maestro journey list differs from ${flowDir}: ${files.join(", ")}`);
 
-  await journey("launch.yaml");
-  await journey("auth-form.yaml");
   const prepared = { launchUrl, spawnMaestro, results };
+  // Route before another journey can open the app audio session.
   await journey("native-transport.yaml", () =>
     withLoopbackInput(scope, root, udid, (deviceUID) =>
       runScenario(
@@ -172,6 +171,8 @@ async function runJourneys(
       ),
     ),
   );
+  await journey("launch.yaml");
+  await journey("auth-form.yaml");
   await journey("choir-encounter.yaml", () =>
     runScenario(scope, root, environment, udid, "none", choirProbeScenario, prepared),
   );
