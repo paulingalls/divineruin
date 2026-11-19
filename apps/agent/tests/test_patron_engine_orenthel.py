@@ -162,7 +162,7 @@ async def assert_refused(world, call, reason, **args):
     "selected,reason",
     [
         (None, "requires a condition selector"),
-        ("stunned", "cannot remove 'stunned'"),
+        ("stunned", "input_value='stunned'"),
         ("blinded", "does not have 'blinded'"),
     ],
 )

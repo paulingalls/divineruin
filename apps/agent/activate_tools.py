@@ -43,7 +43,7 @@ import veil_ward_tools
 import zhael_fate
 from action_sound_content import publish_action_sound
 from db_errors import db_tool
-from patron_combat_edges import RESTORATION_SURGE
+from patron_combat_edges import RESTORATION_SURGE, SurgeCondition
 from patron_gifts import SYRATH_SHADOW_VEIL, VEYTHAR_INSIGHT
 from session_data import SessionData
 
@@ -76,7 +76,7 @@ async def activate(
     target_ids: list[str] | None = None,
     offer_id: str | None = None,
     keep: zhael_fate.Keep | None = None,
-    condition: str | None = None,
+    condition: SurgeCondition | None = None,
 ) -> str | tuple:
     """Activate a capability: cast a spell, use an archetype ability, deploy a Veil Anchor, raise
     or dismiss a Veil Ward, or trigger the Draethar's Inner Fire.

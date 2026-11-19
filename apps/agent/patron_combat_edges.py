@@ -1,6 +1,7 @@
 """Combat state changes prepared by actively spent patron gifts."""
 
 from copy import deepcopy
+from typing import Literal, get_args
 
 from livekit.agents.llm import ToolError
 
@@ -13,6 +14,8 @@ from conditions import apply_condition, has_condition, hollowed_stage
 
 BATTLE_CRY = "kaelen_battle_cry_of_the_ironhand"
 JUDGMENT = "kaelen_kaelens_judgment"
+SurgeCondition = Literal["poisoned"] | Literal["blinded"] | Literal["frightened"] | Literal["hollowed"]
+SURGE_CONDITIONS = tuple(arg for literal in get_args(SurgeCondition) for arg in get_args(literal))
 RESTORATION_SURGE = "orenthel_restoration_surge"
 WORTHY_FOE = "worthy_foe"
 
@@ -55,7 +58,7 @@ async def restoration_surge(
 ) -> tuple[CombatState | None, dict]:
     if condition is None:
         raise ToolError("Restoration Surge requires a condition selector.")
-    if condition not in {"poisoned", "blinded", "frightened", "hollowed"}:
+    if condition not in SURGE_CONDITIONS:
         raise ToolError(f"Restoration Surge cannot remove {condition!r}.")
 
     stored = player.get("conditions") or []
@@ -63,9 +66,9 @@ async def restoration_surge(
     if state is not None:
         follower = state.get_participant(actor)
         recipient = state.get_participant(target)
-        if follower is None or follower.type != "player":
+        if follower is None:
             raise ToolError("Restoration Surge requires the acting player to be a player participant.")
-        if recipient is None or recipient.type != "player":
+        if recipient is None:
             raise ToolError("Restoration Surge requires its target to be a player participant.")
         current = recipient.conditions
 
