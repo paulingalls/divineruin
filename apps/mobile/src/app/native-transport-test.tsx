@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useStore } from "zustand";
-import { ConnectionState } from "livekit-client";
 
 import { configureAudioSession } from "@/audio/audio-config";
 import {
@@ -18,9 +17,9 @@ import { PersistentBar } from "@/components/hud/persistent-bar";
 import { handleGameEventMessage } from "@/audio/game-event-handler";
 import {
   LiveKitRoom,
+  bypassLoopbackVoiceProcessing,
   useDataChannel,
   useConnectionState,
-  useLocalParticipant,
   useRemoteParticipants,
   type ReceivedDataMessage,
 } from "@/livekit";
@@ -89,7 +88,6 @@ function TransportRoom({
   const combat = useStore(hudStore, (state) => state.combatState);
   const resonance = useStore(hudStore, (state) => state.resonanceState);
   const connectionState = useConnectionState();
-  const { localParticipant } = useLocalParticipant();
   const participants = useRemoteParticipants();
   const character = useStore(characterStore, (state) => state.character);
   const location = useStore(sessionStore, (state) => state.locationContext);
@@ -144,13 +142,6 @@ function TransportRoom({
   );
 
   useEffect(() => {
-    if (connectionState !== ConnectionState.Connected) return;
-    void localParticipant.setMicrophoneEnabled(true).catch((error) => {
-      setStatus(`Microphone failed: ${String(error)}`);
-    });
-  }, [connectionState, localParticipant]);
-
-  useEffect(() => {
     if (audio || subscriptions.length === 0) return;
     const timer = setInterval(() => {
       void observeRemoteAudio(subscriptions, fixture.publisherIdentity)
@@ -191,7 +182,11 @@ function TransportRoom({
             });
           }
           setGuard(state.choir_guard ?? "");
-          setComplete(state.choir_complete === true);
+          if (state.choir_complete === true) {
+            clearInterval(timer);
+            await postResult(endpoint, fixture.runId, { choir_complete_ack: true });
+            setComplete(true);
+          }
         })
         .catch((error) => setStatus(`Choir status failed: ${String(error)}`));
     }, 100);
@@ -280,16 +275,20 @@ function DevelopmentTransportScreen() {
   const params = useLocalSearchParams<{
     fixture?: string | string[];
     run_id?: string | string[];
+    loopback?: string | string[];
     choir?: string | string[];
     choir_fault?: string | string[];
   }>();
   const [fixture, setFixture] = useState<TransportFixture | null>(null);
   const [endpoint, setEndpoint] = useState("");
   const [error, setError] = useState("");
+  const loopback = textParam(params.loopback) === "1";
 
   useEffect(() => {
     const runId = textParam(params.run_id);
     const rawEndpoint = textParam(params.fixture);
+    let restoreVoiceProcessing: (() => void) | undefined;
+    const fixtureLoad = new AbortController();
     characterStore.getState().clear();
     sessionStore.getState().reset();
     hudStore.getState().reset();
@@ -297,19 +296,39 @@ function DevelopmentTransportScreen() {
     void (async () => {
       await configureAudioSession();
       const loaded = await loadTransportRouteFixture(rawEndpoint, runId);
+      if (fixtureLoad.signal.aborted) return;
+      // Speech processing can suppress the sustained tones of the loopback marker.
+      if (loopback) restoreVoiceProcessing = bypassLoopbackVoiceProcessing();
       setEndpoint(loaded.endpoint);
       setFixture(loaded.fixture);
-    })().catch((cause) => setError(cause instanceof Error ? cause.message : String(cause)));
+    })().catch((cause) => {
+      if (!fixtureLoad.signal.aborted)
+        setError(cause instanceof Error ? cause.message : String(cause));
+    });
     return () => {
+      fixtureLoad.abort();
+      restoreVoiceProcessing?.();
       characterStore.getState().clear();
       sessionStore.getState().reset();
     };
-  }, [params.fixture, params.run_id, params.choir]);
+  }, [params.fixture, params.run_id, params.choir, loopback]);
 
   if (error) return <ThemedText>{`Native transport error: ${error}`}</ThemedText>;
   if (!fixture) return <ThemedText>Loading native transport fixture</ThemedText>;
   return (
-    <LiveKitRoom serverUrl={fixture.wsUrl} token={fixture.token} connect audio video={false}>
+    <LiveKitRoom
+      key={fixture.runId}
+      serverUrl={fixture.wsUrl}
+      token={fixture.token}
+      connect
+      audio={
+        loopback
+          ? { autoGainControl: false, noiseSuppression: false, echoCancellation: false }
+          : true
+      }
+      video={false}
+      onError={(cause) => setError(cause.message)}
+    >
       <TransportRoom
         fixture={fixture}
         endpoint={endpoint}

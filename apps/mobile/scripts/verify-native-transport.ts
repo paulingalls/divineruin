@@ -23,6 +23,8 @@ export type PrepareNativeApp = (
 export interface NativeTransportDeps {
   probePath?: string;
   choir?: boolean;
+  probeTurns?: boolean;
+  acousticMarker?: boolean;
   choirFault?: string;
   choirFaults?: string[];
   prepareScenario?: (repoRoot: string, fault: string) => Promise<() => Promise<void>>;
@@ -30,8 +32,12 @@ export interface NativeTransportDeps {
     scope: OwnedProcesses,
     repoRoot: string,
     run: { controlPath: string; runId: string; artifactDir: string },
-  ) => Promise<void>;
-  validateResult?: (raw: unknown, runId: string, fault: Fault) => TransportResult;
+  ) => ReturnType<OwnedProcesses["spawn"]>;
+  validateResult?: (
+    raw: unknown,
+    runId: string,
+    fault: Fault,
+  ) => TransportResult | Promise<TransportResult>;
   resolveOwned: (requestedUdid?: string) => Promise<string>;
   prepareNativeApp: PrepareNativeApp;
   requireTarget: (scope: OwnedProcesses, repoRoot: string, udid: string) => Promise<void>;
@@ -208,38 +214,51 @@ async function waitForJson(
   throw new Error(`timed out waiting for nonempty JSON artifact ${path}`);
 }
 
-async function runScenario(
+export async function runScenario(
   scope: OwnedProcesses,
   repoRoot: string,
   env: Record<string, string | undefined>,
   udid: string,
   fault: Fault,
-  deps: NativeTransportDeps,
+  deps: Omit<NativeTransportDeps, "resolveOwned" | "prepareNativeApp" | "requireTarget">,
+  prepared?: {
+    launchUrl: string;
+    results: string;
+    spawnMaestro: (
+      flow: string,
+      output: string,
+      variables: Record<string, string>,
+    ) => ReturnType<OwnedProcesses["spawn"]>;
+  },
 ): Promise<void> {
   const runId = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
-  const artifactDir = join(repoRoot, "test-results/native-transport", runId);
+  const artifactDir = join(
+    prepared?.results ?? join(repoRoot, "test-results/native-transport"),
+    runId,
+  );
   const controlPath = join(artifactDir, "control.json");
   const resultPath = join(artifactDir, "result.json");
   const maestroOutput = join(artifactDir, "maestro");
   await mkdir(artifactDir, { recursive: true });
-  const port = await reservePort();
   const mobileRoot = join(repoRoot, "apps/mobile");
   let metro: ReturnType<OwnedProcesses["spawn"]> | undefined;
   let probe: ReturnType<OwnedProcesses["spawn"]> | undefined;
   let maestro: ReturnType<OwnedProcesses["spawn"]> | undefined;
+  let stimulus: ReturnType<OwnedProcesses["spawn"]> | undefined;
   let failure: Error | undefined;
   let restoreSource: (() => Promise<void>) | undefined;
   try {
     restoreSource = await deps.prepareScenario?.(repoRoot, deps.choirFault ?? "none");
-    const metroChild = scope.spawn(
-      ["bun", "expo", "start", "--dev-client", "--port", String(port)],
-      {
+    let appLaunchUrl = prepared?.launchUrl;
+    if (!appLaunchUrl) {
+      const port = await reservePort();
+      metro = scope.spawn(["bun", "expo", "start", "--dev-client", "--port", String(port)], {
         cwd: mobileRoot,
         env: definedEnv({ ...env, CI: "1" }),
-      },
-    );
-    metro = metroChild;
-    await waitForMetro(scope, metro, port);
+      });
+      await waitForMetro(scope, metro, port);
+      appLaunchUrl = developmentClientUrl(port);
+    }
 
     const probeChild = scope.spawn(
       [
@@ -247,9 +266,12 @@ async function runScenario(
         "run",
         "--project",
         join(repoRoot, "apps/agent"),
+        "--frozen",
         "python",
         join(repoRoot, deps.probePath ?? "apps/agent/native_transport_probe.py"),
         ...(deps.choir ? ["--choir-fault", deps.choirFault ?? "none"] : []),
+        ...(deps.probeTurns ? ["--probe-turns"] : []),
+        ...(deps.acousticMarker ? ["--require-marker"] : []),
         "--run-id",
         runId,
         "--fault",
@@ -266,62 +288,88 @@ async function runScenario(
     const fixtureUrl = typeof control.fixture_url === "string" ? control.fixture_url : "";
     if (!fixtureUrl.startsWith("http://127.0.0.1:"))
       throw new Error("probe supplied no loopback fixture URL");
-    const appLaunchUrl = developmentClientUrl(port);
     const expectedStatus =
       fault === "none"
         ? "Transport complete"
         : `Guard failed: ${fault === "withhold-audio" ? "received-audio" : "session-init-hud"}`;
-    maestro = scope.spawn(
-      [
-        "maestro",
-        `--device=${udid}`,
-        "test",
-        `--test-output-dir=${maestroOutput}`,
-        "-e",
-        `APP_LAUNCH_URL=${appLaunchUrl}`,
-        "-e",
-        `ROUTE_URL=${transportRouteUrl(fixtureUrl, runId)}${deps.choir ? `&choir=1&choir_fault=${deps.choirFault ?? "none"}` : ""}`,
-        "-e",
-        `EXPECTED_STATUS=${deps.choir ? (deps.choirFault && deps.choirFault !== "none" ? `Choir guard failed: ${deps.choirFault}` : "Choir complete") : expectedStatus}`,
-        "-e",
-        `CHOIR_HEALTHY=${!deps.choirFault || deps.choirFault === "none" ? "1" : "0"}`,
-        "-e",
-        `RUN_ID_TEXT=Run: ${runId}`,
-        "-e",
-        `MOBILE_IDENTITY_TEXT=Mobile: mobile-${runId}`,
-        "-e",
-        `PUBLISHER_IDENTITY_TEXT=Publisher: python-${runId}`,
-        "-e",
-        "SCREENSHOT_PATH=simulator",
-        join(
-          mobileRoot,
-          deps.choir ? ".maestro/choir-encounter.yaml" : ".maestro/native-transport.yaml",
-        ),
-      ],
-      { cwd: mobileRoot, env: definedEnv(env) },
-    );
-    await deps.stimulateMicrophone?.(scope, repoRoot, { controlPath, runId, artifactDir });
-    const maestroExit = await scope.wait(maestro.exited);
-    if (maestroExit !== 0)
-      throw new Error(`Maestro native transport failed with status ${maestroExit}`);
-    const probeExit = await scope.wait(probe.exited);
-    if (probeExit !== 0) throw new Error(`native transport probe failed with status ${probeExit}`);
+    const flow = deps.choir ? "choir-encounter.yaml" : "native-transport.yaml";
+    const prelaunch = Boolean(prepared && deps.acousticMarker);
+    if (prelaunch) {
+      // A second development-client URL can invalidate the Fabric context during cold bundle load.
+      await capture(
+        scope,
+        [
+          "xcrun",
+          "simctl",
+          "launch",
+          "--terminate-running-process",
+          udid,
+          BUNDLE_ID,
+          "--initialUrl",
+          `${appLaunchUrl}&disableAutoLaunch=1`,
+        ],
+        repoRoot,
+      );
+    }
+    const variables = {
+      APP_LAUNCH_URL: appLaunchUrl,
+      NATIVE_TRANSPORT_PRELAUNCHED: prelaunch ? "1" : "0",
+      ROUTE_URL: `${transportRouteUrl(fixtureUrl, runId)}${deps.acousticMarker ? "&loopback=1" : ""}${deps.choir ? `&choir=1&choir_fault=${deps.choirFault ?? "none"}` : ""}`,
+      EXPECTED_STATUS: deps.choir
+        ? deps.choirFault && deps.choirFault !== "none"
+          ? `Choir guard failed: ${deps.choirFault}`
+          : "Choir complete"
+        : expectedStatus,
+      CHOIR_HEALTHY: !deps.choirFault || deps.choirFault === "none" ? "1" : "0",
+      RUN_ID_TEXT: `Run: ${runId}`,
+      MOBILE_IDENTITY_TEXT: `Mobile: mobile-${runId}`,
+      PUBLISHER_IDENTITY_TEXT: `Publisher: python-${runId}`,
+      SCREENSHOT_PATH: "simulator",
+    };
+    maestro = prepared
+      ? prepared.spawnMaestro(flow, maestroOutput, variables)
+      : scope.spawn(
+          [
+            "maestro",
+            `--device=${udid}`,
+            "test",
+            `--test-output-dir=${maestroOutput}`,
+            ...Object.entries(variables).flatMap(([key, value]) => ["-e", `${key}=${value}`]),
+            join(mobileRoot, ".maestro", flow),
+          ],
+          { cwd: mobileRoot, env: definedEnv(env) },
+        );
+    const maestroCompletion = scope.wait(maestro.exited).then((exit) => {
+      if (exit !== 0) throw new Error(`Maestro native transport failed with status ${exit}`);
+    });
+    const probeCompletion = scope.wait(probe.exited).then((exit) => {
+      if (exit !== 0) throw new Error(`Native transport probe failed with status ${exit}`);
+    });
+    stimulus = deps.stimulateMicrophone?.(scope, repoRoot, { controlPath, runId, artifactDir });
+    const stimulusCompletion =
+      stimulus &&
+      scope.wait(stimulus.exited).then((exit) => {
+        if (exit !== 0) throw new Error(`Owned microphone stimulus failed with status ${exit}`);
+      });
+    await Promise.all([maestroCompletion, probeCompletion, stimulusCompletion]);
     const rawResult = await waitForJson(scope, resultPath, 10_000);
-    const result = (deps.validateResult ?? validateScenarioResult)(rawResult, runId, fault);
+    const result = await (deps.validateResult ?? validateScenarioResult)(rawResult, runId, fault);
     const screenshotMatches = await Array.fromAsync(
       new Bun.Glob("**/takeScreenshot/simulator.png").scan({ cwd: maestroOutput }),
     );
     if (screenshotMatches.length !== 1) {
       throw new Error(`Maestro emitted ${screenshotMatches.length} simulator screenshots`);
     }
-    const screenshotPath = join(maestroOutput, screenshotMatches[0]);
+    const [screenshotMatch] = screenshotMatches;
+    if (!screenshotMatch) throw new Error("Maestro screenshot is missing");
+    const screenshotPath = join(maestroOutput, screenshotMatch);
     const screenshot = await stat(screenshotPath).catch(() => null);
     if (!screenshot?.isFile() || screenshot.size === 0)
       throw new Error("Maestro screenshot is missing or empty");
     const durable = {
       ...result,
       simulator_udid: udid,
-      screenshot: join("maestro", screenshotMatches[0]),
+      screenshot: join("maestro", screenshotMatch),
       tool: "maestro",
       expo_mcp: "unavailable_in_tool_catalog",
     };
@@ -335,11 +383,16 @@ async function runScenario(
     scope.stop(probe),
     scope.stop(metro),
     scope.stop(maestro),
+    scope.stop(stimulus),
   ]);
-  await restoreSource?.();
-  if (failure) throw failure;
+  cleanup.push(...(await Promise.allSettled([restoreSource?.()])));
   const rejected = cleanup.filter((entry) => entry.status === "rejected");
-  if (rejected.length) throw new AggregateError(rejected, "native transport cleanup failed");
+  if (rejected.length)
+    throw new AggregateError(
+      [...(failure ? [failure] : []), ...rejected.map((entry) => entry.reason as unknown)],
+      "native transport cleanup failed",
+    );
+  if (failure) throw failure;
 }
 
 export async function runNativeTransport(

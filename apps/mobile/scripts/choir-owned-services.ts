@@ -73,10 +73,11 @@ export async function withChoirServices<T>(
       "--config-body",
       `rtc:\n  udp_port: ${udpPort}\n  node_ip: 127.0.0.1\n  use_external_ip: false\n`,
     ]);
+    const livekitUrl = `ws://127.0.0.1:${await port(livekit, "7880/tcp")}`;
     Object.assign(env, {
       DATABASE_URL: `postgresql://choir:${password}@127.0.0.1:${await port(pg, "5432/tcp")}/choir`,
       REDIS_URL: `redis://127.0.0.1:${await port(redis, "6379/tcp")}`,
-      LIVEKIT_URL: `ws://127.0.0.1:${await port(livekit, "7880/tcp")}`,
+      LIVEKIT_URL: livekitUrl,
       LIVEKIT_API_KEY: key,
       LIVEKIT_API_SECRET: secret,
       JWT_SECRET: randomBytes(32).toString("hex"),
@@ -87,7 +88,7 @@ export async function withChoirServices<T>(
       try {
         await command(["docker", "exec", pg, "pg_isready", "-U", "choir", "-d", "choir"]);
         await command(["docker", "exec", redis, "valkey-cli", "ping"]);
-        const response = await fetch(env.LIVEKIT_URL.replace("ws:", "http:"));
+        const response = await fetch(livekitUrl.replace("ws:", "http:"));
         if (response.status < 500) {
           ready = true;
           break;

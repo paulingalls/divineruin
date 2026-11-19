@@ -438,8 +438,13 @@ def main():
         json.loads(Path("proof.yaml").read_text())["inputs"],
         graph,
     )
+    unkeyed = restored | content | SHARED_INPUTS | runtime_sources
+    # Proof drains earlier tasks and releases their providers before admitting a solo task.
+    native = tasks.pop("native-maestro")
+    native["keyed"] = [*sorted(unkeyed), SHARED_KEY]
+    tasks["native-maestro"] = native
     output = {
-        "unkeyed": sorted(restored | content | SHARED_INPUTS | runtime_sources),
+        "unkeyed": sorted(unkeyed),
         "tasks": tasks,
     }
     (Path(os.environ["PROOF_DECLARATIONS"]) / "python.yaml").write_text(json.dumps(output, indent=2) + "\n")

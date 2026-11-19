@@ -171,6 +171,10 @@
       "start": "bash scripts/proof-acceptance-stack.sh bun-start",
       "stop": "bash scripts/proof-acceptance-stack.sh bun-stop"
     },
+    "native-stack": {
+      "start": "bash scripts/proof-acceptance-stack.sh native-start",
+      "stop": "bash scripts/proof-acceptance-stack.sh native-stop"
+    },
     "e2e-stack": {
       "start": "bash scripts/proof-acceptance-stack.sh e2e-start",
       "stop": "bash scripts/proof-acceptance-stack.sh e2e-stop"

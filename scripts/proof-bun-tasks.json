@@ -379,9 +379,6 @@
         "imports-of": "apps/mobile/src/__tests__/character-store.test.ts"
       },
       {
-        "imports-of": "apps/mobile/src/__tests__/choir-service-isolation.test.ts"
-      },
-      {
         "imports-of": "apps/mobile/src/__tests__/companion-portrait.test.ts"
       },
       {
@@ -773,5 +770,27 @@
       "scripts/proof-db-clone.ts"
     ],
     "needs": ["bun-stack"]
+  },
+  "native-maestro": {
+    "run": "REQUIRE_EMULATOR=1 REQUIRE_BACKEND=1 exec bun --no-env-file scripts/native-maestro.ts",
+    "sets": ["super"],
+    "lane": "solo",
+    "needs": ["native-stack"],
+    "links": ["node_modules"],
+    "artifacts": ["test-results/native-maestro/**"],
+    "inputs": [
+      "$bun-config",
+      "$stack",
+      "$seeded-data",
+      "apps/mobile/**",
+      "apps/mobile/.maestro/*.yaml",
+      "apps/agent/**",
+      "apps/server/**",
+      "packages/**",
+      "assets/**",
+      "scripts/native-maestro.ts",
+      "scripts/maestro-acceptance.ts",
+      "scripts/native-microphone-stimulus.py"
+    ]
   }
 }

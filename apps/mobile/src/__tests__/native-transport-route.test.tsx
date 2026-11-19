@@ -12,6 +12,9 @@ if (process.env[CONTRACT_CHILD] === "1") {
   await mock.module("@/hooks/use-game-events", () => ({ useGameEvents: () => {} }));
   await mock.module("@/livekit", () => ({
     LiveKitRoom: () => null,
+    bypassLoopbackVoiceProcessing: () => {
+      throw new Error("Route guard tests must not open the loopback audio device");
+    },
     useDataChannel: () => {},
     useConnectionState: () => "disconnected",
     useLocalParticipant: () => ({ localParticipant: {} }),

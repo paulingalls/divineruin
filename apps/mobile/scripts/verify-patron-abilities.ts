@@ -1,4 +1,5 @@
 import { SQL } from "bun";
+import { mkdir } from "node:fs/promises";
 import { withOwnedProcesses, type OwnedProcesses } from "./native-transport-processes";
 
 async function ready(
@@ -30,7 +31,7 @@ export async function withNativeOwnedBackend<T>(
   root: string,
   environment: Record<string, string>,
   results: string,
-  run: (environment: Record<string, string>) => Promise<T>,
+  run: (environment: Record<string, string> & { EXPO_PUBLIC_API_URL: string }) => Promise<T>,
 ): Promise<T> {
   if (!environment.DATABASE_URL || !environment.DATABASE_URL.trim())
     throw new Error("Owned backend requires DATABASE_URL");
@@ -47,7 +48,7 @@ export async function withNativeOwnedBackend<T>(
     const origin = `http://127.0.0.1:${port}`;
     const log = `${results}/backend.log`;
     const errorLog = `${results}/backend-error.log`;
-    child = scope.spawn(["bun", "apps/server/src/index.ts"], {
+    child = scope.spawn(["bun", "--no-env-file", "apps/server/src/index.ts"], {
       cwd: root,
       env: {
         ...environment,
@@ -111,45 +112,14 @@ export async function runPatronAbilitiesFlow(
     const environment = Object.fromEntries(
       Object.entries(env).filter((v): v is [string, string] => v[1] !== undefined),
     );
-    const runId = crypto.randomUUID();
-    const results = `${root}/test-results/patron-${runId}`;
-    await Bun.$`mkdir -p ${results}`;
+    const results = `${root}/test-results/patron-${crypto.randomUUID()}`;
+    await mkdir(results, { recursive: true });
     const installed = scope.spawn(
       ["xcrun", "simctl", "get_app_container", udid, "com.divineruin.app", "app"],
       { cwd: root, capture: true },
     );
     if ((await scope.wait(installed.exited)) !== 0)
       throw new Error(`Missing com.divineruin.app on owned simulator ${udid}`);
-    const reserve = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response() });
-    const probePort = reserve.port!;
-    await reserve.stop(true);
-    const probeLog = `${results}/probe.log`;
-    const child = scope.spawn(
-      [
-        "bun",
-        `--env-file=${root}/.env`,
-        "run",
-        "--cwd",
-        "apps/agent",
-        "uv",
-        "run",
-        "python",
-        "patron_abilities_native_probe.py",
-        "--run-id",
-        runId,
-        "--port",
-        String(probePort),
-        "--ready",
-        `${results}/ready.json`,
-        "--evidence",
-        `${results}/control.json`,
-      ],
-      { cwd: root, env: environment, capture: true },
-    );
-    const logs = Promise.all([
-      Bun.write(probeLog, child.stdout!),
-      Bun.write(`${results}/probe-error.log`, child.stderr!),
-    ]);
     const run = async (environment: Record<string, string>) => {
       let launch = env.MAESTRO_APP_LAUNCH_URL;
       if (!launch) {
@@ -174,33 +144,88 @@ export async function runPatronAbilitiesFlow(
         );
         launch = `exp+divineruin://expo-development-client/?url=${encodeURIComponent(`http://127.0.0.1:${metroPort}`)}`;
       }
-      const endpoint = `http://127.0.0.1:${probePort}`;
-      await ready(scope, `${endpoint}?run_id=${runId}`, child, `${results}/probe-error.log`);
-      const simple = await runSimple(launch, scope);
-      if (simple !== 0) return simple;
-      const route = `divineruin://patron-abilities-test?endpoint=${encodeURIComponent(endpoint)}&run_id=${runId}`;
-      const maestro = scope.spawn(
-        [
-          "maestro",
-          `--device=${udid}`,
-          "test",
-          "--test-output-dir",
-          results,
-          "-e",
-          `PATRON_ROUTE=${route}`,
-          `${root}/apps/mobile/.maestro/patron-abilities.yaml`,
-        ],
-        { cwd: root },
+      return withPatronProbe(
+        scope,
+        root,
+        environment,
+        results,
+        async (route) => {
+          const simple = await runSimple(launch, scope);
+          if (simple !== 0) return simple;
+          const maestro = scope.spawn(
+            [
+              "maestro",
+              `--device=${udid}`,
+              "test",
+              "--test-output-dir",
+              results,
+              "-e",
+              `PATRON_ROUTE=${route}`,
+              `${root}/apps/mobile/.maestro/patron-abilities.yaml`,
+            ],
+            { cwd: root },
+          );
+          return scope.wait(maestro.exited);
+        },
+        true,
       );
-      try {
-        return await scope.wait(maestro.exited);
-      } finally {
-        await scope.stop(child);
-        await logs;
-      }
     };
     return environment.REQUIRE_BACKEND === "1" && !environment.MAESTRO_APP_LAUNCH_URL
       ? withNativeOwnedBackend(scope, root, environment, results, run)
       : run(environment);
   });
+}
+
+export async function withPatronProbe<T>(
+  scope: OwnedProcesses,
+  root: string,
+  environment: Record<string, string>,
+  results: string,
+  run: (route: string) => Promise<T>,
+  loadEnvFile = false,
+): Promise<T> {
+  await mkdir(results, { recursive: true });
+  const runId = crypto.randomUUID();
+  const reserve = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response() });
+  const probePort = reserve.port!;
+  await reserve.stop(true);
+  const probeLog = `${results}/probe.log`;
+  const child = scope.spawn(
+    [
+      "bun",
+      ...(loadEnvFile ? [`--env-file=${root}/.env`] : ["--no-env-file"]),
+      "run",
+      "--cwd",
+      "apps/agent",
+      "uv",
+      "run",
+      "--frozen",
+      "python",
+      "patron_abilities_native_probe.py",
+      "--run-id",
+      runId,
+      "--port",
+      String(probePort),
+      "--ready",
+      `${results}/ready.json`,
+      "--evidence",
+      `${results}/control.json`,
+    ],
+    { cwd: root, env: environment, capture: true },
+  );
+  const logs = Promise.all([
+    Bun.write(probeLog, child.stdout!),
+    Bun.write(`${results}/probe-error.log`, child.stderr!),
+  ]);
+  void logs.catch(() => {});
+  try {
+    const endpoint = `http://127.0.0.1:${probePort}`;
+    await ready(scope, `${endpoint}?run_id=${runId}`, child, `${results}/probe-error.log`);
+    return await run(
+      `divineruin://patron-abilities-test?endpoint=${encodeURIComponent(endpoint)}&run_id=${runId}`,
+    );
+  } finally {
+    await scope.stop(child);
+    await logs;
+  }
 }

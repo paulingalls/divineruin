@@ -171,6 +171,18 @@ export interface TransportResult {
   [key: string]: unknown;
 }
 
+export function assertMicrophoneMarker(result: TransportResult): void {
+  const marker = result.microphone_marker as
+    { run_id?: string; identity?: string; turn?: number; source?: string } | undefined;
+  if (
+    marker?.run_id !== result.run_id ||
+    marker.identity !== result.mobile_identity ||
+    marker.turn !== 1 ||
+    marker.source !== "owned-acoustic-marker"
+  )
+    throw new Error("Native transport did not decode the current authenticated microphone marker");
+}
+
 export function assertNoCredentials(value: unknown): void {
   if (!value || typeof value !== "object") return;
   for (const [key, child] of Object.entries(value)) {

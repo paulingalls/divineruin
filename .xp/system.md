@@ -21,7 +21,7 @@ Story land runs Proof selection for the `land` set (including `commit`) on the m
 checks in two lint jobs. Sprint close owns deterministic acceptance and
 Playwright. Free-patch Acceptance runs staged land then sprint selections via
 `scripts/free-acceptance.sh`. The scheduled fresh super tier revalidates all
-generated tasks on a dedicated clone of develop. Push scans outgoing secrets only.
+generated tasks on a dedicated clone of develop, including the nine native Maestro journeys. Push scans outgoing secrets only.
 
 **Check ownership and cost (story-157, 2026-10-13).** Recorded PR #607 merge:
 `67fe361ebe813e55d14a8892faa34728b95491b9`, tree
@@ -114,7 +114,20 @@ its boundary.
 | Message-event | Valkey/Redis `async_worker.py` polling loop | pytest — `test_ops_async_reset_runbook.py` |
 | CLI | Product: `agent.py dev`, `async_worker.py`; developer: pre-commit (Proof commit), pre-merge-commit (Proof land), pre-push, sprint (Proof sprint + Playwright), test-fast.sh, test-all.ts, free-acceptance.sh | Product pytest; developer entry points use disposable dispatch/failure scaffolding, recorded then removed (constraint 3) |
 
+The scheduled super tier builds one dev client and runs all nine Maestro journeys
+against the task-owned API, Metro, Postgres, Valkey and LiveKit. Native
+transport alone captures a real microphone marker through BlackHole. The
+task routes only its simulator input and restores it on exit, preserving Mac
+defaults. Scheduled Choir uses authenticated probe turns and verifies real
+native gameplay delivery and checkpoints.
+
 A story's ACs must be executed by the surface-driving test named in its Verify.
+The `native-maestro` task belongs to `super`. It requires a logged-in macOS
+GUI session and the owned iOS simulator, builds one dev client, and drives all
+nine flows against its own API, Metro and provider services. The super log
+reports each flow, and the provider checkout retains JUnit and simulator
+artifacts under `flake-artifacts/native-maestro-*`.
+
 The real-LLM acceptance lane is deliberately excluded from `test:all` (ADR 0003,
 API cost). Paid `real_llm`, `openai_real_llm` and `live_voice` lanes require
 separate concrete per-run human approval; push or sprint-close is not approval.

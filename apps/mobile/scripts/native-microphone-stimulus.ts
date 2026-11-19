@@ -6,13 +6,10 @@ export interface StimulusRun {
   runId: string;
   artifactDir: string;
   sequence?: boolean;
+  loopbackUID?: string;
 }
 
-export async function stimulateMicrophone(
-  scope: OwnedProcesses,
-  repoRoot: string,
-  run: StimulusRun,
-): Promise<void> {
+export function stimulateMicrophone(scope: OwnedProcesses, repoRoot: string, run: StimulusRun) {
   const child = scope.spawn(
     [
       "python3",
@@ -24,9 +21,9 @@ export async function stimulateMicrophone(
       "--artifacts",
       run.artifactDir,
       ...(run.sequence ? ["--sequence"] : []),
+      ...(run.loopbackUID ? ["--loopback-uid", run.loopbackUID] : []),
     ],
     { cwd: repoRoot },
   );
-  const exit = await scope.wait(child.exited);
-  if (exit !== 0) throw new Error(`owned microphone stimulus failed with status ${exit}`);
+  return child;
 }

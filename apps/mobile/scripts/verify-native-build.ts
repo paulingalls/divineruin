@@ -38,6 +38,7 @@ export interface NativeBuildOptions {
   repoRoot: string;
   processEnv: Record<string, string | undefined>;
   deps: NativeBuildDeps;
+  prepared?: (env: Record<string, string | undefined>) => Promise<void>;
 }
 
 const BUNDLE_ID = "com.divineruin.app";
@@ -109,38 +110,74 @@ export async function runNativeBuild(options: NativeBuildOptions): Promise<void>
     );
     await deps.requireGeneratedNativeProjects(mobileRoot);
 
-    await runChecked(
-      deps,
-      "iOS development build",
-      ["bun", "expo", "run:ios", "--device", udid, "--no-bundler"],
-      mobileRoot,
-      env,
-    );
+    const port = await deps.reservePort();
+    if (options.prepared) {
+      const output = join(workspace, "native-build");
+      // Expo's device launch uses System Events and opens its default dev server.
+      await runChecked(
+        deps,
+        "iOS development build",
+        [
+          "bun",
+          "expo",
+          "run:ios",
+          "--device",
+          "generic",
+          "--output",
+          output,
+          "--port",
+          String(port),
+        ],
+        mobileRoot,
+        env,
+      );
+      await runChecked(
+        deps,
+        "iOS development app install",
+        ["xcrun", "simctl", "install", udid, join(output, "divineruin.app")],
+        mobileRoot,
+        env,
+      );
+    } else {
+      await runChecked(
+        deps,
+        "iOS development build",
+        ["bun", "expo", "run:ios", "--device", udid, "--no-bundler"],
+        mobileRoot,
+        env,
+      );
+    }
     if (!(await deps.isAppInstalled(udid, BUNDLE_ID))) {
       throw new Error(`${BUNDLE_ID} is not installed on requested simulator ${udid}`);
     }
 
-    const port = await deps.reservePort();
     metro = await deps.startMetro(mobileRoot, port, env);
     await deps.waitForMetro(metro, port);
     const appLaunchUrl = developmentClientUrl(port);
-    await runChecked(
-      deps,
-      "app launch",
-      ["xcrun", "simctl", "openurl", udid, appLaunchUrl],
-      mobileRoot,
-      env,
-    );
-    const acceptance = await deps.runAcceptance({
+    if (!options.prepared) {
+      await runChecked(
+        deps,
+        "app launch",
+        ["xcrun", "simctl", "openurl", udid, appLaunchUrl],
+        mobileRoot,
+        env,
+      );
+    }
+    const acceptanceEnv = {
       ...env,
       REQUIRE_EMULATOR: "1",
       REQUIRE_BACKEND: "1",
       IOS_SIMULATOR_UDID: udid,
       MAESTRO_APP_LAUNCH_URL: appLaunchUrl,
-    });
-    if (!acceptance.maestroInvoked) throw new Error("Maestro acceptance was not invoked");
-    if (acceptance.exitCode !== 0) {
-      throw new Error(`Maestro acceptance failed with exit status ${acceptance.exitCode}`);
+    };
+    if (options.prepared) {
+      await options.prepared(acceptanceEnv);
+    } else {
+      const acceptance = await deps.runAcceptance(acceptanceEnv);
+      if (!acceptance.maestroInvoked) throw new Error("Maestro acceptance was not invoked");
+      if (acceptance.exitCode !== 0) {
+        throw new Error(`Maestro acceptance failed with exit status ${acceptance.exitCode}`);
+      }
     }
   } catch (error) {
     failure = error instanceof Error ? error : new Error(String(error));
@@ -154,13 +191,13 @@ export async function runNativeBuild(options: NativeBuildOptions): Promise<void>
       workspace ? deps.removeWorkspace(workspace) : Promise.resolve(),
     ])
   ).filter((outcome) => outcome.status === "rejected");
-  if (failure) throw failure;
   if (unreaped.length > 0) {
     throw new AggregateError(
-      unreaped.map((outcome) => outcome.reason as unknown),
+      [...(failure ? [failure] : []), ...unreaped.map((outcome) => outcome.reason as unknown)],
       "native verification left owned resources behind",
     );
   }
+  if (failure) throw failure;
 }
 
 if (import.meta.main) {

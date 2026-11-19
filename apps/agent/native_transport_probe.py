@@ -43,6 +43,7 @@ import event_types as E
 from game_events import publish_game_event
 from native_transport.evidence import reject_credentials
 from native_transport.lifecycle import run_cancellable
+from native_transport.microphone import receive_marker
 
 
 def build_tone_frames() -> list[rtc.AudioFrame]:
@@ -103,6 +104,7 @@ def safe_result(result: dict[str, Any]) -> dict[str, Any]:
 class ProbeState:
     def __init__(self, fixture: dict[str, str]) -> None:
         self.fixture = fixture
+        self.fixture_requested = threading.Event()
         self.microphone_frames = 0
         self.mobile_result: dict[str, Any] | None = None
         self.extra_status: dict[str, Any] = {}
@@ -139,6 +141,7 @@ def make_handler(state: ProbeState, run_id: str) -> type[BaseHTTPRequestHandler]
                 self._write(409, {"error": "stale run ID"})
             elif path == "/fixture":
                 self._write(200, state.fixture)
+                state.fixture_requested.set()
             elif path == "/status":
                 self._write(200, {"run_id": run_id, "microphone_frames": state.microphone_frames, **state.extra_status})
             else:
@@ -153,11 +156,11 @@ def make_handler(state: ProbeState, run_id: str) -> type[BaseHTTPRequestHandler]
                 result = json.loads(self.rfile.read(length))
                 if not isinstance(result, dict):
                     raise ValueError("result must be an object")
-                state.set_mobile_result(result)
             except (ValueError, json.JSONDecodeError) as exc:
                 self._write(400, {"error": str(exc)})
                 return
             self._write(200, {"accepted": True})
+            state.set_mobile_result(result)
 
         def log_message(self, _format: str, *_args: object) -> None:
             return
@@ -189,6 +192,8 @@ async def run_probe(
     control_path: Path,
     result_path: Path,
     microphone_receiver: Callable[[rtc.Room, str, ProbeState], Awaitable[int]] | None = None,
+    *,
+    require_marker: bool = False,
 ) -> None:
     server = ensure_livekit_server(require_docker=True)
     room_name = f"native-{run_id}"
@@ -235,11 +240,20 @@ async def run_probe(
     room: rtc.Room | None = None
     audio_source: rtc.AudioSource | None = None
     microphone_task: asyncio.Task[int] | None = None
+    marker: dict[str, str | int] | None = None
     try:
         room = await connect_room(server.ws_url, publisher_token)
+        if require_marker:
+            async with asyncio.timeout(120):
+                while not state.fixture_requested.is_set():
+                    await asyncio.sleep(0.1)
         await wait_for_peer(room, identity=mobile_identity, timeout=30)
 
         async def receive_microphone() -> int:
+            nonlocal marker
+            if require_marker:
+                frames, marker = await receive_marker(room, mobile_identity, run_id, state.set_microphone_frames)
+                return frames
             if microphone_receiver is not None:
                 return await microphone_receiver(room, mobile_identity, state)
             track = await wait_for_audio_track(room, identity=mobile_identity, timeout=20)
@@ -251,11 +265,15 @@ async def run_probe(
         if fault != "withhold-audio":
             audio_source, _track, _publication = await publish_audio_frames(room, build_tone_frames())
         if fault != "withhold-event":
+            hydration = {
+                **SESSION_INIT_FIXTURE,
+                "character": {**SESSION_INIT_FIXTURE["character"], "player_id": mobile_identity},
+            }
             await publish_game_event(
                 room,
                 E.SESSION_INIT,
-                SESSION_INIT_FIXTURE,
-                destination_identities=[SESSION_INIT_FIXTURE["character"]["player_id"]],
+                hydration,
+                destination_identities=[mobile_identity],
             )
 
         microphone_frames = await microphone_task
@@ -273,6 +291,7 @@ async def run_probe(
                 "publisher_identity": publisher_identity,
                 "mobile_identity": mobile_identity,
                 "microphone_frames": microphone_frames,
+                **({"microphone_marker": marker} if require_marker else {}),
                 "fault": fault,
                 "expected_guard": guard,
             }
@@ -299,8 +318,13 @@ def main() -> None:
     parser.add_argument("--fault", choices=("none", "withhold-audio", "withhold-event"), default="none")
     parser.add_argument("--control", type=Path, required=True)
     parser.add_argument("--result", type=Path, required=True)
+    parser.add_argument("--require-marker", action="store_true")
     args = parser.parse_args()
-    asyncio.run(run_cancellable(lambda: run_probe(args.run_id, args.fault, args.control, args.result)))
+    asyncio.run(
+        run_cancellable(
+            lambda: run_probe(args.run_id, args.fault, args.control, args.result, require_marker=args.require_marker)
+        )
+    )
 
 
 if __name__ == "__main__":
