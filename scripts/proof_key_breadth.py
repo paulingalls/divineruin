@@ -61,35 +61,53 @@ def task_roster(root):
     return tasks
 
 
-def keyed_files(task, raw, eligible):
-    headers = []
+def keyed_files(task, row, eligible):
+    for field in ("files", "members", "reasons"):
+        if not isinstance(row.get(field), list):
+            raise ValueError(f"{task}: expected {field} array")
+    if row["reasons"]:
+        raise ValueError(f"{task}: undecidable: {row['reasons']!r}")
+
     paths = set()
-    for line in raw.decode().splitlines():
-        header = re.match(r"^(?:PROVEN|RUN|UNREACHED) (\S+): ", line)
-        if header:
-            headers.append(header[1])
-        if line.startswith("undecidable:"):
-            raise ValueError(f"{task}: {line}")
-        if line.startswith("delivered keyed file"):
-            record = line.removeprefix("delivered keyed file ").rsplit(" ", 2)
-            if (
-                not line.startswith("delivered keyed file ")
-                or len(record) != 3
-                or not record[0]
-                or not re.fullmatch(r"[0-7]{6}", record[1])
-                or not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", record[2])
-            ):
-                raise ValueError(f"{task}: malformed keyed file: {line}")
-            paths.add(record[0])
-        if line.startswith("delivered keyed member "):
-            # Paths can contain spaces; compare against the tracked roster.
-            member = line.removeprefix("delivered keyed member ")
-            for path in eligible:
-                if member.startswith(path + " "):
-                    raise ValueError(f"{task}: partial member key on eligible file {path}")
-    if headers != [task] or not paths:
-        raise ValueError(f"{task}: empty, missing, duplicate or unparseable why output (headers={headers!r})")
+    for record in row["files"]:
+        if (
+            not isinstance(record, list)
+            or len(record) != 3
+            or not all(isinstance(part, str) for part in record)
+            or not record[0]
+            or not re.fullmatch(r"[0-7]{6}", record[1])
+            or not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", record[2])
+        ):
+            raise ValueError(f"{task}: malformed keyed file: {record!r}")
+        paths.add(record[0])
+    if not paths:
+        raise ValueError(f"{task}: no keyed files")
+
+    for record in row["members"]:
+        if (
+            not isinstance(record, list)
+            or len(record) != 4
+            or not all(isinstance(part, str) for part in record)
+            or not record[0]
+        ):
+            raise ValueError(f"{task}: malformed keyed member: {record!r}")
+        if record[0] in eligible:
+            raise ValueError(f"{task}: partial member key on eligible file {record[0]}")
     return paths
+
+
+def key_rows(raw):
+    try:
+        rows = json.loads(raw)
+    except ValueError as error:
+        raise ValueError(f"Proof key parts: invalid JSON: {error}") from error
+    if not isinstance(rows, list):
+        raise ValueError("Proof key parts: expected a task array")
+    for row in rows:
+        task = row.get("task") if isinstance(row, dict) else None
+        if not isinstance(task, str) or not task.strip():
+            raise ValueError(f"Proof key parts: invalid task id: {task!r}")
+        yield task, row
 
 
 def measure(limits):
@@ -106,25 +124,28 @@ def measure(limits):
             raise ValueError(f"--limit {pattern!r}: no eligible files match")
         matches.append((selected, threshold))
     tasks = task_roster(root)
+    ordered_tasks = sorted(tasks)
+    workers = min(16, len(tasks))
+    shards = [ordered_tasks[index::workers] for index in range(workers)]
     completed = set()
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        futures = {pool.submit(command, root, "bunx", "proof", "why", task): task for task in tasks}
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [pool.submit(command, root, "bun", "scripts/proof_key_breadth_parts.ts", *shard) for shard in shards]
         for future in as_completed(futures):
-            task = futures[future]
-            try:
-                paths = keyed_files(task, future.result(), counts)
-            except (ValueError, UnicodeError, OSError) as error:
-                raise ValueError(f"{task}: {error}") from error
-            if task in completed:
-                raise ValueError(f"{task}: duplicate task output")
-            completed.add(task)
+            raw = future.result()
             if clean_head(root) != head:
                 raise ValueError("HEAD changed during measurement")
-            if task.startswith(("agent-acceptance:", "e2e:")):
-                for path in paths & counts.keys():
-                    counts[path] += 1
+            for task, row in key_rows(raw):
+                if task in completed:
+                    raise ValueError(f"{task}: duplicate task output")
+                completed.add(task)
+                paths = keyed_files(task, row, counts)
+                if task.startswith(("agent-acceptance:", "e2e:")):
+                    for path in paths & counts.keys():
+                        counts[path] += 1
     if completed != tasks:
-        raise ValueError(f"missing task outputs: {sorted(tasks - completed)}")
+        raise ValueError(
+            f"missing task outputs: {sorted(tasks - completed)}; extra task outputs: {sorted(completed - tasks)}"
+        )
     if clean_head(root) != head:
         raise ValueError("HEAD changed during measurement")
     violations = sorted(
