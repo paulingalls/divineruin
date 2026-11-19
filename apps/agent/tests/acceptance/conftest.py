@@ -44,6 +44,13 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
             item.add_marker(pytest.mark.acceptance)
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _record_ffi_handle_owners() -> None:
+    from acceptance._ffi_handle_owner import install_ffi_handle_owner
+
+    install_ffi_handle_owner()
+
+
 @pytest.fixture(autouse=True)
 def _real_llm_key_required(request: pytest.FixtureRequest) -> None:
     """Fail — never skip — a real-LLM scenario when REQUIRE_REAL_LLM=1 and no usable key.
