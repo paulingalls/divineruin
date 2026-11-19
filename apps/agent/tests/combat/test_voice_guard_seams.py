@@ -264,7 +264,11 @@ async def test_public_roll_producers_carry_current_combat_spoken_eligibility(pro
     state.participants[0].conditions = [{"type": "deafened"}, {"type": "inspired"}]
     ctx = make_context()
     ctx.userdata.combat_state = state
-    queries = MagicMock(get_player=AsyncMock(return_value={**SAMPLE_PLAYER, "conditions": []}))
+    player = {**SAMPLE_PLAYER, "conditions": []}
+    queries = MagicMock(
+        get_player=AsyncMock(return_value=player),
+        get_players_for_update=AsyncMock(return_value={ctx.userdata.primary_player_id: player}),
+    )
     location = {
         "region": "greyvale",
         "resource_table": {"common": ["oak_wood"]},

@@ -226,6 +226,8 @@ async def _resolve_action_packet(
                     progress=progress,
                     conn=conn,
                     concentration=concentration_break_mod,
+                    queries=queries,
+                    mutations=mutations,
                 )
             if action.get("auto_hit"):
                 return await still_actions.resolve_touch(

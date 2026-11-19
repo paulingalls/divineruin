@@ -245,6 +245,9 @@ class TestMetricsAccumulation:
         mock_mutations.record_departure = AsyncMock()
         mock_queries = MagicMock()
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_queries.get_players_for_update = AsyncMock(
+            side_effect=lambda ids, **_: {pid: SAMPLE_PLAYER for pid in ids}
+        )
         mock_queries.get_active_player_quests = AsyncMock(return_value=[])
         mock_queries.get_npcs_at_location = AsyncMock(return_value=[])
         mock_queries.get_npc_dispositions = AsyncMock(return_value={})

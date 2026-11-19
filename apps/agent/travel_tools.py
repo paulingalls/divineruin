@@ -33,6 +33,8 @@ import db_queries
 import event_types as E
 import quest_progress
 import rules_engine
+import still_charm
+import still_scene
 import travel as travel_engine
 from action_sound_content import publish_action_sound
 from combat_terrain import skill_natural_terrain
@@ -127,6 +129,12 @@ async def _travel_impl(
     except ValueError as e:
         raise ToolError(str(e)) from e
 
+    if destination_id != session.location_id:
+        async with db_mod.transaction() as conn:
+            session.validate_acting_player(speaker_id)
+            players = await still_charm.lock_players(member_ids, queries=queries, conn=conn)
+            still_charm.require_departure(players, session.location_id)
+
     roll = None
     if dc is not None:
         roll = check_resolution.resolve_skill_check_dc(
@@ -176,6 +184,7 @@ async def _travel_impl(
                     scope.origin,
                     scope.party_ids,
                     conn=conn,
+                    queries=queries,
                     db_mod=db_mod,
                     mutations=mutations,
                     travel_mutations=travel_mutations,
@@ -218,7 +227,9 @@ async def _travel_impl(
                         await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
                     for pid in sorted({pid for pid, _ in quest.item_recipients}):
                         await publish_inventory(session, pid, queries=queries)
-                return await _publish_travel_result(session, destination_id, mode_lower, kept, result, updates)
+                return await _publish_travel_result(
+                    session, destination, destination_id, mode_lower, kept, result, updates, queries=queries
+                )
 
             return flush
 
@@ -244,6 +255,7 @@ async def _travel_impl(
                 session.location_id,
                 member_ids,
                 conn=conn,
+                queries=queries,
                 db_mod=db_mod,
                 mutations=mutations,
                 travel_mutations=travel_mutations,
@@ -270,7 +282,11 @@ async def _travel_impl(
             await publish_action_sound(session, "action_travel")
 
     session.record_event(f"Travel to {destination_id} ({mode_lower}): {result.narrative_cue}")
-    return json.dumps(await _publish_travel_result(session, destination_id, mode_lower, roll, result, quest_updates))
+    return json.dumps(
+        await _publish_travel_result(
+            session, destination, destination_id, mode_lower, roll, result, quest_updates, queries=queries
+        )
+    )
 
 
 def resolve_segment(roll, mode, navigation, hours, forced_march):
@@ -328,7 +344,9 @@ async def _write_lost_travel(member_ids, destination_id, mode, result, *, travel
         )
 
 
-async def _publish_travel_result(session, destination_id, mode_lower, roll, result, quest_updates):
+async def _publish_travel_result(
+    session, destination, destination_id, mode_lower, roll, result, quest_updates, *, queries
+):
     arrived = result.success and not result.wrong_area
     if roll is not None:
         await publish_game_event(
@@ -365,4 +383,6 @@ async def _publish_travel_result(session, destination_id, mode_lower, roll, resu
         payload.update({"roll": roll.roll, "total": roll.total, "dc": result.dc, "margin": result.margin})
         if roll.gift_name:
             payload["gift_name"] = roll.gift_name
+    if arrived and "still" in destination.get("tags", []):
+        payload["still"] = await still_scene.facts(session, queries=queries, location_id=destination_id)
     return payload

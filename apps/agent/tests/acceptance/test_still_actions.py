@@ -12,6 +12,7 @@ from acceptance.test_still_anchors import still as still
 from sample_fixtures import published_payloads
 
 import db_mutations
+import db_queries
 import event_types as E
 import spells
 from check_resolution import D20Roll
@@ -29,11 +30,33 @@ async def reveal_and_wake(still, count=1):
     return await still.reload()
 
 
-async def test_touch_charms_and_memory_keeps_charm_while_disabling_next_turn(still):
+async def stored_charm(still):
+    player = await db_queries.get_player(still.players[0])
+    assert player is not None
+    key = f"still_charm:{still.sd.location_id}"
+    return json.loads(player["flags"][key]) if key in player["flags"] else None
+
+
+async def assert_charm_survives_flee(still, kind, hours):
+    expected = dict(location_id=still.sd.location_id, kind=kind, remaining_zone_hours=hours) if kind else None
+    assert await stored_charm(still) == expected
+    await fresh_session(still, await still.reload())
+    await still.command("end_combat", {"outcome": "fled"})
+    assert await stored_charm(still) == expected
+
+
+@pytest.mark.parametrize("existing_kind", [None, "paradise_trap"])
+async def test_touch_charms_and_memory_keeps_charm_while_disabling_next_turn(still, existing_kind):
     await seed_known_spells(still.pool, still.players[0], ("arcane_bolt", "arcane_elemental_burst"))
     state = await reveal_and_wake(still, count=2)
     owner_id = state.still_encounter["owner_id"]
     player_id = still.players[0]
+    if existing_kind:
+        await db_mutations.set_player_flag(
+            player_id,
+            f"still_charm:{state.location_id}",
+            json.dumps(dict(location_id=state.location_id, kind=existing_kind, remaining_zone_hours=None)),
+        )
     player = state.get_participant(player_id)
     player.ac = 100
     state.spatial["positions"][player_id] = {**state.spatial["positions"][owner_id], "x": 120}
@@ -84,6 +107,7 @@ async def test_touch_charms_and_memory_keeps_charm_while_disabling_next_turn(sti
     await declare(still, actor_id=owner_id, kind="defend")
     await still.drain()
     assert "Charmed" in await declare(still, **strike(anchors[-1]), error=True)
+    await assert_charm_survives_flee(still, existing_kind or "serenitys_touch", None if existing_kind else 1)
 
 
 @pytest.mark.parametrize("duration,face", [(1, 20), (3, 20), (3, 1)])
@@ -99,6 +123,11 @@ async def test_final_stillness_threshold_and_single_use(still, duration, face):
         if index == 2:
             assert "unavailable" in await declare(still, actor_id=owner, error=True, **final)
     if face == 1:
+        await db_mutations.set_player_flag(
+            still.players[0],
+            f"still_charm:{state.location_id}",
+            json.dumps(dict(location_id=state.location_id, kind="serenitys_touch", remaining_zone_hours=1)),
+        )
         actor = (await still.reload()).get_participant(still.players[0])
         actor.has_reaction_ability = True
         actor.reaction_ids = ["whisper_implant_doubt"]
@@ -127,6 +156,7 @@ async def test_final_stillness_threshold_and_single_use(still, duration, face):
         await search_round(still, search)
         await destroy(still, record["anchor_ids"][4])
         assert "unavailable" in await declare(still, actor_id=owner, error=True, **final)
+    await assert_charm_survives_flee(still, None if success else "final_stillness", None)
 
 
 async def test_illusion_investigation_updates_only_after_commit(still, monkeypatch):

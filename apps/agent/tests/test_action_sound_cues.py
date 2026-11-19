@@ -66,7 +66,7 @@ def cues(ctx):
 
 def assert_committed_cue(ctx, log, expected):
     assert cues(ctx) == [expected]
-    assert log.index(("commit", None)) < log.index(("cue", expected))
+    assert log[-2:] == [("commit", None), ("cue", expected)]
 
 
 def arrival_mocks(log, *, exit=True, requires=None, navigation="established_road"):
@@ -84,6 +84,7 @@ def arrival_mocks(log, *, exit=True, requires=None, navigation="established_road
     queries = MagicMock(
         get_active_player_quests=AsyncMock(return_value=[]),
         get_player=AsyncMock(return_value={"player_id": "player_1", "conditions": []}),
+        get_players_for_update=AsyncMock(return_value={"player_1": {"player_id": "player_1", "conditions": []}}),
         get_player_flag=AsyncMock(return_value=False),
     )
     return MagicMock(db=db, conn=conn, content=content, mutations=mutations, travel=travel, queries=queries)

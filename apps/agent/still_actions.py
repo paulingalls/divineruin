@@ -5,7 +5,9 @@ from functools import partial
 
 import check_resolution_save
 import combat_spatial
+import conditions
 import dice
+import still_charm
 from action_contracts_still import STILL_ZONE_KINDS
 from combat_action_availability import begin_execution
 from combat_condition_landing import _land_condition_on_one
@@ -101,7 +103,21 @@ async def _stun(session, state, actor, target, duration, result, conn, concentra
                 result["concentration_broken"] = broken
 
 
-async def resolve_zone(session, state, actor, action, declaration, *, head, progress, conn, concentration):
+async def _charm(state, actor, target, kind, packet, *, queries, mutations, conn):
+    if "charmed" in conditions.get_condition_effects(target.conditions).immunities:
+        return False
+    landed = _land_condition_on_one(state, target.id, actor, "charmed", actor.id, packet=packet)
+    if landed and target.type == "player":
+        player = await queries.get_player(target.id, conn=conn, for_update=True)
+        if player is None:
+            raise ValueError(f"Missing Still charm target {target.id}")
+        await still_charm.grant(target.id, player, state.location_id, kind, mutations=mutations, conn=conn)
+    return landed
+
+
+async def resolve_zone(
+    session, state, actor, action, declaration, *, head, progress, conn, concentration, queries, mutations
+):
     steps = head if head is not None else {}
     if "still_zone" not in steps:
         if action["kind"] == "rejection" and state.still_encounter.get("pending_rejection") is None:
@@ -127,7 +143,16 @@ async def resolve_zone(session, state, actor, action, declaration, *, head, prog
                 duration //= 2
             await _stun(session, state, actor, target, duration, result, conn, concentration)
             if trigger is None and not save.success:
-                result["charmed"] = _land_condition_on_one(state, target_id, actor, "charmed", actor.id, packet=result)
+                result["charmed"] = await _charm(
+                    state,
+                    actor,
+                    target,
+                    still_charm.FINAL_STILLNESS,
+                    result,
+                    queries=queries,
+                    mutations=mutations,
+                    conn=conn,
+                )
         results.append(result)
         if progress is not None:
             progress.steps.pop("still_save", None)
@@ -197,5 +222,14 @@ async def resolve_touch(
             return {}
         summary.update(_save_fields(save))
         if not save.success:
-            summary["charmed"] = _land_condition_on_one(state, target.id, actor, "charmed", actor.id, packet=summary)
+            summary["charmed"] = await _charm(
+                state,
+                actor,
+                target,
+                still_charm.SERENITYS_TOUCH,
+                summary,
+                queries=queries,
+                mutations=mutations,
+                conn=conn,
+            )
     return summary

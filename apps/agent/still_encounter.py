@@ -7,6 +7,7 @@ import combat_hollow_death
 import combat_spatial
 import condition_voice_rules
 import conditions
+import still_charm
 from action_contracts_still import STILL_ZONE_KINDS
 from combat_participant import CombatParticipant
 from combat_recharge import action_key
@@ -267,6 +268,11 @@ def facts(state):
     owner = state.get_participant(record["owner_id"])
     return {
         "phase": record["phase"],
+        "charmed_player_ids": [
+            p.id
+            for p in state.participants
+            if p.type == "player" and any(c["type"] == "charmed" and c["source"] == owner.id for c in p.conditions)
+        ],
         "revealed_anchor_ids": record["revealed_ids"],
         "pending_rejection_anchor_id": pending["anchor_id"] if (pending := record.get("pending_rejection")) else None,
         "illusion": record.get("illusion"),
@@ -360,5 +366,6 @@ async def after_damage(session, state, target, *, conn, queries, was_fallen):
         was_fallen, resolved_before = owner.is_fallen, owner.hollow_death_resolved
         _handle_hp_zero(session, state, owner, overkill=0, was_fallen=was_fallen, hp_status="fallen", sounds=[])
         record["phase"] = "destroyed"
+        await still_charm.end_instance(state, owner.id, session.party.member_ids, queries=queries, conn=conn)
         if combat_hollow_death.new_destruction(owner, resolved_before, was_fallen, before):
             await combat_hollow_death.accrue_death(session, state, owner, conn=conn, queries=queries)
