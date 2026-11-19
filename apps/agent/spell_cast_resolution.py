@@ -78,7 +78,7 @@ async def _resolve_cast(
     because WRAP owns the authoritative HUD update. OOC locks its own rows.
     """
     caster = caster or session.party.primary
-    spell, player, target_ids, item_target, locked_rows = await _prepare_cast(
+    spell, player, target_ids, item_target, locked_rows, heal_rows = await _prepare_cast(
         session,
         caster,
         spell_id,
@@ -196,6 +196,7 @@ async def _resolve_cast(
         concealment_packet=concealment_packet,
         purified=purified,
         locked_rows=locked_rows,
+        heal_rows=heal_rows,
         revalidate_actor=revalidate_actor,
         suppress_resonance_changed=suppress_resonance_changed,
         resonance=resonance,

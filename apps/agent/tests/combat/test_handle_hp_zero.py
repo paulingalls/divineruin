@@ -276,9 +276,7 @@ class TestTheDoorIsTheOnlyDoor:
             ("draethar_inner_fire.py", "_inner_fire_locked"),
             # INSIDE the door — the Hollowed rise, max(1, hp_max // 2), which cannot be 0.
             ("combat_damage.py", "_handle_hp_zero"),
-            # The nat-20 revive writes 1 UPWARD and clears is_fallen in the same block, so it
-            # never leaves a participant at 0: an exit from the fallen state, not an entry to it.
-            ("combat_death_save.py", "_request_death_save_locked"),
+            ("combat_down.py", "revive"),
             ("combat_enemy_active.py", "heal"),
             ("combat_fortitude.py", "try_fortitude"),
         }
@@ -286,7 +284,7 @@ class TestTheDoorIsTheOnlyDoor:
     def test_is_fallen_is_set_in_one_place_and_cleared_in_one_place(self):
         assert _attribute_writers("is_fallen") == {
             ("combat_damage.py", "_handle_hp_zero"),
-            ("combat_death_save.py", "_request_death_save_locked"),
+            ("combat_down.py", "revive"),
         }
 
 

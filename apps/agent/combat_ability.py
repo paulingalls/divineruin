@@ -16,6 +16,7 @@ import combat_ability_save
 import combat_enhancers
 import combat_hollow_resonance
 import combat_spell_damage
+import combat_spell_heal
 import combat_veilrender
 import combat_voice_rules
 import condition_voice_rules
@@ -342,12 +343,19 @@ async def _resolve_ability_packet(
                 return {}
             redirects[target_id] = redirected.target_id
         deliveries = [{**d, "target_id": redirects[d["target_id"]]} for d in selected]
-    else:
+    elif spell.heal is None:
         decl = await effective_declaration(session, state, attacker, decl, progress=shield)
         if decl is None:
             return {}
     cast_packet = steps.get("cast_packet")
     if cast_packet is None:
+        heal = spell.heal
+        recipients = []
+        if heal is not None:
+            try:
+                recipients = combat_spell_heal.combat_recipients(state, attacker, decl, spell, heal)
+            except ValueError as e:
+                return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}
         result = await cast_resolver._resolve_cast(
             session,
             decl.action,
@@ -374,6 +382,8 @@ async def _resolve_ability_packet(
         if result.concentration_spell_id is not spell_casting._UNCHANGED:
             caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
         cast_packet = result.packet
+        if heal is not None:
+            cast_packet["healing_results"] = await combat_spell_heal.land(heal, attacker, recipients, conn=conn)
         # Veilrender Absorb Magic heals once per cast, so its landing is frozen with the cast packet.
         if deliveries is not None:
             effective_ids = list(dict.fromkeys(d["target_id"] for d in deliveries))

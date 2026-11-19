@@ -66,7 +66,8 @@ class AbilityDecl(BaseModel):
     action: str = Field(description='The EXACT id of a spell or ability the actor knows, e.g. "arcane_bolt".')
     targets: list[str] = Field(
         description="Who it is aimed at — one id for a single target, several for a multi-target "
-        "spell, empty for a self-cast. Areas center on named participants; lines and cones aim "
+        "spell, empty for a self-cast. Mass Heal selects allies automatically; pass an empty list. "
+        "Areas center on named participants; lines and cones aim "
         "from the caster toward one participant. Meteor Swarm accepts up to four centers. "
         "Chain Lightning names its primary first, then optional arcs. Magic Missile repeats "
         "ids in dart order, or uses one id for every dart."

@@ -103,14 +103,17 @@ def test_charm_spell_declaration_paths(spell_id):
         )
 
 
-@pytest.mark.parametrize("spell_id", ["arcane_bolt", "divine_bless", "divine_mass_heal"])
-def test_charm_spell_legal_controls(spell_id):
-    target = "other" if spell_id == "arcane_bolt" else "goblin_scout_1"
+@pytest.mark.parametrize(
+    "spell_id,selectors",
+    [
+        ("arcane_bolt", {"target_id": "other"}),
+        ("divine_bless", {"target_id": "goblin_scout_1"}),
+        ("divine_mass_heal", {}),
+    ],
+)
+def test_charm_spell_legal_controls(spell_id, selectors):
     state, _ = combat_phase.advance_combat_phase(
-        charm_state(),
-        {
-            "player_1": {"type": "ability", "action": spell_id, "target_id": target},
-        },
+        charm_state(), {"player_1": {"type": "ability", "action": spell_id, **selectors}}
     )
     assert state.beat == "resolution"
 
