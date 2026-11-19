@@ -60,13 +60,18 @@ def apply_prepared_hit(state, attacker, target, action, summary):
         summary["condition_immune"] = condition
 
 
-def apply_critical_save(state, attacker, target, action, summary):
-    import check_resolution_save
-
+def critical_save_rider(action, summary):
+    """The attack's on-crit save rider, when this landed blow is a critical hit."""
     rider = action.get("critical_save")
     if rider is None or not summary.get("hit") or not summary.get("critical"):
-        return
-    result = check_resolution_save.roll_participant_save(
+        return None
+    return rider
+
+
+def roll_critical_save(attacker, target, rider):
+    import check_resolution_save
+
+    return check_resolution_save.roll_participant_save(
         target,
         rider["save"],
         rider["dc"],
@@ -74,6 +79,9 @@ def apply_critical_save(state, attacker, target, action, summary):
         dc_mod=attacker.dc_mod,
         bonus_dice_eligible=False,
     )
+
+
+def land_critical_save(state, attacker, target, action, summary, rider, result):
     summary["critical_save"] = {"dc": result.dc, "roll": result.roll, "total": result.total, "success": result.success}
     if already_hollowed(target, rider["applies_condition"]):
         return
@@ -81,6 +89,12 @@ def apply_critical_save(state, attacker, target, action, summary):
         state, target.id, attacker, rider["applies_condition"], source=action["name"], packet=summary
     ):
         summary["condition_inflicted"] = rider["applies_condition"]
+
+
+def apply_critical_save(state, attacker, target, action, summary):
+    rider = critical_save_rider(action, summary)
+    if rider is not None:
+        land_critical_save(state, attacker, target, action, summary, rider, roll_critical_save(attacker, target, rider))
 
 
 def already_hollowed(target, condition):

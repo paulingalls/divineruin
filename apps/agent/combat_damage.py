@@ -2,6 +2,7 @@
 
 import logging
 from dataclasses import dataclass, replace
+from functools import partial
 
 import check_resolution_attack
 import combat_damage_affinity
@@ -18,8 +19,16 @@ import db_queries
 import event_types as E
 from combat_attack_roll import build_attack_dice_roll_payload
 from combat_durability import _accrue_durability, _find_equipped
-from combat_enemy_active import apply_critical_save, apply_prepared_hit, heal
+from combat_enemy_active import (
+    apply_critical_save,
+    apply_prepared_hit,
+    critical_save_rider,
+    heal,
+    land_critical_save,
+    roll_critical_save,
+)
 from combat_events import emit_or_publish
+from combat_fate_rolls import packet_save
 from combat_fortitude import try_fortitude
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from kaelen_gift import trigger_iron_resolve
@@ -196,8 +205,22 @@ async def apply_attack_result(
         if progress.paused:
             return {}
     if combat_state is not None and not receipt["automatic"]:
+        rider = critical_save_rider(action, response)
+        save = None
+        if rider is not None:
+            # Fate's Thread reaches the target's on-crit save; it resolves before any rider lands.
+            save = await packet_save(
+                progress.scope("critical_save"),
+                session,
+                target.id,
+                rider["applies_condition"],
+                partial(roll_critical_save, attacker, target, rider),
+            )
+            if save is None:
+                return {}
         apply_prepared_hit(combat_state, attacker, target, action, response)
-        apply_critical_save(combat_state, attacker, target, action, response)
+        if save is not None:
+            land_critical_save(combat_state, attacker, target, action, response, rider, save)
     del progress.steps["damage_receipt"]
     return response
 
