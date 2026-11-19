@@ -18,6 +18,8 @@ import event_types as E
 def test_journal_rollback_and_retry(harness, entry):
     async def check():
         arc = await JournalWalk().start(harness, 2 if entry else 3)
+        # The token commits independently of the journal reward transaction.
+        await arc.discover(target="loose rubble")
         if entry:
             await arc.discover()
         before = await arc.durable()
