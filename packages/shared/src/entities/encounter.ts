@@ -51,6 +51,7 @@ export const CONDITION_NAMES = [
   "petrified",
   "cursed",
   "inspired",
+  "regenerating",
   "precise_strike",
   "hollowed",
   "temporary_hollowed",

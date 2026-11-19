@@ -38,7 +38,8 @@ async def test_immediate_healing_persists_and_names_the_actual_restoration(heale
     await healer.prepare(spell)
     ally = await healer.add_player(maximum=maximum)
     if combat:
-        await healer.fight()
+        state = await healer.fight()
+        state.get_participant(ally).initiative += 1
         await healer.declare(spell, [ally])
     with heal_die(rolled) as roll:
         if combat:
@@ -49,7 +50,7 @@ async def test_immediate_healing_persists_and_names_the_actual_restoration(heale
                 assert not any(p.get("cast") for p in await healer.wrap())
         else:
             packet = await healer.cast(spell, targets=[ally])
-    healed = rolled + modifier
+    healed = maximum - 3 if regenerate and not combat else rolled + modifier
     assert (await healer.read(ally))["hp"] == {"current": 3 + healed, "max": maximum}
     assert packet["healing_results"] == [
         receipt(ally, healed, 3 + healed, rolled=rolled, modifier=modifier, maximum=maximum)

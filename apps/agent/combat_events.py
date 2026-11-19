@@ -61,6 +61,7 @@ class BufferedEvent:
     event_type: str
     payload: dict
     event_bus: "EventBus | None"
+    destination_identities: list[str] | None = None
 
 
 @dataclass
@@ -79,9 +80,10 @@ class EventSink:
         payload: dict,
         *,
         event_bus: "EventBus | None" = None,
+        destination_identities: list[str] | None = None,
     ) -> None:
         """Same signature as publish_game_event — buffer the event instead of publishing it."""
-        self.captured.append(BufferedEvent(room, event_type, payload, event_bus))
+        self.captured.append(BufferedEvent(room, event_type, payload, event_bus, destination_identities))
 
     async def flush(self) -> None:
         """Attempt the committed batch in order, clear it, then raise the first publish error."""
@@ -89,7 +91,13 @@ class EventSink:
         try:
             for ev in self.captured:
                 try:
-                    await publish_game_event(ev.room, ev.event_type, ev.payload, event_bus=ev.event_bus)
+                    await publish_game_event(
+                        ev.room,
+                        ev.event_type,
+                        ev.payload,
+                        event_bus=ev.event_bus,
+                        destination_identities=ev.destination_identities,
+                    )
                 except Exception as error:
                     if first_error is None:
                         first_error = error

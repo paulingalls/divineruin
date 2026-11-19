@@ -1886,7 +1886,8 @@
     "healing": true,
     "heal": {
       "dice": "4d8+15",
-      "recipients": "single"
+      "recipients": "single",
+      "regeneration_rounds": 600
     }
   },
   {

@@ -3,10 +3,12 @@
 import json
 import logging
 import random
+from copy import deepcopy
 
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
+import combat_regeneration
 import combat_resolution
 import combat_rewards
 import db
@@ -109,6 +111,7 @@ async def _end_combat_locked(
         raise ToolError(f"Invalid outcome. Must be one of: {_VALID_OUTCOMES}")
     outcome = outcome.lower()
 
+    cs = deepcopy(cs)
     sink = EventSink()
     async with db_mod.transaction() as conn:
         end_data = await _end_combat_db(
@@ -227,6 +230,8 @@ async def _end_combat_db(
         if member.player_id == actor_id:
             weapon_durability = member_durability
 
+    revived = await combat_regeneration.settle(session, cs, conn=conn, mutations=mutations, sink=sink)
+
     # Persist cross-encounter conditions (M4.3, story-004; per-member M18 story-003): reconcile
     # EVERY player member's persistent conditions + surviving beneficial dice into their OWN
     # players.data row, not just the primary's — see reconcile_member_conditions. Same tx as the
@@ -276,7 +281,9 @@ async def _end_combat_db(
             await patron_deeds.record_deed(player_id, deed, conn=conn)
             if deed == "won_combat" and not session.ally_present_for(player_id):
                 await patron_deeds.record_deed(player_id, "won_alone", conn=conn)
-    death_context = await settle_lives(cs, outcome, primary_id, combat_cleared, queries, mutations, conn)
+    death_context = await settle_lives(
+        cs, outcome, primary_id, combat_cleared, queries, mutations, conn, primary_revived=primary_id in revived
+    )
 
     # Faction reputation from the combat OUTCOME (story-002 inc 5/6): killing an encounter
     # faction's members (victory) lowers standing; talking them down (deescalated) raises it.
