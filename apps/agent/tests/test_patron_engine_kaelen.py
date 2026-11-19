@@ -24,6 +24,7 @@ from voice_condition_fixtures import place_actors
 
 import db_mutations
 from activate_tools import _activate_impl, activate
+from check_tools import check
 from combat_end import end_combat
 from combat_turn import declare_phase, resolve_phase
 from mode_tools import enter_mode
@@ -181,7 +182,7 @@ async def battle_cry_setup(world, *, favor=40, patron_gifts=CRY_GIFTS, foe_hp=10
     place_actors(state)
     await db_mutations.save_combat_state(state.combat_id, state.to_dict(), conn=world.pool)
     session.combat_state = state
-    return game_tools(session, activate, query_info, declare_phase, resolve_phase, end_combat, enter_mode)
+    return game_tools(session, activate, query_info, declare_phase, resolve_phase, end_combat, enter_mode, check)
 
 
 def cry_conditions(state):
@@ -258,6 +259,28 @@ async def battle_cry_scenario(world, early_end):
             place_actors(state)
             await cry_round(world, call, "mawling_1", {"Rook": [12], "Iris": [11], "Kael": [12]})
         else:
+            with (
+                patch("check_resolution.dice_roll", return_value=_d20(9)),
+                patch("condition_bonus.dice_roll", return_value=_damage_die(3)) as bonus,
+            ):
+                save = await call(
+                    "check", roll={"kind": "save", "save_type": "dexterity", "dc": 12, "effect_on_fail": "Stumble"}
+                )
+                assert (save["total"], save["outcome"]) == (10, "failure")
+                bonus.assert_not_called()
+                skill = await call(
+                    "check",
+                    roll={
+                        "kind": "skill",
+                        "skill": "athletics",
+                        "difficulty": "moderate",
+                        "context_description": "Shift a fallen beam",
+                        "hearing_only": False,
+                    },
+                )
+                assert (skill["total"], skill["outcome"]) == (11, "failure")
+                bonus.assert_not_called()
+
             # Each ally has +3 before Battle Cry. Defend raises the foe's AC from 13 to 15.
             buffed = {"Rook": [15, 15], "Iris": [15], "Kael": [15]}
             for duration in (1, 0):
