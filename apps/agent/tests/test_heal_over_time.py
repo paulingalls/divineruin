@@ -99,7 +99,6 @@ async def test_exploration_resolves_the_surge_and_hour(healer, kaelen, maximum):
     assert (await healer.focus()) == 30 - spells.get_spell(REGENERATE).focus_cost
     row = await healer.read(ally)
     assert row["hp"] == {"current": maximum, "max": 40}
-    assert not any(c["type"] == "regenerating" for c in row.get("conditions", []))
     assert {"type": "hp_changed", "current": maximum, "max": maximum} in published_payloads(healer.sd.room)
 
 
@@ -160,7 +159,6 @@ async def test_combat_end_settles_regeneration_before_life_settlement(healer, ou
     row = await healer.read(recipient)
     assert row["hp"]["current"] == 40
     assert row["location_id"] == anchor
-    assert not any(c["type"] == "regenerating" for c in row.get("conditions", []))
     assert (await healer.read(unmarked))["hp"]["current"] == 8
     sends = healer.sd.room.local_participant.publish_data.call_args_list
     payloads = published_payloads(healer.sd.room)

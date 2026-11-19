@@ -43,7 +43,6 @@ async def settle(session, state, *, conn, mutations, sink) -> set[str]:
         condition = _condition(target)
         if condition is None:
             continue
-        target.conditions = remove_condition(target.conditions, "regenerating")
         if not target.is_ally or is_terminally_down(target):
             continue
         healed = await restore(target, _remaining(condition), conn=conn, mutations=mutations)
