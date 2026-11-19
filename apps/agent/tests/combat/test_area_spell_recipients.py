@@ -152,18 +152,18 @@ async def test_chain_primary_range_cap_and_secondary_damage(spell_fight, explici
 
 
 @pytest.mark.parametrize(
-    "spell_id,targets",
+    "spell_id,targets,reason",
     [
-        ("arcane_magic_missile", ["foe", "other"]),
-        ("arcane_magic_missile", ["foe"] * 5),
-        ("arcane_magic_missile", ["foe", "missing", "foe", "foe"]),
-        ("arcane_chain_lightning", ["foe", "out"]),
-        ("arcane_chain_lightning", ["foe", "other", "out", "a", "b"]),
-        ("arcane_meteor_swarm", ["foe", "other", "out", "a", "b"]),
-        ("arcane_lightning_bolt", ["same"]),
+        ("arcane_magic_missile", ["foe", "other"], "dart assignments"),
+        ("arcane_magic_missile", ["foe"] * 5, "dart assignments"),
+        ("arcane_magic_missile", ["foe", "missing", "foe", "foe"], "live participant anchors"),
+        ("arcane_chain_lightning", ["foe", "out"], "authored arc range"),
+        ("arcane_chain_lightning", ["foe", "other", "c", "a", "b"], "authored cap"),
+        ("arcane_meteor_swarm", ["foe", "other", "out", "a", "b"], "participant anchors"),
+        ("arcane_lightning_bolt", ["same"], "Area aim must differ"),
     ],
 )
-async def test_invalid_assignments_refuse_before_writes(spell_fight, spell_id, targets):
+async def test_invalid_assignments_refuse_before_writes(spell_fight, spell_id, targets, reason):
     from combat.test_spell_damage_lands import saved_player
     from livekit.agents.llm import ToolError
 
@@ -177,12 +177,13 @@ async def test_invalid_assignments_refuse_before_writes(spell_fight, spell_id, t
             "out": (31, 0, 0),
             "a": (1, 0, 0),
             "b": (2, 0, 0),
+            "c": (3, 0, 0),
             "same": (-100, 0, 0),
         },
     )
     state = ctx.userdata.combat_state.to_dict()
     player = await saved_player(ctx.userdata.player_id)
-    with pytest.raises(ToolError):
+    with pytest.raises(ToolError, match=reason):
         await declare_spell(ctx, spell_id, targets=targets)
     assert ctx.userdata.combat_state.to_dict() == state
     assert await saved_player(ctx.userdata.player_id) == player
