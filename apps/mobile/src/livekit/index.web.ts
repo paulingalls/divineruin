@@ -12,3 +12,7 @@ export {
 } from "@livekit/components-react";
 
 export type { ReceivedDataMessage } from "@livekit/components-core";
+
+export function bypassLoopbackVoiceProcessing(): () => void {
+  throw new Error("The loopback transport requires the native iOS audio device");
+}

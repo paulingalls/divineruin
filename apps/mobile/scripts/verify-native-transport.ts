@@ -314,7 +314,7 @@ export async function runScenario(
     const variables = {
       APP_LAUNCH_URL: appLaunchUrl,
       NATIVE_TRANSPORT_PRELAUNCHED: prelaunch ? "1" : "0",
-      ROUTE_URL: `${transportRouteUrl(fixtureUrl, runId)}${deps.choir ? `&choir=1&choir_fault=${deps.choirFault ?? "none"}` : ""}`,
+      ROUTE_URL: `${transportRouteUrl(fixtureUrl, runId)}${deps.acousticMarker ? "&loopback=1" : ""}${deps.choir ? `&choir=1&choir_fault=${deps.choirFault ?? "none"}` : ""}`,
       EXPECTED_STATUS: deps.choir
         ? deps.choirFault && deps.choirFault !== "none"
           ? `Choir guard failed: ${deps.choirFault}`

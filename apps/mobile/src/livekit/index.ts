@@ -1,3 +1,5 @@
+import { AudioDeviceModule } from "@livekit/react-native";
+
 // Native: re-export LiveKit hooks and components from @livekit/react-native
 export {
   LiveKitRoom,
@@ -11,3 +13,9 @@ export {
 } from "@livekit/react-native";
 
 export { useMaybeRoomContext } from "@livekit/components-react";
+
+export function bypassLoopbackVoiceProcessing(): () => void {
+  const bypassed = AudioDeviceModule.isVoiceProcessingBypassed();
+  AudioDeviceModule.setVoiceProcessingBypassed(true);
+  return () => AudioDeviceModule.setVoiceProcessingBypassed(bypassed);
+}
