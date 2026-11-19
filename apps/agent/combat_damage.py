@@ -1,7 +1,6 @@
 """Apply damage, including zero-HP transitions and their consequences."""
 
 import logging
-from dataclasses import replace
 from functools import partial
 
 import check_resolution_attack
@@ -248,13 +247,7 @@ async def _apply_damage(
     """
     import choir_encounter
 
-    if target.creature_id == "hollow_choir" and combat_state is not None and combat_state.choir_encounter is not None:
-        if not target.damage_affinities.get("immune"):
-            raise ValueError("Choir damage traits missing: reset/reseed old snapshots")
-        if combat_state.choir_encounter["phase"] != "exposed":
-            if attacker.id != target.id:
-                raise ValueError("Choir core must be exposed before damage")
-            attack_result = replace(attack_result, damage=0)
+    attack_result = choir_encounter.guard_damage(combat_state, attacker, target, attack_result)
     action, attack_result = combat_damage_affinity.apply(target, action, attack_result)
     from combat_veilrender import mark_radiant
 
