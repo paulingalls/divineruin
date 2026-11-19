@@ -156,6 +156,8 @@ async def _consume_legendary_action_locked(
 ) -> str:
     session: SessionData = context.userdata
     cs = _require_combat(session)
+    if cs.wrap_continuation is not None:
+        raise ToolError("Call resolve_phase to finish the round before spending a legendary action.")
     # The pure engine owns the 1/round rule + fail-loud (unknown / not-a-Boss / exhausted); surface
     # those as a ToolError so the DM re-prompts instead of crashing the turn.
     try:

@@ -1,9 +1,11 @@
 """Structured Choir targets use the committed combat geometry."""
 
 from dataclasses import replace
+from functools import partial
 
 import combat_spatial
 from combat_enemy_action import resolve_save_damage_action
+from combat_fate_rolls import packet_save
 
 
 def require_targets(state, actor, action, declaration):
@@ -33,22 +35,37 @@ def require_targets(state, actor, action, declaration):
     return [target]
 
 
-async def resolve_area(session, state, actor, action, declaration, **deps):
+async def resolve_area(session, state, actor, action, declaration, *, progress=None, head=None, **deps):
     from combat_action_availability import begin_execution
 
     deps.setdefault("reaction_save_advantage", False)
-    targets = require_targets(state, actor, action, declaration)
-    begin_execution(state, actor, action, declaration)
-    results = []
-    for target in targets:
+    steps = progress.steps if progress is not None else {}
+    if "targets" not in steps:
+        steps["targets"] = [target.id for target in require_targets(state, actor, action, declaration)]
+        steps["results"] = []
+        action = begin_execution(state, actor, action, declaration, head)
+    results = steps["results"]
+    for target_id in steps["targets"][len(results) :]:
         result = await resolve_save_damage_action(
-            session, actor, replace(declaration, target_id=target.id), action, state=state, **deps
+            session,
+            actor,
+            replace(declaration, target_id=target_id),
+            action,
+            state=state,
+            progress=progress.scope("target") if progress is not None else None,
+            **deps,
         )
-        results.append({"target_id": target.id, **result})
+        if progress is not None:
+            if progress.paused:
+                return {}
+            steps.pop("target", None)
+        results.append({"target_id": target_id, **result})
     return {"actor_id": actor.id, "resolved": True, "action": action["name"], "targets": results}
 
 
-async def resolve_effect(session, state, actor, action, declaration, *, reaction_save_advantage=False):
+async def resolve_effect(
+    session, state, actor, action, declaration, *, reaction_save_advantage=False, progress=None, head=None
+):
     import check_resolution_save
     from choir_effects import inflict_silence
     from combat_action_availability import begin_execution
@@ -65,10 +82,25 @@ async def resolve_effect(session, state, actor, action, declaration, *, reaction
         return inflict_silence(state, actor, action, declaration)
     if target.is_fallen or target.is_dead:
         return {"actor_id": actor.id, "resolved": False, "reason": "Melody target unavailable"}
-    begin_execution(state, actor, action, declaration)
-    save = check_resolution_save.roll_participant_save(
-        target, action["save"], action["dc"], "charmed", bonus_dice_eligible=False, advantage=reaction_save_advantage
+    if head is None or "execution_receipt" not in head:
+        begin_execution(state, actor, action, declaration, head)
+    save = await packet_save(
+        progress,
+        session,
+        target.id,
+        "charmed",
+        partial(
+            check_resolution_save.roll_participant_save,
+            target,
+            action["save"],
+            action["dc"],
+            "charmed",
+            bonus_dice_eligible=False,
+            advantage=reaction_save_advantage,
+        ),
     )
+    if save is None:
+        return {}
     result = {"actor_id": actor.id, "resolved": True, "save_success": save.success}
     if reaction_save_advantage and save.advantage_applied:
         result["save_advantage"] = True

@@ -6,13 +6,13 @@ import pytest
 from combat._helpers import _make_combat_state
 from sample_fixtures import make_context, make_mock_room
 
-import combat_support
+import combat_damage
 import event_types as E
 from check_resolution_attack import AttackResult
+from combat_damage import apply_attack_result
 from combat_events import EventSink
 from combat_support import (
     _resolve_attack_packet,
-    apply_attack_result,
     deserialize_roll,
     roll_attack,
     serialize_roll,
@@ -294,9 +294,9 @@ class TestDramaticEmission:
         )
         sink = EventSink()
         with patch.object(
-            combat_support,
+            combat_damage,
             "build_attack_dice_roll_payload",
-            wraps=combat_support.build_attack_dice_roll_payload,
+            wraps=combat_damage.build_attack_dice_roll_payload,
         ) as builder:
             await apply_attack_result(
                 make_context().userdata,

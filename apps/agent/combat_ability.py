@@ -118,6 +118,7 @@ async def _resolve_ability_condition_packet(
     conn,
     player: dict | None,
     persistence=ability_persistence,
+    progress=None,
 ) -> dict:
     """Resolve a non-spell condition-applying ABILITY in combat (M4.8 story-005, e.g. bard_inspire).
 
@@ -174,11 +175,21 @@ async def _resolve_ability_condition_packet(
         return waste
     assert target is not None
 
-    await _deduct_ability_cost(attacker.id, player, ability, variant, persistence=persistence, conn=conn)
+    steps = progress.steps if progress is not None else {}
+    if not steps.get("cost_paid"):
+        await _deduct_ability_cost(attacker.id, player, ability, variant, persistence=persistence, conn=conn)
+        steps["cost_paid"] = True
 
     if ability.save is not None:
-        summary = combat_ability_save.resolve_hostile_condition(
-            state, attacker, target, decl, ability, _land_condition_on_one
+        summary = await combat_ability_save.resolve_hostile_condition(
+            session,
+            state,
+            attacker,
+            target,
+            decl,
+            ability,
+            _land_condition_on_one,
+            progress=progress,
         )
         return _with_variant(summary, variant)
 
@@ -266,6 +277,7 @@ async def _resolve_ability_packet(
     player: dict | None,
     cast_outcome: AbilityCastOutcome,
     damage_deps=None,
+    progress=None,
 ) -> dict:
     """Resolve one in-combat ABILITY declaration through the shared cast logic (story-007).
 
@@ -300,69 +312,117 @@ async def _resolve_ability_packet(
     from combat_spell_recipients import select
 
     spell = spells.get_spell(decl.action)
+    steps = progress.steps if progress is not None else {}
+    shield = progress.scope("shield") if progress is not None else None
     deliveries = None
     if spell.combat_damage and spell.combat_damage.get("recipients"):
-        deliveries = select(state, attacker, decl, spell)
-        redirects = {}
-        for delivery in deliveries:
-            target_id = delivery["target_id"]
-            if target_id not in redirects:
-                redirected = effective_declaration(state, attacker, replace(decl, target_id=target_id, target_ids=None))
-                redirects[target_id] = redirected.target_id
-            delivery["target_id"] = redirects[target_id]
+        # Area recipients are frozen once, then each distinct recipient may redirect the spell (the
+        # Choir's shield). A Zhael-held redirect save resumes here without re-selecting or re-rolling.
+        selected = steps.get("selected")
+        if selected is None:
+            selected = select(state, attacker, decl, spell)
+            if progress is not None:
+                steps["selected"] = selected
+        redirects = steps.setdefault("redirects", {})
+        for target_id in dict.fromkeys(d["target_id"] for d in selected):
+            if target_id in redirects:
+                continue
+            redirected = await effective_declaration(
+                session,
+                state,
+                attacker,
+                replace(decl, target_id=target_id, target_ids=None),
+                progress=shield.scope(target_id) if shield is not None else None,
+            )
+            if redirected is None:
+                return {}
+            redirects[target_id] = redirected.target_id
+        deliveries = [{**d, "target_id": redirects[d["target_id"]]} for d in selected]
         if decl.target_id in redirects:
             decl = replace(decl, target_id=redirects[decl.target_id])
     else:
-        decl = effective_declaration(state, attacker, decl)
-    result = await cast_resolver._resolve_cast(
-        session,
-        decl.action,
-        conn=conn,
-        caster=caster,
-        player=player,
-        combat_state=state,
-        target_id=decl.target_id,
-        target_ids=decl.target_ids,
-        suppress_resonance_changed=True,
-    )
-
-    if result.new_resonance is not None:
-        combat_hollow_resonance.stage_total(state, attacker.id, result.new_resonance)
-    if result.concentration_spell_id is not spell_casting._UNCHANGED:
-        caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
-    if deliveries is not None:
-        effective_ids = list(dict.fromkeys(d["target_id"] for d in deliveries))
-        landing = (
-            combat_veilrender.absorb_spell(
-                state, attacker, replace(decl, target_id=None, target_ids=effective_ids), result.packet
-            )
-            if effective_ids
-            else None
+        decl = await effective_declaration(session, state, attacker, decl, progress=shield)
+        if decl is None:
+            return {}
+    cast_packet = steps.get("cast_packet")
+    if cast_packet is None:
+        result = await cast_resolver._resolve_cast(
+            session,
+            decl.action,
+            conn=conn,
+            caster=caster,
+            player=player,
+            combat_state=state,
+            target_id=decl.target_id,
+            target_ids=decl.target_ids,
+            suppress_resonance_changed=True,
         )
-        absorbed = {receipt["target_id"] for receipt in result.packet.get("absorbed", [])}
+        cast_outcome.results[attacker.id] = result
+        if result.new_resonance is not None:
+            combat_hollow_resonance.stage_total(state, attacker.id, result.new_resonance)
+        # Sync concentration into the CASTER's SSOT IN-LOOP (not post-commit): a lower-initiative enemy
+        # attack later this same phase runs break_concentration_on_damage, which reads the in-memory
+        # concentration to pick which spell to save for and to clear on a failed save. A post-commit sync
+        # would leave it stale — the break would save against the OLD spell and, on a break, write None to
+        # the DB (clearing the just-cast spell) while the post-commit sync forced memory back to the new
+        # spell, diverging from the DB (story-007). _CombatScratchSnapshot captures concentration, so this
+        # in-tx mutation is reverted if the phase rolls back. break_concentration_on_damage now reads the
+        # DAMAGED member's own concentration (via damaged_player_id, M18 story-004), so a non-primary
+        # caster's break resolves against their own pool — matching this per-member SYNC.
+        if result.concentration_spell_id is not spell_casting._UNCHANGED:
+            caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
+        cast_packet = result.packet
+        # Veilrender Absorb Magic heals once per cast, so its landing is frozen with the cast packet.
+        if deliveries is not None:
+            effective_ids = list(dict.fromkeys(d["target_id"] for d in deliveries))
+            landing = (
+                combat_veilrender.absorb_spell(
+                    state, attacker, replace(decl, target_id=None, target_ids=effective_ids), cast_packet
+                )
+                if effective_ids
+                else None
+            )
+        else:
+            landing = combat_veilrender.absorb_spell(state, attacker, decl, cast_packet)
+        steps["cast_packet"] = cast_packet
+        steps["landing"] = (
+            None if landing is None else {"target_id": landing.target_id, "target_ids": landing.target_ids}
+        )
+    landing = None if steps["landing"] is None else replace(decl, **steps["landing"])
+    if deliveries is not None:
+        absorbed = {receipt["target_id"] for receipt in cast_packet.get("absorbed", [])}
         deliveries = [d for d in deliveries if d["target_id"] not in absorbed]
-    else:
-        landing = combat_veilrender.absorb_spell(state, attacker, decl, result.packet)
     if deliveries is not None or landing is not None:
         await combat_spell_damage.land(
-            session, state, attacker, landing or decl, result, conn=conn, deliveries=deliveries, **(damage_deps or {})
+            session,
+            state,
+            attacker,
+            landing or decl,
+            cast_packet,
+            conn=conn,
+            deliveries=deliveries,
+            progress=progress.scope("spell_damage") if progress is not None else None,
+            **(damage_deps or {}),
         )
-    cast_outcome.results[attacker.id] = result
-    cond_type = result.packet.get("condition_applied")
+        if progress is not None and progress.paused:
+            return {}
+    # Beneficial-condition PRODUCER (M4.8 story-004), in-combat half: land the produced condition on the
+    # recipients that remain after Absorb Magic. The mutation rides this phase's save_combat_state.
+    cond_type = cast_packet.get("condition_applied")
     if cond_type and landing is not None:
         voiced = land_condition_on_participants(
-            state, attacker, landing, cond_type, source=landing.action, packet=result.packet
+            state, attacker, landing, cond_type, source=landing.action, packet=cast_packet
         )
         if voiced:
-            result.packet["condition_targets"] = voiced
+            cast_packet["condition_targets"] = voiced
         else:
-            result.packet.pop("condition_applied", None)
+            cast_packet.pop("condition_applied", None)
     summary = {
         "actor_id": attacker.id,
         "resolved": True,
         "declaration_type": str(decl.type),
         "action": decl.action,
-        "cast": result.packet,
+        "cast": cast_packet,
     }
     return _attach_riders(summary, attacker, decl)
 

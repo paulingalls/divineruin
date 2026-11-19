@@ -44,7 +44,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 - **Alignment evaluation is LLM-driven, not rules-engine-driven.** Spec promises `evaluate_patron_alignment(player_actions, patron_values) -> favor_delta` as deterministic. Historically the LLM called `award_divine_favor(amount, reason)` with a freeform judgement; M28 story-003 removed that tool, so favor is already off LLM judgement — but it is driven by authored quest content, not yet by a deterministic alignment evaluation. `content/gods.json` already encodes `favor_actions.positive[]` and `favor_actions.negative[]` per patron — currently unused. <!-- see audit/phase-8-patrons.md -->
 - **No 15-30 minute simulation heartbeat for favor.** `apps/agent/async_worker.py:400` `check_god_whisper_triggers` polls FAVOR_WHISPER threshold for whispers — that's not patron alignment evaluation.
 - **Layer 4 synergy is too coarse.** `creation_deities.DeityData.synergy_classes` is a flat tuple per deity (e.g., `kaelen → (warrior, guardian, skirmisher, paladin)`) — no Natural/Divine/Unexpected categorisation, no per-pairing mechanical bonus. Needs an (11 × 18) archetype × patron matrix.
-- **Unbound Path mechanics: 1 done, 4 missing.** Selectable ✓; Veil Clarity ✗, voluntary +3 Resonance push ✗, Veil Mastery + Self-Reliance milestones ✗, universal Layer 4 +1 when alone ✗. Even constants "Self-Reliant"/"Self-Forged"/"Sovereign" appear nowhere in code.
+- **Unbound Path mechanics implemented.** Selectable, Veil Clarity, Raw Channeling and universal Layer 4 +1 when alone ship (sprints patron-favor-mini and archetype-synergies). Persisted autonomy and all three deed producers ship; Self-Reliant grants a durable save choice, Self-Forged grants long-rest Divine Immunity (narrated resolution only), and Sovereign gates once-per-session Veil Mastery (sprint unbound-self-reliance). Evidence: `test_unbound_autonomy.py`, `test_deed_producers.py`, `test_unbound_milestones.py` and `test_unbound_path.py`.
 - **Spec hint not in milestone**: Veythar's "Post-reveal: divine filter degrades from 0.3× to 0.7×" (spec L47) describes an endgame state transition on a Layer 2 modifier. Capstone may want to flag as NEW or defer.
 
 ### Cross-doc dependencies
@@ -90,7 +90,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 - [x] Favor can decay (not just grow) — neglecting patron values reduces favor over time
   <!-- Evidence: test_favor_decay_hydration.py checks fresh-session persistence, event delivery, join, and handback; use-game-events.character.test.ts checks the shared event fixture on the client. -->
 - [x] Unbound Path is selectable and grants Resonance visibility, +3 voluntary Resonance push, and Veil Mastery (sprint patron-favor-mini)
-  <!-- Evidence (sprint patron-favor-mini): test_unbound_path.py and test_unbound_commit_integrity.py cover exact Resonance in query_info, the once-per-encounter Raw Channeling push via activate, and once-per-session Veil Mastery. Tier-gating by autonomy milestones belongs to M8.3. -->
+  <!-- Evidence (sprint patron-favor-mini): test_unbound_path.py and test_unbound_commit_integrity.py cover exact Resonance in query_info, the once-per-encounter Raw Channeling push via activate, and once-per-session Veil Mastery. Sovereign gating now ships in M8.3, covered by test_unbound_milestones.py::test_pre_sovereign_echo_is_real_for_acting_member. -->
 - [x] `content/gods.json` validates with all 10 complete patron profiles (sprint patron-favor-mini)
   <!-- Evidence (sprint patron-favor-mini): the Python loader and the TS validateGods fail loudly on the shared invalid corpus; Layer 4 stays reserved null until M8.3. -->
 - [x] Background process calls `evaluate_patron_alignment` on 15-30 minute heartbeat
@@ -171,26 +171,41 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 - Unbound Path full implementation:
   - Perfect Resonance visibility (player always knows exact Resonance value)
   - Voluntary +3 Resonance push (player can choose to gain Resonance for power boost)
-  - Veil Mastery passive (reduced negative Hollow effects, bonus saves vs corruption)
+  - Veil Mastery passive (at Sovereign, the first Hollow Echo of a session becomes “Nothing stirs”; later Echoes apply normally)
   - No patron abilities — Unbound trades divine power for Resonance mastery
 - DB migration: `archetype_synergy` table (archetype_id, patron_id, synergy_type, bonus)
 - Rules engine: `get_archetype_synergy(archetype, patron)` returning synergy type and bonus
 - Rules engine: `apply_unbound_resonance_push(player)` adding +3 Resonance with associated benefits
-- Agent tool: `query_patron_synergy(player_id)` returning active synergy for current archetype/patron pair
+- Agent tool: `query_info(kind="patron")` returns the current archetype/patron synergy, including clause readiness
+
+**Human decision (2026-11-18, sprint `unbound-self-reliance`):** Scope: “Veil Mastery follows the design doc.” The M8.3 effect below retains automatic first-Echo conversion once per session, gated behind Sovereign.
 
 **Acceptance criteria:**
-- [ ] Synergy lookup covers all archetype x patron combinations (every archetype has entries for every patron)
-- [ ] Each pairing has exactly one synergy type assigned (Natural, Divine, or Unexpected)
-- [ ] Natural synergies provide the largest mechanical bonus, Unexpected the most unique
-- [ ] `get_archetype_synergy` returns correct synergy for any archetype/patron pair
-- [ ] Layer 4 bonuses apply on top of existing Layer 1-3 mechanics without overriding them
-- [ ] Unbound Path grants perfect Resonance visibility (exact value, not just tier)
-- [ ] Unbound +3 Resonance push is voluntary and costs no action
-- [ ] Veil Mastery provides measurable mechanical benefit (bonus to corruption saves, reduced Hollow effects)
-- [ ] Unbound Path has NO patron abilities — only Resonance mastery benefits
-- [ ] `query_patron_synergy` returns empty/null for Unbound players (no synergy applicable)
+- [x] Synergy lookup covers all archetype x patron combinations (every archetype has entries for every patron)
+  <!-- Evidence (sprint archetype-synergies): test_patron_synergy.py walks all 180 loaded pairs through get_archetype_synergy and registered query_info; god.test.ts validates all ten matrices against the eighteen-archetype roster. -->
+- [x] Each pairing has exactly one synergy type assigned (Natural, Divine, or Unexpected)
+  <!-- Evidence (sprint archetype-synergies): test_patron_synergy.py and god.test.ts validate the loaded matrix: 22 Natural, 62 Divine, 96 Unexpected rows, each with one type. -->
+- [x] Natural synergies provide the largest mechanical bonus, Unexpected the most unique
+  <!-- Evidence (sprint archetype-synergies): human approved the final 180-row review table on 2026-11-18 (table SHA-256 5dee713a…, content SHA-256 c3238a53…, commit 903ac541). test_patron_synergy.py requires a mechanical clause on every Natural row and keeps Natural rows to the design roster. -->
+- [x] `get_archetype_synergy` returns correct synergy for any archetype/patron pair
+  <!-- Evidence (sprint archetype-synergies): test_patron_synergy.py compares each of the 180 lookups and registered query responses to validated content; god.test.ts validates the shared catalog. -->
+- [x] Layer 4 bonuses apply on top of existing Layer 1-3 mechanics without overriding them
+  <!-- Evidence (sprint archetype-synergies): test_patron_synergy_engine.py covers Kaelen’s Layer 1 threshold composition, Aelora’s Bond adjustment and Syrath’s Layer 2 composition at live boundaries; test_patron_synergy_readiness.py keeps pending clauses unavailable. Of 200 clauses, 12 are active/engine, 85 active/narrated and 103 pending/engine. -->
+- [x] Unbound Path grants perfect Resonance visibility (exact value, not just tier)
+  <!-- Evidence (sprint unbound-self-reliance): test_unbound_path.py::test_guest_discovery_uses_persisted_resonance_and_bypasses_gods invokes registered query_info for an Unbound guest and Kaelen follower: persisted exact current versus state only. -->
+- [x] Unbound +3 Resonance push is voluntary and costs no action
+  <!-- Evidence (sprint unbound-self-reliance): test_unbound_path.py::test_raw_channeling_preserves_action_and_reaction discovers and activates Raw Channeling, accepts the same-turn action, spends a resolver-offered reaction, and refuses reuse in the encounter. -->
+- [x] At Sovereign, Veil Mastery automatically converts the first Hollow Echo of a session to “Nothing stirs”; later Echoes apply normally
+  <!-- Evidence (sprint unbound-self-reliance): test_unbound_path.py::test_mastery_lifetime_natural_nothing_and_zero_generation and ::test_combat_cast_commits_mastery_for_declaring_member prove first-Echo conversion and subsequent effects; its concurrency and encounter-reset cases retain lifetime evidence. test_unbound_milestones.py::test_pre_sovereign_echo_is_real_for_acting_member proves the Sovereign gate. -->
+- [x] Unbound Path has NO patron abilities — only Resonance mastery benefits
+  <!-- Evidence (sprint unbound-self-reliance): test_unbound_path.py::test_unbound_refuses_all_patron_abilities refuses all 40 gods.json tier/gift IDs through registered activate with reason checks and unchanged player data; the registered query and test_unbound_milestones.py::test_discovery return empty abilities. -->
+- [x] `query_info(kind="patron")` returns `synergy: null` for Unbound players (no patron synergy applicable)
+  <!-- Evidence (sprint archetype-synergies): test_patron_synergy.py exercises the registered Unbound query response. Scope: reuse query_info and retain the strict-schema tool budget; the universal alone_bonus remains a separate field. -->
 - [ ] All 10 patrons + Unbound Path are fully implemented and playable after this milestone
-- [ ] Tests cover synergy lookup for all combinations, Unbound mechanics, and Layer 4 bonus stacking
+- [x] Tests cover synergy lookup for all combinations, Unbound mechanics, and Layer 4 bonus stacking
+  <!-- Evidence (sprint unbound-self-reliance): test_patron_synergy.py covers all 180 lookups; test_patron_synergy_engine.py covers Layer 1–3 composition/stacking; test_unbound_alone_bonus.py covers alone checks; test_unbound_path.py and test_unbound_milestones.py cover registered commands, Echo lifetime and durable rewards. -->
+
+**Review:** The human approved the final 180-row table on 2026-11-18 (table SHA-256 `5dee713a…`, content SHA-256 `c3238a53…`, commit `903ac541`), closing AC3. The approved table is retained in sprint DATA at `sprints/archetype-synergies/synergy-review.md` with every changed number. Content and design share the approved corrections, including Nythera’s live Animal Handling +1 instead of advantage. Veythar’s three Natural rows remain pending on the combat seam. Pending clauses are unavailable.
 
 **Key references:**
 - *Game Mechanics Patrons — Archetype Synergies*

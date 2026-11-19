@@ -88,21 +88,19 @@ async def test_pending_and_always_on_refuse_without_writes(dev_db_pool, monkeypa
     from functools import partial
 
     import patron_ability_tools
-    import query_tools
+    import query_patron
     from _gods_content import _validate_gods
 
     async with AbilityWalk(dev_db_pool) as w:
         await w.patch(divine_favor={"patron": "veythar", "level": 100, "max": 100})
         before = await w.state()
-        assert "pending" in await w.use("veythar_scholars_ward", error=True)
+        assert "pending" in await w.use("veythar_wellspring_echo", error=True)
         rows = copy.deepcopy(load_gods())
         library = rows[0]["layer_3_tier_abilities"]["devoted"]
         library["status"] = "pending"
         _validate_gods(rows)
         monkeypatch.setattr(patron_ability_tools, "load_gods", lambda: rows)
-        monkeypatch.setattr(
-            query_tools, "_query_patron_impl", partial(query_tools._query_patron_impl, gods_loader=lambda: rows)
-        )
+        monkeypatch.setattr(query_patron, "query_patron", partial(query_patron.query_patron, gods_loader=lambda: rows))
         assert "pending" in await w.use(LIBRARY, error=True)
         assert await w.state() == before
         pending = next(a for a in await w.abilities() if a["id"] == LIBRARY)
@@ -113,6 +111,30 @@ async def test_pending_and_always_on_refuse_without_writes(dev_db_pool, monkeypa
         assert await w.state() == before
         ability = next(a for a in await w.abilities() if a["id"] == LIBRARY)
         assert ability["eligible"] and not ability["available"] and "always-on" in ability["reason"]
+        library.update(status="active", recharge="long_rest", resolution="engine", implementation_id="zhael_lucky")
+        _validate_gods(rows)
+        assert "pending" in await w.use(LIBRARY, error=True)
+        assert await w.state() == before
+        ability = next(a for a in await w.abilities() if a["id"] == LIBRARY)
+        assert not ability["available"] and ability["state"] == "locked"
+
+
+@pytest.mark.parametrize(
+    "patron,ability_id",
+    [
+        ("veythar", "veythar_scholars_ward"),
+        ("kaelen", "kaelen_warriors_endurance"),
+    ],
+)
+async def test_engine_passives_are_eligible_but_never_spend(dev_db_pool, patron, ability_id):
+    async with AbilityWalk(dev_db_pool) as w:
+        await w.patch(divine_favor={"patron": patron, "level": 0, "max": 100})
+        before = await w.state()
+        ability = next(a for a in await w.abilities() if a["id"] == ability_id)
+        assert ability["status"] == "active" and ability["eligible"] and not ability["available"]
+        assert "always-on" in ability["reason"]
+        assert "always-on" in await w.use(ability_id, error=True)
+        assert await w.state() == before
 
 
 async def test_per_session_spend_survives_both_rests(dev_db_pool):

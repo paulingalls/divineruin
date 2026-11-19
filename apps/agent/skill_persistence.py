@@ -10,9 +10,9 @@ read/record/write/clear-narrative sequence.
 
 from __future__ import annotations
 
-import check_resolution
 import db_mutations_skill_advancement
 import db_queries
+import skill_advancement
 
 
 async def apply_skill_use_with_persistence(
@@ -48,7 +48,7 @@ async def apply_skill_use_with_persistence(
 
     adv = None
     for _ in range(counter_increment):
-        adv = check_resolution.record_skill_use(tiers, skill, counters, narrative_moment=narrative)
+        adv = skill_advancement.record_skill_use(tiers, skill, counters, narrative_moment=narrative)
         tiers[skill_key] = adv.new_tier
         counters[skill_key] = adv.new_use_count
 

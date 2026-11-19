@@ -7,8 +7,8 @@ from sample_fixtures import make_context
 from voice_condition_fixtures import place_actors
 
 import conditions
+from combat_damage import _handle_hp_zero
 from combat_enemy_active import heal
-from combat_support import _handle_hp_zero
 from session_data import CombatParticipant, CombatState, CompanionState
 from tool_support import SOUND_HOLLOW_RISE, SOUND_PLAYER_FALLEN
 
@@ -272,10 +272,10 @@ class TestTheDoorIsTheOnlyDoor:
 
     def test_every_hp_current_writer_goes_through_the_door_or_is_named(self):
         assert _attribute_writers("hp_current") == {
-            ("combat_support.py", "apply_attack_result"),
+            ("combat_damage.py", "_apply_damage"),
             ("draethar_inner_fire.py", "_inner_fire_locked"),
             # INSIDE the door — the Hollowed rise, max(1, hp_max // 2), which cannot be 0.
-            ("combat_support.py", "_handle_hp_zero"),
+            ("combat_damage.py", "_handle_hp_zero"),
             # The nat-20 revive writes 1 UPWARD and clears is_fallen in the same block, so it
             # never leaves a participant at 0: an exit from the fallen state, not an entry to it.
             ("combat_death_save.py", "_request_death_save_locked"),
@@ -285,7 +285,7 @@ class TestTheDoorIsTheOnlyDoor:
 
     def test_is_fallen_is_set_in_one_place_and_cleared_in_one_place(self):
         assert _attribute_writers("is_fallen") == {
-            ("combat_support.py", "_handle_hp_zero"),
+            ("combat_damage.py", "_handle_hp_zero"),
             ("combat_death_save.py", "_request_death_save_locked"),
         }
 

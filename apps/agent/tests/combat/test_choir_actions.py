@@ -436,7 +436,7 @@ async def test_melody_source_damage_owner_clears_movement(damage, same_source):
     import copy
 
     from choir_effects import approach
-    from combat_support import SaveDamageResult, apply_attack_result
+    from combat_damage import SaveDamageResult, apply_attack_result
 
     state, actor, _packet = setup(SCREAM)
     target = state.participants[0]

@@ -9,7 +9,7 @@ resolve_attack accepts an optional `rng` for deterministic testing.
 import random
 from dataclasses import dataclass
 
-from check_resolution import _roll_d20_check, roll_bonus_dice
+from check_resolution import D20CheckCore, D20Roll, roll_bonus_dice
 from condition_restrictions import (
     attack_consumed_conditions,
     incoming_advantage,
@@ -111,6 +111,17 @@ def attack_modes(attacker_data: dict, weapon: dict, target_conditions=()) -> tup
     return advantage, disadvantage
 
 
+@dataclass(frozen=True)
+class PreparedAttack:
+    d20: D20Roll
+    original: D20CheckCore
+    consumed: tuple[str, ...]
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "PreparedAttack":
+        return cls(D20Roll(**data["d20"]), D20CheckCore(**data["original"]), tuple(data["consumed"]))
+
+
 def resolve_attack(
     attacker_data: dict,
     weapon: dict,
@@ -121,6 +132,28 @@ def resolve_attack(
     damage_mult: float = 1.0,
     target_conditions: list[dict] | tuple = (),
 ) -> AttackResult:
+    prepared = prepare_attack(attacker_data, weapon, target_ac, rng, attack_mod, target_conditions)
+    return finish_attack(
+        attacker_data,
+        weapon,
+        target_ac,
+        target_hp,
+        prepared,
+        prepared.original,
+        rng=rng,
+        damage_mult=damage_mult,
+        target_conditions=target_conditions,
+    )
+
+
+def prepare_attack(
+    attacker_data: dict,
+    weapon: dict,
+    target_ac: int,
+    rng: random.Random | None = None,
+    attack_mod: int = 0,
+    target_conditions: list[dict] | tuple = (),
+) -> PreparedAttack:
     # Attacker condition effects (M4.3): Exhausted -1/stack folds into the attack roll,
     # Prone/Blinded etc. impose disadvantage (scope "attack"), Enraged adds +2 damage below.
     # The defender's AC modifier (e.g. Enraged -2 AC) is the caller's concern (combat_support),
@@ -154,14 +187,23 @@ def resolve_attack(
             )
         )
     )
-    atk_mod += bonus
-    # Attack uses the same d20+mod-vs-target rule as skill checks/saves: nat-20
-    # always hits, nat-1 always misses, else total >= AC. Route through the shared
-    # primitive (target_ac is the attack-side DC) so the rule can't drift; attack
-    # vocab (hit/critical) and the crit-doubles-damage side-effect stay here.
-    core = _roll_d20_check(
-        mod=atk_mod, dc=target_ac, rng=rng, advantage=attack_advantage, disadvantage=attack_disadvantage
-    )
+    d20 = D20Roll(atk_mod + bonus, target_ac, attack_advantage, attack_disadvantage)
+    return PreparedAttack(d20, d20.roll(rng), consumed)
+
+
+def finish_attack(
+    attacker_data: dict,
+    weapon: dict,
+    target_ac: int,
+    target_hp: int,
+    prepared: PreparedAttack,
+    core: D20CheckCore,
+    *,
+    rng: random.Random | None = None,
+    damage_mult: float = 1.0,
+    target_conditions: list[dict] | tuple = (),
+) -> AttackResult:
+    effects = get_condition_effects(attacker_data.get("conditions") or [])
     d20 = core.roll
     attack_total = core.total
     hit = core.success
@@ -183,10 +225,11 @@ def resolve_attack(
         if critical and damage_notation != "0":
             crit_result = dice_roll(damage_notation, rng=rng)
             damage += crit_result.total
-        if not catalog and weapon.get("damage_attribute", True) and damage_notation != "0":
+        if weapon.get("attack_source") != "catalog" and weapon.get("damage_attribute", True) and damage_notation != "0":
             damage += weapon_attribute_modifier(attacker_data, weapon)
         if attacker_data.get("sneak_attack_available") and (
-            (attack_advantage and not attack_disadvantage) or attacker_data.get("sneak_attack_adjacent_ally")
+            (prepared.d20.advantage and not prepared.d20.disadvantage)
+            or attacker_data.get("sneak_attack_adjacent_ally")
         ):
             count = 1 + (attacker_data.get("level", 1) - 1) // 4
             sneak_attack_dice = f"{count * (2 if critical else 1)}d6"
@@ -209,11 +252,11 @@ def resolve_attack(
             bonus_damage = dice_roll(authored_bonus["dice"], rng=rng).total
             bonus_damage_type = authored_bonus["damage_type"]
             damage += bonus_damage
-        prepared = weapon.get("prepared_on_hit")
-        if prepared is not None and "damage" in prepared:
-            rider_damage = dice_roll(prepared["damage"], rng=rng).total
-            rider_damage_type = prepared["damage_type"]
-            rider_ignores_resistance = prepared["ignores_resistance"]
+        on_hit = weapon.get("prepared_on_hit")
+        if on_hit is not None and "damage" in on_hit:
+            rider_damage = dice_roll(on_hit["damage"], rng=rng).total
+            rider_damage_type = on_hit["damage_type"]
+            rider_ignores_resistance = on_hit["ignores_resistance"]
             damage += rider_damage
         bonus_damage = int(bonus_damage * damage_mult)
         rider_damage = int(rider_damage * damage_mult)
@@ -247,7 +290,7 @@ def resolve_attack(
     return AttackResult(
         hit=hit,
         roll=d20,
-        attack_modifier=atk_mod,
+        attack_modifier=prepared.d20.modifier,
         attack_total=attack_total,
         target_ac=target_ac,
         damage=damage,
@@ -265,7 +308,7 @@ def resolve_attack(
         rider_damage=rider_damage,
         rider_damage_type=rider_damage_type,
         rider_ignores_resistance=rider_ignores_resistance,
-        consumed_conditions=consumed,
+        consumed_conditions=prepared.consumed,
         sneak_attack_dice=sneak_attack_dice,
         sneak_attack_raw_damage=sneak_attack_raw_damage,
     )

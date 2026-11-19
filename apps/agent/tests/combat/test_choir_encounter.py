@@ -86,6 +86,7 @@ async def test_choir_search_success_and_failure_spend_action(skill, face, succes
 
     player = {
         **queries.get_player.return_value,
+        "divine_favor": {"patron": "valdris", "level": 0, "max": 100},
         "level": 16,
         "attributes": {"wisdom": 14, "intelligence": 18},
         "skill_tiers": {skill: tier},
@@ -140,7 +141,7 @@ async def test_choir_search_success_and_failure_spend_action(skill, face, succes
 )
 async def test_choir_core_attack_damage_policy(damage_type, expected, mock_combat_agent_factory):
     from check_resolution_attack import AttackResult
-    from combat_support import apply_attack_result
+    from combat_damage import apply_attack_result
 
     ctx, _, mutations, queries = await start_choir()
     state = ctx.userdata.combat_state

@@ -7,10 +7,11 @@ import asyncpg
 from _gods_content import load_gods
 from favor_rules import evaluate_patron_alignment
 from progression_tools import FavorGrant, _award_divine_favor_core
+from unbound_autonomy import AutonomyGrant, judge_autonomy, load_unbound
 
 
 async def record_deed(player_id: str, kind: str, *, conn: asyncpg.Connection) -> None:
-    if not any(
+    if kind not in load_unbound()[0] and not any(
         row["action"] == kind
         for god in load_gods()
         for category in ("positive", "negative")
@@ -43,7 +44,7 @@ async def mark_awarded(player_id: str, kind: str, *, conn: asyncpg.Connection) -
 
 async def judge_pending_deeds(
     player_id: str, *, conn: asyncpg.Connection, pending_events: list[tuple[str, dict]]
-) -> FavorGrant | None:
+) -> FavorGrant | AutonomyGrant | None:
     row = await conn.fetchrow("SELECT data FROM players WHERE player_id = $1 FOR UPDATE", player_id)
     if row is None:
         raise ValueError(f"Player '{player_id}' not found")
@@ -52,16 +53,26 @@ async def judge_pending_deeds(
     if not deeds:
         return None
     favor = data.get("divine_favor")
-    grant = None
-    if favor is not None and favor.get("patron", "none") != "none":
-        patron = next((god for god in load_gods() if god["god_id"] == favor["patron"]), None)
+    patron_id = favor.get("patron") if favor is not None else None
+    grant: FavorGrant | AutonomyGrant | None = None
+    if patron_id not in (None, "none"):
+        patron = next((god for god in load_gods() if god["god_id"] == patron_id), None)
         if patron is None:
-            raise ValueError(f"Unknown patron '{favor['patron']}'")
+            raise ValueError(f"Unknown patron '{patron_id}'")
         # A zero judgment (only foreign or awarded kinds) would publish a "+0" favor change.
         delta = evaluate_patron_alignment(deeds, patron)
         if delta != 0:
             grant = await _award_divine_favor_core(
                 player_id, delta, "Patron deed judgment", conn=conn, pending_events=pending_events
+            )
+    else:
+        result = judge_autonomy(deeds, data.get("unbound_autonomy"))
+        if result is not None:
+            state, grant = result
+            await conn.execute(
+                "UPDATE players SET data=jsonb_set(data, '{unbound_autonomy}', $2::jsonb) WHERE player_id=$1",
+                player_id,
+                json.dumps(state),
             )
     await conn.execute(
         "UPDATE players SET data = jsonb_set(data, '{patron_deeds}', '{}'::jsonb) WHERE player_id = $1",

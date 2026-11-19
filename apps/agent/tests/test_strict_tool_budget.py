@@ -10,6 +10,7 @@ from agent_tool_profiles import AGENT_PROFILE_NAMES, AGENT_TOOL_LISTS
 from livekit.agents.llm import ToolContext
 from tool_schema_walk import SchemaFacts, walk_tool_schema
 
+from base_agent import BaseGameAgent
 from combat_agent import COMBAT_AGENT_TOOLS
 from dispatch_agent import DISPATCH_TOOLS
 from exploration_agent import EXPLORATION_TOOLS
@@ -51,7 +52,9 @@ def test_dispatch_strict_tool_count():
 
 def _agent_schema_facts(tools) -> dict[str, SchemaFacts]:
     """Walk the schemas the Anthropic plugin actually emits for one agent's tool list."""
-    parsed = ToolContext(tools).parse_function_tools("anthropic", strict=True)
+    parsed = ToolContext(BaseGameAgent(instructions="Test strict tools.", tools=tools).tools).parse_function_tools(
+        "anthropic", strict=True
+    )
     return {tool["name"]: walk_tool_schema(tool["input_schema"]) for tool in parsed}
 
 
@@ -75,8 +78,8 @@ def test_agent_within_strict_schema_budget(name, tools):
 # Exact, not <=, so a NEW defaulted @function_tool parameter — each one emits
 # `type: [x, "null"]`, i.e. exactly one union — reds here as a deliberate edit.
 EXPECTED_UNION_SPEND = {
-    "exploration": 12,  # check 1, travel 2, activate 2, enter_mode 4, query_info 1, transact 1, update_quest 1
-    "combat": 6,  # declare_phase 1, check 1, activate 2, request_death_save 1, query_info 1
+    "exploration": 14,  # check 1, travel 2, activate 4, enter_mode 4, query_info 1, transact 1, update_quest 1
+    "combat": 8,  # declare_phase 1, check 1, activate 4, request_death_save 1, query_info 1
     "dispatch": 6,  # begin_activity 2 (spell_id adds 1), check 1, resolve_activity 1, learn 1, query_info 1
     "creation": 0,
     "onboarding": 2,  # check 1, query_info 1

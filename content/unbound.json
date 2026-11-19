@@ -1,0 +1,8 @@
+{
+  "autonomy_actions": [
+    { "action": "won_alone", "amount": 4 },
+    { "action": "succeeded_alone", "amount": 1 },
+    { "action": "channeled_raw", "amount": 2 }
+  ],
+  "tiers": ["Self-Reliant", "Self-Forged", "Sovereign"]
+}

@@ -16,6 +16,7 @@ Spec: docs/game_mechanics/game_mechanics_combat.md §Travel and Exploration (L85
 import json
 import logging
 import random
+from functools import partial
 
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
@@ -38,8 +39,11 @@ from combat_terrain import skill_natural_terrain
 from condition_consume import persist_combat_consumption, serialize_combat_check
 from db_errors import db_tool, validated_player_conditions
 from game_events import publish_game_event
-from movement_tools import apply_arrival
+from inventory_refresh import publish_inventory
+from movement_tools import write_arrival
+from quest_completion import finish_quest
 from session_data import SessionData
+from skill_fate import SkillScope, StaleSkillOperation, prepare_skill_offer
 from tool_support import _validate_id
 
 logger = logging.getLogger("divineruin.tools")
@@ -89,6 +93,8 @@ async def _travel_impl(
 ) -> str:
     logger.info("travel: destination=%s, mode=%s, hours=%d, forced_march=%s", destination_id, mode, hours, forced_march)
     _validate_id(destination_id, "destination_id")
+    if hours < 1:
+        raise ToolError("Travel hours must be at least 1.")
     mode_lower = mode.lower()
     # Fail loud off-catalog the same way the pure engine does — an unknown mode is a caller bug.
     try:
@@ -128,13 +134,148 @@ async def _travel_impl(
             _NAV_SKILL,
             dc,
             rng,
-            ally_present=session.ally_present_for(speaker_id),
+            ally_present=session.allies_present_for(speaker_id),
             natural_terrain=await skill_natural_terrain(session, player, _NAV_SKILL, content_mod=content),
             hearing_only=False,
         )
 
-    result = travel_engine.resolve_travel_segment(
-        mode=mode_lower,
+    write_conditions = partial(
+        _write_travel_conditions, session, speaker_id, queries=queries, conditions_mutations=conditions_mutations
+    )
+    if roll is not None:
+        scope = SkillScope.capture(session, speaker_id, party=True)
+        agent_session = context.session
+
+        async def write(kept, conn):
+            result = resolve_segment(kept, mode_lower, navigation, hours, forced_march)
+            arrived = result.success and not result.wrong_area
+            locked_quests = (
+                await quest_progress.lock_party_quests(scope.primary_id, scope.party_ids, conn=conn, queries=queries)
+                if arrived
+                else set()
+            )
+            players = await queries.get_players_for_update(list(scope.party_ids), conn=conn)
+            scope.validate(session)
+            for member_id in scope.party_ids:
+                locked = players.get(member_id)
+                if locked is None:
+                    raise StaleSkillOperation(f"{member_id} is no longer available for travel.")
+                scope.validate_location(member_id, locked)
+            for member_id in scope.party_ids:
+                await travel_mutations.add_travel_hours(member_id, hours, conn=conn)
+            consumed_state = await write_conditions(
+                scope.party_ids, result, kept.consumed_conditions, conn=conn, players=players
+            )
+            apply_arrival_mirrors = None
+            pending = []
+            if arrived:
+                apply_arrival_mirrors = await write_arrival(
+                    session,
+                    destination_id,
+                    destination,
+                    scope.origin,
+                    scope.party_ids,
+                    conn=conn,
+                    db_mod=db_mod,
+                    mutations=mutations,
+                    travel_mutations=travel_mutations,
+                )
+                pending = await quest_progress.advance_on_arrival_db(
+                    session,
+                    destination_id,
+                    scope,
+                    locked_quests,
+                    conn=conn,
+                    queries=queries,
+                    mutations=mutations,
+                    content=content,
+                )
+            else:
+                await _write_lost_travel(
+                    scope.party_ids,
+                    destination_id,
+                    mode_lower,
+                    result,
+                    travel_mutations=travel_mutations,
+                    conn=conn,
+                )
+
+            async def flush():
+                if consumed_state is not None:
+                    session.combat_state = consumed_state
+                arrival_events = apply_arrival_mirrors() if apply_arrival_mirrors is not None else None
+                updates = [finish_quest(session, quest) for quest in pending]
+                for update in updates:
+                    if transition := update.get("scene_transition"):
+                        from gameplay_agent import set_agent_region
+
+                        set_agent_region(agent_session.current_agent, transition["region"])
+                session.record_event(f"Travel to {destination_id} ({mode_lower}): {result.narrative_cue}")
+                if arrival_events is not None:
+                    await arrival_events()
+                for quest in pending:
+                    for event_type, payload in quest.events:
+                        await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
+                    for pid in sorted({pid for pid, _ in quest.item_recipients}):
+                        await publish_inventory(session, pid, queries=queries)
+                return await _publish_travel_result(session, destination_id, mode_lower, kept, result, updates)
+
+            return flush
+
+        offer = await prepare_skill_offer(session, scope, roll, player, write, queries=queries, db_mod=db_mod)
+        if offer is not None:
+            session.fate_offer = offer
+            return json.dumps(offer.response())
+
+    result = resolve_segment(roll, mode_lower, navigation, hours, forced_march)
+    consumed = roll.consumed_conditions if roll else ()
+    arrived = result.success and not result.wrong_area
+    apply_arrival_mirrors = None
+    async with db_mod.transaction() as conn:
+        session.validate_acting_player(speaker_id)
+        for member_id in member_ids:
+            await travel_mutations.add_travel_hours(member_id, hours, conn=conn)
+        consumed_state = await write_conditions(member_ids, result, consumed, conn=conn)
+        if arrived:
+            apply_arrival_mirrors = await write_arrival(
+                session,
+                destination_id,
+                destination,
+                session.location_id,
+                member_ids,
+                conn=conn,
+                db_mod=db_mod,
+                mutations=mutations,
+                travel_mutations=travel_mutations,
+            )
+        else:
+            await _write_lost_travel(
+                member_ids,
+                destination_id,
+                mode_lower,
+                result,
+                travel_mutations=travel_mutations,
+                conn=conn,
+            )
+    if consumed_state is not None:
+        session.combat_state = consumed_state
+    quest_updates = []
+    if apply_arrival_mirrors is not None:
+        publish_arrival = apply_arrival_mirrors()
+        await publish_arrival()
+        quest_updates = await quest_progress.advance_on_arrival(
+            context, destination_id, db_mod=db_mod, mutations=mutations, queries=queries, content=content
+        )
+        if roll is None:
+            await publish_action_sound(session, "action_travel")
+
+    session.record_event(f"Travel to {destination_id} ({mode_lower}): {result.narrative_cue}")
+    return json.dumps(await _publish_travel_result(session, destination_id, mode_lower, roll, result, quest_updates))
+
+
+def resolve_segment(roll, mode, navigation, hours, forced_march):
+    return travel_engine.resolve_travel_segment(
+        mode=mode,
         navigation=navigation,
         roll_total=roll.total if roll else 0,
         base_hours=hours,
@@ -142,63 +283,53 @@ async def _travel_impl(
         raw_die=roll.roll if roll else None,
     )
 
-    # Conditions write-back: the exhaustion producer AND the single-use beneficial-die consume share
-    # ONE persist (M4.8 story-010 — two saves would clobber each other). Both rebuild the full
-    # players.data.conditions list, so the read MUST happen under a lock inside the same tx that
-    # writes it (M4.8 story-013): re-read the row FOR UPDATE here — not the stale pre-roll read — so
-    # a condition applied concurrently (the DM background loop landing Poisoned) is not clobbered.
-    # This serializes against condition_produce's matching FOR UPDATE. Exhaustion applies the raw
-    # delta via the SSOT capped by the character's stack cap (Iron-Constitution hook); the nav roll
-    # spends Inspired's +1d4, so remove the signalled conditions on the same rebuilt list.
-    consumed = roll.consumed_conditions if roll else ()
-    consumed_state = None
-    if result.exhaustion_delta > 0 or consumed:
-        session.validate_acting_player(speaker_id)
-        async with db_mod.transaction() as conn:
-            for member_id in member_ids if result.exhaustion_delta > 0 else (speaker_id,):
-                locked = await queries.get_player(member_id, conn=conn, for_update=True)
-                if locked is None:
-                    raise ToolError(f"Player '{member_id}' not found during travel.")
-                new_conditions = validated_player_conditions(locked, member_id)
-                if result.exhaustion_delta > 0:
-                    cap = rules_engine.exhaustion_stack_cap(locked)
-                    for _ in range(result.exhaustion_delta):
-                        new_conditions = conditions.apply_condition(
-                            new_conditions, "exhausted", source="travel", max_stacks=cap
-                        )
-                if consumed and member_id == speaker_id:
-                    new_conditions = conditions.remove_conditions(new_conditions, consumed)
-                await conditions_mutations.save_player_conditions(member_id, new_conditions, conn=conn)
 
-            consumed_state = await persist_combat_consumption(session.combat_state, speaker_id, consumed, conn=conn)
-    if consumed_state is not None:
-        session.combat_state = consumed_state
-
-    arrived = result.success and not result.wrong_area
-    quest_updates = []
-    if arrived:
-        # Reuse move_player's full arrival path (LOCATION_CHANGED for the HUD, map progress,
-        # corruption tracking) — not just the location setter — so a travelled arrival updates
-        # the client exactly like a walked one.
-        await apply_arrival(
-            session, destination_id, destination, db_mod=db_mod, mutations=mutations, travel_mutations=travel_mutations
+async def _write_travel_conditions(
+    session,
+    speaker_id,
+    member_ids,
+    result,
+    consumed,
+    *,
+    queries,
+    conditions_mutations,
+    conn,
+    players=None,
+):
+    if not result.exhaustion_delta and not consumed:
+        return None
+    for member_id in member_ids if result.exhaustion_delta > 0 else (speaker_id,):
+        locked = (
+            players[member_id]
+            if players is not None
+            else await queries.get_player(member_id, conn=conn, for_update=True)
         )
-        quest_updates = await quest_progress.advance_on_arrival(
-            context, destination_id, db_mod=db_mod, mutations=mutations, queries=queries, content=content
-        )
-        if roll is None:
-            await publish_action_sound(session, "action_travel")
-    else:
-        # Lost: the party is off-course (no relocation); record the journey it was attempting.
-        session.validate_acting_player(speaker_id)
-        async with db_mod.transaction() as conn:
-            for member_id in member_ids:
-                await travel_mutations.update_player_travel_state(
-                    member_id,
-                    {"destination": destination_id, "mode": mode_lower, "wrong_area": result.wrong_area},
-                    conn=conn,
+        if locked is None:
+            raise ToolError(f"Player '{member_id}' not found during travel.")
+        new_conditions = validated_player_conditions(locked, member_id)
+        if result.exhaustion_delta > 0:
+            cap = rules_engine.exhaustion_stack_cap(locked)
+            for _ in range(result.exhaustion_delta):
+                new_conditions = conditions.apply_condition(
+                    new_conditions, "exhausted", source="travel", max_stacks=cap
                 )
+        if consumed and member_id == speaker_id:
+            new_conditions = conditions.remove_conditions(new_conditions, consumed)
+        await conditions_mutations.save_player_conditions(member_id, new_conditions, conn=conn)
+    return await persist_combat_consumption(session.combat_state, speaker_id, consumed, conn=conn)
 
+
+async def _write_lost_travel(member_ids, destination_id, mode, result, *, travel_mutations, conn):
+    for member_id in member_ids:
+        await travel_mutations.update_player_travel_state(
+            member_id,
+            {"destination": destination_id, "mode": mode, "wrong_area": result.wrong_area},
+            conn=conn,
+        )
+
+
+async def _publish_travel_result(session, destination_id, mode_lower, roll, result, quest_updates):
+    arrived = result.success and not result.wrong_area
     if roll is not None:
         await publish_game_event(
             session.room,
@@ -215,7 +346,6 @@ async def _travel_impl(
             event_bus=session.event_bus,
         )
 
-    session.record_event(f"Travel to {destination_id} ({mode_lower}): {result.narrative_cue}")
     payload = {
         "outcome": "success" if result.success else "failure",
         "destination": destination_id,
@@ -235,4 +365,4 @@ async def _travel_impl(
         payload.update({"roll": roll.roll, "total": roll.total, "dc": result.dc, "margin": result.margin})
         if roll.gift_name:
             payload["gift_name"] = roll.gift_name
-    return json.dumps(payload)
+    return payload

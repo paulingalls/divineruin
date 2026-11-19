@@ -1,5 +1,111 @@
 # Changelog
 
+## 0.50.2
+
+The XP workflow's fixer and slate-reviewer now run on GPT-6.2 Sol, as a trial.
+
+Release steps: none.
+
+Fixes a broken comment line in the XP workflow config.
+
+Release steps: none.
+
+## 0.50.1
+
+The XP workflow's code-writing agent (executor) now defaults to GPT-6.2 Sol.
+
+Release steps: none.
+
+## 0.50.0
+
+Zhael's followers can bend fate. Fate's Thread lets a follower force a reroll after any check, attack, saving throw or death save they or an ally makes, then choose which result stands; the outcome waits until they decide. Lucky turns a follower's own natural 1 into a 20, or a 20 into a 1. Initiative, shoves and grapples, reaction contests, crafting experiments, Echo rolls and free-form dice are outside fate's reach.
+
+Mortaen's followers sense the dying: Death's Awareness names the creatures and party members nearby at a quarter health or less. Nythera's followers keep their bearings: Horizon Sense reports the hours traveled since their last long rest and the nearest place they have never visited, counted in travel legs.
+
+Veythar's followers roll saves against the Hollowed condition with advantage (Scholar's Ward), and Kaelen's followers have 5 more maximum HP (Warrior's Endurance).
+
+Release steps: none.
+
+## 0.49.3
+
+Housekeeping: the shared patron validator test fixture now carries Veythar's current Natural cantrip synergy text, matching the game content. No gameplay change.
+
+Release steps: none.
+
+## 0.49.2
+
+Thyra's Natural synergy for Druids, Beastcallers and Wardens now works away from the wild. Outside natural terrain, Nature's Pulse gives them +2 on Perception and Survival checks. In natural terrain it still gives advantage, and the two never stack.
+
+Release steps: none.
+
+## 0.49.1
+
+Fixed: an Unbound player whose patron was stored as empty, rather than "none", made the twenty-minute deed judgment fail, which stopped that session's background loop. Such players are now judged as Unbound and earn autonomy normally. A patron id that names no god still fails loudly.
+
+Release steps: none.
+
+## 0.49.0
+
+The Unbound Path now has its own progression. An Unbound player builds autonomy by acting alone:
+- winning a fight with no ally present (+4);
+- succeeding on a check alone (+1);
+- choosing to push their own Resonance with Raw Channeling (+2).
+
+Every twenty minutes of play the DM judges these deeds, each counted once, and tells the player when they reach a new tier. Tiers are milestones and are never lost.
+
+- **Self-Reliant** (from the start): choose one saving throw to become proficient in. It applies at once, even mid-fight.
+- **Self-Forged** (40 autonomy): Divine Immunity. Once per long rest, the player can shrug off a divine ability, narrated by the DM.
+- **Sovereign** (75 autonomy): Veil Mastery. Once per session, a Hollow Echo becomes "Nothing stirs".
+
+Rule change: Veil Mastery used to be every Unbound player's starting gift. Now it is the Sovereign reward, as the design intends.
+
+Asking the DM about your patron as an Unbound player now reports your autonomy, your tier and which rewards are ready.
+
+Release steps: none.
+
+## 0.48.2
+
+The agent test tooling moves to pytest 9.2.0 and pytest-bdd 9.0.1. One pytest run that mixes acceptance and regular test files no longer loses the acceptance fixtures. Nothing players see changes.
+
+Release steps: none. After pulling, run `uv sync --project apps/agent --frozen` in each local checkout.
+
+## 0.48.1
+
+Move the patron query into a dedicated module to make future patron updates easier to maintain.
+
+Release steps: none.
+
+## 0.48.0
+
+Every archetype now has a synergy with every patron: 180 pairings, each Natural, Divine or Unexpected. Natural pairings fit the god's domain and give the largest mechanical bonus. Divine pairings give a moderate one. Unexpected pairings give a small, unusual edge, often something only that character notices. A player can ask the DM about their synergy, and the DM can look it up.
+
+Twelve synergy effects now work in play:
+- Kaelen's Iron Resolve triggers below 40% health, instead of 25%, for Warriors, Guardians and Skirmishers.
+- Aelora's Artificers get +2 Bond with two allies near.
+- Syrath's followers cast hidden for one less Resonance.
+- Nythera's Seekers and Spies get +3 to Investigation and Perception at a place they haven't stayed before, including when searching for the Choir's sound.
+- Nythera's Druids and Beastcallers get +1 to Animal Handling.
+
+Synergies that change combat rolls, or that depend on what a check is for, are described by the DM but don't change the numbers yet.
+
+Unbound players get +1 on every skill check when no companion or other player is with them.
+
+Some design-doc synergy numbers were rebalanced so Natural is always the largest bonus. Valdris's Paladin bonus rises to +2. Several Unexpected and Divine bonuses drop to +1, and Thyra's Unexpected critical bonus drops to +1d4.
+
+Release steps: none.
+
+## 0.47.2
+
+Native backend acceptance on iOS owns its API server, Metro and temporary sign-in enrollment, cleaning up after each run.
+
+Release steps: none.
+
+## 0.47.1
+
+A test now covers the HUD inventory showing tainted and clean stacks of the same material as separate rows, each with its own quantity, in the phone-sized web build. Nothing players see changes.
+
+Release steps: none.
+
 ## 0.47.0
 
 Patron tier abilities are in play. A follower at Acknowledged, Devoted or Exalted favor can now ask the DM to use the seven abilities the DM resolves by narration: Veythar's Lorekeeper's Library, Syrath's Whisper Network and Veilwatcher's Eye, Mortaen's Speak with Dead, Nythera's Charted Course, Valdris's Discern Lies and Zhael's Prophecy Fragment. Valdris's Layer 1 gift, Weight of Truth, works the same way. Each use is spent and comes back on its authored rest or, for once-per-session abilities, at the next session. Abilities lock when favor drops below their tier and come back, with the same spent state, when it climbs again. The other 23 tier abilities are listed as not yet in play.

@@ -2,6 +2,8 @@
 
 import asyncio
 import json
+from contextlib import asynccontextmanager
+from pathlib import Path
 from uuid import uuid4
 
 import asyncpg
@@ -398,3 +400,65 @@ async def test_handoff_keeps_clock_and_excludes_departed(
         await clock.tick(2400)
         assert await state(successor) == (52, {})
         assert len(published) == 1
+
+
+async def test_unbound_autonomy_memory_after_commit(
+    livekit_server, reset_db_pool, tmp_path, clock, monkeypatch, caplog
+):
+    config = json.loads((Path(__file__).resolve().parents[4] / "content" / "unbound.json").read_text())
+    gain = next(row["amount"] for row in config["autonomy_actions"] if row["action"] == "won_alone")
+    tier = config["tiers"][1]
+
+    async def prepare(pid):
+        await prepared(pid)
+        pool = await db.get_pool()
+        await pool.execute(
+            "UPDATE players SET data=data || $2::jsonb WHERE player_id=$1",
+            pid,
+            json.dumps(
+                {
+                    "divine_favor": {"patron": "none", "level": 0, "max": 100},
+                    "unbound_autonomy": {"level": 38, "max": 100, "tier": "Self-Reliant"},
+                }
+            ),
+        )
+
+    transaction = db.transaction
+
+    @asynccontextmanager
+    async def fail_before_commit():
+        async with transaction() as conn:
+            yield conn
+            raise asyncpg.PostgresError("autonomy pre-commit failure")
+
+    async with episode(livekit_server, tmp_path, prepare=prepare, initial_agent="ExplorationAgent") as run:
+        await clock.attach(run)
+        clock.sd.companion = None
+        await produce(run)
+        before = await db_queries.get_player(run.player_id)
+        assert before is not None
+        assert before["patron_deeds"] == {"won_combat": "pending", "won_alone": "pending"}
+        await clock.tick(1199)
+        assert await db_queries.get_player(run.player_id) == before
+        with monkeypatch.context() as fault:
+            fault.setattr(db, "transaction", fail_before_commit)
+            await clock.tick(1200)
+        assert "autonomy pre-commit failure" in caplog.text
+        assert await db_queries.get_player(run.player_id) == before
+        assert not any("Autonomy" in line for line in clock.sd.recent_events)
+        await clock.tick(1200)
+        after = await db_queries.get_player(run.player_id)
+        assert after is not None
+        assert after["unbound_autonomy"] == {"level": 38 + gain, "max": 100, "tier": tier}
+        assert after["patron_deeds"] == {}
+        memory = next(line for line in clock.sd.recent_events if "Autonomy" in line)
+        assert all(text in memory for text in (run.player_id, f"+{gain}", str(38 + gain), tier))
+        await until(lambda: run.session.current_speech is None and not clock.sd.background._speech_queue)
+        receipt = await run.turn("query_info", kind="location", target_id=clock.sd.location_id)
+        assert not receipt.is_error, receipt.output
+        assert requested(run, memory)
+        await clock.tick(2400)
+        repeated = await db_queries.get_player(run.player_id)
+        assert repeated is not None and repeated["unbound_autonomy"] == after["unbound_autonomy"]
+        assert [line for line in clock.sd.recent_events if "Autonomy" in line] == [memory]
+        assert not run.packets(E.DIVINE_FAVOR_CHANGED)

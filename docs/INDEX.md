@@ -718,7 +718,7 @@ NPC schemas, role archetypes, mentors, settlements, companions.
 
 ---
 
-## game_mechanics/game_mechanics_patrons.md (369 lines)
+## game_mechanics/game_mechanics_patrons.md (383 lines)
 
 10 divine patrons with 4-layer mechanical system.
 
@@ -736,8 +736,8 @@ NPC schemas, role archetypes, mentors, settlements, companions.
 | Mortaen, the Threshold | 238-265 | Death and transition; Death's Awareness, Threshold Magic, favor tiers, archetype resonance |
 | Nythera, the Tidecaller | 266-293 | Sea and exploration; Horizon Sense, Boundary Walker, favor tiers, archetype resonance |
 | Zhael, the Fatespinner | 294-321 | Fate and luck; Fate's Thread, Pattern Weaving, favor tiers, archetype resonance |
-| The Unbound Path (No Patron) | 322-354 | Self-sourced magic; Veil Clarity, Raw Channeling, self-reliance milestones, endgame relevance |
-| Patron System Summary | 355-369 | Patron system mechanics and cross-patron comparison. |
+| The Unbound Path (No Patron) | 322-368 | Self-sourced magic; Veil Clarity, Raw Channeling, self-reliance milestones, endgame relevance |
+| Patron System Summary | 369-383 | Patron system mechanics and cross-patron comparison. |
 
 ---
 
@@ -928,7 +928,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/08_patrons.md (198 lines)
+## milestones/08_patrons.md (213 lines)
 
 ---
 

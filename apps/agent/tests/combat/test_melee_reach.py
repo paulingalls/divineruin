@@ -87,7 +87,7 @@ async def test_close_before_damage(maw, identity, separation):
         patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=15)),
         patch("check_resolution_attack.dice_roll", return_value=SimpleNamespace(total=4)),
         patch("combat_support.roll_attack", side_effect=roll) as allied,
-        patch("combat_hold.roll_attack", side_effect=roll) as hostile,
+        patch("combat_fate_hostile.roll_attack", side_effect=roll) as hostile,
     ):
         packets = await attack(maw, actor_id, target_id, action["name"])
     packet = next(p for p in reversed(packets) if p.get("actor_id") == actor_id)

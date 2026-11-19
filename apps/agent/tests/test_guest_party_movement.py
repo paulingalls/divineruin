@@ -49,7 +49,7 @@ def _mocks(*, navigation="established_road", requires=None, players=None):
     mutations = SimpleNamespace(
         update_player_location=AsyncMock(), upsert_map_progress=AsyncMock(), record_departure=AsyncMock()
     )
-    travel_mutations = SimpleNamespace(update_player_travel_state=AsyncMock())
+    travel_mutations = SimpleNamespace(update_player_travel_state=AsyncMock(), add_travel_hours=AsyncMock())
     conditions_mutations = SimpleNamespace(save_player_conditions=AsyncMock())
     content = SimpleNamespace(get_location=AsyncMock(side_effect=lambda loc: locations[loc]))
     rows = players or {

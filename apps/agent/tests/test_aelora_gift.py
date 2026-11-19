@@ -27,12 +27,22 @@ from tools._discover_fixtures import _roll
 from travel_tools import _travel_impl
 
 
+@pytest.fixture(autouse=True)
+def skill_transaction_seams(monkeypatch):
+    from sample_fixtures import make_db_mod
+
+    database, _ = make_db_mod()
+    monkeypatch.setattr("db.transaction", database.transaction)
+    monkeypatch.setattr("patron_deeds.record_deed", AsyncMock())
+
+
 def player(patron):
     return {"attributes": {"strength": 12}, "level": 3, "divine_favor": {"patron": patron}}
 
 
 def _live_party(session, *identities):
     room = MagicMock(remote_participants={identity: SimpleNamespace(identity=identity) for identity in identities})
+    room.local_participant.publish_data = AsyncMock()
     lifecycle = PartyLifecycle(
         room, session, queries=MagicMock(), resonance_mod=MagicMock(), concentration_mod=MagicMock()
     )
@@ -149,7 +159,8 @@ async def test_ally_presence_tracks_live_roster_and_present_companion():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("producer", ["skill", "discover_empty", "discover_candidate", "gather", "social", "travel"])
-async def test_tool_response_names_bond_only_with_present_ally(producer):
+@pytest.mark.parametrize("enhanced", [False, True])
+async def test_tool_response_names_bond_only_with_present_ally(producer, enhanced):
     async def invoke(present):
         guest_mode = present in ("host_live", "host_dropped")
         ctx = make_context(
@@ -163,7 +174,11 @@ async def test_tool_response_names_bond_only_with_present_ally(producer):
         if guest_mode:
             lifecycle = _live_party(ctx.userdata, "guest", *(["player_1"] if present == "host_live" else []))
             actor = ctx.userdata._bind_authenticated_actor("guest", 1, lambda _pid, _gen: None)
-        row = {**player("aelora"), "player_id": "guest" if guest_mode else "player_1", "flags": {}}
+        if enhanced and present is True:
+            ctx.userdata.party.members.append(copy.deepcopy(ctx.userdata.party.primary))
+            ctx.userdata.party.members[-1].player_id = "other"
+            lifecycle = _live_party(ctx.userdata, "player_1", "other")
+        row = {"class": "bard", **player("aelora"), "player_id": "guest" if guest_mode else "player_1", "flags": {}}
         queries = MagicMock(
             get_player_inventory=AsyncMock(return_value=[]),
             get_inventory_snapshot=snapshot_query([]),
@@ -226,7 +241,7 @@ async def test_tool_response_names_bond_only_with_present_ally(producer):
             else:
                 ctx.userdata.location_id = "hall"
                 content = MagicMock(get_location=AsyncMock(return_value={"id": "dest", "navigation": "dense_forest"}))
-                travel_mutations = MagicMock(update_player_travel_state=AsyncMock())
+                travel_mutations = MagicMock(update_player_travel_state=AsyncMock(), add_travel_hours=AsyncMock())
                 raw = await _travel_impl(
                     ctx,
                     "dest",
@@ -238,7 +253,7 @@ async def test_tool_response_names_bond_only_with_present_ally(producer):
                     db_mod=db_mod,
                     rng=ToolRng(2),
                 )
-        if guest_mode:
+        if guest_mode or (enhanced and present is True):
             await lifecycle.aclose()
         return json.loads(raw)
 
@@ -248,7 +263,7 @@ async def test_tool_response_names_bond_only_with_present_ally(producer):
     assert with_ally["gift_name"] == "Hearthkeeper's Bond"
     assert "gift_name" not in alone
     assert "gift_name" not in absent_companion
-    assert with_ally["total"] - alone["total"] == 1
+    assert with_ally["total"] - alone["total"] == (2 if enhanced else 1)
     assert absent_companion["total"] == alone["total"]
     assert (await invoke("host_live"))["gift_name"] == "Hearthkeeper's Bond"
     assert "gift_name" not in await invoke("host_dropped")

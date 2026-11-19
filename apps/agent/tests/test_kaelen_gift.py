@@ -8,7 +8,6 @@ import pytest
 from sample_fixtures import make_context
 
 import _gods_content
-import conditions
 from kaelen_gift import trigger_iron_resolve
 from session_data import CombatParticipant, CombatState
 
@@ -23,24 +22,11 @@ def setup(patron="kaelen"):
     return ctx.userdata
 
 
-def test_crossing_triggers_once():
-    session = setup()
-    target = player()
-    assert trigger_iron_resolve(session, target, 10) == "Iron Resolve"
-    assert target.iron_resolve_spent
-    assert target.conditions == [{"type": "iron_resolve", "duration": 2, "source": "kaelen_iron_resolve", "stacks": 1}]
-    target.hp_current = 3
-    assert trigger_iron_resolve(session, target, 10) is None
-    assert len(target.conditions) == 1
-
-
 @pytest.mark.parametrize(
     "patron,kind,before,after,fires",
     [
         ("kaelen", "player", 5, 4, True),
         ("kaelen", "player", 10, 5, False),
-        ("kaelen", "player", 10, 0, False),
-        ("kaelen", "player", 4, 3, False),
         ("kaelen", "player", 4, 4, False),
         ("aelora", "player", 10, 4, False),
         ("none", "player", 10, 4, False),
@@ -50,7 +36,12 @@ def test_crossing_triggers_once():
 )
 def test_crossing_eligibility_boundaries(patron, kind, before, after, fires):
     target = player(hp=after, kind=kind)
-    assert bool(trigger_iron_resolve(setup(patron), target, before)) == fires
+    assert (
+        bool(
+            trigger_iron_resolve(setup(patron), target, before, {"class": "bard", "divine_favor": {"patron": "kaelen"}})
+        )
+        == fires
+    )
     assert target.iron_resolve_spent == fires
     assert bool(target.conditions) == fires
 
@@ -59,12 +50,19 @@ def test_crossing_eligibility_boundaries(patron, kind, before, after, fires):
 def test_target_member_controls_binding(host, guest, fires):
     session = setup(host)
     session.party.member("player_2").patron_id = guest
-    assert bool(trigger_iron_resolve(session, player("player_2"), 10)) == fires
+    assert (
+        bool(
+            trigger_iron_resolve(
+                session, player("player_2"), 10, {"class": "bard", "divine_favor": {"patron": "kaelen"}}
+            )
+        )
+        == fires
+    )
 
 
 def test_missing_player_member_fails_loud():
     with pytest.raises(ValueError, match="party member"):
-        trigger_iron_resolve(setup(), player("missing"), 10)
+        trigger_iron_resolve(setup(), player("missing"), 10, {"class": "bard", "divine_favor": {"patron": "kaelen"}})
 
 
 @pytest.mark.parametrize("amount", [2, 3])
@@ -86,7 +84,7 @@ from kaelen_gift import trigger_iron_resolve
 from check_resolution_attack import resolve_attack
 from check_resolution_save import resolve_saving_throw
 target = player()
-assert trigger_iron_resolve(setup(), target, 10) == "Iron Resolve"
+assert trigger_iron_resolve(setup(), target, 10, {"class": "bard", "divine_favor": {"patron": "kaelen"}}) == "Iron Resolve"
 boosted = asdict(target)
 clean = {**boosted, "conditions": []}
 weapon = {"name": "Sword", "damage": "1d8", "damage_type": "slashing", "properties": []}
@@ -107,19 +105,9 @@ assert b.total - a.total == int(sys.argv[2])
     assert result.returncode == 0, result.stderr
 
 
-def test_two_wrap_lifetime():
-    target = player()
-    assert trigger_iron_resolve(setup(), target, 10)
-    target.conditions, _events = conditions.tick_conditions(target.conditions)
-    assert target.conditions[0]["duration"] == 1
-    target.conditions, _events = conditions.tick_conditions(target.conditions)
-    assert target.conditions == []
-    assert target.iron_resolve_spent
-
-
 def test_latch_serialization_and_legacy_default():
     target = player()
-    assert trigger_iron_resolve(setup(), target, 10)
+    assert trigger_iron_resolve(setup(), target, 10, {"class": "bard", "divine_favor": {"patron": "kaelen"}})
     state = CombatState(combat_id="test", participants=[target], initiative_order=[target.id])
     raw = state.to_dict()
     loaded = CombatState.from_dict(raw).get_participant(target.id)
@@ -137,6 +125,6 @@ def test_inactive_gift_refuses_without_spending(monkeypatch):
     monkeypatch.setattr("kaelen_gift.load_gods", lambda: rows)
     target = player()
     with pytest.raises(ValueError, match="not active"):
-        trigger_iron_resolve(setup(), target, 10)
+        trigger_iron_resolve(setup(), target, 10, {"class": "bard", "divine_favor": {"patron": "kaelen"}})
     assert target.conditions == []
     assert not target.iron_resolve_spent

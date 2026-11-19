@@ -1,12 +1,14 @@
 """Hostile saving-throw mechanics for player condition abilities."""
 
 from collections.abc import Callable
+from functools import partial
 from typing import TYPE_CHECKING
 
 from livekit.agents.llm import ToolError
 
 import check_resolution_save
 import rules_engine
+from combat_fate_rolls import packet_save
 
 if TYPE_CHECKING:
     from abilities import Ability
@@ -32,13 +34,16 @@ def gate_hostile_target(state: "CombatState", decl: "Declaration", ability: "Abi
     gate_hostile_condition_targets(state, decl, ability.applies_condition, ability.name)
 
 
-def resolve_hostile_condition(
+async def resolve_hostile_condition(
+    session,
     state: "CombatState",
     attacker: "CombatParticipant",
     target: "CombatParticipant",
     decl: "Declaration",
     ability: "Ability",
     land_condition: Callable[..., bool],
+    *,
+    progress=None,
 ) -> dict:
     cond_type = ability.applies_condition
     assert cond_type is not None
@@ -49,7 +54,15 @@ def resolve_hostile_condition(
         + rules_engine.proficiency_bonus(attacker.level)
         + rules_engine.attribute_modifier(attacker.attributes[ability.dc_attribute])
     )
-    result = check_resolution_save.roll_participant_save(target, ability.save, dc, cond_type)
+    result = await packet_save(
+        progress,
+        session,
+        target.id,
+        cond_type,
+        partial(check_resolution_save.roll_participant_save, target, ability.save, dc, cond_type),
+    )
+    if result is None:
+        return {}
     summary = {
         "actor_id": attacker.id,
         "resolved": True,

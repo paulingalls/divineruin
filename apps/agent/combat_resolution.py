@@ -67,6 +67,7 @@ def resolve_death_save(
     rng: random.Random | None = None,
     *,
     bonus: int = 0,
+    face: int | None = None,
 ) -> DeathSaveResult:
     """Resolve a death saving throw.
 
@@ -79,8 +80,7 @@ def resolve_death_save(
     """
     verdict = evaluate_dramatic_context(DramaticContext(roll_type="death_save"))
 
-    result = dice_roll("d20", rng=rng)
-    d20 = result.total
+    d20 = dice_roll("d20", rng=rng).total if face is None else face
 
     critical_success = d20 == 20
     critical_failure = d20 == 1

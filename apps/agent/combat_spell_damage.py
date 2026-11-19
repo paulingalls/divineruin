@@ -1,5 +1,7 @@
 """Land catalog spell damage beside other cast effects in the caller's phase transaction."""
 
+from dataclasses import asdict, replace
+
 import check_resolution_attack
 import check_resolution_save
 import concentration_break
@@ -8,12 +10,15 @@ import db_mutations
 import db_queries
 import dice
 import spells
+from combat_attack_roll import attack_roll_inputs
+from combat_damage import AutomaticDamageResult, SaveDamageResult
 from combat_spell_profile import DICE, scaled
-from combat_support import AutomaticDamageResult, SaveDamageResult, _resolve_attack_packet, apply_attack_result
+from combat_support import _resolve_attack_packet, apply_attack_result, apply_rolled_attack
 from rules_engine import attribute_modifier, proficiency_bonus
+from zhael_fate import candidates
 
 
-def _components(profile, caster, target, cast, choice, *, resonance=True):
+def _components(profile, caster, target, cast_packet, choice, *, resonance=True):
     result = []
     for i, component in enumerate(profile["components"]):
         match = DICE.fullmatch(component["dice"])
@@ -24,7 +29,7 @@ def _components(profile, caster, target, cast, choice, *, resonance=True):
             if target.hollow and "hollow_dice" in profile:
                 count = profile["hollow_dice"]
             if resonance:
-                count += cast.packet["resonance_modifiers"]["damage_dice"]
+                count += cast_packet["resonance_modifiers"]["damage_dice"]
         if count < 0:
             raise ValueError("Spell damage dice became negative")
         notation = f"{count}d{sides}" if count else "0"
@@ -64,7 +69,7 @@ async def _land_one(
     state,
     caster,
     declaration,
-    cast,
+    cast_packet,
     *,
     conn,
     delivery=None,
@@ -73,19 +78,22 @@ async def _land_one(
     queries=db_queries,
     resolver=check_resolution_attack,
     concentration_break_mod=concentration_break,
+    progress=None,
 ):
     spell = spells.get_spell(declaration.action)
     profile = spell.combat_damage
     if profile is None:
         return
     if profile["resolution"] == "deferred":
-        cast.packet["deferred"] = [{"effect": "damage", "not_affected": True, "reason": profile["deferred"]}]
+        cast_packet["deferred"] = [{"effect": "damage", "not_affected": True, "reason": profile["deferred"]}]
         return
     if not declaration.target_id and profile.get("optional_target"):
         return
     target = state.get_participant(declaration.target_id)
-    if target is None or target.is_fallen:
-        cast.packet["damage_result"] = {
+    # A held attack resumes against the same recipient even if its damage receipt already dropped it.
+    resuming = progress is not None and ("prepared" in progress.steps or "damage_receipt" in progress.steps)
+    if target is None or (target.is_fallen and not resuming):
+        cast_packet["damage_result"] = {
             "damage": 0,
             "resolved": False,
             "reason": "Declared recipient is no longer available; no damage landed.",
@@ -99,12 +107,12 @@ async def _land_one(
         profile,
         caster,
         target,
-        cast,
+        cast_packet,
         declaration.argument_type,
         resonance=dart_indices is None or 0 in dart_indices,
     )
-    if "damage_dice" in cast.packet:
-        cast.packet["damage_dice"] = components[0]["dice"]
+    if "damage_dice" in cast_packet:
+        cast_packet["damage_dice"] = components[0]["dice"]
     action = {
         "magical": True,
         "name": spell.name,
@@ -115,21 +123,22 @@ async def _land_one(
         "damage_attribute": profile.get("damage_attribute", False),
     }
     if profile["resolution"] == "attack":
-        result = await _resolve_attack_packet(
+        result = await _land_attack(
             session,
+            state,
             caster,
-            action,
             target,
-            weapon_attack=False,
-            target_ac_bonus=state.ac_modifiers.get(target.id, 0),
-            combat_state=state,
+            action,
             conn=conn,
             sink=sink,
             mutations=mutations,
             queries=queries,
             resolver=resolver,
             concentration_break_mod=concentration_break_mod,
+            progress=progress,
         )
+        if result is None:
+            return
         caster.conditions = conditions.remove_conditions(caster.conditions, result.get("consumed_conditions", ()))
     else:
         save = None
@@ -140,7 +149,7 @@ async def _land_one(
                 8
                 + proficiency_bonus(caster.level)
                 + attribute_modifier(caster.attributes.get(profile["attribute"], 10))
-                + cast.packet["resonance_modifiers"]["dc"]
+                + cast_packet["resonance_modifiers"]["dc"]
             )
             save = check_resolution_save.roll_participant_save(target, profile["save"], dc, spell.name)
             target.conditions = conditions.remove_conditions(target.conditions, save.consumed_conditions)
@@ -215,19 +224,107 @@ async def _land_one(
     if delivery and "dart_indices" in delivery:
         result["darts"] = darts
         result["dart_indices"] = delivery["dart_indices"]
-    cast.packet["damage_result"] = result
+    cast_packet["damage_result"] = result
     deferred = _deferred(state, caster, target, profile)
     if deferred:
-        cast.packet["deferred"] = deferred
+        cast_packet["deferred"] = deferred
 
 
-async def land(session, state, caster, declaration, cast, *, conn, deliveries=None, **deps):
-    from dataclasses import replace
+async def _land_attack(
+    session,
+    state,
+    caster,
+    target,
+    action,
+    *,
+    conn,
+    sink,
+    mutations,
+    queries,
+    resolver,
+    concentration_break_mod,
+    progress,
+):
+    """Resolve a spell attack; with ``progress``, a Zhael-eligible d20 is held before damage.
 
+    Returns None while a held roll (or a deferred concentration save) is pending."""
+    ac_bonus = state.ac_modifiers.get(target.id, 0)
+    prepared = None
+    if progress is not None and "prepared" in progress.steps:
+        prepared = check_resolution_attack.PreparedAttack.from_dict(progress.steps.pop("prepared"))
+        attacker_data = progress.steps.pop("attacker_data")
+    elif progress is not None and "damage_receipt" not in progress.steps:
+        eligible = await candidates(session, queries=queries, conn=conn)
+        if eligible.choices(caster.id):
+            attacker_data, ac, modifier = attack_roll_inputs(
+                caster, target, ac_bonus, state, action, weapon_attack=False
+            )
+            prepared = check_resolution_attack.prepare_attack(
+                attacker_data, action, ac, attack_mod=modifier, target_conditions=target.conditions
+            )
+            if await progress.phase.hold(
+                session,
+                "attack",
+                caster.id,
+                prepared.original,
+                prepared.d20,
+                queries=queries,
+                conn=conn,
+                candidates=eligible,
+            ):
+                frozen = asdict(prepared)
+                frozen["consumed"] = list(prepared.consumed)
+                progress.steps.update(prepared=frozen, attacker_data=attacker_data)
+                return None
+    deps = {
+        "combat_state": state,
+        "conn": conn,
+        "sink": sink,
+        "mutations": mutations,
+        "queries": queries,
+        "concentration_break_mod": concentration_break_mod,
+        "progress": progress,
+    }
+    if prepared is None:
+        result = await _resolve_attack_packet(
+            session,
+            caster,
+            action,
+            target,
+            weapon_attack=False,
+            target_ac_bonus=ac_bonus,
+            resolver=resolver,
+            **deps,
+        )
+    else:
+        assert progress is not None
+        rolled = check_resolution_attack.finish_attack(
+            attacker_data,
+            action,
+            prepared.d20.dc,
+            target.hp_current,
+            prepared,
+            progress.phase.select(prepared.original),
+            damage_mult=caster.damage_mult,
+            target_conditions=target.conditions,
+        )
+        result = await apply_rolled_attack(session, caster, action, target, rolled, prepared.d20.dc, **deps)
+    if progress is not None and progress.paused:
+        return None
+    return result
+
+
+async def land(session, state, caster, declaration, cast_packet, *, conn, deliveries=None, progress=None, **deps):
+    """Land a cast's catalog damage. ``progress`` lets a single-recipient attack spell hold its d20.
+
+    Multi-recipient deliveries are save or automatic spells (no attack roll to hold), so they
+    resolve without ``progress``."""
     if deliveries is None:
-        await _land_one(session, state, caster, declaration, cast, conn=conn, **deps)
-        if "damage_result" in cast.packet:
-            cast.packet["damage_results"] = [cast.packet["damage_result"]]
+        await _land_one(session, state, caster, declaration, cast_packet, conn=conn, progress=progress, **deps)
+        if progress is not None and progress.paused:
+            return
+        if "damage_result" in cast_packet:
+            cast_packet["damage_results"] = [cast_packet["damage_result"]]
         return
     grouped = {}
     for delivery in deliveries:
@@ -242,7 +339,7 @@ async def land(session, state, caster, declaration, cast, *, conn, deliveries=No
     if deliveries and "dart_indices" in deliveries[0]:
         indices = sorted(index for delivery in deliveries for index in delivery["dart_indices"])
         first_target = state.get_participant(deliveries[0]["target_id"])
-        first_dice = _components(profile, caster, first_target, cast, declaration.argument_type)[0]["dice"]
+        first_dice = _components(profile, caster, first_target, cast_packet, declaration.argument_type)[0]["dice"]
         base = profile["components"][0]["dice"]
         rolls = {index: dice.roll(first_dice if index == 0 else base).total for index in indices}
         deliveries = [{**delivery, "dart_rolls": rolls} for delivery in deliveries]
@@ -253,17 +350,17 @@ async def land(session, state, caster, declaration, cast, *, conn, deliveries=No
             state,
             caster,
             replace(declaration, target_id=delivery["target_id"], target_ids=None),
-            cast,
+            cast_packet,
             conn=conn,
             delivery=delivery,
             **deps,
         )
-        if "damage_result" in cast.packet:
-            result = cast.packet.pop("damage_result")
+        if "damage_result" in cast_packet:
+            result = cast_packet.pop("damage_result")
             if result.get("resolved") is not False:
                 results.append(result)
-    cast.packet["damage_results"] = results
+    cast_packet["damage_results"] = results
     if results:
-        cast.packet["damage_result"] = results[0]
+        cast_packet["damage_result"] = results[0]
     else:
-        cast.packet["recipient_status"] = "No effective recipients; no damage landed."
+        cast_packet["recipient_status"] = "No effective recipients; no damage landed."

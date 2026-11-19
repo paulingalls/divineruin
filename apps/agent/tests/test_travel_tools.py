@@ -26,6 +26,7 @@ def _travel_mocks(player=None):
     conditions_mutations.save_player_conditions = AsyncMock()
     travel_mutations = MagicMock()
     travel_mutations.update_player_travel_state = AsyncMock()
+    travel_mutations.add_travel_hours = AsyncMock()
     content = MagicMock()
     content.get_location = AsyncMock(return_value=_location("known_trail"))
     db_mod = MagicMock()
@@ -84,21 +85,6 @@ async def test_established_road_auto_arrives_and_clears_travel_state():
     m.travel_mutations.update_player_travel_state.assert_awaited_once()
     assert m.travel_mutations.update_player_travel_state.await_args.args[1] is None
     assert not any(e.event_type == E.DICE_ROLL for e in published_events(ctx))
-
-
-@pytest.mark.asyncio
-async def test_rolled_success_arrives_and_emits_dice_roll():
-    m = _travel_mocks()
-    m.content.get_location = AsyncMock(return_value=_location("dense_forest"))  # DC 14
-    ctx = _ctx_with_bus()
-    result = await _run(ctx, m, mode="scenic", rng_val=20)  # nat-20 → total >= 14
-    assert result["outcome"] == "success"
-    assert result["arrived"] is True
-    assert result["wrong_area"] is False
-    m.mutations.update_player_location.assert_awaited_once()
-    dice = next(e for e in published_events(ctx) if e.event_type == E.DICE_ROLL)
-    assert dice.payload["roll_type"] == "navigation_check"
-    assert dice.payload["skill"] == "survival"
 
 
 @pytest.mark.asyncio

@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from combat._helpers import _make_combat_state, _resolve_deps
 from livekit.agents.llm import ToolError
-from sample_fixtures import make_context
+from sample_fixtures import make_context, make_db_mod
 
 import combat_maneuver
 import combat_packet
@@ -136,6 +136,9 @@ def test_hearing_auto_failure_without_rng_or_bonus(resolver_name, threshold):
 @pytest.mark.parametrize("kind", ["skill", "discover"])
 @pytest.mark.parametrize("candidate", [False, True])
 async def test_public_hearing_and_sight_routes(kind, candidate, monkeypatch):
+    database, _ = make_db_mod()
+    monkeypatch.setattr("db.transaction", database.transaction)
+    monkeypatch.setattr("patron_deeds.record_deed", AsyncMock())
     import json
 
     import check_tools

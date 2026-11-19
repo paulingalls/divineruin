@@ -8,7 +8,7 @@ from sample_fixtures import make_context
 import event_types as E
 import tool_support
 from combat_events import EventSink
-from combat_support import _publish_sounds
+from combat_sound_events import publish_combat_sounds as _publish_sounds
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 AGENT_DIR = REPO_ROOT / "apps" / "agent"

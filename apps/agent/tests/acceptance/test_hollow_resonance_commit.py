@@ -139,8 +139,8 @@ async def test_commit_routes_qualitative_states_and_resume_is_once(encounter, ca
     await phase(ctx)
     assert tuple(m.resonance.current for m in ctx.userdata.party.members) == (3, expected[1] - 1, 0)
     before = [await db_mutations_resonance.read_player_resonance(pid) for pid in ids]
+    from combat_damage import SaveDamageResult, apply_attack_result
     from combat_events import EventSink
-    from combat_support import SaveDamageResult, apply_attack_result
 
     async with db.transaction() as conn:
         await apply_attack_result(

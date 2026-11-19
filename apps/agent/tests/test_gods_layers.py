@@ -29,6 +29,17 @@ EXPECTED_MODIFIERS = {
 def test_authored_layers_match_mechanics():
     rows = load_gods()
     assert len(rows) == len(CORPUS["patron_ids"]) == 10
+    for patron_id, gift_id in (
+        ("mortaen", "mortaen_deaths_awareness"),
+        ("nythera", "nythera_horizon_sense"),
+    ):
+        gift = next(row["layer_1_gift"] for row in rows if row["god_id"] == patron_id)
+        assert (gift["id"], gift["status"], gift["resolution"], gift["implementation_id"]) == (
+            gift_id,
+            "active",
+            "engine",
+            gift_id,
+        )
     doc = (ROOT / "docs/game_mechanics/game_mechanics_patrons.md").read_text()
     sections = {}
     for section in doc.split("### ")[1:]:
@@ -52,8 +63,14 @@ def test_authored_layers_match_mechanics():
     abilities = [a for row in rows for a in row["layer_3_tier_abilities"].values()]
     assert len(abilities) == len({a["id"] for a in abilities}) == 30
     assert {a["id"] for a in abilities if (a["status"], a["resolution"]) == ("active", "narrated")} == narrated
-    pending = [a for a in abilities if a["id"] not in narrated]
-    assert len(pending) == 23
+    passives = {"veythar_scholars_ward", "kaelen_warriors_endurance"}
+    engine = {"zhael_lucky", *passives}
+    assert {a["id"] for a in abilities if (a["status"], a["resolution"]) == ("active", "engine")} == engine
+    pending = [a for a in abilities if a["id"] not in narrated | engine]
+    assert len(pending) == 20
+    for ability in abilities:
+        if ability["id"] in passives:
+            assert (ability["recharge"], ability["implementation_id"]) == ("always", ability["id"])
     assert all((a["status"], a["resolution"]) == ("pending", "engine") for a in pending)
     for row in rows:
         patron = row["god_id"]
@@ -107,8 +124,7 @@ def test_valid_profiles_reach_loader(case, read_catalog):
 def test_invalid_profiles_reach_loader(case, read_catalog):
     with pytest.raises(ValueError) as error:
         read_catalog(with_profile(case["profile"]))
-    assert case["patron"] in str(error.value)
-    assert case["field"] in str(error.value)
+    assert f"{case['patron']}.{case['field']}:" in str(error.value)
 
 
 @pytest.mark.parametrize("shape", [None, {}, [], [None]])
@@ -149,3 +165,18 @@ def test_nonfinite_runtime_values(value, read_catalog):
     profile["layer_2_resonance"]["modifiers"][0]["value"] = value
     with pytest.raises(ValueError, match=r"veythar.layer_2_resonance.modifiers\[0\].value"):
         read_catalog(with_profile(profile))
+
+
+@pytest.mark.parametrize("case", CORPUS["layer_1_cases"], ids=lambda c: c["id"])
+def test_layer_1_profile_reaches_loader(case, read_catalog):
+    profile = copy.deepcopy(CORPUS["valid"][0]["profile"])
+    gift = profile["layer_1_gift"]
+    gift.update(case.get("set", {}))
+    if "delete" in case:
+        del gift[case["delete"]]
+    rows = with_profile(profile)
+    if "field" in case:
+        with pytest.raises(ValueError, match=re.escape("veythar.layer_1_gift." + case["field"] + ":")):
+            read_catalog(rows)
+    else:
+        assert read_catalog(rows) == rows

@@ -248,9 +248,7 @@ class TestEnemyAbilityDispatch:
         session = make_context().userdata
 
         with patch("combat_enemy_action._resolve_enemy_condition_packet") as mock_enemy_cond:
-            with patch(
-                "combat_packet._resolve_attack_packet", return_value={"hit": False, "critical": False}
-            ) as attack:
+            with patch("combat_fate._resolve_attack_packet", return_value={"hit": False, "critical": False}) as attack:
                 await _resolve_one_packet(
                     session,
                     state,

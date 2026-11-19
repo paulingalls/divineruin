@@ -16,7 +16,9 @@ import creation_deities
 import db
 import db_mutations
 import event_types as E
-from combat_support import _publish_sounds, _require_combat
+import zhael_fate
+from combat_sound_events import publish_combat_sounds as _publish_sounds
+from combat_support import _require_combat
 from db_errors import db_tool
 from game_events import publish_game_event
 from session_data import CombatState, SessionData
@@ -90,10 +92,10 @@ async def _request_death_save_impl(
     Not reentrant, and safe: no lock holder reaches this tool (only combat_agent's toolset does)."""
     session: SessionData = context.userdata
     async with session.combat_state_lock:
-        return await _request_death_save_locked(context, player_id, mutations=mutations, db_mod=db_mod)
+        return await _roll_death_save(context, player_id, mutations=mutations, db_mod=db_mod)
 
 
-async def _request_death_save_locked(
+async def _roll_death_save(
     context: RunContext[SessionData],
     player_id: str | None = None,
     *,
@@ -114,14 +116,55 @@ async def _request_death_save_locked(
     # primary's — patron_id lives on PartyMember. A companion has no member row and no patron.
     member = session.party.member(faller.id)
     bonus = creation_deities.patron_death_save_bonus(member.patron_id if member is not None else "none")
-    result = combat_resolution.resolve_death_save(
-        faller.death_save_successes,
-        faller.death_save_failures,
-        bonus=bonus,
-    )
+    successes, failures = faller.death_save_successes, faller.death_save_failures
+    faller_id = faller.id
 
+    def roll(face=None):
+        return combat_resolution.resolve_death_save(successes, failures, bonus=bonus, face=face)
+
+    result = roll()
+    candidates = await zhael_fate.candidates(session)
+    if candidates.choices(faller_id):
+
+        async def resume(kept):
+            async with session.combat_state_lock:
+                current = session.combat_state
+                if current is None:
+                    return zhael_fate.cancel(session, "Combat ended while the death save was held.")
+                participant = current.get_participant(faller_id)
+                if (
+                    current.combat_id != cs.combat_id
+                    or participant is None
+                    or not participant.is_fallen
+                    or participant.is_dead
+                    or (participant.death_save_successes, participant.death_save_failures) != (successes, failures)
+                ):
+                    return zhael_fate.cancel(session, "The fallen ally's state changed while the death save was held.")
+                response = await _request_death_save_locked(
+                    session, current, faller_id, kept, mutations, db_mod, resumed=True
+                )
+                return zhael_fate.Resumed(json.loads(response))
+
+        offer = zhael_fate.make_offer(
+            "death_save",
+            faller_id,
+            result,
+            candidates,
+            numbers=lambda r: (r.roll, r.roll + bonus),
+            reroll=roll,
+            flip=roll,
+            resume=resume,
+        )
+        if offer is not None:
+            session.fate_offer = offer
+            return json.dumps(offer.response())
+
+    return await _request_death_save_locked(session, cs, faller_id, result, mutations, db_mod)
+
+
+async def _request_death_save_locked(session, cs, faller_id, result, mutations, db_mod, *, resumed=False):
     state = CombatState.from_dict(cs.to_dict())  # working copy; adopted post-commit
-    working = state.get_participant(faller.id)
+    working = state.get_participant(faller_id)
     assert working is not None  # copied from the state we just resolved against
     working.death_save_successes = result.total_successes
     working.death_save_failures = result.total_failures
@@ -159,6 +202,8 @@ async def _request_death_save_locked(
 
     # Committed — now adopt the rolled state and release its events.
     session.combat_state = state
+    if resumed:
+        zhael_fate.effects_committed(session)
 
     # Publish events
     await publish_game_event(

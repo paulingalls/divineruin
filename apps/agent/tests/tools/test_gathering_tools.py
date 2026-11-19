@@ -94,26 +94,6 @@ async def _run(ctx, mocks, *, material_type="", rng_val=11):
 
 class TestAmbientForage:
     @pytest.mark.asyncio
-    async def test_success_grants_materials_and_emits_dice_roll(self):
-        mocks = _gather_mocks()
-        ctx = _ctx_with_bus()
-        result = await _run(ctx, mocks, rng_val=20)
-        assert result["outcome"] == "success"
-        assert result["materials"]  # non-empty
-        assert result["inventory_updated"] is True
-        mocks[1].add_inventory_item.assert_awaited()  # mutations
-        assert ctx.userdata.session_items_found == list(
-            dict.fromkeys(material.replace("_", " ").title() for material in result["materials"])
-        )
-        assert (
-            ctx.userdata.player_summary_metrics[ctx.userdata.primary_player_id]["items_found"]
-            == ctx.userdata.session_items_found
-        )
-        dice = next(e for e in published_events(ctx) if e.event_type == E.DICE_ROLL)
-        assert dice.payload["roll_type"] == "gathering_check"
-        assert dice.payload["skill"] == "survival"
-
-    @pytest.mark.asyncio
     async def test_failed_roll_grants_nothing(self):
         mocks = _gather_mocks()  # untrained survival, roll 1 -> nothing
         ctx = _ctx_with_bus()

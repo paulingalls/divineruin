@@ -14,7 +14,6 @@ keyword seams for TEST-ONLY injection; production uses the `@function_tool` wrap
 
 import json
 import logging
-from contextlib import nullcontext
 
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
@@ -31,6 +30,7 @@ import db_queries
 import dice
 import event_types as E
 import rules_engine
+import zhael_fate
 from check_discovery import _check_discover_impl
 from check_payloads import CheckPayload
 from check_skill import _check_skill_run
@@ -38,7 +38,7 @@ from condition_consume import consume_beneficial_conditions, serialize_combat_ch
 from db_errors import db_tool, validated_player_conditions
 from game_events import publish_game_event
 from gathering_tools import _check_gather_impl
-from patron_gifts import KNOWLEDGE_SKILLS
+from patron_passives import scholars_ward
 from session_data import SessionData
 from skill_check_effects import SkillCheckEffects
 from social_tools import _check_social_impl
@@ -67,7 +67,8 @@ async def check(
     Stealth check when a watcher might notice, using that watcher's difficulty;
     failure reveals the player. Casting or attacking also ends concealment.
 
-    Narrate the result from narrative_hint / narrative_cue. Never speak raw numbers or DCs."""
+    Narrate the result from narrative_hint / narrative_cue. Follow dm_cue when offered Fate's
+    Thread. For other checks, never speak raw numbers or DCs."""
     mode, kwargs = check_payloads.to_impl_args(roll)
     return await _check_impl(context, mode, **kwargs)
 
@@ -132,7 +133,7 @@ async def _check_skill_impl(
     conditions_mutations=db_mutations_conditions,
 ) -> str:
     effects = SkillCheckEffects()
-    async with db_mod.transaction() if skill.lower() in KNOWLEDGE_SKILLS | {"stealth"} else nullcontext(None) as conn:
+    async with db_mod.transaction() as conn:
         response = await _check_skill_run(
             context,
             skill,
@@ -146,6 +147,9 @@ async def _check_skill_impl(
             conn=conn,
             effects=effects,
         )
+    if effects.fate_offer is not None:
+        context.userdata.fate_offer = effects.fate_offer
+        return response
     await effects.flush(context.userdata, publish=publish_game_event)
     return response
 
@@ -177,17 +181,52 @@ async def _check_save_impl(
 
     try:
         result = check_resolution_save.resolve_saving_throw(
-            condition_voice_rules.roll_data(player, session.combat_state, player_id), save_type, dc, effect_on_fail
+            condition_voice_rules.roll_data(player, session.combat_state, player_id),
+            save_type,
+            dc,
+            effect_on_fail,
+            scholars_ward=scholars_ward(player),
         )
     except ValueError as e:
         raise ToolError(str(e)) from e
 
+    d20 = result.d20
+    if d20 is not None:
+        candidates = await zhael_fate.candidates(session, queries=queries, roller=(player_id, player))
+
+        async def resume(kept):
+            async with session.combat_state_lock:
+                if player_id not in session.present_member_ids:
+                    return zhael_fate.cancel(session, "The saving throw's roller is no longer present.")
+                return zhael_fate.Resumed(
+                    json.loads(await _finish_save(session, player_id, kept, conditions_mutations, db_mod, resumed=True))
+                )
+
+        offer = zhael_fate.make_offer(
+            "save",
+            player_id,
+            result,
+            candidates,
+            numbers=lambda r: (r.roll, r.total),
+            reroll=lambda: check_resolution_save._save_result(result, d20.roll(), effect_on_fail),
+            flip=lambda face: check_resolution_save._save_result(result, d20.evaluate(face), effect_on_fail),
+            resume=resume,
+        )
+        if offer is not None:
+            session.fate_offer = offer
+            return json.dumps(offer.response())
+
+    return await _finish_save(session, player_id, result, conditions_mutations, db_mod)
+
+
+async def _finish_save(session, player_id, result, conditions_mutations, db_mod, *, resumed=False):
     # Consume the single-use beneficial die (M4.8 story-003): a player-initiated save spends Blessed/
     # Inspired's +1d4, so remove the signalled conditions and persist. One write (no competing
     # mutation here), so no transaction is needed.
     consumed_state = None
     if result.consumed_conditions:
-        session.validate_acting_player(player_id)
+        if not resumed:
+            session.validate_acting_player(player_id)
         consumed_state = await consume_beneficial_conditions(
             player_id,
             result.consumed_conditions,
@@ -198,6 +237,9 @@ async def _check_save_impl(
 
     if consumed_state is not None:
         session.combat_state = consumed_state
+
+    if resumed:
+        zhael_fate.effects_committed(session)
 
     await publish_game_event(
         session.room,
@@ -215,7 +257,7 @@ async def _check_save_impl(
     )
 
     outcome = "success" if result.success else "failure"
-    session.record_event(f"Saving throw ({save_type} DC {dc}): {outcome}")
+    session.record_event(f"Saving throw ({result.save_type} DC {result.dc}): {outcome}")
 
     response = {
         "outcome": outcome,

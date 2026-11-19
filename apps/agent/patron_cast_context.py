@@ -1,12 +1,12 @@
 """Transaction-local patron predicates from the caster, targets and lifetime map history."""
 
-import json
 from dataclasses import dataclass
 
 import cast_modifiers
 import combat_wrongdoing
 import concealment
 from condition_produce import resolve_effective_targets
+from patron_location import first_stay_at_location
 from spell_voice_rules import is_area_spell
 
 
@@ -22,7 +22,9 @@ class PatronCastFacts:
 async def apply_patron(generated: int, standard: int, patron, session, player, *, spell, terrain, **context):
     """Apply the patron's Layer 2 generation; return it with the DM's packet entry when it differs."""
     facts = await _resolve_facts(patron, session, player, spell=spell, **context)
-    result, applied = cast_modifiers.apply_patron_generation(generated, spell, patron, terrain=terrain, facts=facts)
+    result, applied = cast_modifiers.apply_patron_generation(
+        generated, spell, patron, terrain=terrain, facts=facts, player=player
+    )
     if result == standard:
         return result, None, facts.wrongdoing
     return (
@@ -65,16 +67,7 @@ async def _resolve_facts(
             hit_points.append(hp)
         at_zero = bool(hit_points) and all(type(hp) is int and hp == 0 for hp in hit_points)
     if patron == "nythera":
-        row = await conn.fetchrow(
-            "SELECT data FROM player_map_progress WHERE player_id = $1 AND location_id = $2",
-            player["player_id"],
-            session.location_id,
-        )
-        if row is not None:
-            data = row["data"]
-            if isinstance(data, str):
-                data = json.loads(data)
-            first_stay = not data.get("revisited", False)
+        first_stay = await first_stay_at_location(player, session.location_id, conn=conn)
     return PatronCastFacts(
         concealment.is_concealed(player),
         evidence is not None,

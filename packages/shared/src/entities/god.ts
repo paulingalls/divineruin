@@ -1,12 +1,41 @@
+import archetypes from "../../../../content/archetypes.json";
+import implementations from "../../../../content/engine_implementations.json";
+
+export type GodSynergyType = "natural" | "divine" | "unexpected";
+export interface GodSynergyClause {
+  effect: string;
+  status: "active" | "pending";
+  resolution: "narrated" | "engine";
+  implementation_id?: string;
+}
+export interface GodSynergyRow {
+  type: GodSynergyType;
+  name: string;
+  clauses: GodSynergyClause[];
+}
+
 export interface God {
   god_id: string;
+  layer_1_gift: GodLayer1Gift;
   layer_2_resonance: GodResonance;
   layer_3_tier_abilities: Record<GodTier, GodTierAbility>;
-  layer_4_synergy_matrix: null;
+  layer_4_synergy_matrix: Record<string, GodSynergyRow>;
   [legacyField: string]: unknown;
+}
+export interface GodLayer1Gift {
+  id: string;
+  name: string;
+  effect: string;
+  trigger: string;
+  status: "active" | "awaits_healing";
+  recharge: "always" | "per_encounter" | "short_rest" | "long_rest";
+  resolution?: "narrated" | "engine";
+  implementation_id?: string;
+  mechanics?: unknown;
 }
 export type GodTier = "acknowledged" | "devoted" | "exalted";
 export interface GodTierAbility {
+  implementation_id?: string;
   id: string;
   name: string;
   effect: string;
@@ -95,10 +124,83 @@ function modifier(value: unknown, path: string): void {
   if (!valid) fail(`${path}.value`, `expected ${spec.rule}`);
 }
 
+const ARCHETYPE_IDS = archetypes.map((row) => text(row.id, "archetypes.id"));
+if (!ARCHETYPE_IDS.length || new Set(ARCHETYPE_IDS).size !== ARCHETYPE_IDS.length)
+  fail("archetypes", "expected nonempty unique roster");
+if (!Object.keys(implementations).length)
+  fail("engine_implementations", "expected nonempty registry");
+for (const [id, target] of Object.entries(implementations)) {
+  text(id, "engine_implementations.id");
+  text(target, `engine_implementations.${id}`);
+}
+function readiness(row: Record<string, unknown>, path: string): void {
+  if (!["active", "pending"].includes(text(row.status, `${path}.status`)))
+    fail(`${path}.status`, "unknown status");
+  engineResolution(row, path);
+}
+function engineResolution(row: Record<string, unknown>, path: string): void {
+  if (
+    Object.hasOwn(row, "resolution") &&
+    !["narrated", "engine"].includes(text(row.resolution, `${path}.resolution`))
+  )
+    fail(`${path}.resolution`, "unknown resolution");
+  if (Object.hasOwn(row, "implementation_id"))
+    text(row.implementation_id, `${path}.implementation_id`);
+  if (
+    row.status === "active" &&
+    row.resolution === "engine" &&
+    (typeof row.implementation_id !== "string" ||
+      !Object.hasOwn(implementations, row.implementation_id))
+  )
+    fail(`${path}.implementation_id`, "active engine effect requires a registered implementation");
+}
+function layer1(value: unknown, path: string): void {
+  const gift = object(value, path);
+  for (const field of ["id", "name", "effect", "trigger", "recharge", "status"]) {
+    if (!Object.hasOwn(gift, field)) fail(`${path}.${field}`, "required field");
+    text(gift[field], `${path}.${field}`);
+  }
+  if (!["active", "awaits_healing"].includes(gift.status as string))
+    fail(`${path}.status`, "unknown status");
+  if (!["always", "per_encounter", "short_rest", "long_rest"].includes(gift.recharge as string))
+    fail(`${path}.recharge`, "unknown recharge");
+  engineResolution(gift, path);
+}
+function matrix(value: unknown, path: string): void {
+  const rows = object(value, path);
+  if (
+    Object.keys(rows).length !== ARCHETYPE_IDS.length ||
+    ARCHETYPE_IDS.some((id) => !Object.hasOwn(rows, id))
+  )
+    fail(path, "expected exact archetype roster");
+  for (const [archetype, entry] of Object.entries(rows)) {
+    const rowPath = `${path}.${archetype}`;
+    const row = object(entry, rowPath, ["type", "name", "clauses"]);
+    if (!["natural", "divine", "unexpected"].includes(text(row.type, `${rowPath}.type`)))
+      fail(`${rowPath}.type`, "unknown synergy type");
+    text(row.name, `${rowPath}.name`);
+    if (!Array.isArray(row.clauses) || !row.clauses.length)
+      fail(`${rowPath}.clauses`, "expected nonempty array");
+    row.clauses.forEach((entry: unknown, i: number) => {
+      const clausePath = `${rowPath}.clauses[${i}]`;
+      const clause = object(entry, clausePath);
+      object(clause, clausePath, [
+        "effect",
+        "status",
+        "resolution",
+        ...(Object.hasOwn(clause, "implementation_id") ? ["implementation_id"] : []),
+      ]);
+      text(clause.effect, `${clausePath}.effect`);
+      readiness(clause, clausePath);
+    });
+  }
+}
+
 export function validateGod(profile: unknown): God {
   const identityPath = "god.god_id";
   const row = object(profile, identityPath);
   const patron = text(row.god_id, identityPath);
+  layer1(row.layer_1_gift, `${patron}.layer_1_gift`);
   let path = `${patron}.layer_2_resonance`;
   const resonance = object(row.layer_2_resonance, path, ["name", "effect", "modifiers"]);
   for (const field of ["name", "effect"]) text(resonance[field], `${path}.${field}`);
@@ -118,6 +220,9 @@ export function validateGod(profile: unknown): God {
       "recharge",
       "status",
       "resolution",
+      ...(Object.hasOwn(object(entry, abilityPath), "implementation_id")
+        ? ["implementation_id"]
+        : []),
     ]);
     for (const [field, value] of Object.entries(ability)) text(value, `${abilityPath}.${field}`);
     const id = text(ability.id, `${abilityPath}.id`);
@@ -132,15 +237,11 @@ export function validateGod(profile: unknown): God {
       )
     )
       fail(`${abilityPath}.recharge`, "unknown recharge");
-    if (!["active", "pending"].includes(text(ability.status, `${abilityPath}.status`)))
-      fail(`${abilityPath}.status`, "unknown status");
-    if (!["narrated", "engine"].includes(text(ability.resolution, `${abilityPath}.resolution`)))
-      fail(`${abilityPath}.resolution`, "unknown resolution");
-    if (ability.status === "active" && ability.resolution === "engine")
-      fail(`${abilityPath}.resolution`, `${id} is active but has no engine implementation`);
+    readiness(ability, abilityPath);
   }
-  if (!Object.hasOwn(row, "layer_4_synergy_matrix") || row.layer_4_synergy_matrix !== null)
-    fail(`${patron}.layer_4_synergy_matrix`, "must be null");
+  if (!Object.hasOwn(row, "layer_4_synergy_matrix"))
+    fail(`${patron}.layer_4_synergy_matrix`, "required field");
+  matrix(row.layer_4_synergy_matrix, `${patron}.layer_4_synergy_matrix`);
   return row as God;
 }
 

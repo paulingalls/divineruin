@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 import pytest
 from combat.test_choir_encounter import start_choir
 
-from combat_support import AutomaticDamageResult, apply_attack_result
+from combat_damage import AutomaticDamageResult, apply_attack_result
 from session_data import CombatState
 
 

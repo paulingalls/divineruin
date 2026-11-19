@@ -1,0 +1,109 @@
+"""Zhael's held d20 composes with the sprint's melee approach, Sneak Attack and attack spells."""
+
+from unittest.mock import patch
+
+from _patron_engine_fixtures import configure
+from _unbound_path_fixtures import world as world
+from _zhael_fate_fixtures import attack, defend, game_tools
+from acceptance._capstone_helpers import _build_state, _d20, _damage_die, _enemy
+from acceptance.test_kaelen_iron_resolve_capstone import required_player
+
+import check_resolution_attack
+import db_mutations
+from activate_tools import activate
+from combat_attack_roll import attack_roll_inputs, spend_sneak_attack
+from combat_turn import declare_phase, resolve_phase
+
+
+async def test_held_melee_swing_closes_distance_once_before_the_offer(world):
+    await configure(world, "zhael", "mage")
+    pid = world.ids[0]
+    state = _build_state(pid, pid, [_enemy("foe", 30)])
+    assert state.spatial is not None
+    state.spatial["positions"]["foe"] = {"x": 20, "y": 0, "z": 0}
+    state.spatial["speeds"][pid] = 30
+    session = world.ctx.userdata
+    session.combat_state = state
+    call = game_tools(session, declare_phase, resolve_phase, activate)
+    try:
+        await call("declare_phase", declarations=[attack(pid, "foe"), defend("foe")])
+        with (
+            patch("check_resolution.dice_roll", side_effect=[_d20(1), _d20(20)]),
+            patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
+        ):
+            offer = (await call("resolve_phase"))["fate_offer"]
+            assert session.combat_state is not None and session.combat_state.spatial is not None
+            moved = dict(session.combat_state.spatial["positions"][pid])
+            assert moved["x"] == 15 and offer["die"] == 1
+            await call("activate", id="zhael_fates_thread", offer_id=offer["offer_id"])
+            settled = await call("activate", id="zhael_fates_thread", offer_id=offer["offer_id"], keep="reroll")
+        packet = settled["packets"][0]
+        assert packet["hit"] and packet["closed_distance"] and packet["moved_ft"] == 15
+        saved = await db_mutations.load_combat_state(state.combat_id)
+        assert saved is not None and saved.spatial is not None
+        assert saved.spatial["positions"][pid] == moved == packet["destination"]
+        assert required_player(saved, "foe").hp_current < 30
+    finally:
+        await db_mutations.delete_combat_state(state.combat_id)
+
+
+async def test_held_spell_attack_outside_the_choir_waits_for_the_choice(world):
+    await configure(world, "zhael", "mage")
+    pid = world.ids[0]
+    state = _build_state(pid, pid, [_enemy("foe", 30)])
+    session = world.ctx.userdata
+    session.combat_state = state
+    call = game_tools(session, declare_phase, resolve_phase, activate)
+    try:
+        await call(
+            "declare_phase",
+            declarations=[
+                {**defend(pid), "kind": "ability", "action": "arcane_bolt", "targets": ["foe"]},
+                defend("foe"),
+            ],
+        )
+        with (
+            patch("check_resolution.dice_roll", side_effect=[_d20(1), _d20(20)]),
+            patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)) as damage,
+        ):
+            offer = (await call("resolve_phase"))["fate_offer"]
+            assert offer["roll_kind"] == "attack" and offer["die"] == 1
+            assert required_player(session.combat_state, "foe").hp_current == 30 and not damage.called
+            await call("activate", id="zhael_fates_thread", offer_id=offer["offer_id"])
+            settled = await call("activate", id="zhael_fates_thread", offer_id=offer["offer_id"], keep="reroll")
+        landed = settled["packets"][0]["cast"]["damage_result"]
+        assert landed["hit"] and landed["critical"] and landed["roll"] == 20
+        saved = await db_mutations.load_combat_state(state.combat_id)
+        assert required_player(saved, "foe").hp_current == 30 - landed["damage"] < 30
+    finally:
+        await db_mutations.delete_combat_state(state.combat_id)
+
+
+async def test_prepared_sneak_attack_spends_its_allowance_only_when_finished(world):
+    pid = world.ids[0]
+    state = _build_state(pid, pid, [_enemy("foe", 50)])
+    rogue, foe = required_player(state, pid), required_player(state, "foe")
+    rogue.archetype_id, rogue.level = "rogue", 1
+    action = {**rogue.action_pool[0], "advantage": True}
+    data, ac, mod = attack_roll_inputs(rogue, foe, 0, state, action)
+    assert data["sneak_attack_available"]
+    with patch("check_resolution.dice_roll", side_effect=[_d20(3), _d20(4)]):
+        prepared = check_resolution_attack.prepare_attack(data, action, ac, attack_mod=mod)
+    assert rogue.sneak_attack_round != state.round_number
+    with patch("check_resolution_attack.dice_roll", return_value=_damage_die(3)):
+        kept = check_resolution_attack.finish_attack(data, action, ac, 50, prepared, prepared.d20.evaluate(20))
+    assert kept.critical_success and kept.sneak_attack_dice == "2d6"
+    spend_sneak_attack(rogue, state, kept)
+    assert rogue.sneak_attack_round == state.round_number
+    assert not attack_roll_inputs(rogue, foe, 0, state, action)[0]["sneak_attack_available"]
+
+
+def test_finished_attack_keeps_the_prepared_disadvantage_cancel():
+    rogue = {"level": 1, "attributes": {}, "sneak_attack_available": True, "conditions": [{"type": "prone"}]}
+    weapon = {"damage": "1d8", "advantage": True}
+    with patch("check_resolution.dice_roll", side_effect=[_d20(15)]):
+        prepared = check_resolution_attack.prepare_attack(rogue, weapon, 10)
+    assert prepared.d20.advantage and prepared.d20.disadvantage
+    with patch("check_resolution_attack.dice_roll", return_value=_damage_die(5)):
+        result = check_resolution_attack.finish_attack(rogue, weapon, 10, 50, prepared, prepared.d20.evaluate(15))
+    assert result.hit and result.sneak_attack_dice is None

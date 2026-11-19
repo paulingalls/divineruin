@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, patch
 from combat._helpers import _call, _own_reaction, _resolve_deps, _resolve_round
 from voice_condition_fixtures import place_actors, spatial_record
 
-import combat_support
+import combat_damage
 import reaction_spend
 import reaction_windows
 from session_data import CombatParticipant, CombatState
@@ -140,10 +140,10 @@ def _shield_bearing_deps(damage: int = 6):
 
 
 def _patched_accrual():
-    """``_accrue_durability`` is imported into combat_support by name and takes no DI, so a test
+    """``_accrue_durability`` is imported into combat_damage by name and takes no DI, so a test
     that lets it run reaches the real inventory mutations. Patched at the importing module."""
     return patch.object(
-        combat_support,
+        combat_damage,
         "_accrue_durability",
         AsyncMock(return_value={"broken": False, "penalty": {}, "current_hits": 9}),
     )

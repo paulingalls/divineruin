@@ -31,7 +31,7 @@ async def world(dev_db_pool):
                 row = {
                     **deepcopy(SAMPLE_PLAYER),
                     "player_id": pid,
-                    "class": "mage",
+                    "class": "bard",
                     "level": 20,
                     "focus": {"current": 50},
                     "divine_favor": {"patron": "syrath"},

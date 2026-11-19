@@ -1,7 +1,9 @@
 """Authored patron passives shared by skill resolution and world queries."""
 
 from _gods_content import load_gods
+from patron_synergy import has_engine_synergy
 
+UNBOUND_ALONE_BONUS = 1
 NATURES_PULSE_SKILLS = frozenset({"perception", "survival"})
 KNOWLEDGE_SKILLS = frozenset({"arcana", "history", "investigation", "nature", "religion"})
 SYRATH_SHADOW_VEIL = "syrath_shadow_veil"
@@ -33,14 +35,27 @@ def thyra_gift(favor: dict) -> dict | None:
     return gift if gift["status"] == "active" else None
 
 
-def skill_gift(player: dict, skill: str, *, ally_present: bool, natural_terrain: bool) -> tuple[int, bool, str | None]:
+def skill_gift(
+    player: dict, skill: str, *, ally_present: int, natural_terrain: bool, first_stay: bool = False
+) -> tuple[int, bool, str | None]:
     favor = player.get("divine_favor") or {}
+    if not ally_present and favor.get("patron") in (None, "none"):
+        return UNBOUND_ALONE_BONUS, False, None
     if ally_present and favor.get("patron") == "aelora":
         gift = next(row["layer_1_gift"] for row in load_gods() if row["god_id"] == "aelora")
         if gift["mechanics"]["requires"] != "ally_present":
             raise ValueError(f"Aelora's gift requires {gift['mechanics']['requires']!r}, not a present ally")
         if gift["status"] == "active":
-            return gift["mechanics"]["amount"], False, gift["name"]
-    if natural_terrain and skill in NATURES_PULSE_SKILLS and (gift := thyra_gift(favor)):
-        return 0, True, gift["name"]
+            adjustment = int(ally_present >= 2 and has_engine_synergy(player, "aelora_common_bond"))
+            return gift["mechanics"]["amount"] + adjustment, False, gift["name"]
+    if skill in NATURES_PULSE_SKILLS and (gift := thyra_gift(favor)):
+        if natural_terrain:
+            return 0, True, gift["name"]
+        if has_engine_synergy(player, "thyra_wild_kinship"):
+            return 2, False, gift["name"]
+    if first_stay and favor.get("patron") == "nythera":
+        if skill in {"investigation", "perception"} and has_engine_synergy(player, "nythera_uncharted_senses"):
+            return 3, False, "Uncharted Senses"
+        if skill == "animal_handling" and has_engine_synergy(player, "nythera_uncharted_handling"):
+            return 1, False, "Uncharted Handling"
     return 0, False, None

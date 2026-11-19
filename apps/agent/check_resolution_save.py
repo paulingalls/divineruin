@@ -7,9 +7,16 @@ resolve_saving_throw accepts an optional `rng` for deterministic testing.
 """
 
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
-from check_resolution import _ATTR_ABBREV, _ATTR_FULL, _apply_condition_modifiers, _roll_d20_check, roll_bonus_dice
+from check_resolution import (
+    _ATTR_ABBREV,
+    _ATTR_FULL,
+    D20CheckCore,
+    D20Roll,
+    _apply_condition_modifiers,
+    roll_bonus_dice,
+)
 from conditions import get_condition_effects
 from dramatic import DramaticContext, evaluate_dramatic_context
 from rules_engine import attribute_modifier, proficiency_bonus
@@ -54,6 +61,7 @@ class SavingThrowResult:
     # True when the caller's granted advantage survived to the roll: condition disadvantage
     # (Hollowed's WIS) cancels it, and an auto-failed save never rolls.
     advantage_applied: bool = False
+    d20: D20Roll | None = None
 
 
 def resolve_saving_throw(
@@ -66,6 +74,7 @@ def resolve_saving_throw(
     *,
     bonus_dice_eligible: bool = True,
     advantage: bool = False,
+    scholars_ward: bool = False,
 ) -> SavingThrowResult:
     # ``bonus_dice_eligible`` gates the beneficial +1d4 fold/consume (M4.8 story-003). Player-initiated
     # saves keep the default True; engine-auto saves (Beat-4 tick-clear, concentration-break) pass
@@ -125,22 +134,34 @@ def resolve_saving_throw(
         else (0, ())
     )
     save_modifier = mod + flat_mod + bonus
-    core = _roll_d20_check(
-        save_modifier,
-        dc,
-        rng=rng,
-        advantage=advantage or condition_advantage,
-        disadvantage=disadvantage,
+    ward_advantage = scholars_ward and effect_on_fail.strip().lower() == "hollowed"
+    d20 = D20Roll(save_modifier, dc, advantage or condition_advantage or ward_advantage, disadvantage)
+    return _save_result(
+        SavingThrowResult(
+            save_type=save_lower,
+            roll=0,
+            modifier=save_modifier,
+            total=0,
+            dc=dc,
+            success=False,
+            margin=0,
+            effect_applied=effect_on_fail,
+            narrative_hint="",
+            consumed_conditions=consumed,
+            advantage_applied=advantage and not disadvantage,
+            d20=d20,
+        ),
+        d20.roll(rng),
+        effect_on_fail,
     )
-    # No roll_type passed: a generic save is dramatic ONLY on nat-1/nat-20.
-    verdict = evaluate_dramatic_context(DramaticContext(raw_die=core.roll))
 
-    return SavingThrowResult(
-        save_type=save_lower,
+
+def _save_result(original: SavingThrowResult, core: D20CheckCore, effect_on_fail: str) -> SavingThrowResult:
+    verdict = evaluate_dramatic_context(DramaticContext(raw_die=core.roll))
+    return replace(
+        original,
         roll=core.roll,
-        modifier=save_modifier,
         total=core.total,
-        dc=dc,
         success=core.success,
         margin=core.margin,
         critical_success=core.critical_success,
@@ -149,8 +170,6 @@ def resolve_saving_throw(
         narrative_hint=core.narrative_hint,
         dramatic=verdict.dramatic,
         context=verdict.context,
-        consumed_conditions=consumed,
-        advantage_applied=advantage and not disadvantage,
     )
 
 
@@ -200,4 +219,5 @@ def roll_participant_save(
         dc_mod=dc_mod,
         bonus_dice_eligible=bonus_dice_eligible,
         advantage=advantage or item_advantage,
+        scholars_ward=participant.scholars_ward,
     )

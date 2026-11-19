@@ -3,6 +3,7 @@
 import json
 import logging
 from contextlib import nullcontext
+from functools import partial
 
 from livekit.agents.llm import ToolError
 
@@ -19,7 +20,10 @@ from condition_consume import consume_beneficial_conditions
 from condition_voice_rules import validate_hearing_check
 from db_errors import validated_player_conditions
 from patron_gifts import KNOWLEDGE_SKILLS
+from patron_location import check_first_stay
 from session_data import SessionData
+from skill_check_effects import SkillCheckEffects
+from skill_fate import SkillScope, prepare_skill_offer
 from tool_support import _cap_str
 
 logger = logging.getLogger("divineruin.tools")
@@ -75,14 +79,78 @@ async def _check_skill_run(
         condition_voice_rules.roll_data(player, session.combat_state, player_id),
         skill,
         difficulty if reroll_dc is None else reroll_dc,
-        ally_present=session.ally_present_for(player_id),
+        ally_present=session.allies_present_for(player_id),
+        first_stay=await check_first_stay(player, session, skill, conn=conn),
         natural_terrain=await skill_natural_terrain(session, player, skill),
         hearing_only=hearing_only,
     )
 
+    scope = SkillScope.capture(session, player_id)
+
+    finish = partial(
+        _finish_skill,
+        session,
+        player_id,
+        skill=skill,
+        difficulty=difficulty,
+        context_description=context_description,
+        hearing_only=hearing_only,
+        queries=queries,
+        mutations=mutations,
+        db_mod=db_mod,
+        conditions_mutations=conditions_mutations,
+        reroll_dc=reroll_dc,
+    )
+
+    async def write(kept, write_conn):
+        from check_tools import publish_game_event
+
+        current = await scope.lock_roller(session, write_conn, queries=queries)
+        deferred = SkillCheckEffects()
+        packet = await finish(current, kept, effects=deferred, conn=write_conn, resumed=True)
+
+        async def flush():
+            await deferred.flush(session, publish=publish_game_event)
+            return json.loads(packet)
+
+        return flush
+
+    offer = await prepare_skill_offer(session, scope, result, player, write, conn=conn, queries=queries, db_mod=db_mod)
+    if offer is not None:
+        effects.fate_offer = offer
+        return json.dumps(offer.response())
+
+    return await finish(player, result, effects=effects, conn=conn)
+
+
+async def _finish_skill(
+    session,
+    player_id,
+    player,
+    result,
+    skill,
+    difficulty,
+    context_description,
+    *,
+    hearing_only,
+    queries,
+    mutations,
+    db_mod,
+    conditions_mutations,
+    effects,
+    conn,
+    reroll_dc=None,
+    resumed=False,
+):
+    def validate():
+        if resumed:
+            session.member_state(player_id)
+        else:
+            session.validate_acting_player(player_id)
+
     concealment_packet = None
     if skill.lower() == "stealth":
-        session.validate_acting_player(player_id)
+        validate()
         concealment_packet = await concealment.transition(
             player, result.success, ended_by=None if result.success else "failed_stealth", conn=conn
         )
@@ -119,7 +187,7 @@ async def _check_skill_run(
     adv = None
     if result.consumed_conditions:
         async with nullcontext(conn) if conn is not None else db_mod.transaction() as write_conn:
-            session.validate_acting_player(player_id)
+            validate()
             if reroll_dc is None:
                 adv = await skill_persistence.apply_skill_use_with_persistence(
                     player_id,
@@ -139,7 +207,7 @@ async def _check_skill_run(
                 db_mod=db_mod,
             )
     elif reroll_dc is None:
-        session.validate_acting_player(player_id)
+        validate()
         adv = await skill_persistence.apply_skill_use_with_persistence(
             player_id,
             skill,
@@ -151,6 +219,10 @@ async def _check_skill_run(
         )
 
     if result.success:
+        assert conn is not None
+        validate()
+        if not session.ally_present_for(player_id):
+            await patron_deeds.record_deed(player_id, "succeeded_alone", conn=conn)
         skill_name = skill.lower()
         deed = (
             "successful_stealth"
@@ -160,8 +232,6 @@ async def _check_skill_run(
             else None
         )
         if deed is not None:
-            assert conn is not None
-            session.validate_acting_player(player_id)
             await patron_deeds.record_deed(player_id, deed, conn=conn)
 
     effects.combat_state = consumed_state
@@ -206,6 +276,7 @@ async def _check_skill_run(
                 "location_id": session.location_id,
             },
             conn=conn,
+            authorized_roller=player_id if resumed else None,
         )
         if offered:
             response["reroll_offer"] = offered

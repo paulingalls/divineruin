@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -154,6 +155,35 @@ class TestFinalizeCharacter:
             assert (hp, ac, maxima.stamina, maxima.focus) == HUMAN_ANCHORS[class_id]
         if (race_id, class_id) == ("vaelti", "artificer"):
             assert (hp, ac, maxima.stamina, maxima.focus) == (9, 15, None, 12)
+
+    @patch("creation_tools.db_session_queries.get_session_init_payload", new_callable=AsyncMock)
+    @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock)
+    async def test_finalize_kaelen_projects_endurance_hp(self, mock_create_player, mock_get_payload):
+        mock_get_payload.return_value = {
+            "character": {},
+            "location": None,
+            "quests": [],
+            "inventory": [],
+            "map_progress": [],
+            "world_state": {},
+        }
+
+        cs = CreationState(
+            race="human",
+            class_choice="warrior",
+            deity="kaelen",
+            name="Aric",
+            backstory="Test.",
+        )
+        ctx = _make_context(cs)
+        _, result = await _finalize(ctx)
+
+        data = mock_create_player.call_args[0][2]
+        con_mod = attribute_modifier(data["attributes"]["constitution"])
+        expected = calculate_max_hp("warrior", 1, con_mod)
+        assert data["hp"]["current"] == expected
+        assert data["hp"]["max"] == expected
+        assert json.loads(result)["character"]["hp"] == {"current": expected, "max": expected + 5}
 
     @patch("creation_tools.db_mutations.create_player", new_callable=AsyncMock, side_effect=Exception("DB down"))
     async def test_finalize_db_error(self, mock_create_player):

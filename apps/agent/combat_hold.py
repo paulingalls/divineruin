@@ -25,18 +25,19 @@ import combat_reaction_contest
 import combat_reaction_effect
 import combat_recharge
 import combat_voice_rules
-import combat_wrongdoing
 import event_types as E
 import reaction_gate
 import reaction_spend
 import reaction_windows
 from combat_ability import _find_action
-from combat_action_availability import begin_execution, replay_valid
+from combat_action_availability import replay_valid
+from combat_attack_roll import build_attack_dice_roll_payload, deserialize_roll
 from combat_down import target_unavailable
 from combat_enemy_action import is_combined_attack_action, is_save_damage_action
+from combat_fate_hostile import roll_hostile
+from combat_fate_rolls import PacketRolls
 from combat_multiattack import held_declarations, strike_summary
 from combat_packet import _resolve_one_packet
-from combat_support import build_attack_dice_roll_payload, deserialize_roll, roll_attack, serialize_roll
 from condition_restrictions import cannot_act
 from condition_sources import DeliveryRefused
 from declarations import DeclarationType, resolve_declaration
@@ -217,7 +218,7 @@ def _assert_iteration_progress(state, head: dict, summaries: list[dict], summary
         raise RuntimeError(f"held action for {head['actor_id']!r} made no progress")
 
 
-async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[dict]:
+async def pump(session, state, *, packet_deps: dict, contest_rng=None, fate_rolls=None) -> list[dict]:
     """Step the Beat-3 queue until it pauses on a window or the queue drains.
 
     Returns the resolution summaries produced by THIS call. When it returns with
@@ -259,13 +260,22 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
         import choir_encounter
         from choir_effects import approach
 
+        aura = None
+        if fate_rolls is not None and session.fate_lock.locked() and state.choir_encounter is not None:
+            aura = PacketRolls(
+                fate_rolls, head.setdefault("roll_steps", {}), packet_deps["queries"], packet_deps["conn"]
+            ).scope("choir_aura")
         await choir_encounter.turn_start(
             session,
             state,
             state.get_participant(head["actor_id"]),
             conn=packet_deps.get("conn"),
             concentration_break_mod=packet_deps["concentration_break_mod"],
+            progress=aura,
+            sink=packet_deps.get("sink"),
         )
+        if aura is not None and aura.paused:
+            return summaries
         from combat_veilrender import turn_start
 
         effects = await turn_start(session, state, state.get_participant(head["actor_id"]), **packet_deps)
@@ -305,8 +315,10 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
                 if action is not None and head["roll"] is None:
                     _assert_single_swing(state, head, action)
                     contribution = combat_reaction_effect.ac_bonus(state, head)
-                    rolled = _roll(state, head, action, packet_deps["resolver"], contribution)
-                    head.update(roll=serialize_roll(*rolled), reaction_ac_bonus=contribution)
+                    if not await roll_hostile(
+                        session, state, head, _held_declaration(head), action, contribution, packet_deps, fate_rolls
+                    ):
+                        return summaries
 
                 if head["roll"] is not None and POST_ROLL not in head["opened"]:
                     head["opened"].append(POST_ROLL)
@@ -338,6 +350,7 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
                 head,
                 packet_deps=packet_deps,
                 mark_cancelled=combat_reaction_contest.mark_cancelled(head),
+                fate_rolls=fate_rolls,
             )
         except HeldActionUnresolvable as exc:
             summary = {"actor_id": head["actor_id"], "resolved": False, "reason": str(exc)}
@@ -347,35 +360,23 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None) -> list[d
             state.held_actions.pop(0)
             continue
 
-        if head is reacted:
-            combat_reaction_effect.record_shield_wear(reaction_packets, state, head, summary)
-            combat_reaction_effect.record_save_advantage(reaction_packets, summary)
+        if fate_rolls is not None and fate_rolls.pending is not None:
+            if head is reacted and reaction_packets:
+                head["pending_reaction_packets"] = reaction_packets
+                del summaries[: len(reaction_packets)]
+            return summaries
+
+        deferred_reactions = head.pop("pending_reaction_packets", [])
+        recorded_reactions = reaction_packets if head is reacted else deferred_reactions
+        if recorded_reactions:
+            combat_reaction_effect.record_shield_wear(recorded_reactions, state, head, summary)
+            combat_reaction_effect.record_save_advantage(recorded_reactions, summary)
+        summaries.extend(deferred_reactions)
         summaries.append(strike_summary(head, summary))
         state.held_actions.pop(0)
         _assert_iteration_progress(state, head, summaries, summary_start)
 
     return summaries
-
-
-def _roll(state, head: dict, action: dict, resolver, reaction_ac_bonus):
-    """Roll the held swing WITHOUT touching HP — the post-roll window is pre-damage."""
-    declaration = _held_declaration(head)
-    attacker = state.get_participant(head["actor_id"])
-    target = state.get_participant(declaration.target_id)
-    action = begin_execution(state, attacker, action, declaration, head)
-    rolled = roll_attack(
-        attacker,
-        action,
-        target,
-        target_ac_bonus=state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus,
-        enemies_remaining=sum(1 for p in state.participants if p.type == "enemy" and not p.is_fallen),
-        is_first_attack_of_combat=not state.first_attack_resolved,
-        resolver=resolver,
-        combat_state=state,
-    )
-
-    combat_wrongdoing.record_attack(state, attacker, target)
-    return rolled
 
 
 def _window(state, head: dict, stage: str, triggers: tuple[str, ...]) -> dict:
@@ -406,7 +407,9 @@ def _open(state, candidate: dict) -> None:
     )
 
 
-async def _resolve_held(session, state, head: dict, *, packet_deps: dict, mark_cancelled: bool = False) -> dict:
+async def _resolve_held(
+    session, state, head: dict, *, packet_deps: dict, mark_cancelled: bool = False, fate_rolls=None
+) -> dict:
     """Apply one held action through the ordinary packet resolver.
 
     A rolled attack replays its held roll (see ``_replay_resolver``); everything else — a wasted
@@ -426,6 +429,8 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict, mark_c
     deps = dict(packet_deps)
     if head["roll"] is not None:
         deps["resolver"] = _replay_resolver(head)
+    if fate_rolls is not None and (session.fate_lock.locked() or head.get("roll_steps")):
+        deps["progress"] = PacketRolls(fate_rolls, head.setdefault("roll_steps", {}), deps["queries"], deps["conn"])
     summary = await _resolve_one_packet(
         session,
         state,
@@ -442,11 +447,12 @@ async def _resolve_held(session, state, head: dict, *, packet_deps: dict, mark_c
         grapple_blocked=combat_reaction_effect.grapple_blocked(state, head),
         mark_cancelled=mark_cancelled,
         publish_roll=not head.get("roll_published", False),
-        _held_head=head if head.get("execution_receipt") is not None else None,
+        _held_head=head if head.get("execution_receipt") is not None or "progress" in deps else None,
         _melee_approach=head.get("melee_approach"),
         **deps,
     )
-    if movement := head.get("melee_approach"):
+    # A paused (Zhael-held) resolution returns {}; its movement facts join the summary on resume.
+    if summary and (movement := head.get("melee_approach")):
         summary = {**movement, **summary}
         if not summary["resolved"]:
             summary["attack_resolved"] = False

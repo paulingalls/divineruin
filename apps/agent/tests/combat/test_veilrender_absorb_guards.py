@@ -36,8 +36,9 @@ async def test_duplicate_recipients_heal_once_per_cast(spell_fight, monkeypatch)
     await prepare_absorb(ctx, "divine_bless", targets=["foe", "foe"])
     redirect = choir_reaction.effective_declaration
 
-    def duplicate_effective_recipients(state, caster, declaration):
-        effective = redirect(state, caster, declaration)
+    async def duplicate_effective_recipients(session, state, caster, declaration, *, progress=None):
+        effective = await redirect(session, state, caster, declaration, progress=progress)
+        assert effective is not None
         return replace(effective, target_ids=["foe", "foe"])
 
     monkeypatch.setattr(choir_reaction, "effective_declaration", duplicate_effective_recipients)

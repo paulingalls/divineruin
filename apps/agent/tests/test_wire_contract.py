@@ -7,9 +7,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sample_fixtures import _WARRIOR_MILESTONES, GUILD_PLAYER, _milestones_mod_for
 
+import combat_attack_roll
 import combat_events
 import combat_rewards
-import combat_support
 import companion_cue_events
 import db_session_queries
 import event_types
@@ -89,7 +89,7 @@ def test_combat_attack_dice_roll_serializes_to_fixture(fixture_name: str) -> Non
     attacker = MagicMock(name="attacker")
     attacker.name = expected["attacker"]
 
-    payload = combat_support.build_attack_dice_roll_payload(attacker, attack_result)
+    payload = combat_attack_roll.build_attack_dice_roll_payload(attacker, attack_result)
 
     assert {"type": event_types.DICE_ROLL, **payload} == expected
 

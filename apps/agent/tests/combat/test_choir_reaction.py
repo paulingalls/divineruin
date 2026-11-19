@@ -110,7 +110,7 @@ async def test_shield_nonverbal_nonspell_no_trigger():
         patch("spells.get_spell", return_value=nonverbal),
         patch("check_resolution_save.roll_participant_save") as saves,
     ):
-        assert effective_declaration(state, caster, declaration) is declaration
+        assert await effective_declaration(None, state, caster, declaration) is declaration
         assert not saves.called
     attack = Declaration(type=DeclarationType.ATTACK, action=caster.action_pool[0]["name"], target_id=choir.id)
     with patch("check_resolution_save.roll_participant_save") as saves:
@@ -144,7 +144,7 @@ async def test_held_melody_preserves_countercharm_subject_and_save():
 
 
 @pytest.mark.parametrize("condition", ["stunned", "paralyzed", "petrified", "fallen", "dead"])
-def test_shield_unavailable_choir_cannot_redirect(condition):
+async def test_shield_unavailable_choir_cannot_redirect(condition):
     from combat._catalog_fixtures import setup
 
     from choir_reaction import effective_declaration
@@ -159,6 +159,6 @@ def test_shield_unavailable_choir_cannot_redirect(condition):
     caster = state.participants[0]
     declaration = Declaration(type=DeclarationType.ABILITY, action="divine_bless", target_id=choir.id)
     with patch("check_resolution_save.roll_participant_save") as saves:
-        assert effective_declaration(state, caster, declaration) == declaration
+        assert await effective_declaration(None, state, caster, declaration) == declaration
         assert not saves.called
     assert action_summary(choir)["automatic_reactions"][0]["available"] is False

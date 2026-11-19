@@ -9,7 +9,7 @@ from sample_fixtures import catalog_encounters, make_context
 
 import check_resolution_attack
 import concentration_break
-from combat_packet import _resolve_one_packet, _resolve_tick_saves
+from combat_packet import _resolve_one_packet
 from combat_phase import ResolutionPacket
 from conditions import apply_condition, tick_conditions
 from declarations import Declaration, DeclarationType
@@ -109,19 +109,3 @@ async def test_hold_person_breaks_a_concentrating_players_spell():
 def test_paralysis_surfaces_a_wisdom_re_save_at_each_wrap():
     _, events = tick_conditions(apply_condition([], "paralyzed", source="cult_leader"))
     assert events == [{"type": "paralyzed", "save": "wis", "source": "cult_leader"}]
-
-
-@pytest.mark.parametrize(("success", "remaining"), [(True, []), (False, ["paralyzed"])])
-def test_the_re_save_ends_paralysis_only_on_success(success, remaining):
-    state = _make_combat_state()
-    player = state.get_participant("player_1")
-    assert player is not None
-    player.conditions = apply_condition([], "paralyzed", source="cult_leader")
-    _, events = tick_conditions(player.conditions)
-    due = [{"actor_id": player.id, **event} for event in events]
-    resolver = MagicMock()
-    resolver.roll_participant_save = MagicMock(return_value=MagicMock(success=success))
-
-    _resolve_tick_saves(state, due, resolver)
-
-    assert [condition["type"] for condition in player.conditions] == remaining

@@ -15,7 +15,7 @@ import conditions
 import event_types as E
 from check_resolution_attack import resolve_attack
 from check_tools import _check_impl
-from combat_support import apply_attack_result
+from combat_damage import apply_attack_result
 from session_data import CombatState
 from system_prompts import COMBAT_SYSTEM_PROMPT
 
@@ -43,7 +43,10 @@ async def test_hp_lowering_writers_trigger_gift(writer):
             roll,
             target.ac,
             mutations=MagicMock(update_player_hp=AsyncMock()),
-            queries=MagicMock(get_player_inventory=AsyncMock(return_value=[])),
+            queries=MagicMock(
+                get_player=AsyncMock(return_value=deepcopy(SAMPLE_PLAYER)),
+                get_player_inventory=AsyncMock(return_value=[]),
+            ),
             concentration_break_mod=MagicMock(break_concentration_on_damage=AsyncMock(return_value=None)),
             combat_state=ctx.userdata.combat_state,
         )
@@ -67,7 +70,8 @@ def check_context():
     )
     place_actors(ctx.userdata.combat_state)
     queries = MagicMock(
-        get_player=AsyncMock(side_effect=lambda pid: rows[pid]), get_player_inventory=AsyncMock(return_value=[])
+        get_player=AsyncMock(side_effect=lambda pid, *, conn=None, for_update=False: rows[pid]),
+        get_player_inventory=AsyncMock(return_value=[]),
     )
     queries.get_single_skill_advancement = AsyncMock(
         return_value={"tier": "untrained", "use_counter": 0, "narrative_moment_ready": False}
@@ -76,7 +80,12 @@ def check_context():
 
 
 @pytest.mark.parametrize("surface", ["save", "skill"])
-async def test_check_tool_uses_only_guest_iron_resolve_for_saves(surface):
+async def test_check_tool_uses_only_guest_iron_resolve_for_saves(surface, monkeypatch):
+    from sample_fixtures import make_db_mod
+
+    database, _ = make_db_mod()
+    monkeypatch.setattr("db.transaction", database.transaction)
+    monkeypatch.setattr("patron_deeds.record_deed", AsyncMock())
     ctx, rows, queries = check_context()
     original = deepcopy(rows)
     args: dict[str, Any] = (

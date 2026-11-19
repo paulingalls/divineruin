@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import corpus from "../../fixtures/god_profiles.json";
+import roster from "../../../../content/archetypes.json";
 import catalog from "../../../../content/gods.json";
 import { validateGods } from "./index";
 
@@ -28,6 +29,24 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
   expect(catalog).toHaveLength(10);
   expect(catalog.map((g) => g.god_id).sort()).toEqual([...corpus.patron_ids].sort());
   expect(Object.is(validateGods(catalog), catalog)).toBe(true);
+  for (const [patron, id] of [
+    ["mortaen", "mortaen_deaths_awareness"],
+    ["nythera", "nythera_horizon_sense"],
+  ]) {
+    expect(validateGods(catalog).find((god) => god.god_id === patron)?.layer_1_gift).toMatchObject({
+      id,
+      status: "active",
+      resolution: "engine",
+      implementation_id: id,
+    });
+  }
+  expect(validateGods(catalog).find((god) => god.god_id === "zhael")?.layer_1_gift).toMatchObject({
+    id: "zhael_fates_thread",
+    status: "active",
+    recharge: "long_rest",
+    resolution: "engine",
+    implementation_id: "zhael_fates_thread",
+  });
   expect(validateGods(catalog).find((god) => god.god_id === "syrath")?.layer_1_gift).toMatchObject({
     id: "syrath_shadow_veil",
     status: "active",
@@ -66,8 +85,18 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
         .map((a) => a.id),
     ),
   ).toEqual(narrated);
-  const pending = abilities.filter((a) => !narrated.has(a.id));
-  expect(pending).toHaveLength(23);
+  const passives = new Set(["veythar_scholars_ward", "kaelen_warriors_endurance"]);
+  const engine = new Set(["zhael_lucky", ...passives]);
+  expect(
+    new Set(
+      abilities.filter((a) => a.status === "active" && a.resolution === "engine").map((a) => a.id),
+    ),
+  ).toEqual(engine);
+  const pending = abilities.filter((a) => !narrated.has(a.id) && !engine.has(a.id));
+  expect(pending).toHaveLength(20);
+  for (const ability of abilities.filter((a) => passives.has(a.id))) {
+    expect([ability.recharge, ability.implementation_id]).toEqual(["always", ability.id]);
+  }
   for (const ability of pending)
     expect([ability.status, ability.resolution]).toEqual(["pending", "engine"]);
   expect(corpus.valid.length).toBeGreaterThan(0);
@@ -85,7 +114,7 @@ for (const entry of [...corpus.valid, ...generated]) {
 for (const entry of corpus.invalid) {
   test(`invalid profile: ${entry.id}`, () => {
     expect(() => validateGods(withProfile(entry.profile))).toThrow(
-      `${entry.patron}.${entry.field}`,
+      `${entry.patron}.${entry.field}:`,
     );
   });
 }
@@ -137,5 +166,33 @@ for (const value of [Infinity, -Infinity, NaN]) {
     expect(() => validateGods(withProfile(profile))).toThrow(
       "veythar.layer_2_resonance.modifiers[0].value",
     );
+  });
+}
+
+test("ten complete matrices cover the exact eighteen-archetype roster", () => {
+  const gods = validateGods(catalog);
+  expect(gods.map((g) => g.god_id).sort()).toEqual([...corpus.patron_ids].sort());
+  expect(roster).toHaveLength(18);
+  expect(new Set(roster.map((a) => a.id)).size).toBe(18);
+  for (const god of gods) {
+    expect(god.layer_4_synergy_matrix).not.toBeNull();
+    expect(Object.keys(god.layer_4_synergy_matrix).sort()).toEqual(roster.map((a) => a.id).sort());
+  }
+  expect(gods.reduce((sum, god) => sum + Object.keys(god.layer_4_synergy_matrix).length, 0)).toBe(
+    180,
+  );
+});
+
+for (const entry of corpus.layer_1_cases) {
+  test(`Layer 1 profile: ${entry.id}`, () => {
+    const profile = structuredClone(corpus.valid[0]!.profile);
+    const gift: Record<string, unknown> = { ...profile.layer_1_gift, ...entry.set };
+    if (entry.delete) delete gift[entry.delete];
+    const rows = withProfile({ ...profile, layer_1_gift: gift });
+    if (entry.field) {
+      expect(() => validateGods(rows)).toThrow(`veythar.layer_1_gift.${entry.field}:`);
+    } else {
+      expect(Object.is(validateGods(rows), rows)).toBe(true);
+    }
   });
 }

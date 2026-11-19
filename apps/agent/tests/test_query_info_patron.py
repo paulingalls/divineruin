@@ -5,6 +5,7 @@ import pytest
 from livekit.agents.llm import ToolContext, ToolError
 from sample_fixtures import make_context
 
+import query_patron
 import query_tools
 from _gods_content import load_gods
 
@@ -12,7 +13,7 @@ from _gods_content import load_gods
 @pytest.mark.asyncio
 async def test_patron_kind_routes_without_target_id():
     context = make_context()
-    with patch("query_tools._query_patron_impl", new_callable=AsyncMock, return_value='{"tier":"Devoted"}') as read:
+    with patch("query_patron.query_patron", new_callable=AsyncMock, return_value='{"tier":"Devoted"}') as read:
         result = await query_tools._query_info_impl(context, "patron")
 
     assert result == '{"tier":"Devoted"}'
@@ -23,7 +24,9 @@ async def test_patron_kind_routes_without_target_id():
 async def test_bound_patron_reports_standing_and_authored_actions():
     context = make_context(player_id="sentinel_player")
     queries = MagicMock()
-    queries.get_player = AsyncMock(return_value={"divine_favor": {"patron": "sentinel", "level": 24, "max": 61}})
+    queries.get_player = AsyncMock(
+        return_value={"class": "warrior", "divine_favor": {"patron": "sentinel", "level": 24, "max": 61}}
+    )
     actions = {
         "positive": [{"action": "kept_promise", "description": "Keeping a difficult promise", "amount": 3}],
         "negative": [{"action": "broke_promise", "description": "Breaking a sworn promise", "amount": -4}],
@@ -34,13 +37,14 @@ async def test_bound_patron_reports_standing_and_authored_actions():
         "effect": "Guard the boundary.",
         "trigger": "When bound",
         "recharge": "always",
-        "status": "narrated",
+        "status": "active",
     }
 
     def catalog():
         return [
             {
                 "god_id": "sentinel",
+                "layer_4_synergy_matrix": load_gods()[0]["layer_4_synergy_matrix"],
                 "short_name": "Sentinel",
                 "title": "the Boundary",
                 "favor_actions": actions,
@@ -50,12 +54,13 @@ async def test_bound_patron_reports_standing_and_authored_actions():
             }
         ]
 
-    response = json.loads(await query_tools._query_patron_impl(context, queries=queries, gods_loader=catalog))
+    response = json.loads(await query_patron.query_patron(context, queries=queries, gods_loader=catalog))
 
     ability_rows = response.pop("abilities")
     assert len(ability_rows) == 3
     assert response == {
         "patron_id": "sentinel",
+        "synergy": load_gods()[0]["layer_4_synergy_matrix"]["warrior"],
         "resonance": {"state": "stable"},
         "short_name": "Sentinel",
         "title": "the Boundary",
@@ -72,17 +77,27 @@ async def test_bound_patron_reports_standing_and_authored_actions():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("patron_id", [p["god_id"] for p in load_gods()])
-async def test_real_patron_gift_round_trip_from_gods_content(patron_id):
+async def test_real_patron_gift_round_trip_from_gods_content(patron_id, monkeypatch):
     context = make_context()
     patron = next(row for row in load_gods() if row["god_id"] == patron_id)
     queries = MagicMock()
-    queries.get_player = AsyncMock(return_value={"divine_favor": {"patron": patron["god_id"], "level": 0, "max": 100}})
+    queries.get_player = AsyncMock(
+        return_value={"class": "warrior", "divine_favor": {"patron": patron["god_id"], "level": 0, "max": 100}}
+    )
 
+    monkeypatch.setattr("db_activity_queries.get_player_map_progress", AsyncMock(return_value=[]))
+    monkeypatch.setattr(
+        "db_content_queries.get_all_locations",
+        AsyncMock(return_value={context.userdata.location_id: {"name": "Guild Hall"}}),
+    )
     with patch("query_tools.db_queries.get_player", queries.get_player):
         response = json.loads(await query_tools._query_info_impl(context, "patron"))
 
     assert response["favor_actions"] == patron["favor_actions"]
-    assert response["layer_1_gift"] == patron["layer_1_gift"]
+    expected = patron["layer_1_gift"]
+    if patron_id == "zhael":
+        expected = {**expected, "available": True, "spent": False}
+    assert response["layer_1_gift"] == expected
     rows = response["abilities"]
     assert len(rows) == 3
     for row, tier in zip(rows, ("acknowledged", "devoted", "exalted"), strict=True):
@@ -111,12 +126,15 @@ async def test_real_patron_gift_round_trip_from_gods_content(patron_id):
 async def test_exalted_has_explicitly_no_next_tier():
     context = make_context()
     queries = MagicMock()
-    queries.get_player = AsyncMock(return_value={"divine_favor": {"patron": "sentinel", "level": 50, "max": 61}})
+    queries.get_player = AsyncMock(
+        return_value={"class": "warrior", "divine_favor": {"patron": "sentinel", "level": 50, "max": 61}}
+    )
 
     def catalog():
         return [
             {
                 "god_id": "sentinel",
+                "layer_4_synergy_matrix": load_gods()[0]["layer_4_synergy_matrix"],
                 "short_name": "Sentinel",
                 "title": "the Boundary",
                 "favor_actions": {"positive": [], "negative": []},
@@ -125,7 +143,7 @@ async def test_exalted_has_explicitly_no_next_tier():
             }
         ]
 
-    response = json.loads(await query_tools._query_patron_impl(context, queries=queries, gods_loader=catalog))
+    response = json.loads(await query_patron.query_patron(context, queries=queries, gods_loader=catalog))
 
     assert response["tier"] == "Exalted"
     assert response["next_tier"] is None
@@ -138,7 +156,7 @@ async def test_missing_divine_favor_fails_loud():
     queries.get_player = AsyncMock(return_value={})
 
     with pytest.raises(ToolError, match="divine_favor"):
-        await query_tools._query_patron_impl(make_context(), queries=queries)
+        await query_patron.query_patron(make_context(), queries=queries)
 
 
 @pytest.mark.asyncio
@@ -147,18 +165,21 @@ async def test_unknown_patron_id_fails_loud():
     queries.get_player = AsyncMock(return_value={"divine_favor": {"patron": "missing_patron", "level": 3, "max": 100}})
 
     with pytest.raises(ToolError, match="missing_patron"):
-        await query_tools._query_patron_impl(make_context(), queries=queries, gods_loader=lambda: [])
+        await query_patron.query_patron(make_context(), queries=queries, gods_loader=lambda: [])
 
 
 @pytest.mark.asyncio
 async def test_bound_patron_missing_gift_fails_loud():
     queries = MagicMock()
-    queries.get_player = AsyncMock(return_value={"divine_favor": {"patron": "sentinel", "level": 1, "max": 100}})
+    queries.get_player = AsyncMock(
+        return_value={"class": "warrior", "divine_favor": {"patron": "sentinel", "level": 1, "max": 100}}
+    )
 
     def catalog():
         return [
             {
                 "god_id": "sentinel",
+                "layer_4_synergy_matrix": load_gods()[0]["layer_4_synergy_matrix"],
                 "short_name": "Sentinel",
                 "title": "the Boundary",
                 "favor_actions": {"positive": [], "negative": []},
@@ -166,7 +187,7 @@ async def test_bound_patron_missing_gift_fails_loud():
         ]
 
     with pytest.raises(KeyError, match="layer_1_gift"):
-        await query_tools._query_patron_impl(make_context(), queries=queries, gods_loader=catalog)
+        await query_patron.query_patron(make_context(), queries=queries, gods_loader=catalog)
 
 
 def test_emitted_query_info_schema_advertises_patron():
@@ -177,8 +198,10 @@ def test_emitted_query_info_schema_advertises_patron():
     assert len(kinds) == 12
     assert kinds.count("patron") == 1
     assert 'kind="patron"' in tool["description"]
-    assert "Only an active or narrated gift is granted" in tool["description"]
-    assert "an awaits_* gift is the god's promise, not yet a power" in tool["description"]
+    assert "only its active clauses apply" in tool["description"]
+    assert "a pending clause is promised, not yet a power" in tool["description"]
+    assert "Only an active gift is granted" in tool["description"]
+    assert "Use the facts and narration_cue in deaths_awareness or horizon_sense" in tool["description"]
 
 
 @pytest.fixture(autouse=True)

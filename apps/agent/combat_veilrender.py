@@ -79,7 +79,7 @@ def absorb_spell(state, caster, declaration, packet):
 async def turn_start(
     session, state, actor, *, conn=None, mutations, queries, concentration_break_mod, sink=None, **unused
 ):
-    from combat_support import AutomaticDamageResult, apply_attack_result
+    from combat_damage import AutomaticDamageResult, apply_attack_result
 
     sources = [p for p in state.participants if p.corruption_field is not None and living(p)]
     if actor is None or actor.veilrender_turn_round == state.round_number or not living(actor):

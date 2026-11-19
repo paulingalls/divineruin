@@ -15,24 +15,27 @@ roles:               # harness/model[/effort]; a card's Executor: line overrides
   # THE DIVERSITY ARGUMENT: a reviewer sharing the implementer's priors agrees with them for
   # the same reasons, so each leg that argues with work sits in the other family from the
   # leg that wrote it.
-  # Every codex seat runs on GPT-6.1 Sol. Astra cost ~6-7x Sol on these seats (10x on cached
+  # The executor runs GPT-6.2 Sol: its 7-card trial (sprint patron-fate-and-facts, v0.50.0) had honest
+  # handbacks, 6.1-level token cost and fewer post-review defects; its recurring miss is guards
+  # shipped without a failing test. Fixer and slate-reviewer trial 6.2 from the heal-slate sprint
+  # (human 2026-11-18); planner and angle-reviewer stay on GPT-6.1 Sol until evidence says otherwise. Astra cost ~6-7x Sol on these seats (10x on cached
   # input, which dominates) and was 77% of a sprint's codex spend at 21% of its tokens.
   # Effort buys back judgment where a miss is silent: planner and angle-reviewer at high.
   # Medium elsewhere; low effort on executor/fixer cuts corners that surface only at land.
   # Terra loses on long multi-step coding (needs xhigh to near Sol, then costs more).
   lead: claude/claude-opus-5-5
   planner: codex/gpt-6.1-sol/high
-  executor: codex/gpt-6.1-sol/medium
+  executor: codex/gpt-6.2-sol/medium
   # claude, so the story diff review is the cross-family look at a codex executor.
   reviewer: claude/claude-opus-5-5/medium
   # /high: a plan review is cheap relative to a story built on a plan nobody argued with.
   plan-reviewer: claude/claude-opus-5-5/high
   # codex: the lead authors the slate on claude.
-  slate-reviewer: codex/gpt-6.1-sol/medium
+  slate-reviewer: codex/gpt-6.2-sol/medium
   # Both read the whole sprint diff; codex's input limit is 1,048,576 characters. If either
   # dies on input size, that limit is the first suspect.
   angle-reviewer: codex/gpt-6.1-sol/high
-  fixer: codex/gpt-6.1-sol/medium
+  fixer: codex/gpt-6.2-sol/medium
   # Security angle only (sprint.py runs it when angle.stem == "security"). An exact CLEAR
   # skips the security angle-reviewer, so read its reasons before trusting them: Haiku
   # flipped CLEAR/ESCALATE across runs in xp-plugin's replay. On a miss, unset for one sprint.

@@ -3,9 +3,11 @@ from typing import Any, cast
 from voice_condition_fixtures import place_actors
 
 import check_resolution_attack
-from combat_hold import _roll as roll_held_attack
+from combat_attack_roll import deserialize_roll
+from combat_fate_hostile import roll_hostile
 from combat_marks import FOCUS_ATTACK_BONUS
 from combat_support import roll_attack
+from declarations import resolve_declaration
 from session_data import CombatParticipant, CombatState
 
 
@@ -85,7 +87,7 @@ def test_prone_attacker_and_prone_melee_target_cancel_to_one_d20():
     assert result.roll == 12
 
 
-def test_marked_held_melee_attack_keeps_focus_bonus_and_prone_advantage():
+async def test_marked_held_melee_attack_keeps_focus_bonus_and_prone_advantage():
     attacker = _participant("attacker", "enemy")
     marker = _participant("marker", "enemy")
     target = _participant("target", "player", conditions=[_prone()])
@@ -105,7 +107,10 @@ def test_marked_held_melee_attack_keeps_focus_bonus_and_prone_advantage():
     rng = ScriptedRng([4, 15, 3])
 
     place_actors(state)
-    result, _ = roll_held_attack(state, head, action, cast(Any, RealResolver(rng)), 0)
+    assert await roll_hostile(
+        None, state, head, resolve_declaration(head["declaration"]), action, 0, {"resolver": RealResolver(rng)}, None
+    )
+    result, _ = deserialize_roll(head["roll"])
 
     assert result.roll == 15
     assert result.attack_modifier == 1 + FOCUS_ATTACK_BONUS

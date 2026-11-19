@@ -1,8 +1,10 @@
 import random
 
-from test_rules_core import SAMPLE_PLAYER
+from test_rules_core import SAMPLE_PLAYER as BASE_PLAYER
 
 from check_resolution import resolve_skill_check, resolve_skill_check_dc
+
+SAMPLE_PLAYER = {**BASE_PLAYER, "divine_favor": {"patron": "valdris", "level": 0, "max": 100}}
 
 
 class TestResolveSkillCheck:

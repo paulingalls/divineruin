@@ -121,6 +121,8 @@ def test_speaker_snapshot_handles_training_and_explicit_absence():
     assert "activity: Sword Drills" in build_speaker_context("guest", player, [], [], training).render()
     empty = build_speaker_context("guest", player, [], [], []).render()
     assert "quest step: none" in empty and "activity: none" in empty
+    follower = {**player, "divine_favor": {"patron": "kaelen", "level": 0, "max": 100}}
+    assert "HP 4/17;" in build_speaker_context("guest", follower, [], [], []).render()
 
 
 def test_speaker_quest_choice_is_stable_across_db_row_order():

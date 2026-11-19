@@ -1,5 +1,6 @@
 """Enemy actions that combine attacks, damage saves, and conditions."""
 
+from functools import partial
 from typing import TYPE_CHECKING
 
 import check_resolution_save
@@ -8,9 +9,11 @@ import concentration_break
 import conditions
 import event_types as E
 from combat_ability import _attach_riders, _resolve_condition_target
+from combat_damage import SaveDamageResult, apply_attack_result
 from combat_down import damage_target_unavailable, has_damage
 from combat_events import emit_or_publish
-from combat_support import SaveDamageResult, _resolve_attack_packet, apply_attack_result
+from combat_fate_rolls import packet_save, saved_throw, store_throw
+from combat_support import _resolve_attack_packet
 from condition_restrictions import cannot_act
 from dice import roll as dice_roll
 from session_data import CombatParticipant, SessionData
@@ -73,7 +76,7 @@ async def _apply_condition_result(
         duration=duration,
     ):
         summary["condition_inflicted"] = cond_type
-        if target.type == "player" and cannot_act([c for c in target.conditions if c["type"] == cond_type]):
+        if target.type == "player" and cond_type in cannot_act(target.conditions):
             broken = await concentration_break_mod.break_concentration_on_incapacitation(
                 session, target.id, combat_state=state, conn=conn
             )
@@ -98,21 +101,31 @@ async def _resolve_enemy_condition_packet(
     save_resolver=check_resolution_save,
     concentration_break_mod=concentration_break,
     reaction_save_advantage: bool = False,
+    progress=None,
 ) -> dict:
     cond_type = action.get("applies_condition", action["name"])
     target, waste = _resolve_condition_target(state, attacker, decl, allow_self=action.get("resolution") == "save")
     if waste is not None:
         return waste
     assert target is not None
-    result = save_resolver.roll_participant_save(
-        target,
-        action["save"],
-        action["dc"],
+    result = await packet_save(
+        progress,
+        session,
+        target.id,
         cond_type,
-        dc_mod=attacker.dc_mod,
-        bonus_dice_eligible=False,
-        advantage=reaction_save_advantage,
+        partial(
+            save_resolver.roll_participant_save,
+            target,
+            action["save"],
+            action["dc"],
+            cond_type,
+            dc_mod=attacker.dc_mod,
+            bonus_dice_eligible=False,
+            advantage=reaction_save_advantage,
+        ),
     )
+    if result is None:
+        return {}
     summary = {
         "actor_id": attacker.id,
         "resolved": True,
@@ -161,25 +174,33 @@ async def resolve_combined_attack_action(
     is_first_attack_of_combat: bool,
     reaction_save_advantage: bool,
     publish_roll: bool,
+    progress=None,
 ) -> dict:
-    summary = await _resolve_attack_packet(
-        session,
-        attacker,
-        action,
-        target,
-        target_ac_bonus=target_ac_bonus,
-        shield_reaction=shield_reaction,
-        enemies_remaining=enemies_remaining,
-        is_first_attack_of_combat=is_first_attack_of_combat,
-        mutations=mutations,
-        queries=queries,
-        resolver=resolver,
-        concentration_break_mod=concentration_break_mod,
-        combat_state=state,
-        conn=conn,
-        sink=sink,
-        publish_roll=publish_roll,
-    )
+    steps = progress.steps if progress is not None else {}
+    summary = steps.get("attack")
+    if summary is None:
+        summary = await _resolve_attack_packet(
+            session,
+            attacker,
+            action,
+            target,
+            target_ac_bonus=target_ac_bonus,
+            shield_reaction=shield_reaction,
+            enemies_remaining=enemies_remaining,
+            is_first_attack_of_combat=is_first_attack_of_combat,
+            mutations=mutations,
+            queries=queries,
+            resolver=resolver,
+            concentration_break_mod=concentration_break_mod,
+            combat_state=state,
+            conn=conn,
+            sink=sink,
+            publish_roll=publish_roll,
+            progress=progress,
+        )
+        if progress is not None and progress.paused:
+            return {}
+        steps["attack"] = summary
     if summary["hit"] and not target.is_fallen:
         condition = await _resolve_enemy_condition_packet(
             session,
@@ -190,7 +211,10 @@ async def resolve_combined_attack_action(
             conn=conn,
             concentration_break_mod=concentration_break_mod,
             reaction_save_advantage=reaction_save_advantage,
+            progress=progress,
         )
+        if progress is not None and progress.paused:
+            return {}
         summary.update({key: value for key, value in condition.items() if key not in {"resolved", "reason"}})
         # A bare `reason` means "this packet did nothing" everywhere else in the resolver, so the
         # condition half's own waste rides a namespaced key: the damage landed, and the DM must not
@@ -213,6 +237,7 @@ async def resolve_save_damage_action(
     concentration_break_mod,
     sink,
     reaction_save_advantage: bool,
+    progress=None,
 ) -> dict:
     target, waste = _resolve_condition_target(
         state, attacker, decl, allow_self=action.get("resolution") == "save", damage=True
@@ -221,49 +246,66 @@ async def resolve_save_damage_action(
         return waste
     assert target is not None
     cond_type = action.get("applies_condition")
-    result = check_resolution_save.roll_participant_save(
-        target,
-        action["save"],
-        action["dc"],
-        cond_type or action["name"],
-        dc_mod=attacker.dc_mod,
-        bonus_dice_eligible=False,
-        advantage=reaction_save_advantage,
-    )
-    combat_wrongdoing.record_attack(state, attacker, target)
-    # The encounter-role overlay scales this the way it scales a weapon hit (check_resolution_attack
-    # multiplies the final total by damage_mult): a Boss's wave must burn like a Boss. dc_mod already
-    # rides the save above, so dropping the multiplier here would role-scale half the action.
-    rolled_damage = max(0, int(dice_roll(action["damage"]).total * attacker.damage_mult))
-    damage = (
-        (0 if action.get("save_success_damage") == "none" else rolled_damage // 2) if result.success else rolled_damage
-    )
-    damage_result = SaveDamageResult(
-        save_type=result.save_type,
-        save_success=result.success,
-        damage=damage,
-        damage_type=action.get("damage_type", "none"),
-        narrative_hint=result.narrative_hint,
-        dramatic=result.dramatic,
-        context=result.context,
-    )
-    # Announced here because the shared applicator refuses to publish an attack roll for save damage.
-    await emit_or_publish(
-        sink,
-        session.room,
-        E.DICE_ROLL,
-        {
-            "roll_type": "saving_throw",
-            "save_type": result.save_type,
-            "roll": result.roll,
-            "total": result.total,
-            "success": result.success,
-            "dramatic": result.dramatic,
-            "context": result.context,
-            "damage": damage,
-        },
-        event_bus=session.event_bus,
-    )
+    steps = progress.steps if progress is not None else {}
+    selected_save = steps.get("selected_save")
+    if selected_save is not None:
+        result = saved_throw(selected_save)
+        damage_result = None
+    else:
+        result = await packet_save(
+            progress,
+            session,
+            target.id,
+            cond_type or action["name"],
+            partial(
+                check_resolution_save.roll_participant_save,
+                target,
+                action["save"],
+                action["dc"],
+                cond_type or action["name"],
+                dc_mod=attacker.dc_mod,
+                bonus_dice_eligible=False,
+                advantage=reaction_save_advantage,
+            ),
+        )
+        if result is None:
+            return {}
+        combat_wrongdoing.record_attack(state, attacker, target)
+        # The encounter-role overlay scales this the way it scales a weapon hit (check_resolution_attack
+        # multiplies the final total by damage_mult): a Boss's wave must burn like a Boss. dc_mod already
+        # rides the save above, so dropping the multiplier here would role-scale half the action.
+        rolled_damage = max(0, int(dice_roll(action["damage"]).total * attacker.damage_mult))
+        damage = (
+            (0 if action.get("save_success_damage") == "none" else rolled_damage // 2)
+            if result.success
+            else rolled_damage
+        )
+        damage_result = SaveDamageResult(
+            save_type=result.save_type,
+            save_success=result.success,
+            damage=damage,
+            damage_type=action.get("damage_type", "none"),
+            narrative_hint=result.narrative_hint,
+            dramatic=result.dramatic,
+            context=result.context,
+        )
+        # Announced here because the shared applicator refuses to publish an attack roll for save damage.
+        await emit_or_publish(
+            sink,
+            session.room,
+            E.DICE_ROLL,
+            {
+                "roll_type": "saving_throw",
+                "save_type": result.save_type,
+                "roll": result.roll,
+                "total": result.total,
+                "success": result.success,
+                "dramatic": result.dramatic,
+                "context": result.context,
+                "damage": damage,
+            },
+            event_bus=session.event_bus,
+        )
     summary = await apply_attack_result(
         session,
         attacker,
@@ -278,7 +320,11 @@ async def resolve_save_damage_action(
         conn=conn,
         sink=sink,
         publish_roll=False,
+        progress=progress,
     )
+    if progress is not None and progress.paused:
+        steps["selected_save"] = store_throw(result)
+        return {}
     summary.update(_save_fields(result))
     summary["half_on_success"] = action.get("save_success_damage", "half") == "half"
     summary["damage_halved"] = result.success and summary["half_on_success"]
@@ -324,6 +370,7 @@ async def resolve_enemy_strike(
     shield_reaction,
     reaction_save_advantage,
     publish_roll,
+    progress=None,
 ):
     if not attacker.is_ally and action is not None and is_save_damage_action(action):
         return await resolve_save_damage_action(
@@ -338,6 +385,7 @@ async def resolve_enemy_strike(
             concentration_break_mod=concentration_break_mod,
             sink=sink,
             reaction_save_advantage=reaction_save_advantage,
+            progress=progress,
         )
 
     if not attacker.is_ally and action is not None and is_combined_attack_action(action):
@@ -364,8 +412,11 @@ async def resolve_enemy_strike(
             enemies_remaining=sum(1 for p in state.participants if p.type == "enemy" and not p.is_fallen),
             is_first_attack_of_combat=not state.first_attack_resolved,
             reaction_save_advantage=reaction_save_advantage,
+            progress=progress,
             publish_roll=publish_roll,
         )
+        if progress is not None and progress.paused:
+            return {}
         if summary.get("consumed_conditions"):
             attacker.conditions = conditions.remove_conditions(attacker.conditions, summary["consumed_conditions"])
         state.first_attack_resolved = True
@@ -383,6 +434,7 @@ async def resolve_enemy_strike(
             conn=conn,
             concentration_break_mod=concentration_break_mod,
             reaction_save_advantage=reaction_save_advantage,
+            progress=progress,
         )
 
     return None
