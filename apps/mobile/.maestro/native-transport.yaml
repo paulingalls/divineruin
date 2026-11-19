@@ -1,22 +1,29 @@
 appId: com.divineruin.app
 ---
-- openLink: ${APP_LAUNCH_URL}
-- tapOn:
-    text: "Open"
-    optional: true
-- tapOn:
-    text: "Open"
-    optional: true
+- runFlow:
+    when:
+      true: ${NATIVE_TRANSPORT_PRELAUNCHED != "1"}
+    commands:
+      - openLink: ${APP_LAUNCH_URL}
+      - tapOn:
+          text: "Open"
+          optional: true
+      - tapOn:
+          text: "Open"
+          optional: true
 - extendedWaitUntil:
     visible: "Continue|Listen to the dark"
     timeout: 60000
-- tapOn:
-    text: "Continue"
-    optional: true
-- swipe:
-    start: 50%,20%
-    end: 50%,90%
-    duration: 400
+- runFlow:
+    when:
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
+      - swipe:
+          start: 50%,20%
+          end: 50%,90%
+          duration: 400
+- assertVisible: "Listen to the dark"
 - openLink: ${ROUTE_URL}
 - tapOn:
     text: "Open"

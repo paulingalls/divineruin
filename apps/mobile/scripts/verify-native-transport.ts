@@ -293,8 +293,27 @@ export async function runScenario(
         ? "Transport complete"
         : `Guard failed: ${fault === "withhold-audio" ? "received-audio" : "session-init-hud"}`;
     const flow = deps.choir ? "choir-encounter.yaml" : "native-transport.yaml";
+    const prelaunch = Boolean(prepared && deps.acousticMarker);
+    if (prelaunch) {
+      // A second development-client URL can invalidate the Fabric context during cold bundle load.
+      await capture(
+        scope,
+        [
+          "xcrun",
+          "simctl",
+          "launch",
+          "--terminate-running-process",
+          udid,
+          BUNDLE_ID,
+          "--initialUrl",
+          `${appLaunchUrl}&disableAutoLaunch=1`,
+        ],
+        repoRoot,
+      );
+    }
     const variables = {
       APP_LAUNCH_URL: appLaunchUrl,
+      NATIVE_TRANSPORT_PRELAUNCHED: prelaunch ? "1" : "0",
       ROUTE_URL: `${transportRouteUrl(fixtureUrl, runId)}${deps.choir ? `&choir=1&choir_fault=${deps.choirFault ?? "none"}` : ""}`,
       EXPECTED_STATUS: deps.choir
         ? deps.choirFault && deps.choirFault !== "none"

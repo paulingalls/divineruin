@@ -154,13 +154,15 @@ export async function runNativeBuild(options: NativeBuildOptions): Promise<void>
     metro = await deps.startMetro(mobileRoot, port, env);
     await deps.waitForMetro(metro, port);
     const appLaunchUrl = developmentClientUrl(port);
-    await runChecked(
-      deps,
-      "app launch",
-      ["xcrun", "simctl", "openurl", udid, appLaunchUrl],
-      mobileRoot,
-      env,
-    );
+    if (!options.prepared) {
+      await runChecked(
+        deps,
+        "app launch",
+        ["xcrun", "simctl", "openurl", udid, appLaunchUrl],
+        mobileRoot,
+        env,
+      );
+    }
     const acceptanceEnv = {
       ...env,
       REQUIRE_EMULATOR: "1",
