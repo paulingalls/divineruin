@@ -103,25 +103,33 @@ async def test_equipment_origin_controls_physical_resistance(catalog_fight, crea
 
 
 @pytest.mark.parametrize(
-    "field,value",
+    "field,value,error_path",
     [
-        ("magical", "yes"),
-        ("bonus_damage", {"dice": "oops", "damage_type": "necrotic"}),
-        ("bonus_damage", {"dice": "1d6", "damage_type": "oops"}),
-        ("bonus_damage", {"dice": "1d6"}),
-        ("bonus_damage", {"dice": "1d6", "damage_type": "necrotic", "extra": True}),
-        ("critical_save", {"save": "BAD", "dc": 14, "applies_condition": "hollowed"}),
-        ("critical_save", {"save": "CON", "dc": 0, "applies_condition": "hollowed"}),
-        ("critical_save", {"save": "CON", "dc": 14, "applies_condition": "unknown"}),
-        ("critical_save", {"save": "CON", "dc": 14, "applies_condition": "hollowed"}),
-        ("critical_save", {"save": "CON", "dc": 14, "applies_condition": "hollowed", "stage": 2}),
-        ("critical_save", {"save": "CON", "dc": 14, "applies_condition": "hollowed", "stage": True}),
+        ("magical", "yes", "magical"),
+        ("bonus_damage", {"dice": "oops", "damage_type": "necrotic"}, "bonus_damage.dice"),
+        ("bonus_damage", {"dice": "1d6", "damage_type": "oops"}, "bonus_damage.damage_type"),
+        ("bonus_damage", {"dice": "1d6"}, "bonus_damage.damage_type"),
+        ("bonus_damage", {"dice": "1d6", "damage_type": "necrotic", "extra": True}, "bonus_damage.extra"),
+        ("critical_save", {"save": "BAD", "dc": 14, "applies_condition": "hollowed", "stage": 1}, "critical_save.save"),
+        ("critical_save", {"save": "CON", "dc": 0, "applies_condition": "hollowed", "stage": 1}, "critical_save.dc"),
+        ("critical_save", {"save": "CON", "dc": 14, "applies_condition": "unknown"}, "critical_save.applies_condition"),
+        ("critical_save", {"save": "CON", "dc": 14, "applies_condition": "hollowed"}, "critical_save.stage"),
+        (
+            "critical_save",
+            {"save": "CON", "dc": 14, "applies_condition": "hollowed", "stage": 2},
+            "critical_save.stage",
+        ),
+        (
+            "critical_save",
+            {"save": "CON", "dc": 14, "applies_condition": "hollowed", "stage": True},
+            "critical_save.stage",
+        ),
     ],
 )
-def test_blade_contract_rejects_malformed(field, value):
+def test_blade_contract_rejects_malformed(field, value, error_path):
     row = knight()
     row["attacks"][0][field] = value
-    assert any(field in error for error in validate_creature_stat_block(row))
+    assert f"attacks[0].{error_path}: invalid" in validate_creature_stat_block(row)
 
 
 @pytest.mark.parametrize(
