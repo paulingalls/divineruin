@@ -31,6 +31,13 @@ from typing import TYPE_CHECKING, Literal, get_args
 
 import conditions
 from catalog_parse import parse_int, parse_int_dict, parse_str
+from combat_spell_profile import (
+    HealProfile,
+    ItemCreationProfile,
+    parse_heal_profile,
+    parse_item_creation,
+    parse_profile,
+)
 
 if TYPE_CHECKING:
     from abilities import Ability  # type-only: abilities.py imports spells, so never import at runtime
@@ -93,6 +100,8 @@ class Spell:
     combat_aid: bool = False
     healing: bool = False
     combat_damage: dict | None = None
+    heal: HealProfile | None = None
+    creates_item: ItemCreationProfile | None = None
 
 
 # Module-level runtime-loaded spells, keyed by spell id. Populated by load_spells()
@@ -113,8 +122,6 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
     ignored, so the loader stays forward-compatible for future schema additions. Generic
     field validation reuses the shared catalog_parse primitives.
     """
-    from combat_spell_profile import parse_profile
-
     try:
         source = data["source"]
         if source not in _SPELL_SOURCES:
@@ -143,6 +150,16 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
         sound_id = data["sound_id"]
         if sound_id not in SPELL_SOUND_KEYS:
             raise ValueError(f"spell {spell_id!r} sound_id {sound_id!r} not in {sorted(SPELL_SOUND_KEYS)}")
+        try:
+            heal = parse_heal_profile(data.get("heal"), max_targets)
+            creates_item = parse_item_creation(data.get("creates_item"))
+        except ValueError as e:
+            raise ValueError(f"Malformed spells row {spell_id!r}: {e}") from e
+        if data["healing"] and heal is None:
+            death_spell = spell_id in {"divine_revivify", "divine_resurrection"}
+            berry_spell = spell_id == "primal_goodberry" and creates_item is not None
+            if not (death_spell or berry_spell):
+                raise ValueError(f"spell {spell_id!r} requires a heal profile (or Goodberry's creates_item profile)")
         return Spell(
             id=spell_id,
             name=data["name"],
@@ -162,6 +179,8 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
             max_targets=max_targets,
             sound_id=sound_id,
             combat_damage=parse_profile(data.get("combat_damage")),
+            heal=heal,
+            creates_item=creates_item,
         )
     except (KeyError, TypeError) as e:
         raise ValueError(f"Malformed spells row {spell_id!r}: {e}") from e

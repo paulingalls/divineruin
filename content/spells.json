@@ -824,7 +824,12 @@
     "verbal": true,
     "hostile": false,
     "combat_aid": false,
-    "healing": true
+    "healing": true,
+    "heal": {
+      "dice": "1d8",
+      "attribute": "wisdom",
+      "recipients": "single"
+    }
   },
   {
     "id": "divine_shield_of_faith",
@@ -1020,7 +1025,14 @@
     "verbal": true,
     "hostile": false,
     "combat_aid": false,
-    "healing": true
+    "healing": true,
+    "max_targets": 6,
+    "heal": {
+      "dice": "2d8",
+      "attribute": "wisdom",
+      "recipients": "selected",
+      "out_of_combat_only": true
+    }
   },
   {
     "id": "divine_beacon_of_hope",
@@ -1058,7 +1070,12 @@
     "verbal": true,
     "hostile": false,
     "combat_aid": false,
-    "healing": true
+    "healing": true,
+    "heal": {
+      "dice": "2d8",
+      "attribute": "wisdom",
+      "recipients": "all_allies"
+    }
   },
   {
     "id": "divine_divine_ward",
@@ -1430,7 +1447,12 @@
     "verbal": true,
     "hostile": false,
     "combat_aid": false,
-    "healing": true
+    "healing": true,
+    "heal": {
+      "dice": "1d8",
+      "attribute": "wisdom",
+      "recipients": "single"
+    }
   },
   {
     "id": "primal_bark_skin",
@@ -1506,7 +1528,11 @@
     "verbal": true,
     "hostile": false,
     "combat_aid": false,
-    "healing": true
+    "healing": true,
+    "creates_item": {
+      "item_id": "goodberry",
+      "quantity": 5
+    }
   },
   {
     "id": "primal_faerie_fire",
@@ -1857,7 +1883,11 @@
     "verbal": true,
     "hostile": false,
     "combat_aid": false,
-    "healing": true
+    "healing": true,
+    "heal": {
+      "dice": "4d8+15",
+      "recipients": "single"
+    }
   },
   {
     "id": "primal_animal_shapes",
