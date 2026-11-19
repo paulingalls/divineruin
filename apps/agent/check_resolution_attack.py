@@ -239,6 +239,7 @@ def finish_attack(
         if critical and damage_notation != "0":
             crit_result = dice_roll(damage_notation, rng=rng)
             damage += crit_result.total
+        damage += patron_synergy_combat.weapon_damage_bonus(attacker_data, critical, rng=rng)
         if weapon.get("attack_source") != "catalog" and weapon.get("damage_attribute", True) and damage_notation != "0":
             damage += weapon_attribute_modifier(attacker_data, weapon)
         if attacker_data.get("sneak_attack_available") and (

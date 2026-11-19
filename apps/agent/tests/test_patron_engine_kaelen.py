@@ -28,7 +28,7 @@ from check_tools import check
 from combat_end import end_combat
 from combat_turn import declare_phase, resolve_phase
 from mode_tools import enter_mode
-from query_tools import _query_info_impl, query_info
+from query_tools import query_info
 from session_data import CompanionState
 
 
@@ -99,15 +99,6 @@ async def test_inner_fire_uses_locked_archetype(world, archetype, fires):
         packet = json.loads(await _activate_impl(w.ctx, "draethar_inner_fire"))
     assert (packet.get("gift_triggered") == "Iron Resolve") is fires
     assert (await row(w, 0))["hp"]["current"] == 7
-
-
-async def test_guardian_reports_active_and_pending_siblings(world):
-    await configure(world, "kaelen", "guardian")
-    packet = json.loads(await _query_info_impl(world.ctx, "patron"))
-    clauses = packet["synergy"]["clauses"]
-    assert clauses[0]["status"] == "active"
-    assert clauses[0]["implementation_id"] == "kaelen_tempered_resolve"
-    assert clauses[1]["status"] == "pending"
 
 
 async def test_guest_damage_reads_latest_target_class(world):

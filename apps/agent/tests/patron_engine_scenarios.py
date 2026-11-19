@@ -1,4 +1,5 @@
 from combat.test_synergy_crit_edges import SCENARIOS as crit_edges
+from combat.test_synergy_weapon_damage import SCENARIOS as weapon_damage
 from test_patron_engine_aelora import SCENARIOS as aelora
 from test_patron_engine_beacon import SCENARIOS as beacon
 from test_patron_engine_judgment import SCENARIOS as judgment
@@ -26,4 +27,5 @@ ENGINE_SCENARIOS = {
     **lucky,
     **passives,
     **senses,
+    **weapon_damage,
 }
