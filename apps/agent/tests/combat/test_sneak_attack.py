@@ -1,3 +1,4 @@
+import json
 from contextlib import contextmanager
 from dataclasses import replace
 from unittest.mock import patch
@@ -14,6 +15,8 @@ from voice_condition_fixtures import participant
 import check_resolution_attack
 import combat_turn
 import db_mutations
+from activate_tools import _activate_impl
+from combat_end import _end_combat_impl
 from combat_support import _resolve_attack_packet
 
 
@@ -140,6 +143,21 @@ async def test_precise_strike_and_held_reload(rogue_fight, dev_db_pool):
     assert len([e for e in _dice_events(ctx.userdata.room) if e.get("attacker") == actor.name]) == count
     await declare_weapon(ctx)
     assert (await finish(ctx, (15, 15)))["sneak_attack_dice"] == "1d6"
+
+
+@pytest.mark.parametrize("spent", [False, True])
+async def test_ooc_precise_strike_reconciles_at_combat_end(catalog_fight, spell_fight, dev_db_pool, spent):
+    ctx = spell_fight
+    pid = ctx.userdata.player_id
+    await dev_db_pool.execute("UPDATE players SET data=jsonb_set(data,'{class}','\"rogue\"') WHERE player_id=$1", pid)
+    ctx.userdata.combat_state = None
+    assert json.loads(await _activate_impl(ctx, "rogue_precise_strike"))["condition_applied"]
+    ctx = await catalog_fight("bandit")
+    if spent:
+        await declare_weapon(ctx)
+        assert (await finish(ctx, (15, 15)))["sneak_attack_dice"] == "2d6"
+    await _end_combat_impl(ctx, "fled")
+    assert any(c["type"] == "precise_strike" for c in (await saved_player(pid)).get("conditions", [])) is not spent
 
 
 def test_disadvantage_cancels_and_critical_doubles():
