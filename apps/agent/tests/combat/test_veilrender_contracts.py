@@ -56,8 +56,11 @@ def test_snapshot_traits_fail_loud(key, value):
 @pytest.mark.parametrize("condition,duration", [("poisoned", None), ("prone", 0), ("hollowed", False)])
 def test_permanent_rider_floor(condition, duration):
     _, _, row = boss_state()
-    row["actives"][0]["conditions_on_failure"] = [{"applies_condition": condition, "duration": duration}]
-    assert validate_creature_stat_block(row)
+    rider = {"applies_condition": condition, "duration": duration}
+    if condition == "hollowed":
+        rider["stage"] = 1
+    row["actives"][0]["conditions_on_failure"] = [rider]
+    assert any("conditions_on_failure.duration" in error for error in validate_creature_stat_block(row))
 
 
 def test_missing_nested_fields():
