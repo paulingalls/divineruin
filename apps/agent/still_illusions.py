@@ -11,7 +11,7 @@ import condition_voice_rules
 import conditions
 from combat_terrain import skill_natural_terrain
 from patron_location import check_first_stay
-from still_actions import in_zone
+from still_encounter import in_zone
 
 ID_PREFIX = "still_illusion_"
 

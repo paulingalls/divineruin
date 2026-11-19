@@ -13,17 +13,7 @@ from combat_damage import apply_attack_result
 from combat_damage_results import AutomaticDamageResult
 from combat_enemy_action import _save_fields
 from combat_fate_rolls import packet_save
-
-
-def zone_radius(owner):
-    return owner.hollow["corruption_aura"]
-
-
-def in_zone(state, owner, target_id):
-    spatial = combat_spatial.require_spatial(state)
-    return combat_spatial.inside(
-        combat_spatial.position(spatial, owner.id), combat_spatial.position(spatial, target_id), zone_radius(owner)
-    )
+from still_encounter import in_zone, zone_radius
 
 
 def range_refusal(state, actor, action, declaration):

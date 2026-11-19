@@ -23,6 +23,17 @@ SEARCH_DC = 18
 MEMORIES_ID = "absorbed_memories"
 
 
+def zone_radius(owner):
+    return owner.hollow["corruption_aura"]
+
+
+def in_zone(state, owner, target_id):
+    spatial = combat_spatial.require_spatial(state)
+    return combat_spatial.inside(
+        combat_spatial.position(spatial, owner.id), combat_spatial.position(spatial, target_id), zone_radius(owner)
+    )
+
+
 def anchor_ids(owner_id):
     return [f"{owner_id}_anchor_{index}" for index in range(1, len(ANCHOR_HP) + 1)]
 

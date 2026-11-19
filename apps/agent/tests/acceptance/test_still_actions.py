@@ -123,13 +123,26 @@ async def test_final_stillness_threshold_and_single_use(still, duration, face):
 
 
 async def test_illusion_investigation_updates_only_after_commit(still, monkeypatch):
+    await still.pool.execute(
+        "UPDATE players SET data=jsonb_set(data,'{attributes,intelligence}','18') WHERE player_id=$1",
+        still.players[0],
+    )
     state = await reveal_and_wake(still)
     illusion = still.last_result["still"]["illusion"]
     assert (illusion["target_id"], illusion["round"], illusion["dc"]) == (still.players[0], state.round_number, 22)
     payload = {"roll": illusion["check"]}
-    with patch("check_resolution.dice_roll", return_value=_d20(1)):
+
+    def total(target_total):
+        def roll(spec, _rng=None):
+            face = target_total - spec.modifier
+            assert 1 < face < 20
+            return spec.evaluate(face)
+
+        return roll
+
+    with patch.object(D20Roll, "roll", total(21)):
         failed = await still.command("check", payload)
-    assert failed["seen_through"] is False and failed["dc"] == 22
+    assert (failed["total"], failed["dc"], failed["seen_through"]) == (21, 22, False)
 
     save = db_mutations.save_combat_state
     before = (await still.reload()).to_dict()
@@ -140,22 +153,19 @@ async def test_illusion_investigation_updates_only_after_commit(still, monkeypat
         await save(combat_id, data, conn=conn)
         raise RuntimeError("injected illusion commit failure")
 
-    with patch("check_resolution.dice_roll", return_value=_d20(20)):
+    with patch.object(D20Roll, "roll", total(22)):
         with monkeypatch.context() as fault:
             fault.setattr(db_mutations, "save_combat_state", fail_after_write)
             await still.command("check", payload, error=True)
         assert (await still.reload()).to_dict() == before
         assert published_payloads(still.sd.room) == events
         succeeded = await still.command("check", payload)
-    assert succeeded["seen_through"] is True and succeeded["dc"] == 22
+    assert (succeeded["total"], succeeded["dc"], succeeded["seen_through"]) == (22, 22, True)
     await fresh_session(still, await still.reload())
     assert (await still.reload()).still_encounter["illusion"]["seen_through"] is True
 
 
 async def test_spell_paths_arm_the_resolved_anchor_and_use_typed_and_divine_vulnerability(still, monkeypatch):
-
-    from acceptance.seeds import seed_known_spells
-
     player = still.players[0]
     flame = "divine_sacred_flame"
     await still.pool.execute(
