@@ -9,7 +9,7 @@ COPY packages/design-tokens/package.json packages/design-tokens/package.json
 RUN bun install --production --frozen-lockfile --ignore-scripts --filter divineruin-server
 
 FROM oven/bun:1.4.5 AS bun
-FROM ghcr.io/astral-sh/uv:0.13.7 AS uv
+FROM ghcr.io/astral-sh/uv:0.13.9 AS uv
 FROM python:3.14.7-slim-bookworm
 COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 COPY --from=uv /uv /usr/local/bin/uv
