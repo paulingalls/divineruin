@@ -12,6 +12,7 @@ import combat_phase
 import combat_spatial
 import combat_spatial_declarations
 import db_mutations
+import db_queries
 import declaration_payloads
 import item_heal
 import still_encounter
@@ -52,10 +53,11 @@ async def _declare_phase_impl(
     declarations: dict[str, dict],
     *,
     mutations=db_mutations,
+    queries=db_queries,
 ) -> str:
     session: SessionData = context.userdata
     async with session.combat_state_lock:
-        return await _declare_phase_locked(context, declarations, mutations=mutations)
+        return await _declare_phase_locked(context, declarations, mutations=mutations, queries=queries)
 
 
 async def _declare_phase_locked(
@@ -63,6 +65,7 @@ async def _declare_phase_locked(
     declarations: dict[str, dict],
     *,
     mutations=db_mutations,
+    queries=db_queries,
 ) -> str:
     logger.info("declare_phase called: %d declarations", len(declarations or {}))
     session: SessionData = context.userdata
@@ -79,6 +82,7 @@ async def _declare_phase_locked(
         next_state, _adv = combat_phase.advance_combat_phase(cs, declarations=declarations)
         await combat_item_rider.preflight(session, next_state)
         await item_heal.preflight_declarations(session, next_state)
+        choir_facts = await choir_encounter.facts(next_state, queries=queries)
     except ValueError as e:
         raise ToolError(str(e)) from e
 
@@ -89,7 +93,7 @@ async def _declare_phase_locked(
         "spatial": combat_spatial.response_facts(next_state, session.acting_player_id, session.primary_player_id),
         "beat": next_state.beat,
         "round": next_state.round_number,
-        "choir": choir_encounter.facts(next_state),
+        "choir": choir_facts,
         "still": still_encounter.facts(next_state),
         "participants": _participant_roster(next_state.participants),
         "accepted_actors": list(next_state.pending_declarations.keys()),

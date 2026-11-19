@@ -138,13 +138,14 @@ async def test_nested_ally_offers_delay_incoming_tool_until_both_settle(world):
             partial = await call("check", roll=narrative)
             assert partial["fate_offer"]["offer_id"] != original["offer_id"]
             assert partial["fate_offer"]["roller_id"] == guest and partial["packets"][0]["actor_id"] == host
-            assert required_player(session.combat_state, "foe").hp_current == 26
+            assert partial["packets"][0]["damage"] == 8
+            assert required_player(session.combat_state, "foe").hp_current == 22
             assert [e.get("roll_type") for e in published_payloads(session.room) if e["type"] == "dice_roll"] == [
                 "attack"
             ]
             result = await call("check", roll=narrative)
         assert result["notation"] == "1d4" and result["settled_fate"]["packets"][0]["actor_id"] == guest
-        assert required_player(session.combat_state, "foe").hp_current == 22
+        assert required_player(session.combat_state, "foe").hp_current == 18
         assert [e.get("roll_type") for e in published_payloads(session.room) if e["type"] == "dice_roll"] == [
             "attack",
             "attack",
@@ -175,7 +176,7 @@ async def test_reload_applies_original_and_preserves_spend(world):
                 done = await game_tools(fresh, resolve_phase)("resolve_phase")
             assert dice.call_count == 2
         assert done["beat"] == "narration" and "fate_offer" not in done
-        assert done["packets"][0]["hit"] and required_player(fresh.combat_state, "foe").hp_current == 26
+        assert done["packets"][0]["critical"] and required_player(fresh.combat_state, "foe").hp_current == 22
         assert (await row(world, 0))["patron_gifts"]["zhael_fates_thread"] == {"spent": True}
         assert fresh.combat_state is not None
         assert fresh.combat_state.ally_continuation is None and len(fresh.combat_state.held_actions) == 1

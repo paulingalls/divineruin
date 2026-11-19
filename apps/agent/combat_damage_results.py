@@ -41,3 +41,26 @@ def thaw_blow(data: dict):
     if "consumed_conditions" in fields:
         fields["consumed_conditions"] = tuple(fields["consumed_conditions"])
     return data["action"], kinds[data["kind"]](**fields), data["effective_ac"]
+
+
+def attack_fields(attack_result: check_resolution_attack.AttackResult, effective_ac: int) -> dict:
+    fields = dict(
+        hit=attack_result.hit,
+        roll=attack_result.roll,
+        attack_total=attack_result.attack_total,
+        target_ac=effective_ac,
+        critical=attack_result.critical_success,
+        sneak_attack_dice=attack_result.sneak_attack_dice,
+        sneak_attack_raw_damage=attack_result.sneak_attack_raw_damage,
+        bonus_damage=attack_result.bonus_damage,
+        bonus_damage_type=attack_result.bonus_damage_type,
+        rider_damage=attack_result.rider_damage,
+        rider_damage_type=attack_result.rider_damage_type,
+        rider_ignores_resistance=attack_result.rider_ignores_resistance,
+        synergy_damage=attack_result.synergy_damage,
+        synergy_damage_type=attack_result.synergy_damage_type,
+        consumed_conditions=attack_result.consumed_conditions,
+    )
+    if attack_result.attack_disadvantage_source is not None:
+        fields["attack_disadvantage_source"] = attack_result.attack_disadvantage_source
+    return fields

@@ -102,7 +102,6 @@ async def test_a_killing_blow_the_halving_survives_is_no_longer_narrated_as_one(
 
 
 def test_halve_rewrites_every_field_the_blow_is_reported_through():
-    """bonus_damage is part of damage; leaving it whole could report a rider larger than the halved total."""
     rolled = AttackResult(
         hit=True,
         roll=15,
@@ -116,6 +115,8 @@ def test_halve_rewrites_every_field_the_blow_is_reported_through():
         overkill=5,
         bonus_damage=6,
         bonus_damage_type="necrotic",
+        synergy_damage=5,
+        synergy_damage_type="lightning",
         narrative_hint="A clean strike.",
     )
     head = {"roll": serialize_roll(rolled, 14)}
@@ -128,6 +129,7 @@ def test_halve_rewrites_every_field_the_blow_is_reported_through():
     halved, effective_ac = deserialize_roll(head["roll"])
     assert effective_ac == 14
     assert (halved.damage, halved.bonus_damage) == (10, 3)
+    assert (halved.synergy_damage, halved.synergy_damage_type) == (2, "lightning")
     assert (halved.target_hp_remaining, halved.target_killed, halved.overkill) == (5, False, 0)
 
 

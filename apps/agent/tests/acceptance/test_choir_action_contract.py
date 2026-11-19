@@ -100,7 +100,7 @@ async def test_shield_real_cast_transaction_replay(runtime, success):
     await seed_player_with_pools(pool, player_id=pid, class_="cleric", known_spells=("divine_bless",))
     import choir_encounter
 
-    facts = choir_encounter.facts(ctx.userdata.combat_state)
+    facts = await choir_encounter.facts(ctx.userdata.combat_state)
     assert facts is not None
     action = facts["search_actions"][1]
     await combat_turn._declare_phase_impl(ctx, {pid: action, eid: {"type": "defend"}})

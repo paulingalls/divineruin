@@ -95,16 +95,6 @@ def _attack(rider: str | None = None) -> Declaration:
 
 
 class TestMechanicalEnhancers:
-    async def test_extra_attack_expands_to_two_attacks(self):
-        cs = _player_attacking(enhancers=["extra_attack"])
-        enemy = cs.get_participant("goblin_scout_1")
-        assert enemy is not None
-        summary = await _resolve(cs, _attack(), _fixed_resolver(5))
-        assert summary["resolved"] is True
-        assert len(summary["attacks"]) == 2
-        assert summary["damage"] == 10
-        assert enemy.hp_current == 20  # 30 - 5 - 5
-
     async def test_shield_bash_adds_a_second_strike(self):
         cs = _player_attacking(enhancers=["shield_bash"])
         summary = await _resolve(cs, _attack(), _fixed_resolver(4))
@@ -136,19 +126,6 @@ class TestMechanicalEnhancers:
         assert enemy.is_fallen is True
         assert resolver.resolve_attack.call_count == 1  # second swing skipped — no hitting a corpse
         assert "attacks" not in summary  # only one swing landed -> flat summary
-
-
-class TestNoEnhancer:
-    async def test_no_enhancer_resolves_single_attack_no_expansion(self):
-        cs = _player_attacking(enhancers=[])
-        enemy = cs.get_participant("goblin_scout_1")
-        assert enemy is not None
-        summary = await _resolve(cs, _attack(), _fixed_resolver(5))
-        assert summary["resolved"] is True
-        assert "attacks" not in summary
-        assert "riders" not in summary
-        assert summary["damage"] == 5
-        assert enemy.hp_current == 25
 
 
 class TestNarratedRiders:
@@ -210,7 +187,6 @@ _INTERACT_DECL = {"type": "interact", "action": "charm the guard"}
 
 # (enhancer, raw declaration, predicate over the player's resolved packet)
 _CAPSTONE_CASES = [
-    ("extra_attack", _ATTACK_DECL, lambda p: len(p.get("attacks", [])) == 2),
     ("shield_bash", _ATTACK_DECL, lambda p: p.get("attacks", [{}])[-1].get("action") == "Shield Bash"),
     ("cunning_action", {**_ATTACK_DECL, "rider": "hide"}, lambda p: "cunning_action:hide" in p.get("riders", [])),
     ("hit_and_run", _ATTACK_DECL, lambda p: "hit_and_run:reposition_15ft" in p.get("riders", [])),

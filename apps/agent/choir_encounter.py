@@ -5,6 +5,7 @@ from functools import partial
 
 import check_resolution
 import condition_voice_rules
+import db_queries
 import event_types as E
 from combat_damage_affinity import DAMAGE_TYPES
 from combat_events import emit_or_publish
@@ -12,6 +13,7 @@ from combat_fate_rolls import packet_save
 from combat_terrain import skill_natural_terrain
 from declarations import DeclarationType
 from patron_location import check_first_stay
+from patron_synergy_combat import spell_damage_type_override
 
 SEARCH_TARGET = "choir_sound"
 SEARCH_ACTIONS = {"choir_search_perception": "perception", "choir_search_arcana": "arcana"}
@@ -51,7 +53,7 @@ def validate(state):
         raise ValueError("invalid Choir aura receipts")
 
 
-def facts(state):
+async def facts(state, *, queries=db_queries, conn=None):
     if state.choir_encounter is None:
         return None
     validate(state)
@@ -72,13 +74,18 @@ def facts(state):
             ],
         )
     elif phase == "exposed":
+        allowed = [t for t in DAMAGE_TYPES if t not in source.damage_affinities.get("immune", [])]
+        spell_ids = engine_damage_spell_ids(allowed)
         result.update(
             core_id=source.id,
-            engine_damage_spell_ids=engine_damage_spell_ids(source),
+            engine_damage_spell_ids=spell_ids,
+            engine_damage_spell_exceptions=await _spell_exceptions(
+                state, spell_ids, allowed, queries=queries, conn=conn
+            ),
             core_defenses={
                 "ac": 18,
                 "hp_pool": 200,
-                "allowed_damage": [t for t in DAMAGE_TYPES if t not in source.damage_affinities.get("immune", [])],
+                "allowed_damage": allowed,
                 "vulnerable_to": list(source.damage_affinities.get("vulnerable", [])),
                 "no_touch_grapple_restraint": True,
             },
@@ -192,7 +199,7 @@ async def search(session, state, actor, declaration, *, queries, conn, progress=
         "total": result.total,
         "success": result.success,
         "auto_fail": result.auto_fail,
-        "choir": facts(state),
+        "choir": await facts(state, queries=queries, conn=conn),
         **({"gift_name": result.gift_name} if result.gift_name else {}),
     }
     return packet
@@ -279,13 +286,30 @@ async def turn_start(session, state, actor, *, conn, concentration_break_mod, pr
     return result
 
 
-def engine_damage_spell_ids(participant):
+def engine_damage_spell_ids(allowed):
     import spells
 
-    allowed = set(DAMAGE_TYPES) - set(participant.damage_affinities.get("immune", []))
     return [
         spell.id
         for source in ("arcane", "divine", "primal")
         for spell in spells.get_spells_by_source(source)
         if spell.combat_damage and any(c["damage_type"] in allowed for c in spell.combat_damage.get("components", []))
     ]
+
+
+async def _spell_exceptions(state, spell_ids, allowed, *, queries, conn):
+    exceptions = {}
+    for participant in state.participants:
+        if participant.type not in ("player", "temporary_hollowed"):
+            continue
+        player = await queries.get_player(participant.id, conn=conn)
+        if player is None:
+            raise ValueError(f"Missing Choir spell caster {participant.id!r}")
+        blocked = [
+            spell_id
+            for spell_id in spell_ids
+            if (override := spell_damage_type_override(player, spell_id)) is not None and override not in allowed
+        ]
+        if blocked:
+            exceptions[participant.id] = blocked
+    return exceptions

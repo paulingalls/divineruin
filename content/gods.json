@@ -176,8 +176,9 @@
         "clauses": [
           {
             "effect": "Your arcane cantrips gain Veythar's +2 Flickering bonus damage dice even when you are not Flickering. This replaces, rather than stacks with, the Layer 2 Flickering bonus.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "veythar_simplest_mysteries"
           }
         ]
       },
@@ -187,8 +188,9 @@
         "clauses": [
           {
             "effect": "Your arcane cantrips gain Veythar's +2 Flickering bonus damage dice even when you are not Flickering. This replaces, rather than stacks with, the Layer 2 Flickering bonus.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "veythar_simplest_mysteries"
           }
         ]
       },
@@ -198,8 +200,9 @@
         "clauses": [
           {
             "effect": "Your arcane cantrips gain Veythar's +2 Flickering bonus damage dice even when you are not Flickering. This replaces, rather than stacks with, the Layer 2 Flickering bonus.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "veythar_simplest_mysteries"
           }
         ]
       },
@@ -496,8 +499,9 @@
           },
           {
             "effect": "Extra Attack (L10) grants +1d4 permanent weapon damage",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "kaelen_extra_attack_damage"
           }
         ]
       },
@@ -513,8 +517,9 @@
           },
           {
             "effect": "Extra Attack (L10) grants +1d4 permanent weapon damage",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "kaelen_extra_attack_damage"
           }
         ]
       },
@@ -530,8 +535,9 @@
           },
           {
             "effect": "Extra Attack (L10) grants +1d4 permanent weapon damage",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "kaelen_extra_attack_damage"
           }
         ]
       },
@@ -1581,8 +1587,9 @@
         "clauses": [
           {
             "effect": "Gain +1 to spell attack rolls against undead.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "mortaen_ashen_formula"
           }
         ]
       },
@@ -1691,8 +1698,9 @@
         "clauses": [
           {
             "effect": "Sacred Flame deals necrotic.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "mortaen_threshold_mercy"
           },
           {
             "effect": "Healing on 0 HP allies restores double. Best at pulling people back from the edge",
@@ -1886,8 +1894,9 @@
         "clauses": [
           {
             "effect": "Crit strikes deal +1d4 natural-type damage (thorns, stone, lightning)",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "thyra_natures_edge"
           }
         ]
       },
@@ -1908,8 +1917,9 @@
         "clauses": [
           {
             "effect": "Crit strikes deal +1d4 natural-type damage (thorns, stone, lightning)",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "thyra_natures_edge"
           }
         ]
       },
@@ -3426,8 +3436,9 @@
         "clauses": [
           {
             "effect": "Critical hits on natural 19–20 (expanded crit range). Zhael bends probability",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_bent_probability"
           }
         ]
       },
@@ -3437,8 +3448,9 @@
         "clauses": [
           {
             "effect": "Critical hits on natural 19–20 (expanded crit range). Zhael bends probability",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_bent_probability"
           }
         ]
       }

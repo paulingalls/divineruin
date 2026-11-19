@@ -70,6 +70,7 @@ async def query_info(
     """Look up world info in one call. Set kind and (for most kinds) target_id:
     - kind="creature": catalog summary by target_id; omit it for regional creatures and party-fit encounter_templates ids for enter_mode.
     - kind="combat": current actor/location/zone IDs and distances; target_id selects the origin.
+    For an exposed Choir core, engine_damage_spell_exceptions lists blocked spells by player ID.
     - kind="location", target_id=<location id>: scene details, atmosphere, exits.
     - kind="npc", target_id=<npc id>: personality, speech style, relationship-filtered knowledge.
     - kind="lore", target_id=<topic keyword>: history, gods, the Hollow, races, cultures.
@@ -112,25 +113,13 @@ async def _query_info_impl(
         return await creature_catalog.creature_summary(context.userdata, target_id)
     if kind == "combat":
         try:
-            return json.dumps(
-                {
-                    **combat_spatial.facts(
-                        context.userdata.combat_state, target_id or context.userdata.acting_player_id
-                    ),
-                    **(
-                        {"still": still_encounter.facts(context.userdata.combat_state)}
-                        if context.userdata.combat_state is not None
-                        and context.userdata.combat_state.still_encounter is not None
-                        else {}
-                    ),
-                    **(
-                        {"choir": choir_encounter.facts(context.userdata.combat_state)}
-                        if context.userdata.combat_state is not None
-                        and context.userdata.combat_state.choir_encounter is not None
-                        else {}
-                    ),
-                }
-            )
+            state = context.userdata.combat_state
+            facts = combat_spatial.facts(state, target_id or context.userdata.acting_player_id)
+            if state is not None and state.still_encounter is not None:
+                facts["still"] = still_encounter.facts(state)
+            if state is not None and state.choir_encounter is not None:
+                facts["choir"] = await choir_encounter.facts(state)
+            return json.dumps(facts)
         except ValueError as error:
             raise ToolError(str(error)) from error
     if kind == "inventory":

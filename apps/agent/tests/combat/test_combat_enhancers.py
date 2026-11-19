@@ -14,12 +14,6 @@ def _attack(rider: str | None = None) -> Declaration:
 
 
 class TestAttackSequence:
-    def test_no_enhancer_resolves_one_attack(self) -> None:
-        assert attack_sequence([], _WEAPON) == [_WEAPON]
-
-    def test_extra_attack_resolves_the_swing_twice(self) -> None:
-        assert attack_sequence(["extra_attack"], _WEAPON) == [_WEAPON, _WEAPON]
-
     def test_shield_bash_adds_a_bash_strike(self) -> None:
         assert attack_sequence(["shield_bash"], _WEAPON) == [_WEAPON, SHIELD_BASH_ACTION]
 

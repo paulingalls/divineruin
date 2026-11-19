@@ -157,24 +157,9 @@ def _held_target(state, head: dict):
 
 
 def halve(head: dict, target) -> None:
-    """Rewrite the held roll so the blow deals half its damage. Mutates ``head["roll"]``.
+    """Halve the held blow against live HP so its summary and impact agree after a reload.
 
-    ``damage`` is the load-bearing field: ``apply_attack_result`` derives ``hp_current`` from the
-    target's LIVE HP minus this number, so halving it is what halves the blow. The absolute
-    ``target_hp_remaining``/``overkill``/``target_killed`` are rewritten alongside it to keep the
-    serialized roll internally coherent across a persist/reload, not because the apply half reads
-    them — it stopped, so that a pause that moves the target's HP is not undone at impact.
-
-    Rewriting the SERIALIZED ROLL rather than the summary is what carries the halving to all four
-    of its consumers through the untouched trunk path: hp_current, the concentration DC, the
-    recorded event line and the packet summary. The DICE_ROLL is not one: a post-roll spend needs
-    the POST_ROLL pause, which already announced the blow as rolled.
-
-    ``bonus_damage`` is halved with it because it is a COMPONENT of ``damage``, not a label
-    (check_resolution_attack.py:150 does ``damage += bonus_damage``) and the summary surfaces both
-    — a Temporary Hollowed attacker's necrotic die would otherwise be reported as larger than the
-    whole blow. The killing-blow context is cleared when the halving saves the target, so the DM is
-    never handed a dramatic killing blow for a player who is still standing.
+    The dice event precedes the post-roll reaction window and still describes the original roll.
     """
     result, held_ac = deserialize_roll(head["roll"])
     halved = with_landed_damage(
@@ -183,6 +168,7 @@ def halve(head: dict, target) -> None:
         target.hp_current,
         bonus_damage=result.bonus_damage // 2,
         rider_damage=result.rider_damage // 2,
+        synergy_damage=result.synergy_damage // 2,
     )
     head["roll"] = serialize_roll(halved, held_ac)
 

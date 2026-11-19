@@ -21,7 +21,8 @@ def mark_radiant(target, action, result):
     radiant = (
         any(c["damage_type"] == "radiant" and c["damage"] > 0 for c in components)
         if components is not None
-        else result.damage_type == "radiant" and result.damage - bonus - rider > 0
+        else result.damage_type == "radiant"
+        and result.damage - bonus - rider - getattr(result, "synergy_damage", 0) > 0
     )
     if (
         radiant
@@ -42,7 +43,7 @@ def absorb_spell(state, caster, declaration, packet):
     if (
         profile
         and profile["resolution"] != "deferred"
-        and any(c["damage_type"] == "radiant" for c in profile["components"])
+        and any(packet.get("damage_type_override", c["damage_type"]) == "radiant" for c in profile["components"])
     ):
         return declaration
     targets = resolve_effective_targets(declaration.target_ids, declaration.target_id, self_value=caster.id, dedup=True)
