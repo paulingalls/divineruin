@@ -180,6 +180,17 @@ async def receive_commands(room: rtc.Room, identity: str, state: ProbeState, evi
                     "missing owned acoustic source"
                 )
             state.extra_status["choir_complete"] = True
+            # The final command can complete while the speaker is still playing its waveform.
+            playback = evidence_path.with_name("stimulus-playback.json")
+            async with asyncio.timeout(20):
+                while not playback.is_file():
+                    await asyncio.sleep(0.05)
+            played = json.loads(playback.read_text())
+            assert played["run_id"] == state.fixture["run_id"], "stale native speaker completion"
+            if fault == "none":
+                assert played["played_turns"] == list(range(1, len(speech.source_receipts) + 1)), (
+                    "speaker playback and authenticated turns disagree"
+                )
             return frames
     finally:
         try:

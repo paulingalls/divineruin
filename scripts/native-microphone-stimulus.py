@@ -255,9 +255,10 @@ def main():
     else:
         subprocess.run(command, check=True)
         played = [1, 2]
-    (args.artifacts / "stimulus-playback.json").write_text(
-        json.dumps({"run_id": args.run_id, "device": speaker, "played_turns": played}) + "\n"
-    )
+    playback = args.artifacts / "stimulus-playback.json"
+    pending = playback.with_suffix(".tmp")
+    pending.write_text(json.dumps({"run_id": args.run_id, "device": speaker, "played_turns": played}) + "\n")
+    pending.replace(playback)
 
 
 if __name__ == "__main__":
