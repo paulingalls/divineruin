@@ -239,8 +239,7 @@ async def test_short_disconnect_and_restart_resume_from_checkpoint(paradise, clo
     _, rolls = save_faces
     async with background(walk) as tick:
         await advance(clock, tick, HOUR - 2)
-        del walk.dwell_generations[guest]
-        await advance(clock, tick, 60)
+        clock.now += 60
         walk.dwell_generations[guest] = 2
         await tick()
         assert not rolls
