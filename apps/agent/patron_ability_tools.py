@@ -5,10 +5,14 @@ import json
 from livekit.agents.llm import ToolError
 
 import db
+import db_mutations
 import db_queries
-from _gods_content import load_gods
+import event_types as E
+import patron_combat_edges
+from _gods_content import engine_implementations, load_gods
+from combat_ui_update import build_combat_ui_update
+from game_events import publish_game_event
 from patron_favor import get_patron_tier
-from patron_passives import SCHOLARS_WARD, WARRIORS_ENDURANCE
 
 TIERS = ("Acknowledged", "Devoted", "Exalted")
 LUCKY = "zhael_lucky"
@@ -39,10 +43,11 @@ def availability(ability, tier, required, spent):
     if required is not None and TIERS.index(tier) < TIERS.index(required):
         return f"Requires {required} tier.", "locked"
     resolution = ability.get("resolution", "narrated")
-    if ability["id"] in (LUCKY, SCHOLARS_WARD, WARRIORS_ENDURANCE):
-        implemented = resolution == "engine" and ability.get("implementation_id") == ability["id"]
-    else:
-        implemented = resolution == "narrated"
+    implemented = resolution == "narrated" or (
+        resolution == "engine"
+        and ability.get("implementation_id") == ability["id"]
+        and ability["id"] in engine_implementations()
+    )
     if ability["status"] != "active" or not implemented:
         return "This ability is pending implementation.", "locked"
     if ability["recharge"] == "always":
@@ -129,20 +134,42 @@ async def spend(session, actor, ability_id):
     return ability
 
 
-async def activate(context, ability_id):
+async def _spend_activation(conn, session, actor, ability_id, target_id):
+    ability = await _locked_ability(conn, actor, ability_id)
+    updated = None
+    response = {}
+    if ability.get("resolution") == "engine":
+        handler = patron_combat_edges.ACTIVE_GIFTS.get(ability_id)
+        if handler is None:
+            raise ToolError("This ability cannot be activated directly.")
+        updated, response = handler(session.combat_state, actor, target_id=target_id)
+    await _write_spend(conn, session, actor, ability_id)
+    if updated is not None:
+        await db_mutations.save_combat_state(updated.combat_id, updated.to_dict(), conn=conn)
+    return ability, updated, response
+
+
+async def activate(context, ability_id, *, target_id=None):
     from patron_ability_events import publish_patron_abilities
 
     session = context.userdata
     actor = session.acting_player_id
-    ability = await spend(session, actor, ability_id)
-
-    await publish_patron_abilities(session.room, actor, session.event_bus)
+    async with session.combat_state_lock:
+        async with db.transaction() as conn:
+            ability, updated, response = await _spend_activation(conn, session, actor, ability_id, target_id)
+        if updated is not None:
+            session.combat_state = updated
+            await publish_game_event(
+                session.room, E.COMBAT_UI_UPDATE, build_combat_ui_update(updated), event_bus=session.event_bus
+            )
+        await publish_patron_abilities(session.room, actor, session.event_bus)
     return json.dumps(
         {
             "id": ability_id,
             "name": ability["name"],
             "effect": ability["effect"],
             "recharge": ability["recharge"],
+            **response,
             "dm_cue": "Narrate the authored answer or effect. Obtain mechanical facts from engine/query tools "
             'before stating any number; for enemy AC use query_info(kind="creature", target_id=<enemy id>). '
             "Never invent an unavailable number.",

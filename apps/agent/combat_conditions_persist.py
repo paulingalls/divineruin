@@ -52,18 +52,19 @@ async def reconcile_member_conditions(player_part, *, conn) -> None:
     Combat only ACCRUES persistent conditions (rest clears them, a later milestone), so we union
     with the existing store rather than overwrite — else a fight would clobber a pre-combat Wounded.
 
-    Beneficial OOC dice (Blessed/Inspired) load from the store onto the participant at combat-start
-    (combat_init, M4.4 story-005) and are consumed-on-use, so the participant's FINAL set is
-    authoritative — a die spent in combat must be dropped post-combat, and one granted mid-combat
-    that survives must persist (concern ab37d4fc61c6). Keyed on bonus_die (the only consumed-on-use
-    character buffs); phase-scoped combat conditions carry no bonus_die and correctly stay dropped.
+    The combat roster is authoritative for single-use dice (Blessed/Inspired). Replace saved
+    dice with the ones still present at combat end, including any granted during the fight.
+    Round-based dice such as Battle Cry expire with the encounter.
     Broader OOC-condition reconciliation (Poisoned/Charmed) waits on an in-combat applier (M13).
 
     Runs inside the caller's end transaction. The read runs every combat end (a consumed buff leaves
     no trace on the participant), but a change-gate skips the write when nothing moved."""
     acquired = [c for c in player_part.conditions if conditions.CONDITION_CATALOG[c["type"]].persists_across_encounters]
     surviving_buffs = [
-        c for c in player_part.conditions if conditions.CONDITION_CATALOG[c["type"]].bonus_die is not None
+        c
+        for c in player_part.conditions
+        if (spec := conditions.CONDITION_CATALOG[c["type"]]).bonus_die is not None
+        and spec.clearance == "consumed_on_use"
     ]
     existing = await db_mutations_conditions.read_player_conditions(player_part.id, conn=conn)
     existing_non_buff = [c for c in existing if conditions.CONDITION_CATALOG[c["type"]].bonus_die is None]

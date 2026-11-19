@@ -469,8 +469,9 @@
         "name": "Battle Cry of the Ironhand",
         "effect": "Once per long rest, all allies in earshot gain +1d4 to attack rolls for 2 rounds",
         "recharge": "long_rest",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "kaelen_battle_cry_of_the_ironhand"
       },
       "exalted": {
         "id": "kaelen_kaelens_judgment",

@@ -184,6 +184,7 @@ def test_full_state_save_sites_match_the_inventory():
             ("draethar_inner_fire.py", "resume_inner_fire", "call"): 1,
             ("ability_tools.py", "_request_ability_activation_unlocked", "call"): 1,
             ("unbound_tools.py", "_activate_milestone_locked", "call"): 1,
+            ("patron_ability_tools.py", "_spend_activation", "call"): 1,
         }
     )
     assert _save_references() == expected
