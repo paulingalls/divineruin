@@ -254,3 +254,28 @@ test("Kaelen's Natural synergies have both active engine clauses", () => {
     );
   }
 });
+
+test("the authored spell synergies activate five engine clauses", () => {
+  const gods = validateGods(catalog);
+  for (const [patron, archetype, type, implementation_id] of [
+    ["veythar", "mage", "natural", "veythar_simplest_mysteries"],
+    ["veythar", "artificer", "natural", "veythar_simplest_mysteries"],
+    ["veythar", "seeker", "natural", "veythar_simplest_mysteries"],
+    ["mortaen", "mage", "divine", "mortaen_ashen_formula"],
+    ["mortaen", "cleric", "natural", "mortaen_threshold_mercy"],
+  ] as const) {
+    const god = gods.find((entry) => entry.god_id === patron);
+    const row = god?.layer_4_synergy_matrix[archetype];
+    expect(row?.type).toBe(type);
+    expect(row?.clauses).toHaveLength(archetype === "cleric" ? 2 : 1);
+    expect(row?.clauses[0]).toMatchObject({
+      status: "active",
+      resolution: "engine",
+      implementation_id,
+    });
+    if (archetype === "cleric") {
+      expect(row?.clauses[1]).toMatchObject({ status: "pending", resolution: "engine" });
+      expect(row?.clauses[1]).not.toHaveProperty("implementation_id");
+    }
+  }
+});

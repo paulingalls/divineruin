@@ -28,6 +28,10 @@ def expanded_critical(attacker_data: dict, face: int) -> bool:
     return bool(attacker_data.get("expanded_critical")) and face == 19
 
 
+def spell_attack_bonus(player: dict, target) -> int:
+    return int(target.category == "undead" and has_engine_synergy(player, "mortaen_ashen_formula"))
+
+
 def critical_rider(attacker_data: dict, critical: bool, *, rng: random.Random | None) -> tuple[int, str | None]:
     if critical and attacker_data.get("critical_rider"):
         return dice_roll("1d4", rng=rng).total, "lightning"
