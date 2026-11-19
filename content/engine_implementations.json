@@ -18,5 +18,8 @@
   "orenthel_restoration_surge": "patron_combat_edges:restoration_surge",
   "kaelen_warriors_endurance": "patron_passives:warriors_endurance",
   "zhael_bent_probability": "patron_synergy_combat:expanded_critical",
-  "thyra_natures_edge": "patron_synergy_combat:critical_rider"
+  "thyra_natures_edge": "patron_synergy_combat:critical_rider",
+  "veythar_simplest_mysteries": "cast_modifiers:ward_combat_modifiers",
+  "mortaen_ashen_formula": "patron_synergy_combat:spell_attack_bonus",
+  "mortaen_threshold_mercy": "spell_cast_effects:_finish_cast"
 }

@@ -36,12 +36,8 @@ def _components(profile, caster, target, cast_packet, choice):
         notation = f"{count}d{sides}" if count else "0"
         if flat and count:
             notation += f"+{flat}"
-        result.append(
-            {
-                "dice": notation,
-                "damage_type": choice if component["damage_type"] == "choice" else component["damage_type"],
-            }
-        )
+        damage_type = choice if component["damage_type"] == "choice" else component["damage_type"]
+        result.append({"dice": notation, "damage_type": cast_packet.get("damage_type_override", damage_type)})
     return result
 
 

@@ -79,6 +79,8 @@ def attack_roll_inputs(attacker, target, target_ac_bonus, combat_state, action, 
     target_condition_ac = conditions.get_condition_effects(target.conditions).ac_modifier
     effective_ac = target.ac + target_ac_bonus + target_condition_ac
     attack_mod = attacker.attack_mod
+    if not weapon_attack and player is not None:
+        attack_mod += patron_synergy_combat.spell_attack_bonus(player, target)
     if combat_state is not None:
         attack_mod += combat_marks.attack_bonus(combat_state, attacker, target)
         if (

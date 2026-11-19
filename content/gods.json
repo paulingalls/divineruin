@@ -176,8 +176,9 @@
         "clauses": [
           {
             "effect": "Your arcane cantrips gain Veythar's +2 Flickering bonus damage dice even when you are not Flickering. This replaces, rather than stacks with, the Layer 2 Flickering bonus.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "veythar_simplest_mysteries"
           }
         ]
       },
@@ -187,8 +188,9 @@
         "clauses": [
           {
             "effect": "Your arcane cantrips gain Veythar's +2 Flickering bonus damage dice even when you are not Flickering. This replaces, rather than stacks with, the Layer 2 Flickering bonus.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "veythar_simplest_mysteries"
           }
         ]
       },
@@ -198,8 +200,9 @@
         "clauses": [
           {
             "effect": "Your arcane cantrips gain Veythar's +2 Flickering bonus damage dice even when you are not Flickering. This replaces, rather than stacks with, the Layer 2 Flickering bonus.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "veythar_simplest_mysteries"
           }
         ]
       },
@@ -1584,8 +1587,9 @@
         "clauses": [
           {
             "effect": "Gain +1 to spell attack rolls against undead.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "mortaen_ashen_formula"
           }
         ]
       },
@@ -1694,8 +1698,9 @@
         "clauses": [
           {
             "effect": "Sacred Flame deals necrotic.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "mortaen_threshold_mercy"
           },
           {
             "effect": "Healing on 0 HP allies restores double. Best at pulling people back from the edge",

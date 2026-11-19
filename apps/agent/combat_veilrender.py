@@ -43,7 +43,7 @@ def absorb_spell(state, caster, declaration, packet):
     if (
         profile
         and profile["resolution"] != "deferred"
-        and any(c["damage_type"] == "radiant" for c in profile["components"])
+        and any(packet.get("damage_type_override", c["damage_type"]) == "radiant" for c in profile["components"])
     ):
         return declaration
     targets = resolve_effective_targets(declaration.target_ids, declaration.target_id, self_value=caster.id, dedup=True)
