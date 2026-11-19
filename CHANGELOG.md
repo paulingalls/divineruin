@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.50.5
+
+Fixes a creation test left expecting the old 12/17 starting HP for a Kaelen warrior.
+
+Release steps: none.
+
 ## 0.50.4
 
 A new Kaelen follower now starts at full HP, including Warrior's Endurance (17/17 instead of 12/17).
