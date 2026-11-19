@@ -150,6 +150,8 @@ async def receive_commands(room: rtc.Room, identity: str, state: ProbeState, evi
                 ):
                     await flow.run()
             except AssertionError as exc:
+                if fault == "none":
+                    raise
                 expected_guard = {
                     "deactivate-session": "missing separate authenticated turn 2 and gameplay receipt",
                     "drop-gameplay": "missing Choir gameplay delivery: combat_started",

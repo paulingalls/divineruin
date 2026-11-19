@@ -151,6 +151,19 @@ def wait_for_microphone(endpoint, run_id, fetch=None, timeout=20):
     raise TimeoutError("actual native microphone frames never became ready")
 
 
+def play_marker_until_heard(waveform, turn, play, read_status):
+    for attempt in range(2):
+        play(waveform)
+        status = read_status()
+        if status["command_receipts"] >= turn or any(
+            source["turn"] > turn for source in status.get("acoustic_status", [])
+        ):
+            return
+        if attempt == 0:
+            print(f"Native microphone missed acoustic turn {turn}; replaying the same marker once", flush=True)
+    raise RuntimeError(f"Native microphone did not decode the complete acoustic marker for turn {turn} after two plays")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--control", type=Path, required=True)
@@ -218,15 +231,19 @@ def main():
             if player.wait() != 0:
                 raise RuntimeError("sequenced speaker playback failed")
 
+        def read_status():
+            with urllib.request.urlopen(endpoint, timeout=1) as response:
+                status = json.load(response)
+            if status.get("run_id") != args.run_id:
+                raise RuntimeError("stale sequenced stimulus status")
+            return status
+
         turn = 0
         deadline = time.monotonic() + 1200
         played = []
         unrelated_played = False
         while time.monotonic() < deadline:
-            with urllib.request.urlopen(endpoint, timeout=1) as response:
-                status = json.load(response)
-            if status.get("run_id") != args.run_id:
-                raise RuntimeError("stale sequenced stimulus status")
+            status = read_status()
             if status.get("choir_complete"):
                 break
             if status.get("stimulus_fault") in (
@@ -245,7 +262,7 @@ def main():
                 if requested != turn + 1 or status.get("command_receipts") != turn:
                     raise RuntimeError("out-of-order acoustic command request")
                 waveform = generate_speech(args.artifacts, args.run_id, speaker, (requested,))
-                play_wave(waveform)
+                play_marker_until_heard(waveform, requested, play_wave, read_status)
                 print(f"Played owned acoustic turn {requested}", flush=True)
                 turn = requested
                 played.append(turn)
