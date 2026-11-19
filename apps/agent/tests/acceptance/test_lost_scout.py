@@ -114,6 +114,9 @@ async def test_torin_reports_only_the_recorded_outcome(scout, outcome):
         state = await scout.reload()
         assert state.encounter_id == SCOUT and state.get_participant("hollowed_scout_1") is not None
         await scout.command("end_combat", {"outcome": "fled" if outcome == "fled" else "defeat"})
+        if outcome == "fled":
+            # Walking out after a flight keeps the combat outcome; it is not a withdrawal.
+            await scout.enter(ENTRANCE)
     await scout.command("select", REPORT, error=True)
     await scout.stage_at(HALL)
     offer = await scout.torin()
@@ -187,3 +190,4 @@ async def test_first_round_kill_delivers_residue_and_clears_offer(scout):
     assert receipts[-1]["outcome"] == "victory"
     assert sum("lost_scout_residue" in receipt for receipt in receipts) == 1
     assert not (await scout.scene()).get("lost_scout")
+    await scout.command("enter_mode", {"mode": "combat", "encounter_id": SCOUT}, error=True)
