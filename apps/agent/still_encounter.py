@@ -1,11 +1,16 @@
 """Runtime participants and discovery for the Still."""
 
+from uuid import uuid4
+
 import check_resolution
 import combat_hollow_death
 import combat_spatial
 import condition_voice_rules
 import conditions
+from action_contracts_still import STILL_ZONE_KINDS
 from combat_participant import CombatParticipant
+from combat_recharge import action_key
+from combat_recharge import initialize as initialize_action_ledger
 from combat_terrain import skill_natural_terrain
 from declarations import DeclarationType
 from patron_location import check_first_stay
@@ -45,14 +50,75 @@ def initialize(state):
                 ac=20,
                 tier=owner.tier,
                 loot_table_id="loot_still_anchor",
+                damage_affinities={"vulnerable": list(owner.damage_affinities["vulnerable"])},
             )
         )
         state.initiative_order.append(anchor_id)
         state.spatial["positions"][anchor_id] = {**origin, "y": origin["y"] + index - 3}
         state.spatial["speeds"][anchor_id] = 0
-    state.still_encounter = {"owner_id": owner.id, "anchor_ids": ids, "revealed_ids": [], "phase": "active"}
+    owner.still_dormant = True
+    initialize_action_ledger(owner, state.round_number)
+    for action in owner.action_pool:
+        if action.get("kind") in STILL_ZONE_KINDS:
+            owner.action_ledger[action_key(action)] = {"remaining": 0, "round": state.round_number}
+    state.still_encounter = {
+        "owner_id": owner.id,
+        "anchor_ids": ids,
+        "revealed_ids": [],
+        "phase": "active",
+        "pending_rejection": None,
+    }
     combat_spatial.require_spatial(state)
     validate(state)
+
+
+def _valid_trigger(trigger, revealed):
+    return (
+        isinstance(trigger, dict)
+        and set(trigger) == {"anchor_id", "execution_id"}
+        and trigger["anchor_id"] in revealed
+        and isinstance(trigger["execution_id"], str)
+        and bool(trigger["execution_id"])
+    )
+
+
+def _validate_held_zone(state, owner, revealed):
+    for head in state.held_actions:
+        execution = head.get("still_zone")
+        if execution is None:
+            continue
+        from combat_action_availability import replay_valid
+        from declarations import resolve_declaration
+
+        declaration = resolve_declaration(head["declaration"])
+        from combat_ability import _find_action
+
+        action = _find_action(owner, declaration.action)
+        if (
+            not isinstance(execution, dict)
+            or action is None
+            or action.get("kind") not in STILL_ZONE_KINDS
+            or head["actor_id"] != owner.id
+            or not replay_valid(state, head, owner, action, declaration)
+            or set(execution) != {"targets", "trigger", "duration", "results"}
+        ):
+            raise ValueError("Invalid held Still zone action receipt")
+        trigger = execution["trigger"]
+        targets = execution["targets"]
+        results = execution["results"]
+        if (
+            (action["kind"] == "rejection" and not _valid_trigger(trigger, revealed))
+            or (action["kind"] == "final_stillness" and trigger is not None)
+            or type(execution["duration"]) is not int
+            or execution["duration"] < 1
+            or not isinstance(targets, list)
+            or any(key not in state.initiative_order for key in targets)
+            or len(set(targets)) != len(targets)
+            or not isinstance(results, list)
+            or any(not isinstance(result, dict) for result in results)
+            or [result.get("target_id") for result in results] != targets[: len(results)]
+        ):
+            raise ValueError("Invalid held Still zone action progress")
 
 
 def validate(state):
@@ -63,7 +129,8 @@ def validate(state):
     if (
         len(owners) != 1
         or not isinstance(record, dict)
-        or set(record) != {"owner_id", "anchor_ids", "revealed_ids", "phase"}
+        or not {"owner_id", "anchor_ids", "revealed_ids", "phase"} <= record.keys()
+        or record.keys() - {"owner_id", "anchor_ids", "revealed_ids", "phase", "pending_rejection", "illusion"}
     ):
         raise ValueError("Invalid Still snapshot owner or record")
     (owner,) = owners
@@ -73,6 +140,12 @@ def validate(state):
     revealed = record["revealed_ids"]
     if not isinstance(revealed, list) or any(key not in ids for key in revealed) or len(set(revealed)) != len(revealed):
         raise ValueError("Invalid Still revealed anchors")
+    pending = record.get("pending_rejection")
+    if type(owner.still_dormant) is not bool or (
+        pending is not None and (owner.still_dormant or not _valid_trigger(pending, revealed))
+    ):
+        raise ValueError("Invalid Still pending Rejection")
+    _validate_held_zone(state, owner, revealed)
     anchors = [p for p in state.participants if p.id in ids]
     if sorted(p.id for p in anchors) != ids:
         raise ValueError("Missing or duplicate Still anchor participant")
@@ -87,6 +160,24 @@ def validate(state):
             or (anchor.is_fallen and key not in revealed)
         ):
             raise ValueError("Invalid Still anchor HP or fallen state")
+    for action in owner.action_pool:
+        if "recharge" in action and action_key(action) not in owner.action_ledger:
+            raise ValueError("Missing Still action budget")
+    initialize_action_ledger(owner, state.round_number)
+    for action in owner.action_pool:
+        remaining = owner.action_ledger.get(action_key(action), {}).get("remaining")
+        if (
+            action.get("kind") == "final_stillness"
+            and remaining
+            and (sum(anchor.is_fallen for anchor in anchors) < action["minimum_destroyed_anchors"])
+        ):
+            raise ValueError("Final Stillness armed before enough Still anchors fell")
+        if action.get("kind") == "rejection" and remaining and pending is None:
+            raise ValueError("Still Rejection armed without a pending attack")
+    if record.get("illusion") is not None:
+        from still_illusions import validate as validate_illusion
+
+        validate_illusion(state, record["illusion"])
     total = sum(anchor.hp_current for anchor in anchors)
     destroyed = total == 0
     if (
@@ -99,6 +190,30 @@ def validate(state):
         or record["phase"] != ("destroyed" if destroyed else "active")
     ):
         raise ValueError("Still phase disagrees with owner HP or destruction")
+
+
+def record_attack(state, attacker, target, action):
+    if state is None:
+        return
+    record = state.still_encounter
+    if record and attacker.is_ally and target.id in record["revealed_ids"] and not target.is_fallen:
+        if "spell_id" in action:
+            from spells import get_spell
+
+            if not get_spell(action["spell_id"]).hostile:
+                return
+        state.get_participant(record["owner_id"]).still_dormant = False
+        record["pending_rejection"] = {"anchor_id": target.id, "execution_id": uuid4().hex}
+
+
+def owner_alias(state, participant_id):
+    record = state.still_encounter if state is not None else None
+    return record["owner_id"] if record and participant_id in record["anchor_ids"] else participant_id
+
+
+def is_owner(state, participant_id):
+    record = state.still_encounter if state is not None else None
+    return record is not None and record["owner_id"] == participant_id
 
 
 def hidden_ids(state):
@@ -121,7 +236,10 @@ def guard_target(state, target_id):
 
 def guard_declaration(state, actor_id, declaration):
     record = state.still_encounter
-    if record and actor_id in [record["owner_id"], *record["anchor_ids"]]:
+    if record and (
+        actor_id in record["anchor_ids"]
+        or (actor_id == record["owner_id"] and state.get_participant(actor_id).still_dormant)
+    ):
         raise ValueError("The Still and its anchors take no actions.")
     if declaration.type is DeclarationType.INTERACT and declaration.action in SEARCH_ACTIONS:
         if record is None or declaration.target_id != SEARCH_TARGET:
@@ -139,6 +257,8 @@ def facts(state):
     return {
         "phase": record["phase"],
         "revealed_anchor_ids": record["revealed_ids"],
+        "pending_rejection_anchor_id": pending["anchor_id"] if (pending := record.get("pending_rejection")) else None,
+        "illusion": record.get("illusion"),
         "search_actions": [
             {"type": "interact", "action": action, "target_id": SEARCH_TARGET, "skill": skill, "dc": SEARCH_DC}
             for action, skill in SEARCH_ACTIONS.items()
@@ -208,7 +328,7 @@ async def search(session, state, actor, declaration, *, queries, conn, progress=
     }
 
 
-async def after_damage(session, state, target, *, conn, queries):
+async def after_damage(session, state, target, *, conn, queries, was_fallen):
     if state is None or state.still_encounter is None:
         return
     record = state.still_encounter
@@ -216,7 +336,13 @@ async def after_damage(session, state, target, *, conn, queries):
         return
     owner = state.get_participant(record["owner_id"])
     before = owner.hp_current
-    owner.hp_current = sum(state.get_participant(key).hp_current for key in record["anchor_ids"])
+    anchors = [state.get_participant(key) for key in record["anchor_ids"]]
+    owner.hp_current = sum(anchor.hp_current for anchor in anchors)
+    if target.is_fallen and not was_fallen:
+        destroyed = sum(anchor.is_fallen for anchor in anchors)
+        for action in owner.action_pool:
+            if action.get("kind") == "final_stillness" and destroyed == action["minimum_destroyed_anchors"]:
+                owner.action_ledger[action_key(action)]["remaining"] = 1
     if before > 0 and owner.hp_current == 0:
         from combat_damage import _handle_hp_zero
 

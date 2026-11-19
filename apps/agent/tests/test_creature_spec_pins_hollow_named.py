@@ -33,7 +33,7 @@ ATTACKS = {
         ("Dissonant Chord", "ranged", 120, 10, "2d10+6", "psychic", "CON save DC 18", "CON", 18, None),
     ),
     "hollow_still": (
-        ("Serenity's Touch", "melee", 5, 0, "2d6", "psychic", "Auto-hit (no roll)", "WIS", 20, None),
+        ("Serenity's Touch", "melee", 5, 0, "2d6", "psychic", "Auto-hit (no roll)", "WIS", 20, "charmed"),
         ("Perfect Memory", "ranged", 120, 12, "3d8", "psychic", "WIS save DC 20", "WIS", 20, None),
     ),
     "hollow_architect": (
@@ -100,7 +100,11 @@ RECHARGES = {
         {"kind": "encounter", "uses": 1},
         {"kind": "encounter", "uses": 1},
     ),
-    "hollow_still": ("1/round", "5-6", "1/encounter"),
+    "hollow_still": (
+        {"kind": "round", "uses": 1},
+        {"kind": "roll", "die": 6, "threshold": 5},
+        {"kind": "encounter", "uses": 1},
+    ),
     "hollow_architect": ("1/round", "5-6", "1/encounter", "1/encounter", None, None),
 }
 
@@ -204,6 +208,8 @@ def assert_pin(row, key):
         )
     if key == "hollow_still":
         assert "Charmed for 1 hour" in actual[0]["special"]
+        assert actual[0]["auto_hit"] is True
+        assert actual[1]["conditions_on_failure"] == [{"applies_condition": "stunned", "duration": 1}]
 
 
 def test_named_spec_stats_attacks_abilities_and_validator():

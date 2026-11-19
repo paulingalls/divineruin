@@ -18,11 +18,11 @@ async def test_load_rejects_corrupt_still_snapshots(still):
     record = state.still_encounter
     anchor = record["anchor_ids"][0]
 
-    def participant(data):
-        return next(row for row in data["participants"] if row["id"] == anchor)
+    def participant_with_id(data, target):
+        return next(row for row in data["participants"] if row["id"] == target)
 
     def remove_anchor(data):
-        data["participants"].remove(participant(data))
+        data["participants"].remove(participant_with_id(data, anchor))
         data["initiative_order"].remove(anchor)
         data["spatial"]["positions"].pop(anchor)
         data["spatial"]["speeds"].pop(anchor)
@@ -31,9 +31,22 @@ async def test_load_rejects_corrupt_still_snapshots(still):
         lambda data: data.pop("still_encounter"),
         lambda data: data["still_encounter"]["anchor_ids"].__setitem__(1, anchor),
         remove_anchor,
-        lambda data: participant(data).update(hp_current=41),
+        lambda data: participant_with_id(data, anchor).update(hp_current=41),
         lambda data: data["still_encounter"]["revealed_ids"].append("unknown"),
         lambda data: data["still_encounter"].update(phase="destroyed"),
+        lambda data: data["still_encounter"].update(
+            pending_rejection={"anchor_id": "unknown", "execution_id": "attack"}
+        ),
+        lambda data: data["still_encounter"].update(
+            revealed_ids=[anchor], pending_rejection={"anchor_id": anchor, "execution_id": "attack"}
+        ),
+        lambda data: data["still_encounter"].update(
+            revealed_ids=[anchor], pending_rejection={"anchor_id": anchor, "execution_id": ""}
+        ),
+        lambda data: participant_with_id(data, record["owner_id"])["action_ledger"].pop("final stillness"),
+        lambda data: participant_with_id(data, record["owner_id"])["action_ledger"]["final stillness"].update(
+            remaining=1
+        ),
     ]
     try:
         for corrupt in mutations:

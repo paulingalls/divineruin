@@ -180,6 +180,9 @@ async def wrap_phase(
     if ended_outcome is None:
         await concealment.expire_gift(state, conn=conn, queries=queries)
         combat_recharge.recharge_round(state)
+        from still_illusions import generate
+
+        generate(state)
         # Combat continues: shed one step of Resonance per phase, per member against their OWN
         # pool (M14 story-004) — never a shared value, never double. WRAP is the canonical combat
         # decay clock (decision resonance-decay-phase-canonical) — cast-paced decay is suppressed

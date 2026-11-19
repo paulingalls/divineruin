@@ -128,6 +128,19 @@ async def _check_discover_impl(
             raise ToolError("Choir discovery requires a declared Interact search action.")
     state = session.combat_state
     if state is not None and state.still_encounter is not None:
+        from still_illusions import ID_PREFIX, investigate
+
+        if target.startswith(ID_PREFIX):
+            return await investigate(
+                session,
+                skill_lower,
+                target,
+                queries=queries,
+                mutations=mutations,
+                conditions_mutations=conditions_mutations,
+                db_mod=db_mod,
+                publish_roll=_publish_roll,
+            )
         record = state.still_encounter
         if target in {still_encounter.SEARCH_TARGET, record["owner_id"], *record["anchor_ids"]}:
             raise ToolError("Still discovery requires a declared Interact search action.")

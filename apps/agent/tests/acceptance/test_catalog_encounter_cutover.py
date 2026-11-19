@@ -92,7 +92,7 @@ async def test_every_encounter_starts_from_catalog(started, template, cold_catal
         actions = [a["name"] for a in enemy.action_pool]
         if enemy.multiattack_sequence is not None:
             actions.append(enemy.multiattack_sequence["name"])
-        assert roster[enemy.id]["actions"] == actions
+        assert roster[enemy.id]["actions"] == ([] if template["id"] == "hollow_still" else actions)
         view = next(p for p in hud["combatants"] if p["id"] == enemy.id)
         assert view["hpMax"] == enemy.hp_max
         assert view["hpCurrent"] == enemy.hp_current

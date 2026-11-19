@@ -13,6 +13,7 @@ from encounter_actions import action_kind
 def is_melee(action):
     return (
         action_kind(action) == "attack"
+        and not action.get("auto_hit")
         and (
             action.get("type") == "melee"
             or (has_damage(action) and action.get("resolution") != "save" and action.get("half_on_success") is not True)

@@ -113,6 +113,17 @@ def position(spatial, target_id):
     raise ValueError(f"Unknown position {target_id!r}")
 
 
+def place(state, target_id, destination):
+    spatial = require_spatial(state)
+    if target_id not in spatial["positions"]:
+        raise ValueError(f"Unknown participant position {target_id!r}")
+    spatial["positions"][target_id] = point(destination)
+    from choir_effects import exposure
+
+    exposure(state)
+    return dict(spatial["positions"][target_id])
+
+
 def facts(state, origin_id):
     spatial = require_spatial(state)
     origin = position(spatial, origin_id)

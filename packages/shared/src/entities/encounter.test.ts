@@ -426,19 +426,19 @@ test("typed silence zones pass the real scene boundary", () => {
   }
 });
 
-const choirCorpus = [...contractCorpus.valid, ...contractCorpus.invalid].filter((row) =>
-  row.name.startsWith("choir_"),
+const namedCorpus = [...contractCorpus.valid, ...contractCorpus.invalid].filter((row) =>
+  /^(choir|still)_/.test(row.name),
 );
-for (const row of choirCorpus)
-  test(`Choir public contract ${row.name}`, () => {
+for (const row of namedCorpus)
+  test(`Named public contract ${row.name}`, () => {
     const block = row.block as typeof row.block & { reactions: Record<string, unknown>[] };
     const validate = () => {
       for (const action of [...block.attacks, ...block.actives, ...block.reactions]) {
         validateEncounterActionShape(action);
-        validateEncounterActionKind(action, "enemy 'choir'");
+        validateEncounterActionKind(action, "enemy 'named'");
       }
     };
-    if (row.name === "choir_catalog") expect(validate).not.toThrow();
+    if (row.name.endsWith("_catalog")) expect(validate).not.toThrow();
     else expect(validate).toThrow();
   });
 
