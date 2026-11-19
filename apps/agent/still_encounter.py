@@ -218,7 +218,10 @@ async def after_damage(session, state, target, *, conn, queries):
     before = owner.hp_current
     owner.hp_current = sum(state.get_participant(key).hp_current for key in record["anchor_ids"])
     if before > 0 and owner.hp_current == 0:
-        combat_hollow_death.mark_destroyed(owner)
-        owner.is_fallen = True
+        from combat_damage import _handle_hp_zero
+
+        was_fallen, resolved_before = owner.is_fallen, owner.hollow_death_resolved
+        _handle_hp_zero(session, state, owner, overkill=0, was_fallen=was_fallen, hp_status="fallen", sounds=[])
         record["phase"] = "destroyed"
-        await combat_hollow_death.accrue_death(session, state, owner, conn=conn, queries=queries)
+        if combat_hollow_death.new_destruction(owner, resolved_before, was_fallen, before):
+            await combat_hollow_death.accrue_death(session, state, owner, conn=conn, queries=queries)
