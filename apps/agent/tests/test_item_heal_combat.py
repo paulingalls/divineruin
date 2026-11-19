@@ -7,6 +7,7 @@ import db_mutations
 import db_queries
 import event_types as E
 import spells
+from session_data import CompanionState
 
 
 @pytest.mark.parametrize("hp,healed", [(5, 7), (19, 1)])
@@ -45,6 +46,8 @@ async def test_consume_is_a_combat_action_with_one_committed_spend(walk, hp, hea
 async def test_holder_administers_potion_to_a_dying_ally(walk, companion):
     await walk.put()
     ally = "companion" if companion else await walk.add_player(hp=0)
+    if companion:
+        walk.sd.companion = CompanionState(id=ally, name="Kael", is_conscious=False)
     state = await walk.fight(companion=companion)
     fallen = state.get_participant(ally)
     fallen.hp_current = 0
@@ -65,7 +68,13 @@ async def test_holder_administers_potion_to_a_dying_ally(walk, companion):
         0,
         0,
     )
-    if not companion:
+    if companion:
+        assert walk.sd.companion_can_act
+        await walk.wrap()
+        await walk.register_end()
+        await walk.command("end_combat", {"outcome": "fled"})
+        assert walk.sd.companion_can_act
+    else:
         assert (await walk.read(ally))["hp"]["current"] == 7
         assert await walk.pool.fetchval("SELECT count(*) FROM player_inventory WHERE player_id=$1", ally) == 0
 

@@ -23,6 +23,7 @@ import patron_deeds
 import pricing_queries
 import quest_progress
 from combat_conditions_persist import reconcile_member_conditions
+from combat_down import sync_companion_consciousness
 from combat_durability import _accrue_durability, _find_equipped
 from combat_end_lives import settle_lives
 from combat_events import EventSink, emit_or_publish, isolated_publish
@@ -376,6 +377,7 @@ def _end_combat_finish(
         member.weapon_crit_vs_heavy = False
         member.draethar_inner_fire_used = False
         member.unbound_raw_channeling_used = False
+    sync_companion_consciousness(session, cs)
     session.combat_state = None
 
     # Post-commit sync of the location-ward mirror: only when the dying encounter ward changed

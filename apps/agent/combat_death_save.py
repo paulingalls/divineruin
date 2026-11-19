@@ -17,7 +17,7 @@ import db
 import db_mutations
 import event_types as E
 import zhael_fate
-from combat_down import revive
+from combat_down import revive, sync_companion_consciousness
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from combat_support import _require_combat
 from db_errors import db_tool
@@ -198,6 +198,7 @@ async def _request_death_save_locked(session, cs, faller_id, result, mutations, 
         await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
 
     # Committed — now adopt the rolled state and release its events.
+    sync_companion_consciousness(session, state)
     session.combat_state = state
     if resumed:
         zhael_fate.effects_committed(session)

@@ -35,6 +35,7 @@ import veil_ward_events
 import ward_resolution
 import zhael_fate
 from combat_ability import AbilityCastOutcome
+from combat_down import sync_companion_consciousness
 from combat_end import _end_combat_finish
 from combat_events import EventSink, emit_or_publish, isolated_publish
 from combat_fate_rolls import PhaseRolls
@@ -218,6 +219,7 @@ async def _resolve_phase_locked(
     if resuming:
         zhael_fate.effects_committed(session)
     if ended_outcome is None:
+        sync_companion_consciousness(session, state)
         session.combat_state = state
     else:
         assert end_data is not None
