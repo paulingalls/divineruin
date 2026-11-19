@@ -39,6 +39,8 @@ def select(state, caster, declaration, spell, *, require_live=False):
         if len(ids) > spec["cap"] or len(ids) != len(set(ids)):
             raise ValueError("Chain recipients must be unique and within the authored cap")
         primary = ids[0]
+        if not any(p.id == primary for p in live):
+            return []
         if len(ids) == 1:
             candidates = sorted(
                 (p for p in live if p.id != primary and p.is_ally != caster.is_ally),
