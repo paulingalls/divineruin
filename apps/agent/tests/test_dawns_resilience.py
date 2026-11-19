@@ -108,12 +108,13 @@ async def test_self_casts_and_zero_recipient_gains_add_no_bonus(walk, combat):
     await ally_heal(walk, combat, start=19, bonus=1)
     full = await walk.add_player(hp=20)
     injured = await walk.add_player()
-    for target, wisdom, roll, healer_hp, target_gain in [
-        (walk.player, 16, 5, 18, 8),
-        (full, 16, 5, 10, 0),
-        (injured, 2, 1, 10, 0),
+    for target, wisdom, roll, start, healer_hp, target_gain in [
+        (walk.player, 16, 5, 10, 18, 8),
+        (full, 16, 5, 10, 10, 0),
+        (injured, 2, 1, 10, 10, 0),
+        (injured, 16, 5, 20, 20, 8),
     ]:
-        await prepare_follower(walk, WOUNDS, wisdom=wisdom)
+        await prepare_follower(walk, WOUNDS, hp=start, wisdom=wisdom)
         if combat:
             await walk.fight()
         with heal_roll(roll):
