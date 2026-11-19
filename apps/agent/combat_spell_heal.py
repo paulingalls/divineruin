@@ -50,15 +50,16 @@ def combat_recipients(
     targets = _explicit_targets(spell, profile, caster.id, declaration.target_id, declaration.target_ids)
     if profile["recipients"] == "all_allies":
         return [p for p in state.participants if p.is_ally and not is_terminally_down(p)]
-    recipients = []
-    for tid in targets:
-        target = state.get_participant(tid)
-        if target is None or not target.is_ally:
-            raise ValueError(f"{spell.name} requires an ally in the fight: {tid}")
-        if is_terminally_down(target):
-            raise ValueError(f"{spell.name} cannot heal a dead ally: {tid}")
-        recipients.append(target)
-    return recipients
+    return [combat_ally(state, tid, spell.name) for tid in targets]
+
+
+def combat_ally(state: CombatState, target_id: str, source_name: str) -> CombatParticipant:
+    target = state.get_participant(target_id)
+    if target is None or not target.is_ally:
+        raise ValueError(f"{source_name} requires an ally in the fight: {target_id}")
+    if is_terminally_down(target):
+        raise ValueError(f"{source_name} cannot heal a dead ally: {target_id}")
+    return target
 
 
 def exploration_recipients(

@@ -43,8 +43,9 @@ async def transact(
 ) -> str:
     """Physical goods change hands. Pass a signed delta: a positive number to
     GAIN that many of an item (looted, bought, quest reward), a negative number
-    to LOSE/SPEND/CONSUME them (sold, used, destroyed). Optionally give a source
-    for gains, e.g. 'looted from goblin'."""
+    to lose goods (sold, transferred, destroyed). To heal with an item, use its
+    consume_id with activate outside combat or a consume declaration in combat.
+    Optionally give a source for gains, e.g. 'looted from goblin'."""
     return await _transact_impl(context, item_id, delta, source)
 
 

@@ -13,6 +13,7 @@ import combat_spatial
 import combat_spatial_declarations
 import db_mutations
 import declaration_payloads
+import item_heal
 from combat_resolve_phase import _resolve_phase_locked
 from combat_support import _participant_roster, _require_combat
 from db_errors import db_tool
@@ -31,7 +32,9 @@ async def declare_phase(
     """Open a combat phase by recording every combatant's declared action for this
     round, then call resolve_phase to resolve them. Pass one declaration per acting
     combatant, each naming its actor_id and picked by its kind: attack, ability,
-    interact, maneuver, move, defend or retreat. Move names an explicit destination in feet and consumes
+    interact, consume, maneuver, move, defend or retreat. For a potion, salve or berry,
+    declare consume with the holder's actor_id and the queried item_id. Set target_id
+    to the ally receiving it or an empty string for the holder. Move names an explicit destination in feet and consumes
     this phase action, limited to the actor's persisted speed. Include the player, every
     conscious companion, and every enemy that acts this phase — one declaration each.
     Call this once per round at the declaration beat; resolve_phase resolves and
@@ -74,6 +77,7 @@ async def _declare_phase_locked(
         combat_spatial_declarations.preflight_state(cs)
         next_state, _adv = combat_phase.advance_combat_phase(cs, declarations=declarations)
         await combat_item_rider.preflight(session, next_state)
+        await item_heal.preflight_declarations(session, next_state)
     except ValueError as e:
         raise ToolError(str(e)) from e
 
