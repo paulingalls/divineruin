@@ -337,6 +337,7 @@ async def test_incombat_mass_inspire_lands_on_every_ally_and_voices_them():
         conn=MagicMock(),
         player=_bard("c1"),
         persistence=persistence,
+        queries=MagicMock(get_player=AsyncMock(return_value=_bard("c1"))),
     )
 
     assert summary["resolved"] is True

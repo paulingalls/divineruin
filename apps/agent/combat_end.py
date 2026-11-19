@@ -409,6 +409,8 @@ def _end_combat_finish(
         "loot": loot,
         "currency_gold": currency_gold,
     }
+    if cs.judgment_rewards:
+        response["judgment_rewards"] = cs.judgment_rewards
     logger.info(
         "end_combat result: %s, xp=%d granted (encounter total %d), loot=%d item(s), currency=%.1fgp",
         outcome,

@@ -65,15 +65,18 @@ def test_authored_layers_match_mechanics():
     assert {a["id"] for a in abilities if (a["status"], a["resolution"]) == ("active", "narrated")} == narrated
     passives = {"veythar_scholars_ward", "kaelen_warriors_endurance"}
     battle_cry = "kaelen_battle_cry_of_the_ironhand"
-    engine = {"zhael_lucky", battle_cry, *passives}
+    judgment = "kaelen_kaelens_judgment"
+    engine = {"zhael_lucky", battle_cry, judgment, *passives}
     assert {a["id"] for a in abilities if (a["status"], a["resolution"]) == ("active", "engine")} == engine
     pending = [a for a in abilities if a["id"] not in narrated | engine]
-    assert len(pending) == 19
+    assert len(pending) == 18
     for ability in abilities:
         if ability["id"] in passives:
             assert (ability["recharge"], ability["implementation_id"]) == ("always", ability["id"])
     cry = next(a for a in abilities if a["id"] == battle_cry)
     assert (cry["recharge"], cry["implementation_id"]) == ("long_rest", battle_cry)
+    worthy_foe = next(a for a in abilities if a["id"] == judgment)
+    assert (worthy_foe["recharge"], worthy_foe["implementation_id"]) == ("per_session", judgment)
     assert all((a["status"], a["resolution"]) == ("pending", "engine") for a in pending)
     for row in rows:
         patron = row["god_id"]
