@@ -40,9 +40,8 @@ async def cast_in_combat(healer, *, hp=10, maximum=40, state=None, ally: str | N
     return ally
 
 
-async def defend_round(healer, *actors):
+async def declare_defend(healer, *actors):
     await healer.command("declare_phase", {"declarations": [{"kind": "defend", "actor_id": a} for a in actors]})
-    return await healer.wrap()
 
 
 def effects(packets):
@@ -64,7 +63,8 @@ async def test_recipient_turns_tick_once_across_checkpoint_reloads_and_omitted_d
     for elapsed in range(1, 4):
         healer.sd.combat_state = await healer.checkpoint()
         turns = [healer.player] if elapsed == 2 else [healer.player, ally]
-        packets = await defend_round(healer, *turns)
+        await declare_defend(healer, *turns)
+        packets = await healer.wrap()
         assert effects(packets) == [
             {
                 "name": "Regenerating",
@@ -119,7 +119,7 @@ async def test_combat_end_settles_regeneration_before_life_settlement(healer, ou
     if outcome == "victory":
         foe = healer.fight_state.get_participant("foe")
         foe.hp_current, foe.is_fallen = 0, True
-        await healer.command("declare_phase", {"declarations": [{"kind": "defend", "actor_id": healer.player}]})
+        await declare_defend(healer, healer.player)
         await healer.command("resolve_phase", {})
     else:
         await healer.register_end()
@@ -158,7 +158,8 @@ async def test_tick_spends_budget_at_effective_max_and_expires(healer, mock_comb
     regeneration(healer.fight_state.get_participant(ally))[0]["ticks_remaining"] = 2
     await set_hp(healer, ally, 44)
     for healing in ([1], [0], []):
-        ticks = effects(await defend_round(healer, healer.player))
+        await declare_defend(healer, healer.player)
+        ticks = effects(await healer.wrap())
         assert [e["healed"] for e in ticks] == healing
         assert all(e["hp_current"] == e["hp_max"] == 45 for e in ticks)
         assert (await healer.read(ally))["hp"] == {"current": 45, "max": 40}
@@ -168,13 +169,11 @@ async def test_tick_spends_budget_at_effective_max_and_expires(healer, mock_comb
 @pytest.mark.parametrize("kind", ["player", "companion", "dead", "failed_saves"])
 async def test_only_savable_fallers_regenerate(healer, kind):
     await healer.prepare(REGENERATE)
-    ally = await healer.add_player(hp=10, maximum=40)
-    state = await healer.fight(companion=kind == "companion")
     if kind == "companion":
-        ally = "companion"
-        await cast_in_combat(healer, state=state, ally=ally, hp=3, maximum=20)
+        state = await healer.fight(companion=True)
+        ally = await cast_in_combat(healer, state=state, ally="companion", hp=3, maximum=20)
     else:
-        await cast_in_combat(healer, state=state, ally=ally)
+        ally = await cast_in_combat(healer)
     target = healer.fight_state.get_participant(ally)
     target.hp_current = 0
     target.is_fallen = True
@@ -185,7 +184,7 @@ async def test_only_savable_fallers_regenerate(healer, kind):
         await db_mutations.update_player_hp(ally, 0)
     await healer.save()
 
-    await healer.command("declare_phase", {"declarations": [{"kind": "defend", "actor_id": healer.player}]})
+    await declare_defend(healer, healer.player)
     ticks = effects((await healer.command("resolve_phase", {}))["packets"])
     wrapped = await healer.command("resolve_phase", {})
     assert ally not in wrapped["death_saves_due"]
@@ -217,7 +216,7 @@ async def test_regeneration_follows_mawling_damage_and_its_held_save(healer, hp,
         await update_player_concentration(ally, "divine_bless")
     await set_hp(healer, ally, hp)
 
-    await healer.command("declare_phase", {"declarations": [{"kind": "defend", "actor_id": healer.player}]})
+    await declare_defend(healer, healer.player)
     with (
         patch("combat_turn_start.dice_roll", return_value=SimpleNamespace(total=damage)) as field,
         patch("check_resolution.dice_roll", return_value=_d20(3)) as save,

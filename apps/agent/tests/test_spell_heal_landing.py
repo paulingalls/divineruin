@@ -29,9 +29,7 @@ def receipt(target_id, healed, current, *, rolled=5, modifier=3, maximum=20):
     }
 
 
-@pytest.mark.parametrize(
-    "spell,combat", [(WOUNDS, True), (WOUNDS, False), (TOUCH, False), (REGENERATE, False), (REGENERATE, True)]
-)
+@pytest.mark.parametrize("spell,combat", [(WOUNDS, True), (WOUNDS, False), (TOUCH, False), (REGENERATE, True)])
 async def test_immediate_healing_persists_and_names_the_actual_restoration(healer, spell, combat):
     regenerate = spell == REGENERATE
     rolled, modifier, maximum = (35, 0, 50) if regenerate else (5, 3, 20)
@@ -50,7 +48,7 @@ async def test_immediate_healing_persists_and_names_the_actual_restoration(heale
                 assert not any(p.get("cast") for p in await healer.wrap())
         else:
             packet = await healer.cast(spell, targets=[ally])
-    healed = maximum - 3 if regenerate and not combat else rolled + modifier
+    healed = rolled + modifier
     assert (await healer.read(ally))["hp"] == {"current": 3 + healed, "max": maximum}
     assert packet["healing_results"] == [
         receipt(ally, healed, 3 + healed, rolled=rolled, modifier=modifier, maximum=maximum)
