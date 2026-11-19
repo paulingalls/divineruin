@@ -3198,17 +3198,15 @@
       "WIS": 22,
       "CHA": 24
     },
-    "save_proficiencies": [
-      "CON",
-      "WIS",
-      "CHA"
-    ],
+    "save_proficiencies": ["CON", "WIS", "CHA"],
     "attacks": [
       {
         "name": "Serenity's Touch",
         "type": "melee",
         "reach": 5,
         "to_hit": 0,
+        "auto_hit": true,
+        "applies_condition": "charmed",
         "damage": "2d6",
         "damage_type": "psychic",
         "special": "Auto-hit (no roll) from any zone surface. WIS save DC 20 or Charmed for 1 hour; sit, rest, and refuse to leave.",
@@ -3225,6 +3223,9 @@
         "damage_type": "psychic",
         "special": "WIS save DC 20 or take no actions next turn, lost in a perfect memory.",
         "audio": "hlw_perfect_memory",
+        "resolution": "hit_then_save",
+        "conditions_on_failure": [{ "applies_condition": "stunned", "duration": 1 }],
+        "conditions_on_success": [],
         "save": "WIS",
         "dc": 20
       }
@@ -3265,21 +3266,33 @@
         "name": "Illusory Perfection",
         "description": "1/round free action: tailored loved one, home, or happy memory. Investigation DC 22 sees through it.",
         "narration_cue": "",
-        "recharge": "1/round",
+        "kind": "illusion",
+        "check_skill": "investigation",
+        "dc": 22,
+        "recharge": { "kind": "round", "uses": 1 },
         "audio": null
       },
       {
         "name": "Rejection",
         "description": "Recharge 5-6 when anchor attacked. Within 30 ft of anchor WIS save DC 20: fail teleported to zone edge; success remain but Stunned 1 round.",
         "narration_cue": "",
-        "recharge": "5-6",
+        "kind": "rejection",
+        "radius_ft": 30,
+        "save": "WIS",
+        "dc": 20,
+        "recharge": { "kind": "roll", "die": 6, "threshold": 5 },
         "audio": null
       },
       {
         "name": "Final Stillness",
         "description": "1/encounter when 4+ anchors destroyed. All in zone WIS save DC 22: fail Stunned 1d4 rounds and Charmed; success half stun, no charm.",
         "narration_cue": "",
-        "recharge": "1/encounter",
+        "kind": "final_stillness",
+        "minimum_destroyed_anchors": 4,
+        "duration_dice": "1d4",
+        "save": "WIS",
+        "dc": 22,
+        "recharge": { "kind": "encounter", "uses": 1 },
         "audio": null
       }
     ],
@@ -3289,21 +3302,13 @@
       "corruption_aura": 2980,
       "resonance_on_death": 6,
       "veil_effect": "Perfect birdsong, water and warmth make paradise sound like a trap.",
-      "vulnerable_to": [
-        "radiant",
-        "divine",
-        "fire",
-        "loud_sound"
-      ]
+      "vulnerable_to": ["radiant", "divine", "fire", "loud_sound"]
     },
     "behavior": {
       "tactics": "Lures creatures with comfort and absorbs them slowly; destroying each anchor erases part of its beauty.",
       "morale": "cannot_flee",
       "group_size": "solitary_stationary",
-      "environment": [
-        "Ashmark deep territory",
-        "Voidmaw edge"
-      ]
+      "environment": ["Ashmark deep territory", "Voidmaw edge"]
     },
     "narration": {
       "first_sighting": "A whistle of impossibly perfect birdsong rises over the grass; every instinct says stay.",
@@ -3322,18 +3327,11 @@
     "loot_table_id": "loot_hollow_still",
     "xp_reward": 5000,
     "home_region": "ashmark",
-    "regions": [
-      "ashmark"
-    ],
+    "regions": ["ashmark"],
     "damage_affinities": {
       "resistant": [],
-      "immune": [
-        "poison"
-      ],
-      "vulnerable": [
-        "radiant",
-        "fire"
-      ]
+      "immune": ["poison"],
+      "vulnerable": ["radiant", "fire", "thunder"]
     }
   },
   {

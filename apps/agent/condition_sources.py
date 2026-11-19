@@ -31,8 +31,12 @@ def no_hostile_source(active_conditions, *, target_ids, participant_ids, area=Fa
 
 
 def require_hostile_targets(state, actor, target_ids, *, area=False) -> None:
+    from still_encounter import owner_alias
+
+    targets = set(target_ids)
+    targets |= {owner_alias(state, target_id) for target_id in targets}
     if no_hostile_source(
-        actor.conditions, target_ids=target_ids, participant_ids={p.id for p in state.participants}, area=area
+        actor.conditions, target_ids=targets, participant_ids={p.id for p in state.participants}, area=area
     ):
         raise DeliveryRefused(f"{actor.name} is Charmed and cannot act hostilely against its source")
 

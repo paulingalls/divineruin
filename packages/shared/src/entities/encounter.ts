@@ -6,6 +6,8 @@ import {
   type ChoirEffect,
 } from "./action_contracts";
 
+import { STILL_ACTION_KINDS, type StillEffect } from "./action_contracts_still";
+
 // The 5 encounter roles. Value array is the single source of truth; the union is derived from it,
 // so adding a role here updates both the type and the conformance test (which imports the array).
 export const ENCOUNTER_ROLE_VALUES = ["minion", "standard", "elite", "boss", "named"] as const;
@@ -22,6 +24,7 @@ export const ENCOUNTER_ACTION_KIND_VALUES = [
   "charm",
   "silence",
   "spell_redirect",
+  ...STILL_ACTION_KINDS,
 ] as const;
 export type EncounterActionKind = (typeof ENCOUNTER_ACTION_KIND_VALUES)[number];
 const pythonRepr = (value: unknown): string => {
@@ -78,6 +81,7 @@ interface EncounterActionBase {
 // An attack deals `damage`; condition and half-damage fields select its post-hit or save-only shape.
 export interface EncounterAttackAction extends EncounterActionBase {
   magical?: boolean;
+  auto_hit?: true;
   bonus_damage?: import("./action_contracts").DamageRider;
   critical_save?: import("./action_contracts").CriticalSave;
   durability_rider?: DurabilityRider;
@@ -134,7 +138,7 @@ export type EncounterAction =
   | EncounterAccusationAction
   | EncounterHealingAction
   | EncounterPrepareAttackAction
-  | (EncounterActionBase & ChoirEffect);
+  | (EncounterActionBase & (ChoirEffect | StillEffect));
 
 export function encounterActionKind(action: {
   name?: unknown;

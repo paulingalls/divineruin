@@ -1,5 +1,6 @@
 import { DAMAGE_TYPES, type DamageType } from "./creature_damage_affinity";
 import { CONDITION_NAMES } from "./encounter";
+import { validateStillAction } from "./action_contracts_still";
 
 export type Recharge =
   { kind: "roll"; die: 6; threshold: number } | { kind: "encounter" | "round"; uses: number };
@@ -19,6 +20,9 @@ export type CriticalSave = {
 };
 export type ActionExtensions = {
   shape?: unknown;
+  auto_hit?: unknown;
+  minimum_destroyed_anchors?: unknown;
+  check_skill?: unknown;
   magical?: unknown;
   bonus_damage?: unknown;
   critical_save?: unknown;
@@ -80,6 +84,7 @@ export function validateActionExtensions(action: ActionExtensions, path: string)
   )
     invalid(`${path}.shape`);
   const kind = action.kind === undefined ? "attack" : action.kind;
+  if (validateStillAction(action, path, kind, invalid, positive, validateRecharge)) return;
   validateWeaponRiders(action, path);
   validateDurabilityRider(action, path);
   validateResolution(action, path);

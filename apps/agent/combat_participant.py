@@ -38,6 +38,7 @@ class CombatParticipant:
     pending_preparation: dict | None = None
     choir_reaction: dict | None = None
     choir_suppression: dict | None = None
+    still_dormant: bool = False
     choir_silence_exposed: bool = False
     choir_movement_round: int | None = None
     damage_affinities: dict[str, list[str]] = field(default_factory=dict)

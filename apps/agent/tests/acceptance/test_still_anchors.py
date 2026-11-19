@@ -63,7 +63,10 @@ async def test_still_entry_search_and_weapon_damage(still):
     assert {p.id for p in state.participants if p.type == "enemy"} == {owner_id, *anchors}
     assert [state.get_participant(a).hp_max for a in anchors] == [40, 40, 40, 40, 45, 45]
     assert all(state.get_participant(a).ac == 20 for a in anchors)
-    assert all(not state.get_participant(a).action_pool for a in [owner_id, *anchors])
+    from combat_action_availability import available_actions
+
+    assert not available_actions(state.get_participant(owner_id))
+    assert all(not state.get_participant(a).action_pool for a in anchors)
     assert record["revealed_ids"] == []
     initial_events = published_payloads(still.sd.room)
     hud = [p for p in initial_events if p["type"] == E.COMBAT_UI_UPDATE][-1]
@@ -101,11 +104,11 @@ async def test_still_entry_search_and_weapon_damage(still):
     assert [after.get_participant(a).hp_current for a in anchors[1:]] == [40, 40, 40, 45, 45]
 
 
-def strike(target) -> dict[str, Any]:
-    return dict(kind="attack", action="Longsword", target_id=target, held_item_id="", rider="")
+def strike(target, *, action="Longsword") -> dict[str, Any]:
+    return dict(kind="attack", action=action, target_id=target, held_item_id="", rider="")
 
 
-def spell(action, *targets):
+def spell(action, *targets) -> dict[str, Any]:
     return dict(kind="ability", action=action, targets=list(targets), argument_type="")
 
 

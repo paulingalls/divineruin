@@ -1,5 +1,6 @@
 """The executable action surface shared by declaration validation and the roster."""
 
+from action_contracts_still import STILL_ZONE_KINDS
 from choir_effects import suppressed
 from combat_recharge import available, initialize
 from condition_restrictions import cannot_act
@@ -40,7 +41,7 @@ def action_summary(actor):
                 "name": a["name"],
                 "kind": action_kind(a),
                 "declaration_type": "ability"
-                if action_kind(a) in ("healing", "prepare_attack", "charm", "silence")
+                if action_kind(a) in ("healing", "prepare_attack", "charm", "silence", *STILL_ZONE_KINDS)
                 else "attack",
             }
             | {
@@ -57,6 +58,7 @@ def action_summary(actor):
             | ({"shape": a["shape"], "reach": a["reach"], "aim": "declared participant"} if "shape" in a else {})
             | item_rider_facts(a)
             for a in actor.action_pool
+            if not actor.still_dormant and action_kind(a) != "illusion"
         ],
         "automatic_reactions": []
         if actor.choir_reaction is None
@@ -103,7 +105,8 @@ def action_summary(actor):
 
 def require_available(actor, action):
     if (
-        suppressed(actor)
+        actor.still_dormant
+        or suppressed(actor)
         or (actor.creature_id == "hollow_choir" and actor.choir_silence_exposed)
         or not available(actor, action)
     ):
@@ -138,6 +141,7 @@ def begin_execution(state, actor, action, declaration, head=None):
     executed = dict(action)
     attack_roll = (
         action_kind(action) == "attack"
+        and not action.get("auto_hit")
         and action.get("resolution") != "save"
         and not action.get("half_on_success")
         and (not action.get("applies_condition") or action.get("damage") not in (None, "", "0", 0))

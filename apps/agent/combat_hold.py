@@ -29,6 +29,7 @@ import event_types as E
 import reaction_gate
 import reaction_spend
 import reaction_windows
+from action_contracts_still import STILL_ZONE_KINDS
 from combat_ability import _find_action
 from combat_action_availability import replay_valid
 from combat_attack_roll import build_attack_dice_roll_payload, deserialize_roll
@@ -135,6 +136,15 @@ def _is_wasted(state, head: dict) -> bool:
         and not combat_recharge.available(actor, action)
     ):
         return True
+    if (
+        action is not None
+        and actor.creature_id == "hollow_still"
+        and not replay_valid(state, head, actor, action, declaration)
+    ):
+        from still_actions import range_refusal
+
+        if range_refusal(state, actor, action, declaration):
+            return True
     if declaration.target_id is None:
         return False
     target = state.get_participant(declaration.target_id)
@@ -148,7 +158,7 @@ def _opens_windows(state, head: dict) -> bool:
     declaration = _held_declaration(head)
     actor = state.get_participant(head["actor_id"])
     action = _find_action(actor, declaration.action) if actor is not None else None
-    if action is not None and action_kind(action) in ("healing", "prepare_attack"):
+    if action is not None and action_kind(action) in ("healing", "prepare_attack", *STILL_ZONE_KINDS):
         return True
     return declaration.target_id is not None and action is not None
 
@@ -167,7 +177,7 @@ def _attack_action(state, head: dict) -> dict | None:
     declaration = _held_declaration(head)
     actor = state.get_participant(head["actor_id"])
     action = _find_action(actor, declaration.action) if actor is not None else None
-    if action is None or is_save_damage_action(action) or action_kind(action) != "attack":
+    if action is None or action.get("auto_hit") or is_save_damage_action(action) or action_kind(action) != "attack":
         return None
     if is_combined_attack_action(action):
         return action
@@ -311,7 +321,12 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None, fate_roll
                     actor = state.get_participant(head["actor_id"])
                     window_action = _find_action(actor, _held_declaration(head).action)
                     assert window_action is not None
-                    candidate = _window(state, head, PRE_ROLL, reaction_windows.pre_roll_triggers(window_action))
+                    triggers = (
+                        (reaction_windows.CATCH_ALL,)
+                        if action_kind(window_action) in STILL_ZONE_KINDS
+                        else reaction_windows.pre_roll_triggers(window_action)
+                    )
+                    candidate = _window(state, head, PRE_ROLL, triggers)
                     if reaction_gate.offers_for_window(state, candidate):
                         if head.get("melee_approach", {}).get("closed_distance"):
                             summaries.append(

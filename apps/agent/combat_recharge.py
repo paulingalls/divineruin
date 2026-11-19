@@ -39,7 +39,11 @@ def initialize(actor, round_number=1):
 
 def available(actor, action):
     initialize(actor)
-    return "recharge" not in action or actor.action_ledger[action_key(action)]["remaining"] > 0
+    return (
+        not actor.still_dormant
+        and action.get("kind") != "illusion"
+        and ("recharge" not in action or actor.action_ledger[action_key(action)]["remaining"] > 0)
+    )
 
 
 def spend(actor, action, round_number):
@@ -58,6 +62,10 @@ def recharge_round(state):
             continue
         for action in actor.action_pool:
             if "recharge" not in action:
+                continue
+            if action.get("kind") == "rejection" and (
+                state.still_encounter is None or state.still_encounter.get("pending_rejection") is None
+            ):
                 continue
             spec = action["recharge"]
             entry = actor.action_ledger[action_key(action)]
