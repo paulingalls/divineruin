@@ -220,7 +220,7 @@
       "held_back_by": null
     }
   ],
-  "bun_version": "1.4.4",
+  "bun_version": "1.4.5",
   "minimum_release_age": 604800,
   "workspace_projects": [
     ".",
@@ -247,13 +247,13 @@
       "project": ".",
       "group": "devDependencies",
       "name": "@pi-innovations/proof",
-      "requested": "git+https://github.com/paulingalls/proof.git#v0.33.2",
-      "locked": "github:paulingalls/proof#b91f55c",
-      "installed": "github:paulingalls/proof#b91f55c",
-      "candidate": "0.33.2",
-      "registry_latest": "0.34.0",
+      "requested": "git+https://github.com/paulingalls/proof.git#v0.34.1",
+      "locked": "github:paulingalls/proof#059e14b",
+      "installed": "github:paulingalls/proof#059e14b",
+      "candidate": "0.34.1",
+      "registry_latest": "0.34.1",
       "held_by": null,
-      "reason": "git tag pin; v0.34.0 not yet evaluated"
+      "reason": "git tag pin"
     },
     {
       "project": ".",

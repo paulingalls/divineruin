@@ -1,4 +1,4 @@
-FROM oven/bun:1.4.4 AS dependencies
+FROM oven/bun:1.4.5 AS dependencies
 WORKDIR /app
 COPY package.json bun.lock ./
 COPY apps/server/package.json apps/server/package.json
@@ -8,7 +8,7 @@ COPY packages/shared/package.json packages/shared/package.json
 COPY packages/design-tokens/package.json packages/design-tokens/package.json
 RUN bun install --production --frozen-lockfile --ignore-scripts --filter divineruin-server
 
-FROM oven/bun:1.4.4 AS bun
+FROM oven/bun:1.4.5 AS bun
 FROM ghcr.io/astral-sh/uv:0.13.7 AS uv
 FROM python:3.14.7-slim-bookworm
 COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
