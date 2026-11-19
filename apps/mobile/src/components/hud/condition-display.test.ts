@@ -39,6 +39,7 @@ const CATALOG_KEYS = [
   "hollowed",
   "iron_resolve",
   "battle_cry",
+  "worthy_foe",
 ];
 
 describe("CONDITION_DISPLAY completeness", () => {
@@ -67,6 +68,14 @@ describe("CONDITION_DISPLAY completeness", () => {
 describe("getConditionDisplay", () => {
   test("returns the mapped entry for a known type", () => {
     expect(getConditionDisplay("exhausted")).toBe(CONDITION_DISPLAY.exhausted);
+  });
+
+  test("displays Worthy Foe as a debuff", () => {
+    expect(getConditionDisplay("worthy_foe")).toEqual({
+      label: "Worthy Foe",
+      icon: "target",
+      color: BrandColors.ember,
+    });
   });
 
   test("falls back to a capitalized label for an unknown type rather than throwing", () => {
