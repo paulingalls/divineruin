@@ -14,6 +14,8 @@ class CombatParticipant:
     ac: int
     attributes: dict = field(default_factory=lambda: {"strength": 10, "dexterity": 10})
     level: int = 1
+    archetype_id: str | None = None
+    sneak_attack_round: int | None = None
     iron_resolve_spent: bool = False
     is_fallen: bool = False
     # Instant death (M4.4 story-002): a single hit whose overkill (excess damage past 0) >= hp_max
@@ -25,6 +27,11 @@ class CombatParticipant:
     death_save_failures: int = 0
     action_pool: list[dict] = field(default_factory=list)
     multiattack_sequence: dict | None = None
+    corruption_field: dict | None = None
+    regeneration: dict | None = None
+    veilrender_turn_round: int | None = None
+    radiant_suppression_pending: bool = False
+    regeneration_suppressed: bool = False
     turn_start_damage: dict | None = None
     action_ledger: dict[str, dict] = field(default_factory=dict)
     last_action_execution: dict | None = None
@@ -33,6 +40,10 @@ class CombatParticipant:
     choir_suppression: dict | None = None
     choir_silence_exposed: bool = False
     choir_movement_round: int | None = None
+    damage_affinities: dict[str, list[str]] = field(default_factory=dict)
+    resist_nonmagical_physical: bool = False
+    unholy_fortitude: dict | None = None
+    tags: list[str] = field(default_factory=list)
     creature_id: str | None = None
     catalog_narration: dict = field(default_factory=dict)
     catalog_audio: dict = field(default_factory=dict)

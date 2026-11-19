@@ -9,7 +9,6 @@ engine can open, rather than shipping a guard that certifies nothing.
 from __future__ import annotations
 
 import logging
-from dataclasses import replace
 from typing import cast
 
 import abilities
@@ -20,6 +19,7 @@ import conditions
 import reaction_spend
 import reaction_windows
 from combat_attack_roll import held_reaction_ac
+from combat_damage_affinity import with_landed_damage
 from combat_support import deserialize_roll, serialize_roll
 from declarations import resolve_declaration
 from session_data import CombatParticipant
@@ -177,19 +177,14 @@ def halve(head: dict, target) -> None:
     never handed a dramatic killing blow for a player who is still standing.
     """
     result, held_ac = deserialize_roll(head["roll"])
-    halved = result.damage // 2
-    remaining = max(0, target.hp_current - halved)
-    fields = {
-        "damage": halved,
-        "bonus_damage": result.bonus_damage // 2,
-        "target_hp_remaining": remaining,
-        "overkill": max(0, halved - target.hp_current),
-        "target_killed": remaining <= 0,
-    }
-    if result.context == "killing_blow" and remaining > 0:
-        fields["dramatic"] = False
-        fields["context"] = ""
-    head["roll"] = serialize_roll(replace(result, **fields), held_ac)
+    halved = with_landed_damage(
+        result,
+        result.damage // 2,
+        target.hp_current,
+        bonus_damage=result.bonus_damage // 2,
+        rider_damage=result.rider_damage // 2,
+    )
+    head["roll"] = serialize_roll(halved, held_ac)
 
 
 def _apply(

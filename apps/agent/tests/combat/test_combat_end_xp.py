@@ -128,7 +128,7 @@ async def _run(session, cs, outcome="victory", *, players_by_id=None, conn=None,
     queries.get_player_inventory = AsyncMock(return_value=[])
     queries.get_inventory_snapshot = snapshot_query([])
     sink = EventSink()
-    conn = conn or MagicMock()
+    conn = conn or MagicMock(execute=AsyncMock())
     end_data = await _end_combat_db(
         session,
         cs,

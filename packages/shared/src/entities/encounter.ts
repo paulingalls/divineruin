@@ -51,6 +51,7 @@ export const CONDITION_NAMES = [
   "petrified",
   "cursed",
   "inspired",
+  "precise_strike",
   "hollowed",
   "temporary_hollowed",
   "iron_resolve",
@@ -76,11 +77,14 @@ interface EncounterActionBase {
 
 // An attack deals `damage`; condition and half-damage fields select its post-hit or save-only shape.
 export interface EncounterAttackAction extends EncounterActionBase {
+  magical?: boolean;
+  bonus_damage?: import("./action_contracts").DamageRider;
+  critical_save?: import("./action_contracts").CriticalSave;
   durability_rider?: DurabilityRider;
   resolution?: "save" | "hit_then_save";
   save_success_damage?: "none" | "half";
-  conditions_on_failure?: { applies_condition: string; duration: number }[];
-  conditions_on_success?: { applies_condition: string; duration: number }[];
+  conditions_on_failure?: { applies_condition: string; duration: number | null; stage?: 1 }[];
+  conditions_on_success?: { applies_condition: string; duration: number | null; stage?: 1 }[];
   reach?: number;
   type?: "melee" | "ranged" | "area";
   kind?: "attack";
@@ -90,6 +94,7 @@ export interface EncounterAttackAction extends EncounterActionBase {
   applies_condition?: string;
   save?: string;
   dc?: number;
+  shape?: "cone";
   half_on_success?: boolean;
   escape_dc?: number;
   attack_source?: "catalog";
@@ -117,8 +122,9 @@ export interface EncounterHealingAction extends EncounterActionBase {
 
 export interface EncounterPrepareAttackAction extends EncounterActionBase {
   kind: "prepare_attack";
-  advantage: true;
-  on_hit: { applies_condition: string; duration: number };
+  advantage?: true;
+  on_hit:
+    { applies_condition: string; duration: number } | import("./action_contracts").PreparedDamage;
   recharge?: Recharge;
 }
 
@@ -256,6 +262,7 @@ export interface Encounter {
   name: string;
   description?: string;
   recommended_party_level: number;
+  recommended_party_size?: number;
   difficulty: string; // "easy" | "moderate" | "hard"
   enemies: EncounterEnemy[];
   stance_gate?: StanceGate;
@@ -288,6 +295,11 @@ export function validateEncounterReferences(
   const level = row.recommended_party_level;
   if (typeof level !== "number" || !Number.isInteger(level) || level < 1 || level > 20)
     throw new Error(`${label}: recommended_party_level must be an integer 1-20`);
+  if (Object.hasOwn(row, "recommended_party_size")) {
+    const size = row.recommended_party_size;
+    if (typeof size !== "number" || !Number.isInteger(size) || size < 1)
+      throw new Error(`${label}: recommended_party_size must be a positive integer`);
+  }
   if (!Array.isArray(row.enemies) || !row.enemies.length)
     throw new Error(`${label}: enemies must be a nonempty list`);
   const seen = new Set<string>();

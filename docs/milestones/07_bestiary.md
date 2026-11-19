@@ -8,16 +8,16 @@ Defines the full creature catalog, from stat block schema through regional creat
 
 <!-- see audit/phase-7-bestiary.md and audit/phase-encounter-roles.md -->
 
-**Status: PARTIAL.** The Python and TypeScript validators, queryable `creatures` table, all 9 spec-authored Hollow creatures, all 19 spec-authored natural creatures and eight encounter creature catalog rows ship. `query_info(kind="creature")` exposes catalog summaries by id or session region and party tier. `enter_mode(mode="combat")` starts authored templates or difficulty-driven generated encounters through the same locked initializer and persisted snapshots. Harvesting, immediate and async purification, and M7.4 composition ship; the remaining M7.3 effects and complete native Choir audio certification remain open.
+**Status: PARTIAL.** The Python and TypeScript validators, queryable `creatures` table, all 9 spec-authored Hollow creatures, all 19 spec-authored natural creatures and eight encounter creature catalog rows ship. `query_info(kind="creature")` exposes catalog summaries by id or session region and party tier, plus party-fit unbound `encounter_templates` ids. `enter_mode(mode="combat")` starts authored templates or difficulty-driven generated encounters through the same locked initializer and persisted snapshots. Harvesting, immediate and async purification, and M7.4 composition ship; the remaining M7.3 effects and complete native Choir audio certification remain open.
 
 | Section | Confirmed | Partial | NOT_SHIPPED |
 | --- | --- | --- | --- |
 | M7.1 — Creature Stat Block Schema | 9 | 0 | 0 |
 | M7.2 — Regional Creature Catalog | 11 | 0 | 0 |
-| M7.3 — Hollow Creatures (Special Mechanics) | 2 | 0 | 8 |
+| M7.3 — Hollow Creatures (Special Mechanics) | 5 | 0 | 5 |
 | M7.4 — Loot, Harvesting & Encounter Builder | 11 | 0 | 0 |
 
-**Catalog cutover and inventory refresh:** All eleven authored encounters store catalog references, explicit roles and recommended party levels; combat expands these references into persisted snapshots. The bestiary Combat Effect Inventory records the supported paths and their remaining limits. Social `command` and `accusation` effects carry narrative-only focus/narration, without automatic healing or spell buff dice. Choir Deafened restrictions, Charmed movement, silence and core phases execute through structured combat paths. The Still and Architect remain deferred Named encounters; their terrain, anchors and legendary mechanics remain open. M7.3 remains partial. The live Combat Effect Inventory names each executable, mixed and narrative-only effect.
+**Catalog cutover and inventory refresh:** All 16 ordinary authored encounters (17 total templates; 17 ordinary species and 18 including the Choir) store catalog references, explicit roles and recommended party levels; combat expands these references into persisted snapshots. The bestiary Combat Effect Inventory records the supported paths and their remaining limits. Social `command` and `accusation` effects carry narrative-only focus/narration, without automatic healing or spell buff dice. Choir Deafened restrictions, Charmed movement, silence and core phases execute through structured combat paths. The Still and Architect remain deferred Named encounters; their terrain, anchors and legendary mechanics remain open. M7.3 remains partial. The live Combat Effect Inventory names each executable, mixed and narrative-only effect. Fixed-seed CLI fights reach victory for Shadeling, young, adult-minion and standard-adult Mawling, Hollowmoth and Weaver. Blinding Swarm, Rearrange and Spatial Fold remain DM-narrated; the Architect sprint owns position-rewriting terrain. Passive and prose limits remain in the exact deferred-effects map in `test_creature_combat.py`.
 
 Material changes publish immediate owner-scoped agent snapshots after commit. HTTP crafting consumption and keep grants return a full committed HTTP snapshot to the initiator. Other devices use authenticated GET /api/inventory on HUD open/resume and every five seconds while foreground with any HUD panel open, independently of voice connectivity. Background, closed HUD and unmount stop polling. Snapshot generation rejects an older pending GET or mutation snapshot after an immediate update; auth transitions invalidate pending responses. A refresh error preserves inventory and displays retry status; the next scheduled poll retries. The five-second cross-device delay is the accepted tradeoff; no room registry or server packet impersonates the agent.
 
@@ -50,7 +50,7 @@ See `audit/phase-7-bestiary.md` for the full 41-item coverage matrix.
 - Tier system constants: Tier 1 (player L1-4), Tier 2 (L5-8), Tier 3 (L9-14), Tier 4 (L15-20)
 - DB migration: `creatures` table with full stat block schema and JSONB fields for nested data
 - Validation: `validate_creature_stat_block(creature)` ensuring all required fields and internal consistency
-- Optional combat fields: attacks may carry `properties[]`, condition/save fields, `escape_dc`, structured `recharge`, boolean `advantage`, and positive integer `duration`. Typed actives distinguish attacks, direct `healing` and `prepare_attack` from social `command`/`accusation`; untyped actives remain narrative. Present catalog signatures require `name`, `description`, and nonblank sound-first `narration_cue`. Both authored signatures now preserve matching cues and mechanics through seed/query. See the bestiary Combat Effect Inventory for every selected species' supported, scheduled, duplicate and deferred effect. Combat executes the supported attack, healing, preparation and limited-use paths; catalog expansion exposes their IDs and authored cues to the DM. All ten templates now use catalog references. Rows without optional extensions remain valid.
+- Optional combat fields: attacks may carry `properties[]`, condition/save fields, `escape_dc`, structured `recharge`, boolean `advantage`, and positive integer `duration`. Typed actives distinguish attacks, direct `healing` and `prepare_attack` from social `command`/`accusation`; untyped actives remain narrative. Present catalog signatures require `name`, `description`, and nonblank sound-first `narration_cue`. Both authored signatures now preserve matching cues and mechanics through seed/query. See the bestiary Combat Effect Inventory for every selected species' supported, scheduled, duplicate and deferred effect. Combat executes the supported attack, healing, preparation and limited-use paths; catalog expansion exposes their IDs and authored cues to the DM. All 16 templates now use catalog references. Rows without optional extensions remain valid.
 
 **Acceptance criteria:**
 - [x] Schema supports all 6 creature categories with shared base fields <!-- verified apps/agent/tests/test_creature_schema.py::test_shared_creature_corpus; packages/shared/src/entities/creature.test.ts::shared_creature_corpus -->
@@ -108,7 +108,7 @@ All 19 spec-authored natural catalog rows ship, including the underground pair a
 
 An attack's rider poison damage stays in `special`, while `damage` records its base hit (Giant Spider and Rock Viper). The single `speed` field holds walking speed; Crawler climb 30 ft and Thunderbird fly 80 ft, like earlier climb, burrow, and swim speeds, remain in ability descriptions. Tier 3 `cave_wyrm_scales` can drop from the Tier 2 Cave Wyrm because material tier and creature tier have separate meanings. Guardian Pulse and Lightning Breath use `type: area` with schema-required unused `to_hit: 0`; their saves and areas remain in `special`. Dire Bear's Maul also carries `to_hit: 0`; its auto-hit against grappled targets lives in `special`.
 
-**DM surface:** `query_info(kind="combat")` surfaces Choir search and core facts (`apps/agent/tests/acceptance/test_choir_encounter.py`). Creature catalog lookups remain internal; `query_info(kind="creature")` is still open.
+**DM surface:** `query_info(kind="combat")` surfaces Choir search and core facts (`apps/agent/tests/acceptance/test_choir_encounter.py`). `query_info(kind="creature")` exposes creature summaries and a party-fit `encounter_templates` list for `enter_mode`.
 
 **Key references:**
 - *Game Mechanics Bestiary — Regional Creatures*
@@ -141,15 +141,19 @@ The catalog includes all nine spec Hollow creatures, including the three Tier 4 
 
 **Acceptance criteria:**
 - [x] All 9 Hollow creatures have complete stat blocks with hollow nested fields populated <!-- verified apps/agent/tests/test_hollow_catalog.py::test_all_spec_hollow_ids_have_complete_blocks -->
-- [ ] Corruption aura applies correctly based on distance and target saves
-- [ ] `resolve_resonance_on_death` feeds correct Resonance deltas to nearby casters
+- [x] Corruption aura applies correctly based on distance and target saves <!-- verified apps/agent/tests/test_hollow_resonance.py::test_boundary_and_contact; apps/agent/tests/combat/test_hollow_resonance_lifecycle.py::test_actual_catalog_cast_aura_boundary; apps/agent/tests/combat/test_choir_encounter.py::test_choir_aura_turn_start_once_across_hold_resume, ::test_choir_aura_movement_uses_turn_start_position, ::test_choir_aura_eligibility_and_success; apps/agent/tests/acceptance/test_choir_encounter.py::test_choir_aura_concentration_member_isolation_reload; apps/agent/tests/combat/test_veilrender.py::test_field_turn_start_targets, ::test_field_once_across_hold_reload -->
+- [x] `resolve_resonance_on_death` feeds correct Resonance deltas to nearby casters <!-- verified apps/agent/tests/combat/test_hollow_resonance_lifecycle.py::test_death_recipients_and_cross_source_caster apps/agent/tests/acceptance/test_hollow_resonance_commit.py::test_commit_routes_qualitative_states_and_resume_is_once -->
 - [x] Each Hollow creature has a distinct veil_effect and vulnerability <!-- verified apps/agent/tests/test_hollow_catalog.py::test_all_hollow_veil_effects_and_vulnerabilities_are_pairwise_distinct -->
 - [ ] The Choir has custom multi-phase audio-zone combat behavior (not standard attack loop)
-- [ ] The Still has passive-until-attacked behavior with damage reflection
+- [ ] The Still has passive-until-attacked behavior with anchor-based Rejection (spec `game_mechanics_bestiary.md` Rejection; the spec has no damage reflection — human 2026-11-17)
 - [ ] The Architect has terrain manipulation abilities that alter combat grid state
-- [ ] Tier 1-2 Hollow creatures function as standard combat encounters (no custom behavior needed)
-- [ ] Tier 3 Hollowed Knight and Veilrender have boss-tier HP and multi-phase mechanics
+- [x] Tier 1-2 Hollow creatures function as standard combat encounters (no custom behavior needed) <!-- verified apps/agent/tests/acceptance/test_hollow_troops_fight.py; apps/agent/tests/combat/test_hollow_troops_balance.py; apps/agent/tests/acceptance/test_encounter_templates_surface_entry.py -->
+- [x] Tier 3 Hollowed Knight and Veilrender have boss-tier HP and multi-phase mechanics <!-- verified apps/agent/tests/acceptance/test_hollowed_knight_fight.py, apps/agent/tests/acceptance/test_veilrender_fight.py, apps/agent/tests/combat/test_veilrender_absorb.py, apps/agent/tests/acceptance/test_veilrender_absorb_commit.py -->
+
+  Knight: `hollow_knight_boss` has boss HP, paired Blades, typed necrotic riders, magical-weapon resilience and escalating Unholy Fortitude across hold/reload (`test_hollowed_knight_fight.py`, `combat/test_hollowed_knight.py`). Hard at L14 with two mawlings, recommended party 2+. Veilrender uses its standard bestiary block (120 HP, AC 14), Corruption Field, regeneration, durable radiant/ward suppression, Reality Crush and one Corruption Pulse. Both bosses are discoverable and startable from the shipped Ashmark Front (`test_encounter_templates_surface_entry.py::test_shipped_boss_discovery`). Veilrender is hard at L14, recommended party 2+; the L9–14 solo tuning bar did not pass. Fixed seeds 0 and 1 reach terminal outcomes through real tools with holds, reloads, suppression and resumption (`test_veilrender_fight.py`). Absorb Magic is exercised through real casts: non-radiant recipients heal once per cast, radiant spells bypass and suppress regeneration, and absorption rolls back with casting costs. Siege Monster, Massive, the push, structural damage, environmental decay, Remnant Tactics, Fragment Voice and the corrupted-terrain patch remain narrated. Corruption Wave resolves its participant-aimed cone, excluding its source.
 - [ ] Tests cover corruption aura at various distances, resonance_on_death, and all 3 Tier 4 custom behaviors
+- [ ] Hollowed stages 2-3 have consumers: Stage 2 hallucination delivery and Stage 3 stat drain (attribute, amount and cadence need a lead design decision). The Knight produces Stage 1 only; `test_restriction_producer_tripwire.py` pins that contract (closed bug #657)
+- [ ] Equipping a weapon carries its `magical` flag into combat, and Artificer Infuse Item can make a weapon magical, so the Knight's magical-weapon resilience can be bypassed by a weapon attack (today only spells reach it)
 
 **Key references:**
 - *Game Mechanics Bestiary — Hollow Creatures*
@@ -184,7 +188,7 @@ The Warden's spec block (Encounter Creature Stat Blocks) names `loot_hollow_ward
 - Environment modifiers: terrain type affects creature selection and combat difficulty
 - Encounters tuned for their difficulty's expected HP/DPR round window (standard 3-5, tough 4-6, boss 5-7)
 - Agent entry: `enter_mode(mode="combat", difficulty="standard"|"tough"|"boss", tier=None)` generates a location-filtered encounter; `encounter_id` selects a mutually exclusive template.
-- Agent catalog reads: `query_info(kind="creature", target_id=None)` returns a creature summary by id, or lists the session region at the party tier. Harvesting runs automatically with victory loot generation at combat end.
+- Agent catalog reads: `query_info(kind="creature", target_id=None)` returns a creature summary by id, or returns `creatures` for the session region at the party tier and `encounter_templates` eligible by floor-mean party level and every species’ region/terrain, excluding quest/scene bindings. Harvesting runs automatically with victory loot generation at combat end.
 
 **Acceptance criteria:**
 - [x] `generate_loot` returns guaranteed drops always and probabilistic drops at correct rates

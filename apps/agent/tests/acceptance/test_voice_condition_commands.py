@@ -25,14 +25,14 @@ def scene(host, guest, case):
         actors[1 if case == "guest_sight" else 0].conditions = [
             {"type": "deafened", "duration": 3, "source": "fixture"}
         ]
-    if case == "silenced_social":
+    if case in ("silenced_social", "outside_cast"):
         actors.append(
             CombatParticipant(
                 id="merchant_1", name="Merchant", type="enemy", initiative=10, hp_current=20, hp_max=20, ac=12
             )
         )
     positions = {host: {"x": 0, "y": 0, "z": 0}, guest: {"x": 50, "y": 0, "z": 0}}
-    if case == "silenced_social":
+    if case in ("silenced_social", "outside_cast"):
         positions["merchant_1"] = {"x": 50, "y": 0, "z": 0}
     return CombatState(
         combat_id="voice-" + host,
@@ -65,7 +65,13 @@ def commands(case, host):
         "declare_phase",
         {
             "declarations": [
-                {"kind": "ability", "actor_id": host, "action": "arcane_bolt", "targets": [], "argument_type": ""}
+                {
+                    "kind": "ability",
+                    "actor_id": host,
+                    "action": "arcane_bolt",
+                    "targets": ["merchant_1"] if case == "outside_cast" else [],
+                    "argument_type": "",
+                }
             ]
         },
     )

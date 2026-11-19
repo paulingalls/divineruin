@@ -1,11 +1,14 @@
 """Apply damage, including zero-HP transitions and their consequences."""
 
 import logging
-from dataclasses import dataclass, replace
+from dataclasses import replace
+from functools import partial
 
 import check_resolution_attack
+import combat_damage_affinity
 import combat_grapple
 import combat_hollow_death
+import combat_melee_approach
 import combat_resolution
 import combat_spatial
 import concentration_break
@@ -15,9 +18,19 @@ import db_mutations
 import db_queries
 import event_types as E
 from combat_attack_roll import build_attack_dice_roll_payload
+from combat_damage_results import AutomaticDamageResult, SaveDamageResult, freeze_blow, thaw_blow
 from combat_durability import _accrue_durability, _find_equipped
-from combat_enemy_active import apply_prepared_hit, heal
+from combat_enemy_active import (
+    apply_critical_save,
+    apply_prepared_hit,
+    critical_save_rider,
+    heal,
+    land_critical_save,
+    roll_critical_save,
+)
 from combat_events import emit_or_publish
+from combat_fate_rolls import packet_save
+from combat_fortitude import roll_fortitude, try_fortitude
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from kaelen_gift import trigger_iron_resolve
 from patron_combat_edges import reward_worthy_foe
@@ -44,6 +57,8 @@ def _handle_hp_zero(
     was_fallen: bool,
     hp_status: str,
     sounds: list[str],
+    outcome: dict | None = None,
+    fortitude_save=None,
 ) -> tuple[str, bool, list[str]]:
     """Resolve a target dropped to 0 HP — Hollowed rise, instant death, fall, or companion KO.
 
@@ -56,6 +71,13 @@ def _handle_hp_zero(
     (``is_fallen``/``is_dead``, or — on a Hollowed rise — ``type``/
     ``hp_current``/``conditions``) and appends the fall/rise sound to ``sounds``. Returns the HP
     status, whether a Hollowed rose, and ids released from this target's grapples."""
+    if (
+        not was_fallen
+        and target.unholy_fortitude is not None
+        and not target.hollow_death_resolved
+        and try_fortitude(target, outcome, fortitude_save)
+    ):
+        return combat_resolution.hp_threshold_status(target.hp_current, target.hp_max), False, []
     if not was_fallen and target.type == "player" and conditions.hollowed_stage(target.conditions) >= 2:
         # Temporary Hollowed rise (M4.4 story-008): a Stage-2+ Hollowed player at 0 HP does NOT
         # fall — their corpse rises as a hostile Temporary Hollowed combatant (HP=50% of max,
@@ -91,26 +113,6 @@ def _handle_hp_zero(
     return hp_status, False, released
 
 
-@dataclass(frozen=True)
-class SaveDamageResult:
-    save_type: str
-    save_success: bool
-    damage: int
-    damage_type: str
-    narrative_hint: str
-    dramatic: bool
-    context: str
-
-
-@dataclass(frozen=True)
-class AutomaticDamageResult:
-    damage: int
-    damage_type: str
-    narrative_hint: str = "Automatic damage"
-    dramatic: bool = False
-    context: str = "turn_start"
-
-
 async def apply_attack_result(
     session: SessionData,
     attacker,
@@ -131,7 +133,7 @@ async def apply_attack_result(
 ) -> dict:
     if progress is None:
         assert attack_result is not None
-        return await _apply_damage(
+        direct = await _apply_damage(
             session,
             attacker,
             action,
@@ -147,8 +149,14 @@ async def apply_attack_result(
             sink=sink,
             publish_roll=publish_roll,
         )
+        assert direct is not None  # only a fortitude_progress hold pauses
+        return direct
 
     receipt = progress.steps.get("damage_receipt")
+    if receipt is not None and "pending" in receipt:
+        # A held Unholy Fortitude save paused before HP changed; land the same blow now.
+        action, attack_result, effective_ac = thaw_blow(receipt["pending"])
+        receipt = None
     if receipt is None:
         assert attack_result is not None
         response = await _apply_damage(
@@ -167,7 +175,12 @@ async def apply_attack_result(
             sink=sink,
             publish_roll=publish_roll,
             defer_concentration=True,
+            fortitude_progress=progress.scope("fortitude"),
         )
+        if response is None:
+            # Callers treat a present receipt as "already rolled" and resume without re-rolling.
+            progress.steps["damage_receipt"] = {"pending": freeze_blow(action, attack_result, effective_ac)}
+            return {}
         if "consumed_conditions" in response:
             response["consumed_conditions"] = list(response["consumed_conditions"])
         receipt = {"response": response, "automatic": isinstance(attack_result, AutomaticDamageResult)}
@@ -186,7 +199,22 @@ async def apply_attack_result(
         if progress.paused:
             return {}
     if combat_state is not None and not receipt["automatic"]:
+        rider = critical_save_rider(action, response)
+        save = None
+        if rider is not None:
+            # Fate's Thread reaches the target's on-crit save; it resolves before any rider lands.
+            save = await packet_save(
+                progress.scope("critical_save"),
+                session,
+                target.id,
+                rider["applies_condition"],
+                partial(roll_critical_save, attacker, target, rider),
+            )
+            if save is None:
+                return {}
         apply_prepared_hit(combat_state, attacker, target, action, response)
+        if save is not None:
+            land_critical_save(combat_state, attacker, target, action, response, rider, save)
     del progress.steps["damage_receipt"]
     return response
 
@@ -208,23 +236,42 @@ async def _apply_damage(
     sink=None,
     publish_roll: bool = True,
     defer_concentration: bool = False,
-) -> dict:
+    fortitude_progress=None,
+) -> dict | None:
     """Apply already-rolled attack or save damage and its shared combat effects.
 
     Everything ``roll_attack`` deliberately does not do. Split out for the Beat-3 hold (M29,
     story-016), so the engine can pause on a post-roll, pre-damage reaction window.
+
+    With ``fortitude_progress``, a killing blow's Unholy Fortitude save may be Zhael-held: it is
+    rolled before any HP changes, and None is returned while the choice is pending.
     """
     import choir_encounter
 
     if target.creature_id == "hollow_choir" and combat_state is not None and combat_state.choir_encounter is not None:
+        if not target.damage_affinities.get("immune"):
+            raise ValueError("Choir damage traits missing: reset/reseed old snapshots")
         if combat_state.choir_encounter["phase"] != "exposed":
             if attacker.id != target.id:
                 raise ValueError("Choir core must be exposed before damage")
             attack_result = replace(attack_result, damage=0)
-        bonus = getattr(attack_result, "bonus_damage", 0)
-        allowed = choir_encounter.damage(target, attack_result.damage - bonus, attack_result.damage_type)
-        allowed += choir_encounter.damage(target, bonus, getattr(attack_result, "bonus_damage_type", None))
-        attack_result = replace(attack_result, damage=allowed)
+    action, attack_result = combat_damage_affinity.apply(target, action, attack_result)
+    from combat_veilrender import mark_radiant
+
+    mark_radiant(target, action, attack_result)
+    fortitude_save = None
+    if (
+        fortitude_progress is not None
+        and target.unholy_fortitude is not None
+        and not target.is_fallen
+        and not target.hollow_death_resolved
+        and attack_result.damage >= target.hp_current
+    ):
+        fortitude_save = await packet_save(
+            fortitude_progress, session, target.id, "destruction", partial(roll_fortitude, target)
+        )
+        if fortitude_save is None:
+            return None
     automatic = isinstance(attack_result, AutomaticDamageResult)
     save_damage = isinstance(attack_result, (SaveDamageResult, AutomaticDamageResult))
     if save_damage and publish_roll:
@@ -264,8 +311,7 @@ async def _apply_damage(
         if (
             isinstance(attack_result, check_resolution_attack.AttackResult)
             and attack_result.hit
-            and not check_resolution_attack._is_ranged(action)
-            and "aoe" not in action.get("properties", [])
+            and combat_melee_approach.is_melee(action)
         ):
             spatial = combat_spatial.require_spatial(combat_state)
             if combat_spatial.inside(
@@ -297,9 +343,8 @@ async def _apply_damage(
     hp_status = combat_resolution.hp_threshold_status(target.hp_current, target.hp_max)
     rose_hollowed = False
     released_from_grapple: list[str] = []
+    fortitude_outcome = {}
     if target.hp_current <= 0:
-        if hp_before > 0 and combat_state is not None:
-            await reward_worthy_foe(combat_state, target, queries=queries, conn=conn)
         hp_status, rose_hollowed, released_from_grapple = _handle_hp_zero(
             session,
             combat_state,
@@ -308,7 +353,12 @@ async def _apply_damage(
             was_fallen=was_fallen,
             hp_status=hp_status,
             sounds=sounds,
+            outcome=fortitude_outcome,
+            fortitude_save=fortitude_save,
         )
+        # A foe standing back up on Unholy Fortitude was not defeated, so Worthy Foe waits.
+        if hp_before > 0 and target.hp_current <= 0 and combat_state is not None:
+            await reward_worthy_foe(combat_state, target, queries=queries, conn=conn)
     elif hp_status in ("bloodied", "critical") and (not save_damage or attack_result.damage > 0):
         sounds.append(SOUND_HEARTBEAT)
 
@@ -386,6 +436,12 @@ async def _apply_damage(
         "context": attack_result.context,
         "target_rose_hollowed": rose_hollowed,
     }
+    if fortitude_outcome:
+        response["unholy_fortitude"] = fortitude_outcome
+        if fortitude_outcome["success"] and response["context"] == "killing_blow":
+            response.update(context="", dramatic=False)
+    if "damage_components" in action:
+        response["damage_components"] = action["damage_components"]
     if was_fallen:
         response["death_save_failures"] = target.death_save_failures
     if gift_triggered:
@@ -411,8 +467,13 @@ async def _apply_damage(
             attack_total=attack_result.attack_total,
             target_ac=effective_ac,
             critical=attack_result.critical_success,
+            sneak_attack_dice=attack_result.sneak_attack_dice,
+            sneak_attack_raw_damage=attack_result.sneak_attack_raw_damage,
             bonus_damage=attack_result.bonus_damage,
             bonus_damage_type=attack_result.bonus_damage_type,
+            rider_damage=attack_result.rider_damage,
+            rider_damage_type=attack_result.rider_damage_type,
+            rider_ignores_resistance=attack_result.rider_ignores_resistance,
             consumed_conditions=attack_result.consumed_conditions,
         )
         if attack_result.attack_disadvantage_source is not None:
@@ -423,6 +484,7 @@ async def _apply_damage(
         response["attacker_hp_status"] = combat_resolution.hp_threshold_status(attacker.hp_current, attacker.hp_max)
     if combat_state is not None and not automatic and not defer_concentration:
         apply_prepared_hit(combat_state, attacker, target, action, response)
+        apply_critical_save(combat_state, attacker, target, action, response)
     if released_from_grapple:
         response["released_from_grapple"] = released_from_grapple
     logger.info(

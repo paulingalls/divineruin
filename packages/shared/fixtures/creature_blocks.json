@@ -111,7 +111,8 @@
         "regions": [
           "ashmark",
           "greyvale"
-        ]
+        ],
+        "damage_affinities": {"resistant": [], "immune": ["poison"], "vulnerable": ["radiant", "fire"]}
       }
     },
     {
@@ -232,7 +233,8 @@
         "regions": [
           "ashmark",
           "greyvale"
-        ]
+        ],
+        "damage_affinities": {"resistant": [], "immune": ["poison"], "vulnerable": ["fire", "radiant"]}
       }
     },
     {
@@ -3658,6 +3660,133 @@
         "home_region": "ashmark",
         "regions": [
           "ashmark"
+        ]
+      }
+    },
+    {
+      "name": "typed_damage_traits",
+      "block": {
+        "terrains": [
+          "ancient_forest",
+          "forest",
+          "grassland",
+          "mountain",
+          "coast",
+          "wetland",
+          "underground",
+          "farmland",
+          "village",
+          "city"
+        ],
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ],
+        "damage_affinities": {
+          "resistant": [],
+          "immune": [
+            "poison"
+          ],
+          "vulnerable": []
+        },
+        "tags": [
+          "plant"
         ]
       }
     }
@@ -32163,6 +32292,1374 @@
       "expected": [
         "reactions[0].dc: invalid"
       ]
+    },
+    {
+      "name": "affinity_contract_0",
+      "block": {
+        "terrains": [
+          "ancient_forest",
+          "forest",
+          "grassland",
+          "mountain",
+          "coast",
+          "wetland",
+          "underground",
+          "farmland",
+          "village",
+          "city"
+        ],
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ],
+        "damage_affinities": null
+      },
+      "expected": [
+        "damage_affinities: expected object"
+      ]
+    },
+    {
+      "name": "affinity_contract_1",
+      "block": {
+        "terrains": [
+          "ancient_forest",
+          "forest",
+          "grassland",
+          "mountain",
+          "coast",
+          "wetland",
+          "underground",
+          "farmland",
+          "village",
+          "city"
+        ],
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ],
+        "damage_affinities": []
+      },
+      "expected": [
+        "damage_affinities: expected object"
+      ]
+    },
+    {
+      "name": "affinity_contract_2",
+      "block": {
+        "terrains": [
+          "ancient_forest",
+          "forest",
+          "grassland",
+          "mountain",
+          "coast",
+          "wetland",
+          "underground",
+          "farmland",
+          "village",
+          "city"
+        ],
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ],
+        "damage_affinities": {}
+      },
+      "expected": [
+        "damage_affinities.resistant: required",
+        "damage_affinities.immune: required",
+        "damage_affinities.vulnerable: required"
+      ]
+    },
+    {
+      "name": "affinity_contract_3",
+      "block": {
+        "terrains": [
+          "ancient_forest",
+          "forest",
+          "grassland",
+          "mountain",
+          "coast",
+          "wetland",
+          "underground",
+          "farmland",
+          "village",
+          "city"
+        ],
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ],
+        "damage_affinities": {
+          "resistant": [],
+          "immune": null,
+          "vulnerable": []
+        }
+      },
+      "expected": [
+        "damage_affinities.immune: expected array"
+      ]
+    },
+    {
+      "name": "affinity_contract_4",
+      "block": {
+        "terrains": [
+          "ancient_forest",
+          "forest",
+          "grassland",
+          "mountain",
+          "coast",
+          "wetland",
+          "underground",
+          "farmland",
+          "village",
+          "city"
+        ],
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ],
+        "damage_affinities": {
+          "resistant": [],
+          "immune": [
+            "bogus"
+          ],
+          "vulnerable": []
+        }
+      },
+      "expected": [
+        "damage_affinities.immune[0]: expected damage type"
+      ]
+    },
+    {
+      "name": "affinity_contract_5",
+      "block": {
+        "terrains": [
+          "ancient_forest",
+          "forest",
+          "grassland",
+          "mountain",
+          "coast",
+          "wetland",
+          "underground",
+          "farmland",
+          "village",
+          "city"
+        ],
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ],
+        "damage_affinities": {
+          "resistant": [],
+          "immune": [
+            "fire",
+            "fire"
+          ],
+          "vulnerable": []
+        }
+      },
+      "expected": [
+        "damage_affinities.immune: duplicate damage type"
+      ]
+    },
+    {
+      "name": "affinity_contract_6",
+      "block": {
+        "terrains": [
+          "ancient_forest",
+          "forest",
+          "grassland",
+          "mountain",
+          "coast",
+          "wetland",
+          "underground",
+          "farmland",
+          "village",
+          "city"
+        ],
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ],
+        "damage_affinities": {
+          "resistant": [],
+          "immune": [
+            "fire"
+          ],
+          "vulnerable": [
+            "fire"
+          ]
+        }
+      },
+      "expected": [
+        "damage_affinities: contradictory damage type fire"
+      ]
+    },
+    {
+      "name": "affinity_contract_7",
+      "block": {
+        "terrains": [
+          "ancient_forest",
+          "forest",
+          "grassland",
+          "mountain",
+          "coast",
+          "wetland",
+          "underground",
+          "farmland",
+          "village",
+          "city"
+        ],
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ],
+        "damage_affinities": {
+          "resistant": [],
+          "immune": [],
+          "vulnerable": [],
+          "extra": []
+        }
+      },
+      "expected": [
+        "damage_affinities.extra: unknown affinity"
+      ]
+    },
+    {
+      "name": "affinity_contract_8",
+      "block": {
+        "terrains": [
+          "ancient_forest",
+          "forest",
+          "grassland",
+          "mountain",
+          "coast",
+          "wetland",
+          "underground",
+          "farmland",
+          "village",
+          "city"
+        ],
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ],
+        "tags": null
+      },
+      "expected": [
+        "tags: expected array"
+      ]
+    },
+    {
+      "name": "affinity_contract_9",
+      "block": {
+        "terrains": [
+          "ancient_forest",
+          "forest",
+          "grassland",
+          "mountain",
+          "coast",
+          "wetland",
+          "underground",
+          "farmland",
+          "village",
+          "city"
+        ],
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ],
+        "tags": [
+          "tree"
+        ]
+      },
+      "expected": [
+        "tags[0]: expected plant"
+      ]
+    },
+    {
+      "name": "affinity_contract_10",
+      "block": {
+        "terrains": [
+          "ancient_forest",
+          "forest",
+          "grassland",
+          "mountain",
+          "coast",
+          "wetland",
+          "underground",
+          "farmland",
+          "village",
+          "city"
+        ],
+        "id": "hollow_shadeling",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ],
+        "tags": [
+          "plant",
+          "plant"
+        ]
+      },
+      "expected": [
+        "tags: duplicate tag"
+      ]
     }
   ],
   "region_ids": [
@@ -32195,6 +33692,7 @@
     "petrified",
     "cursed",
     "inspired",
+    "precise_strike",
     "hollowed",
     "temporary_hollowed",
     "iron_resolve",

@@ -58,7 +58,8 @@ async def test_ward_after_aura_and_working_dead_source():
 
 
 async def damage(ctx, state, target, *, queries=None):
-    from combat_damage import SaveDamageResult, apply_attack_result
+    from combat_damage import apply_attack_result
+    from combat_damage_results import SaveDamageResult
     from combat_events import EventSink
 
     queries = queries or MagicMock(

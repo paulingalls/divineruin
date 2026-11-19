@@ -6,12 +6,13 @@ from livekit.agents.llm import ToolError
 
 import check_resolution_attack
 import combat_enhancers
+import combat_melee_approach
 import combat_resolution
 import concealment
 import conditions
 import zhael_fate
 from combat_ability import _attach_riders
-from combat_attack_roll import attack_roll_inputs, promote_attack
+from combat_attack_roll import attack_roll_inputs, promote_attack, spend_sneak_attack
 from combat_down import damage_target_unavailable
 from combat_fate_rolls import PacketRolls
 from combat_item_rider import resolve_rider
@@ -27,6 +28,8 @@ async def attack_sequence(
     action,
     *,
     attack_cursor,
+    movement=None,
+    movement_budget=None,
     **deps,
 ):
     # Enhancers EXPAND a single declaration: extra_attack/shield_bash turn one ATTACK into a
@@ -52,6 +55,8 @@ async def attack_sequence(
         enemies_remaining,
         is_first_attack,
         attack_cursor=attack_cursor,
+        movement=movement,
+        movement_budget=movement_budget,
         **deps,
     )
 
@@ -79,12 +84,28 @@ async def continue_attack(
     grapple_blocked=False,
     publish_roll=True,
     progress=None,
+    movement=None,
+    movement_budget=None,
 ):
     decl = packet.declaration
     attack_summaries = attack_cursor.get("summaries", [])
     concealment_packet = attack_cursor.get("concealment")
+    # The declaration's melee approach (made before any roll) and its shared movement allowance;
+    # a resumed cursor carries both so a held swing never moves the attacker twice.
+    movement = attack_cursor.get("movement", movement or {})
+    movement_budget = attack_cursor.get("movement_budget", movement_budget if movement_budget is not None else {})
     start = len(attack_summaries)
-    for act in actions[start:]:
+    for index, act in enumerate(actions[start:], start):
+        swing_move = (
+            movement
+            if index == 0 or act == actions[0]
+            else combat_melee_approach.prepare(state, attacker, target, act, movement_budget)
+        )
+        if index > 0 and act == actions[0] and swing_move:
+            swing_move = {**swing_move, "moved_ft": 0, "closed_distance": False}
+        if swing_move.get("attack_resolved") is False:
+            attack_summaries.append(swing_move)
+            break
         swing = progress.scope("swing") if progress is not None else None
         prepared_data = attack_cursor.get("prepared")
         prepared = None
@@ -99,7 +120,7 @@ async def continue_attack(
             and (candidates := await zhael_fate.candidates(session, queries=queries, conn=conn)).choices(attacker.id)
         ):
             attacker_data, target_ac, attack_mod = attack_roll_inputs(
-                attacker, target, state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus, state
+                attacker, target, state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus, state, act
             )
             prepared = check_resolution_attack.prepare_attack(
                 attacker_data, act, target_ac, attack_mod=attack_mod, target_conditions=target.conditions
@@ -125,6 +146,8 @@ async def continue_attack(
                     concealment=concealment_packet,
                     prepared=stored,
                     attacker_data=attacker_data,
+                    movement=movement,
+                    movement_budget=movement_budget,
                 )
                 return {"actor_id": attacker.id, "resolved": False, "reason": "awaiting a Zhael roll choice"}
         resumed_swing = swing is not None and ("damage_receipt" in swing.steps or "attack_summary" in swing.steps)
@@ -168,6 +191,7 @@ async def continue_attack(
                 damage_mult=attacker.damage_mult,
                 target_conditions=target.conditions,
             )
+            spend_sneak_attack(attacker, state, result)
             result = promote_attack(result, enemies_remaining, is_first_attack)
             sub = await apply_rolled_attack(
                 session,
@@ -194,6 +218,7 @@ async def continue_attack(
             store_swing(
                 attack_cursor, actions, target, enemies_remaining, is_first_attack, attack_summaries, concealment_packet
             )
+            attack_cursor.update(movement=movement, movement_budget=movement_budget)
             return {}
         if "durability_rider" in act:
             await resolve_rider(
@@ -220,9 +245,11 @@ async def continue_attack(
                     attack_summaries,
                     concealment_packet,
                 )
+                attack_cursor.update(movement=movement, movement_budget=movement_budget)
                 return {}
         if progress is not None:
             progress.steps.pop("swing", None)
+        sub.update(swing_move)
         attack_summaries.append(sub)
         # Remove attack-spent conditions before the next swing in an expanded declaration. The
         # first consuming swing leaves later consumed_conditions empty. Persistence rides the
@@ -257,24 +284,35 @@ async def continue_attack(
         # Damage/hit/critical/concentration accumulate across swings; the target-state keys
         # (hp_status, fallen) must reflect the FINAL swing — the kill on the second hit, not
         # the goblin-still-up snapshot from the first — or the DM narrates a fallen foe alive.
-        last = attack_summaries[-1]
+        last = next(s for s in reversed(attack_summaries) if "target_hp_status" in s)
         summary["attacks"] = attack_summaries
-        summary["damage"] = sum(s["damage"] for s in attack_summaries)
-        summary["hit"] = any(s["hit"] for s in attack_summaries)
-        summary["critical"] = any(s["critical"] for s in attack_summaries)
+        summary.pop("unholy_fortitude", None)
+        for component in ("bonus_damage", "rider_damage"):
+            summary[component] = sum(s.get(component, 0) for s in attack_summaries)
+        if movement:
+            summary.update(
+                moved_ft=sum(s["moved_ft"] for s in attack_summaries),
+                closed_distance=any(s["closed_distance"] for s in attack_summaries),
+                destination=attack_summaries[-1]["destination"],
+            )
+        summary["damage"] = sum(s.get("damage", 0) for s in attack_summaries)
+        summary["hit"] = any(s.get("hit", False) for s in attack_summaries)
+        summary["critical"] = any(s.get("critical", False) for s in attack_summaries)
         summary["target_hp_status"] = last["target_hp_status"]
         summary["target_fallen"] = last["target_fallen"]
         summary["concentration_broken"] = next(
-            (s["concentration_broken"] for s in attack_summaries if s["concentration_broken"]), None
+            (s["concentration_broken"] for s in attack_summaries if s.get("concentration_broken")), None
         )
         # Any swing being dramatic makes the declaration dramatic. Each swing rolls its
         # own d20 and runs its own killing-blow check, so a later swing can be dramatic
         # while the first is routine — take the FIRST dramatic swing's context so the
         # aggregated dramatic flag and its reason label never disagree (story-004).
-        summary["dramatic"] = any(s["dramatic"] for s in attack_summaries)
-        summary["context"] = next((s["context"] for s in attack_summaries if s["dramatic"]), "")
+        summary["dramatic"] = any(s.get("dramatic", False) for s in attack_summaries)
+        summary["context"] = next((s["context"] for s in attack_summaries if s.get("dramatic")), "")
     if concealment_packet is not None:
         summary["concealment"] = concealment_packet
+    if effects := attack_cursor.pop("turn_start_effects", None):
+        summary["turn_start_effects"] = effects
     summary["actor_id"] = packet.actor_id
     summary["resolved"] = True
     return _attach_riders(summary, attacker, decl)

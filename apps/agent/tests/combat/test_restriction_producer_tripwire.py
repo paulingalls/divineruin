@@ -36,18 +36,24 @@ CONDITION_ARGUMENTS = {
 }
 
 
-def _json_condition_values(value: object) -> Iterator[str]:
+def _stage(condition: str, value: object) -> int:
+    if condition != "hollowed":
+        return 1
+    return value if type(value) is int and 1 <= value <= 3 else 3
+
+
+def _json_condition_values(value: object) -> Iterator[tuple[str, int]]:
     if isinstance(value, dict):
         for key, item in value.items():
             if key == "applies_condition" and isinstance(item, str):
-                yield item
+                yield item, _stage(item, value.get("stage"))
             yield from _json_condition_values(item)
     elif isinstance(value, list):
         for item in value:
             yield from _json_condition_values(item)
 
 
-def _content_producers(paths: Iterable[Path]) -> list[str]:
+def _content_producers(paths: Iterable[Path]) -> list[tuple[str, int]]:
     return [condition for path in paths for condition in _json_condition_values(json.loads(path.read_text()))]
 
 
@@ -68,11 +74,19 @@ def _literal_condition(call: ast.Call, position: int, keyword: str) -> str | Non
     return None
 
 
-def _python_producers(paths: Iterable[Path]) -> list[str]:
+def _python_producers(paths: Iterable[Path]) -> list[tuple[str, int]]:
     produced = []
     for path in paths:
         tree = ast.parse(path.read_text(), filename=str(path))
         for node in ast.walk(tree):
+            if isinstance(node, ast.Dict):
+                fields = {
+                    key.value: value.value
+                    for key, value in zip(node.keys, node.values, strict=True)
+                    if isinstance(key, ast.Constant) and isinstance(value, ast.Constant)
+                }
+                if fields.get("type") == "hollowed":
+                    produced.append(("hollowed", _stage("hollowed", fields.get("stage"))))
             if not isinstance(node, ast.Call):
                 continue
             callee = _callee_name(node)
@@ -80,11 +94,11 @@ def _python_producers(paths: Iterable[Path]) -> list[str]:
                 continue
             signature = CONDITION_ARGUMENTS.get(callee)
             if signature is not None and (condition := _literal_condition(node, *signature)) is not None:
-                produced.append(condition)
+                produced.append((condition, _stage(condition, None)))
     return produced
 
 
-def _produced_conditions(content_paths: Iterable[Path], source_paths: Iterable[Path]) -> set[str]:
+def _produced_conditions(content_paths: Iterable[Path], source_paths: Iterable[Path]) -> set[tuple[str, int]]:
     content_paths = tuple(content_paths)
     source_paths = tuple(source_paths)
     assert content_paths, "condition producer content walk inspected no files"
@@ -92,13 +106,13 @@ def _produced_conditions(content_paths: Iterable[Path], source_paths: Iterable[P
     return set(_content_producers(content_paths)) | set(_python_producers(source_paths))
 
 
-def _assert_no_deferred_carrier_is_produced(produced: set[str]) -> None:
+def _assert_no_deferred_carrier_is_produced(produced: set[tuple[str, int]]) -> None:
     violations = {}
     for restriction, metadata in NOT_ENFORCED.items():
         if metadata["waits_on"] != "producer":
             continue
-        carriers = cast(set[str], metadata["carriers"])
-        if overlap := carriers & produced:
+        carriers = cast(dict[str, int], metadata["carriers"])
+        if overlap := {(condition, stage) for condition, stage in produced if stage >= carriers.get(condition, 4)}:
             violations[restriction] = overlap
     assert not violations, violations
 

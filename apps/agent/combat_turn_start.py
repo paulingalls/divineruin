@@ -3,6 +3,7 @@
 from livekit.agents.llm import ToolError
 
 import combat_damage
+import combat_damage_results
 import combat_grapple
 import combat_phase
 from combat_down import is_terminally_down
@@ -58,7 +59,7 @@ async def turn_start(
     result = None
     if progress is None or "damage_receipt" not in progress.steps:
         damage = dice_roll(effect["damage"]).total
-        result = combat_damage.AutomaticDamageResult(damage, effect["damage_type"])
+        result = combat_damage_results.AutomaticDamageResult(damage, effect["damage_type"])
     summary = await combat_damage.apply_attack_result(
         session,
         owner,

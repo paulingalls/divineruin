@@ -9,7 +9,8 @@ import concentration_break
 import conditions
 import event_types as E
 from combat_ability import _attach_riders, _resolve_condition_target
-from combat_damage import SaveDamageResult, apply_attack_result
+from combat_damage import apply_attack_result
+from combat_damage_results import SaveDamageResult
 from combat_down import damage_target_unavailable, has_damage
 from combat_events import emit_or_publish
 from combat_fate_rolls import packet_save, saved_throw, store_throw
@@ -62,7 +63,10 @@ async def _apply_condition_result(
         summary["condition_resisted"] = cond_type
         return
     from combat_condition_landing import _land_condition_on_one
+    from combat_enemy_active import already_hollowed
 
+    if already_hollowed(target, cond_type):
+        return
     if _land_condition_on_one(
         state,
         target.id,

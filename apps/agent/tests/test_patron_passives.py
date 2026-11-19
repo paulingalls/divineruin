@@ -119,7 +119,8 @@ async def endurance(world):
         index=1,
         level=3,
         xp=XP_FOR_LEVEL[3],
-        attributes={"constitution": 10},
+        # Level 4 opens an attribute increase, which needs a complete score set.
+        attributes=dict.fromkeys(("strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"), 10),
         hp=stored,
         maxhp_override=-7,
         speed=30,
@@ -155,6 +156,9 @@ async def endurance(world):
     finally:
         await db_mutations.delete_combat_state(combat_id)
     session.combat_state = None
+    # Level 4 grows the stored base pool (attribute_increases.recompute); Endurance stays a projection on
+    # top of it, and its +5 still counts toward the ceiling that keeps the current HP.
+    level_four = calculate_max_hp("warrior", 4, 0)
     for amount, level in [(XP_FOR_LEVEL[4] - XP_FOR_LEVEL[3], 4), (1, 4)]:
         async with world.db.transaction() as conn:
             locked = await db_queries.get_player(guest, conn=conn, for_update=True)
@@ -164,8 +168,8 @@ async def endurance(world):
             )
         initial = await get_session_init_payload(guest)
         assert initial["character"]["level"] == level
-        assert initial["character"]["hp"] == {"current": base + 3, "max": base + 5}
-        assert (await row(world))["hp"] == stored
+        assert initial["character"]["hp"] == {"current": base + 3, "max": level_four + 5}
+        assert (await row(world))["hp"] == {"current": base + 3, "max": level_four}
 
 
 async def ward(world, boundary, *args):

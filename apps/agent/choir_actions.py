@@ -12,12 +12,20 @@ def require_targets(state, actor, action, declaration):
     spatial = combat_spatial.require_spatial(state)
     origin = combat_spatial.position(spatial, actor.id)
     if action.get("type") == "area":
+        aim = combat_spatial.position(spatial, declaration.target_id) if action.get("shape") == "cone" else None
+        if aim is not None:
+            combat_spatial.axis_projection(origin, aim, origin)
         return [
             p
             for p in state.participants
-            if not p.is_fallen
+            if p.id != actor.id
+            and not p.is_fallen
             and not p.is_dead
-            and combat_spatial.inside(origin, combat_spatial.position(spatial, p.id), action["reach"])
+            and (
+                combat_spatial.in_cone(origin, aim, combat_spatial.position(spatial, p.id), action["reach"])
+                if aim is not None
+                else combat_spatial.inside(origin, combat_spatial.position(spatial, p.id), action["reach"])
+            )
         ]
     target = state.get_participant(declaration.target_id)
     if target is None:
@@ -30,6 +38,7 @@ def require_targets(state, actor, action, declaration):
 async def resolve_area(session, state, actor, action, declaration, *, progress=None, head=None, **deps):
     from combat_action_availability import begin_execution
 
+    deps.setdefault("reaction_save_advantage", False)
     steps = progress.steps if progress is not None else {}
     if "targets" not in steps:
         steps["targets"] = [target.id for target in require_targets(state, actor, action, declaration)]

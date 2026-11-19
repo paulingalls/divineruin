@@ -20,6 +20,7 @@ from uuid import uuid4
 
 import combat_enhancers
 import combat_marks as combat_marks
+import combat_melee_approach
 import combat_reaction_contest
 import combat_reaction_effect
 import combat_recharge
@@ -243,7 +244,9 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None, fate_roll
                 strike_summary(
                     reacted,
                     {
+                        **reacted.get("melee_approach", {}),
                         "actor_id": reacted["actor_id"],
+                        "attack_resolved": False,
                         "resolved": False,
                         "hesitated": True,
                         "reason": hesitation_reason,
@@ -273,10 +276,33 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None, fate_roll
         )
         if aura is not None and aura.paused:
             return summaries
+        from combat_veilrender import turn_start
+
+        field = None
+        if fate_rolls is not None and session.fate_lock.locked():
+            field = PacketRolls(
+                fate_rolls, head.setdefault("roll_steps", {}), packet_deps["queries"], packet_deps["conn"]
+            ).scope("veilrender")
+        effects = await turn_start(
+            session, state, state.get_participant(head["actor_id"]), **{**packet_deps, "progress": field}
+        )
+        if effects is None:
+            return summaries
+        if effects:
+            summaries.append({"actor_id": head["actor_id"], "turn_start_effects": effects})
         approach(state, state.get_participant(head["actor_id"]))
         summary_start = len(summaries)
         opens = _opens_windows(state, head)
         action = _attack_action(state, head) if opens else None
+        if opens:
+            actor = state.get_participant(head["actor_id"])
+            movement = combat_melee_approach.prepare_held(
+                state, head, _find_action(actor, _held_declaration(head).action)
+            )
+            if movement.get("attack_resolved") is False:
+                summaries.append(strike_summary(head, movement))
+                state.held_actions.pop(0)
+                continue
 
         try:
             if opens:
@@ -287,6 +313,10 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None, fate_roll
                     assert window_action is not None
                     candidate = _window(state, head, PRE_ROLL, reaction_windows.pre_roll_triggers(window_action))
                     if reaction_gate.offers_for_window(state, candidate):
+                        if head.get("melee_approach", {}).get("closed_distance"):
+                            summaries.append(
+                                {**head["melee_approach"], "attack_resolved": False, "attack_pending": True}
+                            )
                         _open(state, candidate)
                         _assert_iteration_progress(state, head, summaries, summary_start)
                         return summaries
@@ -315,6 +345,10 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None, fate_roll
                             event_bus=session.event_bus,
                         )
                         head["roll_published"] = True
+                        if head.get("melee_approach", {}).get("closed_distance"):
+                            summaries.append(
+                                {**head["melee_approach"], "attack_resolved": False, "attack_pending": True}
+                            )
                         _open(state, candidate)
                         _assert_iteration_progress(state, head, summaries, summary_start)
                         return summaries
@@ -406,7 +440,7 @@ async def _resolve_held(
         deps["resolver"] = _replay_resolver(head)
     if fate_rolls is not None and (session.fate_lock.locked() or head.get("roll_steps")):
         deps["progress"] = PacketRolls(fate_rolls, head.setdefault("roll_steps", {}), deps["queries"], deps["conn"])
-    return await _resolve_one_packet(
+    summary = await _resolve_one_packet(
         session,
         state,
         packet,
@@ -423,5 +457,13 @@ async def _resolve_held(
         mark_cancelled=mark_cancelled,
         publish_roll=not head.get("roll_published", False),
         _held_head=head if head.get("execution_receipt") is not None or "progress" in deps else None,
+        _melee_approach=head.get("melee_approach"),
         **deps,
     )
+    # A paused (Zhael-held) resolution's summary is discarded by the pump; on resume the movement
+    # facts join the finished summary.
+    if movement := head.get("melee_approach"):
+        summary = {**movement, **summary}
+        if not summary["resolved"]:
+            summary["attack_resolved"] = False
+    return summary

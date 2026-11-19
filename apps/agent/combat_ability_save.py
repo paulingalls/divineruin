@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from session_data import CombatParticipant, CombatState
 
 
-BENEFICIAL_CONDITIONS = frozenset({"blessed", "shielded", "enraged", "inspired"})
+BENEFICIAL_CONDITIONS = frozenset({"blessed", "shielded", "enraged", "inspired", "precise_strike"})
 
 
 def gate_hostile_condition_targets(state: "CombatState", decl: "Declaration", condition: str, action_name: str) -> None:

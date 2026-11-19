@@ -63,3 +63,16 @@ def roll(notation: str, rng: random.Random | None = None) -> DiceResult:
         dropped=dropped,
         total=total,
     )
+
+
+def maximum(notation: str) -> int:
+    """Maximum of ordinary dice notation; keep modes have no spell damage contract."""
+    if notation == "0":
+        return 0
+    match = _DICE_RE.fullmatch(notation.strip())
+    if not match or match.group(3):
+        raise ValueError(f"Invalid maximum dice notation: '{notation}'")
+    count, sides = int(match.group(1) or 1), int(match.group(2))
+    if count < 1 or sides < 1:
+        raise ValueError(f"Invalid maximum dice notation: '{notation}'")
+    return count * sides + int(match.group(5) or 0)

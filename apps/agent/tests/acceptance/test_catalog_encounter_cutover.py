@@ -16,6 +16,7 @@ from acceptance._catalog_cutover_helpers import (
     TEMPLATES,
     assert_boundary_result,
     assert_stats,
+    assert_strength,
     reference_damage,
 )
 from acceptance._catalog_cutover_helpers import cold_catalog_reads as cold_catalog_reads
@@ -33,7 +34,6 @@ from companion_profiles import get_companion_profile
 from creation_rules import build_character_data
 from creature_catalog import query_creature_by_id
 from creature_combat import translate_creature
-from encounter_budget import calculate_encounter_budget
 from hp_scaling import calculate_max_hp
 from rules_engine import attribute_modifier
 from session_data import CombatState
@@ -44,7 +44,7 @@ async def test_every_encounter_starts_from_catalog(started, template, cold_catal
     import db_content_queries
 
     pool = await db.get_pool()
-    assert await pool.fetchval("SELECT count(*) FROM encounter_templates") == 12
+    assert await pool.fetchval("SELECT count(*) FROM encounter_templates") == 17
     assert template == await db_content_queries.get_encounter_template(template["id"])
     ctx, response = await started(template["id"])
     state = ctx.userdata.combat_state
@@ -71,6 +71,8 @@ async def test_every_encounter_starts_from_catalog(started, template, cold_catal
         expected = translate_creature(row, encounter_id=template["id"], enemy_id=ref["id"], role=ref["role"])
         for field in (
             "action_pool",
+            "unholy_fortitude",
+            "resist_nonmagical_physical",
             "multiattack_sequence",
             "attributes",
             "saving_throw_proficiencies",
@@ -153,30 +155,13 @@ async def test_missing_catalog_row_has_no_side_effects(reset_db_pool, monkeypatc
         await pool.execute("DELETE FROM players WHERE player_id = $1", pid)
 
 
-def assert_strength(template, catalog):
-    level = template["recommended_party_level"]
-    report = calculate_encounter_budget(template["enemies"], level)
-    assert not report["too_many_bosses"], "too_many_bosses"
-    assert not report["all_minion"], "all_minion"
-    ceiling = (
-        "standard"
-        if template["difficulty"] != "hard"
-        else "boss"
-        if any(r["role"] == "boss" for r in template["enemies"])
-        else "tough"
-    )
-    assert report["total"] <= report["thresholds"][ceiling], "difficulty budget"
-    max_tier = 1 if level <= 2 else 2 if level <= 8 else 3 if level <= 14 else 4
-    assert all(catalog[r["creature_id"]]["tier"] <= max_tier for r in template["enemies"]), "tier ceiling"
-
-
 def test_final_balance_table():
     catalog = {row["id"]: row for row in json.loads((CONTENT_ROOT / "content/creatures.json").read_text())}
     assert {row["id"] for row in TEMPLATES} == set(TARGETS) | {"hollow_choir"}
     ordinary = [row for row in TEMPLATES if row["id"] in TARGETS]
-    assert len(ordinary) == 11
-    assert sum(len(row["enemies"]) for row in ordinary) == 26
-    assert len({ref["creature_id"] for row in ordinary for ref in row["enemies"]}) == 14
+    assert len(ordinary) == 16
+    assert sum(len(row["enemies"]) for row in ordinary) == 37
+    assert len({ref["creature_id"] for row in ordinary for ref in row["enemies"]}) == 17
     for row in ordinary:
         level, difficulty, groups = TARGETS[row["id"]]
         assert (row["recommended_party_level"], row["difficulty"]) == (level, difficulty)
@@ -224,7 +209,12 @@ async def test_actual_companion_boundary_combat(started, companion, encounter_id
         assert saved is not None
         struck = saved.get_participant(selected.id)
         assert struck is not None
-        assert struck.hp_current < selected.hp_max
+        if struck.hp_current == selected.hp_max:
+            approaches = [p for p in result["packets"] if p.get("actor_id") in (player.id, companion)]
+            assert len(approaches) == 2
+            assert all(p["closed_distance"] and p["attack_resolved"] is False and p["moved_ft"] > 0 for p in approaches)
+        else:
+            assert struck.hp_current < selected.hp_max
 
 
 @pytest.mark.parametrize(
@@ -240,14 +230,12 @@ async def test_actual_companion_boundary_combat(started, companion, encounter_id
 async def test_absent_companion_boundary(started, encounter_id, level):
     ctx, _ = await started(encounter_id, level=level)
     assert not any(p.type == "companion" for p in ctx.userdata.combat_state.participants)
+    import db_queries
+
+    row = await db_queries.get_player(ctx.userdata.player_id)
+    assert row is not None
     assert ctx.userdata.combat_state.get_participant(ctx.userdata.player_id).hp_max == calculate_max_hp(
-        "warrior",
-        level,
-        attribute_modifier(
-            build_character_data(
-                "Reference", "draethar", "warrior", None, "", created_at=datetime(2026, 10, 1, tzinfo=UTC)
-            )["attributes"]["constitution"]
-        ),
+        "warrior", level, attribute_modifier(row["attributes"]["constitution"])
     )
 
 
@@ -303,7 +291,7 @@ async def test_ashmark_stance_and_quest_identity(started):
 
 
 @pytest.mark.parametrize("companion", ["companion_kael", "companion_lira", "companion_tam", "companion_sable"])
-@pytest.mark.parametrize("encounter_id", ["shadeling_cluster", "hollow_wisp", "hollow_corrupted_settlement"])
+@pytest.mark.parametrize("encounter_id", ["shadeling_cluster", "hollow_wisp"])
 async def test_actual_companion_committed_outcome(started, companion, encounter_id):
 
     import db_queries
@@ -387,6 +375,9 @@ async def test_strength_fixture_uses_created_warrior_and_level_grants(started, e
     ctx, _ = await started(encounter_id)
     player = await db_queries.get_player(ctx.userdata.player_id)
     assert player is not None
+    for _ in range(points):
+        attr = "strength" if expected["attributes"]["strength"] < 20 else "constitution"
+        expected["attributes"][attr] += 1
     for field in ("attributes", "equipment", "saving_throw_proficiencies"):
         assert player[field] == expected[field]
     assert player["level"] == level
@@ -400,6 +391,10 @@ async def test_strength_fixture_uses_created_warrior_and_level_grants(started, e
     assert ("extra_attack" in actor.enhancers) == (level >= 10)
     if level >= 10:
         enemy = next(p for p in ctx.userdata.combat_state.participants if p.type == "enemy")
+        ctx.userdata.combat_state.spatial["positions"][enemy.id] = dict(
+            ctx.userdata.combat_state.spatial["positions"][actor.id]
+        )
+        await db_mutations.save_combat_state(ctx.userdata.combat_state.combat_id, ctx.userdata.combat_state.to_dict())
         await combat_turn._declare_phase_impl(
             ctx, {actor.id: {"type": "attack", "action": actor.action_pool[0]["name"], "target_id": enemy.id}}
         )

@@ -15,6 +15,8 @@ async def effective_declaration(session, state, caster, declaration, *, progress
     spell = spells.get_spell(declaration.action)
     if not spell.verbal:
         return declaration
+    if not declaration.target_id and not declaration.target_ids and (spell.combat_damage or {}).get("optional_target"):
+        return declaration
     targets = (
         spells.normalize_target_list(spell, declaration.target_id, declaration.target_ids)
         if declaration.target_ids is not None

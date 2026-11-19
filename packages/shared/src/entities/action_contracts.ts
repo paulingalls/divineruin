@@ -1,3 +1,4 @@
+import { DAMAGE_TYPES, type DamageType } from "./creature_damage_affinity";
 import { CONDITION_NAMES } from "./encounter";
 
 export type Recharge =
@@ -8,7 +9,19 @@ export type DurabilityRider = {
   dice: string;
   target: "selected_player_held_item";
 };
+export type DamageRider = { dice: string; damage_type: DamageType };
+export type PreparedDamage = { damage: string; damage_type: DamageType; ignores_resistance: true };
+export type CriticalSave = {
+  save: "STR" | "DEX" | "CON" | "INT" | "WIS" | "CHA";
+  dc: number;
+  applies_condition: string;
+  stage?: 1;
+};
 export type ActionExtensions = {
+  shape?: unknown;
+  magical?: unknown;
+  bonus_damage?: unknown;
+  critical_save?: unknown;
   durability_rider?: unknown;
   duration_dice?: unknown;
   movement?: unknown;
@@ -61,7 +74,13 @@ export function validateRecharge(value: unknown, path: string): void {
 }
 
 export function validateActionExtensions(action: ActionExtensions, path: string): void {
+  if (
+    "shape" in action &&
+    (action.shape !== "cone" || action.type !== "area" || !positive(action.reach))
+  )
+    invalid(`${path}.shape`);
   const kind = action.kind === undefined ? "attack" : action.kind;
+  validateWeaponRiders(action, path);
   validateDurabilityRider(action, path);
   validateResolution(action, path);
   if (
@@ -148,14 +167,20 @@ export function validateActionExtensions(action: ActionExtensions, path: string)
         invalid(`${path}.healing`);
     } else {
       forbidden.push("target_group", "healing");
-      if (action.advantage !== true) invalid(`${path}.advantage`);
       const rider = action.on_hit;
       if (!object(rider)) invalid(`${path}.on_hit`);
-      if (!(CONDITION_NAMES as readonly unknown[]).includes(rider.applies_condition))
-        invalid(`${path}.on_hit.applies_condition`);
-      if (!positive(rider.duration)) invalid(`${path}.on_hit.duration`);
-      for (const key of Object.keys(rider))
-        if (!["applies_condition", "duration"].includes(key)) invalid(`${path}.on_hit.${key}`);
+      if ("damage" in rider) {
+        if ("advantage" in action) invalid(`${path}.advantage`);
+        validateDamageRider(rider, `${path}.on_hit`, "damage");
+        if (rider.ignores_resistance !== true) invalid(`${path}.on_hit.ignores_resistance`);
+      } else {
+        if (action.advantage !== true) invalid(`${path}.advantage`);
+        if (!(CONDITION_NAMES as readonly unknown[]).includes(rider.applies_condition))
+          invalid(`${path}.on_hit.applies_condition`);
+        if (!positive(rider.duration)) invalid(`${path}.on_hit.duration`);
+        for (const key of Object.keys(rider))
+          if (!["applies_condition", "duration"].includes(key)) invalid(`${path}.on_hit.${key}`);
+      }
     }
   } else forbidden = ["target_group", "healing", "advantage", "on_hit"];
   for (const key of forbidden) if (key in action) invalid(`${path}.${key}`);
@@ -214,15 +239,28 @@ function validateResolution(action: ActionExtensions, path: string): void {
     if (!Array.isArray(riders)) invalid(`${path}.${key}`);
     const seen = new Set();
     for (const rider of riders) {
-      if (!object(rider) || Object.keys(rider).sort().join(",") !== "applies_condition,duration")
-        invalid(`${path}.${key}`);
+      if (!object(rider)) invalid(`${path}.${key}`);
+      const fields =
+        rider.applies_condition === "hollowed"
+          ? "applies_condition,duration,stage"
+          : "applies_condition,duration";
+      if (Object.keys(rider).sort().join(",") !== fields) invalid(`${path}.${key}`);
+      if (rider.applies_condition === "hollowed" && rider.stage !== 1)
+        invalid(`${path}.${key}.stage`);
       if (
         !(CONDITION_NAMES as readonly unknown[]).includes(rider.applies_condition) ||
         seen.has(rider.applies_condition)
       )
         invalid(`${path}.${key}.applies_condition`);
       seen.add(rider.applies_condition);
-      if (!positive(rider.duration)) invalid(`${path}.${key}.duration`);
+      if (
+        !positive(rider.duration) &&
+        !(
+          rider.duration === null &&
+          ["prone", "hollowed"].includes(rider.applies_condition as string)
+        )
+      )
+        invalid(`${path}.${key}.duration`);
     }
   }
 }
@@ -312,4 +350,33 @@ function validateDurabilityRider(action: ActionExtensions, path: string): void {
   if (typeof rider.dice !== "string" || !/^[1-9][0-9]*d[1-9][0-9]*$/.test(rider.dice))
     invalid(`${path}.dice`);
   if (rider.target !== "selected_player_held_item") invalid(`${path}.target`);
+}
+
+function validateDamageRider(value: unknown, path: string, diceKey: "dice" | "damage"): void {
+  if (!object(value)) invalid(path);
+  const allowed = [diceKey, "damage_type", ...(diceKey === "damage" ? ["ignores_resistance"] : [])];
+  for (const key of Object.keys(value)) if (!allowed.includes(key)) invalid(`${path}.${key}`);
+  if (typeof value[diceKey] !== "string" || !/^[1-9][0-9]*d[1-9][0-9]*$/.test(value[diceKey]))
+    invalid(`${path}.${diceKey}`);
+  if (!(DAMAGE_TYPES as readonly unknown[]).includes(value.damage_type))
+    invalid(`${path}.damage_type`);
+}
+function validateWeaponRiders(action: ActionExtensions, path: string): void {
+  if ("magical" in action && typeof action.magical !== "boolean") invalid(`${path}.magical`);
+  if ("bonus_damage" in action)
+    validateDamageRider(action.bonus_damage, `${path}.bonus_damage`, "dice");
+  if ("critical_save" in action) {
+    const rider = action.critical_save;
+    if (!object(rider)) invalid(`${path}.critical_save`);
+    for (const key of Object.keys(rider))
+      if (!["save", "dc", "applies_condition", "stage"].includes(key))
+        invalid(`${path}.critical_save.${key}`);
+    if (!["STR", "DEX", "CON", "INT", "WIS", "CHA"].includes(rider.save as string))
+      invalid(`${path}.critical_save.save`);
+    if (!positive(rider.dc)) invalid(`${path}.critical_save.dc`);
+    if (!(CONDITION_NAMES as readonly unknown[]).includes(rider.applies_condition))
+      invalid(`${path}.critical_save.applies_condition`);
+    if (rider.applies_condition === "hollowed" ? rider.stage !== 1 : "stage" in rider)
+      invalid(`${path}.critical_save.stage`);
+  }
 }

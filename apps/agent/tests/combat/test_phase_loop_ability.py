@@ -9,7 +9,7 @@ from combat.test_phase_loop import _resonance_deps
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 
-_CONDITION_FREE_SPELL = SimpleNamespace(name="Arcane Bolt", applies_condition=None)
+_CONDITION_FREE_SPELL = SimpleNamespace(name="Detect Magic", applies_condition=None)
 
 
 class TestResolvePhaseAbility:
@@ -17,7 +17,7 @@ class TestResolvePhaseAbility:
 
     def _ability_state(self):
         state = _resolution_state()
-        state.pending_declarations["player_1"] = {"type": "ability", "action": "arcane_bolt"}
+        state.pending_declarations["player_1"] = {"type": "ability", "action": "arcane_detect_magic"}
         return state
 
     def _cast_resolver(self, result):
@@ -56,7 +56,7 @@ class TestResolvePhaseAbility:
 class TestResolvePhaseAbilityResonance:
     def _ability_state(self):
         state = _resolution_state()  # enemy hp 7 -> combat continues this phase
-        state.pending_declarations["player_1"] = {"type": "ability", "action": "arcane_bolt"}
+        state.pending_declarations["player_1"] = {"type": "ability", "action": "arcane_detect_magic"}
         return state
 
     def _cast_resolver(self, *, new_resonance, generated=5, concentration=None, events=None):
@@ -105,7 +105,7 @@ class TestResolvePhaseAbilityResonance:
         assert enemy is not None
         enemy.is_fallen = True
         enemy.hp_current = 0
-        state.pending_declarations = {"player_1": {"type": "ability", "action": "arcane_bolt"}}
+        state.pending_declarations = {"player_1": {"type": "ability", "action": "arcane_detect_magic"}}
         ctx.userdata.combat_state = state
         cast_resolver = self._cast_resolver(new_resonance=8)
         deps = _resolve_deps(damage=3)

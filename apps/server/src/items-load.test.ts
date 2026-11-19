@@ -305,3 +305,21 @@ describe("parseItemRow — fail-loud validation", () => {
     expect(() => parseItemRow("x", { ...base, type: "material" })).not.toThrow();
   });
 });
+
+test("magical weapon classification and boolean validation", async () => {
+  const rows = await loadItemsJson();
+  const magical = rows.filter((r) =>
+    (r.effects as Record<string, unknown>[]).some((e) => e.magical),
+  );
+  expect(magical.map((r) => r.id).sort()).toEqual([
+    "architects_edge",
+    "blade_of_the_ashmark",
+    "hollow_edge_blade",
+    "veil_forged_greatblade",
+  ]);
+  for (const row of magical) expect(() => parseItemRow(row.id as string, row)).not.toThrow();
+  const row = rows.find((r) => r.id === "shortsword_basic")!;
+  expect(() =>
+    parseItemRow(row.id as string, { ...row, effects: [{ type: "weapon", magical: "true" }] }),
+  ).toThrow("magical");
+});

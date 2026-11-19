@@ -628,5 +628,270 @@
       "locations": {},
       "zones": {}
     }
+  },
+  {
+    "id": "hollowmoth_swarm",
+    "name": "Hollowmoth Swarm",
+    "description": "A thin whine trembles inside your teeth. Three moth-shaped gaps flutter above the sour-smelling grass, their wings tugging at the air.",
+    "difficulty": "moderate",
+    "enemies": [
+      {
+        "id": "hollowmoth_swarm_1",
+        "creature_id": "hollow_hollowmoth",
+        "role": "standard"
+      },
+      {
+        "id": "hollowmoth_swarm_2",
+        "creature_id": "hollow_hollowmoth",
+        "role": "standard"
+      },
+      {
+        "id": "hollowmoth_swarm_3",
+        "creature_id": "hollow_hollowmoth",
+        "role": "standard"
+      }
+    ],
+    "recommended_party_level": 3,
+    "scene_placement": {
+      "party_start": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "companion_start": {
+        "x": 0,
+        "y": 5,
+        "z": 0
+      },
+      "actors": {
+        "hollowmoth_swarm_1": {
+          "x": 20,
+          "y": -5,
+          "z": 0
+        },
+        "hollowmoth_swarm_2": {
+          "x": 20,
+          "y": 0,
+          "z": 0
+        },
+        "hollowmoth_swarm_3": {
+          "x": 20,
+          "y": 5,
+          "z": 0
+        }
+      },
+      "locations": {},
+      "zones": {}
+    }
+  },
+  {
+    "id": "hollow_weaver_ambush",
+    "name": "Hollow Weaver Ambush",
+    "description": "A dry clicking comes from a place your ears cannot settle on. A Weaver draws the air taut while two Drifts seep through the cold beneath it.",
+    "difficulty": "moderate",
+    "enemies": [
+      {
+        "id": "hollow_weaver_ambush_1",
+        "creature_id": "hollow_weaver",
+        "role": "standard"
+      },
+      {
+        "id": "hollow_weaver_ambush_2",
+        "creature_id": "hollow_shadeling",
+        "role": "minion"
+      },
+      {
+        "id": "hollow_weaver_ambush_3",
+        "creature_id": "hollow_shadeling",
+        "role": "minion"
+      }
+    ],
+    "recommended_party_level": 10,
+    "scene_placement": {
+      "party_start": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "companion_start": {
+        "x": 0,
+        "y": 5,
+        "z": 0
+      },
+      "actors": {
+        "hollow_weaver_ambush_1": {
+          "x": 20,
+          "y": -5,
+          "z": 0
+        },
+        "hollow_weaver_ambush_2": {
+          "x": 20,
+          "y": 0,
+          "z": 0
+        },
+        "hollow_weaver_ambush_3": {
+          "x": 20,
+          "y": 5,
+          "z": 0
+        }
+      },
+      "locations": {},
+      "zones": {
+        "hollow_weaver_ambush_1_corruption_aura": {
+          "center_id": "hollow_weaver_ambush_1",
+          "radius_ft": 30
+        }
+      }
+    }
+  },
+  {
+    "id": "hollow_mawling_pack",
+    "name": "Lone Adult Mawling",
+    "description": "Heavy claws scrape stone. An adult mawling probes forward, feinting and retreating. Its maw rasps like wet cloth tearing; the air tastes of iron.",
+    "difficulty": "moderate",
+    "enemies": [
+      {
+        "id": "mawling_pack_adult",
+        "creature_id": "hollow_mawling",
+        "role": "standard"
+      }
+    ],
+    "recommended_party_level": 10,
+    "scene_placement": {
+      "party_start": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "companion_start": {
+        "x": 0,
+        "y": 5,
+        "z": 0
+      },
+      "actors": {
+        "mawling_pack_adult": {
+          "x": 25,
+          "y": -10,
+          "z": 0
+        }
+      },
+      "locations": {},
+      "zones": {
+        "mawling_pack_adult_corruption_aura": {
+          "center_id": "mawling_pack_adult",
+          "radius_ft": 5
+        }
+      }
+    }
+  },
+  {
+    "id": "hollow_knight_boss",
+    "name": "The Hollowed Knight",
+    "description": "Armor scrapes over stone. Wet claws answer from the dark. A broken soldier raises its blade, and its mawlings close in.",
+    "difficulty": "hard",
+    "enemies": [
+      {
+        "id": "hollowed_knight",
+        "creature_id": "hollow_knight",
+        "role": "boss"
+      },
+      {
+        "id": "mawling_1",
+        "creature_id": "hollow_mawling",
+        "role": "minion"
+      },
+      {
+        "id": "mawling_2",
+        "creature_id": "hollow_mawling",
+        "role": "minion"
+      }
+    ],
+    "recommended_party_level": 14,
+    "scene_placement": {
+      "party_start": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "companion_start": {
+        "x": 0,
+        "y": 5,
+        "z": 0
+      },
+      "actors": {
+        "hollowed_knight": {
+          "x": 20,
+          "y": -10,
+          "z": 0
+        },
+        "mawling_1": {
+          "x": 20,
+          "y": 0,
+          "z": 0
+        },
+        "mawling_2": {
+          "x": 20,
+          "y": 10,
+          "z": 0
+        }
+      },
+      "locations": {},
+      "zones": {
+        "hollowed_knight_corruption_aura": {
+          "center_id": "hollowed_knight",
+          "radius_ft": 10
+        },
+        "mawling_1_corruption_aura": {
+          "center_id": "mawling_1",
+          "radius_ft": 5
+        },
+        "mawling_2_corruption_aura": {
+          "center_id": "mawling_2",
+          "radius_ft": 5
+        }
+      }
+    },
+    "recommended_party_size": 2
+  },
+  {
+    "id": "hollow_veilrender_boss",
+    "name": "The Veilrender",
+    "description": "A low hum swallows your footsteps. Stone grinds as a vast mass seals its wounds. Radiant light leaves cracks that stay open.",
+    "difficulty": "hard",
+    "enemies": [
+      {
+        "id": "veilrender",
+        "creature_id": "hollow_veilrender",
+        "role": "standard"
+      }
+    ],
+    "recommended_party_level": 14,
+    "recommended_party_size": 2,
+    "scene_placement": {
+      "party_start": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "companion_start": {
+        "x": 0,
+        "y": 5,
+        "z": 0
+      },
+      "actors": {
+        "veilrender": {
+          "x": 20,
+          "y": 0,
+          "z": 0
+        }
+      },
+      "locations": {},
+      "zones": {
+        "veilrender_corruption_aura": {
+          "center_id": "veilrender",
+          "radius_ft": 60
+        }
+      }
+    }
   }
 ]

@@ -30,10 +30,41 @@ def test_recommended_party_level_cases(encounter):
     validate_encounter_references(encounter, CATALOG)
 
 
-def test_all_twelve_reference_templates():
+@pytest.mark.parametrize("size", [0, -1, 1.5, True, "2", None])
+def test_recommended_party_size_rejects_invalid_values(size):
+    with pytest.raises(ValueError, match="recommended_party_size"):
+        validate_encounter_references({**CASES["valid"][0], "recommended_party_size": size}, CATALOG)
+
+
+@pytest.mark.parametrize("size", [1, 2])
+def test_recommended_party_size_accepts_positive_integers(size):
+    validate_encounter_references({**CASES["valid"][0], "recommended_party_size": size}, CATALOG)
+
+
+def test_all_reference_templates():
     templates = json.loads((ROOT / "content/encounter_templates.json").read_text())
-    assert len(templates) == 12
+    assert len(templates) == 17
+    assert {row["id"] for row in templates} == {
+        "fragment_shadeling",
+        "shadeling_cluster",
+        "hollow_wisp",
+        "hollow_patrol_greyvale",
+        "hollowed_scout",
+        "ruins_mawling_pair",
+        "bandit_ambush",
+        "ashmark_patrol",
+        "ruins_guardian",
+        "cult_cell",
+        "hollow_corrupted_settlement",
+        "hollow_choir",
+        "hollowmoth_swarm",
+        "hollow_weaver_ambush",
+        "hollow_mawling_pack",
+        "hollow_knight_boss",
+        "hollow_veilrender_boss",
+    }
     for template in templates:
+        assert template["enemies"]
         assert all(set(enemy) == {"id", "creature_id", "role"} for enemy in template["enemies"])
         validate_encounter_references(template, CATALOG)
 

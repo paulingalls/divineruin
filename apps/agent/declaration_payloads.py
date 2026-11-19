@@ -66,11 +66,14 @@ class AbilityDecl(BaseModel):
     action: str = Field(description='The EXACT id of a spell or ability the actor knows, e.g. "arcane_bolt".')
     targets: list[str] = Field(
         description="Who it is aimed at — one id for a single target, several for a multi-target "
-        "spell, empty for a self-cast."
+        "spell, empty for a self-cast. Areas center on named participants; lines and cones aim "
+        "from the caster toward one participant. Meteor Swarm accepts up to four centers. "
+        "Chain Lightning names its primary first, then optional arcs. Magic Missile repeats "
+        "ids in dart order, or uses one id for every dart."
     )
     argument_type: str = Field(
         description='Only for action "de_escalate": the kind of case made this round — reason, '
-        "emotion, self_interest, threat, bluff or evidence. Empty string for every other ability."
+        "emotion, self_interest, threat, bluff or evidence. For arcane_elemental_burst: fire, cold, or lightning. Empty string for other abilities."
     )
 
 

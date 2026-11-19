@@ -8,6 +8,8 @@ from creature_schema import validate_creature_stat_block
 
 ROOT = Path(__file__).resolve().parents[3]
 IDS = {
+    "hollow_hollowmoth",
+    "hollow_weaver",
     "hollow_shadeling",
     "hollow_wisp",
     "hollow_mawling",

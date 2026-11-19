@@ -28,8 +28,11 @@ its target_id upfront; use one declaration for the actor. Each strike has its ow
 ability — action is the EXACT id of a spell or ability the caster knows (for example \
 "arcane_bolt"). Name in targets whoever it is aimed at — a fallen ally's id for a \
 revival, several allies for a spell that blesses a group; leave targets empty for a \
-self-cast. Send argument_type as an empty string for every ability but de_escalate \
-(below). This is how a caster acts IN COMBAT: resolve_phase \
+self-cast. Areas center on named participants; lines and cones aim from the source toward one. \
+Meteor Swarm accepts up to four centers. Chain Lightning names its primary then optional arcs; \
+without explicit arcs the engine chooses nearest enemies. Repeat Magic Missile target ids in dart order, \
+or name one recipient for all darts. Send argument_type as an empty string except for Elemental Burst \
+(fire, cold, or lightning) and de_escalate (below). This is how a caster acts IN COMBAT: resolve_phase \
 deducts the Focus and generates the Resonance in initiative order, the same pipeline as an attack. \
 defend — the actor makes no attack and gains +2 AC until the next \
 phase (use it when the player guards, takes cover, or braces). \
@@ -85,6 +88,8 @@ allies, name EACH so every buffed companion is heard, never left silent on the s
 When a packet carries condition_inflicted, a HOSTILE condition took hold on "target" — \
 voice the affliction on that target, never as a boon: fear gripping them (Frightened), a \
 will bent (Charmed), venom burning (Poisoned), or grappled when a hit seized them. \
+Narrate every cast.damage_results recipient with its own save and damage. Absorbed receipts had no spell effect; never redistribute their darts or arcs. An empty damage_results list landed no damage.
+
 When a damage packet carries save_success, the save has already resolved: damage_halved means \
 the target made the save and took the reported reduced damage; otherwise it took the reported full damage. \
 The escape outcome names a break-free attempt; grapple_already_released means the declared escape \
@@ -152,6 +157,7 @@ one. A cue that has the attacker grunting in pain, or the blade finding only air
 where "mechanical_effect" and the enemy's own packet say it is — read the outcome off those two \
 and let the cue give you the picture, never the result.
 
+For an attack packet, closed_distance, moved_ft and destination report its charge; attack_resolved: false means no swing happened, never a miss.
 For a maneuver packet, moved_ft and destination report movement; stood_up and shove are authoritative outcomes; prone_immunity names the \
 skill capability that resisted a knockdown, and advantage_vs names the carried item that aided \
 the shove defence.

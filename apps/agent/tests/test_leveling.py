@@ -1,7 +1,6 @@
 import pytest
 
 from dice import roll
-from hp_scaling import calculate_max_hp
 from leveling import (
     LEVEL_PROGRESSION,
     LevelProgression,
@@ -196,37 +195,9 @@ class TestArchetypePayload:
         rewards = get_level_up_rewards(1, 5)
         base = build_level_up_payload(1, rewards)
         joined = build_level_up_payload_for_archetype(1, rewards, "warrior")
-        joined_without_hp = {k: v for k, v in joined.items() if k != "hp_gains"}
-        assert joined_without_hp == base
-
-    def test_hp_gain_per_level_warrior_l1_to_l2(self) -> None:
-        rewards = get_level_up_rewards(1, 2)
-        payload = build_level_up_payload_for_archetype(1, rewards, "warrior")
-        expected_delta = calculate_max_hp("warrior", 2, 0) - calculate_max_hp("warrior", 1, 0)
-        assert payload["hp_gains"] == [{"level": 2, "hp_gain": expected_delta}]
-
-    def test_hp_gain_per_level_mage_l1_to_l5(self) -> None:
-        rewards = get_level_up_rewards(1, 5)
-        payload = build_level_up_payload_for_archetype(1, rewards, "mage")
-        levels = [entry["level"] for entry in payload["hp_gains"]]
-        assert levels == [2, 3, 4, 5]
-        total = sum(entry["hp_gain"] for entry in payload["hp_gains"])
-        assert total == calculate_max_hp("mage", 5, 0) - calculate_max_hp("mage", 1, 0)
-
-    def test_con_modifier_propagates(self) -> None:
-        rewards = get_level_up_rewards(1, 3)
-        payload = build_level_up_payload_for_archetype(1, rewards, "paladin", con_mod=2)
-        for entry in payload["hp_gains"]:
-            lvl = entry["level"]
-            expected = calculate_max_hp("paladin", lvl, 2) - calculate_max_hp("paladin", lvl - 1, 2)
-            assert entry["hp_gain"] == expected, f"L{lvl} hp_gain mismatch"
+        assert joined == base
 
     def test_unknown_archetype_raises(self) -> None:
         rewards = get_level_up_rewards(1, 2)
         with pytest.raises(ValueError):
             build_level_up_payload_for_archetype(1, rewards, "invalid_archetype")
-
-    def test_no_levels_gained_returns_empty_hp_gains(self) -> None:
-        rewards = get_level_up_rewards(1, 1)
-        payload = build_level_up_payload_for_archetype(1, rewards, "warrior")
-        assert payload["hp_gains"] == []

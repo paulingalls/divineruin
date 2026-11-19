@@ -6,6 +6,7 @@ import random
 import pytest
 from creature_combat_helpers import ATTRIBUTES, ROOT, catalog, participant, row, selected
 
+import dice
 from check_resolution_attack import resolve_attack
 from combat_state import CombatState
 from combat_support import _participant_roster
@@ -76,7 +77,10 @@ def test_catalog_fields_and_authored_attack_survive(source):
     for authored in source["attacks"]:
         action = next(a for a in enemy["action_pool"] if a["name"] == authored["name"])
         assert action["to_hit"] == authored["to_hit"]
-        assert action["damage"] == authored["damage"]
+        if authored["damage"].isdigit() and int(authored["damage"]) > 0:
+            assert dice.roll(action["damage"]).total == int(authored["damage"])
+        else:
+            assert action["damage"] == authored["damage"]
         assert action["attack_source"] == "catalog"
 
 
@@ -188,6 +192,22 @@ def test_catalog_metadata_roundtrips_and_roster_exposes_effects(source):
 
 def test_dm_inventory_has_no_false_executables():
     expected = {
+        "hollow_hollowmoth": {
+            ("attacks", "Distortion Flutter"),
+            ("actives", "Blinding Swarm"),
+            ("passives", "Swarm Signal"),
+            ("passives", "High-Frequency Whine"),
+            ("passives", "Drawn to Life"),
+            ("hollow", "hollow"),
+        },
+        "hollow_weaver": {
+            ("attacks", "Spatial Lash"),
+            ("actives", "Rearrange"),
+            ("actives", "Spatial Fold"),
+            ("passives", "Spatial Distortion"),
+            ("passives", "Anchored"),
+            ("hollow", "hollow"),
+        },
         "ashmark_sergeant": {("actives", "Accusation"), ("actives", "Rally")},
         "ashmark_soldier": {("attacks", "Shield Bash")},
         "bandit": {("actives", "Dirty Fighting")},
@@ -204,12 +224,8 @@ def test_dm_inventory_has_no_false_executables():
         "hollow_knight": {
             ("actives", "Command Lesser"),
             ("actives", "Dissolution Strike"),
-            ("actives", "Unholy Fortitude"),
-            ("attacks", "Corrupted Blade"),
             ("attacks", "Shield Slam"),
             ("hollow", "hollow"),
-            ("multiattack", "2 attacks with Corrupted Blade"),
-            ("passives", "Corrupted Resilience"),
             ("passives", "Fragment Voice"),
             ("passives", "Remnant Tactics"),
         },
@@ -243,6 +259,14 @@ def test_dm_inventory_has_no_false_executables():
                 authored = next(entry for entry in authored if entry["name"] == name)
             elif group == "hollow":
                 authored = {k: v for k, v in authored.items() if k not in {"corruption_aura", "resonance_on_death"}}
+                authored["vulnerable_to"] = [
+                    v for v in authored["vulnerable_to"] if v not in {"radiant", "fire", "psychic", "physical_damage"}
+                ]
+            if source["id"] == "hollow_knight" and name == "Dissolution Strike":
+                authored = {
+                    "name": name,
+                    "description": "On hit, 5 ft of ground becomes corrupted terrain for 1 minute.",
+                }
             assert effect["source"] == authored
         if source["id"] == "hollow_mawling":
             assert [a["name"] for a in enemy["action_pool"]].count("Lunge") == 1
@@ -263,7 +287,7 @@ def test_boss_signature_does_not_alias_source():
     assert source == before
 
 
-@pytest.mark.parametrize("species", ["hollow_hollowmoth", "rock_viper"])
+@pytest.mark.parametrize("species", ["rock_viper"])
 @pytest.mark.parametrize("damage", [None, "7"])
 def test_catalog_flat_damage_reaches_real_dice_consumer(species, damage):
     source = next(r for r in catalog() if r["id"] == species)

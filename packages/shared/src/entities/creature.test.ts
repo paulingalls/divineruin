@@ -32,7 +32,7 @@ test("canonical region ids match the shared corpus", () => {
 });
 test("combat vocabularies match the Python corpus", () => {
   expect(corpus.action_kinds).toEqual([...ENCOUNTER_ACTION_KIND_VALUES]);
-  expect(corpus.condition_names.length).toBe(25);
+  expect(corpus.condition_names.length).toBe(26);
   expect(corpus.resistance_tags.length).toBe(7);
   expect(([...CONDITION_NAMES] as string[]).sort()).toEqual([...corpus.condition_names].sort());
   expect(([...RESISTANCE_TAG_VALUES] as string[]).sort()).toEqual(
@@ -40,19 +40,15 @@ test("combat vocabularies match the Python corpus", () => {
   );
 });
 
-function checkCorpus(valid: Case[], invalid: Case[]): void {
+function checkCorpus(valid: Case[]): void {
   const ids = new Set(catalog.map((row) => row.id));
   for (const row of valid) {
     expect(ids.has(row.block.loot_table_id as string)).toBe(true);
     expect(validateCreatureStatBlock(row.block)).toEqual([]);
   }
-  for (const row of invalid) {
-    if (row.field) for (const reason of row.expected!) expect(reason).toContain(row.field);
-    expect(validateCreatureStatBlock(row.block)).toEqual(row.expected!);
-  }
 }
 
-test("shared_creature_corpus", () => checkCorpus(corpus.valid, corpus.invalid));
+test("shared_creature_corpus", () => checkCorpus(corpus.valid));
 function assertCatalogEntries(entries: Record<string, unknown>[]): void {
   const ids = entries.map((row) => row.id);
   expect(new Set(ids).size).toBe(entries.length);
@@ -153,6 +149,7 @@ const fieldName = (path: Path) =>
 test("every spec field is required", () => {
   for (const row of corpus.valid.filter((row) => row.spec_derived))
     for (const path of keyPaths(row.block)) {
+      if (["damage_affinities", "tags"].includes(String(path[0]))) continue;
       const block = structuredClone(row.block);
       let parent = block as Record<string | number, unknown>;
       for (const part of path.slice(0, -1))
@@ -168,6 +165,7 @@ test("every spec field is required", () => {
 
 for (const row of corpus.invalid)
   test(`isolated_contract_guard ${row.name}`, () => {
+    if (row.field) for (const reason of row.expected!) expect(reason).toContain(row.field);
     expect(validateCreatureStatBlock(row.block)).toEqual(row.expected!);
   });
 
@@ -390,4 +388,110 @@ test("Mawling field accepts only the authored automatic damage contract", async 
     field,
   );
   expect(validateCreatureStatBlock(row)).toEqual([]);
+});
+
+import type { DamageAffinities } from "./creature_damage_affinity";
+const typedTraits = {
+  resistant: ["cold"],
+  immune: ["poison"],
+  vulnerable: ["fire"],
+} satisfies DamageAffinities;
+test("typed damage traits", () => {
+  expect(
+    validateCreatureStatBlock({
+      ...corpus.valid[0]!.block,
+      damage_affinities: typedTraits,
+      tags: ["plant"],
+    }),
+  ).toEqual([]);
+});
+
+test("Knight contracts and the three conditional resistance owners", async () => {
+  const catalog = (await Bun.file(
+    new URL("../../../../content/creatures.json", import.meta.url),
+  ).json()) as Record<string, unknown>[];
+  const knight = structuredClone(catalog.find((row) => row.id === "hollow_knight")!);
+  expect(knight.unholy_fortitude).toEqual({
+    save: "CON",
+    dc: 10,
+    increment: 5,
+    narration_cue: "The armor crashes down. Then it scrapes upright again.",
+  });
+  expect((knight.attacks as Record<string, unknown>[])[0]!.critical_save).toEqual({
+    save: "CON",
+    dc: 14,
+    applies_condition: "hollowed",
+    stage: 1,
+  });
+  expect(validateCreatureStatBlock(knight)).toEqual([]);
+  expect(
+    catalog
+      .filter((r) => r.resist_nonmagical_physical)
+      .map((r) => r.id)
+      .sort(),
+  ).toEqual(["deepstone_guardian", "hollow_knight", "war_golem"]);
+  for (const [field, value] of [
+    ["resist_nonmagical_physical", "yes"],
+    ["unholy_fortitude", { save: "CON", dc: 0, increment: 5, narration_cue: "rise" }],
+    ["unholy_fortitude", { save: "bad", dc: 10, increment: 5, narration_cue: "rise" }],
+    ["unholy_fortitude", { save: "CON", dc: 10, increment: 0, narration_cue: "rise" }],
+    ["unholy_fortitude", { dc: 10, increment: 5, narration_cue: "rise" }],
+  ] as const) {
+    expect(
+      validateCreatureStatBlock({ ...knight, [field]: value }).some((e) => e.includes(field)),
+    ).toBe(true);
+  }
+});
+
+test("Knight nested riders reject malformed actual rows", async () => {
+  const rows = (await Bun.file(
+    new URL("../../../../content/creatures.json", import.meta.url),
+  ).json()) as Record<string, unknown>[];
+  const knight = rows.find((r) => r.id === "hollow_knight")!;
+  for (const [field, value] of [
+    ["magical", "yes"],
+    ["bonus_damage", { dice: "bad", damage_type: "necrotic" }],
+    ["bonus_damage", { dice: "1d6", damage_type: "bad" }],
+    ["bonus_damage", { dice: "1d6" }],
+    ["bonus_damage", { dice: "1d6", damage_type: "necrotic", extra: true }],
+    ["critical_save", { save: "BAD", dc: 14, applies_condition: "hollowed" }],
+    ["critical_save", { save: "CON", dc: 0, applies_condition: "hollowed" }],
+    ["critical_save", { save: "CON", dc: 14, applies_condition: "unknown" }],
+    ["critical_save", { save: "CON", dc: 14, applies_condition: "hollowed" }],
+    ["critical_save", { save: "CON", dc: 14, applies_condition: "hollowed", stage: 2 }],
+    ["critical_save", { save: "CON", dc: 14, applies_condition: "hollowed", stage: true }],
+  ] as const) {
+    const row = structuredClone(knight);
+    (row.attacks as Record<string, unknown>[])[0]![field] = value;
+    expect(validateCreatureStatBlock(row).some((e) => e.includes(field))).toBe(true);
+  }
+  for (const on_hit of [
+    { damage: "bad", damage_type: "necrotic", ignores_resistance: true },
+    { damage: "3d6", damage_type: "bad", ignores_resistance: true },
+    { damage: "3d6", ignores_resistance: true },
+    { damage: "3d6", damage_type: "necrotic", ignores_resistance: false },
+    { damage: "3d6", damage_type: "necrotic", ignores_resistance: true, extra: true },
+  ]) {
+    const row = structuredClone(knight);
+    (row.actives as Record<string, unknown>[]).find(
+      (a) => a.name === "Dissolution Strike",
+    )!.on_hit = on_hit;
+    expect(validateCreatureStatBlock(row).some((e) => e.includes("on_hit"))).toBe(true);
+  }
+});
+
+test("Wave cone extension survives creature validation and rejects malformed shapes", async () => {
+  const rows = (await Bun.file(
+    new URL("../../../../content/creatures.json", import.meta.url),
+  ).json()) as Record<string, unknown>[];
+  const wave = rows.find((r) => r.id === "hollow_veilrender")!;
+  expect(validateCreatureStatBlock(wave)).toEqual([]);
+  for (const change of [{ shape: "sphere" }, { type: "melee" }, { reach: 0 }]) {
+    const invalid = structuredClone(wave);
+    Object.assign(
+      (invalid.attacks as Record<string, unknown>[]).find((a) => a.name === "Corruption Wave")!,
+      change,
+    );
+    expect(validateCreatureStatBlock(invalid).some((p) => p.includes("shape"))).toBe(true);
+  }
 });

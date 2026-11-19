@@ -5,7 +5,6 @@ import logging
 from livekit.agents.llm import ToolError
 
 import check_resolution_attack
-import combat_ability
 import combat_grapple
 import combat_resolution
 import combat_wrongdoing
@@ -18,6 +17,7 @@ from combat_action_availability import action_summary
 from combat_attack_roll import deserialize_roll as deserialize_roll
 from combat_attack_roll import roll_attack
 from combat_attack_roll import serialize_roll as serialize_roll
+from combat_condition_landing import _land_condition_on_one
 from combat_damage import apply_attack_result
 from condition_restrictions import cannot_act
 from session_data import CombatParticipant, CombatState, SessionData
@@ -77,6 +77,7 @@ async def _resolve_attack_packet(
     sink=None,
     publish_roll: bool = True,
     progress=None,
+    weapon_attack: bool = True,
 ) -> dict:
     if progress is not None and "damage_receipt" in progress.steps:
         attack_result, effective_ac = None, target.ac
@@ -90,6 +91,7 @@ async def _resolve_attack_packet(
             is_first_attack_of_combat=is_first_attack_of_combat,
             resolver=resolver,
             combat_state=combat_state,
+            weapon_attack=weapon_attack,
         )
     return await apply_rolled_attack(
         session,
@@ -158,9 +160,7 @@ async def apply_rolled_attack(
     ):
         if conditions.has_condition(target.conditions, "grappled"):
             summary["grapple_held"] = True
-        elif combat_ability._land_condition_on_one(
-            combat_state, target.id, attacker, "grappled", source=attacker.id, packet=summary
-        ):
+        elif _land_condition_on_one(combat_state, target.id, attacker, "grappled", source=attacker.id, packet=summary):
             summary["condition_inflicted"] = "grappled"
         else:
             summary["condition_immune"] = "grappled"

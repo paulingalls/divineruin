@@ -22,6 +22,7 @@ async def _choir_state(world, *, exposed=False):
     choir = _enemy("choir", 200)
     choir.creature_id = "hollow_choir"
     choir.action_pool = catalog["action_pool"]
+    choir.damage_affinities = catalog["damage_affinities"]
     choir.choir_reaction = catalog["choir_reaction"]
     state = _build_state(pid, pid, [choir])
     choir_encounter.initialize(state)
@@ -262,11 +263,14 @@ async def area_across_reload(world):
     choir = _enemy("choir", 200)
     choir.creature_id = "hollow_choir"
     choir.action_pool = catalog["action_pool"]
+    choir.damage_affinities = catalog["damage_affinities"]
     state = _build_state(host, host, [choir])
     companion = _player("ally_companion")
     companion.type = "companion"
     state.participants[1:1] = [_player(guest), companion]
     target_ids = [host, guest, companion.id, choir.id]
+    # An area action never includes its source (choir_actions.require_targets): the Choir is spared.
+    area_ids = target_ids[:3]
     state.initiative_order = target_ids
     place_actors(state)
     session = world.ctx.userdata
@@ -291,9 +295,7 @@ async def area_across_reload(world):
         await call("resolve_phase")
         before = hp(session.combat_state)
         with (
-            patch(
-                "check_resolution.dice_roll", side_effect=[_d20(7), _d20(19), _d20(15), _d20(19), _d20(8), _d20(20)]
-            ) as dice,
+            patch("check_resolution.dice_roll", side_effect=[_d20(7), _d20(19), _d20(15), _d20(8), _d20(20)]) as dice,
             patch("combat_enemy_action.dice_roll", return_value=_damage_die(8)) as damage,
         ):
             first = (await call("resolve_phase"))["fate_offer"]
@@ -313,24 +315,19 @@ async def area_across_reload(world):
             restored = game_tools(fresh, resolve_phase, activate)
             third = (await restored("resolve_phase"))["fate_offer"]
             assert third["roller_id"] == companion.id
-            last = (await restored("activate", id="zhael_fates_thread", offer_id=third["offer_id"], keep="original"))[
-                "fate_offer"
-            ]
-            assert last["roller_id"] == choir.id
-            await restored("activate", id="zhael_fates_thread", offer_id=last["offer_id"])
-            result = await restored("activate", id="zhael_fates_thread", offer_id=last["offer_id"], keep="reroll")
-            assert dice.call_count == 6 and damage.call_count == 4
-        assert [target["target_id"] for target in result["packets"][0]["targets"]] == target_ids
-        assert hp(fresh.combat_state) == [initial - loss for initial, loss in zip(before, [8, 8, 4, 4], strict=True)]
+            await restored("activate", id="zhael_fates_thread", offer_id=third["offer_id"])
+            result = await restored("activate", id="zhael_fates_thread", offer_id=third["offer_id"], keep="reroll")
+            assert dice.call_count == 5 and damage.call_count == 3
+        assert [target["target_id"] for target in result["packets"][0]["targets"]] == area_ids
+        assert hp(fresh.combat_state) == [initial - loss for initial, loss in zip(before, [8, 8, 4, 0], strict=True)]
         source = required_player(fresh.combat_state, choir.id)
         assert source.action_ledger["cacophony"]["remaining"] == 0
-        assert has_condition(source.conditions, "deafened") and not has_condition(source.conditions, "stunned")
+        assert not has_condition(source.conditions, "deafened") and not has_condition(source.conditions, "stunned")
         assert [
             entry["roll"] for entry in published_payloads(session.room) if entry.get("roll_type") == "saving_throw"
         ] == [
             7,
             15,
-            19,
             20,
         ]
         assert has_condition(required_player(fresh.combat_state, guest).conditions, "stunned")

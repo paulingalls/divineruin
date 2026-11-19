@@ -116,6 +116,9 @@ class TestQueryAbilities:
         assert catalog, "ability catalog walk produced no rows"
         emitted_ids = set()
         state = _solo_player_state()
+        state.participants.append(CombatParticipant("foe", "Foe", "enemy", 5, 100, 100, 10))
+        state.initiative_order.append("foe")
+        place_actors(state)
 
         archetype_ids = {ability.archetype_id for ability in catalog.values()}
         for archetype_id in sorted(archetype_ids):
@@ -137,12 +140,16 @@ class TestQueryAbilities:
                     # spell-backed row (the prompt tells the DM to declare its spell_id) acceptance
                     # alone certifies nothing: a row naming no real spell would pass here and blow up
                     # at resolution instead. Pin the id on the spell catalog the cast path reads.
+                    declaration = {"type": "ability", "action": action}
                     if "spell_id" in row:
-                        spells.get_spell(row["spell_id"])
+                        spell = spells.get_spell(row["spell_id"])
+                        if spell.combat_damage:
+                            declaration["target_id"] = "foe"
+                            declaration["argument_type"] = next(iter(spell.combat_damage.get("choices", [])), "")
                     try:
                         advance_combat_phase(
                             state,
-                            {"test_player": {"type": "ability", "action": action}},
+                            {"test_player": declaration},
                         )
                     except ValueError:
                         gate_accepted = False

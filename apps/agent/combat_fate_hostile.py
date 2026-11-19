@@ -6,7 +6,14 @@ import check_resolution_attack
 import combat_wrongdoing
 import zhael_fate
 from combat_action_availability import begin_execution
-from combat_attack_roll import attack_roll_inputs, promote_attack, record_beacon_attack, roll_attack, serialize_roll
+from combat_attack_roll import (
+    attack_roll_inputs,
+    promote_attack,
+    record_beacon_attack,
+    roll_attack,
+    serialize_roll,
+    spend_sneak_attack,
+)
 
 
 async def roll_hostile(session, state, head, declaration, action, contribution, packet_deps, fate_rolls):
@@ -27,7 +34,7 @@ async def roll_hostile(session, state, head, declaration, action, contribution, 
     elif fate_rolls is not None:
         candidates = await zhael_fate.candidates(session, queries=packet_deps["queries"], conn=packet_deps["conn"])
         if candidates.choices(attacker.id):
-            attacker_data, ac, attack_mod = attack_roll_inputs(attacker, target, ac_bonus, state)
+            attacker_data, ac, attack_mod = attack_roll_inputs(attacker, target, ac_bonus, state, action)
             prepared = check_resolution_attack.prepare_attack(
                 attacker_data, action, ac, attack_mod=attack_mod, target_conditions=target.conditions
             )
@@ -58,6 +65,7 @@ async def roll_hostile(session, state, head, declaration, action, contribution, 
             damage_mult=attacker.damage_mult,
             target_conditions=target.conditions,
         )
+        spend_sneak_attack(attacker, state, result)
         result = promote_attack(result, enemies_remaining, first_attack)
         effective_ac = prepared.d20.dc
         head.pop("fate_attack", None)

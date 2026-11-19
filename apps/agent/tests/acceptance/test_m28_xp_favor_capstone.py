@@ -244,12 +244,14 @@ async def test_a_rolled_back_stage_grants_and_publishes_nothing(reset_db_pool: s
     pool = await db.get_pool()
     primary = "cap_m28_rollback"
     try:
-        await _seed_hero(pool, primary, level=9, xp=_PRIMARY_SEED_XP, patron=_PATRON)
+        await _seed_hero(pool, primary, level=11, xp=4450, patron=_PATRON)
         await milestones.load_milestones()
         await db_mutations.set_player_quest(
             primary, _QUEST_ID, {"current_stage": _FINAL_STAGE - 1, "quest_name": "The Greyvale Anomaly"}
         )
 
+        before = await db_queries.get_player(primary)
+        assert before is not None
         ctx = make_context(player_id=primary, room=make_mock_room())
         with patch.object(db_mutations, "set_player_quest", AsyncMock(side_effect=RuntimeError("stage write failed"))):
             with pytest.raises(RuntimeError, match="stage write failed"):
@@ -257,7 +259,9 @@ async def test_a_rolled_back_stage_grants_and_publishes_nothing(reset_db_pool: s
 
         row = await db_queries.get_player(primary)
         assert row is not None
-        assert row["xp"] == _PRIMARY_SEED_XP, "a rolled-back stage must leave no XP behind"
+        assert row["attributes"] == before["attributes"]
+        assert "attribute_increases" not in row
+        assert row["xp"] == 4450, "a rolled-back stage must leave no XP behind"
         assert row["divine_favor"]["level"] == _FAVOR_START, "a rolled-back stage must leave no favor behind"
         assert published_payloads(ctx.userdata.room) == [], (
             "no reward cue may reach the client for a stage that never committed"

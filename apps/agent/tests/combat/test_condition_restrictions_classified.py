@@ -7,10 +7,12 @@ def _authored_restrictions() -> set[str]:
     return catalog | conditions._hollowed_effects(3)[1]
 
 
-def _authored_carriers(restriction: str) -> set[str]:
-    carriers = {name for name, spec in conditions.CONDITION_CATALOG.items() if restriction in spec.restrictions}
+def _authored_carriers(restriction: str) -> dict[str, int]:
+    carriers = {name: 1 for name, spec in conditions.CONDITION_CATALOG.items() if restriction in spec.restrictions}
     if restriction in conditions._hollowed_effects(3)[1]:
-        carriers.add("hollowed")
+        carriers["hollowed"] = next(
+            stage for stage in range(1, 4) if restriction in conditions._hollowed_effects(stage)[1]
+        )
     return carriers
 
 
@@ -27,7 +29,7 @@ def _assert_wait_metadata() -> None:
         if waits_on == "producer":
             assert set(metadata) == {"waits_on", "carriers"}, restriction
             carriers = metadata["carriers"]
-            assert isinstance(carriers, set) and carriers, restriction
+            assert isinstance(carriers, dict) and carriers, restriction
             assert all(isinstance(carrier, str) and carrier for carrier in carriers), restriction
             assert carriers == _authored_carriers(restriction), restriction
         elif waits_on == "model":

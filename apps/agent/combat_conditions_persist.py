@@ -2,7 +2,7 @@
 
 Combat's condition set is split by lifetime: phase-scoped instances (Prone/Stunned/…) die with the
 combat row, while persists_across_encounters ones (Wounded/Exhausted/Hollowed) and surviving
-beneficial dice have to land back in each member's own players.data row. That reconciliation is a
+single-use conditions have to land back in each member's own players.data row. That reconciliation is a
 self-contained concern with its own merge rules, so it lives here rather than in combat_end.
 """
 
@@ -44,7 +44,7 @@ def _conditions_changed(before: list[dict], after: list[dict]) -> bool:
 
 
 async def reconcile_member_conditions(player_part, *, conn) -> None:
-    """Reconcile one player participant's cross-encounter conditions + beneficial dice into THEIR
+    """Reconcile one player participant's cross-encounter conditions + single-use conditions into THEIR
     own players.data row (keyed on ``player_part.id`` == that member's player_id).
 
     The persists_across_encounters conditions acquired this fight (Wounded/Exhausted/Hollowed)
@@ -52,8 +52,7 @@ async def reconcile_member_conditions(player_part, *, conn) -> None:
     Combat only ACCRUES persistent conditions (rest clears them, a later milestone), so we union
     with the existing store rather than overwrite — else a fight would clobber a pre-combat Wounded.
 
-    The combat roster is authoritative for single-use dice (Blessed/Inspired). Replace saved
-    dice with the ones still present at combat end, including any granted during the fight.
+    The combat roster is authoritative for single-use conditions. Replace saved instances with the ones still present at combat end, including any granted during the fight.
     Round-based dice such as Battle Cry expire with the encounter.
     Broader OOC-condition reconciliation (Poisoned/Charmed) waits on an in-combat applier (M13).
 
@@ -61,13 +60,14 @@ async def reconcile_member_conditions(player_part, *, conn) -> None:
     no trace on the participant), but a change-gate skips the write when nothing moved."""
     acquired = [c for c in player_part.conditions if conditions.CONDITION_CATALOG[c["type"]].persists_across_encounters]
     surviving_buffs = [
-        c
-        for c in player_part.conditions
-        if (spec := conditions.CONDITION_CATALOG[c["type"]]).bonus_die is not None
-        and spec.clearance == "consumed_on_use"
+        c for c in player_part.conditions if conditions.CONDITION_CATALOG[c["type"]].clearance == "consumed_on_use"
     ]
     existing = await db_mutations_conditions.read_player_conditions(player_part.id, conn=conn)
-    existing_non_buff = [c for c in existing if conditions.CONDITION_CATALOG[c["type"]].bonus_die is None]
+    existing_non_buff = [
+        c
+        for c in existing
+        if (spec := conditions.CONDITION_CATALOG[c["type"]]).clearance != "consumed_on_use" and spec.bonus_die is None
+    ]
     reconciled = _merge_persistent_conditions(existing_non_buff, acquired) + surviving_buffs
     if _conditions_changed(existing, reconciled):
         await db_mutations_conditions.save_player_conditions(player_part.id, reconciled, conn=conn)

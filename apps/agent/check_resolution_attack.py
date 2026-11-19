@@ -56,7 +56,12 @@ class AttackResult:
     bonus_damage_type: str | None = None
     # Conditions spent by this attack. Downstream removes them even on a miss because the roll
     # consumed their benefit.
+    rider_damage: int = 0
+    rider_damage_type: str | None = None
+    rider_ignores_resistance: bool = False
     consumed_conditions: tuple[str, ...] = ()
+    sneak_attack_dice: str | None = None
+    sneak_attack_raw_damage: int = 0
     attack_disadvantage_source: str | None = None
 
 
@@ -92,6 +97,23 @@ def weapon_attribute_modifier(player_data: dict, weapon: dict) -> int:
 def attack_modifier(player_data: dict, weapon: dict) -> int:
     level = player_data.get("level", 1)
     return weapon_attribute_modifier(player_data, weapon) + proficiency_bonus(level)
+
+
+def attack_modes(attacker_data: dict, weapon: dict, target_conditions=()) -> tuple[bool, bool]:
+    effects = get_condition_effects(attacker_data.get("conditions") or [])
+    incoming_mode_advantage, incoming_disadvantage = incoming_attack_modes(target_conditions, ranged=_is_ranged(weapon))
+    disadvantage = (
+        "attack" in effects.disadvantage_scopes
+        or incoming_disadvantage
+        or attacker_data.get("attack_disadvantage_source") is not None
+    )
+    advantage = (
+        weapon.get("advantage") is True
+        or "attack" in effects.advantage_scopes
+        or incoming_advantage(target_conditions)
+        or incoming_mode_advantage
+    )
+    return advantage, disadvantage
 
 
 @dataclass(frozen=True)
@@ -151,7 +173,6 @@ def prepare_attack(
     # to-hit bonus and a damage multiplier the role-derived attacker carries (Elite +1/x1.25,
     # Boss +2/x1.5, Minion x0.75). They default to identity, so the player path is unchanged.
     effects = get_condition_effects(attacker_data.get("conditions") or [])
-    incoming_mode_advantage, incoming_disadvantage = incoming_attack_modes(target_conditions, ranged=_is_ranged(weapon))
     if "attack_source" in weapon and weapon["attack_source"] != "catalog":
         raise ValueError("invalid attack_source")
     catalog = weapon.get("attack_source") == "catalog"
@@ -159,16 +180,7 @@ def prepare_attack(
         raise ValueError("catalog attack requires integer to_hit")
     base_modifier = weapon["to_hit"] if catalog else attack_modifier(attacker_data, weapon)
     atk_mod = base_modifier + effects.check_modifier + attack_mod
-    disadvantage_source = attacker_data.get("attack_disadvantage_source")
-    attack_disadvantage = (
-        "attack" in effects.disadvantage_scopes or incoming_disadvantage or disadvantage_source is not None
-    )
-    attack_advantage = (
-        weapon.get("advantage") is True
-        or "attack" in effects.advantage_scopes
-        or incoming_advantage(target_conditions)
-        or incoming_mode_advantage
-    )
+    attack_advantage, attack_disadvantage = attack_modes(attacker_data, weapon, target_conditions)
     # Beneficial bonus die (M4.8 story-002): Blessed/Inspired add +1d4 to the TO-HIT roll (roll-kind
     # "attack"), folded into atk_mod BEFORE the d20 so it can turn a miss into a hit. Rolls nothing
     # when the attacker has no beneficial condition (existing seeded-rng attack tests unshifted).
@@ -187,7 +199,7 @@ def prepare_attack(
         )
     )
     d20 = D20Roll(atk_mod + bonus, target_ac, attack_advantage, attack_disadvantage)
-    return PreparedAttack(d20, d20.roll(rng), consumed, disadvantage_source)
+    return PreparedAttack(d20, d20.roll(rng), consumed, attacker_data.get("attack_disadvantage_source"))
 
 
 def finish_attack(
@@ -213,15 +225,27 @@ def finish_attack(
     bonus_damage = 0
     bonus_damage_type: str | None = None
 
+    rider_damage = 0
+    rider_damage_type = None
+    rider_ignores_resistance = False
+    sneak_attack_dice = None
+    sneak_attack_raw_damage = 0
     if hit:
         damage_notation = weapon.get("damage", "1d4")
-        damage_result = dice_roll(damage_notation, rng=rng)
-        damage = damage_result.total
-        if critical:
+        damage = dice_roll(damage_notation, rng=rng).total if damage_notation != "0" else 0
+        if critical and damage_notation != "0":
             crit_result = dice_roll(damage_notation, rng=rng)
             damage += crit_result.total
-        if weapon.get("attack_source") != "catalog":
+        if weapon.get("attack_source") != "catalog" and weapon.get("damage_attribute", True) and damage_notation != "0":
             damage += weapon_attribute_modifier(attacker_data, weapon)
+        if attacker_data.get("sneak_attack_available") and (
+            (prepared.d20.advantage and not prepared.d20.disadvantage)
+            or attacker_data.get("sneak_attack_adjacent_ally")
+        ):
+            count = 1 + (attacker_data.get("level", 1) - 1) // 4
+            sneak_attack_dice = f"{count * (2 if critical else 1)}d6"
+            sneak_attack_raw_damage = dice_roll(sneak_attack_dice, rng=rng).total
+            damage += sneak_attack_raw_damage
         # Condition damage modifier (M4.3): Enraged adds +2 damage. Applied once, like
         # the attribute mod, before the floor.
         damage += effects.damage_modifier
@@ -232,6 +256,21 @@ def finish_attack(
             bonus_damage = dice_roll(effects.bonus_damage_dice, rng=rng).total
             bonus_damage_type = effects.bonus_damage_type
             damage += bonus_damage
+        authored_bonus = weapon.get("bonus_damage")
+        if authored_bonus is not None:
+            if effects.bonus_damage_dice is not None:
+                raise ValueError("multiple bonus damage sources")
+            bonus_damage = dice_roll(authored_bonus["dice"], rng=rng).total
+            bonus_damage_type = authored_bonus["damage_type"]
+            damage += bonus_damage
+        on_hit = weapon.get("prepared_on_hit")
+        if on_hit is not None and "damage" in on_hit:
+            rider_damage = dice_roll(on_hit["damage"], rng=rng).total
+            rider_damage_type = on_hit["damage_type"]
+            rider_ignores_resistance = on_hit["ignores_resistance"]
+            damage += rider_damage
+        bonus_damage = int(bonus_damage * damage_mult)
+        rider_damage = int(rider_damage * damage_mult)
         # Role damage multiplier (M4.7, story-001): scale the FINAL accumulated total (weapon +
         # crit + attribute + condition + rider) before the floor, so overkill below is computed
         # from the scaled number and instant-death/never-heal semantics still hold.
@@ -277,6 +316,11 @@ def finish_attack(
         context=verdict.context,
         bonus_damage=bonus_damage,
         bonus_damage_type=bonus_damage_type,
+        rider_damage=rider_damage,
+        rider_damage_type=rider_damage_type,
+        rider_ignores_resistance=rider_ignores_resistance,
         consumed_conditions=prepared.consumed,
+        sneak_attack_dice=sneak_attack_dice,
+        sneak_attack_raw_damage=sneak_attack_raw_damage,
         attack_disadvantage_source=prepared.attack_disadvantage_source,
     )

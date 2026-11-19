@@ -100,7 +100,17 @@
     "regions": [
       "ashmark",
       "greyvale"
-    ]
+    ],
+    "damage_affinities": {
+      "resistant": [],
+      "immune": [
+        "poison"
+      ],
+      "vulnerable": [
+        "radiant",
+        "fire"
+      ]
+    }
   },
   {
     "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
@@ -210,7 +220,17 @@
     "regions": [
       "ashmark",
       "greyvale"
-    ]
+    ],
+    "damage_affinities": {
+      "resistant": [],
+      "immune": [
+        "poison"
+      ],
+      "vulnerable": [
+        "fire",
+        "radiant"
+      ]
+    }
   },
   {
     "terrains": ["ancient_forest", "forest", "grassland", "mountain"],
@@ -796,6 +816,19 @@
     "regions": [
       "thornveld",
       "greyvale"
+    ],
+    "damage_affinities": {
+      "resistant": [
+        "bludgeoning",
+        "piercing"
+      ],
+      "immune": [],
+      "vulnerable": [
+        "fire"
+      ]
+    },
+    "tags": [
+      "plant"
     ]
   },
   {
@@ -1169,11 +1202,19 @@
     "regions": [
       "keldaran_mountains",
       "underground"
-    ]
+    ],
+    "damage_affinities": {
+      "resistant": [
+        "acid"
+      ],
+      "immune": [],
+      "vulnerable": []
+    }
   },
   {
     "terrains": ["underground"],
     "id": "war_golem",
+    "resist_nonmagical_physical": true,
     "name": "War Golem",
     "category": "construct",
     "tier": 3,
@@ -1280,7 +1321,15 @@
     "regions": [
       "keldaran_mountains",
       "underground"
-    ]
+    ],
+    "damage_affinities": {
+      "resistant": [],
+      "immune": [
+        "poison",
+        "psychic"
+      ],
+      "vulnerable": []
+    }
   },
   {
     "terrains": ["coast", "wetland"],
@@ -1485,7 +1534,14 @@
     "home_region": "sunward_coast",
     "regions": [
       "sunward_coast"
-    ]
+    ],
+    "damage_affinities": {
+      "resistant": [],
+      "immune": [
+        "lightning"
+      ],
+      "vulnerable": []
+    }
   },
   {
     "terrains": ["underground"],
@@ -1593,6 +1649,7 @@
   {
     "terrains": ["underground"],
     "id": "deepstone_guardian",
+    "resist_nonmagical_physical": true,
     "name": "Deepstone Guardian",
     "category": "construct",
     "tier": 2,
@@ -1707,7 +1764,15 @@
     "regions": [
       "underground",
       "keldaran_mountains"
-    ]
+    ],
+    "damage_affinities": {
+      "resistant": [],
+      "immune": [
+        "poison",
+        "psychic"
+      ],
+      "vulnerable": []
+    }
   },
   {
     "terrains": ["ancient_forest", "forest", "mountain"],
@@ -1822,7 +1887,14 @@
       "thornveld",
       "keldaran_mountains",
       "greyvale"
-    ]
+    ],
+    "damage_affinities": {
+      "resistant": [
+        "cold"
+      ],
+      "immune": [],
+      "vulnerable": []
+    }
   },
   {
     "terrains": ["ancient_forest", "mountain", "wetland", "underground"],
@@ -2168,7 +2240,14 @@
     "regions": [
       "keldaran_mountains",
       "drathian_steppe"
-    ]
+    ],
+    "damage_affinities": {
+      "resistant": [],
+      "immune": [
+        "lightning"
+      ],
+      "vulnerable": []
+    }
   },
   {
     "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
@@ -2338,7 +2417,16 @@
       "ashmark",
       "greyvale",
       "underground"
-    ]
+    ],
+    "damage_affinities": {
+      "resistant": [],
+      "immune": [
+        "poison"
+      ],
+      "vulnerable": [
+        "radiant"
+      ]
+    }
   },
   {
     "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
@@ -2456,11 +2544,26 @@
       "ashmark",
       "greyvale",
       "underground"
-    ]
+    ],
+    "damage_affinities": {
+      "resistant": [],
+      "immune": [
+        "poison"
+      ],
+      "vulnerable": [
+        "slashing",
+        "piercing",
+        "bludgeoning",
+        "radiant"
+      ]
+    }
   },
   {
     "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
     "id": "hollow_knight",
+    "resist_nonmagical_physical": true,
+    "unholy_fortitude": {"save": "CON", "dc": 10, "increment": 5, "narration_cue": "The armor crashes down. Then it scrapes upright again."},
+    "multiattack_sequence": {"name": "Multiattack", "attacks": ["Corrupted Blade", "Corrupted Blade"]},
     "name": "Hollowed Knight",
     "category": "hollow",
     "tier": 3,
@@ -2485,6 +2588,8 @@
     "attacks": [
       {
         "name": "Corrupted Blade",
+        "bonus_damage": {"dice": "1d6", "damage_type": "necrotic"},
+        "critical_save": {"save": "CON", "dc": 14, "applies_condition": "hollowed", "stage": 1},
         "type": "melee",
         "reach": 5,
         "to_hit": 7,
@@ -2545,9 +2650,11 @@
       },
       {
         "name": "Dissolution Strike",
+        "kind": "prepare_attack",
+        "on_hit": {"damage": "3d6", "damage_type": "necrotic", "ignores_resistance": true},
         "description": "Next attack adds 3d6 necrotic and ignores resistance. On hit, 5 ft of ground becomes corrupted terrain for 1 minute.",
         "narration_cue": "",
-        "recharge": "5-6",
+        "recharge": {"kind": "roll", "die": 6, "threshold": 5},
         "audio": null
       },
       {
@@ -2603,10 +2710,30 @@
     "regions": [
       "ashmark",
       "underground"
-    ]
+    ],
+    "damage_affinities": {
+      "resistant": [],
+      "immune": [
+        "poison"
+      ],
+      "vulnerable": [
+        "radiant"
+      ]
+    }
   },
   {
-    "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
+    "terrains": [
+      "ancient_forest",
+      "forest",
+      "grassland",
+      "mountain",
+      "coast",
+      "wetland",
+      "underground",
+      "farmland",
+      "village",
+      "city"
+    ],
     "id": "hollow_veilrender",
     "name": "Veilrender",
     "category": "hollow",
@@ -2641,6 +2768,8 @@
       },
       {
         "name": "Corruption Wave",
+        "shape": "cone",
+        "duration": 1,
         "type": "area",
         "reach": 30,
         "to_hit": 0,
@@ -2658,14 +2787,14 @@
     "passives": [
       {
         "name": "Corruption Field",
-        "description": "Permanent 60 ft radius. Creatures starting turn inside take 1d4 necrotic (CON save DC 14 negates). Organic matter degrades; plants die, water darkens, stone becomes brittle.",
+        "description": "Permanent 60 ft radius. Non-Hollow creatures starting their turn inside take 1d4 necrotic (CON save DC 14 negates). Organic matter degrades; plants die, water darkens, stone becomes brittle.",
         "narration_cue": "",
         "recharge": null,
         "audio": null
       },
       {
         "name": "Regeneration",
-        "description": "Regains 10 HP at start of each turn. Radiant damage or Veil Ward suppresses for 1 round.",
+        "description": "Regains 10 HP at the start of each turn. Radiant damage suppresses its next turn only. Veil Ward suppresses every covered turn.",
         "narration_cue": "",
         "recharge": null,
         "audio": null
@@ -2679,7 +2808,7 @@
       },
       {
         "name": "Massive",
-        "description": "Cannot be grappled, restrained, or knocked prone by anything smaller than Huge. Occupies 15 ft \u00d7 15 ft.",
+        "description": "Cannot be grappled, restrained, or knocked prone by anything smaller than Huge. Occupies 15 ft × 15 ft.",
         "narration_cue": "",
         "recharge": null,
         "audio": null
@@ -2690,21 +2819,61 @@
         "name": "Reality Crush",
         "description": "20 ft radius centered on veilrender: DEX save DC 16. Failure: 4d8 force and prone; success: half damage, not prone. Ground cracks and structures collapse.",
         "narration_cue": "",
-        "recharge": "5-6",
-        "audio": null
+        "recharge": {
+          "kind": "roll",
+          "die": 6,
+          "threshold": 5
+        },
+        "audio": null,
+        "kind": "attack",
+        "type": "area",
+        "resolution": "save",
+        "save_success_damage": "half",
+        "reach": 20,
+        "save": "DEX",
+        "dc": 16,
+        "damage": "4d8",
+        "damage_type": "force",
+        "conditions_on_failure": [
+          {
+            "applies_condition": "prone",
+            "duration": null
+          }
+        ],
+        "conditions_on_success": []
       },
       {
         "name": "Corruption Pulse",
         "description": "60 ft radius: CON save DC 16. Failure: 3d6 necrotic and Stage 1 Hollowed; success: half, no Hollowed.",
         "narration_cue": "",
-        "recharge": "1/encounter",
-        "audio": null
+        "recharge": {
+          "kind": "encounter",
+          "uses": 1
+        },
+        "audio": null,
+        "kind": "attack",
+        "type": "area",
+        "resolution": "save",
+        "save_success_damage": "half",
+        "reach": 60,
+        "save": "CON",
+        "dc": 16,
+        "damage": "3d6",
+        "damage_type": "necrotic",
+        "conditions_on_failure": [
+          {
+            "applies_condition": "hollowed",
+            "duration": null,
+            "stage": 1
+          }
+        ],
+        "conditions_on_success": []
       }
     ],
     "reactions": [
       {
         "name": "Absorb Magic",
-        "description": "When targeted by a spell, absorb it: no effect, and regain HP equal to Focus cost \u00d7 3. Radiant spells bypass this.",
+        "description": "When targeted by a spell, absorb it: no effect, and regain HP equal to Focus cost × 3. Radiant spells bypass this.",
         "narration_cue": "",
         "recharge": null,
         "audio": null
@@ -2735,7 +2904,7 @@
       "attack_cue": "A vast thud presses down as the mass falls forward. The air muffles your scream.",
       "wounded_cue": "A crack snaps across its surface, followed by a low grinding sound as the gap seals again.",
       "death_cue": "A deep groan swallows the field. Silence hangs over the hollow it leaves in the earth.",
-      "ambient_cue": "A low hum presses beneath conversation. Your companion\u2019s voice sounds distant at arm\u2019s length."
+      "ambient_cue": "A low hum presses beneath conversation. Your companion’s voice sounds distant at arm’s length."
     },
     "audio": {
       "ambient": "HLW-002 heavy subsonic drone and acoustic distortion",
@@ -2749,7 +2918,28 @@
     "home_region": "ashmark",
     "regions": [
       "ashmark"
-    ]
+    ],
+    "damage_affinities": {
+      "resistant": [],
+      "immune": [
+        "poison"
+      ],
+      "vulnerable": [
+        "radiant"
+      ]
+    },
+    "corruption_field": {
+      "save": "CON",
+      "dc": 14,
+      "damage": "1d4",
+      "damage_type": "necrotic"
+    },
+    "regeneration": {
+      "hp": 10,
+      "narration_cue": "Grinding stone seals the wound. The mass knits itself whole.",
+      "suppressed_cue": "The grinding stops. Its wounds stay open.",
+      "resumed_cue": "The low grinding returns. Its wounds begin to close again."
+    }
   },
   {
     "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
@@ -2969,7 +3159,25 @@
     "home_region": "ashmark",
     "regions": [
       "ashmark"
-    ]
+    ],
+    "damage_affinities": {
+      "resistant": [],
+      "immune": [
+        "acid",
+        "bludgeoning",
+        "cold",
+        "fire",
+        "lightning",
+        "necrotic",
+        "piercing",
+        "poison",
+        "slashing"
+      ],
+      "vulnerable": [
+        "psychic",
+        "radiant"
+      ]
+    }
   },
   {
     "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
@@ -3116,7 +3324,17 @@
     "home_region": "ashmark",
     "regions": [
       "ashmark"
-    ]
+    ],
+    "damage_affinities": {
+      "resistant": [],
+      "immune": [
+        "poison"
+      ],
+      "vulnerable": [
+        "radiant",
+        "fire"
+      ]
+    }
   },
   {
     "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
@@ -3288,7 +3506,16 @@
     "home_region": "ashmark",
     "regions": [
       "ashmark"
-    ]
+    ],
+    "damage_affinities": {
+      "resistant": [],
+      "immune": [
+        "poison"
+      ],
+      "vulnerable": [
+        "radiant"
+      ]
+    }
   },
   {
     "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
@@ -3389,7 +3616,16 @@
       "special": {}
     },
     "loot_table_id": "loot_hollow_rend",
-    "xp_reward": 125
+    "xp_reward": 125,
+    "damage_affinities": {
+      "resistant": [],
+      "immune": [
+        "poison"
+      ],
+      "vulnerable": [
+        "radiant"
+      ]
+    }
   },
   {
     "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
@@ -3480,7 +3716,17 @@
       "special": {}
     },
     "loot_table_id": "loot_hollow_drift",
-    "xp_reward": 40
+    "xp_reward": 40,
+    "damage_affinities": {
+      "resistant": [],
+      "immune": [
+        "poison"
+      ],
+      "vulnerable": [
+        "radiant",
+        "fire"
+      ]
+    }
   },
   {
     "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
@@ -3588,7 +3834,16 @@
       }
     },
     "loot_table_id": "loot_hollow_warden",
-    "xp_reward": 200
+    "xp_reward": 200,
+    "damage_affinities": {
+      "resistant": [],
+      "immune": [
+        "poison"
+      ],
+      "vulnerable": [
+        "radiant"
+      ]
+    }
   },
   {
     "terrains": ["grassland", "farmland"],
@@ -4143,6 +4398,16 @@
     "regions": [
       "ashmark",
       "greyvale"
-    ]
+    ],
+    "damage_affinities": {
+      "resistant": [],
+      "immune": [
+        "poison"
+      ],
+      "vulnerable": [
+        "radiant",
+        "fire"
+      ]
+    }
   }
 ]

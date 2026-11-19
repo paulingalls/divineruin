@@ -371,11 +371,11 @@ async def test_choir_area_spends_when_declared_target_falls():
         patch("combat_enemy_action.dice_roll", return_value=SimpleNamespace(total=12)),
     ):
         result = await _resolve_one_packet(make_context().userdata, state, packet, **deps())
-        assert result["resolved"] and actor.hp_current == 94
+        assert result["resolved"] and actor.hp_current == 100
         assert actor.action_ledger["cacophony"]["remaining"] == 0
         state = CombatState.from_dict(state.to_dict())
         assert not (await _resolve_one_packet(make_context().userdata, state, packet, **deps()))["resolved"]
-        assert saves.call_count == 1
+        assert saves.call_count == 0
 
 
 @pytest.mark.parametrize("condition,fallen", [("deafened", False), (None, True)])

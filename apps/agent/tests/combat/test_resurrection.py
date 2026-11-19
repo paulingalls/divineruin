@@ -245,6 +245,7 @@ class TestCombatEndDefeatWiring:
             "xp_by_player": {},
             "item_recipients": [],
             "milestone_grants": [],
+            "attribute_increases": [],
             "specialization_fork": False,
             "defeated_enemies": [],
             "weapon_durability": {},

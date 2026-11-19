@@ -25,10 +25,11 @@
   {
     "name": "combat",
     "tests": [
-      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:catalog_action_runtime|catalog_combat_translation|catalog_encounter_cutover|zhael_fate_commands|choir_.*|combat_spatial_entry|fallen_melee_failures|first_blood_atomicity|generated_combat(?:_movement)?|mawling_.*|m(?:12|13|41|42|43|44|47|48)_.*)\\.py"
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:spell_damage_commit|catalog_action_runtime|catalog_combat_translation|catalog_encounter_cutover|zhael_fate_commands|choir_.*|combat_spatial_entry|hollow_troops_fight|hollowed_knight_fight|veilrender_fight|veilrender_absorb_commit|fallen_melee_failures|first_blood_atomicity|generated_combat(?:_movement)?|mawling_.*|m(?:12|13|41|42|43|44|47|48)_.*)\\.py"
     ],
     "owns": [
-      "apps/agent/(?:combat[^/]*|choir[^/]*|encounter[^/]*|durability[^/]*|damage[^/]*|death[^/]*|enemy[^/]*|initiative[^/]*|reaction[^/]*|monster[^/]*)\\.py"
+      "apps/agent/(?:combat[^/]*|choir[^/]*|encounter[^/]*|durability[^/]*|damage[^/]*|death[^/]*|enemy[^/]*|initiative[^/]*|reaction[^/]*|monster[^/]*)\\.py",
+      "apps/agent/(?:spells|declaration_payloads|action_contracts|creature_combat_effects)\\.py"
     ],
     "reads": [
       "content/action_sounds.json",
@@ -78,7 +79,7 @@
   {
     "name": "progression",
     "tests": [
-      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:patron_alignment_session|archetype_chassis|mentor_gating_e2e|mentor_variants|milestone_progression|spell_acquisition|m28_xp_favor_capstone|story_005_m22_ability_capstone)\\.py"
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:attribute_increase_commit|patron_alignment_session|archetype_chassis|mentor_gating_e2e|mentor_variants|milestone_progression|spell_acquisition|m28_xp_favor_capstone|story_005_m22_ability_capstone)\\.py"
     ],
     "owns": [
       "apps/agent/(?:unbound_autonomy|alignment_heartbeat|archetyp[^/]*|role_archetypes|progression[^/]*|mentor[^/]*|milestone[^/]*|level[^/]*|xp[^/]*|favor[^/]*|training[^/]*)\\.py"
@@ -322,7 +323,7 @@
   {
     "name": "catalog-seeding",
     "tests": [
-      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:content_catalog_endpoint|creature_catalog|creature_terrains|seed_atomic|seed_content_cache)\\.py"
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:content_catalog_endpoint|encounter_templates_surface_entry|creature_catalog|creature_terrains|seed_atomic|seed_content_cache)\\.py"
     ],
     "owns": [
       "scripts/(?:seed[^/]*|catalog[^/]*)\\.py",

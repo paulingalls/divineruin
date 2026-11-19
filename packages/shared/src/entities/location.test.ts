@@ -53,6 +53,7 @@ const MILLHAVEN_IDS = ["millhaven", "millhaven_inn", "yanna_farmhouse"];
 const WILDERNESS_IDS = [
   "greyvale_ruins_exterior",
   "greyvale_wilderness_north",
+  "ashmark_corrupted_front",
   "greyvale_south_road",
   "thornveld_old_growth_grove",
   "keldaran_southern_pass",
@@ -67,8 +68,8 @@ const NON_SETTLEMENT_IDS = [...DUNGEON_IDS, ...WILDERNESS_IDS];
 const RESOURCE_RARITIES = ["common", "uncommon", "rare"];
 
 describe("locations.json — catalog cardinality", () => {
-  test("24 rows total", () => {
-    expect(catalog.length).toBe(24);
+  test("25 rows total", () => {
+    expect(catalog.length).toBe(25);
   });
 
   test("ids are unique", () => {

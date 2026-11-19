@@ -25,6 +25,9 @@ from query_tools import _query_info_impl
 
 TEMPLATES = json.loads((CONTENT_ROOT / "content/encounter_templates.json").read_text())
 LEVELS = {
+    "hollow_mawling_pack": 10,
+    "hollowmoth_swarm": 3,
+    "hollow_weaver_ambush": 10,
     "fragment_shadeling": 1,
     "shadeling_cluster": 1,
     "ruins_mawling_pair": 2,
@@ -37,6 +40,8 @@ LEVELS = {
     "cult_cell": 8,
     "hollow_corrupted_settlement": 14,
     "hollow_choir": 16,
+    "hollow_knight_boss": 14,
+    "hollow_veilrender_boss": 14,
 }
 MIGRATION = CONTENT_ROOT / "scripts/migrations/060_player_speed.sql"
 
@@ -129,7 +134,7 @@ async def test_created_and_migrated_speed_limits_movement(spatial_entry, migrate
 
 @pytest.mark.parametrize("template", TEMPLATES, ids=lambda row: row["id"])
 async def test_actual_catalog_entry_persists_placement_and_zone_ids(spatial_entry, template, mock_combat_agent_factory):
-    assert len(TEMPLATES) == 12 and {row["id"] for row in TEMPLATES} == set(LEVELS)
+    assert len(TEMPLATES) == 17 and {row["id"] for row in TEMPLATES} == set(LEVELS)
     assert any(row["scene_placement"]["zones"] for row in TEMPLATES)
     assert template["recommended_party_level"] == LEVELS[template["id"]]
     ctx, response = await spatial_entry(members=2, companion="companion_tam", encounter=template["id"])
@@ -339,7 +344,7 @@ async def test_corrupt_pending_and_held_destination_refuses_before_roll(spatial_
 
 
 def test_spatial_contract_parity_has_nonempty_floor():
-    assert len(TEMPLATES) == 12
+    assert len(TEMPLATES) == 17
     assert any(row["scene_placement"]["zones"] for row in TEMPLATES)
     cases = []
     for row in TEMPLATES:

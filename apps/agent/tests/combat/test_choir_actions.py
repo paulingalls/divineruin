@@ -48,14 +48,15 @@ async def test_memory_scream_save_negates(success):
     ):
         result = await _resolve_one_packet(make_context().userdata, state, packet, **d)
     assert result["resolved"]
-    assert saved.call_count == 2
+    assert saved.call_count == 1
     assert all(not t["half_on_success"] and not t["damage_halved"] for t in result["targets"])
     assert all(call.args[1:3] == ("WIS", 18) for call in saved.call_args_list)
     assert all(call.args == ("3d8",) for call in damage_rolls.call_args_list)
     assert not d["resolver"].resolve_attack.called
     assert state.participants[0].hp_current == (25 if success else 13)
-    assert actor.hp_current == (100 if success else 88)
-    for target in state.participants:
+    assert actor.hp_current == 100
+    assert actor.conditions == []
+    for target in [state.participants[0]]:
         assert any(c["type"] == "stunned" for c in target.conditions) is not success
 
 
@@ -161,7 +162,8 @@ async def test_cacophony_branch_conditions(success):
     ):
         result = await _resolve_one_packet(make_context().userdata, state, packet, **d)
     assert result["resolved"] and not d["resolver"].resolve_attack.called
-    for target, hp in [(actor, 100), (state.participants[0], 25)]:
+    assert actor.hp_current == 100 and actor.conditions == []
+    for target, hp in [(state.participants[0], 25)]:
         assert target.hp_current == hp - (6 if success else 12)
         assert {c["type"] for c in target.conditions} == ({"deafened"} if success else {"deafened", "stunned"})
         assert next(c for c in target.conditions if c["type"] == "deafened")["duration"] == 10
@@ -192,7 +194,7 @@ async def test_choir_range_target_boundaries(distance, included):
     ):
         await _resolve_one_packet(make_context().userdata, state, packet, **d)
     assert state.participants[0].hp_current == (13 if included else 25)
-    assert actor.hp_current == 88
+    assert actor.hp_current == 100
 
 
 @pytest.mark.parametrize("hit,success", [(False, False), (True, True), (True, False)])
@@ -414,7 +416,8 @@ async def test_melody_pending_move_single_speed(kind):
     if kind == "defend":
         assert result["declaration_type"] == kind and result["ac_bonus"] == 2
     else:
-        assert "hit" in result
+        assert result["attack_resolved"] is False and not result["closed_distance"]
+        assert "speed" in result["reason"]
     assert spatial_record(state)["positions"][target.id]["x"] == 30
     state = CombatState.from_dict(state.to_dict())
     move = Declaration(
@@ -433,7 +436,8 @@ async def test_melody_source_damage_owner_clears_movement(damage, same_source):
     import copy
 
     from choir_effects import approach
-    from combat_damage import SaveDamageResult, apply_attack_result
+    from combat_damage import apply_attack_result
+    from combat_damage_results import SaveDamageResult
 
     state, actor, _packet = setup(SCREAM)
     target = state.participants[0]

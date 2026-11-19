@@ -4,6 +4,7 @@ from dataclasses import asdict, replace
 
 import check_resolution_attack
 import combat_marks
+import combat_spatial
 import condition_voice_rules
 import conditions
 from dramatic import DramaticContext, evaluate_dramatic_context
@@ -21,9 +22,12 @@ def roll_attack(
     is_first_attack_of_combat: bool = False,
     resolver=check_resolution_attack,
     combat_state=None,
+    weapon_attack: bool = True,
 ) -> tuple:
     """Roll without applying HP changes; held reactions pause before impact."""
-    attacker_data, effective_ac, attack_mod = attack_roll_inputs(attacker, target, target_ac_bonus, combat_state)
+    attacker_data, effective_ac, attack_mod = attack_roll_inputs(
+        attacker, target, target_ac_bonus, combat_state, action, weapon_attack=weapon_attack
+    )
     attack_result = resolver.resolve_attack(
         attacker_data,
         action,
@@ -33,17 +37,39 @@ def roll_attack(
         attack_mod=attack_mod,
         damage_mult=attacker.damage_mult,
     )
+    spend_sneak_attack(attacker, combat_state, attack_result)
 
     return promote_attack(attack_result, enemies_remaining, is_first_attack_of_combat), effective_ac
 
 
-def attack_roll_inputs(attacker, target, target_ac_bonus, combat_state):
+def attack_roll_inputs(attacker, target, target_ac_bonus, combat_state, action, *, weapon_attack=True):
+    """The attacker data, effective AC and to-hit bonus a d20 attack is prepared from.
+
+    Only reads state: a rogue's Sneak Attack allowance is offered here and spent by
+    ``spend_sneak_attack`` after the attack is finished, so a held roll never spends it early."""
     attacker_data = {
         "attributes": attacker.attributes,
         "level": attacker.level,
         "conditions": attacker.conditions,
     }
 
+    if weapon_attack and attacker.type == "player" and attacker.archetype_id == "rogue":
+        if combat_state is None:
+            raise ValueError("rogue weapon attack requires combat state")
+        attacker_data["sneak_attack_available"] = attacker.sneak_attack_round != combat_state.round_number
+        advantage, disadvantage = check_resolution_attack.attack_modes(attacker_data, action, target.conditions)
+        if attacker_data["sneak_attack_available"] and not (advantage and not disadvantage):
+            spatial = combat_spatial.require_spatial(combat_state)
+            attacker_data["sneak_attack_adjacent_ally"] = any(
+                ally.id not in (attacker.id, target.id)
+                and ally.is_ally
+                and not ally.is_fallen
+                and not ally.is_dead
+                and combat_spatial.inside(
+                    combat_spatial.position(spatial, ally.id), combat_spatial.position(spatial, target.id), 5
+                )
+                for ally in combat_state.participants
+            )
     attacker_data = condition_voice_rules.roll_data(attacker_data, combat_state, attacker.id)
     target_condition_ac = conditions.get_condition_effects(target.conditions).ac_modifier
     effective_ac = target.ac + target_ac_bonus + target_condition_ac
@@ -57,6 +83,12 @@ def attack_roll_inputs(attacker, target, target_ac_bonus, combat_state):
         ):
             attacker_data["attack_disadvantage_source"] = BEACON
     return attacker_data, effective_ac, attack_mod
+
+
+def spend_sneak_attack(attacker, combat_state, attack_result) -> None:
+    """Mark this round's Sneak Attack used once a finished attack actually added its dice."""
+    if combat_state is not None and attack_result.sneak_attack_dice is not None:
+        attacker.sneak_attack_round = combat_state.round_number
 
 
 def record_beacon_attack(combat_state, attacker, target, attack_result: check_resolution_attack.AttackResult) -> None:
@@ -97,7 +129,7 @@ def deserialize_roll(data: dict) -> tuple:
 
 
 def build_attack_dice_roll_payload(attacker, attack_result) -> dict:
-    return {
+    payload = {
         "roll_type": "attack",
         "attacker": attacker.name,
         "roll": attack_result.roll,
@@ -110,6 +142,13 @@ def build_attack_dice_roll_payload(attacker, attack_result) -> dict:
         "dramatic": attack_result.dramatic,
         "context": attack_result.context,
     }
+    if attack_result.sneak_attack_dice is not None:
+        payload.update(
+            damage_type=attack_result.damage_type,
+            sneak_attack_dice=attack_result.sneak_attack_dice,
+            sneak_attack_raw_damage=attack_result.sneak_attack_raw_damage,
+        )
+    return payload
 
 
 def held_reaction_ac(head: dict) -> int:

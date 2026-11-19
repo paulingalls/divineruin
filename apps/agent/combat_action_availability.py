@@ -54,6 +54,7 @@ def action_summary(actor):
                 if a not in actions
                 else None,
             }
+            | ({"shape": a["shape"], "reach": a["reach"], "aim": "declared participant"} if "shape" in a else {})
             | item_rider_facts(a)
             for a in actor.action_pool
         ],
@@ -142,9 +143,10 @@ def begin_execution(state, actor, action, declaration, head=None):
         and (not action.get("applies_condition") or action.get("damage") not in (None, "", "0", 0))
     )
     if attack_roll and actor.pending_preparation is not None:
-        executed["advantage"] = True
         executed["prepared_on_hit"] = actor.pending_preparation["on_hit"]
-        actor.pending_preparation = None
+        if "damage" not in executed["prepared_on_hit"]:
+            executed["advantage"] = True
+            actor.pending_preparation = None
     if head is not None and "execution_id" not in head:
         head["execution_id"] = uuid4().hex
     receipt = {

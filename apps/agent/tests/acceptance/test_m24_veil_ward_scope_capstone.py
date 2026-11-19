@@ -59,6 +59,15 @@ async def _equip_weapon(pool, player_id: str) -> None:
     )
 
 
+async def _outlast_fireballs(ctx, pool):
+    """Fireball lands real damage (3d6 a cast); give the wisp HP to outlast every cast the test makes."""
+    state = ctx.userdata.combat_state
+    enemy = next(p for p in state.participants if p.type == "enemy")
+    enemy.hp_max = enemy.hp_current = 500
+    await db_mutations.save_combat_state(state.combat_id, state.to_dict(), conn=pool)
+    return enemy
+
+
 async def test_ward_raised_by_one_member_halves_every_caster_in_the_encounter(reset_db_pool: str) -> None:
     pool = await db.get_pool()
     a, b = "cap_m24_ac1_cleric", "cap_m24_ac1_mage"
@@ -82,7 +91,7 @@ async def test_ward_raised_by_one_member_halves_every_caster_in_the_encounter(re
     raw = await combat_init._start_combat_impl(ctx, "hollow_wisp", "A hollow wisp coalesces from the drift.")
     assert isinstance(raw, tuple)  # hostile encounter -> combat handoff
     cs = ctx.userdata.combat_state
-    enemy = next(p for p in cs.participants if p.type == "enemy")
+    enemy = await _outlast_fireballs(ctx, pool)
 
     def _cast_decls() -> dict:
         return {
@@ -283,7 +292,7 @@ async def test_anchor_survives_wrap_beats_and_expires_on_the_world_clock(reset_d
     assert isinstance(raw, tuple)
     assert ctx.userdata.combat_state.veil_ward is None  # no encounter ward raised
     combat_id = ctx.userdata.combat_state.combat_id
-    enemy = next(p for p in ctx.userdata.combat_state.participants if p.type == "enemy")
+    enemy = await _outlast_fireballs(ctx, pool)
 
     for _ in range(3):
         decls = {
@@ -313,7 +322,7 @@ async def test_anchor_survives_wrap_beats_and_expires_on_the_world_clock(reset_d
         enemy.id: {"type": "attack", "action": enemy.action_pool[0]["name"], "target_id": player_id},
     }
     await combat_turn._declare_phase_impl(ctx, decls)
-    result = await _resolve_round(ctx, resolver=_damage_resolver(22))
+    result = await _resolve_round(ctx, resolver=_damage_resolver(500))
     assert isinstance(result, tuple)
     assert ctx.userdata.combat_state is None
 

@@ -11,6 +11,7 @@ state and write through injected mutation/query modules, but own no transaction.
 import combat_fate
 import combat_maneuver
 import combat_marks
+import combat_melee_approach
 import combat_recharge
 import combat_spatial_declarations
 import combat_voice_rules
@@ -39,7 +40,34 @@ from encounter_actions import action_kind
 from session_data import SessionData
 
 
-async def _resolve_one_packet(
+async def _resolve_one_packet(session, state, packet, **deps) -> dict:
+    from combat_veilrender import turn_start
+
+    progress = deps.get("progress")
+    steps = progress.steps if progress is not None else {}
+    # Turn-start effects run once per round; a Zhael-held packet keeps them for its resumed summary.
+    effects = steps.pop("turn_start_effects", None)
+    if not effects:
+        effects = await turn_start(
+            session,
+            state,
+            state.get_participant(packet.actor_id),
+            **{**deps, "progress": progress.scope("veilrender") if progress is not None else None},
+        )
+        if effects is None:
+            return {}
+    result = await _resolve_action_packet(session, state, packet, **deps)
+    if progress is not None and progress.paused:
+        if effects:
+            attack_cursor = deps.get("attack_cursor")
+            (attack_cursor if attack_cursor else steps)["turn_start_effects"] = effects
+        return result
+    if effects:
+        result["turn_start_effects"] = effects
+    return result
+
+
+async def _resolve_action_packet(
     session: SessionData,
     state,
     packet,
@@ -60,6 +88,7 @@ async def _resolve_one_packet(
     mark_cancelled: bool = False,
     publish_roll: bool = True,
     _held_head=None,
+    _melee_approach=None,
     attack_cursor=None,
     progress=None,
 ) -> dict:
@@ -152,6 +181,8 @@ async def _resolve_one_packet(
         else None
     )
 
+    movement = {}
+    movement_budget = {}
     if action is not None:
         replay = _held_head is not None and replay_valid(state, _held_head, attacker, action, decl)
         pending_execution = any(
@@ -181,13 +212,24 @@ async def _resolve_one_packet(
                 head=_held_head,
             )
         target = state.get_participant(decl.target_id) if decl.target_id else None
+        if target is not None and not target_unavailable(target, action):
+            # Move before any roll is prepared, and only once: a held head carries its approach, and a
+            # Zhael-held ally swing resumes through its attack cursor, never back through here.
+            if _melee_approach is not None:
+                movement = _melee_approach
+            else:
+                movement = combat_melee_approach.prepare(state, attacker, target, action, movement_budget)
+            if movement.get("attack_resolved") is False:
+                return movement
         if replay:
             assert _held_head is not None
             action = _held_head["executed_action"]
         elif (
             target is not None
             and not target_unavailable(target, action)
-            and not (action.get("resolution") == "save" and action.get("type") == "area")
+            and not (
+                (action.get("resolution") == "save" or action.get("shape") == "cone") and action.get("type") == "area"
+            )
             and (
                 decl.type is DeclarationType.ATTACK
                 or action.get("applies_condition")
@@ -199,7 +241,7 @@ async def _resolve_one_packet(
     if (
         not attacker.is_ally
         and action is not None
-        and action.get("resolution") == "save"
+        and (action.get("resolution") == "save" or action.get("shape") == "cone")
         and action.get("type") == "area"
     ):
         from choir_actions import resolve_area
@@ -240,7 +282,7 @@ async def _resolve_one_packet(
             publish_roll=publish_roll,
         )
         if enemy_summary is not None:
-            return enemy_summary
+            return {**movement, **enemy_summary}
 
     if decl.type is DeclarationType.ABILITY:
         # (Enemy condition-infliction ABILITY is handled by the type-agnostic branch above, which
@@ -350,4 +392,6 @@ async def _resolve_one_packet(
         shield_reaction=shield_reaction,
         grapple_blocked=grapple_blocked,
         publish_roll=publish_roll,
+        movement=movement,
+        movement_budget=movement_budget,
     )

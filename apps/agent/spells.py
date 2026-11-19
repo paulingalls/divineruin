@@ -92,6 +92,7 @@ class Spell:
     sound_id: str = ""
     combat_aid: bool = False
     healing: bool = False
+    combat_damage: dict | None = None
 
 
 # Module-level runtime-loaded spells, keyed by spell id. Populated by load_spells()
@@ -112,6 +113,8 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
     ignored, so the loader stays forward-compatible for future schema additions. Generic
     field validation reuses the shared catalog_parse primitives.
     """
+    from combat_spell_profile import parse_profile
+
     try:
         source = data["source"]
         if source not in _SPELL_SOURCES:
@@ -158,6 +161,7 @@ def parse_spell_row(spell_id: str, data: dict) -> Spell:
             applies_condition=applies_condition,
             max_targets=max_targets,
             sound_id=sound_id,
+            combat_damage=parse_profile(data.get("combat_damage")),
         )
     except (KeyError, TypeError) as e:
         raise ValueError(f"Malformed spells row {spell_id!r}: {e}") from e
@@ -176,20 +180,18 @@ def validate_target_count(spell: "Spell | Ability", target_ids: list[str]) -> No
 
 
 def normalize_target_list(spell: "Spell | Ability", target_id: str | None, target_ids: list[str]) -> list[str]:
-    """Normalize + validate a multi-target cast's ally list (M4.8 story-007) — the targeting SSOT.
-    Accepts a Spell OR a condition-applying Ability (story-016): both expose .id/.name/.max_targets.
+    """Validate explicit recipients, retaining repeated projectile assignments.
 
-    Order, all BEFORE any resource write: reject ambiguous both-args -> order-preserving dedup ->
-    reject empty -> reject a spell with no ``max_targets`` (single-target only; this also closes the
-    revival Hollow-gate bypass) -> enforce the cap. Raises ValueError (the tool boundary converts to a
-    DM-narratable ToolError) so an invalid cast is refused before Focus/Resonance is touched. Returns
-    the deduped list to apply."""
+    Refusing uncapped non-recipient spells closes the revival Hollow-gate bypass; validate before any resource write.
+    """
     if target_id is not None:
         raise ValueError("pass target_id OR target_ids, not both")
-    deduped = list(dict.fromkeys(target_ids))
+    profile = getattr(spell, "combat_damage", None) or {}
+    spec = profile.get("recipients", {})
+    deduped = list(target_ids) if spec.get("shape") == "projectiles" else list(dict.fromkeys(target_ids))
     if not deduped:
         raise ValueError("name at least one ally")
-    if spell.max_targets is None:
+    if spell.max_targets is None and not spec:
         raise ValueError(f"{spell.name} does not support multiple targets")
     validate_target_count(spell, deduped)
     return deduped

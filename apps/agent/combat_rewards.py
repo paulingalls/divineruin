@@ -70,6 +70,7 @@ class XpGrant:
     summary_xp_granted: int = 0
     granted_by_player: dict[str, int] = field(default_factory=dict)
     milestone_grants: list[dict] = field(default_factory=list)
+    attribute_increases: list[dict] = field(default_factory=list)
     specialization_fork: bool = False
     leveled_up: bool = False
 
@@ -325,6 +326,7 @@ async def distribute_xp(
             mutations=mutations,
             **core_kwargs,
         )
+        grant.attribute_increases.extend(outcome.attribute_increases)
         grant.granted_by_player[pid] = share
         if pid == recipient_id:
             grant.xp_granted = share

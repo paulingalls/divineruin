@@ -1,7 +1,15 @@
 import {
+  validateTurnTraits,
+  type CorruptionField,
+  type Regeneration,
+} from "./creature_turn_traits";
+import { validateCreatureTraits, type DamageAffinities } from "./creature_damage_affinity";
+import {
   validateActionExtensions,
   validateRecharge,
   type Recharge,
+  type DamageRider,
+  type CriticalSave,
   type DurabilityRider,
   type ChoirEffect,
 } from "./action_contracts";
@@ -24,6 +32,17 @@ export interface CreatureStatBlock {
   id: string;
   name: string;
   category: "hollow" | "beast" | "humanoid" | "construct" | "undead" | "elemental";
+  corruption_field?: CorruptionField;
+  regeneration?: Regeneration;
+  damage_affinities?: DamageAffinities;
+  resist_nonmagical_physical?: boolean;
+  unholy_fortitude?: {
+    save: CriticalSave["save"];
+    dc: number;
+    increment: number;
+    narration_cue: string;
+  };
+  tags?: "plant"[];
   tier: 1 | 2 | 3 | 4;
   home_region: RegionId | "multi_region";
   regions: RegionId[];
@@ -68,11 +87,14 @@ export interface CreatureStatBlock {
 }
 
 export interface Attack {
+  magical?: boolean;
+  bonus_damage?: DamageRider;
+  critical_save?: CriticalSave;
   durability_rider?: DurabilityRider;
   resolution?: "save" | "hit_then_save";
   save_success_damage?: "none" | "half";
-  conditions_on_failure?: { applies_condition: string; duration: number }[];
-  conditions_on_success?: { applies_condition: string; duration: number }[];
+  conditions_on_failure?: { applies_condition: string; duration: number | null; stage?: 1 }[];
+  conditions_on_success?: { applies_condition: string; duration: number | null; stage?: 1 }[];
   name: string;
   type: "melee" | "ranged" | "area";
   reach: number;
@@ -85,6 +107,7 @@ export interface Attack {
   applies_condition?: string;
   save?: string;
   dc?: number;
+  shape?: "cone";
   half_on_success?: boolean;
   escape_dc?: number;
   attack_source?: "catalog";
@@ -441,7 +464,7 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
     if (!LOOT_IDS.has(lootId)) problems.push("loot_table_id: unknown loot table");
   }
   field(creature, "xp_reward", "", "integer");
-  return problems;
+  return problems.concat(validateCreatureTraits(creature), validateTurnTraits(creature));
 }
 
 // JSON.parse reads 8.0 as 8, while Python's json keeps it a float that fails "expected integer".

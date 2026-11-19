@@ -201,6 +201,11 @@ CONDITION_CATALOG: dict[str, ConditionSpec] = {
         clearance="remove_curse_or_quest",
         restrictions=("source_specific_penalty",),
     ),
+    "precise_strike": ConditionSpec(
+        clearance="consumed_on_use",
+        advantage_scopes=("attack",),
+        restrictions=("consumed_on_use",),
+    ),
     "inspired": ConditionSpec(
         clearance="consumed_on_use",
         # +1d4 on ANY of the bearer's next rolls, consumed on use (M4.8). Replaces the inert

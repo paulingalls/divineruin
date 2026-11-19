@@ -15,6 +15,7 @@ import combat_events
 import combat_resolution
 import combat_support
 import event_types as E
+from check_resolution_attack import AttackResult
 from session_data import SessionData
 
 
@@ -184,16 +185,20 @@ def _combat_ctx(corruption_level=0):
 
 
 def _forced_attack(*, hit, critical=False, damage=None):
-    res = AsyncMock()
-    res.hit = hit
-    res.critical_success = critical
-    res.roll = 15
-    res.attack_total = 17
-    res.damage = (5 if hit else 0) if damage is None else damage
-    res.damage_type = "slashing"
-    res.target_hp_remaining = 25 - res.damage
-    res.narrative_hint = "The blade bites."
-    return res
+    amount = (5 if hit else 0) if damage is None else damage
+    return AttackResult(
+        hit=hit,
+        roll=15,
+        attack_modifier=2,
+        attack_total=17,
+        target_ac=14,
+        damage=amount,
+        damage_type="slashing",
+        target_hp_remaining=25 - amount,
+        target_killed=False,
+        narrative_hint="The blade bites.",
+        critical_success=critical,
+    )
 
 
 # The one shield-bearing reaction in the catalog, and since story-018 the one thing that reaches
