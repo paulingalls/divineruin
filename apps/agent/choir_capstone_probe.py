@@ -125,7 +125,7 @@ async def receive_commands(room: rtc.Room, identity: str, state: ProbeState, evi
             assert player is not None
             hydration = json.loads(json.dumps(SESSION_INIT_FIXTURE))
             hydration["character"].update(player_id=identity, hp=player["hp"], xp=player["xp"], level=player["level"])
-            await publish_game_event(room, "session_init", hydration)
+            await publish_game_event(room, "session_init", hydration, destination_identities=[identity])
             flow = ChoirCapstoneFlow(diagnostic, play, events, room.local_participant.identity)
             flow.observe_checkpoint = checkpoint
             from contextlib import nullcontext
