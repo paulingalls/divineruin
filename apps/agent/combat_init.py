@@ -192,12 +192,13 @@ async def _start_combat_locked(
 
     choir_encounter.initialize(combat_state)
     still_encounter.initialize(combat_state)
+    choir_facts = None
     if combat_state.still_encounter is not None:
         await still_scene.start(
             session, combat_state, retained_still, mutations=mutations, queries=queries, db_mod=db_mod
         )
     else:
-        await choir_scene.start(
+        choir_facts = await choir_scene.start(
             session, combat_state, retained_choir, mutations=mutations, queries=queries, db_mod=db_mod
         )
     session.combat_state = combat_state
@@ -244,7 +245,7 @@ async def _start_combat_locked(
     session.record_event(f"Combat started: {encounter.get('name', encounter_id)}")
 
     response = {
-        "choir": choir_encounter.facts(combat_state),
+        "choir": choir_facts,
         "still": still_encounter.facts(combat_state),
         "spatial": combat_spatial.facts(combat_state, actor_id),
         "combat_id": combat_id,

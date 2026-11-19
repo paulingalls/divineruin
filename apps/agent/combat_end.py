@@ -324,7 +324,7 @@ async def _end_combat_db(
     return {
         "quest_updates": quest_updates,
         "episode": episode,
-        "choir": choir_encounter.facts(cs),
+        "choir": await choir_encounter.facts(cs, queries=queries, conn=conn),
         "still": still_encounter.settlement_facts(cs, rewards.spoils.loot_pool),
         "xp_total": rewards.spoils.xp_total,
         "xp_granted": rewards.xp.xp_granted,

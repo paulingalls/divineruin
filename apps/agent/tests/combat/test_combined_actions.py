@@ -46,6 +46,7 @@ def _attack_result(*, hit: bool, damage: int = 4) -> AttackResult:
 def _held_deps(resolver) -> dict:
     return {
         "resolver": resolver,
+        "conn": None,
         "sink": MagicMock(emit=AsyncMock()),
         "mutations": MagicMock(update_player_hp=AsyncMock()),
         "queries": MagicMock(get_player_inventory=AsyncMock(return_value=[])),

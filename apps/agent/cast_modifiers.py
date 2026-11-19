@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from _gods_content import load_gods
 from patron_synergy import has_engine_synergy
-from spells import Spell
+from spells import Spell, SpellTier
 from terrain import is_earth_or_stone, is_natural, resonance_base
 
 if TYPE_CHECKING:
@@ -131,7 +131,15 @@ def apply_ward_halving(generated: int, ward_active: bool, *, veil_ward) -> int:
 
 
 def ward_combat_modifiers(
-    state: str, ward_active: bool, *, resonance, veil_ward, patron: str | None = None, source: str | None = None
+    state: str,
+    ward_active: bool,
+    *,
+    resonance,
+    veil_ward,
+    player: dict,
+    spell_tier: SpellTier,
+    patron: str | None = None,
+    source: str | None = None,
 ) -> dict[str, int]:
     """The state's net combat modifiers, with an active ward's -1 damage die / -1 DC folded in.
 
@@ -140,8 +148,12 @@ def ward_combat_modifiers(
     """
     modifiers = resonance.get_state_modifiers(state)
     patron_effects = {m["kind"]: m["value"] for m in patron_modifiers(patron)}
-    if state == "flickering" and source == "arcane" and "flickering_damage_dice" in patron_effects:
-        modifiers["damage_dice"] = patron_effects["flickering_damage_dice"]
+    if source == "arcane" and "flickering_damage_dice" in patron_effects:
+        flickering_dice = patron_effects["flickering_damage_dice"]
+        if state == "flickering":
+            modifiers["damage_dice"] = flickering_dice
+        elif spell_tier == "cantrip" and has_engine_synergy(player, "veythar_simplest_mysteries"):
+            modifiers["damage_dice"] += flickering_dice
     if ward_active and not patron_effects.get("ward_penalty_immunity"):
         modifiers["damage_dice"] += veil_ward.WARD_DAMAGE_DIE_PENALTY
         modifiers["dc"] += veil_ward.WARD_DC_PENALTY

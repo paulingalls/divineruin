@@ -143,8 +143,7 @@ def _packet_deps(resolver):
     deps = _resolve_deps()
     deps.pop("db_mod")
     deps.pop("character_spells_mod")
-    deps["resolver"] = resolver
-    return deps
+    return {**deps, "resolver": resolver, "conn": None}
 
 
 @pytest.mark.parametrize(

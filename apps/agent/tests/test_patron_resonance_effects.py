@@ -81,7 +81,8 @@ async def cast(
 @pytest.mark.parametrize("total", [4, 5, 8, 9])
 @pytest.mark.parametrize("patron", ["veythar", None, "zhael"])
 async def test_flickering_thresholds(patron, total):
-    packet, _, _, _, die, echo, _, _ = await cast(patron, total)
+    row = {"class": "whisper", "level": 5, "focus": {"current": 50}, "divine_favor": {"patron": patron}}
+    packet, _, _, _, die, echo, _, _ = await cast(patron, total, row=row)
     expected = 0 if total == 4 else 2 if total == 9 or patron == "veythar" else 1
     assert packet["resonance_modifiers"] == {"damage_dice": expected, "dc": 2 * int(total == 9)}
     assert packet["state"] == ("stable" if total == 4 else "overreach" if total == 9 else "flickering")
@@ -175,6 +176,7 @@ async def test_choir_phase_lands_extra_damage_dice(patron, bonus, mock_combat_ag
             "choir_zone": {"type": "defend"},
         },
         mutations=mutations,
+        queries=queries,
     )
     rolled = []
 

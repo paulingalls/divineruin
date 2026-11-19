@@ -73,7 +73,7 @@ async def start(session, state, retained, *, mutations=db_mutations, queries=db_
     source = choir_encounter.owner(state)
     if source is None:
         await mutations.save_combat_state(state.combat_id, state.to_dict())
-        return
+        return None
     async with db_mod.transaction() as conn:
         player = await queries.get_player(session.primary_player_id, conn=conn, for_update=True)
         if read(player, state.location_id) != retained:
@@ -87,6 +87,7 @@ async def start(session, state, retained, *, mutations=db_mutations, queries=db_
             state.choir_encounter["phase"] = retained["phase"]
             state.round_number = retained["round"]
             choir_effects.exposure(state)
+        combat_facts = await choir_encounter.facts(state, queries=queries, conn=conn)
         record = {
             "source_id": key(state.location_id),
             "location_id": state.location_id,
@@ -97,6 +98,7 @@ async def start(session, state, retained, *, mutations=db_mutations, queries=db_
             session.primary_player_id, key(state.location_id), json.dumps(record), conn=conn
         )
         await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
+    return combat_facts
 
 
 async def end(session, state, outcome, *, mutations, queries, conn):
@@ -136,7 +138,7 @@ async def check_data(session, player, *, queries=db_queries):
 async def facts(session, *, queries=db_queries, location_id=None):
     location_id = location_id or session.location_id
     if session.combat_state is not None and session.combat_state.location_id == location_id:
-        return choir_encounter.facts(session.combat_state)
+        return await choir_encounter.facts(session.combat_state, queries=queries)
     record = await load(session, queries=queries, location_id=location_id)
     if record is None or record["status"] == "destroyed":
         return None

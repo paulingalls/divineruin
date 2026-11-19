@@ -14,6 +14,7 @@ from combat_attack_roll import (
     serialize_roll,
     spend_sneak_attack,
 )
+from patron_synergy_combat import attack_player
 
 
 async def roll_hostile(session, state, head, declaration, action, contribution, packet_deps, fate_rolls):
@@ -34,7 +35,8 @@ async def roll_hostile(session, state, head, declaration, action, contribution, 
     elif fate_rolls is not None:
         candidates = await zhael_fate.candidates(session, queries=packet_deps["queries"], conn=packet_deps["conn"])
         if candidates.choices(attacker.id):
-            attacker_data, ac, attack_mod = attack_roll_inputs(attacker, target, ac_bonus, state, action)
+            player = await attack_player(attacker, queries=packet_deps["queries"], conn=packet_deps["conn"])
+            attacker_data, ac, attack_mod = attack_roll_inputs(attacker, target, ac_bonus, state, action, player=player)
             prepared = check_resolution_attack.prepare_attack(
                 attacker_data, action, ac, attack_mod=attack_mod, target_conditions=target.conditions
             )
@@ -70,6 +72,7 @@ async def roll_hostile(session, state, head, declaration, action, contribution, 
         effective_ac = prepared.d20.dc
         head.pop("fate_attack", None)
     else:
+        player = await attack_player(attacker, queries=packet_deps["queries"], conn=packet_deps["conn"])
         result, effective_ac = roll_attack(
             attacker,
             action,
@@ -79,6 +82,7 @@ async def roll_hostile(session, state, head, declaration, action, contribution, 
             is_first_attack_of_combat=first_attack,
             resolver=packet_deps["resolver"],
             combat_state=state,
+            player=player,
         )
     combat_wrongdoing.record_attack(state, attacker, target)
     record_beacon_attack(state, attacker, target, result)
