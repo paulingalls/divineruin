@@ -180,7 +180,10 @@ def validate_target_count(spell: "Spell | Ability", target_ids: list[str]) -> No
 
 
 def normalize_target_list(spell: "Spell | Ability", target_id: str | None, target_ids: list[str]) -> list[str]:
-    """Validate explicit recipients, retaining repeated projectile assignments."""
+    """Validate explicit recipients, retaining repeated projectile assignments.
+
+    Refusing uncapped non-recipient spells closes the revival Hollow-gate bypass; validate before any resource write.
+    """
     if target_id is not None:
         raise ValueError("pass target_id OR target_ids, not both")
     profile = getattr(spell, "combat_damage", None) or {}

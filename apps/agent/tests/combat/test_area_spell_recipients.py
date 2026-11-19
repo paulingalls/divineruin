@@ -71,15 +71,16 @@ async def test_authored_shapes_land_on_union_once(spell_fight, spell_id, points,
     ctx = spell_fight
     await prepare_spell(ctx, spell_id)
     await add_enemies(ctx, points)
+    caster_hp = participant(ctx.userdata.combat_state, ctx.userdata.player_id).hp_current
     await declare_spell(ctx, spell_id, "cold", anchors)
     cast = await resolve_cast(ctx)
     results = cast["damage_results"]
-    # The line includes its origin; other shapes put the caster outside.
-    if spell_id == "arcane_lightning_bolt":
-        covered = covered | {ctx.userdata.player_id}
     assert {r["target_id"] for r in results} == covered
     assert len(results) == len(covered)
     saved = await load_combat(ctx.userdata.combat_state.combat_id)
+    assert participant(saved, ctx.userdata.player_id).hp_current == caster_hp
+    if spell_id == "arcane_meteor_swarm":
+        assert "deferred" not in cast
     for name in points:
         damage = next((r["damage"] for r in results if r["target_id"] == name), 0)
         assert participant(saved, name).hp_current == 100 - damage

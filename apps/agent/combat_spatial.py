@@ -170,7 +170,7 @@ def axis_projection(origin, aim, candidate):
 def in_line(origin, aim, candidate, length_ft, width_ft):
     axial, perpendicular = axis_projection(origin, aim, candidate)
     return (
-        0 <= axial <= number(length_ft, "length", nonnegative=True)
+        0 < axial <= number(length_ft, "length", nonnegative=True)
         and perpendicular <= number(width_ft, "width", nonnegative=True) / 2
     )
 

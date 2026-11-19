@@ -133,7 +133,7 @@ def validate_target(state, caster, declaration, spell):
 
         select(state, caster, declaration, spell, require_live=True)
         if profile.get("choices") and declaration.argument_type not in profile["choices"]:
-            raise ValueError(f"{spell.name} requires argument_type fire, cold, or lightning")
+            raise ValueError(f"{spell.name} requires argument_type {', '.join(profile['choices'])}")
         return
     if declaration.target_ids:
         raise ValueError("Damage spells affect one declared recipient; use one target, other recipients are deferred")
@@ -149,4 +149,4 @@ def validate_target(state, caster, declaration, spell):
         if distance(position(spatial, caster.id), position(spatial, target.id)) > 10:
             raise ValueError(f"{spell.name} requires a recipient within 10 feet")
     if profile.get("choices") and declaration.argument_type not in profile["choices"]:
-        raise ValueError(f"{spell.name} requires argument_type fire, cold, or lightning")
+        raise ValueError(f"{spell.name} requires argument_type {', '.join(profile['choices'])}")

@@ -662,7 +662,6 @@
       "attribute": "intelligence",
       "save": "dexterity",
       "half": true,
-      "deferred": "Only one sphere lands. Additional spheres and overlaps require area selection.",
       "recipients": {
         "shape": "radius",
         "radius_ft": 20,
