@@ -40,6 +40,7 @@ LEVELS = {
     "cult_cell": 8,
     "hollow_corrupted_settlement": 14,
     "hollow_choir": 16,
+    "hollow_still": 18,
     "hollow_knight_boss": 14,
     "hollow_veilrender_boss": 14,
 }
@@ -134,7 +135,7 @@ async def test_created_and_migrated_speed_limits_movement(spatial_entry, migrate
 
 @pytest.mark.parametrize("template", TEMPLATES, ids=lambda row: row["id"])
 async def test_actual_catalog_entry_persists_placement_and_zone_ids(spatial_entry, template, mock_combat_agent_factory):
-    assert len(TEMPLATES) == 17 and {row["id"] for row in TEMPLATES} == set(LEVELS)
+    assert len(TEMPLATES) == 18 and {row["id"] for row in TEMPLATES} == set(LEVELS)
     assert any(row["scene_placement"]["zones"] for row in TEMPLATES)
     assert template["recommended_party_level"] == LEVELS[template["id"]]
     ctx, response = await spatial_entry(members=2, companion="companion_tam", encounter=template["id"])
@@ -163,6 +164,8 @@ async def test_actual_catalog_entry_persists_placement_and_zone_ids(spatial_entr
         choir = queried.pop("choir")
         assert choir["phase"] == "search"
         assert {row["action"] for row in choir["search_actions"]} == {"choir_search_perception", "choir_search_arcana"}
+    if template["id"] == "hollow_still":
+        assert queried.pop("still") == response["still"]
     assert queried == response["spatial"]
 
 
@@ -344,7 +347,7 @@ async def test_corrupt_pending_and_held_destination_refuses_before_roll(spatial_
 
 
 def test_spatial_contract_parity_has_nonempty_floor():
-    assert len(TEMPLATES) == 17
+    assert len(TEMPLATES) == 18
     assert any(row["scene_placement"]["zones"] for row in TEMPLATES)
     cases = []
     for row in TEMPLATES:

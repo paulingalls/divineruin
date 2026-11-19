@@ -66,6 +66,7 @@ export const MAP_LAYOUT: MapLayoutNode[] = [
   },
   { id: "hollow_incursion_site", label: "Hollow Incursion", x: 280, y: 950, region: "Greyvale" },
 
+  { id: "ashmark_still", label: "The Still", x: 125, y: 880, region: "Ashmark" },
   { id: "ashmark_corrupted_front", label: "Ashmark Front", x: 170, y: 920, region: "Ashmark" },
 
   // --- Greyvale Ruins ---

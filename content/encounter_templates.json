@@ -595,6 +595,46 @@
     }
   },
   {
+    "id": "hollow_still",
+    "name": "The Still",
+    "description": "Perfect birdsong and running water invite you to stay.",
+    "difficulty": "hard",
+    "recommended_party_level": 18,
+    "enemies": [
+      {
+        "id": "still_zone",
+        "creature_id": "hollow_still",
+        "role": "named"
+      }
+    ],
+    "scene_placement": {
+      "party_start": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "companion_start": {
+        "x": 0,
+        "y": 5,
+        "z": 0
+      },
+      "actors": {
+        "still_zone": {
+          "x": 5,
+          "y": 0,
+          "z": 0
+        }
+      },
+      "locations": {},
+      "zones": {
+        "still_zone_corruption_aura": {
+          "center_id": "still_zone",
+          "radius_ft": 2980
+        }
+      }
+    }
+  },
+  {
     "id": "fragment_shadeling",
     "name": "The Fragment Shadow",
     "description": "A single smear of wrongness gathers beside the oilcloth bundle. Linen stops rustling. The room goes cold.",

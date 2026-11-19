@@ -9,6 +9,7 @@ import combat_resolution
 import conditions
 import item_effects
 import rules_engine
+import still_scene
 from combat_init_validation import _validate_enemy_tiers, validate_enemy_action_shapes, validate_enemy_resistance_tags
 from combat_spatial_entry import build_spatial
 from companion_profiles import get_companion_profile
@@ -102,6 +103,8 @@ async def assemble_participants(session, encounter, encounter_id, member_players
         raise ToolError(str(error)) from error
 
     retained_choir = await choir_scene.preflight(session, encounter, queries=queries)
+
+    retained_still = await still_scene.preflight(session, encounter, queries=queries)
 
     initiative_entries = combat_resolution.roll_initiative(initiative_inputs)
     initiative_order = [e.participant_id for e in initiative_entries]
@@ -217,4 +220,4 @@ async def assemble_participants(session, encounter, encounter_id, member_players
             )
         )
 
-    return participants, spatial, initiative_entries, initiative_order, retained_choir
+    return participants, spatial, initiative_entries, initiative_order, retained_choir, retained_still

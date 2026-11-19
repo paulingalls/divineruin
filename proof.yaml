@@ -25,6 +25,7 @@
       "scripts/.python-version",
       "apps/agent/_gods_content.py",
       "apps/agent/action_contracts.py",
+      "apps/agent/action_contracts_still.py",
       "apps/agent/archetypes.py",
       "apps/agent/catalog_parse.py",
       "apps/agent/check_resolution.py",

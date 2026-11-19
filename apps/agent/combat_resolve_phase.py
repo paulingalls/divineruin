@@ -29,6 +29,7 @@ import draethar_inner_fire
 import event_types as E
 import resonance_events
 import spell_casting
+import still_encounter
 import veil_ward_events
 import ward_resolution
 import zhael_fate
@@ -294,6 +295,7 @@ async def _resolve_phase_locked(
 
     response = {
         "choir": choir_encounter.facts(state),
+        "still": still_encounter.facts(state),
         "spatial": combat_spatial.response_facts(state, session.acting_player_id, session.primary_player_id),
         "beat": state.beat,
         "round": state.round_number,

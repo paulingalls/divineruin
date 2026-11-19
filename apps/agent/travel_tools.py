@@ -33,6 +33,8 @@ import db_queries
 import event_types as E
 import quest_progress
 import rules_engine
+import still_charm
+import still_scene
 import travel as travel_engine
 from action_sound_content import publish_action_sound
 from combat_terrain import skill_natural_terrain
@@ -40,7 +42,7 @@ from condition_consume import persist_combat_consumption, serialize_combat_check
 from db_errors import db_tool, validated_player_conditions
 from game_events import publish_game_event
 from inventory_refresh import publish_inventory
-from movement_tools import write_arrival
+from movement_tools import party_level_warning, write_arrival
 from quest_completion import finish_quest
 from session_data import SessionData
 from skill_fate import SkillScope, StaleSkillOperation, prepare_skill_offer
@@ -71,7 +73,8 @@ async def travel(
     lost, accrues Exhaustion on a forced march or a bad miss in harsh conditions, and on a successful
     journey moves the party to the destination. Pass `forced_march=True` (and an `hours` estimate)
     when the party pushes on without rest. Arriving may complete a location-based quest stage; it then appears in
-    `quest_updates` — narrate its `narrative_beat` and do not call `update_quest` for it."""
+    `quest_updates` — narrate its `narrative_beat` and do not call `update_quest` for it.
+    If `level_warning` is returned, voice it before narrating arrival."""
     return await _travel_impl(context, destination_id, mode, hours=hours, forced_march=forced_march)
 
 
@@ -127,6 +130,12 @@ async def _travel_impl(
     except ValueError as e:
         raise ToolError(str(e)) from e
 
+    async with db_mod.transaction() as conn:
+        session.validate_acting_player(speaker_id)
+        players = await still_charm.lock_players(member_ids, queries=queries, conn=conn)
+        still_charm.require_departure(players, destination_id)
+
+    warning = await party_level_warning(destination, member_ids, queries=queries, known_players=players)
     roll = None
     if dc is not None:
         roll = check_resolution.resolve_skill_check_dc(
@@ -176,6 +185,7 @@ async def _travel_impl(
                     scope.origin,
                     scope.party_ids,
                     conn=conn,
+                    queries=queries,
                     db_mod=db_mod,
                     mutations=mutations,
                     travel_mutations=travel_mutations,
@@ -218,14 +228,24 @@ async def _travel_impl(
                         await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)
                     for pid in sorted({pid for pid, _ in quest.item_recipients}):
                         await publish_inventory(session, pid, queries=queries)
-                return await _publish_travel_result(session, destination_id, mode_lower, kept, result, updates)
+                return await _publish_travel_result(
+                    session,
+                    destination,
+                    destination_id,
+                    mode_lower,
+                    kept,
+                    result,
+                    updates,
+                    warning=warning,
+                    queries=queries,
+                )
 
             return flush
 
         offer = await prepare_skill_offer(session, scope, roll, player, write, queries=queries, db_mod=db_mod)
         if offer is not None:
             session.fate_offer = offer
-            return json.dumps(offer.response())
+            return json.dumps({**offer.response(), **warning})
 
     result = resolve_segment(roll, mode_lower, navigation, hours, forced_march)
     consumed = roll.consumed_conditions if roll else ()
@@ -244,6 +264,7 @@ async def _travel_impl(
                 session.location_id,
                 member_ids,
                 conn=conn,
+                queries=queries,
                 db_mod=db_mod,
                 mutations=mutations,
                 travel_mutations=travel_mutations,
@@ -270,7 +291,19 @@ async def _travel_impl(
             await publish_action_sound(session, "action_travel")
 
     session.record_event(f"Travel to {destination_id} ({mode_lower}): {result.narrative_cue}")
-    return json.dumps(await _publish_travel_result(session, destination_id, mode_lower, roll, result, quest_updates))
+    return json.dumps(
+        await _publish_travel_result(
+            session,
+            destination,
+            destination_id,
+            mode_lower,
+            roll,
+            result,
+            quest_updates,
+            warning=warning,
+            queries=queries,
+        )
+    )
 
 
 def resolve_segment(roll, mode, navigation, hours, forced_march):
@@ -328,7 +361,9 @@ async def _write_lost_travel(member_ids, destination_id, mode, result, *, travel
         )
 
 
-async def _publish_travel_result(session, destination_id, mode_lower, roll, result, quest_updates):
+async def _publish_travel_result(
+    session, destination, destination_id, mode_lower, roll, result, quest_updates, *, warning, queries
+):
     arrived = result.success and not result.wrong_area
     if roll is not None:
         await publish_game_event(
@@ -360,9 +395,14 @@ async def _publish_travel_result(session, destination_id, mode_lower, roll, resu
         "encounter_rate": result.encounter_rate,
         "foraging_available": result.foraging_available,
         "wrong_area": result.wrong_area,
+        **warning,
     }
     if roll is not None:
         payload.update({"roll": roll.roll, "total": roll.total, "dc": result.dc, "margin": result.margin})
         if roll.gift_name:
             payload["gift_name"] = roll.gift_name
+    if arrived and "still" in destination.get("tags", []):
+        payload["still"] = await still_scene.facts(
+            session, queries=queries, location_id=destination_id, location=destination
+        )
     return payload

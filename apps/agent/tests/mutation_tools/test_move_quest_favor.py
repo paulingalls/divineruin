@@ -67,6 +67,9 @@ class TestMovePlayer:
         mock_queries.get_npc_dispositions = AsyncMock(return_value={})
         mock_queries.get_targets_at_location = AsyncMock(return_value=[])
         mock_queries.get_player = AsyncMock(return_value=SAMPLE_PLAYER)
+        mock_queries.get_players_for_update = AsyncMock(
+            side_effect=lambda ids, **_: {pid: SAMPLE_PLAYER for pid in ids}
+        )
         mock_mutations = MagicMock()
         mock_mutations.update_player_location = AsyncMock()
         mock_mutations.upsert_map_progress = AsyncMock()

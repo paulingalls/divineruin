@@ -33,7 +33,7 @@ ATTACKS = {
         ("Dissonant Chord", "ranged", 120, 10, "2d10+6", "psychic", "CON save DC 18", "CON", 18, None),
     ),
     "hollow_still": (
-        ("Serenity's Touch", "melee", 5, 0, "2d6", "psychic", "Auto-hit (no roll)", "WIS", 20, None),
+        ("Serenity's Touch", "melee", 5, 0, "2d6", "psychic", "Auto-hit (no roll)", "WIS", 20, "charmed"),
         ("Perfect Memory", "ranged", 120, 12, "3d8", "psychic", "WIS save DC 20", "WIS", 20, None),
     ),
     "hollow_architect": (
@@ -64,7 +64,10 @@ LOOT = {
         ("named_fragment", 1, 1.0, (("arcana", "expert"),)),
         ("freed_memories", "1d6", 1.0, ()),
     ),
-    "hollow_still": (("named_fragment", 1, 1.0, (("arcana", "expert"),)),),
+    "hollow_still": (
+        ("named_fragment", 1, 1.0, (("arcana", "expert"),)),
+        ("absorbed_memories", "1d6", 1.0, ()),
+    ),
     "hollow_architect": (
         ("architect_blueprint_fragment", "1d4", 1.0, (("arcana", "expert"),)),
         ("living_stone", "2d6", 1.0, (("crafting", "expert"),)),
@@ -97,7 +100,11 @@ RECHARGES = {
         {"kind": "encounter", "uses": 1},
         {"kind": "encounter", "uses": 1},
     ),
-    "hollow_still": ("1/round", "5-6", "1/encounter"),
+    "hollow_still": (
+        {"kind": "round", "uses": 1},
+        {"kind": "roll", "die": 6, "threshold": 5},
+        {"kind": "encounter", "uses": 1},
+    ),
     "hollow_architect": ("1/round", "5-6", "1/encounter", "1/encounter", None, None),
 }
 
@@ -108,7 +115,7 @@ def catalog(name):
 
 def assert_loot(table, key):
     actual = tuple(
-        (d["item_id"], d["quantity"], d["chance"], tuple((r["skill"], r["tier"]) for r in d["requires"]))
+        (d["item_id"], d["quantity"], d["chance"], tuple((r["skill"], r["tier"]) for r in d.get("requires", [])))
         for d in table["drops"]
     )
     assert actual == LOOT[key]
@@ -201,6 +208,8 @@ def assert_pin(row, key):
         )
     if key == "hollow_still":
         assert "Charmed for 1 hour" in actual[0]["special"]
+        assert actual[0]["auto_hit"] is True
+        assert actual[1]["conditions_on_failure"] == [{"applies_condition": "stunned", "duration": 1}]
 
 
 def test_named_spec_stats_attacks_abilities_and_validator():

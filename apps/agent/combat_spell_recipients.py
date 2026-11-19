@@ -2,6 +2,7 @@
 
 import combat_spatial as spatial
 from combat_spell_profile import scaled
+from still_encounter import protected_ids
 
 
 def select(state, caster, declaration, spell, *, require_live=False):
@@ -11,7 +12,8 @@ def select(state, caster, declaration, spell, *, require_live=False):
     if spec is None:
         return [{"target_id": target_id} for target_id in ids]
     shape = spec["shape"]
-    live = [p for p in state.participants if not p.is_fallen and not p.is_dead]
+    protected = protected_ids(state)
+    live = [p for p in state.participants if not p.is_fallen and not p.is_dead and p.id not in protected]
     for target_id in ids:
         target = state.get_participant(target_id)
         if target is None or (require_live and (target.is_fallen or target.is_dead)):

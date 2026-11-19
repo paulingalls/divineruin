@@ -1,6 +1,6 @@
 """Movement uses one phase declaration and the actor's committed base speed."""
 
-from combat_spatial import distance, point, position, require_spatial
+from combat_spatial import distance, place, point, position, require_spatial
 from condition_restrictions import cannot_act, speed_zero
 from declarations import DeclarationType, resolve_declaration
 
@@ -50,10 +50,7 @@ def apply_move(state, actor, declaration):
     destination, travelled = validate_move(state, actor.id, declaration, eligibility=False)
     if reason := ineligible(actor):
         return {"actor_id": actor.id, "resolved": False, "reason": reason}
-    state.spatial["positions"][actor.id] = destination
-    from choir_effects import exposure
-
-    exposure(state)
+    place(state, actor.id, destination)
     return {
         "actor_id": actor.id,
         "resolved": True,

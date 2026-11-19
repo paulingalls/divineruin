@@ -85,11 +85,12 @@ def approach(state, actor):
     distance = combat_spatial.distance(origin, voice)
     step = min(distance, spatial["speeds"][actor.id])
     if distance:
-        spatial["positions"][actor.id] = {
-            axis: origin[axis] + (voice[axis] - origin[axis]) * step / distance for axis in origin
-        }
+        combat_spatial.place(
+            state,
+            actor.id,
+            {axis: origin[axis] + (voice[axis] - origin[axis]) * step / distance for axis in origin},
+        )
     actor.choir_movement_round = state.round_number
-    exposure(state)
     return {
         "actor_id": actor.id,
         "resolved": True,

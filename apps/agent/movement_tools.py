@@ -2,6 +2,7 @@
 
 import json
 import logging
+from collections.abc import Mapping, Sequence
 
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
@@ -13,6 +14,8 @@ import db_mutations_travel
 import db_queries
 import event_types as E
 import quest_progress
+import still_charm
+import still_scene
 import ward_resolution
 from action_sound_content import publish_action_sound
 from db_errors import db_tool
@@ -47,6 +50,30 @@ async def _check_exit_requirement(requires: str, player_id: str, *, queries=db_q
     return False
 
 
+async def party_level_warning(
+    destination: dict | None,
+    member_ids: Sequence[str],
+    *,
+    queries,
+    known_players: Mapping[str, dict] | None = None,
+) -> dict[str, str]:
+    recommended = destination.get("recommended_level") if destination else None
+    if recommended is None:
+        return {}
+
+    total = 0
+    for player_id in member_ids:
+        player = known_players.get(player_id) if known_players is not None else None
+        if player is None:
+            player = await queries.get_player(player_id)
+        if player is None:
+            raise ToolError(f"Player '{player_id}' not found.")
+        total += player["level"]
+    if total <= (recommended - 3) * len(member_ids):
+        return {"level_warning": f"This destination is recommended for level {recommended}."}
+    return {}
+
+
 @function_tool()
 @db_tool
 async def move_player(
@@ -56,7 +83,8 @@ async def move_player(
     """Move the party to a connected location. Provide the destination
     location ID from the current location's exits. Returns the full scene
     context for the new location. Arriving may complete a location-based quest stage; it then appears in
-    `quest_updates` — narrate its `narrative_beat` and do not call `update_quest` for it."""
+    `quest_updates` — narrate its `narrative_beat` and do not call `update_quest` for it.
+    If `level_warning` is returned, voice it before narrating arrival."""
     return await _move_player_impl(context, destination_id)
 
 
@@ -65,9 +93,11 @@ async def apply_arrival(
     destination_id: str,
     destination_location: dict | None,
     *,
+    queries=db_queries,
     db_mod=db,
     mutations=db_mutations,
     travel_mutations=db_mutations_travel,
+    check_departure: bool = False,
 ) -> str:
     """Apply party arrival at `destination_id`: persist location, map progress and travel state atomically,
     emit LOCATION_CHANGED + corruption tracking, sync session location/corruption, and record the
@@ -79,6 +109,9 @@ async def apply_arrival(
     member_ids = tuple(sorted(session.party.member_ids))
     async with db_mod.transaction() as conn:
         session.validate_acting_player(speaker_id)
+        if check_departure:
+            players = await still_charm.lock_players(member_ids, queries=queries, conn=conn)
+            still_charm.require_departure(players, destination_id)
         apply = await write_arrival(
             session,
             destination_id,
@@ -86,6 +119,7 @@ async def apply_arrival(
             previous_location_id,
             member_ids,
             conn=conn,
+            queries=queries,
             db_mod=db_mod,
             mutations=mutations,
             travel_mutations=travel_mutations,
@@ -103,6 +137,7 @@ async def write_arrival(
     member_ids: tuple[str, ...],
     *,
     conn,
+    queries=db_queries,
     db_mod=db,
     mutations=db_mutations,
     travel_mutations=db_mutations_travel,
@@ -110,6 +145,16 @@ async def write_arrival(
     destination_exits = destination_location.get("exits", {}) if destination_location else {}
     exit_connections = db_mod.extract_exit_connections(destination_exits)
     pending_events: list[tuple[str, dict]] = []
+
+    if (
+        destination_id != previous_location_id
+        and destination_location
+        and "still" in destination_location.get("tags", [])
+    ):
+        players = await still_charm.lock_players(member_ids, queries=queries, conn=conn)
+        scene = still_scene.read(players[session.primary_player_id], destination_id)
+        if scene is None or scene["status"] != "destroyed":
+            await still_charm.save_on_arrival(players, destination_id, mutations=mutations, conn=conn)
 
     for member_id in member_ids:
         await mutations.update_player_location(member_id, destination_id, conn=conn)
@@ -273,6 +318,7 @@ async def _move_player_locked(
             )
 
     destination_location = await content.get_location(destination_id)
+    warning = await party_level_warning(destination_location, session.party.member_ids, queries=queries)
 
     # Detect region boundary crossing for handoff
     current_region = current_location.get("region_type", REGION_CITY)
@@ -284,9 +330,11 @@ async def _move_player_locked(
         session,
         destination_id,
         destination_location,
+        queries=queries,
         db_mod=db_mod,
         mutations=mutations,
         travel_mutations=travel_mutations,
+        check_departure=True,
     )
     quest_updates = await quest_progress.advance_on_arrival(
         context, destination_id, db_mod=db_mod, mutations=mutations, queries=queries, content=content
@@ -299,7 +347,13 @@ async def _move_player_locked(
     scene = await _build_scene_context(
         destination_id, session, location=destination_location, content=content, queries=queries
     )
-    result = {"moved": True, "previous_location": previous_location_id, "quest_updates": quest_updates, **scene}
+    result = {
+        "moved": True,
+        "previous_location": previous_location_id,
+        "quest_updates": quest_updates,
+        **scene,
+        **warning,
+    }
     logger.info(
         "move_player result: %s → %s, %d NPCs, %d targets",
         previous_location_id,

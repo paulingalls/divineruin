@@ -40,6 +40,10 @@ def highest_attribute(attributes: dict) -> str:
     return max(present, key=lambda a: attributes[a])
 
 
+def is_attribute_depleted(attributes: dict) -> bool:
+    return any(attributes[attr] <= 0 for attr in _ATTR_ORDER if attr in attributes)
+
+
 def _primary_attribute(player: dict) -> str:
     """The character's class primary attribute (creation_classes), or the highest score as a
     defensible fallback when the class is missing/unknown — resurrection must not crash on it."""
@@ -226,7 +230,7 @@ async def resurrect_party_on_defeat(
     if not party:
         return []
 
-    locations = await content_queries.get_all_locations()
+    locations = await content_queries.get_all_locations(conn=conn)
 
     contexts: list[dict] = []
     for member in party:

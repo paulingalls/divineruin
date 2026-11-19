@@ -158,6 +158,10 @@ async def _end_combat_db(
     ``rng`` seeds the loot/currency rolls (a fresh system Random by default)."""
     import choir_scene
     import concealment
+    import still_encounter
+    import still_scene
+
+    await still_scene.end(session, cs, outcome, mutations=mutations, queries=queries, conn=conn)
 
     quest_updates = await quest_progress.advance_on_combat_end(
         session, cs, outcome, conn=conn, sink=sink, queries=queries, mutations=mutations, content=content
@@ -321,6 +325,7 @@ async def _end_combat_db(
         "quest_updates": quest_updates,
         "episode": episode,
         "choir": choir_encounter.facts(cs),
+        "still": still_encounter.settlement_facts(cs, rewards.spoils.loot_pool),
         "xp_total": rewards.spoils.xp_total,
         "xp_granted": rewards.xp.xp_granted,
         "summary_xp_granted": rewards.xp.summary_xp_granted,
@@ -401,6 +406,7 @@ def _end_combat_finish(
     response = {
         "first_episode": episode_facts,
         "choir": end_data.get("choir"),
+        "still": end_data.get("still"),
         "outcome": outcome,
         "xp_total": xp_total,
         # The XP is already GRANTED (M28 story-001) — there is no follow-up award call to cue.
@@ -433,8 +439,9 @@ def _end_combat_finish(
     summary_parts = [f"Combat resolved: {outcome}."]
     if episode_facts:
         summary_parts.append(episode_facts["aftermath"])
-    if end_data.get("choir"):
-        summary_parts.append(end_data["choir"]["cue"])
+    for encounter in ("choir", "still"):
+        if end_data.get(encounter):
+            summary_parts.append(end_data[encounter]["cue"])
     # The player's OWN share, not the encounter total — in a party the two differ, and narrating
     # the total would promise XP nobody received.
     if xp_granted > 0:

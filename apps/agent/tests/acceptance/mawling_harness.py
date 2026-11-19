@@ -103,9 +103,11 @@ class MawlingHarness:
         return self
 
     async def prepare(
-        self, levels=(3,), companion: str | None = "companion_kael", location="greyvale_wilderness_north"
+        self, levels=(3,), companion: str | None = "companion_kael", location="greyvale_wilderness_north", *, tools=()
     ):
+        from fate_tool_boundary import wrap_tool
         from query_tools import query_info
+        from scene_tools import enter_location
 
         self.pool = await db.get_pool()
         self.encounter_id = "ruins_mawling_pair"
@@ -116,6 +118,7 @@ class MawlingHarness:
             assert row is not None
             row.update(
                 level=level,
+                location_id=location,
                 gold=0,
                 hp={"current": 100, "max": 100},
                 equipment={"main_hand": {"name": "Longsword", "damage": "1d8", "damage_type": "slashing"}},
@@ -128,7 +131,11 @@ class MawlingHarness:
             self.sd.companion = CompanionState(id=companion, name=companion.removeprefix("companion_").title())
         self.model = ScenarioModel([])
         self.session = AgentSession(llm=self.model, max_tool_steps=5, userdata=self.sd)
-        await self.session.start(Agent(instructions="Execute the command.", tools=[enter_mode, query_info]))
+        await self.session.start(
+            Agent(
+                instructions="Execute the command.", tools=[enter_mode, wrap_tool(query_info), enter_location, *tools]
+            )
+        )
         return self
 
     async def command(self, name, arguments, *, error=False):

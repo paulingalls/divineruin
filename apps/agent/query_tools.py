@@ -24,6 +24,7 @@ import query_patron
 import recipe_tools
 import spell_knowledge
 import spells
+import still_encounter
 import training_tools
 from db_errors import db_tool
 from session_data import SessionData
@@ -115,6 +116,12 @@ async def _query_info_impl(
                 {
                     **combat_spatial.facts(
                         context.userdata.combat_state, target_id or context.userdata.acting_player_id
+                    ),
+                    **(
+                        {"still": still_encounter.facts(context.userdata.combat_state)}
+                        if context.userdata.combat_state is not None
+                        and context.userdata.combat_state.still_encounter is not None
+                        else {}
                     ),
                     **(
                         {"choir": choir_encounter.facts(context.userdata.combat_state)}

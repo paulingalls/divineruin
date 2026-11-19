@@ -1,5 +1,6 @@
 """Authored encounter references shared by seed preflight and combat entry."""
 
+NAMED_INTEGRATIONS = frozenset({"hollow_choir", "hollow_still"})
 REFERENCE_FIELDS = frozenset({"id", "creature_id", "role"})
 REFERENCE_ROLES = frozenset({"minion", "standard", "elite", "boss"})
 
@@ -32,11 +33,11 @@ def validate_encounter_references(encounter: dict, creature_ids=None) -> None:
             raise ValueError(f"{context}: duplicate id")
         seen.add(enemy["id"])
         if enemy["role"] not in REFERENCE_ROLES and not (
-            enemy["role"] == "named" and enemy["creature_id"] == "hollow_choir"
+            enemy["role"] == "named" and enemy["creature_id"] in NAMED_INTEGRATIONS
         ):
             raise ValueError(f"{context}: unsupported role {enemy['role']!r}")
         if creature_ids is not None and enemy["creature_id"] not in creature_ids:
             raise ValueError(f"{context}: unknown creature_id {enemy['creature_id']!r}")
 
-    if any(enemy["creature_id"] == "hollow_choir" for enemy in enemies) and len(enemies) != 1:
-        raise ValueError(f"{label}: the Choir is solitary and must have one damage/reward owner")
+    if any(enemy["creature_id"] in NAMED_INTEGRATIONS for enemy in enemies) and len(enemies) != 1:
+        raise ValueError(f"{label}: a Named integration is solitary and must have one damage/reward owner")

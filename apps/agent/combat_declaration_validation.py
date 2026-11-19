@@ -3,6 +3,8 @@
 import combat_grapple
 import combat_spatial_declarations
 import combat_voice_rules
+import still_encounter
+from action_contracts_still import STILL_ZONE_KINDS
 from combat_ability import _find_action, condition_ability
 from combat_ability_gate import declared_ability
 from combat_action_availability import require_available
@@ -16,6 +18,7 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
     if actor is None:
         participant_ids = [participant.id for participant in next_state.participants]
         raise ValueError(f"Unknown actor {actor_id!r}; participants: {participant_ids}")
+    still_encounter.guard_declaration(next_state, actor_id, declaration)
     if declaration.type is DeclarationType.MULTIATTACK:
         from combat_multiattack import expand_declaration
 
@@ -61,6 +64,11 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
     pool_action = _find_action(actor, declaration.action)
     if pool_action is not None and declaration.type in (DeclarationType.ATTACK, DeclarationType.ABILITY):
         require_available(actor, pool_action)
+        if still_encounter.is_owner(next_state, actor.id):
+            from still_actions import range_refusal
+
+            if reason := range_refusal(next_state, actor, pool_action, declaration):
+                raise ValueError(reason)
         if pool_action.get("shape") == "cone":
             from choir_actions import require_targets
 
@@ -88,7 +96,7 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
             or pool_action is None
             or (
                 not pool_action.get("applies_condition")
-                and action_kind(pool_action) not in ("healing", "prepare_attack", "charm", "silence")
+                and action_kind(pool_action) not in ("healing", "prepare_attack", "charm", "silence", *STILL_ZONE_KINDS)
             )
         ):
             available = [action["name"] for action in actor.action_pool]
