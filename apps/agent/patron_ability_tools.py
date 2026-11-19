@@ -89,34 +89,43 @@ def project_abilities(player, patron):
     return rows
 
 
-async def spend(session, actor, ability_id):
-    from patron_gift_tools import write_state
-
+async def _locked_ability(conn, actor, ability_id):
     if ability_id == WEIGHT_OF_TRUTH:
         patron_id, required = "valdris", None
         ability = next(p["layer_1_gift"] for p in load_gods() if p["god_id"] == patron_id)
     else:
         patron_id, required, ability = catalog()[ability_id]
+    player = await db_queries.get_player(actor, conn=conn, for_update=True)
+    if player is None:
+        raise ToolError(f"Player {actor!r} not found.")
+    favor = player.get("divine_favor")
+    if favor is None:
+        raise ToolError("Cannot activate: no patron or divine_favor row.")
+    if (favor.get("patron") or "none") == "none":
+        raise ToolError("Cannot activate patron abilities: Unbound.")
+    tier = get_patron_tier(favor)
+    if favor["patron"] != patron_id:
+        raise ToolError(f"This ability requires a follower of {patron_id}.")
+    reason = blocking_reason(ability, tier, required, spent_state(player, ability_id)["spent"])
+    if reason:
+        raise ToolError(reason)
+    return ability
+
+
+async def _write_spend(conn, session, actor, ability_id):
+    from patron_gift_tools import write_state
+
+    try:
+        session.validate_acting_player(actor)
+    except (RuntimeError, ValueError) as exc:
+        raise ToolError(str(exc)) from exc
+    await write_state(actor, {"spent": True}, gift_id=ability_id, conn=conn)
+
+
+async def spend(session, actor, ability_id):
     async with db.transaction() as conn:
-        player = await db_queries.get_player(actor, conn=conn, for_update=True)
-        if player is None:
-            raise ToolError(f"Player {actor!r} not found.")
-        favor = player.get("divine_favor")
-        if favor is None:
-            raise ToolError("Cannot activate: no patron or divine_favor row.")
-        if (favor.get("patron") or "none") == "none":
-            raise ToolError("Cannot activate patron abilities: Unbound.")
-        tier = get_patron_tier(favor)
-        if favor["patron"] != patron_id:
-            raise ToolError(f"This ability requires a follower of {patron_id}.")
-        reason = blocking_reason(ability, tier, required, spent_state(player, ability_id)["spent"])
-        if reason:
-            raise ToolError(reason)
-        try:
-            session.validate_acting_player(actor)
-        except (RuntimeError, ValueError) as exc:
-            raise ToolError(str(exc)) from exc
-        await write_state(actor, {"spent": True}, gift_id=ability_id, conn=conn)
+        ability = await _locked_ability(conn, actor, ability_id)
+        await _write_spend(conn, session, actor, ability_id)
     return ability
 
 
