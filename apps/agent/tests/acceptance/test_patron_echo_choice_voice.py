@@ -33,7 +33,9 @@ def mock_combat_agent_factory():
 class EchoDiagnostic(ChoirEncounterDiagnostic):
     async def start(self, room):
         pool = await db.get_pool()
-        await seed_player_with_pools(pool, player_id=self.player_id, class_="mage", known_spells=("arcane_bolt",))
+        await seed_player_with_pools(
+            pool, player_id=self.player_id, class_="mage", known_spells=("arcane_detect_magic",)
+        )
         await pool.execute(
             "UPDATE players SET data=data || $2::jsonb WHERE player_id=$1",
             self.player_id,
@@ -91,7 +93,7 @@ async def test_voice_offers_both_then_selects_on_later_authenticated_turn(liveki
                         {
                             "kind": "ability",
                             "actor_id": encounter.player_id,
-                            "action": "arcane_bolt",
+                            "action": "arcane_detect_magic",
                             "targets": [],
                             "argument_type": "",
                         },
