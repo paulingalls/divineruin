@@ -29,6 +29,7 @@ class HealProfile(TypedDict):
     recipients: Literal["single", "selected", "all_allies"]
     attribute: NotRequired[str]
     out_of_combat_only: NotRequired[bool]
+    regeneration_rounds: NotRequired[int]
 
 
 class ItemCreationProfile(TypedDict):
@@ -39,7 +40,13 @@ class ItemCreationProfile(TypedDict):
 def parse_heal_profile(raw: object, max_targets: int | None) -> HealProfile | None:
     if raw is None:
         return None
-    if not isinstance(raw, dict) or raw.keys() - {"dice", "recipients", "attribute", "out_of_combat_only"}:
+    if not isinstance(raw, dict) or raw.keys() - {
+        "dice",
+        "recipients",
+        "attribute",
+        "out_of_combat_only",
+        "regeneration_rounds",
+    }:
         raise ValueError("heal must contain only supported fields")
     dice = raw.get("dice")
     if not isinstance(dice, str) or not DICE.fullmatch(dice):
@@ -53,6 +60,10 @@ def parse_heal_profile(raw: object, max_targets: int | None) -> HealProfile | No
         raise ValueError("heal attribute must be a known attribute")
     if "out_of_combat_only" in raw and not isinstance(raw["out_of_combat_only"], bool):
         raise ValueError("heal out_of_combat_only must be boolean")
+    if "regeneration_rounds" in raw:
+        rounds = raw["regeneration_rounds"]
+        if type(rounds) is not int or rounds <= 0:
+            raise ValueError("heal regeneration_rounds must be a positive integer")
     return cast(HealProfile, dict(raw))
 
 

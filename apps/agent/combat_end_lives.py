@@ -6,7 +6,15 @@ from session_data import CombatState
 
 
 async def settle_lives(
-    cs: CombatState, outcome: str, primary_id: str, combat_cleared: bool, queries, mutations, conn
+    cs: CombatState,
+    outcome: str,
+    primary_id: str,
+    combat_cleared: bool,
+    queries,
+    mutations,
+    conn,
+    *,
+    primary_regenerated: bool,
 ) -> dict | None:
     """Return the dead and stabilize the savable, inside the combat-end transaction.
 
@@ -37,8 +45,9 @@ async def settle_lives(
         )
         death_context = next((ctx for (pid, _), ctx in zip(rows, contexts, strict=True) if pid == primary_id), None)
 
-    # A declared defeat sends the primary through Mortaen even if it was still standing.
-    if outcome == "defeat" and death_context is None:
+    # A declared defeat sends even a standing primary through Mortaen, unless Regenerate was still healing
+    # them, standing or down (human 2026-11-19).
+    if outcome == "defeat" and death_context is None and not primary_regenerated:
         primary_row = await queries.get_player(primary_id, conn=conn)
         if primary_row is None:
             raise RuntimeError(f"Primary player {primary_id!r} has no players.data row on defeat")

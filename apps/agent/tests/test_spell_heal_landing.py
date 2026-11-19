@@ -29,16 +29,15 @@ def receipt(target_id, healed, current, *, rolled=5, modifier=3, maximum=20):
     }
 
 
-@pytest.mark.parametrize(
-    "spell,combat", [(WOUNDS, True), (WOUNDS, False), (TOUCH, False), (REGENERATE, False), (REGENERATE, True)]
-)
+@pytest.mark.parametrize("spell,combat", [(WOUNDS, True), (WOUNDS, False), (TOUCH, False), (REGENERATE, True)])
 async def test_immediate_healing_persists_and_names_the_actual_restoration(healer, spell, combat):
     regenerate = spell == REGENERATE
     rolled, modifier, maximum = (35, 0, 50) if regenerate else (5, 3, 20)
     await healer.prepare(spell)
     ally = await healer.add_player(maximum=maximum)
     if combat:
-        await healer.fight()
+        state = await healer.fight()
+        state.get_participant(ally).initiative += 1
         await healer.declare(spell, [ally])
     with heal_die(rolled) as roll:
         if combat:

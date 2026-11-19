@@ -17,7 +17,7 @@ PROFILES = {
         "recipients": "selected",
         "out_of_combat_only": True,
     },
-    "primal_regenerate": {"dice": "4d8+15", "recipients": "single"},
+    "primal_regenerate": {"dice": "4d8+15", "recipients": "single", "regeneration_rounds": 600},
 }
 DEATH_SPELLS = {"divine_revivify", "divine_resurrection"}
 GOODBERRY = "primal_goodberry"
@@ -76,6 +76,14 @@ def test_malformed_heal_names_the_spell(catalog, profile, cap):
 def test_goodberry_requires_a_valid_item_profile(catalog, profile):
     with pytest.raises(ValueError, match=GOODBERRY):
         parse_spell_row(GOODBERRY, {**catalog[GOODBERRY], "creates_item": profile})
+
+
+@pytest.mark.parametrize("rounds", [True, 0, -1, 1.5])
+def test_regeneration_duration_requires_a_positive_integer(catalog, rounds):
+    spell_id = "primal_regenerate"
+    row = catalog[spell_id]
+    with pytest.raises(ValueError, match=f"{spell_id}.*regeneration_rounds"):
+        parse_spell_row(spell_id, {**row, "heal": {**row["heal"], "regeneration_rounds": rounds}})
 
 
 def test_an_ordinary_heal_cannot_use_an_item_profile_as_its_exception(catalog):

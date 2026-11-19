@@ -128,6 +128,12 @@ class HealWalk(MilestoneWalk):
         )
         await seed_known_spells(self.pool, self.player, (spell,))
 
+    async def register_end(self):
+        from combat_end import end_combat
+
+        agent = self.session.current_agent
+        await agent.update_tools([*agent.tools, end_combat])
+
     async def enter(self, mock_combat_agent_factory):
         agent = self.session.current_agent
         await agent.update_tools([*agent.tools, enter_mode])
