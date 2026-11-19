@@ -95,10 +95,12 @@ async def test_veythar_cast_scope(world, archetype, spell):
     await veythar_cast(world, archetype, 0, "stable", 0, 0, spell=spell)
 
 
-async def mortaen_attack(world, category, modifier, *, patron="mortaen", spell="arcane_bolt", held=False):
+async def mortaen_attack(
+    world, category, modifier, *, patron="mortaen", spell="arcane_bolt", held=False, archetype="mage"
+):
     host, guest = world.ids
     session = world.ctx.userdata
-    await configure_caster(world, patron, "mage", spell)
+    await configure_caster(world, patron, archetype, spell)
     if held:
         await configure(world, "zhael", "mage", index=1, patron_gifts={"zhael_lucky": {"spent": True}})
     lifecycle = _live_party(session, host, guest) if held else None
@@ -127,6 +129,8 @@ async def mortaen_attack(world, category, modifier, *, patron="mortaen", spell="
                 assert result["attack_total"] == 15 + modifier
                 assert d20s.call_count == damage.call_count == 1
                 assert result["damage"] == 5 and await saved_hp(state) == 95
+                if spell:
+                    assert result["damage_type"] == "force"
     finally:
         if lifecycle is not None:
             await lifecycle.aclose()
@@ -138,11 +142,17 @@ async def mortaen_formula(world):
 
 
 @pytest.mark.parametrize(
-    "patron,category,spell",
-    [("mortaen", "beast", "arcane_bolt"), ("kaelen", "undead", "arcane_bolt"), ("mortaen", "undead", None)],
+    "patron,category,spell,archetype",
+    [
+        ("mortaen", "beast", "arcane_bolt", "mage"),
+        ("kaelen", "undead", "arcane_bolt", "mage"),
+        ("mortaen", "undead", None, "mage"),
+        # Threshold Mercy turns only Sacred Flame necrotic: a Mortaen cleric's other spells keep their type.
+        ("mortaen", "beast", "arcane_bolt", "cleric"),
+    ],
 )
-async def test_ashen_formula_scope(world, patron, category, spell):
-    await mortaen_attack(world, category, 1, patron=patron, spell=spell)
+async def test_ashen_formula_scope(world, patron, category, spell, archetype):
+    await mortaen_attack(world, category, 1, patron=patron, spell=spell, archetype=archetype)
 
 
 async def test_ashen_formula_fate_hold(world):
