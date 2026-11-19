@@ -182,3 +182,38 @@ async def test_area_save_spell_holds_each_recipient_in_order(world, reload):
         assert required_player(final, "other").hp_current == 30 - (6 if reload else 3)
     finally:
         await db_mutations.delete_combat_state(state.combat_id)
+
+
+@pytest.mark.parametrize("reload", [False, True])
+async def test_corruption_field_turn_start_save_is_held(world, reload):
+    from creature_combat_helpers import catalog, participant
+
+    from creature_combat import translate_creature
+
+    await configure(world, "zhael", "mage")
+    pid = world.ids[0]
+    row = next(r for r in catalog() if r["id"] == "hollow_veilrender")
+    render = participant(translate_creature(row, encounter_id="test", enemy_id="render", role="standard"))
+    state = _build_state(pid, pid, [render])
+    assert state.spatial is not None
+    state.spatial["positions"]["render"] = {"x": 30, "y": 0, "z": 0}
+    session = world.ctx.userdata
+    session.combat_state = state
+    call = game_tools(session, declare_phase, resolve_phase, activate)
+    try:
+        await call("declare_phase", declarations=[defend(pid), defend("render")])
+        with (
+            patch("check_resolution.dice_roll", side_effect=[_d20(3), _d20(19)]) as dice,
+            patch("dice.roll", return_value=SimpleNamespace(total=3)),
+        ):
+            save = (await call("resolve_phase"))["fate_offer"]
+            assert save["roll_kind"] == "save" and save["roller_id"] == pid and save["die"] == 3
+            assert required_player(session.combat_state, pid).hp_current == 100
+            result, final = await _settle(world, session, state, call, save, reload)
+            assert dice.call_count == (1 if reload else 2)
+        effects = next(p["turn_start_effects"] for p in result["packets"] if p.get("turn_start_effects"))
+        field = next(e for e in effects if e["effect"] == "corruption_field")
+        assert field["save_success"] is not reload
+        assert required_player(final, pid).hp_current == (97 if reload else 100)
+    finally:
+        await db_mutations.delete_combat_state(state.combat_id)

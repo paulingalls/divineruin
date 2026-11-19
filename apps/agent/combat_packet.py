@@ -46,9 +46,16 @@ async def _resolve_one_packet(session, state, packet, **deps) -> dict:
     progress = deps.get("progress")
     steps = progress.steps if progress is not None else {}
     # Turn-start effects run once per round; a Zhael-held packet keeps them for its resumed summary.
-    effects = steps.pop("turn_start_effects", None) or await turn_start(
-        session, state, state.get_participant(packet.actor_id), **deps
-    )
+    effects = steps.pop("turn_start_effects", None)
+    if not effects:
+        effects = await turn_start(
+            session,
+            state,
+            state.get_participant(packet.actor_id),
+            **{**deps, "progress": progress.scope("veilrender") if progress is not None else None},
+        )
+        if effects is None:
+            return {}
     result = await _resolve_action_packet(session, state, packet, **deps)
     if progress is not None and progress.paused:
         if effects:

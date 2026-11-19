@@ -278,7 +278,16 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None, fate_roll
             return summaries
         from combat_veilrender import turn_start
 
-        effects = await turn_start(session, state, state.get_participant(head["actor_id"]), **packet_deps)
+        field = None
+        if fate_rolls is not None and session.fate_lock.locked():
+            field = PacketRolls(
+                fate_rolls, head.setdefault("roll_steps", {}), packet_deps["queries"], packet_deps["conn"]
+            ).scope("veilrender")
+        effects = await turn_start(
+            session, state, state.get_participant(head["actor_id"]), **{**packet_deps, "progress": field}
+        )
+        if effects is None:
+            return summaries
         if effects:
             summaries.append({"actor_id": head["actor_id"], "turn_start_effects": effects})
         approach(state, state.get_participant(head["actor_id"]))

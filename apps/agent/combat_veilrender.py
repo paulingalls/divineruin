@@ -1,6 +1,7 @@
 """Once-per-actor turn effects carried by the committed combat snapshot."""
 
 from dataclasses import replace
+from functools import partial
 
 import check_resolution_save
 import combat_spatial
@@ -8,6 +9,7 @@ import dice
 import spells
 import ward_resolution
 from combat_enemy_active import heal
+from combat_fate_rolls import packet_save
 from condition_produce import resolve_effective_targets
 
 
@@ -77,15 +79,96 @@ def absorb_spell(state, caster, declaration, packet):
 
 
 async def turn_start(
-    session, state, actor, *, conn=None, mutations, queries, concentration_break_mod, sink=None, **unused
+    session, state, actor, *, conn=None, mutations, queries, concentration_break_mod, sink=None, progress=None, **unused
 ):
+    """Regeneration and the Corruption Field save at ``actor``'s turn start, once per round.
+
+    With ``progress`` the field save (and its damage receipt) may be Zhael-held: None is returned
+    while a choice is pending, and the resumed call finishes from the effects kept in its steps."""
     from combat_damage import AutomaticDamageResult, apply_attack_result
 
     sources = [p for p in state.participants if p.corruption_field is not None and living(p)]
-    if actor is None or actor.veilrender_turn_round == state.round_number or not living(actor):
-        return []
-    if not sources and actor.regeneration is None:
-        return []
+    steps = progress.steps if progress is not None else {}
+    effects = steps.get("effects")
+    if effects is None:
+        if actor is None or actor.veilrender_turn_round == state.round_number or not living(actor):
+            return []
+        if not sources and actor.regeneration is None:
+            return []
+        effects = await _regenerate(session, state, actor, conn)
+        if actor.hollow is not None or actor.type == "temporary_hollowed":
+            return effects
+        if progress is not None:
+            steps["effects"] = effects
+    spatial = combat_spatial.require_spatial(state)
+    done = {e["source_id"] for e in effects if e["effect"] == "corruption_field"}
+    for source in sources:
+        if source.id in done or not combat_spatial.inside(
+            combat_spatial.position(spatial, source.id),
+            combat_spatial.position(spatial, actor.id),
+            source.hollow["corruption_aura"],
+        ):
+            continue
+        spec = source.corruption_field
+        scope = progress.scope(source.id) if progress is not None else None
+        effect = scope.steps.get("effect") if scope is not None else None
+        if effect is None:
+            save = await packet_save(
+                scope,
+                session,
+                actor.id,
+                "Corruption Field",
+                partial(
+                    check_resolution_save.roll_participant_save,
+                    actor,
+                    spec["save"],
+                    spec["dc"],
+                    "Corruption Field",
+                    bonus_dice_eligible=False,
+                ),
+            )
+            if save is None:
+                return None
+            effect = {
+                "actor_id": actor.id,
+                "source_id": source.id,
+                "effect": "corruption_field",
+                "save_success": save.success,
+                "save_dc": spec["dc"],
+            }
+            if scope is not None:
+                scope.steps["effect"] = effect
+        if not effect["save_success"]:
+            resumed = scope is not None and "damage_receipt" in scope.steps
+            landed = await apply_attack_result(
+                session,
+                source,
+                {"name": "Corruption Field"},
+                actor,
+                None if resumed else AutomaticDamageResult(dice.roll(spec["damage"]).total, spec["damage_type"]),
+                actor.ac,
+                mutations=mutations,
+                queries=queries,
+                concentration_break_mod=concentration_break_mod,
+                combat_state=state,
+                conn=conn,
+                sink=sink,
+                publish_roll=False,
+                progress=scope,
+            )
+            if scope is not None and scope.paused:
+                return None
+            effect.update(landed)
+        if scope is not None:
+            scope.steps.pop("effect")
+        effects.append(effect)
+        if not living(actor):
+            break
+    steps.pop("effects", None)
+    return effects
+
+
+async def _regenerate(session, state, actor, conn):
     ward = None
     if actor.regeneration is not None:
         if conn is None:
@@ -114,46 +197,4 @@ async def turn_start(
         if effect["healed"]:
             effect["cues"].append(spec["narration_cue"])
         effects.append(effect)
-    if actor.hollow is not None or actor.type == "temporary_hollowed":
-        return effects
-    spatial = combat_spatial.require_spatial(state)
-    for source in sources:
-        if not combat_spatial.inside(
-            combat_spatial.position(spatial, source.id),
-            combat_spatial.position(spatial, actor.id),
-            source.hollow["corruption_aura"],
-        ):
-            continue
-        spec = source.corruption_field
-        save = check_resolution_save.roll_participant_save(
-            actor, spec["save"], spec["dc"], "Corruption Field", bonus_dice_eligible=False
-        )
-        effect = {
-            "actor_id": actor.id,
-            "source_id": source.id,
-            "effect": "corruption_field",
-            "save_success": save.success,
-            "save_dc": spec["dc"],
-        }
-        if not save.success:
-            effect.update(
-                await apply_attack_result(
-                    session,
-                    source,
-                    {"name": "Corruption Field"},
-                    actor,
-                    AutomaticDamageResult(dice.roll(spec["damage"]).total, spec["damage_type"]),
-                    actor.ac,
-                    mutations=mutations,
-                    queries=queries,
-                    concentration_break_mod=concentration_break_mod,
-                    combat_state=state,
-                    conn=conn,
-                    sink=sink,
-                    publish_roll=False,
-                )
-            )
-        effects.append(effect)
-        if not living(actor):
-            break
     return effects
