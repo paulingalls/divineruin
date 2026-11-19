@@ -8,10 +8,12 @@ import ability_persistence
 from archetypes import get_archetype_chassis
 from combat_participant import CombatParticipant
 from combat_state import CombatState
-from conditions import apply_condition, has_condition
+from condition_consume import consume_beneficial_conditions
+from conditions import apply_condition, has_condition, hollowed_stage
 
 BATTLE_CRY = "kaelen_battle_cry_of_the_ironhand"
 JUDGMENT = "kaelen_kaelens_judgment"
+RESTORATION_SURGE = "orenthel_restoration_surge"
 WORTHY_FOE = "worthy_foe"
 
 
@@ -46,6 +48,35 @@ def kaelens_judgment(state: CombatState | None, actor: str, *, target_id: str | 
         raise ToolError("That enemy is already a Worthy Foe.")
     target.conditions = apply_condition(target.conditions, WORTHY_FOE, source=actor)
     return updated, {"worthy_foe": {"id": target.id, "name": target.name}}
+
+
+async def restoration_surge(
+    state: CombatState | None, actor: str, target: str, condition: str | None, player: dict, *, conn
+) -> tuple[CombatState | None, dict]:
+    if condition is None:
+        raise ToolError("Restoration Surge requires a condition selector.")
+    if condition not in {"poisoned", "blinded", "frightened", "hollowed"}:
+        raise ToolError(f"Restoration Surge cannot remove {condition!r}.")
+
+    stored = player.get("conditions") or []
+    current = stored
+    if state is not None:
+        follower = state.get_participant(actor)
+        recipient = state.get_participant(target)
+        if follower is None or follower.type != "player":
+            raise ToolError("Restoration Surge requires the acting player to be a player participant.")
+        if recipient is None or recipient.type != "player":
+            raise ToolError("Restoration Surge requires its target to be a player participant.")
+        current = recipient.conditions
+
+    if not has_condition(current, condition):
+        raise ToolError(f"The target does not have {condition!r}.")
+    # Combat end can restore persisted Hollowed, so protect a higher stage in either store.
+    if condition == "hollowed" and (hollowed_stage(current) != 1 or hollowed_stage(stored) >= 2):
+        raise ToolError("Restoration Surge can only remove stage 1 Hollowed.")
+
+    updated = await consume_beneficial_conditions(target, (condition,), conn=conn, combat_state=state)
+    return updated, {"target_id": target, "condition_removed": condition}
 
 
 async def reward_worthy_foe(state: CombatState, target: CombatParticipant, *, queries, conn) -> None:

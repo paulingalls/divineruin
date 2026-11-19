@@ -132,7 +132,21 @@ async def spend(session, actor, ability_id):
     return ability
 
 
-async def _spend_activation(conn, session, actor, ability_id, target_id):
+async def _spend_activation(conn, session, actor, ability_id, target_id, condition):
+    if ability_id == patron_combat_edges.RESTORATION_SURGE:
+        target = target_id or actor
+        if target != actor and target not in session.present_member_ids:
+            raise ToolError("Restoration Surge requires a present party member as its target.")
+        players = await db_queries.get_players_for_update([actor, target], conn=conn)
+        if target not in players:
+            raise ToolError(f"Player {target!r} not found.")
+        ability = await _locked_ability(conn, actor, ability_id)
+        updated, response = await patron_combat_edges.restoration_surge(
+            session.combat_state, actor, target, condition, players[target], conn=conn
+        )
+        await _write_spend(conn, session, actor, ability_id)
+        return ability, updated, response
+
     ability = await _locked_ability(conn, actor, ability_id)
     updated = None
     response = {}
@@ -147,14 +161,14 @@ async def _spend_activation(conn, session, actor, ability_id, target_id):
     return ability, updated, response
 
 
-async def activate(context, ability_id, *, target_id=None):
+async def activate(context, ability_id, *, target_id=None, condition: str | None = None):
     from patron_ability_events import publish_patron_abilities
 
     session = context.userdata
     actor = session.acting_player_id
     async with session.combat_state_lock:
         async with db.transaction() as conn:
-            ability, updated, response = await _spend_activation(conn, session, actor, ability_id, target_id)
+            ability, updated, response = await _spend_activation(conn, session, actor, ability_id, target_id, condition)
         if updated is not None:
             session.combat_state = updated
             await publish_game_event(
