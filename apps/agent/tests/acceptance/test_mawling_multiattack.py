@@ -65,7 +65,7 @@ def catalog():
 
 def test_other_multiattacks_remain_deferred():
     for row in catalog():
-        if row["id"] == "hollow_mawling":
+        if row["id"] in {"hollow_mawling", "hollow_knight"}:
             continue
         assert "multiattack_sequence" not in row
         if row["multiattack"] is None:
