@@ -73,7 +73,9 @@ async def _prepare_cast(
     except ValueError as e:
         raise ToolError(str(e)) from e
 
-    heal = voice_spell.heal if combat_state is None and not session.in_combat else None
+    if voice_spell.heal is not None and combat_state is None and session.in_combat:
+        raise ToolError(f"{voice_spell.name} is cast in combat with declare_phase")
+    heal = voice_spell.heal if combat_state is None else None
     locked_rows: dict[str, dict] | None = None
     if player is None:
         produces_ooc = voice_spell.applies_condition is not None and not session.in_combat

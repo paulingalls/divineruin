@@ -7,6 +7,7 @@ import asyncpg
 import pytest
 from _spell_heal_fixtures import LOCATION, MASS, PRAYER, REGENERATE, TOUCH, WOUNDS
 from _spell_heal_fixtures import spell_heal_walk as spell_heal_walk
+from sample_fixtures import published_payloads
 
 import db_mutations
 import db_queries
@@ -242,3 +243,45 @@ async def test_healing_revives_nonterminal_fallers_and_resets_death_saves(healer
     )
     if not companion:
         assert (await healer.read(target))["hp"]["current"] == 8
+
+
+async def test_combat_activate_refuses_a_heal_without_spending(healer):
+    await healer.prepare(WOUNDS)
+    ally = await healer.add_player()
+    await healer.fight()
+    before = await healer.row()
+    error = await healer.command("activate", {"id": WOUNDS, "target_id": ally}, error=True)
+    assert "declare_phase" in error
+    assert await healer.row() == before
+    assert (await healer.read(ally))["hp"]["current"] == 3
+
+
+async def test_exploration_heal_pushes_each_healed_recipients_hp(healer):
+    await healer.prepare(MASS)
+    ally = await healer.add_player(hp=20)
+    with heal_die(5):
+        await healer.cast(MASS)
+    calls = healer.sd.room.local_participant.publish_data.call_args_list
+    pushes = [
+        (c.kwargs.get("destination_identities"), p)
+        for c, p in zip(calls, published_payloads(healer.sd.room), strict=True)
+    ]
+    assert [(to, p["current"], p["max"]) for to, p in pushes if p["type"] == "hp_changed"] == [
+        ([healer.player], 11, 20)
+    ]
+    assert (await healer.read(ally))["hp"]["current"] == 20
+
+
+async def test_a_zero_heal_leaves_a_dying_ally_dying(healer):
+    await healer.prepare(WOUNDS, wisdom=2)
+    target = await healer.add_player(hp=0)
+    state = await healer.fight()
+    faller = state.get_participant(target)
+    faller.hp_current, faller.is_fallen = 0, True
+    faller.death_save_successes, faller.death_save_failures = 1, 2
+    await healer.save()
+    with heal_die(1):
+        packet = await healer.cast(WOUNDS, targets=[target], combat=True)
+    assert packet["healing_results"] == [receipt(target, 0, 0, rolled=1, modifier=-4)]
+    still = (await healer.checkpoint()).get_participant(target)
+    assert (still.hp_current, still.is_fallen, still.death_save_successes, still.death_save_failures) == (0, True, 1, 2)
