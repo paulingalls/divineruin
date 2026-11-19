@@ -111,6 +111,16 @@ async def test_combat_end_settles_regeneration_before_life_settlement(healer, ou
     await healer.patch(hp={"current": 10, "max": 40})
     state = await healer.fight()
     recipient = healer.player if outcome == "defeat" else ally
+    await healer.patch_row(
+        recipient,
+        divine_favor={
+            "patron": "none",
+            "level": 0,
+            "max": 100,
+            "last_whisper_level": 0,
+            "last_served_at": "2026-01-01T00:00:00+00:00",
+        },
+    )
     if recipient == healer.player:
         with heal_die(19):
             await healer.cast(REGENERATE, targets=[recipient], combat=True)
