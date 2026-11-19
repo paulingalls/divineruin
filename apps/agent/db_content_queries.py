@@ -1,7 +1,6 @@
 """Cached content lookup queries (locations, NPCs, items, lore, quests, scenes, encounters, training programs, errand templates).
 
 All functions use db._cache_get() / db._cache_set() for Redis caching.
-No conn parameter — these read from the pool and cache layer.
 """
 
 import json
@@ -43,7 +42,7 @@ async def get_location_terrain(location_id: str) -> str:
     return location["terrain"]
 
 
-async def get_all_locations() -> dict[str, dict]:
+async def get_all_locations(*, conn=None) -> dict[str, dict]:
     """Return every location keyed by id ({id: data}). Used by the resurrection anchor resolver
     (M4.4) which needs the catalog to find same-region settlements + the starter zone. Cache-backed
     as a single blob; locations are static content so a whole-catalog read is cheap and rare."""
@@ -52,8 +51,8 @@ async def get_all_locations() -> dict[str, dict]:
     if cached is not None:
         return {location_id: _validate_location(location_id, data) for location_id, data in json.loads(cached).items()}
 
-    pool = await db.get_pool()
-    rows = await pool.fetch("SELECT id, data FROM locations")
+    connection = conn or await db.get_pool()
+    rows = await connection.fetch("SELECT id, data FROM locations")
     out = {row["id"]: _validate_location(row["id"], json.loads(row["data"])) for row in rows}
     await db._cache_set(cache_key, json.dumps(out))
     return out

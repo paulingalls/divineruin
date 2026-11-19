@@ -14,6 +14,7 @@ import db_queries
 import db_training
 import event_types as E
 import first_episode
+import still_dwell
 from alignment_heartbeat import TRANSIENT_IO_ERRORS, AlignmentHeartbeat
 from bg_event_handlers import handle_events
 from bg_speech import COMPANION_IDLE_SECS, PendingSpeech, SpeechPriority
@@ -23,6 +24,7 @@ from companion_prompts import build_companion_cue, is_companion_cue
 from sanitize import sanitize_for_prompt
 from speaker_context import build_speaker_context
 from speech_delivery import deliver_speech
+from still_dwell import TIMER_FALLBACK_SECS
 from task_logging import log_task_failure
 from warm_prompts import build_full_prompt, build_warm_layer
 
@@ -33,8 +35,6 @@ if TYPE_CHECKING:
     from session_data import SessionData
 
 logger = logging.getLogger("divineruin.background")
-
-TIMER_FALLBACK_SECS = 30.0
 
 
 class BackgroundProcess:
@@ -60,6 +60,7 @@ class BackgroundProcess:
         self._cached_static: str = ""
         self._last_target: BaseGameAgent | None = None
         self._paused: bool = False
+        self._dwell_generations: dict[str, int | None] = {}
         self._warm_lock = asyncio.Lock()
         self._alignment = AlignmentHeartbeat(session_data)
 
@@ -78,6 +79,7 @@ class BackgroundProcess:
 
     def pause(self) -> None:
         self._paused = True
+        self._dwell_generations.clear()
 
     def resume(self) -> None:
         self._paused = False
@@ -112,7 +114,8 @@ class BackgroundProcess:
                 pass
 
     async def _run(self) -> None:
-        # Initial warm layer build
+        if not self._paused:
+            await self._advance_still(checkpoint_only=True)
         await self._rebuild_warm_layer()
         logger.info("Background process started")
 
@@ -124,7 +127,10 @@ class BackgroundProcess:
                 events.append(event)
             events.extend(self._sd.event_bus.drain())
 
-            await self._process_events(events, timed_out=event is None)
+            drained = False
+            if not self._paused:
+                drained = await self._advance_still(checkpoint_only=any(e.event_type == E.COMBAT_ENDED for e in events))
+            await self._process_events(events, timed_out=event is None, dwell_changed=drained)
 
             if self._paused:
                 continue
@@ -135,9 +141,30 @@ class BackgroundProcess:
 
             await self._deliver_speech()
 
-    async def _process_events(self, events: list, timed_out: bool) -> None:
+    async def _advance_still(self, *, checkpoint_only: bool = False) -> bool:
+        owner = self._sd.multiplayer_owner
+        generations = {
+            pid: owner.lifecycle.current_generation(pid) if owner is not None else None
+            for pid in self._sd.present_member_ids
+        }
+        reset = {
+            pid
+            for pid, current in generations.items()
+            if checkpoint_only or pid not in self._dwell_generations or self._dwell_generations[pid] != current
+        }
+        self._dwell_generations = generations
+        try:
+            facts = await still_dwell.advance(self._sd, time.time, checkpoint_only=reset)
+        except TRANSIENT_IO_ERRORS:
+            logger.error("Still dwell advance failed", exc_info=True)
+            return False
+        if facts:
+            self._queue_speech(SpeechPriority.CRITICAL, f"Tell the party what happened. {facts}")
+        return bool(facts)
+
+    async def _process_events(self, events: list, timed_out: bool, *, dwell_changed: bool = False) -> None:
         needs_rebuild = self._handle_events(events)
-        if needs_rebuild or timed_out:
+        if needs_rebuild or timed_out or dwell_changed:
             await self._rebuild_warm_layer()
 
     def _handle_events(self, events: list) -> bool:
