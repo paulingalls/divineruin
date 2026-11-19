@@ -133,7 +133,7 @@ async def reward_scenario(world, current, restored, victory, charge=False):
         if victory:
             agent, response = wrapped
             assert agent is not None and response["outcome"] == "victory"
-            assert response["judgment_rewards"] == [receipt]
+            assert "judgment_rewards" not in response
         else:
             assert isinstance(wrapped, dict) and not wrapped.get("judgment_rewards")
             if current == 2:
