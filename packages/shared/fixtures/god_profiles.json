@@ -86,6 +86,15 @@
       "field": "implementation_id"
     }
   ],
+  "layer_3_mark": {
+    "id": "valdris_mark_of_justice",
+    "name": "Mark of Justice",
+    "effect": "Mark an unjust creature for the rest of the encounter.",
+    "recharge": "long_rest",
+    "status": "active",
+    "resolution": "engine",
+    "implementation_id": "valdris_mark_of_justice"
+  },
   "valid": [
     {
       "id": "integer",

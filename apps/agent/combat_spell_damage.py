@@ -198,7 +198,14 @@ async def _roll_save_damage(
             session,
             target.id,
             spell.name,
-            partial(check_resolution_save.roll_participant_save, target, profile["save"], dc, spell.name),
+            partial(
+                check_resolution_save.roll_participant_save,
+                target,
+                profile["save"],
+                dc,
+                spell.name,
+                originating_participant_id=caster.id,
+            ),
         )
         if save is None:
             return None

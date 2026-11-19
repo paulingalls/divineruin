@@ -3,6 +3,7 @@
 from condition_catalog import (
     CONDITION_CATALOG as CONDITION_CATALOG,
 )
+from condition_catalog import MARK_OF_JUSTICE
 from condition_catalog import (
     BonusDie as BonusDie,
 )
@@ -95,13 +96,15 @@ def apply_condition(
     duration: int | None = None,
     source: str | None = None,
     max_stacks: int | None = None,
+    originating_participant_id: str | None = None,
 ) -> list[dict]:
     """Return a new condition list with ``condition_type`` applied.
 
     Stackable conditions (Exhausted) increment ``stacks`` up to the effective cap
     (``max_stacks`` override, else the catalog's ``default_max_stacks``) rather than
     duplicating. Hollowed escalates its ``stage`` (capped at 3). Other re-applies of
-    an already-active condition refresh its duration/source. Never mutates the input.
+    an already-active condition refresh its duration/source. Mark of Justice matches
+    by source as well as type. Never mutates the input.
     Raises ``ValueError`` on an unknown condition type (fail-loud).
     """
     spec = CONDITION_CATALOG.get(condition_type)
@@ -115,13 +118,23 @@ def apply_condition(
     if any(condition_type in CONDITION_CATALOG[c["type"]].immunities for c in result):
         return result
 
-    existing = _find(result, condition_type)
+    existing = next(
+        (
+            c
+            for c in result
+            if c["type"] == condition_type and (condition_type != MARK_OF_JUSTICE or c.get("source") == source)
+        ),
+        None,
+    )
+    applied = {"type": condition_type, "duration": duration, "source": source}
+    if originating_participant_id is not None:
+        applied["originating_participant_id"] = originating_participant_id
 
     if condition_type == "hollowed":
         if existing is not None:
             existing["stage"] = min(existing["stage"] + 1, _HOLLOWED_MAX_STAGE)
             return result
-        result.append({"type": "hollowed", "duration": duration, "source": source, "stage": 1})
+        result.append({**applied, "stage": 1})
         return result
 
     if spec.stackable:
@@ -129,17 +142,17 @@ def apply_condition(
         if existing is not None:
             existing["stacks"] = min(existing["stacks"] + 1, cap) if cap is not None else existing["stacks"] + 1
             return result
-        result.append({"type": condition_type, "duration": duration, "source": source, "stacks": 1})
+        result.append({**applied, "stacks": 1})
         return result
 
-    if existing is not None:  # non-stackable re-apply refreshes
+    if existing is not None:
         if condition_type == "charmed":
             existing.pop("choir_melody", None)
-        existing["duration"] = duration
-        existing["source"] = source
+        existing.pop("originating_participant_id", None)
+        existing.update(applied)
         return result
 
-    result.append({"type": condition_type, "duration": duration, "source": source, "stacks": 1})
+    result.append({**applied, "stacks": 1})
     return result
 
 
@@ -183,7 +196,10 @@ def tick_conditions(conditions: list[dict]) -> tuple[list[dict], list[dict]]:
     for c in conditions:
         spec = CONDITION_CATALOG[c["type"]]
         if spec.tick_save is not None:
-            save_events.append({"type": c["type"], "save": spec.tick_save, "source": c.get("source")})
+            event = {"type": c["type"], "save": spec.tick_save, "source": c.get("source")}
+            if "originating_participant_id" in c:
+                event["originating_participant_id"] = c["originating_participant_id"]
+            save_events.append(event)
 
         duration = c["duration"]
         if duration is None:

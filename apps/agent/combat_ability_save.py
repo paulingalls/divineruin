@@ -59,7 +59,14 @@ async def resolve_hostile_condition(
         session,
         target.id,
         cond_type,
-        partial(check_resolution_save.roll_participant_save, target, ability.save, dc, cond_type),
+        partial(
+            check_resolution_save.roll_participant_save,
+            target,
+            ability.save,
+            dc,
+            cond_type,
+            originating_participant_id=attacker.id,
+        ),
     )
     if result is None:
         return {}

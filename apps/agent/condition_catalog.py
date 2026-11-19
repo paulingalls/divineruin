@@ -72,7 +72,11 @@ class ConditionEffects:
     bonus_dice: tuple[BonusDie, ...] = ()
 
 
+MARK_OF_JUSTICE = "mark_of_justice"
+
+
 CONDITION_CATALOG: dict[str, ConditionSpec] = {
+    MARK_OF_JUSTICE: ConditionSpec(clearance="end_of_combat_or_dismissed"),
     "iron_resolve": ConditionSpec(
         clearance="end_of_next_turn",
         check_modifier=next(row for row in load_gods() if row["god_id"] == "kaelen")["layer_1_gift"]["mechanics"][

@@ -36,6 +36,7 @@
       "apps/agent/combat_spatial.py",
       "apps/agent/condition_bonus.py",
       "apps/agent/condition_catalog.py",
+      "apps/agent/condition_restrictions.py",
       "apps/agent/condition_sources.py",
       "apps/agent/condition_voice_rules.py",
       "apps/agent/conditions.py",
