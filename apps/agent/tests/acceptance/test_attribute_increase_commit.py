@@ -25,8 +25,11 @@ def test_award_commits_attributes_and_produces_redirect(harness):
         assert offer["resolve_with"] == "select" and "wisdom" in offer["options"]
         assert [e for e in walk.events if e["type"] == E.SESSION_INIT]
         walk.events.clear()
-        retry = await walk.command("update_quest", {"quest_id": "greyvale_anomaly", "new_stage_id": 8})
-        assert retry.is_error and await walk.row() == row and not walk.events
+        completed_stage_request = await walk.command(
+            "update_quest", {"quest_id": "greyvale_anomaly", "new_stage_id": 8}
+        )
+        assert completed_stage_request.is_error and "Cannot go backward" in completed_stage_request.output
+        assert await walk.row() == row and not walk.events
 
     harness.run_sync(check())
 
