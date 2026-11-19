@@ -15,13 +15,17 @@ class ChoirProbeTurns(ChoirEncounterDiagnostic):
         return await self.queue.get()
 
     async def command(self, name, arguments, play):
-        assert self.lifecycle is not None
+        assert self.lifecycle is not None and self.session is not None
         count = len(self.model.commands) + 1
         generation = self.lifecycle.current_generation(self.player_id)
         assert generation is not None and generation > 0, "Choir probe has no live participant generation"
         self.lifecycle.require_authorized(self.player_id, generation)
         self.model.commands.append((name, arguments))
         await play()
+        # A tool receipt can arrive before LiveKit finishes changing the active agent.
+        async with asyncio.timeout(25):
+            while (await self.session.wait_for_idle()).agent is not self.session.current_agent:
+                await asyncio.sleep(0.02)
         text = f"capstone turn {count}"
         self.submitted.append(text)
         await self.queue.put(AuthenticatedTranscript(self.player_id, text, generation))
