@@ -1,21 +1,29 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# launchd runs an installed copy outside any checkout, so the plist names the source repo.
-SOURCE="${SUPER_SOURCE:-$(cd "$(dirname "$0")/.." && pwd -P)}"
-TARGET="${SUPER_WORKTREE:-$HOME/.xp/super/divineruin}"
+TARGET="${SUPER_WORKTREE:-$HOME/.xp/super/divineruin-super}"
 mkdir -p "$(dirname "$TARGET")"
 TARGET="$(cd "$(dirname "$TARGET")" && pwd -P)/$(basename "$TARGET")"
 ART="$(dirname "$TARGET")/flake-artifacts"
 mkdir -p "$ART"
 LOG="$ART/super-$(date +%Y%m%d-%H%M%S)-$$.log"
 TESTED=unresolved
+# prepare runs in a subshell; this file tells finish that the clone validated and a stack may exist.
+STACK_MARK="$ART/.stack-$$"
+rm -f "$STACK_MARK"
 touch "$LOG"
 echo "Super log: $LOG"
 
 finish() {
   local status=$?
   trap - EXIT
+  if [ -e "$STACK_MARK" ]; then
+    rm -f "$STACK_MARK"
+    if ! (cd "$TARGET" && bash scripts/teardown-worktree.sh --force) >>"$LOG" 2>&1; then
+      echo "ERROR: super stack teardown failed; log: $LOG" | tee -a "$LOG" >&2
+      status=1
+    fi
+  fi
   if ! printf 'summary: super status=%s commit=%s log=%s\n' "$status" "$TESTED" "$LOG" | tee -a "$LOG"; then
     status=1
   fi
@@ -41,32 +49,65 @@ fi
 
 export ALLOW_PAID_TESTS= REQUIRE_REAL_LLM=
 export REQUIRE_DOCKER=1 TESTCONTAINERS_RYUK_DISABLED=true
-unset WT_PORT_OFFSET COMPOSE_PROJECT_NAME POSTGRES_HOST_PORT VALKEY_HOST_PORT
+# Git hooks can export repository-local variables that override the target directory.
+unset $(git rev-parse --local-env-vars)
+export WT_PORT_OFFSET="${SUPER_PORT_OFFSET:-9000}"
+unset COMPOSE_PROJECT_NAME POSTGRES_HOST_PORT VALKEY_HOST_PORT
 unset DATABASE_URL REDIS_URL E2E_API_PORT E2E_APP_PORT E2E_WEB_PORT E2E_LH_DEBUG_PORT
 unset LIVEKIT_ACCEPTANCE_UDP_PORT LIVEKIT_ACCEPTANCE_CONTAINER TYPEGEN_PORT_MIN TYPEGEN_PORT_MAX
 
+validate_clone() {
+  local remote="$1" root git_dir common_dir origin changes
+  if ! root="$(git rev-parse --show-toplevel)" || [ "$root" != "$TARGET" ]; then
+    echo "ERROR: $TARGET is not a repository root" >&2
+    return 1
+  fi
+  git_dir="$(git rev-parse --absolute-git-dir)"
+  common_dir="$(git rev-parse --path-format=absolute --git-common-dir)"
+  if [ "$git_dir" != "$common_dir" ]; then
+    echo "ERROR: $TARGET is a linked worktree" >&2
+    return 1
+  fi
+  if ! origin="$(git remote get-url origin)" || [ "$origin" != "$remote" ]; then
+    echo "ERROR: $TARGET origin URL does not match SUPER_REMOTE" >&2
+    return 1
+  fi
+  if ! changes="$(git status --porcelain --untracked-files=no)"; then
+    echo "ERROR: cannot check tracked status of $TARGET" >&2
+    return 1
+  fi
+  if [ -n "$changes" ]; then
+    echo "ERROR: $TARGET has tracked changes" >&2
+    return 1
+  fi
+}
+
 prepare() {
   [ "$#" -le 1 ] || { echo "Usage: $0 [ref]" >&2; return 1; }
+  local remote="${SUPER_REMOTE:-}" ref="${1:-origin/develop}" script_root root commit develop
+  if [ -z "$remote" ]; then
+    script_root="$(cd "$(dirname "$0")/.." && pwd -P)"
+    if ! root="$(git -C "$script_root" rev-parse --show-toplevel)" || [ "$root" != "$script_root" ]; then
+      echo "ERROR: set SUPER_REMOTE when running outside the script's checkout" >&2
+      return 1
+    fi
+    if ! remote="$(git -C "$script_root" remote get-url origin)"; then
+      echo "ERROR: set SUPER_REMOTE or configure origin in $script_root" >&2
+      return 1
+    fi
+  fi
   docker info >/dev/null
-  cd "$SOURCE"
-  git fetch origin refs/heads/develop:refs/remotes/origin/develop
-  local commit common target_common
-  commit="$(git rev-parse --verify "${1:-origin/develop}^{commit}")"
-  echo "Source: $SOURCE; origin/develop: $(git rev-parse origin/develop); ref: ${1:-origin/develop}"
-  common="$(git rev-parse --path-format=absolute --git-common-dir)"
-  if [ -e "$TARGET" ]; then
-    [ "$(git -C "$TARGET" rev-parse --show-toplevel)" = "$TARGET" ]
-    target_common="$(git -C "$TARGET" rev-parse --path-format=absolute --git-common-dir)"
-    [ "$common" = "$target_common" ]
-    [ "$(git -C "$TARGET" rev-parse --absolute-git-dir)" != "$(git rev-parse --absolute-git-dir)" ]
-    git worktree list --porcelain | grep -Fx "worktree $TARGET"
-    [ -z "$(git -C "$TARGET" status --porcelain --untracked-files=no)" ]
-    git -C "$TARGET" checkout --detach "$commit"
-  else
-    git worktree add --detach "$TARGET" "$commit"
+  if [ ! -e "$TARGET" ] && [ ! -L "$TARGET" ]; then
+    git clone -- "$remote" "$TARGET"
   fi
   cd "$TARGET"
-  [ -z "$(git symbolic-ref -q HEAD || true)" ]
+  validate_clone "$remote"
+  touch "$STACK_MARK"
+  git fetch --prune origin
+  commit="$(git rev-parse --verify --end-of-options "${ref}^{commit}")"
+  develop="$(git rev-parse --verify refs/remotes/origin/develop)"
+  echo "Clone: $TARGET; origin/develop: $develop; ref: $ref"
+  git checkout --detach "$commit"
   echo "Target: $TARGET; detached HEAD: $(git rev-parse HEAD)"
   echo "Checkout identity: $(git rev-parse --absolute-git-dir)"
   echo "Provider artifacts: $TARGET/flake-artifacts"
