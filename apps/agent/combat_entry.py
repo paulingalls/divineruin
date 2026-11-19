@@ -9,7 +9,7 @@ import encounter_builder
 from combat_spatial_entry import default_scene_placement
 from combat_terrain import resolve_terrain
 from companion_profiles import get_companion_profile
-from creature_catalog import query_creatures_by_region
+from creature_catalog import query_creatures_by_region, query_scene_only_creature_ids
 from creature_tiers import tier_for_player_level
 
 
@@ -45,7 +45,10 @@ async def generated_encounter(session, member_players, difficulty, tier, *, cont
                     "hp_factor": profile.scaling_rules.hp_factor,
                 }
             )
-        catalog = await query_creatures_by_region(location.get("region"))
+        scene_only = await query_scene_only_creature_ids()
+        catalog = [
+            row for row in await query_creatures_by_region(location.get("region")) if row["id"] not in scene_only
+        ]
         references = encounter_builder.build_encounter(
             catalog,
             tier if tier is not None else tier_for_player_level(level),

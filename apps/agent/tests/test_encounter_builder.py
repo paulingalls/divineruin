@@ -6,6 +6,7 @@ from random import Random
 import pytest
 
 from companion_profiles import parse_companion_row
+from creature_catalog import scene_only_creature_ids
 from encounter_budget import calculate_encounter_budget
 from encounter_builder import build_encounter
 from encounter_references import validate_encounter_references
@@ -13,6 +14,12 @@ from encounter_roles import derive_role_stats
 
 ROOT = Path(__file__).resolve().parents[3]
 CATALOG = json.loads((ROOT / "content/creatures.json").read_text())
+# The pool combat_entry.generated_encounter hands the builder: scene-only creatures never fight at random.
+SCENE_ONLY = scene_only_creature_ids(
+    {t["id"]: t for t in json.loads((ROOT / "content/encounter_templates.json").read_text())},
+    json.loads((ROOT / "content/scenes.json").read_text()),
+)
+GENERATED_POOL = [r for r in CATALOG if r["id"] not in SCENE_ONLY]
 PROFILES = {
     row["id"]: parse_companion_row(row["id"], row) for row in json.loads((ROOT / "content/companions.json").read_text())
 }
@@ -210,8 +217,8 @@ def test_all_candidate_cells_over_fifty_seeds():
             (47, 47, 47, 42, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47),
         ),
         3: (
-            (0, 0, 0, 10, 20, 20, 21, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25),
-            (10, 10, 20, 20, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25),
+            (0, 0, 0, 0, 20, 20, 21, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25),
+            (0, 0, 20, 20, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25),
             (20, 20, 21, 25, 25, 25, 25, 22, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25),
         ),
     }
@@ -221,7 +228,7 @@ def test_all_candidate_cells_over_fifty_seeds():
         pairs = sorted(
             {
                 (region, terrain)
-                for r in CATALOG
+                for r in GENERATED_POOL
                 if r["tier"] in (tier, tier - 1)
                 for region in r["regions"]
                 for terrain in r["terrains"]
@@ -236,16 +243,18 @@ def test_all_candidate_cells_over_fifty_seeds():
                     environment = {"region": region, "terrain": terrain}
                     members = party((level,))
                     try:
-                        refs = build_encounter(CATALOG, tier, members, environment, difficulty, Random(0))
+                        refs = build_encounter(GENERATED_POOL, tier, members, environment, difficulty, Random(0))
                     except ValueError as error:
                         assert str(error).startswith(("No fit:", "No candidates:"))
                         assert all(value in str(error) for value in (f"tier={tier}", difficulty, region, terrain))
                     else:
-                        check(refs, CATALOG, tier, members, environment, difficulty)
+                        check(refs, GENERATED_POOL, tier, members, environment, difficulty)
                         if level in (1, 2, 3, 4, 5, 8, 9, 14, 15, 20):
                             for seed in range(1, 50):
-                                refs = build_encounter(CATALOG, tier, members, environment, difficulty, Random(seed))
-                                check(refs, CATALOG, tier, members, environment, difficulty)
+                                refs = build_encounter(
+                                    GENERATED_POOL, tier, members, environment, difficulty, Random(seed)
+                                )
+                                check(refs, GENERATED_POOL, tier, members, environment, difficulty)
                         supported.add((tier, difficulty))
                         successes += 1
                 assert successes == expected[tier][di][level - 1]
