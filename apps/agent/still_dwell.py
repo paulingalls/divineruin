@@ -60,7 +60,7 @@ async def _advance_member(
 
     async with db.transaction() as conn:
         player = await db_queries.get_player(player_id, for_update=True, conn=conn)
-        if player is None or player_id not in sd.present_member_ids:
+        if player is None:
             return None
         location = player["location_id"]
         charm = still_charm.read(player, player_id, location)
