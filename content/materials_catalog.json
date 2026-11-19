@@ -603,7 +603,8 @@
     "rarity": "legendary",
     "source": "Broken from the Still's dream of perfect rest; it offers comfort it cannot keep.",
     "weight": 0.3,
-    "description": "A warm, too-soft shard that whispers stay every time you hold it."
+    "description": "A warm, too-soft shard that whispers stay every time you hold it.",
+    "kind": "high_tier_arcane"
   },
   {
     "id": "wolf_fangs",
@@ -1022,6 +1023,17 @@
     "source": "Released when the Choir core breaks.",
     "weight": 0.1,
     "description": "A specific memory from someone consumed by the Choir.",
+    "crafting_use": "trade"
+  },
+  {
+    "id": "absorbed_memories",
+    "name": "Absorbed Memories",
+    "category": "arcane",
+    "tier": 4,
+    "rarity": "legendary",
+    "source": "Released when the Still falls.",
+    "weight": 0.1,
+    "description": "A memory the Still absorbed from someone who stayed.",
     "crafting_use": "trade"
   },
   {

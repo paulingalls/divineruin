@@ -13,6 +13,7 @@ import {
   type DurabilityRider,
   type ChoirEffect,
 } from "./action_contracts";
+import { EXECUTABLE_ACTIVE_KINDS, STILL_FIELDS, type StillEffect } from "./action_contracts_still";
 import { TERRAIN_TYPE_VALUES, type TerrainType } from "./terrain";
 import lootTables from "../../../../content/loot_tables.json";
 import { REGION_IDS, type RegionId } from "./region";
@@ -88,6 +89,7 @@ export interface CreatureStatBlock {
 
 export interface Attack {
   magical?: boolean;
+  auto_hit?: true;
   bonus_damage?: DamageRider;
   critical_save?: CriticalSave;
   durability_rider?: DurabilityRider;
@@ -137,6 +139,7 @@ export type ActiveAbility =
         | Omit<EncounterHealingAction, "properties">
         | Omit<EncounterPrepareAttackAction, "properties">
         | ChoirEffect
+        | StillEffect
       ));
 
 export interface CatalogSignatureAbility extends SignatureAbility {
@@ -360,9 +363,7 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
         field(ability, "audio", path, "string", true);
         if (
           (group !== "actives" && ability.kind !== "spell_redirect") ||
-          (!["attack", "healing", "prepare_attack", "charm", "silence"].includes(
-            ability.kind as string,
-          ) &&
+          (!(EXECUTABLE_ACTIVE_KINDS as readonly unknown[]).includes(ability.kind) &&
             !(
               ["command", "accusation"].includes(ability.kind as string) &&
               typeof ability.recharge === "object" &&
@@ -383,6 +384,7 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
             "rounds",
             "trigger",
             "redirect",
+            ...STILL_FIELDS,
           ].some((key) => key in ability)
         )
           problems.push(`${path}.kind: required`);

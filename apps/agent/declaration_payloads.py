@@ -167,10 +167,13 @@ def _raw(decl: DeclVariant) -> dict:
         return raw
     if isinstance(decl, InteractDecl):
         import choir_encounter
+        import still_encounter
 
         raw = {"type": "interact", "action": decl.action}
         if decl.action in choir_encounter.SEARCH_ACTIONS:
             raw["target_id"] = choir_encounter.SEARCH_TARGET
+        elif decl.action in still_encounter.SEARCH_ACTIONS:
+            raw["target_id"] = still_encounter.SEARCH_TARGET
         return raw
     if isinstance(decl, MoveDecl):
         return {

@@ -32,18 +32,12 @@ def guard_spell(
     if state is None:
         return
     import choir_encounter
+    import still_encounter
     from declarations import Declaration
 
-    choir_encounter.guard_declaration(
-        state,
-        actor_id,
-        Declaration(
-            type=DeclarationType.ABILITY,
-            action=spell.id,
-            target_id=target_id,
-            target_ids=target_ids,
-        ),
-    )
+    declaration = Declaration(type=DeclarationType.ABILITY, action=spell.id, target_id=target_id, target_ids=target_ids)
+    still_encounter.guard_declaration(state, actor_id, declaration)
+    choir_encounter.guard_declaration(state, actor_id, declaration)
     actor = state.get_participant(actor_id)
     if actor is None:
         raise ValueError(f"Unknown spell caster {actor_id!r}")

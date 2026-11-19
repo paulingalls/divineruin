@@ -95,8 +95,11 @@ def amount(traits, damage, damage_type):
     return damage
 
 
-def apply(target, action, result):
+def apply(target, action, result, *, state=None):
+    from still_encounter import owner_alias
+
     traits = target.damage_affinities
+    divine_vulnerable = action.get("spell_source") == "divine" and owner_alias(state, target.id) != target.id
 
     def adjusted(damage, dtype, ignores_resistance=False):
         conditional = (
@@ -108,7 +111,7 @@ def apply(target, action, result):
             return 0
         if not ignores_resistance and (conditional or dtype in traits.get("resistant", [])):
             return damage // 2
-        if dtype in traits.get("vulnerable", []):
+        if dtype in traits.get("vulnerable", []) or divine_vulnerable:
             return damage * 2
         return damage
 

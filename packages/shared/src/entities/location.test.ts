@@ -54,6 +54,7 @@ const WILDERNESS_IDS = [
   "greyvale_ruins_exterior",
   "greyvale_wilderness_north",
   "ashmark_corrupted_front",
+  "ashmark_still",
   "greyvale_south_road",
   "thornveld_old_growth_grove",
   "keldaran_southern_pass",
@@ -68,8 +69,8 @@ const NON_SETTLEMENT_IDS = [...DUNGEON_IDS, ...WILDERNESS_IDS];
 const RESOURCE_RARITIES = ["common", "uncommon", "rare"];
 
 describe("locations.json — catalog cardinality", () => {
-  test("25 rows total", () => {
-    expect(catalog.length).toBe(25);
+  test("26 rows total", () => {
+    expect(catalog.length).toBe(26);
   });
 
   test("ids are unique", () => {

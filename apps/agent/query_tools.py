@@ -24,6 +24,7 @@ import query_patron
 import recipe_tools
 import spell_knowledge
 import spells
+import still_encounter
 import training_tools
 from db_errors import db_tool
 from session_data import SessionData
@@ -114,6 +115,8 @@ async def _query_info_impl(
         try:
             state = context.userdata.combat_state
             facts = combat_spatial.facts(state, target_id or context.userdata.acting_player_id)
+            if state is not None and state.still_encounter is not None:
+                facts["still"] = still_encounter.facts(state)
             if state is not None and state.choir_encounter is not None:
                 facts["choir"] = await choir_encounter.facts(state)
             return json.dumps(facts)

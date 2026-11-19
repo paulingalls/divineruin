@@ -105,6 +105,8 @@ async def _land_one(
     action = {
         "magical": True,
         "name": spell.name,
+        "spell_id": spell.id,
+        "spell_source": spell.source,
         "damage": components[0]["dice"],
         "damage_type": components[0]["damage_type"],
         "ranged": profile.get("ranged", False),

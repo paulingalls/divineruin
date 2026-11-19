@@ -1,5 +1,6 @@
 """The Choir's searchable sound and single damage owner."""
 
+from dataclasses import replace
 from functools import partial
 
 import check_resolution
@@ -129,6 +130,17 @@ def guard_declaration(state, actor_id, declaration):
             "primal_healing_touch",
         }:
             raise ValueError("The Choir cannot be targeted by touch spells")
+
+
+def guard_damage(combat_state, attacker, target, attack_result):
+    if target.creature_id == "hollow_choir" and combat_state is not None and combat_state.choir_encounter is not None:
+        if not target.damage_affinities.get("immune"):
+            raise ValueError("Choir damage traits missing: reset/reseed old snapshots")
+        if combat_state.choir_encounter["phase"] != "exposed":
+            if attacker.id != target.id:
+                raise ValueError("Choir core must be exposed before damage")
+            attack_result = replace(attack_result, damage=0)
+    return attack_result
 
 
 def stale_reason(state, actor_id, declaration):

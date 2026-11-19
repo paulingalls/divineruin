@@ -13,14 +13,14 @@ Finding the journal grants it and completes the search atomically.
 Artifact choices persist once with their effects.
 Leave now requests a recap before disconnect, with a 15-second home fallback.
 
-**Position: 407 / 574 acceptance criteria — 71%** (the sum of the per-phase
-counts in `README.md`). **167 criteria remain unchecked.** Phases 1, 2, 4, 5,
+**Position: 408 / 574 acceptance criteria — 71%** (the sum of the per-phase
+counts in `README.md`). **166 criteria remain unchecked.** Phases 1, 2, 4, 5,
 6 and 10 have all recorded criteria checked. Phase 3 is still Partial at 34/34:
 casting infrastructure is exercised, but complete deterministic spell-effect
 coverage is **unverified**. All 87 spell rows carry textual `mechanics`; this
 refresh does not classify every effect's execution path.
 
-M7.3 remains partial: the Knight and Veilrender turn/action mechanics are exercised; Absorb Magic is exercised; Still, Architect and remaining narrated troop/Tier-3 effects are
+M7.3 remains partial: the Knight and Veilrender turn/action mechanics are exercised; Absorb Magic is exercised; the Still's anchors, Rejection and zone charm are exercised; the Architect and remaining narrated troop/Tier-3 effects are
 open in the phase doc. Deterministic catalog/encounter and Choir checks do not
 certify those outstanding effects or complete native audio.
 
@@ -102,7 +102,7 @@ rewriting those criteria.
 
 The M4.7/M4.8 capstones exercise encounter roles and beneficial conditions;
 Phase 4 records 73/73. Beat-3 natural narration pauses remain unverified here.
-Phase 7 M7.4 is reconciled on 2026-11-06 (`mbp-generated-combat`): generated entry and creature queries use player-derived tiers, active companion profile factors and difficulty-specific HP/DPR windows. The four remaining Phase 7 criteria belong to M7.3; native Choir audio certification remains separate.
+Phase 7 M7.4 is reconciled on 2026-11-06 (`mbp-generated-combat`): generated entry and creature queries use player-derived tiers, active companion profile factors and difficulty-specific HP/DPR windows. The five remaining Phase 7 criteria belong to M7.3; native Choir audio certification remains separate.
 
 The story-111 retired-tool-name guard was deleted in `cb5dd18e`; it no longer
 protects milestone prose. Historical repair narratives are omitted from this
@@ -115,7 +115,7 @@ not schedules or measured implementation costs.
 
 | Phase | Milestones | Open ACs | Dependencies / decisions | Size estimate | Exercised or inventoried substrate |
 |---|---|---|---|---|---|
-| **7 · Bestiary** | 7.3 | 4 | Remaining Hollow effects and native Choir certification | ~2 sprints | Every dropped item has an exclusive recipe link or trade marker on its catalog owner. Guaranteed drops and party skill gates exercised through persisted combat victory; roles/budgets/loot exercised through combat; 37 catalog rows, 17 catalog-backed encounter templates referencing 17 ordinary species (18 including Choir); seeded/queryable catalog and Python/TypeScript contracts. Generated entry, persisted resume, victory loot and public creature summaries and party-fit template discovery are exercised. All six categories have persisted victory coverage, including a test-only undead fixture; remaining M7.3 effects stay open. |
+| **7 · Bestiary** | 7.3 | 5 | Remaining Hollow effects and native Choir certification | ~2 sprints | Every dropped item has an exclusive recipe link or trade marker on its catalog owner. Guaranteed drops and party skill gates exercised through persisted combat victory; roles/budgets/loot exercised through combat; 37 catalog rows, 17 catalog-backed encounter templates referencing 17 ordinary species (18 including Choir); seeded/queryable catalog and Python/TypeScript contracts. Generated entry, persisted resume, victory loot and public creature summaries and party-fit template discovery are exercised. All six categories have persisted victory coverage, including a test-only undead fixture; remaining M7.3 effects stay open. |
 | **8 · Patrons** | 8.1 AC2; 8.2 AC6; 8.3 AC11 | 3 | M8.1: the remaining rest/heal-gated gifts (Zhael's d20 offer; Orenthel waits on the #642 heal landing) and the human's Mortaen/Nythera narrated ruling. M8.2: 23 pending engine effects (damage/heal effects wait on #641/#642). M8.3 combat-roll seam and circumstance producers; Thyra’s “reduced” needs a number. Full patron playability still depends on M8.1/M8.2 and Phase 2 detail | ~2 sprints | 20-minute persisted deed-journal judgment exercised through real sessions; Layers 1–3 authored for all ten patrons; all ten Layer 2 effects apply on the production cast path; Thyra, Kaelen and Aelora gifts are live; tier-drop loss whispers; Unbound Veil Clarity, Raw Channeling and Veil Mastery. Favor persists in players.data JSONB (no separate tables). M8.2 standing, durable recharge and recipient-scoped, revision-ordered character-sheet snapshots pass Python/TypeScript contracts and the strict native patron-abilities flow; 31/34 ACs are checked. M8.3 has 180 loaded rows, 27 active engine clauses, 85 active narrated clauses and 88 pending engine clauses. Mortaen’s mage spell-attack bonus is dormant until undead creature content exists. Lookup, type, stacking and Unbound null-query criteria are closed. Magnitude is human-approved; Unbound visibility, action/reaction-free Raw Channeling, Sovereign Mastery, patron exclusion and combined-test criteria are closed. Persisted autonomy/deeds and all three Self-Reliance rewards ship; Divine Immunity resolves by narration. Full patron playability remains open. |
 | **9 · Economy** | 9.1–9.10 | 75 | Phase 7 material/creature integration; Phase 5/6 inputs | large | Shared pricing getters/repair costs, reputation-to-stance and committed material inventory boundaries pass. The migrated pricing table exists. No complete economy certification is implied. |
 | **11 · World Loop** | 11.1–11.6 | 46 | D-A–D-E; M11.4 needs Phase 9, M11.6 needs Phase 8 | ~4–6 sprints | Migrated `region_state`, `npc_state`, `world_events_log`, `god_agent_state`, `world_flags`; direct quest world effects; activity-worker reset harness. These do not establish a world scheduler or cascade. |

@@ -151,7 +151,7 @@ def test_structured_shared_public_contract_corpus():
     root = Path(__file__).resolve().parents[3] / "packages/shared/fixtures"
     corpus = json.loads((root / "creature_blocks.json").read_text())
     for polarity in ("valid", "invalid"):
-        cases = [c for c in corpus[polarity] if c["name"].startswith(("structured_save_", "choir_"))]
+        cases = [c for c in corpus[polarity] if c["name"].startswith(("structured_save_", "choir_", "still_"))]
         for case in cases:
             enemy = {
                 "id": "fixture",
@@ -178,7 +178,7 @@ def test_choir_named_translation_preserves_authored_stats(role):
     assert enemy["choir_reaction"]["kind"] == "spell_redirect"
 
 
-@pytest.mark.parametrize("species", ["hollow_still", "hollow_architect", "hollow_unknown"])
+@pytest.mark.parametrize("species", ["hollow_architect", "hollow_unknown"])
 def test_still_architect_unknown_named_refused(species):
     source = copy.deepcopy(
         next(r for r in catalog() if r["id"] == ("hollow_choir" if species == "hollow_unknown" else species))

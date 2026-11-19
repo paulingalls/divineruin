@@ -5,9 +5,9 @@ they carry no damage, damage type or applied condition. The values are mirrored 
 packages/shared/src/entities/encounter.ts (constraint 7).
 """
 
-from action_contracts import validate_action_extensions
+from action_contracts import EXECUTABLE_KINDS, validate_action_extensions
 
-ACTION_KINDS = ("attack", "command", "accusation", "healing", "prepare_attack", "charm", "silence", "spell_redirect")
+ACTION_KINDS = ("attack", "command", "accusation", *EXECUTABLE_KINDS[1:])
 _MARK_FORBIDDEN_FIELDS = ("damage", "damage_type", "applies_condition")
 
 

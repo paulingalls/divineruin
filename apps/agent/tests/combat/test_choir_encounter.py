@@ -248,7 +248,7 @@ async def test_choir_aura_turn_start_once_across_hold_resume(phase, distance, el
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("species", ["hollow_still", "hollow_architect", "custom_named"])
+@pytest.mark.parametrize("species", ["hollow_architect", "custom_named"])
 @pytest.mark.parametrize("role", ["standard", "boss", "named"])
 async def test_named_entry_rejects_unsupported_before_effects(species, role, mock_combat_agent_factory, monkeypatch):
     from copy import deepcopy

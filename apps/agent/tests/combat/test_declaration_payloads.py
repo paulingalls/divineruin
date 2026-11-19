@@ -73,7 +73,7 @@ async def test_catalog_condition_action_is_invocable_from_the_produced_name():
         for encounter in catalog
         for enemy in encounter["enemies"]
         for action in enemy["action_pool"]
-        if action.get("applies_condition")
+        if action.get("applies_condition") and not action.get("auto_hit")
     ]
     assert inventory == [
         ("ashmark_patrol", "ashmark_soldier_1", "Shield Bash", "prone"),

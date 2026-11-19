@@ -19,6 +19,8 @@ import db_content_queries
 import db_mutations
 import db_queries
 import event_types as E
+import still_encounter
+import still_scene
 from combat_entry import generated_encounter, load_party_players, validate_entry_form
 from combat_init_participants import assemble_participants
 from combat_init_participants import class_reaction_ids as class_reaction_ids
@@ -141,9 +143,14 @@ async def _start_combat_locked(
     if member_players is None:
         member_players = await load_party_players(session, player, queries=queries)
 
-    participants, spatial, initiative_entries, initiative_order, retained_choir = await assemble_participants(
-        session, encounter, encounter_id, member_players, content=content, queries=queries
-    )
+    (
+        participants,
+        spatial,
+        initiative_entries,
+        initiative_order,
+        retained_choir,
+        retained_still,
+    ) = await assemble_participants(session, encounter, encounter_id, member_players, content=content, queries=queries)
 
     # Carry the encounter's faction onto CombatState so combat_end can attribute the outcome
     # to faction reputation (story-002 inc 5). An explicit encounter `faction` wins; otherwise
@@ -184,9 +191,16 @@ async def _start_combat_locked(
     import choir_encounter
 
     choir_encounter.initialize(combat_state)
-    choir_facts = await choir_scene.start(
-        session, combat_state, retained_choir, mutations=mutations, queries=queries, db_mod=db_mod
-    )
+    still_encounter.initialize(combat_state)
+    choir_facts = None
+    if combat_state.still_encounter is not None:
+        await still_scene.start(
+            session, combat_state, retained_still, mutations=mutations, queries=queries, db_mod=db_mod
+        )
+    else:
+        choir_facts = await choir_scene.start(
+            session, combat_state, retained_choir, mutations=mutations, queries=queries, db_mod=db_mod
+        )
     session.combat_state = combat_state
 
     # Reset per-encounter weapon durability flags so each encounter is self-contained
@@ -232,6 +246,7 @@ async def _start_combat_locked(
 
     response = {
         "choir": choir_facts,
+        "still": still_encounter.facts(combat_state),
         "spatial": combat_spatial.facts(combat_state, actor_id),
         "combat_id": combat_id,
         "encounter_name": encounter.get("name", encounter_id),
@@ -261,6 +276,8 @@ async def _start_combat_locked(
     # The handoff drops start_combat's tool output from CombatAgent's context, so the roster rides here.
     parts.append(f"Combatants: {json.dumps(response['participants'])}")
 
+    if response["still"]:
+        parts.append(f"Still encounter: {json.dumps(response['still'])}")
     parts.append(f"Choir encounter: {json.dumps(response['choir'])}")
     parts.append(f"Spatial facts: {json.dumps(response['spatial'])}")
 
