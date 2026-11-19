@@ -372,7 +372,8 @@ export function createProofNativeBuildDeps(
           ["bun", "expo", "start", "--dev-client", "--localhost", "--port", String(port)],
           {
             cwd,
-            env: definedEnv({ ...env, CI: "1" }),
+            // Expo binds the address its Node process resolves for localhost.
+            env: definedEnv({ ...env, CI: "1", NODE_OPTIONS: "--dns-result-order=ipv4first" }),
           },
         ),
       );
