@@ -20,7 +20,7 @@ async def test_load_rejects_corrupt_still_snapshots(still):
     _, state = await enter(still)
     original = state.to_dict()
     record = state.still_encounter
-    anchor = record["anchor_ids"][0]
+    anchor, hidden = record["anchor_ids"][:2]
 
     def participant_with_id(data, target):
         return next(row for row in data["participants"] if row["id"] == target)
@@ -31,6 +31,12 @@ async def test_load_rejects_corrupt_still_snapshots(still):
         data["spatial"]["positions"].pop(anchor)
         data["spatial"]["speeds"].pop(anchor)
 
+    def set_pending(data, target, execution_id, *, dormant=False):
+        participant_with_id(data, record["owner_id"])["still_dormant"] = dormant
+        data["still_encounter"].update(
+            revealed_ids=[anchor], pending_rejection={"anchor_id": target, "execution_id": execution_id}
+        )
+
     mutations = [
         lambda data: data.pop("still_encounter"),
         lambda data: data["still_encounter"]["anchor_ids"].__setitem__(1, anchor),
@@ -38,15 +44,9 @@ async def test_load_rejects_corrupt_still_snapshots(still):
         lambda data: participant_with_id(data, anchor).update(hp_current=41),
         lambda data: data["still_encounter"]["revealed_ids"].append("unknown"),
         lambda data: data["still_encounter"].update(phase="destroyed"),
-        lambda data: data["still_encounter"].update(
-            pending_rejection={"anchor_id": "unknown", "execution_id": "attack"}
-        ),
-        lambda data: data["still_encounter"].update(
-            revealed_ids=[anchor], pending_rejection={"anchor_id": anchor, "execution_id": "attack"}
-        ),
-        lambda data: data["still_encounter"].update(
-            revealed_ids=[anchor], pending_rejection={"anchor_id": anchor, "execution_id": ""}
-        ),
+        lambda data: set_pending(data, hidden, "attack"),
+        lambda data: set_pending(data, anchor, "attack", dormant=True),
+        lambda data: set_pending(data, anchor, ""),
         lambda data: participant_with_id(data, record["owner_id"])["action_ledger"].pop("final stillness"),
         lambda data: participant_with_id(data, record["owner_id"])["action_ledger"]["final stillness"].update(
             remaining=1
