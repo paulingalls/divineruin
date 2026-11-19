@@ -3528,7 +3528,7 @@
     ],
     "description": "A scout returned from the Veil with practiced footwork and an empty voice.",
     "level": 5,
-    "hp": 32,
+    "hp": 24,
     "ac": 13,
     "speed": 30,
     "attributes": {
@@ -3549,7 +3549,7 @@
         "type": "melee",
         "reach": 5,
         "to_hit": 6,
-        "damage": "1d8+2",
+        "damage": "1d4",
         "damage_type": "slashing",
         "special": null,
         "audio": "hollowed-scout-corrupted-blade"
@@ -3559,7 +3559,7 @@
         "type": "melee",
         "reach": 5,
         "to_hit": 6,
-        "damage": "1d6",
+        "damage": "1d4",
         "damage_type": "psychic",
         "special": null,
         "audio": "hollowed-scout-hollow-echo"
@@ -3601,7 +3601,7 @@
     },
     "narration": {
       "first_sighting": "Wrong footsteps scrape the stone before a familiar scout steps into view.",
-      "attack_cue": "A blade whistles through the air as its voice repeats a lost name.",
+      "attack_cue": "A blade whistles through the air over the scrape of a boot.",
       "wounded_cue": "A hollow rasp leaks from the rents in its armor.",
       "death_cue": "A brittle crack sounds as the scout folds into ash.",
       "ambient_cue": "A scrape of uneven footsteps carries along an empty route."

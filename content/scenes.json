@@ -1,5 +1,13 @@
 [
   {
+    "id": "scene_lost_scout",
+    "name": "The Lost Scout",
+    "type": "event",
+    "region_type": "dungeon",
+    "instructions": "Boots drag across the stone, then stop. A scarred scout in Ashmark gear stands inside the chamber. The token identifies her as Ressa Corrow, the scout Torin sent north from the Accord. Let the player back away or face her. Start combat only if they choose to engage, using enter_mode(mode=\"combat\", encounter_id=\"hollowed_scout\").",
+    "residue": "A rasp catches in Ressa's throat. Voice Tam once, as a fragment the narrator hears slip out in the fight. The name belongs to her younger brother in Millhaven. Treat the sound as a trace of memory, with no speaker tag or conversation."
+  },
+  {
     "id": "scene_road_to_millhaven",
     "name": "Road to Millhaven",
     "type": "quest",

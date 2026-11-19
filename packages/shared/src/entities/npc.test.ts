@@ -55,3 +55,15 @@ describe("npcs.json — portrait schema", () => {
     }
   });
 });
+
+test("Torin has a public response for each Lost Scout outcome", () => {
+  const withReports = npcs.filter((npc) => npc.lost_scout_reports !== undefined);
+  expect(withReports.map((npc) => npc.id)).toEqual(["guildmaster_torin"]);
+  for (const { lost_scout_reports: reports } of withReports) {
+    expect(Object.keys(reports ?? {}).sort()).toEqual(["fled", "fought", "withdrew"]);
+    for (const line of Object.values(reports ?? {})) {
+      expect(typeof line).toBe("string");
+      expect(line.trim().length).toBeGreaterThan(0);
+    }
+  }
+});

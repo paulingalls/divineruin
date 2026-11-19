@@ -47,6 +47,7 @@ export interface Npc {
   mannerisms?: string[];
   backstory_summary?: string;
   knowledge: NpcKnowledge;
+  lost_scout_reports?: Record<"fought" | "fled" | "withdrew", string>;
   schedule: NpcSchedule;
   default_disposition: Disposition; // canonical 5-tier ladder (story-004); see role_archetype.ts
   disposition_modifiers?: Record<string, number>;

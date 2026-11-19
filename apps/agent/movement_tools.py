@@ -13,6 +13,7 @@ import db_mutations
 import db_mutations_travel
 import db_queries
 import event_types as E
+import lost_scout_scene
 import quest_progress
 import still_charm
 import still_scene
@@ -145,6 +146,9 @@ async def write_arrival(
     destination_exits = destination_location.get("exits", {}) if destination_location else {}
     exit_connections = db_mod.extract_exit_connections(destination_exits)
     pending_events: list[tuple[str, dict]] = []
+
+    if previous_location_id == lost_scout_scene.INNER and destination_id != previous_location_id:
+        await lost_scout_scene.depart(session, member_ids, queries=queries, mutations=mutations, conn=conn)
 
     if (
         destination_id != previous_location_id

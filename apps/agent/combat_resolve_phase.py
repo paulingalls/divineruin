@@ -27,6 +27,7 @@ import db_mutations_resonance
 import db_queries
 import draethar_inner_fire
 import event_types as E
+import lost_scout_combat
 import resonance_events
 import spell_casting
 import still_encounter
@@ -162,6 +163,7 @@ async def _resolve_phase_locked(
                 fate_rolls=fate_rolls,
             )
 
+        residue = await lost_scout_combat.residue(session, state, queries=queries, mutations=mutations, conn=conn)
         # A held argument that ends combat must hand off before the incoming tool can run.
         ended_on_argument = state.deescalated and combat_fate.held_argument(cs.ally_continuation) is not None
         if (not resolving_allies or ended_on_argument) and state.open_window is None and fate_rolls.pending is None:
@@ -219,6 +221,8 @@ async def _resolve_phase_locked(
     else:
         assert end_data is not None
         end_data["judgment_rewards"] = judgment_rewards
+        if residue is not None:
+            end_data["lost_scout_residue"] = residue
         handoff = _end_combat_finish(session, state, ended_outcome, end_data)
     offer = None
     if fate_rolls.pending is not None:
@@ -311,6 +315,8 @@ async def _resolve_phase_locked(
         "exhaustion_narration": exhaustion_narration,
         "legendary_available": wrap_adv.legendary_available,
     }
+    if residue is not None:
+        response["lost_scout_residue"] = residue
     if judgment_rewards:
         response["judgment_rewards"] = judgment_rewards
     if offer is not None:

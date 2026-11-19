@@ -158,6 +158,7 @@ async def _end_combat_db(
     ``rng`` seeds the loot/currency rolls (a fresh system Random by default)."""
     import choir_scene
     import concealment
+    import lost_scout_combat
     import still_encounter
     import still_scene
 
@@ -272,6 +273,7 @@ async def _end_combat_db(
 
     enemies = [p for p in cs.participants if p.type == "enemy"]
     combat_cleared = bool(enemies) and all(p.is_fallen for p in enemies)
+    await lost_scout_combat.end(session, cs, outcome, combat_cleared, mutations=mutations, queries=queries, conn=conn)
     deed = {"fled": "fled_combat", "deescalated": "offered_mercy"}.get(outcome)
     if outcome == "victory" and combat_cleared:
         deed = "won_combat"
@@ -437,6 +439,9 @@ def _end_combat_finish(
     from livekit.agents.llm import ChatContext
 
     summary_parts = [f"Combat resolved: {outcome}."]
+    if residue := end_data.get("lost_scout_residue"):
+        response["lost_scout_residue"] = residue
+        summary_parts.append(residue)
     if episode_facts:
         summary_parts.append(episode_facts["aftermath"])
     for encounter in ("choir", "still"):

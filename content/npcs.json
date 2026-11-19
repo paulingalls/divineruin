@@ -29,6 +29,11 @@
         "his missing scout's last report mentioned the old ruins and 'lights that moved wrong'"
       ]
     },
+    "lost_scout_reports": {
+      "fought": "You fought Ressa Corrow. I trained her in that footwork.",
+      "fled": "You fled after fighting Ressa Corrow. Thank you for bringing her name back.",
+      "withdrew": "You saw Ressa Corrow and backed away. I needed to know where she was."
+    },
     "schedule": {
       "07:00-22:00": "accord_guild_hall",
       "22:00-07:00": "torin_quarters"

@@ -16,7 +16,10 @@ from livekit.agents.voice import RunContext
 import attribute_increase_tools
 import attribute_increases
 import db
+import db_content_queries
+import db_mutations
 import db_queries
+import lost_scout_scene
 import milestone_persistence
 import milestones
 import patron_echo_choice
@@ -38,7 +41,8 @@ async def select(
     """Resolve a pending attribute increase, specialization or Hollow Echo choice.
     query_info(kind="abilities") recovers attribute increase choices until the next long rest. Use the emitted choice_id
     and option id. For Hollow Echo, offer both descriptions aloud and wait for the
-    player's spoken choice before selecting. Level 10/15/20 grants apply automatically."""
+    player's spoken choice before selecting. For a Lost Scout report, use the report_action from
+    query_info(kind="npc") when the player tells Torin what happened. Level 10/15/20 grants apply automatically."""
     return await _select_impl(context, choice_id, option)
 
 
@@ -74,6 +78,11 @@ async def _select_impl(
     session: SessionData = context.userdata
     target_id = session.acting_player_id
     logger.info("select called: choice_id=%s option=%s caller=%s", choice_id, option, target_id)
+
+    if choice_id == lost_scout_scene.CHOICE:
+        return await lost_scout_scene.report(
+            session, option, db_mod=db_mod, queries=queries_mod, content=db_content_queries, mutations=db_mutations
+        )
 
     if choice_id.startswith(attribute_increases.PREFIX):
         return await attribute_increase_tools.select(session, choice_id, option, db_mod=db_mod, queries_mod=queries_mod)

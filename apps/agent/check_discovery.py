@@ -3,10 +3,9 @@
 Split from check_tools.py (500-line cap). check(skill, target) takes a VISIBLE
 target; the hidden element's id is the Resolve's OUTPUT on success, never an input
 (Verbs & Stages §7). M6 scopes by hidden_element.attaches_to: the element surfaces when
-its attaches_to token appears as a whole word in the examined target (so the player can
-examine via the DM-advertised key_feature prose), and an element bound to a different
-target never surfaces; unannotated elements are the room-wide skill-match fallback. A
-successful discovery emits E.HIDDEN_REVEALED.
+its attaches_to token appears as a whole word in the examined target. Unattached secrets
+are the room-wide fallback. The Lost Scout token is a guaranteed extra on entrance searches.
+A successful discovery emits E.HIDDEN_REVEALED.
 Exposes `*_mod=` keyword seams for TEST-ONLY injection.
 """
 
@@ -28,6 +27,7 @@ import db_mutations
 import db_mutations_conditions
 import db_queries
 import event_types as E
+import lost_scout_scene
 import rules_engine
 import still_encounter
 from action_sound_content import ACTION_SOUND_EXPORTS, publish_action_sound
@@ -159,25 +159,28 @@ async def _check_discover_impl(
     validated_player_conditions(player, player_id)
     player = await choir_scene.check_data(session, player, queries=queries)
 
-    # Skill-matched, undiscovered, un-rolled-this-session hidden_elements. The anti-grind gate
-    # is keyed on the player and ELEMENT, not the free-text target, so re-searching the same secret
-    # under a reworded target can't earn a fresh roll; once the lowest-DC secret is exhausted the
-    # next one becomes reachable. Per player because the discovered flag is per player: a guest's
-    # miss must not lock the host out of a secret the host has never found.
+    target_norm = target.strip().lower()
+    token = None
+    if session.location_id == lost_scout_scene.ENTRANCE:
+        feature = lost_scout_scene.token_element(location)["attaches_to"].strip().lower()
+        searching_token = _target_matches(target_norm, feature)
+        if searching_token or not lost_scout_scene.has_token(player):
+            token = await lost_scout_scene.reveal_token(
+                session, location, skill_lower, db_mod=db_mod, queries=queries, mutations=mutations
+            )
+            if searching_token:
+                return json.dumps(token)
+    # A changed target label cannot buy a second roll at the same secret.
     flags = player.get("flags", {})
     skill_candidates = [
         elem
         for elem in location.get("hidden_elements", [])
-        if elem.get("discover_skill", "perception") == skill_lower
+        if elem.get("id") != lost_scout_scene.TOKEN
+        and elem.get("discover_skill", "perception") == skill_lower
         and not flags.get(f"{elem.get('id')}.discovered")
         and f"{player_id}:{skill_lower}:{elem.get('id')}" not in session.attempted_discoveries
     ]
 
-    # M6 attaches_to scoping: an element bound to a visible target surfaces ONLY when that
-    # target is examined; an element bound to a DIFFERENT target never surfaces here. An
-    # unannotated element is the room-wide skill-match fallback when nothing is attached to
-    # the examined target (Verbs & Stages §7). Match is case-insensitive + stripped.
-    target_norm = target.strip().lower()
     attached = [
         e
         for e in skill_candidates
@@ -186,6 +189,8 @@ async def _check_discover_impl(
     candidates = attached if attached else [e for e in skill_candidates if not e.get("attaches_to")]
 
     element = min(candidates, key=lambda e: e.get("dc", DEFAULT_DISCOVER_DC)) if candidates else None
+    if element is None and token is not None:
+        return json.dumps(token)
     response, flush, offer = await _resolve_discovery(
         context,
         player,
@@ -205,6 +210,8 @@ async def _check_discover_impl(
     else:
         assert flush is not None
         await flush()
+    if token is not None:
+        response["guaranteed_discovery"] = token
     return json.dumps(response)
 
 
