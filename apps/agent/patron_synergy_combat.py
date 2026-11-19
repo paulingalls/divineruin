@@ -19,6 +19,8 @@ def attack_flags(player: dict) -> dict[str, bool]:
     return {
         "expanded_critical": has_engine_synergy(player, "zhael_bent_probability"),
         "critical_rider": has_engine_synergy(player, "thyra_natures_edge"),
+        "weapon_damage_bonus": bool((player.get("flags") or {}).get("extra_attack"))
+        and has_engine_synergy(player, "kaelen_extra_attack_damage"),
     }
 
 
@@ -30,3 +32,9 @@ def critical_rider(attacker_data: dict, critical: bool, *, rng: random.Random | 
     if critical and attacker_data.get("critical_rider"):
         return dice_roll("1d4", rng=rng).total, "lightning"
     return 0, None
+
+
+def weapon_damage_bonus(attacker_data: dict, critical: bool, *, rng: random.Random | None) -> int:
+    if attacker_data.get("weapon_damage_bonus"):
+        return dice_roll("2d4" if critical else "1d4", rng=rng).total
+    return 0

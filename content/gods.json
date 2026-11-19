@@ -496,8 +496,9 @@
           },
           {
             "effect": "Extra Attack (L10) grants +1d4 permanent weapon damage",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "kaelen_extra_attack_damage"
           }
         ]
       },
@@ -513,8 +514,9 @@
           },
           {
             "effect": "Extra Attack (L10) grants +1d4 permanent weapon damage",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "kaelen_extra_attack_damage"
           }
         ]
       },
@@ -530,8 +532,9 @@
           },
           {
             "effect": "Extra Attack (L10) grants +1d4 permanent weapon damage",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "kaelen_extra_attack_damage"
           }
         ]
       },

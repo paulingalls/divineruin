@@ -1,6 +1,7 @@
 {
   "kaelen_iron_resolve": "kaelen_gift:trigger_iron_resolve",
   "kaelen_tempered_resolve": "kaelen_gift:trigger_iron_resolve",
+  "kaelen_extra_attack_damage": "patron_synergy_combat:weapon_damage_bonus",
   "aelora_common_bond": "patron_gifts:skill_gift",
   "thyra_wild_kinship": "patron_gifts:skill_gift",
   "syrath_silent_casting": "cast_modifiers:apply_patron_generation",

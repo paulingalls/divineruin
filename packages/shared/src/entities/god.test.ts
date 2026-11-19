@@ -232,3 +232,25 @@ test("the authored critical synergies are active engine clauses", () => {
     });
   }
 });
+
+test("Kaelen's Natural synergies have both active engine clauses", () => {
+  const kaelen = validateGods(catalog).find((god) => god.god_id === "kaelen");
+  const natural = Object.entries(kaelen!.layer_4_synergy_matrix).filter(
+    ([, row]) => row.type === "natural",
+  );
+  expect(natural.map(([archetype]) => archetype).sort()).toEqual([
+    "guardian",
+    "skirmisher",
+    "warrior",
+  ]);
+  for (const [, row] of natural) {
+    expect(row.clauses).toHaveLength(2);
+    expect(row.clauses).toMatchObject(
+      ["kaelen_tempered_resolve", "kaelen_extra_attack_damage"].map((implementation_id) => ({
+        status: "active",
+        resolution: "engine",
+        implementation_id,
+      })),
+    );
+  }
+});
