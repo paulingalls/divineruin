@@ -1,3 +1,4 @@
+from test_dawns_resilience import SCENARIOS as dawns_resilience
 from test_patron_engine_aelora import SCENARIOS as aelora
 from test_patron_engine_beacon import SCENARIOS as beacon
 from test_patron_engine_judgment import SCENARIOS as judgment
@@ -14,6 +15,7 @@ from test_zhael_fate_callers import SCENARIOS as zhael
 ENGINE_SCENARIOS = {
     **aelora,
     **beacon,
+    **dawns_resilience,
     **judgment,
     **kaelen,
     **nythera,

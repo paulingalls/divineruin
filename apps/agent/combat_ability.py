@@ -383,7 +383,11 @@ async def _resolve_ability_packet(
             caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
         cast_packet = result.packet
         if heal is not None:
-            cast_packet["healing_results"] = await combat_spell_heal.land(heal, attacker, recipients, conn=conn)
+            if player is None:
+                raise RuntimeError(f"Missing locked player row for healing caster {attacker.id}")
+            cast_packet["healing_results"] = await combat_spell_heal.land(
+                heal, attacker, recipients, caster_row=player, packet=cast_packet, conn=conn
+            )
         # Veilrender Absorb Magic heals once per cast, so its landing is frozen with the cast packet.
         if deliveries is not None:
             effective_ids = list(dict.fromkeys(d["target_id"] for d in deliveries))

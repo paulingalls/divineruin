@@ -70,13 +70,12 @@ async def preflight_declarations(session, state):
     )
 
 
-def _receipt(holder_id, item_id, name, remaining, healing_results) -> dict:
+def _receipt(holder_id, item_id, name, remaining) -> dict:
     packet = {
         "player_id": holder_id,
         "item_id": item_id,
         "item_name": name,
         "remaining_quantity": remaining,
-        "healing_results": healing_results,
     }
     if item_id == "restoration_salve":
         packet["condition_removal"] = {"applied": False, "reason": "The salve has no condition selection rule."}
@@ -91,15 +90,21 @@ async def resolve_combat(session, state, holder, decl, *, conn, sink: EventSink 
     except ToolError as error:
         # Earlier packets may have already committed at a Fate pause.
         return {"actor_id": holder.id, "resolved": False, "reason": str(error)}
+    holder_row = await queries.get_player(holder.id, conn=conn, for_update=True)
+    if holder_row is None:
+        raise RuntimeError(f"Missing locked player row for healing item holder {holder.id}")
     remaining = await db_mutations_inventory.transact_inventory(holder.id, item_id, -1, conn=conn)
-    results = await combat_spell_heal.land(profile, holder, [target], conn=conn)
+    packet = _receipt(holder.id, item_id, name, remaining)
+    packet["healing_results"] = await combat_spell_heal.land(
+        profile, holder, [target], caster_row=holder_row, packet=packet, conn=conn
+    )
     inventory = await inventory_refresh.inventory_payload(holder.id, conn=conn, queries=queries)
     await sink.emit(session.room, E.INVENTORY_UPDATED, inventory, event_bus=session.event_bus)
     return {
         "actor_id": holder.id,
         "resolved": True,
         "declaration_type": "interact",
-        **_receipt(holder.id, item_id, name, remaining, results),
+        **packet,
     }
 
 
@@ -120,22 +125,23 @@ async def consume_exploration(session: SessionData, item_id: str, target_id: str
             name, profile = await _held_heal(holder_id, item_id, conn=conn)
             session.validate_acting_player(holder_id)
             remaining = await db_mutations_inventory.transact_inventory(holder_id, item_id, -1, conn=conn)
-            results = await combat_spell_heal.land_exploration(
-                profile, holder, {target_id: target}, conn=conn, dice_mod=dice
+            packet = _receipt(holder_id, item_id, name, remaining)
+            packet["healing_results"] = await combat_spell_heal.land_exploration(
+                profile, holder, {target_id: target}, caster_id=holder_id, packet=packet, conn=conn, dice_mod=dice
             )
             inventory = await inventory_refresh.inventory_payload(holder_id, conn=conn)
 
-        hp = results[0]
-        if hp["healed"] > 0:
+        for recipient_id, hp in combat_spell_heal.hp_updates(holder_id, packet).items():
             with isolated_publish("item heal HP"):
                 await publish_game_event(
                     session.room,
                     E.HP_CHANGED,
                     {"current": hp["hp_current"], "max": hp["hp_max"]},
                     event_bus=session.event_bus,
-                    destination_identities=[target_id],
+                    destination_identities=[recipient_id],
                 )
         with isolated_publish("item heal inventory"):
             await publish_game_event(session.room, E.INVENTORY_UPDATED, inventory, event_bus=session.event_bus)
-        session.record_event(f"Used {name} on {target_id}, restoring {hp['healed']} HP")
-    return json.dumps(_receipt(holder_id, item_id, name, remaining, results))
+        healed = packet["healing_results"][0]["healed"]
+        session.record_event(f"Used {name} on {target_id}, restoring {healed} HP")
+    return json.dumps(packet)
