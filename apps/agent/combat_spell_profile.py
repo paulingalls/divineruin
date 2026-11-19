@@ -30,6 +30,7 @@ def parse_profile(raw):
         raise ValueError("invalid combat_damage resolution")
     allowed = {
         "resolution",
+        "recipients",
         "components",
         "attribute",
         "damage_attribute",
@@ -109,6 +110,13 @@ def parse_profile(raw):
         raise ValueError("invalid combat_damage restriction")
     if "deferred" in raw and (not isinstance(raw["deferred"], str) or not raw["deferred"].strip()):
         raise ValueError("combat_damage deferred requires a reason")
+    if "recipients" in raw:
+        from combat_spell_recipients import validate_spec
+
+        try:
+            validate_spec(raw["recipients"])
+        except ValueError as error:
+            raise ValueError(f"combat_damage recipients: {error}") from error
     return dict(raw)
 
 
@@ -119,6 +127,13 @@ def scaled(profile, key, base, level):
 def validate_target(state, caster, declaration, spell):
     profile = getattr(spell, "combat_damage", None)
     if profile is None or profile["resolution"] == "deferred":
+        return
+    if profile.get("recipients"):
+        from combat_spell_recipients import select
+
+        select(state, caster, declaration, spell, require_live=True)
+        if profile.get("choices") and declaration.argument_type not in profile["choices"]:
+            raise ValueError(f"{spell.name} requires argument_type {', '.join(profile['choices'])}")
         return
     if declaration.target_ids:
         raise ValueError("Damage spells affect one declared recipient; use one target, other recipients are deferred")
@@ -134,4 +149,4 @@ def validate_target(state, caster, declaration, spell):
         if distance(position(spatial, caster.id), position(spatial, target.id)) > 10:
             raise ValueError(f"{spell.name} requires a recipient within 10 feet")
     if profile.get("choices") and declaration.argument_type not in profile["choices"]:
-        raise ValueError(f"{spell.name} requires argument_type fire, cold, or lightning")
+        raise ValueError(f"{spell.name} requires argument_type {', '.join(profile['choices'])}")

@@ -295,9 +295,25 @@ async def _resolve_ability_packet(
     choir_encounter.guard_declaration(state, attacker.id, decl)
     caster = session.member_state(attacker.id)
     combat_voice_rules.guard_declaration(state, attacker, decl)
+    import spells
     from choir_reaction import effective_declaration
+    from combat_spell_recipients import select
 
-    decl = effective_declaration(state, attacker, decl)
+    spell = spells.get_spell(decl.action)
+    deliveries = None
+    if spell.combat_damage and spell.combat_damage.get("recipients"):
+        deliveries = select(state, attacker, decl, spell)
+        redirects = {}
+        for delivery in deliveries:
+            target_id = delivery["target_id"]
+            if target_id not in redirects:
+                redirected = effective_declaration(state, attacker, replace(decl, target_id=target_id, target_ids=None))
+                redirects[target_id] = redirected.target_id
+            delivery["target_id"] = redirects[target_id]
+        if decl.target_id in redirects:
+            decl = replace(decl, target_id=redirects[decl.target_id])
+    else:
+        decl = effective_declaration(state, attacker, decl)
     result = await cast_resolver._resolve_cast(
         session,
         decl.action,
@@ -314,9 +330,23 @@ async def _resolve_ability_packet(
         combat_hollow_resonance.stage_total(state, attacker.id, result.new_resonance)
     if result.concentration_spell_id is not spell_casting._UNCHANGED:
         caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
-    landing = combat_veilrender.absorb_spell(state, attacker, decl, result.packet)
-    if landing is not None:
-        await combat_spell_damage.land(session, state, attacker, landing, result, conn=conn, **(damage_deps or {}))
+    if deliveries is not None:
+        effective_ids = list(dict.fromkeys(d["target_id"] for d in deliveries))
+        landing = (
+            combat_veilrender.absorb_spell(
+                state, attacker, replace(decl, target_id=None, target_ids=effective_ids), result.packet
+            )
+            if effective_ids
+            else None
+        )
+        absorbed = {receipt["target_id"] for receipt in result.packet.get("absorbed", [])}
+        deliveries = [d for d in deliveries if d["target_id"] not in absorbed]
+    else:
+        landing = combat_veilrender.absorb_spell(state, attacker, decl, result.packet)
+    if deliveries is not None or landing is not None:
+        await combat_spell_damage.land(
+            session, state, attacker, landing or decl, result, conn=conn, deliveries=deliveries, **(damage_deps or {})
+        )
     cast_outcome.results[attacker.id] = result
     cond_type = result.packet.get("condition_applied")
     if cond_type and landing is not None:

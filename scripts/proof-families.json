@@ -28,7 +28,8 @@
       "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:spell_damage_commit|catalog_action_runtime|catalog_combat_translation|catalog_encounter_cutover|choir_.*|combat_spatial_entry|hollow_troops_fight|hollowed_knight_fight|veilrender_fight|veilrender_absorb_commit|fallen_melee_failures|first_blood_atomicity|generated_combat(?:_movement)?|mawling_.*|m(?:12|13|41|42|43|44|47|48)_.*)\\.py"
     ],
     "owns": [
-      "apps/agent/(?:combat[^/]*|choir[^/]*|encounter[^/]*|durability[^/]*|damage[^/]*|death[^/]*|enemy[^/]*|initiative[^/]*|reaction[^/]*|monster[^/]*)\\.py"
+      "apps/agent/(?:combat[^/]*|choir[^/]*|encounter[^/]*|durability[^/]*|damage[^/]*|death[^/]*|enemy[^/]*|initiative[^/]*|reaction[^/]*|monster[^/]*)\\.py",
+      "apps/agent/(?:spells|declaration_payloads|action_contracts|creature_combat_effects)\\.py"
     ],
     "reads": [
       "content/action_sounds.json",

@@ -479,3 +479,19 @@ test("Knight nested riders reject malformed actual rows", async () => {
     expect(validateCreatureStatBlock(row).some((e) => e.includes("on_hit"))).toBe(true);
   }
 });
+
+test("Wave cone extension survives creature validation and rejects malformed shapes", async () => {
+  const rows = (await Bun.file(
+    new URL("../../../../content/creatures.json", import.meta.url),
+  ).json()) as Record<string, unknown>[];
+  const wave = rows.find((r) => r.id === "hollow_veilrender")!;
+  expect(validateCreatureStatBlock(wave)).toEqual([]);
+  for (const change of [{ shape: "sphere" }, { type: "melee" }, { reach: 0 }]) {
+    const invalid = structuredClone(wave);
+    Object.assign(
+      (invalid.attacks as Record<string, unknown>[]).find((a) => a.name === "Corruption Wave")!,
+      change,
+    );
+    expect(validateCreatureStatBlock(invalid).some((p) => p.includes("shape"))).toBe(true);
+  }
+});

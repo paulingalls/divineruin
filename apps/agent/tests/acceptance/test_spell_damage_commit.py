@@ -10,6 +10,8 @@ import pytest
 from _hollow_resonance_fixtures import hollow
 from acceptance._capstone_helpers import _d20, _enemy, _resolve_round
 from acceptance._catalog_cutover_helpers import started as started
+from combat.test_area_spell_recipients import add_enemies
+from combat.test_area_spell_recipients import area_party as area_party
 from combat.test_spell_damage_lands import declare_spell, load_combat, prepare_spell, saved_player
 from combat.test_spell_damage_lands import spell_fight as spell_fight
 from voice_condition_fixtures import participant
@@ -82,12 +84,15 @@ async def test_last_hollow_spell_kill_ends_normally(spell_fight):
     assert await db_mutations.load_combat_state(state.combat_id) is None
 
 
-async def test_paid_damage_rolls_back_hp_focus_and_events_then_retries_once(spell_fight, monkeypatch):
-    ctx = spell_fight
-    spell = await prepare_spell(ctx, "arcane_magic_missile")
+@pytest.mark.parametrize("spell_id", ["arcane_magic_missile", "arcane_fireball"])
+async def test_paid_damage_rolls_back_hp_focus_and_events_then_retries_once(area_party, monkeypatch, spell_id):
+    ctx, (ally, beside) = area_party
+    spell = await prepare_spell(ctx, spell_id)
+    await add_enemies(ctx, {"foe": (40, 0, 0), "second": (60, 0, 0), ally: (40, 10, 0), beside: (61, 0, 0)})
     await declare_spell(ctx, spell.id)
     state = deepcopy(ctx.userdata.combat_state.to_dict())
     player = await saved_player(ctx.userdata.player_id)
+    ally_before = await saved_player(ally)
     mirrors = asdict(ctx.userdata.party)
     ctx.userdata.room.local_participant.publish_data.reset_mock()
     original = db_mutations.save_combat_state
@@ -98,6 +103,10 @@ async def test_paid_damage_rolls_back_hp_focus_and_events_then_retries_once(spel
         written = await load_combat(combat_id, conn=conn)
         changed = await saved_player(ctx.userdata.player_id, conn=conn)
         assert participant(written, "foe").hp_current < 100
+        if spell_id == "arcane_fireball":
+            assert participant(written, "second").hp_current < 100
+            assert participant(written, ally).hp_current < 28
+            assert (await saved_player(ally, conn=conn))["hp"]["current"] == participant(written, ally).hp_current
         assert changed["focus"]["current"] == player["focus"]["current"] - spell.focus_cost
         observed.append(True)
         raise RuntimeError("injected after damage and Focus writes")
@@ -107,18 +116,24 @@ async def test_paid_damage_rolls_back_hp_focus_and_events_then_retries_once(spel
         with pytest.raises(RuntimeError, match="injected after damage"):
             await _resolve_round(ctx)
     assert observed == [True]
+    assert await saved_player(ally) == ally_before
     assert (await load_combat(state["combat_id"])).to_dict() == state
     assert await saved_player(ctx.userdata.player_id) == player
     assert ctx.userdata.combat_state.to_dict() == state and asdict(ctx.userdata.party) == mirrors
     ctx.userdata.room.local_participant.publish_data.assert_not_called()
     result = await _resolve_round(ctx)
-    damage = next(
-        p["cast"]["damage_result"]["damage"] for p in result["packets"] if p["actor_id"] == ctx.userdata.player_id
-    )
-    assert participant(ctx.userdata.combat_state, "foe").hp_current == 100 - damage
+    cast = next(p["cast"] for p in result["packets"] if p["actor_id"] == ctx.userdata.player_id)
+    loaded = await load_combat(state["combat_id"])
+    covered = {"foe", "second", ally} if spell_id == "arcane_fireball" else {"foe"}
+    assert {damage["target_id"] for damage in cast["damage_results"]} == covered
+    for damage in cast["damage_results"]:
+        target_id = damage["target_id"]
+        before_hp = next(p["hp_current"] for p in state["participants"] if p["id"] == target_id)
+        assert participant(loaded, target_id).hp_current == before_hp - damage["damage"]
     assert (await saved_player(ctx.userdata.player_id))["focus"]["current"] == player["focus"][
         "current"
     ] - spell.focus_cost
+    assert ctx.userdata.room.local_participant.publish_data.called
 
 
 @pytest.mark.parametrize(

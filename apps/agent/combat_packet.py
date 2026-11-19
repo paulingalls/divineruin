@@ -230,7 +230,9 @@ async def _resolve_action_packet(
         elif (
             target is not None
             and not target_unavailable(target, action)
-            and not (action.get("resolution") == "save" and action.get("type") == "area")
+            and not (
+                (action.get("resolution") == "save" or action.get("shape") == "cone") and action.get("type") == "area"
+            )
             and (
                 decl.type is DeclarationType.ATTACK
                 or action.get("applies_condition")
@@ -242,7 +244,7 @@ async def _resolve_action_packet(
     if (
         not attacker.is_ally
         and action is not None
-        and action.get("resolution") == "save"
+        and (action.get("resolution") == "save" or action.get("shape") == "cone")
         and action.get("type") == "area"
     ):
         from choir_actions import resolve_area

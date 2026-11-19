@@ -38,6 +38,10 @@ def validate_recharge(value: object, path: str) -> None:
 
 
 def validate_action_extensions(action: dict, path: str) -> None:
+    if "shape" in action and (
+        action["shape"] != "cone" or action.get("type") != "area" or not positive_integer(action.get("reach"))
+    ):
+        invalid(f"{path}.shape")
     kind = action.get("kind", "attack")
     validate_weapon_riders(action, path)
     validate_durability_rider(action, path)

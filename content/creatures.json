@@ -2768,6 +2768,8 @@
       },
       {
         "name": "Corruption Wave",
+        "shape": "cone",
+        "duration": 1,
         "type": "area",
         "reach": 30,
         "to_hit": 0,

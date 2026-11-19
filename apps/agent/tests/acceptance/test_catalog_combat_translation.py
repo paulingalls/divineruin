@@ -300,3 +300,21 @@ async def test_command_focus_bonus_reaches_attack(runtime):
     result = await resolve(ctx)
     packet = next(p for p in result["packets"] if p["actor_id"] == "soldier137")
     assert packet["attack_total"] == 21
+
+
+@pytest.mark.parametrize("change", [{"shape": "sphere"}, {"type": "melee"}, {"reach": 0}])
+def test_wave_cone_extension_rejects_malformed_catalog_and_encounter_actions(change):
+    from copy import deepcopy
+
+    from creature_combat_helpers import catalog
+
+    from creature_schema import validate_creature_stat_block
+    from encounter_actions import validate_encounter_actions
+
+    row = deepcopy(next(r for r in catalog() if r["id"] == "hollow_veilrender"))
+    action = next(a for a in row["attacks"] if a["name"] == "Corruption Wave")
+    assert action["shape"] == "cone" and not validate_creature_stat_block(row)
+    action.update(change)
+    assert any("shape" in error for error in validate_creature_stat_block(row))
+    with pytest.raises(ValueError, match="shape"):
+        validate_encounter_actions([{"id": "wave", "action_pool": [action]}])

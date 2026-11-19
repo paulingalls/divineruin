@@ -91,6 +91,9 @@ async def test_catalog_condition_action_is_invocable_from_the_produced_name():
         enemy = state.get_participant("goblin_scout_1")
         assert enemy is not None
         enemy.action_pool = [action]
+        if action.get("shape") == "cone":
+            assert state.spatial is not None
+            state.spatial["positions"]["player_1"]["x"] = 20
         produced_name = _participant_roster(state.participants)[1]["actions"][0]
         mapped = to_engine_declarations(
             [
@@ -120,6 +123,8 @@ async def test_catalog_condition_action_is_invocable_from_the_produced_name():
                 ),
             )
 
+        if "targets" in summary:
+            summary = next(r for r in summary["targets"] if r["target_id"] == "player_1")
         assert summary["condition_inflicted"] == condition
         player = state.get_participant("player_1")
         assert player is not None
