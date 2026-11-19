@@ -145,6 +145,12 @@ async def independent_guest(walk, guest, zone):
         await other.session.aclose()
 
 
+async def parked(wait):
+    """Park inside an open transaction for at most 5 s, so a lost wake-up fails instead of holding row locks."""
+    async with asyncio.timeout(5):
+        return await wait
+
+
 async def advance(clock, tick, seconds):
     while seconds:
         step = min(seconds, HOUR // 2)
@@ -246,6 +252,22 @@ async def test_short_disconnect_and_restart_resume_from_checkpoint(paradise, clo
         assert rolls == [(18, 0, 1)]
 
 
+async def test_stalled_wakeup_counts_no_dwell(paradise, clock, save_faces):
+    walk, _, zone = paradise
+    guest = walk.players[1]
+    await arrive(walk, "move_player", zone)
+    _, rolls = save_faces
+    async with background(walk) as tick:
+        await advance(clock, tick, HOUR - 1)
+        before = still_charm.read_clock(await player_row(guest), guest, zone)
+        assert before is not None
+        clock.now += still_dwell.MAX_COUNTED_GAP_SECS + 1
+        await tick()
+        after = still_charm.read_clock(await player_row(guest), guest, zone)
+        assert after == {**before, "checkpoint_at": clock.now}
+        assert not rolls
+
+
 async def test_daily_drain_concurrent_and_restarted(paradise, clock, save_faces, losses, speech_transport):
     walk, _, zone = paradise
     guest = walk.players[1]
@@ -269,7 +291,7 @@ async def test_daily_drain_concurrent_and_restarted(paradise, clock, save_faces,
             async def lock_together(pid, *, for_update=False, conn=None):
                 if pid == guest and for_update and len(connections) < 2:
                     connections.add(conn)
-                    await barrier.wait()
+                    await parked(barrier.wait())
                 return await get_player(pid, for_update=for_update, conn=conn)
 
             clock.now += 1
@@ -404,13 +426,13 @@ async def test_destroyed_still_stops_dwell_for_guest(paradise, clock, save_faces
             row = await get_player(pid, for_update=for_update, conn=conn)
             if due_tick and not cleanup_first:
                 first_locked.set()
-                await second_requested.wait()
+                await parked(second_requested.wait())
             return row
 
         async def clear_after_lock(*args, **kwargs):
             if cleanup_first:
                 first_locked.set()
-                await second_requested.wait()
+                await parked(second_requested.wait())
             return await clear(*args, **kwargs)
 
         async def lock_party(*args, **kwargs):
