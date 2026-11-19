@@ -124,3 +124,19 @@ async def test_produce_flame_without_target_conjures_without_damage(spell_fight)
     cast = await resolve_cast(ctx)
     assert "damage_result" not in cast and "damage_results" not in cast
     assert (await saved_player(pid))["focus"]["current"] == before["focus"]["current"] - spell.focus_cost
+
+
+async def test_redirected_sacred_word_spares_living_caster(spell_fight):
+    ctx = spell_fight
+    pid = ctx.userdata.player_id
+    spell = await prepare_spell(ctx, "divine_sacred_word")
+    shielded_foe(ctx)
+    await add_enemies(ctx, {"foe": (0, 0, 0)})
+    state = ctx.userdata.combat_state
+    state.spatial["positions"][pid] = {"x": -5, "y": 0, "z": 0}
+    hp = participant(state, pid).hp_current
+    await declare_spell(ctx, spell.id)
+    cast = await resolve_cast(ctx)
+    (result,) = cast["damage_results"]
+    assert result["target_id"] == pid and result["damage"] == 0
+    assert participant(await load_combat(state.combat_id), pid).hp_current == hp

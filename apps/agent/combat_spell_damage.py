@@ -20,7 +20,7 @@ from rules_engine import attribute_modifier, proficiency_bonus
 from zhael_fate import candidates
 
 
-def _components(profile, caster, target, cast_packet, choice, *, resonance=True):
+def _components(profile, caster, target, cast_packet, choice):
     result = []
     for i, component in enumerate(profile["components"]):
         match = DICE.fullmatch(component["dice"])
@@ -30,10 +30,8 @@ def _components(profile, caster, target, cast_packet, choice, *, resonance=True)
             count = scaled(profile, "scaling", count, caster.level)
             if target.hollow and "hollow_dice" in profile:
                 count = profile["hollow_dice"]
-            if resonance:
-                count += cast_packet["resonance_modifiers"]["damage_dice"]
-        if count < 0:
-            raise ValueError("Spell damage dice became negative")
+            count += cast_packet["resonance_modifiers"]["damage_dice"]
+        assert count >= 0
         notation = f"{count}d{sides}" if count else "0"
         if flat and count:
             notation += f"+{flat}"
@@ -104,15 +102,7 @@ async def _land_one(
     profile = dict(profile)
     if delivery and delivery.get("secondary"):
         profile["components"] = [{**c, "dice": profile["recipients"]["secondary_dice"]} for c in profile["components"]]
-    dart_indices = delivery.get("dart_indices") if delivery else None
-    components = _components(
-        profile,
-        caster,
-        target,
-        cast_packet,
-        declaration.argument_type,
-        resonance=dart_indices is None or 0 in dart_indices,
-    )
+    components = _components(profile, caster, target, cast_packet, declaration.argument_type)
     if "damage_dice" in cast_packet:
         cast_packet["damage_dice"] = components[0]["dice"]
     action = {
@@ -238,6 +228,7 @@ async def _roll_save_damage(
         total = max(0, total)
         if save and save.success:
             total = total // 2 if profile["half"] else 0
+        # Harmonic Shield can redirect an eligible delivery onto a living caster.
         if profile.get("restriction") == "undead_hollow" and not (target.hollow or target.category == "undead"):
             total = 0
         rolled.append({**component, "damage": total})

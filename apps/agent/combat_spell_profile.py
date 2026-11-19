@@ -142,11 +142,5 @@ def validate_target(state, caster, declaration, spell):
     target = state.get_participant(declaration.target_id)
     if target is None or target.is_ally == caster.is_ally or target.is_fallen:
         raise ValueError(f"{spell.name} requires one live enemy combat participant")
-    if profile.get("restriction") == "undead_hollow":
-        from combat_spatial import distance, position, require_spatial
-
-        spatial = require_spatial(state)
-        if distance(position(spatial, caster.id), position(spatial, target.id)) > 10:
-            raise ValueError(f"{spell.name} requires a recipient within 10 feet")
     if profile.get("choices") and declaration.argument_type not in profile["choices"]:
         raise ValueError(f"{spell.name} requires argument_type {', '.join(profile['choices'])}")

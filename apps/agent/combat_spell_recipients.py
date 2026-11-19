@@ -55,8 +55,6 @@ def select(state, caster, declaration, spell, *, require_live=False):
     if len(ids) > spec.get("placements", 1):
         raise ValueError("Too many participant anchors for this area")
     origin = pos(caster.id)
-    if shape == "line":
-        spatial.axis_projection(origin, pos(ids[0]), origin)
     selected = []
     for target in live:
         point = pos(target.id)
