@@ -1,6 +1,5 @@
 """Mock casting to isolate per-member identity and decay; spell internals have separate checks."""
 
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -9,10 +8,9 @@ from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 from voice_condition_fixtures import place_actors
 
+import spells
 from session_data import CombatParticipant, CombatState
 from spell_casting import _UNCHANGED, CastResult
-
-_CONDITION_FREE_SPELL = SimpleNamespace(name="Detect Magic", applies_condition=None)
 
 
 def _mp_state(*, player_ids=("player_1", "player_2"), enemy_hp=20, attacks_only=False):
@@ -134,7 +132,7 @@ def _cast_resolver_recording(new_resonance_by_id=None):
 
     mod = MagicMock()
     mod._resolve_cast = AsyncMock(side_effect=_resolve)
-    mod._gate_spell = MagicMock(return_value=_CONDITION_FREE_SPELL)
+    mod._gate_spell = MagicMock(return_value=spells.get_spell("arcane_detect_magic"))
     return mod, seen_casters
 
 
@@ -170,7 +168,7 @@ class TestMultiplayerPrevalidation:
         def _gate(player, action, known_spell_ids, **kwargs):
             if (player.get("focus") or {}).get("current", 0) <= 0:
                 raise ToolError("Not enough Focus")
-            return _CONDITION_FREE_SPELL
+            return spells.get_spell("arcane_detect_magic")
 
         cast_resolver._gate_spell = MagicMock(side_effect=_gate)
 
@@ -276,7 +274,7 @@ class TestMultiplayerGenerationDecayE2E:
 
         cast_resolver = MagicMock()
         cast_resolver._resolve_cast = AsyncMock(side_effect=_resolve)
-        cast_resolver._gate_spell = MagicMock(return_value=_CONDITION_FREE_SPELL)
+        cast_resolver._gate_spell = MagicMock(return_value=spells.get_spell("arcane_detect_magic"))
         deps = _resolve_deps()
         res = _resonance_deps()
 

@@ -27,7 +27,7 @@ export interface GodLayer1Gift {
   name: string;
   effect: string;
   trigger: string;
-  status: "active" | "awaits_healing";
+  status: "active";
   recharge: "always" | "per_encounter" | "short_rest" | "long_rest";
   resolution?: "narrated" | "engine";
   implementation_id?: string;
@@ -160,8 +160,7 @@ function layer1(value: unknown, path: string): void {
     if (!Object.hasOwn(gift, field)) fail(`${path}.${field}`, "required field");
     text(gift[field], `${path}.${field}`);
   }
-  if (!["active", "awaits_healing"].includes(gift.status as string))
-    fail(`${path}.status`, "unknown status");
+  if (gift.status !== "active") fail(`${path}.status`, "unknown status");
   if (!["always", "per_encounter", "short_rest", "long_rest"].includes(gift.recharge as string))
     fail(`${path}.recharge`, "unknown recharge");
   engineResolution(gift, path);

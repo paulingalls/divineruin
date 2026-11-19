@@ -17,7 +17,9 @@ _INSPIRED_PLAYER = {**SAMPLE_PLAYER, "conditions": apply_condition([], "inspired
 def _travel_mocks(player=None):
     queries = MagicMock()
     queries.get_active_player_quests = AsyncMock(return_value=[])
-    queries.get_player = AsyncMock(return_value=player if player is not None else SAMPLE_PLAYER)
+    row = player if player is not None else SAMPLE_PLAYER
+    queries.get_player = AsyncMock(return_value=row)
+    queries.get_players_for_update = AsyncMock(side_effect=lambda ids, **_: {pid: row for pid in ids})
     mutations = MagicMock()
     mutations.update_player_location = AsyncMock()
     mutations.upsert_map_progress = AsyncMock()

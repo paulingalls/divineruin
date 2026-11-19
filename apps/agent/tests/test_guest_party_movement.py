@@ -59,6 +59,7 @@ def _mocks(*, navigation="established_road", requires=None, players=None):
     queries = SimpleNamespace(
         get_active_player_quests=AsyncMock(return_value=[]),
         get_player=AsyncMock(side_effect=lambda pid, **_: rows[pid]),
+        get_players_for_update=AsyncMock(side_effect=lambda ids, **_: {pid: rows[pid] for pid in ids if pid in rows}),
         get_player_flag=AsyncMock(return_value=False),
         get_npcs_at_location=AsyncMock(return_value=[]),
         get_targets_at_location=AsyncMock(return_value=[]),

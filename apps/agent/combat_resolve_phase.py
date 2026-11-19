@@ -27,12 +27,15 @@ import db_mutations_resonance
 import db_queries
 import draethar_inner_fire
 import event_types as E
+import item_heal
 import resonance_events
 import spell_casting
+import still_encounter
 import veil_ward_events
 import ward_resolution
 import zhael_fate
 from combat_ability import AbilityCastOutcome
+from combat_down import sync_companion_consciousness
 from combat_end import _end_combat_finish
 from combat_events import EventSink, emit_or_publish, isolated_publish
 from combat_fate_rolls import PhaseRolls
@@ -132,6 +135,9 @@ async def _resolve_phase_locked(
                         cast_resolver=cast_resolver,
                         character_spells_mod=character_spells_mod,
                     )
+                    await item_heal.preflight(
+                        session, state, ((p.actor_id, p.declaration) for p in adv.packets), conn=conn, queries=queries
+                    )
                 except ToolError as error:
                     raise PrevalidationRefusal(error) from error
 
@@ -204,6 +210,7 @@ async def _resolve_phase_locked(
             )
             await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
         assert fate_rolls.kept is None, "Selected Fate roll was not consumed"
+        choir_facts = await choir_encounter.facts(state, queries=queries, conn=conn) if ended_outcome is None else None
 
     # Sync and tear down before fallible publishes, preventing a second reward payout.
     # Capture the combat location before teardown can move the party to its death anchor.
@@ -213,6 +220,7 @@ async def _resolve_phase_locked(
     if resuming:
         zhael_fate.effects_committed(session)
     if ended_outcome is None:
+        sync_companion_consciousness(session, state)
         session.combat_state = state
     else:
         assert end_data is not None
@@ -293,7 +301,8 @@ async def _resolve_phase_locked(
         return handoff
 
     response = {
-        "choir": choir_encounter.facts(state),
+        "choir": choir_facts,
+        "still": still_encounter.facts(state),
         "spatial": combat_spatial.response_facts(state, session.acting_player_id, session.primary_player_id),
         "beat": state.beat,
         "round": state.round_number,

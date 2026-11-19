@@ -4,7 +4,11 @@ from unittest.mock import patch
 import pytest
 from acceptance._capstone_helpers import _d20, _resolve_round
 from acceptance._catalog_cutover_helpers import started as started
-from acceptance._choir_spell_helpers import assert_core_defenses
+from acceptance._choir_spell_helpers import (
+    assert_core_defenses,
+    assert_guest_spell_exception,
+    give_guest_threshold_mercy,
+)
 from acceptance._choir_spell_helpers import bolt as bolt
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
@@ -293,6 +297,7 @@ async def test_choir_aura_concentration_member_isolation_reload(started):
     other = "choir_ally_" + uuid4().hex
     pool = await db.get_pool()
     await seed_player_with_pools(pool, player_id=other, class_="cleric", known_spells=("divine_bless",))
+    await give_guest_threshold_mercy(pool, other)
     ctx.userdata.party.members.extend(PartyState.solo(other).members)
     try:
         await mode_tools._enter_mode_impl(ctx, "combat", "hollow_choir", "voices")
@@ -323,6 +328,7 @@ async def test_choir_aura_concentration_member_isolation_reload(started):
         assert primary is not None and primary["concentration"]["spell_id"] is None
         other_player = await db_queries.get_player(other)
         assert other_player is not None and other_player["concentration"]["spell_id"] == "divine_bless"
+        await assert_guest_spell_exception(ctx, await search(ctx), other)
     finally:
         await pool.execute("DELETE FROM players WHERE player_id = $1", other)
 

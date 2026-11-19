@@ -17,7 +17,7 @@ import db_mutations_resurrection
 from catalog_parse import ATTRIBUTE_KEYS
 from creation_classes import CLASSES
 from death_cost import DeathCost, determine_death_cost
-from patron_passives import warriors_endurance
+from patron_passives import effective_max_hp
 from starter_zone import get_starter_zone_id
 
 # Canonical attribute order doubles as the deterministic tie-break for the lowest/highest selectors.
@@ -38,6 +38,10 @@ def highest_attribute(attributes: dict) -> str:
     if not present:
         raise ValueError("attributes dict has no recognized attribute keys")
     return max(present, key=lambda a: attributes[a])
+
+
+def is_attribute_depleted(attributes: dict) -> bool:
+    return any(attributes[attr] <= 0 for attr in _ATTR_ORDER if attr in attributes)
 
 
 def _primary_attribute(player: dict) -> str:
@@ -170,10 +174,7 @@ async def trigger_character_death(
         )
 
     base_max = player.get("hp", {}).get("max", 1)
-    effective_max = max(
-        1, base_max + player.get("maxhp_override", 0) + deltas["maxhp_override_delta"] + warriors_endurance(player)
-    )
-    revive_hp = effective_max  # Mortaen's return is a full recovery (time passes); clamped to the new max.
+    revive_hp = effective_max_hp(player, base_max, override_delta=deltas["maxhp_override_delta"])
     await mutations.revive_player(player_id, anchor, revive_hp, conn=conn)
 
     # Hollowed death (story-007): mark Hollow-killed + clear the Hollowed condition (purged past
@@ -226,7 +227,7 @@ async def resurrect_party_on_defeat(
     if not party:
         return []
 
-    locations = await content_queries.get_all_locations()
+    locations = await content_queries.get_all_locations(conn=conn)
 
     contexts: list[dict] = []
     for member in party:

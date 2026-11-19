@@ -75,6 +75,7 @@ def resolve_saving_throw(
     bonus_dice_eligible: bool = True,
     advantage: bool = False,
     scholars_ward: bool = False,
+    modifier_bonus: int = 0,
 ) -> SavingThrowResult:
     # ``bonus_dice_eligible`` gates the beneficial +1d4 fold/consume (M4.8 story-003). Player-initiated
     # saves keep the default True; engine-auto saves (Beat-4 tick-clear, concentration-break) pass
@@ -92,7 +93,7 @@ def resolve_saving_throw(
 
     attributes = player_data.get("attributes", {})
     score = attributes.get(save_lower, 10)
-    mod = attribute_modifier(score)
+    mod = attribute_modifier(score) + modifier_bonus
 
     save_proficiencies = player_data.get("saving_throw_proficiencies", [])
     if any(p.lower() == save_lower for p in save_proficiencies):

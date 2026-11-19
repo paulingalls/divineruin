@@ -44,7 +44,7 @@ async def test_every_encounter_starts_from_catalog(started, template, cold_catal
     import db_content_queries
 
     pool = await db.get_pool()
-    assert await pool.fetchval("SELECT count(*) FROM encounter_templates") == 17
+    assert await pool.fetchval("SELECT count(*) FROM encounter_templates") == 18
     assert template == await db_content_queries.get_encounter_template(template["id"])
     ctx, response = await started(template["id"])
     state = ctx.userdata.combat_state
@@ -62,7 +62,10 @@ async def test_every_encounter_starts_from_catalog(started, template, cold_catal
     roster = {p["id"]: p for p in response["participants"]}
     events = [json.loads(c.args[0]) for c in ctx.userdata.room.local_participant.publish_data.call_args_list]
     hud = next(event for event in events if event["type"] == E.COMBAT_UI_UPDATE)
-    assert len([p for p in state.participants if p.type == "enemy"]) == len(template["enemies"])
+    authored = {ref["id"] for ref in template["enemies"]}
+    supports = set(state.still_encounter["anchor_ids"]) if template["id"] == "hollow_still" else set()
+    assert len(supports) == (6 if template["id"] == "hollow_still" else 0)
+    assert {p.id for p in state.participants if p.type == "enemy"} == authored | supports
     for ref in template["enemies"]:
         row = await query_creature_by_id(ref["creature_id"])
         enemy = saved.get_participant(ref["id"])
@@ -89,7 +92,7 @@ async def test_every_encounter_starts_from_catalog(started, template, cold_catal
         actions = [a["name"] for a in enemy.action_pool]
         if enemy.multiattack_sequence is not None:
             actions.append(enemy.multiattack_sequence["name"])
-        assert roster[enemy.id]["actions"] == actions
+        assert roster[enemy.id]["actions"] == ([] if template["id"] == "hollow_still" else actions)
         view = next(p for p in hud["combatants"] if p["id"] == enemy.id)
         assert view["hpMax"] == enemy.hp_max
         assert view["hpCurrent"] == enemy.hp_current
@@ -157,7 +160,7 @@ async def test_missing_catalog_row_has_no_side_effects(reset_db_pool, monkeypatc
 
 def test_final_balance_table():
     catalog = {row["id"]: row for row in json.loads((CONTENT_ROOT / "content/creatures.json").read_text())}
-    assert {row["id"] for row in TEMPLATES} == set(TARGETS) | {"hollow_choir"}
+    assert {row["id"] for row in TEMPLATES} == set(TARGETS) | {"hollow_choir", "hollow_still"}
     ordinary = [row for row in TEMPLATES if row["id"] in TARGETS]
     assert len(ordinary) == 16
     assert sum(len(row["enemies"]) for row in ordinary) == 37

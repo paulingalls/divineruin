@@ -252,16 +252,16 @@ async def ally_swings(world, target_hp):
             first = (await call("resolve_phase"))["fate_offer"]
             assert required_player(session.combat_state, foe.id).hp_current == target_hp
             result = await decline(first)
-            if target_hp > 4:
+            if target_hp > 8:
                 second = result["fate_offer"]
                 assert second["die"] == 18 and second["offer_id"] != first["offer_id"]
-                assert required_player(session.combat_state, foe.id).hp_current == target_hp - 4
+                assert required_player(session.combat_state, foe.id).hp_current == target_hp - 8
                 result = await decline(second)
-                assert [hit["roll"] for hit in result["packets"][0]["attacks"]] == [19, 18]
+                assert [(hit["roll"], hit["damage"]) for hit in result["packets"][0]["attacks"]] == [(19, 8), (18, 4)]
             else:
                 assert "fate_offer" not in result
-            assert dice.call_count == (2 if target_hp > 4 else 1)
-        assert required_player(session.combat_state, foe.id).hp_current == max(0, target_hp - 8)
+            assert dice.call_count == (2 if target_hp > 8 else 1)
+        assert required_player(session.combat_state, foe.id).hp_current == max(0, target_hp - 12)
     finally:
         await db_mutations.delete_combat_state(state.combat_id)
 

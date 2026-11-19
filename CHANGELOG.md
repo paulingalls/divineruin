@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.54.0
+
+Healing works. Heal Wounds, Healing Touch, Mass Heal, Prayer of Healing and Regenerate now restore real HP, in combat and out, and the DM is told exactly how much each target regained. Before, a cleric's heal spent Focus and healed nothing. Mass Heal reaches every ally in the fight, or every party member where you stand. Prayer of Healing is for between fights, up to six people. A healed ally who was dying gets back up.
+
+Healing potions, salves and poultices heal when you drink or apply them, on yourself or on an ally. In a fight that takes your turn. Before, using one spent it for nothing. Goodberry fills your pack with five berries that heal 1 HP each.
+
+Regenerate keeps working after its first surge: 1 HP at the start of each of the target's turns. When the fight ends, the rest of the hour's healing lands at once. A character Regenerate is still healing survives a retreat or defeat that would otherwise kill them.
+
+Orenthel's followers mend as they mend others. Dawn's Resilience gives the healer 2 HP for each other creature they heal, with a spell or an item.
+
+Release steps: none.
+
+## 0.53.0
+
+The Still waits in the deep Ashmark, beyond the Corrupted Front. It does not fight until someone harms what holds it there. Six hidden anchors bind it, and a Perception or Arcana check at DC 18 finds one. Strike an anchor, hit or miss, and the Still answers with Rejection, a burst from that anchor that divine, radiant, fire and thunder magic can break through. It falls when the last anchor breaks.
+
+Walking into the Still charms you. A charmed traveller cannot leave, and a party that would take one out refuses to move until that member is free. Every in-zone hour brings another save to break the charm. Hours do not pass during combat. A day spent charmed starts to drain the traveller, and a drain that empties an attribute is a character's death, handled like any other.
+
+Locations can now carry a recommended level. The DM warns a party heading somewhere well above its level: the Corrupted Front is recommended at 14 and the Still at 18.
+
+Release steps: none.
+
+Twelve patron synergies now apply in combat:
+- A Zhael rogue or mage crits on a natural 19 as well as a 20, including when Fate's Thread rerolls the d20 to a 19.
+- A critical hit from a Thyra warrior or skirmisher adds 1d4 lightning.
+- Kaelen warriors, guardians and skirmishers who have Extra Attack add 1d4 to every weapon hit.
+- A Veythar mage, artificer or seeker's arcane cantrips roll two extra damage dice in any Resonance state, and four in Overreach.
+- A Mortaen mage gains +1 on spell attacks against undead. No current creature is undead, so this waits for undead content.
+- A Mortaen cleric's Sacred Flame deals necrotic damage instead of radiant. A Veilrender absorbs it like any other non-radiant spell.
+
+In multiplayer, each player's own patron and archetype decide their bonuses. Fixed: a resisted hit can no longer heal its target.
+
+Release steps: none.
+
 ## 0.52.0
 
 Damage spells now hurt what they hit: outside the Choir, a mage's spells used to report damage that never landed. Area spells such as Fireball and the cone of Corruption Wave hit everyone in their shape, and a save spell asks each target for its own save.

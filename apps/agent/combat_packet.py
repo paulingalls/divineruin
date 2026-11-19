@@ -15,7 +15,9 @@ import combat_melee_approach
 import combat_recharge
 import combat_spatial_declarations
 import combat_voice_rules
+import item_heal
 import spell_casting
+from action_contracts_still import STILL_ZONE_KINDS
 from combat_ability import (
     AbilityCastOutcome,
     _attach_riders,
@@ -117,6 +119,9 @@ async def _resolve_action_packet(
     player = players_by_id.get(packet.actor_id) if players_by_id else None
 
     import choir_encounter
+    import still_encounter
+
+    still_encounter.guard_declaration(state, packet.actor_id, decl)
 
     stale = choir_encounter.stale_reason(state, packet.actor_id, decl)
     if stale is None:
@@ -156,6 +161,9 @@ async def _resolve_action_packet(
     except DeliveryRefused as e:
         return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}
 
+    if item_heal.is_consume(decl):
+        return await item_heal.resolve_combat(session, state, attacker, decl, conn=conn, sink=sink, queries=queries)
+
     if decl.type is DeclarationType.INTERACT and decl.action in choir_encounter.SEARCH_ACTIONS:
         return await choir_encounter.search(
             session,
@@ -165,6 +173,17 @@ async def _resolve_action_packet(
             queries=queries,
             conn=conn,
             progress=progress.scope("choir_search") if progress is not None else None,
+        )
+
+    if decl.type is DeclarationType.INTERACT and decl.action in still_encounter.SEARCH_ACTIONS:
+        return await still_encounter.search(
+            session,
+            state,
+            attacker,
+            decl,
+            queries=queries,
+            conn=conn,
+            progress=progress.scope("still_search") if progress is not None else None,
         )
 
     if decl.type is DeclarationType.DEFEND:
@@ -195,6 +214,41 @@ async def _resolve_action_packet(
             or (not replay and not combat_recharge.available(attacker, action))
         ):
             return {"actor_id": attacker.id, "resolved": False, "reason": "action unavailable"}
+        if still_encounter.is_owner(state, attacker.id):
+            import still_actions
+
+            if not replay and (reason := still_actions.range_refusal(state, attacker, action, decl)):
+                return {"actor_id": attacker.id, "resolved": False, "reason": reason}
+            if action_kind(action) in STILL_ZONE_KINDS:
+                return await still_actions.resolve_zone(
+                    session,
+                    state,
+                    attacker,
+                    action,
+                    decl,
+                    head=_held_head,
+                    progress=progress,
+                    conn=conn,
+                    concentration=concentration_break_mod,
+                    queries=queries,
+                    mutations=mutations,
+                )
+            if action.get("auto_hit"):
+                return await still_actions.resolve_touch(
+                    session,
+                    state,
+                    attacker,
+                    action,
+                    decl,
+                    head=_held_head,
+                    progress=progress,
+                    conn=conn,
+                    mutations=mutations,
+                    queries=queries,
+                    concentration=concentration_break_mod,
+                    sink=sink,
+                    advantage=reaction_save_advantage,
+                )
         if not attacker.is_ally and action_kind(action) in ("healing", "prepare_attack"):
             action = begin_execution(state, attacker, action, decl)
             return resolve_active(state, attacker, action, decl)

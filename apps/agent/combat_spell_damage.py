@@ -16,6 +16,7 @@ from combat_damage_results import AutomaticDamageResult, SaveDamageResult
 from combat_fate_rolls import packet_save
 from combat_spell_profile import DICE, scaled
 from combat_support import _resolve_attack_packet, apply_attack_result, apply_rolled_attack
+from patron_synergy_combat import attack_player
 from rules_engine import attribute_modifier, proficiency_bonus
 from zhael_fate import candidates
 
@@ -35,12 +36,8 @@ def _components(profile, caster, target, cast_packet, choice):
         notation = f"{count}d{sides}" if count else "0"
         if flat and count:
             notation += f"+{flat}"
-        result.append(
-            {
-                "dice": notation,
-                "damage_type": choice if component["damage_type"] == "choice" else component["damage_type"],
-            }
-        )
+        damage_type = choice if component["damage_type"] == "choice" else component["damage_type"]
+        result.append({"dice": notation, "damage_type": cast_packet.get("damage_type_override", damage_type)})
     return result
 
 
@@ -108,6 +105,8 @@ async def _land_one(
     action = {
         "magical": True,
         "name": spell.name,
+        "spell_id": spell.id,
+        "spell_source": spell.source,
         "damage": components[0]["dice"],
         "damage_type": components[0]["damage_type"],
         "ranged": profile.get("ranged", False),
@@ -282,8 +281,9 @@ async def _land_attack(
     elif progress is not None and "damage_receipt" not in progress.steps:
         eligible = await candidates(session, queries=queries, conn=conn)
         if eligible.choices(caster.id):
+            player = await attack_player(caster, queries=queries, conn=conn)
             attacker_data, ac, modifier = attack_roll_inputs(
-                caster, target, ac_bonus, state, action, weapon_attack=False
+                caster, target, ac_bonus, state, action, weapon_attack=False, player=player
             )
             prepared = check_resolution_attack.prepare_attack(
                 attacker_data, action, ac, attack_mod=modifier, target_conditions=target.conditions

@@ -100,6 +100,7 @@ class CombatState:
     open_window: dict | None = None
 
     encounter_id: str = ""
+    still_encounter: dict | None = None
     choir_encounter: dict | None = None
     choir_silences: dict = field(default_factory=dict)
     spatial: dict | None = None
@@ -143,6 +144,7 @@ class CombatState:
 
         state = cls(
             encounter_id=data.get("encounter_id", ""),
+            still_encounter=data.get("still_encounter"),
             choir_encounter=data.get("choir_encounter"),
             choir_silences=choir_effects.validate_data(data),
             spatial=(
@@ -188,6 +190,8 @@ class CombatState:
         )
 
         import choir_encounter
+        import still_encounter
 
         choir_encounter.validate(state)
+        still_encounter.validate(state)
         return state

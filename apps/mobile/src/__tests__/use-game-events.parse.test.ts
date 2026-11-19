@@ -38,7 +38,7 @@ test("parseCombatant returns valid combatant from well-formed data", () => {
     isAlly: true,
     hpCurrent: 20,
     hpMax: 30,
-    conditions: [{ type: "blessed", stacks: 1, source: "cleric" }],
+    conditions: [{ type: "regenerating", stacks: 1, source: "druid" }],
     isActive: true,
   });
   expect(result).not.toBeNull();
@@ -46,7 +46,7 @@ test("parseCombatant returns valid combatant from well-formed data", () => {
   expect(result!.name).toBe("Kael");
   expect(result!.isAlly).toBe(true);
   expect(result!.hpCurrent).toBe(20);
-  expect(result!.conditions).toEqual([{ type: "blessed", stacks: 1, source: "cleric" }]);
+  expect(result!.conditions).toEqual([{ type: "regenerating", stacks: 1, source: "druid" }]);
 });
 
 test("parseCombatant returns null for null input", () => {

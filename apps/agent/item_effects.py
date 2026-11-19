@@ -7,6 +7,7 @@ for every effect in this slice because neither has a production state producer.
 from dataclasses import dataclass, field
 
 from check_resolution_save import VALID_SAVE_NAMES
+from combat_spell_profile import DICE, HealProfile
 
 # What an item may declare condition_immunities AGAINST: the doc's 21 §Status Effects minus the four
 # BENEFICIAL ones (blessed, shielded, enraged, inspired) and the engine-internal temporary_hollowed.
@@ -72,6 +73,29 @@ class CombatItemTraits:
     condition_immunities: dict[str, str] = field(default_factory=dict)
     save_advantages: dict[str, str] = field(default_factory=dict)
     advantage_vs: dict[str, str] = field(default_factory=dict)
+
+
+CONSUME_PREFIX = "consume:"
+
+
+def heal_profile(item_id: str, item: dict) -> HealProfile | None:
+    effects = item.get("effects", [])
+    if not isinstance(effects, list):
+        raise ValueError(f"Item {item_id!r}.effects must be a list")
+    profile = None
+    for index, effect in enumerate(effects):
+        field = f"Item {item_id!r}.effects[{index}]"
+        if not isinstance(effect, dict):
+            raise ValueError(f"{field} must be an object")
+        if effect.get("type") != "heal":
+            continue
+        if profile is not None:
+            raise ValueError(f"{field} duplicates the heal effect")
+        amount = effect.get("amount")
+        if not isinstance(amount, str) or not DICE.fullmatch(amount):
+            raise ValueError(f"{field}.amount must be positive dice")
+        profile = HealProfile(dice=amount, recipients="single")
+    return profile
 
 
 def _tokens(effect: dict, field_name: str, allowed: frozenset[str] | set[str], context: str) -> list[str]:

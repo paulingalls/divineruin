@@ -95,8 +95,11 @@ def amount(traits, damage, damage_type):
     return damage
 
 
-def apply(target, action, result):
+def apply(target, action, result, *, state=None):
+    from still_encounter import owner_alias
+
     traits = target.damage_affinities
+    divine_vulnerable = action.get("spell_source") == "divine" and owner_alias(state, target.id) != target.id
 
     def adjusted(damage, dtype, ignores_resistance=False):
         conditional = (
@@ -108,12 +111,14 @@ def apply(target, action, result):
             return 0
         if not ignores_resistance and (conditional or dtype in traits.get("resistant", [])):
             return damage // 2
-        if dtype in traits.get("vulnerable", []):
+        if dtype in traits.get("vulnerable", []) or divine_vulnerable:
             return damage * 2
         return damage
 
     bonus = getattr(result, "bonus_damage", 0)
     rider = getattr(result, "rider_damage", 0)
+    synergy = getattr(result, "synergy_damage", 0)
+    adjusted_synergy = adjusted(synergy, getattr(result, "synergy_damage_type", None))
     adjusted_bonus = adjusted(bonus, getattr(result, "bonus_damage_type", None))
     adjusted_rider = adjusted(
         rider, getattr(result, "rider_damage_type", None), getattr(result, "rider_ignores_resistance", False)
@@ -124,10 +129,11 @@ def apply(target, action, result):
         action = {**action, "damage_components": components}
         damage = sum(c["damage"] for c in components)
     else:
-        damage = adjusted(result.damage - bonus - rider, result.damage_type)
-    changes = {"damage": damage + adjusted_bonus + adjusted_rider}
+        damage = adjusted(result.damage - bonus - rider - synergy, result.damage_type)
+    # Resistance can remove a rider that offset a negative attribute modifier.
+    changes = {"damage": max(0, damage + adjusted_bonus + adjusted_rider + adjusted_synergy)}
     if hasattr(result, "bonus_damage"):
-        changes.update(bonus_damage=adjusted_bonus, rider_damage=adjusted_rider)
+        changes.update(bonus_damage=adjusted_bonus, rider_damage=adjusted_rider, synergy_damage=adjusted_synergy)
     if hasattr(result, "target_hp_remaining") and changes["damage"] != result.damage:
         return action, with_landed_damage(result, changes.pop("damage"), target.hp_current, **changes)
     return action, replace(result, **changes)
@@ -149,7 +155,7 @@ def with_landed_damage(result, damage, hp_before, **changes):
         "target_killed": killed,
         **changes,
     }
-    if killed:
+    if killed and result.context not in ("natural_20", "critical_hit"):
         fields["dramatic"], fields["context"] = True, "killing_blow"
     elif result.context == "killing_blow":
         fields["dramatic"], fields["context"] = False, ""

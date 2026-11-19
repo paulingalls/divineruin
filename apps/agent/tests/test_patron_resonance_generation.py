@@ -4,6 +4,7 @@ import json
 from contextlib import asynccontextmanager
 from dataclasses import replace
 from functools import partial
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -45,6 +46,8 @@ async def cast(
         "class": {"arcane": "mage", "divine": "cleric", "primal": "druid"}[spell.source],
         "level": 20,
         "focus": {"current": 50},
+        "hp": {"current": 20, "max": 20},
+        "location_id": ctx.userdata.location_id,
         "divine_favor": {"patron": patron},
         "race": race,
     }
@@ -200,13 +203,16 @@ async def test_kaelen_final_floor(spell_id, kwargs):
 @pytest.mark.parametrize("patron", [None, "none"])
 @pytest.mark.parametrize("spell_id", ["arcane_fireball", "divine_heal_wounds", "primal_healing_touch"])
 async def test_unbound(patron, spell_id):
+    ctx = make_context(party_member_ids=["ally"])
     kwargs: dict[str, Any] = dict(
+        ctx=ctx,
         target_id="ally",
-        rows={"ally": {"hp": {"current": 0}}},
+        rows={"ally": {"hp": {"current": 0, "max": 20}, "location_id": ctx.userdata.location_id}},
         visit={"data": {}},
     )
-    packet = await cast(patron, spell_id, **kwargs)
-    standard = await cast(None, spell_id, favor=False, **kwargs)
+    with patch("dice.roll", return_value=SimpleNamespace(total=5)):
+        packet = await cast(patron, spell_id, **kwargs)
+        standard = await cast(None, spell_id, favor=False, **kwargs)
     assert packet == standard
     assert "patron_resonance" not in packet
 

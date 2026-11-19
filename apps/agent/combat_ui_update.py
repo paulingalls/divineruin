@@ -6,6 +6,7 @@ the client.
 """
 
 from session_data import CombatParticipant, CombatState
+from still_encounter import hidden_ids
 
 
 def _project_condition(cond: dict) -> dict:
@@ -57,7 +58,8 @@ def _project_combatant(p: CombatParticipant, active_id: str | None) -> dict:
 def build_combat_ui_update(state: CombatState) -> dict:
     """Build the current tracker packet without publishing it."""
     active_id = _active_id(state)
+    hidden = hidden_ids(state)
     return {
         "round": state.round_number,
-        "combatants": [_project_combatant(p, active_id) for p in state.participants],
+        "combatants": [_project_combatant(p, active_id) for p in state.participants if p.id not in hidden],
     }

@@ -11,7 +11,7 @@ EXPECTED_GIFTS = {
     "thyra": ("always", "active"),
     "valdris": ("short_rest", "active"),
     "nythera": ("always", "active"),
-    "orenthel": ("always", "awaits_healing"),
+    "orenthel": ("always", "active"),
     "zhael": ("long_rest", "active"),
 }
 GIFT_FIELDS = {"id", "name", "effect", "trigger", "recharge", "status"}
@@ -22,6 +22,7 @@ EXPECTED_MECHANICS = {
 ENGINE_GIFTS = {
     "mortaen": "mortaen_deaths_awareness",
     "nythera": "nythera_horizon_sense",
+    "orenthel": "orenthel_dawns_resilience",
     "zhael": "zhael_fates_thread",
 }
 MECHANICS_KINDS = {mechanics["kind"] for mechanics in EXPECTED_MECHANICS.values()}

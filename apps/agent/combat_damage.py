@@ -1,7 +1,6 @@
 """Apply damage, including zero-HP transitions and their consequences."""
 
 import logging
-from dataclasses import replace
 from functools import partial
 
 import check_resolution_attack
@@ -18,7 +17,7 @@ import db_mutations
 import db_queries
 import event_types as E
 from combat_attack_roll import build_attack_dice_roll_payload
-from combat_damage_results import AutomaticDamageResult, SaveDamageResult, freeze_blow, thaw_blow
+from combat_damage_results import AutomaticDamageResult, SaveDamageResult, attack_fields, freeze_blow, thaw_blow
 from combat_durability import _accrue_durability, _find_equipped
 from combat_enemy_active import (
     apply_critical_save,
@@ -247,15 +246,11 @@ async def _apply_damage(
     rolled before any HP changes, and None is returned while the choice is pending.
     """
     import choir_encounter
+    import still_encounter
 
-    if target.creature_id == "hollow_choir" and combat_state is not None and combat_state.choir_encounter is not None:
-        if not target.damage_affinities.get("immune"):
-            raise ValueError("Choir damage traits missing: reset/reseed old snapshots")
-        if combat_state.choir_encounter["phase"] != "exposed":
-            if attacker.id != target.id:
-                raise ValueError("Choir core must be exposed before damage")
-            attack_result = replace(attack_result, damage=0)
-    action, attack_result = combat_damage_affinity.apply(target, action, attack_result)
+    still_encounter.guard_target(combat_state, target.id)
+    attack_result = choir_encounter.guard_damage(combat_state, attacker, target, attack_result)
+    action, attack_result = combat_damage_affinity.apply(target, action, attack_result, state=combat_state)
     from combat_veilrender import mark_radiant
 
     mark_radiant(target, action, attack_result)
@@ -283,6 +278,7 @@ async def _apply_damage(
     # distinct "damage while Fallen" mechanic (L369: auto death-save failures), not instant
     # death — without this guard overkill = damage - 0 = damage would wrongly flag is_dead.
     was_fallen = target.is_fallen
+    still_encounter.record_attack(combat_state, attacker, target, action)
 
     # HP is derived from the target's LIVE hp_current and the roll's DAMAGE, never from the roll's
     # absolute ``target_hp_remaining``. On the unpaused path the two are identical by construction
@@ -323,7 +319,10 @@ async def _apply_damage(
             target.death_save_failures = min(3, target.death_save_failures)
     gift_triggered = trigger_iron_resolve(session, target, hp_before, player)
 
-    target.conditions = condition_sources.clear_charm_from_damage(target.conditions, attacker.id, attack_result.damage)
+    if not still_encounter.is_owner(combat_state, attacker.id):
+        target.conditions = condition_sources.clear_charm_from_damage(
+            target.conditions, attacker.id, attack_result.damage
+        )
 
     self_healed = 0
     if action.get("self_heal") == "damage_dealt" and (save_damage or attack_result.hit):
@@ -366,6 +365,8 @@ async def _apply_damage(
         await combat_hollow_death.accrue_death(session, combat_state, target, conn=conn, queries=queries)
         if combat_state is not None and combat_state.choir_encounter is not None:
             choir_encounter.destroyed(combat_state)
+
+    await still_encounter.after_damage(session, combat_state, target, conn=conn, queries=queries, was_fallen=was_fallen)
 
     # Update DB if target is a player
     if target.type == "player":
@@ -461,23 +462,7 @@ async def _apply_damage(
     else:
         hit_miss = "hit" if attack_result.hit else "miss"
         session.record_event(f"{attacker.name} attacks {target.name}: {hit_miss}, {attack_result.damage} damage")
-        response.update(
-            hit=attack_result.hit,
-            roll=attack_result.roll,
-            attack_total=attack_result.attack_total,
-            target_ac=effective_ac,
-            critical=attack_result.critical_success,
-            sneak_attack_dice=attack_result.sneak_attack_dice,
-            sneak_attack_raw_damage=attack_result.sneak_attack_raw_damage,
-            bonus_damage=attack_result.bonus_damage,
-            bonus_damage_type=attack_result.bonus_damage_type,
-            rider_damage=attack_result.rider_damage,
-            rider_damage_type=attack_result.rider_damage_type,
-            rider_ignores_resistance=attack_result.rider_ignores_resistance,
-            consumed_conditions=attack_result.consumed_conditions,
-        )
-        if attack_result.attack_disadvantage_source is not None:
-            response["attack_disadvantage_source"] = attack_result.attack_disadvantage_source
+        response.update(attack_fields(attack_result, effective_ac))
         log_outcome = hit_miss
     if action.get("self_heal") == "damage_dealt":
         response["self_healed"] = self_healed

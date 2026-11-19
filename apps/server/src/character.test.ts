@@ -58,10 +58,10 @@ describe("handleGetCharacter", () => {
   });
 
   test.each([
-    ["kaelen", 0, 27],
-    ["kaelen", 80, 27],
-    ["veythar", 0, 22],
-    ["none", 0, 22],
+    ["kaelen", 0, 20],
+    ["kaelen", 80, 20],
+    ["veythar", 0, 15],
+    ["none", 0, 15],
   ] as const)("projects the HP pool for %s at %d favor", async (patron, level, maximum) => {
     const data = {
       name: "Kael",

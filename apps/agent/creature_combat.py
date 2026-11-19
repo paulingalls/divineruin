@@ -7,6 +7,7 @@ from combat_init_validation import validate_enemy_action_shapes
 from creature_combat_effects import deferred_effects
 from creature_schema import validate_creature_stat_block
 from encounter_actions import action_kind, validate_encounter_actions
+from encounter_references import NAMED_INTEGRATIONS
 from encounter_roles import derive_role_stats
 from hollow_resonance import amount
 
@@ -48,10 +49,12 @@ def _translate(row, encounter_id, enemy_id, role):
     for key, value in (("creature_id", row.get("id")), ("encounter_id", encounter_id), ("enemy_id", enemy_id)):
         if not isinstance(value, str) or not value.strip():
             raise ValueError(f"{key}: expected nonempty identity")
-    choir = row.get("id") == "hollow_choir" and row.get("hollow", {}).get("class") == "named"
-    if choir and role in ("minion", "standard", "elite", "boss", "named"):
+    named = row["id"] in NAMED_INTEGRATIONS and (row.get("hollow") or {}).get("class") == "named"
+    choir = named and row["id"] == "hollow_choir"
+    still = named and row["id"] == "hollow_still"
+    if named and role in ("minion", "standard", "elite", "boss", "named"):
         role = "named"
-    if role not in ("minion", "standard", "elite", "boss") and not choir:
+    if role not in ("minion", "standard", "elite", "boss") and not named:
         raise ValueError(f"unsupported role {role!r}; Named/custom mechanics require authored integration")
     problems = validate_creature_stat_block(row)
     if problems:
@@ -66,9 +69,9 @@ def _translate(row, encounter_id, enemy_id, role):
     category = row["category"]
     if category == "hollow":
         cls = row["hollow"]["class"]
-        if cls == "named" and not choir:
+        if cls == "named" and not named:
             raise ValueError("unsupported Named/custom hollow mechanics")
-        category = "named" if choir else f"hollow_{cls}"
+        category = "named" if named else f"hollow_{cls}"
     elif category not in _CATEGORIES:
         raise ValueError(f"unsupported category {category!r}")
     unknown_attributes = set(row["attributes"]) - _ATTRIBUTES.keys()
@@ -119,7 +122,7 @@ def _translate(row, encounter_id, enemy_id, role):
         turn_start_damage=deepcopy(
             next((p["turn_start_damage"] for p in row["passives"] if "turn_start_damage" in p), None)
         ),
-        multiattack_sequence=selected_sequence,
+        multiattack_sequence=None if still else selected_sequence,
         condition_immunities={"grappled": "No Physical Form", "restrained": "No Physical Form"} if choir else {},
         choir_reaction=deepcopy(row["reactions"][0]) if choir else None,
         hollow=(
@@ -131,7 +134,7 @@ def _translate(row, encounter_id, enemy_id, role):
     validate_enemy_action_shapes([enemy])
     validate_encounter_actions([enemy])
     enemy = derive_role_stats(enemy, role)
-    if not any(
+    if not still and not any(
         action_kind(a) == "attack" and a.get("damage") not in (None, "", "0", "0d0") for a in enemy["action_pool"]
     ):
         raise ValueError("action_pool: no usable damaging attack after role derivation")

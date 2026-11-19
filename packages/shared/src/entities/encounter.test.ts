@@ -225,7 +225,7 @@ describe("creature tier player bands", () => {
 describe("authored creature tiers", () => {
   test("every content row has the expected tier", () => {
     const rows = encounters.flatMap((enc) => enc.enemies.map((enemy) => [enc.id, enemy] as const));
-    expect(rows).toHaveLength(38);
+    expect(rows).toHaveLength(39);
     const named: Record<string, number> = {
       Shadeling: 1,
       Mawling: 2,
@@ -334,8 +334,8 @@ test("catalog runtime extensions reject contradictory action shapes", () => {
 });
 
 describe("spatial scene placement", () => {
-  test("seventeen shipped templates have valid spatial placement", () => {
-    expect(references.length).toBe(17);
+  test("eighteen shipped templates have valid spatial placement", () => {
+    expect(references.length).toBe(18);
     for (const row of references) expect(() => validateScenePlacement(row)).not.toThrow();
   });
   test("spatial zone radii follow the creature catalog owner", () => {
@@ -426,19 +426,19 @@ test("typed silence zones pass the real scene boundary", () => {
   }
 });
 
-const choirCorpus = [...contractCorpus.valid, ...contractCorpus.invalid].filter((row) =>
-  row.name.startsWith("choir_"),
+const namedCorpus = [...contractCorpus.valid, ...contractCorpus.invalid].filter((row) =>
+  /^(choir|still)_/.test(row.name),
 );
-for (const row of choirCorpus)
-  test(`Choir public contract ${row.name}`, () => {
+for (const row of namedCorpus)
+  test(`Named public contract ${row.name}`, () => {
     const block = row.block as typeof row.block & { reactions: Record<string, unknown>[] };
     const validate = () => {
       for (const action of [...block.attacks, ...block.actives, ...block.reactions]) {
         validateEncounterActionShape(action);
-        validateEncounterActionKind(action, "enemy 'choir'");
+        validateEncounterActionKind(action, "enemy 'named'");
       }
     };
-    if (row.name === "choir_catalog") expect(validate).not.toThrow();
+    if (row.name.endsWith("_catalog")) expect(validate).not.toThrow();
     else expect(validate).toThrow();
   });
 

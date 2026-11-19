@@ -5,7 +5,7 @@ from copy import deepcopy
 from creation_classes import CLASSES
 from creation_rules import CATEGORY_ATTRIBUTE_ORDER, calculate_ac
 from hp_scaling import calculate_max_hp
-from patron_passives import warriors_endurance
+from patron_passives import effective_max_hp
 from rules_engine import ATTRIBUTE_INCREASE_LEVELS, attribute_modifier, calculate_max_pools
 
 PREFIX = "attribute_increase_"
@@ -46,11 +46,7 @@ def recompute(player: dict) -> dict:
         "hp": {
             **player["hp"],
             "max": maximum,
-            # Same ceiling as a rest: Warrior's Endurance is projected, never stored, but it still holds HP.
-            "current": min(
-                player["hp"]["current"],
-                max(1, maximum + player.get("maxhp_override", 0) + warriors_endurance(player)),
-            ),
+            "current": min(player["hp"]["current"], effective_max_hp(player, maximum)),
         },
         "ac": calculate_ac(player.get("equipment", {}), scores["dexterity"]),
     }

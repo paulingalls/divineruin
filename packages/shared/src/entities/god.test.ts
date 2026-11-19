@@ -32,6 +32,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
   for (const [patron, id] of [
     ["mortaen", "mortaen_deaths_awareness"],
     ["nythera", "nythera_horizon_sense"],
+    ["orenthel", "orenthel_dawns_resilience"],
   ]) {
     expect(validateGods(catalog).find((god) => god.god_id === patron)?.layer_1_gift).toMatchObject({
       id,
@@ -216,3 +217,66 @@ for (const entry of corpus.layer_1_cases) {
     }
   });
 }
+
+test("the authored critical synergies are active engine clauses", () => {
+  const gods = validateGods(catalog);
+  for (const [patron, archetype, type, implementation_id] of [
+    ["zhael", "rogue", "divine", "zhael_bent_probability"],
+    ["zhael", "mage", "divine", "zhael_bent_probability"],
+    ["thyra", "warrior", "unexpected", "thyra_natures_edge"],
+    ["thyra", "skirmisher", "unexpected", "thyra_natures_edge"],
+  ] as const) {
+    const god = gods.find((entry) => entry.god_id === patron);
+    expect(god?.layer_4_synergy_matrix[archetype]).toMatchObject({
+      type,
+      clauses: [{ status: "active", resolution: "engine", implementation_id }],
+    });
+  }
+});
+
+test("Kaelen's Natural synergies have both active engine clauses", () => {
+  const kaelen = validateGods(catalog).find((god) => god.god_id === "kaelen");
+  const natural = Object.entries(kaelen!.layer_4_synergy_matrix).filter(
+    ([, row]) => row.type === "natural",
+  );
+  expect(natural.map(([archetype]) => archetype).sort()).toEqual([
+    "guardian",
+    "skirmisher",
+    "warrior",
+  ]);
+  for (const [, row] of natural) {
+    expect(row.clauses).toHaveLength(2);
+    expect(row.clauses).toMatchObject(
+      ["kaelen_tempered_resolve", "kaelen_extra_attack_damage"].map((implementation_id) => ({
+        status: "active",
+        resolution: "engine",
+        implementation_id,
+      })),
+    );
+  }
+});
+
+test("the authored spell synergies activate five engine clauses", () => {
+  const gods = validateGods(catalog);
+  for (const [patron, archetype, type, implementation_id] of [
+    ["veythar", "mage", "natural", "veythar_simplest_mysteries"],
+    ["veythar", "artificer", "natural", "veythar_simplest_mysteries"],
+    ["veythar", "seeker", "natural", "veythar_simplest_mysteries"],
+    ["mortaen", "mage", "divine", "mortaen_ashen_formula"],
+    ["mortaen", "cleric", "natural", "mortaen_threshold_mercy"],
+  ] as const) {
+    const god = gods.find((entry) => entry.god_id === patron);
+    const row = god?.layer_4_synergy_matrix[archetype];
+    expect(row?.type).toBe(type);
+    expect(row?.clauses).toHaveLength(archetype === "cleric" ? 2 : 1);
+    expect(row?.clauses[0]).toMatchObject({
+      status: "active",
+      resolution: "engine",
+      implementation_id,
+    });
+    if (archetype === "cleric") {
+      expect(row?.clauses[1]).toMatchObject({ status: "pending", resolution: "engine" });
+      expect(row?.clauses[1]).not.toHaveProperty("implementation_id");
+    }
+  }
+});

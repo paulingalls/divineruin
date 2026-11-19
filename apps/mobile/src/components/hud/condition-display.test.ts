@@ -30,6 +30,10 @@ describe("CONDITION_DISPLAY completeness", () => {
   test("buff conditions use the hollow accent, debuffs the ember accent", () => {
     expect(CONDITION_DISPLAY.blessed.color).toBe(BrandColors.hollow);
     expect(CONDITION_DISPLAY.inspired.color).toBe(BrandColors.hollow);
+    expect(CONDITION_DISPLAY.regenerating).toMatchObject({
+      label: "Regenerating",
+      color: BrandColors.hollow,
+    });
     expect(CONDITION_DISPLAY.poisoned.color).toBe(BrandColors.ember);
     expect(CONDITION_DISPLAY.frightened.color).toBe(BrandColors.ember);
   });
