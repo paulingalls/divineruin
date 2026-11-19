@@ -198,3 +198,54 @@ def test_sneak_attack_is_spent_only_when_its_dice_land(first_face):
         earned, _ = roll_attack(rogue, {**plain, "advantage": True}, foe, combat_state=state)
     assert earned.hit and earned.sneak_attack_dice == "1d6"
     assert rogue.sneak_attack_round == state.round_number
+
+
+async def _held_bolt(world, setup, during_hold=lambda state: None):
+    """A Zhael mage's Arcane Bolt is held, ``during_hold`` runs on the live state, then the original is kept."""
+    await configure(world, "zhael", "mage")
+    pid = world.ids[0]
+    state = _build_state(pid, pid, [_enemy("foe", 30)])
+    setup(state, pid)
+    session = world.ctx.userdata
+    session.combat_state = state
+    call = game_tools(session, declare_phase, resolve_phase, activate)
+    bolt = {**defend(pid), "kind": "ability", "action": "arcane_bolt", "targets": ["foe"]}
+    try:
+        await call("declare_phase", declarations=[bolt, *(defend(p.id) for p in state.participants[1:])])
+        with (
+            patch("check_resolution.dice_roll", side_effect=[_d20(15)]),
+            patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
+        ):
+            offer = (await call("resolve_phase"))["fate_offer"]
+            during_hold(session.combat_state)
+            settled = await _keep(call, offer)
+        return settled["packets"][0]["cast"]["damage_result"]
+    finally:
+        await db_mutations.delete_combat_state(state.combat_id)
+
+
+async def test_held_spell_attack_never_earns_sneak_attack(world):
+    """M17: spell attacks pass weapon_attack=False on the held path too, so a rogue caster beside an
+    ally gets no Sneak Attack."""
+
+    def rogue_beside_ally(state, pid):
+        required_player(state, pid).archetype_id = "rogue"
+        ally = _player("ally")
+        state.participants.append(ally)
+        state.initiative_order.append(ally.id)
+        state.spatial["positions"]["ally"] = dict(state.spatial["positions"]["foe"])
+        state.spatial["speeds"]["ally"] = 30
+
+    landed = await _held_bolt(world, rogue_beside_ally)
+    assert landed["hit"] and landed["sneak_attack_dice"] is None
+
+
+async def test_held_spell_attack_finishes_against_a_target_downed_mid_hold(world):
+    """M16: a held bolt resumes against its recipient even if something dropped it during the pause."""
+
+    def down(state):
+        foe = required_player(state, "foe")
+        foe.hp_current, foe.is_fallen = 0, True
+
+    landed = await _held_bolt(world, lambda state, pid: None, down)
+    assert landed["hit"] and landed["damage"] > 0 and "resolved" not in landed
