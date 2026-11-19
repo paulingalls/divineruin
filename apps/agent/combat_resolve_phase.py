@@ -204,6 +204,7 @@ async def _resolve_phase_locked(
             )
             await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
         assert fate_rolls.kept is None, "Selected Fate roll was not consumed"
+        choir_facts = await choir_encounter.facts(state, queries=queries, conn=conn) if ended_outcome is None else None
 
     # Sync and tear down before fallible publishes, preventing a second reward payout.
     # Capture the combat location before teardown can move the party to its death anchor.
@@ -293,7 +294,7 @@ async def _resolve_phase_locked(
         return handoff
 
     response = {
-        "choir": choir_encounter.facts(state),
+        "choir": choir_facts,
         "spatial": combat_spatial.response_facts(state, session.acting_player_id, session.primary_player_id),
         "beat": state.beat,
         "round": state.round_number,

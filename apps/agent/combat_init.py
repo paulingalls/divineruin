@@ -184,7 +184,9 @@ async def _start_combat_locked(
     import choir_encounter
 
     choir_encounter.initialize(combat_state)
-    await choir_scene.start(session, combat_state, retained_choir, mutations=mutations, queries=queries, db_mod=db_mod)
+    choir_facts = await choir_scene.start(
+        session, combat_state, retained_choir, mutations=mutations, queries=queries, db_mod=db_mod
+    )
     session.combat_state = combat_state
 
     # Reset per-encounter weapon durability flags so each encounter is self-contained
@@ -229,7 +231,7 @@ async def _start_combat_locked(
     session.record_event(f"Combat started: {encounter.get('name', encounter_id)}")
 
     response = {
-        "choir": choir_encounter.facts(combat_state),
+        "choir": choir_facts,
         "spatial": combat_spatial.facts(combat_state, actor_id),
         "combat_id": combat_id,
         "encounter_name": encounter.get("name", encounter_id),

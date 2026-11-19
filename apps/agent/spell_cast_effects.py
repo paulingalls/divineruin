@@ -9,7 +9,7 @@ import spell_item_resolution
 import unbound_tools
 from game_events import publish_game_event
 from party_state import PartyMember
-from patron_synergy import has_engine_synergy
+from patron_synergy_combat import spell_damage_type_override
 from session_data import SessionData
 from spell_cast_result import CastResult
 
@@ -91,8 +91,8 @@ async def _finish_cast(
         "resonance_modifiers": modifiers,
         "ward_active": ward_active,
     }
-    if spell_id == "divine_sacred_flame" and has_engine_synergy(player, "mortaen_threshold_mercy"):
-        packet["damage_type_override"] = "necrotic"
+    if damage_type := spell_damage_type_override(player, spell_id):
+        packet["damage_type_override"] = damage_type
     if wrongdoing is not None:
         packet["wrongdoing"] = wrongdoing
     if concealment_packet is not None:

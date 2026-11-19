@@ -1,4 +1,4 @@
-"""Authoritative patron selection and attack-only synergy effects."""
+"""Authoritative patron selection and combat synergy effects."""
 
 import random
 
@@ -30,6 +30,12 @@ def expanded_critical(attacker_data: dict, face: int) -> bool:
 
 def spell_attack_bonus(player: dict, target) -> int:
     return int(target.category == "undead" and has_engine_synergy(player, "mortaen_ashen_formula"))
+
+
+def spell_damage_type_override(player: dict, spell_id: str) -> str | None:
+    if spell_id == "divine_sacred_flame" and has_engine_synergy(player, "mortaen_threshold_mercy"):
+        return "necrotic"
+    return None
 
 
 def critical_rider(attacker_data: dict, critical: bool, *, rng: random.Random | None) -> tuple[int, str | None]:

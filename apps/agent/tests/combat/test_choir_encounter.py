@@ -433,7 +433,7 @@ async def test_choir_destroyed_removes_only_source_owned_effects(mock_combat_age
     from combat_hollow_death import mark_destroyed
     from declarations import resolve_declaration
 
-    ctx, response, _, _ = await start_choir()
+    ctx, response, _, queries = await start_choir()
     state = ctx.userdata.combat_state
     source = state.get_participant("choir_zone")
     state.choir_encounter["phase"] = "exposed"
@@ -446,7 +446,7 @@ async def test_choir_destroyed_removes_only_source_owned_effects(mock_combat_age
     assert state.choir_silences and source.choir_suppression
     actor = state.get_participant("player_1")
     actor.conditions = [{"type": "charmed", "source": source.id}, {"type": "blessed", "source": "other"}]
-    exposed = choir_encounter.facts(state)
+    exposed = await choir_encounter.facts(state, queries=queries)
     assert exposed is not None
     assert "30 feet east" in exposed["cue"]
     assert "Memory Predator" in response["choir"]["targeting_guidance"]
@@ -460,7 +460,7 @@ async def test_choir_destroyed_removes_only_source_owned_effects(mock_combat_age
     assert not state.spatial["locations"]
     assert source.choir_suppression is None and not source.choir_silence_exposed
     assert actor.conditions == [{"type": "blessed", "source": "other"}]
-    facts = choir_encounter.facts(state)
+    facts = await choir_encounter.facts(state, queries=queries)
     assert facts is not None
     assert facts["phase"] == "destroyed" and "core_id" not in facts and "search_actions" not in facts
     assert "stolen voice" in facts["cue"]

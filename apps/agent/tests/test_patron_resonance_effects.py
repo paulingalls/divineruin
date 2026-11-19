@@ -176,6 +176,7 @@ async def test_choir_phase_lands_extra_damage_dice(patron, bonus, mock_combat_ag
             "choir_zone": {"type": "defend"},
         },
         mutations=mutations,
+        queries=queries,
     )
     rolled = []
 
