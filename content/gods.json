@@ -2877,8 +2877,9 @@
         "name": "Beacon",
         "effect": "Faint light in darkness. Hollow creatures have disadvantage on first attack against you each encounter",
         "recharge": "always",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "orenthel_beacon"
       },
       "devoted": {
         "id": "orenthel_restoration_surge",

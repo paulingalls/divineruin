@@ -57,6 +57,7 @@ class AttackResult:
     # Conditions spent by this attack. Downstream removes them even on a miss because the roll
     # consumed their benefit.
     consumed_conditions: tuple[str, ...] = ()
+    attack_disadvantage_source: str | None = None
 
 
 def _is_ranged(weapon: dict) -> bool:
@@ -98,10 +99,16 @@ class PreparedAttack:
     d20: D20Roll
     original: D20CheckCore
     consumed: tuple[str, ...]
+    attack_disadvantage_source: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict) -> "PreparedAttack":
-        return cls(D20Roll(**data["d20"]), D20CheckCore(**data["original"]), tuple(data["consumed"]))
+        return cls(
+            D20Roll(**data["d20"]),
+            D20CheckCore(**data["original"]),
+            tuple(data["consumed"]),
+            data.get("attack_disadvantage_source"),
+        )
 
 
 def resolve_attack(
@@ -152,7 +159,10 @@ def prepare_attack(
         raise ValueError("catalog attack requires integer to_hit")
     base_modifier = weapon["to_hit"] if catalog else attack_modifier(attacker_data, weapon)
     atk_mod = base_modifier + effects.check_modifier + attack_mod
-    attack_disadvantage = "attack" in effects.disadvantage_scopes or incoming_disadvantage
+    disadvantage_source = attacker_data.get("attack_disadvantage_source")
+    attack_disadvantage = (
+        "attack" in effects.disadvantage_scopes or incoming_disadvantage or disadvantage_source is not None
+    )
     attack_advantage = (
         weapon.get("advantage") is True
         or "attack" in effects.advantage_scopes
@@ -177,7 +187,7 @@ def prepare_attack(
         )
     )
     d20 = D20Roll(atk_mod + bonus, target_ac, attack_advantage, attack_disadvantage)
-    return PreparedAttack(d20, d20.roll(rng), consumed)
+    return PreparedAttack(d20, d20.roll(rng), consumed, disadvantage_source)
 
 
 def finish_attack(
@@ -268,4 +278,5 @@ def finish_attack(
         bonus_damage=bonus_damage,
         bonus_damage_type=bonus_damage_type,
         consumed_conditions=prepared.consumed,
+        attack_disadvantage_source=prepared.attack_disadvantage_source,
     )

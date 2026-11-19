@@ -3,6 +3,7 @@
 from _gods_content import load_gods
 from patron_favor import get_patron_tier
 
+ORENTHEL_BEACON = "orenthel_beacon"
 SCHOLARS_WARD = "veythar_scholars_ward"
 WARRIORS_ENDURANCE = "kaelen_warriors_endurance"
 
@@ -20,6 +21,10 @@ def _acknowledged_passive(player: dict, patron_id: str, ability_id: str) -> bool
         and ability["implementation_id"] == ability_id
         and ability["recharge"] == "always"
     )
+
+
+def orenthel_beacon(player: dict) -> bool:
+    return _acknowledged_passive(player, "orenthel", ORENTHEL_BEACON)
 
 
 def scholars_ward(player: dict) -> bool:
