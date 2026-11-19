@@ -105,7 +105,8 @@ async def test_close_before_damage(maw, identity, separation):
     else:
         assert "reach" in packet["reason"]
         assert not live.first_attack_resolved
-        assert not maw.sd.party.member(maw.players[0]).weapon_used
+        if actor.type == "player":
+            assert not maw.sd.member_state(actor_id).weapon_used
 
 
 @pytest.mark.parametrize(

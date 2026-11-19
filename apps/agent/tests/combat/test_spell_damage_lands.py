@@ -1,5 +1,6 @@
 """Real casts cross the phase transaction and persist ordinary combat damage."""
 
+from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
@@ -8,7 +9,7 @@ import pytest
 from acceptance._capstone_helpers import _build_state, _d20, _enemy, _resolve_round
 from acceptance.seeds import seed_player_with_pools
 from sample_fixtures import make_context, make_mock_room
-from voice_condition_fixtures import participant
+from voice_condition_fixtures import participant, place_actors
 
 import combat_turn
 import db_mutations
@@ -143,8 +144,18 @@ async def test_catalog_damage_lands_once_on_declared_recipient(spell_fight, spel
     ctx = spell_fight
     spell = await prepare_spell(ctx, spell_id)
     assert spell.combat_damage is not None
-    participant(ctx.userdata.combat_state, "foe").category = "undead"
-    ctx.userdata.combat_state.spatial["positions"]["foe"]["x"] = 10 if spell_id == "divine_sacred_word" else 40
+    state = ctx.userdata.combat_state
+    participant(state, "foe").category = "undead"
+    if spell.combat_damage.get("other_recipients"):
+        state.participants.extend(
+            [
+                _enemy("second", 100),
+                replace(_enemy("ally", 100), type="companion"),
+                replace(_enemy("fallen", 0), is_fallen=True),
+            ]
+        )
+        place_actors(state)
+    state.spatial["positions"]["foe"]["x"] = 10 if spell_id == "divine_sacred_word" else 40
     before = await saved_player(ctx.userdata.player_id)
     await declare_spell(ctx, spell_id, "cold")
     with (
@@ -163,7 +174,9 @@ async def test_catalog_damage_lands_once_on_declared_recipient(spell_fight, spel
     after = await saved_player(ctx.userdata.player_id)
     assert after["focus"]["current"] == before["focus"]["current"] - spell.focus_cost
     if spell.combat_damage.get("other_recipients"):
-        assert any(d["not_affected"] and "NOT affected" in d["reason"] for d in cast["deferred"])
+        others = next(d for d in cast["deferred"] if d["effect"] == "other_recipients")
+        assert others["target_ids"] == ["second"]
+        assert others["not_affected"] and "NOT affected" in others["reason"]
 
 
 @pytest.mark.parametrize("spell_id,expected", [("arcane_fireball", 3), ("divine_sacred_flame", 0)])

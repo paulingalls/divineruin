@@ -218,7 +218,6 @@ async def test_miss_and_successful_half_save_with_resistance(catalog_fight, face
     target = participant(state, "foe")
     hp = target.hp_current
     if face == 1:
-        target.damage_affinities["resistant"] = ["force"]
         await declare_spell(ctx)
     else:
         await prepare_spell(ctx, "primal_ice_storm")
