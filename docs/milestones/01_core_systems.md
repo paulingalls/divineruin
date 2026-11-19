@@ -133,6 +133,7 @@ Deepens the existing rules engine with attribute resolution, skill advancement, 
 - [x] Level-up triggers a narration event that the DM agent can consume <!-- evidence: apps/agent/event_types.py:30 LEVEL_UP; apps/agent/progression_tools.py:88 publish; :325 get_milestone_narration. Note: no standalone apply_level_up agent tool — emitted by award_xp/complete_quest paths (deliverable struck by sprint-008). M28 story-003 replaced the award_xp tool with the _award_xp_core Resolve; the publish site moved with it. -->
 - [x] DB migration creates progression table with correct schema <!-- evidence: scripts/migrations/015_progression_table.sql + content/level_progression.json -->
 - [x] Tests cover level boundaries, multi-level jumps, and milestone triggers <!-- evidence: apps/agent/tests/test_rules_leveling.py + test_leveling.py -->
+- [ ] A player can assign the standard array themselves by voice at creation, not only take the archetype's recommended spread (sprint hollow-creatures shipped the recommended spread and voice redirect of level-up points only)
 
 **Key references:**
 - *Game Mechanics Core — Experience & Leveling*
