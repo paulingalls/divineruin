@@ -247,15 +247,19 @@ async def test_cantrip_scaling_retains_its_authored_die(spell_fight, level, nota
     assert rolled.call_args.args[0] == notation
 
 
-async def test_ward_reduces_cantrip_to_zero_dice_without_an_attribute_bonus(spell_fight):
+@pytest.mark.parametrize("spell_id,face", [("arcane_bolt", 15), ("divine_sacred_flame", 1)])
+async def test_ward_reduces_cantrip_to_zero_dice_without_an_attribute_bonus(spell_fight, spell_id, face):
     ctx = spell_fight
     ctx.userdata.combat_state.veil_ward = {"source": "test", "rounds_remaining": None}
     participant(ctx.userdata.combat_state, ctx.userdata.player_id).level = 1
-    await declare_spell(ctx, "arcane_frost_touch")
-    with patch("check_resolution.dice_roll", return_value=_d20(15)):
+    await prepare_spell(ctx, spell_id)
+    await declare_spell(ctx, spell_id)
+    with patch("check_resolution.dice_roll", return_value=_d20(face)):
         result = await _resolve_round(ctx)
     cast = next(p["cast"] for p in result["packets"] if p["actor_id"] == ctx.userdata.player_id)
-    assert cast["damage_result"]["hit"] and cast["damage_result"]["damage"] == 0
+    damage = cast["damage_result"]
+    assert damage["hit"] if spell_id == "arcane_bolt" else not damage["save"]["success"]
+    assert damage["damage"] == 0
 
 
 async def test_divine_judgment_rolls_its_authored_hollow_dice(spell_fight):
