@@ -20,6 +20,7 @@ from combat_agent import CombatAgent
 from db_mutations_resonance import read_player_resonance
 from mode_tools import enter_mode
 from query_tools import query_info
+from scene_tools import enter_location
 from session_data import SessionData
 
 
@@ -32,18 +33,15 @@ def mock_combat_agent_factory():
 async def still(reset_db_pool):
     harness = MawlingHarness()
     try:
-        await harness.prepare((18,), companion=None, location="ashmark_corrupted_front")
+        await harness.prepare((18,), companion=None, location="ashmark_still")
         yield harness
     finally:
         await harness.close()
 
 
 async def enter(harness):
-    catalog = await harness.command("query_info", {"kind": "creature"})
-    entries = {row["id"]: row for row in catalog["encounter_templates"]}
-    assert "hollow_still" in entries
-    entry = entries["hollow_still"]
-    response = await harness.command("enter_mode", {"mode": "combat", "encounter_id": entry["id"]})
+    scene = await harness.command("enter_location", {"location_id": harness.sd.location_id})
+    response = await harness.command("enter_mode", {"mode": "combat", "encounter_id": scene["still"]["encounter_id"]})
     assert isinstance(harness.session.current_agent, CombatAgent)
     return response, await harness.reload()
 
@@ -164,7 +162,7 @@ async def fresh_session(harness, state=None):
     agent = (
         CombatAgent()
         if state is not None
-        else Agent(instructions="Execute the command.", tools=[enter_mode, query_info])
+        else Agent(instructions="Execute the command.", tools=[enter_mode, query_info, enter_location])
     )
     await harness.session.start(agent)
 

@@ -2,6 +2,7 @@
 
 import json
 import logging
+from collections.abc import Mapping, Sequence
 
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
@@ -49,6 +50,30 @@ async def _check_exit_requirement(requires: str, player_id: str, *, queries=db_q
     return False
 
 
+async def party_level_warning(
+    destination: dict | None,
+    member_ids: Sequence[str],
+    *,
+    queries,
+    known_players: Mapping[str, dict] | None = None,
+) -> dict[str, str]:
+    recommended = destination.get("recommended_level") if destination else None
+    if recommended is None:
+        return {}
+
+    total = 0
+    for player_id in member_ids:
+        player = known_players.get(player_id) if known_players is not None else None
+        if player is None:
+            player = await queries.get_player(player_id)
+        if player is None:
+            raise ToolError(f"Player '{player_id}' not found.")
+        total += player["level"]
+    if total <= (recommended - 3) * len(member_ids):
+        return {"level_warning": f"This destination is recommended for level {recommended}."}
+    return {}
+
+
 @function_tool()
 @db_tool
 async def move_player(
@@ -58,7 +83,8 @@ async def move_player(
     """Move the party to a connected location. Provide the destination
     location ID from the current location's exits. Returns the full scene
     context for the new location. Arriving may complete a location-based quest stage; it then appears in
-    `quest_updates` — narrate its `narrative_beat` and do not call `update_quest` for it."""
+    `quest_updates` — narrate its `narrative_beat` and do not call `update_quest` for it.
+    If `level_warning` is returned, voice it before narrating arrival."""
     return await _move_player_impl(context, destination_id)
 
 
@@ -292,6 +318,7 @@ async def _move_player_locked(
             )
 
     destination_location = await content.get_location(destination_id)
+    warning = await party_level_warning(destination_location, session.party.member_ids, queries=queries)
 
     # Detect region boundary crossing for handoff
     current_region = current_location.get("region_type", REGION_CITY)
@@ -320,7 +347,13 @@ async def _move_player_locked(
     scene = await _build_scene_context(
         destination_id, session, location=destination_location, content=content, queries=queries
     )
-    result = {"moved": True, "previous_location": previous_location_id, "quest_updates": quest_updates, **scene}
+    result = {
+        "moved": True,
+        "previous_location": previous_location_id,
+        "quest_updates": quest_updates,
+        **scene,
+        **warning,
+    }
     logger.info(
         "move_player result: %s → %s, %d NPCs, %d targets",
         previous_location_id,

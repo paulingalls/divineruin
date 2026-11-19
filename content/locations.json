@@ -953,6 +953,9 @@
     "description": "A low grinding hum rolls across the dead grass. Ash stings your throat, and each footstep crunches on brittle roots. Armor scrapes somewhere ahead, beneath a sound too deep to hear clearly.",
     "atmosphere": "muffled, ash-choked, unrelenting",
     "exits": {
+      "northwest": {
+        "destination": "ashmark_still"
+      },
       "southeast": {
         "destination": "greyvale_wilderness_north"
       }
@@ -960,11 +963,38 @@
     "conditions": {},
     "ambient_sounds": "hollow_wrongness",
     "danger_level": 3,
+    "recommended_level": 14,
     "navigation": "unmarked_wilderness",
     "resource_table": {
       "common": [
         "plant_fiber"
       ],
+      "uncommon": [],
+      "rare": []
+    }
+  },
+  {
+    "id": "ashmark_still",
+    "name": "The Still",
+    "tier": 2,
+    "district": "ashmark_front",
+    "region": "ashmark",
+    "region_type": "wilderness",
+    "terrain": "grassland",
+    "tags": ["wilderness", "dangerous", "still"],
+    "description": "Birdsong rises in perfect harmony over the clear rush of a brook. Warm wind brushes your face, like spring where nothing should be growing. The same notes return, down to the breath between them.",
+    "atmosphere": "gentle warmth and impossibly perfect birdsong",
+    "exits": {
+      "southeast": {
+        "destination": "ashmark_corrupted_front"
+      }
+    },
+    "default_scene": "scene_ashmark_still",
+    "danger_level": 3,
+    "recommended_level": 18,
+    "navigation": "unmarked_wilderness",
+    "resource_table": {
+      "common": ["plant_fiber"],
       "uncommon": [],
       "rare": []
     }

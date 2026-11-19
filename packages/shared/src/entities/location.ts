@@ -73,6 +73,7 @@ export interface Location {
   ambient_sounds?: string;
   ambient_sounds_night?: string;
   danger_level?: number;
+  recommended_level?: number;
   // Travel navigation category (M4.6b). One of the Python travel.NAVIGATION_DC keys
   // (established_road / known_trail / unmarked_wilderness / dense_forest / underground /
   // hollow_corrupted); the agent maps it to a navigation DC. Present only on travel-reachable

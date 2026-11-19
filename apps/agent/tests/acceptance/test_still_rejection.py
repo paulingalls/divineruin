@@ -148,7 +148,7 @@ async def test_two_party_attacks_replace_the_pending_origin_and_thunder_doubles(
 
     party = MawlingHarness()
     try:
-        await party.prepare((18, 18), companion=None, location="ashmark_corrupted_front")
+        await party.prepare((18, 18), companion=None, location="ashmark_still")
         response, state = await enter(party)
         first, second = state.still_encounter["anchor_ids"][:2]
         for _ in range(2):
@@ -198,7 +198,7 @@ async def test_only_the_illusion_target_may_investigate_it(reset_db_pool):
 
     party = MawlingHarness()
     try:
-        await party.prepare((18, 18), companion=None, location="ashmark_corrupted_front")
+        await party.prepare((18, 18), companion=None, location="ashmark_still")
         response, state = await enter(party)
         await search_round(party, response["still"]["search_actions"][0])
         await declare(party, **strike(state.still_encounter["anchor_ids"][0]))
