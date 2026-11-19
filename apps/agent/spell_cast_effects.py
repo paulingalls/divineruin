@@ -3,6 +3,7 @@
 from livekit.agents.llm import ToolError
 
 import cast_modifiers
+import combat_spell_heal
 import event_types as E
 import patron_echo_choice
 import spell_item_resolution
@@ -35,6 +36,7 @@ async def _finish_cast(
     concealment_packet,
     purified,
     locked_rows,
+    heal_rows,
     revalidate_actor: bool,
     suppress_resonance_changed: bool,
     resonance,
@@ -160,6 +162,13 @@ async def _finish_cast(
                 packet["condition_applied"] = spell.applies_condition
                 if target_ids is not None:
                     packet["condition_targets"] = voiced
+
+    if heal_rows is not None:
+        if revalidate_actor:
+            session.validate_acting_player(player_id)
+        packet["healing_results"] = await combat_spell_heal.land_exploration(
+            spell.heal, player, heal_rows, conn=conn, dice_mod=dice_mod
+        )
 
     return CastResult(
         packet=packet,

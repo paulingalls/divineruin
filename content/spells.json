@@ -1014,7 +1014,7 @@
     "source": "divine",
     "spell_tier": "standard",
     "focus_cost": 4,
-    "mechanics": "Out of combat only. Over 10 minutes, restore 2d8 + WIS mod HP to up to six creatures.",
+    "mechanics": "Out of combat only. Over 10 minutes, restore 2d8 + WIS mod HP to up to six party members at your location.",
     "narration_cue": "You kneel and pray. The divine warmth seeps in slowly — the steady warmth of being tended.",
     "resonance_by_source": {
       "divine": 1
@@ -1059,7 +1059,7 @@
     "source": "divine",
     "spell_tier": "major",
     "focus_cost": 6,
-    "mechanics": "Restore 2d8 + WIS mod HP to every ally within earshot. The benchmark group heal.",
+    "mechanics": "Restore 2d8 + WIS mod HP to all living or dying allies in the fight. Outside combat, heal all party members at your location.",
     "narration_cue": "The light finds every wound, every bruise, every ache. Everyone feels it at once.",
     "resonance_by_source": {
       "divine": 2

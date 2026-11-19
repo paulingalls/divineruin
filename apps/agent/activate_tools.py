@@ -118,6 +118,9 @@ async def activate(
     for a spell or ability that hits several allies/enemies at once — not both. Omit both for a
     self-targeted or partyless capability.
 
+    For Mass Heal, omit both selectors; it heals all party players at the caster's location.
+    Prayer of Healing is only available outside combat and accepts up to six present party players.
+
     For Dispel Corruption on inventory, use the queried item_target_id as target_id:
     "item:<owner_player_id>:<item_id>", e.g. "item:player_1:rend_shard". It selects the
     owner's whole tainted stack; the owner must be a player in this session's party.

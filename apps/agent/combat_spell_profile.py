@@ -169,6 +169,11 @@ def scaled(profile, key, base, level):
 
 
 def validate_target(state, caster, declaration, spell):
+    if (heal := spell.heal) is not None:
+        from combat_spell_heal import combat_recipients
+
+        combat_recipients(state, caster, declaration, spell, heal)
+        return
     profile = getattr(spell, "combat_damage", None)
     if profile is None or profile["resolution"] == "deferred":
         return
