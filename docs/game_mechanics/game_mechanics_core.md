@@ -640,7 +640,7 @@ Every level, a character gains HP, resource pool increases, and possibly new abi
 | 7 | **+2** | Growth+½CON | — | — | Major | — | — | Proficiency increase |
 | 8 | +2 | Growth+½CON | +2 (any) | **L8 Elective techniques** (martials choose from pool of 4) | — | L8 techniques available | — | Second martial elective choice |
 | 9 | +2 | Growth+½CON | — | New passive or ability upgrade | — | — | — | — |
-| 10 | +2 | Growth+½CON | — | **ARCHETYPE MILESTONE** — major new ability | — | Extra Attack (Warrior, Skirmisher, Paladin) | — | Companion major upgrade |
+| 10 | +2 | Growth+½CON | — | **ARCHETYPE MILESTONE** — major new ability | — | Extra Attack (Warrior, Skirmisher, Paladin, Guardian) | — | Companion major upgrade |
 | 11 | +2 | Growth+½CON | — | Specialization ability | — | — | — | Cantrip damage scales to 3d6 |
 | 12 | +2 | Growth+½CON | +2 (any) | — | — | — | 15 Expert | — |
 | 13 | +2 | Growth+½CON | — | New passive or ability upgrade | Supreme | — | — | — |
