@@ -1,3 +1,4 @@
+import { CONDITION_NAMES } from "@divineruin/shared";
 import { test, expect, describe } from "bun:test";
 
 import { BrandColors } from "@/constants/theme";
@@ -9,42 +10,11 @@ import {
   type ConditionType,
 } from "@/components/hud/condition-display";
 
-// Unit-testable condition->icon display map (M4.3, story-005). Lives in a .ts (not the
-// combat-tracker / persistent-bar .tsx) so the bun suite can import it without react-native
-// — the RN mock omits View/Text and @expo/vector-icons, so a .tsx import throws at module
-// load (mirrors RESONANCE_DISPLAY / spell-display). The HUD renders glanceable icons from
-// this map; the closed vocab mirrors the agent's CONDITION_CATALOG keys (conditions.py).
-
-const CATALOG_KEYS = [
-  "wounded",
-  "stunned",
-  "prone",
-  "grappled",
-  "restrained",
-  "incapacitated",
-  "paralyzed",
-  "poisoned",
-  "blessed",
-  "shielded",
-  "enraged",
-  "exhausted",
-  "blinded",
-  "frightened",
-  "charmed",
-  "deafened",
-  "shaken",
-  "petrified",
-  "cursed",
-  "inspired",
-  "hollowed",
-  "iron_resolve",
-  "battle_cry",
-  "worthy_foe",
-];
-
 describe("CONDITION_DISPLAY completeness", () => {
   test("covers exactly the runtime catalog condition types", () => {
-    expect(([...CONDITION_TYPES] as string[]).sort()).toEqual([...CATALOG_KEYS].sort());
+    // Temporary Hollowed is an engine marker without a dedicated HUD entry.
+    const displayedConditions = CONDITION_NAMES.filter((name) => name !== "temporary_hollowed");
+    expect([...CONDITION_TYPES].sort()).toEqual(displayedConditions.sort());
   });
 
   test("every condition type has a non-empty label, icon, and a brand color", () => {
