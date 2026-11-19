@@ -381,7 +381,7 @@ async def _query_inventory_impl(
                 "item_target_id": f"item:{player_id}:{item['id']}",
                 **(
                     {"consume_id": f"{CONSUME_PREFIX}{item['id']}"}
-                    if profile is not None and not item.get("tainted") and not item.get("slot_info", {}).get("equipped")
+                    if profile is not None and not item.get("tainted")
                     else {}
                 ),
                 "subtype": item.get("subtype"),

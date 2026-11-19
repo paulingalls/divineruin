@@ -35,8 +35,6 @@ async def _held_heal(holder_id, item_id, *, conn=None, queries=db_queries):
     slot = await queries.get_inventory_item(holder_id, item_id, conn=conn, for_update=conn is not None)
     if slot is None or slot["quantity"] <= 0:
         raise ToolError(f"{holder_id} has no untainted {name} to consume.")
-    if slot.get("equipped", False):
-        raise ToolError(f"Unequip {name} before consuming it.")
     return name, profile
 
 
