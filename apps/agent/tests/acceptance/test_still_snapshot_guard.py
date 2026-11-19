@@ -118,3 +118,13 @@ async def test_final_anchor_write_failure_rolls_back_before_retry(still, monkeyp
     assert still.last_result["outcome"] == "victory"
     assert still.last_result["xp_granted"] == 5000
     assert {drop["item_id"] for drop in still.last_result["loot"]} == {"absorbed_memories"}
+
+
+async def test_discover_check_cannot_reveal_still_anchors(still):
+    await enter(still)
+    events = published_payloads(still.sd.room)
+    roll = {"kind": "discover", "skill": "perception", "target": "still_anchors", "hearing_only": False}
+    refusal = await still.command("check", {"roll": roll}, error=True)
+    assert "Still discovery requires a declared Interact search action" in refusal
+    assert (await still.reload()).still_encounter["revealed_ids"] == []
+    assert published_payloads(still.sd.room) == events

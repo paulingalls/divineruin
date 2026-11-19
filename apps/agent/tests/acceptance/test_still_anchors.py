@@ -287,3 +287,22 @@ async def test_still_flee_reload_and_settle_once(still):
         assert await read_player_resonance(pid) == resonance
         death.assert_awaited_once()
         reward.assert_awaited_once()
+
+
+async def test_still_area_spell_skips_owner_and_hidden_anchors(still):
+    pid = still.players[0]
+    await still.pool.execute(
+        "UPDATE players SET data=jsonb_set(data || $2::jsonb,'{focus,current}','100') WHERE player_id=$1",
+        pid,
+        json.dumps({"class": "mage"}),
+    )
+    await seed_known_spells(still.pool, pid, ("arcane_elemental_burst",))
+    response, state = await enter(still)
+    anchors = state.still_encounter["anchor_ids"]
+    search = next(a for a in response["still"]["search_actions"] if a["skill"] == "perception")
+    await search_round(still, search)
+    assert (await still.reload()).still_encounter["revealed_ids"] == anchors[:1]
+    burst = spell("arcane_elemental_burst", anchors[0]) | {"argument_type": "cold"}
+    await hit(still, anchors[0], action=burst)
+    after = await still.reload()
+    assert [after.get_participant(a).hp_current for a in anchors[1:]] == [40, 40, 40, 45, 45]
