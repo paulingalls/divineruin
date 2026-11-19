@@ -123,7 +123,7 @@ def _layer_1(value: object, path: str) -> None:
         if field not in gift:
             _fail(f"{path}.{field}", "required field")
         _text(gift[field], f"{path}.{field}")
-    if gift["status"] not in {"active", "awaits_healing"}:
+    if gift["status"] != "active":
         _fail(f"{path}.status", "unknown status")
     if gift["recharge"] not in {"always", "per_encounter", "short_rest", "long_rest"}:
         _fail(f"{path}.recharge", "unknown recharge")

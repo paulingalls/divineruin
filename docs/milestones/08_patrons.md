@@ -81,7 +81,8 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 **Acceptance criteria:**
 - [x] All 10 patron profiles have Layer 1 (passive), Layer 2 (Resonance modifier), and Layer 3 (ability tiers) defined (sprint patron-favor-mini)
   <!-- Evidence (sprint patron-favor-mini): content/gods.json carries Layer 2 modifiers and three Layer 3 tiers for all 10 patrons; test_gods_layers.py and packages/shared/src/entities/god.test.ts validate them against one shared fixture corpus. -->
-- [ ] Each patron's Layer 1 passive is mechanically distinct and always active
+- [x] Each patron's Layer 1 passive is mechanically distinct and always active
+  <!-- Evidence: test_dawns_resilience.py and test_dawns_resilience_atomicity.py drive Orenthel's gift through registered exploration and combat tools. Existing gift coverage includes test_veythar_gift.py, test_syrath_gift.py, test_kaelen_gift_tools.py, test_aelora_gift.py, test_thyra_gift.py, test_patron_abilities.py (Valdris), test_patron_senses.py (Mortaen and Nythera), and test_zhael_fate.py. test_patron_gift_content.py, test_gods_layers.py and god.test.ts validate the authored gifts. -->
 - [x] Layer 2 Resonance modifiers integrate with Phase 3 Magic Resonance calculations (sprint patron-favor-mini)
   <!-- Evidence (sprint patron-favor-mini): all 10 patrons through the production cast path. Generation modifiers are in test_patron_resonance_generation.py; the Syrath concealment and Valdris wrongdoing producers are in test_syrath_valdris_producers.py; Veythar Flickering dice, Aelora ward harmony and Zhael's chosen Echo are in test_patron_resonance_effects.py. -->
 - [x] `evaluate_patron_alignment` produces positive delta for aligned actions and negative for misaligned

@@ -27,6 +27,7 @@ async def _seed_player(pool, player_id: str, *, player_class: str, focus: int, r
                 "player_id": player_id,
                 "class": player_class,
                 "level": 5,
+                "location_id": "accord_guild_hall",
                 "hp": {"current": 25, "max": 25},
                 "focus": {"current": focus, "max": focus},
                 "resonance": {"current": resonance},

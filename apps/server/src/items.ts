@@ -106,6 +106,9 @@ function parseItemEffect(raw: unknown, ctx: string): ItemEffect {
   if (e.value !== undefined && typeof e.value !== "number" && typeof e.value !== "string") {
     throw new Error(`${ctx}.value is not number or string`);
   }
+  if (e.amount !== undefined && typeof e.amount !== "string") {
+    throw new Error(`${ctx}.amount is not a string`);
+  }
   if (e.trigger !== undefined && typeof e.trigger !== "string") {
     throw new Error(`${ctx}.trigger is not a string`);
   }

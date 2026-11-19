@@ -30,6 +30,7 @@ from livekit.agents.voice import RunContext
 import abilities
 import ability_tools
 import draethar_inner_fire
+import item_heal
 import mentor_variants
 import patron_ability_tools
 import patron_gift_tools
@@ -43,6 +44,7 @@ import veil_ward_tools
 import zhael_fate
 from action_sound_content import publish_action_sound
 from db_errors import db_tool
+from item_effects import CONSUME_PREFIX
 from patron_combat_edges import RESTORATION_SURGE, SurgeCondition
 from patron_gifts import SYRATH_SHADOW_VEIL, VEYTHAR_INSIGHT
 from session_data import SessionData
@@ -118,6 +120,12 @@ async def activate(
     for a spell or ability that hits several allies/enemies at once — not both. Omit both for a
     self-targeted or partyless capability.
 
+    For Mass Heal, omit both selectors; it heals all party players at the caster's location.
+    Prayer of Healing is only available outside combat and accepts up to six present party players.
+
+    Outside combat, use a healing item's consume_id from query_info inventory.
+    Omit target_id to use one from your stack on yourself or name a present party player.
+    In combat use a consume declaration with declare_phase.
     For Dispel Corruption on inventory, use the queried item_target_id as target_id:
     "item:<owner_player_id>:<item_id>", e.g. "item:player_1:rend_shard". It selects the
     owner's whole tainted stack; the owner must be a player in this session's party.
@@ -191,6 +199,11 @@ async def _activate_impl(
         raise ToolError("The condition selector is only for Restoration Surge.")
     if id == RESTORATION_SURGE and target_ids is not None:
         raise ToolError("Restoration Surge targets one player. Use target_id or omit it for self.")
+    if id.startswith(CONSUME_PREFIX):
+        if target_ids is not None:
+            raise ToolError("A healing item uses one target_id. Omit it for the holder.")
+        context.disallow_interruptions()
+        return await item_heal.consume_exploration(context.userdata, id.removeprefix(CONSUME_PREFIX), target_id)
     try:
         kind = _resolve_kind(
             id,

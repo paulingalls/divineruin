@@ -2868,7 +2868,9 @@
       "effect": "Regain 2 HP when you heal another creature, whatever the source of the healing.",
       "trigger": "When you heal another creature.",
       "recharge": "always",
-      "status": "awaits_healing"
+      "status": "active",
+      "resolution": "engine",
+      "implementation_id": "orenthel_dawns_resilience"
     },
     "layer_2_resonance": {
       "name": "Purifying Light",

@@ -23,7 +23,7 @@ from session_startup import GameplayInputOwner
 
 class RestWalk(ArcWalk):
     resting = False
-    primary_hp_bonus = 0
+    primary_hp_max: int | None = None
 
     async def setup(self, harness, location="millhaven_inn"):
         await self.start(harness, "rest", stage=None)
@@ -88,8 +88,8 @@ class RestWalk(ArcWalk):
         if event["type"] == E.SESSION_INIT:
             character = event["character"]
             persisted = await self.row(character["player_id"])
-            if character["player_id"] == self.player:
-                persisted["hp"]["max"] += self.primary_hp_bonus
+            if character["player_id"] == self.player and self.primary_hp_max is not None:
+                persisted["hp"]["max"] = self.primary_hp_max
             assert {k: v for k, v in character.items() if k != "player_id"} == persisted, (character, persisted)
             for i, pid in enumerate(self.ids):
                 if i not in (0, 1, 4):

@@ -3,6 +3,7 @@
 from livekit.agents.llm import ToolError
 
 import cast_modifiers
+import combat_spell_heal
 import event_types as E
 import patron_echo_choice
 import spell_item_resolution
@@ -36,6 +37,7 @@ async def _finish_cast(
     concealment_packet,
     purified,
     locked_rows,
+    heal_rows,
     revalidate_actor: bool,
     suppress_resonance_changed: bool,
     resonance,
@@ -100,6 +102,12 @@ async def _finish_cast(
     if patron_resonance is not None:
         packet["patron_resonance"] = patron_resonance
     spell_item_resolution.defer_inventory(session, purified, packet, events)
+    if spell.creates_item is not None:
+        packet["created_items"] = [
+            await spell_item_resolution.create_item(
+                session, player_id, spell.creates_item, events, conn=conn, revalidate_actor=revalidate_actor
+            )
+        ]
     if target_id is not None:
         packet["target_id"] = target_id
     # The background process voices the Vaelti warning before the echo, so its
@@ -170,6 +178,24 @@ async def _finish_cast(
                 packet["condition_applied"] = spell.applies_condition
                 if target_ids is not None:
                     packet["condition_targets"] = voiced
+
+    if heal_rows is not None:
+        if revalidate_actor:
+            session.validate_acting_player(player_id)
+        packet["healing_results"] = await combat_spell_heal.land_exploration(
+            spell.heal, player, heal_rows, caster_id=player_id, packet=packet, conn=conn, dice_mod=dice_mod
+        )
+        # Out of combat no WRAP push follows, so each healed recipient's own HUD needs the new HP.
+        for recipient_id, hp in combat_spell_heal.hp_updates(player_id, packet).items():
+            events.append(
+                lambda pid=recipient_id, r=hp: publish_game_event(
+                    session.room,
+                    E.HP_CHANGED,
+                    {"current": r["hp_current"], "max": r["hp_max"]},
+                    event_bus=session.event_bus,
+                    destination_identities=[pid],
+                )
+            )
 
     return CastResult(
         packet=packet,

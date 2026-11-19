@@ -30,7 +30,7 @@ Candidates: (1) Sprint `patron-alignment-heartbeat` (deferred by the human 2026-
 
 ## Patron abilities (Phase 8 M8.2)
 Goal: every patron's abilities across the three favor tiers, with recharge, can be granted and activated by the DM in play: `docs/milestones/08_patrons.md` Milestone 8.2 ACs.
-Measure: python3 -c 'import re; s=open("docs/milestones/08_patrons.md").read(); b=re.search(r"^### Milestone 8.2 .*?(?=^### |\Z)",s,re.M|re.S).group(0); print("distance=%d" % len(re.findall(r"^- \[ \] ",b,re.M)))'
+Measure: python3 -c 'import json,re; s=open("docs/milestones/08_patrons.md").read(); b=re.search(r"^### Milestone 8.2 .*?(?=^### |\Z)",s,re.M|re.S).group(0); g=json.load(open("content/gods.json")); print("distance=%d pending_engine=%d" % (len(re.findall(r"^- \[ \] ",b,re.M)),sum(a["status"]=="pending" and a["resolution"]=="engine" for p in g for a in p["layer_3_tier_abilities"].values())))'
 Candidates: see the phase doc; depends on M8.1's Layer 3 definitions.
 
 ## Archetype synergies and the Unbound Path (Phase 8 M8.3)

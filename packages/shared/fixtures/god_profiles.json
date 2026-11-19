@@ -50,7 +50,7 @@
   },
   "layer_1_cases": [
     { "id": "legacy", "set": { "status": "active", "recharge": "per_encounter" } },
-    { "id": "awaits_healing", "set": { "status": "awaits_healing" } },
+    { "id": "awaits_healing", "set": { "status": "awaits_healing" }, "field": "status" },
     {
       "id": "registered_engine",
       "set": {
