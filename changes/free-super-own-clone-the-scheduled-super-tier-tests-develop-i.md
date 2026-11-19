@@ -1,6 +1,6 @@
 Bump: patch
 
-Scheduled super tests now check develop in a dedicated clone on the test host, with their own Docker project and port offset.
+Scheduled super tests now check develop in a dedicated clone on the test host, with their own Docker project and port offset. Each run tears its Docker stack down when it ends, pass or fail, so an idle super stack no longer holds host ports between runs.
 
 Release steps:
 

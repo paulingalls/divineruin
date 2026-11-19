@@ -8,12 +8,22 @@ ART="$(dirname "$TARGET")/flake-artifacts"
 mkdir -p "$ART"
 LOG="$ART/super-$(date +%Y%m%d-%H%M%S)-$$.log"
 TESTED=unresolved
+# prepare runs in a subshell; this file tells finish that the clone validated and a stack may exist.
+STACK_MARK="$ART/.stack-$$"
+rm -f "$STACK_MARK"
 touch "$LOG"
 echo "Super log: $LOG"
 
 finish() {
   local status=$?
   trap - EXIT
+  if [ -e "$STACK_MARK" ]; then
+    rm -f "$STACK_MARK"
+    if ! (cd "$TARGET" && bash scripts/teardown-worktree.sh --force) >>"$LOG" 2>&1; then
+      echo "ERROR: super stack teardown failed; log: $LOG" | tee -a "$LOG" >&2
+      status=1
+    fi
+  fi
   if ! printf 'summary: super status=%s commit=%s log=%s\n' "$status" "$TESTED" "$LOG" | tee -a "$LOG"; then
     status=1
   fi
@@ -92,6 +102,7 @@ prepare() {
   fi
   cd "$TARGET"
   validate_clone "$remote"
+  touch "$STACK_MARK"
   git fetch --prune origin
   commit="$(git rev-parse --verify --end-of-options "${ref}^{commit}")"
   develop="$(git rev-parse --verify refs/remotes/origin/develop)"
