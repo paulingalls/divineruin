@@ -32,6 +32,7 @@ def test_authored_layers_match_mechanics():
     for patron_id, gift_id in (
         ("mortaen", "mortaen_deaths_awareness"),
         ("nythera", "nythera_horizon_sense"),
+        ("orenthel", "orenthel_dawns_resilience"),
     ):
         gift = next(row["layer_1_gift"] for row in rows if row["god_id"] == patron_id)
         assert (gift["id"], gift["status"], gift["resolution"], gift["implementation_id"]) == (

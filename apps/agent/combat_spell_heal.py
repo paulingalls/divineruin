@@ -20,13 +20,22 @@ if TYPE_CHECKING:
     from spells import Spell
 
 
-class HealingResult(TypedDict):
-    target_id: str
-    rolled: int
-    modifier: int
+class HpChange(TypedDict):
     healed: int
     hp_current: int
     hp_max: int
+
+
+class HealingResult(HpChange):
+    target_id: str
+    rolled: int
+    modifier: int
+
+
+class GiftReceipt(HpChange):
+    id: str
+    name: str
+    target_ids: list[str]
 
 
 def _explicit_targets(
@@ -110,8 +119,38 @@ async def restore(target: CombatParticipant, amount: int, *, conn, mutations=db_
     return restored
 
 
+def _gift_receipt(
+    caster_id: str, caster_row: dict, current: int, maximum: int, results: list[HealingResult]
+) -> GiftReceipt | None:
+    targets = list(dict.fromkeys(r["target_id"] for r in results if r["healed"] > 0 and r["target_id"] != caster_id))
+    if not targets or current >= maximum or (gift := patron_passives.dawns_resilience(caster_row)) is None:
+        return None
+    hp = healed_hp(current, maximum, 2 * len(targets))
+    return {
+        "id": gift["id"],
+        "name": gift["name"],
+        "target_ids": targets,
+        "healed": hp - current,
+        "hp_current": hp,
+        "hp_max": maximum,
+    }
+
+
+def hp_updates(caster_id: str, packet: dict) -> dict[str, HpChange]:
+    updates = {r["target_id"]: r for r in packet["healing_results"] if r["healed"] > 0}
+    if gift := packet.get("gift_triggered"):
+        updates[caster_id] = gift
+    return updates
+
+
 async def land(
-    profile: HealProfile, caster: CombatParticipant, recipients: list[CombatParticipant], *, conn
+    profile: HealProfile,
+    caster: CombatParticipant,
+    recipients: list[CombatParticipant],
+    *,
+    caster_row: dict,
+    packet: dict,
+    conn,
 ) -> list[HealingResult]:
     rolled, modifier = _healing_roll(profile, caster.attributes, dice)
     results = []
@@ -124,13 +163,18 @@ async def land(
                 if condition["type"] == "regenerating":
                     condition["ticks_remaining"] = rounds
         results.append(_receipt(target.id, before, target.hp_current, target.hp_max, rolled, modifier))
+    gift = _gift_receipt(caster.id, caster_row, caster.hp_current, caster.hp_max, results)
+    if gift is not None:
+        await restore(caster, gift["healed"], conn=conn)
+        packet["gift_triggered"] = gift
     return results
 
 
 async def land_exploration(
-    profile: HealProfile, caster: dict, recipients: dict[str, dict], *, conn, dice_mod
+    profile: HealProfile, caster: dict, recipients: dict[str, dict], *, caster_id: str, packet: dict, conn, dice_mod
 ) -> list[HealingResult]:
     rolled, modifier = _healing_roll(profile, caster.get("attributes", {}), dice_mod)
+    caster_current = caster["hp"]["current"]
     results = []
     for pid, row in recipients.items():
         current = row["hp"]["current"]
@@ -139,4 +183,10 @@ async def land_exploration(
         if hp != current:
             await db_mutations.update_player_hp(pid, hp, conn=conn)
         results.append(_receipt(pid, current, hp, maximum, rolled, modifier))
+        if pid == caster_id:
+            caster_current = hp
+    gift = _gift_receipt(caster_id, caster, caster_current, patron_passives.effective_hp(caster)["max"], results)
+    if gift is not None:
+        await db_mutations.update_player_hp(caster_id, gift["hp_current"], conn=conn)
+        packet["gift_triggered"] = gift
     return results

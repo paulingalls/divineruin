@@ -1,9 +1,10 @@
-"""Derived mechanics for Acknowledged patron abilities."""
+"""Passive patron gifts and tier abilities."""
 
 from _gods_content import load_gods
 from patron_favor import get_patron_tier
 
 ORENTHEL_BEACON = "orenthel_beacon"
+DAWNS_RESILIENCE = "orenthel_dawns_resilience"
 SCHOLARS_WARD = "veythar_scholars_ward"
 WARRIORS_ENDURANCE = "kaelen_warriors_endurance"
 
@@ -25,6 +26,21 @@ def _acknowledged_passive(player: dict, patron_id: str, ability_id: str) -> bool
 
 def orenthel_beacon(player: dict) -> bool:
     return _acknowledged_passive(player, "orenthel", ORENTHEL_BEACON)
+
+
+def dawns_resilience(player: dict) -> dict | None:
+    if (player.get("divine_favor") or {}).get("patron") != "orenthel":
+        return None
+    patron = next(god for god in load_gods() if god["god_id"] == "orenthel")
+    gift = patron["layer_1_gift"]
+    if (
+        gift["id"] == DAWNS_RESILIENCE
+        and gift["status"] == "active"
+        and gift.get("resolution") == "engine"
+        and gift.get("implementation_id") == DAWNS_RESILIENCE
+    ):
+        return gift
+    return None
 
 
 def scholars_ward(player: dict) -> bool:
