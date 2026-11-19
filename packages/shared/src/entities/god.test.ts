@@ -92,14 +92,24 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
   ]);
   const battleCry = "kaelen_battle_cry_of_the_ironhand";
   const judgment = "kaelen_kaelens_judgment";
-  const engine = new Set(["zhael_lucky", battleCry, judgment, ...passives]);
+  const surge = "orenthel_restoration_surge";
+  expect(
+    validateGods(catalog).find((god) => god.god_id === "orenthel")?.layer_3_tier_abilities.devoted,
+  ).toMatchObject({
+    id: surge,
+    status: "active",
+    resolution: "engine",
+    implementation_id: surge,
+    recharge: "long_rest",
+  });
+  const engine = new Set(["zhael_lucky", battleCry, judgment, surge, ...passives]);
   expect(
     new Set(
       abilities.filter((a) => a.status === "active" && a.resolution === "engine").map((a) => a.id),
     ),
   ).toEqual(engine);
   const pending = abilities.filter((a) => !narrated.has(a.id) && !engine.has(a.id));
-  expect(pending).toHaveLength(17);
+  expect(pending).toHaveLength(16);
   for (const ability of abilities.filter((a) => passives.has(a.id))) {
     expect([ability.recharge, ability.implementation_id]).toEqual(["always", ability.id]);
   }

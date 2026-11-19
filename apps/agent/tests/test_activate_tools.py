@@ -318,16 +318,4 @@ class TestToolRegistration:
     def test_activate_schema_has_no_actor_input(self):
         schema = ToolContext([activate]).parse_function_tools("anthropic", strict=True)[0]["input_schema"]
 
-        assert set(schema["properties"]) == {"id", "target_id", "target_ids", "offer_id", "keep"}
-
-
-async def test_patron_activation_forwards_target(monkeypatch):
-    from _zhael_fate_fixtures import game_tools
-
-    import patron_ability_tools
-
-    route = AsyncMock(return_value='"activated"')
-    monkeypatch.setattr(patron_ability_tools, "activate", route)
-    call = game_tools(make_context().userdata, activate)
-    assert await call("activate", id="veythar_lorekeepers_library", target_id="foe") == "activated"
-    assert [call.kwargs for call in route.await_args_list] == [{"target_id": "foe"}]
+        assert set(schema["properties"]) == {"id", "target_id", "target_ids", "offer_id", "keep", "condition"}

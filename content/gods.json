@@ -2886,8 +2886,9 @@
         "name": "Restoration Surge",
         "effect": "Once per long rest, remove one negative condition (Poisoned, Blinded, Frightened, stage 1 Hollowed) by touch. No Focus cost",
         "recharge": "long_rest",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "orenthel_restoration_surge"
       },
       "exalted": {
         "id": "orenthel_dawns_embrace",
