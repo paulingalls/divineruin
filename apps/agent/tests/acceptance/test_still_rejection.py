@@ -7,6 +7,7 @@ from acceptance.test_still_anchors import mock_combat_agent_factory as mock_comb
 from acceptance.test_still_anchors import still as still
 
 import combat_spatial
+import still_encounter
 from check_resolution import D20Roll
 from combat_participant import CombatParticipant
 
@@ -97,17 +98,22 @@ async def test_rejection_only_recharges_with_a_pending_anchor_attack(still):
         return roll.evaluate(20 if len(rolled) == 1 else 1)
 
     with (
-        patch("combat_recharge.roll") as dice,
+        patch("combat_recharge.roll", return_value=SimpleNamespace(total=4)) as dice,
         patch.object(D20Roll, "roll", save_face),
     ):
         offered = await still.command("resolve_phase", {})
         assert offered["fate_offer"]["roller_id"] == player.id
         state = await still.reload()
         assert state.held_actions[0]["still_zone"]["results"][0]["stunned_rounds"] == 1
+        assert state.held_actions[0]["still_zone"]["trigger"] == trigger
+        still_encounter.record_attack(state, player, state.get_participant(anchor), strike(anchor))
+        newer = state.still_encounter["pending_rejection"]
+        assert newer["execution_id"] != trigger["execution_id"]
+        await still.persist()
         await fresh_session(still, state)
         packets = await still.drain()
     assert rolled == [20, 20]
-    dice.assert_not_called()
+    dice.assert_called_once_with("1d6")
     result = next(packet for packet in packets if packet.get("action") == "Rejection")
     assert result["origin_anchor_id"] == anchor
     success, target = result["targets"]
@@ -122,7 +128,7 @@ async def test_rejection_only_recharges_with_a_pending_anchor_attack(still):
     edge = state.spatial["positions"][player.id]
     assert edge == target["destination"]
     assert combat_spatial.distance(edge, owner_center) == owner.hollow["corruption_aura"]
-    assert state.still_encounter["pending_rejection"] is None
+    assert state.still_encounter["pending_rejection"] == newer
     assert state.still_encounter["revealed_ids"] == revealed
     assert [state.get_participant(a).hp_current for a in state.still_encounter["anchor_ids"]] == anchors_before
     assert state.get_participant(first).is_fallen and anchors_before[0] == 0
@@ -183,5 +189,33 @@ async def test_two_party_attacks_replace_the_pending_origin_and_thunder_doubles(
         await declare(party, actor_id=owner_id, **spell("Rejection"))
         packets = await party.drain()
         assert next(packet for packet in packets if packet.get("action") == "Rejection")["origin_anchor_id"] == second
+    finally:
+        await party.close()
+
+
+async def test_only_the_illusion_target_may_investigate_it(reset_db_pool):
+    from acceptance.mawling_harness import MawlingHarness
+
+    party = MawlingHarness()
+    try:
+        await party.prepare((18, 18), companion=None, location="ashmark_corrupted_front")
+        response, state = await enter(party)
+        await search_round(party, response["still"]["search_actions"][0])
+        await declare(party, **strike(state.still_encounter["anchor_ids"][0]))
+        with patch("check_resolution.dice_roll", return_value=_d20(1)):
+            await party.drain()
+        illusion = party.last_result["still"]["illusion"]
+        (bystander,) = [pid for pid in party.players if pid != illusion["target_id"]]
+        party.model.commands.append(("check", {"roll": illusion["check"]}))
+        with (
+            party.sd._bind_authenticated_actor(bystander, 1, lambda *_: None),
+            patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(20)),
+        ):
+            await party.session.run(user_input="Execute the next command.")
+        receipt = list(party.model.receipts.values())[-1]
+        assert receipt.name == "check" and receipt.is_error, receipt.output
+        assert "Only the creature experiencing the Still illusion" in receipt.output
+        record = (await party.reload()).still_encounter
+        assert record is not None and record["illusion"]["seen_through"] is False
     finally:
         await party.close()

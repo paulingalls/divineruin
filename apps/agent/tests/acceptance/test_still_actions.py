@@ -37,8 +37,15 @@ async def test_touch_charms_and_memory_keeps_charm_while_disabling_next_turn(sti
     player = state.get_participant(player_id)
     player.ac = 100
     state.spatial["positions"][player_id] = {**state.spatial["positions"][owner_id], "x": 120}
-    await still.persist()
+    inside = state.spatial["positions"][player_id]
+    owner_position = state.spatial["positions"][owner_id]
+    aura = state.get_participant(owner_id).hollow["corruption_aura"]
+    state.spatial["positions"][player_id] = {**owner_position, "x": owner_position["x"] + aura + 1}
+    state = await still.persist()
     touch = strike(player_id, action="Serenity's Touch")
+    assert "outside the Still's zone" in await declare(still, actor_id=owner_id, error=True, **touch)
+    state.spatial["positions"][player_id] = inside
+    await still.persist()
     await declare(still, actor_id=owner_id, **touch)
     events_before = len(published_payloads(still.sd.room))
     with (
