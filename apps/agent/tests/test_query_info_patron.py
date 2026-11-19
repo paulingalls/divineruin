@@ -100,6 +100,19 @@ async def test_real_patron_gift_round_trip_from_gods_content(patron_id, monkeypa
     assert response["layer_1_gift"] == expected
     rows = response["abilities"]
     assert len(rows) == 3
+    if patron_id == "orenthel":
+        assert rows[0] == {
+            "id": "orenthel_beacon",
+            "name": "Beacon",
+            "tier": "Acknowledged",
+            "recharge": "always",
+            "status": "active",
+            "eligible": True,
+            "available": False,
+            "spent": False,
+            "reason": "This ability is always-on; it cannot be activated.",
+            "state": "locked",
+        }
     for row, tier in zip(rows, ("acknowledged", "devoted", "exalted"), strict=True):
         authored = patron["layer_3_tier_abilities"][tier]
         assert set(row) == {

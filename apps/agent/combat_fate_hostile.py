@@ -6,7 +6,7 @@ import check_resolution_attack
 import combat_wrongdoing
 import zhael_fate
 from combat_action_availability import begin_execution
-from combat_attack_roll import attack_roll_inputs, promote_attack, roll_attack, serialize_roll
+from combat_attack_roll import attack_roll_inputs, promote_attack, record_beacon_attack, roll_attack, serialize_roll
 
 
 async def roll_hostile(session, state, head, declaration, action, contribution, packet_deps, fate_rolls):
@@ -73,5 +73,6 @@ async def roll_hostile(session, state, head, declaration, action, contribution, 
             combat_state=state,
         )
     combat_wrongdoing.record_attack(state, attacker, target)
+    record_beacon_attack(state, attacker, target, result)
     head.update(roll=serialize_roll(result, effective_ac), reaction_ac_bonus=contribution)
     return True

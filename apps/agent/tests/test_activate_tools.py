@@ -318,4 +318,4 @@ class TestToolRegistration:
     def test_activate_schema_has_no_actor_input(self):
         schema = ToolContext([activate]).parse_function_tools("anthropic", strict=True)[0]["input_schema"]
 
-        assert set(schema["properties"]) == {"id", "target_id", "target_ids", "offer_id", "keep"}
+        assert set(schema["properties"]) == {"id", "target_id", "target_ids", "offer_id", "keep", "condition"}

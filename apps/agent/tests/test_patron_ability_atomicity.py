@@ -136,3 +136,37 @@ async def test_fault_during_lucky_settlement_never_applies_original(world, stage
     else:
         assert "settled_fate" not in queried and not dice_events(world)
     assert [c["type"] for c in (await row(world, 0))["conditions"]] == ["hollowed"]
+
+
+async def test_battle_cry_checkpoint_failure_rolls_back_spend(world):
+    from sample_fixtures import published_payloads
+    from test_patron_engine_kaelen import BATTLE_CRY, battle_cry_setup, cry_conditions
+
+    import db_mutations
+
+    call = await battle_cry_setup(world)
+    session = world.ctx.userdata
+    state = session.combat_state
+    before = state.to_dict()
+    gifts = (await row(world, 0))["patron_gifts"]
+    save = db_mutations.save_combat_state
+
+    async def fail_after_checkpoint(combat_id, data, *, conn):
+        await save(combat_id, data, conn=conn)
+        assert cry_conditions(await db_mutations.load_combat_state(combat_id, conn=conn))[world.ids[0]]
+        raise ToolError("injected after Battle Cry checkpoint")
+
+    try:
+        with patch.object(db_mutations, "save_combat_state", fail_after_checkpoint):
+            with pytest.raises(ToolError, match="injected after Battle Cry checkpoint"):
+                await call("activate", id=BATTLE_CRY)
+        assert session.combat_state.to_dict() == before
+        saved = await db_mutations.load_combat_state(state.combat_id, conn=world.pool)
+        assert saved is not None and saved.to_dict() == before
+        assert (await row(world, 0))["patron_gifts"] == gifts
+        assert not published_payloads(session.room)
+        await call("activate", id=BATTLE_CRY)
+        assert (await row(world, 0))["patron_gifts"][BATTLE_CRY] == {"spent": True}
+        assert cry_conditions(session.combat_state)[world.ids[0]]
+    finally:
+        await db_mutations.delete_combat_state(state.combat_id, conn=world.pool)

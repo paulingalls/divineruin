@@ -85,18 +85,38 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
         .map((a) => a.id),
     ),
   ).toEqual(narrated);
-  const passives = new Set(["veythar_scholars_ward", "kaelen_warriors_endurance"]);
-  const engine = new Set(["zhael_lucky", ...passives]);
+  const passives = new Set([
+    "veythar_scholars_ward",
+    "kaelen_warriors_endurance",
+    "orenthel_beacon",
+  ]);
+  const battleCry = "kaelen_battle_cry_of_the_ironhand";
+  const judgment = "kaelen_kaelens_judgment";
+  const surge = "orenthel_restoration_surge";
+  expect(
+    validateGods(catalog).find((god) => god.god_id === "orenthel")?.layer_3_tier_abilities.devoted,
+  ).toMatchObject({
+    id: surge,
+    status: "active",
+    resolution: "engine",
+    implementation_id: surge,
+    recharge: "long_rest",
+  });
+  const engine = new Set(["zhael_lucky", battleCry, judgment, surge, ...passives]);
   expect(
     new Set(
       abilities.filter((a) => a.status === "active" && a.resolution === "engine").map((a) => a.id),
     ),
   ).toEqual(engine);
   const pending = abilities.filter((a) => !narrated.has(a.id) && !engine.has(a.id));
-  expect(pending).toHaveLength(20);
+  expect(pending).toHaveLength(16);
   for (const ability of abilities.filter((a) => passives.has(a.id))) {
     expect([ability.recharge, ability.implementation_id]).toEqual(["always", ability.id]);
   }
+  const cry = abilities.find((a) => a.id === battleCry);
+  expect([cry?.recharge, cry?.implementation_id]).toEqual(["long_rest", battleCry]);
+  const worthyFoe = abilities.find((a) => a.id === judgment);
+  expect([worthyFoe?.recharge, worthyFoe?.implementation_id]).toEqual(["per_session", judgment]);
   for (const ability of pending)
     expect([ability.status, ability.resolution]).toEqual(["pending", "engine"]);
   expect(corpus.valid.length).toBeGreaterThan(0);

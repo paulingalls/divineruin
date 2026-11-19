@@ -1,8 +1,8 @@
-"""Single-use beneficial dice shared by skill, attack and save resolution."""
+"""Beneficial dice shared by skill, attack and save resolution."""
 
 import random
 
-from conditions import ConditionEffects
+from conditions import CONDITION_CATALOG, ConditionEffects
 from dice import roll as dice_roll
 
 
@@ -20,5 +20,6 @@ def roll_bonus_dice(
             continue
         if roll_kind in bonus.scopes:
             total += dice_roll(bonus.dice, rng=rng).total
-            consumed.append(bonus.source)
+            if CONDITION_CATALOG[bonus.source].clearance == "consumed_on_use":
+                consumed.append(bonus.source)
     return total, tuple(consumed)

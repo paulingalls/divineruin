@@ -20,6 +20,7 @@ from combat_enemy_active import apply_prepared_hit, heal
 from combat_events import emit_or_publish
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from kaelen_gift import trigger_iron_resolve
+from patron_combat_edges import reward_worthy_foe
 from session_data import CombatParticipant, CombatState, SessionData
 from tool_support import (
     SOUND_ATTACK_CRITICAL,
@@ -297,6 +298,8 @@ async def _apply_damage(
     rose_hollowed = False
     released_from_grapple: list[str] = []
     if target.hp_current <= 0:
+        if hp_before > 0 and combat_state is not None:
+            await reward_worthy_foe(combat_state, target, queries=queries, conn=conn)
         hp_status, rose_hollowed, released_from_grapple = _handle_hp_zero(
             session,
             combat_state,
@@ -412,6 +415,8 @@ async def _apply_damage(
             bonus_damage_type=attack_result.bonus_damage_type,
             consumed_conditions=attack_result.consumed_conditions,
         )
+        if attack_result.attack_disadvantage_source is not None:
+            response["attack_disadvantage_source"] = attack_result.attack_disadvantage_source
         log_outcome = hit_miss
     if action.get("self_heal") == "damage_dealt":
         response["self_healed"] = self_healed

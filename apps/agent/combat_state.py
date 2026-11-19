@@ -58,10 +58,12 @@ class CombatState:
     # Set during resolution, cleared at the wrap loop-back so a stance lasts one phase.
     ac_modifiers: dict[str, int] = field(default_factory=dict)
     focus_marks: dict[str, dict[str, str]] = field(default_factory=dict)
+    judgment_rewards: list[dict] = field(default_factory=list)
     # Combat-scoped (NOT phase-scoped): flips True after the first attack of the whole
     # encounter resolves, never resets. Feeds the M4.5 dramatic-dice "first_attack"
     # signal so the opening strike earns the dice (story-004).
     first_attack_resolved: bool = False
+    beacon_attacks: dict[str, list[str]] = field(default_factory=dict)
     first_hostility: dict[str, str] = field(default_factory=dict)
     # Diplomat de-escalation (M4.6a story-004). Combat-scoped, never reset within an encounter.
     # ``deescalated`` flips True when a de-escalation argument lands; _wrap reads it to end
@@ -158,7 +160,9 @@ class CombatState:
             reactions_available=reactions_available,
             ac_modifiers=data.get("ac_modifiers", {}),
             focus_marks=data.get("focus_marks", {}),
+            judgment_rewards=data.get("judgment_rewards", []),
             first_attack_resolved=data.get("first_attack_resolved", False),
+            beacon_attacks=data.get("beacon_attacks", {}),
             first_hostility=combat_wrongdoing.validate_ledger(data.get("first_hostility", {}), data["participants"]),
             deescalated=data.get("deescalated", False),
             deescalation_scene=DeEscalationState(**data.get("deescalation_scene", {})),

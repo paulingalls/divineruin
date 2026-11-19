@@ -469,16 +469,18 @@
         "name": "Battle Cry of the Ironhand",
         "effect": "Once per long rest, all allies in earshot gain +1d4 to attack rolls for 2 rounds",
         "recharge": "long_rest",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "kaelen_battle_cry_of_the_ironhand"
       },
       "exalted": {
         "id": "kaelen_kaelens_judgment",
         "name": "Kaelen's Judgment",
         "effect": "Once per session, declare a Worthy Foe. All attacks against target gain advantage for encounter. Defeating them restores half max Stamina",
         "recharge": "per_session",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "kaelen_kaelens_judgment"
       }
     },
     "layer_4_synergy_matrix": {
@@ -2875,16 +2877,18 @@
         "name": "Beacon",
         "effect": "Faint light in darkness. Hollow creatures have disadvantage on first attack against you each encounter",
         "recharge": "always",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "orenthel_beacon"
       },
       "devoted": {
         "id": "orenthel_restoration_surge",
         "name": "Restoration Surge",
         "effect": "Once per long rest, remove one negative condition (Poisoned, Blinded, Frightened, stage 1 Hollowed) by touch. No Focus cost",
         "recharge": "long_rest",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "orenthel_restoration_surge"
       },
       "exalted": {
         "id": "orenthel_dawns_embrace",
