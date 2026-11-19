@@ -103,8 +103,17 @@ async def test_exploration_resolves_the_surge_and_hour(healer, kaelen, maximum):
     assert {"type": "hp_changed", "current": maximum, "max": maximum} in published_payloads(healer.sd.room)
 
 
-@pytest.mark.parametrize("outcome,down", [("victory", True), ("fled", True), ("defeat", True), ("defeat", False)])
-async def test_combat_end_settles_regeneration_before_life_settlement(healer, outcome, down):
+@pytest.mark.parametrize(
+    "outcome,down,failed_saves,anchor",
+    [
+        ("victory", True, 0, "millhaven_inn"),
+        ("fled", True, 0, "millhaven_inn"),
+        ("fled", True, 3, "millhaven"),
+        ("defeat", True, 0, "millhaven_inn"),
+        ("defeat", False, 0, "millhaven_inn"),
+    ],
+)
+async def test_combat_end_settles_regeneration_before_life_settlement(healer, outcome, down, failed_saves, anchor):
     await healer.prepare(REGENERATE)
     ally = await healer.add_player(hp=10, maximum=40)
     unmarked = await healer.add_player(hp=8, maximum=40)
@@ -136,8 +145,11 @@ async def test_combat_end_settles_regeneration_before_life_settlement(healer, ou
 
     saved = healer.fight_state
     if down:
-        saved.get_participant(recipient).is_fallen = True
+        participant = saved.get_participant(recipient)
+        participant.is_fallen = True
+        participant.death_save_failures = failed_saves
         await set_hp(healer, recipient, 0)
+    healer.sd.room.local_participant.publish_data.reset_mock()
     if outcome == "victory":
         result = await healer.command("resolve_phase", {})
     else:
@@ -147,17 +159,16 @@ async def test_combat_end_settles_regeneration_before_life_settlement(healer, ou
     assert await db_mutations.load_combat_state(saved.combat_id) is None
     row = await healer.read(recipient)
     assert row["hp"]["current"] == 40
-    assert row["location_id"] == "millhaven_inn"
+    assert row["location_id"] == anchor
     assert not any(c["type"] == "regenerating" for c in row.get("conditions", []))
     assert (await healer.read(unmarked))["hp"]["current"] == 8
     sends = healer.sd.room.local_participant.publish_data.call_args_list
     payloads = published_payloads(healer.sd.room)
-    hp_push = {"type": "hp_changed", "current": 40, "max": 40}
     assert [
-        call.kwargs["destination_identities"]
+        payload
         for call, payload in zip(sends, payloads, strict=True)
-        if payload == hp_push
-    ] == [[recipient]]
+        if payload["type"] == "hp_changed" and call.kwargs.get("destination_identities") == [recipient]
+    ] == ([] if failed_saves else [{"type": "hp_changed", "current": 40, "max": 40}])
 
 
 async def test_tick_spends_budget_at_effective_max_and_expires(healer, mock_combat_agent_factory):
