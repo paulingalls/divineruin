@@ -1,6 +1,7 @@
 """Land catalog spell damage beside other cast effects in the caller's phase transaction."""
 
 from dataclasses import asdict, replace
+from functools import partial
 
 import check_resolution_attack
 import check_resolution_save
@@ -12,6 +13,7 @@ import dice
 import spells
 from combat_attack_roll import attack_roll_inputs
 from combat_damage import AutomaticDamageResult, SaveDamageResult
+from combat_fate_rolls import packet_save
 from combat_spell_profile import DICE, scaled
 from combat_support import _resolve_attack_packet, apply_attack_result, apply_rolled_attack
 from rules_engine import attribute_modifier, proficiency_bonus
@@ -141,60 +143,18 @@ async def _land_one(
             return
         caster.conditions = conditions.remove_conditions(caster.conditions, result.get("consumed_conditions", ()))
     else:
-        save = None
-        dc = None
-        plant_blight = spell.id == "primal_blight" and "plant" in target.tags
-        if profile["resolution"] == "save" and not plant_blight:
-            dc = (
-                8
-                + proficiency_bonus(caster.level)
-                + attribute_modifier(caster.attributes.get(profile["attribute"], 10))
-                + cast_packet["resonance_modifiers"]["dc"]
+        if progress is not None and "damage_receipt" in progress.steps:
+            # A resumed receipt (a held concentration or Fortitude save) already rolled this blow.
+            roll, save_info = None, progress.steps.get("save_info")
+        else:
+            rolled = await _roll_save_damage(
+                session, profile, spell, caster, target, cast_packet, components, action, delivery, progress
             )
-            save = check_resolution_save.roll_participant_save(target, profile["save"], dc, spell.name)
-            target.conditions = conditions.remove_conditions(target.conditions, save.consumed_conditions)
-        multiplier = (
-            len(dart_indices)
-            if dart_indices is not None
-            else scaled(profile, "projectile_scaling", profile.get("projectiles", 1), caster.level)
-        )
-        darts = []
-        rolled = []
-        for i, component in enumerate(components):
-            if dart_indices is not None:
-                assert delivery is not None
-                darts = [{"index": index, "damage": delivery["dart_rolls"][index]} for index in dart_indices]
-                total = sum(dart["damage"] for dart in darts)
-            else:
-                total = (
-                    dice.maximum(component["dice"])
-                    if plant_blight
-                    else (dice.roll(component["dice"]).total if component["dice"] != "0" else 0)
-                )
-                if multiplier > 1:
-                    base = profile["components"][i]["dice"]
-                    total += sum(dice.roll(base).total for _ in range(multiplier - 1))
-            if i == 0 and component["dice"] != "0" and profile.get("damage_attribute"):
-                total += attribute_modifier(caster.attributes.get(profile["attribute"], 10))
-            total = max(0, total)
-            if save and save.success:
-                total = total // 2 if profile["half"] else 0
-            if profile.get("restriction") == "undead_hollow" and not (target.hollow or target.category == "undead"):
-                total = 0
-            rolled.append({**component, "damage": total})
-        action["damage_components"] = rolled
-        total = sum(c["damage"] for c in rolled)
-        roll = AutomaticDamageResult(total, components[0]["damage_type"])
-        if save is not None:
-            roll = SaveDamageResult(
-                save.save_type,
-                save.success,
-                total,
-                components[0]["damage_type"],
-                save.narrative_hint,
-                save.dramatic,
-                save.context,
-            )
+            if rolled is None:
+                return
+            roll, save_info = rolled
+            if progress is not None:
+                progress.steps["save_info"] = save_info
         result = await apply_attack_result(
             session,
             caster,
@@ -209,25 +169,100 @@ async def _land_one(
             queries=queries,
             concentration_break_mod=concentration_break_mod,
             publish_roll=False,
+            progress=progress,
         )
-        if save is not None:
-            result["save"] = {
-                "attribute": save.save_type,
-                "roll": save.roll,
-                "total": save.total,
-                "dc": dc,
-                "success": save.success,
-                "half_on_success": profile["half"],
-            }
+        if progress is not None:
+            if progress.paused:
+                return
+            progress.steps.pop("save_info", None)
+        if save_info is not None:
+            result["save"] = save_info
     result["target_id"] = target.id
     result["target_hp_current"] = target.hp_current
     if delivery and "dart_indices" in delivery:
-        result["darts"] = darts
+        result["darts"] = [{"index": i, "damage": delivery["dart_rolls"][i]} for i in delivery["dart_indices"]]
         result["dart_indices"] = delivery["dart_indices"]
     cast_packet["damage_result"] = result
     deferred = _deferred(state, caster, target, profile)
     if deferred:
         cast_packet["deferred"] = deferred
+
+
+async def _roll_save_damage(
+    session, profile, spell, caster, target, cast_packet, components, action, delivery, progress
+):
+    """Roll the recipient's save, then the damage. Returns ``(roll, save_info)``, or None while a
+    Fate's Thread choice holds the save (anyone's d20 is in scope)."""
+    dart_indices = delivery.get("dart_indices") if delivery else None
+    save = None
+    dc = None
+    plant_blight = spell.id == "primal_blight" and "plant" in target.tags
+    if profile["resolution"] == "save" and not plant_blight:
+        dc = (
+            8
+            + proficiency_bonus(caster.level)
+            + attribute_modifier(caster.attributes.get(profile["attribute"], 10))
+            + cast_packet["resonance_modifiers"]["dc"]
+        )
+        save = await packet_save(
+            progress,
+            session,
+            target.id,
+            spell.name,
+            partial(check_resolution_save.roll_participant_save, target, profile["save"], dc, spell.name),
+        )
+        if save is None:
+            return None
+        target.conditions = conditions.remove_conditions(target.conditions, save.consumed_conditions)
+    multiplier = (
+        len(dart_indices)
+        if dart_indices is not None
+        else scaled(profile, "projectile_scaling", profile.get("projectiles", 1), caster.level)
+    )
+    rolled = []
+    for i, component in enumerate(components):
+        if dart_indices is not None:
+            assert delivery is not None
+            total = sum(delivery["dart_rolls"][index] for index in dart_indices)
+        else:
+            total = (
+                dice.maximum(component["dice"])
+                if plant_blight
+                else (dice.roll(component["dice"]).total if component["dice"] != "0" else 0)
+            )
+            if multiplier > 1:
+                base = profile["components"][i]["dice"]
+                total += sum(dice.roll(base).total for _ in range(multiplier - 1))
+        if i == 0 and component["dice"] != "0" and profile.get("damage_attribute"):
+            total += attribute_modifier(caster.attributes.get(profile["attribute"], 10))
+        total = max(0, total)
+        if save and save.success:
+            total = total // 2 if profile["half"] else 0
+        if profile.get("restriction") == "undead_hollow" and not (target.hollow or target.category == "undead"):
+            total = 0
+        rolled.append({**component, "damage": total})
+    action["damage_components"] = rolled
+    total = sum(c["damage"] for c in rolled)
+    if save is None:
+        return AutomaticDamageResult(total, components[0]["damage_type"]), None
+    roll = SaveDamageResult(
+        save.save_type,
+        save.success,
+        total,
+        components[0]["damage_type"],
+        save.narrative_hint,
+        save.dramatic,
+        save.context,
+    )
+    save_info = {
+        "attribute": save.save_type,
+        "roll": save.roll,
+        "total": save.total,
+        "dc": dc,
+        "success": save.success,
+        "half_on_success": profile["half"],
+    }
+    return roll, save_info
 
 
 async def _land_attack(
@@ -315,10 +350,9 @@ async def _land_attack(
 
 
 async def land(session, state, caster, declaration, cast_packet, *, conn, deliveries=None, progress=None, **deps):
-    """Land a cast's catalog damage. ``progress`` lets a single-recipient attack spell hold its d20.
-
-    Multi-recipient deliveries are save or automatic spells (no attack roll to hold), so they
-    resolve without ``progress``."""
+    """Land a cast's catalog damage. With ``progress`` every held d20 (an attack roll, or each
+    recipient's save, in delivery order) pauses the landing; recipients already landed are kept in
+    ``progress.steps["landed"]`` so a resume never lands one twice."""
     if deliveries is None:
         await _land_one(session, state, caster, declaration, cast_packet, conn=conn, progress=progress, **deps)
         if progress is not None and progress.paused:
@@ -344,22 +378,28 @@ async def land(session, state, caster, declaration, cast_packet, *, conn, delive
         notations = {index: first_dice if index == 0 else base for index in indices}
         rolls = {index: dice.roll(n).total if n != "0" else 0 for index, n in notations.items()}
         deliveries = [{**delivery, "dart_rolls": rolls} for delivery in deliveries]
+    landed = progress.steps.setdefault("landed", {}) if progress is not None else {}
     results = []
     for delivery in deliveries:
-        await _land_one(
-            session,
-            state,
-            caster,
-            replace(declaration, target_id=delivery["target_id"], target_ids=None),
-            cast_packet,
-            conn=conn,
-            delivery=delivery,
-            **deps,
-        )
-        if "damage_result" in cast_packet:
-            result = cast_packet.pop("damage_result")
-            if result.get("resolved") is not False:
-                results.append(result)
+        target_id = delivery["target_id"]
+        if target_id not in landed:
+            await _land_one(
+                session,
+                state,
+                caster,
+                replace(declaration, target_id=target_id, target_ids=None),
+                cast_packet,
+                conn=conn,
+                delivery=delivery,
+                progress=progress.scope(target_id) if progress is not None else None,
+                **deps,
+            )
+            if progress is not None and progress.paused:
+                return
+            landed[target_id] = cast_packet.pop("damage_result", None)
+        result = landed[target_id]
+        if result is not None and result.get("resolved") is not False:
+            results.append(result)
     cast_packet["damage_results"] = results
     if results:
         cast_packet["damage_result"] = results[0]

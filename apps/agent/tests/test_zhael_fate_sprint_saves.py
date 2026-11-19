@@ -5,6 +5,7 @@ player's own save and an enemy's save are both in scope. Each test holds the sav
 reloads (the original stands) or chooses the reroll.
 """
 
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -12,6 +13,7 @@ from _patron_engine_fixtures import configure
 from _unbound_path_fixtures import world as world
 from _zhael_fate_fixtures import attack, defend, game_tools
 from acceptance._capstone_helpers import _build_state, _d20, _damage_die, _enemy
+from acceptance.seeds import seed_known_spells
 from acceptance.test_kaelen_iron_resolve_capstone import required_player
 from sample_fixtures import make_context
 
@@ -111,5 +113,72 @@ async def test_unholy_fortitude_save_is_held(world, reload):
         assert fortitude["roll"] == (2 if reload else 18) and fortitude["success"] is not reload
         fallen = required_player(final, "knight")
         assert fallen.is_fallen is reload and fallen.hp_current == (0 if reload else 1)
+    finally:
+        await db_mutations.delete_combat_state(state.combat_id)
+
+
+def _cast(actor_id, spell_id, targets):
+    return {**defend(actor_id), "kind": "ability", "action": spell_id, "targets": targets}
+
+
+@pytest.mark.parametrize("reload", [False, True])
+async def test_single_target_save_spell_is_held(world, reload):
+    await configure(world, "zhael", "cleric")
+    pid = world.ids[0]
+    state = _build_state(pid, pid, [_enemy("foe", 30)])
+    session = world.ctx.userdata
+    session.combat_state = state
+    call = game_tools(session, declare_phase, resolve_phase, activate)
+    try:
+        await call("declare_phase", declarations=[_cast(pid, "divine_sacred_flame", ["foe"]), defend("foe")])
+        with (
+            patch("check_resolution.dice_roll", side_effect=[_d20(3), _d20(18)]) as dice,
+            patch("dice.roll", return_value=SimpleNamespace(total=5)),
+        ):
+            save = (await call("resolve_phase"))["fate_offer"]
+            assert save["roll_kind"] == "save" and save["roller_id"] == "foe" and save["die"] == 3
+            assert required_player(session.combat_state, "foe").hp_current == 30
+            result, final = await _settle(world, session, state, call, save, reload)
+            assert dice.call_count == (1 if reload else 2)
+        landed = result["packets"][0]["cast"]["damage_result"]
+        assert landed["save"]["roll"] == (3 if reload else 18) and landed["save"]["success"] is not reload
+        assert required_player(final, "foe").hp_current == 30 - landed["damage"]
+        assert (landed["damage"] > 0) is reload
+    finally:
+        await db_mutations.delete_combat_state(state.combat_id)
+
+
+@pytest.mark.parametrize("reload", [False, True])
+async def test_area_save_spell_holds_each_recipient_in_order(world, reload):
+    await configure(world, "zhael", "mage", focus={"current": 20, "max": 20})
+    pid = world.ids[0]
+    await seed_known_spells(world.pool, pid, ("arcane_fireball",))
+    state = _build_state(pid, pid, [_enemy("foe", 30), _enemy("other", 30)])
+    assert state.spatial is not None
+    state.spatial["positions"].update(foe={"x": 30, "y": 0, "z": 0}, other={"x": 40, "y": 0, "z": 0})
+    session = world.ctx.userdata
+    session.combat_state = state
+    call = game_tools(session, declare_phase, resolve_phase, activate)
+    try:
+        await call(
+            "declare_phase",
+            declarations=[_cast(pid, "arcane_fireball", ["foe"]), defend("foe"), defend("other")],
+        )
+        with (
+            patch("check_resolution.dice_roll", side_effect=[_d20(3), _d20(4), _d20(19)]) as dice,
+            patch("dice.roll", return_value=SimpleNamespace(total=6)),
+        ):
+            first = (await call("resolve_phase"))["fate_offer"]
+            assert first["roll_kind"] == "save" and first["roller_id"] == "foe" and first["die"] == 3
+            second = (await _keep(call, first))["fate_offer"]
+            assert second["roller_id"] == "other" and second["die"] == 4
+            assert required_player(session.combat_state, "foe").hp_current == 30 - 6
+            assert required_player(session.combat_state, "other").hp_current == 30
+            result, final = await _settle(world, session, state, call, second, reload)
+            assert dice.call_count == (2 if reload else 3)
+        landed = {r["target_id"]: r for r in result["packets"][0]["cast"]["damage_results"]}
+        assert [r["save"]["roll"] for r in landed.values()] == [3, 4 if reload else 19]
+        assert required_player(final, "foe").hp_current == 30 - 6
+        assert required_player(final, "other").hp_current == 30 - (6 if reload else 3)
     finally:
         await db_mutations.delete_combat_state(state.combat_id)
