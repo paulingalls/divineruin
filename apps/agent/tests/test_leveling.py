@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import pytest
 
 from dice import roll
@@ -144,10 +147,13 @@ class TestGetMilestoneNarration:
 class TestLevelUpE2E:
     def test_l9_to_l10_produces_archetype_milestone(self) -> None:
         rewards = get_level_up_rewards(9, 10)
-        assert len(rewards.milestones) >= 1
-        milestone = rewards.milestones[0]
+        payload = build_level_up_payload_for_archetype(9, rewards, "guardian")
+        (milestone,) = payload["milestones"]
         assert milestone["type"] == "archetype_milestone"
-        assert len(milestone["description"]) > 20
+        progression = Path(__file__).resolve().parents[3] / "content" / "level_progression.json"
+        authored = next(row for row in json.loads(progression.read_text()) if row["id"] == "level_10")
+        assert milestone["description"] == authored["milestone_description"]
+        assert "Extra Attack for Warrior, Skirmisher, Paladin, Guardian." in milestone["description"]
 
 
 class TestCantripDamageDice:

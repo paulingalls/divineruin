@@ -42,14 +42,24 @@ describe("content/archetype_milestones.json — parseMilestoneRow conformance", 
     expect(parsed.grant).toBeNull();
   });
 
-  test("an auto-grant row carries its grant + extra_attack flag at L10", async () => {
+  test("L10 auto-grants give Extra Attack to the four eligible archetypes", async () => {
     const rows = await loadMilestonesJson();
-    const power = rows.find((r) => r.id === "warrior_power");
-    expect(power).toBeDefined();
-    const parsed = parseMilestoneRow("warrior_power", power!);
-    expect(parsed.kind).toBe("auto_grant");
-    expect(parsed.specialization_options).toHaveLength(0);
-    expect(parsed.grant?.flag).toBe("extra_attack");
+    const milestones = rows.map((row) => parseMilestoneRow(row.id as string, row));
+    const guardian = milestones.find((row) => row.id === "guardian_power");
+    expect(guardian?.kind).toBe("auto_grant");
+    expect(guardian?.specialization_options).toHaveLength(0);
+    expect(guardian?.grant).toEqual({
+      name: "Extra Attack and Shield Mastery",
+      effect:
+        "Make 2 attacks per round instead of 1. Shield AC +1; Intercept reduces incoming damage by 1d8 before it applies.",
+      flag: "extra_attack",
+    });
+    expect(
+      milestones
+        .filter((row) => row.level === 10 && row.grant?.flag === "extra_attack")
+        .map((row) => row.archetype_id)
+        .sort(),
+    ).toEqual(["guardian", "paladin", "skirmisher", "warrior"]);
   });
 
   test("a patron-deferred L5 stub has no options and a null grant", async () => {

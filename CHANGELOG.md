@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.54.1
+
+Guardians now gain Extra Attack at level 10, alongside Shield Mastery: two attacks per round, plus the shield's +1 AC and Intercept. A Kaelen Guardian's two swings each carry Tempered Resolve's +1d4 weapon damage. Guardians already past level 10 keep their current flags; the game is pre-launch, so no data is migrated.
+
+Release steps: none.
+
 ## 0.54.0
 
 Healing works. Heal Wounds, Healing Touch, Mass Heal, Prayer of Healing and Regenerate now restore real HP, in combat and out, and the DM is told exactly how much each target regained. Before, a cleric's heal spent Focus and healed nothing. Mass Heal reaches every ally in the fight, or every party member where you stand. Prayer of Healing is for between fights, up to six people. A healed ally who was dying gets back up.

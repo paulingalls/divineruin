@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from milestones import Grant, parse_milestone_row
+
 MILESTONES_JSON = Path(__file__).resolve().parents[3] / "content" / "archetype_milestones.json"
 
 ARCHETYPE_IDS = {
@@ -36,7 +38,7 @@ KINDS = {"specialization_fork", "auto_grant"}
 # L5 forks shaped by a patron choice — stubbed (empty options) pending Phase 8.
 PATRON_DEFERRED = {"cleric", "paladin"}
 
-EXTRA_ATTACK_L10 = {"warrior", "skirmisher", "paladin"}
+EXTRA_ATTACK_L10 = {"warrior", "skirmisher", "paladin", "guardian"}
 
 REQUIRED_KEYS = {
     "id",
@@ -153,15 +155,17 @@ def test_auto_grant_tiers(rows):
 
 
 def test_l10_extra_attack_flag(rows):
-    l10 = {r["archetype_id"]: r for r in rows if r["level"] == 10}
-    for aid in EXTRA_ATTACK_L10:
-        flag = l10[aid]["grant"]["flag"]
-        assert flag == "extra_attack", f"{aid} L10 grant.flag {flag!r} should be 'extra_attack' per spec"
-    for aid, row in l10.items():
-        if aid not in EXTRA_ATTACK_L10:
-            assert row["grant"]["flag"] != "extra_attack", (
-                f"{aid} L10 must not carry the extra_attack flag (spec assigns it elsewhere)"
-            )
+    loaded = {row["id"]: parse_milestone_row(row["id"], row) for row in rows}
+    assert loaded["guardian_power"].grant == Grant(
+        name="Extra Attack and Shield Mastery",
+        effect="Make 2 attacks per round instead of 1. Shield AC +1; Intercept reduces incoming damage by 1d8 before it applies.",
+        flag="extra_attack",
+    )
+    assert {
+        row.archetype_id
+        for row in loaded.values()
+        if row.level == 10 and row.grant and row.grant.flag == "extra_attack"
+    } == EXTRA_ATTACK_L10
 
 
 def test_ids_unique_and_well_formed(rows):

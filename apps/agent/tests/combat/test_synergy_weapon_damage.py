@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from _patron_engine_fixtures import configure
+from _unbound_path_fixtures import row
 from _unbound_path_fixtures import world as world
 from _zhael_fate_fixtures import attack, defend, game_tools
 from acceptance._capstone_helpers import _d20, _damage_die
@@ -12,11 +13,14 @@ from test_aelora_gift import _live_party
 from voice_condition_fixtures import participant, place_actors
 
 import db_mutations
+import milestones
 from _gods_content import load_gods
 from activate_tools import activate
 from combat_turn import declare_phase, resolve_phase
 from mode_tools import enter_mode
 from query_tools import query_info
+from quest_tools import update_quest
+from rules_engine import XP_FOR_LEVEL
 
 ARCHETYPES = ("warrior", "guardian", "skirmisher")
 IMPLEMENTATION = "kaelen_extra_attack_damage"
@@ -34,23 +38,38 @@ async def weapon_round(
     flagged=True,
     resistant=False,
     held=False,
+    earn_extra_attack=False,
 ):
     host, guest = world.ids
     session = world.ctx.userdata
     damage_type = "piercing" if resistant else "slashing"
     weapon = "Rapier" if resistant else "Longsword"
     await seed_player_with_pools(world.pool, player_id=host, class_=archetype)
+    attributes = {"strength": 10, "dexterity": 10}
+    if earn_extra_attack:
+        seeded = await row(world, index=0)
+        attributes = {**seeded["attributes"], **attributes}
     await configure(
         world,
         patron,
         archetype,
-        level=level,
-        flags={"extra_attack": True} if flagged else {},
-        attributes={"strength": 10, "dexterity": 10},
+        level=9 if earn_extra_attack else level,
+        flags={"extra_attack": True} if flagged and not earn_extra_attack else {},
+        attributes=attributes,
         hp={"current": 100, "max": 100},
         equipment={"main_hand": {"name": weapon, "damage": "1d8", "damage_type": damage_type, "properties": []}},
+        **({"xp": XP_FOR_LEVEL[10] - 1} if earn_extra_attack else {}),
     )
     await seed_player_with_pools(world.pool, player_id=guest, class_="mage")
+    if earn_extra_attack:
+        await milestones.load_milestones()
+        quest = "greyvale_anomaly"
+        await db_mutations.set_player_quest(host, quest, {"current_stage": 1})
+        result = await game_tools(session, update_quest)("update_quest", quest_id=quest, new_stage_id=2)
+        earned = await row(world, index=0)
+        assert earned["level"] == 10, result
+        assert earned.get("flags", {}).get("extra_attack") is True
+        assert [grant["name"] for grant in result["milestone_grants"]] == ["Extra Attack and Shield Mastery"]
     if held:
         await configure(world, "zhael", "mage", index=1, patron_gifts={"zhael_lucky": {"spent": True}})
     lifecycle = _live_party(session, host, guest) if held else None
@@ -130,7 +149,12 @@ async def weapon_round(
 
 
 async def kaelen_weapon(world, archetype):
-    await weapon_round(world, archetype, faces=(15, 20), expected=(8, 16), bonus_dice=("1d4", "2d4"))
+    if archetype == "guardian":
+        await weapon_round(
+            world, archetype, faces=(15, 15), expected=(8, 8), bonus_dice=("1d4", "1d4"), earn_extra_attack=True
+        )
+    else:
+        await weapon_round(world, archetype, faces=(15, 20), expected=(8, 16), bonus_dice=("1d4", "2d4"))
     authored = next(g for g in load_gods() if g["god_id"] == "kaelen")["layer_4_synergy_matrix"][archetype]
     reported = (await game_tools(world.ctx.userdata, query_info)("query_info", kind="patron"))["synergy"]
     assert reported == authored

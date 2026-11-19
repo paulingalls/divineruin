@@ -98,9 +98,9 @@
     "patron_deferred": false,
     "specialization_options": [],
     "grant": {
-      "name": "Shield Mastery",
-      "effect": "Shield AC +1; Intercept reduces incoming damage by 1d8 before it applies.",
-      "flag": null
+      "name": "Extra Attack and Shield Mastery",
+      "effect": "Make 2 attacks per round instead of 1. Shield AC +1; Intercept reduces incoming damage by 1d8 before it applies.",
+      "flag": "extra_attack"
     },
     "narration_cue": "Your shield becomes an extension of will, turning blows before they land."
   },

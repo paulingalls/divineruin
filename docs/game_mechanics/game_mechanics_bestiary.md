@@ -1334,7 +1334,7 @@ sequence for its round. The finite rotation options are:
 
 | Archetypes / option | Expected damage and resource accounting |
 |---|---|
-| All 18 | Starting weapon attack; Warrior, Skirmisher and Paladin get two at L10. Flat governing modifier and enhancement apply per swing. |
+| All 18 | Starting weapon attack; Warrior, Skirmisher, Paladin, and Guardian get two at L10. Flat governing modifier and enhancement apply per swing. |
 | Warrior | Devastating Strike costs 3 Stamina, adds 1d8 once on that round's attack; 2d8 at L10, 3d8 at L17. Extra Attack does not double this bonus. |
 | Guardian | Protective Strike has ordinary weapon damage; no extra damage for its defensive rider. |
 | Skirmisher | Flanking Strike costs 3 Stamina: one attack with advantage and +1d6, other swing ordinary. Assume the reference companion can flank. |
