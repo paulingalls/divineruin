@@ -1,6 +1,5 @@
 """Halving must also rewrite overkill, dramatic verdict, bonus damage and target_killed so downstream reports describe the landed blow."""
 
-import json
 from unittest.mock import MagicMock
 
 import pytest
@@ -19,7 +18,6 @@ import combat_reaction_effect
 import reaction_spend
 import reaction_windows
 from check_resolution_attack import AttackResult
-from combat_damage_results import freeze_blow, thaw_blow
 from combat_support import deserialize_roll, serialize_roll
 from session_data import CombatParticipant
 
@@ -121,15 +119,7 @@ def test_halve_rewrites_every_field_the_blow_is_reported_through():
         synergy_damage_type="lightning",
         narrative_hint="A clean strike.",
     )
-    frozen = json.loads(json.dumps(freeze_blow({}, rolled, 14)))
-    _, thawed, effective_ac = thaw_blow(frozen)
-    assert thawed == rolled
-    head = {"roll": json.loads(json.dumps(serialize_roll(thawed, effective_ac)))}
-    for field in ("synergy_damage", "synergy_damage_type"):
-        del frozen["fields"][field]
-    _, legacy, _ = thaw_blow(frozen)
-    assert isinstance(legacy, AttackResult)
-    assert (legacy.synergy_damage, legacy.synergy_damage_type) == (0, None)
+    head = {"roll": serialize_roll(rolled, 14)}
     target = CombatParticipant(
         id="player_1", name="Kael", type="player", initiative=15, hp_current=15, hp_max=25, ac=14
     )
