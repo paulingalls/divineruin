@@ -43,6 +43,7 @@ import event_types as E
 from game_events import publish_game_event
 from native_transport.evidence import reject_credentials
 from native_transport.lifecycle import run_cancellable
+from native_transport.microphone import receive_marker
 
 
 def build_tone_frames() -> list[rtc.AudioFrame]:
@@ -189,6 +190,8 @@ async def run_probe(
     control_path: Path,
     result_path: Path,
     microphone_receiver: Callable[[rtc.Room, str, ProbeState], Awaitable[int]] | None = None,
+    *,
+    require_marker: bool = False,
 ) -> None:
     server = ensure_livekit_server(require_docker=True)
     room_name = f"native-{run_id}"
@@ -235,11 +238,16 @@ async def run_probe(
     room: rtc.Room | None = None
     audio_source: rtc.AudioSource | None = None
     microphone_task: asyncio.Task[int] | None = None
+    marker: dict[str, str | int] | None = None
     try:
         room = await connect_room(server.ws_url, publisher_token)
         await wait_for_peer(room, identity=mobile_identity, timeout=30)
 
         async def receive_microphone() -> int:
+            nonlocal marker
+            if require_marker:
+                frames, marker = await receive_marker(room, mobile_identity, run_id, state.set_microphone_frames)
+                return frames
             if microphone_receiver is not None:
                 return await microphone_receiver(room, mobile_identity, state)
             track = await wait_for_audio_track(room, identity=mobile_identity, timeout=20)
@@ -277,6 +285,7 @@ async def run_probe(
                 "publisher_identity": publisher_identity,
                 "mobile_identity": mobile_identity,
                 "microphone_frames": microphone_frames,
+                **({"microphone_marker": marker} if require_marker else {}),
                 "fault": fault,
                 "expected_guard": guard,
             }
@@ -303,8 +312,13 @@ def main() -> None:
     parser.add_argument("--fault", choices=("none", "withhold-audio", "withhold-event"), default="none")
     parser.add_argument("--control", type=Path, required=True)
     parser.add_argument("--result", type=Path, required=True)
+    parser.add_argument("--require-marker", action="store_true")
     args = parser.parse_args()
-    asyncio.run(run_cancellable(lambda: run_probe(args.run_id, args.fault, args.control, args.result)))
+    asyncio.run(
+        run_cancellable(
+            lambda: run_probe(args.run_id, args.fault, args.control, args.result, require_marker=args.require_marker)
+        )
+    )
 
 
 if __name__ == "__main__":

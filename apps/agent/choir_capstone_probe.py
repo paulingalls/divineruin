@@ -18,22 +18,26 @@ from livekit.agents import utils
 import db
 import db_mutations
 import db_queries
+from archetypes import load_archetypes
 from game_events import publish_game_event
 from multiplayer_transcription import MultiParticipantTranscriber
+from native_transport.choir_turns import ChoirProbeTurns
 from native_transport.lifecycle import run_cancellable
 from native_transport_probe import SESSION_INIT_FIXTURE, ProbeState, run_probe
 from npcs import load_npcs
 
 
-async def receive_commands(room: rtc.Room, identity: str, state: ProbeState, evidence_path: Path, fault="none") -> int:
-    diagnostic = ChoirEncounterDiagnostic(identity)
+async def receive_commands(
+    room: rtc.Room, identity: str, state: ProbeState, evidence_path: Path, fault="none", *, probe_turns=False
+) -> int:
+    diagnostic = ChoirProbeTurns(identity) if probe_turns else ChoirEncounterDiagnostic(identity)
     events = asyncio.Queue()
     native_checkpoints = {}
     flow = None
     fault_failure = None
     manager = monitor = native_monitor = None
     frames = peak = 0
-    speech = OwnedStimulusSTT(state.fixture["run_id"])
+    speech = None if probe_turns else OwnedStimulusSTT(state.fixture["run_id"])
 
     async def observe_native():
         delivered = 0
@@ -51,9 +55,10 @@ async def receive_commands(room: rtc.Room, identity: str, state: ProbeState, evi
         speech_handle = diagnostic.session.current_speech
         if speech_handle is not None:
             await speech_handle.wait_for_playout()
-        state.extra_status.update(
-            requested_turn=len(diagnostic.model.commands), command_receipts=len(diagnostic.model.receipts)
-        )
+        if speech is not None:
+            state.extra_status.update(
+                requested_turn=len(diagnostic.model.commands), command_receipts=len(diagnostic.model.receipts)
+            )
 
     async def checkpoint(step, expected):
         if fault == "skip-encounter":
@@ -99,8 +104,11 @@ async def receive_commands(room: rtc.Room, identity: str, state: ProbeState, evi
             async for event in stream:
                 frames += 1
                 peak = max(peak, max(abs(sample) for sample in event.frame.data))
-                if speech.sources:
+                if speech is None or speech.sources:
                     state.set_microphone_frames(frames)
+                if probe_turns and frames == 5:
+                    return
+                if speech is not None and speech.sources:
                     state.extra_status["acoustic_status"] = [
                         {
                             "frames": source.frames,
@@ -113,14 +121,39 @@ async def receive_commands(room: rtc.Room, identity: str, state: ProbeState, evi
         finally:
             await stream.aclose()
 
+    def turn_source_evidence():
+        if isinstance(diagnostic, ChoirProbeTurns):
+            return {
+                "turn_source": "probe",
+                "run_id": state.fixture["run_id"],
+                "submitted_turns": diagnostic.submitted,
+            }
+        assert speech is not None
+        return {
+            "acoustic_sources": speech.source_receipts,
+            "acoustic_diagnostic": [
+                {
+                    "symbols": source.observed_symbols,
+                    "max_purity": source.max_purity,
+                    "sample_rates": sorted(source.sample_rates),
+                }
+                for source in speech.sources
+            ],
+            "peak_amplitude": peak,
+        }
+
     try:
         async with utils.http_context.open():
             await diagnostic.start(room)
             assert diagnostic.lifecycle is not None
             assert await diagnostic.lifecycle.authorize(identity), "native Choir participant was not authorized"
-            manager = MultiParticipantTranscriber(room, stt=speech, authorizer=diagnostic.lifecycle.authorize)
-            manager.start()
-            diagnostic.attach(manager)
+            if isinstance(diagnostic, ChoirProbeTurns):
+                diagnostic.attach(diagnostic)
+            else:
+                assert speech is not None
+                manager = MultiParticipantTranscriber(room, stt=speech, authorizer=diagnostic.lifecycle.authorize)
+                manager.start()
+                diagnostic.attach(manager)
             monitor = asyncio.create_task(observe_audio())
             native_monitor = asyncio.create_task(observe_native())
             player = await db_queries.get_player(identity)
@@ -128,6 +161,9 @@ async def receive_commands(room: rtc.Room, identity: str, state: ProbeState, evi
             hydration = json.loads(json.dumps(SESSION_INIT_FIXTURE))
             hydration["character"].update(player_id=identity, hp=player["hp"], xp=player["xp"], level=player["level"])
             await publish_game_event(room, "session_init", hydration, destination_identities=[identity])
+            if probe_turns:
+                await asyncio.wait_for(monitor, timeout=20)
+                assert frames >= 5, "native Choir did not publish its microphone track"
             flow = ChoirCapstoneFlow(diagnostic, play, events, room.local_participant.identity)
             flow.observe_checkpoint = checkpoint
             from contextlib import nullcontext
@@ -164,6 +200,7 @@ async def receive_commands(room: rtc.Room, identity: str, state: ProbeState, evi
                 assert expected_guard is not None and str(exc) == expected_guard, (
                     f"wrong native fault diagnostic: {exc}"
                 )
+                assert speech is not None
                 if fault in ("withhold-microphone", "dm-tone-only", "unrelated-burst"):
                     assert not speech.source_receipts and not diagnostic.model.receipts
                 else:
@@ -178,10 +215,15 @@ async def receive_commands(room: rtc.Room, identity: str, state: ProbeState, evi
                 state.extra_status["choir_guard"] = fault
             else:
                 assert fault == "none", "native fault did not red"
-                assert len(speech.source_receipts) == len(diagnostic.model.receipts) > 2, (
-                    "missing owned acoustic source"
-                )
+                if speech is not None:
+                    assert len(speech.source_receipts) == len(diagnostic.model.receipts) > 2, (
+                        "missing owned acoustic source"
+                    )
             state.extra_status["choir_complete"] = True
+            if isinstance(diagnostic, ChoirProbeTurns):
+                assert len(diagnostic.submitted) == len(diagnostic.model.receipts) > 2
+                return frames
+            assert speech is not None
             # The final command can complete while the speaker is still playing its waveform.
             playback = evidence_path.with_name("stimulus-playback.json")
             async with asyncio.timeout(20):
@@ -205,18 +247,14 @@ async def receive_commands(room: rtc.Room, identity: str, state: ProbeState, evi
                         "fault_failure": fault_failure,
                         "checkpoints": flow.checkpoints if flow is not None else {},
                         "native_checkpoints": native_checkpoints,
-                        "acoustic_sources": speech.source_receipts,
-                        "acoustic_diagnostic": [
-                            {
-                                "symbols": source.observed_symbols,
-                                "max_purity": source.max_purity,
-                                "sample_rates": sorted(source.sample_rates),
-                            }
-                            for source in speech.sources
-                        ],
-                        "peak_amplitude": peak,
+                        **turn_source_evidence(),
                         "authenticated_turns": [
-                            {"identity": turn.participant_identity, "text": turn.text, "generation": turn.generation}
+                            {
+                                "identity": turn.participant_identity,
+                                "text": turn.text,
+                                "generation": turn.generation,
+                                "speech_events": len(turn.speech_events),
+                            }
                             for turn in diagnostic.transcripts
                         ],
                         "commands": list(diagnostic.model.calls.values()),
@@ -272,16 +310,25 @@ def main():
             "unrelated-burst",
         ),
     )
+    parser.add_argument("--probe-turns", action="store_true")
     args = parser.parse_args()
+    if args.probe_turns and args.choir_fault != "none":
+        parser.error("standalone Choir faults require acoustic certification mode")
 
     async def exercise():
         async def receiver(room, identity, state):
             return await receive_commands(
-                room, identity, state, args.result.with_name("microphone-turns.json"), args.choir_fault
+                room,
+                identity,
+                state,
+                args.result.with_name("microphone-turns.json"),
+                args.choir_fault,
+                probe_turns=args.probe_turns,
             )
 
         transport_path = args.result.with_name("transport.json")
         try:
+            await load_archetypes()
             await load_npcs()
             await run_probe(args.run_id, args.fault, args.control, transport_path, receiver)
         finally:

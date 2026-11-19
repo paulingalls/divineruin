@@ -379,9 +379,6 @@
         "imports-of": "apps/mobile/src/__tests__/character-store.test.ts"
       },
       {
-        "imports-of": "apps/mobile/src/__tests__/choir-service-isolation.test.ts"
-      },
-      {
         "imports-of": "apps/mobile/src/__tests__/companion-portrait.test.ts"
       },
       {

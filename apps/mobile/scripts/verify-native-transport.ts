@@ -23,6 +23,8 @@ export type PrepareNativeApp = (
 export interface NativeTransportDeps {
   probePath?: string;
   choir?: boolean;
+  probeTurns?: boolean;
+  acousticMarker?: boolean;
   choirFault?: string;
   choirFaults?: string[];
   prepareScenario?: (repoRoot: string, fault: string) => Promise<() => Promise<void>>;
@@ -30,8 +32,12 @@ export interface NativeTransportDeps {
     scope: OwnedProcesses,
     repoRoot: string,
     run: { controlPath: string; runId: string; artifactDir: string },
-  ) => Promise<void>;
-  validateResult?: (raw: unknown, runId: string, fault: Fault) => TransportResult;
+  ) => ReturnType<OwnedProcesses["spawn"]>;
+  validateResult?: (
+    raw: unknown,
+    runId: string,
+    fault: Fault,
+  ) => TransportResult | Promise<TransportResult>;
   resolveOwned: (requestedUdid?: string) => Promise<string>;
   prepareNativeApp: PrepareNativeApp;
   requireTarget: (scope: OwnedProcesses, repoRoot: string, udid: string) => Promise<void>;
@@ -238,6 +244,7 @@ export async function runScenario(
   let metro: ReturnType<OwnedProcesses["spawn"]> | undefined;
   let probe: ReturnType<OwnedProcesses["spawn"]> | undefined;
   let maestro: ReturnType<OwnedProcesses["spawn"]> | undefined;
+  let stimulus: ReturnType<OwnedProcesses["spawn"]> | undefined;
   let failure: Error | undefined;
   let restoreSource: (() => Promise<void>) | undefined;
   try {
@@ -263,6 +270,8 @@ export async function runScenario(
         "python",
         join(repoRoot, deps.probePath ?? "apps/agent/native_transport_probe.py"),
         ...(deps.choir ? ["--choir-fault", deps.choirFault ?? "none"] : []),
+        ...(deps.probeTurns ? ["--probe-turns"] : []),
+        ...(deps.acousticMarker ? ["--require-marker"] : []),
         "--run-id",
         runId,
         "--fault",
@@ -317,13 +326,15 @@ export async function runScenario(
     const probeCompletion = scope.wait(probe.exited).then((exit) => {
       if (exit !== 0) throw new Error(`Native transport probe failed with status ${exit}`);
     });
-    await Promise.all([
-      maestroCompletion,
-      probeCompletion,
-      deps.stimulateMicrophone?.(scope, repoRoot, { controlPath, runId, artifactDir }),
-    ]);
+    stimulus = deps.stimulateMicrophone?.(scope, repoRoot, { controlPath, runId, artifactDir });
+    const stimulusCompletion =
+      stimulus &&
+      scope.wait(stimulus.exited).then((exit) => {
+        if (exit !== 0) throw new Error(`Owned microphone stimulus failed with status ${exit}`);
+      });
+    await Promise.all([maestroCompletion, probeCompletion, stimulusCompletion]);
     const rawResult = await waitForJson(scope, resultPath, 10_000);
-    const result = (deps.validateResult ?? validateScenarioResult)(rawResult, runId, fault);
+    const result = await (deps.validateResult ?? validateScenarioResult)(rawResult, runId, fault);
     const screenshotMatches = await Array.fromAsync(
       new Bun.Glob("**/takeScreenshot/simulator.png").scan({ cwd: maestroOutput }),
     );
@@ -353,8 +364,9 @@ export async function runScenario(
     scope.stop(probe),
     scope.stop(metro),
     scope.stop(maestro),
+    scope.stop(stimulus),
   ]);
-  await restoreSource?.();
+  cleanup.push(...(await Promise.allSettled([restoreSource?.()])));
   const rejected = cleanup.filter((entry) => entry.status === "rejected");
   if (rejected.length)
     throw new AggregateError(

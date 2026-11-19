@@ -1,4 +1,4 @@
-"""Generate local speech and play it once through the exact built-in speaker."""
+"""Play native transport loopback and standalone Choir certification stimuli."""
 
 import argparse
 import array
@@ -160,7 +160,10 @@ def play_marker_until_heard(waveform, turn, play, read_status):
         ):
             return
         if attempt == 0:
-            print(f"Native microphone missed acoustic turn {turn}; replaying the same marker once", flush=True)
+            print(
+                f"Native microphone missed acoustic turn {turn}; replaying the same marker once",
+                flush=True,
+            )
     raise RuntimeError(f"Native microphone did not decode the complete acoustic marker for turn {turn} after two plays")
 
 
@@ -170,7 +173,10 @@ def main():
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--artifacts", type=Path, required=True)
     parser.add_argument("--sequence", action="store_true")
+    parser.add_argument("--loopback-uid")
     args = parser.parse_args()
+    if args.loopback_uid and args.sequence:
+        parser.error("loopback plays a single native transport marker")
     endpoint = status_endpoint(json.loads(args.control.read_text()), args.run_id)
     args.artifacts.mkdir(parents=True, exist_ok=True)
     listed = subprocess.run(
@@ -194,9 +200,20 @@ def main():
         capture_output=True,
         text=True,
     )
-    device, speaker = select_speaker(listed.stderr)
-    waveform = generate_speech(args.artifacts, args.run_id, speaker)
-    wait_for_microphone(endpoint, args.run_id)
+    if args.loopback_uid:
+        matches = re.findall(
+            r"\[(\d+)\][ \t]+(BlackHole 2ch, " + re.escape(args.loopback_uid) + r")[ \t]*$",
+            listed.stderr,
+            re.MULTILINE,
+        )
+        if len(matches) != 1:
+            raise RuntimeError(f"exactly one AudioToolbox output with UID {args.loopback_uid} is required")
+        device, speaker = matches[0]
+        waveform = generate_speech(args.artifacts, args.run_id, speaker, (1,))
+    else:
+        device, speaker = select_speaker(listed.stderr)
+        waveform = generate_speech(args.artifacts, args.run_id, speaker)
+    wait_for_microphone(endpoint, args.run_id, timeout=60 if args.loopback_uid else 20)
     command = [
         "ffmpeg",
         "-nostdin",
@@ -271,10 +288,18 @@ def main():
             raise TimeoutError("sequenced acoustic encounter never completed")
     else:
         subprocess.run(command, check=True)
-        played = [1, 2]
+        played = [1] if args.loopback_uid else [1, 2]
     playback = args.artifacts / "stimulus-playback.json"
     pending = playback.with_suffix(".tmp")
-    pending.write_text(json.dumps({"run_id": args.run_id, "device": speaker, "played_turns": played}) + "\n")
+    receipt = {"run_id": args.run_id, "device": speaker, "played_turns": played}
+    if args.loopback_uid:
+        receipt.update(
+            device_uid=args.loopback_uid,
+            device_index=int(device),
+            playback_count=1,
+            waveform=inspect_waveform(waveform),
+        )
+    pending.write_text(json.dumps(receipt) + "\n")
     pending.replace(playback)
 
 

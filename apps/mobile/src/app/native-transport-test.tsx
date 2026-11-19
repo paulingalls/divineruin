@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useStore } from "zustand";
-import { ConnectionState } from "livekit-client";
 
 import { configureAudioSession } from "@/audio/audio-config";
 import {
@@ -20,7 +19,6 @@ import {
   LiveKitRoom,
   useDataChannel,
   useConnectionState,
-  useLocalParticipant,
   useRemoteParticipants,
   type ReceivedDataMessage,
 } from "@/livekit";
@@ -89,7 +87,6 @@ function TransportRoom({
   const combat = useStore(hudStore, (state) => state.combatState);
   const resonance = useStore(hudStore, (state) => state.resonanceState);
   const connectionState = useConnectionState();
-  const { localParticipant } = useLocalParticipant();
   const participants = useRemoteParticipants();
   const character = useStore(characterStore, (state) => state.character);
   const location = useStore(sessionStore, (state) => state.locationContext);
@@ -142,13 +139,6 @@ function TransportRoom({
       ),
     [participants],
   );
-
-  useEffect(() => {
-    if (connectionState !== ConnectionState.Connected) return;
-    void localParticipant.setMicrophoneEnabled(true).catch((error) => {
-      setStatus(`Microphone failed: ${String(error)}`);
-    });
-  }, [connectionState, localParticipant]);
 
   useEffect(() => {
     if (audio || subscriptions.length === 0) return;
@@ -309,7 +299,15 @@ function DevelopmentTransportScreen() {
   if (error) return <ThemedText>{`Native transport error: ${error}`}</ThemedText>;
   if (!fixture) return <ThemedText>Loading native transport fixture</ThemedText>;
   return (
-    <LiveKitRoom serverUrl={fixture.wsUrl} token={fixture.token} connect audio video={false}>
+    <LiveKitRoom
+      key={fixture.runId}
+      serverUrl={fixture.wsUrl}
+      token={fixture.token}
+      connect
+      audio
+      video={false}
+      onError={(cause) => setError(cause.message)}
+    >
       <TransportRoom
         fixture={fixture}
         endpoint={endpoint}

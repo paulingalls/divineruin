@@ -24,7 +24,11 @@ import {
 } from "../../../scripts/maestro-acceptance";
 import type { OwnedProcesses } from "./native-transport-processes";
 import type { CommandResult, NativeBuildDeps } from "./verify-native-build";
-import { createRealOwnedSimulatorDeps, resolveOwnedSimulator } from "./owned-simulator";
+import {
+  createRealOwnedSimulatorDeps,
+  lookupOwnedSimulator,
+  resolveOwnedSimulator,
+} from "./owned-simulator";
 
 interface OwnedProcess {
   pid: number;
@@ -293,17 +297,22 @@ export function createProofNativeBuildDeps(
     ...createNativeBuildDeps(root),
     loadRootEnvironment: () => Promise.resolve({}),
     resolveOwnedSimulator: async (requested) => {
-      const udid = await resolveOwnedSimulator(owned, requested);
-      console.log(`Owned iOS simulator: divineruin-native-${cloneId} ${udid}`);
+      const { name, device } = await lookupOwnedSimulator(owned);
+      if (!device?.udid) throw new Error(`Owned iOS simulator ${name} is unavailable`);
+      const udid = device.udid;
+      if (requested !== undefined && requested.trim() !== udid)
+        throw new Error(`IOS_SIMULATOR_UDID must name the owned simulator ${name}`);
+      console.log(`Owned iOS simulator: ${name} ${udid}`);
       return udid;
     },
     ensureSimulator: async (udid) => {
       const devices = () =>
         captureOwned(["xcrun", "simctl", "list", "devices", "--json"]).then(parseSimulatorDevices);
-      if (requiredSimulatorAction(await devices(), udid) === "boot") {
-        await captureOwned(["xcrun", "simctl", "boot", udid]);
-        await captureOwned(["xcrun", "simctl", "bootstatus", udid, "-b"]);
-      }
+      // A simulator booted before BlackHole was available can report the route but capture silence.
+      if (requiredSimulatorAction(await devices(), udid) === "ready")
+        await captureOwned(["xcrun", "simctl", "shutdown", udid]);
+      await captureOwned(["xcrun", "simctl", "boot", udid]);
+      await captureOwned(["xcrun", "simctl", "bootstatus", udid, "-b"]);
       if (!requestedDeviceIsBooted(await devices(), udid))
         throw new Error(`Owned simulator did not boot: ${udid}`);
     },

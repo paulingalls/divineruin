@@ -15,7 +15,15 @@ interface MicrophoneTurns {
   acoustic_sources?: { run_id: string; turn: number; source: string }[];
   microphone_frames?: number;
   peak_amplitude?: number;
-  authenticated_turns?: { identity: string; text: string; generation: number }[];
+  turn_source?: string;
+  run_id?: string;
+  submitted_turns?: string[];
+  authenticated_turns?: {
+    identity: string;
+    text: string;
+    generation: number;
+    speech_events?: number;
+  }[];
   commands?: string[];
   receipts?: { name: string; is_error: boolean; output: string }[];
 }
@@ -74,7 +82,12 @@ export const CHOIR_STEPS = [
   "replay",
 ];
 
-export function assertChoirEncounter(raw: unknown, identity: string, runId: string): void {
+export function assertChoirEncounter(
+  raw: unknown,
+  identity: string,
+  runId: string,
+  mode: "acoustic" | "probe" = "acoustic",
+): void {
   const result = raw as MicrophoneTurns & {
     checkpoints?: Partial<
       Record<
@@ -105,27 +118,40 @@ export function assertChoirEncounter(raw: unknown, identity: string, runId: stri
       >
     >;
   };
-  const sources = result.acoustic_sources;
   const turns = result.authenticated_turns;
   const receipts = result.receipts;
   if (
-    !sources ||
-    sources.length <= 2 ||
-    turns?.length !== sources.length ||
-    receipts?.length !== sources.length ||
-    result.commands?.length !== sources.length
+    !turns ||
+    turns.length <= 2 ||
+    receipts?.length !== turns.length ||
+    result.commands?.length !== turns.length
   )
     throw new Error("missing complete authenticated Choir command receipts");
-  for (const [index, source] of sources.entries()) {
-    const turn = turns.at(index);
-    const receipt = receipts.at(index);
+  if (mode === "probe") {
     if (
-      source.run_id !== runId ||
-      source.turn !== index + 1 ||
-      source.source !== "owned-acoustic-marker" ||
-      turn?.identity !== identity ||
-      turn.generation <= 0 ||
-      turn.text !== `capstone turn ${index + 1}` ||
+      result.turn_source !== "probe" ||
+      result.run_id !== runId ||
+      result.submitted_turns?.length !== turns.length
+    )
+      throw new Error("missing native Choir probe submission evidence");
+  } else if (result.acoustic_sources?.length !== turns.length) {
+    throw new Error("missing native Choir acoustic source evidence");
+  }
+  for (const [index, turn] of turns.entries()) {
+    const receipt = receipts.at(index);
+    const text = `capstone turn ${index + 1}`;
+    const source = result.acoustic_sources?.[index];
+    const sourceMatches =
+      mode === "probe"
+        ? result.submitted_turns?.[index] === text && turn.speech_events === 0
+        : source?.run_id === runId &&
+          source.turn === index + 1 &&
+          source.source === "owned-acoustic-marker";
+    if (
+      !sourceMatches ||
+      turn.identity !== identity ||
+      !(turn.generation > 0) ||
+      turn.text !== text ||
       !receipt ||
       receipt.name !== result.commands[index] ||
       !receipt.output.trim()
@@ -277,6 +303,20 @@ export const choirScenario = {
 } satisfies Pick<
   import("./verify-native-transport").NativeTransportDeps,
   "choir" | "stimulateMicrophone" | "probePath" | "validateResult"
+>;
+
+export const choirProbeScenario = {
+  choir: true,
+  probeTurns: true,
+  probePath: choirScenario.probePath,
+  validateResult: (raw, runId, fault) => {
+    const result = validateScenarioResult(raw, runId, fault);
+    assertChoirEncounter(result.microphone_turns, result.mobile_identity, runId, "probe");
+    return result;
+  },
+} satisfies Pick<
+  import("./verify-native-transport").NativeTransportDeps,
+  "choir" | "probeTurns" | "probePath" | "validateResult"
 >;
 
 export async function verifyChoirMicrophone(

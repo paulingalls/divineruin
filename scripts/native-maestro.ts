@@ -1,4 +1,4 @@
-import { access, cp, mkdir, readdir } from "node:fs/promises";
+import { access, cp, mkdir, mkdtemp, readdir } from "node:fs/promises";
 import { constants } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
@@ -9,7 +9,9 @@ import {
 import { runNativeBuild } from "../apps/mobile/scripts/verify-native-build";
 import { createProofNativeBuildDeps } from "../apps/mobile/scripts/verify-native-build-runtime";
 import { runScenario } from "../apps/mobile/scripts/verify-native-transport";
-import { choirScenario } from "../apps/mobile/scripts/verify-choir-encounter";
+import { withLoopbackInput } from "../apps/mobile/scripts/native-audio-route";
+import { loopbackTransport } from "../apps/mobile/scripts/native-loopback-transport";
+import { choirProbeScenario } from "../apps/mobile/scripts/verify-choir-encounter";
 import {
   withNativeOwnedBackend,
   withPatronProbe,
@@ -158,10 +160,20 @@ async function runJourneys(
   await journey("auth-form.yaml");
   const prepared = { launchUrl, spawnMaestro, results };
   await journey("native-transport.yaml", () =>
-    runScenario(scope, root, environment, udid, "none", {}, prepared),
+    withLoopbackInput(scope, root, udid, (deviceUID) =>
+      runScenario(
+        scope,
+        root,
+        environment,
+        udid,
+        "none",
+        loopbackTransport(deviceUID, results),
+        prepared,
+      ),
+    ),
   );
   await journey("choir-encounter.yaml", () =>
-    runScenario(scope, root, environment, udid, "none", choirScenario, prepared),
+    runScenario(scope, root, environment, udid, "none", choirProbeScenario, prepared),
   );
   await journey("patron-abilities.yaml", () =>
     withPatronProbe(scope, root, environment, join(results, "patron-probe"), (route) =>
@@ -192,8 +204,9 @@ async function runNativeMaestro() {
     const provider = providerEnvironment();
     const executable = await resolveMaestro();
     const root = resolve(import.meta.dir, "..");
-    const results = join(root, "test-results/native-maestro");
-    await mkdir(results, { recursive: true });
+    const resultsRoot = join(root, "test-results/native-maestro");
+    await mkdir(resultsRoot, { recursive: true });
+    const results = await mkdtemp(join(resultsRoot, "run-"));
     const environment = {
       ...Object.fromEntries(
         Object.entries(process.env).filter(

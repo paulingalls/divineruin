@@ -114,6 +114,13 @@ its boundary.
 | Message-event | Valkey/Redis `async_worker.py` polling loop | pytest — `test_ops_async_reset_runbook.py` |
 | CLI | Product: `agent.py dev`, `async_worker.py`; developer: pre-commit (Proof commit), pre-merge-commit (Proof land), pre-push, sprint (Proof sprint + Playwright), test-fast.sh, test-all.ts, free-acceptance.sh | Product pytest; developer entry points use disposable dispatch/failure scaffolding, recorded then removed (constraint 3) |
 
+The scheduled super tier builds one dev client and runs all nine Maestro journeys
+against the task-owned API, Metro, Postgres, Valkey and LiveKit. Native
+transport alone captures a real microphone marker through BlackHole. The
+task routes only its simulator input and restores it on exit, preserving Mac
+defaults. Scheduled Choir uses authenticated probe turns and verifies real
+native gameplay delivery and checkpoints.
+
 A story's ACs must be executed by the surface-driving test named in its Verify.
 The `native-maestro` task belongs to `super`. It requires a logged-in macOS
 GUI session and the owned iOS simulator, builds one dev client, and drives all
