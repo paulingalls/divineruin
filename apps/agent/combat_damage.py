@@ -415,6 +415,8 @@ async def _apply_damage(
             bonus_damage_type=attack_result.bonus_damage_type,
             consumed_conditions=attack_result.consumed_conditions,
         )
+        if attack_result.attack_disadvantage_source is not None:
+            response["attack_disadvantage_source"] = attack_result.attack_disadvantage_source
         log_outcome = hit_miss
     if action.get("self_heal") == "damage_dealt":
         response["self_healed"] = self_healed
