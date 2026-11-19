@@ -15,11 +15,10 @@ from pathlib import Path
 VOICE = "Samantha"
 RATE = 180
 GAIN = 0.6
-SPEAKER = "MacBook Pro Speakers, BuiltInSpeakerDevice"
 
 
-def speaker_index(listing):
-    matches = re.findall(r"\[(\d+)\]\s+" + re.escape(SPEAKER) + r"\s*$", listing, re.MULTILINE)
+def select_speaker(listing):
+    matches = re.findall(r"\[(\d+)\][ \t]+([^\n]+, BuiltInSpeakerDevice)[ \t]*$", listing, re.MULTILINE)
     if len(matches) != 1:
         raise RuntimeError("exactly one BuiltInSpeakerDevice output is required")
     return matches[0]
@@ -70,7 +69,7 @@ def inspect_waveform(path):
     }
 
 
-def generate_speech(directory, run_id, turns=(1, 2)):
+def generate_speech(directory, run_id, speaker, turns=(1, 2)):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps/agent/tests"))
     from acceptance.choir_acoustic_source import marker_pcm
 
@@ -127,7 +126,7 @@ def generate_speech(directory, run_id, turns=(1, 2)):
         "voice": VOICE,
         "speech_rate": RATE,
         "gain": GAIN,
-        "speaker": SPEAKER,
+        "speaker": speaker,
         "speech": "Your command reaches me.",
     }
     (directory / "stimulus-waveform-metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
@@ -161,7 +160,6 @@ def main():
     args = parser.parse_args()
     endpoint = status_endpoint(json.loads(args.control.read_text()), args.run_id)
     args.artifacts.mkdir(parents=True, exist_ok=True)
-    waveform = generate_speech(args.artifacts, args.run_id)
     listed = subprocess.run(
         [
             "ffmpeg",
@@ -183,7 +181,8 @@ def main():
         capture_output=True,
         text=True,
     )
-    device = speaker_index(listed.stderr)
+    device, speaker = select_speaker(listed.stderr)
+    waveform = generate_speech(args.artifacts, args.run_id, speaker)
     wait_for_microphone(endpoint, args.run_id)
     command = [
         "ffmpeg",
@@ -236,7 +235,7 @@ def main():
                 "unrelated-burst",
             ):
                 if status["stimulus_fault"] == "unrelated-burst" and not unrelated_played:
-                    waveform = generate_speech(args.artifacts, args.run_id, ())
+                    waveform = generate_speech(args.artifacts, args.run_id, speaker, ())
                     play_wave(waveform)
                     unrelated_played = True
                 time.sleep(0.05)
@@ -245,7 +244,7 @@ def main():
             if requested > turn:
                 if requested != turn + 1 or status.get("command_receipts") != turn:
                     raise RuntimeError("out-of-order acoustic command request")
-                waveform = generate_speech(args.artifacts, args.run_id, (requested,))
+                waveform = generate_speech(args.artifacts, args.run_id, speaker, (requested,))
                 play_wave(waveform)
                 print(f"Played owned acoustic turn {requested}", flush=True)
                 turn = requested
@@ -257,7 +256,7 @@ def main():
         subprocess.run(command, check=True)
         played = [1, 2]
     (args.artifacts / "stimulus-playback.json").write_text(
-        json.dumps({"run_id": args.run_id, "device": SPEAKER, "played_turns": played}) + "\n"
+        json.dumps({"run_id": args.run_id, "device": speaker, "played_turns": played}) + "\n"
     )
 
 

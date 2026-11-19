@@ -38,6 +38,7 @@ export interface NativeBuildOptions {
   repoRoot: string;
   processEnv: Record<string, string | undefined>;
   deps: NativeBuildDeps;
+  prepared?: (env: Record<string, string | undefined>) => Promise<void>;
 }
 
 const BUNDLE_ID = "com.divineruin.app";
@@ -131,16 +132,21 @@ export async function runNativeBuild(options: NativeBuildOptions): Promise<void>
       mobileRoot,
       env,
     );
-    const acceptance = await deps.runAcceptance({
+    const acceptanceEnv = {
       ...env,
       REQUIRE_EMULATOR: "1",
       REQUIRE_BACKEND: "1",
       IOS_SIMULATOR_UDID: udid,
       MAESTRO_APP_LAUNCH_URL: appLaunchUrl,
-    });
-    if (!acceptance.maestroInvoked) throw new Error("Maestro acceptance was not invoked");
-    if (acceptance.exitCode !== 0) {
-      throw new Error(`Maestro acceptance failed with exit status ${acceptance.exitCode}`);
+    };
+    if (options.prepared) {
+      await options.prepared(acceptanceEnv);
+    } else {
+      const acceptance = await deps.runAcceptance(acceptanceEnv);
+      if (!acceptance.maestroInvoked) throw new Error("Maestro acceptance was not invoked");
+      if (acceptance.exitCode !== 0) {
+        throw new Error(`Maestro acceptance failed with exit status ${acceptance.exitCode}`);
+      }
     }
   } catch (error) {
     failure = error instanceof Error ? error : new Error(String(error));
@@ -154,13 +160,13 @@ export async function runNativeBuild(options: NativeBuildOptions): Promise<void>
       workspace ? deps.removeWorkspace(workspace) : Promise.resolve(),
     ])
   ).filter((outcome) => outcome.status === "rejected");
-  if (failure) throw failure;
   if (unreaped.length > 0) {
     throw new AggregateError(
-      unreaped.map((outcome) => outcome.reason as unknown),
+      [...(failure ? [failure] : []), ...unreaped.map((outcome) => outcome.reason as unknown)],
       "native verification left owned resources behind",
     );
   }
+  if (failure) throw failure;
 }
 
 if (import.meta.main) {

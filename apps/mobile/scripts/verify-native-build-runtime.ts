@@ -1,5 +1,6 @@
 import {
   copyFile,
+  cp,
   lstat,
   mkdir,
   mkdtemp,
@@ -16,10 +17,12 @@ import { dirname, join } from "node:path";
 import {
   createRealGateDeps,
   listSimulatorDevices,
+  parseSimulatorDevices,
   requestedDeviceIsBooted,
   runGate,
   type SimulatorDevice,
 } from "../../../scripts/maestro-acceptance";
+import type { OwnedProcesses } from "./native-transport-processes";
 import type { CommandResult, NativeBuildDeps } from "./verify-native-build";
 import { createRealOwnedSimulatorDeps, resolveOwnedSimulator } from "./owned-simulator";
 
@@ -70,8 +73,11 @@ function parseEnv(text: string): Record<string, string> {
     const line = rawLine.trim();
     if (!line || line.startsWith("#")) continue;
     const match = line.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
-    if (!match) throw new Error("root .env contains an invalid assignment");
-    let value = match[2].trim();
+    const name = match?.at(1);
+    const assignment = match?.at(2);
+    if (!name || assignment === undefined)
+      throw new Error("root .env contains an invalid assignment");
+    let value = assignment.trim();
     if (
       value.length >= 2 &&
       ((value.startsWith('"') && value.endsWith('"')) ||
@@ -79,7 +85,7 @@ function parseEnv(text: string): Record<string, string> {
     ) {
       value = value.slice(1, -1);
     }
-    env[match[1]] = value;
+    env[name] = value;
   }
   if (Object.keys(env).length === 0) throw new Error("root .env produced no variables");
   return env;
@@ -194,18 +200,25 @@ function startMetro(
   });
 }
 
-async function waitForMetro(process: OwnedProcess, port: number): Promise<void> {
+async function waitForMetro(
+  process: OwnedProcess,
+  port: number,
+  signal?: AbortSignal,
+): Promise<void> {
   let exit: number | null | undefined;
   void process.exited.then((value) => {
     exit = value;
   });
   const deadline = Date.now() + 120_000;
   while (Date.now() < deadline) {
+    signal?.throwIfAborted();
     if (exit !== undefined)
       throw new Error(`Metro exited before readiness with status ${String(exit)}`);
     try {
       const response = await fetch(`http://127.0.0.1:${port}/status`, {
-        signal: AbortSignal.timeout(1_000),
+        signal: signal
+          ? AbortSignal.any([signal, AbortSignal.timeout(1_000)])
+          : AbortSignal.timeout(1_000),
       });
       if (response.ok && (await response.text()).includes("packager-status:running")) return;
     } catch {
@@ -255,5 +268,113 @@ export function createNativeBuildDeps(repoRoot: string): NativeBuildDeps {
     runAcceptance: (env) => runGate(createRealGateDeps(env, repoRoot)),
     stopMetro: (process) => stopMetro(process as OwnedProcess),
     removeWorkspace: (root) => rm(root, { recursive: true, force: true }),
+  };
+}
+
+export function createProofNativeBuildDeps(
+  root: string,
+  scope: OwnedProcesses,
+  cloneId: string,
+): NativeBuildDeps {
+  const captureOwned = async (argv: string[], cwd = root) => {
+    const child = scope.spawn(argv, { cwd, capture: true });
+    const [stdout, stderr, exit] = await scope.wait(
+      Promise.all([
+        new Response(child.stdout).text(),
+        new Response(child.stderr).text(),
+        child.exited,
+      ]),
+    );
+    if (exit !== 0) throw new Error(`${argv.join(" ")} failed: ${stderr.trim()}`);
+    return stdout;
+  };
+  const owned = createRealOwnedSimulatorDeps(root, cloneId, captureOwned);
+  return {
+    ...createNativeBuildDeps(root),
+    loadRootEnvironment: () => Promise.resolve({}),
+    resolveOwnedSimulator: async (requested) => {
+      const udid = await resolveOwnedSimulator(owned, requested);
+      console.log(`Owned iOS simulator: divineruin-native-${cloneId} ${udid}`);
+      return udid;
+    },
+    ensureSimulator: async (udid) => {
+      const devices = () =>
+        captureOwned(["xcrun", "simctl", "list", "devices", "--json"]).then(parseSimulatorDevices);
+      if (requiredSimulatorAction(await devices(), udid) === "boot") {
+        await captureOwned(["xcrun", "simctl", "boot", udid]);
+        await captureOwned(["xcrun", "simctl", "bootstatus", udid, "-b"]);
+      }
+      if (!requestedDeviceIsBooted(await devices(), udid))
+        throw new Error(`Owned simulator did not boot: ${udid}`);
+    },
+    probeBackend: async (url) => {
+      const response = await fetch(`${url}/api/inventory`, {
+        signal: AbortSignal.any([scope.signal, AbortSignal.timeout(5000)]),
+      });
+      if (response.status !== 401)
+        throw new Error(`Owned API preflight failed: HTTP ${response.status}`);
+    },
+    createWorkspace: async () => {
+      const target = await mkdtemp(join(tmpdir(), "divineruin-native-"));
+      console.log(`Owned native build workspace: ${target}`);
+      try {
+        await cp(root, target, {
+          recursive: true,
+          filter: (path) => {
+            scope.signal.throwIfAborted();
+            const relative = path.slice(root.length + 1);
+            return (
+              shouldCopyPath(relative) &&
+              !relative
+                .split("/")
+                .some((part) =>
+                  [
+                    ".git",
+                    ".env",
+                    ".venv",
+                    "node_modules",
+                    "test-results",
+                    ".expo",
+                    ".proof",
+                  ].includes(part),
+                ) &&
+              !["apps/mobile/ios", "apps/mobile/android"].includes(relative)
+            );
+          },
+        });
+        // The root package prepare script configures Git hooks during Bun install.
+        await captureOwned(["git", "init", "--quiet"], target);
+        return target;
+      } catch (error) {
+        await rm(target, { recursive: true, force: true });
+        throw error;
+      }
+    },
+    runCommand: async (argv, cwd, env) => {
+      const child = scope.spawn(argv, { cwd, env: definedEnv(env) });
+      try {
+        return {
+          exitCode: await scope.wait(child.exited),
+          signal: child.signalCode === null ? undefined : String(child.signalCode),
+        };
+      } finally {
+        await scope.stop(child);
+      }
+    },
+    isAppInstalled: async (udid, bundleId) => {
+      await captureOwned(["xcrun", "simctl", "get_app_container", udid, bundleId, "app"]);
+      return true;
+    },
+    startMetro: (cwd, port, env) => {
+      console.log(`Owned Metro: http://127.0.0.1:${port}`);
+      return Promise.resolve(
+        scope.spawn(["bun", "expo", "start", "--dev-client", "--port", String(port)], {
+          cwd,
+          env: definedEnv({ ...env, CI: "1" }),
+        }),
+      );
+    },
+    waitForMetro: (process, port) => waitForMetro(process as OwnedProcess, port, scope.signal),
+    stopMetro: (process) => scope.stop(process as ReturnType<OwnedProcesses["spawn"]>),
   };
 }

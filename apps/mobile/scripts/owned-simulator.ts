@@ -154,17 +154,20 @@ async function capture(command: string[], cwd: string): Promise<string> {
   return stdout;
 }
 
-export function createRealOwnedSimulatorDeps(repoRoot: string): OwnedSimulatorDeps {
+export function createRealOwnedSimulatorDeps(
+  repoRoot: string,
+  cloneId?: string,
+  run = (command: string[]) => capture(command, repoRoot),
+): OwnedSimulatorDeps {
   return {
     cloneId: () =>
-      capture(
-        [
-          "bash",
-          "-c",
-          "source scripts/worktree-common.sh && wt_identity && printf '%s' \"$WT_CLONE_ID\"",
-        ],
-        repoRoot,
-      ),
-    run: (command) => capture(command, repoRoot),
+      cloneId !== undefined
+        ? Promise.resolve(cloneId)
+        : run([
+            "bash",
+            "-c",
+            "source scripts/worktree-common.sh && wt_identity && printf '%s' \"$WT_CLONE_ID\"",
+          ]),
+    run,
   };
 }

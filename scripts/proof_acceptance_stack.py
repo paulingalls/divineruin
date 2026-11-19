@@ -75,10 +75,21 @@ def main(action):
         # The persistent dev DB needs this tree's migrations and content; seed upserts
         # reset fixture player rows from content/players.json on every lane run.
         subprocess.run(
-            ["bun", "run", "scripts/migrate.ts"], cwd=ROOT, env={**os.environ, "DATABASE_URL": dsn}, check=True
+            ["bun", "run", "scripts/migrate.ts"],
+            cwd=ROOT,
+            env={**os.environ, "DATABASE_URL": dsn},
+            check=True,
         )
         subprocess.run(
-            ["uv", "run", "--project", "scripts", "--frozen", "python", "scripts/seed_content.py"],
+            [
+                "uv",
+                "run",
+                "--project",
+                "scripts",
+                "--frozen",
+                "python",
+                "scripts/seed_content.py",
+            ],
             cwd=ROOT,
             env={**os.environ, "DATABASE_URL": dsn},
             check=True,
@@ -95,7 +106,7 @@ def main(action):
             saved = json.loads(state.read_text())
             stop_if_started(saved["started"], saved["dsn"])
             state.unlink()
-    elif action in ("start", "bun-start", "e2e-start"):
+    elif action in ("start", "bun-start", "e2e-start", "native-start"):
         settings = checkout_livekit_settings()
         kind = action.split("-")[0] if "-" in action else "acceptance"
         name = f"dr-proof-{kind}-{settings['WT_CHECKOUT_ID']}-{os.environ['PROOF_RUN_PID']}"
@@ -137,6 +148,12 @@ def main(action):
             finally:
                 await conn.close()
             await _apply_migrations_and_seed(admin.rsplit("/", 1)[0] + "/proof_template")
+            if action == "native-start":
+                conn = await asyncpg.connect(admin)
+                try:
+                    await conn.execute("CREATE DATABASE proof_native TEMPLATE proof_template")
+                finally:
+                    await conn.close()
 
         loaded = set(sys.modules)
         asyncio.run(prepare())
@@ -171,7 +188,7 @@ def main(action):
                     if time.monotonic() >= deadline:
                         raise
                     time.sleep(0.2)
-        if action == "start":
+        if action in ("start", "native-start"):
             before = {c.id for c in client.containers.list()}
             server = ensure_livekit_server()
             print(
@@ -195,6 +212,16 @@ def main(action):
             if set(e2e) != ports:
                 raise RuntimeError("checkout authority did not supply all E2E ports")
             e2e["PROOF_E2E_ARTIFACTS"] = str(ROOT / "flake-artifacts")
+        native = {}
+        if action == "native-start":
+            native = {
+                "PROOF_NATIVE_CLONE": settings["WT_CLONE_ID"],
+                "PROOF_NATIVE_ARTIFACTS": str(
+                    ROOT / "flake-artifacts" / f"native-maestro-{os.environ['PROOF_RUN_PID']}"
+                ),
+                "DATABASE_URL": admin.rsplit("/", 1)[0] + "/proof_native",
+                "REDIS_URL": redis_url,
+            }
         exports(
             {
                 **e2e,
@@ -211,12 +238,13 @@ def main(action):
                         "PROOF_LIVEKIT_KEY": server.api_key,
                         "PROOF_LIVEKIT_SECRET": server.api_secret,
                     }
-                    if action == "start"
+                    if action in ("start", "native-start")
                     else {"REDIS_URL": redis_url}
                 ),
+                **native,
             }
         )
-    elif action in ("stop", "bun-stop", "e2e-stop"):
+    elif action in ("stop", "bun-stop", "e2e-stop", "native-stop"):
         if state.exists():
             saved = json.loads(state.read_text())
             owned = []
@@ -236,4 +264,13 @@ def main(action):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    action = sys.argv[1]
+    try:
+        main(action)
+    except BaseException as error:
+        if action == "native-start":
+            try:
+                main("native-stop")
+            except (OSError, docker.errors.DockerException, RuntimeError) as cleanup:
+                raise BaseExceptionGroup("native provider startup and cleanup failed", [error, cleanup]) from None
+        raise

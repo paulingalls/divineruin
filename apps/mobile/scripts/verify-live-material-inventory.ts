@@ -170,6 +170,30 @@ export async function runLiveMaterialInventory(
   scope.signal.throwIfAborted();
 }
 
+export async function runPreparedLiveMaterial(
+  scope: OwnedProcesses,
+  results: string,
+  environment: Record<string, string>,
+  run: (variables: Record<string, string>) => Promise<void>,
+): Promise<void> {
+  const deps = realLiveMaterialDeps(environment);
+  const runId = crypto.randomUUID();
+  const path = `${results}/fixture.json`;
+  await deps.acceptance(scope, path, runId);
+  const fixture = await deps.readFixture(path);
+  validateFixture(fixture, runId);
+  const server = deps.serve(fixture);
+  try {
+    const endpoint = `http://127.0.0.1:${server.port}`;
+    await run({
+      ROUTE_URL: `divineruin://live-material-inventory-test?fixture=${encodeURIComponent(endpoint)}&run_id=${runId}`,
+      RUN_ID_TEXT: `Run: ${runId}`,
+    });
+  } finally {
+    await server.stop();
+  }
+}
+
 async function requireCommand(
   scope: OwnedProcesses,
   deps: LiveMaterialDeps,
@@ -189,7 +213,7 @@ function definedEnv(env: Environment): Record<string, string> {
   );
 }
 
-export function realLiveMaterialDeps(): LiveMaterialDeps {
+export function realLiveMaterialDeps(preparedEnv?: Record<string, string>): LiveMaterialDeps {
   const command: LiveMaterialDeps["command"] = async (scope, argv, env) => {
     const child = scope.spawn(argv, { cwd: root, env: definedEnv(env) });
     return {
@@ -201,7 +225,7 @@ export function realLiveMaterialDeps(): LiveMaterialDeps {
     command,
     acceptance: async (scope, path, runId) => {
       const env = {
-        ...process.env,
+        ...(preparedEnv ?? process.env),
         TESTCONTAINERS_RYUK_DISABLED: "true",
         REQUIRE_DOCKER: "1",
         LIVE_MATERIAL_INVENTORY_OUTPUT: path,
@@ -213,8 +237,7 @@ export function realLiveMaterialDeps(): LiveMaterialDeps {
         [
           "uv",
           "run",
-          "--env-file",
-          ".env",
+          ...(preparedEnv ? [] : ["--env-file", ".env"]),
           "--project",
           "apps/agent",
           "pytest",

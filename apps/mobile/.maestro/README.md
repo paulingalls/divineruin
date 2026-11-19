@@ -1,87 +1,57 @@
 # Maestro acceptance flows
 
-Native-mobile acceptance lane for `apps/mobile`. Maestro covers what Playwright
-can't reach: native LiveKit, native audio, haptics, permissions, platform
-glyph rendering. Playwright still owns web/HTTP/general UI.
-
-## Run
+The scheduled Proof `super` set runs all nine iOS journeys. To run just that
+task from the repository root:
 
 ```sh
-MAESTRO_APP_LAUNCH_URL=<dev-server-url> bun run test:e2e:mobile   # gated; skips cleanly when no device
-REQUIRE_EMULATOR=1 bun run test:e2e:mobile
-REQUIRE_EMULATOR=1 REQUIRE_BACKEND=1 bun run test:e2e:mobile # owns the iOS API and Metro
+bunx proof run --fresh --tasks native-maestro
 ```
 
-`bun run test:e2e:mobile` invokes `scripts/maestro-acceptance.ts`, which:
+Proof provisions checkout-owned Postgres, Valkey and LiveKit. The task builds
+and installs one dev client on the clone's `divineruin-native-<clone id>`
+simulator. All journeys use the same Metro and API processes. The task stops
+them and removes its temporary sign-in enrollment on exit. Each journey's
+result appears in the super log, and JUnit reports and simulator artifacts are
+retained under `flake-artifacts/native-maestro-*`.
 
-1. With `REQUIRE_EMULATOR=1`, resolves this clone's `divineruin-native-<clone id>`
-   simulator on the newest available iOS runtime, proves it is booted and
-   available, and passes its UDID to Maestro with `--device`. The gate may
-   create the owned simulator; the native build runner boots it before acceptance.
-2. An explicit `IOS_SIMULATOR_UDID` must identify that owned simulator,
-   even without the strict flag; a foreign requested device fails. With
-   neither a requested UDID nor the strict flag, selects only this clone's
-   already-booted owned iOS simulator and the first attached Android device
-   reported ready by adb. Each target receives an explicit `--device`; when both
-   exist, both run. With neither target, the lane skips cleanly.
-3. Runs offline-safe flows by default and adds backend-required flows when
-   `REQUIRE_BACKEND=1` is set.
+The Mac needs Xcode with an available general iOS runtime, Docker, Maestro on
+`PATH` or at `~/.maestro/bin/maestro`, and FFmpeg with AudioToolbox output.
+Launchd needs a logged-in GUI session. For the Choir journey, grant microphone
+access to the Simulator and keep the built-in speaker audible to the host
+microphone. An unavailable prerequisite, an omitted journey, or a failing flow
+fails the task.
 
-With `REQUIRE_BACKEND=1`, the iOS gate starts its own API on a free loopback
-port using the caller's `DATABASE_URL`, mock email and development auth. It
-starts Metro with that API origin and temporarily enrolls
-`acceptance@divineruin.test`. Success, failure and cancellation stop the owned
-processes and remove only membership this run inserted; existing membership stays.
+## Journeys
 
-Every flow clears app state and opens `APP_LAUNCH_URL`. Outside the owned iOS
-backend path, export `MAESTRO_APP_LAUNCH_URL` with a reachable Metro server's
-`exp+divineruin://expo-development-client/?url=...` address. Supplying it keeps
-Metro and the backend caller-owned, with no automatic enrollment. That path and
-Android still require a reachable backend and
-`bun run allow acceptance@divineruin.test` against its `DATABASE_URL`.
-Without a Metro launch URL, the bare `divineruin://` fallback cannot render a
-development build's app content.
+| Flow | Behavior |
+| --- | --- |
+| `launch.yaml` | Development client loads the app and shows the auth entry. |
+| `auth-form.yaml` | The mock-email backend accepts the enrolled address and the form advances to code entry. |
+| `native-transport.yaml` | Native LiveKit delivers microphone frames, received audio and the session-init HUD. |
+| `choir-encounter.yaml` | Acoustic speech reaches LiveKit and dispatches commands with encounter checkpoints and receipts. |
+| `patron-abilities.yaml` | The patron HUD renders server state across ability use, rests and disposition changes. |
+| `iron-resolve-hud.yaml` | Combat updates add and clear Iron Resolve in the HUD. |
+| `http-inventory-refresh.yaml` | Authenticated inventory shows clean and tainted material and pauses polling in the background. |
+| `http-inventory-resume.yaml` | The same app and fixture refresh on return and reject a stale held response. |
+| `live-material-inventory.yaml` | The inventory panel displays material state captured from a live agent event. |
 
-`verify:native-build` owns the strict lane. It generates native projects in a
-temporary workspace, builds and installs on the requested simulator, starts its
-own Metro process, and supplies `APP_LAUNCH_URL` so each flow opens that exact
-development server after clearing app state. It preserves the explicit backend
-URL from the root `.env`; SDK 57 native acceptance proved simulator loopback
-against the story server. The runner never edits the root `.env`.
+## Manual smoke checks
 
-This gate proves native module loading, app launch, and the auth form. LiveKit
-transport, microphone, and audio HUD behavior remain story 209 scope.
+```sh
+bun run test:e2e:mobile
+REQUIRE_EMULATOR=1 REQUIRE_BACKEND=1 bun run test:e2e:mobile
+bun run --cwd apps/mobile verify:native-build
+```
 
-This mirrors the `REQUIRE_DOCKER` pattern in
-`apps/agent/tests/acceptance/conftest.py` for the Python acceptance lane, so the
-same "skip-by-default, hard-fail-under-env-flag" muscle memory applies across
-both surfaces.
+The manual gate defaults to `launch.yaml` on the already-booted owned iOS
+simulator and ready Android device, if present. `REQUIRE_EMULATOR=1` requires
+the owned iOS simulator, and `REQUIRE_BACKEND=1` also exercises auth and patron
+abilities on iOS. The manual gate can start an API and Metro from the caller's
+`DATABASE_URL`. If you supply `MAESTRO_APP_LAUNCH_URL` or use Android, provide
+a running backend and enroll the address with
+`bun run allow acceptance@divineruin.test`. Use a development-client launch
+URL such as `exp+divineruin://expo-development-client/?url=...`.
 
-## Flows
-
-- `launch.yaml` — offline-safe smoke: app launches without crashing. Runs by
-  default.
-- `auth-form.yaml` — backend-required: the owned iOS gate supplies the API and
-  temporary allowlist membership. External launch URLs and Android require the
-  caller-owned backend and enrollment described above. Exercises the auth screen form
-  mechanics (input → SEND CODE → phase transition to the code-input view). The
-  email→code transition only happens on a 2xx from `/auth/request-code`, so
-  this flow requires `apps/server` running and reachable from the device.
-  Gated behind `REQUIRE_BACKEND=1`; skipped by default to keep the lane
-  offline-safe.
-
-## Assumptions worth tracking
-
-- **Auth is the entry screen for unauthenticated users.** `auth-form.yaml`
-  starts with "Listen to the dark" visible. If onboarding/splash lands in front
-  of the auth screen, prefix the flow with the appropriate `tapOn`/wait steps.
-- **testIDs on auth inputs.** `auth-form.yaml` uses `id: "email-input"` and
-  `id: "code-input"` set on `<TextInput>` in `apps/mobile/src/app/auth.tsx`.
-  If those testIDs disappear, the flow fails at the first `tapOn`.
-- **Development-client tutorial.** Clearing app state may show Expo's first-run
-  tutorial and leave its developer menu open. Both flows dismiss those vendor
-  overlays before asserting app content.
-- **Maestro CLI** must be installed locally (`brew install maestro`).
-- **Local-only.** This lane does not run in `.github/workflows/ci.yml` — CI
-  has no emulator. Hooking it up to EAS Workflows or a self-hosted runner is
-  follow-up scope.
+`verify:native-build` builds and installs the dev client, starts Metro, and
+runs the manual strict gate using `EXPO_PUBLIC_API_URL` from the caller or the
+root `.env`.

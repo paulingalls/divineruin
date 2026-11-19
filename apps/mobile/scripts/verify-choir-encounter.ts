@@ -40,19 +40,21 @@ export function assertMicrophoneTurns(raw: unknown, identity: string, runId: str
     throw new Error("missing separate authenticated native microphone turns");
   if (turns.some((turn) => turn.identity !== identity || !(turn.generation > 0)))
     throw new Error("native microphone turns are not authenticated to this player");
-  if (turns[0].text !== "capstone turn 1" || turns[1].text !== "capstone turn 2")
+  if (turns.at(0)?.text !== "capstone turn 1" || turns.at(1)?.text !== "capstone turn 2")
     throw new Error("native microphone turns are not distinct");
   if (JSON.stringify(result.commands) !== JSON.stringify(["declare_phase", "check"]))
     throw new Error("native microphone commands did not execute public dispatch");
   const receipts = result.receipts;
   if (receipts?.length !== 2) throw new Error("missing native microphone command receipts");
+  const refusal = receipts.at(0);
+  const legal = receipts.at(1);
   if (
-    receipts[0].name !== "declare_phase" ||
-    !receipts[0].is_error ||
-    !receipts[0].output.includes("silenced")
+    refusal?.name !== "declare_phase" ||
+    !refusal.is_error ||
+    !refusal.output.includes("silenced")
   )
     throw new Error("missing actual silenced refusal");
-  if (receipts[1].name !== "check" || receipts[1].is_error || !receipts[1].output.trim())
+  if (legal?.name !== "check" || legal.is_error || !legal.output.trim())
     throw new Error("missing subsequent legal command receipt");
 }
 
@@ -74,29 +76,33 @@ export const CHOIR_STEPS = [
 
 export function assertChoirEncounter(raw: unknown, identity: string, runId: string): void {
   const result = raw as MicrophoneTurns & {
-    checkpoints?: Record<
-      string,
-      {
-        phase?: string;
-        owner?: string;
-        core_hp?: number;
-        player_hp?: number;
-        xp?: number;
-        refused?: boolean;
-      }
+    checkpoints?: Partial<
+      Record<
+        string,
+        {
+          phase?: string;
+          owner?: string;
+          core_hp?: number;
+          player_hp?: number;
+          xp?: number;
+          refused?: boolean;
+        }
+      >
     >;
-    native_checkpoints?: Record<
-      string,
-      {
-        player?: string;
-        events?: { type?: string }[];
-        combat_active?: boolean;
-        combat?: {
-          combatants: { id: string; hpCurrent: number; conditions: { type: string }[] }[];
-        } | null;
-        xp?: number;
-        resonance?: string;
-      }
+    native_checkpoints?: Partial<
+      Record<
+        string,
+        {
+          player?: string;
+          events?: { type?: string }[];
+          combat_active?: boolean;
+          combat?: {
+            combatants: { id: string; hpCurrent: number; conditions: { type: string }[] }[];
+          } | null;
+          xp?: number;
+          resonance?: string;
+        }
+      >
     >;
   };
   const sources = result.acoustic_sources;
@@ -110,16 +116,19 @@ export function assertChoirEncounter(raw: unknown, identity: string, runId: stri
     result.commands?.length !== sources.length
   )
     throw new Error("missing complete authenticated Choir command receipts");
-  for (let index = 0; index < sources.length; index++) {
+  for (const [index, source] of sources.entries()) {
+    const turn = turns.at(index);
+    const receipt = receipts.at(index);
     if (
-      sources[index].run_id !== runId ||
-      sources[index].turn !== index + 1 ||
-      sources[index].source !== "owned-acoustic-marker" ||
-      turns[index].identity !== identity ||
-      turns[index].generation <= 0 ||
-      turns[index].text !== `capstone turn ${index + 1}` ||
-      receipts[index].name !== result.commands[index] ||
-      !receipts[index].output.trim()
+      source.run_id !== runId ||
+      source.turn !== index + 1 ||
+      source.source !== "owned-acoustic-marker" ||
+      turn?.identity !== identity ||
+      turn.generation <= 0 ||
+      turn.text !== `capstone turn ${index + 1}` ||
+      !receipt ||
+      receipt.name !== result.commands[index] ||
+      !receipt.output.trim()
     )
       throw new Error("uncorrelated native Choir command receipt");
   }
@@ -138,14 +147,16 @@ export function assertChoirEncounter(raw: unknown, identity: string, runId: stri
   }
   for (const step of CHOIR_STEPS) {
     const checkpoint = result.native_checkpoints![step];
-    if (checkpoint.player !== identity || !checkpoint.events?.length)
+    if (checkpoint?.player !== identity || !checkpoint.events?.length)
       throw new Error("missing actual native receiver checkpoint");
-    const expected = result.checkpoints![step];
+    const committed = result.checkpoints;
+    const expected = committed?.[step];
+    if (!committed || !expected) throw new Error(`Missing committed Choir checkpoint: ${step}`);
     if (step === "destruction" || step === "replay") {
       if (
         checkpoint.combat_active !== false ||
         checkpoint.combat !== null ||
-        checkpoint.xp !== result.checkpoints!.destruction.xp ||
+        checkpoint.xp !== committed.destruction?.xp ||
         !checkpoint.events.some((event) => event.type === "combat_ended")
       )
         throw new Error("native receiver retained destroyed combat or missed award");
@@ -237,16 +248,36 @@ export function assertChoirFault(
     result.commands?.length !== count
   )
     throw new Error("native fault lost unaffected command evidence");
+  const source = result.acoustic_sources.at(0);
+  const turn = result.authenticated_turns.at(0);
+  const receipt = result.receipts.at(0);
   if (
     count &&
-    (result.acoustic_sources[0].run_id !== runId ||
-      result.authenticated_turns[0].identity !== identity ||
-      result.authenticated_turns[0].generation <= 0 ||
-      result.receipts[0].name !== "enter_mode" ||
-      result.receipts[0].is_error)
+    (source?.run_id !== runId ||
+      turn?.identity !== identity ||
+      turn.generation <= 0 ||
+      receipt?.name !== "enter_mode" ||
+      receipt.is_error)
   )
     throw new Error("native fault did not reach actual public encounter entry");
 }
+
+export const choirScenario = {
+  choir: true,
+  stimulateMicrophone: (scope, root, run) =>
+    stimulateMicrophone(scope, root, { ...run, sequence: true }),
+  probePath: "apps/agent/choir_capstone_probe.py",
+  validateResult: (raw, runId, fault) => {
+    const result = validateScenarioResult(raw, runId, fault);
+    const turns = (raw as { microphone_turns?: { fault?: string } }).microphone_turns;
+    if (turns?.fault === "none") assertChoirEncounter(turns, result.mobile_identity, runId);
+    else assertChoirFault(turns, result.mobile_identity, runId, turns?.fault ?? "");
+    return result;
+  },
+} satisfies Pick<
+  import("./verify-native-transport").NativeTransportDeps,
+  "choir" | "stimulateMicrophone" | "probePath" | "validateResult"
+>;
 
 export async function verifyChoirMicrophone(
   repoRoot: string,
@@ -303,19 +334,9 @@ export async function verifyChoirMicrophone(
         resolveOwned: (requested) => resolveOwnedSimulator(owned, requested),
         prepareNativeApp: buildCurrentNativeApp,
         requireTarget: requireTargetSimulator,
-        choir: true,
         prepareScenario: prepareChoirFault,
         choirFaults: ["none", ...CHOIR_FAULTS],
-        stimulateMicrophone: (scope, root, run) =>
-          stimulateMicrophone(scope, root, { ...run, sequence: true }),
-        probePath: "apps/agent/choir_capstone_probe.py",
-        validateResult: (raw, runId, fault) => {
-          const result = validateScenarioResult(raw, runId, fault);
-          const turns = (raw as { microphone_turns?: { fault?: string } }).microphone_turns;
-          if (turns?.fault === "none") assertChoirEncounter(turns, result.mobile_identity, runId);
-          else assertChoirFault(turns, result.mobile_identity, runId, turns?.fault ?? "");
-          return result;
-        },
+        ...choirScenario,
       });
     });
   });
