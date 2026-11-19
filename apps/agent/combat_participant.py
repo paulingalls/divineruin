@@ -117,6 +117,7 @@ class CombatParticipant:
     condition_immunities: dict[str, str] = field(default_factory=dict)
     save_advantages: dict[str, str] = field(default_factory=dict)
     scholars_ward: bool = False
+    orenthel_beacon: bool = False
     advantage_vs: dict[str, str] = field(default_factory=dict)
 
     hollow: dict | None = None

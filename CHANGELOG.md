@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.51.2
+
+Scheduled super tests now check develop in a dedicated clone on the test host, with their own Docker project and port offset. Each run tears its Docker stack down when it ends, pass or fail, so an idle super stack no longer holds host ports between runs.
+
+Release steps:
+
+- After merge, stop any running old super job on each former host. In `$HOME/.xp/super/divineruin`, run `bash scripts/teardown-worktree.sh`. Then run `git worktree remove "$HOME/.xp/super/divineruin"` from the host repository that registered it. Both commands are unpaid and write no production data. Leave a dirty worktree in place for inspection.
+- After merge, run `bash scripts/super-test-install.sh` from the checkout on the mini. This is unpaid and writes no production data. The runner defaults to `$HOME/.xp/super/divineruin-super` and port offset 9000.
+
+## 0.51.1
+
+The XP workflow's sprint-wide reviewer (angle-reviewer) now runs on Claude Opus 5.5. The Haiku security triage still decides whether the security angle runs.
+
+Release steps: none.
+
+## 0.51.0
+
+Four more god abilities now work in play. Kaelen's Battle Cry gives every ally in the fight +1d4 to attack rolls for two rounds. Kaelen's Judgment names a Worthy Foe: every attack on it has advantage for the fight, and defeating it restores half the follower's Stamina. Orenthel's Beacon gives each Hollow creature disadvantage on its first attack against the follower in a fight. Orenthel's Restoration Surge removes Poisoned, Blinded, Frightened or stage-1 Hollowed from an ally, at no Focus cost. Stamina restored earlier in a combat round is no longer lost when a later ability's cost is paid.
+
+Release steps: none.
+
+## 0.50.5
+
+Fixes a creation test left expecting the old 12/17 starting HP for a Kaelen warrior.
+
+Release steps: none.
+
+## 0.50.4
+
+A new Kaelen follower now starts at full HP, including Warrior's Endurance (17/17 instead of 12/17).
+
+Release steps: none.
+
+## 0.50.3
+
+Proof's agent test sandboxes now reuse the checkout's agent virtualenv when it already matches the tree's lock, instead of building a cold one per sandbox; a tree with a different lock still gets its own fresh venv, and the shared one is never modified. A full sprint run on the Intel Mac dropped from 63 to 19 minutes. Two test races that the faster run exposed are fixed: the Choir refusal guard no longer counts the startup `session_init` as a gameplay effect, and the Leave summary spec pauses the browser clock at the browser's own time.
+
+Release steps: run `uv sync --project apps/agent --frozen` in each checkout so its venv matches the lock and can be shared.
+
 ## 0.50.2
 
 The XP workflow's fixer and slate-reviewer now run on GPT-6.2 Sol, as a trial.

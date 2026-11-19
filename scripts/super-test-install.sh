@@ -2,7 +2,7 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-PRIMARY="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+REMOTE="$(git remote get-url origin)"
 # A copy outside every checkout: a branch switch in the primary cannot remove or change the scheduled runner.
 # Rerun this installer to update it.
 RUNNER="$HOME/.xp/super/super-test.sh"
@@ -18,17 +18,18 @@ for tool in bun uv docker node python3 git; do
   TOOL_PATH="${TOOL_PATH:+$TOOL_PATH:}$(dirname "$location")"
 done
 TOOL_PATH="$TOOL_PATH:/usr/bin:/bin:/usr/sbin:/sbin"
-python3 - "$PLIST" "$LABEL" "$RUNNER" "$PRIMARY" "$LOGS" "$TOOL_PATH" <<'PY'
+# The dedicated clone keeps the host session's repository untouched.
+python3 - "$PLIST" "$LABEL" "$RUNNER" "$REMOTE" "$HOME/.xp/super" "$LOGS" "$TOOL_PATH" <<'PY'
 import plistlib
 import sys
 
-path, label, runner, primary, logs, tool_path = sys.argv[1:]
+path, label, runner, remote, working_dir, logs, tool_path = sys.argv[1:]
 with open(path, "wb") as output:
     plistlib.dump({
         "Label": label,
         "ProgramArguments": ["/bin/bash", runner],
-        "WorkingDirectory": primary,
-        "EnvironmentVariables": {"PATH": tool_path, "SUPER_SOURCE": primary},
+        "WorkingDirectory": working_dir,
+        "EnvironmentVariables": {"PATH": tool_path, "SUPER_REMOTE": remote},
         "StartCalendarInterval": [
             {"Weekday": day, "Hour": 2, "Minute": 0} for day in (2, 4, 6)
         ],

@@ -14,6 +14,9 @@ from acceptance.seeds import seed_player_with_pools
 
 import db
 
+# Hydration's session_init can land after the collector registers; it is not an effect of a command.
+NON_EFFECT_EVENTS = {"transcript_entry", "session_init"}
+
 
 async def assert_legal_delivery(events, sender_identity, receipt, timeout=5):
     result = json.loads(receipt.output)
@@ -23,7 +26,7 @@ async def assert_legal_delivery(events, sender_identity, receipt, timeout=5):
                 payload, sender = await events.get()
                 assert sender == sender_identity
                 event = json.loads(payload)
-                if event["type"] == "transcript_entry":
+                if event["type"] in NON_EFFECT_EVENTS:
                     continue
                 assert event["type"] == "dice_roll" and event["roll_type"] == "saving_throw"
                 assert all(event[field] == result[field] for field in ("save_type", "roll", "total"))
@@ -82,7 +85,7 @@ async def test_later_command_requires_separate_authenticated_microphone_turn(
         await diagnostic.assert_refusal_unchanged()
         while not events.empty():
             payload, sender = events.get_nowait()
-            assert json.loads(payload)["type"] == "transcript_entry", "silenced refusal published a gameplay effect"
+            assert json.loads(payload)["type"] in NON_EFFECT_EVENTS, "silenced refusal published a gameplay effect"
             assert sender == harness.listener.local_participant.identity
         assert len(diagnostic.transcripts) == 1
         assert len(diagnostic.model.calls) == 1

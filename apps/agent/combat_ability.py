@@ -8,6 +8,8 @@ attachment. Consumed by the phase loop (combat_turn)."""
 from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, cast
 
+from livekit.agents.llm import ToolError
+
 import abilities
 import ability_persistence
 import combat_ability_save
@@ -17,6 +19,7 @@ import combat_spell_damage
 import combat_veilrender
 import combat_voice_rules
 import condition_voice_rules
+import db_queries
 import spell_casting
 from combat_ability_gate import DeclaredAbility
 from combat_condition_landing import _land_condition_on_one
@@ -96,16 +99,17 @@ def _gate_ability_condition(
     gate_pool(player, "focus", cost.focus, label=ability.name)
 
 
-async def _deduct_ability_cost(player_id, player, ability, variant, *, persistence, conn) -> None:
-    """Spend a condition ability's Stamina/Focus via the gate_pool SSOT and persist against
-    ``player_id`` (the declaring member — M14 story-004, was the session primary). Shared by the
-    single- and multi-target resolve branches so the deduct lives once; gate_pool fail-louds if the
-    cost can't be paid (already pre-gated at declare time)."""
+async def _deduct_ability_cost(player_id, ability, variant, *, persistence, queries, conn) -> None:
     cost = variant.cost if variant is not None else ability.cost
+    if not (cost.stamina or cost.focus):
+        return
+    # Earlier packets can restore resources after this actor's prevalidation.
+    player = await queries.get_player(player_id, conn=conn, for_update=True)
+    if player is None:
+        raise ToolError(f"Unknown player: {player_id}")
     new_stamina = gate_pool(player, "stamina", cost.stamina, label=ability.name)
     new_focus = gate_pool(player, "focus", cost.focus, label=ability.name)
-    if new_stamina is not None or new_focus is not None:
-        await persistence.update_player_resources(player_id, stamina=new_stamina, focus=new_focus, conn=conn)
+    await persistence.update_player_resources(player_id, stamina=new_stamina, focus=new_focus, conn=conn)
 
 
 async def _resolve_ability_condition_packet(
@@ -118,6 +122,7 @@ async def _resolve_ability_condition_packet(
     conn,
     player: dict | None,
     persistence=ability_persistence,
+    queries=db_queries,
     progress=None,
 ) -> dict:
     """Resolve a non-spell condition-applying ABILITY in combat (M4.8 story-005, e.g. bard_inspire).
@@ -128,8 +133,7 @@ async def _resolve_ability_condition_packet(
     declaration must never burn the ability's Stamina/Focus (mirrors the attack path's wasted-target
     guards). Only once a live target is confirmed do we deduct the cost (pre-gated at declare time via
     _gate_ability_condition) and land applies_condition on it via the shared helper — the mutation
-    rides the phase save_combat_state (no extra write). ``player`` is the for_update row from
-    prevalidation, reused so the lock is taken once."""
+    rides the phase save_combat_state (no extra write)."""
     if state is None or player is None:
         return {"actor_id": attacker.id, "resolved": False, "reason": "no active combat or player"}
 
@@ -153,7 +157,7 @@ async def _resolve_ability_condition_packet(
     # resolve time is dropped (partial landing); an all-off-state list lands nothing but still
     # spends the cost (the spell-path convention — the declaration committed to the action).
     if decl.target_ids:
-        await _deduct_ability_cost(attacker.id, player, ability, variant, persistence=persistence, conn=conn)
+        await _deduct_ability_cost(attacker.id, ability, variant, persistence=persistence, queries=queries, conn=conn)
         summary = {
             "actor_id": attacker.id,
             "resolved": True,
@@ -177,7 +181,7 @@ async def _resolve_ability_condition_packet(
 
     steps = progress.steps if progress is not None else {}
     if not steps.get("cost_paid"):
-        await _deduct_ability_cost(attacker.id, player, ability, variant, persistence=persistence, conn=conn)
+        await _deduct_ability_cost(attacker.id, ability, variant, persistence=persistence, queries=queries, conn=conn)
         steps["cost_paid"] = True
 
     if ability.save is not None:

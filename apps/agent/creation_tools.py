@@ -267,6 +267,9 @@ async def finalize_character(context: RunContext) -> str | tuple:
     except ValueError as e:
         logger.exception("Invalid character data for %s", sd.player_id)
         raise ToolError("Invalid character data. Please check your choices.") from e
+    # Warrior's Endurance projects max HP on read and never writes hp.max, so a new follower
+    # starts at the projected maximum or they would begin the game looking wounded.
+    character_data["hp"]["current"] = effective_hp(character_data)["max"]
 
     # Persist to DB
     try:

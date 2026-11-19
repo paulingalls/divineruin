@@ -280,3 +280,20 @@ async def test_blade_critical_preserves_existing_hollowed(stage):
         result = await _resolve_one_packet(make_context().userdata, state, packet, **deps(5))
     assert result["critical_save"]["success"] is False
     assert target.conditions == [{"type": "hollowed", "stage": stage, "duration": None, "source": "prior"}]
+
+
+@pytest.mark.parametrize(("face", "rewarded"), [(8, False), (1, True)])
+async def test_worthy_foe_pays_only_when_fortitude_fails(catalog_fight, face, rewarded):
+    from combat.test_spell_damage_lands import declare_spell, prepare_spell
+
+    from conditions import apply_condition
+
+    ctx = await catalog_fight("hollow_knight")
+    foe = participant(ctx.userdata.combat_state, "foe")
+    foe.conditions = apply_condition(foe.conditions, "worthy_foe", source=ctx.userdata.player_id)
+    await prepare_spell(ctx, "arcane_magic_missile")
+    await declare_spell(ctx, "arcane_magic_missile", "")
+    result = await resolve(ctx, raw=100, face=face)
+    assert result["cast"]["damage_result"]["unholy_fortitude"]["success"] is not rewarded
+    state = await load_combat(ctx.userdata.combat_state.combat_id)
+    assert [r["target_id"] for r in state.judgment_rewards] == (["foe"] if rewarded else [])

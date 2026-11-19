@@ -54,23 +54,14 @@ class ConditionSpec:
     # no-ops an incoming type listed here. The Temporary Hollowed is immune to Charmed/Frightened/
     # Poisoned.
     immunities: tuple[str, ...] = ()
-    # Beneficial bonus DIE (M4.8 story-001): a flat +Ndk the BEARER adds to their own qualifying roll,
-    # consumed on use. Distinct from advantage (roll-twice) and from bonus_damage_dice (an attacker's
-    # rider on a hit). bonus_die_scopes names the roll KINDS it applies to — a subset of
-    # ("attack", "save", "check"); all three = "any roll". Blessed = attack+save; Inspired = any roll.
-    # The resolver (story-002) matches the roll's kind against these scopes, then rolls and consumes.
+    # A bonus to the bearer's roll total. Clearance controls whether the die is single-use.
     bonus_die: str | None = None
     bonus_die_scopes: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
 class BonusDie:
-    """One beneficial bonus die a bearer adds to a qualifying roll, tagged with the condition that
-    granted it so the resolver can consume that condition on use (M4.8 story-001).
-
-    Unlike the unioned ``*_scopes`` sets, bonus dice are surfaced PER-CONDITION (a tuple, not a
-    union) precisely because each is consumed-on-use — story-002 must know which condition to remove.
-    A bearer who is concurrently Blessed AND Inspired therefore surfaces two distinct dice, not one."""
+    """Keep each granting condition identifiable so single-use dice can be cleared independently."""
 
     source: str  # condition type that granted the die, e.g. "blessed"
     dice: str  # dice notation, e.g. "1d4"
@@ -95,8 +86,6 @@ class ConditionEffects:
     bonus_damage_dice: str | None = None
     bonus_damage_type: str | None = None
     immunities: frozenset[str] = field(default_factory=frozenset)
-    # Beneficial bonus dice (M4.8 story-001): one BonusDie per active beneficial condition (Blessed,
-    # Inspired). Per-condition, not unioned, because each is consumed on use — see BonusDie.
     bonus_dice: tuple[BonusDie, ...] = ()
 
 
@@ -107,6 +96,8 @@ CONDITION_CATALOG: dict[str, ConditionSpec] = {
             "amount"
         ],
     ),
+    "battle_cry": ConditionSpec(clearance="duration", bonus_die="1d4", bonus_die_scopes=("attack",)),
+    "worthy_foe": ConditionSpec(clearance="end_of_combat_or_dismissed", restrictions=("incoming_advantage",)),
     # --- Combat conditions ---
     "wounded": ConditionSpec(
         clearance="long_rest",

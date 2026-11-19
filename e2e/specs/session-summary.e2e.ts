@@ -22,7 +22,8 @@ async function requestLeave(sessionPage: import("../fixtures/session.js").Sessio
   await sessionPage.enterFromHome();
   await sessionPage.injectSessionInit();
   await page.clock.install();
-  await page.clock.pauseAt(new Date());
+  // The browser's clock, not the runner's, may be ahead: pause just past the page's own now.
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1000);
   await page.getByRole("button", { name: "Leave", exact: true }).click();
   await expect(page.getByText("Wrapping up…", { exact: true })).toBeVisible();
   const observations = await page.evaluate(() => window.__DR!.transport);

@@ -22,6 +22,7 @@ def writable_media(monkeypatch, tmp_path):
 
 def startup_env():
     env = {k: os.environ[k] for k in ("PATH", "HOME")}
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
     env.update(
         {
             key: "smoke-" + key

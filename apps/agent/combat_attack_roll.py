@@ -9,6 +9,8 @@ import condition_voice_rules
 import conditions
 from dramatic import DramaticContext, evaluate_dramatic_context
 
+BEACON = "Beacon"
+
 
 def roll_attack(
     attacker,
@@ -74,6 +76,12 @@ def attack_roll_inputs(attacker, target, target_ac_bonus, combat_state, action, 
     attack_mod = attacker.attack_mod
     if combat_state is not None:
         attack_mod += combat_marks.attack_bonus(combat_state, attacker, target)
+        if (
+            attacker.hollow is not None
+            and target.orenthel_beacon
+            and target.id not in combat_state.beacon_attacks.get(attacker.id, ())
+        ):
+            attacker_data["attack_disadvantage_source"] = BEACON
     return attacker_data, effective_ac, attack_mod
 
 
@@ -81,6 +89,14 @@ def spend_sneak_attack(attacker, combat_state, attack_result) -> None:
     """Mark this round's Sneak Attack used once a finished attack actually added its dice."""
     if combat_state is not None and attack_result.sneak_attack_dice is not None:
         attacker.sneak_attack_round = combat_state.round_number
+
+
+def record_beacon_attack(combat_state, attacker, target, attack_result: check_resolution_attack.AttackResult) -> None:
+    if combat_state is None or attack_result.attack_disadvantage_source != BEACON:
+        return
+    targets = combat_state.beacon_attacks.setdefault(attacker.id, [])
+    if target.id not in targets:
+        targets.append(target.id)
 
 
 def promote_attack(attack_result, enemies_remaining, is_first_attack_of_combat):

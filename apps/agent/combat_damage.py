@@ -33,6 +33,7 @@ from combat_fate_rolls import packet_save
 from combat_fortitude import roll_fortitude, try_fortitude
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from kaelen_gift import trigger_iron_resolve
+from patron_combat_edges import reward_worthy_foe
 from session_data import CombatParticipant, CombatState, SessionData
 from tool_support import (
     SOUND_ATTACK_CRITICAL,
@@ -355,6 +356,9 @@ async def _apply_damage(
             outcome=fortitude_outcome,
             fortitude_save=fortitude_save,
         )
+        # A foe standing back up on Unholy Fortitude was not defeated, so Worthy Foe waits.
+        if hp_before > 0 and target.hp_current <= 0 and combat_state is not None:
+            await reward_worthy_foe(combat_state, target, queries=queries, conn=conn)
     elif hp_status in ("bloodied", "critical") and (not save_damage or attack_result.damage > 0):
         sounds.append(SOUND_HEARTBEAT)
 
@@ -472,6 +476,8 @@ async def _apply_damage(
             rider_ignores_resistance=attack_result.rider_ignores_resistance,
             consumed_conditions=attack_result.consumed_conditions,
         )
+        if attack_result.attack_disadvantage_source is not None:
+            response["attack_disadvantage_source"] = attack_result.attack_disadvantage_source
         log_outcome = hit_miss
     if action.get("self_heal") == "damage_dealt":
         response["self_healed"] = self_healed

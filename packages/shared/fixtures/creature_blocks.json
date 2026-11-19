@@ -33695,7 +33695,9 @@
     "precise_strike",
     "hollowed",
     "temporary_hollowed",
-    "iron_resolve"
+    "iron_resolve",
+    "battle_cry",
+    "worthy_foe"
   ],
   "resistance_tags": [
     "pragmatic",

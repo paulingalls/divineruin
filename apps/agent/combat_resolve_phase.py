@@ -102,6 +102,7 @@ async def _resolve_phase_locked(
     fate_rolls = PhaseRolls(kept=kept)
     cast_outcome = AbilityCastOutcome()
     packet_summaries: list[dict] = []
+    previous_judgments = len(cs.judgment_rewards)
     async with phase_transaction_with_recovery(session, cs, db_mod=db_mod, mutations=mutations) as conn:
         if resolving_allies:
             if cs.ally_continuation is None:
@@ -208,12 +209,14 @@ async def _resolve_phase_locked(
     # Capture the combat location before teardown can move the party to its death anchor.
     ward_location_id = session.location_id
     handoff: tuple | None = None
+    judgment_rewards = state.judgment_rewards[previous_judgments:]
     if resuming:
         zhael_fate.effects_committed(session)
     if ended_outcome is None:
         session.combat_state = state
     else:
         assert end_data is not None
+        end_data["judgment_rewards"] = judgment_rewards
         handoff = _end_combat_finish(session, state, ended_outcome, end_data)
     offer = None
     if fate_rolls.pending is not None:
@@ -305,6 +308,8 @@ async def _resolve_phase_locked(
         "exhaustion_narration": exhaustion_narration,
         "legendary_available": wrap_adv.legendary_available,
     }
+    if judgment_rewards:
+        response["judgment_rewards"] = judgment_rewards
     if offer is not None:
         response.update(offer.response())
     if facts := combat_wrongdoing.aggression_facts(state):
