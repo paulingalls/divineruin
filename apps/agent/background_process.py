@@ -153,7 +153,11 @@ class BackgroundProcess:
             if checkpoint_only or pid not in self._dwell_generations or self._dwell_generations[pid] != current
         }
         self._dwell_generations = generations
-        facts = await still_dwell.advance(self._sd, time.time, checkpoint_only=reset)
+        try:
+            facts = await still_dwell.advance(self._sd, time.time, checkpoint_only=reset)
+        except TRANSIENT_IO_ERRORS:
+            logger.error("Still dwell advance failed", exc_info=True)
+            return False
         if facts:
             self._queue_speech(SpeechPriority.CRITICAL, f"Tell the party what happened. {facts}")
         return bool(facts)
