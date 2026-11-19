@@ -16,7 +16,7 @@ import db_queries
 import reaction_windows
 from combat_action_availability import action_summary
 from combat_attack_roll import deserialize_roll as deserialize_roll
-from combat_attack_roll import record_beacon_attack, roll_attack
+from combat_attack_roll import roll_attack
 from combat_attack_roll import serialize_roll as serialize_roll
 from combat_damage import apply_attack_result
 from condition_restrictions import cannot_act
@@ -132,7 +132,6 @@ async def apply_rolled_attack(
 ):
     if attack_result is not None:
         combat_wrongdoing.record_attack(combat_state, attacker, target)
-        record_beacon_attack(combat_state, attacker, target, attack_result)
     summary = await apply_attack_result(
         session,
         attacker,
