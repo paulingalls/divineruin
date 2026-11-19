@@ -1,7 +1,7 @@
 """Apply damage, including zero-HP transitions and their consequences."""
 
 import logging
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 from functools import partial
 
 import check_resolution_attack
@@ -29,7 +29,7 @@ from combat_enemy_active import (
 )
 from combat_events import emit_or_publish
 from combat_fate_rolls import packet_save
-from combat_fortitude import try_fortitude
+from combat_fortitude import roll_fortitude, try_fortitude
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from kaelen_gift import trigger_iron_resolve
 from session_data import CombatParticipant, CombatState, SessionData
@@ -56,6 +56,7 @@ def _handle_hp_zero(
     hp_status: str,
     sounds: list[str],
     outcome: dict | None = None,
+    fortitude_save=None,
 ) -> tuple[str, bool, list[str]]:
     """Resolve a target dropped to 0 HP — Hollowed rise, instant death, fall, or companion KO.
 
@@ -72,7 +73,7 @@ def _handle_hp_zero(
         not was_fallen
         and target.unholy_fortitude is not None
         and not target.hollow_death_resolved
-        and try_fortitude(target, outcome)
+        and try_fortitude(target, outcome, fortitude_save)
     ):
         return combat_resolution.hp_threshold_status(target.hp_current, target.hp_max), False, []
     if not was_fallen and target.type == "player" and conditions.hollowed_stage(target.conditions) >= 2:
@@ -150,7 +151,7 @@ async def apply_attack_result(
 ) -> dict:
     if progress is None:
         assert attack_result is not None
-        return await _apply_damage(
+        direct = await _apply_damage(
             session,
             attacker,
             action,
@@ -166,8 +167,14 @@ async def apply_attack_result(
             sink=sink,
             publish_roll=publish_roll,
         )
+        assert direct is not None  # only a fortitude_progress hold pauses
+        return direct
 
     receipt = progress.steps.get("damage_receipt")
+    if receipt is not None and "pending" in receipt:
+        # A held Unholy Fortitude save paused before HP changed; land the same blow now.
+        action, attack_result, effective_ac = _thaw_blow(receipt["pending"])
+        receipt = None
     if receipt is None:
         assert attack_result is not None
         response = await _apply_damage(
@@ -186,7 +193,12 @@ async def apply_attack_result(
             sink=sink,
             publish_roll=publish_roll,
             defer_concentration=True,
+            fortitude_progress=progress.scope("fortitude"),
         )
+        if response is None:
+            # Callers treat a present receipt as "already rolled" and resume without re-rolling.
+            progress.steps["damage_receipt"] = {"pending": _freeze_blow(action, attack_result, effective_ac)}
+            return {}
         if "consumed_conditions" in response:
             response["consumed_conditions"] = list(response["consumed_conditions"])
         receipt = {"response": response, "automatic": isinstance(attack_result, AutomaticDamageResult)}
@@ -225,6 +237,23 @@ async def apply_attack_result(
     return response
 
 
+def _freeze_blow(action, attack_result, effective_ac) -> dict:
+    fields = asdict(attack_result)
+    if "consumed_conditions" in fields:
+        fields["consumed_conditions"] = list(fields["consumed_conditions"])
+    return {"action": action, "kind": type(attack_result).__name__, "fields": fields, "effective_ac": effective_ac}
+
+
+def _thaw_blow(data: dict):
+    kinds = {
+        cls.__name__: cls for cls in (check_resolution_attack.AttackResult, SaveDamageResult, AutomaticDamageResult)
+    }
+    fields = dict(data["fields"])
+    if "consumed_conditions" in fields:
+        fields["consumed_conditions"] = tuple(fields["consumed_conditions"])
+    return data["action"], kinds[data["kind"]](**fields), data["effective_ac"]
+
+
 async def _apply_damage(
     session: SessionData,
     attacker,
@@ -242,11 +271,15 @@ async def _apply_damage(
     sink=None,
     publish_roll: bool = True,
     defer_concentration: bool = False,
-) -> dict:
+    fortitude_progress=None,
+) -> dict | None:
     """Apply already-rolled attack or save damage and its shared combat effects.
 
     Everything ``roll_attack`` deliberately does not do. Split out for the Beat-3 hold (M29,
     story-016), so the engine can pause on a post-roll, pre-damage reaction window.
+
+    With ``fortitude_progress``, a killing blow's Unholy Fortitude save may be Zhael-held: it is
+    rolled before any HP changes, and None is returned while the choice is pending.
     """
     import choir_encounter
 
@@ -261,6 +294,19 @@ async def _apply_damage(
     from combat_veilrender import mark_radiant
 
     mark_radiant(target, action, attack_result)
+    fortitude_save = None
+    if (
+        fortitude_progress is not None
+        and target.unholy_fortitude is not None
+        and not target.is_fallen
+        and not target.hollow_death_resolved
+        and attack_result.damage >= target.hp_current
+    ):
+        fortitude_save = await packet_save(
+            fortitude_progress, session, target.id, "destruction", partial(roll_fortitude, target)
+        )
+        if fortitude_save is None:
+            return None
     automatic = isinstance(attack_result, AutomaticDamageResult)
     save_damage = isinstance(attack_result, (SaveDamageResult, AutomaticDamageResult))
     if save_damage and publish_roll:
@@ -343,6 +389,7 @@ async def _apply_damage(
             hp_status=hp_status,
             sounds=sounds,
             outcome=fortitude_outcome,
+            fortitude_save=fortitude_save,
         )
     elif hp_status in ("bloodied", "critical") and (not save_damage or attack_result.damage > 0):
         sounds.append(SOUND_HEARTBEAT)

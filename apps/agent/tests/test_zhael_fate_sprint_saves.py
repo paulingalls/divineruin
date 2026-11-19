@@ -81,3 +81,35 @@ async def test_knight_critical_save_is_held(world, reload):
         assert has_condition(required_player(final, pid).conditions, "hollowed") is reload
     finally:
         await db_mutations.delete_combat_state(state.combat_id)
+
+
+@pytest.mark.parametrize("reload", [False, True])
+async def test_unholy_fortitude_save_is_held(world, reload):
+    """An enemy's save is "anyone's" d20: the Knight's Fortitude roll waits for the follower."""
+    await configure(world, "zhael", "mage")
+    pid = world.ids[0]
+    knight = _enemy("knight", 5)
+    knight.unholy_fortitude = {"save": "CON", "dc": 10, "increment": 5, "narration_cue": "It rises."}
+    state = _build_state(pid, pid, [knight])
+    session = world.ctx.userdata
+    session.combat_state = state
+    call = game_tools(session, declare_phase, resolve_phase, activate)
+    try:
+        await call("declare_phase", declarations=[attack(pid, "knight"), defend("knight")])
+        with (
+            patch("check_resolution.dice_roll", side_effect=[_d20(15), _d20(2), _d20(18)]) as dice,
+            patch("check_resolution_attack.dice_roll", return_value=_damage_die(8)),
+        ):
+            swing = (await call("resolve_phase"))["fate_offer"]
+            assert swing["roll_kind"] == "attack" and swing["roller_id"] == pid
+            save = (await _keep(call, swing))["fate_offer"]
+            assert save["roll_kind"] == "save" and save["roller_id"] == "knight" and save["die"] == 2
+            assert required_player(session.combat_state, "knight").hp_current == 5
+            result, final = await _settle(world, session, state, call, save, reload)
+            assert dice.call_count == (2 if reload else 3)
+        fortitude = result["packets"][0]["unholy_fortitude"]
+        assert fortitude["roll"] == (2 if reload else 18) and fortitude["success"] is not reload
+        fallen = required_player(final, "knight")
+        assert fallen.is_fallen is reload and fallen.hp_current == (0 if reload else 1)
+    finally:
+        await db_mutations.delete_combat_state(state.combat_id)
