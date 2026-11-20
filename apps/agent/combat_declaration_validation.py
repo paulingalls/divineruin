@@ -140,6 +140,8 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
                 raise ValueError(f"{declaration.action} is not declarable in combat")
             combat_martial.require_targets(next_state, actor, declaration, ability)
             if ability.id == DEVASTATING_STRIKE:
+                # A weapon strike, not a ranged line: check its target by melee reach to the wall's nearest point.
+                require_line(next_state, actor.id, declaration.target_id, melee=True)
                 return
     if declaration.type is DeclarationType.ABILITY and actor.type != "player":
         pool_action = _find_action(actor, declaration.action)

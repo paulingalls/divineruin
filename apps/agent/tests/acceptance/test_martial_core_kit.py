@@ -11,6 +11,7 @@ from acceptance.test_still_anchors import fresh_session
 from acceptance.test_still_anchors import mock_combat_agent_factory as mock_combat_agent_factory
 
 import combat_spatial
+import combat_structures
 import db_mutations
 import db_queries
 from activate_tools import activate
@@ -461,3 +462,20 @@ async def test_cunning_action_refusals(rogue: MawlingHarness) -> None:
     assert "Stamina" in refusal
     player = await db_queries.get_player(actor)
     assert player is not None and player["stamina"]["current"] == 1
+
+
+async def test_devastating_strike_refuses_a_foe_behind_a_wall(fight: MawlingHarness) -> None:
+    actor = fight.players[0]
+    state = await fight.reload()
+    assert state.architect_encounter is not None
+    foe = state.architect_encounter["owner_id"]
+    combat_spatial.place(state, actor, pos(0))
+    combat_spatial.place(state, foe, pos(5))
+    combat_structures.add_wall(state, "test_wall", "Test Wall", pos(2.5, -5), pos(2.5, 5))
+    await fight.persist()
+    row = await db_queries.get_player(actor)
+    assert row is not None
+    refused = await declare(fight, "warrior_devastating_strike", [foe], error=True)
+    assert "Line blocked by Test Wall" in refused
+    after = await db_queries.get_player(actor)
+    assert after is not None and after["stamina"]["current"] == row["stamina"]["current"]
