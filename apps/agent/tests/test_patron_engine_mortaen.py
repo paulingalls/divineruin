@@ -243,6 +243,26 @@ async def test_both_gifts_preserve_live_fate_offer(world, patron, phase):
         assert (await row(world, 0))["patron_gifts"][ability] == {"spent": True}
 
 
+@pytest.mark.parametrize("patron", ["mortaen", "syrath"])
+async def test_both_gifts_refuse_an_offer_outside_the_round_fields(world, patron):
+    """Wrap saves, Inner Fire and death saves hold an offer with no ally_continuation or held_actions."""
+    ability = GIFT if patron == "mortaen" else "syrath_veilstep"
+    args = {"destination": {"x": 5, "y": 0, "z": 0}} if patron == "syrath" else {}
+    async with fight(world, patron=patron, guest="zhael") as call:
+        position(world)
+        await checkpoint(world)
+        session = world.ctx.userdata
+        offering = object()
+        session.fate_offer = offering
+        assert not active(world).ally_continuation and not active(world).held_actions
+        before = await snapshot(world)
+        with pytest.raises(ToolError, match="partially resolved"):
+            await call("activate", id=ability, **args)
+        assert session.fate_offer is offering
+        assert await snapshot(world) == before
+        session.fate_offer = None
+
+
 @pytest.mark.parametrize("tool", ["activate", "learn"])
 async def test_unrelated_commands_still_settle_fate(world, tool):
     async with fight(world, guest="zhael") as call:
