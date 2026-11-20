@@ -394,7 +394,7 @@ async def _resolve_ability_packet(
                 attacker,
                 recipients,
                 caster_row=player,
-                synergy=partial(bonus_components, player, spell=spell),
+                synergy=partial(bonus_components, player),
                 packet=cast_packet,
                 conn=conn,
             )
