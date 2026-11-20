@@ -7,8 +7,10 @@ from acceptance.test_architect_fight import isolated_content_cache as isolated_c
 from acceptance.test_architect_fight import mock_combat_agent_factory as mock_combat_agent_factory
 from acceptance.test_architect_fight import pos
 
+import combat_attack_roll
 import combat_spatial
 import combat_structures
+from declarations import DEFEND_AC_BONUS
 
 
 async def declare(fight, owner_action, *, error=False):
@@ -186,3 +188,29 @@ async def test_architect_incapacitated_after_declaration_spends_nothing(fight):
     state = await fight.reload()
     assert state.architect_encounter["reshape_count"] == 0
     assert wall in state.spatial["structures"]
+
+
+async def test_defend_with_reshape_guards_against_earlier_attackers(fight):
+    state = await fight.reload()
+    record = state.architect_encounter
+    owner, player, south = record["owner_id"], fight.players[0], record["structure_ids"][1]
+    combat_spatial.place(state, player, pos(13, 9))
+    state.initiative_order = [player, *(p for p in state.initiative_order if p != player)]
+    await fight.persist()
+    strike = {"kind": "attack", "actor_id": player, "target_id": owner, "action": "Longsword"}
+    reshape = [{"kind": "destroy_wall", "wall_id": south}]
+    await fight.command(
+        "declare_phase",
+        {
+            "declarations": [
+                {**strike, "held_item_id": "", "rider": "", "reshape": []},
+                {"kind": "defend", "actor_id": owner, "reshape": reshape},
+                *[{"kind": "defend", "actor_id": p, "reshape": []} for p in fight.players if p != player],
+            ]
+        },
+    )
+    with patch("combat_attack_roll.attack_roll_inputs", wraps=combat_attack_roll.attack_roll_inputs) as inputs:
+        await fight.drain()
+    [bonus] = [c.args[2] for c in inputs.call_args_list if c.args[1].id == owner]
+    assert bonus == DEFEND_AC_BONUS
+    assert (await fight.reload()).get_participant(south).is_dead

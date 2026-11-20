@@ -6,7 +6,7 @@ from check_resolution_attack import _is_ranged
 from combat_down import has_damage
 from combat_movement_cost import reachable_point
 from combat_spatial import distance, number, position, require_spatial
-from combat_spatial_declarations import apply_move, in_pit, ineligible
+from combat_spatial_declarations import apply_move, ineligible
 from combat_structures import blocked_reason, blocking_wall, nearest_wall_point
 from declarations import Declaration, DeclarationType
 from encounter_actions import action_kind
@@ -58,7 +58,7 @@ def prepare(state, actor, target, action, budget):
             axis: origin[axis] + (destination[axis] - origin[axis]) * travel_needed / separation for axis in origin
         }
         end = reachable_point(spatial, actor.id, origin, desired, budget["remaining"])
-        if end != origin or in_pit(state, actor.id):
+        if end != origin:
             moved = apply_move(
                 state,
                 actor,

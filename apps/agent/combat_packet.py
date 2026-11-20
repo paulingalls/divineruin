@@ -200,8 +200,6 @@ async def _resolve_action_packet(
         )
 
     if decl.type is DeclarationType.DEFEND:
-        if decl.reshape:
-            state.ac_modifiers[packet.actor_id] = decl.ac_bonus
         return {
             "actor_id": packet.actor_id,
             "resolved": True,

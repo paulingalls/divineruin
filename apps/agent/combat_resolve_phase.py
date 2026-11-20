@@ -120,11 +120,7 @@ async def _resolve_phase_locked(
 
                 # Defend protects the whole phase, including attacks earlier in initiative.
                 for packet in adv.packets:
-                    if (
-                        packet.declaration.type is not DeclarationType.DEFEND
-                        or not packet.declaration.ac_bonus
-                        or packet.declaration.reshape
-                    ):
+                    if packet.declaration.type is not DeclarationType.DEFEND or not packet.declaration.ac_bonus:
                         continue
                     defender = state.get_participant(packet.actor_id)
                     if defender is not None and not defender.is_fallen:
