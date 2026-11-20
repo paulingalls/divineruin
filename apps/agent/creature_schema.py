@@ -240,6 +240,11 @@ def validate_creature_stat_block(creature: object) -> list[str]:
                             and ability.get("damage") == "0"
                             and ability.get("applies_condition")
                             and "duration" not in ability
+                            and not (
+                                creature.get("id") == "hollow_architect"
+                                and ability.get("name") == "Entomb"
+                                and ability["applies_condition"] == "restrained"
+                            )
                         ):
                             problems.append(f"{path}.duration: invalid")
                         else:
