@@ -128,7 +128,8 @@ async def test_real_patron_gift_round_trip_from_gods_content(patron_id, monkeypa
             "state",
         } | (
             {"activation_hint"}
-            if authored["id"] in {"syrath_veilstep", "mortaen_death_ward", "orenthel_dawns_embrace"}
+            if authored["id"]
+            in {"syrath_veilstep", "mortaen_death_ward", "orenthel_dawns_embrace", "thyra_wildmothers_wrath"}
             else set()
         )
         assert row["id"] == authored["id"] and row["tier"] == tier.title()
