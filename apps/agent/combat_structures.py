@@ -99,8 +99,13 @@ def validate_participants(state: CombatState) -> None:
             if type(wall.hp_current) is not int or not 0 < wall.hp_current <= WALL_HP:
                 raise ValueError(f"{label}: invalid live structure HP")
             live_ids.add(wall.id)
-    if set(spatial.get("structures", {})) != live_ids:
-        raise ValueError("structure segments must identify exactly the live structures")
+    import architect_entomb
+
+    segments = set(spatial.get("structures", {}))
+    chambers = architect_entomb.chambers(spatial)
+    if segments.intersection(chambers) or segments.union(chambers) != live_ids:
+        raise ValueError("structure segments and chambers must identify exactly the live structures")
+    architect_entomb.validate_links(state, chambers)
 
 
 def _xy_delta(origin: Point, end: Point) -> Vector:
@@ -181,6 +186,20 @@ def touches(point: Point, segment: Segment) -> bool:
     return math.dist(_coords(point), _coords(nearest_wall_point(point, segment))) < 1e-9
 
 
+def chamber_line_blocker(
+    state: CombatState, spatial: dict, origin_id: str | None, target_id: str | None
+) -> CombatParticipant | None:
+    from architect_entomb import blocker
+
+    chamber_id = blocker(spatial, origin_id, target_id)
+    if chamber_id is None:
+        return None
+    chamber = state.get_participant(chamber_id)
+    if chamber is None:
+        raise ValueError(f"Unknown chamber participant {chamber_id!r}")
+    return chamber
+
+
 def blocking_wall(
     state: CombatState,
     spatial: dict,
@@ -191,6 +210,8 @@ def blocking_wall(
     origin_id: str | None = None,
     effect_origin: bool = False,
 ) -> CombatParticipant | None:
+    if chamber := chamber_line_blocker(state, spatial, origin_id, target_id):
+        return chamber
     # A wall never blocks a line that starts or ends on it. For an effect (not a mover),
     # that includes every wall the origin point touches: a blast centred on a wall reaches
     # out along it, so movement keeps the strict contact rule.
@@ -221,13 +242,15 @@ def nearest_wall_point(origin: Point, segment: Segment) -> Point:
 def line_blocker(
     state: CombatState, origin_id: str, target_id: str | None, *, melee: bool = False
 ) -> CombatParticipant | None:
-    if target_id is None or target_id == origin_id or state.spatial is None or not state.spatial.get("structures"):
+    if target_id is None or target_id == origin_id or state.spatial is None:
+        return None
+    if not (state.spatial.get("structures") or state.spatial.get("chambers")):
         return None
     if state.get_participant(target_id) is None:
         return None
     spatial = require_spatial(state)
     origin = position(spatial, origin_id)
-    segment = spatial["structures"].get(target_id)
+    segment = spatial.get("structures", {}).get(target_id)
     destination = nearest_wall_point(origin, segment) if melee and segment else position(spatial, target_id)
     return blocking_wall(state, spatial, origin, destination, target_id=target_id, origin_id=origin_id)
 
@@ -279,6 +302,9 @@ def wall_facts(state: CombatState, spatial: dict) -> tuple[list[dict], list[str]
 def collapse_wall(state: CombatState | None, wall: CombatParticipant) -> None:
     if state is None or state.spatial is None:
         raise ValueError(f"{wall.name} ({wall.id}) requires spatial placement")
-    del state.spatial["structures"][wall.id]
+    import architect_entomb
+
+    if not architect_entomb.unlink(state, wall.id):
+        del state.spatial["structures"][wall.id]
     wall.hp_current = 0
     wall.is_dead = wall.is_fallen = True

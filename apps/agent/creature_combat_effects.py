@@ -34,6 +34,7 @@ def deferred_effects(row, *, composite=False):
                 "Architect's Domain",
                 "Incorporeal Movement",
                 "Geometry Strike",
+                "Entomb",
                 "Reshape",
                 "Shift Wall",
                 "Reactive Architecture",

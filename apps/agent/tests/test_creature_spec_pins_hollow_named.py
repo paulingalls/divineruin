@@ -105,7 +105,7 @@ RECHARGES = {
         {"kind": "roll", "die": 6, "threshold": 5},
         {"kind": "encounter", "uses": 1},
     ),
-    "hollow_architect": ("1/round", "5-6", "1/encounter", "1/encounter", None),
+    "hollow_architect": ("1/round", {"kind": "roll", "die": 6, "threshold": 5}, "1/encounter", "1/encounter", None),
 }
 
 

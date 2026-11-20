@@ -46,7 +46,7 @@ def prepare(state, actor, target, action, budget):
         "moved_ft": 0,
         "destination": dict(origin),
     }
-    if wall := blocking_wall(state, spatial, origin, destination, target_id=target.id):
+    if wall := blocking_wall(state, spatial, origin, destination, target_id=target.id, origin_id=actor.id):
         return {**facts, "resolved": False, "attack_resolved": False, "reason": blocked_reason(wall)}
     if separation <= reach:
         return facts

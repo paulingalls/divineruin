@@ -162,7 +162,6 @@ const HOLLOW_CLASSES = ["drift", "rend", "wrack", "named"];
 const ATTRIBUTES = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
 const LOOT_IDS = new Set(lootTables.map((row) => row.id));
 type Kind = "string" | "integer" | "boolean" | "object" | "array";
-
 export function validateCreatureStatBlock(creature: unknown): string[] {
   const problems: string[] = [];
   if (!isObject(creature)) return ["creature: expected object"];
@@ -404,7 +403,12 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
               kind === "attack" &&
               ability.damage === "0" &&
               ability.applies_condition &&
-              !("duration" in ability)
+              !("duration" in ability) &&
+              !(
+                creature.id === "hollow_architect" &&
+                ability.name === "Entomb" &&
+                ability.applies_condition === "restrained"
+              )
             )
               problems.push(`${path}.duration: invalid`);
             else combatEntry(ability, path);
@@ -488,7 +492,6 @@ function decimalLiteralsAsNaN(
 export function parseCreatureJson(raw: string): unknown {
   return JSON.parse(raw, decimalLiteralsAsNaN);
 }
-
 export function validateCreatureJson(raw: string): string[] {
   const parsed = parseCreatureJson(raw);
   return Array.isArray(parsed)

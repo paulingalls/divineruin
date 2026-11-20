@@ -1,6 +1,7 @@
 """The shared atomic declaration gate, including each selected composite strike."""
 
 import architect_encounter
+import architect_entomb
 import combat_grapple
 import combat_melee_approach
 import combat_spatial_declarations
@@ -63,9 +64,10 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
                 f"{actor.name} ({actor.id}) cannot target {target.name} ({target.id}) with {declaration.type}"
             )
         if declaration.type is DeclarationType.MANEUVER:
-            if target.is_structure:
+            own_chamber = architect_entomb.source(next_state, actor.id) == target.id
+            if target.is_structure and not own_chamber:
                 raise ValueError(f"{target.name} ({target.id}) is a structure and cannot be maneuvered")
-            if combat_grapple.grappler_id(actor.conditions) == target.id:
+            if own_chamber or combat_grapple.grappler_id(actor.conditions) == target.id:
                 persisted_declarations[actor_id]["maneuver_intent"] = ManeuverIntent.ESCAPE
     if (
         declaration.type is DeclarationType.MANEUVER
@@ -82,6 +84,10 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
     pool_action = _find_action(actor, declaration.action)
     if pool_action is not None and declaration.type in (DeclarationType.ATTACK, DeclarationType.ABILITY):
         require_available(actor, pool_action)
+        if architect_entomb.matches(actor, pool_action) and (
+            reason := architect_entomb.range_refusal(next_state, actor, pool_action, declaration.target_id)
+        ):
+            raise ValueError(reason)
         if still_encounter.is_owner(next_state, actor.id):
             from still_actions import range_refusal
 

@@ -191,4 +191,5 @@ def test_architect_named_translation_preserves_authored_attacks():
     assert [(action["name"], action["damage"]) for action in enemy["action_pool"]] == [
         ("Construct Slam", "3d10+5"),
         ("Geometry Strike", "2d8+6"),
+        ("Entomb", "0"),
     ]

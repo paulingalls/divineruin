@@ -151,6 +151,7 @@ def test_condition_action_inventory_stays_explicit():
         ("ashmark_patrol", "ashmark_soldier_1", "Shield Bash", "prone"),
         ("ashmark_patrol", "ashmark_soldier_2", "Shield Bash", "prone"),
         ("cult_cell", "cult_leader", "Hold Person", "paralyzed"),
+        ("hollow_architect", "architect", "Entomb", "restrained"),
         ("hollow_corrupted_settlement", "hollowed_knight", "Shield Slam", "prone"),
         ("hollow_knight_boss", "hollowed_knight", "Shield Slam", "prone"),
         ("hollow_still", "still_zone", "Serenity's Touch", "charmed"),

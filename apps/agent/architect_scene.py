@@ -5,6 +5,7 @@ import json
 from livekit.agents.llm import ToolError
 
 import architect_encounter
+import architect_entomb
 import combat_spatial
 from combat_state import CombatState
 
@@ -119,6 +120,7 @@ async def end(session, state: CombatState, outcome: str, *, mutations, queries, 
     if destroyed:
         await write(session, state, "destroyed", mutations=mutations, conn=conn)
     else:
+        architect_entomb.release_all(state)
         await write(session, state, "dormant", snapshot=state.to_dict(), mutations=mutations, conn=conn)
 
 

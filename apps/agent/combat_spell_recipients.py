@@ -2,7 +2,8 @@
 
 import combat_spatial as spatial
 from combat_spell_profile import scaled
-from combat_structures import blocking_wall, require_line
+from combat_structures import blocked_reason, blocking_wall, chamber_line_blocker, require_line
+from condition_sources import DeliveryRefused
 from still_encounter import protected_ids
 
 
@@ -36,13 +37,17 @@ def select(state, caster, declaration, spell, *, require_live=False):
             for target_id in dict.fromkeys(assignments)
         ]
     placement = spatial.require_spatial(state)
+    for anchor_id in ids:
+        if chamber := chamber_line_blocker(state, placement, caster.id, anchor_id):
+            raise DeliveryRefused(blocked_reason(chamber))
 
     def pos(target_id):
         return spatial.position(placement, target_id)
 
     def clear(origin_id, target_id):
         return (
-            blocking_wall(
+            chamber_line_blocker(state, placement, caster.id, target_id) is None
+            and blocking_wall(
                 state,
                 placement,
                 pos(origin_id),

@@ -88,7 +88,7 @@ def validate_scene(encounter):
 
 def validate_spatial(spatial, actor_ids):
     keys = {"positions", "locations", "zones", "speeds"}
-    if not isinstance(spatial, dict) or not keys <= set(spatial) <= keys | {"structures", "movement_areas"}:
+    if not isinstance(spatial, dict) or not keys <= set(spatial) <= keys | {"structures", "movement_areas", "chambers"}:
         raise ValueError("invalid persisted spatial record")
     validate_maps(spatial["positions"], spatial["locations"], spatial["zones"])
     speeds = mapping(spatial["speeds"], "speeds")
@@ -100,6 +100,8 @@ def validate_spatial(spatial, actor_ids):
         from combat_structures import validate_segments
 
         validate_segments(spatial["structures"])
+    if "chambers" in spatial:
+        mapping(spatial["chambers"], "chambers")
     if "movement_areas" in spatial:
         from combat_movement_cost import validate_areas
 
@@ -137,11 +139,13 @@ def place(state, target_id, destination):
 
 
 def facts(state, origin_id):
+    import architect_entomb
+
     spatial = require_spatial(state)
     origin = position(spatial, origin_id)
-    distances = {
-        key: distance(origin, position(spatial, key)) for key in sorted([*spatial["positions"], *spatial["locations"]])
-    }
+    retired = architect_entomb.retired_ids(state)
+    positions = {key: pos for key, pos in spatial["positions"].items() if key not in retired}
+    distances = {key: distance(origin, position(spatial, key)) for key in sorted([*positions, *spatial["locations"]])}
     inactive_auras = {
         f"{actor.id}_corruption_aura"
         for actor in state.participants
@@ -153,7 +157,7 @@ def facts(state, origin_id):
             "center": position(spatial, zone["center_id"]),
             "members": [
                 actor_id
-                for actor_id, pos in sorted(spatial["positions"].items())
+                for actor_id, pos in sorted(positions.items())
                 if inside(pos, position(spatial, zone["center_id"]), zone["radius_ft"])
             ],
         }
@@ -162,11 +166,11 @@ def facts(state, origin_id):
     }
     result = {
         "origin_id": origin_id,
-        "positions": deepcopy(spatial["positions"]),
+        "positions": deepcopy(positions),
         "locations": deepcopy(spatial["locations"]),
         "zones": zones,
         "distances_ft": distances,
-        "speeds_ft": deepcopy(spatial["speeds"]),
+        "speeds_ft": {key: spatial["speeds"][key] for key in positions},
         "spoken": [f"{key} is {value:g} feet from {origin_id}" for key, value in distances.items() if key != origin_id],
     }
 
@@ -178,6 +182,10 @@ def facts(state, origin_id):
     walls, spoken = wall_facts(state, spatial)
     if walls:
         result["walls"] = walls
+        result["spoken"].extend(spoken)
+    chambers, spoken = architect_entomb.facts(state, spatial)
+    if chambers:
+        result["chambers"] = chambers
         result["spoken"].extend(spoken)
     return result
 

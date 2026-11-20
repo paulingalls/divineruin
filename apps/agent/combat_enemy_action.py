@@ -3,6 +3,7 @@
 from functools import partial
 from typing import TYPE_CHECKING
 
+import architect_entomb
 import check_resolution_save
 import combat_wrongdoing
 import concentration_break
@@ -109,6 +110,7 @@ async def _resolve_enemy_condition_packet(
     if waste is not None:
         return waste
     assert target is not None
+    entomb = architect_entomb.matches(attacker, action)
     result = await packet_save(
         progress,
         session,
@@ -139,6 +141,9 @@ async def _resolve_enemy_condition_packet(
         summary["save_advantage"] = True
     if (item_save_source := target.save_advantages.get(result.save_type)) and result.advantage_applied:
         summary["save_advantage_source"] = item_save_source
+    if entomb:
+        architect_entomb.land(state, attacker, target, summary)
+        return summary
     await land_outcome(
         session,
         attacker,
