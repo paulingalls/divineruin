@@ -242,7 +242,7 @@ def facts(state: CombatState) -> dict | None:
     live_segments = spatial["structures"]
     live_walls = [wall_id for wall_id in record["structure_ids"] if wall_id in live_segments]
     details = {
-        **record,
+        **{key: value for key, value in record.items() if key != "reaction_round"},
         "hp": owner.hp_current,
         "live_wall_ids": live_walls,
         "live_walls": {wall_id: live_segments[wall_id] for wall_id in live_walls},

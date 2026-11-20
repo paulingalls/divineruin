@@ -128,6 +128,5 @@ def test_architect_metadata_retains_only_deferred_effects():
         "Entomb",
         "Cathedral",
         "Summon Constructs",
-        "Reactive Architecture",
         "hollow",
     }

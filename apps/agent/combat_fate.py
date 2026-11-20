@@ -139,13 +139,16 @@ async def continue_attack(
             ):
                 stored = asdict(prepared)
                 stored["consumed"] = list(prepared.consumed)
+                store_swing(
+                    attack_cursor,
+                    actions,
+                    declared_target,
+                    enemies_remaining,
+                    is_first_attack,
+                    attack_summaries,
+                    concealment_packet,
+                )
                 attack_cursor.update(
-                    actions=actions,
-                    target_id=declared_target.id,
-                    enemies_remaining=enemies_remaining,
-                    is_first_attack=is_first_attack,
-                    summaries=attack_summaries,
-                    concealment=concealment_packet,
                     prepared=stored,
                     attacker_data=attacker_data,
                     movement=movement,
