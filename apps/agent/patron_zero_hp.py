@@ -58,7 +58,7 @@ async def trigger_death_ward(
 
 
 async def provisional_ward_verdict(
-    state: "CombatState", target_id: str, result: "AttackResult", queries=db_queries
+    state: "CombatState", target_id: str, result: "AttackResult", queries=db_queries, *, conn
 ) -> "AttackResult":
     from combat_damage_affinity import with_landed_damage
 
@@ -66,7 +66,8 @@ async def provisional_ward_verdict(
         target = state.get_participant(target_id)
         assert target is not None
         if _drops_to_zero(target, target.hp_current, result.target_hp_remaining):
-            player = await queries.get_player(target.id)
+            # The phase transaction's own connection sees a ward an earlier packet spent but has not committed.
+            player = await queries.get_player(target.id, conn=conn)
             if not isinstance(player, dict):
                 raise ValueError(f"Missing authoritative player {target.id!r}")
             if death_ward_ready(player):

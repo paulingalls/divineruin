@@ -301,3 +301,25 @@ async def test_ward_spend_and_damage_roll_back_together(world, inner):
         assert session.concentration.spell_id == "divine_bless"
         with rolls(19, 19):
             await standing(world, await land())
+
+
+async def test_held_blow_after_this_phase_spent_the_ward_keeps_its_killing_blow(world):
+    """The provisional check must see a ward spent earlier in the same phase transaction."""
+    async with fight(world, hp=5, max_hp=25, favor=0, archetype="rogue") as call:
+        position(world)
+        position(world, "mawling_2")
+        second = {**attack("mawling_2", world.ids[0]), "action": "Claw"}
+        await declare(world, call, claw(world), second)
+        dice = []
+        with rolls(*[15] * 12, damage=30):
+            for _ in range(8):
+                result = await call("resolve_phase")
+                dice = [e for e in events(world) if e.get("roll_type") == "attack"]
+                waiting = (result.get("next") or {}).get("waiting_on") or {} if isinstance(result, dict) else {}
+                if len(dice) >= 2 and waiting.get("stage") == "post_roll":
+                    break
+            else:
+                pytest.fail("second attack never held at post_roll")
+        assert (await row(world, 0))["patron_gifts"][WARD] == {"spent": True}
+        assert follower(world).hp_current == 1
+        assert dice[-1]["context"] == "killing_blow"

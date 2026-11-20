@@ -355,7 +355,11 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None, fate_roll
                         attack_result, _effective_ac = deserialize_roll(head["roll"])
                         attacker = state.get_participant(head["actor_id"])
                         attack_result = await provisional_ward_verdict(
-                            state, candidate["target_id"], attack_result, packet_deps["queries"]
+                            state,
+                            candidate["target_id"],
+                            attack_result,
+                            packet_deps["queries"],
+                            conn=packet_deps["conn"],
                         )
                         await packet_deps["sink"].emit(
                             session.room,
