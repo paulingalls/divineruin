@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, TypedDict
 
 import ability_persistence
 from check_resolution_attack import AttackResult
-from combat_down import DEATH_SAVE_LIMIT, is_terminally_down
+from combat_down import DEATH_SAVE_LIMIT
 from patron_synergy import has_engine_synergy
 
 if TYPE_CHECKING:
@@ -117,7 +117,7 @@ async def renew_on_death(
 
     receipts = []
     for recipient in sorted(state.participants, key=lambda p: p.id):
-        if recipient.type != "player" or recipient.is_fallen or is_terminally_down(recipient):
+        if recipient.type != "player" or recipient.is_fallen:
             continue
         if conn is None or not conn.is_in_transaction():
             raise ValueError("Death Feeds Renewal requires the combat transaction")

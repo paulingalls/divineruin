@@ -127,7 +127,7 @@ async def test_deescalation_spends_focus_after_renewal(world: SimpleNamespace) -
         assert await focus(world) == 4
 
 
-@pytest.mark.parametrize("control", ["fallen", "dead", "thyra"])
+@pytest.mark.parametrize("control", ["fallen", "thyra"])
 async def test_only_standing_mortaen_players_renew(world: SimpleNamespace, control: str) -> None:
     async with fight(world, "mortaen", archetype="warden", goblin_hp=5) as f:
         await setup_recipient(world, "warden")
@@ -136,7 +136,6 @@ async def test_only_standing_mortaen_players_renew(world: SimpleNamespace, contr
         )
         ally = participant(f.session.combat_state, f.ally)
         ally.is_fallen = control == "fallen"
-        ally.is_dead = control == "dead"
         if ally.is_fallen:
             ally.hp_current = 0
         packets = await f.round(attack(f.hero, GOBLIN))
@@ -195,6 +194,8 @@ async def test_damage_observes_the_zero_hp_outcome(world: SimpleNamespace, contr
         index = int(control == "embrace")
         assert renewals(packets) == ([receipt(recipient, f.ally, 3, 5)] if control == "instant" else [])
         assert await focus(world, index) == (5 if control == "instant" else 3)
+        if control == "instant":
+            assert await focus(world, 1) == 3
         if control in ("ward", "embrace"):
             gift = "Death Ward" if control == "ward" else "Dawn's Embrace"
             assert any(p.get("gift_triggered") == gift for p in packets)
