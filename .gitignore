@@ -83,3 +83,6 @@ skills-lock.json
 .watchman-cookie-*
 
 /assets/generated/
+
+# Proof repo inventory, written by apps/agent/tests/_repo_inventory.py on every Proof Python run
+/.proof-inventory.json
