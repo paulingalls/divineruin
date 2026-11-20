@@ -182,22 +182,25 @@ async def trigger_damage_gifts(
     target: CombatParticipant,
     hp_before: int,
     *,
-    players: dict[str, dict] | None,
+    players: dict[str, dict] | None = None,
     queries=db_queries,
     conn=None,
-) -> dict:
+) -> tuple[dict, int]:
+    drain_basis = max(0, hp_before - target.hp_current)
+    if players is None:
+        players = await lock_lethal_damage_players(session, target, hp_before, queries=queries, conn=conn)
     player = players[target.id] if players is not None and target.type == "player" else None
     ward = await trigger_death_ward(target, hp_before, player=player, queries=queries, conn=conn)
     if ward:
-        return ward
+        return ward, drain_basis
     embrace = await trigger_dawns_embrace(
         session, state, target, hp_before, players=players, queries=queries, conn=conn
     )
     if embrace:
-        return embrace
+        return embrace, drain_basis
     if player is None and target.type == "player" and not target.iron_resolve_spent:
         member = session.member_state(target.id)
         if member.patron_id == "kaelen":
             player = await queries.get_player(target.id, conn=conn)
     gift = trigger_iron_resolve(session, target, hp_before, player)
-    return {"gift_triggered": gift} if gift else {}
+    return ({"gift_triggered": gift} if gift else {}), drain_basis
