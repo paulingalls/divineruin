@@ -17,7 +17,7 @@ SPEC = {
     "hollow_architect": (
         "The Architect",
         20,
-        178,
+        300,
         19,
         40,
         (20, 14, 20, 22, 18, 16),
@@ -38,7 +38,7 @@ ATTACKS = {
     ),
     "hollow_architect": (
         ("Construct Slam", "melee", 15, 11, "1d6+5", "bludgeoning", "1d4 force", None, None, None),
-        ("Geometry Strike", "ranged", 120, 10, "1d6+6", "force", "Auto-hit against targets touching", None, None, None),
+        ("Geometry Strike", "ranged", 120, 10, "1d2+6", "force", "Auto-hit against targets touching", None, None, None),
     ),
 }
 ABILITIES = {

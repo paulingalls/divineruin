@@ -154,19 +154,39 @@ def player_declaration(
     row: dict,
     damage: dict[str, int],
     rallied: bool,
+    loadout: tuple[str, ...],
 ) -> DeclVariant:
     if recovery := recover(state, actor):
         return recovery
     melee = actor.archetype_id in ("warrior", "rogue")
     target = line_blocker(state, actor.id, owner.id, melee=melee) or owner
     if actor.archetype_id == "mage":
+        for spell_id in ("arcane_disintegrate", "arcane_magic_missile"):
+            if (
+                spell_id in loadout
+                and target is owner
+                and row["focus"]["current"] >= spells.get_spell(spell_id).focus_cost
+            ):
+                return ability(actor, spell_id, target)
         return ability(actor, "arcane_bolt", target)
     if actor.archetype_id == "cleric":
         wounded = [
             p for p in visible(state, actor, players) if not is_terminally_down(p) and p.hp_current * 2 < p.hp_max
         ]
+        if (
+            len(wounded) >= 2
+            and "divine_mass_heal" in loadout
+            and row["focus"]["current"] >= spells.get_spell("divine_mass_heal").focus_cost
+        ):
+            return ability(actor, "divine_mass_heal")
         if wounded and row["focus"]["current"] >= spells.get_spell(HEAL).focus_cost:
             return ability(actor, HEAL, min(wounded, key=lambda p: p.hp_current))
+        if (
+            "divine_divine_judgment" in loadout
+            and target is owner
+            and row["focus"]["current"] >= spells.get_spell("divine_divine_judgment").focus_cost
+        ):
+            return ability(actor, "divine_divine_judgment", target)
         return ability(actor, "divine_sacred_flame", target)
 
     stamina = row["stamina"]["current"]
@@ -195,6 +215,15 @@ def player_declaration(
         bash = not target.is_structure and not has_condition(target.conditions, "stunned")
         if bash and separation <= reach and stamina >= abilities.get_ability(SHIELD_BASH).cost.stamina:
             return attack(actor, target, weapon["name"], rider="shield_bash")
+        charge = "warrior_unstoppable_charge"
+        if (
+            charge in loadout
+            and target is owner
+            and separation <= reach
+            and not has_condition(target.conditions, "prone")
+            and stamina >= abilities.get_ability(charge).cost.stamina
+        ):
+            return ability(actor, charge, target)
         if stamina >= abilities.get_ability(DEVASTATING_STRIKE).cost.stamina:
             return ability(actor, DEVASTATING_STRIKE, target)
         return attack(actor, target, weapon["name"])

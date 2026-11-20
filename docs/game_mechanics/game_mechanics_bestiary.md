@@ -569,7 +569,7 @@ Blessed weapons and Turn Undead/Hollow remain source/effect guidance, not damage
 
 > *The most alarming Named. It builds. Deep within the Ashmark, near the Voidmaw — structures that shouldn't exist.*
 
-**Level:** 20 | **HP:** 178 (spec 300) | **AC:** 19 | **Speed:** 40 ft (incorporeal movement — passes through its own structures)
+**Level:** 20 | **HP:** 300 | **AC:** 19 | **Speed:** 40 ft (incorporeal movement — passes through its own structures)
 **STR** 20 (+5) **DEX** 14 (+2) **CON** 20 (+5) **INT** 22 (+6) **WIS** 18 (+4) **CHA** 16 (+3)
 **Save Prof:** INT, CON, WIS, CHA | **XP:** 5000
 
@@ -577,7 +577,7 @@ Blessed weapons and Turn Undead/Hollow remain source/effect guidance, not damage
 | Name | Type | Reach | Hit | Damage | Special |
 |---|---|---|---|---|---|
 | Construct Slam | Melee | 15 ft | +11 | 1d6+5 bludgeoning (spec 3d10+5) + 1d4 force (spec 2d6) | Target pushed 15 ft. If they hit a wall: additional 2d6 bludgeoning |
-| Geometry Strike | Ranged | 120 ft | +10 | 1d6+6 force (spec 2d8+6) | A piece of the architecture detaches and hurls itself. Auto-hit against targets touching the Architect's structures |
+| Geometry Strike | Ranged | 120 ft | +10 | 1d2+6 force (spec 2d8+6) | A piece of the architecture detaches and hurls itself. Auto-hit against targets touching the Architect's structures |
 
 **Passives:**
 - **Architect's Domain.** Within its construction zone (~0.5 mile radius), the Architect controls the environment. Walls appear. Floors shift. Ceilings lower. The terrain is hostile and constantly changing. All creatures except the Architect treat the zone as difficult terrain that reshapes each round.
@@ -594,7 +594,7 @@ Blessed weapons and Turn Undead/Hollow remain source/effect guidance, not damage
 **Reactions:**
 - **Reactive Architecture.** When targeted by a ranged attack or spell, the Architect can raise a wall section (AC 19, 30 HP) as a reaction. The wall takes the hit instead. One wall per round. It crumbles at the end of the round in which it rises (decision 14 originally kept it standing). Reshape walls persist.
 
-The original level-20 reference party won 0 of 20 fights at 300 HP. Its weapon hits dealt 2,724 damage to reaction walls and 1,619 to the Architect. With the party taking flanking routes, round-end wall expiry alone still produced 0 wins in 20 fights at 300 HP. Entomb recharging only on 6 and its lower escape DC still produced 0 wins at 300 HP. Reducing attack and active damage dice gave the party more turns to act. At 300 HP the shipped dice yielded 2 victories, 17 defeats and one fight that reached the round limit. At 178 HP all 20 fights ended, with 12 victories and 8 defeats.
+The level-20 reference warrior, mage, rogue and cleric entered with their earned attributes, trained electives, patron gifts and best compatible authored equipment. At 300 HP the party won 0 of 20 fights against the spec, 1 with round-end reaction-wall expiry, and 2 after Entomb moved to recharge 6 and escape DC 12. A moderate damage cut yielded 1 win. Reducing Slam to 1d6+5 plus 1d4 force, Cathedral to 1d8 and compression to 1d4 yielded 4 wins with Geometry Strike at 1d6+6. Geometry Strike at 1d4+6 yielded 8 wins. The shipped 1d2+6 profile yielded 12 victories and 8 defeats at 300 HP. All 20 fights ended in 13 to 48 rounds.
 
 **Legendary Actions (3/round, between other creatures' turns):**
 - **Shift Wall (1 action).** Move one wall section up to 30 ft.

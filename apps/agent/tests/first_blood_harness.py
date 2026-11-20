@@ -11,6 +11,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import architect_balance_policy as architect_policy
+from architect_reference_party import build_reference_player
 from asyncpg import Connection, Pool
 from livekit.agents import RunContext
 from livekit.agents.llm import ToolError
@@ -18,10 +19,13 @@ from sample_fixtures import make_context, make_mock_room
 
 import character_spells
 import combat_end
+import concealment
 import db_mutations
 import db_queries
+import patron_gift_tools
 import spell_knowledge
 import spells
+from activate_tools import activate
 from combat_death_save import request_death_save
 from combat_down import is_terminally_down
 from combat_turn import consume_legendary_action, declare_phase, resolve_phase
@@ -31,6 +35,7 @@ from condition_restrictions import cannot_act
 from creation_rules import build_character_data
 from declaration_payloads import AbilityDecl, AttackDecl, DeclVariant, MultiattackDecl, StrikeSelection
 from mode_tools import enter_mode
+from patron_gifts import SYRATH_SHADOW_VEIL, syrath_gift
 from progression_tools import _award_xp_core
 from rules_engine import XP_FOR_LEVEL
 from session_data import SessionData
@@ -39,7 +44,7 @@ SEEDS = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19)
 ARCHETYPES = ("warrior", "mage", "rogue", "cleric")
 PATROL = "hollow_patrol_greyvale"
 ARCHITECT_WORKS = "ashmark_architect_works"
-ARCHITECT_ROUND_LIMIT = 45
+ARCHITECT_ROUND_LIMIT = 52
 ARCHITECT_DRAIN_LIMIT = 64
 logger = logging.getLogger(__name__)
 
@@ -67,19 +72,27 @@ async def _create_player(pool: Pool, pid: str, archetype: str, location: str, le
 
 
 @asynccontextmanager
-async def architect_party(pool: Pool, seed: int) -> AsyncIterator[tuple[RunContext[SessionData], tuple[str, ...]]]:
+async def architect_party(
+    pool: Pool, seed: int
+) -> AsyncIterator[tuple[RunContext[SessionData], dict[str, tuple[str, ...]]]]:
     player_ids = tuple(f"balance_{uuid4().hex}" for _ in ARCHETYPES)
     ctx = make_context(
         player_ids[0], location_id=ARCHITECT_WORKS, room=make_mock_room(), party_member_ids=player_ids[1:]
     )
     try:
-        for archetype, pid in zip(ARCHETYPES, player_ids, strict=True):
-            await _create_player(pool, pid, archetype, ARCHITECT_WORKS, 20)
+        loadouts = {
+            pid: await build_reference_player(archetype, pid, ARCHITECT_WORKS)
+            for archetype, pid in zip(ARCHETYPES, player_ids, strict=True)
+        }
+        for pid in player_ids:
+            row = await db_queries.get_player(pid)
+            assert row is not None
+            ctx.userdata.member_state(pid).patron_id = row["divine_favor"]["patron"]
         previous_random = random.getstate()
         random.seed(seed)
         try:
             with patch("dice.random.SystemRandom", return_value=random.Random(seed)):
-                yield ctx, player_ids
+                yield ctx, loadouts
         finally:
             random.setstate(previous_random)
     finally:
@@ -233,8 +246,9 @@ async def win_counts(pool, encounter_id=PATROL, player_level=1, *, policy="basic
 
 
 async def drive_architect_fight(
-    ctx: RunContext[SessionData], player_ids: tuple[str, ...], seed: int
+    ctx: RunContext[SessionData], loadouts: dict[str, tuple[str, ...]], seed: int
 ) -> tuple[str, int]:
+    player_ids = tuple(loadouts)
     damage = dict.fromkeys(player_ids, 0)
     rallied = False
     last_legendary_round = 0
@@ -273,8 +287,19 @@ async def drive_architect_fight(
                             row = await db_queries.get_player(actor.id)
                             assert row is not None, detail
                             declaration = architect_policy.player_declaration(
-                                state, actor, owner, players, row, damage, rallied
+                                state, actor, owner, players, row, damage, rallied, loadouts[actor.id]
                             )
+                            if (
+                                isinstance(declaration, AttackDecl)
+                                and syrath_gift(row)
+                                and not concealment.is_concealed(row)
+                                and not patron_gift_tools.shadow_veil_state(row)["spent"]
+                            ):
+                                with ctx.userdata._bind_authenticated_actor(actor.id, 1, lambda *_: None):
+                                    result = await activate(ctx, SYRATH_SHADOW_VEIL)
+                                assert isinstance(result, str) and json.loads(result)["concealment"]["concealed"], (
+                                    detail
+                                )
                         elif actor.id == owner.id:
                             declaration = architect_policy.owner_declaration(state, owner, candidates)
                         else:

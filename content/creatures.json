@@ -3350,7 +3350,7 @@
     "tier": 4,
     "description": "A builder of impossible structures that weaponizes its domain.",
     "level": 20,
-    "hp": 178,
+    "hp": 300,
     "ac": 19,
     "speed": 40,
     "attributes": {
@@ -3384,7 +3384,7 @@
         "type": "ranged",
         "reach": 120,
         "to_hit": 10,
-        "damage": "1d6+6",
+        "damage": "1d2+6",
         "damage_type": "force",
         "special": "A structural fragment hurls itself. Auto-hit against targets touching the Architect's structures. Legendary action, cost 2 of 3/round.",
         "audio": "hlw_geometry_strike"

@@ -3,6 +3,10 @@
 import json
 from unittest.mock import AsyncMock
 
+import pytest
+from acceptance._postgres_fixtures import migrated_db as migrated_db
+from acceptance._postgres_fixtures import postgres_container as postgres_container
+from acceptance._postgres_fixtures import reset_db_pool as reset_db_pool
 from asyncpg import Pool
 from first_blood_harness import ARCHETYPES, ARCHITECT_WORKS, architect_party, drive_architect_fight
 from livekit.agents import RunContext
@@ -16,12 +20,16 @@ import db_queries
 from architect_encounter import CREATURE_ID
 from creature_catalog import query_creature_by_id
 from mode_tools import enter_mode
+from patron_passives import effective_hp
 from session_data import SessionData
+
+pytestmark = pytest.mark.acceptance
 
 SEEDS = tuple(range(20))
 
 
-async def test_architect_balance(dev_db_pool, monkeypatch):
+async def test_architect_balance(reset_db_pool, monkeypatch):
+    pool = await db.get_pool()
     monkeypatch.setattr(db, "_cache_get", AsyncMock(return_value=None))
     monkeypatch.setattr(db, "_cache_set", AsyncMock())
     templates = json.loads((CONTENT_ROOT / "content/encounter_templates.json").read_text())
@@ -36,7 +44,7 @@ async def test_architect_balance(dev_db_pool, monkeypatch):
     results = {}
     for seed in SEEDS:
         assert seed not in results, f"Duplicate Architect seed {seed}"
-        results[seed] = await reference_fight(dev_db_pool, seed, creature)
+        results[seed] = await reference_fight(pool, seed, creature)
         print(f"Architect seed {seed:2}: {results[seed][0]}, {results[seed][1]} rounds", flush=True)
     assert tuple(results) == tuple(range(20))
     wins = sum(outcome == "victory" for outcome, _ in results.values())
@@ -45,9 +53,10 @@ async def test_architect_balance(dev_db_pool, monkeypatch):
 
 
 async def reference_fight(pool: Pool, seed: int, creature: dict) -> tuple[str, int]:
-    async with architect_party(pool, seed) as (ctx, player_ids):
+    async with architect_party(pool, seed) as (ctx, loadouts):
+        player_ids = tuple(loadouts)
         await enter_reference(ctx, player_ids, creature)
-        outcome, rounds = await drive_architect_fight(ctx, player_ids, seed)
+        outcome, rounds = await drive_architect_fight(ctx, loadouts, seed)
         if outcome == "victory":
             row = await db_queries.get_player(player_ids[0])
             scene = architect_scene.read(row, ARCHITECT_WORKS)
@@ -70,11 +79,17 @@ async def enter_reference(ctx: RunContext[SessionData], player_ids: tuple[str, .
         row = await db_queries.get_player(player_id)
         assert row is not None
         assert (actor.archetype_id, row["class"], actor.level, row["level"]) == (archetype, archetype, 20, 20)
-        assert actor.hp_current == actor.hp_max == row["hp"]["max"]
-        for name in ("hp", "stamina", "focus"):
+        assert actor.hp_current == actor.hp_max == effective_hp(row)["max"]
+        assert (actor.attributes, actor.ac, actor.action_pool) == (
+            row["attributes"],
+            row["ac"],
+            [row["equipment"]["main_hand"]],
+        )
+        for name in ("stamina", "focus"):
             if name in row:
                 assert row[name]["current"] == row[name]["max"]
-        assert not await character_spells.get_known(player_id)
+        assert row["divine_favor"]["patron"] != "none"
+        assert len(await character_spells.get_prepared(player_id)) == {"mage": 16, "cleric": 13}.get(archetype, 0)
 
     encounter = state.architect_encounter
     assert encounter is not None

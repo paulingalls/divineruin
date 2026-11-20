@@ -31,6 +31,7 @@ from proof_runtime_inputs import CONFIG, LAUNCHES, assign_runtime, calls
 
 ROOT = Path.cwd()
 TESTS = Path("apps/agent/tests/acceptance")
+ARCHITECT_BALANCE = Path("apps/agent/tests/combat/test_architect_balance.py")
 ROOTS = ["apps/agent", "apps/agent/tests", "scripts"]
 CONFTESTS = ["apps/agent/tests/conftest.py", str(TESTS / "conftest.py")]
 PAID = {"real_llm", "openai_real_llm", "live_voice"}
@@ -269,6 +270,7 @@ def main():
     resolved = json.loads(result.stdout)
     graph = resolved["graph"]
     tests = [Path(p) for p in tracked(str(TESTS), suffix=".py") if Path(p).name.startswith("test_")]
+    tests.append(ARCHITECT_BALANCE)
     paid = {str(p) for p in tests if paid_only(p)}
     entries = [str(p) for p in tests if str(p) not in paid]
     if len({Path(p).stem for p in entries}) != len(entries):

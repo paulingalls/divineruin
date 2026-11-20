@@ -187,10 +187,10 @@ def test_unknown_named_refused():
 
 def test_architect_named_translation_preserves_authored_attacks():
     enemy = translate(next(r for r in catalog() if r["id"] == "hollow_architect"), role="named")
-    assert (enemy["hp"], enemy["ac"], enemy["level"], enemy["speed"], enemy["xp_value"]) == (178, 19, 20, 40, 5000)
+    assert (enemy["hp"], enemy["ac"], enemy["level"], enemy["speed"], enemy["xp_value"]) == (300, 19, 20, 40, 5000)
     assert [(action["name"], action.get("damage")) for action in enemy["action_pool"]] == [
         ("Construct Slam", "1d6+5"),
-        ("Geometry Strike", "1d6+6"),
+        ("Geometry Strike", "1d2+6"),
         ("Entomb", "0"),
         ("Cathedral", "1d8"),
         ("Summon Constructs", None),
