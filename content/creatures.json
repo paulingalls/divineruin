@@ -3337,6 +3337,14 @@
   {
     "terrains": ["ancient_forest", "forest", "grassland", "mountain", "coast", "wetland", "underground", "farmland", "village", "city"],
     "id": "hollow_architect",
+    "legendary": {
+      "points": 3,
+      "actions": [
+        { "id": "Geometry Strike", "kind": "attack", "cost": 2 },
+        { "id": "Shift Wall", "kind": "shift_wall", "cost": 1 },
+        { "id": "Reshape", "kind": "reshape", "cost": 2 }
+      ]
+    },
     "name": "The Architect",
     "category": "hollow",
     "tier": 4,

@@ -236,6 +236,13 @@ def facts(state: CombatState) -> dict | None:
         **record,
         "hp": owner.hp_current,
         "live_wall_ids": live_walls,
+        "live_walls": {wall_id: live_segments[wall_id] for wall_id in live_walls},
+        "legendary": {
+            **owner.legendary,
+            "remaining": owner.legendary_actions,
+        }
+        if owner.legendary is not None
+        else None,
         "reshape_uses_remaining": remaining(state, owner) if record["phase"] == "active" else 0,
         "reshape": "Create, move or destroy a wall, open a floor or lower a ceiling. "
         "Sections are up to 20 feet across and within 120 feet. "

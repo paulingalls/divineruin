@@ -197,6 +197,7 @@ async def assemble_participants(session, encounter, encounter_id, member_players
                 damage_mult=derived["damage_mult"],
                 dc_mod=derived["dc_mod"],
                 legendary_actions=derived["legendary_actions"],
+                legendary=derived.get("legendary"),
                 signature_ability=derived["signature_ability"],
                 category=derived.get("category", ""),
                 tier=derived["tier"],

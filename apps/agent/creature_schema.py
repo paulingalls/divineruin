@@ -304,4 +304,57 @@ def validate_creature_stat_block(creature: object) -> list[str]:
         if loot_id not in ids:
             problems.append("loot_table_id: unknown loot table")
     field(creature, "xp_reward", "", "integer")
-    return problems + validate_traits(creature) + validate_turn_traits(creature)
+    return problems + validate_traits(creature) + validate_turn_traits(creature) + _legendary_problems(creature)
+
+
+def _legendary_problems(creature: dict) -> list[str]:
+    if "legendary" not in creature:
+        return []
+    legendary = creature["legendary"]
+    if not isinstance(legendary, dict) or legendary.keys() != {"points", "actions"}:
+        return ["legendary: expected points and actions"]
+    points, actions = legendary["points"], legendary["actions"]
+    if type(points) is not int or points <= 0:
+        return ["legendary.points: expected positive integer"]
+    if not isinstance(actions, list) or not actions:
+        return ["legendary.actions: expected nonempty array"]
+    problems: list[str] = []
+    seen = set()
+    for index, action in enumerate(actions):
+        path = f"legendary.actions[{index}]"
+        if not isinstance(action, dict) or action.keys() != {"id", "kind", "cost"}:
+            problems.append(f"{path}: expected id, kind and cost")
+            continue
+        identifier, kind, cost = action["id"], action["kind"], action["cost"]
+        if not isinstance(identifier, str) or not identifier.strip() or identifier in seen:
+            problems.append(f"{path}.id: expected unique nonempty action id")
+        else:
+            seen.add(identifier)
+            if not _legendary_binding(creature, identifier, kind):
+                problems.append(f"{path}.id: no matching legendary action binding")
+        if type(cost) is not int or not 0 < cost <= points:
+            problems.append(f"{path}.cost: expected positive integer within budget")
+    return problems
+
+
+def _legendary_binding(creature: dict, identifier: str, kind: object) -> bool:
+    if kind == "attack":
+        attacks = creature.get("attacks")
+        return (
+            isinstance(attacks, list)
+            and sum(
+                isinstance(attack, dict)
+                and attack.get("name") == identifier
+                and isinstance(attack.get("damage"), str)
+                and attack["damage"] not in ("", "0", "0d0")
+                for attack in attacks
+            )
+            == 1
+        )
+    actives = creature.get("actives")
+    return (
+        (kind, identifier) in (("shift_wall", "Shift Wall"), ("reshape", "Reshape"))
+        and creature.get("id") == "hollow_architect"
+        and isinstance(actives, list)
+        and sum(isinstance(active, dict) and active.get("name") == identifier for active in actives) == 1
+    )

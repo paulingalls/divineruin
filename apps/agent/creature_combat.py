@@ -115,6 +115,7 @@ def _translate(row, encounter_id, enemy_id, role):
         saving_throw_proficiencies=[_ATTRIBUTES[k] for k in row["save_proficiencies"]],
         resistance_tags=deepcopy(row.get("resistance_tags", [])),
         action_pool=actions,
+        legendary=deepcopy(row.get("legendary")),
         signature_ability=deepcopy(row.get("signature_ability")),
         catalog_narration=deepcopy(row["narration"]),
         catalog_audio=deepcopy(row["audio"]),

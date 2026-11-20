@@ -194,8 +194,8 @@ def _reset_legendary_actions(state: CombatState) -> None:
     (they stay at the dataclass default of 0). A fallen Boss is skipped — a downed creature
     takes no legendary actions."""
     for p in state.participants:
-        if p.role == EncounterRole.BOSS and not p.is_fallen and not cannot_act(p.conditions):
-            p.legendary_actions = 1
+        if p.legendary_capacity and not p.is_fallen and not cannot_act(p.conditions):
+            p.legendary_actions = p.legendary_capacity
 
 
 def _boss_legendaries(state: CombatState) -> list[dict]:
@@ -210,9 +210,10 @@ def _boss_legendaries(state: CombatState) -> list[dict]:
             "name": p.name,
             "legendary_actions": p.legendary_actions,
             "signature_ability": p.signature_ability,
+            **({"actions": p.legendary["actions"]} if p.legendary is not None else {}),
         }
         for p in state.participants
-        if p.role == EncounterRole.BOSS and not p.is_fallen and not cannot_act(p.conditions) and p.legendary_actions > 0
+        if p.legendary_capacity and not p.is_fallen and not cannot_act(p.conditions) and p.legendary_actions > 0
     ]
 
 
