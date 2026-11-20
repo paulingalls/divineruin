@@ -195,7 +195,7 @@ Healing spells generate **0 Resonance** regardless of source type. Restoration m
 |---|---|---|
 | Acknowledged | Beacon | Faint light in darkness. Hollow creatures have disadvantage on first attack against you each encounter |
 | Devoted | Restoration Surge | Once per long rest, remove one negative condition (Poisoned, Blinded, Frightened, stage 1 Hollowed) by touch. No Focus cost |
-| Exalted | Dawn's Embrace | Once per session, when any ally drops to 0 HP, they are immediately stabilized and healed to half max HP. No action required, works at distance |
+| Exalted | Dawn's Embrace | Once per session, when damage drops another party player or the companion from above 0 HP to 0, they stand at half max HP, rounded down with a minimum of 1. Death Ward takes priority. A living, present follower can give while fallen. No action, range or line of sight is required. |
 
 **Layer 4 — Archetype Resonance**
 
@@ -249,7 +249,7 @@ Spells cast on creatures at 0 HP (healing fallen allies, finishing dying enemies
 
 | Tier | Name | Effect |
 |---|---|---|
-| Acknowledged | Death Ward | First time per long rest you drop to 0 HP, drop to 1 HP instead. Mortaen decides when you cross |
+| Acknowledged | Death Ward | When damage would reduce you from above 0 HP to 0 HP, you automatically stay at 1 HP before instant death or a Hollowed rise is resolved. Recharges on a long rest. Mortaen decides when you cross. |
 | Devoted | Speak with Dead | Once per long rest, commune with a deceased creature's spirit. 3 questions, truthful but terse answers |
 | Exalted | Threshold Walk | Once per session, become incorporeal through the end of the next round. Slashing, piercing and bludgeoning pass through you, even when magical. Attacks against you have disadvantage, your attacks have advantage, and your weapon attacks deal necrotic damage. You cannot drop below 1 HP. You return Shaken unless combat ends first. |
 

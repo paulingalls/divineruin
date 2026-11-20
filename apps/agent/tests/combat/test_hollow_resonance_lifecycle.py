@@ -62,8 +62,11 @@ async def damage(ctx, state, target, *, queries=None):
     from combat_damage_results import SaveDamageResult
     from combat_events import EventSink
 
+    row = _player() | {"divine_favor": {"patron": "orenthel", "level": 0, "max": 100}}
     queries = queries or MagicMock(
-        get_player=AsyncMock(return_value=_player()), get_player_inventory=AsyncMock(return_value=[])
+        get_player=AsyncMock(return_value=row),
+        get_player_inventory=AsyncMock(return_value=[]),
+        get_players_for_update=AsyncMock(side_effect=lambda ids, **_: {pid: row for pid in ids}),
     )
     mutations = MagicMock(update_player_hp=AsyncMock())
     break_mod = MagicMock(break_concentration_on_damage=AsyncMock(return_value=None))

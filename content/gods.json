@@ -1526,10 +1526,11 @@
       "acknowledged": {
         "id": "mortaen_death_ward",
         "name": "Death Ward",
-        "effect": "First time per long rest you drop to 0 HP, drop to 1 HP instead. Mortaen decides when you cross",
+        "effect": "The first time damage reduces you from above 0 HP to 0 HP, you stay at 1 HP. Recharges on a long rest. Mortaen decides when you cross.",
         "recharge": "long_rest",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "mortaen_death_ward"
       },
       "devoted": {
         "id": "mortaen_speak_with_dead",
@@ -2913,10 +2914,11 @@
       "exalted": {
         "id": "orenthel_dawns_embrace",
         "name": "Dawn's Embrace",
-        "effect": "Once per session, when any ally drops to 0 HP, they are immediately stabilized and healed to half max HP. No action required, works at distance",
+        "effect": "Once per session, when damage drops another party player or the companion from above 0 HP to 0, they stand at half maximum HP, rounded down with a minimum of 1. Death Ward takes priority. The follower must be present and alive, and can give while fallen. No action, range or sight required.",
         "recharge": "per_session",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "orenthel_dawns_embrace"
       }
     },
     "layer_4_synergy_matrix": {

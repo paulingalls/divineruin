@@ -152,7 +152,11 @@ def _fire_fixture():
         initiative_order=["player_1", "player_2"],
     )
     db_mod, conn = make_db_mod()
-    queries = MagicMock(get_player=AsyncMock(return_value={"player_id": "player_2", "race": "draethar"}))
+    queries = MagicMock(
+        get_players_for_update=AsyncMock(
+            side_effect=lambda ids, **_: {pid: {"player_id": pid, "race": "draethar"} for pid in ids}
+        )
+    )
     hp = MagicMock(update_player_hp=AsyncMock(), save_combat_state=AsyncMock())
     resonance = MagicMock(update_player_resonance=AsyncMock())
     events = MagicMock(publish_resonance_changed=AsyncMock())
@@ -195,7 +199,6 @@ async def test_guest_inner_fire_burns_guest_only_and_host_can_use():
     with session._bind_authenticated_actor("player_2", 4, lambda *_: None):
         with pytest.raises(ToolError, match="already spent"):
             await _fire(ctx, db_mod, queries, hp, resonance, events, dice, concentration)
-    queries.get_player = AsyncMock(return_value={"player_id": "player_1", "race": "draethar"})
     with session._bind_authenticated_actor("player_1", 4, lambda *_: None):
         await _fire(ctx, db_mod, queries, hp, resonance, events, dice, concentration)
     assert host.draethar_inner_fire_used
@@ -422,12 +425,14 @@ async def test_inner_fire_revoked_after_player_lock_refuses_before_mutation():
         if not live:
             raise RuntimeError("stale authenticated actor")
 
-    async def lock(*_args, **_kwargs):
+    read_rows = queries.get_players_for_update.side_effect
+
+    async def lock(ids, **kwargs):
         nonlocal live
         live = False
-        return {"race": "draethar"}
+        return read_rows(ids, **kwargs)
 
-    queries.get_player.side_effect = lock
+    queries.get_players_for_update.side_effect = lock
     with ctx.userdata._bind_authenticated_actor("player_2", 4, validate):
         with pytest.raises(RuntimeError, match="stale"):
             await _fire(ctx, db_mod, queries, hp, resonance, events, dice, concentration)
