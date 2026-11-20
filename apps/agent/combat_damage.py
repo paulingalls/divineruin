@@ -3,7 +3,7 @@
 import logging
 from functools import partial
 
-import architect_encounter
+import architect_zero_hp
 import check_resolution_attack
 import combat_damage_affinity
 import combat_grapple
@@ -32,7 +32,6 @@ from combat_events import emit_or_publish
 from combat_fate_rolls import packet_save
 from combat_fortitude import roll_fortitude, try_fortitude
 from combat_sound_events import publish_combat_sounds as _publish_sounds
-from combat_structures import collapse_wall
 from patron_combat_edges import reward_worthy_foe
 from patron_zero_hp import lock_lethal_damage_players, trigger_damage_gifts
 from session_data import CombatParticipant, CombatState, SessionData
@@ -61,17 +60,7 @@ def _handle_hp_zero(
     outcome: dict | None = None,
     fortitude_save=None,
 ) -> tuple[str, bool, list[str]]:
-    """Resolve a target dropped to 0 HP — Hollowed rise, instant death, fall, or companion KO.
-
-    The ONE door for every zero-HP transition, whether the damage came from a blow or from the
-    caster's own fire; a caller that drives HP to 0 without knocking leaves the flags behind
-    (bug 16c5f8a0). The census that keeps it the only door is
-    ``tests/combat/test_handle_hp_zero.py::TestTheDoorIsTheOnlyDoor``.
-
-    ``overkill`` is the excess damage past 0. Mutates ``target`` in place
-    (``is_fallen``/``is_dead``, or — on a Hollowed rise — ``type``/
-    ``hp_current``/``conditions``) and appends the fall/rise sound to ``sounds``. Returns the HP
-    status, whether a Hollowed rose, and ids released from this target's grapples."""
+    """Resolve a zero-HP transition and return HP status, Hollowed rise, and released grapples."""
     if (
         not was_fallen
         and target.unholy_fortitude is not None
@@ -96,8 +85,7 @@ def _handle_hp_zero(
         sounds.append(SOUND_HOLLOW_RISE)
         return hp_status, True, []
 
-    if target.is_structure:
-        collapse_wall(combat_state, target)
+    if architect_zero_hp.collapse_structure(combat_state, target):
         return hp_status, False, []
     target.is_fallen = True
     combat_hollow_death.mark_destroyed(target)
@@ -374,8 +362,7 @@ async def _apply_damage(
         await combat_hollow_death.accrue_death(session, combat_state, target, conn=conn, queries=queries)
         if combat_state is not None and combat_state.choir_encounter is not None:
             choir_encounter.destroyed(combat_state)
-        if combat_state is not None and architect_encounter.is_owner(combat_state, target.id):
-            architect_encounter.destroyed(combat_state)
+        architect_zero_hp.collapse_owned_walls(combat_state, target.id)
 
     await still_encounter.after_damage(session, combat_state, target, conn=conn, queries=queries, was_fallen=was_fallen)
 
