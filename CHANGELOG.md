@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.59.0
+
+Mortaen followers at Exalted can use Threshold Walk once per session. In a fight they turn incorporeal until the end of the next round. Slashing, piercing and bludgeoning pass through them, magical or not. Attacks against them have disadvantage, and theirs have advantage. Their weapon strikes deal necrotic. No damage can take them below 1 HP while it lasts. When it ends they return Shaken, with disadvantage on their next attack. If the fight ends first, nothing carries over. Outside a fight the DM narrates it.
+
+Fix: Veilstep and Threshold Walk are now refused, with nothing spent, while any Fate's Thread offer is pending. Before, activating Veilstep then settled the offer and returned the roll's result as if the gift had been used.
+
+Release steps: reseed content (bun run seed) so gods.json carries the active Threshold Walk row.
+
 ## 0.58.0
 
 Healing spells now carry patron synergies. Orenthel's clerics and paladins add the better of their Wisdom or Charisma modifier to every heal. Mortaen's clerics restore double to an ally at 0 HP, and Mortaen's paladins restore 1 more. Thyra's clerics heal 1d4 more on natural ground. Nythera's clerics heal 1 more on their first stay in a place. Healing items and Regenerate's later ticks are unchanged. The DM hears each bonus by name.
