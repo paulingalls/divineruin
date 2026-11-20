@@ -6,7 +6,16 @@ from typing import Never
 import conditions
 from action_contracts_still import STILL_ACTION_KINDS, validate_still_action
 
-EXECUTABLE_KINDS = ("attack", "healing", "prepare_attack", "charm", "silence", "spell_redirect", *STILL_ACTION_KINDS)
+EXECUTABLE_KINDS = (
+    "attack",
+    "healing",
+    "prepare_attack",
+    "summon_constructs",
+    "charm",
+    "silence",
+    "spell_redirect",
+    *STILL_ACTION_KINDS,
+)
 STRIKE_FIELDS = ("damage", "damage_type", "applies_condition", "save", "dc", "half_on_success", "escape_dc")
 EFFECT_FIELDS = ("target_group", "healing", "advantage", "on_hit")
 
@@ -44,6 +53,11 @@ def validate_action_extensions(action: dict, path: str) -> None:
     ):
         invalid(f"{path}.shape")
     kind = action.get("kind", "attack")
+    if kind == "summon_constructs":
+        validate_summon(action, path)
+        return
+    if "summon" in action:
+        invalid(f"{path}.summon")
     validate_still_action(action, path, kind, invalid, positive_integer, validate_recharge)
     if kind in STILL_ACTION_KINDS:
         return
@@ -131,6 +145,59 @@ def validate_action_extensions(action: dict, path: str) -> None:
     for key in forbidden:
         if key in action:
             invalid(f"{path}.{key}")
+
+
+def validate_summon(action: dict, path: str) -> None:
+    for key in action:
+        if key not in ("kind", "name", "description", "narration_cue", "audio", "properties", "recharge", "summon"):
+            invalid(f"{path}.{key}")
+    recharge = action.get("recharge")
+    validate_recharge(recharge, f"{path}.recharge")
+    if recharge != {"kind": "encounter", "uses": 1}:
+        invalid(f"{path}.recharge")
+    spec = action.get("summon")
+    if not isinstance(spec, dict) or set(spec) != {"count_dice", "lifetime_rounds", "placement_radius_ft", "construct"}:
+        invalid(f"{path}.summon")
+    dice = spec["count_dice"]
+    if not isinstance(dice, str) or not re.fullmatch(r"[1-9][0-9]*d[1-9][0-9]*", dice):
+        invalid(f"{path}.summon.count_dice")
+    for key in ("lifetime_rounds", "placement_radius_ft"):
+        if not positive_integer(spec[key]):
+            invalid(f"{path}.summon.{key}")
+    construct = spec["construct"]
+    if not isinstance(construct, dict) or set(construct) != {"hp", "ac", "speed", "slam"}:
+        invalid(f"{path}.summon.construct")
+    for key in ("hp", "ac", "speed"):
+        if not positive_integer(construct[key]):
+            invalid(f"{path}.summon.construct.{key}")
+    slam = construct["slam"]
+    slam_path = f"{path}.summon.construct.slam"
+    if not isinstance(slam, dict) or set(slam) - {
+        "name",
+        "type",
+        "reach",
+        "to_hit",
+        "damage",
+        "damage_type",
+        "special",
+        "audio",
+    }:
+        invalid(slam_path)
+    if slam.get("type") != "melee" or not positive_integer(slam.get("reach")):
+        invalid(f"{slam_path}.reach")
+    if not isinstance(slam.get("name"), str) or not slam["name"].strip():
+        invalid(f"{slam_path}.name")
+    if "special" not in slam or (slam["special"] is not None and not isinstance(slam["special"], str)):
+        invalid(f"{slam_path}.special")
+    if not isinstance(slam.get("audio"), str):
+        invalid(f"{slam_path}.audio")
+    validate_action_extensions({**slam, "kind": "attack", "attack_source": "catalog"}, slam_path)
+    from combat_damage_affinity import DAMAGE_TYPES
+
+    if not re.fullmatch(r"[1-9][0-9]*d[1-9][0-9]*(?:\+[0-9]+)?", slam["damage"]):
+        invalid(f"{slam_path}.damage")
+    if slam["damage_type"] not in DAMAGE_TYPES:
+        invalid(f"{slam_path}.damage_type")
 
 
 STRUCTURED_FIELDS = ("resolution", "save_success_damage", "conditions_on_failure", "conditions_on_success")

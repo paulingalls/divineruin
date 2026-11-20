@@ -6,6 +6,7 @@ export const EXECUTABLE_ACTIVE_KINDS = [
   "attack",
   "healing",
   "prepare_attack",
+  "summon_constructs",
   "charm",
   "silence",
   ...STILL_ACTION_KINDS,

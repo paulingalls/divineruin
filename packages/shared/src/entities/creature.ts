@@ -7,6 +7,7 @@ import type {
   CriticalSave,
   DurabilityRider,
   ChoirEffect,
+  SummonConstructs,
 } from "./action_contracts";
 import type { StillEffect } from "./action_contracts_still";
 import type { TerrainType } from "./terrain";
@@ -136,6 +137,7 @@ export type ActiveAbility =
         | Omit<EncounterPrepareAttackAction, "properties">
         | ChoirEffect
         | StillEffect
+        | SummonConstructs
       ));
 
 export interface CatalogSignatureAbility extends SignatureAbility {

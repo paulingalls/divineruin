@@ -3466,8 +3466,32 @@
         "name": "Summon Constructs",
         "description": "1/encounter. Animate 2d4 minions for 1 minute: HP 20, AC 16, speed 30 ft, slam +8 for 1d8+5 bludgeoning.",
         "narration_cue": "",
-        "recharge": "1/encounter",
-        "audio": null
+        "recharge": {
+          "kind": "encounter",
+          "uses": 1
+        },
+        "audio": null,
+        "kind": "summon_constructs",
+        "summon": {
+          "count_dice": "2d4",
+          "lifetime_rounds": 10,
+          "placement_radius_ft": 10,
+          "construct": {
+            "hp": 20,
+            "ac": 16,
+            "speed": 30,
+            "slam": {
+              "name": "Slam",
+              "type": "melee",
+              "reach": 5,
+              "to_hit": 8,
+              "damage": "1d8+5",
+              "damage_type": "bludgeoning",
+              "special": null,
+              "audio": ""
+            }
+          }
+        }
       },
       {
         "name": "Shift Wall",

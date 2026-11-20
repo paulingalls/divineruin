@@ -125,6 +125,5 @@ def test_architect_metadata_retains_only_deferred_effects():
     assert effects.keys() == {
         "Legendary Resistance",
         "Alien Intelligence",
-        "Summon Constructs",
         "hollow",
     }

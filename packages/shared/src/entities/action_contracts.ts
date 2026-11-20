@@ -1,3 +1,4 @@
+import type { Attack } from "./creature";
 import { DAMAGE_TYPES, type DamageType } from "./creature_damage_affinity";
 import { CONDITION_NAMES } from "./encounter";
 import { validateStillAction } from "./action_contracts_still";
@@ -18,7 +19,19 @@ export type CriticalSave = {
   applies_condition: string;
   stage?: 1;
 };
+export type SummonConstructs = {
+  kind: "summon_constructs";
+  recharge: { kind: "encounter"; uses: 1 };
+  summon: {
+    count_dice: string;
+    lifetime_rounds: number;
+    placement_radius_ft: number;
+    construct: { hp: number; ac: number; speed: number; slam: Attack };
+  };
+};
+
 export type ActionExtensions = {
+  summon?: unknown;
   shape?: unknown;
   auto_hit?: unknown;
   minimum_destroyed_anchors?: unknown;
@@ -84,6 +97,11 @@ export function validateActionExtensions(action: ActionExtensions, path: string)
   )
     invalid(`${path}.shape`);
   const kind = action.kind === undefined ? "attack" : action.kind;
+  if (kind === "summon_constructs") {
+    validateSummon(action, path);
+    return;
+  }
+  if ("summon" in action) invalid(`${path}.summon`);
   if (validateStillAction(action, path, kind, invalid, positive, validateRecharge)) return;
   validateWeaponRiders(action, path);
   validateDurabilityRider(action, path);
@@ -189,6 +207,73 @@ export function validateActionExtensions(action: ActionExtensions, path: string)
     }
   } else forbidden = ["target_group", "healing", "advantage", "on_hit"];
   for (const key of forbidden) if (key in action) invalid(`${path}.${key}`);
+}
+
+function validateSummon(action: ActionExtensions, path: string): void {
+  for (const key of Object.keys(action))
+    if (
+      ![
+        "kind",
+        "name",
+        "description",
+        "narration_cue",
+        "audio",
+        "properties",
+        "recharge",
+        "summon",
+      ].includes(key)
+    )
+      invalid(`${path}.${key}`);
+  const recharge = action.recharge;
+  validateRecharge(recharge, `${path}.recharge`);
+  if (!object(recharge) || recharge.kind !== "encounter" || recharge.uses !== 1)
+    invalid(`${path}.recharge`);
+  const spec = action.summon;
+  if (
+    !object(spec) ||
+    Object.keys(spec).length !== 4 ||
+    !["count_dice", "lifetime_rounds", "placement_radius_ft", "construct"].every((key) =>
+      Object.hasOwn(spec, key),
+    )
+  )
+    invalid(`${path}.summon`);
+  if (typeof spec.count_dice !== "string" || !/^[1-9][0-9]*d[1-9][0-9]*$/.test(spec.count_dice))
+    invalid(`${path}.summon.count_dice`);
+  for (const key of ["lifetime_rounds", "placement_radius_ft"])
+    if (!positive(spec[key])) invalid(`${path}.summon.${key}`);
+  const construct = spec.construct;
+  if (
+    !object(construct) ||
+    Object.keys(construct).length !== 4 ||
+    !["hp", "ac", "speed", "slam"].every((key) => Object.hasOwn(construct, key))
+  )
+    invalid(`${path}.summon.construct`);
+  for (const key of ["hp", "ac", "speed"])
+    if (!positive(construct[key])) invalid(`${path}.summon.construct.${key}`);
+  const slam = construct.slam;
+  const slamPath = `${path}.summon.construct.slam`;
+  if (
+    !object(slam) ||
+    Object.keys(slam).some(
+      (key) =>
+        !["name", "type", "reach", "to_hit", "damage", "damage_type", "special", "audio"].includes(
+          key,
+        ),
+    )
+  )
+    invalid(slamPath);
+  if (slam.type !== "melee" || !positive(slam.reach)) invalid(`${slamPath}.reach`);
+  if (typeof slam.name !== "string" || !slam.name.trim()) invalid(`${slamPath}.name`);
+  if (slam.special !== null && typeof slam.special !== "string") invalid(`${slamPath}.special`);
+  if (typeof slam.audio !== "string") invalid(`${slamPath}.audio`);
+  validateActionExtensions({ ...slam, kind: "attack", attack_source: "catalog" }, slamPath);
+  if (
+    typeof slam.damage !== "string" ||
+    !/^[1-9][0-9]*d[1-9][0-9]*(?:\+[0-9]+)?$/.test(slam.damage)
+  )
+    invalid(`${slamPath}.damage`);
+  if (!(DAMAGE_TYPES as readonly unknown[]).includes(slam.damage_type))
+    invalid(`${slamPath}.damage_type`);
 }
 
 function validateResolution(action: ActionExtensions, path: string): void {

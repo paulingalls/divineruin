@@ -1,5 +1,6 @@
 """The shared atomic declaration gate, including each selected composite strike."""
 
+import architect_constructs
 import architect_encounter
 import architect_entomb
 import combat_grapple
@@ -84,6 +85,12 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
     pool_action = _find_action(actor, declaration.action)
     if pool_action is not None and declaration.type in (DeclarationType.ATTACK, DeclarationType.ABILITY):
         require_available(actor, pool_action)
+        if action_kind(pool_action) == architect_constructs.KIND:
+            if not architect_encounter.is_owner(next_state, actor.id):
+                raise ValueError("Summon Constructs requires the Architect")
+            if declaration.type is not DeclarationType.ABILITY or declaration.target_ids or declaration.target_id:
+                raise ValueError("Summon Constructs requires a targetless ability declaration")
+            return
         if architect_entomb.matches(actor, pool_action) and (
             reason := architect_entomb.range_refusal(next_state, actor, pool_action, declaration.target_id)
         ):

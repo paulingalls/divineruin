@@ -17,6 +17,7 @@ import random
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+import architect_constructs
 import choir_effects
 import reaction_spend
 from combat_declaration_validation import validate_declaration
@@ -160,6 +161,7 @@ def advance_combat_phase(
         legendary_available: list[dict] = []
         if not wrap.combat_ended:
             next_state.round_number += 1
+            architect_constructs.expire(next_state)
             choir_effects.advance_round(next_state)
             next_state.current_turn_index = 0
             next_state.pending_declarations = {}
@@ -237,12 +239,8 @@ def _resolve_packets(state: CombatState) -> list[ResolutionPacket]:
     """Order pending declarations by initiative (desc; tie: player > companion >
     enemy, then higher DEX) and wrap each into a ResolutionPacket. No narration.
 
-    This is the single source of truth for per-phase RESOLUTION ordering, and it
-    applies the spec tie-break (gm_combat:145) that roll_initiative does not.
-    CombatState.initiative_order (set once by combat_init via roll_initiative,
-    sorted by total only) is the start-of-combat DISPLAY order consumed by the
-    HUD/warm prompts — intentionally NOT the resolution-ordering source, so the
-    two can differ on a tie. Not reconciled here by design.
+    Display initiative sorts by total only. Resolution applies the tie-break
+    before grouping summoned constructs at the Architect's slot.
     """
     by_id = {p.id: p for p in state.participants}
 
@@ -255,7 +253,7 @@ def _resolve_packets(state: CombatState) -> list[ResolutionPacket]:
             declaration=resolve_declaration(state.pending_declarations[actor_id]),
             initiative=by_id[actor_id].initiative if actor_id in by_id else 0,
         )
-        for actor_id in ordered_ids
+        for actor_id in architect_constructs.resolution_order(state, ordered_ids)
     ]
 
 

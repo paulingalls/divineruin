@@ -4,6 +4,7 @@ import json
 
 from livekit.agents.llm import ToolError
 
+import architect_constructs
 import architect_encounter
 import architect_entomb
 import combat_spatial
@@ -91,6 +92,7 @@ def restore(state: CombatState, record: dict) -> None:
         spatial["speeds"][wall_id] = 0
         if not wall.is_dead:
             spatial["structures"][wall_id] = previous_spatial["structures"][wall_id]
+    architect_constructs.restore(state, retained, owner, old["construct_ids"])
     spatial["movement_areas"] = previous_spatial["movement_areas"]
     old["pits"] = {actor: floor for actor, floor in old["pits"].items() if state.get_participant(actor) is not None}
     for actor in old["pits"]:

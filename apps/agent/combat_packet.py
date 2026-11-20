@@ -9,6 +9,7 @@ de-escalate / defend). The helpers mutate in-memory
 state and write through injected mutation/query modules, but own no transaction."""
 
 import architect_actions
+import architect_constructs
 import combat_maneuver
 import combat_marks
 import combat_melee_approach
@@ -271,6 +272,8 @@ async def _resolve_action_packet(
                     sink=sink,
                     advantage=reaction_save_advantage,
                 )
+        if action_kind(action) == architect_constructs.KIND:
+            return architect_constructs.resolve(state, attacker, action, decl)
         if not attacker.is_ally and action_kind(action) in ("healing", "prepare_attack"):
             action = begin_execution(state, attacker, action, decl)
             return resolve_active(state, attacker, action, decl)
