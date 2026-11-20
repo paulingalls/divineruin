@@ -284,10 +284,6 @@ test("the authored spell synergies activate five engine clauses", () => {
       resolution: "engine",
       implementation_id,
     });
-    if (archetype === "cleric") {
-      expect(row?.clauses[1]).toMatchObject({ status: "pending", resolution: "engine" });
-      expect(row?.clauses[1]).not.toHaveProperty("implementation_id");
-    }
   }
 });
 
@@ -303,4 +299,32 @@ test("Orenthel's Natural healing synergies are active engine clauses", () => {
       implementation_id: "orenthel_dawns_mercy",
     });
   }
+});
+
+test("Mortaen's cleric and paladin healing clauses are active engine clauses", () => {
+  const mortaen = validateGods(catalog).find((god) => god.god_id === "mortaen");
+  const cleric = mortaen?.layer_4_synergy_matrix.cleric;
+  const paladin = mortaen?.layer_4_synergy_matrix.paladin;
+  const active = { status: "active", resolution: "engine" } as const;
+  expect(cleric?.type).toBe("natural");
+  expect(cleric?.clauses).toEqual([
+    {
+      ...active,
+      effect: "Sacred Flame deals necrotic.",
+      implementation_id: "mortaen_threshold_mercy",
+    },
+    {
+      ...active,
+      effect: "Healing on 0 HP allies restores double. Best at pulling people back from the edge",
+      implementation_id: "mortaen_threshold_healing",
+    },
+  ]);
+  expect(paladin?.type).toBe("divine");
+  expect(paladin?.clauses).toEqual([
+    {
+      ...active,
+      effect: "Healing an ally at 0 HP restores 1 additional HP.",
+      implementation_id: "mortaen_final_mercy",
+    },
+  ]);
 });

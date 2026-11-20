@@ -41,16 +41,15 @@ async def declare(world, state, spell):
     return call
 
 
-async def authored_clause(world, patron, archetype, kind, implementation, *, healing_pending=False):
+async def authored_clause(world, patron, archetype, kind, implementation, *, second_implementation=None):
     god = next(g for g in load_gods() if g["god_id"] == patron)
     row = god["layer_4_synergy_matrix"][archetype]
     reported = await game_tools(world.ctx.userdata, query_info)("query_info", kind="patron")
     assert reported["synergy"] == row
     assert row["type"] == kind
     expected = [("active", "engine", implementation)]
-    if healing_pending:
-        expected.append(("pending", "engine", None))
-        assert "implementation_id" not in row["clauses"][1]
+    if second_implementation is not None:
+        expected.append(("active", "engine", second_implementation))
     assert [(c["status"], c["resolution"], c.get("implementation_id")) for c in row["clauses"]] == expected
 
 
@@ -192,7 +191,9 @@ async def sacred_flame(world, patron, *, veilrender=False):
 
 async def mortaen_mercy(world):
     await sacred_flame(world, "mortaen")
-    await authored_clause(world, "mortaen", "cleric", "natural", MERCY, healing_pending=True)
+    await authored_clause(
+        world, "mortaen", "cleric", "natural", MERCY, second_implementation="mortaen_threshold_healing"
+    )
     await sacred_flame(world, "kaelen")
 
 

@@ -161,11 +161,12 @@ async def land(
     conn,
 ) -> list[HealingResult]:
     rolled, modifier = _healing_roll(profile, caster.attributes, dice)
+    base_heal = rolled + modifier
     results = []
     for target in recipients:
         before = target.hp_current
-        components = synergy(before) if synergy is not None else []
-        await restore(target, rolled + modifier + sum(c["bonus"] for c in components), conn=conn)
+        components = synergy(before, base_heal) if synergy is not None else []
+        await restore(target, base_heal + sum(c["bonus"] for c in components), conn=conn)
         if rounds := profile.get("regeneration_rounds"):
             target.conditions = apply_condition(target.conditions, "regenerating", source=caster.id)
             for condition in target.conditions:
@@ -191,13 +192,14 @@ async def land_exploration(
     dice_mod,
 ) -> list[HealingResult]:
     rolled, modifier = _healing_roll(profile, caster.get("attributes", {}), dice_mod)
+    base_heal = rolled + modifier
     caster_current = caster["hp"]["current"]
     results = []
     for pid, row in recipients.items():
         current = row["hp"]["current"]
         maximum = patron_passives.effective_hp(row)["max"]
-        components = synergy(current) if synergy is not None else []
-        amount = rolled + modifier + profile.get("regeneration_rounds", 0) + sum(c["bonus"] for c in components)
+        components = synergy(current, base_heal) if synergy is not None else []
+        amount = base_heal + profile.get("regeneration_rounds", 0) + sum(c["bonus"] for c in components)
         hp = healed_hp(current, maximum, amount)
         if hp != current:
             await db_mutations.update_player_hp(pid, hp, conn=conn)
