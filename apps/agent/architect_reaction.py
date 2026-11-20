@@ -22,6 +22,21 @@ class Interception(TypedDict):
     cue: str
 
 
+def _wall_prefix(owner_id: str) -> str:
+    return f"{owner_id}_reaction_wall_"
+
+
+def expire_walls(state: CombatState) -> None:
+    record = state.architect_encounter
+    if record is None:
+        return
+    prefix = _wall_prefix(record["owner_id"])
+    reaction_ids = {wall_id for wall_id in record["structure_ids"] if wall_id.startswith(prefix)}
+    for wall in state.participants:
+        if wall.id in reaction_ids and not wall.is_dead:
+            combat_structures.collapse_wall(state, wall)
+
+
 def _raise_wall(
     state: CombatState, attacker: CombatParticipant, target_id: str | None, *, redirect: bool
 ) -> Interception | None:
@@ -48,7 +63,7 @@ def _raise_wall(
             raise ValueError("Reaction wall misses the incoming attack line")
         contact_z = Fraction(origin["z"]) + crossing[0] * (Fraction(target["z"]) - Fraction(origin["z"]))
         start["z"] = end["z"] = nextafter(float(contact_z), -inf)
-    wall_id = f"{owner_id}_reaction_wall_{state.round_number}"
+    wall_id = f"{_wall_prefix(owner_id)}{state.round_number}"
     combat_structures.add_wall(state, wall_id, "Architect's reaction wall", start, end)
     record["structure_ids"].append(wall_id)
     record["reaction_round"] = state.round_number

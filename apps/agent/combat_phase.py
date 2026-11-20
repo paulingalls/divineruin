@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 
 import architect_constructs
+import architect_reaction
 import choir_effects
 import reaction_spend
 from combat_declaration_validation import validate_declaration
@@ -157,6 +158,7 @@ def advance_combat_phase(
         return next_state, PhaseAdvance(beat_completed=PhaseBeat.NARRATION)
 
     if state.beat == PhaseBeat.WRAP:
+        architect_reaction.expire_walls(next_state)
         wrap = _wrap(next_state)
         legendary_available: list[dict] = []
         if not wrap.combat_ended:

@@ -56,7 +56,7 @@ async def test_saved_entomb_spends_and_recharges_on_round_wrap(fight):
     await declare_attack(fight, owner, victim, action)
     with (
         patch("check_resolution.dice_roll", return_value=_d20(20)) as save,
-        patch("combat_recharge.roll", return_value=SimpleNamespace(total=4)) as recharge,
+        patch("combat_recharge.roll", return_value=SimpleNamespace(total=5)) as recharge,
     ):
         cast = next(packet for packet in await fight.drain() if packet["actor_id"] == owner)
     save.assert_called_once()
@@ -84,7 +84,7 @@ async def test_saved_entomb_spends_and_recharges_on_round_wrap(fight):
             ]
         },
     )
-    with patch("combat_recharge.roll", return_value=SimpleNamespace(total=5)) as recharge:
+    with patch("combat_recharge.roll", return_value=SimpleNamespace(total=6)) as recharge:
         await fight.drain()
     recharge.assert_called_once()
     assert (await fight.reload()).get_participant(owner).action_ledger[action.casefold()]["remaining"] == 1
@@ -117,13 +117,13 @@ async def test_entomb_surfaces_chamber_and_compresses_at_each_turn_start(fight):
     assert (await fight.snapshot())[1][0]["hp"] == before
     for turn, actor in enumerate((victim, owner), 1):
         await fight.command("declare_phase", {"declarations": [{"reshape": [], "actor_id": actor, "kind": "defend"}]})
-        with patch("combat_turn_start.dice_roll", return_value=SimpleNamespace(total=13)) as damage:
+        with patch("combat_turn_start.dice_roll", return_value=SimpleNamespace(total=4)) as damage:
             packets = await fight.drain()
-        damage.assert_called_once_with("3d8")
+        damage.assert_called_once_with("1d4")
         tick = next(packet for packet in packets if packet.get("source_id") == chamber_id)
-        assert tick["target_id"] == victim and tick["damage"] == 13 and tick["damage_type"] == "bludgeoning"
+        assert tick["target_id"] == victim and tick["damage"] == 4 and tick["damage_type"] == "bludgeoning"
         state = await fight.reload()
-        expected = before["current"] - 13 * turn
+        expected = before["current"] - 4 * turn
         assert state.get_participant(victim).hp_current == expected
         assert (await fight.snapshot())[1][0]["hp"]["current"] == expected
 
@@ -216,28 +216,28 @@ async def test_compression_reuses_damage_receipt_across_concentration_hold(fight
     defend = {"declarations": [{"reshape": [], "actor_id": victim, "kind": "defend"}]}
     await fight.command("declare_phase", defend)
     with (
-        patch("combat_turn_start.dice_roll", return_value=SimpleNamespace(total=13)) as damage,
+        patch("combat_turn_start.dice_roll", return_value=SimpleNamespace(total=4)) as damage,
         patch("check_resolution.dice_roll", return_value=_d20(2)) as saves,
     ):
         offer = (await fight.command("resolve_phase", {}))["fate_offer"]
         assert (offer["roll_kind"], offer["roller_id"]) == ("save", victim)
         state = await fight.reload()
-        assert state.get_participant(victim).hp_current == 87
-        assert (await fight.snapshot())[1][0]["hp"]["current"] == 87
+        assert state.get_participant(victim).hp_current == 96
+        assert (await fight.snapshot())[1][0]["hp"]["current"] == 96
         await reload_held(fight, state)
         result = await fight.command("resolve_phase", {})
         tick = next(p for p in result["packets"] if p.get("source_id") == chamber)
         assert tick["concentration_broken"] == "divine_bless"
-        assert (await fight.snapshot())[1][0]["hp"]["current"] == 87
+        assert (await fight.snapshot())[1][0]["hp"]["current"] == 96
         assert fight.sd.concentration.spell_id is None
         await fresh_session(fight, await fight.reload())
         await fight.drain()
-        damage.assert_called_once_with("3d8")
+        damage.assert_called_once_with("1d4")
         saves.assert_called_once()
         await fight.command("declare_phase", defend)
         await fight.drain()
     assert damage.call_count == 2
-    assert (await fight.snapshot())[1][0]["hp"]["current"] == 74
+    assert (await fight.snapshot())[1][0]["hp"]["current"] == 92
 
 
 def spell(actor, action, anchor):
@@ -299,7 +299,7 @@ async def test_companion_compresses_when_unable_to_act(fight):
     await fight.command("declare_phase", {"declarations": [{"reshape": [], "actor_id": owner, "kind": "defend"}]})
     with patch("combat_turn_start.dice_roll", return_value=SimpleNamespace(total=3)) as damage:
         packets = await fight.drain()
-    damage.assert_called_once_with("3d8")
+    damage.assert_called_once_with("1d4")
     assert next(p for p in packets if p.get("source_id") == chamber)["target_id"] == victim
     assert (await fight.reload()).get_participant(victim).hp_current == companion.hp_current - 3
 
@@ -378,11 +378,11 @@ async def test_grapple_and_chamber_keep_separate_turn_start_receipts(fight):
     await fight.command("declare_phase", {"declarations": [{"reshape": [], "actor_id": victim, "kind": "defend"}]})
     with (
         patch(
-            "combat_turn_start.dice_roll", side_effect=[SimpleNamespace(total=3), SimpleNamespace(total=13)]
+            "combat_turn_start.dice_roll", side_effect=[SimpleNamespace(total=3), SimpleNamespace(total=4)]
         ) as damage,
         patch("check_resolution.dice_roll", side_effect=[_d20(19), _d20(2)]) as saves,
     ):
-        for hp in (97, 84):
+        for hp in (97, 93):
             assert (await fight.command("resolve_phase", {}))["fate_offer"]["roller_id"] == victim
             assert (await fight.snapshot())[1][0]["hp"]["current"] == hp
             await reload_held(fight, await fight.reload())
@@ -392,9 +392,9 @@ async def test_grapple_and_chamber_keep_separate_turn_start_receipts(fight):
         assert tick["damage"] == 3 and tick["concentration_broken"] is None
         assert (compression["source_id"], compression["damage"], compression["concentration_broken"]) == (
             chamber,
-            13,
+            4,
             "divine_bless",
         )
     assert saves.call_count == 2
-    assert [call.args for call in damage.call_args_list] == [("1d6",), ("3d8",)]
-    assert (await fight.snapshot())[1][0]["hp"]["current"] == 84
+    assert [call.args for call in damage.call_args_list] == [("1d6",), ("1d4",)]
+    assert (await fight.snapshot())[1][0]["hp"]["current"] == 93

@@ -88,7 +88,7 @@ async def test_phase_tool_surfaces_save_override(fight, creature, action, kind, 
         caster.action_ledger[action.casefold()]["remaining"] = 1
         declaration = {**spell(caster.id, action, owner), "targets": []}
     elif kind == "reshape":
-        caster.hp_current = 149
+        caster.hp_current = (caster.hp_max - 1) // 2
         declaration = {
             "actor_id": caster.id,
             "kind": "defend",
@@ -214,7 +214,7 @@ async def test_condition_and_damage_eligibility_are_independent(fight, action, r
     state = await fight.reload()
     owner = state.architect_encounter["owner_id"]
     target = state.get_participant(owner)
-    target.hp_current = 100
+    target.hp_current = 40
     state.spatial["positions"][fight.players[0]] = pos(10)
     if action == "Stolen Melody":
         actor = await catalog_actor(fight, state, "hollow_choir")
@@ -238,6 +238,6 @@ async def test_condition_and_damage_eligibility_are_independent(fight, action, r
     assert result["save_success"] is spent
     assert result.get("success_override") == ("Legendary Resistance" if spent else None)
     target = (await fight.reload()).get_participant(owner)
-    assert target.hp_current == 100 - damage
+    assert target.hp_current == 40 - damage
     assert not {"charmed", "prone"} & {condition["type"] for condition in target.conditions}
     assert target.action_ledger["legendary resistance"]["remaining"] == 3 - spent

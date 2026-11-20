@@ -14,8 +14,8 @@ if TYPE_CHECKING:
     from combat_state import CombatState
 
 ACTION = "Entomb"
-ESCAPE_DC = 20
-COMPRESSION = {"damage": "3d8", "damage_type": "bludgeoning"}
+ESCAPE_DC = 12
+COMPRESSION = {"damage": "1d4", "damage_type": "bludgeoning"}
 
 
 def matches(actor: CombatParticipant, action: dict) -> bool:
@@ -177,6 +177,6 @@ def facts(state: CombatState, spatial: dict) -> tuple[list[dict], list[str]]:
         details.append(_facts(chamber, victim.id))
         spoken.append(
             f"{victim.name} is sealed in {chamber_id}. The chamber has armor class {chamber.ac} and {chamber.hp_current} hit points. "
-            f"Break it or escape with a DC {ESCAPE_DC} Strength check. It deals 3d8 bludgeoning at each turn start."
+            f"Break it or escape with a DC {ESCAPE_DC} Strength check. It deals {COMPRESSION['damage']} bludgeoning at each turn start."
         )
     return details, spoken

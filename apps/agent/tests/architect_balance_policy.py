@@ -111,6 +111,31 @@ def move(
     )
 
 
+def flank(state: CombatState, actor: CombatParticipant, owner: CombatParticipant) -> MoveDecl | None:
+    encounter = state.architect_encounter
+    assert encounter is not None
+    if state.round_number <= 1 or encounter["reaction_round"] != state.round_number - 1:
+        return None
+    spatial = require_spatial(state)
+    origin = position(spatial, actor.id)
+    if not any(
+        ally.archetype_id in ("mage", "cleric")
+        and not ally.is_fallen
+        and distance(origin, position(spatial, ally.id)) <= 5
+        for ally in state.participants
+        if ally.type == "player"
+    ):
+        return None
+
+    target = position(spatial, owner.id)
+    dx, dy = target["x"] - origin["x"], target["y"] - origin["y"]
+    if dx == dy == 0:
+        return None
+    side = 3 if actor.archetype_id == "warrior" else -3
+    # A diagonal approach lets the melee line clear the end of the next wall.
+    return move(state, actor, {**origin, "x": target["x"] - side * dy, "y": target["y"] + side * dx})
+
+
 def recover(state: CombatState, actor: CombatParticipant) -> DeclVariant | None:
     if chamber := architect_entomb.source(state, actor.id):
         return ManeuverDecl(kind="maneuver", actor_id=actor.id, target_id=chamber)
@@ -164,6 +189,9 @@ def player_declaration(
             and stamina >= abilities.get_ability(RALLYING_SHOUT).cost.stamina
         ):
             return ability(actor, RALLYING_SHOUT, max(allies, key=lambda p: damage[p.id]))
+    if target is owner and separation > reach and (approach := flank(state, actor, owner)):
+        return approach
+    if actor.archetype_id == "warrior":
         bash = not target.is_structure and not has_condition(target.conditions, "stunned")
         if bash and separation <= reach and stamina >= abilities.get_ability(SHIELD_BASH).cost.stamina:
             return attack(actor, target, weapon["name"], rider="shield_bash")

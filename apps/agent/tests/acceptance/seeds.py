@@ -55,7 +55,7 @@ async def seed_player(
     so a scenario about Kael must seed a class Kael complements.
     `known_spells` seeds the castable spell library (seed_known_spells).
     """
-    data = {**_DEFAULT_PLAYER, "class": class_, "location_id": location_id}
+    data = {**_DEFAULT_PLAYER, "player_id": player_id, "class": class_, "location_id": location_id}
     await conn.execute(
         """
         INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb)

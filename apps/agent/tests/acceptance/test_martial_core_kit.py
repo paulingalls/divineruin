@@ -381,7 +381,7 @@ async def test_shield_bash_does_not_roll_a_save_for_a_fallen_foe(warriors: Mawli
 @pytest.fixture
 async def rogue(warriors: MawlingHarness) -> MawlingHarness:
     await warriors.pool.execute(
-        """UPDATE players SET data = data || '{"class":"rogue"}'
+        """UPDATE players SET data = (data - 'player_id') || '{"class":"rogue"}'
         WHERE player_id = $1""",
         warriors.players[0],
     )

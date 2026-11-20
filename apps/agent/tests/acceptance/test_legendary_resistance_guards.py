@@ -16,14 +16,14 @@ from conditions import apply_condition
 @pytest.mark.parametrize(
     "hp,rolled,affinities,face,auto_fail,damage,spent",
     [
-        (100, 24, {}, 1, False, 24, False),
-        (101, 25, {}, 1, False, 25, False),
-        (101, 26, {}, 1, False, 13, True),
-        (100, 28, {"resistant": ["fire"]}, 1, False, 14, False),
-        (100, 28, {"immune": ["fire"]}, 1, False, 0, False),
-        (100, 13, {"vulnerable": ["fire"]}, 1, False, 12, True),
-        (100, 25, {}, 20, False, 12, False),
-        (100, 25, {}, 1, True, 12, True),
+        (40, 9, {}, 1, False, 9, False),
+        (41, 10, {}, 1, False, 10, False),
+        (41, 11, {}, 1, False, 5, True),
+        (40, 18, {"resistant": ["fire"]}, 1, False, 9, False),
+        (40, 28, {"immune": ["fire"]}, 1, False, 0, False),
+        (40, 6, {"vulnerable": ["fire"]}, 1, False, 6, True),
+        (40, 10, {}, 20, False, 5, False),
+        (40, 10, {}, 1, True, 5, True),
     ],
 )
 async def test_damage_guard_uses_adjusted_failure_and_current_hp(
@@ -31,7 +31,8 @@ async def test_damage_guard_uses_adjusted_failure_and_current_hp(
 ):
     state = await fight.reload()
     target = state.get_participant(state.architect_encounter["owner_id"])
-    assert target.hp_max == 50
+    assert target.hp_max == 178
+    assert 0 < hp < target.hp_max
     target.damage_affinities.update(affinities)
     if auto_fail:
         target.conditions = apply_condition(target.conditions, "stunned", duration=2)
@@ -73,7 +74,7 @@ async def test_condition_immunity_keeps_the_failed_save(fight, immunity):
 
 
 async def test_save_override_and_spend_roll_back_with_the_phase(fight, monkeypatch):
-    owner = await prepare_cast(fight, "arcane_fireball", hp=100)
+    owner = await prepare_cast(fight, "arcane_fireball", hp=40)
     before = await fight.snapshot()
     publish = fight.sd.room.local_participant.publish_data
     publish.reset_mock()
@@ -86,7 +87,7 @@ async def test_save_override_and_spend_roll_back_with_the_phase(fight, monkeypat
         assert written is not None
         target = written.get_participant(owner)
         assert target is not None
-        assert target.hp_current == 88 and target.action_ledger["legendary resistance"]["remaining"] == 2
+        assert target.hp_current == 28 and target.action_ledger["legendary resistance"]["remaining"] == 2
         observed.append(True)
         raise RuntimeError("injected after saving the converted result")
 
@@ -105,7 +106,7 @@ async def test_save_override_and_spend_roll_back_with_the_phase(fight, monkeypat
     assert result["save"]["success_override"] == "Legendary Resistance"
     assert result["damage"] == 12
     target = (await fight.reload()).get_participant(owner)
-    assert target.hp_current == 88 and target.action_ledger["legendary resistance"]["remaining"] == 2
+    assert target.hp_current == 28 and target.action_ledger["legendary resistance"]["remaining"] == 2
 
 
 @pytest.mark.parametrize("block", ["creature_id", "hp_current", "is_fallen", "is_dead", "already_hollowed"])
