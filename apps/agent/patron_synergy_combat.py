@@ -12,6 +12,8 @@ if TYPE_CHECKING:
     from combat_participant import CombatParticipant
     from combat_state import CombatState
 
+OATH_OF_VALOR = "kaelen_oath_of_valor"
+
 
 async def attack_player(attacker, *, queries, conn) -> dict | None:
     if attacker.type not in ("player", "temporary_hollowed"):
@@ -57,6 +59,22 @@ def encounter_damage_clause(
     return None
 
 
+def outnumbered_oath(player: dict, state: CombatState | None, attacker: CombatParticipant) -> bool:
+    if state is None or not attacker.is_ally or not has_engine_synergy(player, OATH_OF_VALOR):
+        return False
+
+    from combat_veilrender import living
+
+    allies = enemies = 0
+    for participant in state.participants:
+        if living(participant):
+            if participant.is_ally:
+                allies += 1
+            else:
+                enemies += 1
+    return enemies > allies
+
+
 def expanded_critical(attacker_data: dict, face: int) -> bool:
     return bool(attacker_data.get("expanded_critical")) and face == 19
 
@@ -75,6 +93,10 @@ def critical_rider(attacker_data: dict, critical: bool, *, rng: random.Random | 
     if critical and attacker_data.get("critical_rider"):
         return dice_roll("1d4", rng=rng).total, "lightning"
     return 0, None
+
+
+def outnumbered_rider(critical: bool, *, rng: random.Random | None) -> tuple[int, str]:
+    return dice_roll("2d6" if critical else "1d6", rng=rng).total, "radiant"
 
 
 def weapon_damage_bonus(attacker_data: dict, critical: bool, *, rng: random.Random | None) -> int:

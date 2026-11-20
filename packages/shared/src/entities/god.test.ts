@@ -400,3 +400,19 @@ test.each([
     implementation_id: id,
   });
 });
+
+test("Kaelen's Oath of Valor is an active paladin engine clause", () => {
+  const kaelen = validateGods(catalog).find((god) => god.god_id === "kaelen");
+  expect(kaelen?.layer_4_synergy_matrix.paladin).toEqual({
+    type: "divine",
+    name: "Oath of Valor",
+    clauses: [
+      {
+        effect: "Oath of Valor: sworn strikes deal +1d6 radiant vs foes that outnumber the party",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "kaelen_oath_of_valor",
+      },
+    ],
+  });
+});
