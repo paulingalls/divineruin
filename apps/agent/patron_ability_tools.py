@@ -1,6 +1,7 @@
 """Authored patron uses: derived eligibility, durable spend and shared projection."""
 
 import json
+from typing import TYPE_CHECKING
 
 from livekit.agents.llm import ToolError
 
@@ -13,6 +14,9 @@ from _gods_content import load_gods
 from combat_ui_update import build_combat_ui_update
 from game_events import publish_game_event
 from patron_favor import get_patron_tier
+
+if TYPE_CHECKING:
+    from session_data import SessionData
 
 TIERS = ("Acknowledged", "Devoted", "Exalted")
 LUCKY = "zhael_lucky"
@@ -164,9 +168,71 @@ async def _spend_activation(conn, session, actor, ability_id, target_id, conditi
     return ability, updated, response
 
 
+async def _activate_wrath(session: "SessionData", actor: str, ability_id: str) -> tuple[dict, dict, tuple | None]:
+    import lost_scout_combat
+    from attribute_increase_events import publish_snapshots
+    from combat_end import _end_combat_db, _end_combat_finish
+    from combat_events import EventSink, isolated_publish, scratch_guard
+    from combat_hollow_resonance import take_totals
+    from combat_phase import combat_outcome
+    from patron_ability_events import publish_patron_abilities
+    from patron_zero_hp import lock_damage_players
+    from resonance_events import publish_resonance_changed
+    from thyra_wrath import wildmothers_wrath
+
+    sink = EventSink()
+    end_data = None
+    async with scratch_guard(session), db.transaction() as conn:
+        await lock_damage_players(session, None, queries=db_queries, conn=conn)
+        ability = await _locked_ability(conn, actor, ability_id)
+        updated, response = await wildmothers_wrath(session, actor, conn=conn, sink=sink)
+        totals = take_totals(updated)
+        await _write_spend(conn, session, actor, ability_id)
+        outcome = combat_outcome(updated)
+        if outcome is None:
+            await db_mutations.save_combat_state(updated.combat_id, updated.to_dict(), conn=conn)
+        else:
+            residue = await lost_scout_combat.residue(
+                session, updated, mutations=db_mutations, queries=db_queries, conn=conn
+            )
+            end_data = await _end_combat_db(
+                session, updated, outcome, mutations=db_mutations, queries=db_queries, conn=conn, sink=sink
+            )
+            if residue is not None:
+                end_data["lost_scout_residue"] = residue
+
+    handoff = None
+    if outcome is None:
+        session.combat_state = updated
+    else:
+        assert end_data is not None
+        handoff = _end_combat_finish(session, updated, outcome, end_data)
+    for member in session.party.members:
+        if member.player_id in totals:
+            member.resonance.current = totals[member.player_id]
+
+    if end_data is not None:
+        with isolated_publish("Wildmother's Wrath level snapshots"):
+            await publish_snapshots(session, end_data["level_up_recipients"])
+    with isolated_publish("Wildmother's Wrath events"):
+        await sink.flush()
+    if handoff is None:
+        with isolated_publish("Wildmother's Wrath combat update"):
+            await publish_game_event(
+                session.room, E.COMBAT_UI_UPDATE, build_combat_ui_update(updated), event_bus=session.event_bus
+            )
+    with isolated_publish("Wildmother's Wrath patron abilities"):
+        await publish_patron_abilities(session.room, actor, session.event_bus)
+    for member in session.party.members:
+        if member.player_id in totals:
+            with isolated_publish(f"Wildmother's Wrath resonance update ({member.player_id})"):
+                await publish_resonance_changed(session, resonance_track=member.resonance, caster_id=member.player_id)
+    return ability, response, handoff
+
+
 async def activate(
     context, ability_id, *, target_id=None, condition: str | None = None, destination: dict | None = None
-):
+) -> str:
     from patron_ability_events import publish_patron_abilities
 
     session = context.userdata
@@ -182,15 +248,29 @@ async def activate(
                 session.room, E.COMBAT_UI_UPDATE, build_combat_ui_update(updated), event_bus=session.event_bus
             )
         await publish_patron_abilities(session.room, actor, session.event_bus)
-    return json.dumps(
-        {
-            "id": ability_id,
-            "name": ability["name"],
-            "effect": ability["effect"],
-            "recharge": ability["recharge"],
-            "dm_cue": "Narrate the authored answer or effect. Obtain mechanical facts from engine/query tools "
-            'before stating any number; for enemy AC use query_info(kind="creature", target_id=<enemy id>). '
-            "Never invent an unavailable number.",
-            **response,
-        }
-    )
+    return json.dumps(_activation_response(ability_id, ability, response))
+
+
+async def activate_wrath(session: "SessionData") -> str | tuple:
+    actor = session.acting_player_id
+    ability_id = patron_combat_edges.WILDMOTHERS_WRATH
+    async with session.combat_state_lock:
+        ability, response, handoff = await _activate_wrath(session, actor, ability_id)
+    result = _activation_response(ability_id, ability, response)
+    if handoff is not None:
+        agent, settlement = handoff
+        return agent, json.dumps({**json.loads(settlement), **result})
+    return json.dumps(result)
+
+
+def _activation_response(ability_id: str, ability: dict, response: dict) -> dict:
+    return {
+        "id": ability_id,
+        "name": ability["name"],
+        "effect": ability["effect"],
+        "recharge": ability["recharge"],
+        "dm_cue": "Narrate the authored answer or effect. Obtain mechanical facts from engine/query tools "
+        'before stating any number; for enemy AC use query_info(kind="creature", target_id=<enemy id>). '
+        "Never invent an unavailable number.",
+        **response,
+    }

@@ -20,6 +20,7 @@ from test_patron_engine_nythera import SCENARIOS as nythera
 from test_patron_engine_orenthel import SCENARIOS as orenthel
 from test_patron_engine_syrath import SCENARIOS as syrath
 from test_patron_engine_thyra import SCENARIOS as thyra
+from test_patron_engine_thyra_wrath import SCENARIOS as thyra_wrath
 from test_patron_engine_valdris import SCENARIOS as valdris
 from test_patron_passives import SCENARIOS as passives
 from test_patron_senses import SCENARIOS as senses
@@ -48,6 +49,7 @@ ENGINE_SCENARIOS = {
     **orenthel,
     **syrath,
     **thyra,
+    **thyra_wrath,
     **zhael,
     **lucky,
     **passives,
