@@ -831,10 +831,11 @@
       "devoted": {
         "id": "aelora_community_shield",
         "name": "Community Shield",
-        "effect": "Once per long rest, grant ally temporary HP equal to level + CHA mod",
+        "effect": "Once per long rest, immediately grant another present party player temporary HP equal to your level plus your Charisma modifier (minimum 1). The grant replaces a smaller pool and requires no action or reaction",
         "recharge": "long_rest",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "aelora_community_shield"
       },
       "exalted": {
         "id": "aelora_hearthfire",

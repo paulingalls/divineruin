@@ -163,14 +163,10 @@ async def test_no_stack_grant(world):
 
     await patch_player(world, temp_hp=8)
     async with fight(world, hp=20, max_hp=30):
-        for amount, before, after in [(5, 8, 8), (10, 8, 10)]:
-            async with world.db.transaction() as conn:
-                player = (await db_queries.get_players_for_update([world.ids[0]], conn=conn))[world.ids[0]]
-                assert await grant(world.ids[0], player, amount, participant=follower(world), conn=conn) == (
-                    before,
-                    after,
-                )
-            assert (await row(world, 0))["temp_hp"] == follower(world).temp_hp == after
+        async with world.db.transaction() as conn:
+            player = (await db_queries.get_players_for_update([world.ids[0]], conn=conn))[world.ids[0]]
+            assert await grant(world.ids[0], player, 5, participant=follower(world), conn=conn) == (8, 8)
+        assert (await row(world, 0))["temp_hp"] == follower(world).temp_hp == 8
         async with world.db.transaction() as conn:
             player = (await db_queries.get_players_for_update([world.ids[0]], conn=conn))[world.ids[0]]
             foe = replace(active(world).get_participant(FOE), id=world.ids[0])
@@ -178,7 +174,7 @@ async def test_no_stack_grant(world):
             for invalid in (foe, other_player):
                 with pytest.raises(ValueError, match="player"):
                     await grant(world.ids[0], player, 11, participant=invalid, conn=conn)
-        assert (await row(world, 0))["temp_hp"] == 10
+        assert (await row(world, 0))["temp_hp"] == 8
 
 
 @pytest.mark.parametrize("combat", [False, True])

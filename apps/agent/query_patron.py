@@ -14,7 +14,7 @@ import zhael_fate
 from _gods_content import load_gods
 from combat_terrain import resolve_terrain
 from patron_ability_tools import project_abilities
-from patron_combat_edges import VEILSTEP, VEILSTEP_RANGE_FT, WILDMOTHERS_WRATH
+from patron_combat_edges import COMMUNITY_SHIELD, VEILSTEP, VEILSTEP_RANGE_FT, WILDMOTHERS_WRATH
 from patron_favor import get_patron_tier
 from patron_gifts import UNBOUND_ALONE_BONUS, thyra_gift
 from patron_synergy import synergy_for_patron
@@ -83,6 +83,12 @@ async def query_patron(
             ability["activation_hint"] = (
                 "Triggers automatically when damage drops another party player or the companion to 0 HP. "
                 "They stand at half maximum HP, rounded down with a minimum of 1."
+            )
+        elif ability["id"] == COMMUNITY_SHIELD:
+            ability["activation_hint"] = (
+                f'Use activate(id="{COMMUNITY_SHIELD}", target_id=<other present party player id>). '
+                "Grants temporary HP immediately in or out of combat, equal to your level plus your Charisma "
+                "modifier, at least 1. Refuses if it would not increase the target's pool."
             )
         elif ability["id"] == VEILSTEP:
             ability["activation_hint"] = (

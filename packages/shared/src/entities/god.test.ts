@@ -103,6 +103,16 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     implementation_id: surge,
     recharge: "long_rest",
   });
+  const shield = "aelora_community_shield";
+  expect(
+    validateGods(catalog).find((god) => god.god_id === "aelora")?.layer_3_tier_abilities.devoted,
+  ).toMatchObject({
+    id: shield,
+    status: "active",
+    resolution: "engine",
+    implementation_id: shield,
+    recharge: "long_rest",
+  });
   const mark = "valdris_mark_of_justice";
   expect(
     validateGods(catalog).find((god) => god.god_id === "valdris")?.layer_3_tier_abilities.devoted,
@@ -179,6 +189,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     battleCry,
     judgment,
     surge,
+    shield,
     mark,
     veilstep,
     gateway,
@@ -194,7 +205,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     ),
   ).toEqual(engine);
   const pending = abilities.filter((a) => !narrated.has(a.id) && !engine.has(a.id));
-  expect(pending).toHaveLength(9);
+  expect(pending).toHaveLength(8);
   for (const ability of abilities.filter((a) => passives.has(a.id))) {
     expect([ability.recharge, ability.implementation_id]).toEqual(["always", ability.id]);
   }

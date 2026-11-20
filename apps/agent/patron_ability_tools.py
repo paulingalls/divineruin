@@ -3,6 +3,7 @@
 import json
 from typing import TYPE_CHECKING
 
+import asyncpg
 from livekit.agents.llm import ToolError
 
 import db
@@ -11,9 +12,11 @@ import db_queries
 import event_types as E
 import patron_combat_edges
 from _gods_content import load_gods
+from combat_state import CombatState
 from combat_ui_update import build_combat_ui_update
 from game_events import publish_game_event
 from patron_favor import get_patron_tier
+from patron_passives import effective_hp
 
 if TYPE_CHECKING:
     from session_data import SessionData
@@ -136,6 +139,28 @@ async def spend(session, actor, ability_id):
     return ability
 
 
+async def _prepare_shield(
+    conn: asyncpg.Connection, session: "SessionData", actor: str, target: str | None
+) -> tuple[dict, CombatState | None, dict, dict | None]:
+    if target is None:
+        raise ToolError("Community Shield requires a target_id.")
+    if target == actor:
+        raise ToolError("Community Shield targets another player.")
+    if target not in session.present_member_ids:
+        raise ToolError("Community Shield requires a present party player.")
+    players = await db_queries.get_players_for_update([actor, target], conn=conn)
+    if target not in players:
+        raise ToolError(f"Player {target!r} not found.")
+    ability = await _locked_ability(conn, actor, patron_combat_edges.COMMUNITY_SHIELD)
+    if target not in session.present_member_ids:
+        raise ToolError("Community Shield requires a present party player.")
+    updated, response = await patron_combat_edges.community_shield(
+        session.combat_state, actor, target, players[actor], players[target], conn=conn
+    )
+    health = {**effective_hp(players[target]), "temp_hp": response["temp_hp"]} if updated is None else None
+    return ability, updated, response, health
+
+
 async def _spend_activation(conn, session, actor, ability_id, target_id, condition, destination: dict | None):
     if ability_id == patron_combat_edges.RESTORATION_SURGE:
         target = target_id or actor
@@ -149,23 +174,27 @@ async def _spend_activation(conn, session, actor, ability_id, target_id, conditi
             session.combat_state, actor, target, condition, players[target], conn=conn
         )
         await _write_spend(conn, session, actor, ability_id)
-        return ability, updated, response
+        return ability, updated, response, None
 
-    ability = await _locked_ability(conn, actor, ability_id)
-    updated = None
-    response = {}
-    if ability.get("resolution") == "engine":
-        handler = patron_combat_edges.ACTIVE_GIFTS.get(ability_id)
-        if handler is None:
-            raise ToolError("This ability cannot be activated directly.")
-        selector = (
-            {"destination": destination} if ability_id == patron_combat_edges.VEILSTEP else {"target_id": target_id}
-        )
-        updated, response = handler(session.combat_state, actor, **selector)
+    health = None
+    if ability_id == patron_combat_edges.COMMUNITY_SHIELD:
+        ability, updated, response, health = await _prepare_shield(conn, session, actor, target_id)
+    else:
+        ability = await _locked_ability(conn, actor, ability_id)
+        updated = None
+        response = {}
+        if ability.get("resolution") == "engine":
+            handler = patron_combat_edges.ACTIVE_GIFTS.get(ability_id)
+            if handler is None:
+                raise ToolError("This ability cannot be activated directly.")
+            selector = (
+                {"destination": destination} if ability_id == patron_combat_edges.VEILSTEP else {"target_id": target_id}
+            )
+            updated, response = handler(session.combat_state, actor, **selector)
     await _write_spend(conn, session, actor, ability_id)
     if updated is not None:
         await db_mutations.save_combat_state(updated.combat_id, updated.to_dict(), conn=conn)
-    return ability, updated, response
+    return ability, updated, response, health
 
 
 async def _activate_wrath(session: "SessionData", actor: str, ability_id: str) -> tuple[dict, dict, tuple | None]:
@@ -233,13 +262,14 @@ async def _activate_wrath(session: "SessionData", actor: str, ability_id: str) -
 async def activate(
     context, ability_id, *, target_id=None, condition: str | None = None, destination: dict | None = None
 ) -> str:
+    from combat_events import isolated_publish
     from patron_ability_events import publish_patron_abilities
 
     session = context.userdata
     actor = session.acting_player_id
     async with session.combat_state_lock:
         async with db.transaction() as conn:
-            ability, updated, response = await _spend_activation(
+            ability, updated, response, health = await _spend_activation(
                 conn, session, actor, ability_id, target_id, condition, destination
             )
         if updated is not None:
@@ -247,6 +277,15 @@ async def activate(
             await publish_game_event(
                 session.room, E.COMBAT_UI_UPDATE, build_combat_ui_update(updated), event_bus=session.event_bus
             )
+        if health is not None:
+            with isolated_publish("Community Shield HP"):
+                await publish_game_event(
+                    session.room,
+                    E.HP_CHANGED,
+                    health,
+                    session.event_bus,
+                    destination_identities=[response["target_id"]],
+                )
         await publish_patron_abilities(session.room, actor, session.event_bus)
     return json.dumps(_activation_response(ability_id, ability, response))
 
