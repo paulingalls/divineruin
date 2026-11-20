@@ -64,6 +64,7 @@ async def registered_damage_catches_ally(world, inner):
         )
         if not inner:
             assert attack_event(world, active(world).get_participant(FOE).name)["context"] != "killing_blow"
+            assert (receipt["context"], receipt["dramatic"]) == ("", False)
         [(event, recipients, committed, revision)] = observed
         assert recipients == [world.ids[1]] and event["player_id"] == world.ids[1]
         assert event["patron_revision"] == revision and committed["patron_gifts"] == SPENT
