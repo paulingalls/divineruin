@@ -204,7 +204,9 @@ class TestEndCombat:
         # here would now correctly raise — that path is covered in test_combat_end_party_wipe).
         monkeypatch.setattr(db_queries, "get_player", AsyncMock(return_value={"player_id": "player_1"}))
         monkeypatch.setattr(
-            resurrection, "resurrect_on_defeat", AsyncMock(return_value={"anchor": "accord_guild_hall"})
+            resurrection,
+            "resurrect_on_defeat",
+            AsyncMock(return_value={"anchor": "accord_guild_hall", "revive_hp": 20}),
         )
         mock_mutations = _make_end_combat_mocks()
         ctx = make_context()

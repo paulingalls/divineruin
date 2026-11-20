@@ -5,6 +5,7 @@ each non-terminal Beat-4 wrap buffer it in the phase EventSink, so rolled-back s
 the client.
 """
 
+import temp_hp
 from session_data import CombatParticipant, CombatState
 from still_encounter import hidden_ids
 
@@ -50,6 +51,7 @@ def _project_combatant(p: CombatParticipant, active_id: str | None) -> dict:
         "isAlly": p.is_ally,
         "hpCurrent": p.hp_current,
         "hpMax": p.hp_max,
+        "tempHp": temp_hp.player_pool(p),
         "conditions": [_project_condition(c) for c in p.conditions],
         "isActive": p.id == active_id,
     }

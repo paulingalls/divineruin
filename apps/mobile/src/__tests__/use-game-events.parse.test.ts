@@ -38,6 +38,7 @@ test("parseCombatant returns valid combatant from well-formed data", () => {
     isAlly: true,
     hpCurrent: 20,
     hpMax: 30,
+    tempHp: 0,
     conditions: [{ type: "regenerating", stacks: 1, source: "druid" }],
     isActive: true,
   });

@@ -1,3 +1,4 @@
+import type { CharacterHpWire } from "@divineruin/shared";
 import gods from "../../../content/gods.json";
 import { validateGods } from "../../../packages/shared/src/entities/god.ts";
 import { sql } from "./db.ts";
@@ -27,6 +28,7 @@ interface CharacterRow {
     xp?: number;
     location_id?: string;
     hp?: { current?: number; max?: number };
+    temp_hp?: number;
     maxhp_override?: number;
     portrait_url?: string;
     divine_favor?: { patron?: string };
@@ -72,6 +74,11 @@ export async function handleGetCharacter(_req: Request, playerId: string): Promi
     const current = hp.current ?? 0;
     const locationId = data.location_id ?? "unknown";
 
+    const health: CharacterHpWire = {
+      hp_current: maximum === undefined ? current : Math.min(current, maximum),
+      hp_max: maximum ?? 0,
+      temp_hp: data.temp_hp ?? 0,
+    };
     return Response.json({
       player_id: row.player_id,
       name: data.name,
@@ -80,8 +87,7 @@ export async function handleGetCharacter(_req: Request, playerId: string): Promi
       xp: data.xp ?? 0,
       location_id: locationId,
       location_name: row.location_name ?? locationId,
-      hp_current: maximum === undefined ? current : Math.min(current, maximum),
-      hp_max: maximum ?? 0,
+      ...health,
       portrait_url: data.portrait_url?.replace(/^"|"$/g, "") ?? null,
     });
   } catch (err) {

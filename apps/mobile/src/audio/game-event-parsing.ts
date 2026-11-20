@@ -91,6 +91,7 @@ export function parseCombatant(raw: unknown): Combatant | null {
     isAlly: typeof c.isAlly === "boolean" ? c.isAlly : false,
     hpCurrent: typeof c.hpCurrent === "number" ? c.hpCurrent : 0,
     hpMax: typeof c.hpMax === "number" ? c.hpMax : 1,
+    tempHp: typeof c.tempHp === "number" ? c.tempHp : 0,
     conditions,
     isActive: typeof c.isActive === "boolean" ? c.isActive : false,
   };

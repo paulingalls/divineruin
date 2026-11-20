@@ -8,6 +8,7 @@ import pytest
 from _spell_heal_fixtures import LOCATION, MASS, PRAYER, REGENERATE, TOUCH, WOUNDS
 from _spell_heal_fixtures import spell_heal_walk as spell_heal_walk
 from sample_fixtures import published_payloads
+from test_wire_contract import FIXTURE
 
 import db_mutations
 import db_queries
@@ -265,19 +266,22 @@ async def test_combat_activate_refuses_a_heal_without_spending(healer):
 
 
 async def test_exploration_heal_pushes_each_healed_recipients_hp(healer):
-    await healer.prepare(MASS)
-    ally = await healer.add_player(hp=20)
-    with heal_die(5):
-        await healer.cast(MASS)
+    await healer.prepare(WOUNDS)
+    await healer.patch(divine_favor={"patron": "orenthel", "level": 0, "max": 100}, temp_hp=5)
+    ally = await healer.add_player(hp=4)
+    with heal_die(2):
+        await healer.cast(WOUNDS, targets=[ally])
     calls = healer.sd.room.local_participant.publish_data.call_args_list
     pushes = [
-        (c.kwargs.get("destination_identities"), p)
+        (c.kwargs["destination_identities"], p)
         for c, p in zip(calls, published_payloads(healer.sd.room), strict=True)
+        if p["type"] == "hp_changed"
     ]
-    assert [(to, p["current"], p["max"]) for to, p in pushes if p["type"] == "hp_changed"] == [
-        ([healer.player], 11, 20)
+    assert pushes == [
+        ([ally], FIXTURE["events"]["temp_hp_event_clear"]),
+        ([healer.player], {"type": "hp_changed", "current": 5, "max": 20, "temp_hp": 5}),
     ]
-    assert (await healer.read(ally))["hp"]["current"] == 20
+    assert (await healer.read(ally))["hp"]["current"] == 12
 
 
 async def test_a_zero_heal_leaves_a_dying_ally_dying(healer):

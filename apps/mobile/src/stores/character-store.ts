@@ -1,6 +1,7 @@
+import type { HudHp } from "@divineruin/shared";
 import { createStore } from "zustand/vanilla";
 
-export interface CharacterSummary {
+export interface CharacterSummary extends HudHp {
   playerId: string;
   name: string;
   race: string;
@@ -9,8 +10,6 @@ export interface CharacterSummary {
   xp: number;
   locationId: string;
   locationName: string;
-  hpCurrent: number;
-  hpMax: number;
   deity: string;
   portraitUrl: string | null;
 }
@@ -21,7 +20,7 @@ interface CharacterState {
   divineFavorMax: number;
   setCharacter: (character: CharacterSummary) => void;
   updateLocation: (id: string, name: string) => void;
-  updateHp: (current: number, max?: number) => void;
+  updateHp: (current: number, max?: number, tempHp?: number) => void;
   updateXp: (xp: number, level: number) => void;
   updateDivineFavor: (level: number, max: number) => void;
   updatePortraitUrl: (url: string) => void;
@@ -37,10 +36,17 @@ export const characterStore = createStore<CharacterState>((set) => ({
     set((s) =>
       s.character ? { character: { ...s.character, locationId: id, locationName: name } } : s,
     ),
-  updateHp: (current, max) =>
+  updateHp: (current, max, tempHp) =>
     set((s) =>
       s.character
-        ? { character: { ...s.character, hpCurrent: current, hpMax: max ?? s.character.hpMax } }
+        ? {
+            character: {
+              ...s.character,
+              hpCurrent: current,
+              hpMax: max ?? s.character.hpMax,
+              tempHp: tempHp ?? s.character.tempHp,
+            },
+          }
         : s,
     ),
   updateXp: (xp, level) =>
