@@ -84,6 +84,8 @@ class CombatState:
     veil_ward: dict | None = None
     ally_continuation: dict | None = None
     wrap_continuation: dict | None = None
+    legendary_continuation: dict | None = None
+    legendary_sequence: int = 0
     inner_fire_continuation: dict | None = None
     inner_fire_used_by: list[str] = field(default_factory=list)
     # Enemy declarations HELD for Beat 3 (M29, story-016), initiative-ordered, popped as each
@@ -184,6 +186,8 @@ class CombatState:
             # with no held actions and no open window: a legacy combat is simply not mid-pause.
             ally_continuation=data.get("ally_continuation"),
             wrap_continuation=data.get("wrap_continuation"),
+            legendary_continuation=data.get("legendary_continuation"),
+            legendary_sequence=data.get("legendary_sequence", 0),
             inner_fire_continuation=data.get("inner_fire_continuation"),
             inner_fire_used_by=data.get("inner_fire_used_by", []),
             held_actions=held_actions,
@@ -195,10 +199,12 @@ class CombatState:
         import architect_actions
         import architect_encounter
         import choir_encounter
+        import combat_legendary
         import still_encounter
 
         combat_structures.validate_participants(state)
         architect_encounter.validate(state)
+        combat_legendary.validate(state)
         architect_actions.validate_continuations(state)
         choir_encounter.validate(state)
         still_encounter.validate(state)

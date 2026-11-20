@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from encounter_roles import EncounterRole
+
 
 @dataclass
 class CombatParticipant:
@@ -75,6 +77,8 @@ class CombatParticipant:
     damage_mult: float = 1.0
     dc_mod: int = 0
     legendary_actions: int = 0
+    legendary: dict | None = None
+
     signature_ability: dict | None = None
     # Loot & currency overlay (M4.7, story-002). ``category`` is the enemy's creature category
     # (humanoid/beast/hollow_drift/hollow_rend/construct/undead/named) and ``loot_table_id`` points
@@ -123,6 +127,10 @@ class CombatParticipant:
 
     hollow: dict | None = None
     hollow_death_resolved: bool = False
+
+    @property
+    def legendary_capacity(self) -> int:
+        return self.legendary["points"] if self.legendary is not None else int(self.role == EncounterRole.BOSS)
 
     @property
     def is_structure(self) -> bool:

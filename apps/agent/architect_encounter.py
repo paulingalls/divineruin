@@ -152,7 +152,11 @@ def _validate_receipts(state: CombatState, record: dict, areas: dict) -> None:
             head["actor_id"] != record["owner_id"]
             or not isinstance(receipts, list)
             or len(receipts) > len(operations)
-            or (receipts and (record["reshape_round"] != state.round_number or len(receipts) > record["reshape_count"]))
+            or (
+                receipts
+                and "legendary_kind" not in head
+                and (record["reshape_round"] != state.round_number or len(receipts) > record["reshape_count"])
+            )
         ):
             raise ValueError("Invalid Architect Reshape receipts")
         pending_floor = None
@@ -236,6 +240,13 @@ def facts(state: CombatState) -> dict | None:
         **record,
         "hp": owner.hp_current,
         "live_wall_ids": live_walls,
+        "live_walls": {wall_id: live_segments[wall_id] for wall_id in live_walls},
+        "legendary": {
+            **owner.legendary,
+            "remaining": owner.legendary_actions,
+        }
+        if owner.legendary is not None
+        else None,
         "reshape_uses_remaining": remaining(state, owner) if record["phase"] == "active" else 0,
         "reshape": "Create, move or destroy a wall, open a floor or lower a ceiling. "
         "Sections are up to 20 feet across and within 120 feet. "

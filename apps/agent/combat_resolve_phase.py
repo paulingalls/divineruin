@@ -43,6 +43,7 @@ from combat_events import EventSink, emit_or_publish, isolated_publish
 from combat_fate_rolls import PhaseRolls
 from combat_packet import _prevalidate_ability_focus, _resolve_one_packet
 from combat_phase_recovery import PrevalidationRefusal, phase_transaction_with_recovery
+from combat_state import CombatState
 from combat_support import _participant_roster, _require_combat
 from combat_ui_update import build_combat_ui_update
 from declarations import DeclarationType
@@ -66,11 +67,13 @@ async def _resolve_phase_locked(
     character_spells_mod=character_spells,
     kept: check_resolution_attack.D20CheckCore | None = None,
     resuming: bool = False,
+    legendary_start: CombatState | None = None,
 ) -> str | tuple:
     logger.info("resolve_phase called")
     session = context if isinstance(context, SessionData) else context.userdata
 
-    cs = _require_combat(session)
+    cs = legendary_start if legendary_start is not None else _require_combat(session)
+    legendary = cs.legendary_continuation
     if cs.inner_fire_continuation is not None:
         return json.dumps(
             await draethar_inner_fire.resume_inner_fire(
@@ -82,10 +85,11 @@ async def _resolve_phase_locked(
                 kept=kept,
             )
         )
-    if cs.beat not in (combat_phase.PhaseBeat.RESOLUTION, combat_phase.PhaseBeat.NARRATION):
+    if legendary is None and cs.beat not in (combat_phase.PhaseBeat.RESOLUTION, combat_phase.PhaseBeat.NARRATION):
         raise ToolError(f"Not at the resolution or narration beat (current beat: {cs.beat}). Call declare_phase first.")
     try:
-        combat_spatial_declarations.preflight_state(cs)
+        if legendary is None:
+            combat_spatial_declarations.preflight_state(cs)
     except ValueError as error:
         raise ToolError(str(error)) from error
     resolving_allies = cs.beat == combat_phase.PhaseBeat.RESOLUTION
@@ -167,12 +171,20 @@ async def _resolve_phase_locked(
                 state,
                 packet_deps={**packet_deps, "conn": conn, "sink": sink, "cast_outcome": cast_outcome},
                 fate_rolls=fate_rolls,
+                execution_id=legendary["execution_id"] if legendary is not None else None,
             )
+            if legendary is not None and state.open_window is None and fate_rolls.pending is None:
+                state.legendary_continuation = None
 
         residue = await lost_scout_combat.residue(session, state, queries=queries, mutations=mutations, conn=conn)
         # A held argument that ends combat must hand off before the incoming tool can run.
         ended_on_argument = state.deescalated and combat_fate.held_argument(cs.ally_continuation) is not None
-        if (not resolving_allies or ended_on_argument) and state.open_window is None and fate_rolls.pending is None:
+        if (
+            legendary is None
+            and (not resolving_allies or ended_on_argument)
+            and state.open_window is None
+            and fate_rolls.pending is None
+        ):
             (
                 state,
                 wrap,
@@ -195,13 +207,21 @@ async def _resolve_phase_locked(
             )
 
         if (
-            (resolving_allies and not ended_on_argument)
+            legendary is not None
+            or (resolving_allies and not ended_on_argument)
             or state.open_window is not None
             or fate_rolls.pending is not None
         ):
             exhaustion_narration: dict[str, str] = {}
             wrap = None
-            wrap_adv = combat_phase.PhaseAdvance(beat_completed=combat_phase.PhaseBeat.NARRATION)
+            wrap_adv = combat_phase.PhaseAdvance(
+                beat_completed=combat_phase.PhaseBeat.NARRATION,
+                legendary_available=[action for action in combat_phase._boss_legendaries(state) if "actions" in action]
+                if state.beat == combat_phase.PhaseBeat.NARRATION
+                and state.open_window is None
+                and fate_rolls.pending is None
+                else [],
+            )
             ended_outcome = None
             pending_by_member = combat_hollow_resonance.take_totals(state)
             await emit_or_publish(
@@ -324,6 +344,12 @@ async def _resolve_phase_locked(
         "exhaustion_narration": exhaustion_narration,
         "legendary_available": wrap_adv.legendary_available,
     }
+    if legendary is not None:
+        response.update(
+            actor_id=legendary["actor_id"],
+            action_id=legendary["action_id"],
+            legendary_actions_remaining=legendary["remaining"],
+        )
     if residue is not None:
         response["lost_scout_residue"] = residue
     if judgment_rewards:

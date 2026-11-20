@@ -75,8 +75,8 @@ def next_envelope(state) -> dict:
                 "reactions": reaction_gate.offered_reactions(state),
             },
         }
-    if state.beat == combat_phase.PhaseBeat.NARRATION:
-        return {"phase": "narration", "verbs": ["resolve_phase"], "waiting_on": None}
+    if state.legendary_continuation is not None or state.beat == combat_phase.PhaseBeat.NARRATION:
+        return {"phase": state.beat, "verbs": ["resolve_phase"], "waiting_on": None}
     return {
         "phase": "declaration",
         "verbs": ["declare_phase"],

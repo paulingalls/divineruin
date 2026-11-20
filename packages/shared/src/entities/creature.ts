@@ -1,3 +1,4 @@
+import { isObject, validateLegendary, type Shape, type Legendary } from "./legendary_contracts";
 import {
   validateTurnTraits,
   type CorruptionField,
@@ -64,6 +65,7 @@ export interface CreatureStatBlock {
   };
   passives: Ability[];
   actives: ActiveAbility[];
+  legendary?: Legendary;
   signature_ability?: CatalogSignatureAbility;
   resistance_tags?: (typeof RESISTANCE_TAG_VALUES)[number][];
   reactions: (Ability | (Omit<Ability, "kind"> & ChoirEffect))[];
@@ -159,10 +161,7 @@ const ATTACK_TYPES = ["melee", "ranged", "area"];
 const HOLLOW_CLASSES = ["drift", "rend", "wrack", "named"];
 const ATTRIBUTES = ["STR", "DEX", "CON", "INT", "WIS", "CHA"];
 const LOOT_IDS = new Set(lootTables.map((row) => row.id));
-type Shape = Record<string, unknown>;
 type Kind = "string" | "integer" | "boolean" | "object" | "array";
-const isObject = (value: unknown): value is Shape =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
 
 export function validateCreatureStatBlock(creature: unknown): string[] {
   const problems: string[] = [];
@@ -466,7 +465,11 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
     if (!LOOT_IDS.has(lootId)) problems.push("loot_table_id: unknown loot table");
   }
   field(creature, "xp_reward", "", "integer");
-  return problems.concat(validateCreatureTraits(creature), validateTurnTraits(creature));
+  return problems.concat(
+    validateCreatureTraits(creature),
+    validateTurnTraits(creature),
+    validateLegendary(creature),
+  );
 }
 
 // JSON.parse reads 8.0 as 8, while Python's json keeps it a float that fails "expected integer".

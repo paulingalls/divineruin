@@ -169,12 +169,13 @@ def derive_role_stats(enemy: dict, role: str) -> dict:
     """
     derived = dict(enemy)
     derived["role"] = role
+    legendary = enemy.get("legendary")
+    derived["legendary_actions"] = legendary["points"] if legendary is not None else int(role == EncounterRole.BOSS)
 
     if role in (EncounterRole.STANDARD, EncounterRole.NAMED):
         derived["attack_mod"] = 0
         derived["dc_mod"] = 0
         derived["damage_mult"] = 1.0
-        derived["legendary_actions"] = 0
         derived["signature_ability"] = None
         return derived
 
@@ -191,6 +192,5 @@ def derive_role_stats(enemy: dict, role: str) -> dict:
     derived["damage_mult"] = mod.damage_mult
 
     is_boss = role == EncounterRole.BOSS
-    derived["legendary_actions"] = 1 if is_boss else 0
     derived["signature_ability"] = enemy.get("signature_ability") if is_boss else None
     return derived
