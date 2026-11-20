@@ -178,14 +178,13 @@ def calculate_ac(equipment: dict, dexterity: int) -> int:
         base_ac = 10 + dex_mod
     else:
         base_ac = armor.get("ac_bonus", 10)
-        # Heavy armor (base_ac >= 15): no DEX bonus
-        # Medium armor (base_ac >= 12): DEX capped at +2
-        # Light armor (base_ac < 12): full DEX
-        if base_ac >= 15:
-            pass  # no dex bonus
-        elif base_ac >= 12:
+        weight = armor.get("weight_class")
+        if weight is None:
+            # Legacy starter loadouts carry only base AC.
+            weight = "heavy" if base_ac >= 15 else "medium" if base_ac >= 12 else "light"
+        if weight == "medium":
             base_ac += min(dex_mod, 2)
-        else:
+        elif weight == "light":
             base_ac += dex_mod
 
     shield = equipment.get("shield")

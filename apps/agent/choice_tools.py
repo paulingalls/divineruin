@@ -19,6 +19,8 @@ import db
 import db_content_queries
 import db_mutations
 import db_queries
+import elective_choice_tools
+import elective_choices
 import lost_scout_scene
 import milestone_persistence
 import milestones
@@ -38,9 +40,9 @@ async def select(
     choice_id: str,
     option: str,
 ) -> str:
-    """Resolve a pending attribute increase, specialization or Hollow Echo choice.
-    query_info(kind="abilities") recovers attribute increase choices until the next long rest. Use the emitted choice_id
-    and option id. For Hollow Echo, offer both descriptions aloud and wait for the
+    """Resolve a pending attribute increase, elective technique, specialization or Hollow Echo choice.
+    query_info(kind="abilities") recovers attribute increases until the next long rest and elective techniques until chosen.
+    Read elective options aloud and wait for a spoken choice. Use the emitted choice_id and option id. For Hollow Echo, offer both descriptions aloud and wait for the
     player's spoken choice before selecting. For a Lost Scout report, use the report_action from
     query_info(kind="npc") when the player tells Torin what happened. Level 10/15/20 grants apply automatically."""
     return await _select_impl(context, choice_id, option)
@@ -86,6 +88,9 @@ async def _select_impl(
 
     if choice_id.startswith(attribute_increases.PREFIX):
         return await attribute_increase_tools.select(session, choice_id, option, db_mod=db_mod, queries_mod=queries_mod)
+
+    if choice_id.startswith(elective_choices.PREFIX):
+        return await elective_choice_tools.select(session, choice_id, option, db_mod=db_mod, queries_mod=queries_mod)
 
     if choice_id.startswith(patron_echo_choice.PREFIX):
         return await patron_echo_choice.select(session, choice_id, option, db_mod=db_mod, queries_mod=queries_mod)

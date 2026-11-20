@@ -258,6 +258,7 @@ def test_combat_end_resets_every_member_after_use():
         "defeated_enemies": [],
         "milestone_grants": [],
         "attribute_increases": [],
+        "elective_choices": [],
         "specialization_fork": None,
         "weapon_durability": [],
     }

@@ -246,6 +246,7 @@ class TestCombatEndDefeatWiring:
             "item_recipients": [],
             "milestone_grants": [],
             "attribute_increases": [],
+            "elective_choices": [],
             "specialization_fork": False,
             "defeated_enemies": [],
             "weapon_durability": {},

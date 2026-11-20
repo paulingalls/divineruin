@@ -158,7 +158,7 @@ async def _core_pending_events() -> dict[str, dict]:
         player=player,
         amount=expected["amount"],
         reason=expected["reason"],
-        conn=MagicMock(execute=AsyncMock()),
+        conn=MagicMock(execute=AsyncMock(), fetch=AsyncMock(return_value=[])),
         pending_events=pending,
         mutations=mutations,
         milestones_mod=_milestones_mod_for(_WARRIOR_MILESTONES, "warrior"),

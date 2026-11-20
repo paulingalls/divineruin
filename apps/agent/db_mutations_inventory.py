@@ -82,3 +82,49 @@ async def transact_inventory(
         await db_mutations.remove_inventory_item(player_id, item_id, tainted=tainted, conn=_conn)
         return 0
     return remaining
+
+
+async def lock_equipment_stacks(
+    player_id: str, item_id: str, item_type: str, *, conn: asyncpg.Connection
+) -> dict[str, dict]:
+    rows = await conn.fetch(
+        """
+        SELECT inv.item_id, inv.data
+        FROM player_inventory inv JOIN items item ON item.id = inv.item_id
+        WHERE inv.player_id = $1 AND NOT inv.tainted
+          AND (inv.item_id = $2 OR (
+              item.data->>'type' = $3
+              AND NOT (item.data->'tags' ? 'cloak')
+              AND inv.data @> '{"equipped": true}'
+          ))
+        ORDER BY inv.item_id
+        FOR UPDATE OF inv
+        """,
+        player_id,
+        item_id,
+        item_type,
+    )
+    return {row["item_id"]: json.loads(row["data"]) for row in rows}
+
+
+async def set_equipped_flags(
+    player_id: str, item_id: str, changed_items: list[str], *, conn: asyncpg.Connection
+) -> None:
+    await conn.execute(
+        """
+        UPDATE player_inventory
+        SET data = jsonb_set(data, '{equipped}', to_jsonb(item_id = $2))
+        WHERE player_id = $1 AND item_id = ANY($3::text[]) AND NOT tainted
+        """,
+        player_id,
+        item_id,
+        changed_items,
+    )
+
+
+async def save_loadout(player_id: str, equipment: dict, ac: int, *, conn: asyncpg.Connection) -> None:
+    await conn.execute(
+        "UPDATE players SET data = data || $2::jsonb WHERE player_id = $1",
+        player_id,
+        json.dumps({"equipment": equipment, "ac": ac}),
+    )

@@ -108,6 +108,10 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - [x] Declaration enhancers (Cunning Action, Extra Attack) correctly expand single declarations. Cunning Action doubles the approach allowance with Dash or attempts Stealth after the attack with Hide. Disengage is refused until movement opens hostile reaction windows (#706).
 - [x] All combat math functions are pure with no side effects
 - [x] Tests cover all declaration types, armor categories, and weapon damage ranges
+- [ ] The 15 martial L4/L8 elective techniques that are refused in combat work in a fight
+  `warrior_cleaving_blow`, `warrior_precision_strike`, `warrior_taunt`, `warrior_reckless_assault`, `warrior_war_cry`, `warrior_whirlwind`, `warrior_iron_stance`,
+  and `rogue_dirty_trick`, `rogue_quick_fingers`, `rogue_smoke_bomb`, `rogue_crippling_strike`, `rogue_shadow_step`, `rogue_exploit_weakness`, `rogue_vanish`, `rogue_blade_flurry`.
+- [ ] Weapon equips check proficiency once item weapon categories are normalized in both loaders.
 
 **Key references:**
 - *Game Mechanics Combat — Action Economy*

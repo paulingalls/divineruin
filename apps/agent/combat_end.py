@@ -348,6 +348,7 @@ async def _end_combat_db(
         "summary_xp_granted": rewards.xp.summary_xp_granted,
         "xp_by_player": rewards.xp.granted_by_player,
         "attribute_increases": rewards.xp.attribute_increases,
+        "elective_choices": rewards.xp.elective_choices,
         "level_up_recipients": {ev.payload["player_id"] for ev in sink.captured if ev.event_type == E.LEVEL_UP},
         "milestone_grants": rewards.xp.milestone_grants,
         "specialization_fork": rewards.xp.specialization_fork,
@@ -434,6 +435,7 @@ def _end_combat_finish(
         # choice the generic select verb resolves.
         "xp_granted": xp_granted,
         "attribute_increases": end_data["attribute_increases"],
+        "elective_choices": end_data["elective_choices"],
         "milestone_grants": end_data["milestone_grants"],
         "specialization_fork": end_data["specialization_fork"],
         "defeated_enemies": defeated_enemies,
