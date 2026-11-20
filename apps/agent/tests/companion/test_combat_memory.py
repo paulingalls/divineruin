@@ -4,7 +4,9 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sample_fixtures import load_test_creature, mock_txn
+from acceptance._capstone_helpers import _d20
+from sample_fixtures import load_test_creature, make_db_mod, mock_txn
+from voice_condition_fixtures import place_actors
 
 from session_data import CombatParticipant, CombatState, CompanionState, SessionData
 
@@ -190,11 +192,17 @@ class TestCompanionInCombat:
         goblin = cs.get_participant("goblin_1")
         companion = cs.get_participant("companion_kael")
         assert goblin is not None and companion is not None
-        result = await _resolve_attack_packet(ctx.userdata, goblin, goblin.action_pool[0], companion)
+        _, conn = make_db_mod()
+        queries = MagicMock(get_players_for_update=AsyncMock(return_value={"player_1": SAMPLE_PLAYER}))
+        place_actors(cs)
+        with patch("check_resolution.dice_roll", return_value=_d20(15)):
+            result = await _resolve_attack_packet(
+                ctx.userdata, goblin, goblin.action_pool[0], companion, combat_state=cs, conn=conn, queries=queries
+            )
 
-        if result["hit"]:
-            assert ctx.userdata.companion.is_conscious is False
-            assert "knocked unconscious" in ctx.userdata.companion.session_memories[-1]
+        assert result["hit"]
+        assert ctx.userdata.companion.is_conscious is False
+        assert "knocked unconscious" in ctx.userdata.companion.session_memories[-1]
 
 
 class TestCompanionMemoryInTools:
