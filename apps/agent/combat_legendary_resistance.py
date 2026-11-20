@@ -30,8 +30,10 @@ def finalize_save(
     action = combat_recharge.LEGENDARY_RESISTANCE
     if not combat_recharge.available(target, action):
         return result
+    # Decision (3) spends on a failure that would APPLY a condition; one already held is not applied.
+    held = {condition["type"] for condition in target.conditions}
     if 4 * failed_damage < target.hp_current and not any(
-        can_land_condition(state, target, condition) for condition in failed_conditions
+        condition not in held and can_land_condition(state, target, condition) for condition in failed_conditions
     ):
         return result
     combat_recharge.spend(target, action, state.round_number)

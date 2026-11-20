@@ -129,3 +129,17 @@ async def test_post_hit_rider_cannot_spend_on_an_ineligible_target(fight, block)
     assert target.action_ledger == before
     if block == "already_hollowed":
         assert target.conditions[0]["stage"] == 1
+
+
+async def test_failed_save_for_a_condition_already_held_keeps_the_use(fight):
+    await equip_charge(fight)
+    state = await fight.reload()
+    owner = state.architect_encounter["owner_id"]
+    target = state.get_participant(owner)
+    target.conditions = apply_condition(target.conditions, "prone")
+    await fight.persist()
+    result = await charge(fight, owner, face=1)
+    assert result["save_success"] is False and "success_override" not in result
+    target = (await fight.reload()).get_participant(owner)
+    assert [c["type"] for c in target.conditions] == ["prone"]
+    assert target.action_ledger["legendary resistance"]["remaining"] == 3
