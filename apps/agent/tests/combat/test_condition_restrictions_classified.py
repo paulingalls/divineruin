@@ -50,7 +50,9 @@ def test_every_deferred_restriction_names_what_it_waits_on():
 def test_only_positioning_may_wait_on_a_model():
     model_waiting = {restriction for restriction, metadata in NOT_ENFORCED.items() if metadata["waits_on"] == "model"}
 
-    assert model_waiting == {"no_approach_source"}
+    assert model_waiting == {"no_approach_source", "ignores_structures"}
+    assert NOT_ENFORCED["ignores_structures"]["model"] == "the-architect walls movement"
+    assert _authored_carriers("ignores_structures") == {"incorporeal": 1}
 
 
 def test_every_enforced_restriction_has_a_production_reader():
@@ -93,6 +95,7 @@ def test_exact_restriction_partition_and_complete_spoken_corpus():
             {
                 "skip_phase",
                 "incoming_advantage",
+                "incoming_disadvantage",
                 "incoming_melee_advantage",
                 "incoming_melee_autocrit",
                 "incoming_ranged_disadvantage",
@@ -113,6 +116,7 @@ def test_exact_restriction_partition_and_complete_spoken_corpus():
         "immune_poison_disease",
         "damage_reduction",
         "no_approach_source",
+        "ignores_structures",
         "reduced_max_hp",
         "source_specific_penalty",
         "hallucinations",

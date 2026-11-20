@@ -73,9 +73,15 @@ class ConditionEffects:
 
 
 MARK_OF_JUSTICE = "mark_of_justice"
+INCORPOREAL = "incorporeal"
 
 
 CONDITION_CATALOG: dict[str, ConditionSpec] = {
+    INCORPOREAL: ConditionSpec(
+        clearance="duration",
+        advantage_scopes=("attack",),
+        restrictions=("incoming_disadvantage", "ignores_structures"),
+    ),
     MARK_OF_JUSTICE: ConditionSpec(clearance="end_of_combat_or_dismissed"),
     "iron_resolve": ConditionSpec(
         clearance="end_of_next_turn",

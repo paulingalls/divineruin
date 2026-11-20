@@ -2,6 +2,11 @@
 
 from dataclasses import replace
 
+from condition_catalog import INCORPOREAL
+from conditions import damage_hp_floor, has_condition
+
+PHYSICAL_DAMAGE_TYPES = ("slashing", "piercing", "bludgeoning")
+
 DAMAGE_TYPES = (
     "acid",
     "bludgeoning",
@@ -99,15 +104,14 @@ def apply(target, action, result, *, state=None):
     from still_encounter import owner_alias
 
     traits = target.damage_affinities
+    incorporeal = has_condition(target.conditions, INCORPOREAL)
     divine_vulnerable = action.get("spell_source") == "divine" and owner_alias(state, target.id) != target.id
 
     def adjusted(damage, dtype, ignores_resistance=False):
         conditional = (
-            target.resist_nonmagical_physical
-            and not action.get("magical", False)
-            and dtype in ("slashing", "piercing", "bludgeoning")
+            target.resist_nonmagical_physical and not action.get("magical", False) and dtype in PHYSICAL_DAMAGE_TYPES
         )
-        if dtype in traits.get("immune", []):
+        if (incorporeal and dtype in PHYSICAL_DAMAGE_TYPES) or dtype in traits.get("immune", []):
             return 0
         if not ignores_resistance and (conditional or dtype in traits.get("resistant", [])):
             return damage // 2
@@ -135,23 +139,25 @@ def apply(target, action, result, *, state=None):
     if hasattr(result, "bonus_damage"):
         changes.update(bonus_damage=adjusted_bonus, rider_damage=adjusted_rider, synergy_damage=adjusted_synergy)
     if hasattr(result, "target_hp_remaining") and changes["damage"] != result.damage:
-        return action, with_landed_damage(result, changes.pop("damage"), target.hp_current, **changes)
+        return action, with_landed_damage(
+            result, changes.pop("damage"), target.hp_current, hp_floor=damage_hp_floor(target.conditions), **changes
+        )
     return action, replace(result, **changes)
 
 
-def with_landed_damage(result, damage, hp_before, **changes):
+def with_landed_damage(result, damage, hp_before, *, hp_floor=0, **changes):
     """Rewrite a hit's damage after the roll and keep its kill verdict true to the HP it lands.
 
     A post-roll rewrite (a reaction's halving, a target's resistance or vulnerability) can save a
     target the raw roll killed, or kill one it spared; the DM must never hear a killing blow on a
     creature still standing, nor miss one that falls.
     """
-    remaining = max(0, hp_before - damage)
+    remaining = max(hp_floor, hp_before - damage)
     killed = result.hit and remaining == 0
     fields = {
         "damage": damage,
         "target_hp_remaining": remaining,
-        "overkill": max(0, damage - hp_before) if result.hit else 0,
+        "overkill": max(0, damage - hp_before) if killed else 0,
         "target_killed": killed,
         **changes,
     }

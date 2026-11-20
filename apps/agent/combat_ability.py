@@ -29,6 +29,7 @@ from combat_structures import blocked_reason, line_blocker
 from condition_produce import resolve_effective_targets
 from condition_sources import DeliveryRefused
 from mentor_variants import MentorVariant
+from patron_synergy_heal import for_cast
 from resource_costs import gate_pool
 from session_data import CombatParticipant, SessionData
 
@@ -402,7 +403,13 @@ async def _resolve_ability_packet(
             if player is None:
                 raise RuntimeError(f"Missing locked player row for healing caster {attacker.id}")
             cast_packet["healing_results"] = await combat_spell_heal.land(
-                heal, attacker, recipients, caster_row=player, packet=cast_packet, conn=conn
+                heal,
+                attacker,
+                recipients,
+                caster_row=player,
+                synergy=for_cast(player, terrain=result.terrain, first_stay=result.first_stay),
+                packet=cast_packet,
+                conn=conn,
             )
         # Veilrender Absorb Magic heals once per cast, so its landing is frozen with the cast packet.
         if deliveries is not None:

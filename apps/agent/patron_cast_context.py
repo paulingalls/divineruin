@@ -19,18 +19,19 @@ class PatronCastFacts:
     wrongdoing: dict | None = None
 
 
-async def apply_patron(generated: int, standard: int, patron, session, player, *, spell, terrain, **context):
-    """Apply the patron's Layer 2 generation; return it with the DM's packet entry when it differs."""
+async def apply_patron(
+    generated: int, standard: int, patron, session, player, *, spell, terrain, **context
+) -> tuple[int, dict | None, PatronCastFacts]:
     facts = await _resolve_facts(patron, session, player, spell=spell, **context)
     result, applied = cast_modifiers.apply_patron_generation(
         generated, spell, patron, terrain=terrain, facts=facts, player=player
     )
     if result == standard:
-        return result, None, facts.wrongdoing
+        return result, None, facts
     return (
         result,
         {"patron": patron, "applies_to": applied, "standard": standard, "generated": result},
-        facts.wrongdoing,
+        facts,
     )
 
 

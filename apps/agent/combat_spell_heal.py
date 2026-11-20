@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, NotRequired, TypedDict
 
 import db_mutations
 import dice
@@ -17,6 +17,7 @@ from spells import normalize_target_list
 if TYPE_CHECKING:
     from combat_spell_profile import HealProfile
     from declarations import Declaration
+    from patron_synergy_heal import HealBonus, HealSynergy
     from session_data import CombatParticipant, CombatState
     from spells import Spell
 
@@ -31,6 +32,7 @@ class HealingResult(HpChange):
     target_id: str
     rolled: int
     modifier: int
+    synergy_components: NotRequired[list[HealBonus]]
 
 
 class GiftReceipt(HpChange):
@@ -104,8 +106,10 @@ def _healing_roll(profile: HealProfile, attributes: dict[str, int], dice_mod) ->
     return rolled, modifier
 
 
-def _receipt(target_id: str, before: int, hp: int, maximum: int, rolled: int, modifier: int) -> HealingResult:
-    return {
+def _receipt(
+    target_id: str, before: int, hp: int, maximum: int, rolled: int, modifier: int, components: list[HealBonus]
+) -> HealingResult:
+    result: HealingResult = {
         "target_id": target_id,
         "rolled": rolled,
         "modifier": modifier,
@@ -113,6 +117,9 @@ def _receipt(target_id: str, before: int, hp: int, maximum: int, rolled: int, mo
         "hp_current": hp,
         "hp_max": maximum,
     }
+    if components:
+        result["synergy_components"] = components
+    return result
 
 
 async def restore(target: CombatParticipant, amount: int, *, conn, mutations=db_mutations) -> int:
@@ -154,20 +161,23 @@ async def land(
     recipients: list[CombatParticipant],
     *,
     caster_row: dict,
+    synergy: HealSynergy | None,
     packet: dict,
     conn,
 ) -> list[HealingResult]:
     rolled, modifier = _healing_roll(profile, caster.attributes, dice)
+    base_heal = rolled + modifier
     results = []
     for target in recipients:
         before = target.hp_current
-        await restore(target, rolled + modifier, conn=conn)
+        components = synergy(before, base_heal) if synergy is not None else []
+        await restore(target, base_heal + sum(c["bonus"] for c in components), conn=conn)
         if rounds := profile.get("regeneration_rounds"):
             target.conditions = apply_condition(target.conditions, "regenerating", source=caster.id)
             for condition in target.conditions:
                 if condition["type"] == "regenerating":
                     condition["ticks_remaining"] = rounds
-        results.append(_receipt(target.id, before, target.hp_current, target.hp_max, rolled, modifier))
+        results.append(_receipt(target.id, before, target.hp_current, target.hp_max, rolled, modifier, components))
     gift = _gift_receipt(caster.id, caster_row, caster.hp_current, caster.hp_max, results)
     if gift is not None:
         await restore(caster, gift["healed"], conn=conn)
@@ -176,18 +186,29 @@ async def land(
 
 
 async def land_exploration(
-    profile: HealProfile, caster: dict, recipients: dict[str, dict], *, caster_id: str, packet: dict, conn, dice_mod
+    profile: HealProfile,
+    caster: dict,
+    recipients: dict[str, dict],
+    *,
+    caster_id: str,
+    synergy: HealSynergy | None,
+    packet: dict,
+    conn,
+    dice_mod,
 ) -> list[HealingResult]:
     rolled, modifier = _healing_roll(profile, caster.get("attributes", {}), dice_mod)
+    base_heal = rolled + modifier
     caster_current = caster["hp"]["current"]
     results = []
     for pid, row in recipients.items():
         current = row["hp"]["current"]
         maximum = patron_passives.effective_hp(row)["max"]
-        hp = healed_hp(current, maximum, rolled + modifier + profile.get("regeneration_rounds", 0))
+        components = synergy(current, base_heal) if synergy is not None else []
+        amount = base_heal + profile.get("regeneration_rounds", 0) + sum(c["bonus"] for c in components)
+        hp = healed_hp(current, maximum, amount)
         if hp != current:
             await db_mutations.update_player_hp(pid, hp, conn=conn)
-        results.append(_receipt(pid, current, hp, maximum, rolled, modifier))
+        results.append(_receipt(pid, current, hp, maximum, rolled, modifier, components))
         if pid == caster_id:
             caster_current = hp
     gift = _gift_receipt(caster_id, caster, caster_current, patron_passives.effective_hp(caster)["max"], results)

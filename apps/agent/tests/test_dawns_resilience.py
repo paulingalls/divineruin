@@ -81,8 +81,10 @@ async def ally_heal(walk, combat, *, start=10, bonus=2):
                 assert not any(p.get("cast") for p in await walk.wrap())
         else:
             packet = await walk.cast(WOUNDS, targets=[ally])
-    assert packet["healing_results"] == [receipt(ally, 8, 11)]
-    await assert_hp(walk, combat, {walk.player: start + bonus, ally: 11})
+    assert packet["healing_results"] == [
+        receipt(ally, 11, 14) | {"synergy_components": [{"id": "orenthel_dawns_mercy", "bonus": 3}]}
+    ]
+    await assert_hp(walk, combat, {walk.player: start + bonus, ally: 14})
     assert_gift(packet, [ally], healed=bonus, hp=start + bonus)
     assert await walk.focus() == 30 - spells.get_spell(WOUNDS).focus_cost
     if not combat:
@@ -109,10 +111,10 @@ async def test_self_casts_and_zero_recipient_gains_add_no_bonus(walk, combat):
     full = await walk.add_player(hp=20)
     injured = await walk.add_player()
     for target, wisdom, roll, start, healer_hp, target_gain in [
-        (walk.player, 16, 5, 10, 18, 8),
+        (walk.player, 16, 5, 10, 20, 10),
         (full, 16, 5, 10, 10, 0),
         (injured, 2, 1, 10, 10, 0),
-        (injured, 16, 5, 20, 20, 8),
+        (injured, 16, 5, 20, 20, 11),
     ]:
         await prepare_follower(walk, WOUNDS, hp=start, wisdom=wisdom)
         if combat:

@@ -300,8 +300,8 @@ async def _apply_damage(
         member = session.member_state(target.id)
         if member.patron_id == "kaelen":
             player = await queries.get_player(target.id, conn=conn)
-    overkill = max(0, attack_result.damage - hp_before)
-    target.hp_current = max(0, hp_before - attack_result.damage)
+    target.hp_current = max(conditions.damage_hp_floor(target.conditions), hp_before - attack_result.damage)
+    overkill = max(0, attack_result.damage - hp_before) if target.hp_current == 0 else 0
     if (
         was_fallen
         and attack_result.damage > 0

@@ -1542,10 +1542,11 @@
       "exalted": {
         "id": "mortaen_threshold_walk",
         "name": "Threshold Walk",
-        "effect": "Once per session, become incorporeal for 1 round. Immune to physical damage, pass through objects, invisible. Attacks deal necrotic. Return shaken but alive",
+        "effect": "Until the end of the next round, slashing, piercing and bludgeoning pass through you, even when magical. Attacks against you have disadvantage, your attacks have advantage, and your weapon attacks deal necrotic damage. You cannot drop below 1 HP. You return Shaken unless combat ends first.",
         "recharge": "per_session",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "mortaen_threshold_walk"
       }
     },
     "layer_4_synergy_matrix": {
@@ -1633,8 +1634,9 @@
         "clauses": [
           {
             "effect": "Healing an ally at 0 HP restores 1 additional HP.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "mortaen_final_mercy"
           }
         ]
       },
@@ -1705,8 +1707,9 @@
           },
           {
             "effect": "Healing on 0 HP allies restores double. Best at pulling people back from the edge",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "mortaen_threshold_healing"
           }
         ]
       },
@@ -2014,8 +2017,9 @@
         "clauses": [
           {
             "effect": "Healing in natural terrain +1d4 extra HP",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "thyra_verdant_healing"
           }
         ]
       },
@@ -2630,8 +2634,9 @@
         "clauses": [
           {
             "effect": "Healing a creature in an unexplored location restores 1 additional HP.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "nythera_travelers_blessing"
           }
         ]
       },
@@ -3064,8 +3069,9 @@
         "clauses": [
           {
             "effect": "All healing spells +WIS or +CHA mod extra HP. Most powerful healing in the game",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "orenthel_dawns_mercy"
           }
         ]
       },
@@ -3075,8 +3081,9 @@
         "clauses": [
           {
             "effect": "All healing spells +WIS or +CHA mod extra HP. Most powerful healing in the game",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "orenthel_dawns_mercy"
           }
         ]
       },

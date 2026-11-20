@@ -8,6 +8,7 @@ import combat_spatial
 import condition_voice_rules
 import conditions
 import patron_synergy_combat
+from condition_catalog import INCORPOREAL
 from dramatic import DramaticContext, evaluate_dramatic_context
 
 BEACON = "Beacon"
@@ -54,6 +55,9 @@ def attack_roll_inputs(attacker, target, target_ac_bonus, combat_state, action, 
         "level": attacker.level,
         "conditions": attacker.conditions,
     }
+
+    if weapon_attack and conditions.has_condition(attacker.conditions, INCORPOREAL):
+        attacker_data["damage_type_override"] = "necrotic"
 
     if player is not None:
         attacker_data.update(patron_synergy_combat.attack_flags(player))

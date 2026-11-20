@@ -2,10 +2,13 @@ from combat.test_synergy_crit_edges import SCENARIOS as crit_edges
 from combat.test_synergy_spell_edges import SCENARIOS as spell_edges
 from combat.test_synergy_weapon_damage import SCENARIOS as weapon_damage
 from test_dawns_resilience import SCENARIOS as dawns_resilience
+from test_heal_synergies import SCENARIOS as dawns_mercy
+from test_heal_synergies_place import SCENARIOS as place_healing
 from test_patron_engine_aelora import SCENARIOS as aelora
 from test_patron_engine_beacon import SCENARIOS as beacon
 from test_patron_engine_judgment import SCENARIOS as judgment
 from test_patron_engine_kaelen import SCENARIOS as kaelen
+from test_patron_engine_mortaen import SCENARIOS as mortaen
 from test_patron_engine_nythera import SCENARIOS as nythera
 from test_patron_engine_orenthel import SCENARIOS as orenthel
 from test_patron_engine_syrath import SCENARIOS as syrath
@@ -20,10 +23,13 @@ ENGINE_SCENARIOS = {
     **valdris,
     **aelora,
     **beacon,
+    **dawns_mercy,
+    **place_healing,
     **dawns_resilience,
     **crit_edges,
     **judgment,
     **kaelen,
+    **mortaen,
     **nythera,
     **orenthel,
     **syrath,

@@ -166,6 +166,7 @@ def halve(head: dict, target) -> None:
         result,
         result.damage // 2,
         target.hp_current,
+        hp_floor=conditions.damage_hp_floor(target.conditions),
         bonus_damage=result.bonus_damage // 2,
         rider_damage=result.rider_damage // 2,
         synergy_damage=result.synergy_damage // 2,

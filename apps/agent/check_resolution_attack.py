@@ -17,7 +17,7 @@ from condition_restrictions import (
     incoming_attack_modes,
     incoming_melee_autocrit,
 )
-from conditions import get_condition_effects
+from conditions import damage_hp_floor, get_condition_effects
 from dice import roll as dice_roll
 from dramatic import DramaticContext, evaluate_dramatic_context
 from rules_engine import attribute_modifier, proficiency_bonus
@@ -223,7 +223,7 @@ def finish_attack(
     )
 
     damage = 0
-    damage_type = weapon.get("damage_type", "bludgeoning")
+    damage_type = attacker_data.get("damage_type_override", weapon.get("damage_type", "bludgeoning"))
     bonus_damage = 0
     bonus_damage_type: str | None = None
 
@@ -287,20 +287,14 @@ def finish_attack(
         # max(0, hp - damage) below. A hit deals at least 0.
         damage = max(0, damage)
 
-    new_hp = max(0, target_hp - damage)
-    # Excess damage past 0 (M4.4 story-002): computed pre-floor, before new_hp loses it. Drives
-    # the instant-death verdict downstream (combat_support: overkill >= target max HP).
-    overkill = max(0, damage - target_hp) if hit else 0
-
-    # Killing-blow inputs are gated on `hit`: pass pre-hit HP + damage only when
-    # the attack landed, else None. This makes the evaluator's killing_blow label
-    # equal target_killed BY CONSTRUCTION (both derive from hit + pre-hit-HP +
-    # damage), so they can never diverge — the evaluator can't fire on a miss.
+    new_hp = max(damage_hp_floor(target_conditions), target_hp - damage)
+    killed = hit and new_hp == 0
+    overkill = max(0, damage - target_hp) if killed else 0
     verdict = evaluate_dramatic_context(
         DramaticContext(
             raw_die=d20,
             roll_type="attack",
-            target_hp_remaining=target_hp if hit else None,
+            target_hp_remaining=target_hp if killed else None,
             damage_potential=damage if hit else None,
         )
     )
@@ -316,7 +310,7 @@ def finish_attack(
         critical_success=critical,
         critical_failure=core.critical_failure,
         target_hp_remaining=new_hp,
-        target_killed=new_hp == 0 and hit,
+        target_killed=killed,
         overkill=overkill,
         narrative_hint="critical success" if expanded else core.narrative_hint,
         dramatic=expanded or verdict.dramatic,
