@@ -36,7 +36,7 @@ def _mocks():
     mutations = MagicMock()
     mutations.save_combat_state = AsyncMock()
     mutations.update_player_hp = AsyncMock()
-    queries = MagicMock()
+    queries = MagicMock(get_player=AsyncMock(return_value={"player_id": "player_1"}))
     queries.get_player_inventory = AsyncMock(return_value=[])
     queries.get_inventory_snapshot = snapshot_query([])
     return mutations, queries
