@@ -171,23 +171,31 @@ async def test_veilstep_refuses_invalid_destinations_and_selectors(world: Simple
         assert (await step(world, call, destination=DESTINATION))["position"] == DESTINATION
 
 
-@pytest.mark.parametrize("queued_move", [True, False])
-async def test_veilstep_preserves_other_declarations(world: SimpleNamespace, queued_move: bool) -> None:
+@pytest.mark.parametrize("declaration", ["queued_move", "defend", "resolved_move"])
+async def test_veilstep_preserves_other_declarations(world: SimpleNamespace, declaration: str) -> None:
     async with veilstep_scene(world) as call:
         actor, ally = world.ids
-        own = move(actor, {**START, "x": -25}) if queued_move else defend(actor)
+        own = defend(actor) if declaration == "defend" else move(actor, {**START, "x": 35})
         await call("declare_phase", declarations=[own, move(ally, {**START, "x": 45})])
+        if declaration == "resolved_move":
+            packets = (await call("resolve_phase"))["packets"]
+            assert any(p["actor_id"] == actor and p["moved_ft"] == 30 for p in packets)
         before = await checkpoint(world)
-        assert before is not None and before["beat"] == "resolution"
+        assert before is not None
+        assert before["beat"] == ("narration" if declaration == "resolved_move" else "resolution")
+        assert actor in before["pending_declarations"]
         result = await step(world, call, destination=DESTINATION)
-        if queued_move:
+        if declaration == "queued_move":
             del before["pending_declarations"][actor]
             assert "new move from the new position at the next declaration beat" in result["dm_cue"]
+        else:
+            assert "new move" not in result["dm_cue"]
         before["spatial"]["positions"][actor] = DESTINATION
         assert await checkpoint(world) == before == world.ctx.userdata.combat_state.to_dict()
-        packets = (await call("resolve_phase"))["packets"]
-        assert any(p["actor_id"] == ally and p["moved_ft"] == 5 for p in packets)
-        assert not any(p["actor_id"] == actor and "moved_ft" in p for p in packets)
+        if declaration != "resolved_move":
+            packets = (await call("resolve_phase"))["packets"]
+            assert any(p["actor_id"] == ally and p["moved_ft"] == 5 for p in packets)
+            assert not any(p["actor_id"] == actor and "moved_ft" in p for p in packets)
         await call("resolve_phase")
         after = await checkpoint(world)
         assert after is not None and after["round_number"] == before["round_number"] + 1
