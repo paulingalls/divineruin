@@ -109,7 +109,7 @@ RECHARGES = {
         "1/round",
         {"kind": "roll", "die": 6, "threshold": 5},
         {"kind": "encounter", "uses": 1},
-        "1/encounter",
+        {"kind": "encounter", "uses": 1},
         None,
     ),
 }

@@ -4213,9 +4213,489 @@
           "plant"
         ]
       }
+    },
+    {
+      "name": "active_summon_constructs",
+      "block": {
+        "terrains": [
+          "forest"
+        ],
+        "id": "schema_construct",
+        "name": "Construct",
+        "category": "construct",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {
+          "STR": 12,
+          "DEX": 14,
+          "CON": 12,
+          "INT": 10,
+          "WIS": 10,
+          "CHA": 10
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Short Sword",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 4,
+            "damage": "1d6+2",
+            "damage_type": "slashing",
+            "special": null,
+            "audio": "bandit_sword"
+          },
+          {
+            "name": "Light Crossbow",
+            "type": "ranged",
+            "reach": 80,
+            "to_hit": 4,
+            "damage": "1d8+2",
+            "damage_type": "piercing",
+            "special": null,
+            "audio": "bandit_crossbow"
+          }
+        ],
+        "multiattack": null,
+        "passives": [],
+        "actives": [
+          {
+            "name": "Summon Constructs",
+            "description": "1/encounter. Animate 2d4 minions for 1 minute: HP 20, AC 16, speed 30 ft, slam +8 for 1d8+5 bludgeoning.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "summon_constructs",
+            "summon": {
+              "count_dice": "2d4",
+              "lifetime_rounds": 10,
+              "placement_radius_ft": 10,
+              "construct": {
+                "hp": 20,
+                "ac": 16,
+                "speed": 30,
+                "slam": {
+                  "name": "Slam",
+                  "type": "melee",
+                  "reach": 5,
+                  "to_hit": 8,
+                  "damage": "1d8+5",
+                  "damage_type": "bludgeoning",
+                  "special": null,
+                  "audio": ""
+                }
+              }
+            }
+          }
+        ],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {
+          "tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.",
+          "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.",
+          "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)",
+          "environment": [
+            "Roads between settlements",
+            "forest ambush points",
+            "ruins"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A bandit steps from cover.",
+          "attack_cue": "The bandit strikes from cover.",
+          "wounded_cue": "The bandit staggers.",
+          "death_cue": "The bandit falls.",
+          "ambient_cue": "Voices carry from beside the road."
+        },
+        "audio": {
+          "ambient": "bandit_ambient",
+          "attack": "bandit_attack",
+          "hit": "bandit_hit",
+          "death": "bandit_death",
+          "special": {}
+        },
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": [
+          "greyvale"
+        ]
+      }
     }
   ],
   "invalid": [
+    {
+      "name": "recharge_summon_constructs_strike",
+      "block": {
+        "terrains": [
+          "forest"
+        ],
+        "id": "schema_construct",
+        "name": "Construct",
+        "category": "construct",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {
+          "STR": 12,
+          "DEX": 14,
+          "CON": 12,
+          "INT": 10,
+          "WIS": 10,
+          "CHA": 10
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Short Sword",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 4,
+            "damage": "1d6+2",
+            "damage_type": "slashing",
+            "special": null,
+            "audio": "bandit_sword"
+          },
+          {
+            "name": "Light Crossbow",
+            "type": "ranged",
+            "reach": 80,
+            "to_hit": 4,
+            "damage": "1d8+2",
+            "damage_type": "piercing",
+            "special": null,
+            "audio": "bandit_crossbow"
+          }
+        ],
+        "multiattack": null,
+        "passives": [],
+        "actives": [
+          {
+            "name": "Summon Constructs",
+            "description": "1/encounter. Animate 2d4 minions for 1 minute: HP 20, AC 16, speed 30 ft, slam +8 for 1d8+5 bludgeoning.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "summon_constructs",
+            "summon": {
+              "count_dice": "2d4",
+              "lifetime_rounds": 10,
+              "placement_radius_ft": 10,
+              "construct": {
+                "hp": 20,
+                "ac": 16,
+                "speed": 30,
+                "slam": {
+                  "name": "Slam",
+                  "type": "melee",
+                  "reach": 5,
+                  "to_hit": 8,
+                  "damage": "1d8+5",
+                  "damage_type": "bludgeoning",
+                  "special": null,
+                  "audio": ""
+                }
+              }
+            },
+            "damage": "1d8"
+          }
+        ],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {
+          "tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.",
+          "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.",
+          "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)",
+          "environment": [
+            "Roads between settlements",
+            "forest ambush points",
+            "ruins"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A bandit steps from cover.",
+          "attack_cue": "The bandit strikes from cover.",
+          "wounded_cue": "The bandit staggers.",
+          "death_cue": "The bandit falls.",
+          "ambient_cue": "Voices carry from beside the road."
+        },
+        "audio": {
+          "ambient": "bandit_ambient",
+          "attack": "bandit_attack",
+          "hit": "bandit_hit",
+          "death": "bandit_death",
+          "special": {}
+        },
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": [
+          "greyvale"
+        ]
+      },
+      "field": "damage",
+      "expected": [
+        "actives[0].damage: invalid"
+      ]
+    },
+    {
+      "name": "recharge_summon_constructs_round_recharge",
+      "block": {
+        "terrains": [
+          "forest"
+        ],
+        "id": "schema_construct",
+        "name": "Construct",
+        "category": "construct",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {
+          "STR": 12,
+          "DEX": 14,
+          "CON": 12,
+          "INT": 10,
+          "WIS": 10,
+          "CHA": 10
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Short Sword",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 4,
+            "damage": "1d6+2",
+            "damage_type": "slashing",
+            "special": null,
+            "audio": "bandit_sword"
+          },
+          {
+            "name": "Light Crossbow",
+            "type": "ranged",
+            "reach": 80,
+            "to_hit": 4,
+            "damage": "1d8+2",
+            "damage_type": "piercing",
+            "special": null,
+            "audio": "bandit_crossbow"
+          }
+        ],
+        "multiattack": null,
+        "passives": [],
+        "actives": [
+          {
+            "name": "Summon Constructs",
+            "description": "1/encounter. Animate 2d4 minions for 1 minute: HP 20, AC 16, speed 30 ft, slam +8 for 1d8+5 bludgeoning.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "round",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "summon_constructs",
+            "summon": {
+              "count_dice": "2d4",
+              "lifetime_rounds": 10,
+              "placement_radius_ft": 10,
+              "construct": {
+                "hp": 20,
+                "ac": 16,
+                "speed": 30,
+                "slam": {
+                  "name": "Slam",
+                  "type": "melee",
+                  "reach": 5,
+                  "to_hit": 8,
+                  "damage": "1d8+5",
+                  "damage_type": "bludgeoning",
+                  "special": null,
+                  "audio": ""
+                }
+              }
+            }
+          }
+        ],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {
+          "tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.",
+          "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.",
+          "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)",
+          "environment": [
+            "Roads between settlements",
+            "forest ambush points",
+            "ruins"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A bandit steps from cover.",
+          "attack_cue": "The bandit strikes from cover.",
+          "wounded_cue": "The bandit staggers.",
+          "death_cue": "The bandit falls.",
+          "ambient_cue": "Voices carry from beside the road."
+        },
+        "audio": {
+          "ambient": "bandit_ambient",
+          "attack": "bandit_attack",
+          "hit": "bandit_hit",
+          "death": "bandit_death",
+          "special": {}
+        },
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": [
+          "greyvale"
+        ]
+      },
+      "field": "recharge",
+      "expected": [
+        "actives[0].recharge: invalid"
+      ]
+    },
+    {
+      "name": "recharge_summon_constructs_slam_without_modifier",
+      "block": {
+        "terrains": [
+          "forest"
+        ],
+        "id": "schema_construct",
+        "name": "Construct",
+        "category": "construct",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {
+          "STR": 12,
+          "DEX": 14,
+          "CON": 12,
+          "INT": 10,
+          "WIS": 10,
+          "CHA": 10
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Short Sword",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 4,
+            "damage": "1d6+2",
+            "damage_type": "slashing",
+            "special": null,
+            "audio": "bandit_sword"
+          },
+          {
+            "name": "Light Crossbow",
+            "type": "ranged",
+            "reach": 80,
+            "to_hit": 4,
+            "damage": "1d8+2",
+            "damage_type": "piercing",
+            "special": null,
+            "audio": "bandit_crossbow"
+          }
+        ],
+        "multiattack": null,
+        "passives": [],
+        "actives": [
+          {
+            "name": "Summon Constructs",
+            "description": "1/encounter. Animate 2d4 minions for 1 minute: HP 20, AC 16, speed 30 ft, slam +8 for 1d8+5 bludgeoning.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "summon_constructs",
+            "summon": {
+              "count_dice": "2d4",
+              "lifetime_rounds": 10,
+              "placement_radius_ft": 10,
+              "construct": {
+                "hp": 20,
+                "ac": 16,
+                "speed": 30,
+                "slam": {
+                  "name": "Slam",
+                  "type": "melee",
+                  "reach": 5,
+                  "damage": "1d8+5",
+                  "damage_type": "bludgeoning",
+                  "special": null,
+                  "audio": ""
+                }
+              }
+            }
+          }
+        ],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {
+          "tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.",
+          "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.",
+          "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)",
+          "environment": [
+            "Roads between settlements",
+            "forest ambush points",
+            "ruins"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A bandit steps from cover.",
+          "attack_cue": "The bandit strikes from cover.",
+          "wounded_cue": "The bandit staggers.",
+          "death_cue": "The bandit falls.",
+          "ambient_cue": "Voices carry from beside the road."
+        },
+        "audio": {
+          "ambient": "bandit_ambient",
+          "attack": "bandit_attack",
+          "hit": "bandit_hit",
+          "death": "bandit_death",
+          "special": {}
+        },
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": [
+          "greyvale"
+        ]
+      },
+      "field": "to_hit",
+      "expected": [
+        "actives[0].summon.construct.slam.to_hit: invalid"
+      ]
+    },
     {
       "name": "legendary_over_capacity",
       "block": {
@@ -8474,7 +8954,7 @@
         ]
       },
       "expected": [
-        "action 'Order' has unknown kind 'decree'; expected one of ('attack', 'command', 'accusation', 'healing', 'prepare_attack', 'charm', 'silence', 'spell_redirect', 'rejection', 'final_stillness', 'illusion')"
+        "action 'Order' has unknown kind 'decree'; expected one of ('attack', 'command', 'accusation', 'healing', 'prepare_attack', 'summon_constructs', 'charm', 'silence', 'spell_redirect', 'rejection', 'final_stillness', 'illusion')"
       ]
     },
     {
@@ -35940,6 +36420,7 @@
     "accusation",
     "healing",
     "prepare_attack",
+    "summon_constructs",
     "charm",
     "silence",
     "spell_redirect",

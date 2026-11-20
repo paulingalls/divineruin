@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import architect_constructs
 import combat_spatial
 import combat_structures
 from combat_movement_cost import rectangle
@@ -109,6 +110,7 @@ def initialize(state: CombatState) -> None:
     state.architect_encounter = {
         "owner_id": owner.id,
         "structure_ids": structure_ids,
+        "construct_ids": [],
         "phase": "active",
         "reshape_round": 0,
         "reaction_round": 0,
@@ -131,6 +133,7 @@ def validate(state: CombatState) -> None:
     if not isinstance(record, dict) or set(record) != {
         "owner_id",
         "structure_ids",
+        "construct_ids",
         "phase",
         "reshape_round",
         "reaction_round",
@@ -156,6 +159,8 @@ def validate(state: CombatState) -> None:
         raise ValueError("Architect phase disagrees with owner HP")
     if expected_phase == "destroyed" and any(not walls[wall_id].is_dead for wall_id in ids):
         raise ValueError("Destroyed Architect still owns live walls")
+
+    architect_constructs.validate(state, owners[0], record)
 
     round_number, count = record["reshape_round"], record["reshape_count"]
     if (
@@ -311,6 +316,7 @@ def facts(state: CombatState) -> dict | None:
     live_walls = [wall_id for wall_id in record["structure_ids"] if wall_id in live_segments]
     details = {
         **{key: value for key, value in record.items() if key != "reaction_round"},
+        **architect_constructs.facts(owner),
         "hp": owner.hp_current,
         "live_wall_ids": live_walls,
         "live_walls": {wall_id: live_segments[wall_id] for wall_id in live_walls},
@@ -336,6 +342,7 @@ def destroyed(state: CombatState) -> None:
     record = state.architect_encounter
     assert record is not None
     record["phase"] = "destroyed"
+    architect_constructs.collapse(state, record["construct_ids"])
     assert state.spatial is not None
     _remove_cathedral(state.spatial, record["owner_id"])
     for wall_id in record["structure_ids"]:

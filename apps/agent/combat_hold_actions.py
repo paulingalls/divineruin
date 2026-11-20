@@ -72,7 +72,12 @@ def _opens_windows(state, head: dict) -> bool:
     declaration = _held_declaration(head)
     actor = state.get_participant(head["actor_id"])
     action = _find_action(actor, declaration.action) if actor is not None else None
-    if action is not None and action_kind(action) in ("healing", "prepare_attack", *STILL_ZONE_KINDS):
+    if action is not None and action_kind(action) in (
+        "healing",
+        "prepare_attack",
+        "summon_constructs",
+        *STILL_ZONE_KINDS,
+    ):
         return True
     return declaration.target_id is not None and action is not None
 

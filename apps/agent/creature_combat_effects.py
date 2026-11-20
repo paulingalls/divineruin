@@ -36,6 +36,7 @@ def deferred_effects(row, *, composite=False):
                 "Geometry Strike",
                 "Entomb",
                 "Cathedral",
+                "Summon Constructs",
                 "Reshape",
                 "Shift Wall",
                 "Reactive Architecture",
