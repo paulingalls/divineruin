@@ -112,10 +112,19 @@ def test_authored_layers_match_mechanics():
         walk_id,
         "per_session",
     )
-    engine = {"zhael_lucky", battle_cry, judgment, surge, mark, veilstep_id, gateway_id, walk_id, *passives}
+    ward_id = "mortaen_death_ward"
+    ward = next(row["layer_3_tier_abilities"]["acknowledged"] for row in rows if row["god_id"] == "mortaen")
+    assert tuple(ward.get(key) for key in ("id", "status", "resolution", "implementation_id", "recharge")) == (
+        ward_id,
+        "active",
+        "engine",
+        ward_id,
+        "long_rest",
+    )
+    engine = {"zhael_lucky", battle_cry, judgment, surge, mark, veilstep_id, gateway_id, walk_id, ward_id, *passives}
     assert {a["id"] for a in abilities if (a["status"], a["resolution"]) == ("active", "engine")} == engine
     pending = [a for a in abilities if a["id"] not in narrated | engine]
-    assert len(pending) == 12
+    assert len(pending) == 11
     for ability in abilities:
         if ability["id"] in passives:
             assert (ability["recharge"], ability["implementation_id"]) == ("always", ability["id"])

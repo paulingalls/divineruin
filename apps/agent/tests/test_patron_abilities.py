@@ -259,3 +259,21 @@ async def test_guest_entry_restores_once_across_reconnect_and_rejoin(dev_db_pool
             assert "new session" in await host.use(ability, actor=guest.player, error=True)
         finally:
             await lifecycle.aclose()
+
+
+async def test_death_ward_discovery_and_direct_activation_refusal(dev_db_pool):
+    ward = "mortaen_death_ward"
+    async with AbilityWalk(dev_db_pool) as w:
+        await w.patch(divine_favor={"patron": "mortaen", "level": 0, "max": 100})
+        ability = next(a for a in await w.abilities() if a["id"] == ward)
+        assert (ability["name"], ability["tier"], ability["status"], ability["recharge"]) == (
+            "Death Ward",
+            "Acknowledged",
+            "active",
+            "long_rest",
+        )
+        assert ability["available"] and not ability["spent"]
+        assert "automatically when damage" in ability["activation_hint"]
+        before = await w.row()
+        assert "cannot be activated directly" in (await w.use(ward, error=True)).lower()
+        assert await w.row() == before

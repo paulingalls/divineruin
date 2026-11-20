@@ -1526,10 +1526,11 @@
       "acknowledged": {
         "id": "mortaen_death_ward",
         "name": "Death Ward",
-        "effect": "First time per long rest you drop to 0 HP, drop to 1 HP instead. Mortaen decides when you cross",
+        "effect": "The first time damage reduces you from above 0 HP to 0 HP, you stay at 1 HP. Recharges on a long rest. Mortaen decides when you cross.",
         "recharge": "long_rest",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "mortaen_death_ward"
       },
       "devoted": {
         "id": "mortaen_speak_with_dead",

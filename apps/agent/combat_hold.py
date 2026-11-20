@@ -43,6 +43,7 @@ from condition_restrictions import cannot_act
 from condition_sources import DeliveryRefused
 from declarations import DeclarationType, resolve_declaration
 from encounter_actions import action_kind
+from patron_zero_hp import provisional_ward_verdict
 from reaction_windows import POST_ROLL, PRE_ROLL
 
 logger = logging.getLogger("divineruin.tools")
@@ -353,6 +354,9 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None, fate_roll
                     if reaction_gate.offers_for_window(state, candidate):
                         attack_result, _effective_ac = deserialize_roll(head["roll"])
                         attacker = state.get_participant(head["actor_id"])
+                        attack_result = await provisional_ward_verdict(
+                            state, candidate["target_id"], attack_result, packet_deps["queries"]
+                        )
                         await packet_deps["sink"].emit(
                             session.room,
                             E.DICE_ROLL,
