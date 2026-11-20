@@ -4,7 +4,9 @@ from dataclasses import asdict
 
 from livekit.agents.llm import ToolError
 
+import architect_reaction
 import check_resolution_attack
+import combat_attack_summary
 import combat_enhancers
 import combat_melee_approach
 import combat_resolution
@@ -95,17 +97,24 @@ async def continue_attack(
     # a resumed cursor carries both so a held swing never moves the attacker twice.
     movement = attack_cursor.get("movement", movement or {})
     movement_budget = attack_cursor.get("movement_budget", movement_budget if movement_budget is not None else {})
+    declared_target = target
     start = len(attack_summaries)
     for index, act in enumerate(actions[start:], start):
         swing_move = (
             movement
             if index == 0 or act == actions[0]
-            else combat_melee_approach.prepare(state, attacker, target, act, movement_budget)
+            else combat_melee_approach.prepare(state, attacker, declared_target, act, movement_budget)
         )
         if index > 0 and act == actions[0] and swing_move:
             swing_move = {**swing_move, "moved_ft": 0, "closed_distance": False}
         if swing_move.get("attack_resolved") is False:
             attack_summaries.append(swing_move)
+            break
+        target, interception = architect_reaction.weapon_target(
+            state, attacker, declared_target, act, attack_cursor, index
+        )
+        if interception.get("resolved") is False:
+            attack_summaries.append({**swing_move, **interception})
             break
         swing = progress.scope("swing") if progress is not None else None
         prepared_data = attack_cursor.get("prepared")
@@ -139,19 +148,27 @@ async def continue_attack(
             ):
                 stored = asdict(prepared)
                 stored["consumed"] = list(prepared.consumed)
+                store_swing(
+                    attack_cursor,
+                    actions,
+                    declared_target,
+                    enemies_remaining,
+                    is_first_attack,
+                    attack_summaries,
+                    concealment_packet,
+                )
                 attack_cursor.update(
-                    actions=actions,
-                    target_id=target.id,
-                    enemies_remaining=enemies_remaining,
-                    is_first_attack=is_first_attack,
-                    summaries=attack_summaries,
-                    concealment=concealment_packet,
                     prepared=stored,
                     attacker_data=attacker_data,
                     movement=movement,
                     movement_budget=movement_budget,
                 )
-                return {"actor_id": attacker.id, "resolved": False, "reason": "awaiting a Zhael roll choice"}
+                return {
+                    "actor_id": attacker.id,
+                    "resolved": False,
+                    "reason": "awaiting a Zhael roll choice",
+                    **interception,
+                }
         resumed_swing = swing is not None and ("damage_receipt" in swing.steps or "attack_summary" in swing.steps)
         if start == 0 and not attack_summaries and attacker.type == "player" and not resumed_swing:
             concealment_packet = await concealment.reveal_attacker(attacker.id, conn=conn, queries=queries)
@@ -218,7 +235,13 @@ async def continue_attack(
 
         if swing is not None and swing.paused:
             store_swing(
-                attack_cursor, actions, target, enemies_remaining, is_first_attack, attack_summaries, concealment_packet
+                attack_cursor,
+                actions,
+                declared_target,
+                enemies_remaining,
+                is_first_attack,
+                attack_summaries,
+                concealment_packet,
             )
             attack_cursor.update(movement=movement, movement_budget=movement_budget)
             return {}
@@ -241,7 +264,7 @@ async def continue_attack(
                 store_swing(
                     attack_cursor,
                     actions,
-                    target,
+                    declared_target,
                     enemies_remaining,
                     is_first_attack,
                     attack_summaries,
@@ -251,6 +274,9 @@ async def continue_attack(
                 return {}
         if progress is not None:
             progress.steps.pop("swing", None)
+        if interception:
+            sub.update(interception, target_id=target.id)
+            attack_cursor.pop("reactive_architecture")
         sub.update(swing_move)
         attack_summaries.append(sub)
         # Remove attack-spent conditions before the next swing in an expanded declaration. The
@@ -273,46 +299,14 @@ async def continue_attack(
                 member.weapon_used = True
                 if sub["hit"] and sub["critical"] and combat_resolution.is_heavily_armored(target.ac):
                     member.weapon_crit_vs_heavy = True
-        if damage_target_unavailable(target):
+        if damage_target_unavailable(declared_target):
             break
 
     # The first attack of the combat has now resolved; flips the combat-scoped flag so a
     # later attack no longer earns the dramatic "first_attack" promotion (story-004).
     state.first_attack_resolved = True
 
-    summary = dict(attack_summaries[0])
-    if len(attack_summaries) > 1:
-        # Report the expansion: per-attack detail under "attacks", flat keys aggregated.
-        # Damage/hit/critical/concentration accumulate across swings; the target-state keys
-        # (hp_status, fallen) must reflect the FINAL swing — the kill on the second hit, not
-        # the goblin-still-up snapshot from the first — or the DM narrates a fallen foe alive.
-        last = next(s for s in reversed(attack_summaries) if "target_hp_status" in s)
-        summary["attacks"] = attack_summaries
-        summary.pop("unholy_fortitude", None)
-        for component in ("bonus_damage", "rider_damage", "synergy_damage"):
-            summary[component] = sum(s.get(component, 0) for s in attack_summaries)
-            type_key = f"{component}_type"
-            summary[type_key] = next((s[type_key] for s in attack_summaries if s.get(type_key) is not None), None)
-        if movement:
-            summary.update(
-                moved_ft=sum(s["moved_ft"] for s in attack_summaries),
-                closed_distance=any(s["closed_distance"] for s in attack_summaries),
-                destination=attack_summaries[-1]["destination"],
-            )
-        summary["damage"] = sum(s.get("damage", 0) for s in attack_summaries)
-        summary["hit"] = any(s.get("hit", False) for s in attack_summaries)
-        summary["critical"] = any(s.get("critical", False) for s in attack_summaries)
-        summary["target_hp_status"] = last["target_hp_status"]
-        summary["target_fallen"] = last["target_fallen"]
-        summary["concentration_broken"] = next(
-            (s["concentration_broken"] for s in attack_summaries if s.get("concentration_broken")), None
-        )
-        # Any swing being dramatic makes the declaration dramatic. Each swing rolls its
-        # own d20 and runs its own killing-blow check, so a later swing can be dramatic
-        # while the first is routine — take the FIRST dramatic swing's context so the
-        # aggregated dramatic flag and its reason label never disagree (story-004).
-        summary["dramatic"] = any(s.get("dramatic", False) for s in attack_summaries)
-        summary["context"] = next((s["context"] for s in attack_summaries if s.get("dramatic")), "")
+    summary = combat_attack_summary.aggregate(attack_summaries, moved=bool(movement))
     if concealment_packet is not None:
         summary["concealment"] = concealment_packet
     if effects := attack_cursor.pop("turn_start_effects", None):
@@ -462,6 +456,8 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
                     progress=progress,
                 )
         if fate_rolls.pending is not None:
+            if "reactive_architecture" in summary:
+                summaries.append(summary)
             state.beat = PhaseBeat.RESOLUTION
             state.ally_continuation = cursor
             return summaries

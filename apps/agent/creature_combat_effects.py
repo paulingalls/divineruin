@@ -36,6 +36,7 @@ def deferred_effects(row, *, composite=False):
                 "Geometry Strike",
                 "Reshape",
                 "Shift Wall",
+                "Reactive Architecture",
             }:
                 continue
             if key == ("hollow_knight", "Dissolution Strike"):

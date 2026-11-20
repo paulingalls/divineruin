@@ -44,6 +44,10 @@ import db_queries
         ("count_bool", "Invalid Architect Reshape budget"),
         ("count_three", "Invalid Architect Reshape budget"),
         ("future_round", "Invalid Architect Reshape budget"),
+        ("reaction_missing", "Invalid Architect encounter record"),
+        ("reaction_bool", "Invalid Architect reaction round"),
+        ("reaction_negative", "Invalid Architect reaction round"),
+        ("reaction_future", "Invalid Architect reaction round"),
         ("missing_domain", "Invalid Architect domain"),
         ("domain_exclusion", "Invalid Architect domain"),
         ("invalid_floor", "Invalid Architect section"),
@@ -99,6 +103,14 @@ async def test_bad_architect_snapshot_cannot_load(fight, defect, reason):
             record.update(reshape_round=1, reshape_count=3)
         case "future_round":
             record.update(reshape_round=state.round_number + 1, reshape_count=1)
+        case "reaction_missing":
+            record.pop("reaction_round")
+        case "reaction_bool":
+            record["reaction_round"] = True
+        case "reaction_negative":
+            record["reaction_round"] = -1
+        case "reaction_future":
+            record["reaction_round"] = state.round_number + 1
         case "missing_domain":
             data["spatial"]["movement_areas"].clear()
         case "domain_exclusion":

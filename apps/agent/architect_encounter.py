@@ -46,6 +46,7 @@ def initialize(state: CombatState) -> None:
         "structure_ids": structure_ids,
         "phase": "active",
         "reshape_round": 0,
+        "reaction_round": 0,
         "reshape_count": 0,
         "floors": {},
         "pits": {},
@@ -65,6 +66,7 @@ def validate(state: CombatState) -> None:
         "structure_ids",
         "phase",
         "reshape_round",
+        "reaction_round",
         "reshape_count",
         "floors",
         "pits",
@@ -95,6 +97,9 @@ def validate(state: CombatState) -> None:
         or not ((round_number, count) == (0, 0) or (1 <= round_number <= state.round_number and 1 <= count <= 2))
     ):
         raise ValueError("Invalid Architect Reshape budget")
+    reaction_round = record["reaction_round"]
+    if type(reaction_round) is not int or not 0 <= reaction_round <= state.round_number:
+        raise ValueError("Invalid Architect reaction round")
     spatial = combat_spatial.require_spatial(state)
     areas = spatial.get("movement_areas", {})
     domains = [area for area in areas.values() if area["kind"] == "architect_domain"]
@@ -237,7 +242,7 @@ def facts(state: CombatState) -> dict | None:
     live_segments = spatial["structures"]
     live_walls = [wall_id for wall_id in record["structure_ids"] if wall_id in live_segments]
     details = {
-        **record,
+        **{key: value for key, value in record.items() if key != "reaction_round"},
         "hp": owner.hp_current,
         "live_wall_ids": live_walls,
         "live_walls": {wall_id: live_segments[wall_id] for wall_id in live_walls},
