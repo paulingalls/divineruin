@@ -16,6 +16,7 @@ import conditions
 import db_mutations
 import db_queries
 import event_types as E
+import temp_hp
 from combat_attack_roll import build_attack_dice_roll_payload
 from combat_damage_results import AutomaticDamageResult, SaveDamageResult, attack_fields, freeze_blow, thaw_blow
 from combat_durability import _accrue_durability, _find_equipped
@@ -280,18 +281,14 @@ async def _apply_damage(
     was_fallen = target.is_fallen
     still_encounter.record_attack(combat_state, attacker, target, action)
 
-    # HP is derived from the target's LIVE hp_current and the roll's DAMAGE, never from the roll's
-    # absolute ``target_hp_remaining``. On the unpaused path the two are identical by construction
-    # — roll_attack was handed this same hp_current a moment earlier. They diverge only when
-    # something moved the target's HP between the roll and the damage, which the Beat-3 hold makes
-    # reachable: a pause hands the floor back to the DM, and the combat prompt names Inner Fire as
-    # one of three things the DM may activate mid-fight (draethar_inner_fire writes this
-    # participant's hp_current directly). Writing the stale absolute there HEALS the burn back and
-    # hides the fall it caused, so every verdict below reads hp_before instead.
+    # A held roll can outlive the HP and pool it originally saw.
     death_resolved_before = target.hollow_death_resolved
-    hp_before = target.hp_current
-    target.hp_current = max(conditions.damage_hp_floor(target.conditions), hp_before - attack_result.damage)
-    overkill = max(0, attack_result.damage - hp_before) if target.hp_current == 0 else 0
+    hp_before, pool_before = target.hp_current, temp_hp.player_pool(target)
+    impact = temp_hp.absorb(
+        attack_result.damage, hp_before, pool_before, hp_floor=conditions.damage_hp_floor(target.conditions)
+    )
+    target.hp_current = impact.hp
+    target.temp_hp = impact.temporary
     if (
         was_fallen
         and attack_result.damage > 0
@@ -312,7 +309,9 @@ async def _apply_damage(
         target.death_save_failures += failures
         if target.type == "player":
             target.death_save_failures = min(3, target.death_save_failures)
-    gift, drain_basis = await trigger_damage_gifts(session, combat_state, target, hp_before, queries=queries, conn=conn)
+    gift, drain_basis = await trigger_damage_gifts(
+        session, combat_state, target, hp_before, absorbed=impact.absorbed, queries=queries, conn=conn
+    )
     gift_owner = gift.get("gift_owner")
     if gift_owner:
         if sink is None:
@@ -348,7 +347,7 @@ async def _apply_damage(
             session,
             combat_state,
             target,
-            overkill=overkill,
+            overkill=impact.overkill,
             was_fallen=was_fallen,
             hp_status=hp_status,
             sounds=sounds,
@@ -368,9 +367,10 @@ async def _apply_damage(
 
     await still_encounter.after_damage(session, combat_state, target, conn=conn, queries=queries, was_fallen=was_fallen)
 
-    # Update DB if target is a player
     if target.type == "player":
-        await mutations.update_player_hp(target.id, target.hp_current, conn=conn)
+        await mutations.update_player_hp(target.id, target.hp_current, temp_hp=impact.temporary, conn=conn)
+    elif rose_hollowed and impact.absorbed:
+        await mutations.update_player_temp_hp(target.id, impact.temporary, conn=conn)
 
     # Combat damage is the canonical concentration-break trigger: a concentrating player who takes
     # damage rolls a CON save (DC scales with the damage); failing it — or being dropped to 0 HP
@@ -393,7 +393,7 @@ async def _apply_damage(
 
     if gift_owner and isinstance(attack_result, check_resolution_attack.AttackResult):
         attack_result = combat_damage_affinity.with_landed_damage(
-            attack_result, attack_result.damage, hp_before, hp_floor=target.hp_current
+            attack_result, attack_result.damage, hp_before, temporary=pool_before, hp_floor=target.hp_current
         )
 
     # Publish events (buffered into ``sink`` during the phase tx; released post-commit)
@@ -428,7 +428,7 @@ async def _apply_damage(
                 )
 
     response = {
-        **gift,
+        **impact.receipt(gift),
         "attacker": attacker.name,
         "action": action.get("name", ""),
         "target": target.name,

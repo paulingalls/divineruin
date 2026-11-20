@@ -13,6 +13,7 @@ import db_mutations_travel
 import db_queries
 import db_session_queries
 import event_types as E
+import temp_hp
 from archetypes import get_archetype_chassis
 from attribute_increase_persistence import lock_increases
 from db_errors import db_tool
@@ -84,6 +85,8 @@ async def rest(context: RunContext[SessionData], rest_type: RestType) -> str:
                     await db_mutations.update_player_hp(pid, hp, conn=conn)
                 await ability_persistence.update_player_resources(pid, stamina=stamina, focus=focus, conn=conn)
                 if rest_type == "long":
+                    if temp_hp.from_player(players[pid]):
+                        await db_mutations.update_player_temp_hp(pid, 0, conn=conn)
                     await db_mutations_travel.reset_travel_hours(pid, conn=conn)
                 await reset_resonance_on_rest(pid, conn=conn)
                 await recharge(pid, players[pid], rest_type, conn=conn)

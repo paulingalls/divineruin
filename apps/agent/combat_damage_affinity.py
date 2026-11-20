@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 
+import temp_hp
 from condition_catalog import INCORPOREAL
 from conditions import damage_hp_floor, has_condition
 
@@ -138,26 +139,31 @@ def apply(target, action, result, *, state=None):
     changes = {"damage": max(0, damage + adjusted_bonus + adjusted_rider + adjusted_synergy)}
     if hasattr(result, "bonus_damage"):
         changes.update(bonus_damage=adjusted_bonus, rider_damage=adjusted_rider, synergy_damage=adjusted_synergy)
-    if hasattr(result, "target_hp_remaining") and changes["damage"] != result.damage:
+    if hasattr(result, "target_hp_remaining"):
         return action, with_landed_damage(
-            result, changes.pop("damage"), target.hp_current, hp_floor=damage_hp_floor(target.conditions), **changes
+            result,
+            changes.pop("damage"),
+            target.hp_current,
+            temporary=temp_hp.player_pool(target),
+            hp_floor=damage_hp_floor(target.conditions),
+            **changes,
         )
     return action, replace(result, **changes)
 
 
-def with_landed_damage(result, damage, hp_before, *, hp_floor=0, **changes):
+def with_landed_damage(result, damage, hp_before, *, temporary=0, hp_floor=0, **changes):
     """Rewrite a hit's damage after the roll and keep its kill verdict true to the HP it lands.
 
     A post-roll rewrite (a reaction's halving, a target's resistance or vulnerability) can save a
     target the raw roll killed, or kill one it spared; the DM must never hear a killing blow on a
     creature still standing, nor miss one that falls.
     """
-    remaining = max(hp_floor, hp_before - damage)
-    killed = result.hit and remaining == 0
+    impact = temp_hp.absorb(damage, hp_before, temporary, hp_floor=hp_floor)
+    killed = result.hit and impact.hp == 0
     fields = {
         "damage": damage,
-        "target_hp_remaining": remaining,
-        "overkill": max(0, damage - hp_before) if killed else 0,
+        "target_hp_remaining": impact.hp,
+        "overkill": impact.overkill if killed else 0,
         "target_killed": killed,
         **changes,
     }
