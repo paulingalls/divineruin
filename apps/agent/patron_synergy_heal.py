@@ -23,7 +23,7 @@ HealSynergy = Callable[[int], list[HealBonus]]
 
 
 def bonus_components(player: dict, hp_before: int, *, spell: Spell) -> list[HealBonus]:
-    if spell.heal is None or not has_engine_synergy(player, DAWNS_MERCY):
+    if not has_engine_synergy(player, DAWNS_MERCY):
         return []
     attributes = player["attributes"]
     amount = max(0, attribute_modifier(attributes["wisdom"]), attribute_modifier(attributes["charisma"]))
