@@ -20,6 +20,7 @@ import creature_catalog
 import db_activity_queries
 import db_content_queries
 import db_queries
+import elective_choices
 import lost_scout_scene
 import query_patron
 import recipe_tools
@@ -89,7 +90,7 @@ async def query_info(
       studiable_spell_ids (no target_id needed).
     - kind="workspaces", target_id=<npc id>: available workspaces and this player's daily
       rental price from that NPC; omit target_id for per-disposition daily prices.
-    - kind="abilities": saved attribute increase choices for select until next long rest,
+    - kind="abilities": pending elective choices, attribute choices until next long rest,
       the current player's owned ability ids, castable spells, reaction windows,
       and active learned variant ids (no target_id needed).
     - kind="patron": the current player's patron standing, progress, authored favor action ids,
@@ -210,6 +211,7 @@ async def _query_abilities_impl(
         if ability.ability_type == "reaction":
             row["window"] = ability.window
         if ability.ability_type == "elective":
+            row["combat"] = combat_ability(ability)
             active_variant_id = await persistence.get_active_variant(player_id, ability.id)
             if active_variant_id is not None:
                 row["active_variant_id"] = active_variant_id
@@ -228,6 +230,9 @@ async def _query_abilities_impl(
             "abilities": results,
             "spells": spell_rows,
             "attribute_increases": attribute_increases.offers(player_id, player),
+            "elective_choices": elective_choices.offers(
+                player_id, elective_choices.pools(catalog, player["level"]), known_ids
+            ),
         }
     )
 

@@ -80,12 +80,14 @@
   {
     "name": "progression",
     "tests": [
-      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:attribute_increase_commit|patron_alignment_session|archetype_chassis|mentor_gating_e2e|mentor_variants|milestone_progression|spell_acquisition|m28_xp_favor_capstone|story_005_m22_ability_capstone)\\.py"
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:equip_and_electives|attribute_increase_commit|patron_alignment_session|archetype_chassis|mentor_gating_e2e|mentor_variants|milestone_progression|spell_acquisition|m28_xp_favor_capstone|story_005_m22_ability_capstone)\\.py"
     ],
     "owns": [
+      "apps/agent/(?:choice_tools|elective_[^/]*|ability_persistence|quest_authority|combat_rewards|combat_end|combat_init_participants|combat_ability_gate|creation_rules|equipment_[^/]*|db_mutations_inventory|inventory_tools|query_tools)\\.py",
       "apps/agent/(?:unbound_autonomy|alignment_heartbeat|archetyp[^/]*|role_archetypes|progression[^/]*|mentor[^/]*|milestone[^/]*|level[^/]*|xp[^/]*|favor[^/]*|training[^/]*)\\.py"
     ],
     "reads": [
+      "content/items.json",
       "content/archetype_abilities.json",
       "content/archetype_milestones.json",
       "content/archetypes.json",

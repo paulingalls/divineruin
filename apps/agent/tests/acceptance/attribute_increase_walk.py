@@ -20,12 +20,13 @@ from session_data import SessionData
 
 
 class IncreaseWalk(ArcWalk):
-    async def setup(self, harness):
+    async def setup(self, harness, *, tools=()):
+        self.tools = [update_quest, select, query_info, rest, *tools]
         await self.start(
             harness,
             "update_quest",
             stage=7,
-            agent=Agent(instructions="Execute the spoken command.", tools=[update_quest, select, query_info, rest]),
+            agent=Agent(instructions="Execute the spoken command.", tools=self.tools),
         )
         await self.seed(3)
         return self
@@ -47,9 +48,9 @@ class IncreaseWalk(ArcWalk):
         assert row is not None
         return row
 
-    async def command(self, name, args, speech="Execute the command."):
+    async def command(self, name, args, speech="Execute the command.", *, actor=None):
         self.model.commands.append((name, args))
-        with self.sd._bind_authenticated_actor(self.player, 1, lambda *_: None):
+        with self.sd._bind_authenticated_actor(actor or self.player, 1, lambda *_: None):
             await self.session.run(user_input=speech)
         receipt = list(self.model.receipts.values())[-1]
         assert receipt.name == name
@@ -72,6 +73,4 @@ class IncreaseWalk(ArcWalk):
         self.sd = SessionData(player_id=self.player, location_id="millhaven_inn", room=self.sd.room)
         self.model = ScenarioModel([])
         self.session = AgentSession(llm=self.model, userdata=self.sd)
-        await self.session.start(
-            Agent(instructions="Execute the spoken command.", tools=[update_quest, select, query_info, rest])
-        )
+        await self.session.start(Agent(instructions="Execute the spoken command.", tools=self.tools))

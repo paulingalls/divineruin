@@ -377,7 +377,7 @@ them.
 | `move_player` | the player moves | the former navigation split |
 | `check` | resolve an uncertain action | `request_skill_check`, `request_saving_throw`, `roll_dice`, `discover_hidden_element` |
 | `update_quest` | a quest moves forward | Quest progression triggers its own XP and level Resolves |
-| `transact` | physical goods change hands (gain/lose/spend, with quantity) | `add_to_inventory`, `remove_from_inventory` |
+| `transact` | exchange physical goods by quantity or equip owned gear outside combat | `add_to_inventory`, `remove_from_inventory` |
 | `learn` | the player gains permanent knowledge | `learn_recipe`, future `learn_spell` |
 | `activate` | the player uses a capability | `request_ability_activation`, all future spellcasting |
 | `update_npc_disposition` | an NPC's standing shifted | Validates and persists relationship changes |

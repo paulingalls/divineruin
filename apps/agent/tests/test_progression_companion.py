@@ -54,6 +54,7 @@ def test_companion_prompt_omits_the_progression_header_before_the_first_gain():
 
 async def _award_from_level(level: int, xp: int, amount: int, archetype: str = "warrior"):
     _, conn = make_db_mod()
+    conn.fetch = AsyncMock(return_value=[])
     mutations = MagicMock()
     mutations.update_player_xp = AsyncMock()
     mutations.set_player_flag = AsyncMock()
