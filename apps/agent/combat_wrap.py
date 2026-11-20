@@ -99,7 +99,7 @@ def next_envelope(state) -> dict:
     }
 
 
-def _roll_tick_save(actor, event, save_resolver):
+def _roll_tick_save(state, actor, event, save_resolver):
     # Clearing saves predate proficiency and never consume a limited-use bonus die.
     return save_resolver.roll_participant_save(
         actor,
@@ -109,6 +109,7 @@ def _roll_tick_save(actor, event, save_resolver):
         bonus_dice_eligible=False,
         include_proficiency=False,
         originating_participant_id=event.get("originating_participant_id"),
+        combat_state=state,
     )
 
 
@@ -160,7 +161,7 @@ async def wrap_phase(
                 cursor,
                 actor.id,
                 event["type"],
-                partial(_roll_tick_save, actor, event, save_resolver),
+                partial(_roll_tick_save, state, actor, event, save_resolver),
                 queries=queries,
                 conn=conn,
             )

@@ -166,7 +166,9 @@ async def _floor_target(
             session,
             target_id,
             "Reshape floor",
-            partial(check_resolution_save.roll_participant_save, target, "DEX", 15, "Reshape floor"),
+            partial(
+                check_resolution_save.roll_participant_save, target, "DEX", 15, "Reshape floor", combat_state=state
+            ),
         )
         if save is None:
             return None

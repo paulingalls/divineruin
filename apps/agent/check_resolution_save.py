@@ -8,6 +8,7 @@ resolve_saving_throw accepts an optional `rng` for deterministic testing.
 
 import random
 from dataclasses import dataclass, replace
+from typing import TYPE_CHECKING
 
 from check_resolution import (
     _ATTR_ABBREV,
@@ -23,6 +24,10 @@ from dramatic import DramaticContext, evaluate_dramatic_context
 from rules_engine import attribute_modifier, proficiency_bonus
 
 VALID_SAVE_NAMES = frozenset(_ATTR_FULL.values())
+
+
+if TYPE_CHECKING:
+    from combat_state import CombatState
 
 
 def is_valid_save_key(save: object) -> bool:
@@ -189,6 +194,7 @@ def roll_participant_save(
     rng: random.Random | None = None,
     advantage: bool = False,
     originating_participant_id: str | None = None,
+    combat_state: "CombatState | None" = None,
 ) -> SavingThrowResult:
     """Roll a CombatParticipant's saving throw against ``dc`` (+ ``dc_mod``).
 
@@ -207,6 +213,8 @@ def roll_participant_save(
     # uppercase abbrev like "WIS" (the codebase's house style, e.g. items.json "DC 13 CON") that
     # passes the load gate must also expand here — else it slips through to resolve_saving_throw
     # unexpanded and raises "Unknown save type" mid-fight, the load-gate/runtime divergence this SSOT exists to prevent.
+    from architect_encounter import cathedral_bonus
+
     save_type = _ATTR_FULL.get(save.lower(), save.lower())
     item_advantage = save_type in participant.save_advantages
     player_data = {
@@ -225,5 +233,6 @@ def roll_participant_save(
         bonus_dice_eligible=bonus_dice_eligible,
         advantage=advantage or item_advantage,
         scholars_ward=participant.scholars_ward,
+        modifier_bonus=cathedral_bonus(combat_state, participant.id),
         originating_participant_id=originating_participant_id,
     )

@@ -3446,9 +3446,20 @@
       },
       {
         "name": "Cathedral",
-        "description": "1/encounter. Create a 60 ft radius cathedral; DEX save DC 20 or 4d10 force. Architect gains +2 AC and saves until it leaves or dies.",
+        "description": "1/encounter. Stone grinds as the Cathedral rises within 60 ft. Every other creature inside makes a DC 20 DEX save or takes 4d10 force damage. The Cathedral grants the Architect +2 AC and +2 to saves until it leaves or dies, then collapses.",
         "narration_cue": "",
-        "recharge": "1/encounter",
+        "kind": "attack",
+        "type": "area",
+        "reach": 60,
+        "damage": "4d10",
+        "damage_type": "force",
+        "save": "DEX",
+        "dc": 20,
+        "resolution": "save",
+        "save_success_damage": "none",
+        "conditions_on_failure": [],
+        "conditions_on_success": [],
+        "recharge": { "kind": "encounter", "uses": 1 },
         "audio": null
       },
       {

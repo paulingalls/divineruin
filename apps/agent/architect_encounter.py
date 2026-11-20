@@ -9,15 +9,80 @@ import combat_structures
 from combat_movement_cost import rectangle
 
 if TYPE_CHECKING:
+    from combat_participant import CombatParticipant
     from combat_state import CombatState
 
 CREATURE_ID = "hollow_architect"
 CONSTRUCT_SLAM = "Construct Slam"
+CATHEDRAL = "Cathedral"
+CATHEDRAL_RADIUS_FT = 60
+
+
+def cathedral_ids(owner_id: str) -> tuple[str, str]:
+    return f"{owner_id}_cathedral", f"{owner_id}_cathedral_center"
 
 
 def is_owner(state: CombatState, actor_id: str) -> bool:
     record = state.architect_encounter
     return record is not None and record["owner_id"] == actor_id
+
+
+def _inside_cathedral(spatial: dict, owner_id: str, zone: dict) -> bool:
+    return combat_spatial.inside(
+        combat_spatial.position(spatial, owner_id),
+        combat_spatial.position(spatial, zone["center_id"]),
+        zone["radius_ft"],
+    )
+
+
+def cathedral_bonus(state: CombatState | None, participant_id: str) -> int:
+    if state is None or state.architect_encounter is None:
+        return 0
+    owner_id = state.architect_encounter["owner_id"]
+    spatial = state.spatial
+    assert spatial is not None
+    zone_id, _ = cathedral_ids(owner_id)
+    return 2 if owner_id == participant_id and zone_id in spatial["zones"] else 0
+
+
+def _remove_cathedral(spatial: dict, owner_id: str) -> None:
+    zone_id, center_id = cathedral_ids(owner_id)
+    if spatial["zones"].pop(zone_id, None) is not None:
+        del spatial["locations"][center_id]
+
+
+def end_cathedral_after_move(state: CombatState, actor_id: str) -> None:
+    if not is_owner(state, actor_id):
+        return
+    spatial = state.spatial
+    assert spatial is not None
+    zone_id, _ = cathedral_ids(actor_id)
+    zone = spatial["zones"].get(zone_id)
+    if zone is not None and not _inside_cathedral(spatial, actor_id, zone):
+        _remove_cathedral(spatial, actor_id)
+
+
+def _validate_cathedral(spatial: dict, owner: CombatParticipant | None) -> None:
+    cathedrals = {key for key, zone in spatial["zones"].items() if zone.get("kind") == "cathedral"}
+    if owner is None:
+        if cathedrals:
+            raise ValueError("Cathedral requires an Architect owner")
+        return
+    zone_id, center_id = cathedral_ids(owner.id)
+    if not cathedrals and zone_id not in spatial["zones"] and center_id not in spatial["locations"]:
+        return
+    if cathedrals != {zone_id}:
+        raise ValueError("Cathedral zone must belong to the Architect")
+    zone = spatial["zones"][zone_id]
+    if zone["center_id"] != center_id or center_id not in spatial["locations"]:
+        raise ValueError("Cathedral requires its fixed landmark")
+    if zone["radius_ft"] != CATHEDRAL_RADIUS_FT:
+        raise ValueError("Cathedral radius must be 60 feet")
+    remaining = owner.action_ledger.get(CATHEDRAL.casefold(), {}).get("remaining")
+    if type(remaining) is not int or remaining != 0:
+        raise ValueError("Cathedral requires a spent action")
+    if owner.hp_current <= 0 or not _inside_cathedral(spatial, owner.id, zone):
+        raise ValueError("Cathedral requires its living owner inside")
 
 
 def initialize(state: CombatState) -> None:
@@ -60,6 +125,8 @@ def validate(state: CombatState) -> None:
     if record is None:
         if owners or state.encounter_id == CREATURE_ID:
             raise ValueError("Architect snapshot is missing its encounter record")
+        if state.spatial is not None:
+            _validate_cathedral(state.spatial, None)
         return
     if not isinstance(record, dict) or set(record) != {
         "owner_id",
@@ -101,6 +168,7 @@ def validate(state: CombatState) -> None:
     if type(reaction_round) is not int or not 0 <= reaction_round <= state.round_number:
         raise ValueError("Invalid Architect reaction round")
     spatial = combat_spatial.require_spatial(state)
+    _validate_cathedral(spatial, owners[0])
     areas = spatial.get("movement_areas", {})
     domains = [area for area in areas.values() if area["kind"] == "architect_domain"]
     hollow = owners[0].hollow
@@ -268,6 +336,8 @@ def destroyed(state: CombatState) -> None:
     record = state.architect_encounter
     assert record is not None
     record["phase"] = "destroyed"
+    assert state.spatial is not None
+    _remove_cathedral(state.spatial, record["owner_id"])
     for wall_id in record["structure_ids"]:
         wall = state.get_participant(wall_id)
         assert wall is not None

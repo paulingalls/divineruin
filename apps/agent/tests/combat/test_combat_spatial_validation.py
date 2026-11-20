@@ -22,7 +22,7 @@ def test_mapping_shape_refusal(bad):
 @pytest.mark.parametrize("bad", [None, [], {"center_id": "a"}, {"center_id": "a", "radius_ft": 0, "effect": "silence"}])
 def test_zone_shape_refusal(bad):
     with pytest.raises(ValueError):
-        validate_maps({"a": ZERO}, {}, {"z": bad})
+        validate_maps({"a": ZERO}, {}, {"z": bad}, zone_kinds=("silence",))
 
 
 @pytest.mark.parametrize(

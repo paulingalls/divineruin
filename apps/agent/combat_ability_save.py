@@ -66,6 +66,7 @@ async def resolve_hostile_condition(
             dc,
             cond_type,
             originating_participant_id=attacker.id,
+            combat_state=state,
         ),
     )
     if result is None:
