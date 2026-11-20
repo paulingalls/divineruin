@@ -275,10 +275,14 @@ def finish_attack(
             rider_damage_type = on_hit["damage_type"]
             rider_ignores_resistance = on_hit["ignores_resistance"]
             damage += rider_damage
-        synergy_damage, synergy_damage_type = patron_synergy_combat.critical_rider(attacker_data, critical, rng=rng)
         synergy_clause_id = attacker_data.get("encounter_damage_clause")
         if synergy_clause_id is not None:
             synergy_damage, synergy_damage_type = 1, damage_type
+        elif attacker_data.get("outnumbered_oath"):
+            synergy_clause_id = patron_synergy_combat.OATH_OF_VALOR
+            synergy_damage, synergy_damage_type = patron_synergy_combat.outnumbered_rider(critical, rng=rng)
+        else:
+            synergy_damage, synergy_damage_type = patron_synergy_combat.critical_rider(attacker_data, critical, rng=rng)
         damage += synergy_damage
         synergy_damage = int(synergy_damage * damage_mult)
         bonus_damage = int(bonus_damage * damage_mult)

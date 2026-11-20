@@ -624,8 +624,9 @@
         "clauses": [
           {
             "effect": "Oath of Valor: sworn strikes deal +1d6 radiant vs foes that outnumber the party",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "kaelen_oath_of_valor"
           }
         ]
       },

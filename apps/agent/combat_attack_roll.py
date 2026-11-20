@@ -61,6 +61,9 @@ def attack_roll_inputs(attacker, target, target_ac_bonus, combat_state, action, 
 
     if player is not None:
         attacker_data.update(patron_synergy_combat.attack_flags(player))
+        attacker_data["outnumbered_oath"] = weapon_attack and patron_synergy_combat.outnumbered_oath(
+            player, combat_state, attacker
+        )
         attacker_data["encounter_damage_clause"] = patron_synergy_combat.encounter_damage_clause(
             player, combat_state, attacker, target, action
         )
