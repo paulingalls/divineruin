@@ -1,6 +1,7 @@
 """Movement uses one phase declaration and the actor's committed base speed."""
 
 from combat_spatial import distance, place, point, position, require_spatial
+from combat_structures import blocking_wall
 from condition_restrictions import cannot_act, speed_zero
 from declarations import DeclarationType, resolve_declaration
 
@@ -11,16 +12,19 @@ def is_move(declaration):
 
 def movement_geometry(state, actor_id, declaration):
     spatial = require_spatial(state)
-    if state.get_participant(actor_id) is None or declaration.target_id != actor_id:
+    actor = state.get_participant(actor_id)
+    if actor is None or declaration.target_id != actor_id:
         raise ValueError("move must target its own known actor")
     destination = point(declaration.destination)
-    travelled = distance(position(spatial, actor_id), destination)
-    actor = state.get_participant(actor_id)
+    origin = position(spatial, actor_id)
+    travelled = distance(origin, destination)
     melody = actor.choir_movement_round == state.round_number or any(
         c["type"] == "charmed" and c.get("choir_melody") is True for c in actor.conditions
     )
     if travelled > spatial["speeds"][actor_id] and not melody:
         raise ValueError(f"{actor_id} move exceeds speed {spatial['speeds'][actor_id]:g} feet")
+    if wall := blocking_wall(state, spatial, origin, destination):
+        raise ValueError(f"{actor_id} move is blocked by {wall.name} ({wall.id})")
     return destination, travelled
 
 

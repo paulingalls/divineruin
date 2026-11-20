@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass, field
 import choir_effects
 import combat_reaction_contest
 import combat_spatial
+import combat_structures
 import combat_wrongdoing
 import condition_sources
 import reaction_spend
@@ -192,6 +193,7 @@ class CombatState:
         import choir_encounter
         import still_encounter
 
+        combat_structures.validate_participants(state)
         choir_encounter.validate(state)
         still_encounter.validate(state)
         return state

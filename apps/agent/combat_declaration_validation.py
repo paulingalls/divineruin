@@ -18,6 +18,8 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
     if actor is None:
         participant_ids = [participant.id for participant in next_state.participants]
         raise ValueError(f"Unknown actor {actor_id!r}; participants: {participant_ids}")
+    if actor.is_structure:
+        raise ValueError(f"{actor.name} ({actor.id}) is a structure and cannot act")
     still_encounter.guard_declaration(next_state, actor_id, declaration)
     if declaration.type is DeclarationType.MULTIATTACK:
         from combat_multiattack import expand_declaration
@@ -47,8 +49,11 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
             raise ValueError(
                 f"{actor.name} ({actor.id}) cannot target {target.name} ({target.id}) with {declaration.type}"
             )
-        if declaration.type is DeclarationType.MANEUVER and combat_grapple.grappler_id(actor.conditions) == target.id:
-            persisted_declarations[actor_id]["maneuver_intent"] = ManeuverIntent.ESCAPE
+        if declaration.type is DeclarationType.MANEUVER:
+            if target.is_structure:
+                raise ValueError(f"{target.name} ({target.id}) is a structure and cannot be maneuvered")
+            if combat_grapple.grappler_id(actor.conditions) == target.id:
+                persisted_declarations[actor_id]["maneuver_intent"] = ManeuverIntent.ESCAPE
     if (
         declaration.type is DeclarationType.MANEUVER
         and declaration.target_id == actor.id

@@ -31,6 +31,7 @@ from combat_events import emit_or_publish
 from combat_fate_rolls import packet_save
 from combat_fortitude import roll_fortitude, try_fortitude
 from combat_sound_events import publish_combat_sounds as _publish_sounds
+from combat_structures import remove_wall_segment
 from kaelen_gift import trigger_iron_resolve
 from patron_combat_edges import reward_worthy_foe
 from session_data import CombatParticipant, CombatState, SessionData
@@ -94,8 +95,12 @@ def _handle_hp_zero(
         sounds.append(SOUND_HOLLOW_RISE)
         return hp_status, True, []
 
-    combat_hollow_death.mark_destroyed(target)
     target.is_fallen = True
+    if target.is_structure:
+        remove_wall_segment(combat_state, target)
+        target.is_dead = True
+        return hp_status, False, []
+    combat_hollow_death.mark_destroyed(target)
     released = combat_grapple.release_from_grappler(combat_state, target.id) if combat_state is not None else []
     # Instant death (M4.4 story-002): overkill (excess damage past 0) >= max HP kills
     # outright — no Fallen grace, no death saves. is_dead is the stronger state; the pure

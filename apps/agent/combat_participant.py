@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 class CombatParticipant:
     id: str
     name: str
-    type: str  # "player", "enemy", "companion", "temporary_hollowed" — use is_ally for the band check
+    type: str  # player, companion, enemy, temporary_hollowed, structure
     initiative: int
     hp_current: int
     hp_max: int
@@ -123,6 +123,10 @@ class CombatParticipant:
 
     hollow: dict | None = None
     hollow_death_resolved: bool = False
+
+    @property
+    def is_structure(self) -> bool:
+        return self.type == "structure"
 
     @property
     def is_ally(self) -> bool:
