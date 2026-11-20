@@ -1,6 +1,222 @@
 {
   "_doc": "Canonical wire-shape fixture (story-007). The single source of truth both lanes assert against: the Python agent publishers must serialize these exact shapes, and the TS mobile handlers/parsers must accept them. A key rename on either side fails its lane's wire-contract test instead of silently rendering a blank value (concern 82fc). Each event is the full top-level wire object {type, ...payload} as flat-merged by game_events.publish_game_event.",
   "events": {
+    "temp_hp_session_set": {
+      "type": "session_init",
+      "character": {
+        "player_id": "player_1",
+        "name": "Kael",
+        "race": "human",
+        "class": "warrior",
+        "level": 5,
+        "location_id": "accord",
+        "hp": {
+          "current": 25,
+          "max": 25
+        },
+        "temp_hp": 7
+      }
+    },
+    "temp_hp_session_changed": {
+      "type": "session_init",
+      "character": {
+        "player_id": "player_1",
+        "name": "Kael",
+        "race": "human",
+        "class": "warrior",
+        "level": 5,
+        "location_id": "accord",
+        "hp": {
+          "current": 22,
+          "max": 25
+        },
+        "temp_hp": 3
+      }
+    },
+    "temp_hp_session_clear": {
+      "type": "session_init",
+      "character": {
+        "player_id": "player_1",
+        "name": "Kael",
+        "race": "human",
+        "class": "warrior",
+        "level": 5,
+        "location_id": "accord",
+        "hp": {
+          "current": 19,
+          "max": 25
+        },
+        "temp_hp": 0
+      }
+    },
+    "temp_hp_event_set": {
+      "type": "hp_changed",
+      "current": 18,
+      "max": 20,
+      "temp_hp": 5
+    },
+    "temp_hp_event_changed": {
+      "type": "hp_changed",
+      "current": 15,
+      "max": 20,
+      "temp_hp": 3
+    },
+    "temp_hp_event_clear": {
+      "type": "hp_changed",
+      "current": 12,
+      "max": 20,
+      "temp_hp": 0
+    },
+    "temp_hp_event_item": {
+      "type": "hp_changed",
+      "current": 4,
+      "max": 20,
+      "temp_hp": 7
+    },
+    "temp_hp_combat_start": {
+      "type": "combat_ui_update",
+      "round": 1,
+      "combatants": [
+        {
+          "id": "player_2",
+          "name": "Other Hero",
+          "isAlly": true,
+          "hpCurrent": 11,
+          "hpMax": 21,
+          "tempHp": 2,
+          "conditions": [],
+          "isActive": false
+        },
+        {
+          "id": "companion_sable",
+          "name": "Sable",
+          "isAlly": true,
+          "hpCurrent": 12,
+          "hpMax": 20,
+          "tempHp": 0,
+          "conditions": [],
+          "isActive": false
+        },
+        {
+          "id": "player_1",
+          "name": "Kael",
+          "isAlly": true,
+          "hpCurrent": 25,
+          "hpMax": 25,
+          "tempHp": 7,
+          "conditions": [],
+          "isActive": true
+        },
+        {
+          "id": "goblin_1",
+          "name": "Goblin",
+          "isAlly": false,
+          "hpCurrent": 7,
+          "hpMax": 7,
+          "tempHp": 0,
+          "conditions": [],
+          "isActive": false
+        }
+      ]
+    },
+    "temp_hp_combat_changed": {
+      "type": "combat_ui_update",
+      "round": 2,
+      "combatants": [
+        {
+          "id": "player_2",
+          "name": "Other Hero",
+          "isAlly": true,
+          "hpCurrent": 11,
+          "hpMax": 21,
+          "tempHp": 0,
+          "conditions": [],
+          "isActive": false
+        },
+        {
+          "id": "companion_sable",
+          "name": "Sable",
+          "isAlly": true,
+          "hpCurrent": 12,
+          "hpMax": 20,
+          "tempHp": 0,
+          "conditions": [],
+          "isActive": false
+        },
+        {
+          "id": "player_1",
+          "name": "Kael",
+          "isAlly": true,
+          "hpCurrent": 4,
+          "hpMax": 20,
+          "tempHp": 4,
+          "conditions": [
+            {
+              "type": "iron_resolve",
+              "stacks": 1,
+              "source": "kaelen_iron_resolve"
+            }
+          ],
+          "isActive": true
+        },
+        {
+          "id": "goblin_1",
+          "name": "Goblin",
+          "isAlly": false,
+          "hpCurrent": 7,
+          "hpMax": 7,
+          "tempHp": 0,
+          "conditions": [],
+          "isActive": false
+        }
+      ]
+    },
+    "temp_hp_combat_clear": {
+      "type": "combat_ui_update",
+      "round": 3,
+      "combatants": [
+        {
+          "id": "player_2",
+          "name": "Other Hero",
+          "isAlly": true,
+          "hpCurrent": 11,
+          "hpMax": 21,
+          "tempHp": 0,
+          "conditions": [],
+          "isActive": false
+        },
+        {
+          "id": "companion_sable",
+          "name": "Sable",
+          "isAlly": true,
+          "hpCurrent": 12,
+          "hpMax": 20,
+          "tempHp": 0,
+          "conditions": [],
+          "isActive": false
+        },
+        {
+          "id": "player_1",
+          "name": "Kael",
+          "isAlly": true,
+          "hpCurrent": 2,
+          "hpMax": 20,
+          "tempHp": 0,
+          "conditions": [],
+          "isActive": true
+        },
+        {
+          "id": "goblin_1",
+          "name": "Goblin",
+          "isAlly": false,
+          "hpCurrent": 7,
+          "hpMax": 7,
+          "tempHp": 0,
+          "conditions": [],
+          "isActive": false
+        }
+      ]
+    },
     "session_end_guest": {
       "type": "session_end",
       "player_id": "player_1",

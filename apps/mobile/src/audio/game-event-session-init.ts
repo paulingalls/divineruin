@@ -41,6 +41,7 @@ export function handleSessionInit(event: DataChannelEvent): void {
         character.hp && typeof (character.hp as Record<string, unknown>).max === "number"
           ? ((character.hp as Record<string, unknown>).max as number)
           : 0,
+      tempHp: typeof character.temp_hp === "number" ? character.temp_hp : 0,
       deity: typeof character.deity === "string" ? character.deity : "",
       portraitUrl: typeof character.portrait_url === "string" ? character.portrait_url : null,
     });

@@ -11,6 +11,7 @@ import conditions
 import item_effects
 import rules_engine
 import still_scene
+import temp_hp
 from combat_init_validation import _validate_enemy_tiers, validate_enemy_action_shapes, validate_enemy_resistance_tags
 from combat_spatial_entry import build_spatial
 from companion_profiles import get_companion_profile
@@ -142,6 +143,7 @@ async def assemble_participants(session, encounter, encounter_id, member_players
                 type="player",
                 initiative=initiative_by_id[mid],
                 hp_current=row_hp.get("current", 1),
+                temp_hp=temp_hp.from_player(row),
                 hp_max=row_hp.get("max", 1),
                 ac=row.get("ac", 10),
                 attributes=row.get("attributes", {}),

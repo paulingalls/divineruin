@@ -153,7 +153,7 @@ async def test_destroyed_echo_primary_resurrected_even_on_fled(monkeypatch):
         location_id="loc1",
     )
     end_data, _mutations, party, _on_def = await _run_outcome(
-        session, cs, "fled", monkeypatch, resurrect_return=[{"anchor": "anchor_x"}]
+        session, cs, "fled", monkeypatch, resurrect_return=[{"anchor": "anchor_x", "revive_hp": 10}]
     )
     party.assert_awaited_once()  # the destroyed echo-primary returns via Mortaen even on a flee
     assert end_data["death_context"] is not None
@@ -201,7 +201,7 @@ async def test_manual_victory_empty_seat_order_does_not_crash(monkeypatch):
         location_id="loc1",
     )
     end_data, _mutations, party, _on_def = await _run_outcome(
-        session, cs, "victory", monkeypatch, resurrect_return=[{"anchor": "anchor_x"}]
+        session, cs, "victory", monkeypatch, resurrect_return=[{"anchor": "anchor_x", "revive_hp": 10}]
     )
     assert end_data["primary_loot"] == []
     assert end_data["primary_currency_gold"] == 0

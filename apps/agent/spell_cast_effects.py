@@ -7,6 +7,7 @@ import combat_spell_heal
 import event_types as E
 import patron_echo_choice
 import spell_item_resolution
+import temp_hp
 import unbound_tools
 from game_events import publish_game_event
 from party_state import PartyMember
@@ -197,11 +198,13 @@ async def _finish_cast(
         )
         # Out of combat no WRAP push follows, so each healed recipient's own HUD needs the new HP.
         for recipient_id, hp in combat_spell_heal.hp_updates(player_id, packet).items():
+            recipient = player if recipient_id == player_id else heal_rows[recipient_id]
+            health = {"current": hp["hp_current"], "max": hp["hp_max"], "temp_hp": temp_hp.from_player(recipient)}
             events.append(
-                lambda pid=recipient_id, r=hp: publish_game_event(
+                lambda pid=recipient_id, payload=health: publish_game_event(
                     session.room,
                     E.HP_CHANGED,
-                    {"current": r["hp_current"], "max": r["hp_max"]},
+                    payload,
                     event_bus=session.event_bus,
                     destination_identities=[pid],
                 )

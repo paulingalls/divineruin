@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sample_fixtures import load_test_creature, make_context
+from test_wire_contract import FIXTURE
 
 import event_types as E
 from combat_init import _start_combat_impl
@@ -63,12 +64,6 @@ def _state(
 def test_packet_top_level_keys():
     packet = build_combat_ui_update(_state([_participant("p1")]))
     assert set(packet.keys()) == {"round", "combatants"}
-
-
-def test_combatant_shape_matches_mobile_parser():
-    packet = build_combat_ui_update(_state([_participant("p1")]))
-    expected = {"id", "name", "isAlly", "hpCurrent", "hpMax", "conditions", "isActive"}
-    assert set(packet["combatants"][0].keys()) == expected
 
 
 def test_packet_round_reflects_post_advance_state():
@@ -275,7 +270,7 @@ _START_ENCOUNTER = {
 async def test_start_combat_emits_combat_ui_update_for_hud_init(_mock_sounds, mock_event):
     mutations = MagicMock(save_combat_state=AsyncMock())
     queries = MagicMock(
-        get_player=AsyncMock(return_value=_start_combat_player()),
+        get_player=AsyncMock(return_value={**_start_combat_player(), "temp_hp": 7}),
         get_player_inventory=AsyncMock(return_value=[]),
     )
     content = MagicMock(
@@ -301,7 +296,11 @@ async def test_start_combat_emits_combat_ui_update_for_hud_init(_mock_sounds, mo
     payload = ui_calls[0][0][2]
     assert payload["round"] == 1
     by_id = {c["id"]: c for c in payload["combatants"]}
-    assert "player_1" in by_id and "goblin_1" in by_id
+    fixture = {row["id"]: row for row in FIXTURE["events"]["temp_hp_combat_start"]["combatants"]}
+    for pid in ("player_1", "goblin_1"):
+        assert {key: by_id[pid][key] for key in ("hpCurrent", "hpMax", "tempHp")} == {
+            key: fixture[pid][key] for key in ("hpCurrent", "hpMax", "tempHp")
+        }
     assert all(c["conditions"] == [] for c in payload["combatants"])
     assert sum(1 for c in payload["combatants"] if c["isActive"]) == 1
 

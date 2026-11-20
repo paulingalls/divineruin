@@ -15,6 +15,7 @@ import db_content_queries
 import db_queries
 import spell_knowledge
 import spells
+import temp_hp
 from companion_profiles import get_companion_profile
 from patron_passives import effective_hp
 
@@ -102,7 +103,7 @@ async def get_session_init_payload(player_id: str) -> dict:
 
     patron_snapshot = snapshot(player_id, player, revision)
     if player is not None:
-        player = {**player, "player_id": player_id}
+        player = {**player, "player_id": player_id, "temp_hp": temp_hp.from_player(player)}
         if "hp" in player:
             player["hp"] = effective_hp(player)
         if player.get("divine_favor") is not None:

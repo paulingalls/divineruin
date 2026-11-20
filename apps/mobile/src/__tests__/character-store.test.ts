@@ -12,6 +12,7 @@ const SAMPLE: CharacterSummary = {
   locationName: "Guild Hall",
   hpCurrent: 25,
   hpMax: 30,
+  tempHp: 0,
   deity: "",
   portraitUrl: null,
 };

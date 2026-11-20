@@ -16,7 +16,15 @@ import { HUD_ANCHORS } from "@/constants/hud-anchors";
 import { hudStore, type Combatant, type CombatTrackerState } from "@/stores/hud-store";
 import { getConditionDisplay } from "@/components/hud/condition-display";
 
-function CombatantHpBar({ current, max }: { current: number; max: number }) {
+function CombatantHpBar({
+  current,
+  max,
+  tempHp = 0,
+}: {
+  current: number;
+  max: number;
+  tempHp?: number;
+}) {
   const ratio = max > 0 ? current / max : 0;
   const prevRatio = useRef(ratio);
   const widthAnim = useSharedValue(ratio);
@@ -33,8 +41,15 @@ function CombatantHpBar({ current, max }: { current: number; max: number }) {
   }));
 
   return (
-    <View style={styles.hpTrack}>
-      <Animated.View style={[styles.hpFill, barStyle]} />
+    <View style={styles.healthRow}>
+      <View style={styles.hpTrack}>
+        <Animated.View style={[styles.hpFill, barStyle]} />
+      </View>
+      {tempHp > 0 && (
+        <ThemedText testID="combatant-temp-hp" style={styles.tempHpLabel}>
+          {`+${tempHp} TEMP HP`}
+        </ThemedText>
+      )}
     </View>
   );
 }
@@ -77,7 +92,11 @@ function CombatantRow({ combatant, compact = false }: { combatant: Combatant; co
           </View>
         )}
       </View>
-      <CombatantHpBar current={combatant.hpCurrent} max={combatant.hpMax} />
+      <CombatantHpBar
+        current={combatant.hpCurrent}
+        max={combatant.hpMax}
+        tempHp={combatant.isAlly ? combatant.tempHp : 0}
+      />
     </View>
   );
 }
@@ -185,6 +204,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     flexShrink: 1,
     minWidth: 60,
+  },
+  healthRow: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.two,
+  },
+  tempHpLabel: {
+    ...FontStyles.system,
+    fontSize: 10,
+    color: BrandColors.bone,
   },
   hpTrack: {
     flex: 1,

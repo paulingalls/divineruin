@@ -76,6 +76,15 @@ def test_authored_layers_match_mechanics():
         surge,
         "long_rest",
     )
+    shield = "aelora_community_shield"
+    aelora = next(row["layer_3_tier_abilities"]["devoted"] for row in rows if row["god_id"] == "aelora")
+    assert tuple(aelora.get(key) for key in ("id", "status", "resolution", "implementation_id", "recharge")) == (
+        shield,
+        "active",
+        "engine",
+        shield,
+        "long_rest",
+    )
     mark = "valdris_mark_of_justice"
     valdris = next(row["layer_3_tier_abilities"]["devoted"] for row in rows if row["god_id"] == "valdris")
     assert (
@@ -144,6 +153,7 @@ def test_authored_layers_match_mechanics():
         battle_cry,
         judgment,
         surge,
+        shield,
         mark,
         veilstep_id,
         gateway_id,
@@ -155,7 +165,7 @@ def test_authored_layers_match_mechanics():
     }
     assert {a["id"] for a in abilities if (a["status"], a["resolution"]) == ("active", "engine")} == engine
     pending = [a for a in abilities if a["id"] not in narrated | engine]
-    assert len(pending) == 9
+    assert len(pending) == 8
     for ability in abilities:
         if ability["id"] in passives:
             assert (ability["recharge"], ability["implementation_id"]) == ("always", ability["id"])

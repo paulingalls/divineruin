@@ -78,7 +78,7 @@ async def test_victory_resurrects_destroyed_echo_primary_only(monkeypatch):
         current_turn_index=0,
         location_id="loc1",
     )
-    end_data, mutations, _q, _sink = await _run_victory(session, cs, rng=FakeRng(), drops=[])
+    end_data, mutations, _q, sink = await _run_victory(session, cs, rng=FakeRng(), drops=[])
 
     resurrect.assert_awaited_once()
     assert resurrect.await_args is not None
@@ -86,6 +86,12 @@ async def test_victory_resurrects_destroyed_echo_primary_only(monkeypatch):
     assert len(rows) == 1  # only the destroyed echo-primary, NOT the savable fallen ally
     hp_calls = [(c.args[0], c.args[1]) for c in mutations.update_player_hp.await_args_list]
     assert ("p2", 1) in hp_calls  # the ally is stabilized, not resurrected
+    # The destroyed echo is a revived player again, so its HUD gets the revived HP (a guest gets no session-init).
+    assert [
+        (event.destination_identities, event.payload["current"])
+        for event in sink.captured
+        if event.event_type == "hp_changed"
+    ] == [(["p1"], 20), (["p2"], 1)]
     assert end_data.get("death_context") is not None  # the primary's death context is surfaced
 
 
@@ -95,7 +101,7 @@ async def test_victory_resurrects_death_save_failed_ally_not_stabilized(monkeypa
     # stabilized for free. This matches _wrap's terminally-down predicate (is_dead OR dsf >= limit).
     import resurrection
 
-    resurrect = AsyncMock(return_value=[{"anchor": "anchor_x"}])
+    resurrect = AsyncMock(return_value=[{"anchor": "anchor_x", "revive_hp": 20}])
     monkeypatch.setattr(resurrection, "resurrect_party_on_defeat", resurrect)
 
     session = _two_pc_session()

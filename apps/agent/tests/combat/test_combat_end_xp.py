@@ -246,7 +246,9 @@ async def test_empty_seat_order_grants_nothing(monkeypatch):
     # primary risen as an echo). No player-life is left to receive the XP — skip, don't divide by zero.
     import resurrection
 
-    monkeypatch.setattr(resurrection, "resurrect_party_on_defeat", AsyncMock(return_value=[{"anchor": "a"}]))
+    monkeypatch.setattr(
+        resurrection, "resurrect_party_on_defeat", AsyncMock(return_value=[{"anchor": "a", "revive_hp": 10}])
+    )
     session = _session(["p1"])
     cs = place_actors(
         CombatState(

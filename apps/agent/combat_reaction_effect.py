@@ -18,6 +18,7 @@ import combat_reaction_contest
 import conditions
 import reaction_spend
 import reaction_windows
+import temp_hp
 from combat_attack_roll import held_reaction_ac
 from combat_damage_affinity import with_landed_damage
 from combat_support import deserialize_roll, serialize_roll
@@ -166,6 +167,7 @@ def halve(head: dict, target) -> None:
         result,
         result.damage // 2,
         target.hp_current,
+        temporary=temp_hp.player_pool(target),
         hp_floor=conditions.damage_hp_floor(target.conditions),
         bonus_damage=result.bonus_damage // 2,
         rider_damage=result.rider_damage // 2,

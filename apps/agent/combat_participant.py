@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+import temp_hp
 from encounter_roles import EncounterRole
 
 
@@ -127,6 +128,11 @@ class CombatParticipant:
 
     hollow: dict | None = None
     hollow_death_resolved: bool = False
+
+    temp_hp: int = 0
+
+    def __post_init__(self) -> None:
+        temp_hp.validate(self.temp_hp)
 
     @property
     def legendary_capacity(self) -> int:

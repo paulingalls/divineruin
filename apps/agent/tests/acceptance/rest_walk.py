@@ -90,6 +90,8 @@ class RestWalk(ArcWalk):
             persisted = await self.row(character["player_id"])
             if character["player_id"] == self.player and self.primary_hp_max is not None:
                 persisted["hp"]["max"] = self.primary_hp_max
+            # session_init projects the pool, 0 for a row that never held one (temp_hp.from_player).
+            persisted["temp_hp"] = persisted.get("temp_hp", 0)
             assert {k: v for k, v in character.items() if k != "player_id"} == persisted, (character, persisted)
             for i, pid in enumerate(self.ids):
                 if i not in (0, 1, 4):

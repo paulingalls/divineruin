@@ -1,5 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from livekit.agents.llm import ChatContext, ChatMessage
 from prompt_fixtures import sample_combat_state
 
@@ -270,11 +271,13 @@ class TestCombatHotContext:
             str(item.content) for item in turn_ctx.items if isinstance(item, ChatMessage)
         )
 
-    async def test_guest_speaker_uses_live_combat_hp(self):
+    @pytest.mark.parametrize(("temporary", "hp_text"), [(2, "3/12 +2 temp"), (0, "3/12")])
+    async def test_guest_speaker_uses_live_combat_hp(self, temporary, hp_text):
         state = sample_combat_state(round_number=3)
         state.participants[0].id = "guest"
         state.participants[0].hp_current = 3
         state.participants[0].hp_max = 12
+        state.participants[0].temp_hp = temporary
         state.initiative_order[0] = "guest"
         agent, session = self._agent_and_session(state)
         sd = session.userdata
@@ -282,13 +285,13 @@ class TestCombatHotContext:
             PartyMember(player_id="guest", resonance=ResonanceTrack(), concentration=ConcentrationState())
         )
         sd.speaker_summaries["guest"] = build_speaker_context(
-            "guest", {"name": "Bryn", "hp": {"current": 12, "max": 12}}, [], [], []
+            "guest", {"name": "Bryn", "hp": {"current": 12, "max": 12}, "temp_hp": 9}, [], [], []
         )
         with sd._bind_authenticated_actor("guest", 1, lambda *_: None):
             turn_ctx = ChatContext.empty()
             await self._take_turn(agent, session, turn_ctx)
         text = " ".join(str(item.content) for item in turn_ctx.items if isinstance(item, ChatMessage))
-        assert "Speaker: Bryn (player guest); HP 3/12" in text
+        assert f"Speaker: Bryn (player guest); HP {hp_text};" in text
         assert "12/12" not in text
         assert "Round 3" in text
 
