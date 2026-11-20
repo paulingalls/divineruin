@@ -6,6 +6,7 @@ from functools import partial
 import combat_spatial
 from combat_enemy_action import resolve_save_damage_action
 from combat_fate_rolls import packet_save
+from combat_structures import blocking_wall
 
 
 def require_targets(state, actor, action, declaration):
@@ -26,6 +27,7 @@ def require_targets(state, actor, action, declaration):
                 if aim is not None
                 else combat_spatial.inside(origin, combat_spatial.position(spatial, p.id), action["reach"])
             )
+            and blocking_wall(state, spatial, origin, combat_spatial.position(spatial, p.id), target_id=p.id) is None
         ]
     target = state.get_participant(declaration.target_id)
     if target is None:

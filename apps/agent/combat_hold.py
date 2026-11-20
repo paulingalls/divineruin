@@ -39,6 +39,7 @@ from combat_fate_hostile import roll_hostile
 from combat_fate_rolls import PacketRolls
 from combat_multiattack import held_declarations, strike_summary
 from combat_packet import _resolve_one_packet
+from combat_structures import action_has_direct_line, line_blocker
 from condition_restrictions import cannot_act
 from condition_sources import DeliveryRefused
 from declarations import DeclarationType, resolve_declaration
@@ -148,7 +149,15 @@ def _is_wasted(state, head: dict) -> bool:
     if declaration.target_id is None:
         return False
     target = state.get_participant(declaration.target_id)
-    return target is None or target_unavailable(target, action)
+    if target is None or target_unavailable(target, action):
+        return True
+    return (
+        action is not None
+        and action_has_direct_line(action)
+        and not combat_melee_approach.is_melee(action)
+        and not replay_valid(state, head, actor, action, declaration)
+        and line_blocker(state, actor.id, target.id) is not None
+    )
 
 
 def _opens_windows(state, head: dict) -> bool:

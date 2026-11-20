@@ -1,6 +1,7 @@
 """The shared atomic declaration gate, including each selected composite strike."""
 
 import combat_grapple
+import combat_melee_approach
 import combat_spatial_declarations
 import combat_voice_rules
 import still_encounter
@@ -8,6 +9,7 @@ from action_contracts_still import STILL_ZONE_KINDS
 from combat_ability import _find_action, condition_ability
 from combat_ability_gate import declared_ability
 from combat_action_availability import require_available
+from combat_structures import action_has_direct_line, require_line
 from condition_restrictions import cannot_act, declaration_costs, speed_zero
 from declarations import DeclarationType, ManeuverIntent
 from encounter_actions import action_kind
@@ -78,6 +80,7 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
             from choir_actions import require_targets
 
             require_targets(next_state, actor, pool_action, declaration)
+    spell = None
     if declaration.type is DeclarationType.ABILITY and actor.type == "player":
         import combat_spell_profile
         import spells
@@ -109,3 +112,16 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
                 f"{actor.name} ({actor.id}) cannot declare ability {declaration.action!r}: only players "
                 f"cast abilities, and an enemy only its condition actions; declare an attack from {available}"
             )
+
+    if declaration.type not in (DeclarationType.ATTACK, DeclarationType.ABILITY, DeclarationType.MANEUVER):
+        return
+    if pool_action is not None and not action_has_direct_line(pool_action):
+        return
+    if spell is not None and spell.combat_damage and spell.combat_damage.get("recipients"):
+        return
+    require_line(
+        next_state,
+        actor.id,
+        declaration.target_id,
+        melee=pool_action is not None and combat_melee_approach.is_melee(pool_action),
+    )
