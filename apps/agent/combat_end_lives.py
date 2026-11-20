@@ -2,7 +2,12 @@
 
 import resurrection
 from combat_down import is_terminally_down
-from session_data import CombatState
+from session_data import CombatParticipant, CombatState
+
+
+def _reflect_revived_hp(participant: CombatParticipant, context: dict) -> None:
+    if participant.type == "player":
+        participant.hp_current = participant.hp_max = context["revive_hp"]
 
 
 async def settle_lives(
@@ -43,7 +48,10 @@ async def settle_lives(
         contexts = await resurrection.resurrect_party_on_defeat(
             [{**row, "player_id": pid} for pid, row in rows], combat_cleared=combat_cleared, conn=conn
         )
-        death_context = next((ctx for (pid, _), ctx in zip(rows, contexts, strict=True) if pid == primary_id), None)
+        for participant, context in zip(dead_lives, contexts, strict=True):
+            _reflect_revived_hp(participant, context)
+            if participant.id == primary_id:
+                death_context = context
 
     # A declared defeat sends even a standing primary through Mortaen, unless Regenerate was still healing
     # them, standing or down (human 2026-11-19).
@@ -54,6 +62,8 @@ async def settle_lives(
         death_context = await resurrection.resurrect_on_defeat(
             {**primary_row, "player_id": primary_id}, combat_cleared=combat_cleared, conn=conn
         )
+        if primary := cs.get_participant(primary_id):
+            _reflect_revived_hp(primary, death_context)
 
     # The party holds the field, so a savable ally comes to at 1 HP; combat already wrote their HP to 0.
     if outcome in ("victory", "deescalated"):
@@ -62,5 +72,6 @@ async def settle_lives(
                 if await queries.get_player(p.id, conn=conn) is None:
                     raise RuntimeError(f"Fallen player {p.id!r} has no players.data row to stabilize")
                 await mutations.update_player_hp(p.id, 1, conn=conn)
+                p.hp_current = 1
 
     return death_context

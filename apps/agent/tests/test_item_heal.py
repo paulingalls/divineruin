@@ -4,6 +4,7 @@ import pytest
 from _item_heal_fixtures import BERRY, GOODBERRY, POTION, heal_roll
 from _item_heal_fixtures import item_heal_walk as item_heal_walk
 from sample_fixtures import published_payloads
+from test_wire_contract import FIXTURE
 
 import db_mutations
 import db_queries
@@ -60,13 +61,14 @@ async def test_goodberry_grants_items_then_the_caster_feeds_an_ally(walk):
     spell = spells.get_spell(GOODBERRY)
     assert await walk.focus() == 30 - spell.focus_cost
     assert {p["type"] for p in published_payloads(walk.sd.room)} >= {E.PLAY_SOUND, E.ITEM_ACQUIRED, E.INVENTORY_UPDATED}
+    await walk.patch_row(ally, temp_hp=7)
     await walk.consume(BERRY, ally)
     hp_pushes = [
         (json.loads(call.args[0]), call.kwargs.get("destination_identities"))
         for call in walk.sd.room.local_participant.publish_data.await_args_list
         if json.loads(call.args[0])["type"] == E.HP_CHANGED
     ]
-    assert hp_pushes == [({"type": E.HP_CHANGED, "current": 4, "max": 20}, [ally])]
+    assert hp_pushes == [(FIXTURE["events"]["temp_hp_event_item"], [ally])]
     assert (await walk.read(ally))["hp"]["current"] == 4
     assert await walk.quantity(BERRY) == 4
 

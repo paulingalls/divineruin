@@ -12,6 +12,7 @@ import db_queries
 import dice
 import event_types as E
 import inventory_refresh
+import temp_hp
 from combat_down import is_terminally_down
 from combat_events import EventSink, isolated_publish
 from declarations import Declaration, DeclarationType, resolve_declaration
@@ -138,12 +139,17 @@ async def consume_exploration(session: SessionData, item_id: str, target_id: str
             )
             inventory = await inventory_refresh.inventory_payload(holder_id, conn=conn)
 
-        for recipient_id, hp in combat_spell_heal.hp_updates(holder_id, packet).items():
+            updates = {
+                pid: {"current": hp["hp_current"], "max": hp["hp_max"], "temp_hp": temp_hp.from_player(rows[pid])}
+                for pid, hp in combat_spell_heal.hp_updates(holder_id, packet).items()
+            }
+
+        for recipient_id, health in updates.items():
             with isolated_publish("item heal HP"):
                 await publish_game_event(
                     session.room,
                     E.HP_CHANGED,
-                    {"current": hp["hp_current"], "max": hp["hp_max"]},
+                    health,
                     event_bus=session.event_bus,
                     destination_identities=[recipient_id],
                 )
