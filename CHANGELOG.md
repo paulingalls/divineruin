@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.56.3
+
+Voice acceptance failures now identify the LiveKit object and source location that created a handle the native runtime could not release.
+
+Release steps: none.
+
 ## 0.56.2
 
 Veythar gift acceptance checks rolled searches after the guaranteed scout clue at the Greyvale Ruins entrance.
