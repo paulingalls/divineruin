@@ -161,7 +161,7 @@ async def _player_data(player_id: str, raw: str, _conn: asyncpg.Connection | asy
         logger.warning("Player %s has non-dict data: %s", player_id, type(data).__name__)
         return None
     await _hydrate_skill_tiers({player_id: data}, _conn)
-    return data
+    return {**data, "player_id": player_id}
 
 
 async def get_players_for_update(
@@ -191,7 +191,7 @@ async def get_players_for_update(
         if not isinstance(data, dict):
             logger.warning("Player %s has non-dict data: %s", row["player_id"], type(data).__name__)
             continue
-        result[row["player_id"]] = data
+        result[row["player_id"]] = {**data, "player_id": row["player_id"]}
     await _hydrate_skill_tiers(result, _conn)
     return result
 
