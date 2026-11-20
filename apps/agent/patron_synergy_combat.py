@@ -1,9 +1,16 @@
 """Authoritative patron selection and combat synergy effects."""
 
+from __future__ import annotations
+
 import random
+from typing import TYPE_CHECKING
 
 from dice import roll as dice_roll
 from patron_synergy import has_engine_synergy
+
+if TYPE_CHECKING:
+    from combat_participant import CombatParticipant
+    from combat_state import CombatState
 
 
 async def attack_player(attacker, *, queries, conn) -> dict | None:
@@ -22,6 +29,32 @@ def attack_flags(player: dict) -> dict[str, bool]:
         "weapon_damage_bonus": bool((player.get("flags") or {}).get("extra_attack"))
         and has_engine_synergy(player, "kaelen_extra_attack_damage"),
     }
+
+
+def encounter_damage_clause(
+    player: dict,
+    state: CombatState | None,
+    attacker: CombatParticipant,
+    target: CombatParticipant,
+    action: dict,
+) -> str | None:
+    if state is None:
+        return None
+
+    from combat_melee_approach import is_melee
+    from encounter_facts import ZHAEL_THREADED_BLADE
+
+    facts = state.encounter_facts
+    if target.id in facts["ally_downers"] and has_engine_synergy(player, "mortaen_last_vigil"):
+        return "mortaen_last_vigil"
+    if (
+        target.id in facts["misses"].get(attacker.id, ())
+        and attacker.id not in facts["once_spent"].get(ZHAEL_THREADED_BLADE, ())
+        and has_engine_synergy(player, ZHAEL_THREADED_BLADE)
+        and is_melee(action)
+    ):
+        return ZHAEL_THREADED_BLADE
+    return None
 
 
 def expanded_critical(attacker_data: dict, face: int) -> bool:

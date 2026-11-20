@@ -15,6 +15,7 @@ import condition_sources
 import conditions
 import db_mutations
 import db_queries
+import encounter_facts
 import event_types as E
 from combat_attack_roll import build_attack_dice_roll_payload
 from combat_damage_results import AutomaticDamageResult, SaveDamageResult, attack_fields, freeze_blow, thaw_blow
@@ -360,6 +361,8 @@ async def _apply_damage(
             await reward_worthy_foe(combat_state, target, queries=queries, conn=conn)
     elif hp_status in ("bloodied", "critical") and (not save_damage or attack_result.damage > 0):
         sounds.append(SOUND_HEARTBEAT)
+
+    encounter_facts.record_landing(combat_state, attacker, target, attack_result, hp_before)
 
     if combat_hollow_death.new_destruction(target, death_resolved_before, was_fallen, hp_before):
         await combat_hollow_death.accrue_death(session, combat_state, target, conn=conn, queries=queries)

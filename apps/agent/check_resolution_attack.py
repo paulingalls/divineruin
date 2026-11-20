@@ -60,6 +60,7 @@ class AttackResult:
     attack_disadvantage_source: str | None = None
     synergy_damage: int = 0
     synergy_damage_type: str | None = None
+    synergy_clause_id: str | None = None
 
 
 def _is_ranged(weapon: dict) -> bool:
@@ -233,6 +234,7 @@ def finish_attack(
     sneak_attack_dice = None
     sneak_attack_raw_damage = 0
     synergy_damage, synergy_damage_type = 0, None
+    synergy_clause_id = None
     if hit:
         damage_notation = weapon.get("damage", "1d4")
         damage = dice_roll(damage_notation, rng=rng).total if damage_notation != "0" else 0
@@ -274,6 +276,9 @@ def finish_attack(
             rider_ignores_resistance = on_hit["ignores_resistance"]
             damage += rider_damage
         synergy_damage, synergy_damage_type = patron_synergy_combat.critical_rider(attacker_data, critical, rng=rng)
+        synergy_clause_id = attacker_data.get("encounter_damage_clause")
+        if synergy_clause_id is not None:
+            synergy_damage, synergy_damage_type = 1, damage_type
         damage += synergy_damage
         synergy_damage = int(synergy_damage * damage_mult)
         bonus_damage = int(bonus_damage * damage_mult)
@@ -326,4 +331,5 @@ def finish_attack(
         attack_disadvantage_source=prepared.attack_disadvantage_source,
         synergy_damage=synergy_damage,
         synergy_damage_type=synergy_damage_type,
+        synergy_clause_id=synergy_clause_id,
     )
