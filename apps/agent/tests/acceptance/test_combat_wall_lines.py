@@ -107,6 +107,9 @@ async def test_fireball_uses_the_anchor_line_and_can_damage_a_wall(spatial_entry
     await character_spells.record_learned(player, spell, "discovery")
     for actor_id, point in [(player, pos(-20)), (anchor, pos(14)), (blocked, pos(6))]:
         combat_spatial.place(state, actor_id, point)
+    for target_id in (anchor, blocked):
+        # Survive a failed DEX save, so the fight continues and the packet shape is fixed.
+        participant(state, target_id).hp_current = participant(state, target_id).hp_max = 200
     wall(state)
     if crossing_anchor:
         add_wall(state, "hidden_wall", "Hidden Wall", pos(5), pos(15))
