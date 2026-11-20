@@ -121,7 +121,10 @@ async def test_catalog_condition_action_is_invocable_from_the_produced_name():
                 state,
                 packet,
                 mutations=MagicMock(update_player_hp=AsyncMock()),
-                queries=MagicMock(get_player_inventory=AsyncMock(return_value=[])),
+                queries=MagicMock(
+                    get_player=AsyncMock(return_value={"player_id": "player_1"}),
+                    get_player_inventory=AsyncMock(return_value=[]),
+                ),
                 resolver=_damage_resolver(0),
                 concentration_break_mod=MagicMock(
                     break_concentration_on_damage=AsyncMock(return_value=None),

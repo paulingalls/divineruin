@@ -47,7 +47,7 @@ from action_sound_content import publish_action_sound
 from db_errors import db_tool
 from declaration_payloads import Destination
 from item_effects import CONSUME_PREFIX
-from patron_combat_edges import RESTORATION_SURGE, VEILSTEP, SurgeCondition
+from patron_combat_edges import RESTORATION_SURGE, VEILSTEP, WILDMOTHERS_WRATH, SurgeCondition
 from patron_gifts import SYRATH_SHADOW_VEIL, VEYTHAR_INSIGHT
 from session_data import SessionData
 
@@ -85,6 +85,10 @@ async def activate(
 ) -> str | tuple:
     """Activate a capability: cast a spell, use an archetype ability, deploy a Veil Anchor, raise
     or dismiss a Veil Ward, or trigger the Draethar's Inner Fire.
+
+    In combat, use declare_phase for non-reaction archetype actions. Shield Bash uses rider="shield_bash"
+    on a melee weapon attack. Cunning Action uses rider="dash" or rider="hide" on a weapon attack.
+    Query abilities for the actor's available ids and attack riders.
 
     Pass the id of the thing being activated. For spells, abilities, and learned mentor variants
     this is their content id (e.g. 'arcane_bolt', 'warrior_devastating_strike', or
@@ -168,6 +172,8 @@ async def activate(
         if target_ids is not None or condition is not None:
             raise ToolError("Beyond the Horizon takes one location. Use target_id.")
         return await patron_gateway.activate(context, target_id=target_id)
+    if id == WILDMOTHERS_WRATH and condition is None:
+        return await patron_ability_tools.activate_wrath(context.userdata)
     return await _activate_impl(
         context,
         id,

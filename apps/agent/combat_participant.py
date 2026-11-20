@@ -53,7 +53,7 @@ class CombatParticipant:
     deferred_effects: list[dict] = field(default_factory=list)
     xp_value: int = 0
     # Declaration enhancers this participant has been granted (M4.2, story-004). Keys:
-    # extra_attack, shield_bash, cunning_action, hit_and_run, command_lesser, quick_change.
+    # extra_attack, shield_bash, hit_and_run, command_lesser, quick_change.
     # An enhancer EXPANDS what one declaration resolves into; it never grants a 2nd
     # declaration. Populated from players.data.flags at combat init; serializes via asdict
     # and falls back to [] for rows written before the field existed.

@@ -7,13 +7,16 @@ from livekit.agents.llm import ToolError
 import architect_reaction
 import check_resolution_attack
 import combat_attack_summary
+import combat_cunning_action
 import combat_enhancers
+import combat_martial
 import combat_melee_approach
 import combat_resolution
 import concealment
 import conditions
 import zhael_fate
 from combat_ability import _attach_riders
+from combat_ability_gate import DEVASTATING_STRIKE, SHIELD_BASH, declared_ability
 from combat_attack_roll import attack_roll_inputs, promote_attack, spend_sneak_attack
 from combat_down import damage_target_unavailable
 from combat_fate_rolls import PacketRolls
@@ -39,7 +42,15 @@ async def attack_sequence(
     # short attack sequence (still ONE declaration, never a second), narrated riders attach
     # below. attack_sequence is [action] when the actor has no mechanical enhancer (AC3: no
     # phantom expansion → the summary stays the flat single-attack shape).
-    actions = combat_enhancers.attack_sequence(attacker.enhancers, action)
+    martial = combat_martial.attack_ability(packet.declaration)
+    enhancers = attacker.enhancers
+    if martial == SHIELD_BASH:
+        enhancers = [enhancer for enhancer in enhancers if enhancer != combat_enhancers.SHIELD_BASH]
+    actions = combat_enhancers.attack_sequence(enhancers, action)
+    if martial == DEVASTATING_STRIKE:
+        resolved = declared_ability(martial)
+        assert resolved is not None
+        await combat_martial.pay(attacker.id, resolved, queries=deps["queries"], conn=deps["conn"])
     # Encounter-context dramatic signals (M4.5, story-004) the per-attack resolver can't see:
     # the count of foes still standing as this declaration is resolved (==1 => last enemy), and
     # whether any attack has resolved this whole combat yet (the opening strike). Computed once
@@ -98,6 +109,20 @@ async def continue_attack(
     movement = attack_cursor.get("movement", movement or {})
     movement_budget = attack_cursor.get("movement_budget", movement_budget if movement_budget is not None else {})
     declared_target = target
+    martial = combat_martial.attack_ability(decl)
+
+    def checkpoint() -> None:
+        attack_cursor.update(
+            actions=actions,
+            target_id=declared_target.id,
+            enemies_remaining=enemies_remaining,
+            is_first_attack=is_first_attack,
+            summaries=attack_summaries,
+            concealment=concealment_packet,
+            movement=movement,
+            movement_budget=movement_budget,
+        )
+
     start = len(attack_summaries)
     for index, act in enumerate(actions[start:], start):
         swing_move = (
@@ -110,6 +135,9 @@ async def continue_attack(
         if swing_move.get("attack_resolved") is False:
             attack_summaries.append(swing_move)
             break
+        if martial == DEVASTATING_STRIKE and not any(sub.get("hit") for sub in attack_summaries):
+            count = 3 if attacker.level >= 17 else 2 if attacker.level >= 10 else 1
+            act = {**act, "devastating_strike_dice": count}
         target, interception = architect_reaction.weapon_target(
             state, attacker, declared_target, act, attack_cursor, index
         )
@@ -130,8 +158,15 @@ async def continue_attack(
             and (candidates := await zhael_fate.candidates(session, queries=queries, conn=conn)).choices(attacker.id)
         ):
             player = await attack_player(attacker, queries=queries, conn=conn)
+            defender = await attack_player(target, queries=queries, conn=conn)
             attacker_data, target_ac, attack_mod = attack_roll_inputs(
-                attacker, target, state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus, state, act, player=player
+                attacker,
+                target,
+                state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus,
+                state,
+                act,
+                player=player,
+                defender=defender,
             )
             prepared = check_resolution_attack.prepare_attack(
                 attacker_data, act, target_ac, attack_mod=attack_mod, target_conditions=target.conditions
@@ -148,20 +183,10 @@ async def continue_attack(
             ):
                 stored = asdict(prepared)
                 stored["consumed"] = list(prepared.consumed)
-                store_swing(
-                    attack_cursor,
-                    actions,
-                    declared_target,
-                    enemies_remaining,
-                    is_first_attack,
-                    attack_summaries,
-                    concealment_packet,
-                )
+                checkpoint()
                 attack_cursor.update(
                     prepared=stored,
                     attacker_data=attacker_data,
-                    movement=movement,
-                    movement_budget=movement_budget,
                 )
                 return {
                     "actor_id": attacker.id,
@@ -172,6 +197,11 @@ async def continue_attack(
         resumed_swing = swing is not None and ("damage_receipt" in swing.steps or "attack_summary" in swing.steps)
         if start == 0 and not attack_summaries and attacker.type == "player" and not resumed_swing:
             concealment_packet = await concealment.reveal_attacker(attacker.id, conn=conn, queries=queries)
+        bash = martial == SHIELD_BASH and index == len(actions) - 1
+        if bash and not resumed_swing:
+            resolved = declared_ability(SHIELD_BASH)
+            assert resolved is not None
+            await combat_martial.pay(attacker.id, resolved, queries=queries, conn=conn)
         stored_summary = swing.steps.get("attack_summary") if swing is not None else None
         if stored_summary is not None:
             sub = stored_summary
@@ -234,43 +264,29 @@ async def continue_attack(
                 del attack_cursor["prepared"], attack_cursor["attacker_data"]
 
         if swing is not None and swing.paused:
-            store_swing(
-                attack_cursor,
-                actions,
-                declared_target,
-                enemies_remaining,
-                is_first_attack,
-                attack_summaries,
-                concealment_packet,
-            )
-            attack_cursor.update(movement=movement, movement_budget=movement_budget)
+            checkpoint()
             return {}
-        if "durability_rider" in act:
-            await resolve_rider(
-                session,
-                attacker,
-                target,
-                act,
-                decl,
-                sub,
-                queries=queries,
-                conn=conn,
-                sink=sink,
-                reaction_save_advantage=reaction_save_advantage,
-                progress=swing.scope("rider") if swing is not None else None,
-            )
+        if bash or "durability_rider" in act:
+            rider_progress = swing.scope("rider") if swing is not None else None
+            if bash:
+                await combat_martial.bash_save(session, state, attacker, target, sub, progress=rider_progress)
+            if "durability_rider" in act and not (swing is not None and swing.paused):
+                await resolve_rider(
+                    session,
+                    attacker,
+                    target,
+                    act,
+                    decl,
+                    sub,
+                    queries=queries,
+                    conn=conn,
+                    sink=sink,
+                    reaction_save_advantage=reaction_save_advantage,
+                    progress=swing.scope("rider") if swing is not None else None,
+                )
             if swing is not None and swing.paused:
                 swing.steps["attack_summary"] = sub
-                store_swing(
-                    attack_cursor,
-                    actions,
-                    declared_target,
-                    enemies_remaining,
-                    is_first_attack,
-                    attack_summaries,
-                    concealment_packet,
-                )
-                attack_cursor.update(movement=movement, movement_budget=movement_budget)
+                checkpoint()
                 return {}
         if progress is not None:
             progress.steps.pop("swing", None)
@@ -309,22 +325,26 @@ async def continue_attack(
     summary = combat_attack_summary.aggregate(attack_summaries, moved=bool(movement))
     if concealment_packet is not None:
         summary["concealment"] = concealment_packet
+    if martial == combat_cunning_action.CUNNING_ACTION:
+        summary["cunning_action"] = {"rider": decl.rider}
+        if decl.rider == "hide":
+            hidden = await combat_cunning_action.hide(
+                session,
+                state,
+                attacker,
+                queries=queries,
+                conn=conn,
+                progress=progress.scope("cunning_hide") if progress is not None else None,
+            )
+            if hidden is None:
+                checkpoint()
+                return {}
+            summary["cunning_action"].update(hidden)
     if effects := attack_cursor.pop("turn_start_effects", None):
         summary["turn_start_effects"] = effects
     summary["actor_id"] = packet.actor_id
     summary["resolved"] = True
     return _attach_riders(summary, attacker, decl)
-
-
-def store_swing(cursor, actions, target, enemies_remaining, is_first_attack, summaries, concealment):
-    cursor.update(
-        actions=actions,
-        target_id=target.id,
-        enemies_remaining=enemies_remaining,
-        is_first_attack=is_first_attack,
-        summaries=summaries,
-        concealment=concealment,
-    )
 
 
 def begin_ally_pass(state, allies, hostiles, players_by_id):

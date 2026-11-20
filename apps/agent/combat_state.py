@@ -8,6 +8,7 @@ import combat_spatial
 import combat_structures
 import combat_wrongdoing
 import condition_sources
+import encounter_facts
 import reaction_spend
 import reaction_windows
 from combat_attack_roll import held_reaction_ac
@@ -108,6 +109,7 @@ class CombatState:
     choir_encounter: dict | None = None
     choir_silences: dict = field(default_factory=dict)
     spatial: dict | None = None
+    encounter_facts: encounter_facts.EncounterFacts = field(default_factory=encounter_facts.empty)
 
     def get_participant(self, participant_id: str) -> CombatParticipant | None:
         for p in self.participants:
@@ -177,6 +179,11 @@ class CombatState:
             judgment_rewards=data.get("judgment_rewards", []),
             first_attack_resolved=data.get("first_attack_resolved", False),
             beacon_attacks=data.get("beacon_attacks", {}),
+            encounter_facts=(
+                encounter_facts.validate(data["encounter_facts"])
+                if "encounter_facts" in data
+                else encounter_facts.empty()
+            ),
             first_hostility=combat_wrongdoing.validate_ledger(data.get("first_hostility", {}), data["participants"]),
             deescalated=data.get("deescalated", False),
             deescalation_scene=DeEscalationState(**data.get("deescalation_scene", {})),

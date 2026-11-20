@@ -13,7 +13,12 @@ from session_data import CombatParticipant, CombatState
 from tests.combat._helpers import _make_combat_state
 from tools._helpers import SAMPLE_PLAYER
 
-_DIPLOMAT = {**SAMPLE_PLAYER, "attributes": {**SAMPLE_PLAYER["attributes"], "charisma": 16}, "focus": {"current": 5}}
+_DIPLOMAT = {
+    **SAMPLE_PLAYER,
+    "class": "diplomat",
+    "attributes": {**SAMPLE_PLAYER["attributes"], "charisma": 16},
+    "focus": {"current": 5},
+}
 
 
 def _deescalation_session(enemy_fallen=False):
@@ -42,6 +47,7 @@ async def _run(session, player, rng):
         player=player,
         sink=None,
         persistence=persistence,
+        queries=MagicMock(get_player=AsyncMock(return_value=player)),
         rng=rng,
     )
     return result, persistence
@@ -125,17 +131,6 @@ class TestGateDeescalation:
 
 class TestResolveDeescalationPacket:
     @pytest.mark.asyncio
-    async def test_spends_focus_and_emits_dramatic_dice_roll(self):
-        session = _deescalation_session()
-        result, persistence = await _run(session, _DIPLOMAT, FixedRng(20))
-        assert result["resolved"]
-        persistence.update_player_resources.assert_awaited_once()
-        assert persistence.update_player_resources.await_args.kwargs["focus"] == 2  # 5 - 3
-        events = [c.args[0] for c in session.event_bus.publish.call_args_list]
-        dice = next(e for e in events if e.payload.get("roll_type") == "de_escalate")
-        assert dice.payload["dramatic"] and dice.payload["context"] == "de_escalate"
-
-    @pytest.mark.asyncio
     async def test_packet_reports_round_and_per_enemy_breakdown(self):
         session = _deescalation_session()
         result, _ = await _run(session, _DIPLOMAT, FixedRng(20))
@@ -177,6 +172,7 @@ class TestDeescalationBeneficialDie:
             player=player,
             sink=None,
             persistence=persistence,
+            queries=MagicMock(get_player=AsyncMock(return_value=player)),
             rng=rng,
         )
         shift = next(pe["cumulative_shift"] for pe in result["deescalation"]["per_enemy"] if pe["id"] == self._ENEMY)

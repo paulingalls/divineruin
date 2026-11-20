@@ -14,7 +14,6 @@ import architect_encounter
 import attribute_increases
 import character_spells
 import choir_encounter
-import combat_ability
 import combat_spatial
 import crafting_tools
 import creature_catalog
@@ -28,6 +27,7 @@ import spell_knowledge
 import spells
 import still_encounter
 import training_tools
+from combat_ability_gate import attack_recipe, combat_ability
 from db_errors import db_tool
 from session_data import SessionData
 from settlement_generation import generate_settlement_npcs, generate_settlement_roster
@@ -203,7 +203,9 @@ async def _query_abilities_impl(
         row = {"id": ability.id, "name": ability.name, "ability_type": ability.ability_type}
         if ability.spell_id is not None:
             row["spell_id"] = ability.spell_id
-        elif ability.ability_type != "reaction" and combat_ability.condition_ability((ability, None)) is None:
+        elif recipe := attack_recipe(ability.id):
+            row["declaration"] = recipe
+        elif ability.ability_type != "reaction" and not combat_ability(ability):
             row["combat"] = False
         if ability.ability_type == "reaction":
             row["window"] = ability.window

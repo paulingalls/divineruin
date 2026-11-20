@@ -16,6 +16,7 @@ import db_mutations
 import db_mutations_resonance
 import db_queries
 import dice
+import encounter_facts
 import event_types as E
 import racial_resonance
 import resonance
@@ -85,6 +86,7 @@ async def _inner_fire_locked(
         fire_damage = dice_mod.roll(damage_dice).total
 
         new_resonance = max(0, member.resonance.current - reduction)
+        counted_before = encounter_facts.counted_death(participant)
         was_fallen = participant.is_fallen
         hp_before = participant.hp_current
         new_hp = max(conditions.damage_hp_floor(participant.conditions), hp_before - fire_damage)
@@ -93,7 +95,7 @@ async def _inner_fire_locked(
         await resonance_mutations_mod.update_player_resonance(player_id, new_resonance, conn=conn)
         session.validate_acting_player(player_id)
         participant.hp_current = new_hp
-        gift = await trigger_damage_gifts(
+        gift, _ = await trigger_damage_gifts(
             session, state, participant, hp_before, players=players, queries=queries_mod, conn=conn
         )
         final_hp = participant.hp_current
@@ -129,6 +131,11 @@ async def _inner_fire_locked(
             "state": resonance.get_resonance_state(new_resonance, flickering_bonus=member.resonance.flickering_bonus),
             "concentration_broken": None,
         }
+        renewals = await encounter_facts.renew_on_death(
+            state, participant, counted_before, queries=queries_mod, conn=conn
+        )
+        if renewals:
+            facts["focus_renewals"] = renewals
         steps: dict = {}
         if participant.type == "player":
             kwargs = (

@@ -464,6 +464,7 @@ async def test_in_combat_cast_for_host_on_guest_turn_is_not_speaker_gated():
             conn=conn,
             caster=session.party.primary,
             player=row,
+            queries_mod=MagicMock(get_player=AsyncMock(return_value=row)),
             persistence_mod=persistence,
             resonance_mutations_mod=resonance,
             concentration_mutations_mod=concentration,

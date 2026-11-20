@@ -7,6 +7,7 @@ from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import choir_encounter
+import combat_cunning_action
 import combat_item_rider
 import combat_phase
 import combat_spatial
@@ -41,6 +42,10 @@ async def declare_phase(
     this phase action, limited to the actor's persisted speed. Only the Architect may include
     Reshape operations, on an attack, move or defend. The sections resolve before the action.
     Use the Architect's live wall ids and remaining Reshape uses from the combat facts.
+    Second Wind is an ability with empty targets. Rallying Shout names one standing ally.
+    Devastating Strike is an ability naming one foe. For Shield Bash, declare a melee weapon attack
+    with rider="shield_bash". A rogue can set rider="dash" for double approach movement
+    or rider="hide" to attempt Stealth after the attack. Use an empty rider for an ordinary attack.
     Include the player, every
     conscious companion, and every enemy that acts this phase — one declaration each.
     Call this once per round at the declaration beat; resolve_phase resolves and
@@ -86,6 +91,7 @@ async def _declare_phase_locked(
     try:
         combat_spatial_declarations.preflight_state(cs)
         next_state, _adv = combat_phase.advance_combat_phase(cs, declarations=declarations)
+        await combat_cunning_action.preflight(next_state, queries=queries)
         await combat_item_rider.preflight(session, next_state)
         await item_heal.preflight_declarations(session, next_state)
         choir_facts = await choir_encounter.facts(next_state, queries=queries)

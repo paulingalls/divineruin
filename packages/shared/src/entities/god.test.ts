@@ -143,6 +143,16 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     implementation_id: walk,
     recharge: "per_session",
   });
+  const wrath = "thyra_wildmothers_wrath";
+  expect(
+    validateGods(catalog).find((god) => god.god_id === "thyra")?.layer_3_tier_abilities.exalted,
+  ).toMatchObject({
+    id: wrath,
+    status: "active",
+    resolution: "engine",
+    implementation_id: wrath,
+    recharge: "per_session",
+  });
   const ward = "mortaen_death_ward";
   expect(
     validateGods(catalog).find((god) => god.god_id === "mortaen")?.layer_3_tier_abilities
@@ -173,6 +183,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     veilstep,
     gateway,
     walk,
+    wrath,
     ward,
     embrace,
     ...passives,
@@ -183,7 +194,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     ),
   ).toEqual(engine);
   const pending = abilities.filter((a) => !narrated.has(a.id) && !engine.has(a.id));
-  expect(pending).toHaveLength(10);
+  expect(pending).toHaveLength(9);
   for (const ability of abilities.filter((a) => passives.has(a.id))) {
     expect([ability.recharge, ability.implementation_id]).toEqual(["always", ability.id]);
   }
@@ -408,3 +419,82 @@ test.each([
     clauses: [{ effect, status: "active", resolution: "engine", implementation_id: id }],
   });
 });
+
+test.each([
+  ["mortaen", "mortaen_last_vigil"],
+  ["zhael", "zhael_threaded_blade"],
+])("%s has an active engine clause for encounter damage", (patron, id) => {
+  const warrior = validateGods(catalog).find((god) => god.god_id === patron)?.layer_4_synergy_matrix
+    .warrior;
+  expect(warrior?.type).toBe("divine");
+  expect(warrior?.clauses).toHaveLength(1);
+  expect(warrior?.clauses[0]).toMatchObject({
+    status: "active",
+    resolution: "engine",
+    implementation_id: id,
+  });
+});
+
+test("Kaelen's Oath of Valor is an active paladin engine clause", () => {
+  const kaelen = validateGods(catalog).find((god) => god.god_id === "kaelen");
+  expect(kaelen?.layer_4_synergy_matrix.paladin).toEqual({
+    type: "divine",
+    name: "Oath of Valor",
+    clauses: [
+      {
+        effect: "Oath of Valor: sworn strikes deal +1d6 radiant vs foes that outnumber the party",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "kaelen_oath_of_valor",
+      },
+    ],
+  });
+});
+
+test("Zhael's Second Before is an active guardian engine clause", () => {
+  const zhael = validateGods(catalog).find((god) => god.god_id === "zhael");
+  expect(zhael?.layer_4_synergy_matrix.guardian).toEqual({
+    type: "divine",
+    name: "Second Before",
+    clauses: [
+      {
+        effect: "Gain +1 AC against the first attack made against you each encounter.",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "zhael_second_before",
+      },
+    ],
+  });
+});
+
+test("Zhael's Appointed Mercy is an active cleric engine clause", () => {
+  const zhael = validateGods(catalog).find((god) => god.god_id === "zhael");
+  expect(zhael?.layer_4_synergy_matrix.cleric).toEqual({
+    type: "divine",
+    name: "Appointed Mercy",
+    clauses: [
+      {
+        effect:
+          "Healing an ally who succeeded on a death saving throw this round restores 1 additional HP.",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "zhael_appointed_mercy",
+      },
+    ],
+  });
+});
+
+test.each(["druid", "warden"] as const)(
+  "Mortaen's %s renews Focus through the engine",
+  (archetype) => {
+    const row = validateGods(catalog).find((god) => god.god_id === "mortaen")
+      ?.layer_4_synergy_matrix[archetype];
+    expect(row).toMatchObject({ type: "divine", name: "Death Feeds Renewal" });
+    expect(row?.clauses).toHaveLength(1);
+    expect(row?.clauses[0]).toMatchObject({
+      status: "active",
+      resolution: "engine",
+      implementation_id: "mortaen_death_feeds_renewal",
+    });
+  },
+);

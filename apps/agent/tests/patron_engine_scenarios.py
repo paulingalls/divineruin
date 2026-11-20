@@ -2,6 +2,11 @@ from combat.test_synergy_crit_edges import SCENARIOS as crit_edges
 from combat.test_synergy_spell_edges import SCENARIOS as spell_edges
 from combat.test_synergy_weapon_damage import SCENARIOS as weapon_damage
 from test_dawns_resilience import SCENARIOS as dawns_resilience
+from test_encounter_facts_damage import SCENARIOS as encounter_facts
+from test_encounter_facts_defense import SCENARIOS as defense
+from test_encounter_facts_heal import SCENARIOS as appointed_mercy
+from test_encounter_facts_outnumbered import SCENARIOS as outnumbered
+from test_encounter_facts_renewal import SCENARIOS as renewal
 from test_heal_synergies import SCENARIOS as dawns_mercy
 from test_heal_synergies_place import SCENARIOS as place_healing
 from test_patron_engine_aelora import SCENARIOS as aelora
@@ -15,6 +20,7 @@ from test_patron_engine_nythera import SCENARIOS as nythera
 from test_patron_engine_orenthel import SCENARIOS as orenthel
 from test_patron_engine_syrath import SCENARIOS as syrath
 from test_patron_engine_thyra import SCENARIOS as thyra
+from test_patron_engine_thyra_wrath import SCENARIOS as thyra_wrath
 from test_patron_engine_valdris import SCENARIOS as valdris
 from test_patron_passives import SCENARIOS as passives
 from test_patron_senses import SCENARIOS as senses
@@ -29,6 +35,11 @@ ENGINE_SCENARIOS = {
     **place_healing,
     **dawns_resilience,
     **crit_edges,
+    **encounter_facts,
+    **defense,
+    **appointed_mercy,
+    **renewal,
+    **outnumbered,
     **judgment,
     **kaelen,
     **mortaen,
@@ -38,6 +49,7 @@ ENGINE_SCENARIOS = {
     **orenthel,
     **syrath,
     **thyra,
+    **thyra_wrath,
     **zhael,
     **lucky,
     **passives,

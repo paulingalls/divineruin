@@ -112,6 +112,15 @@ def test_authored_layers_match_mechanics():
         walk_id,
         "per_session",
     )
+    wrath_id = "thyra_wildmothers_wrath"
+    wrath = next(row["layer_3_tier_abilities"]["exalted"] for row in rows if row["god_id"] == "thyra")
+    assert tuple(wrath.get(key) for key in ("id", "status", "resolution", "implementation_id", "recharge")) == (
+        wrath_id,
+        "active",
+        "engine",
+        wrath_id,
+        "per_session",
+    )
     ward_id = "mortaen_death_ward"
     ward = next(row["layer_3_tier_abilities"]["acknowledged"] for row in rows if row["god_id"] == "mortaen")
     assert tuple(ward.get(key) for key in ("id", "status", "resolution", "implementation_id", "recharge")) == (
@@ -139,13 +148,14 @@ def test_authored_layers_match_mechanics():
         veilstep_id,
         gateway_id,
         walk_id,
+        wrath_id,
         ward_id,
         embrace_id,
         *passives,
     }
     assert {a["id"] for a in abilities if (a["status"], a["resolution"]) == ("active", "engine")} == engine
     pending = [a for a in abilities if a["id"] not in narrated | engine]
-    assert len(pending) == 10
+    assert len(pending) == 9
     for ability in abilities:
         if ability["id"] in passives:
             assert (ability["recharge"], ability["implementation_id"]) == ("always", ability["id"])
