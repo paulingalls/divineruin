@@ -2,10 +2,15 @@
 
 import json
 import random
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from typing import cast
 from unittest.mock import patch
 from uuid import uuid4
 
+from asyncpg import Connection, Pool
+from livekit.agents import RunContext
 from sample_fixtures import make_context, make_mock_room
 
 import character_spells
@@ -25,34 +30,59 @@ from declaration_payloads import AbilityDecl, AttackDecl, MultiattackDecl, Strik
 from mode_tools import enter_mode
 from progression_tools import _award_xp_core
 from rules_engine import XP_FOR_LEVEL
+from session_data import SessionData
 
 SEEDS = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19)
 ARCHETYPES = ("warrior", "mage", "rogue", "cleric")
 PATROL = "hollow_patrol_greyvale"
+ARCHITECT_WORKS = "ashmark_architect_works"
 
 
-async def fight(pool, archetype, seed, encounter_id=PATROL, player_level=1, *, policy="basic"):
-    assert policy in ("basic", "caster", "veilrender"), policy
-    pid = f"balance_{uuid4().hex}"
+async def _create_player(pool: Pool, pid: str, archetype: str, location: str, level: int) -> None:
     row = build_character_data(
         "First Blood", "human", archetype, None, "", created_at=datetime(2026, 11, 1, tzinfo=UTC)
     )
-    row["location_id"] = "ashmark_corrupted_front" if policy == "veilrender" else "greyvale_wilderness_north"
+    row["location_id"] = location
     await db_mutations.create_player(pid, None, row)
-    if player_level > 1:
+    if level > 1:
         async with pool.acquire() as conn, conn.transaction():
             await _award_xp_core(
                 player_id=pid,
                 player=row,
-                amount=XP_FOR_LEVEL[player_level],
+                amount=XP_FOR_LEVEL[level],
                 reason="balance reference",
-                conn=conn,
+                conn=cast(Connection, conn),
                 pending_events=[],
             )
         row = await db_queries.get_player(pid)
         assert row is not None
         fresh = {name: {**row[name], "current": row[name]["max"]} for name in ("hp", "stamina", "focus") if name in row}
         await pool.execute("UPDATE players SET data=data || $2::jsonb WHERE player_id=$1", pid, json.dumps(fresh))
+
+
+@asynccontextmanager
+async def architect_party(pool: Pool) -> AsyncIterator[tuple[RunContext[SessionData], tuple[str, ...]]]:
+    player_ids = tuple(f"balance_{uuid4().hex}" for _ in ARCHETYPES)
+    ctx = make_context(
+        player_ids[0], location_id=ARCHITECT_WORKS, room=make_mock_room(), party_member_ids=player_ids[1:]
+    )
+    try:
+        for archetype, pid in zip(ARCHETYPES, player_ids, strict=True):
+            await _create_player(pool, pid, archetype, ARCHITECT_WORKS, 20)
+        yield ctx, player_ids
+    finally:
+        try:
+            if ctx.userdata.combat_state:
+                await db_mutations.delete_combat_state(ctx.userdata.combat_state.combat_id)
+        finally:
+            await pool.execute("DELETE FROM players WHERE player_id = ANY($1::text[])", player_ids)
+
+
+async def fight(pool, archetype, seed, encounter_id=PATROL, player_level=1, *, policy="basic"):
+    assert policy in ("basic", "caster", "veilrender"), policy
+    pid = f"balance_{uuid4().hex}"
+    location = "ashmark_corrupted_front" if policy == "veilrender" else "greyvale_wilderness_north"
+    await _create_player(pool, pid, archetype, location, player_level)
     cantrip = None
     if policy in ("caster", "veilrender") and archetype in ("mage", "cleric"):
         library = await character_spells.get_known(pid)
@@ -70,7 +100,7 @@ async def fight(pool, archetype, seed, encounter_id=PATROL, player_level=1, *, p
     companion = select_companion_for_archetype(archetype)
     ctx = make_context(pid, room=make_mock_room(), companion_id=companion)
     ctx.userdata.companion.name = get_companion_profile(companion).name
-    ctx.userdata.location_id = row["location_id"]
+    ctx.userdata.location_id = location
     ending = []
     original = combat_end._end_combat_db
 
