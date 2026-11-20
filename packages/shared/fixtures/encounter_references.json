@@ -48,6 +48,17 @@
           "role": "named"
         }
       ]
+    },
+    {
+      "id": "fixture",
+      "recommended_party_level": 16,
+      "enemies": [
+        {
+          "id": "one",
+          "creature_id": "hollow_architect",
+          "role": "named"
+        }
+      ]
     }
   ],
   "invalid": [
@@ -381,9 +392,7 @@
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1,
-        "enemies": [
-          1
-        ]
+        "enemies": [1]
       }
     },
     {
@@ -768,9 +777,7 @@
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1,
-        "enemies": [
-          null
-        ]
+        "enemies": [null]
       }
     },
     {
@@ -779,24 +786,7 @@
       "encounter": {
         "id": "fixture",
         "recommended_party_level": 1,
-        "enemies": [
-          []
-        ]
-      }
-    },
-    {
-      "name": "named_hollow_architect",
-      "field": "role",
-      "encounter": {
-        "id": "fixture",
-        "recommended_party_level": 16,
-        "enemies": [
-          {
-            "id": "one",
-            "creature_id": "hollow_architect",
-            "role": "named"
-          }
-        ]
+        "enemies": [[]]
       }
     },
     {
@@ -888,16 +878,51 @@
           }
         ]
       }
+    },
+    {
+      "name": "architect_with_hollow_shadeling",
+      "field": "solitary",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 16,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_architect",
+            "role": "named"
+          },
+          {
+            "creature_id": "hollow_shadeling",
+            "role": "standard",
+            "id": "two"
+          }
+        ]
+      }
+    },
+    {
+      "name": "architect_with_hollow_architect",
+      "field": "solitary",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 16,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_architect",
+            "role": "named"
+          },
+          {
+            "id": "two",
+            "creature_id": "hollow_architect",
+            "role": "named"
+          }
+        ]
+      }
     }
   ],
   "fixture_catalog": [
     {
-      "terrains": [
-        "forest",
-        "grassland",
-        "underground",
-        "farmland"
-      ],
+      "terrains": ["forest", "grassland", "underground", "farmland"],
       "id": "fixture_goblin",
       "name": "Goblin Scout",
       "category": "humanoid",
@@ -915,9 +940,7 @@
         "WIS": 8,
         "CHA": 8
       },
-      "save_proficiencies": [
-        "DEX"
-      ],
+      "save_proficiencies": ["DEX"],
       "attacks": [
         {
           "name": "Scimitar",
@@ -928,9 +951,7 @@
           "damage_type": "slashing",
           "special": null,
           "audio": "bandit_short_sword",
-          "properties": [
-            "light"
-          ],
+          "properties": ["light"],
           "description": "A short blade."
         },
         {
@@ -955,11 +976,7 @@
         "tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.",
         "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.",
         "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)",
-        "environment": [
-          "Roads between settlements",
-          "forest ambush points",
-          "ruins"
-        ]
+        "environment": ["Roads between settlements", "forest ambush points", "ruins"]
       },
       "narration": {
         "first_sighting": "Leather creaks beyond the bend, and a crossbow string draws tight.",
@@ -978,16 +995,10 @@
       "loot_table_id": "loot_bandit",
       "xp_reward": 50,
       "home_region": "greyvale",
-      "regions": [
-        "greyvale"
-      ]
+      "regions": ["greyvale"]
     },
     {
-      "terrains": [
-        "forest",
-        "grassland",
-        "underground"
-      ],
+      "terrains": ["forest", "grassland", "underground"],
       "id": "fixture_wolf",
       "name": "Dire Wolf",
       "category": "humanoid",
@@ -1005,9 +1016,7 @@
         "WIS": 10,
         "CHA": 10
       },
-      "save_proficiencies": [
-        "DEX"
-      ],
+      "save_proficiencies": ["DEX"],
       "attacks": [
         {
           "name": "Bite",
@@ -1031,11 +1040,7 @@
         "tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.",
         "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.",
         "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)",
-        "environment": [
-          "Roads between settlements",
-          "forest ambush points",
-          "ruins"
-        ]
+        "environment": ["Roads between settlements", "forest ambush points", "ruins"]
       },
       "narration": {
         "first_sighting": "Leather creaks beyond the bend, and a crossbow string draws tight.",
@@ -1054,9 +1059,7 @@
       "loot_table_id": "loot_bandit",
       "xp_reward": 100,
       "home_region": "greyvale",
-      "regions": [
-        "greyvale"
-      ]
+      "regions": ["greyvale"]
     }
   ],
   "consumer_inventory": [

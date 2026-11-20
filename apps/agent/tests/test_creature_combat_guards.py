@@ -178,11 +178,17 @@ def test_choir_named_translation_preserves_authored_stats(role):
     assert enemy["choir_reaction"]["kind"] == "spell_redirect"
 
 
-@pytest.mark.parametrize("species", ["hollow_architect", "hollow_unknown"])
-def test_still_architect_unknown_named_refused(species):
-    source = copy.deepcopy(
-        next(r for r in catalog() if r["id"] == ("hollow_choir" if species == "hollow_unknown" else species))
-    )
-    source["id"] = species
+def test_unknown_named_refused():
+    source = copy.deepcopy(next(r for r in catalog() if r["id"] == "hollow_choir"))
+    source["id"] = "hollow_unknown"
     with pytest.raises(ValueError, match="Named/custom"):
         translate(source)
+
+
+def test_architect_named_translation_preserves_authored_attacks():
+    enemy = translate(next(r for r in catalog() if r["id"] == "hollow_architect"), role="named")
+    assert (enemy["hp"], enemy["ac"], enemy["level"], enemy["speed"], enemy["xp_value"]) == (300, 19, 20, 40, 5000)
+    assert [(action["name"], action["damage"]) for action in enemy["action_pool"]] == [
+        ("Construct Slam", "3d10+5"),
+        ("Geometry Strike", "2d8+6"),
+    ]

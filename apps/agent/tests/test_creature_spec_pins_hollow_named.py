@@ -54,7 +54,7 @@ ABILITIES = {
     ),
     "hollow_architect": (
         ("Architect's Domain", "Incorporeal Movement", "Legendary Resistance", "Alien Intelligence"),
-        ("Reshape", "Entomb", "Cathedral", "Summon Constructs", "Shift Wall", "Geometry Strike"),
+        ("Reshape", "Entomb", "Cathedral", "Summon Constructs", "Shift Wall"),
         ("Reactive Architecture",),
     ),
 }
@@ -105,7 +105,7 @@ RECHARGES = {
         {"kind": "roll", "die": 6, "threshold": 5},
         {"kind": "encounter", "uses": 1},
     ),
-    "hollow_architect": ("1/round", "5-6", "1/encounter", "1/encounter", None, None),
+    "hollow_architect": ("1/round", "5-6", "1/encounter", "1/encounter", None),
 }
 
 
@@ -167,6 +167,9 @@ def assert_pin(row, key):
         assert rule in attack["special"]
         assert (attack.get("save"), attack.get("dc"), attack.get("applies_condition")) == (save, dc, condition)
         assert "half_on_success" not in attack
+    if key == "hollow_architect":
+        assert actual[0]["bonus_damage"] == {"dice": "2d6", "damage_type": "force"}
+        assert "Legendary action, cost 2 of 3/round" in actual[1]["special"]
     if key == "hollow_choir":
         assert "Deafened 1 minute" in actual[1]["special"]
         assert actual[0]["resolution"] == "save"

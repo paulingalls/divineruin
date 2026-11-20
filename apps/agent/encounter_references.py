@@ -1,6 +1,6 @@
 """Authored encounter references shared by seed preflight and combat entry."""
 
-NAMED_INTEGRATIONS = frozenset({"hollow_choir", "hollow_still"})
+NAMED_INTEGRATIONS = frozenset({"hollow_choir", "hollow_still", "hollow_architect"})
 REFERENCE_FIELDS = frozenset({"id", "creature_id", "role"})
 REFERENCE_ROLES = frozenset({"minion", "standard", "elite", "boss"})
 
