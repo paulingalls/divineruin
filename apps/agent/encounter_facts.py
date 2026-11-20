@@ -90,7 +90,8 @@ def record_landing(
         _remember(facts["ally_downers"], attacker.id)
     if isinstance(result, AttackResult):
         _remember(facts["attacked"], target.id)
-        if not result.hit:
+        # Threaded Blade reads a foe; missing masonry must not arm its one use.
+        if not result.hit and not target.is_structure:
             _remember(facts["misses"].setdefault(attacker.id, []), target.id)
         if result.synergy_clause_id == ZHAEL_THREADED_BLADE:
             _remember(facts["once_spent"].setdefault(ZHAEL_THREADED_BLADE, []), attacker.id)
