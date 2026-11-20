@@ -1,20 +1,26 @@
 """Enemy actions that combine attacks, damage saves, and conditions."""
 
+from dataclasses import replace
 from functools import partial
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 import architect_entomb
 import check_resolution_save
+import combat_damage_affinity
 import combat_wrongdoing
 import concentration_break
 import conditions
 import event_types as E
 from combat_ability import _attach_riders, _resolve_condition_target
+from combat_condition_landing import _land_condition_on_one
 from combat_damage import apply_attack_result
 from combat_damage_results import SaveDamageResult
 from combat_down import damage_target_unavailable, has_damage
+from combat_enemy_active import already_hollowed
 from combat_events import emit_or_publish
 from combat_fate_rolls import packet_save, saved_throw, store_throw
+from combat_legendary_resistance import finalize_save, override_fields
 from combat_support import _resolve_attack_packet
 from condition_restrictions import cannot_act
 from dice import roll as dice_roll
@@ -38,12 +44,22 @@ def is_combined_attack_action(action: dict) -> bool:
 
 def _save_fields(result) -> dict:
     return {
+        **override_fields(result),
         "save_type": result.save_type,
         "save_roll": result.roll,
         "save_total": result.total,
         "save_dc": result.dc,
         "save_success": result.success,
     }
+
+
+def failed_conditions(target: CombatParticipant, action: dict) -> tuple[str, ...]:
+    if "resolution" in action:
+        conditions = [rider["applies_condition"] for rider in action["conditions_on_failure"]]
+    else:
+        condition = action.get("applies_condition")
+        conditions = [condition] if condition is not None else []
+    return tuple(condition for condition in conditions if not already_hollowed(target, condition))
 
 
 async def _apply_condition_result(
@@ -63,9 +79,6 @@ async def _apply_condition_result(
     if result.success:
         summary["condition_resisted"] = cond_type
         return
-    from combat_condition_landing import _land_condition_on_one
-    from combat_enemy_active import already_hollowed
-
     if already_hollowed(target, cond_type):
         return
     if _land_condition_on_one(
@@ -129,6 +142,7 @@ async def _resolve_enemy_condition_packet(
     )
     if result is None:
         return {}
+    result = finalize_save(state, target, result, failed_conditions=failed_conditions(target, action))
     summary = {
         "actor_id": attacker.id,
         "resolved": True,
@@ -281,26 +295,38 @@ async def resolve_save_damage_action(
         # multiplies the final total by damage_mult): a Boss's wave must burn like a Boss. dc_mod already
         # rides the save above, so dropping the multiplier here would role-scale half the action.
         rolled_damage = max(0, int(dice_roll(action["damage"]).total * attacker.damage_mult))
-        damage = (
-            (0 if action.get("save_success_damage") == "none" else rolled_damage // 2)
-            if result.success
-            else rolled_damage
-        )
         damage_result = SaveDamageResult(
             save_type=result.save_type,
             save_success=result.success,
-            damage=damage,
+            damage=rolled_damage,
             damage_type=action.get("damage_type", "none"),
             narrative_hint=result.narrative_hint,
             dramatic=result.dramatic,
             context=result.context,
         )
+        if not result.success:
+            _, adjusted = combat_damage_affinity.apply(target, action, damage_result, state=state)
+            result = finalize_save(
+                state,
+                target,
+                result,
+                failed_conditions=failed_conditions(target, action),
+                failed_damage=adjusted.damage,
+            )
+        if result.success:
+            damage_result = replace(
+                damage_result,
+                save_success=True,
+                damage=0 if action.get("save_success_damage") == "none" else rolled_damage // 2,
+                narrative_hint=result.narrative_hint,
+            )
         # Announced here because the shared applicator refuses to publish an attack roll for save damage.
         await emit_or_publish(
             sink,
             session.room,
             E.DICE_ROLL,
             {
+                **override_fields(result),
                 "roll_type": "saving_throw",
                 "save_type": result.save_type,
                 "roll": result.roll,
@@ -308,7 +334,7 @@ async def resolve_save_damage_action(
                 "success": result.success,
                 "dramatic": result.dramatic,
                 "context": result.context,
-                "damage": damage,
+                "damage": damage_result.damage,
             },
             event_bus=session.event_bus,
         )
@@ -451,8 +477,6 @@ async def land_outcome(session, attacker, target, decl, action, result, summary,
         return await _apply_condition_result(
             session, attacker, target, decl, action["applies_condition"], result, summary, **kwargs
         )
-    from types import SimpleNamespace
-
     branch = "conditions_on_success" if result.success else "conditions_on_failure"
     summary["conditions_inflicted"] = []
     for rider in action[branch]:

@@ -85,7 +85,7 @@ RULES = {
     "hollow_still": ("Six hidden anchors", "40-45 HP", "DC 18", "24 continuous", "DC 22", "4+ anchors"),
     "hollow_architect": (
         "0.5 mile",
-        "3/day",
+        "Three uses per encounter",
         "20 ft × 20 ft",
         "3d8 bludgeoning",
         "4d10 force",

@@ -45,6 +45,5 @@ def finalize_save(
 
 
 def override_fields(result: SavingThrowResult) -> dict[str, str]:
-    if result.success_override is None:
-        return {}
-    return {"success_override": result.success_override}
+    override = getattr(result, "success_override", None)
+    return {"success_override": override} if override is not None else {}

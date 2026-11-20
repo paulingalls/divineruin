@@ -77,6 +77,7 @@ async def resolve_hostile_condition(
         **override_fields(result),
         "actor_id": attacker.id,
         "resolved": True,
+        "save_success": result.success,
         "declaration_type": str(decl.type),
         "action": ability.id,
         "target": target.name,
