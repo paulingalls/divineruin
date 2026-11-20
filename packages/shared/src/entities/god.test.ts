@@ -103,14 +103,24 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     implementation_id: surge,
     recharge: "long_rest",
   });
-  const engine = new Set(["zhael_lucky", battleCry, judgment, surge, ...passives]);
+  const mark = "valdris_mark_of_justice";
+  expect(
+    validateGods(catalog).find((god) => god.god_id === "valdris")?.layer_3_tier_abilities.devoted,
+  ).toMatchObject({
+    id: mark,
+    status: "active",
+    resolution: "engine",
+    implementation_id: mark,
+    recharge: "long_rest",
+  });
+  const engine = new Set(["zhael_lucky", battleCry, judgment, surge, mark, ...passives]);
   expect(
     new Set(
       abilities.filter((a) => a.status === "active" && a.resolution === "engine").map((a) => a.id),
     ),
   ).toEqual(engine);
   const pending = abilities.filter((a) => !narrated.has(a.id) && !engine.has(a.id));
-  expect(pending).toHaveLength(16);
+  expect(pending).toHaveLength(15);
   for (const ability of abilities.filter((a) => passives.has(a.id))) {
     expect([ability.recharge, ability.implementation_id]).toEqual(["always", ability.id]);
   }

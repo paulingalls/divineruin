@@ -9,6 +9,7 @@ import ability_persistence
 from archetypes import get_archetype_chassis
 from combat_participant import CombatParticipant
 from combat_state import CombatState
+from condition_catalog import MARK_OF_JUSTICE
 from condition_consume import consume_beneficial_conditions
 from conditions import apply_condition, has_condition, hollowed_stage
 
@@ -18,6 +19,7 @@ SurgeCondition = Literal["poisoned"] | Literal["blinded"] | Literal["frightened"
 SURGE_CONDITIONS = tuple(arg for literal in get_args(SurgeCondition) for arg in get_args(literal))
 RESTORATION_SURGE = "orenthel_restoration_surge"
 WORTHY_FOE = "worthy_foe"
+MARK_OF_JUSTICE_GIFT = "valdris_mark_of_justice"
 
 
 def battle_cry(state: CombatState | None, actor: str, *, target_id: str | None) -> tuple[CombatState, dict]:
@@ -51,6 +53,21 @@ def kaelens_judgment(state: CombatState | None, actor: str, *, target_id: str | 
         raise ToolError("That enemy is already a Worthy Foe.")
     target.conditions = apply_condition(target.conditions, WORTHY_FOE, source=actor)
     return updated, {"worthy_foe": {"id": target.id, "name": target.name}}
+
+
+def mark_of_justice(state: CombatState | None, actor: str, *, target_id: str | None) -> tuple[CombatState, dict]:
+    if state is None:
+        raise ToolError("Mark of Justice can only be used in combat.")
+    participant = state.get_participant(actor)
+    if participant is None or participant.type != "player":
+        raise ToolError("Mark of Justice requires the acting player to be a player participant.")
+
+    updated = deepcopy(state)
+    target = updated.get_participant(target_id) if target_id is not None else None
+    if target is None or target.is_ally or target.hp_current <= 0 or target.is_dead or target.is_fallen:
+        raise ToolError("Mark of Justice requires a living enemy in this encounter.")
+    target.conditions = apply_condition(target.conditions, MARK_OF_JUSTICE, source=actor)
+    return updated, {"marked_target": {"id": target.id, "name": target.name}}
 
 
 async def restoration_surge(
@@ -113,4 +130,4 @@ async def reward_worthy_foe(state: CombatState, target: CombatParticipant, *, qu
     )
 
 
-ACTIVE_GIFTS = {BATTLE_CRY: battle_cry, JUDGMENT: kaelens_judgment}
+ACTIVE_GIFTS = {BATTLE_CRY: battle_cry, JUDGMENT: kaelens_judgment, MARK_OF_JUSTICE_GIFT: mark_of_justice}

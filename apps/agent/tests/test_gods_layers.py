@@ -76,10 +76,19 @@ def test_authored_layers_match_mechanics():
         surge,
         "long_rest",
     )
-    engine = {"zhael_lucky", battle_cry, judgment, surge, *passives}
+    mark = "valdris_mark_of_justice"
+    valdris = next(row["layer_3_tier_abilities"]["devoted"] for row in rows if row["god_id"] == "valdris")
+    assert (
+        valdris["id"],
+        valdris["status"],
+        valdris["resolution"],
+        valdris.get("implementation_id"),
+        valdris["recharge"],
+    ) == (mark, "active", "engine", mark, "long_rest")
+    engine = {"zhael_lucky", battle_cry, judgment, surge, mark, *passives}
     assert {a["id"] for a in abilities if (a["status"], a["resolution"]) == ("active", "engine")} == engine
     pending = [a for a in abilities if a["id"] not in narrated | engine]
-    assert len(pending) == 16
+    assert len(pending) == 15
     for ability in abilities:
         if ability["id"] in passives:
             assert (ability["recharge"], ability["implementation_id"]) == ("always", ability["id"])

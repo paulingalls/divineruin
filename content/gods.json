@@ -2216,10 +2216,11 @@
       "devoted": {
         "id": "valdris_mark_of_justice",
         "name": "Mark of Justice",
-        "effect": "Once per long rest, mark an unjust creature for 24 hours. Marked target has -2 to saves against your abilities",
+        "effect": "Once per long rest, mark an unjust creature for the rest of the encounter. It takes -2 on saves against your spells and abilities.",
         "recharge": "long_rest",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "valdris_mark_of_justice"
       },
       "exalted": {
         "id": "valdris_the_scales_verdict",

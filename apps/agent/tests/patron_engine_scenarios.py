@@ -10,12 +10,14 @@ from test_patron_engine_nythera import SCENARIOS as nythera
 from test_patron_engine_orenthel import SCENARIOS as orenthel
 from test_patron_engine_syrath import SCENARIOS as syrath
 from test_patron_engine_thyra import SCENARIOS as thyra
+from test_patron_engine_valdris import SCENARIOS as valdris
 from test_patron_passives import SCENARIOS as passives
 from test_patron_senses import SCENARIOS as senses
 from test_zhael_fate import SCENARIOS as lucky
 from test_zhael_fate_callers import SCENARIOS as zhael
 
 ENGINE_SCENARIOS = {
+    **valdris,
     **aelora,
     **beacon,
     **dawns_resilience,

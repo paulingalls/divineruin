@@ -18,6 +18,7 @@ def test_shared_creature_corpus():
     corpus = json.loads(CORPUS.read_text())
     valid, invalid = corpus["valid"], corpus["invalid"]
     assert set(corpus["action_kinds"]) == set(ACTION_KINDS)
+    assert "mark_of_justice" in CONDITION_CATALOG
     assert set(corpus["condition_names"]) == set(CONDITION_CATALOG)
     assert set(corpus["resistance_tags"]) == set(RESISTANCE_TAGS)
     assert len(corpus["condition_names"]) == len(CONDITION_CATALOG)

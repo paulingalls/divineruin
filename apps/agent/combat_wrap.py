@@ -102,7 +102,13 @@ def next_envelope(state) -> dict:
 def _roll_tick_save(actor, event, save_resolver):
     # Clearing saves predate proficiency and never consume a limited-use bonus die.
     return save_resolver.roll_participant_save(
-        actor, event["save"], 10, event["type"], bonus_dice_eligible=False, include_proficiency=False
+        actor,
+        event["save"],
+        10,
+        event["type"],
+        bonus_dice_eligible=False,
+        include_proficiency=False,
+        originating_participant_id=event.get("originating_participant_id"),
     )
 
 
