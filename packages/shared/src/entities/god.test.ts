@@ -313,9 +313,64 @@ test("the authored spell synergies activate five engine clauses", () => {
       resolution: "engine",
       implementation_id,
     });
-    if (archetype === "cleric") {
-      expect(row?.clauses[1]).toMatchObject({ status: "pending", resolution: "engine" });
-      expect(row?.clauses[1]).not.toHaveProperty("implementation_id");
-    }
   }
+});
+
+test("Orenthel's Natural healing synergies are active engine clauses", () => {
+  const orenthel = validateGods(catalog).find((god) => god.god_id === "orenthel");
+  for (const archetype of ["cleric", "paladin"] as const) {
+    const row = orenthel?.layer_4_synergy_matrix[archetype];
+    expect(row?.type).toBe("natural");
+    expect(row?.clauses).toHaveLength(1);
+    expect(row?.clauses[0]).toMatchObject({
+      status: "active",
+      resolution: "engine",
+      implementation_id: "orenthel_dawns_mercy",
+    });
+  }
+});
+
+test("Mortaen's cleric and paladin healing clauses are active engine clauses", () => {
+  const mortaen = validateGods(catalog).find((god) => god.god_id === "mortaen");
+  const cleric = mortaen?.layer_4_synergy_matrix.cleric;
+  const paladin = mortaen?.layer_4_synergy_matrix.paladin;
+  const active = { status: "active", resolution: "engine" } as const;
+  expect(cleric?.type).toBe("natural");
+  expect(cleric?.clauses).toEqual([
+    {
+      ...active,
+      effect: "Sacred Flame deals necrotic.",
+      implementation_id: "mortaen_threshold_mercy",
+    },
+    {
+      ...active,
+      effect: "Healing on 0 HP allies restores double. Best at pulling people back from the edge",
+      implementation_id: "mortaen_threshold_healing",
+    },
+  ]);
+  expect(paladin?.type).toBe("divine");
+  expect(paladin?.clauses).toEqual([
+    {
+      ...active,
+      effect: "Healing an ally at 0 HP restores 1 additional HP.",
+      implementation_id: "mortaen_final_mercy",
+    },
+  ]);
+});
+
+test.each([
+  ["thyra", "Verdant Healing", "Healing in natural terrain +1d4 extra HP", "thyra_verdant_healing"],
+  [
+    "nythera",
+    "Traveler's Blessing",
+    "Healing a creature in an unexplored location restores 1 additional HP.",
+    "nythera_travelers_blessing",
+  ],
+])("%s has an active engine clause for place-based cleric healing", (patron, name, effect, id) => {
+  const god = validateGods(catalog).find((god) => god.god_id === patron);
+  expect(god?.layer_4_synergy_matrix.cleric).toEqual({
+    type: "divine",
+    name,
+    clauses: [{ effect, status: "active", resolution: "engine", implementation_id: id }],
+  });
 });

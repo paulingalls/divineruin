@@ -120,7 +120,7 @@ async def _resolve_cast(
         raw = combat_hollow_resonance.cast_generation(combat_state or session.combat_state, caster, spell, raw)
         return cast_modifiers.apply_ward_halving(raw, ward_active, veil_ward=veil_ward)
 
-    generated, patron_resonance, wrongdoing = await patron_cast_context.apply_patron(
+    generated, patron_resonance, facts = await patron_cast_context.apply_patron(
         generation(patron),
         generation(None),
         patron,
@@ -191,7 +191,9 @@ async def _resolve_cast(
         ward_active=ward_active,
         patron=patron,
         race=race,
-        wrongdoing=wrongdoing,
+        terrain=terrain,
+        first_stay=facts.first_stay,
+        wrongdoing=facts.wrongdoing,
         patron_resonance=patron_resonance,
         concealment_packet=concealment_packet,
         purified=purified,

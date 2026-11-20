@@ -48,5 +48,5 @@ async def test_bonus_write_rolls_back_with_the_underlying_heal(walk, combat):
         else:
             await walk.command("activate", {"id": WOUNDS, "target_id": ally}, error=True)
 
-    assert observed == [(12, 11, 30 - spells.get_spell(WOUNDS).focus_cost)]
+    assert observed == [(12, 14, 30 - spells.get_spell(WOUNDS).focus_cost)]
     assert await snapshot() == before

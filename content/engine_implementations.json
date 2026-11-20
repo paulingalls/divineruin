@@ -16,6 +16,7 @@
   "kaelen_battle_cry_of_the_ironhand": "patron_combat_edges:battle_cry",
   "kaelen_kaelens_judgment": "patron_combat_edges:kaelens_judgment",
   "orenthel_beacon": "patron_passives:orenthel_beacon",
+  "orenthel_dawns_mercy": "patron_synergy_heal:bonus_components",
   "orenthel_dawns_resilience": "patron_passives:dawns_resilience",
   "orenthel_restoration_surge": "patron_combat_edges:restoration_surge",
   "syrath_veilstep": "patron_combat_edges:veilstep",
@@ -25,5 +26,9 @@
   "thyra_natures_edge": "patron_synergy_combat:critical_rider",
   "veythar_simplest_mysteries": "cast_modifiers:ward_combat_modifiers",
   "mortaen_ashen_formula": "patron_synergy_combat:spell_attack_bonus",
-  "mortaen_threshold_mercy": "spell_cast_effects:_finish_cast"
+  "mortaen_threshold_mercy": "spell_cast_effects:_finish_cast",
+  "mortaen_threshold_healing": "patron_synergy_heal:bonus_components",
+  "mortaen_final_mercy": "patron_synergy_heal:bonus_components",
+  "thyra_verdant_healing": "patron_synergy_heal:for_cast",
+  "nythera_travelers_blessing": "patron_synergy_heal:for_cast"
 }
