@@ -3,7 +3,6 @@
 from math import cos, sin, tau
 from typing import TYPE_CHECKING
 
-import combat_grapple
 import combat_spatial
 from combat_participant import CombatParticipant
 from dice import roll
@@ -114,6 +113,8 @@ def resolve(state: CombatState, owner: CombatParticipant, action: dict, declarat
             )
         )
         angle = tau * index / count
+        # A ring at the full authored radius lands a hair past it after cos/sin rounding (10.000000000000002 ft),
+        # so the ring sits well inside it.
         radius = spec["placement_radius_ft"] / 2
         positions[actor_id] = {**origin, "x": origin["x"] + radius * cos(angle), "y": origin["y"] + radius * sin(angle)}
     _add(state, owner, summons, positions, dict.fromkeys(positions, block["speed"]))
@@ -182,7 +183,6 @@ def collapse(state: CombatState, ids: list[str]) -> None:
         construct.hp_current = 0
         construct.is_fallen = True
         construct.is_dead = True
-        combat_grapple.release_from_grappler(state, actor_id)
 
 
 def expire(state: CombatState) -> None:
