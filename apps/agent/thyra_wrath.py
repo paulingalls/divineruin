@@ -42,7 +42,7 @@ def _recipients(state: CombatState) -> tuple[list[CombatParticipant], list[str]]
         else:
             targets.append(foe)
     if hidden_count:
-        spared.append(f"The Still shelters {hidden_count} unrevealed anchors.")
+        spared.append(f"The Still shelters {hidden_count} unrevealed anchor{'' if hidden_count == 1 else 's'}.")
     return targets, spared
 
 

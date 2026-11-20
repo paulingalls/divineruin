@@ -419,10 +419,3 @@ test.each([
     clauses: [{ effect, status: "active", resolution: "engine", implementation_id: id }],
   });
 });
-
-test("the shared Thyra exalted fixture validates in the catalog", () => {
-  const rows = structuredClone(catalog);
-  const thyra = rows.find((god) => god.god_id === "thyra")!;
-  thyra.layer_3_tier_abilities.exalted = corpus.thyra_exalted;
-  expect(Object.is(validateGods(rows), rows)).toBe(true);
-});

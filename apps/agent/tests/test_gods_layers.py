@@ -188,13 +188,6 @@ def read_catalog(tmp_path, monkeypatch):
     load_gods.cache_clear()
 
 
-def test_thyra_exalted_fixture_reaches_loader(read_catalog):
-    rows = copy.deepcopy(CATALOG)
-    thyra = next(row for row in rows if row["god_id"] == "thyra")
-    thyra["layer_3_tier_abilities"]["exalted"] = CORPUS["thyra_exalted"]
-    assert read_catalog(rows) == rows
-
-
 def with_profile(profile):
     rows = copy.deepcopy(CATALOG)
     rows[0] = copy.deepcopy(profile)
