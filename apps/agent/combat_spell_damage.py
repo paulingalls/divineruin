@@ -289,8 +289,9 @@ async def _land_attack(
         eligible = await candidates(session, queries=queries, conn=conn)
         if eligible.choices(caster.id):
             player = await attack_player(caster, queries=queries, conn=conn)
+            defender = await attack_player(target, queries=queries, conn=conn)
             attacker_data, ac, modifier = attack_roll_inputs(
-                caster, target, ac_bonus, state, action, weapon_attack=False, player=player
+                caster, target, ac_bonus, state, action, weapon_attack=False, player=player, defender=defender
             )
             prepared = check_resolution_attack.prepare_attack(
                 attacker_data, action, ac, attack_mod=modifier, target_conditions=target.conditions

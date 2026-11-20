@@ -84,6 +84,7 @@ async def _resolve_attack_packet(
         attack_result, effective_ac = None, target.ac
     else:
         player = await attack_player(attacker, queries=queries, conn=conn)
+        defender = await attack_player(target, queries=queries, conn=conn) if combat_state is not None else None
         attack_result, effective_ac = roll_attack(
             attacker,
             action,
@@ -95,6 +96,7 @@ async def _resolve_attack_packet(
             combat_state=combat_state,
             weapon_attack=weapon_attack,
             player=player,
+            defender=defender,
         )
     return await apply_rolled_attack(
         session,

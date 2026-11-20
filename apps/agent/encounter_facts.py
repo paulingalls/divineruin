@@ -16,12 +16,13 @@ ZHAEL_THREADED_BLADE = "zhael_threaded_blade"
 
 class EncounterFacts(TypedDict):
     ally_downers: list[str]
+    attacked: list[str]
     misses: dict[str, list[str]]
     once_spent: dict[str, list[str]]
 
 
 def empty() -> EncounterFacts:
-    return {"ally_downers": [], "misses": {}, "once_spent": {}}
+    return {"ally_downers": [], "attacked": [], "misses": {}, "once_spent": {}}
 
 
 def _is_id(value: object) -> bool:
@@ -42,9 +43,10 @@ def _id_map(value: object, field: str) -> dict[str, list[str]]:
 
 def validate(value: object) -> EncounterFacts:
     if not isinstance(value, dict) or value.keys() != EncounterFacts.__required_keys__:
-        raise ValueError("encounter_facts requires exactly ally_downers, misses, and once_spent")
+        raise ValueError("encounter_facts requires exactly ally_downers, attacked, misses, and once_spent")
     return {
         "ally_downers": _ids(value["ally_downers"], "ally_downers"),
+        "attacked": _ids(value["attacked"], "attacked"),
         "misses": _id_map(value["misses"], "misses"),
         "once_spent": _id_map(value["once_spent"], "once_spent"),
     }
@@ -68,6 +70,7 @@ def record_landing(
     if hp_before > 0 and target.is_ally and target.is_fallen:
         _remember(facts["ally_downers"], attacker.id)
     if isinstance(result, AttackResult):
+        _remember(facts["attacked"], target.id)
         if not result.hit:
             _remember(facts["misses"].setdefault(attacker.id, []), target.id)
         if result.synergy_clause_id == ZHAEL_THREADED_BLADE:

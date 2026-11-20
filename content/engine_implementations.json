@@ -27,6 +27,7 @@
   "zhael_bent_probability": "patron_synergy_combat:expanded_critical",
   "mortaen_last_vigil": "patron_synergy_combat:encounter_damage_clause",
   "zhael_threaded_blade": "patron_synergy_combat:encounter_damage_clause",
+  "zhael_second_before": "patron_synergy_combat:first_attack_defense",
   "thyra_natures_edge": "patron_synergy_combat:critical_rider",
   "veythar_simplest_mysteries": "cast_modifiers:ward_combat_modifiers",
   "mortaen_ashen_formula": "patron_synergy_combat:spell_attack_bonus",

@@ -88,7 +88,7 @@ async def strike(world: SimpleNamespace, case: str, damage: int, radiant: int, n
         assert tuple(receipt.get(k) for k in keys) == (radiant if typed[0] else None, *typed)
         if case == "positive":
             await authored_clause(world, "kaelen", "paladin", "divine", OATH)
-            assert saved.encounter_facts == EMPTY
+            assert saved.encounter_facts == {**EMPTY, "attacked": [GOBLIN]}
         if case == "fallen_enemy":
             assert participant(saved, third.id).is_fallen
         if case in ("veilrender", "immune"):

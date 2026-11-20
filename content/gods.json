@@ -3279,8 +3279,9 @@
         "clauses": [
           {
             "effect": "Gain +1 AC against the first attack made against you each encounter.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_second_before"
           }
         ]
       },
