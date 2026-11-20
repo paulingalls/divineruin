@@ -29,6 +29,8 @@ class CastResult:
     generated: int
     events: list
     unbound_veil_mastery_spent: bool = False
+    terrain: str | None = None
+    first_stay: bool = False
 
     async def flush_events(self) -> None:
         """Emit the deferred client events in order. Call ONLY after the caller's tx commits.

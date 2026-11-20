@@ -1,16 +1,20 @@
-"""Per-recipient patron bonuses for healing spells."""
+"""Patron bonuses for healing spells."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from typing import TypedDict
 
+import dice
 from patron_synergy import has_engine_synergy
 from rules_engine import attribute_modifier
+from terrain import is_natural
 
 DAWNS_MERCY = "orenthel_dawns_mercy"
 THRESHOLD_HEALING = "mortaen_threshold_healing"
 FINAL_MERCY = "mortaen_final_mercy"
+VERDANT_HEALING = "thyra_verdant_healing"
+TRAVELERS_BLESSING = "nythera_travelers_blessing"
 
 
 class HealBonus(TypedDict):
@@ -19,6 +23,18 @@ class HealBonus(TypedDict):
 
 
 HealSynergy = Callable[[int, int], list[HealBonus]]
+
+
+def for_cast(player: dict, *, terrain: str | None, first_stay: bool, dice_mod=dice) -> HealSynergy:
+    place: list[HealBonus] = []
+    if has_engine_synergy(player, VERDANT_HEALING):
+        if terrain is None:
+            raise RuntimeError("Verdant Healing requires resolved cast terrain")
+        if is_natural(terrain):
+            place.append({"id": VERDANT_HEALING, "bonus": dice_mod.roll("1d4").total})
+    if first_stay and has_engine_synergy(player, TRAVELERS_BLESSING):
+        place.append({"id": TRAVELERS_BLESSING, "bonus": 1})
+    return lambda before, base: [*place, *bonus_components(player, before, base)]
 
 
 def bonus_components(player: dict, hp_before: int, base_heal: int) -> list[HealBonus]:

@@ -1,7 +1,5 @@
 """Cast packets, conditions, and deferred client events."""
 
-from functools import partial
-
 from livekit.agents.llm import ToolError
 
 import cast_modifiers
@@ -13,7 +11,7 @@ import unbound_tools
 from game_events import publish_game_event
 from party_state import PartyMember
 from patron_synergy_combat import spell_damage_type_override
-from patron_synergy_heal import bonus_components
+from patron_synergy_heal import for_cast
 from session_data import SessionData
 from spell_cast_result import CastResult
 
@@ -35,6 +33,8 @@ async def _finish_cast(
     ward_active,
     patron,
     race,
+    terrain: str | None,
+    first_stay: bool,
     wrongdoing,
     patron_resonance,
     concealment_packet,
@@ -190,7 +190,7 @@ async def _finish_cast(
             player,
             heal_rows,
             caster_id=player_id,
-            synergy=partial(bonus_components, player),
+            synergy=for_cast(player, terrain=terrain, first_stay=first_stay, dice_mod=dice_mod),
             packet=packet,
             conn=conn,
             dice_mod=dice_mod,
@@ -214,4 +214,6 @@ async def _finish_cast(
         generated=generated,
         events=events,
         unbound_veil_mastery_spent=mastery_spent,
+        terrain=terrain,
+        first_stay=first_stay,
     )

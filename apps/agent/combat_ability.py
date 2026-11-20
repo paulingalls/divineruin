@@ -6,7 +6,6 @@ carries the cast result back to the phase loop, action lookup, and enhancer-ride
 attachment. Consumed by the phase loop (combat_turn)."""
 
 from dataclasses import dataclass, field, replace
-from functools import partial
 from typing import TYPE_CHECKING, cast
 
 from livekit.agents.llm import ToolError
@@ -28,7 +27,7 @@ from combat_condition_landing import _land_condition_on_one
 from combat_down import damage_target_unavailable
 from condition_produce import resolve_effective_targets
 from mentor_variants import MentorVariant
-from patron_synergy_heal import bonus_components
+from patron_synergy_heal import for_cast
 from resource_costs import gate_pool
 from session_data import CombatParticipant, SessionData
 
@@ -394,7 +393,7 @@ async def _resolve_ability_packet(
                 attacker,
                 recipients,
                 caster_row=player,
-                synergy=partial(bonus_components, player),
+                synergy=for_cast(player, terrain=result.terrain, first_stay=result.first_stay),
                 packet=cast_packet,
                 conn=conn,
             )
