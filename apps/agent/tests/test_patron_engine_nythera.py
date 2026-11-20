@@ -196,6 +196,7 @@ async def gateway_scenario(world):
     quest = await db_queries.get_player_quest(host, "greyvale_anomaly")
     assert quest is not None and quest["current_stage"] == 1
     assert len(result["quest_updates"]) == 1
+    assert session.recent_events[-1] == f"Opened Beyond the Horizon to {MILL}"
     assert "quieter" in result["quest_updates"][0]["narrative_beat"]
     rows = await party_rows(world)
     for pid in world.ids:

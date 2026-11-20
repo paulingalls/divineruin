@@ -81,6 +81,7 @@ async def activate_locked(context: RunContext[SessionData], actor: str, *, targe
     await publish_resonance_changed(session, resonance_track=track, caster_id=actor)
     await publish_patron_abilities(session.room, actor, session.event_bus)
     quest_updates = await quest_progress.advance_on_arrival(context, target_id)
+    session.record_event(f"Opened Beyond the Horizon to {target_id}")
 
     scene = await _build_scene_context(target_id, session, location=destination)
     return movement_tools.arrival_result(
