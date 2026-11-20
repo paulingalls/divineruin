@@ -34,6 +34,7 @@ dev = [
 asyncio_mode = "auto"
 timeout = 630
 timeout_method = "signal"
+addopts = "-p _hang_backstop"
 pythonpath = [".", "tests"]
 filterwarnings = [
     "error::RuntimeWarning",
