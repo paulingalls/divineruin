@@ -4,7 +4,6 @@ An enhancer EXPANDS what a single declaration resolves into — it never grants 
 second declaration (gm_combat §Action Economy L108-121). This is the pure decision
 layer: combat_turn's resolution loop asks it (1) which attack actions one ATTACK
 declaration becomes, and (2) which narrated riders to attach. No IO, no state.
-
 """
 
 from __future__ import annotations
@@ -29,12 +28,6 @@ ALL_ENHANCERS = (EXTRA_ATTACK, SHIELD_BASH, HIT_AND_RUN, COMMAND_LESSER, QUICK_C
 
 
 def enhancers_from_flags(flags: dict | None) -> list[str]:
-    """The enhancer keys a player's data.flags grant (truthy), in ALL_ENHANCERS order.
-
-    Combat init calls this to populate CombatParticipant.enhancers. Only extra_attack is
-    grantable today; the other five populate once their grants land (forward-wired,
-    concern 655580cea834). Unknown flag keys are ignored.
-    """
     if not flags:
         return []
     return [e for e in ALL_ENHANCERS if flags.get(e)]

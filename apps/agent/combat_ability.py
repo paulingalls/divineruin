@@ -487,12 +487,6 @@ def _find_action(participant, action_name) -> dict | None:
 
 
 def _attach_riders(summary: dict, attacker, decl) -> dict:
-    """Add the actor's narrated enhancer riders to a packet summary, if any.
-
-    Riders are descriptive (non-mechanical) — they carry no HP/AC effect, just the DM
-    cue for an enhancer's expansion (Cunning Action's dash/disengage/hide, Hit and Run,
-    Command Lesser, Quick Change). Omitted entirely when the actor has none, so a
-    no-enhancer declaration keeps its flat summary (AC3: no phantom expansion)."""
     riders = combat_enhancers.declaration_riders(attacker.enhancers, decl)
     if riders:
         summary["riders"] = riders
