@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.62.1
+
+Only Diplomats can use De-escalate to talk enemies down in combat.
+
+Release steps: none.
+
 ## 0.62.0
 
 Combat now remembers what happens in a fight, and seven patron synergies act on it:
