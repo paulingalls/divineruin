@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.56.4
+
+Still and terrain acceptance tests remove their temporary locations and cache entries so later tests can start the game server in the same run.
+
+Release steps: none.
+
 ## 0.56.3
 
 Voice acceptance failures now identify the LiveKit object and source location that created a handle the native runtime could not release.
