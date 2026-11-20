@@ -26,6 +26,7 @@ Execution evidence: historical record accepted at 795cec97832a7fe2d7567b36d0343e
 | dev | pytest-asyncio | `>=1.4.0` | 1.4.0 / 1.4.0 | 1.4.0 | — |
 | dev | pytest-bdd | `>=9.0.1` | 9.0.1 / 9.0.1 | 9.0.1 | — |
 | dev | pytest-cov | `>=7.1.0` | 7.1.0 / 7.1.0 | 7.1.0 | — |
+| dev | pytest-timeout | `>=2.4.0` | 2.4.0 / 2.4.0 | 2.4.0 | — |
 | dev | pytest-xdist | `>=3.8.0` | 3.8.0 / 3.8.0 | 3.8.0 | — |
 | dev | ruff | `>=0.16.8` | 0.16.8 / 0.16.8 | 0.16.8 | — |
 | dev | testcontainers | `>=4.15.0` | 4.15.0 / 4.15.0 | 4.15.0 | — |
