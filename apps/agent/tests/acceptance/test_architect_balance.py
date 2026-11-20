@@ -3,10 +3,6 @@
 import json
 from unittest.mock import AsyncMock
 
-import pytest
-from acceptance._postgres_fixtures import migrated_db as migrated_db
-from acceptance._postgres_fixtures import postgres_container as postgres_container
-from acceptance._postgres_fixtures import reset_db_pool as reset_db_pool
 from asyncpg import Pool
 from first_blood_harness import ARCHETYPES, ARCHITECT_WORKS, architect_party, drive_architect_fight
 from livekit.agents import RunContext
@@ -22,8 +18,6 @@ from creature_catalog import query_creature_by_id
 from mode_tools import enter_mode
 from patron_passives import effective_hp
 from session_data import SessionData
-
-pytestmark = pytest.mark.acceptance
 
 SEEDS = tuple(range(20))
 
