@@ -43,7 +43,12 @@ def spatial_record(state: CombatState | None) -> dict:
 
 
 # charisma 16 -> +3; persuasion untrained -> the round's argument_total is FixedRng(d20) + 3.
-_DIPLOMAT = {**SAMPLE_PLAYER, "attributes": {**SAMPLE_PLAYER["attributes"], "charisma": 16}, "focus": {"current": 20}}
+_DIPLOMAT = {
+    **SAMPLE_PLAYER,
+    "class": "diplomat",
+    "attributes": {**SAMPLE_PLAYER["attributes"], "charisma": 16},
+    "focus": {"current": 20},
+}
 
 
 def _make_group_state(*, tags_a=("pragmatic",), tags_b=("suspicious",), enemy_a_fallen=False):

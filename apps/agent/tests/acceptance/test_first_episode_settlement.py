@@ -98,7 +98,7 @@ async def test_automatic_wrap_settlement(fragment_player, quest_starts, outcome)
     import db
     from combat_death_save import request_death_save
 
-    ctx = await fragment_player(archetype="cleric" if outcome == "deescalated" else "warrior")
+    ctx = await fragment_player(archetype="diplomat" if outcome == "deescalated" else "warrior")
     cs = ctx.userdata.combat_state
     if outcome == "defeat":
         for actor in cs.participants:

@@ -9,9 +9,11 @@ from _patron_engine_fixtures import configure
 from _unbound_path_fixtures import row
 from _unbound_path_fixtures import world as world
 from _zhael_fate_fixtures import attack, defend
-from acceptance._capstone_helpers import _enemy
+from _zhael_fate_skills_fixtures import argument
+from acceptance._capstone_helpers import _d20, _enemy
 from acceptance.seeds import seed_known_spells
 from combat.test_handle_hp_zero import _hollowed
+from livekit.agents.llm import ToolError
 from test_encounter_facts_damage import GOBLIN, OTHER, Fight, dice, fight, goblin_strike
 from test_encounter_facts_heal import wrap
 from voice_condition_fixtures import participant, place_actors
@@ -111,20 +113,30 @@ async def test_focus_spell_and_renewal_share_the_latest_row(world: SimpleNamespa
         assert await focus(world) == 3
 
 
-async def test_deescalation_spends_focus_after_renewal(world: SimpleNamespace) -> None:
+async def test_unlearned_deescalation_refuses_phase_before_ally_attacks(world: SimpleNamespace) -> None:
     async with fight(world, "mortaen", archetype="druid", goblin_hp=5) as f:
         await setup_recipient(world, "druid", start=5)
         state = f.session.combat_state
         participant(state, f.ally).initiative = 25
         state.initiative_order[:2] = [f.ally, f.hero]
-        packets = await f.round(
-            attack(f.ally, GOBLIN),
-            dict(actor_id=f.hero, kind="ability", action="de_escalate", targets=[], argument_type="reason"),
-            faces=(15, 10),
-        )
-        assert renewals(packets) == [receipt(f.hero, GOBLIN, 5, 7)]
-        assert any(p.get("action") == "de_escalate" and p["resolved"] for p in packets)
-        assert await focus(world) == 4
+        before = state.to_dict()
+        players_before = [await row(world, index) for index in range(2)]
+        await db_mutations.save_combat_state(f.combat_id, before)
+
+        await f.declare(attack(f.ally, GOBLIN), argument(f.hero))
+        with (
+            patch.object(db_mutations, "save_combat_state", wraps=db_mutations.save_combat_state) as save,
+            patch("check_resolution.dice_roll", return_value=_d20(15)) as roll,
+            pytest.raises(ToolError, match="hasn't learned De-escalate"),
+        ):
+            await f.call("resolve_phase")
+
+        roll.assert_not_called()
+        save.assert_awaited_once()
+        assert save.await_args is not None and save.await_args.args == (f.combat_id, before)
+        assert [await row(world, index) for index in range(2)] == players_before
+        assert f.session.combat_state.to_dict() == before
+        assert (await f.reload()).to_dict() == before
 
 
 @pytest.mark.parametrize("control", ["fallen", "thyra"])
