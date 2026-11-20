@@ -48,7 +48,7 @@ def eligible_argument_targets(state, speaker_id):
 
 
 def _gate_deescalation(player: dict, state, *, round_counter: int | None = None) -> None:
-    """Declare-time fail-loud gate for de_escalate: round cap + 3 Focus, with NO state writes.
+    """Pre-resolution fail-loud gate for de_escalate: round cap + 3 Focus, with NO state writes.
 
     Mirrors spell_casting._gate_spell's pre-resolution discipline — validate with NO state writes so
     a bad attempt never rolls back a phase that already resolved other actors. The Tier-3 scene runs
@@ -128,7 +128,7 @@ async def _resolve_deescalation_packet(
         }
 
     # Re-validate the Tier-3 argument category (shape-only threaded by resolve_declaration). In real
-    # play this already fired at the declare-time gate (_prevalidate_ability_focus) with NO writes, so
+    # play this already fired in resolve_phase prevalidation (_prevalidate_ability_focus) with NO writes, so
     # a bad category never reaches here mid-phase; the check stays for direct callers/tests as a
     # defensive fail-loud boundary before any Focus spend.
     targets = eligible_argument_targets(state, attacker.id)
