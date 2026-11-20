@@ -1,9 +1,12 @@
 """Terrain rules through microphone transport, public activate and real persistence."""
 
 import json
+import os
 import uuid
+from collections.abc import AsyncIterator
 from unittest.mock import AsyncMock
 
+import asyncpg
 import pytest
 from acceptance.multiplayer_voice._harness import MultiplayerVoiceHarness
 from acceptance.seeds import seed_player_with_pools
@@ -43,17 +46,28 @@ CASES = (
 )
 
 
+@pytest.fixture
+async def terrain_location(reset_db_pool) -> AsyncIterator[tuple[asyncpg.Pool, str]]:
+    pool = await db.get_pool()
+    location_id = "terrain-" + uuid.uuid4().hex
+    try:
+        yield pool, location_id
+    finally:
+        await pool.execute("DELETE FROM locations WHERE id = $1", location_id)
+        if os.environ.get("REDIS_URL"):
+            await (await db.get_redis()).delete(f"location:{location_id}")
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("terrain,race,generated,ward_cost", CASES)
-async def test_terrain_commands(terrain, race, generated, ward_cost, livekit_server, reset_db_pool, monkeypatch):
+async def test_terrain_commands(terrain, race, generated, ward_cost, livekit_server, terrain_location, monkeypatch):
     for key, field in (("LIVEKIT_URL", "ws_url"), ("LIVEKIT_API_KEY", "api_key"), ("LIVEKIT_API_SECRET", "api_secret")):
         monkeypatch.setenv(key, livekit_server[field])
     harness = MultiplayerVoiceHarness(livekit_server)
     pid, guest = harness.player_one_identity, harness.player_two_identity
-    pool = await db.get_pool()
+    pool, location_id = terrain_location
     await spells.load_spells()
     await racial_resonance.load_racial_resonance()
-    location_id = "terrain-" + uuid.uuid4().hex
     if terrain != "missing_row":
         region = "city" if terrain in ("city", "village") else "dungeon" if terrain == "underground" else "wilderness"
         location = {"id": location_id, "name": "Command clearing", "region_type": region}
@@ -137,7 +151,9 @@ async def test_terrain_commands(terrain, race, generated, ward_cost, livekit_ser
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("terrain", ["mountain", "missing_key", "unknown_terrain"])
-async def test_combat_terrain_commands(terrain, livekit_server, reset_db_pool, monkeypatch, mock_combat_agent_factory):
+async def test_combat_terrain_commands(
+    terrain, livekit_server, terrain_location, monkeypatch, mock_combat_agent_factory
+):
     import random
 
     import combat_resolution
@@ -150,10 +166,9 @@ async def test_combat_terrain_commands(terrain, livekit_server, reset_db_pool, m
         monkeypatch.setenv(key, livekit_server[field])
     harness = MultiplayerVoiceHarness(livekit_server)
     pid, guest = harness.player_one_identity, harness.player_two_identity
-    pool = await db.get_pool()
+    pool, location_id = terrain_location
     await spells.load_spells()
     await racial_resonance.load_racial_resonance()
-    location_id = "combat-terrain-" + uuid.uuid4().hex
     location = {"id": location_id, "name": "Command mountain", "region_type": "wilderness"}
     if terrain != "missing_key":
         location["terrain"] = terrain
