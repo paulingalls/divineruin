@@ -130,6 +130,7 @@ async def _core_for_levels(from_level, from_xp, amount, *, archetype="warrior", 
     """Drive _award_xp_core directly on a caller-supplied conn; return
     (pending_events, mutations, conn, result)."""
     _, mock_conn = make_db_mod()
+    mock_conn.fetch = AsyncMock(return_value=[])
     player = {**GUILD_PLAYER, "class": archetype, "level": from_level, "xp": from_xp}
     mutations = MagicMock()
     mutations.update_player_xp = AsyncMock()
@@ -154,7 +155,12 @@ def _event_types(pending_events):
 
 def test_core_result_carries_exactly_its_read_fields():
     """Selection rederives the fork under the row lock rather than trusting handoff state."""
-    assert {f.name for f in dataclasses.fields(AwardXpResult)} == {"result", "milestone_grants", "attribute_increases"}
+    assert {f.name for f in dataclasses.fields(AwardXpResult)} == {
+        "result",
+        "milestone_grants",
+        "attribute_increases",
+        "elective_choices",
+    }
 
 
 @pytest.mark.asyncio

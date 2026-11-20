@@ -102,7 +102,9 @@ async def test_transact_selects_clean_through_exhaustion(reset_db_pool):
         await seed_stack(h.pool, pid, "rend_shard", 7, True, provenance="unchanged")
         original = (await rows(h.pool, pid))[1]
         for delta, expected in [(-1, 1), (-1, 0)]:
-            await h.command("transact", {"item_id": "rend_shard", "delta": delta, "source": "test loss"})
+            await h.command(
+                "transact", {"action": "exchange", "item_id": "rend_shard", "delta": delta, "source": "test loss"}
+            )
             actual = await rows(h.pool, pid)
             assert actual[-1] == original
             assert len(actual) == (2 if expected else 1)
@@ -110,7 +112,9 @@ async def test_transact_selects_clean_through_exhaustion(reset_db_pool):
                 assert json.loads(actual[0]["data"])["quantity"] == expected
             await assert_published(h)
         before = await get_inventory_snapshot(pid)
-        error = await h.command("transact", {"item_id": "rend_shard", "delta": -1, "source": "test loss"}, error=True)
+        error = await h.command(
+            "transact", {"action": "exchange", "item_id": "rend_shard", "delta": -1, "source": "test loss"}, error=True
+        )
         assert "not in inventory" in error
         assert await get_inventory_snapshot(pid) == before
     finally:

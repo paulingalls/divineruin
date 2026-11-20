@@ -260,6 +260,7 @@ async def _advance_one(
         "rewards_applied": rewards_applied,
         "milestone_grants": outcome.milestone_grants if outcome else [],
         "attribute_increases": outcome.attribute_increases if outcome else [],
+        "elective_choices": outcome.elective_choices if outcome else [],
         "specialization_fork": outcome.specialization_fork if outcome else False,
     }
     if current_stage >= 0 and (narrative_beat := on_complete.get("narrative_beat")):
@@ -356,10 +357,12 @@ async def advance_quest_db(
                 for pid, share in pending.xp.granted_by_player.items():
                     following.xp.granted_by_player[pid] = following.xp.granted_by_player.get(pid, 0) + share
                 following.xp.attribute_increases = pending.xp.attribute_increases + following.xp.attribute_increases
+                following.xp.elective_choices = pending.xp.elective_choices + following.xp.elective_choices
                 following.xp.milestone_grants = pending.xp.milestone_grants + following.xp.milestone_grants
                 following.xp.specialization_fork |= pending.xp.specialization_fork
                 following.xp.leveled_up |= pending.xp.leveled_up
         following.response["attribute_increases"] = following.xp.attribute_increases if following.xp else []
+        following.response["elective_choices"] = following.xp.elective_choices if following.xp else []
         following.response["milestone_grants"] = following.xp.milestone_grants if following.xp else []
         following.response["specialization_fork"] = following.xp.specialization_fork if following.xp else False
         following.events = [(t, p) for t, p in pending.events if t != E.QUEST_UPDATED] + following.events

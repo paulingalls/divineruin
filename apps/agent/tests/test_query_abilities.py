@@ -39,6 +39,7 @@ def mock_context():
     context = AsyncMock(spec=RunContext)
     session_data = AsyncMock(spec=SessionData)
     session_data.player_id = "test_player"
+    session_data.acting_player_id = "test_player"
     session_data.location_id = "test_location"
     context.userdata = session_data
     return context

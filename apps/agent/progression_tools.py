@@ -10,11 +10,14 @@ from datetime import UTC, datetime
 
 import asyncpg
 
+import abilities
+import ability_persistence
 import attribute_increase_persistence
 import attribute_increases
 import db_activity_queries
 import db_mutations
 import db_mutations_divine
+import elective_choices
 import event_types as E
 import milestone_tools
 import milestones
@@ -49,6 +52,7 @@ class AwardXpResult:
     result: "rules_engine.LevelUpResult"
     milestone_grants: list[dict]
     attribute_increases: list[dict] = field(default_factory=list)
+    elective_choices: list[dict] = field(default_factory=list)
 
 
 async def _award_xp_core(
@@ -115,10 +119,18 @@ async def _award_xp_core(
     )
 
     milestone_grants: list[dict] = []
+    electives: list[dict] = []
 
     if result.leveled_up:
         rewards = get_level_up_rewards(current_level, result.new_level)
         payload = build_level_up_payload_for_archetype(current_level, rewards, player["class"])
+        pools = elective_choices.pools(
+            abilities.get_archetype_abilities(player["class"]), result.new_level, from_level=current_level
+        )
+        if pools:
+            owned = await ability_persistence.get_character_abilities(player_id, conn=conn)
+            electives = elective_choices.offers(player_id, pools, {row["ability_id"] for row in owned})
+        payload["elective_choices"] = electives
         payload["hp_gains"] = hp_gains
         pending_events.append((E.LEVEL_UP, {**payload, "player_id": player_id}))
 
@@ -175,7 +187,9 @@ async def _award_xp_core(
                     )
                 )
 
-    return AwardXpResult(result=result, milestone_grants=milestone_grants, attribute_increases=increases)
+    return AwardXpResult(
+        result=result, milestone_grants=milestone_grants, attribute_increases=increases, elective_choices=electives
+    )
 
 
 async def _award_divine_favor_core(

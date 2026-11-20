@@ -498,7 +498,7 @@
     "id": "shield_iron",
     "name": "Iron Shield",
     "tier": 2,
-    "type": "armor",
+    "type": "shield",
     "rarity": "common",
     "description": "A round shield with an iron boss and wooden body. Dented from the proving rack. Solid.",
     "tags": [
