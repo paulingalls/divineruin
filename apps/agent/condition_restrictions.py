@@ -10,6 +10,7 @@ NOT_ENFORCED: dict[str, dict[str, object]] = {
     "damage_resistance_all": {"waits_on": "producer", "carriers": {"petrified": 1}},
     "immune_poison_disease": {"waits_on": "producer", "carriers": {"petrified": 1}},
     "damage_reduction": {"waits_on": "producer", "carriers": {"shielded": 1}},
+    "ignores_structures": {"waits_on": "model", "model": "the-architect walls movement"},
     "no_approach_source": {"waits_on": "model", "model": "positioning"},
     "reduced_max_hp": {"waits_on": "producer", "carriers": {"wounded": 1}},
     "source_specific_penalty": {"waits_on": "producer", "carriers": {"cursed": 1}},
@@ -50,10 +51,14 @@ def incoming_ranged_disadvantage(active_conditions: list[dict] | tuple[dict, ...
     return bool(_carriers(active_conditions, "incoming_ranged_disadvantage"))
 
 
+def incoming_disadvantage(active_conditions: list[dict] | tuple[dict, ...]) -> bool:
+    return bool(_carriers(active_conditions, "incoming_disadvantage"))
+
+
 def incoming_attack_modes(active_conditions: list[dict] | tuple[dict, ...], *, ranged: bool) -> tuple[bool, bool]:
     return (
         not ranged and incoming_melee_advantage(active_conditions),
-        ranged and incoming_ranged_disadvantage(active_conditions),
+        incoming_disadvantage(active_conditions) or (ranged and incoming_ranged_disadvantage(active_conditions)),
     )
 
 
@@ -87,6 +92,7 @@ RESTRICTION_ENFORCERS = {
     "no_spoken_buffs": no_spoken_buffs,
     "skip_phase": cannot_act,
     "incoming_advantage": incoming_advantage,
+    "incoming_disadvantage": incoming_disadvantage,
     "incoming_melee_advantage": incoming_melee_advantage,
     "incoming_melee_autocrit": incoming_melee_autocrit,
     "incoming_ranged_disadvantage": incoming_ranged_disadvantage,

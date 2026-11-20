@@ -10,6 +10,7 @@ from livekit.agents.voice import RunContext
 import combat_resolution
 import concentration_break
 import condition_sources
+import conditions
 import db
 import db_mutations
 import db_mutations_resonance
@@ -83,9 +84,9 @@ async def _inner_fire_locked(
 
         new_resonance = max(0, member.resonance.current - reduction)
         was_fallen = participant.is_fallen
-        overkill = max(0, fire_damage - participant.hp_current)
         hp_before = participant.hp_current
-        new_hp = max(0, hp_before - fire_damage)
+        new_hp = max(conditions.damage_hp_floor(participant.conditions), hp_before - fire_damage)
+        overkill = max(0, fire_damage - hp_before) if new_hp == 0 else 0
         session.validate_acting_player(player_id)
         await resonance_mutations_mod.update_player_resonance(player_id, new_resonance, conn=conn)
         session.validate_acting_player(player_id)

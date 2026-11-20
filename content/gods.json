@@ -1542,10 +1542,11 @@
       "exalted": {
         "id": "mortaen_threshold_walk",
         "name": "Threshold Walk",
-        "effect": "Once per session, become incorporeal for 1 round. Immune to physical damage, pass through objects, invisible. Attacks deal necrotic. Return shaken but alive",
+        "effect": "Until the end of the next round, slashing, piercing and bludgeoning pass through you, even when magical. Attacks against you have disadvantage, your attacks have advantage, and your weapon attacks deal necrotic damage. You cannot drop below 1 HP. You return Shaken unless combat ends first.",
         "recharge": "per_session",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "mortaen_threshold_walk"
       }
     },
     "layer_4_synergy_matrix": {

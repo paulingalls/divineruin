@@ -158,6 +158,7 @@ def test_blockable_conditions_partition_the_condition_catalog():
         "battle_cry",
         "worthy_foe",
         "mark_of_justice",
+        "incorporeal",
         "regenerating",
     }
 

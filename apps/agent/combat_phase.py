@@ -21,8 +21,9 @@ import choir_effects
 import reaction_spend
 from combat_declaration_validation import validate_declaration
 from combat_down import DEATH_SAVE_LIMIT, is_terminally_down
+from condition_catalog import INCORPOREAL
 from condition_restrictions import cannot_act
-from conditions import tick_conditions
+from conditions import apply_condition, has_condition, tick_conditions
 from declarations import Declaration, resolve_declaration
 from encounter_roles import EncounterRole
 from session_data import CombatParticipant, CombatState
@@ -90,6 +91,7 @@ class WrapOutcome:
     # clears the condition on success. Duration-based expiry is already applied to the
     # returned state's participant.conditions; this carries only what needs a roll.
     tick_conditions_due: list[dict] = field(default_factory=list)
+    threshold_walk_returns: list[dict[str, str]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -298,6 +300,7 @@ def _wrap(state: CombatState) -> WrapOutcome:
     next_state, so this never mutates the caller's input. Surfaces save-to-clear signals in
     ``tick_conditions_due``; the engine never rolls them."""
     tick_conditions_due: list[dict] = []
+    returning: list[CombatParticipant] = []
     for p in state.participants:
         ticking = [
             {**c, "duration": c["duration"] + 1}
@@ -306,6 +309,8 @@ def _wrap(state: CombatState) -> WrapOutcome:
             for c in p.conditions
         ]
         survivors, save_events = tick_conditions(ticking)
+        if has_condition(p.conditions, INCORPOREAL) and not has_condition(survivors, INCORPOREAL):
+            returning.append(p)
         p.conditions = survivors
         tick_conditions_due.extend({"actor_id": p.id, **event} for event in save_events)
 
@@ -383,10 +388,22 @@ def _wrap(state: CombatState) -> WrapOutcome:
         # destroyed + party down), or a plain player wipe. combat_end resurrects each per-member.
         combat_ended, outcome = True, "defeat"
 
+    threshold_walk_returns = []
+    if not combat_ended:
+        for follower in returning:
+            follower.conditions = apply_condition(follower.conditions, "shaken", source=follower.id)
+            threshold_walk_returns.append(
+                {
+                    "actor_id": follower.id,
+                    "actor_name": follower.name,
+                    "dm_cue": f"Narrate {follower.name} returning across Mortaen's threshold, shaken but alive.",
+                }
+            )
     return WrapOutcome(
         death_saves_due=death_saves_due,
         resonance_decay=_RESONANCE_DECAY_PER_PHASE,
         combat_ended=combat_ended,
         outcome=outcome,
         tick_conditions_due=tick_conditions_due,
+        threshold_walk_returns=threshold_walk_returns,
     )
