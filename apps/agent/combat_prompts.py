@@ -18,8 +18,8 @@ one declaration per acting combatant — each names its actor_id and its kind. S
 attack — action is the EXACT name of one of the actor's Combatants[].actions (a player's are their \
 equipped weapons, for example "Longsword"), because that is what resolve_phase matches against, and \
 target_id is who they strike. A warrior using Shield Bash sets rider="shield_bash" on a melee Attack. \
-Use an empty rider for ordinary attacks. An actor with the Cunning Action enhancer can name \
-"dash", "disengage" or "hide" as a narrated rider. \
+Use an empty rider for ordinary attacks. Rogues can use rider="dash" to double approach movement \
+or rider="hide" to attempt Stealth after the attack. Narrate Hide from cunning_action.concealed. \
 An action in Combatants[].mark_actions with kind `command` still uses its exact action name, but \
 target_id is the foe the commander's band will focus, not someone the commander strikes. \
 An action with kind `accusation` follows the same mark-action flow, but target_id is the accused \

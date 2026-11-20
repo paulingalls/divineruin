@@ -11,7 +11,7 @@ import combat_voice_rules
 import still_encounter
 from action_contracts_still import STILL_ZONE_KINDS
 from combat_ability import _find_action
-from combat_ability_gate import DEVASTATING_STRIKE, SHIELD_BASH, combat_ability, declared_ability
+from combat_ability_gate import CUNNING_ACTION, DEVASTATING_STRIKE, SHIELD_BASH, combat_ability, declared_ability
 from combat_action_availability import require_available
 from combat_structures import action_has_direct_line, require_line
 from condition_restrictions import cannot_act, declaration_costs, speed_zero
@@ -84,15 +84,20 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
             f"available actions: {available}"
         )
     pool_action = _find_action(actor, declaration.action)
-    if combat_martial.attack_ability(declaration) == SHIELD_BASH:
+    martial = combat_martial.attack_ability(declaration)
+    if declaration.type is DeclarationType.ATTACK and declaration.rider and martial is None:
+        if declaration.rider == "disengage":
+            raise ValueError("Disengage is unavailable because movement opens no hostile reaction window.")
+        raise ValueError(f"Unknown attack rider {declaration.rider!r}.")
+    if martial in (CUNNING_ACTION, SHIELD_BASH):
         import abilities
 
-        bash = abilities.get_ability(SHIELD_BASH)
+        ability = abilities.get_ability(martial)
         if actor.type != "player" or not abilities.owns_ability(
-            actor.archetype_id, actor.level, bash, owns_elective=False
+            actor.archetype_id, actor.level, ability, owns_elective=False
         ):
-            raise ValueError(f"{actor.name} hasn't learned Shield Bash.")
-        if pool_action is None or not combat_melee_approach.is_melee(pool_action):
+            raise ValueError(f"{actor.name} hasn't learned {ability.name}.")
+        if martial == SHIELD_BASH and (pool_action is None or not combat_melee_approach.is_melee(pool_action)):
             raise ValueError("Shield Bash requires an equipped melee weapon.")
     if pool_action is not None and declaration.type in (DeclarationType.ATTACK, DeclarationType.ABILITY):
         require_available(actor, pool_action)

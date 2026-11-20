@@ -16,14 +16,14 @@ def is_move(declaration):
     return declaration.type is DeclarationType.MANEUVER and declaration.action == "move"
 
 
-def movement_geometry(state, actor_id, declaration):
+def movement_geometry(state, actor_id, declaration, *, allowance=None):
     spatial = require_spatial(state)
     actor = state.get_participant(actor_id)
     if actor is None or declaration.target_id != actor_id:
         raise ValueError("move must target its own known actor")
     destination = point(declaration.destination)
     origin = position(spatial, actor_id)
-    speed = spatial["speeds"][actor_id]
+    speed = spatial["speeds"][actor_id] if allowance is None else allowance
     if in_pit(state, actor_id):
         return origin, 0, speed
     travelled = distance(origin, destination)
@@ -34,7 +34,7 @@ def movement_geometry(state, actor_id, declaration):
         c["type"] == "charmed" and c.get("choir_melody") is True for c in actor.conditions
     )
     if spent > speed and not melody:
-        raise MovementRefused(f"{actor_id} move exceeds speed {spatial['speeds'][actor_id]:g} feet")
+        raise MovementRefused(f"{actor_id} move exceeds speed {speed:g} feet")
     if wall := movement_blocker(state, spatial, actor, origin, destination):
         raise MovementRefused(f"{actor_id} move is blocked by {wall.name} ({wall.id})")
     return destination, travelled, spent
@@ -84,11 +84,11 @@ def preflight(state, declarations):
             validate_move(projection, actor_id, declaration, eligibility=False)
 
 
-def apply_move(state, actor, declaration):
+def apply_move(state, actor, declaration, *, allowance=None):
     if reason := ineligible(actor):
         return {"actor_id": actor.id, "resolved": False, "reason": reason}
     try:
-        destination, travelled, spent = movement_geometry(state, actor.id, declaration)
+        destination, travelled, spent = movement_geometry(state, actor.id, declaration, allowance=allowance)
     except MovementRefused as error:
         return {"actor_id": actor.id, "resolved": False, "reason": str(error)}
     climbed = in_pit(state, actor.id)

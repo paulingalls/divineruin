@@ -375,3 +375,89 @@ async def test_shield_bash_does_not_roll_a_save_for_a_fallen_foe(warriors: Mawli
     rolls.assert_called_once()
     receipt = next(packet for packet in packets if packet["actor_id"] == actor)
     assert receipt["target_fallen"] and "save_success" not in receipt
+
+
+@pytest.fixture
+async def rogue(warriors: MawlingHarness) -> MawlingHarness:
+    await warriors.pool.execute(
+        """UPDATE players SET data = data || '{"class":"rogue"}'
+        WHERE player_id = $1""",
+        warriors.players[0],
+    )
+    return warriors
+
+
+def weapon_attack(actor: str, foe: str, rider: str) -> dict:
+    return {
+        "kind": "attack",
+        "actor_id": actor,
+        "target_id": foe,
+        "action": "Longsword",
+        "held_item_id": "",
+        "rider": rider,
+        "reshape": [],
+    }
+
+
+@pytest.mark.parametrize(("rider", "face"), [("dash", 15), ("hide", 18), ("hide", 2), ("", 15)])
+async def test_cunning_action(rogue: MawlingHarness, rider: str, face: int) -> None:
+    actor = rogue.players[0]
+    await enter(rogue)
+    foe = await adjacent_foe(rogue)
+    state = await rogue.reload()
+    spatial = combat_spatial.require_spatial(state)
+    origin = combat_spatial.position(spatial, actor)
+    speed = spatial["speeds"][actor]
+    target = state.get_participant(foe)
+    assert target is not None
+    target.attributes["wisdom"] = 18
+    if rider == "dash":
+        combat_spatial.place(state, foe, {**origin, "x": origin["x"] + speed + 15})
+    await rogue.persist()
+    result = await rogue.command("query_info", {"kind": "abilities"})
+    row = next(row for row in result["abilities"] if row["id"] == "rogue_cunning_action")
+    assert row.get("combat") is not False
+    assert row["declaration"] == {"kind": "attack", "riders": ["dash", "hide"]}
+    await rogue.command("declare_phase", {"declarations": [weapon_attack(actor, foe, rider)]})
+    with (
+        patch("check_resolution.dice_roll", side_effect=[_d20(15), _d20(face)] if rider == "hide" else [_d20(face)]),
+        patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
+    ):
+        packets = await rogue.drain()
+    packet = next(packet for packet in packets if packet["actor_id"] == actor)
+    assert packet["hit"]
+    player = await db_queries.get_player(actor)
+    assert player is not None and player["stamina"]["current"] == (8 if rider else 10)
+    if rider == "dash":
+        assert packet["moved_ft"] == speed + 10
+        live = combat_spatial.require_spatial(await rogue.reload())
+        assert combat_spatial.position(live, actor)["x"] == origin["x"] + speed + 10
+    if rider == "hide":
+        assert packet["cunning_action"]["dc"] == 14
+        assert packet["cunning_action"]["roll"] == face
+        assert player["flags"]["concealed"] == (face == 18)
+        await rogue.command("declare_phase", {"declarations": [weapon_attack(actor, foe, "")]})
+        with patch("check_resolution.dice_roll", return_value=_d20(1)):
+            await rogue.drain()
+        player = await db_queries.get_player(actor)
+        assert player is not None and not player["flags"]["concealed"]
+        assert player["stamina"]["current"] == 8
+
+
+async def test_cunning_action_refusals(rogue: MawlingHarness) -> None:
+    actor = rogue.players[0]
+    await enter(rogue)
+    foe = await adjacent_foe(rogue)
+    for rider, reason in (("disengage", "reaction window"), ("teleport", "rider")):
+        refusal = await rogue.command("declare_phase", {"declarations": [weapon_attack(actor, foe, rider)]}, error=True)
+        assert reason in refusal
+    attack = weapon_attack(actor, foe, "dash")
+    refusal = await rogue.command("declare_phase", {"declarations": [attack, attack]}, error=True)
+    assert actor in refusal
+    await rogue.pool.execute(
+        "UPDATE players SET data=jsonb_set(data, '{stamina,current}', '1') WHERE player_id=$1", actor
+    )
+    refusal = await rogue.command("declare_phase", {"declarations": [attack]}, error=True)
+    assert "Stamina" in refusal
+    player = await db_queries.get_player(actor)
+    assert player is not None and player["stamina"]["current"] == 1

@@ -10,6 +10,7 @@ state and write through injected mutation/query modules, but own no transaction.
 
 import architect_actions
 import architect_constructs
+import combat_cunning_action
 import combat_maneuver
 import combat_marks
 import combat_martial
@@ -290,6 +291,7 @@ async def _resolve_action_packet(
             )
         target = state.get_participant(decl.target_id) if decl.target_id else None
         if target is not None and not target_unavailable(target, action):
+            movement_budget = await combat_cunning_action.begin(state, attacker, decl, queries=queries, conn=conn)
             # Move before any roll is prepared, and only once: a held head carries its approach, and a
             # Zhael-held ally swing resumes through its attack cursor, never back through here.
             if _melee_approach is not None:

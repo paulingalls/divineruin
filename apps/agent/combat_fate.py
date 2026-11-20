@@ -7,6 +7,7 @@ from livekit.agents.llm import ToolError
 import architect_reaction
 import check_resolution_attack
 import combat_attack_summary
+import combat_cunning_action
 import combat_enhancers
 import combat_martial
 import combat_melee_approach
@@ -109,6 +110,19 @@ async def continue_attack(
     movement_budget = attack_cursor.get("movement_budget", movement_budget if movement_budget is not None else {})
     declared_target = target
     martial = combat_martial.attack_ability(decl)
+
+    def checkpoint() -> None:
+        attack_cursor.update(
+            actions=actions,
+            target_id=declared_target.id,
+            enemies_remaining=enemies_remaining,
+            is_first_attack=is_first_attack,
+            summaries=attack_summaries,
+            concealment=concealment_packet,
+            movement=movement,
+            movement_budget=movement_budget,
+        )
+
     start = len(attack_summaries)
     for index, act in enumerate(actions[start:], start):
         swing_move = (
@@ -162,20 +176,10 @@ async def continue_attack(
             ):
                 stored = asdict(prepared)
                 stored["consumed"] = list(prepared.consumed)
-                store_swing(
-                    attack_cursor,
-                    actions,
-                    declared_target,
-                    enemies_remaining,
-                    is_first_attack,
-                    attack_summaries,
-                    concealment_packet,
-                )
+                checkpoint()
                 attack_cursor.update(
                     prepared=stored,
                     attacker_data=attacker_data,
-                    movement=movement,
-                    movement_budget=movement_budget,
                 )
                 return {
                     "actor_id": attacker.id,
@@ -253,16 +257,7 @@ async def continue_attack(
                 del attack_cursor["prepared"], attack_cursor["attacker_data"]
 
         if swing is not None and swing.paused:
-            store_swing(
-                attack_cursor,
-                actions,
-                declared_target,
-                enemies_remaining,
-                is_first_attack,
-                attack_summaries,
-                concealment_packet,
-            )
-            attack_cursor.update(movement=movement, movement_budget=movement_budget)
+            checkpoint()
             return {}
         if bash or "durability_rider" in act:
             rider_progress = swing.scope("rider") if swing is not None else None
@@ -284,16 +279,7 @@ async def continue_attack(
                 )
             if swing is not None and swing.paused:
                 swing.steps["attack_summary"] = sub
-                store_swing(
-                    attack_cursor,
-                    actions,
-                    declared_target,
-                    enemies_remaining,
-                    is_first_attack,
-                    attack_summaries,
-                    concealment_packet,
-                )
-                attack_cursor.update(movement=movement, movement_budget=movement_budget)
+                checkpoint()
                 return {}
         if progress is not None:
             progress.steps.pop("swing", None)
@@ -332,22 +318,26 @@ async def continue_attack(
     summary = combat_attack_summary.aggregate(attack_summaries, moved=bool(movement))
     if concealment_packet is not None:
         summary["concealment"] = concealment_packet
+    if martial == combat_cunning_action.CUNNING_ACTION:
+        summary["cunning_action"] = {"rider": decl.rider}
+        if decl.rider == "hide":
+            hidden = await combat_cunning_action.hide(
+                session,
+                state,
+                attacker,
+                queries=queries,
+                conn=conn,
+                progress=progress.scope("cunning_hide") if progress is not None else None,
+            )
+            if hidden is None:
+                checkpoint()
+                return {}
+            summary["cunning_action"].update(hidden)
     if effects := attack_cursor.pop("turn_start_effects", None):
         summary["turn_start_effects"] = effects
     summary["actor_id"] = packet.actor_id
     summary["resolved"] = True
     return _attach_riders(summary, attacker, decl)
-
-
-def store_swing(cursor, actions, target, enemies_remaining, is_first_attack, summaries, concealment):
-    cursor.update(
-        actions=actions,
-        target_id=target.id,
-        enemies_remaining=enemies_remaining,
-        is_first_attack=is_first_attack,
-        summaries=summaries,
-        concealment=concealment,
-    )
 
 
 def begin_ally_pass(state, allies, hostiles, players_by_id):

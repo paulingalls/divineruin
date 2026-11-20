@@ -14,7 +14,7 @@ from combat_ability import (
     _gate_ability_condition,
     condition_ability,
 )
-from combat_ability_gate import DEVASTATING_STRIKE, SECOND_WIND, SHIELD_BASH, declared_ability
+from combat_ability_gate import CUNNING_ACTION, DEVASTATING_STRIKE, SECOND_WIND, SHIELD_BASH, declared_ability
 from combat_deescalation import (
     _gate_deescalation,
     _validate_argument_type,
@@ -94,7 +94,12 @@ async def _prevalidate_ability_focus(
             # fails loud before ANY packet resolves — never rolling back a phase that already wrote
             # other actors' HP/Focus (the packet re-checks defensively for direct callers).
             _validate_argument_type(decl)
-        elif resolved_ability is not None and resolved_ability[0].id in (SECOND_WIND, DEVASTATING_STRIKE, SHIELD_BASH):
+        elif resolved_ability is not None and resolved_ability[0].id in (
+            SECOND_WIND,
+            DEVASTATING_STRIKE,
+            SHIELD_BASH,
+            CUNNING_ACTION,
+        ):
             ability, variant = resolved_ability
             if ability.id == DEVASTATING_STRIKE:
                 try:

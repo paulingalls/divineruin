@@ -8,6 +8,8 @@ import combat_recharge
 import combat_spell_heal
 import dice
 from combat_ability_gate import (
+    CUNNING_ACTION,
+    CUNNING_RIDERS,
     DEVASTATING_STRIKE,
     RALLYING_SHOUT,
     SECOND_WIND,
@@ -64,6 +66,8 @@ async def second_wind(
 
 
 def attack_ability(decl: Declaration) -> str | None:
+    if decl.type is DeclarationType.ATTACK and decl.rider in CUNNING_RIDERS:
+        return CUNNING_ACTION
     if decl.type is DeclarationType.ATTACK and decl.rider == SHIELD_BASH_RIDER:
         return SHIELD_BASH
     if decl.type is DeclarationType.ABILITY and decl.action == DEVASTATING_STRIKE:

@@ -27,7 +27,7 @@ _ABILITY_SPELL = "arcane_shield_spell"  # a real catalog spell: focus_cost 1, ge
 
 
 async def _seed_capstone_player(pool, player_id: str) -> None:
-    """Seed a player wielding the 1d12 greataxe with the extra_attack + cunning_action enhancer flags
+    """Seed a player wielding the 1d12 greataxe with the extra_attack enhancer flag
     (combat_init reads players.data.flags), a Focus pool for the in-combat ability, and high HP so the
     player survives the multi-phase fight that cycles through every declaration category."""
     await seed_player_with_pools(pool, player_id=player_id, focus_current=10, known_spells=("arcane_shield_spell",))
@@ -39,7 +39,7 @@ async def _seed_capstone_player(pool, player_id: str) -> None:
         "'{hp}', $4::jsonb) WHERE player_id = $1",
         player_id,
         json.dumps({"main_hand": _GREATAXE}),
-        json.dumps({"extra_attack": True, "cunning_action": True}),
+        json.dumps({"extra_attack": True}),
         json.dumps({"current": 100, "max": 100}),
     )
 
@@ -126,16 +126,15 @@ async def test_full_action_economy_lifecycle_on_real_pg(reset_db_pool: str) -> N
         assert focus_row["f"] == 9, "the in-combat cast deducted the spell's Focus cost (10 -> 9)"
 
         # ATTACK — mechanical, and AC2: the extra_attack enhancer EXPANDS one declaration into two
-        # swings (never a second declaration), with a narrated Cunning Action rider. The wisp (22 HP)
+        # swings (never a second declaration). The wisp (22 HP)
         # survives two 2-damage swings, so the phase loops and the summary is observable.
         attack_pkt = _player_packet(
-            await _run_phase({"type": "attack", "action": "Greataxe", "target_id": enemy.id, "rider": "disengage"}),
+            await _run_phase({"type": "attack", "action": "Greataxe", "target_id": enemy.id}),
             player_id,
         )
         assert attack_pkt["resolved"] is True
         assert len(attack_pkt["attacks"]) == 2, "extra_attack expands the Attack to two swings"
         assert attack_pkt["damage"] == 4, "two 2-damage swings aggregate"
-        assert any("cunning_action" in r for r in attack_pkt.get("riders", [])), "Cunning Action rider narrated"
 
         # AC2 persistence: the enhancers round-trip through the combat_instances JSONB SSOT.
         reloaded = await db_mutations.load_combat_state(combat_id, conn=pool)

@@ -63,6 +63,7 @@ def prepare(state, actor, target, action, budget):
                 state,
                 actor,
                 Declaration(type=DeclarationType.MANEUVER, action="move", target_id=actor.id, destination=end),
+                allowance=budget["remaining"],
             )
             if not moved["resolved"]:
                 return {**facts, **moved, "attack_resolved": False}

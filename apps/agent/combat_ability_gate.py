@@ -7,6 +7,8 @@ from mentor_variants import MentorVariant
 DEVASTATING_STRIKE = "warrior_devastating_strike"
 SHIELD_BASH = "warrior_shield_bash"
 SHIELD_BASH_RIDER = "shield_bash"
+CUNNING_ACTION = "rogue_cunning_action"
+CUNNING_RIDERS = ("dash", "hide")
 
 SECOND_WIND = "warrior_second_wind"
 RALLYING_SHOUT = "warrior_rallying_shout"
@@ -36,7 +38,9 @@ def combat_ability(ability: abilities.Ability) -> bool:
     )
 
 
-def attack_recipe(ability_id: str) -> dict[str, str] | None:
+def attack_recipe(ability_id: str) -> dict[str, str | list[str]] | None:
+    if ability_id == CUNNING_ACTION:
+        return {"kind": "attack", "riders": list(CUNNING_RIDERS)}
     if ability_id == SHIELD_BASH:
         return {"kind": "attack", "rider": SHIELD_BASH_RIDER}
     return None

@@ -44,7 +44,7 @@ class AttackDecl(BaseModel):
         description="Selected target inventory ID for a durability rider; empty when none applies."
     )
     rider: str = Field(
-        description='For a Cunning Action attacker, the movement rider: "dash", "disengage" or "hide". '
+        description='For a rogue using Cunning Action, choose "dash" for the approach or "hide" after the attack. '
         'Use "shield_bash" for the warrior ability, or an empty string for an ordinary attack.'
     )
     reshape: list[ReshapeSelection] = Field(description=RESHAPE_DESCRIPTION)
