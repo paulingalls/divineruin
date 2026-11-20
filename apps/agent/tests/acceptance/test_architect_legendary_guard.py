@@ -376,3 +376,22 @@ async def test_fresh_ordinary_fate_checkpoint_refuses_insertion(fight, held_acti
     before = await fight.snapshot()
     assert "resolve_phase" in await spend(fight, owner, "Shift Wall", operations=[translation(state)], error=True)
     assert await fight.snapshot() == before
+
+
+@pytest.mark.parametrize("selection", ["action", "target", "reshape"])
+async def test_legacy_boss_refuses_an_unexecutable_action_selection(fight, selection):
+    state = await fight.reload()
+    owner = state.get_participant(state.architect_encounter["owner_id"])
+    owner.legendary, owner.role, owner.legendary_actions = None, "boss", 1
+    await fight.persist()
+    before = await fight.snapshot()
+    refused = await spend(
+        fight,
+        owner.id,
+        "Geometry Strike" if selection == "action" else "",
+        target=fight.players[0] if selection == "target" else "",
+        operations=[translation(state)] if selection == "reshape" else [],
+        error=True,
+    )
+    assert "requires empty action_id" in refused
+    assert await fight.snapshot() == before
