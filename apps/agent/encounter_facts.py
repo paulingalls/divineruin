@@ -4,13 +4,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, TypedDict
 
+import ability_persistence
 from check_resolution_attack import AttackResult
+from combat_down import DEATH_SAVE_LIMIT, is_terminally_down
+from patron_synergy import has_engine_synergy
 
 if TYPE_CHECKING:
+    from asyncpg import Connection
+
     from combat_damage_results import AutomaticDamageResult, SaveDamageResult
     from combat_participant import CombatParticipant
     from combat_state import CombatState
 
+MORTAEN_RENEWAL = "mortaen_death_feeds_renewal"
 ZHAEL_THREADED_BLADE = "zhael_threaded_blade"
 
 
@@ -88,3 +94,50 @@ def record_landing(
             _remember(facts["misses"].setdefault(attacker.id, []), target.id)
         if result.synergy_clause_id == ZHAEL_THREADED_BLADE:
             _remember(facts["once_spent"].setdefault(ZHAEL_THREADED_BLADE, []), attacker.id)
+
+
+def counted_death(target: CombatParticipant) -> bool:
+    return (
+        target.is_dead
+        or (target.type != "companion" and target.death_save_failures >= DEATH_SAVE_LIMIT)
+        or (not target.is_ally and target.hp_current == 0)
+    )
+
+
+async def renew_on_death(
+    state: CombatState | None,
+    target: CombatParticipant,
+    counted_before: bool,
+    *,
+    queries,
+    conn: Connection | None,
+) -> list[dict]:
+    if state is None or counted_before or not counted_death(target):
+        return []
+
+    receipts = []
+    for recipient in sorted(state.participants, key=lambda p: p.id):
+        if recipient.type != "player" or recipient.is_fallen or is_terminally_down(recipient):
+            continue
+        if conn is None or not conn.is_in_transaction():
+            raise ValueError("Death Feeds Renewal requires the combat transaction")
+        player = await queries.get_player(recipient.id, for_update=True, conn=conn)
+        if player is None:
+            raise ValueError(f"Missing authoritative player {recipient.id!r}")
+        if not has_engine_synergy(player, MORTAEN_RENEWAL):
+            continue
+        pool = player["focus"]
+        current, maximum = pool["current"], pool["max"]
+        renewed = min(maximum, current + 2)
+        await ability_persistence.update_player_resources(recipient.id, focus=renewed, conn=conn)
+        receipts.append(
+            {
+                "clause_id": MORTAEN_RENEWAL,
+                "player_id": recipient.id,
+                "deceased_id": target.id,
+                "focus_regained": renewed - current,
+                "focus_current": renewed,
+                "focus_max": maximum,
+            }
+        )
+    return receipts

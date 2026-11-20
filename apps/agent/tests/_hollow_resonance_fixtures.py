@@ -40,12 +40,14 @@ async def cast(ctx, state, spell_id="arcane_magic_missile", *, owner=None, focus
     persistence = MagicMock(update_player_resources=AsyncMock())
     mutations = MagicMock(update_player_resonance=AsyncMock())
     ward = MagicMock(resolve_scope_ward=AsyncMock(return_value=state.veil_ward))
+    player = _player(focus=focus)
     result = await _resolve_cast(
         ctx.userdata,
         spell_id,
         conn=conn,
         caster=owner,
-        player=_player(focus=focus),
+        player=player,
+        queries_mod=MagicMock(get_player=AsyncMock(return_value=player)),
         combat_state=state,
         persistence_mod=persistence,
         resonance_mutations_mod=mutations,

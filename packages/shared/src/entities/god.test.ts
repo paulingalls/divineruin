@@ -472,3 +472,18 @@ test("Zhael's Appointed Mercy is an active cleric engine clause", () => {
     ],
   });
 });
+
+test.each(["druid", "warden"] as const)(
+  "Mortaen's %s renews Focus through the engine",
+  (archetype) => {
+    const row = validateGods(catalog).find((god) => god.god_id === "mortaen")
+      ?.layer_4_synergy_matrix[archetype];
+    expect(row).toMatchObject({ type: "divine", name: "Death Feeds Renewal" });
+    expect(row?.clauses).toHaveLength(1);
+    expect(row?.clauses[0]).toMatchObject({
+      status: "active",
+      resolution: "engine",
+      implementation_id: "mortaen_death_feeds_renewal",
+    });
+  },
+);

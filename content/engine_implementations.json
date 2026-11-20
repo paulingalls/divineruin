@@ -6,6 +6,7 @@
   "aelora_common_bond": "patron_gifts:skill_gift",
   "thyra_wild_kinship": "patron_gifts:skill_gift",
   "syrath_silent_casting": "cast_modifiers:apply_patron_generation",
+  "mortaen_death_feeds_renewal": "encounter_facts:renew_on_death",
   "mortaen_deaths_awareness": "patron_senses:deaths_awareness",
   "nythera_horizon_sense": "patron_senses:horizon_sense",
   "nythera_uncharted_senses": "patron_gifts:skill_gift",

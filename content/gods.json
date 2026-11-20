@@ -1744,8 +1744,9 @@
         "clauses": [
           {
             "effect": "When a creature dies within earshot, regain 2 Focus. Death feeds renewal",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "mortaen_death_feeds_renewal"
           }
         ]
       },
@@ -1755,8 +1756,9 @@
         "clauses": [
           {
             "effect": "When a creature dies within earshot, regain 2 Focus. Death feeds renewal",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "mortaen_death_feeds_renewal"
           }
         ]
       }

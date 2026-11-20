@@ -92,6 +92,10 @@ async def _prepare_cast(
             conn=conn,
         )
         assert player is not None
+    else:
+        player = await queries_mod.get_player(player_id, for_update=True, conn=conn)
+        if player is None:
+            raise ToolError(f"Unknown player: {player_id}")
 
     known_rows = await character_spells_mod.get_known(player_id, conn=conn)
     known_spell_ids = spell_knowledge.castable_spell_ids(player.get("class"), (row["spell_id"] for row in known_rows))
