@@ -33,8 +33,8 @@ from combat_fate_rolls import packet_save
 from combat_fortitude import roll_fortitude, try_fortitude
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from combat_structures import collapse_wall
-from kaelen_gift import trigger_iron_resolve
 from patron_combat_edges import reward_worthy_foe
+from patron_zero_hp import lock_lethal_damage_players, trigger_damage_gifts
 from session_data import CombatParticipant, CombatState, SessionData
 from tool_support import (
     SOUND_ATTACK_CRITICAL,
@@ -295,13 +295,9 @@ async def _apply_damage(
     # hides the fall it caused, so every verdict below reads hp_before instead.
     death_resolved_before = target.hollow_death_resolved
     hp_before = target.hp_current
-    player = None
-    if target.type == "player" and not target.iron_resolve_spent:
-        member = session.member_state(target.id)
-        if member.patron_id == "kaelen":
-            player = await queries.get_player(target.id, conn=conn)
-    target.hp_current = max(conditions.damage_hp_floor(target.conditions), hp_before - attack_result.damage)
-    overkill = max(0, attack_result.damage - hp_before) if target.hp_current == 0 else 0
+    hp_after_damage = max(conditions.damage_hp_floor(target.conditions), hp_before - attack_result.damage)
+    target.hp_current = hp_after_damage
+    overkill = max(0, attack_result.damage - hp_before) if hp_after_damage == 0 else 0
     if (
         was_fallen
         and attack_result.damage > 0
@@ -322,7 +318,15 @@ async def _apply_damage(
         target.death_save_failures += failures
         if target.type == "player":
             target.death_save_failures = min(3, target.death_save_failures)
-    gift_triggered = trigger_iron_resolve(session, target, hp_before, player)
+    players = await lock_lethal_damage_players(session, target, hp_before, queries=queries, conn=conn)
+    gift = await trigger_damage_gifts(
+        session, combat_state, target, hp_before, players=players, queries=queries, conn=conn
+    )
+    gift_owner = gift.get("gift_owner")
+    if gift_owner:
+        if sink is None:
+            raise ValueError("Automatic patron gifts require a post-commit event sink")
+        sink.patron_refreshes[gift_owner["id"]] = (session.room, session.event_bus)
 
     if not still_encounter.is_owner(combat_state, attacker.id):
         target.conditions = condition_sources.clear_charm_from_damage(
@@ -331,7 +335,7 @@ async def _apply_damage(
 
     self_healed = 0
     if action.get("self_heal") == "damage_dealt" and (save_damage or attack_result.hit):
-        self_healed = heal(attacker, max(0, hp_before - target.hp_current))
+        self_healed = heal(attacker, max(0, hp_before - hp_after_damage))
 
     sounds: list[str] = []
     if save_damage and attack_result.damage > 0:
@@ -398,6 +402,11 @@ async def _apply_damage(
             conn=conn,
         )
 
+    if gift_owner and isinstance(attack_result, check_resolution_attack.AttackResult):
+        attack_result = combat_damage_affinity.with_landed_damage(
+            attack_result, attack_result.damage, hp_before, hp_floor=target.hp_current
+        )
+
     # Publish events (buffered into ``sink`` during the phase tx; released post-commit)
     if publish_roll:
         await emit_or_publish(
@@ -430,6 +439,7 @@ async def _apply_damage(
                 )
 
     response = {
+        **gift,
         "attacker": attacker.name,
         "action": action.get("name", ""),
         "target": target.name,
@@ -452,9 +462,7 @@ async def _apply_damage(
         response["damage_components"] = action["damage_components"]
     if was_fallen:
         response["death_save_failures"] = target.death_save_failures
-    if gift_triggered:
-        response["gift_triggered"] = gift_triggered
-    if automatic:
+    if isinstance(attack_result, AutomaticDamageResult):
         log_outcome = "automatic damage"
         session.record_event(
             f"{attacker.name} uses {action.get('name', '')} on {target.name}: {attack_result.damage} automatic damage"

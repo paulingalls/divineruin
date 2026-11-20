@@ -273,6 +273,7 @@ class TestTheDoorIsTheOnlyDoor:
     def test_every_hp_current_writer_goes_through_the_door_or_is_named(self):
         assert _attribute_writers("hp_current") == {
             ("combat_damage.py", "_apply_damage"),
+            ("patron_zero_hp.py", "trigger_death_ward"),
             ("still_encounter.py", "after_damage"),
             ("draethar_inner_fire.py", "_inner_fire_locked"),
             # INSIDE the door — the Hollowed rise, max(1, hp_max // 2), which cannot be 0.

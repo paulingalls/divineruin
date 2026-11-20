@@ -6,6 +6,8 @@ from test_heal_synergies import SCENARIOS as dawns_mercy
 from test_heal_synergies_place import SCENARIOS as place_healing
 from test_patron_engine_aelora import SCENARIOS as aelora
 from test_patron_engine_beacon import SCENARIOS as beacon
+from test_patron_engine_dawns_embrace import SCENARIOS as dawns_embrace
+from test_patron_engine_death_ward import SCENARIOS as death_ward
 from test_patron_engine_judgment import SCENARIOS as judgment
 from test_patron_engine_kaelen import SCENARIOS as kaelen
 from test_patron_engine_mortaen import SCENARIOS as mortaen
@@ -30,6 +32,8 @@ ENGINE_SCENARIOS = {
     **judgment,
     **kaelen,
     **mortaen,
+    **death_ward,
+    **dawns_embrace,
     **nythera,
     **orenthel,
     **syrath,

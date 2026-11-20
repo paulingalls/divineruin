@@ -45,6 +45,7 @@ from combat_multiattack import held_declarations, strike_summary
 from combat_packet import _resolve_one_packet
 from combat_reshape_packet import ReshapeRefused, resolve_reshape
 from encounter_actions import action_kind
+from patron_zero_hp import provisional_ward_verdict
 from reaction_windows import POST_ROLL, PRE_ROLL
 
 logger = logging.getLogger("divineruin.tools")
@@ -305,6 +306,14 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None, fate_roll
                     if reaction_gate.offers_for_window(state, candidate):
                         attack_result, _effective_ac = deserialize_roll(head["roll"])
                         attacker = state.get_participant(head["actor_id"])
+                        attack_result = await provisional_ward_verdict(
+                            session,
+                            state,
+                            candidate["target_id"],
+                            attack_result,
+                            packet_deps["queries"],
+                            conn=packet_deps["conn"],
+                        )
                         await packet_deps["sink"].emit(
                             session.room,
                             E.DICE_ROLL,

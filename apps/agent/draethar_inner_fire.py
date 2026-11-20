@@ -27,7 +27,8 @@ from combat_fate_rolls import PacketRolls, PhaseRolls
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from combat_ui_update import build_combat_ui_update
 from game_events import publish_game_event
-from kaelen_gift import trigger_iron_resolve
+from patron_ability_events import publish_patron_abilities
+from patron_zero_hp import lock_damage_players, trigger_damage_gifts
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.tools")
@@ -69,7 +70,8 @@ async def _inner_fire_locked(
     state = deepcopy(session.combat_state)
     fate_rolls = PhaseRolls()
     async with scratch_guard(session), db_mod.transaction() as conn:
-        player = await queries_mod.get_player(player_id, conn=conn, for_update=True)
+        players = await lock_damage_players(session, player_id, queries=queries_mod, conn=conn)
+        player = players.get(player_id)
         if player is None:
             raise ToolError(f"Unknown player: {player_id}")
         if player.get("race") != _DRAETHAR:
@@ -91,18 +93,21 @@ async def _inner_fire_locked(
         await resonance_mutations_mod.update_player_resonance(player_id, new_resonance, conn=conn)
         session.validate_acting_player(player_id)
         participant.hp_current = new_hp
-        gift_triggered = trigger_iron_resolve(session, participant, hp_before, player)
+        gift = await trigger_damage_gifts(
+            session, state, participant, hp_before, players=players, queries=queries_mod, conn=conn
+        )
+        final_hp = participant.hp_current
 
         sounds: list[str] = []
         rose_hollowed = False
-        if new_hp <= 0:
+        if final_hp <= 0:
             _, rose_hollowed, _ = _handle_hp_zero(
                 session,
                 state,
                 participant,
                 overkill=overkill,
                 was_fallen=was_fallen,
-                hp_status=combat_resolution.hp_threshold_status(new_hp, participant.hp_max),
+                hp_status=combat_resolution.hp_threshold_status(final_hp, participant.hp_max),
                 sounds=sounds,
             )
 
@@ -110,13 +115,13 @@ async def _inner_fire_locked(
         # HP is the monster's, not the player's, so neither players.data nor the caster's
         # concentration follows it down. Same suppression the attack path gets, same reason.
         if participant.type == "player":
-            await hp_mutations_mod.update_player_hp(player_id, new_hp, conn=conn)
+            await hp_mutations_mod.update_player_hp(player_id, final_hp, conn=conn)
 
         participant.conditions = condition_sources.clear_charm_from_damage(
             participant.conditions, player_id, fire_damage
         )
         facts = {
-            **({"gift_triggered": gift_triggered} if gift_triggered else {}),
+            **gift,
             "resonance_reduced": member.resonance.current - new_resonance,
             "fire_damage": fire_damage,
             "hp_remaining": participant.hp_current,
@@ -132,7 +137,7 @@ async def _inner_fire_locked(
             facts["concentration_broken"] = await concentration_break_mod.break_concentration_on_damage(
                 session,
                 fire_damage,
-                incapacitated=new_hp <= 0,
+                incapacitated=final_hp <= 0,
                 damaged_player_id=player_id,
                 combat_state=state,
                 conn=conn,
@@ -170,7 +175,10 @@ async def _inner_fire_locked(
         )
     with isolated_publish("Inner Fire sounds"):
         await _publish_sounds(session, sounds)
-    if gift_triggered:
+    if gift_owner := gift.get("gift_owner"):
+        with isolated_publish("Inner Fire patron abilities"):
+            await publish_patron_abilities(session.room, gift_owner["id"], session.event_bus)
+    if gift:
         with isolated_publish("Inner Fire combat UI"):
             await publish_game_event(
                 session.room, E.COMBAT_UI_UPDATE, build_combat_ui_update(state), event_bus=session.event_bus
