@@ -328,3 +328,20 @@ test("Mortaen's cleric and paladin healing clauses are active engine clauses", (
     },
   ]);
 });
+
+test.each([
+  ["thyra", "Verdant Healing", "Healing in natural terrain +1d4 extra HP", "thyra_verdant_healing"],
+  [
+    "nythera",
+    "Traveler's Blessing",
+    "Healing a creature in an unexplored location restores 1 additional HP.",
+    "nythera_travelers_blessing",
+  ],
+])("%s has an active engine clause for place-based cleric healing", (patron, name, effect, id) => {
+  const god = validateGods(catalog).find((god) => god.god_id === patron);
+  expect(god?.layer_4_synergy_matrix.cleric).toEqual({
+    type: "divine",
+    name,
+    clauses: [{ effect, status: "active", resolution: "engine", implementation_id: id }],
+  });
+});

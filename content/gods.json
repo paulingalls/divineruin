@@ -2015,8 +2015,9 @@
         "clauses": [
           {
             "effect": "Healing in natural terrain +1d4 extra HP",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "thyra_verdant_healing"
           }
         ]
       },
@@ -2630,8 +2631,9 @@
         "clauses": [
           {
             "effect": "Healing a creature in an unexplored location restores 1 additional HP.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "nythera_travelers_blessing"
           }
         ]
       },

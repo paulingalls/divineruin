@@ -26,5 +26,7 @@
   "mortaen_ashen_formula": "patron_synergy_combat:spell_attack_bonus",
   "mortaen_threshold_mercy": "spell_cast_effects:_finish_cast",
   "mortaen_threshold_healing": "patron_synergy_heal:bonus_components",
-  "mortaen_final_mercy": "patron_synergy_heal:bonus_components"
+  "mortaen_final_mercy": "patron_synergy_heal:bonus_components",
+  "thyra_verdant_healing": "patron_synergy_heal:for_cast",
+  "nythera_travelers_blessing": "patron_synergy_heal:for_cast"
 }
