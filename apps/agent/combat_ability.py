@@ -393,7 +393,13 @@ async def _resolve_ability_packet(
                 attacker,
                 recipients,
                 caster_row=player,
-                synergy=for_cast(player, terrain=result.terrain, first_stay=result.first_stay),
+                synergy=for_cast(
+                    player,
+                    terrain=result.terrain,
+                    first_stay=result.first_stay,
+                    facts=state.encounter_facts,
+                    round_number=state.round_number,
+                ),
                 packet=cast_packet,
                 conn=conn,
             )

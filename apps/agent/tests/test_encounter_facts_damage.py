@@ -25,7 +25,7 @@ from query_tools import query_info
 MORTAEN = "mortaen_last_vigil"
 ZHAEL = "zhael_threaded_blade"
 GOBLIN, OTHER = "goblin_one", "goblin_two"
-EMPTY = {"ally_downers": [], "attacked": [], "misses": {}, "once_spent": {}}
+EMPTY = {"ally_downers": [], "attacked": [], "death_save_success_round": {}, "misses": {}, "once_spent": {}}
 
 
 @contextmanager
@@ -216,7 +216,7 @@ async def test_blade_fate_hold(world: SimpleNamespace) -> None:
         assert saved.encounter_facts["once_spent"] == {ZHAEL: [f.hero]}
 
 
-@pytest.mark.parametrize("fact", list(EMPTY))
+@pytest.mark.parametrize("fact", ["ally_downers", "attacked", "misses", "once_spent"])
 async def test_fact_rolls_back(world: SimpleNamespace, fact: str) -> None:
     async with fight(world, "zhael") as f:
         if fact == "once_spent":
@@ -264,6 +264,12 @@ BAD_MAP = ([], {" ": []}, {1: []}, {"actor": {}}, {"actor": [None]}, {"actor": [
 MALFORMED = [None, 42, [], {"misses": {}, "once_spent": {}}, {**EMPTY, "extra": []}]
 MALFORMED += [{**EMPTY, field: bad} for field in ("ally_downers", "attacked") for bad in ({}, [3], [" "])]
 MALFORMED += [{**EMPTY, field: bad} for field in ("misses", "once_spent") for bad in BAD_MAP]
+
+MALFORMED += [{key: value for key, value in EMPTY.items() if key != "death_save_success_round"}]
+MALFORMED += [
+    {**EMPTY, "death_save_success_round": bad}
+    for bad in ([], {" ": 1}, {1: 1}, *({"actor": value} for value in (True, 1.0, None, 0, -1, "1")))
+]
 
 
 @pytest.mark.parametrize("bad", MALFORMED)

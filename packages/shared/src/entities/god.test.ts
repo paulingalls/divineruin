@@ -455,3 +455,20 @@ test("Zhael's Second Before is an active guardian engine clause", () => {
     ],
   });
 });
+
+test("Zhael's Appointed Mercy is an active cleric engine clause", () => {
+  const zhael = validateGods(catalog).find((god) => god.god_id === "zhael");
+  expect(zhael?.layer_4_synergy_matrix.cleric).toEqual({
+    type: "divine",
+    name: "Appointed Mercy",
+    clauses: [
+      {
+        effect:
+          "Healing an ally who succeeded on a death saving throw this round restores 1 additional HP.",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "zhael_appointed_mercy",
+      },
+    ],
+  });
+});

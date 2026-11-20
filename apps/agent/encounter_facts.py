@@ -1,4 +1,4 @@
-"""Encounter facts recorded when combat damage settles."""
+"""Persisted encounter facts used by combat synergies."""
 
 from __future__ import annotations
 
@@ -17,12 +17,13 @@ ZHAEL_THREADED_BLADE = "zhael_threaded_blade"
 class EncounterFacts(TypedDict):
     ally_downers: list[str]
     attacked: list[str]
+    death_save_success_round: dict[str, int]
     misses: dict[str, list[str]]
     once_spent: dict[str, list[str]]
 
 
 def empty() -> EncounterFacts:
-    return {"ally_downers": [], "attacked": [], "misses": {}, "once_spent": {}}
+    return {"ally_downers": [], "attacked": [], "death_save_success_round": {}, "misses": {}, "once_spent": {}}
 
 
 def _is_id(value: object) -> bool:
@@ -41,12 +42,24 @@ def _id_map(value: object, field: str) -> dict[str, list[str]]:
     return {key: _ids(ids, f"{field}.{key}") for key, ids in value.items()}
 
 
+def _death_save_rounds(value: object) -> dict[str, int]:
+    if not isinstance(value, dict):
+        raise ValueError("encounter_facts.death_save_success_round requires an object")
+    for participant_id, round_number in value.items():
+        if not _is_id(participant_id) or type(round_number) is not int or round_number < 1:
+            raise ValueError(
+                "encounter_facts.death_save_success_round requires nonblank IDs and positive integer rounds"
+            )
+    return dict(value)
+
+
 def validate(value: object) -> EncounterFacts:
     if not isinstance(value, dict) or value.keys() != EncounterFacts.__required_keys__:
-        raise ValueError("encounter_facts requires exactly ally_downers, attacked, misses, and once_spent")
+        raise ValueError(f"encounter_facts requires exactly {', '.join(sorted(EncounterFacts.__required_keys__))}")
     return {
         "ally_downers": _ids(value["ally_downers"], "ally_downers"),
         "attacked": _ids(value["attacked"], "attacked"),
+        "death_save_success_round": _death_save_rounds(value["death_save_success_round"]),
         "misses": _id_map(value["misses"], "misses"),
         "once_spent": _id_map(value["once_spent"], "once_spent"),
     }
