@@ -11,7 +11,9 @@ from sample_fixtures import published_payloads
 from voice_condition_fixtures import participant
 
 import event_types as E
+from conditions import apply_condition
 from exploration_agent import ExplorationAgent
+from patron_combat_edges import JUDGMENT, WORTHY_FOE
 from patron_favor import _EXALTED_PERCENT
 from terrain import TerrainType, is_natural
 from zhael_fate import FATE, FateOffer, Resumed
@@ -175,6 +177,20 @@ async def test_acting_participant_must_be_living_player(world, field, value):
             setattr(actor, field, value)
         await checkpoint(world)
         await refuse(world, call, "living acting player")
+
+
+async def test_wrath_reports_worthy_foe_payout(world):
+    follower = world.ids[1]
+    marked = fighter("marked", hp=5, conditions=apply_condition([], WORTHY_FOE, source=follower))
+    async with fight(world, marked, fighter("survivor")) as call:
+        await configure(world, "kaelen", "warrior", index=1, stamina={"current": 2, "max": 20})
+        with rolls():
+            result = await call("activate", id=GIFT)
+        assert (await row(world, 1))["stamina"] == {"current": 12, "max": 20}
+        assert result["judgment_rewards"] == [
+            {"ability_id": JUDGMENT, "player_id": follower, "target_id": marked.id, "stamina_restored": 10}
+        ]
+        assert "Kaelen's Judgment" in result["dm_cue"]
 
 
 async def test_last_foe_falls_then_wrap_ends_combat(world):

@@ -73,6 +73,7 @@ async def wildmothers_wrath(
     narration = [
         f"Narrate the land rising in {terrain.replace('_', ' ')}. {roll.notation} rolled {roll.total} {damage_type}."
     ]
+    previous_judgments = len(working.judgment_rewards)
     for foe in targets:
         receipt = await combat_damage.apply_attack_result(
             session, actor, action, foe, blow, foe.ac, combat_state=working, conn=conn, sink=sink, publish_roll=False
@@ -87,6 +88,9 @@ async def wildmothers_wrath(
     narration.extend(spared)
     if not any(not foe.is_ally and _living(foe) for foe in working.participants):
         narration.append("No foe is left standing.")
+    judgment_rewards = working.judgment_rewards[previous_judgments:]
+    if judgment_rewards:
+        narration.append("Narrate Kaelen's Judgment paying off and any Stamina restored to the marking follower.")
     return working, {
         "terrain": terrain,
         "damage_type": damage_type,
@@ -94,4 +98,5 @@ async def wildmothers_wrath(
         "targets": receipts,
         "spared": spared,
         "dm_cue": " ".join(narration),
+        **({"judgment_rewards": judgment_rewards} if judgment_rewards else {}),
     }
