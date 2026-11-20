@@ -290,3 +290,17 @@ test("the authored spell synergies activate five engine clauses", () => {
     }
   }
 });
+
+test("Orenthel's Natural healing synergies are active engine clauses", () => {
+  const orenthel = validateGods(catalog).find((god) => god.god_id === "orenthel");
+  for (const archetype of ["cleric", "paladin"] as const) {
+    const row = orenthel?.layer_4_synergy_matrix[archetype];
+    expect(row?.type).toBe("natural");
+    expect(row?.clauses).toHaveLength(1);
+    expect(row?.clauses[0]).toMatchObject({
+      status: "active",
+      resolution: "engine",
+      implementation_id: "orenthel_dawns_mercy",
+    });
+  }
+});

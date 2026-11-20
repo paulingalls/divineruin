@@ -96,7 +96,7 @@ async def resolve_combat(session, state, holder, decl, *, conn, sink: EventSink 
     remaining = await db_mutations_inventory.transact_inventory(holder.id, item_id, -1, conn=conn)
     packet = _receipt(holder.id, item_id, name, remaining)
     packet["healing_results"] = await combat_spell_heal.land(
-        profile, holder, [target], caster_row=holder_row, packet=packet, conn=conn
+        profile, holder, [target], caster_row=holder_row, synergy=None, packet=packet, conn=conn
     )
     inventory = await inventory_refresh.inventory_payload(holder.id, conn=conn, queries=queries)
     await sink.emit(session.room, E.INVENTORY_UPDATED, inventory, event_bus=session.event_bus)
@@ -127,7 +127,14 @@ async def consume_exploration(session: SessionData, item_id: str, target_id: str
             remaining = await db_mutations_inventory.transact_inventory(holder_id, item_id, -1, conn=conn)
             packet = _receipt(holder_id, item_id, name, remaining)
             packet["healing_results"] = await combat_spell_heal.land_exploration(
-                profile, holder, {target_id: target}, caster_id=holder_id, packet=packet, conn=conn, dice_mod=dice
+                profile,
+                holder,
+                {target_id: target},
+                caster_id=holder_id,
+                synergy=None,
+                packet=packet,
+                conn=conn,
+                dice_mod=dice,
             )
             inventory = await inventory_refresh.inventory_payload(holder_id, conn=conn)
 
