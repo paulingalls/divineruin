@@ -1,5 +1,7 @@
 """Trigger patron gifts on floored damage before resolving zero HP."""
 
+from typing import TYPE_CHECKING
+
 import db_queries
 from combat_participant import CombatParticipant
 from kaelen_gift import trigger_iron_resolve
@@ -7,6 +9,12 @@ from patron_ability_tools import blocking_reason, catalog, spent_state
 from patron_favor import get_patron_tier
 from patron_gift_tools import write_state
 from session_data import SessionData
+
+if TYPE_CHECKING:
+    from asyncpg import Connection
+
+    from check_resolution_attack import AttackResult
+    from combat_state import CombatState
 
 DEATH_WARD = "mortaen_death_ward"
 
@@ -24,7 +32,14 @@ def _drops_to_zero(target: CombatParticipant, hp_before: int, hp_after: int) -> 
     return target.type == "player" and hp_before > 0 and hp_after == 0
 
 
-async def trigger_death_ward(target: CombatParticipant, hp_before: int, *, player, queries, conn) -> dict:
+async def trigger_death_ward(
+    target: CombatParticipant,
+    hp_before: int,
+    *,
+    player: dict | None,
+    queries=db_queries,
+    conn: "Connection | None",
+) -> dict:
     if not _drops_to_zero(target, hp_before, target.hp_current):
         return {}
     if player is None:
@@ -42,11 +57,14 @@ async def trigger_death_ward(target: CombatParticipant, hp_before: int, *, playe
     }
 
 
-async def provisional_ward_verdict(state, target_id, result, queries):
+async def provisional_ward_verdict(
+    state: "CombatState", target_id: str, result: "AttackResult", queries=db_queries
+) -> "AttackResult":
     from combat_damage_affinity import with_landed_damage
 
     if result.context == "killing_blow":
         target = state.get_participant(target_id)
+        assert target is not None
         if _drops_to_zero(target, target.hp_current, result.target_hp_remaining):
             player = await queries.get_player(target.id)
             if not isinstance(player, dict):
