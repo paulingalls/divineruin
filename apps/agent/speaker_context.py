@@ -5,12 +5,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+import temp_hp
 from patron_passives import effective_hp
 from sanitize import sanitize_for_prompt
 from warm_prompts import quest_objective
 
 if TYPE_CHECKING:
     from session_data import SessionData
+
+
+def _format_hp(current: int, maximum: int, temporary: int) -> str:
+    hp = f"{current}/{maximum}"
+    return f"{hp} +{temporary} temp" if temporary else hp
 
 
 @dataclass(frozen=True)
@@ -49,7 +55,7 @@ def build_speaker_context(
     return SpeakerSummary(
         speaker_id,
         name,
-        f"{hp['current']}/{hp['max']}",
+        _format_hp(hp["current"], hp["max"], temp_hp.from_player(player)),
         sanitize_for_prompt(quest, max_len=160),
         sanitize_for_prompt(activity, max_len=80),
     )
@@ -63,5 +69,7 @@ def speaker_line(sd: SessionData, *, combat: bool = False) -> str:
     if combat and sd.combat_state is not None:
         participant = sd.combat_state.get_participant(speaker_id)
         if participant is not None:
-            return summary.render(hp=f"{participant.hp_current}/{participant.hp_max}")
+            return summary.render(
+                hp=_format_hp(participant.hp_current, participant.hp_max, temp_hp.player_pool(participant))
+            )
     return summary.render()
