@@ -189,5 +189,5 @@ async def activate_shadow_veil(context):
             raise ToolError("Already hidden. Shadow Veil remains available.")
         session.validate_acting_player(player_id)
         await write_state(player_id, {"spent": True}, gift_id=SYRATH_SHADOW_VEIL, conn=conn)
-        packet = await concealment.transition(player, True, lifetime=True, conn=conn)
+        packet = await concealment.transition(player_id, player, True, lifetime=True, conn=conn)
     return json.dumps({"concealment": packet, "expires_round": state.round_number})

@@ -12,7 +12,7 @@ about that read — needs a safe default rather than its own boilerplate.
 
 Import them into the conftest (or test module) of each such suite so the defaults are defined once,
 not copied. Tests that DO care override with their own monkeypatch or DI (both run after / win).
-Real-PG tests (those requesting dev_db_pool) are skipped so they exercise the real round-trip.
+Real-PG tests (those requesting dev_db_pool or reset_db_pool) are skipped so they exercise the real round-trip.
 """
 
 from unittest.mock import AsyncMock, MagicMock
@@ -56,7 +56,7 @@ def combat_end_queries(**overrides) -> MagicMock:
 
 @pytest.fixture(autouse=True)
 def default_condition_persistence(request, monkeypatch):
-    if "dev_db_pool" in request.fixturenames:
+    if {"dev_db_pool", "reset_db_pool"}.intersection(request.fixturenames):
         return
     monkeypatch.setattr(db_mutations_conditions, "read_player_conditions", AsyncMock(return_value=[]))
     monkeypatch.setattr(db_mutations_conditions, "save_player_conditions", AsyncMock())
@@ -65,7 +65,7 @@ def default_condition_persistence(request, monkeypatch):
 @pytest.fixture(autouse=True)
 def default_player_row(request, monkeypatch):
     """A plausible level-1 row for any player_id, so the combat-end XP grant has something to read."""
-    if "dev_db_pool" in request.fixturenames:
+    if {"dev_db_pool", "reset_db_pool"}.intersection(request.fixturenames):
         return
     monkeypatch.setattr(
         db_queries,

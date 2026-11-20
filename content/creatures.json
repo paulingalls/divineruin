@@ -3350,7 +3350,7 @@
     "tier": 4,
     "description": "A builder of impossible structures that weaponizes its domain.",
     "level": 20,
-    "hp": 300,
+    "hp": 154,
     "ac": 19,
     "speed": 40,
     "attributes": {
@@ -3373,10 +3373,10 @@
         "type": "melee",
         "reach": 15,
         "to_hit": 11,
-        "damage": "3d10+5",
+        "damage": "2d10+5",
         "damage_type": "bludgeoning",
-        "bonus_damage": {"dice": "2d6", "damage_type": "force"},
-        "special": "Plus 2d6 force. Push target 15 ft; collision with a wall deals 2d6 bludgeoning.",
+        "bonus_damage": {"dice": "1d6", "damage_type": "force"},
+        "special": "Plus 1d6 force. Push target 15 ft; collision with a wall deals 2d6 bludgeoning.",
         "audio": "hlw_construct_slam"
       },
       {
@@ -3384,7 +3384,7 @@
         "type": "ranged",
         "reach": 120,
         "to_hit": 10,
-        "damage": "2d8+6",
+        "damage": "1d8+6",
         "damage_type": "force",
         "special": "A structural fragment hurls itself. Auto-hit against targets touching the Architect's structures. Legendary action, cost 2 of 3/round.",
         "audio": "hlw_geometry_strike"
@@ -3431,7 +3431,7 @@
       },
       {
         "name": "Entomb",
-        "description": "Recharge 5-6. One creature within 60 ft STR save DC 20 or Restrained in a sealed chamber, taking 3d8 bludgeoning per round. Escape STR DC 20 or 30+ damage to one AC 19, 30 HP wall.",
+        "description": "Recharge 6. One creature within 60 ft STR save DC 20 or Restrained in a sealed chamber, taking 2d8 bludgeoning per round. Escape STR DC 12 or 30+ damage to one AC 19, 30 HP wall.",
         "narration_cue": "",
         "kind": "attack",
         "type": "ranged",
@@ -3441,17 +3441,17 @@
         "save": "STR",
         "dc": 20,
         "applies_condition": "restrained",
-        "recharge": { "kind": "roll", "die": 6, "threshold": 5 },
+        "recharge": { "kind": "roll", "die": 6, "threshold": 6 },
         "audio": null
       },
       {
         "name": "Cathedral",
-        "description": "1/encounter. Stone grinds as the Cathedral rises within 60 ft. Every other creature inside makes a DC 20 DEX save or takes 4d10 force damage. The Cathedral grants the Architect +2 AC and +2 to saves until it leaves or dies, then collapses.",
+        "description": "1/encounter. Stone grinds as the Cathedral rises within 60 ft. Every other creature inside makes a DC 20 DEX save or takes 2d10 force damage. The Cathedral grants the Architect +2 AC and +2 to saves until it leaves or dies, then collapses.",
         "narration_cue": "",
         "kind": "attack",
         "type": "area",
         "reach": 60,
-        "damage": "4d10",
+        "damage": "2d10",
         "damage_type": "force",
         "save": "DEX",
         "dc": 20,
@@ -3505,7 +3505,7 @@
     "reactions": [
       {
         "name": "Reactive Architecture",
-        "description": "On ranged attack or spell, raise a wall (AC 19, 30 HP) as reaction; wall takes hit.",
+        "description": "Once per round, raise a wall (AC 19, 30 HP) in response to a ranged attack or spell. The wall intercepts the attack and crumbles at round end.",
         "narration_cue": "",
         "recharge": null,
         "audio": null

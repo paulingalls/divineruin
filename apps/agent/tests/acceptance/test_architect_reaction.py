@@ -17,6 +17,7 @@ from voice_condition_fixtures import participant
 
 import character_spells
 import combat_spatial
+import combat_structures
 import db_queries
 import spells
 from combat_structures import blocks_path
@@ -108,7 +109,7 @@ async def test_first_arrow_strikes_wall(archers, case):
     before = await archers.persist()
     await declare(archers, bow(actor, owner))
     with forced_rolls(1 if case == "miss" else 15) as (rolled, _):
-        [result] = [p for p in await archers.drain() if p["actor_id"] == actor]
+        [result] = [p for p in (await archers.command("resolve_phase", {}))["packets"] if p["actor_id"] == actor]
     after = await archers.reload()
     wall = wall_raised(before, after, actor)
     assert after.get_participant(owner).hp_current == before.get_participant(owner).hp_current
@@ -127,8 +128,15 @@ async def test_first_arrow_strikes_wall(archers, case):
 
 async def test_later_shots_and_next_round(archers):
     first, crossing, clear = archers.players
-    before = await archers.reload()
-    owner = before.architect_encounter["owner_id"]
+    state = await archers.reload()
+    encounter = state.architect_encounter
+    owner = encounter["owner_id"]
+    prior_wall = f"{owner}_reaction_wall_1"
+    combat_structures.add_wall(state, prior_wall, "Architect's reaction wall", pos(0, 50), pos(10, 50))
+    encounter["structure_ids"].append(prior_wall)
+    encounter["reaction_round"] = 1
+    state.round_number = 2
+    before = await archers.persist()
     await declare(archers, *(bow(actor, owner) for actor in archers.players))
     with forced_rolls() as (rolled, _):
         results = {p["actor_id"]: p for p in await archers.drain()}
@@ -147,6 +155,10 @@ async def test_later_shots_and_next_round(archers):
     next_wall = wall_raised(after, reloaded, clear)
     assert next_wall.id != wall.id and results[clear]["target_id"] == next_wall.id
     assert reloaded.get_participant(owner).hp_current == after.get_participant(owner).hp_current
+    for wrapped, expired in ((after, participant(after, prior_wall)), (after, wall), (reloaded, next_wall)):
+        assert expired.id not in wrapped.spatial["structures"]
+        assert expired.hp_current == 0 and expired.is_dead and expired.is_fallen
+    assert set(before.spatial["structures"]) - {prior_wall} <= reloaded.spatial["structures"].keys()
 
 
 def bow(actor, target):
@@ -217,7 +229,7 @@ async def test_direct_spell_attack_strikes_wall(archers, spell_id):
     owner = before.architect_encounter["owner_id"]
     await declare(archers, cast(actor, spell_id, owner))
     with forced_rolls(17) as (rolled, _):
-        [result] = [p for p in await archers.drain() if p["actor_id"] == actor]
+        [result] = [p for p in (await archers.command("resolve_phase", {}))["packets"] if p["actor_id"] == actor]
     after = await archers.reload()
     wall = wall_raised(before, after, actor)
     [damage] = result["cast"]["damage_results"]
@@ -383,7 +395,7 @@ async def test_held_wall_strike_resumes_once(archers, case, monkeypatch):
             assert_cost(pools, await caster_pools(actor), spell)
         followup = await archers.command("resolve_phase", {})
         assert not any("reactive_architecture" in p for p in followup["packets"])
-        assert (await archers.reload()).get_participant(wall.id).hp_current == after.get_participant(wall.id).hp_current
+        assert rolled.call_count == 1 and damage_dice.call_count == int(not miss)
 
 
 async def test_destroyed_architect_cannot_intercept_a_later_cast(archers):
@@ -413,7 +425,7 @@ async def test_extra_attack_can_reach_architect_after_wall_collapses(archers):
     participant(state, actor).enhancers.append("extra_attack")
     before = await archers.persist()
     await declare(archers, bow(actor, owner))
-    with forced_rolls(damage=40):
+    with forced_rolls(face=19, damage=40):
         [result] = [packet for packet in await archers.drain() if packet["actor_id"] == actor]
     after = await archers.reload()
     wall = wall_raised(before, after, actor)

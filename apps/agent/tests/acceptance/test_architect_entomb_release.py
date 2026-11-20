@@ -33,7 +33,7 @@ async def cleared(fight, victim, chamber):
 
 async def test_entomb_escape_uses_strength_after_reload(fight):
     owner, victim, chamber = await seal(fight)
-    for strength, face, total, expected in ((8, 19, 18, "failed"), (20, 15, 20, "escaped")):
+    for strength, face, total, expected in ((8, 12, 11, "failed"), (20, 7, 12, "escaped")):
         state = await fight.reload()
         state.get_participant(victim).attributes.update(strength=strength, dexterity=20)
         await fight.persist()
@@ -44,7 +44,7 @@ async def test_entomb_escape_uses_strength_after_reload(fight):
             patch("combat_turn_start.dice_roll", return_value=SimpleNamespace(total=3)),
         ):
             result = next(p for p in await fight.drain() if p["actor_id"] == victim)
-        assert (result["escape_total"], result["escape_dc"], result["escape"]) == (total, 20, expected)
+        assert (result["escape_total"], result["escape_dc"], result["escape"]) == (total, 12, expected)
         if expected == "failed":
             assert (await fight.reload()).spatial["chambers"] == {chamber: {"target_id": victim}}
     await cleared(fight, victim, chamber)

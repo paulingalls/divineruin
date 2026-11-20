@@ -84,7 +84,7 @@ async def test_warrior_action_is_complete_before_a_reloaded_hostile_blow(
     with patch("check_resolution.dice_roll", return_value=_d20(1)):
         packets = await warriors.drain()
     assert not any(packet.get("actor_id") == actor for packet in packets)
-    assert await db_queries.get_player(actor) == player
+    assert await db_queries.get_player(actor) == {**player, "temp_hp": 0}
     reloaded = await warriors.reload()
     reloaded_actor = reloaded.get_participant(actor)
     reloaded_ally = reloaded.get_participant(ally)
@@ -202,7 +202,7 @@ async def test_cunning_hide_reloads_after_the_attack(rogue: MawlingHarness) -> N
     with patch("check_resolution.dice_roll", return_value=_d20(1)):
         packets = await rogue.drain()
     assert not any(packet.get("actor_id") == actor for packet in packets)
-    assert await db_queries.get_player(actor) == after
+    assert await db_queries.get_player(actor) == {**after, "temp_hp": 0}
     state = await rogue.reload()
     target = state.get_participant(foe)
     assert target is not None and target.hp_current == 91

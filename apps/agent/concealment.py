@@ -26,19 +26,19 @@ def gift_lifetime(player) -> bool:
     return marker
 
 
-async def transition(player, concealed: bool, *, ended_by=None, lifetime: bool = False, conn):
+async def transition(player_id: str, player: dict, concealed: bool, *, ended_by=None, lifetime: bool = False, conn):
     before = is_concealed(player)
     if gift_lifetime(player):
         await conn.execute(
             """UPDATE players SET data=jsonb_set(data, '{flags}',
             COALESCE(data->'flags','{}'::jsonb) - 'shadow_veil')
             WHERE player_id=$1""",
-            player["player_id"],
+            player_id,
         )
     if lifetime:
-        await db_mutations.set_player_flag(player["player_id"], "shadow_veil", True, conn=conn)
-    await db_mutations.set_player_flag(player["player_id"], "concealed", concealed, conn=conn)
-    packet = {"player_id": player["player_id"], "before": before, "concealed": concealed}
+        await db_mutations.set_player_flag(player_id, "shadow_veil", True, conn=conn)
+    await db_mutations.set_player_flag(player_id, "concealed", concealed, conn=conn)
+    packet = {"player_id": player_id, "before": before, "concealed": concealed}
     if ended_by:
         packet["ended_by"] = ended_by
     return packet
@@ -51,7 +51,7 @@ async def reveal_attacker(player_id, *, conn, queries):
     if player is None:
         raise ToolError(f"Player '{player_id}' not found")
     if is_concealed(player):
-        return await transition(player, False, ended_by="attack", conn=conn)
+        return await transition(player_id, player, False, ended_by="attack", conn=conn)
     return None
 
 
@@ -60,20 +60,20 @@ async def expire_gift(state, *, conn, queries):
     players = await queries.get_players_for_update(ids, conn=conn)
     # A seat with no player row holds no lifetime; skipping it keeps the party's wrap and XP
     # (test_combat_end_xp: one absent row cannot cost the party its end of combat).
-    for player in players.values():
+    for player_id, player in players.items():
         if gift_lifetime(player):
-            await transition(player, False, conn=conn)
+            await transition(player_id, player, False, conn=conn)
 
 
-async def expire_orphaned_gift(player, *, conn=None):
+async def expire_orphaned_gift(player_id: str, player: dict, *, conn=None):
     if not gift_lifetime(player):
         return
     source = conn or await db.get_pool()
     if isinstance(source, asyncpg.Pool):
         async with source.acquire() as connection:
-            await _expire_orphaned_gift(player["player_id"], connection)
+            await _expire_orphaned_gift(player_id, connection)
     else:
-        await _expire_orphaned_gift(player["player_id"], source)
+        await _expire_orphaned_gift(player_id, source)
 
 
 async def _expire_orphaned_gift(player_id, conn):
@@ -82,4 +82,4 @@ async def _expire_orphaned_gift(player_id, conn):
         if player is None:
             raise ValueError(f"Missing player: {player_id}")
         if gift_lifetime(player):
-            await transition(player, False, conn=conn)
+            await transition(player_id, player, False, conn=conn)

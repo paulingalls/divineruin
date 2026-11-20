@@ -69,7 +69,9 @@ async def prepare_cast(fight, spell_id, *, hp, class_="mage", caster_distance=30
     state = await fight.reload()
     owner = state.architect_encounter["owner_id"]
     state.architect_encounter["reaction_round"] = state.round_number
-    state.get_participant(owner).hp_current = hp
+    target = state.get_participant(owner)
+    assert 0 < hp <= target.hp_max
+    target.hp_current = hp
     state.spatial["positions"][caster] = pos(caster_distance)
     await fight.persist()
     await fight.command("declare_phase", {"declarations": [spell(caster, spell_id, owner)]})
@@ -85,9 +87,9 @@ def spell_damage(packets, caster, recipient):
 @pytest.mark.parametrize(
     "spell_id,class_,hp,rolls,damage",
     [
-        ("arcane_fireball", "mage", 100, [25], 12),
-        ("divine_flame_strike", "cleric", 100, [9, 9], 12),
-        ("divine_sacred_flame", "cleric", 50, [9], 0),
+        ("arcane_fireball", "mage", 40, [25], 12),
+        ("divine_flame_strike", "cleric", 40, [9, 9], 12),
+        ("divine_sacred_flame", "cleric", 30, [9], 0),
     ],
 )
 async def test_spell_conversion_uses_ordinary_success_damage(fight, spell_id, class_, hp, rolls, damage):
@@ -114,7 +116,7 @@ async def test_fate_selects_damage_save_before_spending(fight, keep_original):
     await equip_charge(fight)
     assert (await charge(fight, owner))["success_override"] == "Legendary Resistance"
     await favor(fight)
-    await prepare_cast(fight, "arcane_fireball", hp=100)
+    await prepare_cast(fight, "arcane_fireball", hp=40)
     with (
         patch("check_resolution.dice_roll", side_effect=[_d20(1), _d20(20)]) as d20,
         patch("dice.roll", return_value=_damage_die(25)) as damage,
@@ -124,7 +126,7 @@ async def test_fate_selects_damage_save_before_spending(fight, keep_original):
         assert (offer["roller_id"], offer["roll_kind"], offer["die"]) == (owner, "save", 1)
         saved = await fight.reload()
         target = saved.get_participant(owner)
-        assert target.hp_current == 100 and target.action_ledger["legendary resistance"]["remaining"] == 2
+        assert target.hp_current == 40 and target.action_ledger["legendary resistance"]["remaining"] == 2
         damage.assert_not_called()
         if keep_original:
             await fresh_session(fight, saved)
@@ -142,7 +144,7 @@ async def test_fate_selects_damage_save_before_spending(fight, keep_original):
     assert result["save"]["success"] and result["damage"] == 12
     assert result["save"].get("success_override") == ("Legendary Resistance" if keep_original else None)
     target = (await fight.reload()).get_participant(owner)
-    assert target.hp_current == 88
+    assert target.hp_current == 28
     assert target.action_ledger["legendary resistance"]["remaining"] == (1 if keep_original else 2)
 
 
@@ -153,7 +155,7 @@ async def test_later_recipient_hold_preserves_first_recipient_save_and_spend(fig
         caster,
         '{"divine_favor":{"patron":"zhael","level":40,"max":100},"patron_gifts":{"zhael_fates_thread":{"spent":true}}}',
     )
-    owner = await prepare_cast(fight, "arcane_fireball", hp=100, caster_distance=5)
+    owner = await prepare_cast(fight, "arcane_fireball", hp=40, caster_distance=5)
     with (
         patch("check_resolution.dice_roll", side_effect=[_d20(1), _d20(1)]) as d20,
         patch("dice.roll", side_effect=[_damage_die(25), _damage_die(9)]) as damage,
@@ -162,7 +164,7 @@ async def test_later_recipient_hold_preserves_first_recipient_save_and_spend(fig
         assert held["fate_offer"]["roller_id"] == caster, held
         saved = await fight.reload()
         architect = saved.get_participant(owner)
-        assert architect.hp_current == 88 and architect.action_ledger["legendary resistance"]["remaining"] == 2
+        assert architect.hp_current == 28 and architect.action_ledger["legendary resistance"]["remaining"] == 2
         receipt = saved.ally_continuation["steps"]["spell_damage"]["landed"][owner]
         assert receipt["save"]["success_override"] == "Legendary Resistance"
         player = await db_queries.get_player(caster)
@@ -176,4 +178,4 @@ async def test_later_recipient_hold_preserves_first_recipient_save_and_spend(fig
     second = spell_damage(packets, caster, caster)
     assert second["damage"] == 9 and not second["save"]["success"]
     after = (await fight.reload()).get_participant(owner)
-    assert after.hp_current == 88 and after.action_ledger["legendary resistance"]["remaining"] == 2
+    assert after.hp_current == 28 and after.action_ledger["legendary resistance"]["remaining"] == 2
