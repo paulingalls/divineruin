@@ -289,11 +289,11 @@ async def _end_combat_db(
             await patron_deeds.record_deed(player_id, deed, conn=conn)
             if deed == "won_combat" and not session.ally_present_for(player_id):
                 await patron_deeds.record_deed(player_id, "won_alone", conn=conn)
-    death_context = await settle_lives(
+    death_context, settled_hp = await settle_lives(
         cs, outcome, primary_id, combat_cleared, queries, mutations, conn, primary_regenerated=primary_id in regenerated
     )
 
-    await combat_regeneration.publish_settled_hp(session, cs, sink)
+    await combat_regeneration.publish_settled_hp(session, cs, sink, settled_hp)
 
     # Faction reputation from the combat OUTCOME (story-002 inc 5/6): killing an encounter
     # faction's members (victory) lowers standing; talking them down (deescalated) raises it.

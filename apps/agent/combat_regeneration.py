@@ -52,13 +52,16 @@ async def settle(state: CombatState, *, conn, mutations) -> set[str]:
     return regenerated
 
 
-async def publish_settled_hp(session: SessionData, state: CombatState, sink: EventSink) -> None:
+async def publish_settled_hp(
+    session: SessionData, state: CombatState, sink: EventSink, settled_hp: dict[str, tuple[int, int]]
+) -> None:
     for target in state.participants:
         if target.type == "player":
+            current, maximum = settled_hp.get(target.id, (target.hp_current, target.hp_max))
             await sink.emit(
                 session.room,
                 E.HP_CHANGED,
-                {"current": target.hp_current, "max": target.hp_max, "temp_hp": target.temp_hp},
+                {"current": current, "max": maximum, "temp_hp": target.temp_hp},
                 event_bus=session.event_bus,
                 destination_identities=[target.id],
             )
