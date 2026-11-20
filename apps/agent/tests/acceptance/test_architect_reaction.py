@@ -404,3 +404,25 @@ async def test_destroyed_architect_cannot_intercept_a_later_cast(archers):
     assert after.architect_encounter == {**before.architect_encounter, "phase": "destroyed"}
     [result] = [packet for packet in resolved["packets"] if packet["actor_id"] == caster]
     assert "reactive_architecture" not in result and not result["cast"]["damage_result"]["resolved"]
+
+
+async def test_extra_attack_can_reach_architect_after_wall_collapses(archers):
+    actor = archers.players[0]
+    state = await archers.reload()
+    owner = state.architect_encounter["owner_id"]
+    participant(state, actor).enhancers.append("extra_attack")
+    before = await archers.persist()
+    await declare(archers, bow(actor, owner))
+    with forced_rolls(damage=40):
+        [result] = [packet for packet in await archers.drain() if packet["actor_id"] == actor]
+    after = await archers.reload()
+    wall = wall_raised(before, after, actor)
+    first, second = result["attacks"]
+    assert wall.is_dead and first["target_id"] == wall.id
+    assert second["target"] == participant(before, owner).name and second["target_ac"] == 25
+    assert participant(before, owner).hp_current - participant(after, owner).hp_current == second["damage"] > 0
+    assert (result["target"], result["target_hp_status"], result["damage"]) == (
+        first["target"],
+        first["target_hp_status"],
+        first["damage"],
+    )

@@ -298,13 +298,12 @@ async def continue_attack(
     state.first_attack_resolved = True
 
     summary = dict(attack_summaries[0])
+    last = None
     if len(attack_summaries) > 1:
-        # Report the expansion: per-attack detail under "attacks", flat keys aggregated.
-        # Damage/hit/critical/concentration accumulate across swings; the target-state keys
-        # (hp_status, fallen) must reflect the FINAL swing — the kill on the second hit, not
-        # the goblin-still-up snapshot from the first — or the DM narrates a fallen foe alive.
-        last = next(s for s in reversed(attack_summaries) if "target_hp_status" in s)
         summary["attacks"] = attack_summaries
+        last = next(s for s in reversed(attack_summaries) if "target_hp_status" in s)
+    # A follow-up after a wall collapses has a different recipient and keeps its own damage and HP status.
+    if last is not None and last["target"] == summary["target"]:
         summary.pop("unholy_fortitude", None)
         for component in ("bonus_damage", "rider_damage", "synergy_damage"):
             summary[component] = sum(s.get(component, 0) for s in attack_summaries)
