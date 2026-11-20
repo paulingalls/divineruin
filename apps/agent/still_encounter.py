@@ -7,6 +7,7 @@ import combat_hollow_death
 import combat_spatial
 import condition_voice_rules
 import conditions
+import encounter_facts
 import still_charm
 from action_contracts_still import STILL_ZONE_KINDS
 from combat_participant import CombatParticipant
@@ -345,14 +346,15 @@ async def search(session, state, actor, declaration, *, queries, conn, progress=
     }
 
 
-async def after_damage(session, state, target, *, conn, queries, was_fallen):
+async def after_damage(session, state, target, *, conn, queries, was_fallen) -> list[dict]:
     if state is None or state.still_encounter is None:
-        return
+        return []
     record = state.still_encounter
     if target.id not in record["anchor_ids"]:
-        return
+        return []
     owner = state.get_participant(record["owner_id"])
     before = owner.hp_current
+    counted_before = encounter_facts.counted_death(owner)
     anchors = [state.get_participant(key) for key in record["anchor_ids"]]
     owner.hp_current = sum(anchor.hp_current for anchor in anchors)
     if target.is_fallen and not was_fallen:
@@ -369,3 +371,5 @@ async def after_damage(session, state, target, *, conn, queries, was_fallen):
         await still_charm.end_instance(state, owner.id, session.party.member_ids, queries=queries, conn=conn)
         if combat_hollow_death.new_destruction(owner, resolved_before, was_fallen, before):
             await combat_hollow_death.accrue_death(session, state, owner, conn=conn, queries=queries)
+        return await encounter_facts.renew_on_death(state, owner, counted_before, queries=queries, conn=conn)
+    return []

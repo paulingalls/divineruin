@@ -6,6 +6,7 @@ from test_encounter_facts_damage import SCENARIOS as encounter_facts
 from test_encounter_facts_defense import SCENARIOS as defense
 from test_encounter_facts_heal import SCENARIOS as appointed_mercy
 from test_encounter_facts_outnumbered import SCENARIOS as outnumbered
+from test_encounter_facts_renewal import SCENARIOS as renewal
 from test_heal_synergies import SCENARIOS as dawns_mercy
 from test_heal_synergies_place import SCENARIOS as place_healing
 from test_patron_engine_aelora import SCENARIOS as aelora
@@ -36,6 +37,7 @@ ENGINE_SCENARIOS = {
     **encounter_facts,
     **defense,
     **appointed_mercy,
+    **renewal,
     **outnumbered,
     **judgment,
     **kaelen,
