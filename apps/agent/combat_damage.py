@@ -60,7 +60,13 @@ def _handle_hp_zero(
     outcome: dict | None = None,
     fortitude_save=None,
 ) -> tuple[str, bool, list[str]]:
-    """Resolve a zero-HP transition and return HP status, Hollowed rise, and released grapples."""
+    """Resolve a target dropped to 0 HP — Hollowed rise, instant death, fall, or companion KO.
+
+    The ONE door for every zero-HP transition, whether the damage came from a blow or from the
+    caster's own fire; a caller that drives HP to 0 without knocking leaves the flags behind
+    (bug 16c5f8a0). The census that keeps it the only door is
+    ``tests/combat/test_handle_hp_zero.py::TestTheDoorIsTheOnlyDoor``.
+    Returns the HP status, whether a Hollowed rose, and ids released from this target's grapples."""
     if (
         not was_fallen
         and target.unholy_fortitude is not None

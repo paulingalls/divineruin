@@ -6,6 +6,7 @@ from livekit.agents.llm import ToolError
 
 import architect_reaction
 import check_resolution_attack
+import combat_attack_summary
 import combat_enhancers
 import combat_melee_approach
 import combat_resolution
@@ -34,7 +35,15 @@ async def attack_sequence(
     movement_budget=None,
     **deps,
 ):
+    # Enhancers EXPAND a single declaration: extra_attack/shield_bash turn one ATTACK into a
+    # short attack sequence (still ONE declaration, never a second), narrated riders attach
+    # below. attack_sequence is [action] when the actor has no mechanical enhancer (AC3: no
+    # phantom expansion → the summary stays the flat single-attack shape).
     actions = combat_enhancers.attack_sequence(attacker.enhancers, action)
+    # Encounter-context dramatic signals (M4.5, story-004) the per-attack resolver can't see:
+    # the count of foes still standing as this declaration is resolved (==1 => last enemy), and
+    # whether any attack has resolved this whole combat yet (the opening strike). Computed once
+    # before the swing loop so all swings of an expanded sequence share one verdict.
     enemies_remaining = sum(1 for p in state.participants if p.type == "enemy" and not p.is_fallen)
     is_first_attack = not state.first_attack_resolved
     if attack_cursor is None:
@@ -297,38 +306,7 @@ async def continue_attack(
     # later attack no longer earns the dramatic "first_attack" promotion (story-004).
     state.first_attack_resolved = True
 
-    summary = dict(attack_summaries[0])
-    last = None
-    if len(attack_summaries) > 1:
-        summary["attacks"] = attack_summaries
-        last = next(s for s in reversed(attack_summaries) if "target_hp_status" in s)
-    # A follow-up after a wall collapses has a different recipient and keeps its own damage and HP status.
-    if last is not None and last["target"] == summary["target"]:
-        summary.pop("unholy_fortitude", None)
-        for component in ("bonus_damage", "rider_damage", "synergy_damage"):
-            summary[component] = sum(s.get(component, 0) for s in attack_summaries)
-            type_key = f"{component}_type"
-            summary[type_key] = next((s[type_key] for s in attack_summaries if s.get(type_key) is not None), None)
-        if movement:
-            summary.update(
-                moved_ft=sum(s["moved_ft"] for s in attack_summaries),
-                closed_distance=any(s["closed_distance"] for s in attack_summaries),
-                destination=attack_summaries[-1]["destination"],
-            )
-        summary["damage"] = sum(s.get("damage", 0) for s in attack_summaries)
-        summary["hit"] = any(s.get("hit", False) for s in attack_summaries)
-        summary["critical"] = any(s.get("critical", False) for s in attack_summaries)
-        summary["target_hp_status"] = last["target_hp_status"]
-        summary["target_fallen"] = last["target_fallen"]
-        summary["concentration_broken"] = next(
-            (s["concentration_broken"] for s in attack_summaries if s.get("concentration_broken")), None
-        )
-        # Any swing being dramatic makes the declaration dramatic. Each swing rolls its
-        # own d20 and runs its own killing-blow check, so a later swing can be dramatic
-        # while the first is routine — take the FIRST dramatic swing's context so the
-        # aggregated dramatic flag and its reason label never disagree (story-004).
-        summary["dramatic"] = any(s.get("dramatic", False) for s in attack_summaries)
-        summary["context"] = next((s["context"] for s in attack_summaries if s.get("dramatic")), "")
+    summary = combat_attack_summary.aggregate(attack_summaries, moved=bool(movement))
     if concealment_packet is not None:
         summary["concealment"] = concealment_packet
     if effects := attack_cursor.pop("turn_start_effects", None):
