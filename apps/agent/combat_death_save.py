@@ -169,6 +169,8 @@ async def _request_death_save_locked(session, cs, faller_id, result, mutations, 
     assert working is not None  # copied from the state we just resolved against
     working.death_save_successes = result.total_successes
     working.death_save_failures = result.total_failures
+    if result.success:
+        state.encounter_facts["death_save_success_round"][faller_id] = state.round_number
 
     sounds: list[str] = []
     revive_player_id: str | None = None

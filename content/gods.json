@@ -3359,8 +3359,9 @@
         "clauses": [
           {
             "effect": "Healing an ally who succeeded on a death saving throw this round restores 1 additional HP.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_appointed_mercy"
           }
         ]
       },
