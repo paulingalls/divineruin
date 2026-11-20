@@ -199,7 +199,7 @@ async def test_calling_and_name_finalize(
         payload = run.packets(E.SESSION_INIT)[0]
         # session_init names its recipient: publish_game_event targets the packet by character.player_id.
         projected = effective_hp(player)
-        assert payload["character"] == {**player, "player_id": run.player_id, "hp": projected}
+        assert payload["character"] == {**player, "player_id": run.player_id, "hp": projected, "temp_hp": 0}
         assert projected["current"] == projected["max"] == player["hp"]["max"] + (5 if patron == "kaelen" else 0)
         assert payload["companion"]["id"] == companion
         pool = await db.get_pool()
