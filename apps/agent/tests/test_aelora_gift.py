@@ -296,14 +296,16 @@ async def test_guest_deescalation_uses_guest_presence_when_host_drops():
         state = _make_group_state()
         state.participants[0].id = "guest"
         place_actors(state)
+        guest = {**player("aelora"), "focus": {"current": 20}}
         return await _resolve_deescalation_packet(
             session,
             state.participants[0],
             _decl(),
             state=state,
             conn=None,
-            player={**player("aelora"), "focus": {"current": 20}},
+            player=guest,
             persistence=persistence,
+            queries=MagicMock(get_player=AsyncMock(return_value=guest)),
             rng=ToolRng(10),
         )
 

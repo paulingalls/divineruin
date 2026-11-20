@@ -17,17 +17,18 @@ def mark_radiant(target, action, result):
     if target.regeneration is None or result.damage <= 0 or not getattr(result, "hit", True):
         return
     bonus, rider = getattr(result, "bonus_damage", 0), getattr(result, "rider_damage", 0)
+    synergy = getattr(result, "synergy_damage", 0)
     components = action.get("damage_components")
     radiant = (
         any(c["damage_type"] == "radiant" and c["damage"] > 0 for c in components)
         if components is not None
-        else result.damage_type == "radiant"
-        and result.damage - bonus - rider - getattr(result, "synergy_damage", 0) > 0
+        else result.damage_type == "radiant" and result.damage - bonus - rider - synergy > 0
     )
     if (
         radiant
         or (bonus > 0 and result.bonus_damage_type == "radiant")
         or (rider > 0 and result.rider_damage_type == "radiant")
+        or (synergy > 0 and getattr(result, "synergy_damage_type", None) == "radiant")
     ):
         target.radiant_suppression_pending = True
 
