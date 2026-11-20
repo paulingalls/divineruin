@@ -161,12 +161,15 @@ async def _end_combat_db(
 
     ``content`` resolves loot tables (db_content_queries by default; injectable for tests);
     ``rng`` seeds the loot/currency rolls (a fresh system Random by default)."""
+    import architect_encounter
+    import architect_scene
     import choir_scene
     import concealment
     import lost_scout_combat
     import still_encounter
     import still_scene
 
+    await architect_scene.end(session, cs, outcome, mutations=mutations, queries=queries, conn=conn)
     await still_scene.end(session, cs, outcome, mutations=mutations, queries=queries, conn=conn)
 
     quest_updates = await quest_progress.advance_on_combat_end(
@@ -335,6 +338,7 @@ async def _end_combat_db(
     return {
         "quest_updates": quest_updates,
         "episode": episode,
+        "architect": architect_encounter.facts(cs),
         "choir": await choir_encounter.facts(cs, queries=queries, conn=conn),
         "still": still_encounter.settlement_facts(cs, rewards.spoils.loot_pool),
         "xp_total": rewards.spoils.xp_total,
@@ -417,6 +421,7 @@ def _end_combat_finish(
     currency_gold = end_data.get("primary_currency_gold", 0)
     response = {
         "first_episode": episode_facts,
+        "architect": end_data.get("architect"),
         "choir": end_data.get("choir"),
         "still": end_data.get("still"),
         "outcome": outcome,
@@ -454,6 +459,8 @@ def _end_combat_finish(
         summary_parts.append(residue)
     if episode_facts:
         summary_parts.append(episode_facts["aftermath"])
+    if cue := (end_data.get("architect") or {}).get("cue"):
+        summary_parts.append(cue)
     for encounter in ("choir", "still"):
         if end_data.get(encounter):
             summary_parts.append(end_data[encounter]["cue"])

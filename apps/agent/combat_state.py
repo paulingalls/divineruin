@@ -101,6 +101,7 @@ class CombatState:
     open_window: dict | None = None
 
     encounter_id: str = ""
+    architect_encounter: dict | None = None
     still_encounter: dict | None = None
     choir_encounter: dict | None = None
     choir_silences: dict = field(default_factory=dict)
@@ -145,6 +146,7 @@ class CombatState:
 
         state = cls(
             encounter_id=data.get("encounter_id", ""),
+            architect_encounter=data.get("architect_encounter"),
             still_encounter=data.get("still_encounter"),
             choir_encounter=data.get("choir_encounter"),
             choir_silences=choir_effects.validate_data(data),
@@ -190,10 +192,14 @@ class CombatState:
             ),
         )
 
+        import architect_actions
+        import architect_encounter
         import choir_encounter
         import still_encounter
 
         combat_structures.validate_participants(state)
+        architect_encounter.validate(state)
+        architect_actions.validate_continuations(state)
         choir_encounter.validate(state)
         still_encounter.validate(state)
         return state

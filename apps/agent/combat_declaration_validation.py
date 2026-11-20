@@ -1,5 +1,6 @@
 """The shared atomic declaration gate, including each selected composite strike."""
 
+import architect_encounter
 import combat_grapple
 import combat_melee_approach
 import combat_spatial_declarations
@@ -47,7 +48,13 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
         # Only the stand MANEUVER may name its own actor: a self-targeted ATTACK resolves
         # as a real swing against the actor's own AC and damage (combat_packet attack path).
         self_stand = declaration.type is DeclarationType.MANEUVER and target.id == actor.id
-        if not self_stand and target.is_ally == actor.is_ally:
+        construct_slam = (
+            declaration.type is DeclarationType.ATTACK
+            and (declaration.action or "").casefold() == architect_encounter.CONSTRUCT_SLAM.casefold()
+            and target.is_structure
+            and architect_encounter.is_owner(next_state, actor.id)
+        )
+        if not (self_stand or construct_slam) and target.is_ally == actor.is_ally:
             raise ValueError(
                 f"{actor.name} ({actor.id}) cannot target {target.name} ({target.id}) with {declaration.type}"
             )

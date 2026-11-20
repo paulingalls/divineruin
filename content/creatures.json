@@ -3367,6 +3367,7 @@
         "to_hit": 11,
         "damage": "3d10+5",
         "damage_type": "bludgeoning",
+        "bonus_damage": {"dice": "2d6", "damage_type": "force"},
         "special": "Plus 2d6 force. Push target 15 ft; collision with a wall deals 2d6 bludgeoning.",
         "audio": "hlw_construct_slam"
       },
@@ -3377,7 +3378,7 @@
         "to_hit": 10,
         "damage": "2d8+6",
         "damage_type": "force",
-        "special": "A structural fragment hurls itself. Auto-hit against targets touching the Architect's structures.",
+        "special": "A structural fragment hurls itself. Auto-hit against targets touching the Architect's structures. Legendary action, cost 2 of 3/round.",
         "audio": "hlw_geometry_strike"
       }
     ],
@@ -3447,13 +3448,7 @@
         "narration_cue": "",
         "recharge": null,
         "audio": null
-      },
-      {
-        "name": "Geometry Strike",
-        "description": "Legendary action, cost 2 of 3/round: make one Geometry Strike attack.",
-        "narration_cue": "",
-        "recharge": null,
-        "audio": null
+
       }
     ],
     "reactions": [

@@ -43,7 +43,7 @@ def test_recommended_party_size_accepts_positive_integers(size):
 
 def test_all_reference_templates():
     templates = json.loads((ROOT / "content/encounter_templates.json").read_text())
-    assert len(templates) == 18
+    assert len(templates) == 19
     assert {row["id"] for row in templates} == {
         "fragment_shadeling",
         "shadeling_cluster",
@@ -58,6 +58,7 @@ def test_all_reference_templates():
         "hollow_corrupted_settlement",
         "hollow_choir",
         "hollow_still",
+        "hollow_architect",
         "hollowmoth_swarm",
         "hollow_weaver_ambush",
         "hollow_mawling_pack",
@@ -68,6 +69,11 @@ def test_all_reference_templates():
         assert template["enemies"]
         assert all(set(enemy) == {"id", "creature_id", "role"} for enemy in template["enemies"])
         validate_encounter_references(template, CATALOG)
+    architect = next(row for row in templates if row["id"] == "hollow_architect")
+    assert architect["enemies"] == [{"creature_id": "hollow_architect", "id": "architect", "role": "named"}]
+    assert architect["scene_placement"]["zones"] == {
+        "architect_corruption_aura": {"center_id": "architect", "radius_ft": 2640}
+    }
 
 
 @pytest.mark.asyncio

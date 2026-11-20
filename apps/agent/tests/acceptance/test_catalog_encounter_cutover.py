@@ -44,7 +44,7 @@ async def test_every_encounter_starts_from_catalog(started, template, cold_catal
     import db_content_queries
 
     pool = await db.get_pool()
-    assert await pool.fetchval("SELECT count(*) FROM encounter_templates") == 18
+    assert await pool.fetchval("SELECT count(*) FROM encounter_templates") == 19
     assert template == await db_content_queries.get_encounter_template(template["id"])
     ctx, response = await started(template["id"])
     state = ctx.userdata.combat_state
@@ -160,7 +160,7 @@ async def test_missing_catalog_row_has_no_side_effects(reset_db_pool, monkeypatc
 
 def test_final_balance_table():
     catalog = {row["id"]: row for row in json.loads((CONTENT_ROOT / "content/creatures.json").read_text())}
-    assert {row["id"] for row in TEMPLATES} == set(TARGETS) | {"hollow_choir", "hollow_still"}
+    assert {row["id"] for row in TEMPLATES} == set(TARGETS) | {"hollow_choir", "hollow_still", "hollow_architect"}
     ordinary = [row for row in TEMPLATES if row["id"] in TARGETS]
     assert len(ordinary) == 16
     assert sum(len(row["enemies"]) for row in ordinary) == 37

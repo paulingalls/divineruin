@@ -292,7 +292,7 @@ export function validateEncounterEnemyTier(
   }
 }
 
-const NAMED_INTEGRATIONS = new Set(["hollow_choir", "hollow_still"]);
+const NAMED_INTEGRATIONS = new Set(["hollow_choir", "hollow_still", "hollow_architect"]);
 
 export function validateEncounterReferences(
   encounter: unknown,

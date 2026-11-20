@@ -126,15 +126,40 @@ def _intersection_interval(origin: Point, destination: Point, wall: Segment) -> 
     return (lo, hi) if lo <= hi else None
 
 
-def blocks_path(origin: Point, destination: Point, wall: Segment) -> bool:
+def _first_contact(origin: Point, destination: Point, wall: Segment) -> Fraction | None:
     interval = _intersection_interval(origin, destination, wall)
     if interval is None:
-        return False
+        return None
+    lo, hi = interval
     z = Fraction(origin["z"])
     dz = Fraction(destination["z"]) - z
-    z_start, z_end = (z + t * dz for t in interval)
     floor = Fraction(min(wall["start"]["z"], wall["end"]["z"]))
-    return max(z_start, z_end) >= floor and min(z_start, z_end) <= floor + 20
+    if not dz:
+        return lo if floor <= z <= floor + 20 else None
+    enter, leave = sorted(((floor - z) / dz, (floor + 20 - z) / dz))
+    contact = max(lo, enter)
+    return contact if contact <= min(hi, leave) else None
+
+
+def blocks_path(origin: Point, destination: Point, wall: Segment) -> bool:
+    return _first_contact(origin, destination, wall) is not None
+
+
+def first_wall_contact(spatial: dict, origin: Point, destination: Point) -> tuple[str, Point, Fraction] | None:
+    contacts = (
+        (fraction, wall_id)
+        for wall_id, wall in spatial.get("structures", {}).items()
+        if (fraction := _first_contact(origin, destination, wall)) is not None
+    )
+    nearest = min(contacts, default=None)
+    if nearest is None:
+        return None
+    fraction, wall_id = nearest
+    contact: Point = {
+        axis: float(Fraction(start) + fraction * (Fraction(destination[axis]) - Fraction(start)))
+        for axis, start in origin.items()
+    }
+    return wall_id, contact, fraction
 
 
 def _coords(point: Point) -> tuple[float, float, float]:
@@ -240,7 +265,9 @@ def wall_facts(state: CombatState, spatial: dict) -> tuple[list[dict], list[str]
     return walls, spoken
 
 
-def remove_wall_segment(state: CombatState | None, wall: CombatParticipant) -> None:
+def collapse_wall(state: CombatState | None, wall: CombatParticipant) -> None:
     if state is None or state.spatial is None:
         raise ValueError(f"{wall.name} ({wall.id}) requires spatial placement")
     del state.spatial["structures"][wall.id]
+    wall.hp_current = 0
+    wall.is_dead = wall.is_fallen = True
