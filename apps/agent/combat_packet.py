@@ -379,6 +379,7 @@ async def _resolve_action_packet(
                 conn=conn,
                 player=player,
                 sink=sink,
+                queries=queries,
                 progress=progress.scope("deescalation") if progress is not None else None,
             )
         # A non-spell condition ability (M4.8 story-005, e.g. bard_inspire) resolves via the dedicated

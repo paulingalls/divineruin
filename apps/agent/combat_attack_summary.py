@@ -18,6 +18,9 @@ def aggregate(attack_summaries: list[dict], *, moved: bool) -> dict:
             summary[component] = sum(s.get(component, 0) for s in attack_summaries)
             type_key = f"{component}_type"
             summary[type_key] = next((s[type_key] for s in attack_summaries if s.get(type_key) is not None), None)
+        summary["synergy_clause_id"] = next(
+            (s["synergy_clause_id"] for s in attack_summaries if s.get("synergy_clause_id") is not None), None
+        )
         if moved:
             summary.update(
                 moved_ft=sum(s["moved_ft"] for s in attack_summaries),

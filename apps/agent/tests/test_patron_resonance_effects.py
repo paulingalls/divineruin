@@ -167,7 +167,9 @@ async def test_choir_phase_lands_extra_damage_dice(patron, bonus, mock_combat_ag
     deps["character_spells_mod"].get_known.return_value = [{"spell_id": "arcane_bolt"}]
     deps["cast_resolver"] = SimpleNamespace(
         _gate_spell=spell_casting._gate_spell,
-        _resolve_cast=partial(spell_casting._resolve_cast, character_spells_mod=deps["character_spells_mod"]),
+        _resolve_cast=partial(
+            spell_casting._resolve_cast, queries_mod=queries, character_spells_mod=deps["character_spells_mod"]
+        ),
     )
     await combat_turn._declare_phase_impl(
         ctx,
