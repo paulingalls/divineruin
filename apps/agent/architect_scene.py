@@ -77,6 +77,12 @@ def restore(state: CombatState, record: dict) -> None:
             del spatial[field][wall_id]
     state.participants.append(owner)
     spatial["positions"][owner_id] = previous_spatial["positions"][owner_id]
+    zone_id, center_id = architect_encounter.cathedral_ids(owner_id)
+    if zone_id in previous_spatial["zones"]:
+        if zone_id in spatial["zones"] or center_id in spatial["locations"]:
+            raise ValueError("Retained Cathedral spatial IDs are already in use")
+        spatial["zones"][zone_id] = previous_spatial["zones"][zone_id]
+        spatial["locations"][center_id] = previous_spatial["locations"][center_id]
     for wall_id in old["structure_ids"]:
         wall = retained.get_participant(wall_id)
         assert wall is not None

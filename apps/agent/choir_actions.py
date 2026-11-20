@@ -38,14 +38,19 @@ def require_targets(state, actor, action, declaration):
 
 
 async def resolve_area(session, state, actor, action, declaration, *, progress=None, head=None, **deps):
+    from architect_actions import is_cathedral, raise_cathedral
     from combat_action_availability import begin_execution
 
     deps.setdefault("reaction_save_advantage", False)
     steps = progress.steps if progress is not None else {}
     if "targets" not in steps:
-        steps["targets"] = [target.id for target in require_targets(state, actor, action, declaration)]
+        if is_cathedral(state, actor.id, action):
+            action = begin_execution(state, actor, action, declaration, head)
+            steps["targets"] = raise_cathedral(state, actor.id)
+        else:
+            steps["targets"] = [target.id for target in require_targets(state, actor, action, declaration)]
+            action = begin_execution(state, actor, action, declaration, head)
         steps["results"] = []
-        action = begin_execution(state, actor, action, declaration, head)
     results = steps["results"]
     for target_id in steps["targets"][len(results) :]:
         result = await resolve_save_damage_action(

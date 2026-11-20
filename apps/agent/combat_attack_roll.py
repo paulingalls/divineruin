@@ -8,6 +8,7 @@ import combat_spatial
 import condition_voice_rules
 import conditions
 import patron_synergy_combat
+from architect_encounter import cathedral_bonus
 from condition_catalog import INCORPOREAL
 from dramatic import DramaticContext, evaluate_dramatic_context
 
@@ -81,7 +82,7 @@ def attack_roll_inputs(attacker, target, target_ac_bonus, combat_state, action, 
             )
     attacker_data = condition_voice_rules.roll_data(attacker_data, combat_state, attacker.id)
     target_condition_ac = conditions.get_condition_effects(target.conditions).ac_modifier
-    effective_ac = target.ac + target_ac_bonus + target_condition_ac
+    effective_ac = target.ac + target_ac_bonus + target_condition_ac + cathedral_bonus(combat_state, target.id)
     attack_mod = attacker.attack_mod
     if not weapon_attack and player is not None:
         attack_mod += patron_synergy_combat.spell_attack_bonus(player, target)

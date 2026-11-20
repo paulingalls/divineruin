@@ -39,7 +39,7 @@ def mapping(value, label):
     return value
 
 
-def validate_maps(positions, locations, zones):
+def validate_maps(positions, locations, zones, *, zone_kinds):
     for label, points in (("positions", positions), ("locations", locations)):
         for value in mapping(points, label).values():
             point(value)
@@ -52,9 +52,9 @@ def validate_maps(positions, locations, zones):
             {"center_id", "radius_ft"},
             {"kind", "center_id", "radius_ft"},
         ):
-            raise ValueError("zone requires center_id and radius_ft, optionally kind=silence")
-        if "kind" in zone and zone["kind"] != "silence":
-            raise ValueError("zone kind must be silence")
+            raise ValueError("zone requires center_id and radius_ft, optionally kind")
+        if "kind" in zone and zone["kind"] not in zone_kinds:
+            raise ValueError(f"zone kind must be one of {', '.join(zone_kinds)}")
         center = zone["center_id"]
         if not isinstance(center, str) or center not in positions.keys() | locations.keys():
             raise ValueError("unknown zone center")
@@ -74,7 +74,7 @@ def validate_scene(encounter):
     ids = [enemy["id"] for enemy in enemies]
     if len(ids) != len(set(ids)) or set(mapping(scene["actors"], "actors")) != set(ids):
         raise ValueError("scene_placement must cover every enemy exactly")
-    validate_maps(scene["actors"], scene["locations"], scene["zones"])
+    validate_maps(scene["actors"], scene["locations"], scene["zones"], zone_kinds=("silence",))
     for start in (scene["party_start"], scene["companion_start"]):
         for other in [
             scene["party_start"],
@@ -90,7 +90,7 @@ def validate_spatial(spatial, actor_ids):
     keys = {"positions", "locations", "zones", "speeds"}
     if not isinstance(spatial, dict) or not keys <= set(spatial) <= keys | {"structures", "movement_areas", "chambers"}:
         raise ValueError("invalid persisted spatial record")
-    validate_maps(spatial["positions"], spatial["locations"], spatial["zones"])
+    validate_maps(spatial["positions"], spatial["locations"], spatial["zones"], zone_kinds=("silence", "cathedral"))
     speeds = mapping(spatial["speeds"], "speeds")
     if set(spatial["positions"]) != set(actor_ids) or set(speeds) != set(actor_ids):
         raise ValueError("spatial record must cover every actor")
@@ -132,8 +132,10 @@ def place(state, target_id, destination):
     if target_id not in spatial["positions"]:
         raise ValueError(f"Unknown participant position {target_id!r}")
     spatial["positions"][target_id] = point(destination)
+    from architect_encounter import end_cathedral_after_move
     from choir_effects import exposure
 
+    end_cathedral_after_move(state, target_id)
     exposure(state)
     return dict(spatial["positions"][target_id])
 

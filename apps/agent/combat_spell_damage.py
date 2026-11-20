@@ -137,7 +137,7 @@ async def _land_one(
             roll, save_info = None, progress.steps.get("save_info")
         else:
             rolled = await _roll_save_damage(
-                session, profile, spell, caster, target, cast_packet, components, action, delivery, progress
+                session, state, profile, spell, caster, target, cast_packet, components, action, delivery, progress
             )
             if rolled is None:
                 return
@@ -178,7 +178,7 @@ async def _land_one(
 
 
 async def _roll_save_damage(
-    session, profile, spell, caster, target, cast_packet, components, action, delivery, progress
+    session, state, profile, spell, caster, target, cast_packet, components, action, delivery, progress
 ):
     """Roll the recipient's save, then the damage. Returns ``(roll, save_info)``, or None while a
     Fate's Thread choice holds the save (anyone's d20 is in scope)."""
@@ -205,6 +205,7 @@ async def _roll_save_damage(
                 dc,
                 spell.name,
                 originating_participant_id=caster.id,
+                combat_state=state,
             ),
         )
         if save is None:

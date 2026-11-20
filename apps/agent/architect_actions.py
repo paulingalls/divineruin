@@ -10,9 +10,10 @@ import combat_spatial
 import combat_structures
 import combat_wrongdoing
 import dice
-from architect_encounter import CONSTRUCT_SLAM
+from architect_encounter import CATHEDRAL, CATHEDRAL_RADIUS_FT, CONSTRUCT_SLAM, cathedral_ids
 from combat_damage import apply_attack_result
 from combat_damage_results import AutomaticDamageResult
+from combat_down import damage_target_unavailable
 
 if TYPE_CHECKING:
     from combat_participant import CombatParticipant
@@ -20,6 +21,29 @@ if TYPE_CHECKING:
 
 
 GEOMETRY = "Geometry Strike"
+
+
+def is_cathedral(state: CombatState, actor_id: str, action: dict) -> bool:
+    return action["name"].casefold() == CATHEDRAL.casefold() and architect_encounter.is_owner(state, actor_id)
+
+
+def raise_cathedral(state: CombatState, owner_id: str) -> list[str]:
+    spatial = combat_spatial.require_spatial(state)
+    zone_id, center_id = cathedral_ids(owner_id)
+    occupied_ids = spatial["positions"].keys() | spatial["locations"].keys() | spatial["zones"].keys()
+    if occupied_ids & {zone_id, center_id}:
+        raise ValueError("Cathedral spatial IDs are already in use")
+    center = combat_spatial.position(spatial, owner_id)
+    spatial["locations"][center_id] = center
+    spatial["zones"][zone_id] = {"kind": "cathedral", "center_id": center_id, "radius_ft": CATHEDRAL_RADIUS_FT}
+    return [
+        target.id
+        for target in state.participants
+        if target.id != owner_id
+        and not target.is_structure
+        and not damage_target_unavailable(target)
+        and combat_spatial.inside(center, combat_spatial.position(spatial, target.id), CATHEDRAL_RADIUS_FT)
+    ]
 
 
 def geometry_auto_hit(
