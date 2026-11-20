@@ -11,12 +11,14 @@ from archetypes import get_archetype_chassis
 from combat_participant import CombatParticipant
 from combat_spatial_declarations import is_move
 from combat_state import CombatState
-from condition_catalog import MARK_OF_JUSTICE
+from condition_catalog import INCORPOREAL, MARK_OF_JUSTICE
 from condition_consume import consume_beneficial_conditions
 from conditions import apply_condition, has_condition, hollowed_stage
 from declarations import resolve_declaration
 
 VEILSTEP = "syrath_veilstep"
+THRESHOLD_WALK = "mortaen_threshold_walk"
+PARTIAL_ROUND_GIFTS = {VEILSTEP: "Veilstep", THRESHOLD_WALK: "Threshold Walk"}
 VEILSTEP_RANGE_FT = 60
 BATTLE_CRY = "kaelen_battle_cry_of_the_ironhand"
 JUDGMENT = "kaelen_kaelens_judgment"
@@ -75,6 +77,30 @@ def mark_of_justice(state: CombatState | None, actor: str, *, target_id: str | N
     return updated, {"marked_target": {"id": target.id, "name": target.name}}
 
 
+def require_complete_round(state: CombatState | None, ability_id: str) -> None:
+    if state is None:
+        return
+    if state.ally_continuation is not None or state.held_actions:
+        raise ToolError(f"Finish the partially resolved round before using {PARTIAL_ROUND_GIFTS[ability_id]}.")
+
+
+def threshold_walk(state: CombatState | None, actor: str, *, target_id: str | None) -> tuple[CombatState | None, dict]:
+    cue = {
+        "dm_cue": "Narrate Threshold Walk. The follower slips across Mortaen's threshold, beyond the reach of steel."
+    }
+    if state is None:
+        return None, cue
+    require_complete_round(state, THRESHOLD_WALK)
+    updated = deepcopy(state)
+    follower = updated.get_participant(actor)
+    if follower is None or follower.type != "player":
+        raise ToolError("Threshold Walk requires the acting player to be a player participant.")
+    if follower.is_fallen or follower.is_dead or follower.hp_current <= 0:
+        raise ToolError("A fallen or dead follower cannot use Threshold Walk.")
+    follower.conditions = apply_condition(follower.conditions, INCORPOREAL, duration=2, source=actor)
+    return updated, cue
+
+
 def veilstep(state: CombatState | None, actor: str, *, destination: dict | None) -> tuple[CombatState | None, dict]:
     cue = "Narrate the follower slipping into one shadow and stepping out of another."
     if state is None:
@@ -84,8 +110,7 @@ def veilstep(state: CombatState | None, actor: str, *, destination: dict | None)
         raise ToolError("Veilstep requires the acting player to be a player participant.")
     if follower.is_fallen or follower.is_dead:
         raise ToolError("A fallen or dead follower cannot Veilstep.")
-    if state.ally_continuation is not None or state.held_actions:
-        raise ToolError("Finish the partially resolved round before using Veilstep.")
+    require_complete_round(state, VEILSTEP)
     if state.spatial is None:
         return None, {"dm_cue": cue}
     if destination is None:
@@ -173,4 +198,5 @@ ACTIVE_GIFTS = {
     JUDGMENT: kaelens_judgment,
     MARK_OF_JUSTICE_GIFT: mark_of_justice,
     VEILSTEP: veilstep,
+    THRESHOLD_WALK: threshold_walk,
 }

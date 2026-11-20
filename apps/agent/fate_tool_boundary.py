@@ -8,6 +8,7 @@ from livekit.agents import Agent
 from livekit.agents.llm import FunctionTool, RawFunctionTool, ToolError
 from livekit.agents.voice import RunContext
 
+import patron_combat_edges
 import zhael_fate
 from session_data import SessionData
 
@@ -44,6 +45,9 @@ def wrap_tool(tool):
                 tool.id == "activate" and bound.arguments.get("id") in zhael_fate.ROLL_ABILITIES
             ):
                 return await tool(*args, **kwargs)
+            ability_id = bound.arguments.get("id")
+            if tool.id == "activate" and ability_id in patron_combat_edges.PARTIAL_ROUND_GIFTS:
+                patron_combat_edges.require_complete_round(session.combat_state, ability_id)
             settled = await zhael_fate.settle(session)
             if settled.paused or settled.handoff is not None:
                 return settled.tool_result()

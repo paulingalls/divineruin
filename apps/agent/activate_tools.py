@@ -109,7 +109,8 @@ async def activate(
     For a voiced Fate's Thread offer, activate 'zhael_fates_thread' with offer_id to spend it and
     show the reroll. Then call again with the same offer_id and keep='original' or 'reroll'.
     Before spending, keep='original' declines. Any other tool call keeps the original, and an
-    already rolled gift stays spent. For offered 'zhael_lucky', use offer_id alone to flip the die and resolve it.
+    already rolled gift stays spent. Veilstep and Threshold Walk refuse during a partially resolved
+    round and leave the Fate offer open. For offered 'zhael_lucky', use offer_id alone to flip the die and resolve it.
 
     Patron tier ids come from query_info(kind='patron').abilities: spend only when available;
     narrate refusals. 'valdris_weight_of_truth' spends Weight of Truth until a short rest.

@@ -40,6 +40,14 @@ describe("CONDITION_DISPLAY completeness", () => {
 });
 
 describe("getConditionDisplay", () => {
+  test("displays Incorporeal as beneficial", () => {
+    expect(getConditionDisplay("incorporeal")).toEqual({
+      label: "Incorporeal",
+      icon: "ghost",
+      color: BrandColors.hollow,
+    });
+  });
+
   test("returns the mapped entry for a known type", () => {
     expect(getConditionDisplay("exhausted")).toBe(CONDITION_DISPLAY.exhausted);
   });

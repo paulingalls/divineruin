@@ -3,7 +3,7 @@
 from condition_catalog import (
     CONDITION_CATALOG as CONDITION_CATALOG,
 )
-from condition_catalog import MARK_OF_JUSTICE
+from condition_catalog import INCORPOREAL, MARK_OF_JUSTICE
 from condition_catalog import (
     BonusDie as BonusDie,
 )
@@ -87,6 +87,10 @@ def has_condition(conditions: list[dict], condition_type: str) -> bool:
     """True when ``condition_type`` is active in the list. Lets a producer confirm an
     ``apply_condition`` actually landed (it no-ops under the immunity gate)."""
     return _find(conditions, condition_type) is not None
+
+
+def damage_hp_floor(active_conditions: list[dict] | tuple[dict, ...]) -> int:
+    return int(any(condition["type"] == INCORPOREAL for condition in active_conditions))
 
 
 def apply_condition(
