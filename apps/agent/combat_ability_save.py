@@ -9,6 +9,7 @@ from livekit.agents.llm import ToolError
 import check_resolution_save
 import rules_engine
 from combat_fate_rolls import packet_save
+from combat_legendary_resistance import finalize_save, override_fields
 
 if TYPE_CHECKING:
     from abilities import Ability
@@ -71,7 +72,9 @@ async def resolve_hostile_condition(
     )
     if result is None:
         return {}
+    result = finalize_save(state, target, result, failed_conditions=(cond_type,))
     summary = {
+        **override_fields(result),
         "actor_id": attacker.id,
         "resolved": True,
         "declaration_type": str(decl.type),

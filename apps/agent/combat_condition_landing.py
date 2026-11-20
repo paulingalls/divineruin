@@ -2,7 +2,20 @@ import combat_grapple
 import condition_voice_rules
 import conditions
 from combat_participant import CombatParticipant
+from condition_catalog import CONDITION_CATALOG
 from condition_restrictions import cannot_act
+
+
+def can_land_condition(state, target: CombatParticipant, cond_type: str) -> bool:
+    return not (
+        cond_type in target.condition_immunities
+        or (cond_type == "prone" and target.prone_immunity)
+        or any(cond_type in CONDITION_CATALOG[condition["type"]].immunities for condition in target.conditions)
+        or (
+            cond_type == "inspired"
+            and condition_voice_rules.no_spoken_buffs(target.conditions, state=state, actor_id=target.id)
+        )
+    )
 
 
 def _land_condition_on_one(
@@ -22,15 +35,7 @@ def _land_condition_on_one(
     Grapples released by a disabling condition are reported on ``packet``. The mutation rides
     save_combat_state."""
     cond_target = attacker if target_id is None else state.get_participant(target_id)
-    if (
-        cond_target is None
-        or cond_type in cond_target.condition_immunities
-        or (cond_type == "prone" and cond_target.prone_immunity)
-    ):
-        return False
-    if cond_type == "inspired" and condition_voice_rules.no_spoken_buffs(
-        cond_target.conditions, state=state, actor_id=cond_target.id
-    ):
+    if cond_target is None or not can_land_condition(state, cond_target, cond_type):
         return False
     spec = conditions.CONDITION_CATALOG.get(cond_type)
     cond_target.conditions = conditions.apply_condition(

@@ -40,6 +40,7 @@ def deferred_effects(row, *, composite=False):
                 "Reshape",
                 "Shift Wall",
                 "Reactive Architecture",
+                "Legendary Resistance",
             }:
                 continue
             if key == ("hollow_knight", "Dissolution Strike"):

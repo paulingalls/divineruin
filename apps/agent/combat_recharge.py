@@ -3,6 +3,8 @@
 from action_contracts import validate_action_extensions, validate_recharge
 from dice import roll
 
+LEGENDARY_RESISTANCE = {"name": "Legendary Resistance", "recharge": {"kind": "encounter", "uses": 3}}
+
 
 def action_key(action):
     return action["name"].casefold()
@@ -20,6 +22,10 @@ def initialize(actor, round_number=1):
     if len(names) != len(set(names)):
         raise ValueError(f"{actor.id}: duplicate action names")
     limited = {action_key(a): a for a in actor.action_pool if "recharge" in a}
+    from architect_encounter import CREATURE_ID
+
+    if actor.creature_id == CREATURE_ID:
+        limited[action_key(LEGENDARY_RESISTANCE)] = LEGENDARY_RESISTANCE
     if actor.action_ledger.keys() - limited.keys():
         raise ValueError(f"{actor.id}: unknown action ledger entry")
     for key, action in limited.items():
