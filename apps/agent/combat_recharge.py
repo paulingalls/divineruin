@@ -1,7 +1,10 @@
 """Persisted action budgets; the phase transaction owns all mutations."""
 
 from action_contracts import validate_action_extensions, validate_recharge
+from combat_ability_gate import SECOND_WIND
 from dice import roll
+
+SECOND_WIND_BUDGET = {"name": SECOND_WIND, "recharge": {"kind": "encounter", "uses": 1}}
 
 LEGENDARY_RESISTANCE = {"name": "Legendary Resistance", "recharge": {"kind": "encounter", "uses": 3}}
 
@@ -26,6 +29,8 @@ def initialize(actor, round_number=1):
 
     if actor.creature_id == CREATURE_ID:
         limited[action_key(LEGENDARY_RESISTANCE)] = LEGENDARY_RESISTANCE
+    if actor.archetype_id == "warrior" and actor.type in ("player", "temporary_hollowed"):
+        limited[SECOND_WIND] = SECOND_WIND_BUDGET
     if actor.action_ledger.keys() - limited.keys():
         raise ValueError(f"{actor.id}: unknown action ledger entry")
     for key, action in limited.items():

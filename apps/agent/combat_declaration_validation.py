@@ -4,13 +4,14 @@ import architect_constructs
 import architect_encounter
 import architect_entomb
 import combat_grapple
+import combat_martial
 import combat_melee_approach
 import combat_spatial_declarations
 import combat_voice_rules
 import still_encounter
 from action_contracts_still import STILL_ZONE_KINDS
-from combat_ability import _find_action, condition_ability
-from combat_ability_gate import declared_ability
+from combat_ability import _find_action
+from combat_ability_gate import DEVASTATING_STRIKE, SHIELD_BASH, combat_ability, declared_ability
 from combat_action_availability import require_available
 from combat_structures import action_has_direct_line, require_line
 from condition_restrictions import cannot_act, declaration_costs, speed_zero
@@ -83,6 +84,16 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
             f"available actions: {available}"
         )
     pool_action = _find_action(actor, declaration.action)
+    if combat_martial.attack_ability(declaration) == SHIELD_BASH:
+        import abilities
+
+        bash = abilities.get_ability(SHIELD_BASH)
+        if actor.type != "player" or not abilities.owns_ability(
+            actor.archetype_id, actor.level, bash, owns_elective=False
+        ):
+            raise ValueError(f"{actor.name} hasn't learned Shield Bash.")
+        if pool_action is None or not combat_melee_approach.is_melee(pool_action):
+            raise ValueError("Shield Bash requires an equipped melee weapon.")
     if pool_action is not None and declaration.type in (DeclarationType.ATTACK, DeclarationType.ABILITY):
         require_available(actor, pool_action)
         if action_kind(pool_action) == architect_constructs.KIND:
@@ -116,11 +127,15 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
         if spell is not None:
             combat_spell_profile.validate_target(next_state, actor, declaration, spell)
         resolved_ability = declared_ability(declaration.action)
-        if resolved_ability is not None and condition_ability(resolved_ability) is None:
+        if resolved_ability is not None:
             ability, _variant = resolved_ability
             if ability.spell_id is not None:
                 raise ValueError(f"{declaration.action} is an ability alias; declare {ability.spell_id} in combat")
-            raise ValueError(f"{declaration.action} is not declarable in combat")
+            if not combat_ability(ability):
+                raise ValueError(f"{declaration.action} is not declarable in combat")
+            combat_martial.require_targets(next_state, actor, declaration, ability)
+            if ability.id == DEVASTATING_STRIKE:
+                return
     if declaration.type is DeclarationType.ABILITY and actor.type != "player":
         pool_action = _find_action(actor, declaration.action)
         if (

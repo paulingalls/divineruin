@@ -41,6 +41,9 @@ async def declare_phase(
     this phase action, limited to the actor's persisted speed. Only the Architect may include
     Reshape operations, on an attack, move or defend. The sections resolve before the action.
     Use the Architect's live wall ids and remaining Reshape uses from the combat facts.
+    Second Wind is an ability with empty targets. Rallying Shout names one standing ally.
+    Devastating Strike is an ability naming one foe. For Shield Bash, declare a melee weapon attack
+    with rider="shield_bash".
     Include the player, every
     conscious companion, and every enemy that acts this phase — one declaration each.
     Call this once per round at the declaration beat; resolve_phase resolves and
