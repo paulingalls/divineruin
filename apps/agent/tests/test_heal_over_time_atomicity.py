@@ -38,5 +38,8 @@ async def test_failed_settlement_hp_write_keeps_the_live_condition_retryable(hea
     assert healer.sd.combat_state is None
     assert (await healer.read(ally))["hp"]["current"] == 40
     assert (
-        published_payloads(healer.sd.room)[len(events) :].count({"type": "hp_changed", "current": 40, "max": 40}) == 1
+        published_payloads(healer.sd.room)[len(events) :].count(
+            {"type": "hp_changed", "current": 40, "max": 40, "temp_hp": 0}
+        )
+        == 1
     )

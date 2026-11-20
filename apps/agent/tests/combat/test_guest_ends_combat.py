@@ -419,7 +419,8 @@ async def test_guest_declared_defeat_uses_primary_anchor():
     ctx.userdata.combat_state = cs
     queries = combat_end_queries()
     with patch(
-        "combat_end_lives.resurrection.resurrect_on_defeat", AsyncMock(return_value={"anchor": "accord_guild_hall"})
+        "combat_end_lives.resurrection.resurrect_on_defeat",
+        AsyncMock(return_value={"anchor": "accord_guild_hall", "revive_hp": 20}),
     ) as revive:
         with ctx.userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
             await _end_combat_impl(

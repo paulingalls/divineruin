@@ -42,17 +42,30 @@ async def add_player_known_recipe(
 
 
 async def update_player_hp(
-    player_id: str, current_hp: int, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+    player_id: str,
+    current_hp: int,
+    *,
+    temp_hp: int | None = None,
+    conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> None:
     _conn = conn or await db.get_pool()
-    await _conn.execute(
-        """
-        UPDATE players
-        SET data = jsonb_set(data, '{hp,current}', $2::jsonb)
-        WHERE player_id = $1
-        """,
+    hp = "jsonb_set(data, '{hp,current}', $2::jsonb)"
+    if temp_hp is None:
+        await _conn.execute(f"UPDATE players SET data = {hp} WHERE player_id = $1", player_id, json.dumps(current_hp))
+    else:
+        await _conn.execute(
+            f"UPDATE players SET data = jsonb_set({hp}, '{{temp_hp}}', $3::jsonb) WHERE player_id = $1",
+            player_id,
+            json.dumps(current_hp),
+            json.dumps(temp_hp),
+        )
+
+
+async def update_player_temp_hp(player_id: str, temporary: int, *, conn: asyncpg.Connection) -> None:
+    await conn.execute(
+        "UPDATE players SET data = jsonb_set(data, '{temp_hp}', $2::jsonb) WHERE player_id = $1",
         player_id,
-        json.dumps(current_hp),
+        json.dumps(temporary),
     )
 
 

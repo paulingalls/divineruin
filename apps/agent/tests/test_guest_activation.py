@@ -185,7 +185,7 @@ async def test_guest_inner_fire_burns_guest_only_and_host_can_use():
         await _fire(ctx, db_mod, queries, hp, resonance, events, dice, concentration)
     host, guest = session.party.members
     resonance.update_player_resonance.assert_awaited_once_with("player_2", 6, conn=conn)
-    hp.update_player_hp.assert_awaited_once_with("player_2", 16, conn=conn)
+    hp.update_player_hp.assert_awaited_once_with("player_2", 16, temp_hp=0, conn=conn)
     events.publish_resonance_changed.assert_awaited_once_with(
         session, resonance_track=guest.resonance, caster_id="player_2"
     )

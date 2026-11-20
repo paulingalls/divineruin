@@ -293,7 +293,9 @@ class TestResolvePhaseEnding:
         # resurrection flow. The defeat router now routes fallen players through
         # resurrect_party_on_defeat (M14 story-006) — one fallen player -> a one-context list.
         monkeypatch.setattr(
-            resurrection, "resurrect_party_on_defeat", AsyncMock(return_value=[{"anchor": "accord_guild_hall"}])
+            resurrection,
+            "resurrect_party_on_defeat",
+            AsyncMock(return_value=[{"anchor": "accord_guild_hall", "revive_hp": 20}]),
         )
         deps = _resolve_deps()
         ctx = make_context()

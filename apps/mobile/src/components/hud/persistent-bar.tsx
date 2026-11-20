@@ -102,9 +102,16 @@ function HpBar() {
   if (!character) return null;
 
   return (
-    <View style={styles.hpTrack}>
-      <Animated.View style={[styles.hpFill, barStyle]} />
-    </View>
+    <>
+      <View style={styles.hpTrack}>
+        <Animated.View style={[styles.hpFill, barStyle]} />
+      </View>
+      {character.tempHp > 0 && (
+        <ThemedText testID="persistent-temp-hp" style={styles.tempHpLabel}>
+          {`+${character.tempHp} TEMP HP`}
+        </ThemedText>
+      )}
+    </>
   );
 }
 
@@ -319,6 +326,11 @@ const styles = StyleSheet.create({
   hpFill: {
     height: 3,
     borderRadius: 1.5,
+  },
+  tempHpLabel: {
+    ...FontStyles.system,
+    fontSize: 10,
+    color: BrandColors.bone,
   },
   statusEffects: {
     flexDirection: "row",

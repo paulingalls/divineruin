@@ -236,6 +236,7 @@ test("setCombatState sets combat tracker", () => {
         isAlly: true,
         hpCurrent: 20,
         hpMax: 30,
+        tempHp: 0,
         conditions: [{ type: "exhausted", stacks: 2, source: "march" }],
         isActive: true,
       },

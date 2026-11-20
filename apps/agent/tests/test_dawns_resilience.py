@@ -49,7 +49,7 @@ def assert_hp_push(walk, pid, hp):
         for call, payload in zip(calls, published_payloads(walk.sd.room), strict=True)
         if call.kwargs.get("destination_identities") == [pid] and payload["type"] == "hp_changed"
     ]
-    assert pushes == [{"type": "hp_changed", "current": hp, "max": 20}]
+    assert pushes == [{"type": "hp_changed", "current": hp, "max": 20, "temp_hp": 0}]
 
 
 @pytest.mark.parametrize("combat", [False, True])

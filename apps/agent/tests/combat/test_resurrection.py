@@ -202,7 +202,7 @@ class TestCombatEndDefeatWiring:
         from combat_events import EventSink
         from session_data import SessionData
 
-        spy = AsyncMock(return_value=[{"anchor": "camp_r1", "death_count": 1, "tier": "gentle"}])
+        spy = AsyncMock(return_value=[{"anchor": "camp_r1", "death_count": 1, "tier": "gentle", "revive_hp": 20}])
         monkeypatch.setattr(resurrection, "resurrect_party_on_defeat", spy)
 
         cs = _make_combat_state(player_fallen=True)

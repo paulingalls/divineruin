@@ -10,6 +10,7 @@ from test_encounter_facts_renewal import SCENARIOS as renewal
 from test_heal_synergies import SCENARIOS as dawns_mercy
 from test_heal_synergies_place import SCENARIOS as place_healing
 from test_patron_engine_aelora import SCENARIOS as aelora
+from test_patron_engine_aelora_shield import SCENARIOS as aelora_shield
 from test_patron_engine_beacon import SCENARIOS as beacon
 from test_patron_engine_dawns_embrace import SCENARIOS as dawns_embrace
 from test_patron_engine_death_ward import SCENARIOS as death_ward
@@ -30,6 +31,7 @@ from test_zhael_fate_callers import SCENARIOS as zhael
 ENGINE_SCENARIOS = {
     **valdris,
     **aelora,
+    **aelora_shield,
     **beacon,
     **dawns_mercy,
     **place_healing,

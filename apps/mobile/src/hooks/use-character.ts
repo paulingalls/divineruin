@@ -1,8 +1,9 @@
+import type { CharacterHpWire } from "@divineruin/shared";
 import { useEffect, useState } from "react";
 import { API_BASE, authHeaders } from "@/utils/api";
 import { characterStore } from "@/stores/character-store";
 
-interface CharacterResponse {
+interface CharacterResponse extends CharacterHpWire {
   player_id: string;
   name: string;
   race?: string;
@@ -11,8 +12,6 @@ interface CharacterResponse {
   xp: number;
   location_id: string;
   location_name: string;
-  hp_current: number;
-  hp_max: number;
   deity?: string;
   portrait_url?: string;
 }
@@ -53,6 +52,7 @@ export function useCharacter(playerId: string) {
           locationName: data.location_name,
           hpCurrent: data.hp_current,
           hpMax: data.hp_max,
+          tempHp: data.temp_hp,
           deity: typeof data.deity === "string" ? data.deity : "",
           portraitUrl: typeof data.portrait_url === "string" ? data.portrait_url : null,
         });

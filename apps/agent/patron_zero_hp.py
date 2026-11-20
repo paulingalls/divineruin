@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING
 
 import db_queries
+import temp_hp
 from combat_down import is_terminally_down, revive
 from combat_participant import CombatParticipant
 from kaelen_gift import trigger_iron_resolve
@@ -155,24 +156,35 @@ async def trigger_death_ward(
 
 
 async def provisional_ward_verdict(
-    session: SessionData, state: "CombatState", target_id: str, result: "AttackResult", queries=db_queries, *, conn
+    session: SessionData,
+    state: "CombatState",
+    target_id: str,
+    result: "AttackResult",
+    queries=db_queries,
+    *,
+    action: dict,
+    conn,
 ) -> "AttackResult":
-    from combat_damage_affinity import with_landed_damage
+    from combat_damage_affinity import apply, with_landed_damage
 
-    if result.context == "killing_blow":
-        target = state.get_participant(target_id)
-        assert target is not None
+    target = state.get_participant(target_id)
+    assert target is not None
+    _, result = apply(target, action, result, state=state)
+    if result.target_killed:
+        temporary = temp_hp.player_pool(target)
         if _drops_to_zero(target, target.hp_current, result.target_hp_remaining):
-            # The phase transaction's own connection sees a ward an earlier packet spent but has not committed.
+            # The phase transaction sees a ward an earlier packet spent before commit.
             player = await queries.get_player(target.id, conn=conn)
             if not isinstance(player, dict):
                 raise ValueError(f"Missing authoritative player {target.id!r}")
             if death_ward_ready(player):
-                return with_landed_damage(result, result.damage, target.hp_current, hp_floor=1)
+                return with_landed_damage(result, result.damage, target.hp_current, temporary=temporary, hp_floor=1)
         if _embrace_transition(target, target.hp_current, result.target_hp_remaining) and await _embrace_donor(
             session, state, target, players=None, queries=queries, conn=conn
         ):
-            return with_landed_damage(result, result.damage, target.hp_current, hp_floor=_embrace_hp(target))
+            return with_landed_damage(
+                result, result.damage, target.hp_current, temporary=temporary, hp_floor=_embrace_hp(target)
+            )
     return result
 
 
@@ -182,11 +194,12 @@ async def trigger_damage_gifts(
     target: CombatParticipant,
     hp_before: int,
     *,
+    absorbed: int = 0,
     players: dict[str, dict] | None = None,
     queries=db_queries,
     conn=None,
 ) -> tuple[dict, int]:
-    drain_basis = max(0, hp_before - target.hp_current)
+    drain_basis = max(0, hp_before - target.hp_current) + absorbed
     if players is None:
         players = await lock_lethal_damage_players(session, target, hp_before, queries=queries, conn=conn)
     player = players[target.id] if players is not None and target.type == "player" else None

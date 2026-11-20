@@ -30,6 +30,7 @@ test("combat_ui_update sets combat state in hudStore", () => {
         isAlly: true,
         hpCurrent: 20,
         hpMax: 30,
+        tempHp: 0,
         conditions: [],
         isActive: true,
       },
@@ -58,6 +59,7 @@ test("combat_ui_update filters out malformed combatants", () => {
         isAlly: true,
         hpCurrent: 20,
         hpMax: 30,
+        tempHp: 0,
         conditions: [],
         isActive: true,
       },
@@ -83,6 +85,7 @@ test("combat_ui_update preserves producer-shaped conditions through parseCombata
         isAlly: true,
         hpCurrent: 25,
         hpMax: 25,
+        tempHp: 0,
         conditions: [
           { type: "blessed", stacks: 1, source: "divine_bless" },
           { type: "frightened", stacks: 1, source: "shaman_aura" },
@@ -112,6 +115,7 @@ test("combat_ui_update parseCombatant fails soft when isAlly is missing", () => 
         // isAlly intentionally omitted
         hpCurrent: 7,
         hpMax: 7,
+        tempHp: 0,
         conditions: [],
         isActive: false,
       },
