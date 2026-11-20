@@ -251,7 +251,7 @@ Spells cast on creatures at 0 HP (healing fallen allies, finishing dying enemies
 |---|---|---|
 | Acknowledged | Death Ward | First time per long rest you drop to 0 HP, drop to 1 HP instead. Mortaen decides when you cross |
 | Devoted | Speak with Dead | Once per long rest, commune with a deceased creature's spirit. 3 questions, truthful but terse answers |
-| Exalted | Threshold Walk | Once per session, become incorporeal for 1 round. Immune to physical damage, pass through objects, invisible. Attacks deal necrotic. Return shaken but alive |
+| Exalted | Threshold Walk | Once per session, become incorporeal through the end of the next round. Slashing, piercing and bludgeoning pass through you, even when magical. Attacks against you have disadvantage, your attacks have advantage, and your weapon attacks deal necrotic damage. You cannot drop below 1 HP. You return Shaken unless combat ends first. |
 
 **Layer 4 — Archetype Resonance**
 

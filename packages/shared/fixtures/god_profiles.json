@@ -1124,7 +1124,7 @@
       }
     },
     {
-      "id": "ability_recharge_short_rest",
+      "id": "ability_recharge_short_rest_and_registered_threshold_walk",
       "profile": {
         "god_id": "veythar",
         "layer_1_gift": {
@@ -1167,9 +1167,10 @@
             "id": "veythar_fixture_exalted",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always",
-            "status": "pending",
-            "resolution": "narrated"
+            "recharge": "per_session",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "mortaen_threshold_walk"
           }
         },
         "layer_4_synergy_matrix": {
