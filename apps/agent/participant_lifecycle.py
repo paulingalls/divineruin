@@ -380,7 +380,7 @@ class PartyLifecycle:
             logger.warning("Party-join: no players row for %r; skipping append", identity)
             return
         if not self.userdata.in_combat:
-            await concealment.expire_orphaned_gift(row)
+            await concealment.expire_orphaned_gift(identity, row)
         await session_hydration.hydrate_patron_ability_session(self.userdata, identity)
         # Race guard: a second participant_connected for the same identity may have appended
         # during the await above.

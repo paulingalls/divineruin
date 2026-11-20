@@ -139,7 +139,7 @@ async def _resolve_cast(
     if concealment.is_concealed(player):
         if revalidate_actor:
             session.validate_acting_player(player_id)
-        concealment_packet = await concealment.transition(player, False, ended_by="cast", conn=conn)
+        concealment_packet = await concealment.transition(player_id, player, False, ended_by="cast", conn=conn)
 
     purified = None
     if item_target is not None:

@@ -151,7 +151,7 @@ async def hydrate_session_state(
     player_id = session.primary_player_id
     await hydrate_patron_ability_session(session, player_id, conn=conn)
     if not session.in_combat:
-        await concealment.expire_orphaned_gift(player, conn=conn)
+        await concealment.expire_orphaned_gift(player_id, player, conn=conn)
     res = await resonance_mutations_mod.read_player_resonance(player_id, conn=conn)
     # The ward is read from the LOCATION the session starts in, never from the player row (M24).
     # A fresh session is never in combat, so a location scope is the only one that can cover it.

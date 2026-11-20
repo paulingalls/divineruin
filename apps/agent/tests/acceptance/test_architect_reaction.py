@@ -413,7 +413,7 @@ async def test_extra_attack_can_reach_architect_after_wall_collapses(archers):
     participant(state, actor).enhancers.append("extra_attack")
     before = await archers.persist()
     await declare(archers, bow(actor, owner))
-    with forced_rolls(damage=40):
+    with forced_rolls(face=19, damage=40):
         [result] = [packet for packet in await archers.drain() if packet["actor_id"] == actor]
     after = await archers.reload()
     wall = wall_raised(before, after, actor)
