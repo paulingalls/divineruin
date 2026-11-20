@@ -295,6 +295,14 @@ item number, not this section.
   the land hook and of the Luna probe script; both would have run on every push.
   Human: tests of tests are fine while building them, not in the regular runs.
   Three meta-tests in the line-cap and strict-budget files were deleted (869e5222).
+- **3, per condition (human 2026-11-19).** In sprint patron-passage, Veilstep's
+  guards went green twice with half of them deleted: `ally_continuation or
+  held_actions` (story review; only the first operand had a case) and
+  `beat == "resolution" and queued` (sprint review; every case ran at the
+  resolution beat). Each time the executor's fault injection had removed the
+  guard whole, so one red seemed to cover all of it. A guard with several
+  conditions is fault-injected once PER CONDITION: drop each operand on its own,
+  and each drop needs its own red.
 - **13 — wall clock.** Same day: story land gained the fast lane (~45 s) while
   acceptance stayed at sprint close, because land wall clock bounds the sprint.
   Human: efficient tests, harness and tiering keep wall clock down without

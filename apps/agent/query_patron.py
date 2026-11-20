@@ -7,12 +7,14 @@ from livekit.agents.voice import RunContext
 
 import db_mutations_resonance
 import db_queries
+import patron_gateway
 import patron_senses
 import unbound_tools
 import zhael_fate
 from _gods_content import load_gods
 from combat_terrain import resolve_terrain
 from patron_ability_tools import project_abilities
+from patron_combat_edges import VEILSTEP, VEILSTEP_RANGE_FT
 from patron_favor import get_patron_tier
 from patron_gifts import UNBOUND_ALONE_BONUS, thyra_gift
 from patron_synergy import synergy_for_patron
@@ -70,6 +72,21 @@ async def query_patron(
     gift = patron["layer_1_gift"]
     if gift["id"] == zhael_fate.FATE:
         gift = {**gift, **zhael_fate.availability(player, gift)}
+    abilities = project_abilities(player, patron)
+    for ability in abilities:
+        if ability["id"] == VEILSTEP:
+            ability["activation_hint"] = (
+                f'Use activate(id="{VEILSTEP}", destination={{x,y,z}}). '
+                f"Choose a visible shadow within {VEILSTEP_RANGE_FT} feet. Coordinates are in feet. "
+                "Full movement is retained. A queued move is removed and can be redeclared at the next declaration beat. "
+                "Omit destination without fight geometry and narrate the step."
+            )
+        elif ability["id"] == patron_gateway.GATEWAY and ability["available"]:
+            ability["destinations"] = await patron_gateway.destinations(player_id, session.location_id)
+            ability["activation_hint"] = (
+                f'Use activate(id="{patron_gateway.GATEWAY}", target_id=<visited location id>).'
+            )
+
     senses = {}
     if patron_id == "mortaen":
         senses["deaths_awareness"] = await patron_senses.deaths_awareness(session, player, queries=queries)
@@ -89,7 +106,7 @@ async def query_patron(
             "favor_needed_to_next_tier": favor_needed,
             "favor_actions": patron["favor_actions"],
             "layer_1_gift": gift,
-            "abilities": project_abilities(player, patron),
+            "abilities": abilities,
             **await ecosystem_cue(session, favor),
             **senses,
         }

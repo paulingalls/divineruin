@@ -200,10 +200,12 @@ async def count_session_story_moments(
     return row["cnt"] if row else 0
 
 
-async def get_player_map_progress(player_id: str) -> list[dict]:
+async def get_player_map_progress(
+    player_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None
+) -> list[dict]:
     """Return all visited locations for a player."""
-    pool = await db.get_pool()
-    rows = await pool.fetch(
+    connection = conn or await db.get_pool()
+    rows = await connection.fetch(
         "SELECT location_id, data FROM player_map_progress WHERE player_id = $1",
         player_id,
     )

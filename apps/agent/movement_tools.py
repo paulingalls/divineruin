@@ -324,11 +324,6 @@ async def _move_player_locked(
     destination_location = await content.get_location(destination_id)
     warning = await party_level_warning(destination_location, session.party.member_ids, queries=queries)
 
-    # Detect region boundary crossing for handoff
-    current_region = current_location.get("region_type", REGION_CITY)
-    dest_region = destination_location.get("region_type", REGION_CITY) if destination_location else REGION_CITY
-    region_change = current_region != dest_region
-
     # Shared arrival side-effects (location + map progress + LOCATION_CHANGED + corruption + visit).
     previous_location_id = await apply_arrival(
         session,
@@ -365,6 +360,20 @@ async def _move_player_locked(
         len(result.get("npcs", [])),
         len(result.get("targets", [])),
     )
+    return arrival_result(
+        context, destination_id, destination_location, current_location.get("region_type", REGION_CITY), result
+    )
+
+
+def arrival_result(
+    context: RunContext[SessionData],
+    destination_id: str,
+    destination_location: dict | None,
+    origin_region: str,
+    result: dict,
+) -> str | tuple:
+    session = context.userdata
+    dest_region = destination_location.get("region_type", REGION_CITY) if destination_location else REGION_CITY
     json_str = json.dumps(result)
 
     # Hand off ONLY on an activity-context change — entering or leaving a dispatch
@@ -412,7 +421,7 @@ async def _move_player_locked(
 
     # No handoff: a region crossing updates the persisting agent's region in place
     # (the transition narration is covered by NAVIGATION_PROMPT + the scene json above).
-    if region_change:
+    if origin_region != dest_region:
         from gameplay_agent import set_agent_region
 
         set_agent_region(context.session.current_agent, dest_region)

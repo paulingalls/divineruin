@@ -33,23 +33,48 @@ test("neglect event updates the local favor bar and overlay, but not a teammate'
 
 test("location_changed updates session and character stores", () => {
   characterStore.getState().setCharacter(SAMPLE_CHARACTER);
-  handleGameEvent({
-    type: "location_changed",
-    new_location: "accord_market_square",
-    location_name: "Market Square",
-    atmosphere: "noisy, chaotic",
-    region: "Accord",
-    ambient_sounds: "market_bustle",
+  const raw =
+    process.env.NYTHERA_GATEWAY_EVENT ??
+    JSON.stringify({
+      type: "location_changed",
+      new_location: "accord_market_square",
+      location_name: "Market Square",
+      atmosphere: "noisy, chaotic",
+      region: "Accord",
+      ambient_sounds: "market_bustle",
+      time_of_day: "morning",
+      tags: ["market"],
+      connections: ["accord_guild_hall"],
+    });
+  const event = JSON.parse(raw) as Record<string, unknown>;
+  expect(event.type).toBe("location_changed");
+  expect(typeof event.new_location).toBe("string");
+  expect(typeof event.location_name).toBe("string");
+  handleGameEventMessage({
+    payload: new TextEncoder().encode(raw),
+    from: { isAgent: true },
+  } as Parameters<typeof handleGameEventMessage>[0]);
+  expect(sessionStore.getState().locationContext).toMatchObject({
+    locationId: event.new_location,
+    locationName: event.location_name,
+    atmosphere: event.atmosphere,
+    region: event.region,
+    ambientSounds: event.ambient_sounds,
+    tags: event.tags,
+    timeOfDay: event.time_of_day,
   });
-  const loc = sessionStore.getState().locationContext;
-  expect(loc).not.toBeNull();
-  expect(loc!.locationId).toBe("accord_market_square");
-  expect(loc!.locationName).toBe("Market Square");
-  expect(loc!.atmosphere).toBe("noisy, chaotic");
-  expect(loc!.ambientSounds).toBe("market_bustle");
-  const char = characterStore.getState().character!;
-  expect(char.locationId).toBe("accord_market_square");
-  expect(char.locationName).toBe("Market Square");
+  const node = panelStore
+    .getState()
+    .mapProgress.find((node) => node.locationId === event.new_location);
+  expect(node).toMatchObject({
+    locationId: event.new_location,
+    visited: true,
+    connections: event.connections,
+  });
+  expect(characterStore.getState().character).toMatchObject({
+    locationId: event.new_location,
+    locationName: event.location_name,
+  });
 });
 
 test("location_changed without location_name falls back to id", () => {
