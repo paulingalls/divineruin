@@ -190,7 +190,7 @@ async def _finish_cast(
             player,
             heal_rows,
             caster_id=player_id,
-            synergy=partial(bonus_components, player, spell=spell),
+            synergy=partial(bonus_components, player),
             packet=packet,
             conn=conn,
             dice_mod=dice_mod,

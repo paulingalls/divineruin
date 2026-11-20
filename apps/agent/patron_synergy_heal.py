@@ -3,13 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, TypedDict
+from typing import TypedDict
 
 from patron_synergy import has_engine_synergy
 from rules_engine import attribute_modifier
-
-if TYPE_CHECKING:
-    from spells import Spell
 
 DAWNS_MERCY = "orenthel_dawns_mercy"
 
@@ -22,7 +19,7 @@ class HealBonus(TypedDict):
 HealSynergy = Callable[[int], list[HealBonus]]
 
 
-def bonus_components(player: dict, hp_before: int, *, spell: Spell) -> list[HealBonus]:
+def bonus_components(player: dict, hp_before: int) -> list[HealBonus]:
     if not has_engine_synergy(player, DAWNS_MERCY):
         return []
     attributes = player["attributes"]
