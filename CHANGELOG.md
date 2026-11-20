@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.56.2
+
+Veythar gift acceptance checks rolled searches after the guaranteed scout clue at the Greyvale Ruins entrance.
+
+Release steps: none.
+
 ## 0.56.1
 
 Local Python test startup refreshes stale catalog rows in the development database while preserving gameplay state.
