@@ -312,7 +312,12 @@ async def _apply_damage(
         target.death_save_failures += failures
         if target.type == "player":
             target.death_save_failures = min(3, target.death_save_failures)
-    gift_triggered = await trigger_damage_gifts(session, target, hp_before, queries=queries, conn=conn)
+    gift = await trigger_damage_gifts(session, target, hp_before, queries=queries, conn=conn)
+    gift_owner = gift.get("gift_owner")
+    if gift_owner:
+        if sink is None:
+            raise ValueError("Death Ward requires a post-commit event sink")
+        sink.patron_refreshes[gift_owner["id"]] = (session.room, session.event_bus)
 
     if not still_encounter.is_owner(combat_state, attacker.id):
         target.conditions = condition_sources.clear_charm_from_damage(
@@ -386,6 +391,11 @@ async def _apply_damage(
             conn=conn,
         )
 
+    if gift_owner and isinstance(attack_result, check_resolution_attack.AttackResult):
+        attack_result = combat_damage_affinity.with_landed_damage(
+            attack_result, attack_result.damage, hp_before, hp_floor=target.hp_current
+        )
+
     # Publish events (buffered into ``sink`` during the phase tx; released post-commit)
     if publish_roll:
         await emit_or_publish(
@@ -418,6 +428,7 @@ async def _apply_damage(
                 )
 
     response = {
+        **gift,
         "attacker": attacker.name,
         "action": action.get("name", ""),
         "target": target.name,
@@ -440,9 +451,7 @@ async def _apply_damage(
         response["damage_components"] = action["damage_components"]
     if was_fallen:
         response["death_save_failures"] = target.death_save_failures
-    if gift_triggered:
-        response["gift_triggered"] = gift_triggered
-    if automatic:
+    if isinstance(attack_result, AutomaticDamageResult):
         log_outcome = "automatic damage"
         session.record_event(
             f"{attacker.name} uses {action.get('name', '')} on {target.name}: {attack_result.damage} automatic damage"

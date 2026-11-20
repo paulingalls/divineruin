@@ -143,6 +143,17 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     implementation_id: walk,
     recharge: "per_session",
   });
+  const ward = "mortaen_death_ward";
+  expect(
+    validateGods(catalog).find((god) => god.god_id === "mortaen")?.layer_3_tier_abilities
+      .acknowledged,
+  ).toMatchObject({
+    id: ward,
+    status: "active",
+    resolution: "engine",
+    implementation_id: ward,
+    recharge: "long_rest",
+  });
   const engine = new Set([
     "zhael_lucky",
     battleCry,
@@ -152,6 +163,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     veilstep,
     gateway,
     walk,
+    ward,
     ...passives,
   ]);
   expect(
@@ -160,7 +172,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     ),
   ).toEqual(engine);
   const pending = abilities.filter((a) => !narrated.has(a.id) && !engine.has(a.id));
-  expect(pending).toHaveLength(12);
+  expect(pending).toHaveLength(11);
   for (const ability of abilities.filter((a) => passives.has(a.id))) {
     expect([ability.recharge, ability.implementation_id]).toEqual(["always", ability.id]);
   }

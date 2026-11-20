@@ -1157,11 +1157,12 @@
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
-            "name": "Synthetic ability",
+            "name": "Synthetic ward",
             "effect": "Synthetic effect.",
-            "recharge": "short_rest",
-            "status": "pending",
-            "resolution": "engine"
+            "recharge": "long_rest",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "mortaen_death_ward"
           },
           "exalted": {
             "id": "veythar_fixture_exalted",

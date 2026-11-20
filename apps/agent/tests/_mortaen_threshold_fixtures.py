@@ -34,6 +34,8 @@ async def fight(
     world,
     *,
     hp=100,
+    max_hp=100,
+    gifts=OTHER_GIFTS,
     favor=75,
     race="human",
     patron="mortaen",
@@ -41,6 +43,7 @@ async def fight(
     archetype="warrior",
     encounter_id=ENCOUNTER,
     guest_class="mage",
+    guest_hp=100,
     conditions=(),
 ):
     session = world.ctx.userdata
@@ -56,14 +59,14 @@ async def fight(
             level=8,
             ac=10,
             speed=30,
-            hp={"current": hp if index == 0 else 100, "max": 100},
+            hp={"current": hp if index == 0 else guest_hp, "max": max_hp if index == 0 else 100},
             focus={"current": 10, "max": 10},
             stamina={"current": 10, "max": 10},
             resonance={"current": 0},
             equipment={"main_hand": SWORD},
             attributes={"strength": 10, "intelligence": 18, "dexterity": 10},
             divine_favor={"patron": deity, "level": favor if index == 0 else 40, "max": 100},
-            patron_gifts=OTHER_GIFTS if index == 0 else {},
+            patron_gifts=gifts if index == 0 else {},
             conditions=list(conditions) if index == 0 else [],
         )
         session.party.members[index].resonance.current = 0
