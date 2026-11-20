@@ -195,7 +195,7 @@ Healing spells generate **0 Resonance** regardless of source type. Restoration m
 |---|---|---|
 | Acknowledged | Beacon | Faint light in darkness. Hollow creatures have disadvantage on first attack against you each encounter |
 | Devoted | Restoration Surge | Once per long rest, remove one negative condition (Poisoned, Blinded, Frightened, stage 1 Hollowed) by touch. No Focus cost |
-| Exalted | Dawn's Embrace | Once per session, when any ally drops to 0 HP, they are immediately stabilized and healed to half max HP. No action required, works at distance |
+| Exalted | Dawn's Embrace | Once per session, when damage drops another party player or the companion from above 0 HP to 0, they stand at half max HP, rounded down with a minimum of 1. Death Ward takes priority. A living, present follower can give while fallen. No action, range or line of sight is required. |
 
 **Layer 4 — Archetype Resonance**
 

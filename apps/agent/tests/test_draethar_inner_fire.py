@@ -73,6 +73,7 @@ def _mocks(player: dict, *, roll_total: int = 4):
     mock_db, _conn = make_db_mod()
     queries = MagicMock()
     queries.get_player = AsyncMock(return_value=player)
+    queries.get_players_for_update = AsyncMock(return_value={"player_1": player})
     hp_mut = MagicMock()
     hp_mut.update_player_hp = AsyncMock()
     hp_mut.save_combat_state = AsyncMock()
@@ -327,7 +328,7 @@ async def test_no_combat_rejected():
     mock_db, queries, hp_mut, res_mut, res_events, dice_mod = _mocks(_player())
     with pytest.raises(ToolError, match="combat"):
         await _invoke(ctx, mock_db, queries, hp_mut, res_mut, res_events, dice_mod)
-    queries.get_player.assert_not_awaited()  # combat gate fires before the player fetch
+    queries.get_players_for_update.assert_not_awaited()  # combat gate fires before the player fetch
     res_mut.update_player_resonance.assert_not_awaited()
     hp_mut.update_player_hp.assert_not_awaited()
 

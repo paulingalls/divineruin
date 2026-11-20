@@ -18,7 +18,7 @@ from patron_combat_edges import VEILSTEP, VEILSTEP_RANGE_FT
 from patron_favor import get_patron_tier
 from patron_gifts import UNBOUND_ALONE_BONUS, thyra_gift
 from patron_synergy import synergy_for_patron
-from patron_zero_hp import DEATH_WARD
+from patron_zero_hp import DAWNS_EMBRACE, DEATH_WARD
 from session_data import SessionData
 from terrain import is_natural
 
@@ -78,6 +78,11 @@ async def query_patron(
         if ability["id"] == DEATH_WARD:
             ability["activation_hint"] = (
                 "Triggers automatically when damage reduces you from above 0 HP to 0 HP. You stay at 1 HP."
+            )
+        elif ability["id"] == DAWNS_EMBRACE:
+            ability["activation_hint"] = (
+                "Triggers automatically when damage drops another party player or the companion to 0 HP. "
+                "They stand at half maximum HP, rounded down with a minimum of 1."
             )
         elif ability["id"] == VEILSTEP:
             ability["activation_hint"] = (

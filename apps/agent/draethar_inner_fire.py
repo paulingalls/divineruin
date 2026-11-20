@@ -28,7 +28,7 @@ from combat_sound_events import publish_combat_sounds as _publish_sounds
 from combat_ui_update import build_combat_ui_update
 from game_events import publish_game_event
 from patron_ability_events import publish_patron_abilities
-from patron_zero_hp import trigger_damage_gifts
+from patron_zero_hp import lock_damage_players, trigger_damage_gifts
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.tools")
@@ -70,7 +70,8 @@ async def _inner_fire_locked(
     state = deepcopy(session.combat_state)
     fate_rolls = PhaseRolls()
     async with scratch_guard(session), db_mod.transaction() as conn:
-        player = await queries_mod.get_player(player_id, conn=conn, for_update=True)
+        players = await lock_damage_players(session, player_id, queries=queries_mod, conn=conn)
+        player = players.get(player_id)
         if player is None:
             raise ToolError(f"Unknown player: {player_id}")
         if player.get("race") != _DRAETHAR:
@@ -93,7 +94,7 @@ async def _inner_fire_locked(
         session.validate_acting_player(player_id)
         participant.hp_current = new_hp
         gift = await trigger_damage_gifts(
-            session, participant, hp_before, player=player, queries=queries_mod, conn=conn
+            session, state, participant, hp_before, players=players, queries=queries_mod, conn=conn
         )
         final_hp = participant.hp_current
 

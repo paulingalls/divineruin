@@ -142,7 +142,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 - [x] Recharge tracking prevents ability use before recharge completes (short rest / long rest / daily)
 - [x] Ability unlock triggers automatically when favor tier advances
 - [x] Higher-tier abilities become unavailable (not deleted) when favor drops below tier threshold
-- [ ] `activate_patron_ability` validates availability, applies effect, and sets recharge timer
+- [ ] `activate_patron_ability` validates availability, applies effect, and sets recharge timer <!-- Dawn’s Embrace now resolves automatically at both damage writers and recharges on session entry. Other engine abilities remain pending. -->
 - [x] `activate_patron_ability` returns error if ability is on cooldown or tier is insufficient
 - [x] `check_patron_tier` returns current tier, favor value, and list of available abilities
 - [x] Client receives patron ability data for character sheet and favor bar for HUD
