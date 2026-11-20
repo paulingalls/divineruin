@@ -360,6 +360,7 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None, fate_roll
                             candidate["target_id"],
                             attack_result,
                             packet_deps["queries"],
+                            action=action or {},
                             conn=packet_deps["conn"],
                         )
                         await packet_deps["sink"].emit(

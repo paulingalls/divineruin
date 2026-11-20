@@ -55,6 +55,7 @@
       "apps/agent/rules_engine.py",
       "apps/agent/social_resolution.py",
       "apps/agent/spell_voice_rules.py",
+      "apps/agent/temp_hp.py",
       "apps/agent/terrain.py",
       "apps/agent/world_effect_targets.py",
       "apps/agent/world_regions.py",

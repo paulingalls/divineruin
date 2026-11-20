@@ -20,6 +20,7 @@ import event_types as E
 import racial_resonance
 import resonance
 import resonance_events
+import temp_hp
 import zhael_fate
 from combat_damage import _handle_hp_zero
 from combat_events import isolated_publish, scratch_guard
@@ -87,14 +88,26 @@ async def _inner_fire_locked(
         new_resonance = max(0, member.resonance.current - reduction)
         was_fallen = participant.is_fallen
         hp_before = participant.hp_current
-        new_hp = max(conditions.damage_hp_floor(participant.conditions), hp_before - fire_damage)
-        overkill = max(0, fire_damage - hp_before) if new_hp == 0 else 0
+        impact = temp_hp.absorb(
+            fire_damage,
+            hp_before,
+            temp_hp.player_pool(participant),
+            hp_floor=conditions.damage_hp_floor(participant.conditions),
+        )
         session.validate_acting_player(player_id)
         await resonance_mutations_mod.update_player_resonance(player_id, new_resonance, conn=conn)
         session.validate_acting_player(player_id)
-        participant.hp_current = new_hp
+        participant.hp_current = impact.hp
+        participant.temp_hp = impact.temporary
         gift, _ = await trigger_damage_gifts(
-            session, state, participant, hp_before, players=players, queries=queries_mod, conn=conn
+            session,
+            state,
+            participant,
+            hp_before,
+            absorbed=impact.absorbed,
+            players=players,
+            queries=queries_mod,
+            conn=conn,
         )
         final_hp = participant.hp_current
 
@@ -105,23 +118,23 @@ async def _inner_fire_locked(
                 session,
                 state,
                 participant,
-                overkill=overkill,
+                overkill=impact.overkill,
                 was_fallen=was_fallen,
                 hp_status=combat_resolution.hp_threshold_status(final_hp, participant.hp_max),
                 sounds=sounds,
             )
 
-        # A Hollowed rise flipped `type` off "player" above, and that flip is the gate: the echo's
-        # HP is the monster's, not the player's, so neither players.data nor the caster's
-        # concentration follows it down. Same suppression the attack path gets, same reason.
+        # The echo owns its real HP. The spent pool still belongs to the player row.
         if participant.type == "player":
-            await hp_mutations_mod.update_player_hp(player_id, final_hp, conn=conn)
+            await hp_mutations_mod.update_player_hp(player_id, final_hp, temp_hp=impact.temporary, conn=conn)
+        elif rose_hollowed and impact.absorbed:
+            await hp_mutations_mod.update_player_temp_hp(player_id, impact.temporary, conn=conn)
 
         participant.conditions = condition_sources.clear_charm_from_damage(
             participant.conditions, player_id, fire_damage
         )
         facts = {
-            **gift,
+            **impact.receipt(gift),
             "resonance_reduced": member.resonance.current - new_resonance,
             "fire_damage": fire_damage,
             "hp_remaining": participant.hp_current,
@@ -178,7 +191,7 @@ async def _inner_fire_locked(
     if gift_owner := gift.get("gift_owner"):
         with isolated_publish("Inner Fire patron abilities"):
             await publish_patron_abilities(session.room, gift_owner["id"], session.event_bus)
-    if gift:
+    if gift or impact.absorbed:
         with isolated_publish("Inner Fire combat UI"):
             await publish_game_event(
                 session.room, E.COMBAT_UI_UPDATE, build_combat_ui_update(state), event_bus=session.event_bus
