@@ -2,6 +2,7 @@
 
 from livekit.agents.llm import ToolError
 
+import architect_entomb
 import combat_damage
 import combat_damage_results
 import combat_grapple
@@ -49,11 +50,34 @@ async def turn_start(
     )
     if progress is not None and progress.paused:
         return None
+    if not victim.is_dead and (chamber_id := architect_entomb.source(state, victim.id)):
+        chamber = state.get_participant(chamber_id)
+        assert chamber is not None
+        compression = await _apply(
+            session,
+            state,
+            victim,
+            chamber,
+            "Entomb compression",
+            architect_entomb.COMPRESSION,
+            conn=conn,
+            sink=sink,
+            mutations=mutations,
+            queries=queries,
+            concentration_break_mod=concentration_break_mod,
+            progress=progress.scope("entomb") if progress is not None else None,
+        )
+        if progress is not None and progress.paused:
+            return None
+        if packet is None:
+            packet = compression
+        elif compression is not None:
+            packet["turn_start_effects"] = [compression]
     effect = await combat_regeneration.tick(victim, conn=conn, mutations=mutations)
     if effect is not None:
         if packet is None:
             packet = {"actor_id": victim.id, "round": state.round_number}
-        packet["turn_start_effects"] = [effect]
+        packet.setdefault("turn_start_effects", []).append(effect)
     return packet
 
 
@@ -78,7 +102,27 @@ async def _damage(session, state, victim, *, conn, sink, mutations, queries, con
         or cannot_act(owner.conditions)
     ):
         return None
-    effect = owner.turn_start_damage
+    return await _apply(
+        session,
+        state,
+        victim,
+        owner,
+        "Dissolution Field",
+        owner.turn_start_damage,
+        conn=conn,
+        sink=sink,
+        mutations=mutations,
+        queries=queries,
+        concentration_break_mod=concentration_break_mod,
+        progress=progress,
+    )
+
+
+async def _apply(
+    session, state, victim, owner, name, effect, *, conn, sink, mutations, queries, concentration_break_mod, progress
+):
+    if progress is not None and "summary" in progress.steps:
+        return progress.steps["summary"]
     result = None
     if progress is None or "damage_receipt" not in progress.steps:
         damage = dice_roll(effect["damage"]).total
@@ -86,7 +130,7 @@ async def _damage(session, state, victim, *, conn, sink, mutations, queries, con
     summary = await combat_damage.apply_attack_result(
         session,
         owner,
-        {"name": "Dissolution Field"},
+        {"name": name},
         victim,
         result,
         victim.ac,
@@ -103,7 +147,7 @@ async def _damage(session, state, victim, *, conn, sink, mutations, queries, con
         return None
     if not victim.is_ally or victim.is_fallen or cannot_act(victim.conditions):
         state.ac_modifiers.pop(victim.id, None)
-    return {
+    packet = {
         **summary,
         "automatic": True,
         "actor_id": owner.id,
@@ -111,3 +155,6 @@ async def _damage(session, state, victim, *, conn, sink, mutations, queries, con
         "target_id": victim.id,
         "round": state.round_number,
     }
+    if progress is not None:
+        progress.steps["summary"] = packet
+    return packet

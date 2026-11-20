@@ -3433,7 +3433,15 @@
         "name": "Entomb",
         "description": "Recharge 5-6. One creature within 60 ft STR save DC 20 or Restrained in a sealed chamber, taking 3d8 bludgeoning per round. Escape STR DC 20 or 30+ damage to one AC 19, 30 HP wall.",
         "narration_cue": "",
-        "recharge": "5-6",
+        "kind": "attack",
+        "type": "ranged",
+        "reach": 60,
+        "damage": "0",
+        "damage_type": "none",
+        "save": "STR",
+        "dc": 20,
+        "applies_condition": "restrained",
+        "recharge": { "kind": "roll", "die": 6, "threshold": 5 },
         "audio": null
       },
       {
