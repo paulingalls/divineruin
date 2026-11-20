@@ -44,6 +44,20 @@ TERRAIN_PROPERTIES = MappingProxyType(
 )
 
 
+WRATH_DAMAGE_TYPES = MappingProxyType(
+    {
+        TerrainType.ANCIENT_FOREST: "piercing",
+        TerrainType.FOREST: "piercing",
+        TerrainType.GRASSLAND: "slashing",
+        TerrainType.FARMLAND: "slashing",
+        TerrainType.MOUNTAIN: "bludgeoning",
+        TerrainType.UNDERGROUND: "bludgeoning",
+        TerrainType.COAST: "cold",
+        TerrainType.WETLAND: "poison",
+    }
+)
+
+
 def properties(value: str) -> TerrainProperties:
     try:
         return TERRAIN_PROPERTIES[TerrainType(value)]

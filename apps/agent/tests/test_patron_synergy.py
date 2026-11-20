@@ -16,9 +16,9 @@ ROSTER = {row["id"] for row in json.loads((ROOT / "content/archetypes.json").rea
 
 
 def doc_rows():
-    with (ROOT / "docs/game_mechanics/game_mechanics_patrons.md").open() as source:
-        text = "".join(itertools.islice(source, 39, 321))
-    sections = re.split(r"^### ", text, flags=re.M)[1:]
+    doc = (ROOT / "docs/game_mechanics/game_mechanics_patrons.md").read_text()
+    patron_sections = doc[doc.index("\n### Veythar,") : doc.index("\n### The Unbound Path")]
+    sections = re.split(r"^### ", patron_sections, flags=re.M)[1:]
     assert {s.split(",", 1)[0].lower() for s in sections} == set(PATRONS)
     expected = {}
     for section in sections:

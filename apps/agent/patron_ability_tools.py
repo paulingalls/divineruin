@@ -1,6 +1,7 @@
 """Authored patron uses: derived eligibility, durable spend and shared projection."""
 
 import json
+from typing import TYPE_CHECKING
 
 from livekit.agents.llm import ToolError
 
@@ -13,6 +14,9 @@ from _gods_content import load_gods
 from combat_ui_update import build_combat_ui_update
 from game_events import publish_game_event
 from patron_favor import get_patron_tier
+
+if TYPE_CHECKING:
+    from session_data import SessionData
 
 TIERS = ("Acknowledged", "Devoted", "Exalted")
 LUCKY = "zhael_lucky"
@@ -164,6 +168,43 @@ async def _spend_activation(conn, session, actor, ability_id, target_id, conditi
     return ability, updated, response
 
 
+async def _activate_wrath(session: "SessionData", actor: str, ability_id: str) -> tuple[dict, dict]:
+    from combat_events import EventSink, isolated_publish, scratch_guard
+    from combat_hollow_resonance import take_totals
+    from patron_ability_events import publish_patron_abilities
+    from patron_zero_hp import lock_damage_players
+    from resonance_events import publish_resonance_changed
+    from thyra_wrath import wildmothers_wrath
+
+    sink = EventSink()
+    async with scratch_guard(session), db.transaction() as conn:
+        await lock_damage_players(session, None, queries=db_queries, conn=conn)
+        ability = await _locked_ability(conn, actor, ability_id)
+        updated, response = await wildmothers_wrath(session, actor, conn=conn, sink=sink)
+        totals = take_totals(updated)
+        await _write_spend(conn, session, actor, ability_id)
+        await db_mutations.save_combat_state(updated.combat_id, updated.to_dict(), conn=conn)
+
+    session.combat_state = updated
+    for member in session.party.members:
+        if member.player_id in totals:
+            member.resonance.current = totals[member.player_id]
+
+    with isolated_publish("Wildmother's Wrath damage events"):
+        await sink.flush()
+    with isolated_publish("Wildmother's Wrath combat update"):
+        await publish_game_event(
+            session.room, E.COMBAT_UI_UPDATE, build_combat_ui_update(updated), event_bus=session.event_bus
+        )
+    with isolated_publish("Wildmother's Wrath patron abilities"):
+        await publish_patron_abilities(session.room, actor, session.event_bus)
+    for member in session.party.members:
+        if member.player_id in totals:
+            with isolated_publish(f"Wildmother's Wrath resonance update ({member.player_id})"):
+                await publish_resonance_changed(session, resonance_track=member.resonance, caster_id=member.player_id)
+    return ability, response
+
+
 async def activate(
     context, ability_id, *, target_id=None, condition: str | None = None, destination: dict | None = None
 ):
@@ -172,16 +213,19 @@ async def activate(
     session = context.userdata
     actor = session.acting_player_id
     async with session.combat_state_lock:
-        async with db.transaction() as conn:
-            ability, updated, response = await _spend_activation(
-                conn, session, actor, ability_id, target_id, condition, destination
-            )
-        if updated is not None:
-            session.combat_state = updated
-            await publish_game_event(
-                session.room, E.COMBAT_UI_UPDATE, build_combat_ui_update(updated), event_bus=session.event_bus
-            )
-        await publish_patron_abilities(session.room, actor, session.event_bus)
+        if ability_id == patron_combat_edges.WILDMOTHERS_WRATH:
+            ability, response = await _activate_wrath(session, actor, ability_id)
+        else:
+            async with db.transaction() as conn:
+                ability, updated, response = await _spend_activation(
+                    conn, session, actor, ability_id, target_id, condition, destination
+                )
+            if updated is not None:
+                session.combat_state = updated
+                await publish_game_event(
+                    session.room, E.COMBAT_UI_UPDATE, build_combat_ui_update(updated), event_bus=session.event_bus
+                )
+            await publish_patron_abilities(session.room, actor, session.event_bus)
     return json.dumps(
         {
             "id": ability_id,
