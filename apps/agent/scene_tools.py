@@ -7,6 +7,7 @@ import logging
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
+import architect_scene
 import choir_scene
 import db_content_queries
 import db_queries
@@ -101,6 +102,7 @@ async def _build_scene_context(
     player_info = _player_summary(player) if player else None
 
     return {
+        "architect": await architect_scene.facts(session, queries=queries, location_id=location_id, location=location),
         "choir": await choir_scene.facts(session, queries=queries, location_id=location_id),
         "lost_scout": await lost_scout_scene.facts(session, location_id, queries=queries, content=content),
         "still": await still_scene.facts(session, queries=queries, location_id=location_id, location=location),

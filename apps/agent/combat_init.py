@@ -11,6 +11,8 @@ import uuid
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
+import architect_encounter
+import architect_scene
 import choir_scene
 import combat_resolution as combat_resolution
 import combat_spatial
@@ -151,6 +153,7 @@ async def _start_combat_locked(
         initiative_order,
         retained_choir,
         retained_still,
+        retained_architect,
     ) = await assemble_participants(session, encounter, encounter_id, member_players, content=content, queries=queries)
 
     # Carry the encounter's faction onto CombatState so combat_end can attribute the outcome
@@ -193,10 +196,15 @@ async def _start_combat_locked(
 
     choir_encounter.initialize(combat_state)
     still_encounter.initialize(combat_state)
+    architect_encounter.initialize(combat_state)
     choir_facts = None
     if combat_state.still_encounter is not None:
         await still_scene.start(
             session, combat_state, retained_still, mutations=mutations, queries=queries, db_mod=db_mod
+        )
+    elif combat_state.architect_encounter is not None:
+        await architect_scene.start(
+            session, combat_state, retained_architect, mutations=mutations, queries=queries, db_mod=db_mod
         )
     elif lost_scout_combat.owns(combat_state):
         await lost_scout_combat.start(session, combat_state, mutations=mutations, queries=queries, db_mod=db_mod)
@@ -248,6 +256,7 @@ async def _start_combat_locked(
     session.record_event(f"Combat started: {encounter.get('name', encounter_id)}")
 
     response = {
+        "architect": architect_encounter.facts(combat_state),
         "choir": choir_facts,
         "still": still_encounter.facts(combat_state),
         "spatial": combat_spatial.facts(combat_state, actor_id),
@@ -255,7 +264,7 @@ async def _start_combat_locked(
         "encounter_name": encounter.get("name", encounter_id),
         "encounter_description": encounter_description,
         "initiative_order": initiative_summary,
-        "participants": _participant_roster(participants),
+        "participants": _participant_roster(combat_state.participants),
     }
     logger.info("start_combat result: combat_id=%s, %d participants", combat_id, len(participants))
 
@@ -279,6 +288,8 @@ async def _start_combat_locked(
     # The handoff drops start_combat's tool output from CombatAgent's context, so the roster rides here.
     parts.append(f"Combatants: {json.dumps(response['participants'])}")
 
+    if response["architect"]:
+        parts.append(f"Architect encounter: {json.dumps(response['architect'])}")
     if response["still"]:
         parts.append(f"Still encounter: {json.dumps(response['still'])}")
     parts.append(f"Choir encounter: {json.dumps(response['choir'])}")

@@ -76,6 +76,7 @@ async def test_authored_inventory_and_bindings(reset_db_pool):
                     "ruins_mawling_pair",
                     "fragment_shadeling",
                     "hollow_still",
+                    "hollow_architect",
                     "hollowed_scout",
                 }
                 unbound = {t["id"] for t in templates} - bound

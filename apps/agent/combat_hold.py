@@ -18,6 +18,7 @@ reaches the DM through the result's ``next`` field, ADR 0008 decision 4).
 import logging
 from uuid import uuid4
 
+import architect_actions
 import combat_enhancers
 import combat_marks as combat_marks
 import combat_melee_approach
@@ -188,6 +189,8 @@ def _attack_action(state, head: dict) -> dict | None:
     action = _find_action(actor, declaration.action) if actor is not None else None
     if action is None or action.get("auto_hit") or is_save_damage_action(action) or action_kind(action) != "attack":
         return None
+    if architect_actions.geometry_auto_hit(state, head["actor_id"], action, declaration.target_id, head):
+        return None
     if is_combined_attack_action(action):
         return action
     if declaration.type is not DeclarationType.ATTACK or action.get("applies_condition"):
@@ -346,6 +349,10 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None, fate_roll
                         return summaries
 
                 if action is not None and head["roll"] is None:
+                    if reason := architect_actions.slam_refusal(
+                        state, head["actor_id"], action, head["declaration"]["target_id"]
+                    ):
+                        raise HeldActionUnresolvable(reason)
                     _assert_single_swing(state, head, action)
                     contribution = combat_reaction_effect.ac_bonus(state, head)
                     if not await roll_hostile(

@@ -3,6 +3,7 @@
 import logging
 from functools import partial
 
+import architect_encounter
 import check_resolution_attack
 import combat_damage_affinity
 import combat_grapple
@@ -31,7 +32,7 @@ from combat_events import emit_or_publish
 from combat_fate_rolls import packet_save
 from combat_fortitude import roll_fortitude, try_fortitude
 from combat_sound_events import publish_combat_sounds as _publish_sounds
-from combat_structures import remove_wall_segment
+from combat_structures import collapse_wall
 from kaelen_gift import trigger_iron_resolve
 from patron_combat_edges import reward_worthy_foe
 from session_data import CombatParticipant, CombatState, SessionData
@@ -95,11 +96,10 @@ def _handle_hp_zero(
         sounds.append(SOUND_HOLLOW_RISE)
         return hp_status, True, []
 
-    target.is_fallen = True
     if target.is_structure:
-        remove_wall_segment(combat_state, target)
-        target.is_dead = True
+        collapse_wall(combat_state, target)
         return hp_status, False, []
+    target.is_fallen = True
     combat_hollow_death.mark_destroyed(target)
     released = combat_grapple.release_from_grappler(combat_state, target.id) if combat_state is not None else []
     # Instant death (M4.4 story-002): overkill (excess damage past 0) >= max HP kills
@@ -370,6 +370,8 @@ async def _apply_damage(
         await combat_hollow_death.accrue_death(session, combat_state, target, conn=conn, queries=queries)
         if combat_state is not None and combat_state.choir_encounter is not None:
             choir_encounter.destroyed(combat_state)
+        if combat_state is not None and architect_encounter.is_owner(combat_state, target.id):
+            architect_encounter.destroyed(combat_state)
 
     await still_encounter.after_damage(session, combat_state, target, conn=conn, queries=queries, was_fallen=was_fallen)
 

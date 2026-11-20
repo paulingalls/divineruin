@@ -8,7 +8,7 @@ single initiative-ordered packet to the right resolver (attack / ability /
 de-escalate / defend). The helpers mutate in-memory
 state and write through injected mutation/query modules, but own no transaction."""
 
-import combat_fate
+import architect_actions
 import combat_maneuver
 import combat_marks
 import combat_melee_approach
@@ -436,26 +436,29 @@ async def _resolve_action_packet(
             **outcome,
         }
 
-    return await combat_fate.attack_sequence(
+    return await architect_actions.resolve(
         session,
         state,
         packet,
         attacker,
         target,
         action,
-        attack_cursor=attack_cursor,
-        progress=progress,
-        mutations=mutations,
-        queries=queries,
-        resolver=resolver,
-        concentration_break_mod=concentration_break_mod,
-        conn=conn,
-        sink=sink,
-        reaction_ac_bonus=reaction_ac_bonus,
-        reaction_save_advantage=reaction_save_advantage,
-        shield_reaction=shield_reaction,
-        grapple_blocked=grapple_blocked,
-        publish_roll=publish_roll,
-        movement=movement,
-        movement_budget=movement_budget,
+        _held_head,
+        dict(
+            attack_cursor=attack_cursor,
+            progress=progress,
+            mutations=mutations,
+            queries=queries,
+            resolver=resolver,
+            concentration_break_mod=concentration_break_mod,
+            conn=conn,
+            sink=sink,
+            reaction_ac_bonus=reaction_ac_bonus,
+            reaction_save_advantage=reaction_save_advantage,
+            shield_reaction=shield_reaction,
+            grapple_blocked=grapple_blocked,
+            publish_roll=publish_roll,
+            movement=movement,
+            movement_budget=movement_budget,
+        ),
     )

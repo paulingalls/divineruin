@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test, expect } from "bun:test";
-import { validateEncounterReferences } from "./encounter";
+import { validateEncounterReferences, validateScenePlacement } from "./encounter";
 
 const corpus = (await Bun.file(
   new URL("../../fixtures/encounter_references.json", import.meta.url),
@@ -39,11 +39,15 @@ for (const size of [1, 2]) {
     ).not.toThrow();
   });
 }
-test("all eighteen templates", async () => {
+test("all nineteen templates", async () => {
   const rows = (await Bun.file(
     new URL("../../../../content/encounter_templates.json", import.meta.url),
-  ).json()) as { id: string; enemies: unknown[] }[];
-  expect(rows).toHaveLength(18);
+  ).json()) as {
+    id: string;
+    enemies: unknown[];
+    scene_placement: { zones: Record<string, unknown> };
+  }[];
+  expect(rows).toHaveLength(19);
   expect(new Set(rows.map((row) => row.id))).toEqual(
     new Set([
       "fragment_shadeling",
@@ -59,6 +63,7 @@ test("all eighteen templates", async () => {
       "hollow_corrupted_settlement",
       "hollow_choir",
       "hollow_still",
+      "hollow_architect",
       "hollowmoth_swarm",
       "hollow_weaver_ambush",
       "hollow_mawling_pack",
@@ -69,7 +74,15 @@ test("all eighteen templates", async () => {
   for (const row of rows) {
     expect(row.enemies.length).toBeGreaterThan(0);
     validateEncounterReferences(row, ids);
+    validateScenePlacement(row);
   }
+  const architect = rows.find((row) => row.id === "hollow_architect");
+  expect(architect?.enemies).toEqual([
+    { id: "architect", creature_id: "hollow_architect", role: "named" },
+  ]);
+  expect(architect?.scene_placement.zones).toEqual({
+    architect_corruption_aura: { center_id: "architect", radius_ft: 2640 },
+  });
 });
 
 // Runs the TypeScript compiler in a child process: ~2s alone, past Bun's 5s default when the
