@@ -86,8 +86,6 @@ async def _embrace_donor(
     conn: "Connection | None",
 ) -> tuple[str, str] | None:
     for player_id in _donor_ids(session, target):
-        if players is not None and player_id not in players:
-            continue
         participant = state.get_participant(player_id)
         if participant is not None and (participant.type != "player" or is_terminally_down(participant)):
             continue
