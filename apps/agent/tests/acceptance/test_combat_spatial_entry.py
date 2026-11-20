@@ -112,13 +112,26 @@ async def test_created_and_migrated_speed_limits_movement(spatial_entry, migrate
     before = deepcopy(state.to_dict())
     with pytest.raises(ToolError, match="exceeds speed"):
         await combat_turn.declare_phase(
-            ctx, [MoveDecl.model_validate({"kind": "move", "actor_id": pid, "destination": pos(30.0001)})]
+            ctx,
+            [
+                MoveDecl.model_validate(
+                    {
+                        "reshape": [],
+                        "movement_mode": "ground",
+                        "kind": "move",
+                        "actor_id": pid,
+                        "destination": pos(30.0001),
+                    }
+                )
+            ],
         )
     assert ctx.userdata.combat_state.to_dict() == before
     assert (await persisted(state.combat_id)) == before
-    payload = MoveDecl.model_validate({"kind": "move", "actor_id": pid, "destination": pos(30)})
+    payload = MoveDecl.model_validate(
+        {"reshape": [], "movement_mode": "ground", "kind": "move", "actor_id": pid, "destination": pos(30)}
+    )
     with pytest.raises(ToolError, match="more than once"):
-        await combat_turn.declare_phase(ctx, [payload, DefendDecl(kind="defend", actor_id=pid)])
+        await combat_turn.declare_phase(ctx, [payload, DefendDecl(reshape=[], kind="defend", actor_id=pid)])
     declared = json.loads(await combat_turn.declare_phase(ctx, [payload]))
     assert declared["spatial"] == facts(ctx.userdata.combat_state, pid)
     with pytest.raises(ToolError, match="declaration beat"):
@@ -167,6 +180,8 @@ async def test_actual_catalog_entry_persists_placement_and_zone_ids(spatial_entr
         assert {row["action"] for row in choir["search_actions"]} == {"choir_search_perception", "choir_search_arcana"}
     if template["id"] == "hollow_still":
         assert queried.pop("still") == response["still"]
+    if template["id"] == "hollow_architect":
+        assert queried.pop("architect") == response["architect"]
     assert queried == response["spatial"]
 
 

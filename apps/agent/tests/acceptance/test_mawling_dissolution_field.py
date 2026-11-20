@@ -64,6 +64,7 @@ async def grapple(maw, target=None):
         {
             "declarations": [
                 {
+                    "reshape": [],
                     "kind": "attack",
                     "actor_id": maw.enemies[0],
                     "action": "Lunge",
@@ -71,7 +72,7 @@ async def grapple(maw, target=None):
                     "rider": "",
                     "target_id": target,
                 },
-                {"kind": "defend", "actor_id": maw.players[1]},
+                {"reshape": [], "kind": "defend", "actor_id": maw.players[1]},
             ]
         },
     )
@@ -92,9 +93,9 @@ async def test_lunge_field_rounds(maw, omitted):
         victim = await grapple(maw)
         hp = victim.hp_current
         for round_index in range(2):
-            declarations = [{"kind": "defend", "actor_id": maw.players[1]}]
+            declarations = [{"reshape": [], "kind": "defend", "actor_id": maw.players[1]}]
             if not omitted:
-                declarations.append({"kind": "defend", "actor_id": victim.id})
+                declarations.append({"reshape": [], "kind": "defend", "actor_id": victim.id})
             await maw.command("declare_phase", {"declarations": declarations})
             packets = await maw.drain()
             ticks = [p for p in packets if p.get("automatic")]
@@ -127,7 +128,9 @@ async def test_omitted_victim_continues(maw, status):
         await maw.persist()
         hp = victim.hp_current
         for round_index in range(2):
-            await maw.command("declare_phase", {"declarations": [{"kind": "defend", "actor_id": maw.players[1]}]})
+            await maw.command(
+                "declare_phase", {"declarations": [{"reshape": [], "kind": "defend", "actor_id": maw.players[1]}]}
+            )
             ticks = [p for p in await maw.drain() if p.get("automatic")]
             assert len(ticks) == 1
             victim = maw.sd.combat_state.get_participant(victim.id)
@@ -150,7 +153,12 @@ def field_dice():
 async def next_round(maw, declaration=None):
     await maw.command(
         "declare_phase",
-        {"declarations": [{"kind": "defend", "actor_id": maw.players[1]}, *([declaration] if declaration else [])]},
+        {
+            "declarations": [
+                {"reshape": [], "kind": "defend", "actor_id": maw.players[1]},
+                *([declaration] if declaration else []),
+            ]
+        },
     )
     return await maw.drain()
 
@@ -206,7 +214,9 @@ async def test_missing_source_rolls_back(maw, field_dice):
     victim = await grapple(maw)
     next(c for c in victim.conditions if c["type"] == "grappled")["source"] = "absent"
     await maw.persist()
-    await maw.command("declare_phase", {"declarations": [{"kind": "defend", "actor_id": maw.players[1]}]})
+    await maw.command(
+        "declare_phase", {"declarations": [{"reshape": [], "kind": "defend", "actor_id": maw.players[1]}]}
+    )
     before = await maw.snapshot()
     error = await maw.command("resolve_phase", {}, error=True)
     assert victim.id in error and "absent" in error
@@ -237,6 +247,7 @@ async def test_tick_fall_cancels_queued_action(maw, field_dice):
     packets = await next_round(
         maw,
         {
+            "reshape": [],
             "kind": "attack",
             "actor_id": target,
             "action": attack_name,
@@ -333,7 +344,9 @@ async def test_stunned_declaration_refused_but_boundary_runs(maw, field_dice):
     victim.conditions.append({"type": "stunned", "duration": 10})
     await maw.persist()
     before = await maw.snapshot()
-    await maw.command("declare_phase", {"declarations": [{"kind": "defend", "actor_id": victim.id}]}, error=True)
+    await maw.command(
+        "declare_phase", {"declarations": [{"reshape": [], "kind": "defend", "actor_id": victim.id}]}, error=True
+    )
     assert await maw.snapshot() == before
     assert sum(p.get("automatic", False) for p in await next_round(maw)) == 1
 
@@ -349,6 +362,7 @@ async def test_public_source_kill_releases_grapple(maw, field_dice):
     packets = await next_round(
         maw,
         {
+            "reshape": [],
             "kind": "attack",
             "actor_id": maw.sd.companion.id,
             "action": maw.sd.combat_state.get_participant(maw.sd.companion.id).action_pool[0]["name"],
@@ -368,7 +382,7 @@ async def test_tick_fall_voids_declared_defend_bonus(maw, field_dice):
     victim = await grapple(maw)
     victim.hp_current = 1
     await maw.persist()
-    await maw.command("declare_phase", {"declarations": [{"kind": "defend", "actor_id": victim.id}]})
+    await maw.command("declare_phase", {"declarations": [{"reshape": [], "kind": "defend", "actor_id": victim.id}]})
     first = await maw.command("resolve_phase", {})
     assert any(p.get("automatic") for p in first["packets"])
     state = await maw.reload()
@@ -385,7 +399,7 @@ async def test_hollowed_rise_cancels_living_ally_intent(maw, field_dice, kind):
     await maw.persist()
     target_id = maw.enemies[1]
     target_hp = maw.sd.combat_state.get_participant(target_id).hp_current
-    declaration = {"kind": kind, "actor_id": victim.id}
+    declaration = {"kind": kind, "actor_id": victim.id, "reshape": []}
     if kind == "attack":
         declaration.update(action="Shortsword", target_id=target_id, held_item_id="", rider="")
     await maw.command("declare_phase", {"declarations": [declaration]})
@@ -399,5 +413,5 @@ async def test_hollowed_rise_cancels_living_ally_intent(maw, field_dice, kind):
     assert state.get_participant(target_id).hp_current == target_hp
     assert victim.id not in state.ac_modifiers
     await maw.drain()
-    packets = await next_round(maw, {"kind": "defend", "actor_id": victim.id})
+    packets = await next_round(maw, {"reshape": [], "kind": "defend", "actor_id": victim.id})
     assert any(p.get("actor_id") == victim.id and p["resolved"] for p in packets)

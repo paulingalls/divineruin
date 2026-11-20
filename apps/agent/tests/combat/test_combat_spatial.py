@@ -97,11 +97,18 @@ def test_move_schema_reaches_engine():
     schema = ToolContext([declare_phase]).parse_function_tools("openai", strict=True)
     assert "move" in json.dumps(schema)
     assert "destination" in json.dumps(schema)
-    payload = MoveDecl(kind="move", actor_id="a", destination=Destination(x=30, y=0, z=0))
-    assert to_engine_declarations([payload]) == {"a": move()}
+    payload = MoveDecl(
+        reshape=[], movement_mode="ground", kind="move", actor_id="a", destination=Destination(x=30, y=0, z=0)
+    )
+    assert to_engine_declarations([payload]) == {"a": {**move(), "movement_mode": "ground"}}
     with pytest.raises(ValueError, match="more than once"):
         to_engine_declarations(
-            [payload, AttackDecl(kind="attack", actor_id="a", action="Sword", target_id="b", held_item_id="", rider="")]
+            [
+                payload,
+                AttackDecl(
+                    reshape=[], kind="attack", actor_id="a", action="Sword", target_id="b", held_item_id="", rider=""
+                ),
+            ]
         )
 
 
@@ -111,7 +118,7 @@ def test_move_consumes_one_declaration_and_only_moves_actor():
 
     state = spatial_state()
     before = deepcopy(state.to_dict())
-    declared, _ = advance_combat_phase(state, {"a": move()})
+    declared, _ = advance_combat_phase(state, {"a": {**move(), "movement_mode": "ground"}})
     assert list(declared.pending_declarations) == ["a"]
     working, advance = advance_combat_phase(declared)
     packet = advance.packets[0]
@@ -145,7 +152,7 @@ def test_move_eligibility_refuses(condition):
     actor.conditions = [{"type": condition, "source": "b", "duration": 2}]
     before = deepcopy(state.to_dict())
     with pytest.raises(ValueError):
-        advance_combat_phase(state, {"a": move()})
+        advance_combat_phase(state, {"a": {**move(), "movement_mode": "ground"}})
     assert apply_move(state, state.get_participant("a"), resolve_declaration(move()))["resolved"] is False
     assert state.to_dict() == before
 
@@ -161,7 +168,7 @@ def test_move_fallen_unknown_missing_and_corrupt_refuse():
         state = spatial_state()
         change(state)
         with pytest.raises(ValueError):
-            advance_combat_phase(state, {"a": move()})
+            advance_combat_phase(state, {"a": {**move(), "movement_mode": "ground"}})
     for raw in (move(actor="missing"), {**move(), "destination": pos(float("nan"))}, {**move(), "target_id": "b"}):
         with pytest.raises(ValueError):
             advance_combat_phase(spatial_state(), {"a": raw})
@@ -252,7 +259,9 @@ def test_move_wire_refuses_invalid_coordinate(value):
     from declaration_payloads import MoveDecl
 
     with pytest.raises(ValueError):
-        MoveDecl.model_validate({"kind": "move", "actor_id": "a", "destination": pos(value)})
+        MoveDecl.model_validate(
+            {"reshape": [], "movement_mode": "ground", "kind": "move", "actor_id": "a", "destination": pos(value)}
+        )
 
 
 @pytest.mark.parametrize(
@@ -312,5 +321,7 @@ async def test_unpositioned_acting_member_can_still_declare():
     ctx = make_context("a", party_member_ids=["late"])
     ctx.userdata.combat_state = spatial_state()
     with ctx.userdata._bind_authenticated_actor("late", 1, lambda *_args: None):
-        result = json.loads(await _declare_phase_impl(ctx, {"a": move()}, mutations=AsyncMock()))
+        result = json.loads(
+            await _declare_phase_impl(ctx, {"a": {**move(), "movement_mode": "ground"}}, mutations=AsyncMock())
+        )
     assert result["spatial"]["origin_id"] == "a"

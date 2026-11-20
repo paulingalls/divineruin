@@ -94,6 +94,7 @@ async def declare_weapon(ctx):
         ctx,
         [
             AttackDecl(
+                reshape=[],
                 kind="attack",
                 actor_id=ctx.userdata.player_id,
                 action="Longsword",
@@ -101,7 +102,7 @@ async def declare_weapon(ctx):
                 held_item_id="",
                 rider="",
             ),
-            DefendDecl(kind="defend", actor_id="foe"),
+            DefendDecl(reshape=[], kind="defend", actor_id="foe"),
         ],
     )
 

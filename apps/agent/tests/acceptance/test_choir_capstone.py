@@ -57,7 +57,7 @@ async def test_committed_choir_entry_and_public_search(livekit_server, reset_db_
             {
                 "declarations": [
                     {"kind": "interact", "actor_id": encounter.player_id, "action": action["action"]},
-                    {"kind": "defend", "actor_id": "choir_zone"},
+                    {"reshape": [], "kind": "defend", "actor_id": "choir_zone"},
                 ]
             },
             speak,

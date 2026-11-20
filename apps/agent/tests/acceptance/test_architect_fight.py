@@ -110,6 +110,7 @@ async def declare_attack(harness, actor, target, action):
         {
             "declarations": [
                 {
+                    "reshape": [],
                     "kind": "attack",
                     "actor_id": actor,
                     "target_id": target,
@@ -117,7 +118,7 @@ async def declare_attack(harness, actor, target, action):
                     "held_item_id": "",
                     "rider": "",
                 },
-                *[{"kind": "defend", "actor_id": p} for p in state.initiative_order if p != actor],
+                *[{"reshape": [], "kind": "defend", "actor_id": p} for p in state.initiative_order if p != actor],
             ],
         },
     )
@@ -392,7 +393,12 @@ async def test_construct_slam_resumes_base_and_collision_saves_once(fight):
         state = await fight.reload()
         assert state.get_participant(player).hp_current == 88 and state.spatial["positions"][player] == pushed
     await fight.command(
-        "declare_phase", {"declarations": [{"kind": "move", "actor_id": player, "destination": pos(5)}]}
+        "declare_phase",
+        {
+            "declarations": [
+                {"reshape": [], "movement_mode": "ground", "kind": "move", "actor_id": player, "destination": pos(5)}
+            ]
+        },
     )
 
 

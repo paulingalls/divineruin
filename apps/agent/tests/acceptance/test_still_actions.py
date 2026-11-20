@@ -103,8 +103,8 @@ async def test_touch_charms_and_memory_keeps_charm_while_disabling_next_turn(sti
     result = next(p for p in packets if p.get("action") == "Perfect Memory")
     assert result["hit"], result
     assert (result["damage"], result["damage_type"], result["save_dc"]) == (12, "psychic", 20)
-    assert "stunned" in await declare(still, kind="defend", error=True)
-    await declare(still, actor_id=owner_id, kind="defend")
+    assert "stunned" in await declare(still, kind="defend", reshape=[], error=True)
+    await declare(still, actor_id=owner_id, kind="defend", reshape=[])
     await still.drain()
     assert "Charmed" in await declare(still, **strike(anchors[-1]), error=True)
     await assert_charm_survives_flee(still, existing_kind or "serenitys_touch", None if existing_kind else 1)

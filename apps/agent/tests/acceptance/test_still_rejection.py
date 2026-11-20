@@ -54,7 +54,7 @@ async def test_rejection_only_recharges_with_a_pending_anchor_attack(still):
     rejection = spell("Rejection")
     await declare(still, actor_id=owner_id, error=True, **rejection)
     with patch("combat_recharge.roll", return_value=SimpleNamespace(total=5)):
-        await declare(still, kind="defend")
+        await declare(still, kind="defend", reshape=[])
         await still.drain()
     state = await still.reload()
     owner = state.get_participant(owner_id)
@@ -136,11 +136,13 @@ async def test_rejection_only_recharges_with_a_pending_anchor_attack(still):
     assert state.spatial["positions"]["inside"] == {**origin, "x": origin["x"] + 25}
     assert not state.held_actions
     assert state.get_participant(player.id).hp_current == player.hp_current
-    refusal = await declare(still, kind="move", destination=before_position, error=True)
+    refusal = await declare(
+        still, kind="move", movement_mode="ground", reshape=[], destination=before_position, error=True
+    )
     assert "exceeds speed" in refusal
     refusal = await declare(still, actor_id=owner_id, error=True, **strike(player.id, action="Perfect Memory"))
     assert "outside the Still's attack range" in refusal
-    await declare(still, kind="move", destination={**edge, "y": edge["y"] + 1})
+    await declare(still, kind="move", movement_mode="ground", reshape=[], destination={**edge, "y": edge["y"] + 1})
 
 
 async def test_two_party_attacks_replace_the_pending_origin_and_thunder_doubles(reset_db_pool):
@@ -194,7 +196,7 @@ async def test_two_party_attacks_replace_the_pending_origin_and_thunder_doubles(
             packets = await party.drain()
             persisted = (await party.reload()).still_encounter
             assert persisted is not None and persisted["pending_rejection"] is None
-            await declare(party, kind="defend")
+            await declare(party, kind="defend", reshape=[])
             await party.drain()
         dice.assert_not_called()
         assert next(packet for packet in packets if packet.get("action") == "Rejection")["origin_anchor_id"] == second
@@ -224,7 +226,7 @@ async def test_illusion_is_target_only_and_clears_on_reentry_without_guest(reset
         positions[primary] = {**center, "x": center["x"] + owner.hollow["corruption_aura"] + 1}
         positions[guest] = center.copy()
         await party.persist()
-        await declare(party, kind="defend")
+        await declare(party, kind="defend", reshape=[])
         await party.drain()
         illusion = party.last_result["still"]["illusion"]
         assert illusion["target_id"] == guest

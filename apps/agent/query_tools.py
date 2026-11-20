@@ -10,6 +10,7 @@ from livekit.agents.voice import RunContext
 
 import abilities
 import ability_persistence
+import architect_encounter
 import attribute_increases
 import character_spells
 import choir_encounter
@@ -116,6 +117,8 @@ async def _query_info_impl(
         try:
             state = context.userdata.combat_state
             facts = combat_spatial.facts(state, target_id or context.userdata.acting_player_id)
+            if state is not None and state.architect_encounter is not None:
+                facts["architect"] = architect_encounter.facts(state)
             if state is not None and state.still_encounter is not None:
                 facts["still"] = still_encounter.facts(state)
             if state is not None and state.choir_encounter is not None:

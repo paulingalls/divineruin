@@ -24,6 +24,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from reshape_payloads import parse_operations
+
 # Defend grants +2 AC until the next phase (gm_combat:105).
 DEFEND_AC_BONUS = 2
 
@@ -77,6 +79,8 @@ class Declaration:
     maneuver_intent: ManeuverIntent | None = None
     strikes: list[dict] | None = None
     held_item_id: str | None = None
+    reshape: list[dict] | None = None
+    movement_mode: str = "ground"
 
 
 def resolve_declaration(raw: dict) -> Declaration:
@@ -120,7 +124,8 @@ def resolve_declaration(raw: dict) -> Declaration:
     elif decl_type is DeclarationType.MANEUVER:
         if not target_id:
             raise ValueError("maneuver declaration requires a 'target_id'")
-    if decl_type is DeclarationType.MANEUVER and action == "move":
+    is_move = decl_type is DeclarationType.MANEUVER and action == "move"
+    if is_move:
         from combat_spatial import point
 
         point(raw.get("destination"))
@@ -130,11 +135,21 @@ def resolve_declaration(raw: dict) -> Declaration:
         not isinstance(raw["held_item_id"], str) or not raw["held_item_id"] or decl_type is not DeclarationType.ATTACK
     ):
         raise ValueError("held_item_id requires an attack and a nonempty string")
+    movement_mode = raw.get("movement_mode", "ground")
+    if "movement_mode" in raw and (not is_move or movement_mode not in ("ground", "flying")):
+        raise ValueError("movement_mode must be ground or flying on a move")
+    reshape = None
+    if "reshape" in raw:
+        if not (is_move or decl_type in (DeclarationType.ATTACK, DeclarationType.DEFEND)):
+            raise ValueError("reshape requires an attack, move or defend declaration")
+        reshape = parse_operations(raw["reshape"])
     ac_bonus = DEFEND_AC_BONUS if decl_type is DeclarationType.DEFEND else 0
     raw_maneuver_intent = raw.get("maneuver_intent")
     maneuver_intent = ManeuverIntent(raw_maneuver_intent) if raw_maneuver_intent is not None else None
     return Declaration(
         type=decl_type,
+        reshape=reshape,
+        movement_mode=movement_mode,
         strikes=raw.get("strikes"),
         held_item_id=raw.get("held_item_id"),
         destination=raw.get("destination"),

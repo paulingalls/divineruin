@@ -30,6 +30,7 @@ async def test_failure_after_state_write_rolls_back_and_retries_once(maw, field_
         {
             "declarations": [
                 {
+                    "reshape": [],
                     "kind": "attack",
                     "actor_id": eid,
                     "action": "Lunge",
@@ -50,7 +51,9 @@ async def test_failure_after_state_write_rolls_back_and_retries_once(maw, field_
     maw.sd.member_state(victim.id).concentration.spell_id = "divine_bless"
     await db_mutations_concentration.update_player_concentration(victim.id, "divine_bless")
     await maw.persist()
-    await maw.command("declare_phase", {"declarations": [{"kind": "defend", "actor_id": maw.players[1]}]})
+    await maw.command(
+        "declare_phase", {"declarations": [{"reshape": [], "kind": "defend", "actor_id": maw.players[1]}]}
+    )
     before = await maw.snapshot()
     events = maw.sd.room.local_participant.publish_data.call_count
     scratch = copy.deepcopy((maw.sd.recent_events, companion, maw.sd.member_state(victim.id).concentration))

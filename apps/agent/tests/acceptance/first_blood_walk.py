@@ -92,6 +92,7 @@ class FirstBloodWalk(ArcWalk):
             {
                 "declarations": [
                     {
+                        "reshape": [],
                         "kind": "attack",
                         "actor_id": self.player,
                         "action": player.action_pool[0]["name"],
@@ -99,7 +100,7 @@ class FirstBloodWalk(ArcWalk):
                         "held_item_id": "",
                         "rider": "",
                     },
-                    {"kind": "defend", "actor_id": enemy.id},
+                    {"reshape": [], "kind": "defend", "actor_id": enemy.id},
                 ]
             },
         )

@@ -29,7 +29,7 @@
     ],
     "owns": [
       "apps/agent/(?:combat[^/]*|choir[^/]*|still[^/]*|architect_[^/]*|encounter[^/]*|durability[^/]*|damage[^/]*|death[^/]*|enemy[^/]*|initiative[^/]*|reaction[^/]*|monster[^/]*)\\.py",
-      "apps/agent/(?:spells|declaration_payloads|action_contracts(?:_still)?|creature_combat_effects|check_discovery|condition_sources|background_process|resurrection|db_mutations_resurrection|check_resolution_save)\\.py"
+      "apps/agent/(?:spells|declarations|declaration_payloads|reshape_payloads|action_contracts(?:_still)?|creature_combat_effects|check_discovery|condition_sources|background_process|resurrection|db_mutations_resurrection|check_resolution_save)\\.py"
     ],
     "reads": [
       "content/action_sounds.json",

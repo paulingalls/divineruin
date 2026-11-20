@@ -200,6 +200,8 @@ class KnightFight(MawlingHarness):
                     fraction = min(state.spatial["speeds"][actor.id] - 0.01, gap - 4) / gap
                     declarations.append(
                         {
+                            "reshape": [],
+                            "movement_mode": "ground",
                             "kind": "move",
                             "actor_id": actor.id,
                             "destination": {k: origin[k] + (destination[k] - origin[k]) * fraction for k in origin},
@@ -219,14 +221,14 @@ class KnightFight(MawlingHarness):
                     if len(blades) < 1 or (
                         target.id == "hollowed_knight" and target.hp_current < 25 and actor.id != self.players[0]
                     ):
-                        declarations.append({"kind": "defend", "actor_id": actor.id})
+                        declarations.append({"reshape": [], "kind": "defend", "actor_id": actor.id})
                         continue
                     action = next(a for a in actions if a["kind"] == "attack")
                 else:
                     if any(p.get("action") == "Command Lesser" for p in self.packets) or not any(
                         p.get("prepared_attack") for p in self.packets
                     ):
-                        declarations.append({"kind": "defend", "actor_id": actor.id})
+                        declarations.append({"reshape": [], "kind": "defend", "actor_id": actor.id})
                         continue
                     action = next(a for a in actions if a["kind"] == "attack")
                 if action["declaration_type"] == "ability":
@@ -249,6 +251,7 @@ class KnightFight(MawlingHarness):
                     }
                 else:
                     declaration = {
+                        "reshape": [],
                         "kind": "attack",
                         "actor_id": actor.id,
                         "action": action["id"],

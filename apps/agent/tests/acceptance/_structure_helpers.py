@@ -26,7 +26,9 @@ async def _reload(ctx: Any) -> CombatState:
 
 
 def _move(actor_id: str, destination: dict) -> MoveDecl:
-    return MoveDecl.model_validate({"kind": "move", "actor_id": actor_id, "destination": destination})
+    return MoveDecl.model_validate(
+        {"reshape": [], "movement_mode": "ground", "kind": "move", "actor_id": actor_id, "destination": destination}
+    )
 
 
 async def _refuses(ctx: Any, declaration: Any, message: str) -> None:
@@ -41,4 +43,6 @@ async def _refuses(ctx: Any, declaration: Any, message: str) -> None:
 
 
 def _strike(actor_id: str, target: str, action: str = "Greataxe") -> AttackDecl:
-    return AttackDecl(kind="attack", actor_id=actor_id, action=action, target_id=target, held_item_id="", rider="")
+    return AttackDecl(
+        reshape=[], kind="attack", actor_id=actor_id, action=action, target_id=target, held_item_id="", rider=""
+    )

@@ -124,8 +124,6 @@ def test_architect_metadata_retains_only_deferred_effects():
     effects = {effect["name"]: effect["source"] for effect in deferred_effects(architect)}
     assert effects.keys() == {
         "Geometry Strike",
-        "Architect's Domain",
-        "Incorporeal Movement",
         "Legendary Resistance",
         "Alien Intelligence",
         "Reshape",
@@ -139,4 +137,4 @@ def test_architect_metadata_retains_only_deferred_effects():
     assert effects["Geometry Strike"]["special"] == (
         "A structural fragment hurls itself. Legendary action, cost 2 of 3/round."
     )
-    assert "difficult terrain" in effects["Architect's Domain"]["description"]
+    assert effects["Reshape"]["description"] == "Legendary Reshape costs 2 of 3/round."

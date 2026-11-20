@@ -8,6 +8,7 @@ from typing import Any
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
+import architect_encounter
 import character_spells
 import check_resolution_attack
 import check_resolution_save
@@ -119,7 +120,11 @@ async def _resolve_phase_locked(
 
                 # Defend protects the whole phase, including attacks earlier in initiative.
                 for packet in adv.packets:
-                    if packet.declaration.type is not DeclarationType.DEFEND or not packet.declaration.ac_bonus:
+                    if (
+                        packet.declaration.type is not DeclarationType.DEFEND
+                        or not packet.declaration.ac_bonus
+                        or packet.declaration.reshape
+                    ):
                         continue
                     defender = state.get_participant(packet.actor_id)
                     if defender is not None and not defender.is_fallen:
@@ -306,6 +311,7 @@ async def _resolve_phase_locked(
 
     response = {
         "choir": choir_facts,
+        "architect": architect_encounter.facts(state),
         "still": still_encounter.facts(state),
         "spatial": combat_spatial.response_facts(state, session.acting_player_id, session.primary_player_id),
         "beat": state.beat,

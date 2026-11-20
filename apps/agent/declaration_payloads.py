@@ -25,6 +25,12 @@ from typing import Annotated, Literal, Union
 from pydantic import BaseModel, Field
 
 from item_effects import CONSUME_PREFIX
+from reshape_payloads import Destination, ReshapeSelection
+
+RESHAPE_DESCRIPTION = (
+    "Architect only, before the action. Select create_wall, move_wall, destroy_wall, open_floor, or lower_ceiling. "
+    "Use an empty list for no Reshape."
+)
 
 
 class AttackDecl(BaseModel):
@@ -41,6 +47,7 @@ class AttackDecl(BaseModel):
         description='For a Cunning Action attacker, the movement rider: "dash", "disengage" or "hide". '
         "Empty string for every other attacker."
     )
+    reshape: list[ReshapeSelection] = Field(description=RESHAPE_DESCRIPTION)
 
 
 class StrikeSelection(BaseModel):
@@ -107,18 +114,16 @@ class ManeuverDecl(BaseModel):
     )
 
 
-class Destination(BaseModel):
-    x: float = Field(strict=True, allow_inf_nan=False)
-    y: float = Field(strict=True, allow_inf_nan=False)
-    z: float = Field(strict=True, allow_inf_nan=False)
-
-
 class MoveDecl(BaseModel):
     """Move to an explicit point in feet, consuming the phase action."""
 
     kind: Literal["move"]
     actor_id: str
     destination: Destination
+    movement_mode: Literal["ground", "flying"] = Field(
+        description="Choose ground for ordinary movement. Flying adds ceiling restrictions and grants no flight capability."
+    )
+    reshape: list[ReshapeSelection] = Field(description=RESHAPE_DESCRIPTION)
 
 
 class DefendDecl(BaseModel):
@@ -126,6 +131,7 @@ class DefendDecl(BaseModel):
 
     kind: Literal["defend"]
     actor_id: str = Field(description="The participant declaring this action.")
+    reshape: list[ReshapeSelection] = Field(description=RESHAPE_DESCRIPTION)
 
 
 class RetreatDecl(BaseModel):
@@ -200,6 +206,7 @@ def _raw(decl: DeclVariant) -> dict:
             "action": "move",
             "target_id": decl.actor_id,
             "destination": decl.destination.model_dump(),
+            "movement_mode": decl.movement_mode,
         }
     if isinstance(decl, ManeuverDecl):
         return {"type": "maneuver", "target_id": decl.target_id}
@@ -224,5 +231,8 @@ def to_engine_declarations(declarations: list[DeclVariant]) -> dict[str, dict]:
     for decl in declarations:
         if decl.actor_id in engine:
             raise ValueError(f"{decl.actor_id} declared more than once — one declaration per participant per phase")
-        engine[decl.actor_id] = _raw(decl)
+        raw = _raw(decl)
+        if isinstance(decl, (AttackDecl, MoveDecl, DefendDecl)) and decl.reshape:
+            raw["reshape"] = [operation.model_dump() for operation in decl.reshape]
+        engine[decl.actor_id] = raw
     return engine

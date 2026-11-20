@@ -43,7 +43,7 @@ from encounter_actions import action_kind
 from session_data import SessionData
 
 
-async def _resolve_one_packet(session, state, packet, **deps) -> dict:
+async def _resolve_one_packet(session, state, packet, *, _reshape_prepared=False, **deps) -> dict:
     from combat_veilrender import turn_start
 
     progress = deps.get("progress")
@@ -59,7 +59,19 @@ async def _resolve_one_packet(session, state, packet, **deps) -> dict:
         )
         if effects is None:
             return {}
+    if packet.declaration.reshape and not _reshape_prepared:
+        from combat_reshape_packet import ReshapeRefused, resolve_reshape
+
+        try:
+            if not await resolve_reshape(
+                session, state, packet.actor_id, packet.declaration, steps, progress=progress, packet_deps=deps
+            ):
+                return {}
+        except ReshapeRefused as error:
+            return {"actor_id": packet.actor_id, "resolved": False, "reason": str(error)}
     result = await _resolve_action_packet(session, state, packet, **deps)
+    if "reshape_receipts" in steps:
+        result["reshape"] = steps["reshape_receipts"]
     if progress is not None and progress.paused:
         if effects:
             attack_cursor = deps.get("attack_cursor")
@@ -188,6 +200,8 @@ async def _resolve_action_packet(
         )
 
     if decl.type is DeclarationType.DEFEND:
+        if decl.reshape:
+            state.ac_modifiers[packet.actor_id] = decl.ac_bonus
         return {
             "actor_id": packet.actor_id,
             "resolved": True,

@@ -22,7 +22,7 @@ async def declare_silence(ctx, pid, eid):
         await combat_turn.declare_phase(
             ctx,
             [
-                DefendDecl(kind="defend", actor_id=pid),
+                DefendDecl(reshape=[], kind="defend", actor_id=pid),
                 AbilityDecl(kind="ability", actor_id=eid, action="Silence Void", targets=[pid], argument_type=""),
             ],
         )
@@ -67,11 +67,11 @@ async def test_silence_production_expiry_transaction_rollback(runtime):
     effect = next(iter(state.choir_silences.values()))
     assert effect["expires_round"] == 5
     for round_number in (3, 4):
-        await combat_turn.declare_phase(ctx, [DefendDecl(kind="defend", actor_id=pid)])
+        await combat_turn.declare_phase(ctx, [DefendDecl(reshape=[], kind="defend", actor_id=pid)])
         await _resolve_round(ctx)
         state = await reload(ctx)
         assert state.round_number == round_number and is_silenced(state, pid)
-    await combat_turn.declare_phase(ctx, [DefendDecl(kind="defend", actor_id=pid)])
+    await combat_turn.declare_phase(ctx, [DefendDecl(reshape=[], kind="defend", actor_id=pid)])
     before = copy.deepcopy(ctx.userdata.combat_state.to_dict())
     with patch("db_mutations.save_combat_state", side_effect=fail_after_write):
         with pytest.raises(RuntimeError, match="injected silence persistence failure"):
@@ -161,7 +161,7 @@ async def test_choir_public_actions_hold_reload(runtime):
     await combat_turn.declare_phase(
         ctx,
         [
-            DefendDecl(kind="defend", actor_id=pid),
+            DefendDecl(reshape=[], kind="defend", actor_id=pid),
             AbilityDecl(kind="ability", actor_id=eid, action="Stolen Melody", targets=[pid], argument_type=""),
         ],
     )
@@ -237,7 +237,7 @@ async def test_omitted_ally_boundary_does_not_invoke_choir_aura(started):
     state = ctx.userdata.combat_state
     pid = ctx.userdata.player_id
     companion = ctx.userdata.companion.id
-    await combat_turn.declare_phase(ctx, [DefendDecl(kind="defend", actor_id=pid)])
+    await combat_turn.declare_phase(ctx, [DefendDecl(reshape=[], kind="defend", actor_id=pid)])
     await reload(ctx)
     with patch("check_resolution.dice_roll", return_value=_d20(20)):
         await combat_turn.resolve_phase(ctx)

@@ -68,7 +68,7 @@ async def declare_spell(ctx, spell_id="arcane_bolt", choice="", targets=None):
                 targets=targets if targets is not None else ["foe"],
                 argument_type=choice,
             ),
-            DefendDecl(kind="defend", actor_id="foe"),
+            DefendDecl(reshape=[], kind="defend", actor_id="foe"),
         ],
     )
 

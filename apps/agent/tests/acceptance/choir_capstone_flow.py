@@ -72,11 +72,11 @@ class ChoirCapstoneFlow:
             raise AssertionError(f"missing Choir gameplay delivery: {kind}") from exc
 
     async def declare(self, action=None, enemy_action=None):
-        declarations = [action or {"kind": "defend", "actor_id": self.diagnostic.player_id}]
-        declarations += [enemy_action or {"kind": "defend", "actor_id": self.owner}]
+        declarations = [action or {"reshape": [], "kind": "defend", "actor_id": self.diagnostic.player_id}]
+        declarations += [enemy_action or {"reshape": [], "kind": "defend", "actor_id": self.owner}]
         for actor in self.sd.combat_state.participants:
             if actor.type == "player" and actor.id != self.diagnostic.player_id:
-                declarations.append({"kind": "defend", "actor_id": actor.id})
+                declarations.append({"reshape": [], "kind": "defend", "actor_id": actor.id})
         await self.call("declare_phase", {"declarations": declarations})
 
     def ability(self, actor, name, target=None):
@@ -188,6 +188,7 @@ class ChoirCapstoneFlow:
             await self.resolve()
         await self.declare(
             enemy_action={
+                "reshape": [],
                 "kind": "attack",
                 "actor_id": self.owner,
                 "action": "Dissonant Chord",

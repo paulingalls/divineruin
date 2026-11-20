@@ -91,8 +91,9 @@ async def test_raw_channeling_preserves_action_and_reaction(dev_db_pool):
             "declare_phase",
             {
                 "declarations": [
-                    {"kind": "defend", "actor_id": w.player},
+                    {"reshape": [], "kind": "defend", "actor_id": w.player},
                     {
+                        "reshape": [],
                         "kind": "attack",
                         "actor_id": "enemy",
                         "action": "Scimitar",

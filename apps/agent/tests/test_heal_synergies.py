@@ -77,7 +77,9 @@ async def cast_as(walk, combat, actor, target):
         return await walk.command("activate", {"id": WOUNDS, "target_id": target}, actor=actor)
     declarations = [{"kind": "ability", "actor_id": actor, "action": WOUNDS, "targets": [target], "argument_type": ""}]
     declarations.extend(
-        {"kind": "defend", "actor_id": p.id} for p in walk.fight_state.participants if p.id != actor and not p.is_fallen
+        {"reshape": [], "kind": "defend", "actor_id": p.id}
+        for p in walk.fight_state.participants
+        if p.id != actor and not p.is_fallen
     )
     await walk.command("declare_phase", {"declarations": declarations}, actor=actor)
     first = await walk.command("resolve_phase", {})

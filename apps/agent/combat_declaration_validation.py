@@ -17,6 +17,10 @@ from encounter_actions import action_kind
 
 
 def validate_declaration(next_state, actor_id, declaration, persisted_declarations):
+    if declaration.reshape:
+        from architect_reshape import proposed_state
+
+        next_state = proposed_state(next_state, actor_id, declaration.reshape)
     actor = next_state.get_participant(actor_id)
     if actor is None:
         participant_ids = [participant.id for participant in next_state.participants]

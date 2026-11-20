@@ -37,7 +37,10 @@ async def declare_phase(
     interact, consume, maneuver, move, defend or retreat. For a potion, salve or berry,
     declare consume with the holder's actor_id and the queried item_id. Set target_id
     to the ally receiving it or an empty string for the holder. Move names an explicit destination in feet and consumes
-    this phase action, limited to the actor's persisted speed. Include the player, every
+    this phase action, limited to the actor's persisted speed. Only the Architect may include
+    Reshape operations, on an attack, move or defend. The sections resolve before the action.
+    Use the Architect's live wall ids and remaining Reshape uses from the combat facts.
+    Include the player, every
     conscious companion, and every enemy that acts this phase — one declaration each.
     Call this once per round at the declaration beat; resolve_phase resolves and
     narrates the whole phase in initiative order."""
