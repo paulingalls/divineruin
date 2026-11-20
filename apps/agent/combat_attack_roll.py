@@ -26,10 +26,18 @@ def roll_attack(
     combat_state=None,
     weapon_attack: bool = True,
     player: dict | None = None,
+    defender: dict | None = None,
 ) -> tuple:
     """Roll without applying HP changes; held reactions pause before impact."""
     attacker_data, effective_ac, attack_mod = attack_roll_inputs(
-        attacker, target, target_ac_bonus, combat_state, action, weapon_attack=weapon_attack, player=player
+        attacker,
+        target,
+        target_ac_bonus,
+        combat_state,
+        action,
+        weapon_attack=weapon_attack,
+        player=player,
+        defender=defender,
     )
     attack_result = resolver.resolve_attack(
         attacker_data,
@@ -45,7 +53,9 @@ def roll_attack(
     return promote_attack(attack_result, enemies_remaining, is_first_attack_of_combat), effective_ac
 
 
-def attack_roll_inputs(attacker, target, target_ac_bonus, combat_state, action, *, weapon_attack=True, player=None):
+def attack_roll_inputs(
+    attacker, target, target_ac_bonus, combat_state, action, *, weapon_attack=True, player=None, defender=None
+):
     """The attacker data, effective AC and to-hit bonus a d20 attack is prepared from.
 
     Only reads state: a rogue's Sneak Attack allowance is offered here and spent by
@@ -87,7 +97,10 @@ def attack_roll_inputs(attacker, target, target_ac_bonus, combat_state, action, 
             )
     attacker_data = condition_voice_rules.roll_data(attacker_data, combat_state, attacker.id)
     target_condition_ac = conditions.get_condition_effects(target.conditions).ac_modifier
-    effective_ac = target.ac + target_ac_bonus + target_condition_ac
+    synergy_ac = patron_synergy_combat.first_attack_defense(defender, combat_state, target)
+    if synergy_ac:
+        attacker_data.update(synergy_ac_bonus=synergy_ac, synergy_ac_clause_id=patron_synergy_combat.SECOND_BEFORE)
+    effective_ac = target.ac + target_ac_bonus + target_condition_ac + synergy_ac
     attack_mod = attacker.attack_mod
     if not weapon_attack and player is not None:
         attack_mod += patron_synergy_combat.spell_attack_bonus(player, target)

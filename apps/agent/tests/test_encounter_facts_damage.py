@@ -25,7 +25,7 @@ from query_tools import query_info
 MORTAEN = "mortaen_last_vigil"
 ZHAEL = "zhael_threaded_blade"
 GOBLIN, OTHER = "goblin_one", "goblin_two"
-EMPTY = {"ally_downers": [], "misses": {}, "once_spent": {}}
+EMPTY = {"ally_downers": [], "attacked": [], "misses": {}, "once_spent": {}}
 
 
 @contextmanager
@@ -129,7 +129,11 @@ async def mortaen_vigil(world: SimpleNamespace) -> None:
         await f.round(goblin_strike(GOBLIN, f.ally))
         assert participant(f.session.combat_state, f.ally).hp_current == 0
         await f.hit(MORTAEN)
-        assert f.session.combat_state.encounter_facts == {**EMPTY, "ally_downers": [GOBLIN]}
+        assert f.session.combat_state.encounter_facts == {
+            **EMPTY,
+            "ally_downers": [GOBLIN],
+            "attacked": [f.ally, GOBLIN],
+        }
         await catalog_clause(f, "mortaen", MORTAEN)
 
 
@@ -222,7 +226,12 @@ async def test_fact_rolls_back(world: SimpleNamespace, fact: str) -> None:
         if fall:
             await f.call("resolve_phase")
         before = (await f.reload()).to_dict()
-        expected = {"ally_downers": [GOBLIN], "misses": {f.hero: [GOBLIN]}, "once_spent": {ZHAEL: [f.hero]}}
+        expected = {
+            "ally_downers": [GOBLIN],
+            "attacked": [GOBLIN],
+            "misses": {f.hero: [GOBLIN]},
+            "once_spent": {ZHAEL: [f.hero]},
+        }
         save = db_mutations.save_combat_state
 
         async def abort(combat_id: str, data: dict, *, conn: asyncpg.Connection | None = None) -> None:
@@ -253,7 +262,7 @@ async def test_legacy_checkpoint(world: SimpleNamespace) -> None:
 
 BAD_MAP = ([], {" ": []}, {1: []}, {"actor": {}}, {"actor": [None]}, {"actor": [" "]})
 MALFORMED = [None, 42, [], {"misses": {}, "once_spent": {}}, {**EMPTY, "extra": []}]
-MALFORMED += [{**EMPTY, "ally_downers": bad} for bad in ({}, [3], [" "])]
+MALFORMED += [{**EMPTY, field: bad} for field in ("ally_downers", "attacked") for bad in ({}, [3], [" "])]
 MALFORMED += [{**EMPTY, field: bad} for field in ("misses", "once_spent") for bad in BAD_MAP]
 
 

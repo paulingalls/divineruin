@@ -13,14 +13,15 @@ if TYPE_CHECKING:
     from combat_state import CombatState
 
 OATH_OF_VALOR = "kaelen_oath_of_valor"
+SECOND_BEFORE = "zhael_second_before"
 
 
-async def attack_player(attacker, *, queries, conn) -> dict | None:
-    if attacker.type not in ("player", "temporary_hollowed"):
+async def attack_player(participant, *, queries, conn) -> dict | None:
+    if participant.type not in ("player", "temporary_hollowed"):
         return None
-    player = await queries.get_player(attacker.id, conn=conn)
+    player = await queries.get_player(participant.id, conn=conn)
     if player is None:
-        raise RuntimeError(f"Attack participant {attacker.id!r} has no player row")
+        raise RuntimeError(f"Attack participant {participant.id!r} has no player row")
     return player
 
 
@@ -57,6 +58,17 @@ def encounter_damage_clause(
     ):
         return ZHAEL_THREADED_BLADE
     return None
+
+
+def first_attack_defense(defender: dict | None, state: CombatState | None, target: CombatParticipant) -> int:
+    if (
+        defender is not None
+        and state is not None
+        and target.id not in state.encounter_facts["attacked"]
+        and has_engine_synergy(defender, SECOND_BEFORE)
+    ):
+        return 1
+    return 0
 
 
 def outnumbered_oath(player: dict, state: CombatState | None, attacker: CombatParticipant) -> bool:

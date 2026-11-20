@@ -49,7 +49,10 @@ def _held_deps(resolver) -> dict:
         "conn": None,
         "sink": MagicMock(emit=AsyncMock()),
         "mutations": MagicMock(update_player_hp=AsyncMock()),
-        "queries": MagicMock(get_player_inventory=AsyncMock(return_value=[])),
+        "queries": MagicMock(
+            get_player=AsyncMock(return_value={"player_id": "player_1"}),
+            get_player_inventory=AsyncMock(return_value=[]),
+        ),
         "concentration_break_mod": MagicMock(
             break_concentration_on_damage=AsyncMock(return_value=None),
             break_concentration_on_incapacitation=AsyncMock(return_value=None),
@@ -74,7 +77,9 @@ async def _resolve(action, *, hit=True, save_success=False, declaration_type=Dec
         side_effect=lambda *args, **kwargs: REAL_ROLL_PARTICIPANT_SAVE(*args, **kwargs, rng=random.Random(save_seed))
     )
     mutations = MagicMock(update_player_hp=AsyncMock())
-    queries = MagicMock(get_player_inventory=AsyncMock(return_value=[]))
+    queries = MagicMock(
+        get_player=AsyncMock(return_value={"player_id": "player_1"}), get_player_inventory=AsyncMock(return_value=[])
+    )
     concentration = MagicMock(
         break_concentration_on_damage=AsyncMock(return_value=None),
         break_concentration_on_incapacitation=AsyncMock(return_value=None),

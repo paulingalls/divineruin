@@ -439,3 +439,19 @@ test("Kaelen's Oath of Valor is an active paladin engine clause", () => {
     ],
   });
 });
+
+test("Zhael's Second Before is an active guardian engine clause", () => {
+  const zhael = validateGods(catalog).find((god) => god.god_id === "zhael");
+  expect(zhael?.layer_4_synergy_matrix.guardian).toEqual({
+    type: "divine",
+    name: "Second Before",
+    clauses: [
+      {
+        effect: "Gain +1 AC against the first attack made against you each encounter.",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "zhael_second_before",
+      },
+    ],
+  });
+});

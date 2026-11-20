@@ -3,6 +3,7 @@ from combat.test_synergy_spell_edges import SCENARIOS as spell_edges
 from combat.test_synergy_weapon_damage import SCENARIOS as weapon_damage
 from test_dawns_resilience import SCENARIOS as dawns_resilience
 from test_encounter_facts_damage import SCENARIOS as encounter_facts
+from test_encounter_facts_defense import SCENARIOS as defense
 from test_encounter_facts_outnumbered import SCENARIOS as outnumbered
 from test_heal_synergies import SCENARIOS as dawns_mercy
 from test_heal_synergies_place import SCENARIOS as place_healing
@@ -32,6 +33,7 @@ ENGINE_SCENARIOS = {
     **dawns_resilience,
     **crit_edges,
     **encounter_facts,
+    **defense,
     **outnumbered,
     **judgment,
     **kaelen,
