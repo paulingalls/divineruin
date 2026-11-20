@@ -3062,8 +3062,9 @@
         "clauses": [
           {
             "effect": "All healing spells +WIS or +CHA mod extra HP. Most powerful healing in the game",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "orenthel_dawns_mercy"
           }
         ]
       },
@@ -3073,8 +3074,9 @@
         "clauses": [
           {
             "effect": "All healing spells +WIS or +CHA mod extra HP. Most powerful healing in the game",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "orenthel_dawns_mercy"
           }
         ]
       },

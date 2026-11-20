@@ -1,5 +1,7 @@
 """Cast packets, conditions, and deferred client events."""
 
+from functools import partial
+
 from livekit.agents.llm import ToolError
 
 import cast_modifiers
@@ -11,6 +13,7 @@ import unbound_tools
 from game_events import publish_game_event
 from party_state import PartyMember
 from patron_synergy_combat import spell_damage_type_override
+from patron_synergy_heal import bonus_components
 from session_data import SessionData
 from spell_cast_result import CastResult
 
@@ -183,7 +186,14 @@ async def _finish_cast(
         if revalidate_actor:
             session.validate_acting_player(player_id)
         packet["healing_results"] = await combat_spell_heal.land_exploration(
-            spell.heal, player, heal_rows, caster_id=player_id, packet=packet, conn=conn, dice_mod=dice_mod
+            spell.heal,
+            player,
+            heal_rows,
+            caster_id=player_id,
+            synergy=partial(bonus_components, player, spell=spell),
+            packet=packet,
+            conn=conn,
+            dice_mod=dice_mod,
         )
         # Out of combat no WRAP push follows, so each healed recipient's own HUD needs the new HP.
         for recipient_id, hp in combat_spell_heal.hp_updates(player_id, packet).items():

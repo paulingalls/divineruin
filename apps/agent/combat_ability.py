@@ -6,6 +6,7 @@ carries the cast result back to the phase loop, action lookup, and enhancer-ride
 attachment. Consumed by the phase loop (combat_turn)."""
 
 from dataclasses import dataclass, field, replace
+from functools import partial
 from typing import TYPE_CHECKING, cast
 
 from livekit.agents.llm import ToolError
@@ -27,6 +28,7 @@ from combat_condition_landing import _land_condition_on_one
 from combat_down import damage_target_unavailable
 from condition_produce import resolve_effective_targets
 from mentor_variants import MentorVariant
+from patron_synergy_heal import bonus_components
 from resource_costs import gate_pool
 from session_data import CombatParticipant, SessionData
 
@@ -388,7 +390,13 @@ async def _resolve_ability_packet(
             if player is None:
                 raise RuntimeError(f"Missing locked player row for healing caster {attacker.id}")
             cast_packet["healing_results"] = await combat_spell_heal.land(
-                heal, attacker, recipients, caster_row=player, packet=cast_packet, conn=conn
+                heal,
+                attacker,
+                recipients,
+                caster_row=player,
+                synergy=partial(bonus_components, player, spell=spell),
+                packet=cast_packet,
+                conn=conn,
             )
         # Veilrender Absorb Magic heals once per cast, so its landing is frozen with the cast packet.
         if deliveries is not None:

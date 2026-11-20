@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from acceptance.seeds import _DEFAULT_PLAYER
 from sample_fixtures import make_context, make_db_mod
 
 import spell_casting
@@ -45,6 +46,7 @@ async def cast(
         "player_id": player_id,
         "class": {"arcane": "mage", "divine": "cleric", "primal": "druid"}[spell.source],
         "level": 20,
+        "attributes": _DEFAULT_PLAYER["attributes"],
         "focus": {"current": 50},
         "hp": {"current": 20, "max": 20},
         "location_id": ctx.userdata.location_id,
