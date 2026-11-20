@@ -34,7 +34,9 @@ async def test_floor_and_ceiling_resume_once_through_fate_and_reaction(fight, re
     target.reaction_ids = ["cleric_shield_of_faith"]
     target.has_reaction_ability = True
     target.attributes["dexterity"] = 10
-    state.get_participant(owner).hp_current = 149
+    architect = state.get_participant(owner)
+    assert architect is not None
+    architect.hp_current = (architect.hp_max - 1) // 2
     combat_spatial.place(state, player, pos(5))
     await fight.persist()
     await set_favor(fight, "zhael", 40)
@@ -97,7 +99,9 @@ async def test_floor_and_ceiling_resume_once_through_fate_and_reaction(fight, re
 async def test_changed_walls_and_terrain_survive_flee_reentry(fight):
     state = await fight.reload()
     owner = state.architect_encounter["owner_id"]
-    state.get_participant(owner).hp_current = 149
+    architect = state.get_participant(owner)
+    assert architect is not None
+    architect.hp_current = (architect.hp_max - 1) // 2
     await fight.persist()
     floor = {"kind": "open_floor", "min": pos(36), "max": pos(45, 5)}
     ceiling = {"kind": "lower_ceiling", "min": pos(36), "max": pos(45, 5)}

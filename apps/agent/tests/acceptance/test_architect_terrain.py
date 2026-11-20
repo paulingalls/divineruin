@@ -108,7 +108,9 @@ async def test_low_ceilings_use_the_union_and_block_flight(fight):
     base = edge + 20
     combat_spatial.place(state, owner, pos(base, 20))
     combat_spatial.place(state, player, pos(base))
-    state.get_participant(owner).hp_current = 149
+    architect = state.get_participant(owner)
+    assert architect is not None
+    architect.hp_current = (architect.hp_max - 1) // 2
     state.spatial["speeds"][player] = 30
     await fight.persist()
     ceiling = {"kind": "lower_ceiling", "min": pos(base + 5, -5, 25), "max": pos(base + 15, 5, 25)}

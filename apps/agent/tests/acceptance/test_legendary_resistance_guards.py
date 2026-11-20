@@ -31,7 +31,7 @@ async def test_damage_guard_uses_adjusted_failure_and_current_hp(
 ):
     state = await fight.reload()
     target = state.get_participant(state.architect_encounter["owner_id"])
-    assert target.hp_max == 300
+    assert target.hp_max == 50
     target.damage_affinities.update(affinities)
     if auto_fail:
         target.conditions = apply_condition(target.conditions, "stunned", duration=2)

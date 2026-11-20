@@ -569,7 +569,7 @@ Blessed weapons and Turn Undead/Hollow remain source/effect guidance, not damage
 
 > *The most alarming Named. It builds. Deep within the Ashmark, near the Voidmaw — structures that shouldn't exist.*
 
-**Level:** 20 | **HP:** 300 | **AC:** 19 | **Speed:** 40 ft (incorporeal movement — passes through its own structures)
+**Level:** 20 | **HP:** 50 (spec 300) | **AC:** 19 | **Speed:** 40 ft (incorporeal movement — passes through its own structures)
 **STR** 20 (+5) **DEX** 14 (+2) **CON** 20 (+5) **INT** 22 (+6) **WIS** 18 (+4) **CHA** 16 (+3)
 **Save Prof:** INT, CON, WIS, CHA | **XP:** 5000
 

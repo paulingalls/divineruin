@@ -1,6 +1,7 @@
 """Seeded combat policies driven through real combat tools and persistence."""
 
 import json
+import logging
 import random
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -9,8 +10,10 @@ from typing import cast
 from unittest.mock import patch
 from uuid import uuid4
 
+import architect_balance_policy as architect_policy
 from asyncpg import Connection, Pool
 from livekit.agents import RunContext
+from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_mock_room
 
 import character_spells
@@ -21,12 +24,12 @@ import spell_knowledge
 import spells
 from combat_death_save import request_death_save
 from combat_down import is_terminally_down
-from combat_turn import declare_phase, resolve_phase
+from combat_turn import consume_legendary_action, declare_phase, resolve_phase
 from companion_profiles import get_companion_profile, select_companion_for_archetype
 from companion_scaling import scale_companion_stats_to_player_level
 from condition_restrictions import cannot_act
 from creation_rules import build_character_data
-from declaration_payloads import AbilityDecl, AttackDecl, MultiattackDecl, StrikeSelection
+from declaration_payloads import AbilityDecl, AttackDecl, DeclVariant, MultiattackDecl, StrikeSelection
 from mode_tools import enter_mode
 from progression_tools import _award_xp_core
 from rules_engine import XP_FOR_LEVEL
@@ -36,6 +39,9 @@ SEEDS = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19)
 ARCHETYPES = ("warrior", "mage", "rogue", "cleric")
 PATROL = "hollow_patrol_greyvale"
 ARCHITECT_WORKS = "ashmark_architect_works"
+ARCHITECT_ROUND_LIMIT = 45
+ARCHITECT_DRAIN_LIMIT = 64
+logger = logging.getLogger(__name__)
 
 
 async def _create_player(pool: Pool, pid: str, archetype: str, location: str, level: int) -> None:
@@ -61,7 +67,7 @@ async def _create_player(pool: Pool, pid: str, archetype: str, location: str, le
 
 
 @asynccontextmanager
-async def architect_party(pool: Pool) -> AsyncIterator[tuple[RunContext[SessionData], tuple[str, ...]]]:
+async def architect_party(pool: Pool, seed: int) -> AsyncIterator[tuple[RunContext[SessionData], tuple[str, ...]]]:
     player_ids = tuple(f"balance_{uuid4().hex}" for _ in ARCHETYPES)
     ctx = make_context(
         player_ids[0], location_id=ARCHITECT_WORKS, room=make_mock_room(), party_member_ids=player_ids[1:]
@@ -69,7 +75,13 @@ async def architect_party(pool: Pool) -> AsyncIterator[tuple[RunContext[SessionD
     try:
         for archetype, pid in zip(ARCHETYPES, player_ids, strict=True):
             await _create_player(pool, pid, archetype, ARCHITECT_WORKS, 20)
-        yield ctx, player_ids
+        previous_random = random.getstate()
+        random.seed(seed)
+        try:
+            with patch("dice.random.SystemRandom", return_value=random.Random(seed)):
+                yield ctx, player_ids
+        finally:
+            random.setstate(previous_random)
     finally:
         try:
             if ctx.userdata.combat_state:
@@ -218,3 +230,94 @@ async def win_counts(pool, encounter_id=PATROL, player_level=1, *, policy="basic
         standing[archetype] = sum(win and hp for win, hp in results)
     print(f"policy={policy}; encounter={encounter_id}; level={player_level}; wins={counts}; HP>0 wins={standing}")
     return counts, standing
+
+
+async def drive_architect_fight(
+    ctx: RunContext[SessionData], player_ids: tuple[str, ...], seed: int
+) -> tuple[str, int]:
+    damage = dict.fromkeys(player_ids, 0)
+    rallied = False
+    last_legendary_round = 0
+    for _ in range(ARCHITECT_ROUND_LIMIT):
+        for _ in range(ARCHITECT_DRAIN_LIMIT):
+            state = ctx.userdata.combat_state
+            assert state is not None
+            round_number = state.round_number
+            detail = f"seed={seed}, round={round_number}, beat={state.beat}"
+            players = architect_policy.participants(state, player_ids)
+            owner = architect_policy.owner_of(state)
+            candidates = architect_policy.targets(players)
+            try:
+                if (
+                    state.beat in ("declaration", "narration")
+                    and state.legendary_continuation is None
+                    and state.open_window is None
+                    and state.ally_continuation is None
+                    and state.wrap_continuation is None
+                    and state.inner_fire_continuation is None
+                    and ctx.userdata.fate_offer is None
+                    and not owner.is_fallen
+                    and not cannot_act(owner.conditions)
+                    and owner.legendary_actions >= 2
+                    and last_legendary_round != round_number
+                    and (target := architect_policy.geometry_target(state, owner, candidates)) is not None
+                ):
+                    result = await consume_legendary_action(ctx, owner.id, architect_policy.GEOMETRY, target.id, [])
+                    last_legendary_round = round_number
+                elif state.beat == "declaration" and state.legendary_continuation is None:
+                    declarations: list[DeclVariant] = []
+                    for actor in [*players, *(p for p in state.participants if not p.is_ally and not p.is_structure)]:
+                        if actor.is_fallen or cannot_act(actor.conditions):
+                            continue
+                        if actor.id in damage:
+                            row = await db_queries.get_player(actor.id)
+                            assert row is not None, detail
+                            declaration = architect_policy.player_declaration(
+                                state, actor, owner, players, row, damage, rallied
+                            )
+                        elif actor.id == owner.id:
+                            declaration = architect_policy.owner_declaration(state, owner, candidates)
+                        else:
+                            declaration = architect_policy.construct_declaration(state, actor, candidates)
+                        declarations.append(declaration)
+                    logger.debug("%s declarations: %s", detail, declarations)
+                    accepted = json.loads(await declare_phase(ctx, declarations))
+                    assert accepted["accepted_actors"] == [d.actor_id for d in declarations], detail
+                    continue
+                else:
+                    result = await resolve_phase(ctx)
+            except ToolError as error:
+                raise AssertionError(f"{detail}: {error}") from error
+
+            if isinstance(result, tuple):
+                outcome = json.loads(result[1])["outcome"]
+                assert outcome in ("victory", "defeat"), (detail, outcome)
+                assert ctx.userdata.combat_state is None, detail
+                assert await db_mutations.load_combat_state(state.combat_id) is None, detail
+                return outcome, round_number
+
+            ctx.userdata.event_bus.drain()
+            packet = json.loads(result)
+            assert ctx.userdata.fate_offer is None, detail
+            for action in packet["packets"]:
+                actor_id = action["actor_id"]
+                if actor_id in damage:
+                    damage[actor_id] += sum(
+                        strike.get("damage", 0) for strike in action.get("attacks", [action])
+                    ) + action.get("cast", {}).get("damage_result", {}).get("damage", 0)
+                if action.get("action") == architect_policy.RALLYING_SHOUT and action.get("resolved"):
+                    rallied = True
+                logger.debug("%s: %s", detail, action)
+            due = packet["death_saves_due"]
+            assert len(due) == len(set(due)), (detail, due)
+            for actor_id in due:
+                try:
+                    await request_death_save(ctx, actor_id)
+                except ToolError as error:
+                    raise AssertionError(f"{detail}: death save for {actor_id}: {error}") from error
+            if packet["round"] > round_number:
+                break
+        else:
+            raise AssertionError(f"{detail}: did not drain the round within {ARCHITECT_DRAIN_LIMIT} tool calls")
+    hp = {p.archetype_id or p.name: p.hp_current for p in [*players, owner]}
+    raise AssertionError(f"{detail}: exceeded {ARCHITECT_ROUND_LIMIT} rounds, remaining HP={hp}")
