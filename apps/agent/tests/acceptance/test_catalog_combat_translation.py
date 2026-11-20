@@ -64,8 +64,12 @@ async def declare(ctx, pid, eid, name):
     if advertised["declaration_type"] == "ability":
         payload = AbilityDecl(kind="ability", actor_id=eid, action=name, targets=[], argument_type="")
     else:
-        payload = AttackDecl(kind="attack", actor_id=eid, action=name, target_id=pid, held_item_id="", rider="")
-    response = json.loads(await combat_turn.declare_phase(ctx, [DefendDecl(kind="defend", actor_id=pid), payload]))
+        payload = AttackDecl(
+            reshape=[], kind="attack", actor_id=eid, action=name, target_id=pid, held_item_id="", rider=""
+        )
+    response = json.loads(
+        await combat_turn.declare_phase(ctx, [DefendDecl(reshape=[], kind="defend", actor_id=pid), payload])
+    )
     assert eid in response["accepted_actors"]
     return response
 
@@ -165,7 +169,7 @@ async def test_lunge_grapple_advantage_and_recharge(runtime):
     assert __import__("combat_grapple").escape_dc(state.get_participant(eid)) == 13
     assert next(c for c in get_participant(state, pid).conditions if c["type"] == "grappled")["source"] == eid
     assert "Lunge" not in action_summary(state.get_participant(eid))["actions"]
-    await combat_turn.declare_phase(ctx, [DefendDecl(kind="defend", actor_id=pid)])
+    await combat_turn.declare_phase(ctx, [DefendDecl(reshape=[], kind="defend", actor_id=pid)])
     with patch("combat_recharge.roll", return_value=SimpleNamespace(total=5)):
         await _resolve_round(ctx)
     assert "Lunge" in action_summary((await reload(ctx)).get_participant(eid))["actions"]
@@ -286,10 +290,18 @@ async def test_command_focus_bonus_reaches_attack(runtime):
     await combat_turn.declare_phase(
         ctx,
         [
-            DefendDecl(kind="defend", actor_id=pid),
-            AttackDecl(kind="attack", actor_id=eid, action="Rally", target_id=pid, held_item_id="", rider=""),
+            DefendDecl(reshape=[], kind="defend", actor_id=pid),
             AttackDecl(
-                kind="attack", actor_id="soldier137", action="Longsword", target_id=pid, held_item_id="", rider=""
+                reshape=[], kind="attack", actor_id=eid, action="Rally", target_id=pid, held_item_id="", rider=""
+            ),
+            AttackDecl(
+                reshape=[],
+                kind="attack",
+                actor_id="soldier137",
+                action="Longsword",
+                target_id=pid,
+                held_item_id="",
+                rider="",
             ),
         ],
     )

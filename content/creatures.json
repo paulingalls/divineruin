@@ -3386,14 +3386,14 @@
     "passives": [
       {
         "name": "Architect's Domain",
-        "description": "Within 0.5 mile, walls, floors and ceilings shift each round; other creatures treat it as difficult terrain.",
+        "description": "Movement by other creatures costs twice as much inside the fixed 0.5 mile construction zone.",
         "narration_cue": "",
         "recharge": null,
         "audio": null
       },
       {
         "name": "Incorporeal Movement",
-        "description": "Passes through its own structures, not natural terrain or other structures.",
+        "description": "Moves through its own walls. Other structures still block it.",
         "narration_cue": "",
         "recharge": null,
         "audio": null
@@ -3416,7 +3416,7 @@
     "actives": [
       {
         "name": "Reshape",
-        "description": "1/round free action: create, move or destroy a 20 ft \u00d7 20 ft wall, floor, or ceiling section within 120 ft. Below half HP, 2/round. As a legendary action, Reshape costs 2 of 3/round.",
+        "description": "Before its declared action, create, move or destroy a wall, open a floor, or lower a ceiling. Each section measures up to 20 ft \u00d7 20 ft within 120 ft. Use once per round, or twice below half HP. A floor opening calls for a DC 15 Dexterity save. Failure deals 2d6 bludgeoning and leaves the creature prone in a pit. Its next move is spent climbing out. Low ceilings slow movement and block flight. Legendary Reshape costs 2 of 3/round.",
         "narration_cue": "",
         "recharge": "1/round",
         "audio": null

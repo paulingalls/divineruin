@@ -1,6 +1,9 @@
 import json
+from unittest.mock import patch
 
 import pytest
+from _zhael_fate_fixtures import defend
+from acceptance._capstone_helpers import _d20
 from acceptance.test_architect_fight import (
     fight as fight,
 )
@@ -10,8 +13,11 @@ from acceptance.test_architect_fight import (
 from acceptance.test_architect_fight import (
     mock_combat_agent_factory as mock_combat_agent_factory,
 )
+from acceptance.test_architect_fight import pos
+from acceptance.test_architect_terrain import declare, set_favor
 
 import architect_scene
+import combat_spatial
 import db_mutations
 import db_queries
 
@@ -35,6 +41,15 @@ import db_queries
         ("nonstructure", "identify a structure"),
         ("phase", "phase disagrees"),
         ("live_walls", "still owns live walls"),
+        ("count_bool", "Invalid Architect Reshape budget"),
+        ("count_three", "Invalid Architect Reshape budget"),
+        ("future_round", "Invalid Architect Reshape budget"),
+        ("missing_domain", "Invalid Architect domain"),
+        ("domain_exclusion", "Invalid Architect domain"),
+        ("invalid_floor", "Invalid Architect section"),
+        ("invalid_ceiling", "Invalid Architect ceiling"),
+        ("orphan_floor", "Invalid Architect pit membership"),
+        ("orphan_actor", "Invalid Architect pit membership"),
     ],
 )
 async def test_bad_architect_snapshot_cannot_load(fight, defect, reason):
@@ -78,6 +93,26 @@ async def test_bad_architect_snapshot_cannot_load(fight, defect, reason):
         case "live_walls":
             owner.update(hp_current=0, is_dead=True, is_fallen=True)
             record["phase"] = "destroyed"
+        case "count_bool":
+            record.update(reshape_round=1, reshape_count=True)
+        case "count_three":
+            record.update(reshape_round=1, reshape_count=3)
+        case "future_round":
+            record.update(reshape_round=state.round_number + 1, reshape_count=1)
+        case "missing_domain":
+            data["spatial"]["movement_areas"].clear()
+        case "domain_exclusion":
+            next(iter(data["spatial"]["movement_areas"].values()))["excluded_actor_ids"] = []
+        case "invalid_floor":
+            record["floors"]["floor"] = {"min": pos(0), "max": pos(21, 1)}
+        case "invalid_ceiling":
+            domain = next(iter(data["spatial"]["movement_areas"].values()))
+            data["spatial"]["movement_areas"]["ceiling"] = {**domain, "kind": "low_ceiling"}
+        case "orphan_floor":
+            record["pits"][fight.players[0]] = "missing"
+        case "orphan_actor":
+            record["floors"]["floor"] = {"min": pos(0), "max": pos(5, 5)}
+            record["pits"]["missing"] = "floor"
     await db_mutations.save_combat_state(state.combat_id, data)
     with pytest.raises(ValueError, match=reason):
         await db_mutations.load_combat_state(state.combat_id)
@@ -164,3 +199,39 @@ async def test_old_unrelated_snapshot_does_not_require_architect_data(fight):
     await db_mutations.save_combat_state(state.combat_id, data)
     restored = await db_mutations.load_combat_state(state.combat_id)
     assert restored is not None and restored.architect_encounter is None
+
+
+@pytest.mark.parametrize(
+    "defect",
+    ["wrong_section", "wrong_target", "wrong_receipt_kind", "inconsistent_budget", "missing_receipt", "missing_roll"],
+)
+async def test_malformed_reshape_receipts_refuse_reload(fight, defect):
+    state = await fight.reload()
+    owner, player = state.architect_encounter["owner_id"], fight.players[0]
+    combat_spatial.place(state, player, pos(5))
+    await fight.persist()
+    await set_favor(fight, "zhael", 40)
+    floor = {"kind": "open_floor", "min": pos(4, -1), "max": pos(6, 1)}
+    await declare(fight, defend(player), {**defend(owner), "reshape": [floor]})
+    await fight.command("resolve_phase", {})
+    with patch("check_resolution.dice_roll", return_value=_d20(1)):
+        assert "fate_offer" in await fight.command("resolve_phase", {})
+    state = await fight.reload()
+    data = state.to_dict()
+    [receipt] = data["held_actions"][0]["reshape_receipts"]
+    match defect:
+        case "wrong_section":
+            receipt["section_id"] = "missing"
+        case "wrong_target":
+            receipt["results"] = [{"target_id": "missing", "save_success": True}]
+        case "wrong_receipt_kind":
+            receipt["kind"] = "destroy_wall"
+        case "inconsistent_budget":
+            data["architect_encounter"].update(reshape_round=0, reshape_count=0)
+        case "missing_receipt":
+            del data["held_actions"][0]["reshape_receipts"]
+        case "missing_roll":
+            data["held_actions"][0]["roll_steps"]["reshape"].clear()
+    await db_mutations.save_combat_state(state.combat_id, data)
+    with pytest.raises(ValueError, match="Architect Reshape"):
+        await db_mutations.load_combat_state(state.combat_id)

@@ -99,6 +99,7 @@ async def test_catalog_condition_action_is_invocable_from_the_produced_name():
         mapped = to_engine_declarations(
             [
                 AttackDecl(
+                    reshape=[],
                     kind="attack",
                     actor_id=enemy.id,
                     action=produced_name,
@@ -136,7 +137,13 @@ def test_attack_maps_to_the_engine_attack_shape():
     engine = to_engine_declarations(
         [
             AttackDecl(
-                kind="attack", actor_id="player_1", action="Longsword", target_id="goblin_1", held_item_id="", rider=""
+                reshape=[],
+                kind="attack",
+                actor_id="player_1",
+                action="Longsword",
+                target_id="goblin_1",
+                held_item_id="",
+                rider="",
             )
         ]
     )
@@ -148,6 +155,7 @@ def test_mapped_unknown_attack_action_fails_at_the_engine_boundary():
     engine = to_engine_declarations(
         [
             AttackDecl(
+                reshape=[],
                 kind="attack",
                 actor_id="goblin_scout_1",
                 action="Claw",
@@ -168,9 +176,15 @@ def test_mapped_unknown_attack_action_fails_at_the_engine_boundary():
     "decl",
     [
         AttackDecl(
-            kind="attack", actor_id="goblin_1", action="Scimitar", target_id="player_1", held_item_id="", rider=""
+            reshape=[],
+            kind="attack",
+            actor_id="goblin_1",
+            action="Scimitar",
+            target_id="player_1",
+            held_item_id="",
+            rider="",
         ),
-        DefendDecl(kind="defend", actor_id="goblin_1"),
+        DefendDecl(reshape=[], kind="defend", actor_id="goblin_1"),
     ],
 )
 def test_mapped_unknown_actor_fails_at_the_engine_boundary(decl):
@@ -226,6 +240,7 @@ def test_declare_time_action_check_matches_case_insensitively_like_resolution():
     engine = to_engine_declarations(
         [
             AttackDecl(
+                reshape=[],
                 kind="attack",
                 actor_id="goblin_scout_1",
                 action="sCiMiTaR",
@@ -246,7 +261,13 @@ def test_an_attack_rider_rides_through_but_an_empty_one_is_dropped():
     with_rider = to_engine_declarations(
         [
             AttackDecl(
-                kind="attack", actor_id="player_1", action="Dagger", target_id="goblin_1", held_item_id="", rider="hide"
+                reshape=[],
+                kind="attack",
+                actor_id="player_1",
+                action="Dagger",
+                target_id="goblin_1",
+                held_item_id="",
+                rider="hide",
             )
         ]
     )
@@ -254,7 +275,13 @@ def test_an_attack_rider_rides_through_but_an_empty_one_is_dropped():
     without = to_engine_declarations(
         [
             AttackDecl(
-                kind="attack", actor_id="player_1", action="Dagger", target_id="goblin_1", held_item_id="", rider=""
+                reshape=[],
+                kind="attack",
+                actor_id="player_1",
+                action="Dagger",
+                target_id="goblin_1",
+                held_item_id="",
+                rider="",
             )
         ]
     )
@@ -299,7 +326,7 @@ def test_interact_maneuver_defend_and_retreat_map_to_their_engine_shapes():
         [
             InteractDecl(kind="interact", actor_id="player_1", action="lever"),
             ManeuverDecl(kind="maneuver", actor_id="companion_kael", target_id="goblin_1"),
-            DefendDecl(kind="defend", actor_id="goblin_1"),
+            DefendDecl(reshape=[], kind="defend", actor_id="goblin_1"),
             RetreatDecl(kind="retreat", actor_id="goblin_2"),
         ]
     )
@@ -316,8 +343,9 @@ def test_a_repeated_actor_fails_loud():
     with pytest.raises(ValueError, match="declared more than once"):
         to_engine_declarations(
             [
-                DefendDecl(kind="defend", actor_id="player_1"),
+                DefendDecl(reshape=[], kind="defend", actor_id="player_1"),
                 AttackDecl(
+                    reshape=[],
                     kind="attack",
                     actor_id="player_1",
                     action="Longsword",
@@ -335,13 +363,15 @@ def test_variant_kinds_match_the_engine_declaration_types():
 
 
 _ENGINE_CASES = [
-    AttackDecl(kind="attack", actor_id="a", action="Longsword", target_id="goblin_1", held_item_id="", rider=""),
+    AttackDecl(
+        reshape=[], kind="attack", actor_id="a", action="Longsword", target_id="goblin_1", held_item_id="", rider=""
+    ),
     AbilityDecl(kind="ability", actor_id="a", action="arcane_bolt", targets=["goblin_1"], argument_type=""),
     InteractDecl(kind="interact", actor_id="a", action="lever"),
     ConsumeDecl(kind="consume", actor_id="a", item_id="healing_potion", target_id=""),
     ManeuverDecl(kind="maneuver", actor_id="a", target_id="goblin_1"),
-    MoveDecl(kind="move", actor_id="a", destination=Destination(x=30, y=0, z=0)),
-    DefendDecl(kind="defend", actor_id="a"),
+    MoveDecl(reshape=[], movement_mode="ground", kind="move", actor_id="a", destination=Destination(x=30, y=0, z=0)),
+    DefendDecl(reshape=[], kind="defend", actor_id="a"),
     RetreatDecl(kind="retreat", actor_id="a"),
 ]
 
@@ -357,24 +387,14 @@ def test_declare_phase_offers_no_reaction_kind():
     parsed = ToolContext([combat_turn.declare_phase]).parse_function_tools("anthropic", strict=True)
     schema = next(tool["input_schema"] for tool in parsed if tool["name"] == "declare_phase")
 
-    kinds = _kind_consts(schema)
+    declarations = schema["properties"]["declarations"]["items"]["anyOf"]
+    kinds = {
+        kind.get("const") or kind["enum"][0]
+        for branch in declarations
+        for kind in [schema["$defs"][branch["$ref"].split("/")[-1]]["properties"]["kind"]]
+    }
     assert kinds == {t.value for t in DeclarationType} | {"move", "consume"}
-    assert "reaction" not in kinds
     assert "trigger" not in json.dumps(schema)
-
-
-def _kind_consts(node) -> set[str]:
-    """Every literal the emitted schema will accept for a declaration's `kind` discriminator."""
-    found: set[str] = set()
-    if isinstance(node, dict):
-        for key, value in node.items():
-            if key == "kind" and isinstance(value, dict):
-                found |= set(value.get("enum") or ([value["const"]] if "const" in value else []))
-            found |= _kind_consts(value)
-    elif isinstance(node, list):
-        for item in node:
-            found |= _kind_consts(item)
-    return found
 
 
 @pytest.mark.parametrize("variant", DECL_VARIANTS)

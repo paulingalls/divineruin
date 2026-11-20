@@ -90,7 +90,8 @@ async def test_expiry_preserves_ordinary_hiding(veil, boundary):
     await use(h)
     if boundary == "round":
         await h.command(
-            "declare_phase", {"declarations": [{"kind": "defend", "actor_id": p.id} for p in state.participants]}
+            "declare_phase",
+            {"declarations": [{"reshape": [], "kind": "defend", "actor_id": p.id} for p in state.participants]},
         )
         first = await h.command("resolve_phase", {})
         assert (await row(h))["flags"]["concealed"] is True, first
@@ -226,6 +227,7 @@ async def test_attack_reveals_on_ally_commit(veil, face):
         {
             "declarations": [
                 {
+                    "reshape": [],
                     "kind": "attack",
                     "actor_id": h.players[0],
                     "action": "Longsword",
@@ -233,7 +235,11 @@ async def test_attack_reveals_on_ally_commit(veil, face):
                     "held_item_id": "",
                     "rider": "",
                 },
-                *[{"kind": "defend", "actor_id": p.id} for p in state.participants if p.id != h.players[0]],
+                *[
+                    {"reshape": [], "kind": "defend", "actor_id": p.id}
+                    for p in state.participants
+                    if p.id != h.players[0]
+                ],
             ]
         },
     )
@@ -300,7 +306,11 @@ async def test_cast_reveals_after_hidden_discount_and_refusal_preserves(veil):
                         "targets": [target],
                         "argument_type": "",
                     },
-                    *[{"kind": "defend", "actor_id": p.id} for p in state.participants if p.id != h.players[0]],
+                    *[
+                        {"reshape": [], "kind": "defend", "actor_id": p.id}
+                        for p in state.participants
+                        if p.id != h.players[0]
+                    ],
                 ]
             },
         )
@@ -334,6 +344,7 @@ async def test_terminal_wrap_expires_hidden_defender(veil):
         {
             "declarations": [
                 {
+                    "reshape": [],
                     "kind": "attack",
                     "actor_id": h.players[1],
                     "action": "Longsword",
@@ -341,7 +352,7 @@ async def test_terminal_wrap_expires_hidden_defender(veil):
                     "held_item_id": "",
                     "rider": "",
                 },
-                {"kind": "defend", "actor_id": h.players[0]},
+                {"reshape": [], "kind": "defend", "actor_id": h.players[0]},
             ]
         },
     )

@@ -87,6 +87,7 @@ def payload(maw, form, target, item):
         decl["strikes"][1]["held_item_id"] = item
         return decl
     return {
+        "reshape": [],
         "kind": "attack",
         "actor_id": maw.enemies[0],
         "action": "Dissolution Maw",
@@ -99,7 +100,12 @@ def payload(maw, form, target, item):
 async def declare(maw, decl):
     return await maw.command(
         "declare_phase",
-        {"declarations": [decl, *[{"kind": "defend", "actor_id": p} for p in [*maw.players, maw.enemies[1]]]]},
+        {
+            "declarations": [
+                decl,
+                *[{"reshape": [], "kind": "defend", "actor_id": p} for p in [*maw.players, maw.enemies[1]]],
+            ]
+        },
     )
 
 

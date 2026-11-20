@@ -53,7 +53,8 @@ async def test_catalog_composite_is_public_and_survives_reload(maw, names):
         result = await maw.declare([maw.players[0]] * len(names))
     else:
         result = await maw.command(
-            "declare_phase", {"declarations": [{"kind": "defend", "actor_id": p} for p in [*maw.players, *maw.enemies]]}
+            "declare_phase",
+            {"declarations": [{"reshape": [], "kind": "defend", "actor_id": p} for p in [*maw.players, *maw.enemies]]},
         )
     reloaded = next(p for p in result["participants"] if p["id"] == actor["id"])
     assert reloaded["executable_actions"] == actor["executable_actions"]

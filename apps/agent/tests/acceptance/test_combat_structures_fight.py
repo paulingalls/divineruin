@@ -196,7 +196,9 @@ async def test_attacks_damage_hold_and_destroy_wall(spatial_entry: Any) -> None:
     assert saved.spatial["positions"][WALL] == pos(10)
     assert WALL not in saved.initiative_order
 
-    roster = json.loads(await declare_phase(ctx, [DefendDecl(kind="defend", actor_id=player)]))["participants"]
+    roster = json.loads(await declare_phase(ctx, [DefendDecl(reshape=[], kind="defend", actor_id=player)]))[
+        "participants"
+    ]
     target = next(p["id"] for p in roster if p["name"] == NAME and p["type"] == "structure" and p["ac"] == 19)
     await _resolve_round(ctx)
     strike = _strike(player, target)
@@ -210,7 +212,7 @@ async def test_attacks_damage_hold_and_destroy_wall(spatial_entry: Any) -> None:
     wall = (await _reload(ctx)).get_participant(target)
     assert wall is not None and wall.hp_current == 30
 
-    await declare_phase(ctx, [strike, DefendDecl(kind="defend", actor_id="mawling_1")])
+    await declare_phase(ctx, [strike, DefendDecl(reshape=[], kind="defend", actor_id="mawling_1")])
     with (
         patch("check_resolution.dice_roll", return_value=_d20(15)),
         patch("check_resolution_attack.dice_roll", return_value=_damage_die(7)),

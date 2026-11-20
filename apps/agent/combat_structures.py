@@ -49,19 +49,30 @@ def add_wall(state: CombatState, wall_id: str, name: str, start: Point, end: Poi
         raise ValueError("structure requires a nonempty name")
     if any(wall_id in spatial[key] for key in ("positions", "locations", "zones")) or wall_id in state.initiative_order:
         raise ValueError(f"Duplicate spatial ID {wall_id!r}")
+    wall = CombatParticipant(
+        id=wall_id, name=name, type="structure", initiative=0, hp_current=WALL_HP, hp_max=WALL_HP, ac=WALL_AC
+    )
+    _place_wall(spatial, wall_id, segment)
+    state.participants.append(wall)
+    spatial["speeds"][wall_id] = 0
+    return wall
+
+
+def move_wall(state: CombatState, wall_id: str, start: Point, end: Point) -> None:
+    spatial = require_spatial(state)
+    if wall_id not in spatial.get("structures", {}):
+        raise ValueError(f"Unknown live wall {wall_id!r}")
+    _place_wall(spatial, wall_id, _segment({"start": start, "end": end}))
+
+
+def _place_wall(spatial: dict, wall_id: str, segment: Segment) -> None:
     start, end = segment["start"], segment["end"]
     center = {"x": start["x"] / 2 + end["x"] / 2, "y": start["y"] / 2 + end["y"] / 2, "z": min(start["z"], end["z"])}
     for other in (*spatial["positions"].values(), *spatial["locations"].values()):
         distance(center, other)
 
-    wall = CombatParticipant(
-        id=wall_id, name=name, type="structure", initiative=0, hp_current=WALL_HP, hp_max=WALL_HP, ac=WALL_AC
-    )
-    state.participants.append(wall)
     spatial["positions"][wall_id] = center
-    spatial["speeds"][wall_id] = 0
     spatial.setdefault("structures", {})[wall_id] = segment
-    return wall
 
 
 def validate_participants(state: CombatState) -> None:

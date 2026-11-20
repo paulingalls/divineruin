@@ -88,7 +88,7 @@ def validate_scene(encounter):
 
 def validate_spatial(spatial, actor_ids):
     keys = {"positions", "locations", "zones", "speeds"}
-    if not isinstance(spatial, dict) or set(spatial) not in (keys, keys | {"structures"}):
+    if not isinstance(spatial, dict) or not keys <= set(spatial) <= keys | {"structures", "movement_areas"}:
         raise ValueError("invalid persisted spatial record")
     validate_maps(spatial["positions"], spatial["locations"], spatial["zones"])
     speeds = mapping(spatial["speeds"], "speeds")
@@ -100,6 +100,10 @@ def validate_spatial(spatial, actor_ids):
         from combat_structures import validate_segments
 
         validate_segments(spatial["structures"])
+    if "movement_areas" in spatial:
+        from combat_movement_cost import validate_areas
+
+        validate_areas(spatial["movement_areas"], actor_ids)
     return deepcopy(spatial)
 
 
@@ -165,6 +169,9 @@ def facts(state, origin_id):
         "speeds_ft": deepcopy(spatial["speeds"]),
         "spoken": [f"{key} is {value:g} feet from {origin_id}" for key, value in distances.items() if key != origin_id],
     }
+
+    if "movement_areas" in spatial:
+        result["movement_areas"] = deepcopy(spatial["movement_areas"])
 
     from combat_structures import wall_facts
 

@@ -75,8 +75,11 @@ async def test_still_entry_search_and_weapon_damage(still):
         assert reason in await declare(still, **spell("arcane_bolt", target), error=True)
     for actor_id, action in [
         (owner_id, strike(still.players[0]) | {"action": "Serenity's Touch"}),
-        (anchors[0], {"kind": "defend"}),
-        (anchors[0], {"kind": "move", "destination": {"x": 20, "y": 0, "z": 0}}),
+        (anchors[0], {"kind": "defend", "reshape": []}),
+        (
+            anchors[0],
+            {"kind": "move", "movement_mode": "ground", "reshape": [], "destination": {"x": 20, "y": 0, "z": 0}},
+        ),
     ]:
         assert "take no actions" in await declare(still, actor_id=actor_id, error=True, **action)
     assert (await still.reload()).to_dict() == state.to_dict()
@@ -103,7 +106,7 @@ async def test_still_entry_search_and_weapon_damage(still):
 
 
 def strike(target, *, action="Longsword") -> dict[str, Any]:
-    return dict(kind="attack", action=action, target_id=target, held_item_id="", rider="")
+    return dict(reshape=[], kind="attack", action=action, target_id=target, held_item_id="", rider="")
 
 
 def spell(action, *targets) -> dict[str, Any]:

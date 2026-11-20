@@ -100,7 +100,9 @@ async def reentry_and_defeat(server, tmp_path):
             receipt = await run.turn("request_death_save", player_id=pid)
         assert not receipt.is_error, receipt.output
         enemy = next(p for p in cs.participants if p.type == "enemy")
-        receipt = await run.turn("declare_phase", declarations=[{"kind": "defend", "actor_id": enemy.id}])
+        receipt = await run.turn(
+            "declare_phase", declarations=[{"reshape": [], "kind": "defend", "actor_id": enemy.id}]
+        )
         assert not receipt.is_error, receipt.output
         for _ in range(8):
             receipt = await run.turn("resolve_phase")

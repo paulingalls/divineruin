@@ -97,10 +97,11 @@ async def declarations(ctx, *, argue=False):
                 AbilityDecl(kind="ability", actor_id=actor.id, action="de_escalate", targets=[], argument_type="reason")
             )
         elif argue or target is None or actor.type == "enemy":
-            decls.append(DefendDecl(kind="defend", actor_id=actor.id))
+            decls.append(DefendDecl(reshape=[], kind="defend", actor_id=actor.id))
         else:
             decls.append(
                 AttackDecl(
+                    reshape=[],
                     kind="attack",
                     actor_id=actor.id,
                     action=actor.action_pool[0]["name"],

@@ -105,9 +105,15 @@ class LootHarness(MawlingHarness):
                         "declare_phase",
                         {
                             "declarations": [
-                                {"kind": "move", "actor_id": self.players[0], "destination": destination},
+                                {
+                                    "reshape": [],
+                                    "movement_mode": "ground",
+                                    "kind": "move",
+                                    "actor_id": self.players[0],
+                                    "destination": destination,
+                                },
                                 *[
-                                    {"kind": "defend", "actor_id": p.id}
+                                    {"reshape": [], "kind": "defend", "actor_id": p.id}
                                     for p in state.participants
                                     if p.id != self.players[0] and not p.is_fallen
                                 ],
@@ -125,6 +131,7 @@ class LootHarness(MawlingHarness):
                     {
                         "declarations": [
                             {
+                                "reshape": [],
                                 "kind": "attack",
                                 "actor_id": self.players[0],
                                 "action": "Longsword",
@@ -133,7 +140,7 @@ class LootHarness(MawlingHarness):
                                 "rider": "",
                             },
                             *[
-                                {"kind": "defend", "actor_id": p.id}
+                                {"reshape": [], "kind": "defend", "actor_id": p.id}
                                 for p in state.participants
                                 if p.id != self.players[0] and not p.is_fallen
                             ],

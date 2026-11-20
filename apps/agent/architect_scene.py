@@ -84,6 +84,10 @@ def restore(state: CombatState, record: dict) -> None:
         spatial["speeds"][wall_id] = 0
         if not wall.is_dead:
             spatial["structures"][wall_id] = previous_spatial["structures"][wall_id]
+    spatial["movement_areas"] = previous_spatial["movement_areas"]
+    old["pits"] = {actor: floor for actor, floor in old["pits"].items() if state.get_participant(actor) is not None}
+    for actor in old["pits"]:
+        spatial["positions"][actor] = previous_spatial["positions"][actor]
     state.architect_encounter = old
     state.round_number = retained.round_number
     combat_spatial.require_spatial(state)

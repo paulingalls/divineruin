@@ -165,7 +165,7 @@ class MawlingHarness:
             {
                 "declarations": [
                     self.composite(targets),
-                    *[{"kind": "defend", "actor_id": p} for p in [*self.players, self.enemies[1]]],
+                    *[{"reshape": [], "kind": "defend", "actor_id": p} for p in [*self.players, self.enemies[1]]],
                 ]
             },
         )

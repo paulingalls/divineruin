@@ -34,7 +34,7 @@ class ItemHealWalk(HealWalk):
         actor = actor or self.player
         declarations = [{"kind": "consume", "actor_id": actor, "item_id": item, "target_id": target}]
         declarations.extend(
-            {"kind": "defend", "actor_id": p.id}
+            {"reshape": [], "kind": "defend", "actor_id": p.id}
             for p in self.fight_state.participants
             if p.id != actor and p.is_ally and not p.is_fallen
         )

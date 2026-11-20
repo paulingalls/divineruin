@@ -59,6 +59,7 @@ async def strike(maw, target, action="Claw", actor=None):
         {
             "declarations": [
                 {
+                    "reshape": [],
                     "kind": "attack",
                     "actor_id": actor,
                     "action": action,
@@ -67,7 +68,7 @@ async def strike(maw, target, action="Claw", actor=None):
                     "rider": "",
                 },
                 *[
-                    {"kind": "defend", "actor_id": p.id}
+                    {"reshape": [], "kind": "defend", "actor_id": p.id}
                     for p in state.participants
                     if p.id != actor and not p.is_fallen
                 ],

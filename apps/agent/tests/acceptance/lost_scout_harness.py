@@ -64,10 +64,11 @@ class ScoutHarness(MawlingHarness):
         await self.command("declare_phase", {"declarations": list(actions)})
 
     def defend_action(self):
-        return {"kind": "defend", "actor_id": self.players[0]}
+        return {"reshape": [], "kind": "defend", "actor_id": self.players[0]}
 
     def attack_action(self, *, scout_attacks=False):
         return {
+            "reshape": [],
             "kind": "attack",
             "actor_id": "hollowed_scout_1" if scout_attacks else self.players[0],
             "action": "Corrupted Blade" if scout_attacks else "Longsword",

@@ -32,6 +32,7 @@ def game_tools(session, *tools, agent=None):
 
 def attack(actor_id, target_id):
     return {
+        "reshape": [],
         "kind": "attack",
         "actor_id": actor_id,
         "action": "Longsword",
@@ -42,4 +43,11 @@ def attack(actor_id, target_id):
 
 
 def defend(actor_id):
-    return {"kind": "defend", "actor_id": actor_id, "action": "defend", "targets": [], "argument_type": ""}
+    return {
+        "reshape": [],
+        "kind": "defend",
+        "actor_id": actor_id,
+        "action": "defend",
+        "targets": [],
+        "argument_type": "",
+    }

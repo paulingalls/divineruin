@@ -53,7 +53,7 @@ async def test_melee_refuses_the_whole_line_and_lands_with_a_clear_line(spatial_
     combat_spatial.place(state, target, pos(0, 10))
     state = await _save_and_reload(ctx)
     hp = participant(state, target).hp_current
-    await declare_phase(ctx, [strike, DefendDecl(kind="defend", actor_id=target)])
+    await declare_phase(ctx, [strike, DefendDecl(reshape=[], kind="defend", actor_id=target)])
     with (
         patch("check_resolution.dice_roll", return_value=_d20(20)),
         patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),

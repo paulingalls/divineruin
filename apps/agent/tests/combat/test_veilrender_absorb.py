@@ -36,6 +36,7 @@ async def prepare_absorb(ctx, spell_id="arcane_magic_missile", hp=70, targets=No
                 argument_type="",
             ),
             AttackDecl(
+                reshape=[],
                 kind="attack",
                 actor_id="foe",
                 action="Reality Crush",

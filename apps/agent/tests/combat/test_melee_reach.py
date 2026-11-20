@@ -31,6 +31,7 @@ async def attack(maw, actor_id, target_id, action):
         {
             "declarations": [
                 {
+                    "reshape": [],
                     "kind": "attack",
                     "actor_id": actor_id,
                     "action": action,
@@ -41,7 +42,7 @@ async def attack(maw, actor_id, target_id, action):
                     "rider": "",
                 },
                 *[
-                    {"kind": "defend", "actor_id": p.id}
+                    {"reshape": [], "kind": "defend", "actor_id": p.id}
                     for p in state.participants
                     if p.id != actor_id and not p.is_fallen
                 ],
@@ -222,6 +223,7 @@ async def test_resolution_checks_live_conditions_and_exposure(maw, changed):
         {
             "declarations": [
                 {
+                    "reshape": [],
                     "kind": "attack",
                     "actor_id": actor.id,
                     "action": actor.action_pool[0]["name"],
@@ -229,7 +231,7 @@ async def test_resolution_checks_live_conditions_and_exposure(maw, changed):
                     "held_item_id": "",
                     "rider": "",
                 },
-                *[{"kind": "defend", "actor_id": p.id} for p in state.participants if p.id != actor.id],
+                *[{"reshape": [], "kind": "defend", "actor_id": p.id} for p in state.participants if p.id != actor.id],
             ]
         },
     )
@@ -272,6 +274,7 @@ async def test_interrupted_charge_keeps_movement_receipt(maw, interruption):
         {
             "declarations": [
                 {
+                    "reshape": [],
                     "kind": "attack",
                     "actor_id": actor.id,
                     "action": "Claw",
@@ -279,7 +282,7 @@ async def test_interrupted_charge_keeps_movement_receipt(maw, interruption):
                     "held_item_id": "",
                     "rider": "",
                 },
-                *[{"kind": "defend", "actor_id": p.id} for p in state.participants if p.id != actor.id],
+                *[{"reshape": [], "kind": "defend", "actor_id": p.id} for p in state.participants if p.id != actor.id],
             ]
         },
     )

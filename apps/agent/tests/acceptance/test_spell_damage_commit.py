@@ -61,7 +61,7 @@ async def test_spell_destroyed_hollow_receipt_and_resonance_persist_once(spell_f
     import combat_turn
     from declaration_payloads import DefendDecl
 
-    await combat_turn.declare_phase(ctx, [DefendDecl(kind="defend", actor_id=ctx.userdata.player_id)])
+    await combat_turn.declare_phase(ctx, [DefendDecl(reshape=[], kind="defend", actor_id=ctx.userdata.player_id)])
     await _resolve_round(ctx)
     death.assert_awaited_once()
     assert ctx.userdata.resonance.current == max(0, total - 1)
@@ -164,7 +164,7 @@ async def test_redirected_spell_damage_breaks_real_concentration(started, spell_
         ctx,
         [
             AbilityDecl(kind="ability", actor_id=pid, action=spell_id, targets=["choir_zone"], argument_type=""),
-            DefendDecl(kind="defend", actor_id="choir_zone"),
+            DefendDecl(reshape=[], kind="defend", actor_id="choir_zone"),
         ],
     )
     import random
@@ -220,7 +220,7 @@ async def test_mixed_spell_filters_choir_components_before_one_hp_landing(starte
                 targets=["choir_zone"],
                 argument_type="",
             ),
-            DefendDecl(kind="defend", actor_id="choir_zone"),
+            DefendDecl(reshape=[], kind="defend", actor_id="choir_zone"),
         ],
     )
     save = check_resolution_save.resolve_saving_throw
