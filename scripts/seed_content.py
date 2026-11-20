@@ -70,6 +70,9 @@ PK_COLUMN = {
     "voice_registry": "character_id",
 }
 
+MUTABLE_SEED_TABLES = frozenset({"players", "npc_state", "god_agent_state", "player_map_progress"})
+GATHERING_STATE_KEYS = ("quantity", "discovered")
+
 UPSERT_SQL = """
     INSERT INTO {table} ({pk_col}, data)
     VALUES ($1, $2::jsonb)
@@ -84,7 +87,8 @@ def upsert_query(table: str, production: bool = False) -> str:
     pk_col = PK_COLUMN.get(table, "id")
     data = "EXCLUDED.data"
     if production and table == "gathering_nodes":
-        data += " || jsonb_build_object('quantity', gathering_nodes.data->'quantity', 'discovered', gathering_nodes.data->'discovered')"
+        state = ", ".join(f"'{key}', gathering_nodes.data->'{key}'" for key in GATHERING_STATE_KEYS)
+        data += f" || jsonb_build_object({state})"
     return UPSERT_SQL.format(table=table, pk_col=pk_col, data=data)
 
 
@@ -165,7 +169,7 @@ class InvalidContent(Exception):
     pass
 
 
-async def seed(conn: asyncpg.Connection, *, production: bool = False) -> dict[str, int]:
+async def seed(conn: asyncpg.Connection, *, production: bool = False, catalog_only: bool = False) -> dict[str, int]:
     if production:
         path = CONTENT_DIR / "players.json"
         fixtures = json.loads(path.read_text()) if path.exists() else []
@@ -194,7 +198,7 @@ async def seed(conn: asyncpg.Connection, *, production: bool = False) -> dict[st
             raise InvalidContent(f"{path.name}: expected nonempty reference corpus")
     catalog = {row["id"]: row for row in json.loads(catalog_path.read_text())}
     for filename, table in TABLE_MAP.items():
-        if production and table == "players":
+        if (production and table == "players") or (catalog_only and table in MUTABLE_SEED_TABLES):
             continue
         filepath = CONTENT_DIR / filename
         if not filepath.exists():
@@ -202,7 +206,7 @@ async def seed(conn: asyncpg.Connection, *, production: bool = False) -> dict[st
             continue
 
         pk_field = PK_COLUMN.get(table, "id")
-        query = upsert_query(table, production)
+        query = upsert_query(table, production or catalog_only)
         entities = json.loads(filepath.read_text())
         missing = [i for i, entity in enumerate(entities) if not entity.get(pk_field)]
         if missing:
