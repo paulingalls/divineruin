@@ -6,13 +6,18 @@ from typing import Literal, get_args
 from livekit.agents.llm import ToolError
 
 import ability_persistence
+import combat_spatial
 from archetypes import get_archetype_chassis
 from combat_participant import CombatParticipant
+from combat_spatial_declarations import is_move
 from combat_state import CombatState
 from condition_catalog import MARK_OF_JUSTICE
 from condition_consume import consume_beneficial_conditions
 from conditions import apply_condition, has_condition, hollowed_stage
+from declarations import resolve_declaration
 
+VEILSTEP = "syrath_veilstep"
+VEILSTEP_RANGE_FT = 60
 BATTLE_CRY = "kaelen_battle_cry_of_the_ironhand"
 JUDGMENT = "kaelen_kaelens_judgment"
 SurgeCondition = Literal["poisoned"] | Literal["blinded"] | Literal["frightened"] | Literal["hollowed"]
@@ -68,6 +73,39 @@ def mark_of_justice(state: CombatState | None, actor: str, *, target_id: str | N
         raise ToolError("Mark of Justice requires a living enemy in this encounter.")
     target.conditions = apply_condition(target.conditions, MARK_OF_JUSTICE, source=actor)
     return updated, {"marked_target": {"id": target.id, "name": target.name}}
+
+
+def veilstep(state: CombatState | None, actor: str, *, destination: dict | None) -> tuple[CombatState | None, dict]:
+    cue = "Narrate the follower slipping into one shadow and stepping out of another."
+    if state is None:
+        return None, {"dm_cue": cue}
+    follower = state.get_participant(actor)
+    if follower is None or follower.type != "player":
+        raise ToolError("Veilstep requires the acting player to be a player participant.")
+    if follower.is_fallen or follower.is_dead:
+        raise ToolError("A fallen or dead follower cannot Veilstep.")
+    if state.ally_continuation is not None or state.held_actions:
+        raise ToolError("Finish the partially resolved round before using Veilstep.")
+    if state.spatial is None:
+        return None, {"dm_cue": cue}
+    if destination is None:
+        raise ToolError("Veilstep requires a destination point in feet (x, y, z).")
+
+    try:
+        origin = combat_spatial.position(state.spatial, actor)
+        travelled = combat_spatial.distance(origin, destination)
+        if travelled > VEILSTEP_RANGE_FT:
+            raise ToolError(f"Veilstep reaches up to {VEILSTEP_RANGE_FT} feet.")
+        updated = deepcopy(state)
+        placed = combat_spatial.place(updated, actor, destination)
+    except ValueError as exc:
+        raise ToolError(f"Cannot place Veilstep: {exc}") from exc
+
+    queued = updated.pending_declarations.get(actor)
+    if updated.beat == "resolution" and queued is not None and is_move(resolve_declaration(queued)):
+        del updated.pending_declarations[actor]
+        cue += " The queued move is removed. Ask for a new move from the new position at the next declaration beat."
+    return updated, {"position": placed, "dm_cue": cue}
 
 
 async def restoration_surge(
@@ -130,4 +168,9 @@ async def reward_worthy_foe(state: CombatState, target: CombatParticipant, *, qu
     )
 
 
-ACTIVE_GIFTS = {BATTLE_CRY: battle_cry, JUDGMENT: kaelens_judgment, MARK_OF_JUSTICE_GIFT: mark_of_justice}
+ACTIVE_GIFTS = {
+    BATTLE_CRY: battle_cry,
+    JUDGMENT: kaelens_judgment,
+    MARK_OF_JUSTICE_GIFT: mark_of_justice,
+    VEILSTEP: veilstep,
+}

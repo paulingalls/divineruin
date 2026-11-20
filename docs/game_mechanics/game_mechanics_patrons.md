@@ -166,7 +166,7 @@ Spells cast while hidden or from stealth generate **-2 Resonance** (minimum 0). 
 | Tier | Name | Effect |
 |---|---|---|
 | Acknowledged | Whisper Network | Once per long rest, learn one secret about a visible NPC (hidden motivation, lie, or vulnerability) |
-| Devoted | Veilstep | Once per long rest, teleport to any visible shadow at medium range. 0 Resonance — slipping through cracks, not tearing them |
+| Devoted | Veilstep | Once per long rest, step to a visible shadow up to 60 feet away. Keep your full movement. Any queued move is removed. Costs 0 Resonance. |
 | Exalted | The Veilwatcher's Eye | Once per session, see through the Veil for 6 seconds. DM describes what lies beyond at your current location. The most dangerous and most valuable information ability in the game |
 
 **Layer 4 — Archetype Resonance**

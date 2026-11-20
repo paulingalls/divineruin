@@ -132,7 +132,7 @@ async def spend(session, actor, ability_id):
     return ability
 
 
-async def _spend_activation(conn, session, actor, ability_id, target_id, condition):
+async def _spend_activation(conn, session, actor, ability_id, target_id, condition, destination: dict | None):
     if ability_id == patron_combat_edges.RESTORATION_SURGE:
         target = target_id or actor
         if target != actor and target not in session.present_member_ids:
@@ -154,21 +154,28 @@ async def _spend_activation(conn, session, actor, ability_id, target_id, conditi
         handler = patron_combat_edges.ACTIVE_GIFTS.get(ability_id)
         if handler is None:
             raise ToolError("This ability cannot be activated directly.")
-        updated, response = handler(session.combat_state, actor, target_id=target_id)
+        selector = (
+            {"destination": destination} if ability_id == patron_combat_edges.VEILSTEP else {"target_id": target_id}
+        )
+        updated, response = handler(session.combat_state, actor, **selector)
     await _write_spend(conn, session, actor, ability_id)
     if updated is not None:
         await db_mutations.save_combat_state(updated.combat_id, updated.to_dict(), conn=conn)
     return ability, updated, response
 
 
-async def activate(context, ability_id, *, target_id=None, condition: str | None = None):
+async def activate(
+    context, ability_id, *, target_id=None, condition: str | None = None, destination: dict | None = None
+):
     from patron_ability_events import publish_patron_abilities
 
     session = context.userdata
     actor = session.acting_player_id
     async with session.combat_state_lock:
         async with db.transaction() as conn:
-            ability, updated, response = await _spend_activation(conn, session, actor, ability_id, target_id, condition)
+            ability, updated, response = await _spend_activation(
+                conn, session, actor, ability_id, target_id, condition, destination
+            )
         if updated is not None:
             session.combat_state = updated
             await publish_game_event(
@@ -181,9 +188,9 @@ async def activate(context, ability_id, *, target_id=None, condition: str | None
             "name": ability["name"],
             "effect": ability["effect"],
             "recharge": ability["recharge"],
-            **response,
             "dm_cue": "Narrate the authored answer or effect. Obtain mechanical facts from engine/query tools "
             'before stating any number; for enemy AC use query_info(kind="creature", target_id=<enemy id>). '
             "Never invent an unavailable number.",
+            **response,
         }
     )
