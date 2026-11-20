@@ -1556,8 +1556,9 @@
         "clauses": [
           {
             "effect": "Gain +1 damage against a creature that has reduced an ally to 0 HP this encounter.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "mortaen_last_vigil"
           }
         ]
       },
@@ -3265,8 +3266,9 @@
         "clauses": [
           {
             "effect": "Once per encounter, gain +1 damage on a melee hit after missing the same target.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_threaded_blade"
           }
         ]
       },

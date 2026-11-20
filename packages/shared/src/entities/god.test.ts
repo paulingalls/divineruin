@@ -385,3 +385,18 @@ test.each([
     clauses: [{ effect, status: "active", resolution: "engine", implementation_id: id }],
   });
 });
+
+test.each([
+  ["mortaen", "mortaen_last_vigil"],
+  ["zhael", "zhael_threaded_blade"],
+])("%s has an active engine clause for encounter damage", (patron, id) => {
+  const warrior = validateGods(catalog).find((god) => god.god_id === patron)?.layer_4_synergy_matrix
+    .warrior;
+  expect(warrior?.type).toBe("divine");
+  expect(warrior?.clauses).toHaveLength(1);
+  expect(warrior?.clauses[0]).toMatchObject({
+    status: "active",
+    resolution: "engine",
+    implementation_id: id,
+  });
+});

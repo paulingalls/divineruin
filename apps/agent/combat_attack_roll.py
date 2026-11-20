@@ -61,6 +61,9 @@ def attack_roll_inputs(attacker, target, target_ac_bonus, combat_state, action, 
 
     if player is not None:
         attacker_data.update(patron_synergy_combat.attack_flags(player))
+        attacker_data["encounter_damage_clause"] = patron_synergy_combat.encounter_damage_clause(
+            player, combat_state, attacker, target, action
+        )
 
     if weapon_attack and attacker.type == "player" and attacker.archetype_id == "rogue":
         if combat_state is None:
@@ -163,6 +166,8 @@ def build_attack_dice_roll_payload(attacker, attack_result) -> dict:
         payload.update(
             synergy_damage=attack_result.synergy_damage, synergy_damage_type=attack_result.synergy_damage_type
         )
+    if attack_result.synergy_clause_id is not None:
+        payload["synergy_clause_id"] = attack_result.synergy_clause_id
     return payload
 
 

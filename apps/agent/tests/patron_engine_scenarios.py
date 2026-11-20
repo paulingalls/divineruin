@@ -2,6 +2,7 @@ from combat.test_synergy_crit_edges import SCENARIOS as crit_edges
 from combat.test_synergy_spell_edges import SCENARIOS as spell_edges
 from combat.test_synergy_weapon_damage import SCENARIOS as weapon_damage
 from test_dawns_resilience import SCENARIOS as dawns_resilience
+from test_encounter_facts_damage import SCENARIOS as encounter_facts
 from test_heal_synergies import SCENARIOS as dawns_mercy
 from test_heal_synergies_place import SCENARIOS as place_healing
 from test_patron_engine_aelora import SCENARIOS as aelora
@@ -27,6 +28,7 @@ ENGINE_SCENARIOS = {
     **place_healing,
     **dawns_resilience,
     **crit_edges,
+    **encounter_facts,
     **judgment,
     **kaelen,
     **mortaen,
