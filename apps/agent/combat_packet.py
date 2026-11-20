@@ -10,28 +10,21 @@ state and write through injected mutation/query modules, but own no transaction.
 
 import architect_actions
 import architect_constructs
+import combat_cunning_action
 import combat_maneuver
 import combat_marks
+import combat_martial
 import combat_melee_approach
+import combat_player_ability
 import combat_recharge
 import combat_spatial_declarations
 import combat_voice_rules
 import item_heal
 import spell_casting
 from action_contracts_still import STILL_ZONE_KINDS
-from combat_ability import (
-    AbilityCastOutcome,
-    _attach_riders,
-    _find_action,
-    _resolve_ability_condition_packet,
-    _resolve_ability_packet,
-    condition_ability,
-)
-from combat_ability_gate import declared_ability
+from combat_ability import _attach_riders, _find_action
+from combat_ability_gate import DEVASTATING_STRIKE
 from combat_action_availability import begin_execution, replay_valid
-from combat_deescalation import (
-    _resolve_deescalation_packet,
-)
 from combat_down import target_unavailable
 from combat_enemy_action import resolve_enemy_strike
 from combat_enemy_active import resolve_active
@@ -216,6 +209,12 @@ async def _resolve_action_packet(
         else None
     )
 
+    devastating = combat_martial.attack_ability(decl) == DEVASTATING_STRIKE
+    if devastating:
+        if player is None:
+            raise ValueError("Devastating Strike requires a prevalidated player.")
+        action = combat_martial.main_hand(player)
+
     movement = {}
     movement_budget = {}
     if action is not None:
@@ -292,6 +291,7 @@ async def _resolve_action_packet(
             )
         target = state.get_participant(decl.target_id) if decl.target_id else None
         if target is not None and not target_unavailable(target, action):
+            movement_budget = await combat_cunning_action.begin(state, attacker, decl, queries=queries, conn=conn)
             # Move before any roll is prepared, and only once: a held head carries its approach, and a
             # Zhael-held ally swing resumes through its attack cursor, never back through here.
             if _melee_approach is not None:
@@ -311,6 +311,7 @@ async def _resolve_action_packet(
             )
             and (
                 decl.type is DeclarationType.ATTACK
+                or devastating
                 or action.get("applies_condition")
                 or action.get("half_on_success") is True
             )
@@ -363,58 +364,22 @@ async def _resolve_action_packet(
         if enemy_summary is not None:
             return {**movement, **enemy_summary}
 
-    if decl.type is DeclarationType.ABILITY:
-        # (Enemy condition-infliction ABILITY is handled by the type-agnostic branch above, which
-        # routes both ATTACK and ABILITY enemy actions carrying applies_condition. The branches
-        # below are the player-oriented paths.)
-        # De-escalate (M4.6a story-004) is an ABILITY but resolves socially, not as a cast:
-        # contested gate + one argument that can end combat. Its Focus/lockout were pre-gated
-        # in _prevalidate_ability_focus, and ``player`` is the for_update row from there.
-        if (decl.action or "").lower() == "de_escalate":
-            return await _resolve_deescalation_packet(
-                session,
-                attacker,
-                decl,
-                state=state,
-                conn=conn,
-                player=player,
-                sink=sink,
-                queries=queries,
-                progress=progress.scope("deescalation") if progress is not None else None,
-            )
-        # A non-spell condition ability (M4.8 story-005, e.g. bard_inspire) resolves via the dedicated
-        # ability-condition path — deduct its cost and land the condition on the target participant —
-        # NOT through _resolve_ability_packet (which casts a spell). Pre-gated in _prevalidate_ability_focus.
-        cond_ability = condition_ability(declared_ability(decl.action))
-        if cond_ability is not None:
-            return await _resolve_ability_condition_packet(
-                session,
-                attacker,
-                decl,
-                cond_ability,
-                state=state,
-                conn=conn,
-                player=player,
-                queries=queries,
-                progress=progress,
-            )
-        return await _resolve_ability_packet(
+    if decl.type is DeclarationType.ABILITY and not devastating:
+        return await combat_player_ability.resolve(
             session,
+            state,
             attacker,
             decl,
-            state=state,
-            cast_resolver=cast_resolver,
             conn=conn,
             player=player,
-            cast_outcome=cast_outcome if cast_outcome is not None else AbilityCastOutcome(),
+            sink=sink,
             progress=progress,
-            damage_deps={
-                "mutations": mutations,
-                "queries": queries,
-                "resolver": resolver,
-                "concentration_break_mod": concentration_break_mod,
-                "sink": sink,
-            },
+            queries=queries,
+            cast_resolver=cast_resolver,
+            cast_outcome=cast_outcome,
+            mutations=mutations,
+            resolver=resolver,
+            concentration_break_mod=concentration_break_mod,
         )
 
     if decl.type is DeclarationType.MANEUVER:
@@ -422,7 +387,7 @@ async def _resolve_action_packet(
             return {"actor_id": attacker.id, "resolved": False, "reason": blocked_reason(wall)}
         return combat_maneuver.resolve_maneuver(state, attacker, decl)
 
-    if decl.type is not DeclarationType.ATTACK:
+    if decl.type is not DeclarationType.ATTACK and not devastating:
         # Non-attack declarations don't resolve mechanically yet, but a narrated rider
         # (e.g. Quick Change on a social INTERACT) still surfaces for the DM to voice.
         summary = {

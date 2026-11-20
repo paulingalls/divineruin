@@ -264,6 +264,8 @@ def finish_attack(
             bonus_damage = dice_roll(effects.bonus_damage_dice, rng=rng).total
             bonus_damage_type = effects.bonus_damage_type
             damage += bonus_damage
+        if count := weapon.get("devastating_strike_dice"):
+            damage += dice_roll(f"{count * (2 if critical else 1)}d8", rng=rng).total
         authored_bonus = weapon.get("bonus_damage")
         if authored_bonus is not None:
             if effects.bonus_damage_dice is not None:

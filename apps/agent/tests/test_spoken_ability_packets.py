@@ -30,6 +30,8 @@ async def activate(
     rows = {
         pid: {
             "player_id": pid,
+            "location_id": "accord_guild_hall",
+            "hp": {"current": 25, "max": 25},
             "class": ability.archetype_id,
             "level": 20,
             "stamina": {"current": 100},

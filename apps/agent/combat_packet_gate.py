@@ -6,6 +6,7 @@ import abilities
 import ability_persistence
 import character_spells
 import combat_ability_save
+import combat_martial
 import combat_voice_rules
 import spell_knowledge
 import spells
@@ -13,7 +14,7 @@ from combat_ability import (
     _gate_ability_condition,
     condition_ability,
 )
-from combat_ability_gate import declared_ability
+from combat_ability_gate import CUNNING_ACTION, DEVASTATING_STRIKE, SECOND_WIND, SHIELD_BASH, declared_ability
 from combat_deescalation import (
     _gate_deescalation,
     _validate_argument_type,
@@ -41,8 +42,10 @@ async def _prevalidate_ability_focus(
     player_ability_packets = [
         (p.actor_id, p.declaration, actor)
         for p in adv.packets
-        if p.declaration.type is DeclarationType.ABILITY
-        and p.declaration.action
+        if (
+            (p.declaration.type is DeclarationType.ABILITY and p.declaration.action)
+            or combat_martial.attack_ability(p.declaration)
+        )
         and (actor := state.get_participant(p.actor_id)) is not None
         and actor.type == "player"
     ]
@@ -62,7 +65,7 @@ async def _prevalidate_ability_focus(
             combat_voice_rules.guard_declaration(state, actor, decl)
         except ValueError as e:
             raise ToolError(str(e)) from e
-        action = decl.action
+        action = combat_martial.attack_ability(decl) or decl.action
         resolved_ability = declared_ability(action)
         if resolved_ability is not None:
             ability, variant = resolved_ability
@@ -73,6 +76,10 @@ async def _prevalidate_ability_focus(
             )
             if not abilities.owns_ability(player.get("class"), player["level"], ability, owns_elective=owned_elective):
                 raise ToolError(f"{actor.name} hasn't learned {ability.name}.")
+            try:
+                combat_martial.require_targets(state, actor, decl, ability)
+            except ValueError as e:
+                raise ToolError(str(e)) from e
             if variant is not None:
                 active_variant_id = await ability_persistence.get_active_variant(actor_id, ability.id, conn=conn)
                 if active_variant_id != variant.id:
@@ -87,6 +94,19 @@ async def _prevalidate_ability_focus(
             # fails loud before ANY packet resolves — never rolling back a phase that already wrote
             # other actors' HP/Focus (the packet re-checks defensively for direct callers).
             _validate_argument_type(decl)
+        elif resolved_ability is not None and resolved_ability[0].id in (
+            SECOND_WIND,
+            DEVASTATING_STRIKE,
+            SHIELD_BASH,
+            CUNNING_ACTION,
+        ):
+            ability, variant = resolved_ability
+            if ability.id == DEVASTATING_STRIKE:
+                try:
+                    combat_martial.main_hand(player)
+                except ValueError as e:
+                    raise ToolError(str(e)) from e
+            _gate_ability_condition(player, ability, variant)
         elif (cond_ability := condition_ability(resolved_ability)) is not None:
             ability, variant = cond_ability
             combat_ability_save.gate_hostile_target(state, decl, ability)

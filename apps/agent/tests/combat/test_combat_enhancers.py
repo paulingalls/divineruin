@@ -21,19 +21,12 @@ class TestAttackSequence:
         assert attack_sequence(["extra_attack", "shield_bash"], _WEAPON) == [_WEAPON, SHIELD_BASH_ACTION]
 
     def test_non_attack_enhancers_do_not_expand_the_sequence(self) -> None:
-        assert attack_sequence(["cunning_action", "hit_and_run"], _WEAPON) == [_WEAPON]
+        assert attack_sequence(["hit_and_run"], _WEAPON) == [_WEAPON]
 
 
 class TestDeclarationRiders:
     def test_no_enhancer_yields_no_riders(self) -> None:
         assert declaration_riders([], _attack()) == []
-
-    def test_cunning_action_uses_chosen_rider(self) -> None:
-        assert declaration_riders(["cunning_action"], _attack(rider="hide")) == ["cunning_action:hide"]
-
-    def test_cunning_action_defaults_dash_when_unchosen_or_invalid(self) -> None:
-        assert declaration_riders(["cunning_action"], _attack()) == ["cunning_action:dash"]
-        assert declaration_riders(["cunning_action"], _attack(rider="teleport")) == ["cunning_action:dash"]
 
     def test_hit_and_run_and_command_lesser_riders(self) -> None:
         assert declaration_riders(["hit_and_run"], _attack()) == ["hit_and_run:reposition_15ft"]
@@ -46,12 +39,11 @@ class TestDeclarationRiders:
 
     def test_attack_riders_do_not_fire_on_non_attack(self) -> None:
         defend = Declaration(type=DeclarationType.DEFEND, ac_bonus=2)
-        assert declaration_riders(["cunning_action", "hit_and_run", "command_lesser"], defend) == []
+        assert declaration_riders(["hit_and_run", "command_lesser"], defend) == []
 
     def test_multiple_riders_aggregate_in_order(self) -> None:
-        riders = declaration_riders(["cunning_action", "hit_and_run", "command_lesser"], _attack(rider="disengage"))
+        riders = declaration_riders(["hit_and_run", "command_lesser"], _attack())
         assert riders == [
-            "cunning_action:disengage",
             "hit_and_run:reposition_15ft",
             "command_lesser:directs_lesser_hollow",
         ]
@@ -68,4 +60,4 @@ class TestEnhancersFromFlags:
 
     def test_order_is_deterministic_not_insertion_order(self) -> None:
         flags = {"quick_change": True, "extra_attack": True, "cunning_action": True}
-        assert enhancers_from_flags(flags) == ["extra_attack", "cunning_action", "quick_change"]
+        assert enhancers_from_flags(flags) == ["extra_attack", "quick_change"]

@@ -49,14 +49,7 @@ class ManeuverIntent(StrEnum):
 
 @dataclass(frozen=True)
 class Declaration:
-    """A validated, typed declaration produced by ``resolve_declaration``.
-
-    ``action`` names the weapon/ability/item (Attack/Ability/Interact); ``target_id``
-    is the declaration's target (required for Attack/Maneuver). ``ac_bonus`` carries
-    the static per-category outcome — only Defend is non-zero today. ``rider`` carries
-    an optional chosen enhancer modifier (e.g. Cunning Action's dash/disengage/hide),
-    consumed by enhancer resolution (M4.2, story-004); ``None`` when no rider was chosen.
-    """
+    """One phase action, with an optional attack enhancer carried in its rider."""
 
     type: DeclarationType
     action: str | None = None

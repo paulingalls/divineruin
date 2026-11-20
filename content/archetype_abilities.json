@@ -17,6 +17,7 @@
     "level_requirement": 1,
     "cost": { "stamina": 2, "focus": 0, "scaling": null },
     "effect": "One ally gains advantage on their next attack roll.",
+    "applies_condition": "precise_strike",
     "narration_cue": "A booming command rings out and an ally's grip tightens."
   },
   {
