@@ -39,6 +39,7 @@ async def _resolve_round(state, player, rng, *, argument_type="reason"):
         player=player,
         sink=None,
         persistence=persistence,
+        queries=MagicMock(get_player=AsyncMock(return_value=player)),
         rng=rng,
     )
     return result, persistence, session
@@ -189,6 +190,7 @@ class TestRoundCounterAdvancesOncePerPhase:
                 player=_DIPLOMAT,
                 sink=None,
                 persistence=persistence,
+                queries=MagicMock(get_player=AsyncMock(return_value=_DIPLOMAT)),
                 rng=FixedRng(1),
             )
 

@@ -111,6 +111,22 @@ async def test_focus_spell_and_renewal_share_the_latest_row(world: SimpleNamespa
         assert await focus(world) == 3
 
 
+async def test_deescalation_spends_focus_after_renewal(world: SimpleNamespace) -> None:
+    async with fight(world, "mortaen", archetype="druid", goblin_hp=5) as f:
+        await setup_recipient(world, "druid", start=5)
+        state = f.session.combat_state
+        participant(state, f.ally).initiative = 25
+        state.initiative_order[:2] = [f.ally, f.hero]
+        packets = await f.round(
+            attack(f.ally, GOBLIN),
+            dict(actor_id=f.hero, kind="ability", action="de_escalate", targets=[], argument_type="reason"),
+            faces=(15, 10),
+        )
+        assert renewals(packets) == [receipt(f.hero, GOBLIN, 5, 7)]
+        assert any(p.get("action") == "de_escalate" and p["resolved"] for p in packets)
+        assert await focus(world) == 4
+
+
 @pytest.mark.parametrize("control", ["fallen", "dead", "thyra"])
 async def test_only_standing_mortaen_players_renew(world: SimpleNamespace, control: str) -> None:
     async with fight(world, "mortaen", archetype="warden", goblin_hp=5) as f:
