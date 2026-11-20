@@ -152,7 +152,11 @@ def _validate_receipts(state: CombatState, record: dict, areas: dict) -> None:
             head["actor_id"] != record["owner_id"]
             or not isinstance(receipts, list)
             or len(receipts) > len(operations)
-            or (receipts and (record["reshape_round"] != state.round_number or len(receipts) > record["reshape_count"]))
+            or (
+                receipts
+                and "legendary_kind" not in head
+                and (record["reshape_round"] != state.round_number or len(receipts) > record["reshape_count"])
+            )
         ):
             raise ValueError("Invalid Architect Reshape receipts")
         pending_floor = None

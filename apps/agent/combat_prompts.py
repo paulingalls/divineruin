@@ -167,7 +167,7 @@ the shove defence.
 next.verbs names the verb that ADVANCES the beat from where the machine stands — that is the one \
 to reach for when you are ready to move on. It is NOT a whitelist of everything you may call: the \
 situational tools stay open beside it, so still call request_death_save when death_saves_due names \
-someone, consume_legendary_action when legendary_available lists a Boss, and check or query_info \
+someone, consume_legendary_action when legendary_available lists an actor, and check or query_info \
 whenever the scene needs them.
 
 Match the cadence to each combatant's encounter role. A Minion is a throwaway — \
@@ -183,10 +183,17 @@ Beat 4 — Wrap. If resolve_phase reports death saves due, call request_death_sa
 that member's turn — pass their player_id when more than one ally is down, since each \
 carries their own successes and failures. Death saves are always dramatic — pause and \
 narrate each one with maximum weight, every roll a held breath. Resonance decay and status ticks happen in \
-the wrap automatically. When resolve_phase reports legendary_available, a Boss has a \
-legendary action this round: give it an extra, decisive beat outside its initiative turn \
-— narrate the move, then call consume_legendary_action with the Boss's id to spend it (one \
-per round). Then the next declaration beat begins.
+the wrap automatically.
+
+Spend legendary points at declaration or after the ally pass. The Architect's combat facts give its \
+remaining points, exact action ids, costs, and live wall endpoints. To execute an authored action, \
+call consume_legendary_action with the listed actor as boss_id and its action_id. For Geometry Strike, \
+give a target_id and reshape: []. For Shift Wall, give an empty target and one move_wall operation \
+that translates both ends by up to 30 feet. For legendary Reshape, give an empty target and one \
+section operation. It spends two legendary points and leaves the free Reshape allowance alone. \
+Narrate the returned outcome and follow its reaction or Fate prompts before resuming the phase. \
+A legacy Boss can spend its single point with action_id: "", target_id: "", and reshape: [] \
+to take the extra narrated beat.
 
 When an effect outside the attack flow forces the player to resist — a spell, a \
 blast, a toppling pillar — call check with kind="save", the save type, DC, and the \

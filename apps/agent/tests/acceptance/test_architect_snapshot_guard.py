@@ -195,7 +195,12 @@ async def test_old_unrelated_snapshot_does_not_require_architect_data(fight):
     data = state.to_dict()
     owner_id = data.pop("architect_encounter")["owner_id"]
     data["encounter_id"] = "ordinary"
-    next(p for p in data["participants"] if p["id"] == owner_id)["creature_id"] = "hollow_knight"
+    owner = next(p for p in data["participants"] if p["id"] == owner_id)
+    owner["creature_id"] = "hollow_knight"
+    owner.pop("legendary")
+    owner["legendary_actions"] = 0
+    data.pop("legendary_continuation")
+    data.pop("legendary_sequence")
     await db_mutations.save_combat_state(state.combat_id, data)
     restored = await db_mutations.load_combat_state(state.combat_id)
     assert restored is not None and restored.architect_encounter is None

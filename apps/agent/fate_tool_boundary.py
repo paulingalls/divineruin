@@ -50,7 +50,15 @@ def wrap_tool(tool):
                 # Any live offer, whatever produced it (ally pass, hostile hold, wrap save, Inner Fire, death save).
                 name = patron_combat_edges.PARTIAL_ROUND_GIFTS[ability_id]
                 raise ToolError(f"Finish the partially resolved round before using {name}.")
+            combat = session.combat_state
+            legendary = combat.legendary_continuation if combat is not None else None
+            if tool.id == "consume_legendary_action" or (
+                legendary is not None and tool.id in ("declare_phase", "end_combat")
+            ):
+                raise ToolError("Finish the held Fate choice before using this combat action.")
             settled = await zhael_fate.settle(session)
+            if legendary is not None and tool.id == "resolve_phase":
+                return settled.tool_result()
             if settled.paused or settled.handoff is not None:
                 return settled.tool_result()
             try:

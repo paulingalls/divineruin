@@ -285,7 +285,7 @@ async def test_wrap_holds_clearing_saves_and_recovers_next_original(world):
             fresh.resonance.current = 9
             resumed = game_tools(fresh, resolve_phase, consume_legendary_action)
             with pytest.raises(ToolError, match="resolve_phase"):
-                await resumed("consume_legendary_action", boss_id=foe.id)
+                await resumed("consume_legendary_action", boss_id=foe.id, action_id="", target_id="", reshape=[])
             result = await resumed("resolve_phase")
             assert dice.call_count == 2
         assert result["round"] == 2 and result["beat"] == "declaration"

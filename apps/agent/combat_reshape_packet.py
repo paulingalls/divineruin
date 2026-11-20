@@ -38,6 +38,9 @@ async def resolve_reshape(
     from combat_down import target_unavailable
 
     actor = state.get_participant(actor_id)
+    legendary_kind = cursor.get("legendary_kind")
+    if legendary_kind is not None:
+        cursor.setdefault("reshape_receipts", [])
     if "reshape_receipts" not in cursor:
         try:
             proposal = proposed_state(state, actor_id, declaration.reshape)
@@ -64,4 +67,5 @@ async def resolve_reshape(
         cursor["reshape_receipts"],
         progress=progress.scope("reshape") if progress is not None else None,
         packet_deps=packet_deps,
+        legendary_kind=legendary_kind,
     )

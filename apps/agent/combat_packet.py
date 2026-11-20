@@ -50,7 +50,7 @@ async def _resolve_one_packet(session, state, packet, *, _reshape_prepared=False
     steps = progress.steps if progress is not None else {}
     # Turn-start effects run once per round; a Zhael-held packet keeps them for its resumed summary.
     effects = steps.pop("turn_start_effects", None)
-    if not effects:
+    if not effects and "legendary_kind" not in (deps.get("_held_head") or {}):
         effects = await turn_start(
             session,
             state,
@@ -140,21 +140,23 @@ async def _resolve_action_packet(
     if stale is None:
         choir_encounter.guard_declaration(state, packet.actor_id, decl)
 
-    await choir_encounter.turn_start(
-        session,
-        state,
-        attacker,
-        conn=conn,
-        concentration_break_mod=concentration_break_mod,
-        sink=sink,
-        progress=progress.scope("choir_aura") if progress is not None else None,
-    )
-    if progress is not None and progress.paused:
-        return {}
+    forced_move = None
+    if "legendary_kind" not in (_held_head or {}):
+        await choir_encounter.turn_start(
+            session,
+            state,
+            attacker,
+            conn=conn,
+            concentration_break_mod=concentration_break_mod,
+            sink=sink,
+            progress=progress.scope("choir_aura") if progress is not None else None,
+        )
+        if progress is not None and progress.paused:
+            return {}
 
-    from choir_effects import approach
+        from choir_effects import approach
 
-    forced_move = approach(state, attacker)
+        forced_move = approach(state, attacker)
     if attacker is None or attacker.is_fallen:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": "actor unavailable"}
     if blocked := cannot_act(attacker.conditions):

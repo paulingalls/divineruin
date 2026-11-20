@@ -2,6 +2,7 @@
 
 import json
 import re
+from collections.abc import Callable
 from pathlib import Path
 
 from action_contracts import (
@@ -304,13 +305,16 @@ def validate_creature_stat_block(creature: object) -> list[str]:
         if loot_id not in ids:
             problems.append("loot_table_id: unknown loot table")
     field(creature, "xp_reward", "", "integer")
-    return problems + validate_traits(creature) + validate_turn_traits(creature) + _legendary_problems(creature)
+    if "legendary" in creature:
+        problems.extend(
+            legendary_problems(
+                creature["legendary"], lambda identifier, kind: _legendary_binding(creature, identifier, kind)
+            )
+        )
+    return problems + validate_traits(creature) + validate_turn_traits(creature)
 
 
-def _legendary_problems(creature: dict) -> list[str]:
-    if "legendary" not in creature:
-        return []
-    legendary = creature["legendary"]
+def legendary_problems(legendary: object, binds: Callable[[str, object], bool]) -> list[str]:
     if not isinstance(legendary, dict) or legendary.keys() != {"points", "actions"}:
         return ["legendary: expected points and actions"]
     points, actions = legendary["points"], legendary["actions"]
@@ -330,7 +334,7 @@ def _legendary_problems(creature: dict) -> list[str]:
             problems.append(f"{path}.id: expected unique nonempty action id")
         else:
             seen.add(identifier)
-            if not _legendary_binding(creature, identifier, kind):
+            if not binds(identifier, kind):
                 problems.append(f"{path}.id: no matching legendary action binding")
         if type(cost) is not int or not 0 < cost <= points:
             problems.append(f"{path}.cost: expected positive integer within budget")

@@ -123,18 +123,11 @@ def test_architect_metadata_retains_only_deferred_effects():
     architect = next(row for row in catalog() if row["id"] == "hollow_architect")
     effects = {effect["name"]: effect["source"] for effect in deferred_effects(architect)}
     assert effects.keys() == {
-        "Geometry Strike",
         "Legendary Resistance",
         "Alien Intelligence",
-        "Reshape",
         "Entomb",
         "Cathedral",
         "Summon Constructs",
-        "Shift Wall",
         "Reactive Architecture",
         "hollow",
     }
-    assert effects["Geometry Strike"]["special"] == (
-        "A structural fragment hurls itself. Legendary action, cost 2 of 3/round."
-    )
-    assert effects["Reshape"]["description"] == "Legendary Reshape costs 2 of 3/round."

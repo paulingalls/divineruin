@@ -29,16 +29,15 @@ def deferred_effects(row, *, composite=False):
             key = (row["id"], source["name"])
             if key in (("hollow_knight", "Corrupted Blade"), ("hollow_knight", "Unholy Fortitude")):
                 continue
-            if row["id"] == "hollow_architect":
-                if source["name"] in {"Construct Slam", "Architect's Domain", "Incorporeal Movement"}:
-                    continue
-                if source["name"] == "Reshape":
-                    source = {**source, "description": "Legendary Reshape costs 2 of 3/round."}
-            if key == ("hollow_architect", "Geometry Strike"):
-                source = {
-                    **source,
-                    "special": "A structural fragment hurls itself. Legendary action, cost 2 of 3/round.",
-                }
+            if row["id"] == "hollow_architect" and source["name"] in {
+                "Construct Slam",
+                "Architect's Domain",
+                "Incorporeal Movement",
+                "Geometry Strike",
+                "Reshape",
+                "Shift Wall",
+            }:
+                continue
             if key == ("hollow_knight", "Dissolution Strike"):
                 source = {
                     "name": source["name"],

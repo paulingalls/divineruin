@@ -155,7 +155,9 @@ def _assert_iteration_progress(state, head: dict, summaries: list[dict], summary
         raise RuntimeError(f"held action for {head['actor_id']!r} made no progress")
 
 
-async def pump(session, state, *, packet_deps: dict, contest_rng=None, fate_rolls=None) -> list[dict]:
+async def pump(
+    session, state, *, packet_deps: dict, contest_rng=None, fate_rolls=None, execution_id: str | None = None
+) -> list[dict]:
     """Step the Beat-3 queue until it pauses on a window or the queue drains.
 
     Returns the resolution summaries produced by THIS call. When it returns with
@@ -194,40 +196,43 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None, fate_roll
 
     while state.held_actions:
         head = state.held_actions[0]
+        if execution_id is not None and head.get("execution_id") != execution_id:
+            break
         import choir_encounter
         from choir_effects import approach
 
-        aura = None
-        if fate_rolls is not None and session.fate_lock.locked() and state.choir_encounter is not None:
-            aura = PacketRolls(
-                fate_rolls, head.setdefault("roll_steps", {}), packet_deps["queries"], packet_deps["conn"]
-            ).scope("choir_aura")
-        await choir_encounter.turn_start(
-            session,
-            state,
-            state.get_participant(head["actor_id"]),
-            conn=packet_deps.get("conn"),
-            concentration_break_mod=packet_deps["concentration_break_mod"],
-            progress=aura,
-            sink=packet_deps.get("sink"),
-        )
-        if aura is not None and aura.paused:
-            return summaries
-        from combat_veilrender import turn_start
+        if execution_id is None:
+            aura = None
+            if fate_rolls is not None and session.fate_lock.locked() and state.choir_encounter is not None:
+                aura = PacketRolls(
+                    fate_rolls, head.setdefault("roll_steps", {}), packet_deps["queries"], packet_deps["conn"]
+                ).scope("choir_aura")
+            await choir_encounter.turn_start(
+                session,
+                state,
+                state.get_participant(head["actor_id"]),
+                conn=packet_deps.get("conn"),
+                concentration_break_mod=packet_deps["concentration_break_mod"],
+                progress=aura,
+                sink=packet_deps.get("sink"),
+            )
+            if aura is not None and aura.paused:
+                return summaries
+            from combat_veilrender import turn_start
 
-        field = None
-        if fate_rolls is not None and session.fate_lock.locked():
-            field = PacketRolls(
-                fate_rolls, head.setdefault("roll_steps", {}), packet_deps["queries"], packet_deps["conn"]
-            ).scope("veilrender")
-        effects = await turn_start(
-            session, state, state.get_participant(head["actor_id"]), **{**packet_deps, "progress": field}
-        )
-        if effects is None:
-            return summaries
-        if effects:
-            summaries.append({"actor_id": head["actor_id"], "turn_start_effects": effects})
-        approach(state, state.get_participant(head["actor_id"]))
+            field = None
+            if fate_rolls is not None and session.fate_lock.locked():
+                field = PacketRolls(
+                    fate_rolls, head.setdefault("roll_steps", {}), packet_deps["queries"], packet_deps["conn"]
+                ).scope("veilrender")
+            effects = await turn_start(
+                session, state, state.get_participant(head["actor_id"]), **{**packet_deps, "progress": field}
+            )
+            if effects is None:
+                return summaries
+            if effects:
+                summaries.append({"actor_id": head["actor_id"], "turn_start_effects": effects})
+            approach(state, state.get_participant(head["actor_id"]))
         progress = None
         declaration = _held_declaration(head)
         if declaration.reshape and fate_rolls is not None and (session.fate_lock.locked() or head.get("roll_steps")):
@@ -245,11 +250,17 @@ async def pump(session, state, *, packet_deps: dict, contest_rng=None, fate_roll
                 packet_deps=packet_deps,
             )
         except ReshapeRefused as error:
+            if execution_id is not None:
+                raise
             summaries.append({"actor_id": head["actor_id"], "resolved": False, "reason": str(error)})
             state.held_actions.pop(0)
             continue
         if not ready:
             return summaries
+        if head.get("legendary_kind") in ("shift_wall", "reshape"):
+            summaries.append(_with_reshape(head, {"actor_id": head["actor_id"], "resolved": True}))
+            state.held_actions.pop(0)
+            continue
         summary_start = len(summaries)
         opens = _opens_windows(state, head)
         action = _attack_action(state, head) if opens else None
@@ -438,7 +449,9 @@ async def _resolve_held(
         grapple_blocked=combat_reaction_effect.grapple_blocked(state, head),
         mark_cancelled=mark_cancelled,
         publish_roll=not head.get("roll_published", False),
-        _held_head=head if head.get("execution_receipt") is not None or "progress" in deps else None,
+        _held_head=head
+        if "legendary_kind" in head or head.get("execution_receipt") is not None or "progress" in deps
+        else None,
         _melee_approach=head.get("melee_approach"),
         _reshape_prepared=True,
         **deps,

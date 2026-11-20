@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from functools import partial
+from math import isclose
 from typing import TYPE_CHECKING
 
 import architect_encounter
@@ -67,13 +68,15 @@ def _wall(state: CombatState, spatial: dict, origin: dict, operation: dict) -> C
     return wall
 
 
-def place_section(state: CombatState, actor_id: str, operation: dict) -> dict:
+def place_section(state: CombatState, actor_id: str, operation: dict, *, shift_wall: bool = False) -> dict:
     """Apply one checked section. Floor victims resolve separately and can pause."""
     spatial = combat_spatial.require_spatial(state)
     record = state.architect_encounter
     assert record is not None
     origin = combat_spatial.position(spatial, actor_id)
     kind = operation["kind"]
+    if shift_wall:
+        return _shift_wall(state, operation)
     if kind == "destroy_wall":
         wall = _wall(state, spatial, origin, operation)
         combat_structures.collapse_wall(state, wall)
@@ -123,6 +126,26 @@ def place_section(state: CombatState, actor_id: str, operation: dict) -> dict:
         ):
             targets.append(target.id)
     return {"kind": kind, "section_id": section_id, "targets": targets, "results": []}
+
+
+def _shift_wall(state: CombatState, operation: dict) -> dict:
+    spatial = combat_spatial.require_spatial(state)
+    record = state.architect_encounter
+    assert record is not None
+    wall_id = operation["wall_id"]
+    if wall_id not in record["structure_ids"] or wall_id not in spatial["structures"]:
+        raise ValueError("Shift Wall requires a live wall owned by the Architect")
+    old = spatial["structures"][wall_id]
+    start, end = operation["start"], operation["end"]
+    if combat_spatial.distance(old["start"], start) > 30:
+        raise ValueError("Shift Wall can move a wall at most 30 feet")
+    if any(
+        not isclose(start[axis] - old["start"][axis], end[axis] - old["end"][axis], abs_tol=1e-9)
+        for axis in ("x", "y", "z")
+    ):
+        raise ValueError("Shift Wall must translate the section without reshaping it")
+    combat_structures.move_wall(state, wall_id, start, end)
+    return {"kind": "move_wall", "section_id": wall_id}
 
 
 async def _floor_target(
@@ -217,8 +240,9 @@ async def resolve(
     *,
     progress: PacketRolls | None,
     packet_deps: dict,
+    legendary_kind: str | None = None,
 ) -> bool:
-    """Return whether the free Reshape finished. Each started section spends once."""
+    """Resolve the section effects and resume any held floor saves."""
     record = state.architect_encounter
     assert record is not None
     damage_deps = {
@@ -228,12 +252,12 @@ async def resolve(
     }
     for index, op in enumerate(operations):
         if index == len(receipts):
-            receipt = place_section(state, actor.id, op)
-            receipts.append(receipt)
-            record["reshape_count"] = (
-                record["reshape_count"] + 1 if record["reshape_round"] == state.round_number else 1
-            )
-            record["reshape_round"] = state.round_number
+            receipts.append(place_section(state, actor.id, op, shift_wall=legendary_kind == "shift_wall"))
+            if legendary_kind is None:
+                record["reshape_count"] = (
+                    record["reshape_count"] + 1 if record["reshape_round"] == state.round_number else 1
+                )
+                record["reshape_round"] = state.round_number
         key = str(index)
         scope = progress.scope(key) if progress is not None and op["kind"] == "open_floor" else None
         if not await resolve_operation(session, state, actor, receipts[index], progress=scope, damage_deps=damage_deps):
