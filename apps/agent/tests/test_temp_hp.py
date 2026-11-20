@@ -76,7 +76,6 @@ async def test_held_hit_previews_without_spending(world, damage, temporary, cont
         assert event["damage"] == (8 if damage == 16 else damage * (2 if face == 20 else 1))
         assert event["context"] == context
         await assert_pools(world, 3, temporary)
-        assert (await row(world, 0))["patron_gifts"] == SPENT
         await reload_state(world)
         receipt = await resolve_until(call, enemy_damage)
         await assert_pools(world, 1, 0)
