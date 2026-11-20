@@ -87,7 +87,8 @@ def validate_scene(encounter):
 
 
 def validate_spatial(spatial, actor_ids):
-    if not isinstance(spatial, dict) or set(spatial) != {"positions", "locations", "zones", "speeds"}:
+    keys = {"positions", "locations", "zones", "speeds"}
+    if not isinstance(spatial, dict) or set(spatial) not in (keys, keys | {"structures"}):
         raise ValueError("invalid persisted spatial record")
     validate_maps(spatial["positions"], spatial["locations"], spatial["zones"])
     speeds = mapping(spatial["speeds"], "speeds")
@@ -95,13 +96,20 @@ def validate_spatial(spatial, actor_ids):
         raise ValueError("spatial record must cover every actor")
     for value in speeds.values():
         number(value, "speed", nonnegative=True)
+    if "structures" in spatial:
+        from combat_structures import validate_segments
+
+        validate_segments(spatial["structures"])
     return deepcopy(spatial)
 
 
 def require_spatial(state):
     if state is None or state.spatial is None:
         raise ValueError("Combat has no committed spatial placement")
+    from combat_structures import validate_participants
+
     validate_spatial(state.spatial, [p.id for p in state.participants])
+    validate_participants(state)
     return state.spatial
 
 
