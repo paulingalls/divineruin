@@ -10,6 +10,7 @@ from livekit.agents.llm import ToolError
 from test_aelora_gift import _live_party
 
 import combat_fate
+import combat_hold
 import combat_phase
 import db_mutations
 from activate_tools import activate
@@ -214,6 +215,7 @@ async def test_veilstep_through_movement_restrictions(world: SimpleNamespace, co
         ("spatial", "is_dead", "fallen or dead"),
         ("legacy", "is_fallen", "fallen or dead"),
         ("spatial", "ally_continuation", "partially resolved"),
+        ("spatial", "held_actions", "partially resolved"),
     ],
 )
 async def test_veilstep_refuses_ineligible_or_partly_resolved(
@@ -230,6 +232,12 @@ async def test_veilstep_refuses_ineligible_or_partly_resolved(
             resolving, advance = combat_phase.advance_combat_phase(state)
             allies, hostiles = combat_phase.partition_packets(resolving, advance.packets)
             state.ally_continuation = combat_fate.begin_ally_pass(resolving, allies, hostiles, {})
+        elif flag == "held_actions":
+            foe = state.get_participant("foe")
+            foe.action_pool = [{"name": "Claw", "damage": "1d4", "damage_type": "slashing", "properties": []}]
+            state.pending_declarations = {"foe": {"type": "attack", "action": "Claw", "target_id": actor.id}}
+            state.held_actions = combat_hold.hold_enemy_packets(state, [SimpleNamespace(actor_id="foe", initiative=5)])
+            assert state.held_actions
         await db_mutations.save_combat_state(state.combat_id, state.to_dict(), conn=world.pool)
         before = await snapshot(world)
         destination = DESTINATION if geometry == "spatial" else None
@@ -240,6 +248,8 @@ async def test_veilstep_refuses_ineligible_or_partly_resolved(
             await configure(world, "syrath", "seeker")
         elif flag == "ally_continuation":
             state.ally_continuation = None
+        elif flag == "held_actions":
+            state.held_actions = []
         else:
             setattr(actor, flag, False)
         assert ("position" in await step(world, call, destination=destination)) == (geometry == "spatial")
