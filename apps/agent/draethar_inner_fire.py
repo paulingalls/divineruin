@@ -27,7 +27,7 @@ from combat_fate_rolls import PacketRolls, PhaseRolls
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from combat_ui_update import build_combat_ui_update
 from game_events import publish_game_event
-from kaelen_gift import trigger_iron_resolve
+from patron_zero_hp import trigger_damage_gifts
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.tools")
@@ -91,7 +91,7 @@ async def _inner_fire_locked(
         await resonance_mutations_mod.update_player_resonance(player_id, new_resonance, conn=conn)
         session.validate_acting_player(player_id)
         participant.hp_current = new_hp
-        gift_triggered = trigger_iron_resolve(session, participant, hp_before, player)
+        gift_triggered = await trigger_damage_gifts(session, participant, hp_before, player=player)
 
         sounds: list[str] = []
         rose_hollowed = False
