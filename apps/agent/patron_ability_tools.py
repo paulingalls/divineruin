@@ -139,19 +139,30 @@ async def spend(session, actor, ability_id):
     return ability
 
 
-async def _prepare_shield(
-    conn: asyncpg.Connection, session: "SessionData", actor: str, target: str | None
-) -> tuple[dict, CombatState | None, dict, dict | None]:
+def _shield_target(session: "SessionData", actor: str, target: str | None) -> str:
     if target is None:
         raise ToolError("Community Shield requires a target_id.")
     if target == actor:
         raise ToolError("Community Shield targets another player.")
     if target not in session.present_member_ids:
         raise ToolError("Community Shield requires a present party player.")
+    return target
+
+
+async def _prepare_shield(
+    conn: asyncpg.Connection, session: "SessionData", actor: str, target_id: str | None
+) -> tuple[dict, CombatState | None, dict, dict | None]:
+    ability_id = patron_combat_edges.COMMUNITY_SHIELD
+    try:
+        target = _shield_target(session, actor, target_id)
+    except ToolError:
+        # Keep patron refusals ahead of selector errors without locking a second row out of order.
+        await _locked_ability(conn, actor, ability_id)
+        raise
     players = await db_queries.get_players_for_update([actor, target], conn=conn)
+    ability = await _locked_ability(conn, actor, ability_id)
     if target not in players:
         raise ToolError(f"Player {target!r} not found.")
-    ability = await _locked_ability(conn, actor, patron_combat_edges.COMMUNITY_SHIELD)
     if target not in session.present_member_ids:
         raise ToolError("Community Shield requires a present party player.")
     updated, response = await patron_combat_edges.community_shield(
