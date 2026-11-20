@@ -1,5 +1,6 @@
 """Beyond the Horizon moves the party and charges only the speaking follower."""
 
+import asyncpg
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
@@ -17,8 +18,8 @@ GATEWAY = "nythera_beyond_the_horizon"
 RESONANCE_COST = 5
 
 
-async def _visited(player_id: str) -> set[str]:
-    return {row["location_id"] for row in await db_activity_queries.get_player_map_progress(player_id)}
+async def _visited(player_id: str, *, conn: asyncpg.Connection | None = None) -> set[str]:
+    return {row["location_id"] for row in await db_activity_queries.get_player_map_progress(player_id, conn=conn)}
 
 
 async def destinations(player_id: str, origin_id: str) -> list[dict[str, str]]:
@@ -47,26 +48,25 @@ async def activate_locked(context: RunContext[SessionData], actor: str, *, targe
     session = context.userdata
     origin_id = session.location_id
     party_ids = tuple(sorted(session.party.member_ids))
-    if session.in_combat:
-        raise ToolError("Beyond the Horizon cannot open during combat.")
-    if not target_id or not target_id.strip():
-        raise ToolError("Choose a visited location with target_id.")
-    if target_id == origin_id:
-        raise ToolError("The gateway cannot open to your current location.")
-    destination = await db_content_queries.get_location(target_id)
-    if destination is None:
-        raise ToolError(f"Unknown gateway destination '{target_id}'.")
-    if target_id not in await _visited(actor):
-        raise ToolError(f"You have never visited '{target_id}'.")
-    origin = await db_content_queries.get_location(origin_id)
-    if origin is None:
-        raise ToolError(f"Current location '{origin_id}' not found.")
-
     async with db.transaction() as conn:
         session.validate_acting_player(actor)
         players = await still_charm.lock_players(party_ids, queries=db_queries, conn=conn)
-        still_charm.require_departure(players, target_id)
         ability = await _locked_ability(conn, actor, GATEWAY)
+        if session.in_combat:
+            raise ToolError("Beyond the Horizon cannot open during combat.")
+        if not target_id or not target_id.strip():
+            raise ToolError("Choose a visited location with target_id.")
+        if target_id == origin_id:
+            raise ToolError("The gateway cannot open to your current location.")
+        destination = await db_content_queries.get_location(target_id, conn=conn)
+        if destination is None:
+            raise ToolError(f"Unknown gateway destination '{target_id}'.")
+        if target_id not in await _visited(actor, conn=conn):
+            raise ToolError(f"You have never visited '{target_id}'.")
+        origin = await db_content_queries.get_location(origin_id, conn=conn)
+        if origin is None:
+            raise ToolError(f"Current location '{origin_id}' not found.")
+        still_charm.require_departure(players, target_id)
         await _write_spend(conn, session, actor, GATEWAY)
         apply = await movement_tools.write_arrival(session, target_id, destination, origin_id, party_ids, conn=conn)
         resonance = await db_mutations_resonance.read_player_resonance(actor, conn=conn)

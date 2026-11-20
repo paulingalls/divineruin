@@ -22,14 +22,14 @@ def _validate_location(location_id: str, data: dict) -> dict:
     return data
 
 
-async def get_location(location_id: str) -> dict | None:
+async def get_location(location_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> dict | None:
     cache_key = f"location:{location_id}"
     cached = await db._cache_get(cache_key)
     if cached is not None:
         return _validate_location(location_id, json.loads(cached))
 
-    pool = await db.get_pool()
-    row = await pool.fetchrow("SELECT data FROM locations WHERE id = $1", location_id)
+    connection = conn or await db.get_pool()
+    row = await connection.fetchrow("SELECT data FROM locations WHERE id = $1", location_id)
     if row is None:
         return None
 
