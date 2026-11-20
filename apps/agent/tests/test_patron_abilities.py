@@ -261,19 +261,27 @@ async def test_guest_entry_restores_once_across_reconnect_and_rejoin(dev_db_pool
             await lifecycle.aclose()
 
 
-async def test_death_ward_discovery_and_direct_activation_refusal(dev_db_pool):
-    ward = "mortaen_death_ward"
+@pytest.mark.parametrize(
+    "patron, level, gift_id, name, tier, recharge",
+    [
+        ("mortaen", 0, "mortaen_death_ward", "Death Ward", "Acknowledged", "long_rest"),
+        ("orenthel", 75, "orenthel_dawns_embrace", "Dawn's Embrace", "Exalted", "per_session"),
+    ],
+)
+async def test_automatic_gift_discovery_and_direct_activation_refusal(
+    dev_db_pool, patron, level, gift_id, name, tier, recharge
+):
     async with AbilityWalk(dev_db_pool) as w:
-        await w.patch(divine_favor={"patron": "mortaen", "level": 0, "max": 100})
-        ability = next(a for a in await w.abilities() if a["id"] == ward)
+        await w.patch(divine_favor={"patron": patron, "level": level, "max": 100})
+        ability = next(a for a in await w.abilities() if a["id"] == gift_id)
         assert (ability["name"], ability["tier"], ability["status"], ability["recharge"]) == (
-            "Death Ward",
-            "Acknowledged",
+            name,
+            tier,
             "active",
-            "long_rest",
+            recharge,
         )
         assert ability["available"] and not ability["spent"]
         assert "automatically when damage" in ability["activation_hint"]
         before = await w.row()
-        assert "cannot be activated directly" in (await w.use(ward, error=True)).lower()
+        assert "cannot be activated directly" in (await w.use(gift_id, error=True)).lower()
         assert await w.row() == before

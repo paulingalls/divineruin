@@ -32,7 +32,7 @@ from combat_fate_rolls import packet_save
 from combat_fortitude import roll_fortitude, try_fortitude
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from patron_combat_edges import reward_worthy_foe
-from patron_zero_hp import trigger_damage_gifts
+from patron_zero_hp import lock_lethal_damage_players, trigger_damage_gifts
 from session_data import CombatParticipant, CombatState, SessionData
 from tool_support import (
     SOUND_ATTACK_CRITICAL,
@@ -312,11 +312,14 @@ async def _apply_damage(
         target.death_save_failures += failures
         if target.type == "player":
             target.death_save_failures = min(3, target.death_save_failures)
-    gift = await trigger_damage_gifts(session, target, hp_before, queries=queries, conn=conn)
+    players = await lock_lethal_damage_players(session, target, hp_before, queries=queries, conn=conn)
+    gift = await trigger_damage_gifts(
+        session, combat_state, target, hp_before, players=players, queries=queries, conn=conn
+    )
     gift_owner = gift.get("gift_owner")
     if gift_owner:
         if sink is None:
-            raise ValueError("Death Ward requires a post-commit event sink")
+            raise ValueError("Automatic patron gifts require a post-commit event sink")
         sink.patron_refreshes[gift_owner["id"]] = (session.room, session.event_bus)
 
     if not still_encounter.is_owner(combat_state, attacker.id):

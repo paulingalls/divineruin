@@ -1124,7 +1124,7 @@
       }
     },
     {
-      "id": "ability_recharge_short_rest_and_registered_threshold_walk",
+      "id": "registered_automatic_and_per_session_abilities",
       "profile": {
         "god_id": "veythar",
         "layer_1_gift": {
@@ -1151,9 +1151,10 @@
             "id": "veythar_fixture_acknowledged",
             "name": "Synthetic ability",
             "effect": "Synthetic effect.",
-            "recharge": "always",
+            "recharge": "per_session",
             "status": "active",
-            "resolution": "narrated"
+            "resolution": "engine",
+            "implementation_id": "mortaen_threshold_walk"
           },
           "devoted": {
             "id": "veythar_fixture_devoted",
@@ -1166,12 +1167,12 @@
           },
           "exalted": {
             "id": "veythar_fixture_exalted",
-            "name": "Synthetic ability",
+            "name": "Dawn's Embrace",
             "effect": "Synthetic effect.",
             "recharge": "per_session",
             "status": "active",
             "resolution": "engine",
-            "implementation_id": "mortaen_threshold_walk"
+            "implementation_id": "orenthel_dawns_embrace"
           }
         },
         "layer_4_synergy_matrix": {
