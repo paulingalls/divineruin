@@ -14,15 +14,8 @@ import { transcriptStore } from "@/stores/transcript-store";
 import { hudStore } from "@/stores/hud-store";
 import { panelStore } from "@/stores/panel-store";
 import { portraitStore } from "@/stores/portrait-store";
-import type {
-  Combatant,
-  CombatTrackerState,
-  CreationCard,
-  HollowEchoBand,
-  ResonanceState,
-} from "@/stores/hud-store";
+import type { CreationCard, HollowEchoBand, ResonanceState } from "@/stores/hud-store";
 import {
-  parseCombatant,
   parseGameEvent,
   VALID_MUSIC_STATES,
   VALID_DIFFICULTIES,
@@ -31,6 +24,7 @@ import {
 } from "./game-event-parsing";
 import type { DataChannelEvent } from "./game-event-parsing";
 import { applyInventorySnapshot } from "./inventory-refresh";
+import { handleCombatHud, handleHpChanged } from "./game-event-hp";
 import { handleSessionInit } from "./game-event-session-init";
 import { handleTranscriptPortraits, showCompanionPortrait } from "./transcript-portrait-gate";
 
@@ -177,19 +171,9 @@ export function handleGameEvent(event: DataChannelEvent): void {
       hudStore.getState().clearCombatState();
       break;
 
-    case E.COMBAT_UI_UPDATE: {
-      const rawCombatants = Array.isArray(event.combatants) ? (event.combatants as unknown[]) : [];
-      const combatants = rawCombatants
-        .map(parseCombatant)
-        .filter((c): c is Combatant => c !== null);
-      const combatState: CombatTrackerState = {
-        round: typeof event.round === "number" ? event.round : 1,
-        combatants,
-      };
-      hudStore.getState().setCombatState(combatState);
-      sessionStore.getState().setCombat(true);
+    case E.COMBAT_UI_UPDATE:
+      handleCombatHud(event);
       break;
-    }
 
     case E.XP_AWARDED:
       // Keys are the PYTHON emitter's: `amount` / `leveled_up`. The handler used to read
@@ -225,11 +209,7 @@ export function handleGameEvent(event: DataChannelEvent): void {
       break;
 
     case E.HP_CHANGED:
-      if (typeof event.current === "number") {
-        characterStore
-          .getState()
-          .updateHp(event.current, typeof event.max === "number" ? event.max : undefined);
-      }
+      handleHpChanged(event);
       break;
 
     case E.RESONANCE_CHANGED: {

@@ -8,6 +8,7 @@ import re
 
 from livekit.agents.llm import ToolError
 
+import temp_hp
 from combat_sound_content import COMBAT_SOUND_EXPORTS
 from patron_passives import effective_hp
 from role_archetypes import DISPOSITION_INDEX, DISPOSITIONS, disposition_rank
@@ -197,6 +198,7 @@ def _player_summary(player: dict) -> dict:
         "level": player.get("level"),
         "hp_current": hp.get("current"),
         "hp_max": hp.get("max"),
+        "temp_hp": temp_hp.from_player(player),
         "ac": player.get("ac"),
         "weapon": weapon.get("name"),
         "weapon_damage": weapon.get("damage"),

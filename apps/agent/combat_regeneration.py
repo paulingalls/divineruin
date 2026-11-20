@@ -2,8 +2,10 @@
 
 import event_types as E
 from combat_down import is_terminally_down
+from combat_events import EventSink
 from combat_spell_heal import restore
 from conditions import remove_condition
+from session_data import CombatState, SessionData
 
 
 def _condition(target) -> dict | None:
@@ -37,7 +39,7 @@ async def tick(target, *, conn, mutations) -> dict | None:
     }
 
 
-async def settle(session, state, *, conn, mutations, sink) -> set[str]:
+async def settle(state: CombatState, *, conn, mutations) -> set[str]:
     regenerated = set()
     for target in state.participants:
         condition = _condition(target)
@@ -45,14 +47,21 @@ async def settle(session, state, *, conn, mutations, sink) -> set[str]:
             continue
         if not target.is_ally or is_terminally_down(target):
             continue
-        healed = await restore(target, _remaining(condition), conn=conn, mutations=mutations)
+        await restore(target, _remaining(condition), conn=conn, mutations=mutations)
         regenerated.add(target.id)
-        if healed and target.type == "player":
+    return regenerated
+
+
+async def publish_settled_hp(
+    session: SessionData, state: CombatState, sink: EventSink, settled_hp: dict[str, tuple[int, int]]
+) -> None:
+    for target in state.participants:
+        if target.type == "player" or target.id in settled_hp:
+            current, maximum = settled_hp.get(target.id, (target.hp_current, target.hp_max))
             await sink.emit(
                 session.room,
                 E.HP_CHANGED,
-                {"current": target.hp_current, "max": target.hp_max},
+                {"current": current, "max": maximum, "temp_hp": target.temp_hp},
                 event_bus=session.event_bus,
                 destination_identities=[target.id],
             )
-    return regenerated

@@ -109,7 +109,7 @@ async def test_inner_fire_drops_resonance_and_applies_fire_damage():
     res_mut.update_player_resonance.assert_awaited_once_with("player_1", 6, conn=ANY)
     assert session.resonance.current == 6
     res_events.publish_resonance_changed.assert_awaited_once()
-    hp_mut.update_player_hp.assert_awaited_once_with("player_1", 16, conn=ANY)
+    hp_mut.update_player_hp.assert_awaited_once_with("player_1", 16, temp_hp=0, conn=ANY)
     assert session.combat_state.get_participant("player_1").hp_current == 16
     assert session.party.primary.draethar_inner_fire_used is True
     assert result["resonance_reduced"] == 3
@@ -144,7 +144,7 @@ async def test_hp_floors_at_zero():
     session = ctx.userdata
     mock_db, queries, hp_mut, res_mut, res_events, dice_mod = _mocks(_player(hp_current=3), roll_total=6)
     result = await _invoke(ctx, mock_db, queries, hp_mut, res_mut, res_events, dice_mod)
-    hp_mut.update_player_hp.assert_awaited_once_with("player_1", 0, conn=ANY)
+    hp_mut.update_player_hp.assert_awaited_once_with("player_1", 0, temp_hp=0, conn=ANY)
     assert session.combat_state.get_participant("player_1").hp_current == 0
     assert result["hp_remaining"] == 0
 

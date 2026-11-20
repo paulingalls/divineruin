@@ -323,6 +323,7 @@ async def pump(
                             candidate["target_id"],
                             attack_result,
                             packet_deps["queries"],
+                            action=action or {},
                             conn=packet_deps["conn"],
                         )
                         await packet_deps["sink"].emit(

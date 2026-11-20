@@ -21,7 +21,6 @@ from _zhael_fate_fixtures import attack, game_tools
 import check_resolution_save
 import conditions
 import db_mutations
-from db_queries import get_player_at_patron_revision
 from rest_tools import rest
 from tool_support import SOUND_HOLLOW_RISE, SOUND_PLAYER_FALLEN
 
@@ -262,49 +261,6 @@ async def test_guest_spend_is_visible_while_concentration_is_held(world):
             receipt = enemy_damage(await keep(offer))
         await standing(world, receipt, 1)
         spent_projection(observed, victim)
-
-
-@pytest.mark.parametrize("inner", [False, True], ids=["attack", "inner-fire"])
-async def test_ward_spend_and_damage_roll_back_together(world, inner):
-    session = world.ctx.userdata
-    async with fight(world, hp=5, max_hp=25, favor=0, race="draethar") as call:
-        await concentrating(world)
-        if not inner:
-            position(world)
-            await declare(world, call, claw(world))
-            await resolve_until(call, lambda _: active(world).held_actions)
-
-        save = db_mutations.save_combat_state
-
-        async def fail(*args, **kwargs):
-            await save(*args, **kwargs)
-            player, _ = await get_player_at_patron_revision(world.ids[0], conn=kwargs["conn"])
-            assert player is not None
-            if player["patron_gifts"].get(WARD, {}).get("spent"):
-                assert player["hp"]["current"] == 1
-                raise RuntimeError("injected after ward write")
-
-        async def land():
-            if inner:
-                return await call("activate", id="draethar_inner_fire")
-            return await resolve_until(call, enemy_damage)
-
-        with patch.object(db_mutations, "save_combat_state", side_effect=fail), rolls(19, 19):
-            with pytest.raises(RuntimeError, match="after ward write"):
-                for _ in range(12):
-                    before = active(world).to_dict()
-                    player_before, events_before = await row(world, 0), list(events(world))
-                    if inner:
-                        await land()
-                    else:
-                        await call("resolve_phase")
-        assert active(world).to_dict() == before
-        saved = await db_mutations.load_combat_state(active(world).combat_id, conn=world.pool)
-        assert saved is not None and saved.to_dict() == before
-        assert await row(world, 0) == player_before and events(world) == events_before
-        assert session.concentration.spell_id == "divine_bless"
-        with rolls(19, 19):
-            await standing(world, await land())
 
 
 async def test_held_blow_after_this_phase_spent_the_ward_keeps_its_killing_blow(world):

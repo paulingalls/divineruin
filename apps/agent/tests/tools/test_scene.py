@@ -64,7 +64,7 @@ class TestEnterLocation:
             npcs=[SAMPLE_NPC_RAW],
             dispositions={},
             targets=[SAMPLE_TARGET],
-            player=SAMPLE_PLAYER,
+            player={**SAMPLE_PLAYER, "temp_hp": 9},
         )
         ctx = _make_context()
         result = json.loads(
@@ -80,6 +80,7 @@ class TestEnterLocation:
         assert result["targets"][0]["ac"] == 10
         assert result["player"]["name"] == "Kael"
         assert result["player"]["weapon"] == "Longsword"
+        assert result["player"]["temp_hp"] == 9
 
     @pytest.mark.asyncio
     async def test_missing_location(self):
@@ -105,6 +106,7 @@ class TestEnterLocation:
         assert result["npcs"] == []
         assert result["targets"] == []
         assert result["location"]["name"] == "Guild Hall"
+        assert result["player"]["temp_hp"] == 0
 
 
 NIGHT_LOCATION = {

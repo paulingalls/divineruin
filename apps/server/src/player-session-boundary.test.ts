@@ -2,9 +2,12 @@ import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 
 process.env.JWT_SECRET = "48d10d0851017d6e6d6f40ae66e6e15071a7caa782cb343c5c8dad7d4ffb310c";
 
-const characters: Record<string, string> = {
-  player_host: "Host Hero",
-  player_guest: "Guest Hero",
+const characters: Record<
+  string,
+  { name: string; hp: { current: number; max: number }; temp_hp?: number }
+> = {
+  player_host: { name: "Host Hero", hp: { current: 12, max: 20 }, temp_hp: 7 },
+  player_guest: { name: "Guest Hero", hp: { current: 8, max: 18 }, temp_hp: 3 },
 };
 let queriedPlayerIds: string[] = [];
 
@@ -15,13 +18,13 @@ void mock.module("./db.ts", () => {
       if (typeof playerId !== "string")
         throw new TypeError("character query did not bind a player ID");
       queriedPlayerIds.push(playerId);
-      const name = characters[playerId];
+      const character = characters[playerId];
       return Promise.resolve(
-        name
+        character
           ? [
               {
                 player_id: playerId,
-                data: { name, location_id: "accord" },
+                data: { ...character, location_id: "accord" },
                 location_name: "Accord",
               },
             ]
@@ -73,12 +76,40 @@ describe("authenticated player session boundary", () => {
     expect((await hostCharacter.json()) as object).toMatchObject({
       player_id: "player_host",
       name: "Host Hero",
+      hp_current: 12,
+      hp_max: 20,
+      temp_hp: 7,
     });
     expect((await guestCharacter.json()) as object).toMatchObject({
       player_id: "player_guest",
       name: "Guest Hero",
+      hp_current: 8,
+      hp_max: 18,
+      temp_hp: 3,
     });
     expect(queriedPlayerIds).toEqual(["player_host", "player_guest"]);
+  });
+
+  test("returns the latest stored pool and a zero pool for legacy rows", async () => {
+    const host = await signJwt({ accountId: "account_host", playerId: "player_host" });
+    const row = characters.player_host!;
+    try {
+      for (const pool of [7, 3, 0, undefined]) {
+        if (pool === undefined) delete row.temp_hp;
+        else row.temp_hp = pool;
+        const response = await handleRequest(
+          request("/api/character/player_host", host),
+          "host-ip",
+        );
+        expect(await response.json()).toMatchObject({
+          hp_current: 12,
+          hp_max: 20,
+          temp_hp: pool ?? 0,
+        });
+      }
+    } finally {
+      row.temp_hp = 7;
+    }
   });
 
   test("one bearer cannot claim a second player through a path", async () => {

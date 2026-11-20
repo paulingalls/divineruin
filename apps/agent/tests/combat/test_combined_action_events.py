@@ -135,7 +135,7 @@ async def test_save_damage_announces_the_save_and_applied_damage(
         "context": save.context,
         "damage": expected_damage,
     }
-    mutations.update_player_hp.assert_awaited_once_with("player_1", 25 - expected_damage, conn=None)
+    mutations.update_player_hp.assert_awaited_once_with("player_1", 25 - expected_damage, temp_hp=0, conn=None)
     assert session.recent_events[-1] == (
         f"Goblin Scout uses Necrotic Pulse on Kael: constitution save {save_outcome}, {expected_damage} damage"
     )

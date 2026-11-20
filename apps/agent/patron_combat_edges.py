@@ -3,11 +3,14 @@
 from copy import deepcopy
 from typing import Literal, get_args
 
+import asyncpg
 from livekit.agents.llm import ToolError
 
 import ability_persistence
 import combat_spatial
+import temp_hp
 from archetypes import get_archetype_chassis
+from combat_down import is_terminally_down
 from combat_participant import CombatParticipant
 from combat_spatial_declarations import is_move
 from combat_state import CombatState
@@ -15,14 +18,17 @@ from condition_catalog import INCORPOREAL, MARK_OF_JUSTICE
 from condition_consume import consume_beneficial_conditions
 from conditions import apply_condition, has_condition, hollowed_stage
 from declarations import resolve_declaration
+from rules_engine import attribute_modifier
 
 VEILSTEP = "syrath_veilstep"
 THRESHOLD_WALK = "mortaen_threshold_walk"
 WILDMOTHERS_WRATH = "thyra_wildmothers_wrath"
+COMMUNITY_SHIELD = "aelora_community_shield"
 PARTIAL_ROUND_GIFTS = {
     VEILSTEP: "Veilstep",
     THRESHOLD_WALK: "Threshold Walk",
     WILDMOTHERS_WRATH: "Wildmother's Wrath",
+    COMMUNITY_SHIELD: "Community Shield",
 }
 VEILSTEP_RANGE_FT = 60
 BATTLE_CRY = "kaelen_battle_cry_of_the_ironhand"
@@ -136,6 +142,41 @@ def veilstep(state: CombatState | None, actor: str, *, destination: dict | None)
         del updated.pending_declarations[actor]
         cue += " The queued move is removed. Ask for a new move from the new position at the next declaration beat."
     return updated, {"position": placed, "dm_cue": cue}
+
+
+def _shield_participant(state: CombatState, player_id: str, role: str) -> CombatParticipant:
+    participant = state.get_participant(player_id)
+    if participant is None or participant.type != "player":
+        raise ToolError(f"Community Shield requires the {role} to be a player in this encounter.")
+    if participant.is_fallen or is_terminally_down(participant):
+        raise ToolError(f"Community Shield requires the {role} to be standing.")
+    return participant
+
+
+async def community_shield(
+    state: CombatState | None, actor: str, target: str, giver: dict, ally: dict, *, conn: asyncpg.Connection
+) -> tuple[CombatState | None, dict]:
+    require_complete_round(state, COMMUNITY_SHIELD)
+    updated = deepcopy(state)
+    recipient = None
+    if updated is not None:
+        _shield_participant(updated, actor, "follower")
+        recipient = _shield_participant(updated, target, "target")
+
+    amount = max(1, giver["level"] + attribute_modifier(giver["attributes"].get("charisma", 10)))
+    if amount <= temp_hp.from_player(ally):
+        raise ToolError("Community Shield would not increase the target's temporary HP.")
+    _, pool = await temp_hp.grant(target, ally, amount, participant=recipient, conn=conn)
+    follower_name, target_name = giver["name"], ally["name"]
+    return updated, {
+        "follower_id": actor,
+        "follower_name": follower_name,
+        "target_id": target,
+        "target_name": target_name,
+        "granted": amount,
+        "temp_hp": pool,
+        "dm_cue": f"Narrate that {follower_name}'s Community Shield gives {target_name} {amount} temporary HP.",
+    }
 
 
 async def restoration_surge(

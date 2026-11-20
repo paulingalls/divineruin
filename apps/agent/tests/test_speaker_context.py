@@ -37,7 +37,7 @@ async def test_hot_context_tracks_authenticated_speaker_on_each_turn():
     agent = ExplorationAgent()
     players = {
         "host": {"name": "Ada", "hp": {"current": 9, "max": 10}},
-        "guest": {"name": "Bryn", "hp": {"current": 4, "max": 12}},
+        "guest": {"name": "Bryn", "hp": {"current": 4, "max": 12}, "temp_hp": 9},
     }
     quests = {
         "host": [
@@ -96,6 +96,7 @@ async def test_hot_context_tracks_authenticated_speaker_on_each_turn():
         for pid in ("guest", "host", "guest"):
             if len(contexts) == 2:
                 players["guest"]["hp"]["current"] = 3
+                players["guest"]["temp_hp"] = 0
                 quests["guest"][0]["stages"][0]["objective"] = "Open guest door"
                 activities["guest"] = [{"activity_type": "crafting"}]
                 await background._rebuild_warm_layer()
@@ -104,14 +105,14 @@ async def test_hot_context_tracks_authenticated_speaker_on_each_turn():
                 await agent.on_user_turn_completed(ctx, MagicMock())
                 contexts.append(" ".join(str(m.content) for m in ctx.items if isinstance(m, llm.ChatMessage)))
 
-    assert "Speaker: Bryn (player guest)" in contexts[0] and "4/12" in contexts[0]
+    assert "Speaker: Bryn (player guest); HP 4/12 +9 temp;" in contexts[0]
     assert "Find guest key" in contexts[0] and "companion_errand" in contexts[0]
     assert "Ada" not in contexts[0] and "Host Quest" not in contexts[0]
     assert "[NPCs nearby: Barkeep]" in contexts[0]
-    assert "Speaker: Ada (player host)" in contexts[1] and "9/10" in contexts[1]
+    assert "Speaker: Ada (player host); HP 9/10;" in contexts[1]
     assert "Find host map" in contexts[1] and "crafting" in contexts[1]
     assert "Bryn" not in contexts[1] and "Guest Quest" not in contexts[1]
-    assert "3/12" in contexts[2] and "Open guest door" in contexts[2]
+    assert "HP 3/12;" in contexts[2] and "Open guest door" in contexts[2]
     assert "Find guest key" not in contexts[2]
 
 

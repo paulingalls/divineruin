@@ -4,18 +4,31 @@ appId: com.divineruin.app
 - tapOn:
     text: "Continue"
     optional: true
-- openLink: divineruin://iron-resolve-test
+- openLink: ${ROUTE_URL}
 - tapOn:
     text: "Open"
     optional: true
 - extendedWaitUntil:
     visible: "Combat update 0"
     timeout: 50000
+- assertVisible:
+    id: "persistent-temp-hp"
+    text: "[+]7 TEMP HP"
 - tapOn: "Next combat update"
 - assertVisible: "Combat update 1"
-- assertVisible: "Kaelen Faithful"
+- assertVisible: "Kael"
 - assertVisible: "Iron Resolve"
+- assertVisible:
+    id: "persistent-temp-hp"
+    text: "[+]4 TEMP HP"
+- assertVisible:
+    id: "combatant-temp-hp"
+    text: "[+]4 TEMP HP"
 - tapOn: "Next combat update"
 - assertVisible: "Combat update 2"
-- assertVisible: "Kaelen Faithful"
+- assertVisible: "Kael"
 - assertNotVisible: "Iron Resolve"
+- assertNotVisible:
+    id: "persistent-temp-hp"
+- assertNotVisible:
+    id: "combatant-temp-hp"

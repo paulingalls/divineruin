@@ -15,11 +15,8 @@ async def settle_lives(
     conn,
     *,
     primary_regenerated: bool,
-) -> dict | None:
-    """Return the dead and stabilize the savable, inside the combat-end transaction.
-
-    Returns the primary's death context (its anchor moves the shared session post-commit), or None
-    when the primary survived a non-defeat end."""
+) -> tuple[dict | None, dict[str, tuple[int, int]]]:
+    """Settle lives and return the primary's death context plus the HP changes for the HUD."""
 
     # A destroyed Hollowed echo is already dead and must return through Mortaen on ANY outcome;
     # scoping this to victory/defeat would strand an echo on a fled or deescalated end.
@@ -30,6 +27,7 @@ async def settle_lives(
         return p.type == "player" and p.is_fallen and not is_terminally_down(p)
 
     death_context: dict | None = None
+    settled_hp: dict[str, tuple[int, int]] = {}
     # On defeat and fled nobody is left to drag the merely-fallen clear (M15 decision 498f0df12b14).
     dead_lives = [
         p for p in cs.participants if _is_truly_dead(p) or (outcome in ("defeat", "fled") and _fallen_savable(p))
@@ -43,7 +41,12 @@ async def settle_lives(
         contexts = await resurrection.resurrect_party_on_defeat(
             [{**row, "player_id": pid} for pid, row in rows], combat_cleared=combat_cleared, conn=conn
         )
-        death_context = next((ctx for (pid, _), ctx in zip(rows, contexts, strict=True) if pid == primary_id), None)
+        for participant, context in zip(dead_lives, contexts, strict=True):
+            # Only players and destroyed echoes (player ids) reach here; a settled echo is a revived player again.
+            maximum = context["revive_hp"]
+            settled_hp[participant.id] = (maximum, maximum)
+            if participant.id == primary_id:
+                death_context = context
 
     # A declared defeat sends even a standing primary through Mortaen, unless Regenerate was still healing
     # them, standing or down (human 2026-11-19).
@@ -54,6 +57,8 @@ async def settle_lives(
         death_context = await resurrection.resurrect_on_defeat(
             {**primary_row, "player_id": primary_id}, combat_cleared=combat_cleared, conn=conn
         )
+        maximum = death_context["revive_hp"]
+        settled_hp[primary_id] = (maximum, maximum)
 
     # The party holds the field, so a savable ally comes to at 1 HP; combat already wrote their HP to 0.
     if outcome in ("victory", "deescalated"):
@@ -62,5 +67,6 @@ async def settle_lives(
                 if await queries.get_player(p.id, conn=conn) is None:
                     raise RuntimeError(f"Fallen player {p.id!r} has no players.data row to stabilize")
                 await mutations.update_player_hp(p.id, 1, conn=conn)
+                settled_hp[p.id] = (1, p.hp_max)
 
-    return death_context
+    return death_context, settled_hp

@@ -115,6 +115,10 @@ async def live_capture(reset_db_pool, material_rooms, tmp_path):
             assert {row["id"]: row["slot_info"]["quantity"] for row in expected[pid]} == quantities[pid]
         assert snapshots == [await db_queries.get_inventory_snapshot(pid) for pid in sorted(recipients)]
         assert sent
+        # Combat end pushes HP to each player's own identity, which this client is not.
+        settled = [e.payload for e in sent if e.event_type == E.HP_CHANGED]
+        assert len(settled) == (2 if phase == "combat_distributed" else 0)
+        sent = [e for e in sent if e.event_type != E.HP_CHANGED]
         received = []
         received_bytes = []
         for _ in sent:

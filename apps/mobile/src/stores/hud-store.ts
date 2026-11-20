@@ -1,3 +1,4 @@
+import type { HudHp } from "@divineruin/shared";
 import { createStore } from "zustand/vanilla";
 
 import { BrandColors } from "@/constants/theme";
@@ -43,12 +44,10 @@ export interface Condition {
   source: string;
 }
 
-export interface Combatant {
+export interface Combatant extends HudHp {
   id: string;
   name: string;
   isAlly: boolean;
-  hpCurrent: number;
-  hpMax: number;
   conditions: Condition[];
   isActive: boolean;
 }
