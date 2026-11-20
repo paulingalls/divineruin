@@ -624,8 +624,9 @@
         "clauses": [
           {
             "effect": "Oath of Valor: sworn strikes deal +1d6 radiant vs foes that outnumber the party",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "kaelen_oath_of_valor"
           }
         ]
       },
@@ -1558,8 +1559,9 @@
         "clauses": [
           {
             "effect": "Gain +1 damage against a creature that has reduced an ally to 0 HP this encounter.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "mortaen_last_vigil"
           }
         ]
       },
@@ -1743,8 +1745,9 @@
         "clauses": [
           {
             "effect": "When a creature dies within earshot, regain 2 Focus. Death feeds renewal",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "mortaen_death_feeds_renewal"
           }
         ]
       },
@@ -1754,8 +1757,9 @@
         "clauses": [
           {
             "effect": "When a creature dies within earshot, regain 2 Focus. Death feeds renewal",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "mortaen_death_feeds_renewal"
           }
         ]
       }
@@ -3269,8 +3273,9 @@
         "clauses": [
           {
             "effect": "Once per encounter, gain +1 damage on a melee hit after missing the same target.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_threaded_blade"
           }
         ]
       },
@@ -3280,8 +3285,9 @@
         "clauses": [
           {
             "effect": "Gain +1 AC against the first attack made against you each encounter.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_second_before"
           }
         ]
       },
@@ -3357,8 +3363,9 @@
         "clauses": [
           {
             "effect": "Healing an ally who succeeded on a death saving throw this round restores 1 additional HP.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_appointed_mercy"
           }
         ]
       },

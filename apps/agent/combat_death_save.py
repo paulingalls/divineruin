@@ -15,6 +15,8 @@ import combat_resolution
 import creation_deities
 import db
 import db_mutations
+import db_queries
+import encounter_facts
 import event_types as E
 import zhael_fate
 from combat_down import revive, sync_companion_consciousness
@@ -80,6 +82,7 @@ async def _request_death_save_impl(
     *,
     mutations=db_mutations,
     db_mod=db,
+    queries=db_queries,
 ) -> str:
     """Serialise the death save on the session's combat-state lock, like resolve_phase and the
     reaction spend.
@@ -93,7 +96,7 @@ async def _request_death_save_impl(
     Not reentrant, and safe: no lock holder reaches this tool (only combat_agent's toolset does)."""
     session: SessionData = context.userdata
     async with session.combat_state_lock:
-        return await _roll_death_save(context, player_id, mutations=mutations, db_mod=db_mod)
+        return await _roll_death_save(context, player_id, mutations=mutations, db_mod=db_mod, queries=queries)
 
 
 async def _roll_death_save(
@@ -102,6 +105,7 @@ async def _roll_death_save(
     *,
     mutations=db_mutations,
     db_mod=db,
+    queries=db_queries,
 ) -> str:
     logger.info("request_death_save called")
     session: SessionData = context.userdata
@@ -142,7 +146,7 @@ async def _roll_death_save(
                 ):
                     return zhael_fate.cancel(session, "The fallen ally's state changed while the death save was held.")
                 response = await _request_death_save_locked(
-                    session, current, faller_id, kept, mutations, db_mod, resumed=True
+                    session, current, faller_id, kept, mutations, db_mod, queries=queries, resumed=True
                 )
                 return zhael_fate.Resumed(json.loads(response))
 
@@ -160,15 +164,18 @@ async def _roll_death_save(
             session.fate_offer = offer
             return json.dumps(offer.response())
 
-    return await _request_death_save_locked(session, cs, faller_id, result, mutations, db_mod)
+    return await _request_death_save_locked(session, cs, faller_id, result, mutations, db_mod, queries=queries)
 
 
-async def _request_death_save_locked(session, cs, faller_id, result, mutations, db_mod, *, resumed=False):
+async def _request_death_save_locked(session, cs, faller_id, result, mutations, db_mod, *, queries, resumed=False):
     state = CombatState.from_dict(cs.to_dict())  # working copy; adopted post-commit
     working = state.get_participant(faller_id)
     assert working is not None  # copied from the state we just resolved against
+    counted_before = encounter_facts.counted_death(working)
     working.death_save_successes = result.total_successes
     working.death_save_failures = result.total_failures
+    if result.success:
+        state.encounter_facts["death_save_success_round"][faller_id] = state.round_number
 
     sounds: list[str] = []
     revive_player_id: str | None = None
@@ -195,6 +202,7 @@ async def _request_death_save_locked(session, cs, faller_id, result, mutations, 
     async with db_mod.transaction() as conn:
         if revive_player_id is not None:
             await mutations.update_player_hp(revive_player_id, 1, conn=conn)
+        renewals = await encounter_facts.renew_on_death(state, working, counted_before, queries=queries, conn=conn)
         await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
 
     # Committed — now adopt the rolled state and release its events.
@@ -241,5 +249,7 @@ async def _request_death_save_locked(session, cs, faller_id, result, mutations, 
         "dramatic": result.dramatic,
         "context": result.context,
     }
+    if renewals:
+        response["focus_renewals"] = renewals
     logger.info("request_death_save result: d%d, %s", result.roll, outcome)
     return json.dumps(response)

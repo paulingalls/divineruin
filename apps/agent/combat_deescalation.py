@@ -14,6 +14,7 @@ import combat_resolution
 import communication_voice_rules
 import condition_voice_rules
 import conditions
+import db_queries
 import event_types as E
 import social_resolution
 from combat_events import emit_or_publish
@@ -47,7 +48,7 @@ def eligible_argument_targets(state, speaker_id):
 
 
 def _gate_deescalation(player: dict, state, *, round_counter: int | None = None) -> None:
-    """Declare-time fail-loud gate for de_escalate: round cap + 3 Focus, with NO state writes.
+    """Pre-resolution fail-loud gate for de_escalate: round cap + 3 Focus, with NO state writes.
 
     Mirrors spell_casting._gate_spell's pre-resolution discipline — validate with NO state writes so
     a bad attempt never rolls back a phase that already resolved other actors. The Tier-3 scene runs
@@ -86,6 +87,7 @@ async def _resolve_deescalation_packet(
     player: dict | None,
     sink=None,
     persistence=ability_persistence,
+    queries=db_queries,
     rng=None,
     progress=None,
 ) -> dict:
@@ -97,8 +99,7 @@ async def _resolve_deescalation_packet(
     disposition shifts by its own resistance profile (combat_resolution.resolve_argument_round),
     accumulating per enemy across rounds in ``state.deescalation_scene``. When the whole living group
     has crossed the surrender threshold, ``state.deescalated`` flips and the phase _wrap ends combat
-    "deescalated"; a partial group leaves it False and the scene rides to the next round. ``player``
-    is the for_update row from prevalidation (reused, so the lock is taken once).
+    "deescalated"; a partial group leaves it False and the scene rides to the next round.
 
     All mutations land on the phase loop's working ``state`` (the deep-copied next_state the wrap
     reads) — the flags AND the scene maps ride the phase's save_combat_state; we never write
@@ -127,7 +128,7 @@ async def _resolve_deescalation_packet(
         }
 
     # Re-validate the Tier-3 argument category (shape-only threaded by resolve_declaration). In real
-    # play this already fired at the declare-time gate (_prevalidate_ability_focus) with NO writes, so
+    # play this already fired in resolve_phase prevalidation (_prevalidate_ability_focus) with NO writes, so
     # a bad category never reaches here mid-phase; the check stays for direct callers/tests as a
     # defensive fail-loud boundary before any Focus spend.
     targets = eligible_argument_targets(state, attacker.id)
@@ -140,13 +141,16 @@ async def _resolve_deescalation_packet(
 
     if progress is not None and progress.deescalation_round is not None:
         pre_phase_round = progress.deescalation_round
-    _gate_deescalation(player, state, round_counter=pre_phase_round)
 
-    async def roll_argument():
-        have = (player.get("focus") or {}).get("current", 0)
+    async def roll_argument() -> check_resolution.SkillCheckResult:
+        current_player = await queries.get_player(attacker.id, for_update=True, conn=conn)
+        if current_player is None:
+            raise ToolError(f"Unknown player: {attacker.id}")
+        _gate_deescalation(current_player, state, round_counter=pre_phase_round)
+        have = current_player["focus"]["current"]
         await persistence.update_player_resources(attacker.id, focus=have - _DEESCALATE_FOCUS_COST, conn=conn)
         return check_resolution.resolve_skill_check_dc(
-            condition_voice_rules.roll_data(player, state, attacker.id),
+            condition_voice_rules.roll_data(current_player, state, attacker.id),
             "persuasion",
             combat_resolution.DEESCALATE_BASE_DC,
             rng,

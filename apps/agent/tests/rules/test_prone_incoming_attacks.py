@@ -1,9 +1,10 @@
+from types import SimpleNamespace
 from typing import Any, cast
+from unittest.mock import AsyncMock
 
 from voice_condition_fixtures import place_actors
 
 import check_resolution_attack
-import db_queries
 from combat_attack_roll import deserialize_roll
 from combat_fate_hostile import roll_hostile
 from combat_marks import FOCUS_ATTACK_BONUS
@@ -107,6 +108,7 @@ async def test_marked_held_melee_attack_keeps_focus_bonus_and_prone_advantage():
     }
     rng = ScriptedRng([4, 15, 3])
 
+    queries = SimpleNamespace(get_player=AsyncMock(return_value={"player_id": target.id}))
     place_actors(state)
     assert await roll_hostile(
         None,
@@ -115,7 +117,7 @@ async def test_marked_held_melee_attack_keeps_focus_bonus_and_prone_advantage():
         resolve_declaration(head["declaration"]),
         action,
         0,
-        {"resolver": RealResolver(rng), "queries": db_queries, "conn": None},
+        {"resolver": RealResolver(rng), "queries": queries, "conn": None},
         None,
     )
     result, _ = deserialize_roll(head["roll"])

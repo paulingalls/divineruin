@@ -165,7 +165,7 @@ async def land(
     results = []
     for target in recipients:
         before = target.hp_current
-        components = synergy(before, base_heal) if synergy is not None else []
+        components = synergy(target.id, before, base_heal) if synergy is not None else []
         await restore(target, base_heal + sum(c["bonus"] for c in components), conn=conn)
         if rounds := profile.get("regeneration_rounds"):
             target.conditions = apply_condition(target.conditions, "regenerating", source=caster.id)
@@ -198,7 +198,7 @@ async def land_exploration(
     for pid, row in recipients.items():
         current = row["hp"]["current"]
         maximum = patron_passives.effective_hp(row)["max"]
-        components = synergy(current, base_heal) if synergy is not None else []
+        components = synergy(pid, current, base_heal) if synergy is not None else []
         amount = base_heal + profile.get("regeneration_rounds", 0) + sum(c["bonus"] for c in components)
         hp = healed_hp(current, maximum, amount)
         if hp != current:

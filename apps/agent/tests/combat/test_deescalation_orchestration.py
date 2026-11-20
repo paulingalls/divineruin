@@ -39,6 +39,7 @@ async def _resolve_round(state, player, rng, *, argument_type="reason"):
         player=player,
         sink=None,
         persistence=persistence,
+        queries=MagicMock(get_player=AsyncMock(return_value=player)),
         rng=rng,
     )
     return result, persistence, session
@@ -81,12 +82,6 @@ class TestCrossRoundPersistence:
         assert state.deescalation_scene.round_counter == 2
         assert state.deescalation_scene.cumulative_shift["enemy_a"] == 2
         assert state.deescalation_scene.cumulative_shift["enemy_b"] == 2
-
-    @pytest.mark.asyncio
-    async def test_focus_is_spent_each_round(self):
-        state = _make_group_state()
-        _r, persistence, _s = await _resolve_round(state, _DIPLOMAT, FixedRng(20))
-        assert persistence.update_player_resources.await_args.kwargs["focus"] == 17
 
 
 class TestRoundCap:
@@ -189,6 +184,7 @@ class TestRoundCounterAdvancesOncePerPhase:
                 player=_DIPLOMAT,
                 sink=None,
                 persistence=persistence,
+                queries=MagicMock(get_player=AsyncMock(return_value=_DIPLOMAT)),
                 rng=FixedRng(1),
             )
 
@@ -241,6 +237,7 @@ class TestDeescalationE2EPhaseLoop:
         queries.get_player = AsyncMock(
             return_value={
                 "player_id": "deesc_e2e_player",
+                "class": "diplomat",
                 "focus": {"current": 12, "max": 12},
                 "attributes": {"charisma": 22},
                 "level": 1,

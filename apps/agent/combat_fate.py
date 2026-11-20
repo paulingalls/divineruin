@@ -121,8 +121,15 @@ async def continue_attack(
             and (candidates := await zhael_fate.candidates(session, queries=queries, conn=conn)).choices(attacker.id)
         ):
             player = await attack_player(attacker, queries=queries, conn=conn)
+            defender = await attack_player(target, queries=queries, conn=conn)
             attacker_data, target_ac, attack_mod = attack_roll_inputs(
-                attacker, target, state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus, state, act, player=player
+                attacker,
+                target,
+                state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus,
+                state,
+                act,
+                player=player,
+                defender=defender,
             )
             prepared = check_resolution_attack.prepare_attack(
                 attacker_data, act, target_ac, attack_mod=attack_mod, target_conditions=target.conditions
@@ -293,6 +300,9 @@ async def continue_attack(
             summary[component] = sum(s.get(component, 0) for s in attack_summaries)
             type_key = f"{component}_type"
             summary[type_key] = next((s[type_key] for s in attack_summaries if s.get(type_key) is not None), None)
+        summary["synergy_clause_id"] = next(
+            (s["synergy_clause_id"] for s in attack_summaries if s.get("synergy_clause_id") is not None), None
+        )
         if movement:
             summary.update(
                 moved_ft=sum(s["moved_ft"] for s in attack_summaries),

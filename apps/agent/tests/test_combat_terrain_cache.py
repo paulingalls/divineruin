@@ -24,6 +24,7 @@ async def test_legacy_cache_floor_refuses_cast_and_ward_without_writes():
     resonance = MagicMock(update_player_resonance=AsyncMock())
     combat = MagicMock(save_combat_state=AsyncMock())
     mock_db, conn = make_db_mod()
+    queries = MagicMock(get_player=AsyncMock(return_value=player))
     known = MagicMock(get_known=AsyncMock(return_value=[{"spell_id": "primal_bark_skin"}]))
     with pytest.raises(ToolError, match="legacy-mountain"):
         await _resolve_cast(
@@ -31,6 +32,7 @@ async def test_legacy_cache_floor_refuses_cast_and_ward_without_writes():
             "primal_bark_skin",
             conn=conn,
             player=player,
+            queries_mod=queries,
             content_mod=content,
             persistence_mod=persistence,
             resonance_mutations_mod=resonance,
@@ -41,7 +43,7 @@ async def test_legacy_cache_floor_refuses_cast_and_ward_without_writes():
             ctx,
             True,
             db_mod=mock_db,
-            queries_mod=MagicMock(get_player=AsyncMock(return_value=player)),
+            queries_mod=queries,
             content_mod=content,
             persistence_mod=persistence,
             combat_mod=combat,

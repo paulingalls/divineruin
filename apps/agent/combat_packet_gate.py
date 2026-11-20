@@ -63,7 +63,10 @@ async def _prevalidate_ability_focus(
         except ValueError as e:
             raise ToolError(str(e)) from e
         action = decl.action
-        resolved_ability = declared_ability(action)
+        is_deescalation = action.lower() == "de_escalate"
+        resolved_ability = (
+            (abilities.get_ability("diplomat_de_escalate"), None) if is_deescalation else declared_ability(action)
+        )
         if resolved_ability is not None:
             ability, variant = resolved_ability
             owned_elective = (
@@ -81,9 +84,9 @@ async def _prevalidate_ability_focus(
         # has its own Focus+lockout gate; a non-spell condition ability (M4.8 story-005, e.g.
         # bard_inspire) gates its catalog Stamina/Focus; everything else is a spell-backed ability
         # gated against the spell catalog. _gate_spell would raise "Unknown spell" for the first two.
-        if action.lower() == "de_escalate":
+        if is_deescalation:
             _gate_deescalation(player, state)
-            # Validate the Tier-3 argument category HERE (declare-time, no writes) so a bad category
+            # Validate the Tier-3 argument category before resolution writes so a bad category
             # fails loud before ANY packet resolves — never rolling back a phase that already wrote
             # other actors' HP/Focus (the packet re-checks defensively for direct callers).
             _validate_argument_type(decl)
