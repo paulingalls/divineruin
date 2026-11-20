@@ -156,7 +156,7 @@ def facts(state, origin_id):
         for key, zone in spatial["zones"].items()
         if key not in inactive_auras
     }
-    return {
+    result = {
         "origin_id": origin_id,
         "positions": deepcopy(spatial["positions"]),
         "locations": deepcopy(spatial["locations"]),
@@ -165,6 +165,14 @@ def facts(state, origin_id):
         "speeds_ft": deepcopy(spatial["speeds"]),
         "spoken": [f"{key} is {value:g} feet from {origin_id}" for key, value in distances.items() if key != origin_id],
     }
+
+    from combat_structures import wall_facts
+
+    walls, spoken = wall_facts(state, spatial)
+    if walls:
+        result["walls"] = walls
+        result["spoken"].extend(spoken)
+    return result
 
 
 def response_facts(state, acting_id, primary_id):

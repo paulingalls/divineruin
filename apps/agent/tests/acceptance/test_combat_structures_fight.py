@@ -9,14 +9,14 @@ import pytest
 from acceptance._capstone_helpers import _d20, _damage_die, _resolve_round
 from acceptance._spatial_helpers import persisted, pos
 from acceptance._spatial_helpers import spatial_entry as spatial_entry
-from livekit.agents.llm import ToolError
+from acceptance._structure_helpers import _move, _refuses, _reload, _save_and_reload, _strike
 
 import combat_spatial
-import db_mutations
 from combat_state import CombatState
 from combat_structures import add_wall
 from combat_turn import declare_phase, resolve_phase
-from declaration_payloads import AttackDecl, DefendDecl, InteractDecl, ManeuverDecl, MoveDecl
+from declaration_payloads import DefendDecl, InteractDecl, ManeuverDecl
+from query_tools import query_info
 
 WALL = "stone_wall"
 NAME = "Stone Wall"
@@ -27,34 +27,6 @@ END = pos(10, 5, 4)
 @pytest.fixture
 def mock_combat_agent_factory() -> None:
     return None
-
-
-async def _save_and_reload(ctx: Any) -> CombatState:
-    state = ctx.userdata.combat_state
-    await db_mutations.save_combat_state(state.combat_id, state.to_dict())
-    return await _reload(ctx)
-
-
-async def _reload(ctx: Any) -> CombatState:
-    saved = await db_mutations.load_combat_state(ctx.userdata.combat_state.combat_id)
-    assert saved is not None and saved.spatial is not None
-    ctx.userdata.combat_state = saved
-    return saved
-
-
-def _move(actor_id: str, destination: dict) -> MoveDecl:
-    return MoveDecl.model_validate({"kind": "move", "actor_id": actor_id, "destination": destination})
-
-
-async def _refuses(ctx: Any, declaration: Any, message: str) -> None:
-    before = ctx.userdata.combat_state.to_dict()
-    publisher = ctx.userdata.room.local_participant.publish_data
-    calls = publisher.call_count
-    with pytest.raises(ToolError, match=message):
-        await declare_phase(ctx, [declaration])
-    assert ctx.userdata.combat_state.to_dict() == before
-    assert await persisted(before["combat_id"]) == before
-    assert publisher.call_count == calls
 
 
 async def _move_and_resolve(ctx: Any, actor_id: str, destination: dict) -> None:
@@ -206,10 +178,6 @@ def test_corrupt_wall_linkage_refuses_load(corruption: str, message: str) -> Non
         CombatState.from_dict(state.to_dict())
 
 
-def _strike(actor_id: str, target: str) -> AttackDecl:
-    return AttackDecl(kind="attack", actor_id=actor_id, action="Greataxe", target_id=target, held_item_id="", rider="")
-
-
 async def test_attacks_damage_hold_and_destroy_wall(spatial_entry: Any) -> None:
     ctx, _ = await spatial_entry(members=2)
     state = ctx.userdata.combat_state
@@ -294,3 +262,43 @@ async def test_attacks_damage_hold_and_destroy_wall(spatial_entry: Any) -> None:
     assert victory["xp_total"] == sum(foe.xp_value for foe in foes)
     assert sorted(victory["defeated_enemies"]) == sorted(foe.name for foe in foes)
     assert ctx.userdata.combat_state is None
+
+
+async def test_combat_facts_show_each_wall_and_its_pairs(spatial_entry) -> None:
+    ctx, _ = await spatial_entry()
+    state = ctx.userdata.combat_state
+    player = ctx.userdata.player_id
+    combat_spatial.place(state, player, pos())
+    combat_spatial.place(state, "mawling_1", pos(20))
+    combat_spatial.place(state, "mawling_2", pos(0, 30))
+    add_wall(state, "wall", "Slate Wall", pos(10, -5), pos(10, 5)).hp_current = 1
+    add_wall(state, "second", "Second Wall", pos(12, -5), pos(12, 5))
+    add_wall(state, "away", "Outlying Wall", pos(50, -5), pos(50, 5))
+    await _save_and_reload(ctx)
+    facts = json.loads(await query_info(ctx, "combat", "mawling_2"))
+    assert facts["walls"] == [
+        {"id": "away", "name": "Outlying Wall", "segment": {"start": pos(50, -5), "end": pos(50, 5)}, "separates": []},
+        {
+            "id": "second",
+            "name": "Second Wall",
+            "segment": {"start": pos(12, -5), "end": pos(12, 5)},
+            "separates": [["mawling_1", player]],
+        },
+        {
+            "id": "wall",
+            "name": "Slate Wall",
+            "segment": {"start": pos(10, -5), "end": pos(10, 5)},
+            "separates": [["mawling_1", player]],
+        },
+    ]
+    assert len([line for line in facts["spoken"] if "Wall" in line]) == 2
+    declaration = json.loads(await declare_phase(ctx, [_strike(player, "wall")]))
+    assert declaration["spatial"]["walls"] == facts["walls"]
+    await _reload(ctx)
+    with (
+        patch("check_resolution.dice_roll", return_value=_d20(20)),
+        patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
+    ):
+        resolved = await _resolve_round(ctx)
+    assert resolved["spatial"]["walls"] == facts["walls"][:2]
+    assert json.loads(await query_info(ctx, "combat", "mawling_2"))["walls"] == facts["walls"][:2]

@@ -35,6 +35,7 @@ from combat_down import target_unavailable
 from combat_enemy_action import resolve_enemy_strike
 from combat_enemy_active import resolve_active
 from combat_packet_gate import _prevalidate_ability_focus as _prevalidate_ability_focus
+from combat_structures import action_has_direct_line, blocked_reason, line_blocker
 from condition_restrictions import cannot_act
 from condition_sources import DeliveryRefused
 from declarations import DeclarationType
@@ -214,6 +215,13 @@ async def _resolve_action_packet(
             or (not replay and not combat_recharge.available(attacker, action))
         ):
             return {"actor_id": attacker.id, "resolved": False, "reason": "action unavailable"}
+        if (
+            not replay
+            and action_has_direct_line(action)
+            and not combat_melee_approach.is_melee(action)
+            and (wall := line_blocker(state, attacker.id, decl.target_id))
+        ):
+            return {"actor_id": attacker.id, "resolved": False, "reason": blocked_reason(wall)}
         if still_encounter.is_owner(state, attacker.id):
             import still_actions
 
@@ -392,6 +400,8 @@ async def _resolve_action_packet(
         )
 
     if decl.type is DeclarationType.MANEUVER:
+        if wall := line_blocker(state, attacker.id, decl.target_id):
+            return {"actor_id": attacker.id, "resolved": False, "reason": blocked_reason(wall)}
         return combat_maneuver.resolve_maneuver(state, attacker, decl)
 
     if decl.type is not DeclarationType.ATTACK:

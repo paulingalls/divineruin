@@ -25,7 +25,9 @@ import spell_casting
 from combat_ability_gate import DeclaredAbility
 from combat_condition_landing import _land_condition_on_one
 from combat_down import damage_target_unavailable
+from combat_structures import blocked_reason, line_blocker
 from condition_produce import resolve_effective_targets
+from condition_sources import DeliveryRefused
 from mentor_variants import MentorVariant
 from resource_costs import gate_pool
 from session_data import CombatParticipant, SessionData
@@ -182,6 +184,8 @@ async def _resolve_ability_condition_packet(
 
     steps = progress.steps if progress is not None else {}
     if not steps.get("cost_paid"):
+        if wall := line_blocker(state, attacker.id, target.id):
+            return {"actor_id": attacker.id, "resolved": False, "reason": blocked_reason(wall)}
         await _deduct_ability_cost(attacker.id, ability, variant, persistence=persistence, queries=queries, conn=conn)
         steps["cost_paid"] = True
 
@@ -322,12 +326,22 @@ async def _resolve_ability_packet(
     steps = progress.steps if progress is not None else {}
     shield = progress.scope("shield") if progress is not None else None
     deliveries = None
-    if spell.combat_damage and spell.combat_damage.get("recipients"):
+    recipient_profile = spell.combat_damage and spell.combat_damage.get("recipients")
+    if (
+        not recipient_profile
+        and "cast_packet" not in steps
+        and (wall := line_blocker(state, attacker.id, decl.target_id))
+    ):
+        return {"actor_id": attacker.id, "resolved": False, "reason": blocked_reason(wall)}
+    if recipient_profile:
         # Area recipients are frozen once, then each distinct recipient may redirect the spell (the
         # Choir's shield). A Zhael-held redirect save resumes here without re-selecting or re-rolling.
         selected = steps.get("selected")
         if selected is None:
-            selected = select(state, attacker, decl, spell)
+            try:
+                selected = select(state, attacker, decl, spell)
+            except DeliveryRefused as e:
+                return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}
             if progress is not None:
                 steps["selected"] = selected
         redirects = steps.setdefault("redirects", {})

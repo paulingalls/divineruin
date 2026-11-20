@@ -1,6 +1,7 @@
 """Executable runtime inputs with seeded species; catalog production belongs to story-137."""
 
 import json
+from copy import deepcopy
 from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
@@ -19,6 +20,7 @@ import db
 import db_mutations
 import db_queries
 import event_types as E
+from combat_structures import add_wall
 from combat_ui_update import build_combat_ui_update
 from creature_catalog import query_creature_by_id
 
@@ -267,3 +269,26 @@ async def test_catalog_failed_commit_preserves_hp_availability_and_preparation(r
         result = await phase(ctx)
     assert result["packets"][-1]["resolved"]
     await reload(ctx)
+
+
+async def test_captain_rally_skips_the_bandit_behind_a_wall(runtime):
+    ctx, pid, eid = await runtime("bandit_captain", [RALLY, {**BITE, "damage": "1d1"}])
+    state = ctx.userdata.combat_state
+    captain = participant(state, eid)
+    captain.hp_current = 20
+    for bandit_id, x in (("bandit_open", 10), ("bandit_walled", -10)):
+        bandit = deepcopy(captain)
+        bandit.id, bandit.name, bandit.creature_id, bandit.hp_current = bandit_id, bandit_id, "bandit", 5
+        state.participants.append(bandit)
+        state.initiative_order.append(bandit_id)
+        state.spatial["positions"][bandit_id] = {"x": x, "y": 0, "z": 0}
+        state.spatial["speeds"][bandit_id] = 30
+    add_wall(state, "wall", "Slate Wall", {"x": 0, "y": -5, "z": 0}, {"x": 0, "y": 5, "z": 0})
+    await db_mutations.save_combat_state(state.combat_id, state.to_dict())
+    await reload(ctx)
+    await declare(ctx, pid, eid, "Rally", "ability")
+    with patch("dice.roll", return_value=SimpleNamespace(total=5)):
+        result = await _resolve_round(ctx)
+    assert result["packets"][-1]["healed"] == {eid: 5, "bandit_open": 5}
+    saved = await reload(ctx)
+    assert participant(saved, "bandit_walled").hp_current == 5

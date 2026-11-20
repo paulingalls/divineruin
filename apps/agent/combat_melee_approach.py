@@ -6,6 +6,7 @@ from check_resolution_attack import _is_ranged
 from combat_down import has_damage
 from combat_spatial import distance, number, position, require_spatial
 from combat_spatial_declarations import apply_move, ineligible
+from combat_structures import blocked_reason, blocking_wall, nearest_wall_point
 from declarations import Declaration, DeclarationType
 from encounter_actions import action_kind
 
@@ -30,6 +31,8 @@ def prepare(state, actor, target, action, budget):
     spatial = require_spatial(state)
     reach = number(action.get("reach", 10 if "reach" in action.get("properties", []) else 5), "reach", nonnegative=True)
     origin, destination = position(spatial, actor.id), position(spatial, target.id)
+    if target.is_structure and (segment := spatial.get("structures", {}).get(target.id)):
+        destination = nearest_wall_point(origin, segment)
     separation = distance(origin, destination)
     budget.setdefault("remaining", spatial["speeds"][actor.id])
     if actor.choir_movement_round == state.round_number:
@@ -42,6 +45,8 @@ def prepare(state, actor, target, action, budget):
         "moved_ft": 0,
         "destination": dict(origin),
     }
+    if wall := blocking_wall(state, spatial, origin, destination, target_id=target.id):
+        return {**facts, "resolved": False, "attack_resolved": False, "reason": blocked_reason(wall)}
     if separation <= reach:
         return facts
     reason = ineligible(actor)

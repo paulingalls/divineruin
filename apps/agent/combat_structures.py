@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import math
+from copy import deepcopy
 from fractions import Fraction
+from itertools import combinations
 from typing import TYPE_CHECKING, TypedDict
 
 from combat_participant import CombatParticipant
-from combat_spatial import distance, mapping, point, require_spatial
+from combat_spatial import distance, mapping, point, position, require_spatial
+from condition_sources import DeliveryRefused
 
 if TYPE_CHECKING:
     from combat_state import CombatState
@@ -133,14 +137,107 @@ def blocks_path(origin: Point, destination: Point, wall: Segment) -> bool:
     return max(z_start, z_end) >= floor and min(z_start, z_end) <= floor + 20
 
 
-def blocking_wall(state: CombatState, spatial: dict, origin: Point, destination: Point) -> CombatParticipant | None:
+def _coords(point: Point) -> tuple[float, float, float]:
+    return (point["x"], point["y"], point["z"])
+
+
+def touches(point: Point, segment: Segment) -> bool:
+    return math.dist(_coords(point), _coords(nearest_wall_point(point, segment))) < 1e-9
+
+
+def blocking_wall(
+    state: CombatState,
+    spatial: dict,
+    origin: Point,
+    destination: Point,
+    *,
+    target_id: str | None = None,
+    origin_id: str | None = None,
+    effect_origin: bool = False,
+) -> CombatParticipant | None:
+    # A wall never blocks a line that starts or ends on it. For an effect (not a mover),
+    # that includes every wall the origin point touches: a blast centred on a wall reaches
+    # out along it, so movement keeps the strict contact rule.
     for wall_id, segment in spatial.get("structures", {}).items():
+        if wall_id in (target_id, origin_id) or (effect_origin and touches(origin, segment)):
+            continue
         if blocks_path(origin, destination, segment):
             wall = state.get_participant(wall_id)
             if wall is None:
                 raise ValueError(f"Unknown structure participant {wall_id!r}")
             return wall
     return None
+
+
+def nearest_wall_point(origin: Point, segment: Segment) -> Point:
+    start, end = segment["start"], segment["end"]
+    dx, dy = _xy_delta(start, end)
+    ox, oy = _xy_delta(start, origin)
+    along = min(1, max(0, (ox * dx + oy * dy) / (dx * dx + dy * dy)))
+    floor = min(start["z"], end["z"])
+    return {
+        "x": float(Fraction(start["x"]) + dx * along),
+        "y": float(Fraction(start["y"]) + dy * along),
+        "z": min(floor + 20, max(floor, origin["z"])),
+    }
+
+
+def line_blocker(
+    state: CombatState, origin_id: str, target_id: str | None, *, melee: bool = False
+) -> CombatParticipant | None:
+    if target_id is None or target_id == origin_id or state.spatial is None or not state.spatial.get("structures"):
+        return None
+    if state.get_participant(target_id) is None:
+        return None
+    spatial = require_spatial(state)
+    origin = position(spatial, origin_id)
+    segment = spatial["structures"].get(target_id)
+    destination = nearest_wall_point(origin, segment) if melee and segment else position(spatial, target_id)
+    return blocking_wall(state, spatial, origin, destination, target_id=target_id, origin_id=origin_id)
+
+
+def blocked_reason(wall: CombatParticipant) -> str:
+    return f"Line blocked by {wall.name} ({wall.id})"
+
+
+def require_line(state: CombatState, origin_id: str, target_id: str | None, *, melee: bool = False) -> None:
+    if wall := line_blocker(state, origin_id, target_id, melee=melee):
+        raise DeliveryRefused(blocked_reason(wall))
+
+
+def action_has_direct_line(action: dict) -> bool:
+    from encounter_actions import action_kind
+
+    return action.get("type") != "area" and action_kind(action) in ("attack", "charm", "silence", "illusion")
+
+
+def wall_facts(state: CombatState, spatial: dict) -> tuple[list[dict], list[str]]:
+    segments = spatial.get("structures", {})
+    if not segments:
+        return [], []
+    combatants = sorted(
+        (p for p in state.participants if not (p.is_structure or p.is_fallen or p.is_dead)), key=lambda p: p.id
+    )
+    pairs = list(combinations(combatants, 2))
+    positions = {p.id: position(spatial, p.id) for p in combatants}
+    walls, spoken = [], []
+    for wall_id, segment in sorted(segments.items()):
+        wall = state.get_participant(wall_id)
+        if wall is None:
+            raise ValueError(f"Unknown structure participant {wall_id!r}")
+        separated = [(a, b) for a, b in pairs if blocks_path(positions[a.id], positions[b.id], segment)]
+        walls.append(
+            {
+                "id": wall_id,
+                "name": wall.name,
+                "segment": deepcopy(segment),
+                "separates": [[a.id, b.id] for a, b in separated],
+            }
+        )
+        if separated:
+            names = ", ".join(f"{a.name} and {b.name}" for a, b in separated)
+            spoken.append(f"{wall.name} separates {names}.")
+    return walls, spoken
 
 
 def remove_wall_segment(state: CombatState | None, wall: CombatParticipant) -> None:
