@@ -121,11 +121,13 @@ async def test_fireball_uses_the_anchor_line_and_can_damage_a_wall(spatial_entry
     with patch("dice.roll", return_value=_damage_die(4)):
         result = await _resolve_round(ctx)
     cast = next(p["cast"] for p in result["packets"] if p["actor_id"] == player)
-    assert {p["target_id"] for p in cast["damage_results"]} == (set() if crossing_anchor else {anchor, "wall"})
+    # Centred on walls that meet at the anchor, the blast runs along both of them.
+    reached = {"wall", "hidden_wall", "mawling_1", blocked} if crossing_anchor else {anchor, "wall"}
+    assert {p["target_id"] for p in cast["damage_results"]} == reached
     saved = await _reload(ctx)
-    assert participant(saved, blocked).hp_current == before[blocked]
-    assert participant(saved, "hidden_wall").hp_current == before["hidden_wall"]
-    assert (participant(saved, "wall").hp_current < before["wall"]) == (not crossing_anchor)
+    for target_id in (blocked, "hidden_wall"):
+        assert (participant(saved, target_id).hp_current < before[target_id]) == crossing_anchor
+    assert participant(saved, "wall").hp_current < before["wall"]
 
 
 async def test_melee_reaches_the_nearest_end_of_a_wall(spatial_entry) -> None:

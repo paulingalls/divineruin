@@ -41,7 +41,18 @@ def select(state, caster, declaration, spell, *, require_live=False):
         return spatial.position(placement, target_id)
 
     def clear(origin_id, target_id):
-        return blocking_wall(state, placement, pos(origin_id), pos(target_id), target_id=target_id) is None
+        return (
+            blocking_wall(
+                state,
+                placement,
+                pos(origin_id),
+                pos(target_id),
+                target_id=target_id,
+                origin_id=origin_id,
+                effect_origin=True,
+            )
+            is None
+        )
 
     if shape == "chain":
         if len(ids) > spec["cap"] or len(ids) != len(set(ids)):

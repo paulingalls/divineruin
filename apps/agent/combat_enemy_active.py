@@ -5,6 +5,7 @@ import copy
 import conditions
 import dice
 from combat_condition_landing import _land_condition_on_one
+from combat_structures import line_blocker
 from encounter_actions import action_kind
 
 
@@ -40,6 +41,7 @@ def resolve_active(state, actor, action, declaration):
             and not ally.is_fallen
             and not ally.is_dead
             and ally.hp_current > 0
+            and line_blocker(state, actor.id, ally.id) is None
         }
     else:
         raise ValueError(f"{action['name']}: unsupported active kind {kind}")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from copy import deepcopy
 from fractions import Fraction
 from itertools import combinations
@@ -136,11 +137,31 @@ def blocks_path(origin: Point, destination: Point, wall: Segment) -> bool:
     return max(z_start, z_end) >= floor and min(z_start, z_end) <= floor + 20
 
 
+def _coords(point: Point) -> tuple[float, float, float]:
+    return (point["x"], point["y"], point["z"])
+
+
+def touches(point: Point, segment: Segment) -> bool:
+    return math.dist(_coords(point), _coords(nearest_wall_point(point, segment))) < 1e-9
+
+
 def blocking_wall(
-    state: CombatState, spatial: dict, origin: Point, destination: Point, *, target_id: str | None = None
+    state: CombatState,
+    spatial: dict,
+    origin: Point,
+    destination: Point,
+    *,
+    target_id: str | None = None,
+    origin_id: str | None = None,
+    effect_origin: bool = False,
 ) -> CombatParticipant | None:
+    # A wall never blocks a line that starts or ends on it. For an effect (not a mover),
+    # that includes every wall the origin point touches: a blast centred on a wall reaches
+    # out along it, so movement keeps the strict contact rule.
     for wall_id, segment in spatial.get("structures", {}).items():
-        if wall_id != target_id and blocks_path(origin, destination, segment):
+        if wall_id in (target_id, origin_id) or (effect_origin and touches(origin, segment)):
+            continue
+        if blocks_path(origin, destination, segment):
             wall = state.get_participant(wall_id)
             if wall is None:
                 raise ValueError(f"Unknown structure participant {wall_id!r}")
@@ -172,7 +193,7 @@ def line_blocker(
     origin = position(spatial, origin_id)
     segment = spatial["structures"].get(target_id)
     destination = nearest_wall_point(origin, segment) if melee and segment else position(spatial, target_id)
-    return blocking_wall(state, spatial, origin, destination, target_id=target_id)
+    return blocking_wall(state, spatial, origin, destination, target_id=target_id, origin_id=origin_id)
 
 
 def blocked_reason(wall: CombatParticipant) -> str:
