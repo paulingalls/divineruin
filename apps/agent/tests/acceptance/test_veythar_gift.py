@@ -142,6 +142,9 @@ def test_exclusions_and_pending_policy(harness):
         ]:
             walk = await GiftWalk().start(harness)
             await walk.patch(divine_favor=favor(patron))
+            if mode == "discover":
+                # The entrance's scout token answers a first search with no roll. Find it so this search rolls.
+                await walk.discover(target="rubble")
             result = await (walk.skill(skill, face) if mode == "skill" else walk.search(face, skill=skill))
             assert "reroll_offer" not in result and await walk.state() is None
         walk = await GiftWalk().start(harness)
