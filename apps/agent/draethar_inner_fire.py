@@ -93,7 +93,7 @@ async def _inner_fire_locked(
         await resonance_mutations_mod.update_player_resonance(player_id, new_resonance, conn=conn)
         session.validate_acting_player(player_id)
         participant.hp_current = new_hp
-        gift = await trigger_damage_gifts(
+        gift, _ = await trigger_damage_gifts(
             session, state, participant, hp_before, players=players, queries=queries_mod, conn=conn
         )
         final_hp = participant.hp_current

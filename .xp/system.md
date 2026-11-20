@@ -303,6 +303,14 @@ item number, not this section.
   guard whole, so one red seemed to cover all of it. A guard with several
   conditions is fault-injected once PER CONDITION: drop each operand on its own,
   and each drop needs its own red.
+- **2, ratio (human 2026-11-20).** In sprints patron-last-stand and
+  wildmothers-wrath, Dawn's Embrace's and Wildmother's Wrath's new tests ran
+  about 3x their new production lines, and each story reviewer asked the lead
+  how to count. Those tests drove the existing shared damage path through the
+  registered tools: lock and rollback, receipts, falls and boss protections.
+  "The lines they test" includes existing code that a new boundary test runs
+  through and can fail on, not only the card's new lines. Reviewers still cut
+  duplicates under Constraint 1.
 - **13 — wall clock.** Same day: story land gained the fast lane (~45 s) while
   acceptance stayed at sprint close, because land wall clock bounds the sprint.
   Human: efficient tests, harness and tiering keep wall clock down without
