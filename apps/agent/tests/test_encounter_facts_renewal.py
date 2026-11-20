@@ -13,6 +13,7 @@ from acceptance._capstone_helpers import _enemy
 from acceptance.seeds import seed_known_spells
 from combat.test_handle_hp_zero import _hollowed
 from test_encounter_facts_damage import GOBLIN, OTHER, Fight, dice, fight, goblin_strike
+from test_encounter_facts_heal import wrap
 from voice_condition_fixtures import participant, place_actors
 
 import db_mutations
@@ -129,9 +130,9 @@ async def test_only_standing_mortaen_players_renew(world: SimpleNamespace, contr
 
 @pytest.mark.parametrize("control", ["fortitude", "hollowed", "fall", "instant", "ward", "embrace"])
 async def test_damage_observes_the_zero_hp_outcome(world: SimpleNamespace, control: str) -> None:
-    hero_patron = "orenthel" if control == "embrace" else "mortaen"
-    async with fight(world, hero_patron, archetype="warden", ally_hp=4, goblin_hp=5) as f:
-        await setup_recipient(world, "warden")
+    async with fight(world, "mortaen", archetype="warden", ally_hp=4, goblin_hp=5) as f:
+        if control != "embrace":
+            await setup_recipient(world, "warden")
         state = f.session.combat_state
         ally = participant(state, f.ally)
         if control == "embrace":
@@ -161,9 +162,8 @@ async def test_damage_observes_the_zero_hp_outcome(world: SimpleNamespace, contr
             )
         if control == "hollowed":
             ally.conditions = _hollowed(2)
-        if control == "instant":
-            ally.hp_max = 1
-            ally.hp_current = 1
+        if control in ("instant", "ward", "embrace"):
+            ally.hp_current = ally.hp_max = 1
         if control == "fortitude":
             participant(state, GOBLIN).unholy_fortitude = {
                 "save": "CON",
@@ -248,13 +248,9 @@ async def test_still_anchors_and_owner_each_renew(world: SimpleNamespace, start:
             )
             with dice(20):
                 packets = (await f.call("resolve_phase"))["packets"]
-            for _ in range(5):
-                result = await f.call("resolve_phase")
-                if result["beat"] == "declaration":
-                    await f.reload()
-                    break
-            else:
-                pytest.fail("Still round did not wrap")
+            if not i:
+                await wrap(f.call)
+                await f.reload()
             current = min(10, previous + 2)
             expected = [receipt(f.hero, anchor_id, previous, current)]
             if i:
@@ -263,9 +259,11 @@ async def test_still_anchors_and_owner_each_renew(world: SimpleNamespace, start:
             assert renewals(packets) == expected
             assert await focus(world) == current
             previous = current
-        saved_owner = participant(f.session.combat_state, owner.id)
+        saved = await f.reload()
+        saved_owner = participant(saved, owner.id)
         assert saved_owner.is_fallen and saved_owner.hp_current == 0
-        assert f.session.combat_state.still_encounter["phase"] == "destroyed"
+        assert saved.still_encounter is not None
+        assert saved.still_encounter["phase"] == "destroyed"
 
 
 async def rollback(
