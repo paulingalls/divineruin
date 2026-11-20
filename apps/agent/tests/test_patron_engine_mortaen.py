@@ -5,6 +5,7 @@ from _mortaen_threshold_fixtures import (
     ENCOUNTER,
     FOE,
     GIFT,
+    OTHER_GIFTS,
     active,
     attack_event,
     checkpoint,
@@ -98,7 +99,8 @@ async def inner_fire(world):
 
 
 async def lethal_claw(world, shape, protected=True, vulnerable=False, hp=3):
-    async with fight(world, hp=hp) as call:
+    gifts = {**OTHER_GIFTS, "mortaen_death_ward": {"spent": True}}
+    async with fight(world, hp=hp, gifts=gifts) as call:
         position(world)
         changes = {"damage_type": "fire", "magical": True}
         if shape != "attack":

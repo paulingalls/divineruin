@@ -64,6 +64,7 @@ def _make_mocks():
 
 def _make_queries():
     mock_queries = MagicMock()
+    mock_queries.get_player = AsyncMock(return_value={"divine_favor": {"patron": "none"}})
     mock_queries.get_player_inventory = AsyncMock(return_value=[])
     return mock_queries
 

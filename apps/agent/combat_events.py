@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from game_events import publish_game_event
+from patron_ability_events import publish_patron_abilities
 
 if TYPE_CHECKING:
     from livekit import rtc
@@ -72,6 +73,7 @@ class EventSink:
     is a plain list so tests can assert exactly what was (and wasn't) published."""
 
     captured: list[BufferedEvent] = field(default_factory=list)
+    patron_refreshes: dict[str, tuple["rtc.Room | None", "EventBus | None"]] = field(default_factory=dict)
 
     async def emit(
         self,
@@ -101,8 +103,15 @@ class EventSink:
                 except Exception as error:
                     if first_error is None:
                         first_error = error
+            for owner, (room, event_bus) in self.patron_refreshes.items():
+                try:
+                    await publish_patron_abilities(room, owner, event_bus)
+                except Exception as error:
+                    if first_error is None:
+                        first_error = error
         finally:
             self.captured.clear()
+            self.patron_refreshes.clear()
         if first_error is not None:
             raise first_error
 
