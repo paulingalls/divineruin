@@ -44,8 +44,9 @@ import veil_ward_tools
 import zhael_fate
 from action_sound_content import publish_action_sound
 from db_errors import db_tool
+from declaration_payloads import Destination
 from item_effects import CONSUME_PREFIX
-from patron_combat_edges import RESTORATION_SURGE, SurgeCondition
+from patron_combat_edges import RESTORATION_SURGE, VEILSTEP, SurgeCondition
 from patron_gifts import SYRATH_SHADOW_VEIL, VEYTHAR_INSIGHT
 from session_data import SessionData
 
@@ -79,6 +80,7 @@ async def activate(
     offer_id: str | None = None,
     keep: zhael_fate.Keep | None = None,
     condition: SurgeCondition | None = None,
+    destination: Destination | None = None,
 ) -> str | tuple:
     """Activate a capability: cast a spell, use an archetype ability, deploy a Veil Anchor, raise
     or dismiss a Veil Ward, or trigger the Draethar's Inner Fire.
@@ -115,6 +117,11 @@ async def activate(
     or 'hollowed' (stage 1 only). Use target_id for a present party member or omit it for self.
     Narrate the touch. The gift costs no Focus and recharges on a long rest.
 
+    For Veilstep, use activate(id="syrath_veilstep", destination={x,y,z}), choosing a visible shadow
+    up to 60 feet from the follower. Coordinates are in feet. It costs no movement or Resonance and recharges
+    on a long rest. A queued move is removed; ask for a new move from the new position at the next
+    declaration beat. Without fight geometry, omit destination and narrate the step through shadow.
+
     Pass target_id when the capability affects ONE other entity (a spell/ability target). A Veil
     Ward is always raised or dismissed by the player speaking; omit target_id for it. Pass target_ids (a list)
     for a spell or ability that hits several allies/enemies at once — not both. Omit both for a
@@ -141,13 +148,24 @@ async def activate(
     answers a different window, or when the round's one reaction is already spent. Outside combat
     reactions activate freely. Cantrips are free and scale
     their damage with level."""
+    if destination is not None and id != VEILSTEP:
+        raise ToolError("The destination selector is only for Veilstep.")
+    if id == VEILSTEP and (target_id is not None or target_ids is not None):
+        raise ToolError("Veilstep takes a destination point. Omit entity target selectors.")
     if id in zhael_fate.ROLL_ABILITIES:
         if condition is not None:
             raise ToolError("The condition selector is only for Restoration Surge.")
         return await zhael_fate.activate(context.userdata, id, offer_id, keep)
     if offer_id is not None or keep is not None:
         raise ToolError("offer_id is for a held roll; keep belongs to Fate's Thread.")
-    return await _activate_impl(context, id, target_id=target_id, target_ids=target_ids, condition=condition)
+    return await _activate_impl(
+        context,
+        id,
+        target_id=target_id,
+        target_ids=target_ids,
+        condition=condition,
+        destination=destination.model_dump() if destination is not None else None,
+    )
 
 
 def _resolve_kind(id: str, *, spells_mod, abilities_mod, variants_mod, anchors_mod) -> str:
@@ -184,6 +202,7 @@ async def _activate_impl(
     target_id: str | None = None,
     target_ids: list[str] | None = None,
     condition: str | None = None,
+    destination: dict | None = None,
     spells_mod=spells,
     abilities_mod=abilities,
     variants_mod=mentor_variants,
@@ -231,7 +250,9 @@ async def _activate_impl(
         raise ToolError(f"{unknown} Reactions that fit the open window: {', '.join(valid)}.") from unknown
 
     if kind in {"patron_ability", patron_ability_tools.WEIGHT_OF_TRUTH}:
-        return await patron_ability_tools.activate(context, id, target_id=target_id, condition=condition)
+        return await patron_ability_tools.activate(
+            context, id, target_id=target_id, condition=condition, destination=destination
+        )
     if kind == SYRATH_SHADOW_VEIL:
         return await patron_gift_tools.activate_shadow_veil(context)
     if kind == VEYTHAR_INSIGHT:

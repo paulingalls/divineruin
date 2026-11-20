@@ -126,7 +126,7 @@ async def test_real_patron_gift_round_trip_from_gods_content(patron_id, monkeypa
             "spent",
             "reason",
             "state",
-        }
+        } | ({"activation_hint"} if authored["id"] == "syrath_veilstep" else set())
         assert row["id"] == authored["id"] and row["tier"] == tier.title()
         assert row["status"] == authored["status"] and row["spent"] is False
         assert row["eligible"] is (tier == "acknowledged")
