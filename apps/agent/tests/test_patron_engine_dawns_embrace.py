@@ -9,7 +9,7 @@ from _unbound_path_fixtures import row
 from _zhael_fate_fixtures import game_tools
 from sample_fixtures import make_context
 from test_aelora_gift import _live_party
-from test_patron_engine_death_ward import WARD, resolve_until, saved_target
+from test_patron_engine_death_ward import WARD, hit, resolve_until, saved_target
 
 import db_mutations
 from activate_tools import activate
@@ -80,6 +80,19 @@ async def companion_caught(world, maximum, expected):
         await caught(world, companion.id, receipt, expected)
         assert session.companion.is_conscious and not session.companion.session_memories
         assert not any(e.get("sound_name") == SOUND_PLAYER_FALLEN for e in events(world))
+
+
+async def draining_hit(world):
+    async with embrace_fight(world) as call:
+        attacker = active(world).get_participant(FOE)
+        attacker.hp_current, attacker.hp_max = 10, 30
+        receipt = await hit(world, call, damage=10, self_heal="damage_dealt")
+
+        assert receipt["damage"] == 10
+        await caught(world, world.ids[0], receipt, 10)
+        assert receipt["self_healed"] == 4
+        attacker = active(world).get_participant(FOE)
+        assert attacker.hp_current == (await saved_target(world, attacker)).hp_current == 14
 
 
 async def fallen_donor(world):
@@ -168,6 +181,7 @@ SCENARIOS = {
             (fallen_donor,),
             (recharges,),
             (lower_id_spends,),
+            (draining_hit,),
         ],
     )
 }

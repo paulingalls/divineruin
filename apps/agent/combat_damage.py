@@ -290,8 +290,9 @@ async def _apply_damage(
     # hides the fall it caused, so every verdict below reads hp_before instead.
     death_resolved_before = target.hollow_death_resolved
     hp_before = target.hp_current
-    target.hp_current = max(conditions.damage_hp_floor(target.conditions), hp_before - attack_result.damage)
-    overkill = max(0, attack_result.damage - hp_before) if target.hp_current == 0 else 0
+    hp_after_damage = max(conditions.damage_hp_floor(target.conditions), hp_before - attack_result.damage)
+    target.hp_current = hp_after_damage
+    overkill = max(0, attack_result.damage - hp_before) if hp_after_damage == 0 else 0
     if (
         was_fallen
         and attack_result.damage > 0
@@ -329,7 +330,7 @@ async def _apply_damage(
 
     self_healed = 0
     if action.get("self_heal") == "damage_dealt" and (save_damage or attack_result.hit):
-        self_healed = heal(attacker, max(0, hp_before - target.hp_current))
+        self_healed = heal(attacker, max(0, hp_before - hp_after_damage))
 
     sounds: list[str] = []
     if save_damage and attack_result.damage > 0:
