@@ -143,6 +143,16 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     implementation_id: walk,
     recharge: "per_session",
   });
+  const wrath = "thyra_wildmothers_wrath";
+  expect(
+    validateGods(catalog).find((god) => god.god_id === "thyra")?.layer_3_tier_abilities.exalted,
+  ).toMatchObject({
+    id: wrath,
+    status: "active",
+    resolution: "engine",
+    implementation_id: wrath,
+    recharge: "per_session",
+  });
   const ward = "mortaen_death_ward";
   expect(
     validateGods(catalog).find((god) => god.god_id === "mortaen")?.layer_3_tier_abilities
@@ -173,6 +183,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     veilstep,
     gateway,
     walk,
+    wrath,
     ward,
     embrace,
     ...passives,
@@ -183,7 +194,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     ),
   ).toEqual(engine);
   const pending = abilities.filter((a) => !narrated.has(a.id) && !engine.has(a.id));
-  expect(pending).toHaveLength(10);
+  expect(pending).toHaveLength(9);
   for (const ability of abilities.filter((a) => passives.has(a.id))) {
     expect([ability.recharge, ability.implementation_id]).toEqual(["always", ability.id]);
   }
@@ -407,4 +418,11 @@ test.each([
     name,
     clauses: [{ effect, status: "active", resolution: "engine", implementation_id: id }],
   });
+});
+
+test("the shared Thyra exalted fixture validates in the catalog", () => {
+  const rows = structuredClone(catalog);
+  const thyra = rows.find((god) => god.god_id === "thyra")!;
+  thyra.layer_3_tier_abilities.exalted = corpus.thyra_exalted;
+  expect(Object.is(validateGods(rows), rows)).toBe(true);
 });

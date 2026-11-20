@@ -18,7 +18,12 @@ from declarations import resolve_declaration
 
 VEILSTEP = "syrath_veilstep"
 THRESHOLD_WALK = "mortaen_threshold_walk"
-PARTIAL_ROUND_GIFTS = {VEILSTEP: "Veilstep", THRESHOLD_WALK: "Threshold Walk"}
+WILDMOTHERS_WRATH = "thyra_wildmothers_wrath"
+PARTIAL_ROUND_GIFTS = {
+    VEILSTEP: "Veilstep",
+    THRESHOLD_WALK: "Threshold Walk",
+    WILDMOTHERS_WRATH: "Wildmother's Wrath",
+}
 VEILSTEP_RANGE_FT = 60
 BATTLE_CRY = "kaelen_battle_cry_of_the_ironhand"
 JUDGMENT = "kaelen_kaelens_judgment"

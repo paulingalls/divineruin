@@ -1,4 +1,13 @@
 {
+  "thyra_exalted": {
+    "id": "thyra_wildmothers_wrath",
+    "name": "Wildmother's Wrath",
+    "effect": "Synthetic effect.",
+    "recharge": "per_session",
+    "status": "active",
+    "resolution": "engine",
+    "implementation_id": "thyra_wildmothers_wrath"
+  },
   "patron_ids": [
     "veythar",
     "kaelen",
