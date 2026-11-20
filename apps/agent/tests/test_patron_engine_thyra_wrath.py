@@ -10,6 +10,7 @@ from _zhael_fate_fixtures import game_tools
 from sample_fixtures import published_payloads
 from voice_condition_fixtures import participant
 
+import db_mutations
 import event_types as E
 from conditions import apply_condition
 from exploration_agent import ExplorationAgent
@@ -193,18 +194,21 @@ async def test_wrath_reports_worthy_foe_payout(world):
         assert "Kaelen's Judgment" in result["dm_cue"]
 
 
-async def test_last_foe_falls_then_wrap_ends_combat(world):
+async def test_wrath_ends_combat_before_any_declaration(world):
     async with fight(world, fighter("foe", hp=5)) as call:
-        await declare(world, call)
         session = world.ctx.userdata
+        state = session.combat_state
+        assert state.beat == "declaration" and not state.pending_declarations
         with rolls() as dice:
-            result = await call("activate", id=GIFT)
+            activation = await call("activate", id=GIFT)
         dice.assert_called_once_with("3d8")
+        assert session.combat_state is None
+        agent, result = activation
+        assert agent is not None and result["outcome"] == "victory"
         assert "Foe takes 15 piercing and falls" in result["dm_cue"]
         assert "No foe is left standing" in result["dm_cue"]
-        await call("resolve_phase")
-        _, outcome = await call("resolve_phase")
-        assert outcome["outcome"] == "victory" and session.combat_state is None
+        assert await db_mutations.load_combat_state(state.combat_id, conn=world.pool) is None
+        assert (await row(world, 0))["patron_gifts"][GIFT] == {"spent": True}
         assert [e["outcome"] for e in published_payloads(session.room) if e["type"] == E.COMBAT_ENDED] == ["victory"]
 
 
