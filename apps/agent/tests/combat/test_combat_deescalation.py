@@ -42,6 +42,7 @@ async def _run(session, player, rng):
         player=player,
         sink=None,
         persistence=persistence,
+        queries=MagicMock(get_player=AsyncMock(return_value=player)),
         rng=rng,
     )
     return result, persistence
@@ -177,6 +178,7 @@ class TestDeescalationBeneficialDie:
             player=player,
             sink=None,
             persistence=persistence,
+            queries=MagicMock(get_player=AsyncMock(return_value=player)),
             rng=rng,
         )
         shift = next(pe["cumulative_shift"] for pe in result["deescalation"]["per_enemy"] if pe["id"] == self._ENEMY)

@@ -35,6 +35,7 @@ async def test_partial_hearing_group_cannot_end_combat(restriction):
         conn=None,
         player=_DIPLOMAT,
         persistence=persistence,
+        queries=MagicMock(get_player=AsyncMock(return_value=_DIPLOMAT)),
         rng=FixedRng(20),
     )
     assert state.deescalated is False
@@ -105,6 +106,7 @@ async def test_two_packets_at_last_permitted_round_share_phase_cap():
             conn=None,
             player=_DIPLOMAT,
             persistence=persistence,
+            queries=MagicMock(get_player=AsyncMock(return_value=_DIPLOMAT)),
             rng=FixedRng(1),
         )
         assert result["resolved"] is True

@@ -158,8 +158,15 @@ async def continue_attack(
             and (candidates := await zhael_fate.candidates(session, queries=queries, conn=conn)).choices(attacker.id)
         ):
             player = await attack_player(attacker, queries=queries, conn=conn)
+            defender = await attack_player(target, queries=queries, conn=conn)
             attacker_data, target_ac, attack_mod = attack_roll_inputs(
-                attacker, target, state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus, state, act, player=player
+                attacker,
+                target,
+                state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus,
+                state,
+                act,
+                player=player,
+                defender=defender,
             )
             prepared = check_resolution_attack.prepare_attack(
                 attacker_data, act, target_ac, attack_mod=attack_mod, target_conditions=target.conditions

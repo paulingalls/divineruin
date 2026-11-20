@@ -140,7 +140,7 @@ class TestQueryAbilities:
                             "type": recipe["kind"],
                             "action": "Longsword",
                             "target_id": "foe",
-                            "rider": recipe["rider"],
+                            "rider": recipe.get("rider") or recipe["riders"][0],
                         }
                     if "spell_id" in row:
                         spell = spells.get_spell(row["spell_id"])

@@ -16,6 +16,7 @@ import condition_sources
 import conditions
 import db_mutations
 import db_queries
+import encounter_facts
 import event_types as E
 from combat_attack_roll import build_attack_dice_roll_payload
 from combat_damage_results import AutomaticDamageResult, SaveDamageResult, attack_fields, freeze_blow, thaw_blow
@@ -75,7 +76,7 @@ def _handle_hp_zero(
     ):
         return combat_resolution.hp_threshold_status(target.hp_current, target.hp_max), False, []
     if not was_fallen and target.type == "player" and conditions.hollowed_stage(target.conditions) >= 2:
-        # Temporary Hollowed rise (M4.4 story-008): a Stage-2+ Hollowed player at 0 HP does NOT
+        # Temporary Hollowed rise: a Stage-2+ Hollowed player at 0 HP does NOT
         # fall — their corpse rises as a hostile Temporary Hollowed combatant (HP=50% of max,
         # hits add 1d6 necrotic, immune to Charmed/Frightened/Poisoned) that blocks combat-end
         # until destroyed (combat_phase._wrap). Transform in place: flipping `type` makes the
@@ -96,7 +97,7 @@ def _handle_hp_zero(
     target.is_fallen = True
     combat_hollow_death.mark_destroyed(target)
     released = combat_grapple.release_from_grappler(combat_state, target.id) if combat_state is not None else []
-    # Instant death (M4.4 story-002): overkill (excess damage past 0) >= max HP kills
+    # Instant death: overkill (excess damage past 0) >= max HP kills
     # outright — no Fallen grace, no death saves. is_dead is the stronger state; the pure
     # _wrap reads it to end combat without a death-save beat. This is the one site with both
     # overkill + hp_max. Gated on `not was_fallen` so it fires only on the live -> 0
@@ -287,6 +288,7 @@ async def _apply_damage(
     # one of three things the DM may activate mid-fight (draethar_inner_fire writes this
     # participant's hp_current directly). Writing the stale absolute there HEALS the burn back and
     # hides the fall it caused, so every verdict below reads hp_before instead.
+    counted_before = encounter_facts.counted_death(target)
     death_resolved_before = target.hollow_death_resolved
     hp_before = target.hp_current
     target.hp_current = max(conditions.damage_hp_floor(target.conditions), hp_before - attack_result.damage)
@@ -337,7 +339,6 @@ async def _apply_damage(
     elif not save_damage:
         sounds.append(SOUND_ATTACK_MISS)
 
-    # Check HP thresholds
     hp_status = combat_resolution.hp_threshold_status(target.hp_current, target.hp_max)
     rose_hollowed = False
     released_from_grapple: list[str] = []
@@ -360,15 +361,21 @@ async def _apply_damage(
     elif hp_status in ("bloodied", "critical") and (not save_damage or attack_result.damage > 0):
         sounds.append(SOUND_HEARTBEAT)
 
+    encounter_facts.record_landing(combat_state, attacker, target, attack_result, hp_before)
+
     if combat_hollow_death.new_destruction(target, death_resolved_before, was_fallen, hp_before):
         await combat_hollow_death.accrue_death(session, combat_state, target, conn=conn, queries=queries)
         if combat_state is not None and combat_state.choir_encounter is not None:
             choir_encounter.destroyed(combat_state)
         architect_zero_hp.collapse_owned_walls(combat_state, target.id)
 
-    await still_encounter.after_damage(session, combat_state, target, conn=conn, queries=queries, was_fallen=was_fallen)
+    renewals = await encounter_facts.renew_on_death(combat_state, target, counted_before, queries=queries, conn=conn)
+    renewals.extend(
+        await still_encounter.after_damage(
+            session, combat_state, target, conn=conn, queries=queries, was_fallen=was_fallen
+        )
+    )
 
-    # Update DB if target is a player
     if target.type == "player":
         await mutations.update_player_hp(target.id, target.hp_current, conn=conn)
 
@@ -443,6 +450,8 @@ async def _apply_damage(
         "context": attack_result.context,
         "target_rose_hollowed": rose_hollowed,
     }
+    if renewals:
+        response["focus_renewals"] = renewals
     if fortitude_outcome:
         response["unholy_fortitude"] = fortitude_outcome
         if fortitude_outcome["success"] and response["context"] == "killing_blow":

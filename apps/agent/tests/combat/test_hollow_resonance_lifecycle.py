@@ -78,7 +78,7 @@ async def damage(ctx, state, target, *, queries=None):
         SaveDamageResult("wisdom", False, target.hp_max, "force", "impact", False, "test"),
         target.ac,
         combat_state=state,
-        conn=object(),
+        conn=MagicMock(is_in_transaction=MagicMock(return_value=True)),
         queries=queries,
         mutations=mutations,
         concentration_break_mod=break_mod,
