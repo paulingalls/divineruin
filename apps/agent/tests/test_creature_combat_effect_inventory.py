@@ -123,7 +123,6 @@ def test_architect_metadata_retains_only_deferred_effects():
     architect = next(row for row in catalog() if row["id"] == "hollow_architect")
     effects = {effect["name"]: effect["source"] for effect in deferred_effects(architect)}
     assert effects.keys() == {
-        "Legendary Resistance",
         "Alien Intelligence",
         "hollow",
     }

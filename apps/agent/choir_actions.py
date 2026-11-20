@@ -6,6 +6,7 @@ from functools import partial
 import combat_spatial
 from combat_enemy_action import resolve_save_damage_action
 from combat_fate_rolls import packet_save
+from combat_legendary_resistance import finalize_save, override_fields
 from combat_structures import blocking_wall
 
 
@@ -108,11 +109,15 @@ async def resolve_effect(
     )
     if save is None:
         return {}
-    result = {"actor_id": actor.id, "resolved": True, "save_success": save.success}
+    if not save.success:
+        duration = roll(action["duration_dice"]).total
+        save = finalize_save(state, target, save, failed_conditions=("charmed",) if duration else ())
+    else:
+        duration = 0
+    result = {"actor_id": actor.id, "resolved": True, "save_success": save.success, **override_fields(save)}
     if reaction_save_advantage and save.advantage_applied:
         result["save_advantage"] = True
     if not save.success:
-        duration = roll(action["duration_dice"]).total
         landed = _land_condition_on_one(state, target.id, actor, "charmed", actor.id, packet=result, duration=duration)
         if landed:
             for condition in target.conditions:

@@ -68,6 +68,7 @@ class SavingThrowResult:
     # (Hollowed's WIS) cancels it, and an auto-failed save never rolls.
     advantage_applied: bool = False
     d20: D20Roll | None = None
+    success_override: str | None = None
 
 
 def resolve_saving_throw(

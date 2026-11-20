@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 import architect_encounter
 import check_resolution_save
+import combat_damage_affinity
 import combat_spatial
 import combat_structures
 import dice
@@ -16,6 +17,7 @@ from combat_condition_landing import _land_condition_on_one
 from combat_damage import apply_attack_result
 from combat_damage_results import AutomaticDamageResult
 from combat_fate_rolls import PacketRolls, packet_save
+from combat_legendary_resistance import finalize_save, override_fields
 from combat_movement_cost import rectangle
 from condition_restrictions import cannot_act
 
@@ -160,6 +162,8 @@ async def _floor_target(
 ) -> dict | None:
     target = state.get_participant(target_id)
     assert target is not None
+    action = {"name": "Reshape floor"}
+    damage = None
     if "save_success" not in steps:
         save = await packet_save(
             progress,
@@ -172,17 +176,22 @@ async def _floor_target(
         )
         if save is None:
             return None
-        steps["save_success"] = save.success
+        if not save.success:
+            damage = AutomaticDamageResult(dice.roll("2d6").total, "bludgeoning", context="reshape_floor")
+            _, adjusted = combat_damage_affinity.apply(target, action, damage, state=state)
+            save = finalize_save(state, target, save, failed_conditions=("prone",), failed_damage=adjusted.damage)
+        steps.update(save_success=save.success, **override_fields(save))
     effect = {"target_id": target_id, "save_success": steps["save_success"], "save_dc": 15}
+    if "success_override" in steps:
+        effect["success_override"] = steps["success_override"]
     if effect["save_success"]:
         return effect
-    resumed = "damage_receipt" in steps
     landed = await apply_attack_result(
         session,
         actor,
-        {"name": "Reshape floor"},
+        action,
         target,
-        None if resumed else AutomaticDamageResult(dice.roll("2d6").total, "bludgeoning", context="reshape_floor"),
+        damage,
         target.ac,
         combat_state=state,
         publish_roll=False,

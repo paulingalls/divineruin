@@ -3408,7 +3408,7 @@
       },
       {
         "name": "Legendary Resistance",
-        "description": "3/day: turn a failed save into a success.",
+        "description": "Three uses per encounter. A failed save becomes a success if it would apply a condition or deal at least a quarter of the Architect’s current HP after damage modifiers.",
         "narration_cue": "",
         "recharge": null,
         "audio": null
