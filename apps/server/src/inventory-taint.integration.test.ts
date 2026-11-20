@@ -47,7 +47,9 @@ describe.skipIf(!hasDb)("inventory stacks over real HTTP and Python", () => {
     expect(res.status).toBe(200);
     return (await res.json()) as Snapshot;
   };
-  async function pythonSnapshot() {
+  const agentImports =
+    "import asyncio,json,sys; sys.path.insert(0,'../agent'); import db; from db_inventory_snapshot import get_inventory_snapshot";
+  async function agentPython(script: string, ...args: string[]) {
     const child = Bun.spawn(
       [
         "uv",
@@ -57,8 +59,8 @@ describe.skipIf(!hasDb)("inventory stacks over real HTTP and Python", () => {
         "../agent",
         "python",
         "-c",
-        "import asyncio,json,sys; sys.path.insert(0,'../agent'); import db; from db_inventory_snapshot import get_inventory_snapshot\nasync def main():\n try: print(json.dumps(await get_inventory_snapshot(sys.argv[1])))\n finally: await db.close_all()\nasyncio.run(main())",
-        pid,
+        `${agentImports}\n${script}`,
+        ...args,
       ],
       { cwd: `${import.meta.dir}/..`, stdout: "pipe", stderr: "pipe", env: process.env },
     );
@@ -68,7 +70,12 @@ describe.skipIf(!hasDb)("inventory stacks over real HTTP and Python", () => {
       child.exited,
     ]);
     expect(code, error).toBe(0);
-    return JSON.parse(output) as Snapshot;
+    return output;
+  }
+  async function pythonSnapshot() {
+    const script =
+      "async def main():\n try: print(json.dumps(await get_inventory_snapshot(sys.argv[1])))\n finally: await db.close_all()\nasyncio.run(main())";
+    return JSON.parse(await agentPython(script, pid)) as Snapshot;
   }
   async function seed(clean: number, tainted: number, equipment = false) {
     await sql`DELETE FROM async_activities WHERE player_id=${pid}`;
@@ -102,6 +109,8 @@ describe.skipIf(!hasDb)("inventory stacks over real HTTP and Python", () => {
   const craft = (index: number) =>
     request("/api/activities", { type: "crafting", parameters: { recipe_id: recipeIds[index] } });
   beforeAll(async () => {
+    // A fresh Proof sandbox venv has no bytecode; compile the agent imports once here, not inside a timed test.
+    await agentPython("pass");
     const [base] = await sql<{ data: Recipe }[]>`SELECT data FROM recipes WHERE id='wooden_club'`;
     for (const [index, id] of recipeIds.entries()) {
       const data = {
@@ -138,7 +147,7 @@ describe.skipIf(!hasDb)("inventory stacks over real HTTP and Python", () => {
     token = auth.token;
     await sql`UPDATE players SET data=data || ${{ location_id: "accord_guild_hall", class: "warrior", proficiencies: ["crafting"] }}::jsonb WHERE player_id=${pid}`;
     await sql`INSERT INTO skill_advancement(player_id,skill_id,tier) VALUES(${pid},'crafting','expert')`;
-  });
+  }, 60_000);
   afterAll(async () => {
     if (pid) {
       await sql`DELETE FROM async_activities WHERE player_id=${pid}`;

@@ -224,16 +224,16 @@ Additional topics: TTS Evaluation: Provider comparison: Inworld, Cartesia, Chatt
 
 ---
 
-## dependency_upgrade.md (227 lines)
+## dependency_upgrade.md (228 lines)
 
 Reproducible inventory of all direct dependencies, lock resolutions, compatibility and release-age decisions, infrastructure holds, and executed validation lanes.
 
 | Section | Lines | What's There |
 |---|---|---|
-| Python environments | 7-38 | Python environment and lockfile inventory. |
-| Bun workspace | 39-127 | Release age policy: 604800 seconds. |
-| Independent browser toolchain | 128-195 | Browser toolchain dependencies and validation. |
-| Historical validation outcomes | 196-227 | Recorded compatibility checks and test results. |
+| Python environments | 7-39 | Python environment and lockfile inventory. |
+| Bun workspace | 40-128 | Release age policy: 604800 seconds. |
+| Independent browser toolchain | 129-196 | Browser toolchain dependencies and validation. |
+| Historical validation outcomes | 197-228 | Recorded compatibility checks and test results. |
 
 ---
 
@@ -718,7 +718,7 @@ NPC schemas, role archetypes, mentors, settlements, companions.
 
 ---
 
-## game_mechanics/game_mechanics_patrons.md (383 lines)
+## game_mechanics/game_mechanics_patrons.md (385 lines)
 
 10 divine patrons with 4-layer mechanical system.
 
@@ -734,10 +734,10 @@ NPC schemas, role archetypes, mentors, settlements, companions.
 | Orenthel, the Dawnbringer | 182-209 | Light and healing; Dawn's Resilience, Purifying Light, favor tiers, archetype resonance |
 | Valdris, the Scalebearer | 210-237 | Justice and truth; Weight of Truth, Ordered Magic, favor tiers, archetype resonance |
 | Mortaen, the Threshold | 238-265 | Death and transition; Death's Awareness, Threshold Magic, favor tiers, archetype resonance |
-| Nythera, the Tidecaller | 266-293 | Sea and exploration; Horizon Sense, Boundary Walker, favor tiers, archetype resonance |
-| Zhael, the Fatespinner | 294-321 | Fate and luck; Fate's Thread, Pattern Weaving, favor tiers, archetype resonance |
-| The Unbound Path (No Patron) | 322-368 | Self-sourced magic; Veil Clarity, Raw Channeling, self-reliance milestones, endgame relevance |
-| Patron System Summary | 369-383 | Patron system mechanics and cross-patron comparison. |
+| Nythera, the Tidecaller | 266-295 | Sea and exploration; Horizon Sense, Boundary Walker, favor tiers, archetype resonance |
+| Zhael, the Fatespinner | 296-323 | Fate and luck; Fate's Thread, Pattern Weaving, favor tiers, archetype resonance |
+| The Unbound Path (No Patron) | 324-370 | Self-sourced magic; Veil Clarity, Raw Channeling, self-reliance milestones, endgame relevance |
+| Patron System Summary | 371-385 | Patron system mechanics and cross-patron comparison. |
 
 ---
 

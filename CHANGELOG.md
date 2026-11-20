@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.57.0
+
+Two more patron gifts are live.
+
+Syrath followers at Devoted can Veilstep once per long rest. In a fight they step through shadow to a point up to 60 ft away without using their move, even when restrained. If they had already declared a move that round, Veilstep drops it and the DM asks where they move from the new spot. Outside a fight the DM narrates it.
+
+Nythera followers at Exalted can open Beyond the Horizon once per session. Outside a fight, the whole party steps through to a place the follower has visited before, and the follower gains 5 Resonance. Quest stages reached at the destination advance as they do on foot. It is refused, and nothing is spent, during a fight, for a place they haven't been, for where they already stand, or when the Still's charm holds a party member. The patron query lists the places the gateway can reach.
+
+Release steps: reseed content (bun run seed) so gods.json carries the active Veilstep and Beyond the Horizon rows.
+
+## 0.56.5
+
+Pytest gives each Python test 630 seconds for fixture setup, the test body and teardown. A test that hangs in a sync call or an idle await fails with a timeout traceback, and the run goes on. A hang that keeps the asyncio loop busy can swallow that timeout. At twice the bound, a backstop dumps every thread's stack and ends the process. Under xdist only that worker ends, and the run reports the test as crashed. Collection and session startup run before the timer starts.
+
+Release steps: none.
+
+## 0.56.4
+
+Still and terrain acceptance tests remove their temporary locations and cache entries so later tests can start the game server in the same run.
+
+Release steps: none.
+
 ## 0.56.3
 
 Voice acceptance failures now identify the LiveKit object and source location that created a handle the native runtime could not release.

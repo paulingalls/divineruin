@@ -1,4 +1,6 @@
 import json
+import os
+from collections.abc import AsyncIterator
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -10,6 +12,7 @@ from acceptance.test_still_anchors import mock_combat_agent_factory as mock_comb
 from livekit.agents import Agent, AgentSession
 from sample_fixtures import published_payloads
 
+import db
 import db_activity_queries
 import db_mutations
 import db_queries
@@ -27,9 +30,10 @@ from travel_tools import travel
 
 
 @pytest.fixture
-async def paradise(reset_db_pool):
+async def paradise(reset_db_pool) -> AsyncIterator[tuple[MawlingHarness, str, str]]:
     walk = MawlingHarness()
     origin, zone = (f"still_test_{uuid4().hex}" for _ in range(2))
+    pool = await db.get_pool()
     try:
         await walk.prepare((18, 18), companion=None, location=origin)
         for location, other, tags, navigation in (
@@ -57,7 +61,12 @@ async def paradise(reset_db_pool):
         await exploration(walk)
         yield walk, origin, zone
     finally:
-        await walk.close()
+        try:
+            await walk.close()
+        finally:
+            await pool.execute("DELETE FROM locations WHERE id = ANY($1)", [origin, zone])
+            if os.environ.get("REDIS_URL"):
+                await (await db.get_redis()).delete(f"location:{origin}", f"location:{zone}")
 
 
 async def exploration(walk):

@@ -1191,10 +1191,11 @@
       "devoted": {
         "id": "syrath_veilstep",
         "name": "Veilstep",
-        "effect": "Once per long rest, teleport to any visible shadow at medium range. 0 Resonance — slipping through cracks, not tearing them",
+        "effect": "Once per long rest, step to a visible shadow up to 60 feet away. Keep your full movement. Any queued move is removed. Costs 0 Resonance.",
         "recharge": "long_rest",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "syrath_veilstep"
       },
       "exalted": {
         "id": "syrath_the_veilwatchers_eye",
@@ -2563,10 +2564,11 @@
       "exalted": {
         "id": "nythera_beyond_the_horizon",
         "name": "Beyond the Horizon",
-        "effect": "Once per session, open a brief gateway to a previously visited location. Up to 4 creatures step through. 1 round duration. Generates 5 Resonance (teleportation tears the Veil)",
+        "effect": "Once per session outside combat, open a gateway and bring the whole party to another location the follower has visited. The follower gains 5 Resonance. The Still can prevent departure.",
         "recharge": "per_session",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "nythera_beyond_the_horizon"
       }
     },
     "layer_4_synergy_matrix": {

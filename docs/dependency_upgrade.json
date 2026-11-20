@@ -182,6 +182,16 @@
     {
       "project": "apps/agent",
       "group": "dev",
+      "name": "pytest-timeout",
+      "requested": ">=2.4.0",
+      "resolved": "2.4.0",
+      "installed": "2.4.0",
+      "latest_stable": "2.4.0",
+      "held_back_by": null
+    },
+    {
+      "project": "apps/agent",
+      "group": "dev",
       "name": "pytest-xdist",
       "requested": ">=3.8.0",
       "resolved": "3.8.0",
