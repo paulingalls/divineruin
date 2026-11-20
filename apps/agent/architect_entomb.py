@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 ACTION = "Entomb"
 ESCAPE_DC = 12
-COMPRESSION = {"damage": "1d4", "damage_type": "bludgeoning"}
+COMPRESSION = {"damage": "2d8", "damage_type": "bludgeoning"}
 
 
 def matches(actor: CombatParticipant, action: dict) -> bool:

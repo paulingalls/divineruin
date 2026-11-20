@@ -52,7 +52,7 @@ async def test_cathedral_crushes_through_walls_and_spends_once(fight):
     ):
         cast = next(packet for packet in await fight.drain() if packet["actor_id"] == owner)
     saves.assert_called_once()
-    damage.assert_called_once_with("1d8")
+    damage.assert_called_once_with("2d10")
     assert [target["target_id"] for target in cast["targets"]] == [victim]
     result = cast["targets"][0]
     assert (result["save_type"], result["save_dc"], result["save_success"]) == ("dexterity", 20, False)
@@ -299,7 +299,7 @@ async def test_cathedral_resumes_each_victim_once_after_save_and_damage_holds(fi
     assert set(results) == {player, edge, companion.id, "construct", "fallen"}
     assert rolls == [target["target_id"] for target in cast["targets"]]
     assert saves.call_count == 6
-    assert damage.call_args_list == [(("1d8",), {})] * 5
+    assert damage.call_args_list == [(("2d10",), {})] * 5
     assert all((result["save_type"], result["save_dc"]) == ("dexterity", 20) for result in results.values())
     assert results[edge]["save_success"] and results[edge]["damage"] == 0
     assert all(results[target]["damage_type"] == "force" for target in (player, companion.id, "construct"))
