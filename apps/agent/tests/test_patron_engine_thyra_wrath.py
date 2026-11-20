@@ -37,6 +37,7 @@ async def forest(world):
         session.combat_state.current_turn_index = 1
         await declare(world, call)
         declarations = session.combat_state.pending_declarations.copy()
+        before_activation = len(published_payloads(session.room))
         with rolls() as dice:
             result = await call("activate", id=gift["id"])
         dice.assert_called_once_with("3d8")
@@ -61,6 +62,18 @@ async def forest(world):
         assert "3d8 rolled 15 piercing" in result["dm_cue"] and "forest" in result["dm_cue"]
         for line in ("Marauder takes 15 piercing and stays standing", "Sentinel takes 7 piercing and stays standing"):
             assert line in result["dm_cue"]
+        events = published_payloads(session.room)[before_activation:]
+        updates = [e for e in events if e["type"] == E.COMBAT_UI_UPDATE]
+        assert [
+            {p["id"]: p["hpCurrent"] for p in e["combatants"] if p["id"] in ("marauder", "sentinel")} for e in updates
+        ] == [{"marauder": 35, "sentinel": 43}]
+        assert [
+            g["state"]
+            for e in events
+            if e["type"] == E.PATRON_ABILITIES_UPDATED
+            for g in e["abilities"]
+            if g["id"] == GIFT
+        ] == ["spent"]
         state = await saved(world)
         assert state.to_dict() == session.combat_state.to_dict()
         assert [p.hp_current for p in state.participants] == [50, 50, 50, 35, 43]
