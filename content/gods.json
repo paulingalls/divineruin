@@ -2561,10 +2561,11 @@
       "exalted": {
         "id": "nythera_beyond_the_horizon",
         "name": "Beyond the Horizon",
-        "effect": "Once per session, open a brief gateway to a previously visited location. Up to 4 creatures step through. 1 round duration. Generates 5 Resonance (teleportation tears the Veil)",
+        "effect": "Once per session outside combat, open a gateway and bring the whole party to another location the follower has visited. The follower gains 5 Resonance. The Still can prevent departure.",
         "recharge": "per_session",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "nythera_beyond_the_horizon"
       }
     },
     "layer_4_synergy_matrix": {

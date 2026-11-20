@@ -279,7 +279,9 @@ Spells cast in locations you've never visited before generate **-1 Resonance** (
 |---|---|---|
 | Acknowledged | Tidewalker | Ignore water/mud/shifting ground difficult terrain. Full speed through slowing environments |
 | Devoted | Charted Course | Once per long rest, learn the safest route between two known locations (fewest encounters, lowest Hollow exposure) |
-| Exalted | Beyond the Horizon | Once per session, open a brief gateway to a previously visited location. Up to 4 creatures step through. 1 round duration. Generates 5 Resonance (teleportation tears the Veil) |
+| Exalted | Beyond the Horizon | Once per session outside combat, bring the whole party through a gateway to another location the follower has visited. The follower gains exactly 5 Resonance. The Still can prevent departure. |
+
+When ready, `query_info(kind="patron")` lists visited destinations for Beyond the Horizon. Pass one of those location IDs as `target_id` to `activate`. The gateway refuses unknown, unvisited, and current locations. A successful crossing advances any quest stage reached by arriving there.
 
 **Layer 4 — Archetype Resonance**
 
