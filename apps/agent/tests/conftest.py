@@ -1,5 +1,6 @@
 """Shared test fixtures — auto-mock agent factories, seed training config."""
 
+import asyncio
 import os
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
@@ -46,8 +47,9 @@ def pytest_configure(config: pytest.Config) -> None:
         configure_provider_redis()
 
 
+@pytest.hookimpl(tryfirst=True)
 def pytest_sessionstart(session: pytest.Session) -> None:
-    """Start the docker-compose dev DB for the run if it isn't already up.
+    """Ensure the dev DB and its seeded catalog are ready before tests start.
 
     Many non-acceptance tests connect to this checkout's dev Postgres, so a bare
     `pytest` would fail when docker isn't running. ensure_db_up() is a fast
@@ -72,6 +74,13 @@ def pytest_sessionstart(session: pytest.Session) -> None:
         return
     _db_url = resolve_database_url()
     _started_db = ensure_db_up(_db_url)
+    try:
+        from _seed_drift import refresh_seeded_catalog
+
+        asyncio.run(refresh_seeded_catalog(_db_url))
+    except BaseException:
+        stop_if_started(_started_db, _db_url)
+        raise
 
 
 def pytest_sessionfinish(session: pytest.Session) -> None:
