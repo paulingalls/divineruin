@@ -75,9 +75,13 @@ async def standing(world, receipt, index=0):
     assert receipt["dm_cue"] == "Mortaen decides when you cross."
 
 
-async def enemy_hit(world, face=15, stage=0):
+async def enemy_hit(world, face=15, stage=0, solo=False):
     conds = [conditions.apply_condition([], "hollowed")[0] | {"stage": stage}] if stage else []
     async with fight(world, hp=5, max_hp=25, favor=0, conditions=conds) as call:
+        if solo:
+            session = world.ctx.userdata
+            session.multiplayer_owner.lifecycle.mark_departed(world.ids[1])
+            assert session.present_member_ids == (world.ids[0],)
         assert follower(world).hp_max == 25
         assert conditions.hollowed_stage(follower(world).conditions) == stage
         observed = watch_spend(world)
@@ -144,7 +148,7 @@ SCENARIOS = {
     WARD: (
         "patron_zero_hp:trigger_death_ward",
         scenario,
-        [(enemy_hit,), (enemy_hit, 15, 2), (enemy_hit, 20), (save_hit,), (inner_fire,)],
+        [(enemy_hit,), (enemy_hit, 15, 2), (enemy_hit, 20), (save_hit,), (inner_fire,), (enemy_hit, 15, 0, True)],
     )
 }
 
