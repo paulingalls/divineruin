@@ -31,8 +31,8 @@ from combat_events import emit_or_publish
 from combat_fate_rolls import packet_save
 from combat_fortitude import roll_fortitude, try_fortitude
 from combat_sound_events import publish_combat_sounds as _publish_sounds
-from kaelen_gift import trigger_iron_resolve
 from patron_combat_edges import reward_worthy_foe
+from patron_zero_hp import trigger_damage_gifts
 from session_data import CombatParticipant, CombatState, SessionData
 from tool_support import (
     SOUND_ATTACK_CRITICAL,
@@ -290,11 +290,6 @@ async def _apply_damage(
     # hides the fall it caused, so every verdict below reads hp_before instead.
     death_resolved_before = target.hollow_death_resolved
     hp_before = target.hp_current
-    player = None
-    if target.type == "player" and not target.iron_resolve_spent:
-        member = session.member_state(target.id)
-        if member.patron_id == "kaelen":
-            player = await queries.get_player(target.id, conn=conn)
     target.hp_current = max(conditions.damage_hp_floor(target.conditions), hp_before - attack_result.damage)
     overkill = max(0, attack_result.damage - hp_before) if target.hp_current == 0 else 0
     if (
@@ -317,7 +312,7 @@ async def _apply_damage(
         target.death_save_failures += failures
         if target.type == "player":
             target.death_save_failures = min(3, target.death_save_failures)
-    gift_triggered = trigger_iron_resolve(session, target, hp_before, player)
+    gift_triggered = await trigger_damage_gifts(session, target, hp_before, queries=queries, conn=conn)
 
     if not still_encounter.is_owner(combat_state, attacker.id):
         target.conditions = condition_sources.clear_charm_from_damage(
