@@ -56,7 +56,7 @@ async def publish_settled_hp(
     session: SessionData, state: CombatState, sink: EventSink, settled_hp: dict[str, tuple[int, int]]
 ) -> None:
     for target in state.participants:
-        if target.type == "player":
+        if target.type == "player" or target.id in settled_hp:
             current, maximum = settled_hp.get(target.id, (target.hp_current, target.hp_max))
             await sink.emit(
                 session.room,

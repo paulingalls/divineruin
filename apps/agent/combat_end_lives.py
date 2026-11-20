@@ -42,9 +42,9 @@ async def settle_lives(
             [{**row, "player_id": pid} for pid, row in rows], combat_cleared=combat_cleared, conn=conn
         )
         for participant, context in zip(dead_lives, contexts, strict=True):
-            if participant.type == "player":
-                maximum = context["revive_hp"]
-                settled_hp[participant.id] = (maximum, maximum)
+            # Only players and destroyed echoes (player ids) reach here; a settled echo is a revived player again.
+            maximum = context["revive_hp"]
+            settled_hp[participant.id] = (maximum, maximum)
             if participant.id == primary_id:
                 death_context = context
 
