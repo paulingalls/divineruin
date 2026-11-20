@@ -1,11 +1,39 @@
+import asyncio
 import json
+import os
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 from _patron_engine_fixtures import configure
+from _patron_gateway_fixtures import (
+    GIFT,
+    HALL,
+    MARKET,
+    MILL,
+    WILDERNESS,
+    call,
+    charm,
+    cross,
+    offer,
+    party_rows,
+    prepare,
+    snapshot,
+    visit,
+)
+from _unbound_path_fixtures import encounter
 from _unbound_path_fixtures import world as world
 from acceptance._capstone_helpers import _d20
+from livekit.agents.llm import ToolError
+from sample_fixtures import published_payloads
 from test_unbound_alone_bonus import check
+
+import db
+import db_content_queries
+import db_queries
+import event_types as E
+from combat_agent import CombatAgent
+from dispatch_agent import DispatchAgent
 
 
 async def uncharted_senses_uses_map_history(world, archetype, skill, bonus):
@@ -141,7 +169,166 @@ async def test_choir_search_carries_uncharted_senses(first_stay, bonus, mock_com
     assert (packet.get("gift_name") == "Uncharted Senses") is first_stay
 
 
+async def gateway_scenario(world):
+    agent = await prepare(world)
+    session = world.ctx.userdata
+    host, follower = world.ids
+    await world.pool.execute(
+        "INSERT INTO player_quests (player_id, quest_id, data) VALUES ($1, 'greyvale_anomaly', jsonb_build_object('current_stage', 0))",
+        host,
+    )
+    gift = await offer(world, agent)
+    assert gift["available"] and gift["recharge"] == "per_session"
+    assert "target_id" in gift["activation_hint"]
+    assert gift["destinations"] == [{"id": MILL, "name": "Millhaven"}]
+    destination = gift["destinations"][0]["id"]
+    result = await call(world, agent, id=gift["id"], target_id=destination)
+    location = await db_content_queries.get_location(MILL)
+    assert location is not None
+    assert result["location"]["id"] == MILL
+    assert result["location"]["name"] == location["name"]
+    assert result["location"]["description"] == location["description"]
+    assert result["player"]["name"] == "Follower"
+    assert [npc["id"] for npc in result["npcs"]] == [npc["id"] for npc in await db_queries.get_npcs_at_location(MILL)]
+    assert [target["id"] for target in result["targets"]] == [
+        target["npc_id"] for target in await db_queries.get_targets_at_location(MILL)
+    ]
+    quest = await db_queries.get_player_quest(host, "greyvale_anomaly")
+    assert quest is not None and quest["current_stage"] == 1
+    assert len(result["quest_updates"]) == 1
+    assert "quieter" in result["quest_updates"][0]["narrative_beat"]
+    rows = await party_rows(world)
+    for pid in world.ids:
+        assert rows[pid]["location_id"] == MILL and rows[pid]["travel_state"] is None
+        assert await world.pool.fetchval(
+            "SELECT 1 FROM player_map_progress WHERE player_id = $1 AND location_id = $2", pid, MILL
+        )
+        assert MILL in session.player_summary_metrics[pid]["locations_visited"]
+    assert rows[host]["patron_gifts"] == {"unrelated": {"spent": True}}
+    assert rows[follower]["patron_gifts"] == {"unrelated": {"spent": True}, GIFT: {"spent": True}}
+    assert rows[follower]["resonance"] == {"current": 14, "flickering_bonus": 2}
+    assert rows[host]["resonance"]["current"] == session.member_state(host).resonance.current == 3
+    track = session.member_state(follower).resonance
+    assert (track.current, track.flickering_bonus) == (14, 2)
+    assert session.location_id == MILL and MILL in session.session_locations_visited
+    events = published_payloads(session.room)
+    (arrival,) = [event for event in events if event["type"] == E.LOCATION_CHANGED]
+    assert arrival["previous_location"] == MARKET and arrival["new_location"] == MILL
+    assert arrival["location_name"] == location["name"]
+    assert arrival["region"] == location["region"] and arrival["tags"] == location["tags"]
+    assert arrival["atmosphere"] == location["atmosphere"]
+    assert arrival["connections"] == db.extract_exit_connections(location["exits"])
+    assert "ambient_sounds" in arrival and arrival["time_of_day"] == session.world_time
+    assert [event["caster_id"] for event in events if event["type"] == E.RESONANCE_CHANGED] == [follower]
+    (patron,) = [event for event in events if event["type"] == E.PATRON_ABILITIES_UPDATED]
+    assert patron["player_id"] == follower
+    assert next(row for row in patron["abilities"] if row["id"] == GIFT)["spent"]
+    await check_mobile_arrival(arrival)
+
+
+async def check_mobile_arrival(arrival):
+    bridge = await asyncio.create_subprocess_exec(
+        "bun",
+        "test",
+        "src/__tests__/use-game-events.character.test.ts",
+        "-t",
+        "location_changed updates session and character stores",
+        cwd=Path(__file__).resolve().parents[2] / "mobile",
+        env={**os.environ, "NYTHERA_GATEWAY_EVENT": json.dumps(arrival)},
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+    )
+    try:
+        output, _ = await asyncio.wait_for(bridge.communicate(), 15)
+    except TimeoutError:
+        bridge.kill()
+        await bridge.communicate()
+        raise
+    assert bridge.returncode == 0 and "1 pass" in output.decode(), output.decode()
+
+
+@pytest.mark.parametrize(
+    ("destination", "message"),
+    [
+        (HALL, "visited"),
+        (MARKET, "current location"),
+        ("unknown_gateway_location", "Unknown"),
+        (None, "target_id"),
+    ],
+)
+async def test_gateway_refuses_invalid_destinations(world, destination, message):
+    agent = await prepare(world)
+    if destination == "unknown_gateway_location":
+        await visit(world, world.ids[1], destination)
+    before = await snapshot(world, agent)
+    with pytest.raises(ToolError, match=message):
+        await cross(world, agent, destination)
+    assert await snapshot(world, agent) == before
+    assert (await cross(world, agent))["location"]["id"] == MILL
+
+
+async def test_gateway_refuses_registered_combat_tool(world):
+    exploration = await prepare(world)
+    encounter(world)
+    combat = CombatAgent()
+    before = await snapshot(world, combat)
+    with pytest.raises(ToolError, match="during combat"):
+        await cross(world, combat)
+    assert await snapshot(world, combat) == before
+    world.ctx.userdata.combat_state = None
+    assert (await cross(world, exploration))["location"]["id"] == MILL
+
+
+async def test_gateway_respects_still_charm_on_other_member(world):
+    agent = await prepare(world)
+    await charm(world, world.ids[0])
+    before = await snapshot(world, agent)
+    with pytest.raises(ToolError, match="Host does not want to leave the Still"):
+        await cross(world, agent)
+    assert await snapshot(world, agent) == before
+    await world.pool.execute("UPDATE players SET data = data - 'flags' WHERE player_id = $1", world.ids[0])
+    assert (await cross(world, agent))["location"]["id"] == MILL
+
+
+async def test_gateway_requires_exalted_and_recharges_per_session(world):
+    agent = await prepare(world, favor=74)
+    gift = await offer(world, agent)
+    assert not gift["available"] and "destinations" not in gift
+    before = await snapshot(world, agent)
+    with pytest.raises(ToolError, match="Exalted"):
+        await cross(world, agent)
+    assert await snapshot(world, agent) == before
+    await world.pool.execute(
+        "UPDATE players SET data = jsonb_set(data, '{divine_favor,level}', '75') WHERE player_id = $1", world.ids[1]
+    )
+    assert (await offer(world, agent))["available"]
+    assert (await cross(world, agent))["location"]["id"] == MILL
+    gift = await offer(world, agent)
+    assert gift["spent"] and not gift["available"] and "destinations" not in gift
+    before = await snapshot(world, agent)
+    with pytest.raises(ToolError, match="new session"):
+        await cross(world, agent, MARKET)
+    assert await snapshot(world, agent) == before
+
+
+@pytest.mark.parametrize("destination", [WILDERNESS, HALL])
+async def test_gateway_preserves_destination_agent_context(world, destination):
+    agent = await prepare(world)
+    await visit(world, world.ids[1], destination)
+    result = await cross(world, agent, destination)
+    if destination == HALL:
+        next_agent, result = result
+        assert isinstance(next_agent, DispatchAgent)
+    else:
+        assert agent._agent_type == "wilderness"
+    assert result["location"]["id"] == destination
+    rows = await party_rows(world)
+    assert {row["location_id"] for row in rows.values()} == {destination}
+    assert rows[world.ids[1]]["patron_gifts"][GIFT]["spent"]
+
+
 SCENARIOS = {
+    GIFT: ("patron_gateway:activate_locked", gateway_scenario, [()]),
     "nythera_uncharted_senses": (
         "patron_gifts:skill_gift",
         uncharted_senses_uses_map_history,

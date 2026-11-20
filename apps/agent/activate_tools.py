@@ -33,6 +33,7 @@ import draethar_inner_fire
 import item_heal
 import mentor_variants
 import patron_ability_tools
+import patron_gateway
 import patron_gift_tools
 import reaction_gate
 import spell_casting
@@ -122,7 +123,11 @@ async def activate(
     on a long rest. A queued move is removed; ask for a new move from the new position at the next
     declaration beat. Without fight geometry, omit destination and narrate the step through shadow.
 
-    Pass target_id when the capability affects ONE other entity (a spell/ability target). A Veil
+    Beyond the Horizon uses activate(id="nythera_beyond_the_horizon", target_id=<visited location id>).
+    Choose an id from query_info(kind="patron").abilities[].destinations. Outside combat, the whole
+    party crosses together. The follower gains 5 Resonance and the gift recharges next session.
+
+    Pass target_id for a selected location or ONE entity (a spell/ability target). A Veil
     Ward is always raised or dismissed by the player speaking; omit target_id for it. Pass target_ids (a list)
     for a spell or ability that hits several allies/enemies at once — not both. Omit both for a
     self-targeted or partyless capability.
@@ -158,6 +163,10 @@ async def activate(
         return await zhael_fate.activate(context.userdata, id, offer_id, keep)
     if offer_id is not None or keep is not None:
         raise ToolError("offer_id is for a held roll; keep belongs to Fate's Thread.")
+    if id == patron_gateway.GATEWAY:
+        if target_ids is not None or condition is not None:
+            raise ToolError("Beyond the Horizon takes one location. Use target_id.")
+        return await patron_gateway.activate(context, target_id=target_id)
     return await _activate_impl(
         context,
         id,
