@@ -295,5 +295,7 @@ async def test_blade_skips_a_missed_wall(world: SimpleNamespace) -> None:
         await f.reload()
         await f.round(attack(f.hero, "wall"), faces=(1,))
         assert f.session.combat_state.encounter_facts["misses"] == {}
-        await f.hit(None, "wall")
+        packets = await f.round(attack(f.hero, "wall"), faces=(20,))
+        packet = next(p for p in packets if p["actor_id"] == f.hero)
+        assert packet["hit"] and packet.get("synergy_clause_id") is None
         assert f.session.combat_state.encounter_facts["once_spent"] == {}
