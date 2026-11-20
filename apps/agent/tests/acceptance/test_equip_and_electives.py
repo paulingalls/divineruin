@@ -132,7 +132,14 @@ def test_award_and_select_electives(harness, monkeypatch):
 def test_equip_replaces_owned_gear(harness):
     async def check():
         walk = await IncreaseWalk().setup(harness, tools=[transact, enter_mode])
-        for item in ("longsword_guild", "chain_shirt", "half_plate", "greatsword_steel", "plate_armor"):
+        for item in (
+            "dagger_balanced",
+            "longsword_guild",
+            "chain_shirt",
+            "half_plate",
+            "greatsword_steel",
+            "plate_armor",
+        ):
             await call(walk, "transact", action="exchange", item_id=item, delta=1)
             walk.events.clear()
             await call(walk, "transact", action="equip", item_id=item, delta=0)
@@ -144,12 +151,16 @@ def test_equip_replaces_owned_gear(harness):
             assert updated["inventory"] == (await db_queries.get_inventory_snapshot(walk.player))["inventory"]
             if item == "half_plate":
                 assert snapshot["character"]["ac"] == 17
+            if item == "dagger_balanced":
+                # Its "ranged" tag means it can be thrown; a melee weapon still swings in melee.
+                assert "ranged" not in snapshot["character"]["equipment"]["main_hand"]
         row = await walk.row()
         assert row["equipment"]["main_hand"]["name"] == "Steel Greatsword"
         assert row["equipment"]["main_hand"]["damage"] == "2d6"
         assert row["equipment"]["main_hand"]["damage_type"] == "slashing"
         assert row["equipment"]["armor"]["name"] == "Plate Armor"
         for item, equipped in (
+            ("dagger_balanced", False),
             ("longsword_guild", False),
             ("chain_shirt", False),
             ("half_plate", False),

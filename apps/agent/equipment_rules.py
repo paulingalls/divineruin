@@ -18,7 +18,8 @@ def loadout_entry(item_id: str, item: dict, archetype: str) -> tuple[str, dict]:
     if kind == "weapon":
         effect = next(effect for effect in item["effects"] if effect["type"] == "weapon")
         entry.update(damage=item["damage_dice"], damage_type=effect["damage_type"], properties=item["properties"])
-        if "ranged" in tags or item.get("subtype") == "ranged":
+        # The catalog tags a thrown melee weapon "ranged" too; only a weapon with no melee use attacks at range.
+        if item.get("subtype") == "ranged" or ("ranged" in tags and "melee" not in tags):
             entry["ranged"] = True
     else:
         weight = "shield"
