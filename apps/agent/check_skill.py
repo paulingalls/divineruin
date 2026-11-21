@@ -152,7 +152,7 @@ async def _finish_skill(
     if skill.lower() == "stealth":
         validate()
         concealment_packet = await concealment.transition(
-            player, result.success, ended_by=None if result.success else "failed_stealth", conn=conn
+            player_id, player, result.success, ended_by=None if result.success else "failed_stealth", conn=conn
         )
         concealment_packet["guidance"] = "Call Stealth again when a watcher might notice; failure reveals this player."
 

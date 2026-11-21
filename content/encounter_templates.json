@@ -635,6 +635,46 @@
     }
   },
   {
+    "id": "hollow_architect",
+    "name": "The Architect",
+    "description": "Stone grinds under steady, measured blows.",
+    "difficulty": "hard",
+    "recommended_party_level": 20,
+    "enemies": [
+      {
+        "id": "architect",
+        "creature_id": "hollow_architect",
+        "role": "named"
+      }
+    ],
+    "scene_placement": {
+      "party_start": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "companion_start": {
+        "x": 0,
+        "y": 5,
+        "z": 0
+      },
+      "actors": {
+        "architect": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        }
+      },
+      "locations": {},
+      "zones": {
+        "architect_corruption_aura": {
+          "center_id": "architect",
+          "radius_ft": 2640
+        }
+      }
+    }
+  },
+  {
     "id": "fragment_shadeling",
     "name": "The Fragment Shadow",
     "description": "A single smear of wrongness gathers beside the oilcloth bundle. Linen stops rustling. The room goes cold.",

@@ -557,7 +557,7 @@ Tools are `@function_tool` decorated Python functions that the LLM calls to inte
 
 #### Game State Mutation Tools
 
-**`move_player`** validates a route and changes the player's location. **`transact(item_id, delta, source)`** changes inventory with a positive delta for gains and a negative delta for losses. **`update_quest`** and **`update_npc_disposition`** change quest and relationship state under their own validation rules. Combat effects are applied by the combat resolver, not by separate status-effect verbs.
+**`move_player`** validates a route and changes the player's location. **`transact(item_id, delta, action, source)`** uses `exchange` with a positive delta for gains or a negative delta for losses. Use `equip` with zero delta to equip owned gear outside combat. The DM narrates the equip receipt. **`update_quest`** and **`update_npc_disposition`** change quest and relationship state under their own validation rules. Combat effects are applied by the combat resolver, not by separate status-effect verbs.
 
 XP and divine favor are awarded by deterministic Resolves during the triggering action. They are not DM tools.
 

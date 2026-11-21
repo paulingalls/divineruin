@@ -79,7 +79,7 @@ def test_agent_within_strict_schema_budget(name, tools):
 # `type: [x, "null"]`, i.e. exactly one union — reds here as a deliberate edit.
 EXPECTED_UNION_SPEND = {
     "exploration": 16,  # check 1, travel 2, activate 6, enter_mode 4, query_info 1, transact 1, update_quest 1
-    "combat": 10,  # declare_phase 1, check 1, activate 6, request_death_save 1, query_info 1
+    "combat": 14,  # declare_phase 4, check 1, activate 6, request_death_save 1, query_info 1, legendary 1
     "dispatch": 6,  # begin_activity 2 (spell_id adds 1), check 1, resolve_activity 1, learn 1, query_info 1
     "creation": 0,
     "onboarding": 2,  # check 1, query_info 1

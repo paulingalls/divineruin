@@ -22,7 +22,7 @@ def test_mapping_shape_refusal(bad):
 @pytest.mark.parametrize("bad", [None, [], {"center_id": "a"}, {"center_id": "a", "radius_ft": 0, "effect": "silence"}])
 def test_zone_shape_refusal(bad):
     with pytest.raises(ValueError):
-        validate_maps({"a": ZERO}, {}, {"z": bad})
+        validate_maps({"a": ZERO}, {}, {"z": bad}, zone_kinds=("silence",))
 
 
 @pytest.mark.parametrize(
@@ -54,7 +54,7 @@ def test_shipped_zone_radii_follow_catalog_owner():
 
     templates = json.loads((CONTENT_ROOT / "content/encounter_templates.json").read_text())
     creatures = {row["id"]: row for row in json.loads((CONTENT_ROOT / "content/creatures.json").read_text())}
-    assert len(templates) == 18
+    assert len(templates) == 19
     for template in templates:
         expected = {}
         for ref in template["enemies"]:
@@ -65,3 +65,32 @@ def test_shipped_zone_radii_follow_catalog_owner():
                     "radius_ft": hollow["corruption_aura"],
                 }
         assert template["scene_placement"]["zones"] == expected
+
+
+def test_record_accepts_optional_wall_segments():
+    spatial = {"positions": {"wall": ZERO}, "locations": {}, "zones": {}, "speeds": {"wall": 0}}
+    assert validate_spatial(spatial, ["wall"]) == spatial
+    spatial["structures"] = {}
+    assert validate_spatial(spatial, ["wall"]) == spatial
+    spatial["structures"]["wall"] = {"start": ZERO, "end": {**ZERO, "x": 10}}
+    assert validate_spatial(spatial, ["wall"]) == spatial
+
+
+@pytest.mark.parametrize(
+    ("structures", "error"),
+    [
+        (None, "nonempty IDs"),
+        ({" ": {"start": ZERO, "end": {**ZERO, "x": 10}}}, "nonempty IDs"),
+        ({"wall": {"start": ZERO}}, "requires start and end"),
+        ({"wall": {"start": ZERO, "end": ZERO, "height": 10}}, "requires start and end"),
+        ({"wall": {"start": {"x": 0}, "end": ZERO}}, "point requires"),
+        ({"wall": {"start": ZERO, "end": {**ZERO, "extra": 1}}}, "point requires"),
+        ({"wall": {"start": ZERO, "end": {**ZERO, "x": True}}}, "finite number"),
+        ({"wall": {"start": ZERO, "end": {**ZERO, "x": float("inf")}}}, "finite number"),
+        ({"wall": {"start": ZERO, "end": {**ZERO, "z": 10}}}, "horizontal extent"),
+    ],
+)
+def test_record_rejects_malformed_wall_segments(structures, error):
+    spatial = {"positions": {"wall": ZERO}, "locations": {}, "zones": {}, "speeds": {"wall": 0}}
+    with pytest.raises(ValueError, match=error):
+        validate_spatial({**spatial, "structures": structures}, ["wall"])

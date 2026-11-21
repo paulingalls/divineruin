@@ -15,6 +15,7 @@ from combat_damage import apply_attack_result
 from combat_damage_results import AutomaticDamageResult
 from combat_enemy_action import _save_fields
 from combat_fate_rolls import packet_save
+from combat_legendary_resistance import finalize_save
 from still_encounter import in_zone, zone_radius
 
 
@@ -134,11 +135,14 @@ async def resolve_zone(
         )
         if save is None:
             return {}
+        duration = execution["duration"]
+        if trigger is None:
+            failed_conditions = ("stunned", "charmed") if duration else ("charmed",)
+            save = finalize_save(state, target, save, failed_conditions=failed_conditions)
         result = {"target_id": target_id, **_save_fields(save)}
         if trigger is not None and not save.success:
             result["destination"] = zone_edge(state, actor, target_id)
         else:
-            duration = execution["duration"]
             if trigger is None and save.success:
                 duration //= 2
             await _stun(session, state, actor, target, duration, result, conn, concentration)
@@ -220,6 +224,7 @@ async def resolve_touch(
         )
         if save is None:
             return {}
+        save = finalize_save(state, target, save, failed_conditions=("charmed",))
         summary.update(_save_fields(save))
         if not save.success:
             summary["charmed"] = await _charm(

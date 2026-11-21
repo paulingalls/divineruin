@@ -10,16 +10,17 @@ from livekit.agents.voice import RunContext
 
 import abilities
 import ability_persistence
+import architect_encounter
 import attribute_increases
 import character_spells
 import choir_encounter
-import combat_ability
 import combat_spatial
 import crafting_tools
 import creature_catalog
 import db_activity_queries
 import db_content_queries
 import db_queries
+import elective_choices
 import lost_scout_scene
 import query_patron
 import recipe_tools
@@ -27,6 +28,7 @@ import spell_knowledge
 import spells
 import still_encounter
 import training_tools
+from combat_ability_gate import attack_recipe, combat_ability
 from db_errors import db_tool
 from session_data import SessionData
 from settlement_generation import generate_settlement_npcs, generate_settlement_roster
@@ -88,7 +90,7 @@ async def query_info(
       studiable_spell_ids (no target_id needed).
     - kind="workspaces", target_id=<npc id>: available workspaces and this player's daily
       rental price from that NPC; omit target_id for per-disposition daily prices.
-    - kind="abilities": saved attribute increase choices for select until next long rest,
+    - kind="abilities": pending elective choices, attribute choices until next long rest,
       the current player's owned ability ids, castable spells, reaction windows,
       and active learned variant ids (no target_id needed).
     - kind="patron": the current player's patron standing, progress, authored favor action ids,
@@ -116,6 +118,8 @@ async def _query_info_impl(
         try:
             state = context.userdata.combat_state
             facts = combat_spatial.facts(state, target_id or context.userdata.acting_player_id)
+            if state is not None and state.architect_encounter is not None:
+                facts["architect"] = architect_encounter.facts(state)
             if state is not None and state.still_encounter is not None:
                 facts["still"] = still_encounter.facts(state)
             if state is not None and state.choir_encounter is not None:
@@ -200,11 +204,14 @@ async def _query_abilities_impl(
         row = {"id": ability.id, "name": ability.name, "ability_type": ability.ability_type}
         if ability.spell_id is not None:
             row["spell_id"] = ability.spell_id
-        elif ability.ability_type != "reaction" and combat_ability.condition_ability((ability, None)) is None:
+        elif recipe := attack_recipe(ability.id):
+            row["declaration"] = recipe
+        elif ability.ability_type != "reaction" and not combat_ability(ability):
             row["combat"] = False
         if ability.ability_type == "reaction":
             row["window"] = ability.window
         if ability.ability_type == "elective":
+            row["combat"] = combat_ability(ability)
             active_variant_id = await persistence.get_active_variant(player_id, ability.id)
             if active_variant_id is not None:
                 row["active_variant_id"] = active_variant_id
@@ -223,6 +230,9 @@ async def _query_abilities_impl(
             "abilities": results,
             "spells": spell_rows,
             "attribute_increases": attribute_increases.offers(player_id, player),
+            "elective_choices": elective_choices.offers(
+                player_id, elective_choices.pools(catalog, player["level"]), known_ids
+            ),
         }
     )
 

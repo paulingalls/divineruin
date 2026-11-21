@@ -41,7 +41,8 @@ def action_summary(actor):
                 "name": a["name"],
                 "kind": action_kind(a),
                 "declaration_type": "ability"
-                if action_kind(a) in ("healing", "prepare_attack", "charm", "silence", *STILL_ZONE_KINDS)
+                if action_kind(a)
+                in ("healing", "prepare_attack", "summon_constructs", "charm", "silence", *STILL_ZONE_KINDS)
                 else "attack",
             }
             | {

@@ -2,6 +2,8 @@
 
 import combat_spatial as spatial
 from combat_spell_profile import scaled
+from combat_structures import blocked_reason, blocking_wall, chamber_line_blocker, require_line
+from condition_sources import DeliveryRefused
 from still_encounter import protected_ids
 
 
@@ -25,6 +27,8 @@ def select(state, caster, declaration, spell, *, require_live=False):
         assignments = ids * count if len(ids) == 1 else ids
         if len(assignments) != count:
             raise ValueError(f"{spell.name} requires exactly {count} dart assignments or one recipient")
+        for target_id in dict.fromkeys(assignments):
+            require_line(state, caster.id, target_id)
         return [
             {
                 "target_id": target_id,
@@ -33,9 +37,27 @@ def select(state, caster, declaration, spell, *, require_live=False):
             for target_id in dict.fromkeys(assignments)
         ]
     placement = spatial.require_spatial(state)
+    for anchor_id in ids:
+        if chamber := chamber_line_blocker(state, placement, caster.id, anchor_id):
+            raise DeliveryRefused(blocked_reason(chamber))
 
     def pos(target_id):
         return spatial.position(placement, target_id)
+
+    def clear(origin_id, target_id):
+        return (
+            chamber_line_blocker(state, placement, caster.id, target_id) is None
+            and blocking_wall(
+                state,
+                placement,
+                pos(origin_id),
+                pos(target_id),
+                target_id=target_id,
+                origin_id=origin_id,
+                effect_origin=True,
+            )
+            is None
+        )
 
     if shape == "chain":
         if len(ids) > spec["cap"] or len(ids) != len(set(ids)):
@@ -43,16 +65,22 @@ def select(state, caster, declaration, spell, *, require_live=False):
         primary = ids[0]
         if not any(p.id == primary for p in live):
             return []
+        require_line(state, caster.id, primary)
         if len(ids) == 1:
             candidates = sorted(
                 (p for p in live if p.id != primary and p.is_ally != caster.is_ally),
                 key=lambda p: (spatial.distance(pos(primary), pos(p.id)), p.id),
             )
-            ids += [p.id for p in candidates if spatial.inside(pos(primary), pos(p.id), spec["range_ft"])][
-                : spec["cap"] - 1
-            ]
-        if any(not spatial.inside(pos(primary), pos(target_id), spec["range_ft"]) for target_id in ids[1:]):
-            raise ValueError("Chain secondary is outside the authored arc range")
+            ids += [
+                p.id
+                for p in candidates
+                if spatial.inside(pos(primary), pos(p.id), spec["range_ft"]) and clear(primary, p.id)
+            ][: spec["cap"] - 1]
+        else:
+            for target_id in ids[1:]:
+                if not spatial.inside(pos(primary), pos(target_id), spec["range_ft"]):
+                    raise ValueError("Chain secondary is outside the authored arc range")
+                require_line(state, primary, target_id)
         return [{"target_id": target_id, "secondary": i > 0} for i, target_id in enumerate(ids)]
     if len(ids) > spec.get("placements", 1):
         raise ValueError("Too many participant anchors for this area")
@@ -63,17 +91,22 @@ def select(state, caster, declaration, spell, *, require_live=False):
         if profile.get("restriction") == "undead_hollow" and not (target.hollow or target.category == "undead"):
             continue
         if shape == "caster_radius":
-            covered = spatial.inside(origin, point, spec["radius_ft"])
+            covered = spatial.inside(origin, point, spec["radius_ft"]) and clear(caster.id, target.id)
         elif shape == "line":
-            covered = spatial.in_line(origin, pos(ids[0]), point, spec["length_ft"], spec["width_ft"])
+            covered = spatial.in_line(origin, pos(ids[0]), point, spec["length_ft"], spec["width_ft"]) and clear(
+                caster.id, target.id
+            )
         elif shape == "cylinder":
             covered = any(
                 spatial.inside({**point, "z": pos(anchor)["z"]}, pos(anchor), spec["radius_ft"])
                 and pos(anchor)["z"] <= point["z"] <= pos(anchor)["z"] + spec["height_ft"]
+                and clear(anchor, target.id)
                 for anchor in ids
             )
         else:
-            covered = any(spatial.inside(pos(anchor), point, spec["radius_ft"]) for anchor in ids)
+            covered = any(
+                spatial.inside(pos(anchor), point, spec["radius_ft"]) and clear(anchor, target.id) for anchor in ids
+            )
         if covered:
             selected.append({"target_id": target.id})
     return sorted(selected, key=lambda delivery: (delivery["target_id"] != (ids[0] if ids else None),))

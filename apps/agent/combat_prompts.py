@@ -17,8 +17,9 @@ every combatant's id and, in Combatants[].actions, the exact names of its action
 one declaration per acting combatant — each names its actor_id and its kind. Supported declarations: \
 attack — action is the EXACT name of one of the actor's Combatants[].actions (a player's are their \
 equipped weapons, for example "Longsword"), because that is what resolve_phase matches against, and \
-target_id is who they strike. Send rider as an empty string unless the actor has Cunning Action, which \
-spends it on "dash", "disengage" or "hide". \
+target_id is who they strike. A warrior using Shield Bash sets rider="shield_bash" on a melee Attack. \
+Use an empty rider for ordinary attacks. Rogues can use rider="dash" to double approach movement \
+or rider="hide" to attempt Stealth after the attack. Narrate Hide from cunning_action.concealed. \
 An action in Combatants[].mark_actions with kind `command` still uses its exact action name, but \
 target_id is the foe the commander's band will focus, not someone the commander strikes. \
 An action with kind `accusation` follows the same mark-action flow, but target_id is the accused \
@@ -28,12 +29,14 @@ its target_id upfront; use one declaration for the actor. Each strike has its ow
 ability — action is the EXACT id of a spell or ability the caster knows (for example \
 "arcane_bolt"). Name in targets whoever it is aimed at — a fallen ally's id for a \
 revival, several allies for a spell that blesses a group; leave targets empty for a \
-self-cast. Areas center on named participants; lines and cones aim from the source toward one. \
+self-cast. Second Wind uses empty targets. Rallying Shout names one standing ally. \
+Devastating Strike names one foe and uses the main-hand melee weapon. \
+Areas center on named participants; lines and cones aim from the source toward one. \
 Meteor Swarm accepts up to four centers. Chain Lightning names its primary then optional arcs; \
 without explicit arcs the engine chooses nearest enemies. Repeat Magic Missile target ids in dart order, \
 or name one recipient for all darts. Send argument_type as an empty string except for Elemental Burst \
-(fire, cold, or lightning) and de_escalate (below). This is how a caster acts IN COMBAT: resolve_phase \
-deducts the Focus and generates the Resonance in initiative order, the same pipeline as an attack. \
+(fire, cold, or lightning) and de_escalate (below). resolve_phase handles ability costs, \
+weapon damage, and any Focus and Resonance for spells. \
 defend — the actor makes no attack and gains +2 AC until the next \
 phase (use it when the player guards, takes cover, or braces). \
 maneuver — target_id names who is moved. A prone combatant stands by declaring maneuver on itself, \
@@ -167,7 +170,7 @@ the shove defence.
 next.verbs names the verb that ADVANCES the beat from where the machine stands — that is the one \
 to reach for when you are ready to move on. It is NOT a whitelist of everything you may call: the \
 situational tools stay open beside it, so still call request_death_save when death_saves_due names \
-someone, consume_legendary_action when legendary_available lists a Boss, and check or query_info \
+someone, consume_legendary_action when legendary_available lists an actor, and check or query_info \
 whenever the scene needs them.
 
 Match the cadence to each combatant's encounter role. A Minion is a throwaway — \
@@ -183,10 +186,17 @@ Beat 4 — Wrap. If resolve_phase reports death saves due, call request_death_sa
 that member's turn — pass their player_id when more than one ally is down, since each \
 carries their own successes and failures. Death saves are always dramatic — pause and \
 narrate each one with maximum weight, every roll a held breath. Resonance decay and status ticks happen in \
-the wrap automatically. When resolve_phase reports legendary_available, a Boss has a \
-legendary action this round: give it an extra, decisive beat outside its initiative turn \
-— narrate the move, then call consume_legendary_action with the Boss's id to spend it (one \
-per round). Then the next declaration beat begins.
+the wrap automatically.
+
+Spend legendary points at declaration or after the ally pass. The Architect's combat facts give its \
+remaining points, exact action ids, costs, and live wall endpoints. To execute an authored action, \
+call consume_legendary_action with the listed actor as boss_id and its action_id. For Geometry Strike, \
+give a target_id and reshape: []. For Shift Wall, give an empty target and one move_wall operation \
+that translates both ends by up to 30 feet. For legendary Reshape, give an empty target and one \
+section operation. It spends two legendary points and leaves the free Reshape allowance alone. \
+Narrate the returned outcome and follow its reaction or Fate prompts before resuming the phase. \
+A legacy Boss can spend its single point with action_id: "", target_id: "", and reshape: [] \
+to take the extra narrated beat.
 
 When an effect outside the attack flow forces the player to resist — a spell, a \
 blast, a toppling pillar — call check with kind="save", the save type, DC, and the \

@@ -12,6 +12,7 @@ from livekit.agents.llm import ToolError
 
 import abilities
 import ability_persistence
+import architect_reaction
 import combat_ability_save
 import combat_enhancers
 import combat_hollow_resonance
@@ -25,7 +26,9 @@ import spell_casting
 from combat_ability_gate import DeclaredAbility
 from combat_condition_landing import _land_condition_on_one
 from combat_down import damage_target_unavailable
+from combat_structures import blocked_reason, line_blocker
 from condition_produce import resolve_effective_targets
+from condition_sources import DeliveryRefused
 from mentor_variants import MentorVariant
 from patron_synergy_heal import for_cast
 from resource_costs import gate_pool
@@ -183,6 +186,8 @@ async def _resolve_ability_condition_packet(
 
     steps = progress.steps if progress is not None else {}
     if not steps.get("cost_paid"):
+        if wall := line_blocker(state, attacker.id, target.id):
+            return {"actor_id": attacker.id, "resolved": False, "reason": blocked_reason(wall)}
         await _deduct_ability_cost(attacker.id, ability, variant, persistence=persistence, queries=queries, conn=conn)
         steps["cost_paid"] = True
 
@@ -285,14 +290,7 @@ async def _resolve_ability_packet(
     damage_deps=None,
     progress=None,
 ) -> dict:
-    """Resolve one in-combat ABILITY declaration through the shared cast logic (story-007).
-
-    Player-gated: only the player carries a Focus pool + resonance track, so a non-player ABILITY
-    (or one missing its action) is a *wasted* packet — enemy/companion casting is later M4.x work.
-    Delegates to ``cast_resolver._resolve_cast`` with the cast's own RESONANCE_CHANGED suppressed
-    (in combat the phase WRAP push is the single authoritative HUD update), stashing the returned
-    CastResult on ``cast_outcome`` for the loop to commit. The returned summary carries the spell
-    packet for the DM plus any narrated enhancer riders."""
+    """Cast once, then land spell damage and conditions on effective recipients."""
     if attacker.type != "player":
         return {
             "actor_id": attacker.id,
@@ -323,12 +321,22 @@ async def _resolve_ability_packet(
     steps = progress.steps if progress is not None else {}
     shield = progress.scope("shield") if progress is not None else None
     deliveries = None
-    if spell.combat_damage and spell.combat_damage.get("recipients"):
+    recipient_profile = spell.combat_damage and spell.combat_damage.get("recipients")
+    if (
+        not recipient_profile
+        and "cast_packet" not in steps
+        and (wall := line_blocker(state, attacker.id, decl.target_id))
+    ):
+        return {"actor_id": attacker.id, "resolved": False, "reason": blocked_reason(wall)}
+    if recipient_profile:
         # Area recipients are frozen once, then each distinct recipient may redirect the spell (the
         # Choir's shield). A Zhael-held redirect save resumes here without re-selecting or re-rolling.
         selected = steps.get("selected")
         if selected is None:
-            selected = select(state, attacker, decl, spell)
+            try:
+                selected = select(state, attacker, decl, spell)
+            except DeliveryRefused as e:
+                return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}
             if progress is not None:
                 steps["selected"] = selected
         redirects = steps.setdefault("redirects", {})
@@ -350,6 +358,9 @@ async def _resolve_ability_packet(
         decl = await effective_declaration(session, state, attacker, decl, progress=shield)
         if decl is None:
             return {}
+    landing_intent, deliveries, interception = architect_reaction.spell_targets(
+        state, attacker, decl, spell, deliveries, steps
+    )
     cast_packet = steps.get("cast_packet")
     if cast_packet is None:
         heal = spell.heal
@@ -373,15 +384,7 @@ async def _resolve_ability_packet(
         cast_outcome.results[attacker.id] = result
         if result.new_resonance is not None:
             combat_hollow_resonance.stage_total(state, attacker.id, result.new_resonance)
-        # Sync concentration into the CASTER's SSOT IN-LOOP (not post-commit): a lower-initiative enemy
-        # attack later this same phase runs break_concentration_on_damage, which reads the in-memory
-        # concentration to pick which spell to save for and to clear on a failed save. A post-commit sync
-        # would leave it stale — the break would save against the OLD spell and, on a break, write None to
-        # the DB (clearing the just-cast spell) while the post-commit sync forced memory back to the new
-        # spell, diverging from the DB (story-007). _CombatScratchSnapshot captures concentration, so this
-        # in-tx mutation is reverted if the phase rolls back. break_concentration_on_damage now reads the
-        # DAMAGED member's own concentration (via damaged_player_id, M18 story-004), so a non-primary
-        # caster's break resolves against their own pool — matching this per-member SYNC.
+        # Later damage in this transaction must check the spell the caster just started concentrating on.
         if result.concentration_spell_id is not spell_casting._UNCHANGED:
             caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
         cast_packet = result.packet
@@ -414,7 +417,15 @@ async def _resolve_ability_packet(
                 else None
             )
         else:
-            landing = combat_veilrender.absorb_spell(state, attacker, decl, cast_packet)
+            landing = (
+                combat_veilrender.absorb_spell(state, attacker, landing_intent, cast_packet)
+                if landing_intent is not None
+                else None
+            )
+        if interception is not None and landing is None:
+            cast_packet["narration_cue"] = cast_packet["effect"] = interception["cue"]
+            cast_packet.pop("damage_dice", None)
+            cast_packet.pop("condition_applied", None)
         steps["cast_packet"] = cast_packet
         steps["landing"] = (
             None if landing is None else {"target_id": landing.target_id, "target_ids": landing.target_ids}
@@ -436,7 +447,11 @@ async def _resolve_ability_packet(
             **(damage_deps or {}),
         )
         if progress is not None and progress.paused:
-            return {}
+            return (
+                {"actor_id": attacker.id, "resolved": False, "reactive_architecture": interception}
+                if interception is not None
+                else {}
+            )
     # Beneficial-condition PRODUCER (M4.8 story-004), in-combat half: land the produced condition on the
     # recipients that remain after Absorb Magic. The mutation rides this phase's save_combat_state.
     cond_type = cast_packet.get("condition_applied")
@@ -455,6 +470,8 @@ async def _resolve_ability_packet(
         "action": decl.action,
         "cast": cast_packet,
     }
+    if interception is not None:
+        summary["reactive_architecture"] = interception
     return _attach_riders(summary, attacker, decl)
 
 
@@ -470,12 +487,6 @@ def _find_action(participant, action_name) -> dict | None:
 
 
 def _attach_riders(summary: dict, attacker, decl) -> dict:
-    """Add the actor's narrated enhancer riders to a packet summary, if any.
-
-    Riders are descriptive (non-mechanical) — they carry no HP/AC effect, just the DM
-    cue for an enhancer's expansion (Cunning Action's dash/disengage/hide, Hit and Run,
-    Command Lesser, Quick Change). Omitted entirely when the actor has none, so a
-    no-enhancer declaration keeps its flat summary (AC3: no phantom expansion)."""
     riders = combat_enhancers.declaration_riders(attacker.enhancers, decl)
     if riders:
         summary["riders"] = riders

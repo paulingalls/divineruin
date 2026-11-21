@@ -4,6 +4,7 @@ import {
   type Recharge,
   type DurabilityRider,
   type ChoirEffect,
+  type SummonConstructs,
 } from "./action_contracts";
 
 import { STILL_ACTION_KINDS, type StillEffect } from "./action_contracts_still";
@@ -21,6 +22,7 @@ export const ENCOUNTER_ACTION_KIND_VALUES = [
   "accusation",
   "healing",
   "prepare_attack",
+  "summon_constructs",
   "charm",
   "silence",
   "spell_redirect",
@@ -141,7 +143,7 @@ export type EncounterAction =
   | EncounterAccusationAction
   | EncounterHealingAction
   | EncounterPrepareAttackAction
-  | (EncounterActionBase & (ChoirEffect | StillEffect));
+  | (EncounterActionBase & (ChoirEffect | StillEffect | SummonConstructs));
 
 export function encounterActionKind(action: {
   name?: unknown;
@@ -292,7 +294,7 @@ export function validateEncounterEnemyTier(
   }
 }
 
-const NAMED_INTEGRATIONS = new Set(["hollow_choir", "hollow_still"]);
+const NAMED_INTEGRATIONS = new Set(["hollow_choir", "hollow_still", "hollow_architect"]);
 
 export function validateEncounterReferences(
   encounter: unknown,

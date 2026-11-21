@@ -5,6 +5,7 @@ from functools import partial
 
 import check_resolution_attack
 import check_resolution_save
+import combat_damage_affinity
 import concentration_break
 import conditions
 import db_mutations
@@ -14,6 +15,7 @@ import spells
 from combat_attack_roll import attack_roll_inputs
 from combat_damage_results import AutomaticDamageResult, SaveDamageResult
 from combat_fate_rolls import packet_save
+from combat_legendary_resistance import finalize_save, override_fields
 from combat_spell_profile import DICE, scaled
 from combat_support import _resolve_attack_packet, apply_attack_result, apply_rolled_attack
 from patron_synergy_combat import attack_player
@@ -137,7 +139,7 @@ async def _land_one(
             roll, save_info = None, progress.steps.get("save_info")
         else:
             rolled = await _roll_save_damage(
-                session, profile, spell, caster, target, cast_packet, components, action, delivery, progress
+                session, state, profile, spell, caster, target, cast_packet, components, action, delivery, progress
             )
             if rolled is None:
                 return
@@ -178,7 +180,7 @@ async def _land_one(
 
 
 async def _roll_save_damage(
-    session, profile, spell, caster, target, cast_packet, components, action, delivery, progress
+    session, state, profile, spell, caster, target, cast_packet, components, action, delivery, progress
 ):
     """Roll the recipient's save, then the damage. Returns ``(roll, save_info)``, or None while a
     Fate's Thread choice holds the save (anyone's d20 is in scope)."""
@@ -205,6 +207,7 @@ async def _roll_save_damage(
                 dc,
                 spell.name,
                 originating_participant_id=caster.id,
+                combat_state=state,
             ),
         )
         if save is None:
@@ -232,8 +235,6 @@ async def _roll_save_damage(
         if i == 0 and component["dice"] != "0" and profile.get("damage_attribute"):
             total += attribute_modifier(caster.attributes.get(profile["attribute"], 10))
         total = max(0, total)
-        if save and save.success:
-            total = total // 2 if profile["half"] else 0
         # Harmonic Shield can redirect an eligible delivery onto a living caster.
         if profile.get("restriction") == "undead_hollow" and not (target.hollow or target.category == "undead"):
             total = 0
@@ -251,6 +252,18 @@ async def _roll_save_damage(
         save.dramatic,
         save.context,
     )
+    if not save.success:
+        _, adjusted = combat_damage_affinity.apply(target, action, roll, state=state)
+        save = finalize_save(state, target, save, failed_damage=adjusted.damage)
+    if save.success:
+        rolled = [{**component, "damage": component["damage"] // 2 if profile["half"] else 0} for component in rolled]
+        action["damage_components"] = rolled
+        roll = replace(
+            roll,
+            save_success=True,
+            damage=sum(component["damage"] for component in rolled),
+            narrative_hint=save.narrative_hint,
+        )
     save_info = {
         "attribute": save.save_type,
         "roll": save.roll,
@@ -258,6 +271,7 @@ async def _roll_save_damage(
         "dc": dc,
         "success": save.success,
         "half_on_success": profile["half"],
+        **override_fields(save),
     }
     return roll, save_info
 

@@ -1,6 +1,226 @@
 {
   "valid": [
     {
+      "name": "legendary_actions",
+      "block": {
+        "terrains": [
+          "ancient_forest",
+          "forest",
+          "grassland",
+          "mountain",
+          "coast",
+          "wetland",
+          "underground",
+          "farmland",
+          "village",
+          "city"
+        ],
+        "id": "hollow_architect",
+        "name": "The Architect",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A builder of impossible structures that weaponizes its domain.",
+        "level": 20,
+        "hp": 300,
+        "ac": 19,
+        "speed": 40,
+        "attributes": {
+          "STR": 20,
+          "DEX": 14,
+          "CON": 20,
+          "INT": 22,
+          "WIS": 18,
+          "CHA": 16
+        },
+        "save_proficiencies": [
+          "INT",
+          "CON",
+          "WIS",
+          "CHA"
+        ],
+        "attacks": [
+          {
+            "name": "Construct Slam",
+            "type": "melee",
+            "reach": 15,
+            "to_hit": 11,
+            "damage": "3d10+5",
+            "damage_type": "bludgeoning",
+            "bonus_damage": {
+              "dice": "2d6",
+              "damage_type": "force"
+            },
+            "special": "Plus 2d6 force. Push target 15 ft; collision with a wall deals 2d6 bludgeoning.",
+            "audio": "hlw_construct_slam"
+          },
+          {
+            "name": "Geometry Strike",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 10,
+            "damage": "2d8+6",
+            "damage_type": "force",
+            "special": "A structural fragment hurls itself. Auto-hit against targets touching the Architect's structures. Legendary action, cost 2 of 3/round.",
+            "audio": "hlw_geometry_strike"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Architect's Domain",
+            "description": "Movement by other creatures costs twice as much inside the fixed 0.5 mile construction zone.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Incorporeal Movement",
+            "description": "Moves through its own walls. Other structures still block it.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Legendary Resistance",
+            "description": "3/day: turn a failed save into a success.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Alien Intelligence",
+            "description": "INT 22; plans, adapts, anticipates, and avoids repeating failed strategies.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Reshape",
+            "description": "Before its declared action, create, move or destroy a wall, open a floor, or lower a ceiling. Each section measures up to 20 ft × 20 ft within 120 ft. Use once per round, or twice below half HP. A floor opening calls for a DC 15 Dexterity save. Failure deals 2d6 bludgeoning and leaves the creature prone in a pit. Its next move is spent climbing out. Low ceilings slow movement and block flight. Legendary Reshape costs 2 of 3/round.",
+            "narration_cue": "",
+            "recharge": "1/round",
+            "audio": null
+          },
+          {
+            "name": "Entomb",
+            "description": "Recharge 5-6. One creature within 60 ft STR save DC 20 or Restrained in a sealed chamber, taking 3d8 bludgeoning per round. Escape STR DC 20 or 30+ damage to one AC 19, 30 HP wall.",
+            "narration_cue": "",
+            "kind": "attack",
+            "type": "ranged",
+            "reach": 60,
+            "damage": "0",
+            "damage_type": "none",
+            "save": "STR",
+            "dc": 20,
+            "applies_condition": "restrained",
+            "recharge": { "kind": "roll", "die": 6, "threshold": 5 },
+            "audio": null
+          },
+          {
+            "name": "Cathedral",
+            "description": "1/encounter. Create a 60 ft radius cathedral; DEX save DC 20 or 4d10 force. Architect gains +2 AC and saves until it leaves or dies.",
+            "narration_cue": "",
+            "recharge": "1/encounter",
+            "audio": null
+          },
+          {
+            "name": "Summon Constructs",
+            "description": "1/encounter. Animate 2d4 minions for 1 minute: HP 20, AC 16, speed 30 ft, slam +8 for 1d8+5 bludgeoning.",
+            "narration_cue": "",
+            "recharge": "1/encounter",
+            "audio": null
+          },
+          {
+            "name": "Shift Wall",
+            "description": "Legendary action, cost 1 of 3/round: move wall up to 30 ft.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "reactions": [
+          {
+            "name": "Reactive Architecture",
+            "description": "On ranged attack or spell, raise a wall (AC 19, 30 HP) as reaction; wall takes hit.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 2640,
+          "resonance_on_death": 8,
+          "veil_effect": "Construction sounds arise from no tool or worker: patient scraping and rhythmic percussion.",
+          "vulnerable_to": [
+            "radiant",
+            "divine",
+            "siege_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "Builds constantly; when threatened uses every surface as a weapon. Below half HP Reshape rises to 2/round.",
+          "morale": "fights_until_destroyed",
+          "group_size": "solitary_with_constructs",
+          "environment": [
+            "Voidmaw edge",
+            "deep Ashmark"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A scrape of stone rises as new bridges connect nothing; no worker is near.",
+          "attack_cue": "A grind of stone announces a wall moving deliberately toward you.",
+          "wounded_cue": "A crack splits a tower; construction sounds turn urgent.",
+          "death_cue": "A groan passes through every structure as it collapses; the final building sound fades.",
+          "ambient_cue": "A scrape of stone and rhythmic building sounds arise from empty air."
+        },
+        "audio": {
+          "ambient": "HLW-008 slow pulse, stone grinding, force impacts, collapsing structures",
+          "attack": "HLW-008 slow pulse, stone grinding, force impacts, collapsing structures",
+          "hit": "HLW-008 slow pulse, stone grinding, force impacts, collapsing structures",
+          "death": "HLW-008 slow pulse, stone grinding, force impacts, collapsing structures",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_architect",
+        "xp_reward": 5000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ],
+        "damage_affinities": {
+          "resistant": [],
+          "immune": [
+            "poison"
+          ],
+          "vulnerable": [
+            "radiant"
+          ]
+        },
+        "legendary": {
+          "points": 3,
+          "actions": [
+            {
+              "id": "Geometry Strike",
+              "kind": "attack",
+              "cost": 2
+            },
+            {
+              "id": "Shift Wall",
+              "kind": "shift_wall",
+              "cost": 1
+            },
+            {
+              "id": "Reshape",
+              "kind": "reshape",
+              "cost": 2
+            }
+          ]
+        }
+      }
+    },
+    {
       "name": "still_catalog",
       "block": {
         "terrains": [
@@ -3993,9 +4213,1028 @@
           "plant"
         ]
       }
+    },
+    {
+      "name": "active_summon_constructs",
+      "block": {
+        "terrains": [
+          "forest"
+        ],
+        "id": "schema_construct",
+        "name": "Construct",
+        "category": "construct",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {
+          "STR": 12,
+          "DEX": 14,
+          "CON": 12,
+          "INT": 10,
+          "WIS": 10,
+          "CHA": 10
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Short Sword",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 4,
+            "damage": "1d6+2",
+            "damage_type": "slashing",
+            "special": null,
+            "audio": "bandit_sword"
+          },
+          {
+            "name": "Light Crossbow",
+            "type": "ranged",
+            "reach": 80,
+            "to_hit": 4,
+            "damage": "1d8+2",
+            "damage_type": "piercing",
+            "special": null,
+            "audio": "bandit_crossbow"
+          }
+        ],
+        "multiattack": null,
+        "passives": [],
+        "actives": [
+          {
+            "name": "Summon Constructs",
+            "description": "1/encounter. Animate 2d4 minions for 1 minute: HP 20, AC 16, speed 30 ft, slam +8 for 1d8+5 bludgeoning.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "summon_constructs",
+            "summon": {
+              "count_dice": "2d4",
+              "lifetime_rounds": 10,
+              "placement_radius_ft": 10,
+              "construct": {
+                "hp": 20,
+                "ac": 16,
+                "speed": 30,
+                "slam": {
+                  "name": "Slam",
+                  "type": "melee",
+                  "reach": 5,
+                  "to_hit": 8,
+                  "damage": "1d8+5",
+                  "damage_type": "bludgeoning",
+                  "special": null,
+                  "audio": ""
+                }
+              }
+            }
+          }
+        ],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {
+          "tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.",
+          "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.",
+          "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)",
+          "environment": [
+            "Roads between settlements",
+            "forest ambush points",
+            "ruins"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A bandit steps from cover.",
+          "attack_cue": "The bandit strikes from cover.",
+          "wounded_cue": "The bandit staggers.",
+          "death_cue": "The bandit falls.",
+          "ambient_cue": "Voices carry from beside the road."
+        },
+        "audio": {
+          "ambient": "bandit_ambient",
+          "attack": "bandit_attack",
+          "hit": "bandit_hit",
+          "death": "bandit_death",
+          "special": {}
+        },
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": [
+          "greyvale"
+        ]
+      }
     }
   ],
   "invalid": [
+    {
+      "name": "legendary_duplicate_id",
+      "block": {
+        "terrains": [
+          "forest"
+        ],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {
+          "STR": 12,
+          "DEX": 14,
+          "CON": 12,
+          "INT": 10,
+          "WIS": 10,
+          "CHA": 10
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Short Sword",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 4,
+            "damage": "1d6+2",
+            "damage_type": "slashing",
+            "special": null,
+            "audio": "bandit_sword"
+          },
+          {
+            "name": "Light Crossbow",
+            "type": "ranged",
+            "reach": 80,
+            "to_hit": 4,
+            "damage": "1d8+2",
+            "damage_type": "piercing",
+            "special": null,
+            "audio": "bandit_crossbow"
+          }
+        ],
+        "multiattack": null,
+        "passives": [],
+        "actives": [
+          {
+            "name": "Dirty Fighting",
+            "description": "Throw dirt/sand: target Blinded 1 round (DEX save DC 12).",
+            "narration_cue": "Throws dirt into your eyes.",
+            "recharge": "1/encounter",
+            "audio": null
+          }
+        ],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {
+          "tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.",
+          "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.",
+          "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)",
+          "environment": [
+            "Roads between settlements",
+            "forest ambush points",
+            "ruins"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A bandit steps from cover.",
+          "attack_cue": "The bandit strikes from cover.",
+          "wounded_cue": "The bandit staggers.",
+          "death_cue": "The bandit falls.",
+          "ambient_cue": "Voices carry from beside the road."
+        },
+        "audio": {
+          "ambient": "bandit_ambient",
+          "attack": "bandit_attack",
+          "hit": "bandit_hit",
+          "death": "bandit_death",
+          "special": {}
+        },
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": [
+          "greyvale"
+        ],
+        "legendary": {
+          "points": 2,
+          "actions": [
+            {
+              "id": "Short Sword",
+              "kind": "attack",
+              "cost": 1
+            },
+            {
+              "id": "Short Sword",
+              "kind": "attack",
+              "cost": 1
+            }
+          ]
+        }
+      },
+      "expected": [
+        "legendary.actions[1].id: expected unique nonempty action id"
+      ]
+    },
+    {
+      "name": "legendary_empty_id",
+      "block": {
+        "terrains": [
+          "forest"
+        ],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {
+          "STR": 12,
+          "DEX": 14,
+          "CON": 12,
+          "INT": 10,
+          "WIS": 10,
+          "CHA": 10
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Short Sword",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 4,
+            "damage": "1d6+2",
+            "damage_type": "slashing",
+            "special": null,
+            "audio": "bandit_sword"
+          },
+          {
+            "name": "Light Crossbow",
+            "type": "ranged",
+            "reach": 80,
+            "to_hit": 4,
+            "damage": "1d8+2",
+            "damage_type": "piercing",
+            "special": null,
+            "audio": "bandit_crossbow"
+          }
+        ],
+        "multiattack": null,
+        "passives": [],
+        "actives": [
+          {
+            "name": "Dirty Fighting",
+            "description": "Throw dirt/sand: target Blinded 1 round (DEX save DC 12).",
+            "narration_cue": "Throws dirt into your eyes.",
+            "recharge": "1/encounter",
+            "audio": null
+          }
+        ],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {
+          "tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.",
+          "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.",
+          "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)",
+          "environment": [
+            "Roads between settlements",
+            "forest ambush points",
+            "ruins"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A bandit steps from cover.",
+          "attack_cue": "The bandit strikes from cover.",
+          "wounded_cue": "The bandit staggers.",
+          "death_cue": "The bandit falls.",
+          "ambient_cue": "Voices carry from beside the road."
+        },
+        "audio": {
+          "ambient": "bandit_ambient",
+          "attack": "bandit_attack",
+          "hit": "bandit_hit",
+          "death": "bandit_death",
+          "special": {}
+        },
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": [
+          "greyvale"
+        ],
+        "legendary": {
+          "points": 2,
+          "actions": [
+            {
+              "id": "",
+              "kind": "attack",
+              "cost": 1
+            }
+          ]
+        }
+      },
+      "expected": [
+        "legendary.actions[0].id: expected unique nonempty action id"
+      ]
+    },
+    {
+      "name": "legendary_unbound_id",
+      "block": {
+        "terrains": [
+          "forest"
+        ],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {
+          "STR": 12,
+          "DEX": 14,
+          "CON": 12,
+          "INT": 10,
+          "WIS": 10,
+          "CHA": 10
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Short Sword",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 4,
+            "damage": "1d6+2",
+            "damage_type": "slashing",
+            "special": null,
+            "audio": "bandit_sword"
+          },
+          {
+            "name": "Light Crossbow",
+            "type": "ranged",
+            "reach": 80,
+            "to_hit": 4,
+            "damage": "1d8+2",
+            "damage_type": "piercing",
+            "special": null,
+            "audio": "bandit_crossbow"
+          }
+        ],
+        "multiattack": null,
+        "passives": [],
+        "actives": [
+          {
+            "name": "Dirty Fighting",
+            "description": "Throw dirt/sand: target Blinded 1 round (DEX save DC 12).",
+            "narration_cue": "Throws dirt into your eyes.",
+            "recharge": "1/encounter",
+            "audio": null
+          }
+        ],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {
+          "tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.",
+          "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.",
+          "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)",
+          "environment": [
+            "Roads between settlements",
+            "forest ambush points",
+            "ruins"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A bandit steps from cover.",
+          "attack_cue": "The bandit strikes from cover.",
+          "wounded_cue": "The bandit staggers.",
+          "death_cue": "The bandit falls.",
+          "ambient_cue": "Voices carry from beside the road."
+        },
+        "audio": {
+          "ambient": "bandit_ambient",
+          "attack": "bandit_attack",
+          "hit": "bandit_hit",
+          "death": "bandit_death",
+          "special": {}
+        },
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": [
+          "greyvale"
+        ],
+        "legendary": {
+          "points": 2,
+          "actions": [
+            {
+              "id": "Unbound Attack",
+              "kind": "attack",
+              "cost": 1
+            }
+          ]
+        }
+      },
+      "expected": [
+        "legendary.actions[0].id: no matching legendary action binding"
+      ]
+    },
+    {
+      "name": "recharge_summon_constructs_strike",
+      "block": {
+        "terrains": [
+          "forest"
+        ],
+        "id": "schema_construct",
+        "name": "Construct",
+        "category": "construct",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {
+          "STR": 12,
+          "DEX": 14,
+          "CON": 12,
+          "INT": 10,
+          "WIS": 10,
+          "CHA": 10
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Short Sword",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 4,
+            "damage": "1d6+2",
+            "damage_type": "slashing",
+            "special": null,
+            "audio": "bandit_sword"
+          },
+          {
+            "name": "Light Crossbow",
+            "type": "ranged",
+            "reach": 80,
+            "to_hit": 4,
+            "damage": "1d8+2",
+            "damage_type": "piercing",
+            "special": null,
+            "audio": "bandit_crossbow"
+          }
+        ],
+        "multiattack": null,
+        "passives": [],
+        "actives": [
+          {
+            "name": "Summon Constructs",
+            "description": "1/encounter. Animate 2d4 minions for 1 minute: HP 20, AC 16, speed 30 ft, slam +8 for 1d8+5 bludgeoning.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "summon_constructs",
+            "summon": {
+              "count_dice": "2d4",
+              "lifetime_rounds": 10,
+              "placement_radius_ft": 10,
+              "construct": {
+                "hp": 20,
+                "ac": 16,
+                "speed": 30,
+                "slam": {
+                  "name": "Slam",
+                  "type": "melee",
+                  "reach": 5,
+                  "to_hit": 8,
+                  "damage": "1d8+5",
+                  "damage_type": "bludgeoning",
+                  "special": null,
+                  "audio": ""
+                }
+              }
+            },
+            "damage": "1d8"
+          }
+        ],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {
+          "tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.",
+          "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.",
+          "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)",
+          "environment": [
+            "Roads between settlements",
+            "forest ambush points",
+            "ruins"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A bandit steps from cover.",
+          "attack_cue": "The bandit strikes from cover.",
+          "wounded_cue": "The bandit staggers.",
+          "death_cue": "The bandit falls.",
+          "ambient_cue": "Voices carry from beside the road."
+        },
+        "audio": {
+          "ambient": "bandit_ambient",
+          "attack": "bandit_attack",
+          "hit": "bandit_hit",
+          "death": "bandit_death",
+          "special": {}
+        },
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": [
+          "greyvale"
+        ]
+      },
+      "field": "damage",
+      "expected": [
+        "actives[0].damage: invalid"
+      ]
+    },
+    {
+      "name": "recharge_summon_constructs_round_recharge",
+      "block": {
+        "terrains": [
+          "forest"
+        ],
+        "id": "schema_construct",
+        "name": "Construct",
+        "category": "construct",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {
+          "STR": 12,
+          "DEX": 14,
+          "CON": 12,
+          "INT": 10,
+          "WIS": 10,
+          "CHA": 10
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Short Sword",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 4,
+            "damage": "1d6+2",
+            "damage_type": "slashing",
+            "special": null,
+            "audio": "bandit_sword"
+          },
+          {
+            "name": "Light Crossbow",
+            "type": "ranged",
+            "reach": 80,
+            "to_hit": 4,
+            "damage": "1d8+2",
+            "damage_type": "piercing",
+            "special": null,
+            "audio": "bandit_crossbow"
+          }
+        ],
+        "multiattack": null,
+        "passives": [],
+        "actives": [
+          {
+            "name": "Summon Constructs",
+            "description": "1/encounter. Animate 2d4 minions for 1 minute: HP 20, AC 16, speed 30 ft, slam +8 for 1d8+5 bludgeoning.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "round",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "summon_constructs",
+            "summon": {
+              "count_dice": "2d4",
+              "lifetime_rounds": 10,
+              "placement_radius_ft": 10,
+              "construct": {
+                "hp": 20,
+                "ac": 16,
+                "speed": 30,
+                "slam": {
+                  "name": "Slam",
+                  "type": "melee",
+                  "reach": 5,
+                  "to_hit": 8,
+                  "damage": "1d8+5",
+                  "damage_type": "bludgeoning",
+                  "special": null,
+                  "audio": ""
+                }
+              }
+            }
+          }
+        ],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {
+          "tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.",
+          "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.",
+          "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)",
+          "environment": [
+            "Roads between settlements",
+            "forest ambush points",
+            "ruins"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A bandit steps from cover.",
+          "attack_cue": "The bandit strikes from cover.",
+          "wounded_cue": "The bandit staggers.",
+          "death_cue": "The bandit falls.",
+          "ambient_cue": "Voices carry from beside the road."
+        },
+        "audio": {
+          "ambient": "bandit_ambient",
+          "attack": "bandit_attack",
+          "hit": "bandit_hit",
+          "death": "bandit_death",
+          "special": {}
+        },
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": [
+          "greyvale"
+        ]
+      },
+      "field": "recharge",
+      "expected": [
+        "actives[0].recharge: invalid"
+      ]
+    },
+    {
+      "name": "recharge_summon_constructs_slam_without_modifier",
+      "block": {
+        "terrains": [
+          "forest"
+        ],
+        "id": "schema_construct",
+        "name": "Construct",
+        "category": "construct",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {
+          "STR": 12,
+          "DEX": 14,
+          "CON": 12,
+          "INT": 10,
+          "WIS": 10,
+          "CHA": 10
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Short Sword",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 4,
+            "damage": "1d6+2",
+            "damage_type": "slashing",
+            "special": null,
+            "audio": "bandit_sword"
+          },
+          {
+            "name": "Light Crossbow",
+            "type": "ranged",
+            "reach": 80,
+            "to_hit": 4,
+            "damage": "1d8+2",
+            "damage_type": "piercing",
+            "special": null,
+            "audio": "bandit_crossbow"
+          }
+        ],
+        "multiattack": null,
+        "passives": [],
+        "actives": [
+          {
+            "name": "Summon Constructs",
+            "description": "1/encounter. Animate 2d4 minions for 1 minute: HP 20, AC 16, speed 30 ft, slam +8 for 1d8+5 bludgeoning.",
+            "narration_cue": "",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "audio": null,
+            "kind": "summon_constructs",
+            "summon": {
+              "count_dice": "2d4",
+              "lifetime_rounds": 10,
+              "placement_radius_ft": 10,
+              "construct": {
+                "hp": 20,
+                "ac": 16,
+                "speed": 30,
+                "slam": {
+                  "name": "Slam",
+                  "type": "melee",
+                  "reach": 5,
+                  "damage": "1d8+5",
+                  "damage_type": "bludgeoning",
+                  "special": null,
+                  "audio": ""
+                }
+              }
+            }
+          }
+        ],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {
+          "tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.",
+          "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.",
+          "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)",
+          "environment": [
+            "Roads between settlements",
+            "forest ambush points",
+            "ruins"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A bandit steps from cover.",
+          "attack_cue": "The bandit strikes from cover.",
+          "wounded_cue": "The bandit staggers.",
+          "death_cue": "The bandit falls.",
+          "ambient_cue": "Voices carry from beside the road."
+        },
+        "audio": {
+          "ambient": "bandit_ambient",
+          "attack": "bandit_attack",
+          "hit": "bandit_hit",
+          "death": "bandit_death",
+          "special": {}
+        },
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": [
+          "greyvale"
+        ]
+      },
+      "field": "to_hit",
+      "expected": [
+        "actives[0].summon.construct.slam.to_hit: invalid"
+      ]
+    },
+    {
+      "name": "legendary_over_capacity",
+      "block": {
+        "terrains": [
+          "ancient_forest",
+          "forest",
+          "grassland",
+          "mountain",
+          "coast",
+          "wetland",
+          "underground",
+          "farmland",
+          "village",
+          "city"
+        ],
+        "id": "hollow_architect",
+        "name": "The Architect",
+        "category": "hollow",
+        "tier": 4,
+        "description": "A builder of impossible structures that weaponizes its domain.",
+        "level": 20,
+        "hp": 300,
+        "ac": 19,
+        "speed": 40,
+        "attributes": {
+          "STR": 20,
+          "DEX": 14,
+          "CON": 20,
+          "INT": 22,
+          "WIS": 18,
+          "CHA": 16
+        },
+        "save_proficiencies": [
+          "INT",
+          "CON",
+          "WIS",
+          "CHA"
+        ],
+        "attacks": [
+          {
+            "name": "Construct Slam",
+            "type": "melee",
+            "reach": 15,
+            "to_hit": 11,
+            "damage": "3d10+5",
+            "damage_type": "bludgeoning",
+            "bonus_damage": {
+              "dice": "2d6",
+              "damage_type": "force"
+            },
+            "special": "Plus 2d6 force. Push target 15 ft; collision with a wall deals 2d6 bludgeoning.",
+            "audio": "hlw_construct_slam"
+          },
+          {
+            "name": "Geometry Strike",
+            "type": "ranged",
+            "reach": 120,
+            "to_hit": 10,
+            "damage": "2d8+6",
+            "damage_type": "force",
+            "special": "A structural fragment hurls itself. Auto-hit against targets touching the Architect's structures. Legendary action, cost 2 of 3/round.",
+            "audio": "hlw_geometry_strike"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Architect's Domain",
+            "description": "Movement by other creatures costs twice as much inside the fixed 0.5 mile construction zone.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Incorporeal Movement",
+            "description": "Moves through its own walls. Other structures still block it.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Legendary Resistance",
+            "description": "3/day: turn a failed save into a success.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Alien Intelligence",
+            "description": "INT 22; plans, adapts, anticipates, and avoids repeating failed strategies.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Reshape",
+            "description": "Before its declared action, create, move or destroy a wall, open a floor, or lower a ceiling. Each section measures up to 20 ft × 20 ft within 120 ft. Use once per round, or twice below half HP. A floor opening calls for a DC 15 Dexterity save. Failure deals 2d6 bludgeoning and leaves the creature prone in a pit. Its next move is spent climbing out. Low ceilings slow movement and block flight. Legendary Reshape costs 2 of 3/round.",
+            "narration_cue": "",
+            "recharge": "1/round",
+            "audio": null
+          },
+          {
+            "name": "Entomb",
+            "description": "Recharge 5-6. One creature within 60 ft STR save DC 20 or Restrained in a sealed chamber, taking 3d8 bludgeoning per round. Escape STR DC 20 or 30+ damage to one AC 19, 30 HP wall.",
+            "narration_cue": "",
+            "recharge": "5-6",
+            "audio": null
+          },
+          {
+            "name": "Cathedral",
+            "description": "1/encounter. Create a 60 ft radius cathedral; DEX save DC 20 or 4d10 force. Architect gains +2 AC and saves until it leaves or dies.",
+            "narration_cue": "",
+            "recharge": "1/encounter",
+            "audio": null
+          },
+          {
+            "name": "Summon Constructs",
+            "description": "1/encounter. Animate 2d4 minions for 1 minute: HP 20, AC 16, speed 30 ft, slam +8 for 1d8+5 bludgeoning.",
+            "narration_cue": "",
+            "recharge": "1/encounter",
+            "audio": null
+          },
+          {
+            "name": "Shift Wall",
+            "description": "Legendary action, cost 1 of 3/round: move wall up to 30 ft.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "reactions": [
+          {
+            "name": "Reactive Architecture",
+            "description": "On ranged attack or spell, raise a wall (AC 19, 30 HP) as reaction; wall takes hit.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "hollow": {
+          "class": "named",
+          "corruption_aura": 2640,
+          "resonance_on_death": 8,
+          "veil_effect": "Construction sounds arise from no tool or worker: patient scraping and rhythmic percussion.",
+          "vulnerable_to": [
+            "radiant",
+            "divine",
+            "siege_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "Builds constantly; when threatened uses every surface as a weapon. Below half HP Reshape rises to 2/round.",
+          "morale": "fights_until_destroyed",
+          "group_size": "solitary_with_constructs",
+          "environment": [
+            "Voidmaw edge",
+            "deep Ashmark"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A scrape of stone rises as new bridges connect nothing; no worker is near.",
+          "attack_cue": "A grind of stone announces a wall moving deliberately toward you.",
+          "wounded_cue": "A crack splits a tower; construction sounds turn urgent.",
+          "death_cue": "A groan passes through every structure as it collapses; the final building sound fades.",
+          "ambient_cue": "A scrape of stone and rhythmic building sounds arise from empty air."
+        },
+        "audio": {
+          "ambient": "HLW-008 slow pulse, stone grinding, force impacts, collapsing structures",
+          "attack": "HLW-008 slow pulse, stone grinding, force impacts, collapsing structures",
+          "hit": "HLW-008 slow pulse, stone grinding, force impacts, collapsing structures",
+          "death": "HLW-008 slow pulse, stone grinding, force impacts, collapsing structures",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_architect",
+        "xp_reward": 5000,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark"
+        ],
+        "damage_affinities": {
+          "resistant": [],
+          "immune": [
+            "poison"
+          ],
+          "vulnerable": [
+            "radiant"
+          ]
+        },
+        "legendary": {
+          "points": 1,
+          "actions": [
+            {
+              "id": "Geometry Strike",
+              "kind": "attack",
+              "cost": 2
+            },
+            {
+              "id": "Shift Wall",
+              "kind": "shift_wall",
+              "cost": 1
+            },
+            {
+              "id": "Reshape",
+              "kind": "reshape",
+              "cost": 2
+            }
+          ]
+        }
+      },
+      "expected": [
+        "legendary.actions[0].cost: expected positive integer within budget",
+        "legendary.actions[2].cost: expected positive integer within budget"
+      ]
+    },
     {
       "name": "still_auto_hit",
       "field": "auto_hit",
@@ -8038,7 +9277,7 @@
         ]
       },
       "expected": [
-        "action 'Order' has unknown kind 'decree'; expected one of ('attack', 'command', 'accusation', 'healing', 'prepare_attack', 'charm', 'silence', 'spell_redirect', 'rejection', 'final_stillness', 'illusion')"
+        "action 'Order' has unknown kind 'decree'; expected one of ('attack', 'command', 'accusation', 'healing', 'prepare_attack', 'summon_constructs', 'charm', 'silence', 'spell_redirect', 'rejection', 'final_stillness', 'illusion')"
       ]
     },
     {
@@ -19155,6 +20394,133 @@
             "damage": "0",
             "damage_type": "none",
             "applies_condition": "blinded",
+            "save": "dexterity",
+            "dc": 12,
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            }
+          }
+        ],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ]
+      },
+      "field": "duration",
+      "expected": [
+        "actives[0].duration: invalid"
+      ]
+    },
+    {
+      "name": "non_architect_entomb_missing_duration",
+      "block": {
+        "terrains": ["forest"],
+        "id": "fixture_legacy_no_combat_fields",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Entomb",
+            "description": "Test",
+            "narration_cue": "A hiss.",
+            "audio": null,
+            "kind": "attack",
+            "damage": "0",
+            "damage_type": "none",
+            "applies_condition": "restrained",
             "save": "dexterity",
             "dc": 12,
             "recharge": {
@@ -35377,6 +36743,7 @@
     "accusation",
     "healing",
     "prepare_attack",
+    "summon_constructs",
     "charm",
     "silence",
     "spell_redirect",

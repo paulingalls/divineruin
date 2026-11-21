@@ -542,20 +542,20 @@ Event-driven price fluctuation, three-phase event lifecycle, standard economic e
 
 ---
 
-## game_mechanics/game_mechanics_bestiary.md (2354 lines)
+## game_mechanics/game_mechanics_bestiary.md (2364 lines)
 
 Creature stat blocks, Hollow and natural creatures, materials, encounters.
 
 | Section | Lines | What's There |
 |---|---|---|
 | Creature Stat Block Schema | 9-145 | Universal template: attributes, attacks, passives, hollow fields, loot_table_id amendment |
-| Hollow Creatures | 146-629 | 9 Hollow entities (Shadeling through The Architect), special mechanics |
-| Natural Creatures | 630-1205 | 19 creatures across 6 regions plus multi-region, Tier 1-3 |
-| Material Catalog Summary | 1206-1252 | Material values and crafting uses for all creature drops |
-| Encounter Building Guidelines | 1253-1444 | Tier-based scaling, solo player math, companion effectiveness |
-| Design Decisions Log (Bestiary) | 1445-1448 | Bestiary decisions (24-29) |
-| Combat Effect Inventory | 1449-1564 |  Audited combat effects, resolver bindings, scheduled contracts and narrative deferrals. |
-| Encounter Creature Stat Blocks | 1565-2354 | Eight encounter-only creatures with complete spec stat blocks, source actions, canonical regions, and audio-first narration |
+| Hollow Creatures | 146-639 | 9 Hollow entities (Shadeling through The Architect), special mechanics |
+| Natural Creatures | 640-1215 | 19 creatures across 6 regions plus multi-region, Tier 1-3 |
+| Material Catalog Summary | 1216-1262 | Material values and crafting uses for all creature drops |
+| Encounter Building Guidelines | 1263-1454 | Tier-based scaling, solo player math, companion effectiveness |
+| Design Decisions Log (Bestiary) | 1455-1458 | Bestiary decisions (24-29) |
+| Combat Effect Inventory | 1459-1574 |  Audited combat effects, resolver bindings, scheduled contracts and narrative deferrals. |
+| Encounter Creature Stat Blocks | 1575-2364 | Eight encounter-only creatures with complete spec stat blocks, source actions, canonical regions, and audio-first narration |
 
 ---
 
@@ -912,7 +912,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/04_combat.md (306 lines)
+## milestones/04_combat.md (310 lines)
 
 ---
 
@@ -924,7 +924,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/07_bestiary.md (210 lines)
+## milestones/07_bestiary.md (212 lines)
 
 ---
 
@@ -956,7 +956,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/REMAINING.md (187 lines)
+## milestones/REMAINING.md (188 lines)
 
 ---
 

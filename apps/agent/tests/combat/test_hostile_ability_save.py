@@ -121,7 +121,9 @@ async def test_failed_save_lands_prone_at_dc_13_and_spends_without_attack():
 
     assert packet["condition_inflicted"] == "prone"
     assert conditions.has_condition(target.conditions, "prone")
-    save.assert_called_once_with(target, "strength", 13, "prone", originating_participant_id="player_1")
+    save.assert_called_once_with(
+        target, "strength", 13, "prone", originating_participant_id="player_1", combat_state=state
+    )
     update.assert_awaited_once()
     call = update.await_args
     assert call is not None

@@ -7,6 +7,7 @@ from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
 
 import choir_encounter
+import combat_cunning_action
 import combat_item_rider
 import combat_phase
 import combat_spatial
@@ -20,6 +21,7 @@ from combat_resolve_phase import _resolve_phase_locked
 from combat_support import _participant_roster, _require_combat
 from db_errors import db_tool
 from declaration_payloads import DeclPayload
+from reshape_payloads import ReshapeSelection
 from session_data import SessionData
 
 logger = logging.getLogger("divineruin.tools")
@@ -37,7 +39,14 @@ async def declare_phase(
     interact, consume, maneuver, move, defend or retreat. For a potion, salve or berry,
     declare consume with the holder's actor_id and the queried item_id. Set target_id
     to the ally receiving it or an empty string for the holder. Move names an explicit destination in feet and consumes
-    this phase action, limited to the actor's persisted speed. Include the player, every
+    this phase action, limited to the actor's persisted speed. Only the Architect may include
+    Reshape operations, on an attack, move or defend. The sections resolve before the action.
+    Use the Architect's live wall ids and remaining Reshape uses from the combat facts.
+    Second Wind is an ability with empty targets. Rallying Shout names one standing ally.
+    Devastating Strike is an ability naming one foe. For Shield Bash, declare a melee weapon attack
+    with rider="shield_bash". A rogue can set rider="dash" for double approach movement
+    or rider="hide" to attempt Stealth after the attack. Use an empty rider for an ordinary attack.
+    Include the player, every
     conscious companion, and every enemy that acts this phase — one declaration each.
     Call this once per round at the declaration beat; resolve_phase resolves and
     narrates the whole phase in initiative order."""
@@ -71,6 +80,8 @@ async def _declare_phase_locked(
     session: SessionData = context.userdata
 
     cs = _require_combat(session)
+    if cs.legendary_continuation is not None:
+        raise ToolError("Call resolve_phase to finish the legendary action before declaring.")
     if cs.beat != combat_phase.PhaseBeat.DECLARATION:
         raise ToolError(f"Not at the declaration beat (current beat: {cs.beat}). Call resolve_phase first.")
 
@@ -80,6 +91,7 @@ async def _declare_phase_locked(
     try:
         combat_spatial_declarations.preflight_state(cs)
         next_state, _adv = combat_phase.advance_combat_phase(cs, declarations=declarations)
+        await combat_cunning_action.preflight(next_state, queries=queries)
         await combat_item_rider.preflight(session, next_state)
         await item_heal.preflight_declarations(session, next_state)
         choir_facts = await choir_encounter.facts(next_state, queries=queries)
@@ -139,45 +151,70 @@ async def _resolve_phase_impl(context: RunContext[SessionData], **di) -> str | t
 async def consume_legendary_action(
     context: RunContext[SessionData],
     boss_id: str,
+    action_id: str,
+    target_id: str,
+    reshape: list[ReshapeSelection],
 ) -> str:
-    """Spend one of a Boss's legendary actions to give it an extra beat this round. Call this when
-    resolve_phase's ``legendary_available`` lists a Boss and you want it to act again outside its
-    initiative turn — then narrate that extra action and resolve it through the normal declare/resolve
-    or cast tools. A Boss has ONE legendary action per round (refreshed at the next wrap); calling
-    this when the budget is spent, or on a non-Boss, is rejected. Pass the Boss's participant id."""
-    return await _consume_legendary_action_impl(context, boss_id)
+    """Spend and execute an action listed in the encounter's legendary options.
+    Use the actor's id and exact action id at declaration or after the allies act.
+    An attack takes a target and empty reshape. Shift Wall takes an empty target and
+    one move_wall operation. Reshape takes an empty target and one operation.
+    Narrate the returned packets. Honor reaction and Fate offers and resume with
+    resolve_phase. For a legacy Boss, send empty action and target ids and an empty list
+    to spend its single point before narrating the extra beat."""
+    return await _consume_legendary_action_impl(
+        context,
+        boss_id,
+        action_id=action_id,
+        target_id=target_id,
+        reshape=tuple(operation.model_dump() for operation in reshape),
+    )
 
 
 async def _consume_legendary_action_impl(
     context: RunContext[SessionData],
     boss_id: str,
     *,
+    action_id: str = "",
+    target_id: str = "",
+    reshape: tuple[dict, ...] = (),
     mutations=db_mutations,
 ) -> str:
     session: SessionData = context.userdata
     async with session.combat_state_lock:
-        return await _consume_legendary_action_locked(context, boss_id, mutations=mutations)
+        return await _consume_legendary_action_locked(
+            context, boss_id, action_id=action_id, target_id=target_id, reshape=reshape, mutations=mutations
+        )
 
 
 async def _consume_legendary_action_locked(
     context: RunContext[SessionData],
     boss_id: str,
     *,
-    mutations=db_mutations,
+    action_id: str,
+    target_id: str,
+    reshape: tuple[dict, ...],
+    mutations,
 ) -> str:
     session: SessionData = context.userdata
     cs = _require_combat(session)
     if cs.wrap_continuation is not None:
         raise ToolError("Call resolve_phase to finish the round before spending a legendary action.")
-    # The pure engine owns the 1/round rule + fail-loud (unknown / not-a-Boss / exhausted); surface
-    # those as a ToolError so the DM re-prompts instead of crashing the turn.
+    if cs.legendary_continuation is not None or session.fate_offer is not None:
+        raise ToolError("Finish the held roll or action before spending a legendary action.")
     try:
-        next_state = combat_phase.consume_legendary_action(cs, boss_id)
+        next_state = combat_phase.consume_legendary_action(
+            cs, boss_id, action_id=action_id, target_id=target_id, reshape=reshape
+        )
     except ValueError as e:
         raise ToolError(str(e)) from e
-    session.combat_state = next_state
+
+    if next_state.legendary_continuation is not None:
+        response = await _resolve_phase_locked(context, legendary_start=next_state, mutations=mutations)
+        assert isinstance(response, str)
+        return response
     await mutations.save_combat_state(next_state.combat_id, next_state.to_dict())
+    session.combat_state = next_state
     boss = next_state.get_participant(boss_id)
-    remaining = boss.legendary_actions if boss is not None else 0
-    logger.info("consume_legendary_action: %s spent a legendary action (%d remaining)", boss_id, remaining)
-    return json.dumps({"actor_id": boss_id, "legendary_actions_remaining": remaining})
+    assert boss is not None
+    return json.dumps({"actor_id": boss_id, "legendary_actions_remaining": boss.legendary_actions})

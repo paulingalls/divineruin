@@ -248,9 +248,8 @@ async def test_choir_aura_turn_start_once_across_hold_resume(phase, distance, el
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("species", ["hollow_architect", "custom_named"])
 @pytest.mark.parametrize("role", ["standard", "boss", "named"])
-async def test_named_entry_rejects_unsupported_before_effects(species, role, mock_combat_agent_factory, monkeypatch):
+async def test_named_entry_rejects_unsupported_before_effects(role, mock_combat_agent_factory, monkeypatch):
     from copy import deepcopy
     from unittest.mock import MagicMock
 
@@ -259,7 +258,8 @@ async def test_named_entry_rejects_unsupported_before_effects(species, role, moc
 
     from creature_combat import translate_creature
 
-    row = deepcopy(TEST_CREATURES["hollow_choir" if species == "custom_named" else species])
+    species = "custom_named"
+    row = deepcopy(TEST_CREATURES["hollow_choir"])
     row["id"] = species
     mutations, queries, content = _make_start_combat_mocks()
     template = next(

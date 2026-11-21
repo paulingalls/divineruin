@@ -3,6 +3,7 @@
 import logging
 from functools import partial
 
+import architect_zero_hp
 import check_resolution_attack
 import combat_damage_affinity
 import combat_grapple
@@ -67,11 +68,7 @@ def _handle_hp_zero(
     caster's own fire; a caller that drives HP to 0 without knocking leaves the flags behind
     (bug 16c5f8a0). The census that keeps it the only door is
     ``tests/combat/test_handle_hp_zero.py::TestTheDoorIsTheOnlyDoor``.
-
-    ``overkill`` is the excess damage past 0. Mutates ``target`` in place
-    (``is_fallen``/``is_dead``, or — on a Hollowed rise — ``type``/
-    ``hp_current``/``conditions``) and appends the fall/rise sound to ``sounds``. Returns the HP
-    status, whether a Hollowed rose, and ids released from this target's grapples."""
+    Returns the HP status, whether a Hollowed rose, and ids released from this target's grapples."""
     if (
         not was_fallen
         and target.unholy_fortitude is not None
@@ -96,8 +93,10 @@ def _handle_hp_zero(
         sounds.append(SOUND_HOLLOW_RISE)
         return hp_status, True, []
 
-    combat_hollow_death.mark_destroyed(target)
+    if architect_zero_hp.collapse_structure(combat_state, target):
+        return hp_status, False, []
     target.is_fallen = True
+    combat_hollow_death.mark_destroyed(target)
     released = combat_grapple.release_from_grappler(combat_state, target.id) if combat_state is not None else []
     # Instant death: overkill (excess damage past 0) >= max HP kills
     # outright — no Fallen grace, no death saves. is_dead is the stronger state; the pure
@@ -367,6 +366,7 @@ async def _apply_damage(
         await combat_hollow_death.accrue_death(session, combat_state, target, conn=conn, queries=queries)
         if combat_state is not None and combat_state.choir_encounter is not None:
             choir_encounter.destroyed(combat_state)
+        architect_zero_hp.collapse_owned_walls(combat_state, target.id)
 
     renewals = await encounter_facts.renew_on_death(combat_state, target, counted_before, queries=queries, conn=conn)
     renewals.extend(

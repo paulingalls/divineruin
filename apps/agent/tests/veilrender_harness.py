@@ -13,6 +13,8 @@ def declaration(state, actor, victim, cantrip=None):
     if gap > 10 and (actor.type == "enemy" or cantrip is None):
         step = min(state.spatial["speeds"][actor.id] - 0.01, gap - 5) / gap
         return MoveDecl(
+            reshape=[],
+            movement_mode="ground",
             kind="move",
             actor_id=actor.id,
             destination=Destination(**{k: float(origin[k] + (target[k] - origin[k]) * step) for k in origin}),
@@ -22,13 +24,19 @@ def declaration(state, actor, victim, cantrip=None):
         desired = "Reality Crush" if state.round_number % 2 == 0 else "Corruption Pulse"
         action = next((a for a in actions if a["name"] == desired), actions[0])
         if state.round_number == 1:
-            return DefendDecl(kind="defend", actor_id=actor.id)
+            return DefendDecl(reshape=[], kind="defend", actor_id=actor.id)
     else:
         if state.round_number == 4:
-            return DefendDecl(kind="defend", actor_id=actor.id)
+            return DefendDecl(reshape=[], kind="defend", actor_id=actor.id)
         if cantrip and state.round_number >= 3:
             return AbilityDecl(kind="ability", actor_id=actor.id, action=cantrip, targets=[victim.id], argument_type="")
         action = actor.action_pool[0]
     return AttackDecl(
-        kind="attack", actor_id=actor.id, action=action["name"], target_id=victim.id, held_item_id="", rider=""
+        reshape=[],
+        kind="attack",
+        actor_id=actor.id,
+        action=action["name"],
+        target_id=victim.id,
+        held_item_id="",
+        rider="",
     )

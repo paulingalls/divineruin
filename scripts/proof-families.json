@@ -25,11 +25,11 @@
   {
     "name": "combat",
     "tests": [
-      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:spell_damage_commit|catalog_action_runtime|catalog_combat_translation|catalog_encounter_cutover|zhael_fate_commands|choir_.*|still_.*|combat_spatial_entry|hollow_troops_fight|hollowed_knight_fight|veilrender_fight|veilrender_absorb_commit|fallen_melee_failures|first_blood_atomicity|generated_combat(?:_movement)?|mawling_.*|m(?:12|13|41|42|43|44|47|48)_.*)\\.py"
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:legendary_resistance(?:_guards|_callers)?|spell_damage_commit|catalog_action_runtime|catalog_combat_translation|catalog_encounter_cutover|zhael_fate_commands|choir_.*|still_.*|architect_.*|combat_spatial_entry|combat_structures_fight|combat_wall_lines(?:_areas)?|hollow_troops_fight|hollowed_knight_fight|veilrender_fight|veilrender_absorb_commit|fallen_melee_failures|first_blood_atomicity|generated_combat(?:_movement)?|mawling_.*|martial_(?:core_(?:kit|resume)|target_guards)|m(?:12|13|41|42|43|44|47|48)_.*)\\.py"
     ],
     "owns": [
-      "apps/agent/(?:combat[^/]*|choir[^/]*|still[^/]*|encounter[^/]*|durability[^/]*|damage[^/]*|death[^/]*|enemy[^/]*|initiative[^/]*|reaction[^/]*|monster[^/]*)\\.py",
-      "apps/agent/(?:spells|declaration_payloads|action_contracts(?:_still)?|creature_combat_effects|check_discovery|condition_sources|background_process|resurrection|db_mutations_resurrection|check_resolution_save)\\.py"
+      "apps/agent/(?:combat[^/]*|choir[^/]*|still[^/]*|architect_[^/]*|encounter[^/]*|durability[^/]*|damage[^/]*|death[^/]*|enemy[^/]*|initiative[^/]*|reaction[^/]*|monster[^/]*)\\.py",
+      "apps/agent/(?:spells|declarations|declaration_payloads|reshape_payloads|action_contracts(?:_still)?|creature_combat_effects|check_discovery|condition_sources|background_process|resurrection|db_mutations_resurrection|ability_tools|activate_tools|query_tools|check_resolution_(?:attack|save))\\.py"
     ],
     "reads": [
       "content/action_sounds.json",
@@ -80,12 +80,14 @@
   {
     "name": "progression",
     "tests": [
-      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:attribute_increase_commit|patron_alignment_session|archetype_chassis|mentor_gating_e2e|mentor_variants|milestone_progression|spell_acquisition|m28_xp_favor_capstone|story_005_m22_ability_capstone)\\.py"
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:equip_and_electives|attribute_increase_commit|patron_alignment_session|archetype_chassis|mentor_gating_e2e|mentor_variants|milestone_progression|spell_acquisition|m28_xp_favor_capstone|story_005_m22_ability_capstone)\\.py"
     ],
     "owns": [
+      "apps/agent/(?:choice_tools|elective_[^/]*|ability_persistence|quest_authority|combat_rewards|combat_end|combat_init_participants|combat_ability_gate|creation_rules|equipment_[^/]*|db_mutations_inventory|inventory_tools|query_tools)\\.py",
       "apps/agent/(?:unbound_autonomy|alignment_heartbeat|archetyp[^/]*|role_archetypes|progression[^/]*|mentor[^/]*|milestone[^/]*|level[^/]*|xp[^/]*|favor[^/]*|training[^/]*)\\.py"
     ],
     "reads": [
+      "content/items.json",
       "content/archetype_abilities.json",
       "content/archetype_milestones.json",
       "content/archetypes.json",

@@ -91,7 +91,7 @@ class HealWalk(MilestoneWalk):
             {"kind": "ability", "actor_id": self.player, "action": spell, "targets": targets, "argument_type": ""}
         ]
         declarations.extend(
-            {"kind": "defend", "actor_id": p.id}
+            {"reshape": [], "kind": "defend", "actor_id": p.id}
             for p in self.fight_state.participants
             if p.id != self.player and not p.is_fallen
         )

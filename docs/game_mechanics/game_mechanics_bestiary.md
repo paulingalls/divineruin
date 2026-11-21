@@ -569,15 +569,15 @@ Blessed weapons and Turn Undead/Hollow remain source/effect guidance, not damage
 
 > *The most alarming Named. It builds. Deep within the Ashmark, near the Voidmaw — structures that shouldn't exist.*
 
-**Level:** 20 | **HP:** 300 | **AC:** 19 | **Speed:** 40 ft (incorporeal movement — passes through its own structures)
+**Level:** 20 | **HP:** 154 (spec 300) | **AC:** 19 | **Speed:** 40 ft (incorporeal movement — passes through its own structures)
 **STR** 20 (+5) **DEX** 14 (+2) **CON** 20 (+5) **INT** 22 (+6) **WIS** 18 (+4) **CHA** 16 (+3)
 **Save Prof:** INT, CON, WIS, CHA | **XP:** 5000
 
 **Attacks:**
 | Name | Type | Reach | Hit | Damage | Special |
 |---|---|---|---|---|---|
-| Construct Slam | Melee | 15 ft | +11 | 3d10+5 bludgeoning + 2d6 force | Target pushed 15 ft. If they hit a wall: additional 2d6 bludgeoning |
-| Geometry Strike | Ranged | 120 ft | +10 | 2d8+6 force | A piece of the architecture detaches and hurls itself. Auto-hit against targets touching the Architect's structures |
+| Construct Slam | Melee | 15 ft | +11 | 2d10+5 bludgeoning (spec 3d10+5) + 1d6 force (spec 2d6) | Target pushed 15 ft. If they hit a wall: additional 2d6 bludgeoning |
+| Geometry Strike | Ranged | 120 ft | +10 | 1d8+6 force (spec 2d8+6) | A piece of the architecture detaches and hurls itself. Auto-hit against targets touching the Architect's structures |
 
 **Passives:**
 - **Architect's Domain.** Within its construction zone (~0.5 mile radius), the Architect controls the environment. Walls appear. Floors shift. Ceilings lower. The terrain is hostile and constantly changing. All creatures except the Architect treat the zone as difficult terrain that reshapes each round.
@@ -587,12 +587,22 @@ Blessed weapons and Turn Undead/Hollow remain source/effect guidance, not damage
 
 **Actives:**
 - **Reshape (1/round, free action).** Create, move, or destroy a wall, floor, or ceiling section (up to 20 ft × 20 ft) within 120 ft. This happens instantly. A wall can appear between a healer and their patient. A floor can open beneath a charging warrior. The environment is the weapon.
-- **Entomb (Recharge 5-6).** Target one creature within 60 ft. Walls close around it from all sides. STR save DC 20. Fail: Restrained inside a sealed chamber. 3d8 bludgeoning per round from compression. Requires DC 20 STR check or 30+ damage to a single wall section (AC 19, 30 HP) to break free.
-- **Cathedral (1/encounter).** The Architect creates an entire structure — a cathedral of impossible geometry — in a 60 ft radius around itself. All creatures inside: DEX save DC 20 or take 4d10 force damage from shifting architecture. The Architect gains +2 AC and +2 to all saves while inside its Cathedral. Lasts until the Architect is destroyed or leaves the area.
+- **Entomb (Recharge 6, spec 5–6).** Target one creature within 60 ft. Walls close around it from all sides. STR save DC 20. Fail: Restrained inside a sealed chamber. 2d8 bludgeoning per round from compression (spec 3d8). Requires a DC 12 STR check (spec DC 20) or 30+ damage to a single wall section (AC 19, 30 HP) to break free.
+- **Cathedral (1/encounter).** The Architect creates an entire structure — a cathedral of impossible geometry — in a 60 ft radius around itself. All creatures inside: DEX save DC 20 or take 2d10 force damage (spec 4d10) from shifting architecture. The Architect gains +2 AC and +2 to all saves while inside its Cathedral. Lasts until the Architect is destroyed or leaves the area.
 - **Summon Constructs (1/encounter).** Animate 2d4 structural elements as construct minions. Each has: HP 20, AC 16, speed 30 ft, slam +8 for 1d8+5 bludgeoning. They fight for 1 minute or until destroyed.
 
 **Reactions:**
-- **Reactive Architecture.** When targeted by a ranged attack or spell, the Architect can raise a wall section (AC 19, 30 HP) as a reaction. The wall takes the hit instead. The Architect literally builds its own cover.
+- **Reactive Architecture.** When targeted by a ranged attack or spell, the Architect can raise a wall section (AC 19, 30 HP) as a reaction. The wall takes the hit instead. One wall per round. It crumbles at the end of the round in which it rises (decision 14 originally kept it standing). Reshape walls persist.
+
+The level-20 reference warrior, mage, rogue and cleric entered with earned attribute increases, trained electives, patron gifts and the best compatible authored equipment. At 300 HP and spec dice, the party won 0 of 20 fights under the original rules, 1 after reaction walls expired at round end, and 2 after Entomb moved to recharge 6 and escape DC 12. Both damage profiles below use these wall and Entomb rules. At 300 HP the middle dice yielded 1 victory. The low dice yielded 4 with Geometry Strike at 1d6+6, 8 at 1d4+6, and 12 at 1d2+6.
+
+| Profile | HP | Construct Slam | Geometry Strike | Cathedral | Entomb compression | Wins | Median rounds | Max rounds |
+|---|---:|---|---|---|---|---:|---:|---:|
+| Original spec | 300 | 3d10+5 + 2d6 force | 2d8+6 | 4d10 | 3d8 | 0/20 | 17 | 40 |
+| Low dice | 300 | 1d6+5 + 1d4 force | 1d2+6 | 1d8 | 1d4 | 12/20 | 22 | 48 |
+| Middle dice, shipped | 154 | 2d10+5 + 1d6 force | 1d8+6 | 2d10 | 2d8 | 12/20 | 11 | 39 |
+
+The middle profile ships because it had the shorter median fight. Every integer HP from 155 through 300 produced at least nine defeats with the middle dice.
 
 **Legendary Actions (3/round, between other creatures' turns):**
 - **Shift Wall (1 action).** Move one wall section up to 30 ft.

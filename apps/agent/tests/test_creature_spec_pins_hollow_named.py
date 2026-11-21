@@ -17,7 +17,7 @@ SPEC = {
     "hollow_architect": (
         "The Architect",
         20,
-        300,
+        154,
         19,
         40,
         (20, 14, 20, 22, 18, 16),
@@ -37,8 +37,8 @@ ATTACKS = {
         ("Perfect Memory", "ranged", 120, 12, "3d8", "psychic", "WIS save DC 20", "WIS", 20, None),
     ),
     "hollow_architect": (
-        ("Construct Slam", "melee", 15, 11, "3d10+5", "bludgeoning", "2d6 force", None, None, None),
-        ("Geometry Strike", "ranged", 120, 10, "2d8+6", "force", "Auto-hit against targets touching", None, None, None),
+        ("Construct Slam", "melee", 15, 11, "2d10+5", "bludgeoning", "1d6 force", None, None, None),
+        ("Geometry Strike", "ranged", 120, 10, "1d8+6", "force", "Auto-hit against targets touching", None, None, None),
     ),
 }
 ABILITIES = {
@@ -54,7 +54,7 @@ ABILITIES = {
     ),
     "hollow_architect": (
         ("Architect's Domain", "Incorporeal Movement", "Legendary Resistance", "Alien Intelligence"),
-        ("Reshape", "Entomb", "Cathedral", "Summon Constructs", "Shift Wall", "Geometry Strike"),
+        ("Reshape", "Entomb", "Cathedral", "Summon Constructs", "Shift Wall"),
         ("Reactive Architecture",),
     ),
 }
@@ -85,10 +85,10 @@ RULES = {
     "hollow_still": ("Six hidden anchors", "40-45 HP", "DC 18", "24 continuous", "DC 22", "4+ anchors"),
     "hollow_architect": (
         "0.5 mile",
-        "3/day",
+        "Three uses per encounter",
         "20 ft × 20 ft",
-        "3d8 bludgeoning",
-        "4d10 force",
+        "2d8 bludgeoning",
+        "2d10 force",
         "2d4 minions",
         "3/round",
         "Reshape costs 2 of 3/round",
@@ -105,7 +105,13 @@ RECHARGES = {
         {"kind": "roll", "die": 6, "threshold": 5},
         {"kind": "encounter", "uses": 1},
     ),
-    "hollow_architect": ("1/round", "5-6", "1/encounter", "1/encounter", None, None),
+    "hollow_architect": (
+        "1/round",
+        {"kind": "roll", "die": 6, "threshold": 6},
+        {"kind": "encounter", "uses": 1},
+        {"kind": "encounter", "uses": 1},
+        None,
+    ),
 }
 
 
@@ -167,6 +173,9 @@ def assert_pin(row, key):
         assert rule in attack["special"]
         assert (attack.get("save"), attack.get("dc"), attack.get("applies_condition")) == (save, dc, condition)
         assert "half_on_success" not in attack
+    if key == "hollow_architect":
+        assert actual[0]["bonus_damage"] == {"dice": "1d6", "damage_type": "force"}
+        assert "Legendary action, cost 2 of 3/round" in actual[1]["special"]
     if key == "hollow_choir":
         assert "Deafened 1 minute" in actual[1]["special"]
         assert actual[0]["resolution"] == "save"

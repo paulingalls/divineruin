@@ -90,14 +90,16 @@ def record_landing(
         _remember(facts["ally_downers"], attacker.id)
     if isinstance(result, AttackResult):
         _remember(facts["attacked"], target.id)
-        if not result.hit:
+        # Threaded Blade reads a foe; missing masonry must not arm its one use.
+        if not result.hit and not target.is_structure:
             _remember(facts["misses"].setdefault(attacker.id, []), target.id)
         if result.synergy_clause_id == ZHAEL_THREADED_BLADE:
             _remember(facts["once_spent"].setdefault(ZHAEL_THREADED_BLADE, []), attacker.id)
 
 
 def counted_death(target: CombatParticipant) -> bool:
-    return (
+    # A destroyed wall is marked dead but is no creature, so "when a creature dies" never counts it.
+    return not target.is_structure and (
         target.is_dead
         or (target.type != "companion" and target.death_save_failures >= DEATH_SAVE_LIMIT)
         or (not target.is_ally and target.hp_current == 0)

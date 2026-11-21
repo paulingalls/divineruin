@@ -1,16 +1,8 @@
-"""Inventory tool — the ``transact`` verb (signed-delta goods exchange).
-
-transact(item_id, delta, source) folds the legacy add_to_inventory /
-remove_from_inventory tools into one verb (M5, ADR 0007): a positive delta gains
-items, a negative delta loses them. The gain path mirrors the old add behaviour
-(content existence check, INVENTORY_UPDATED + ITEM_ACQUIRED, session bookkeeping);
-the loss path keeps the equipped/existence guards and now decrements by magnitude
-(quantity-aware) via db_mutations_inventory.transact_inventory instead of always
-deleting the whole stack.
-"""
+"""Exchange inventory quantities and equip owned gear."""
 
 import json
 import logging
+from typing import Literal
 
 from livekit.agents.llm import ToolError, function_tool
 from livekit.agents.voice import RunContext
@@ -20,6 +12,7 @@ import db_content_queries
 import db_mutations
 import db_mutations_inventory
 import db_queries
+import equipment_tools
 import event_types as E
 from asset_utils import compute_item_image_url
 from db_errors import db_tool
@@ -39,14 +32,14 @@ async def transact(
     context: RunContext[SessionData],
     item_id: str,
     delta: int,
+    action: Literal["exchange", "equip"],
     source: str = "",
 ) -> str:
-    """Physical goods change hands. Pass a signed delta: a positive number to
-    GAIN that many of an item (looted, bought, quest reward), a negative number
-    to lose goods (sold, transferred, destroyed). To heal with an item, use its
-    consume_id with activate outside combat or a consume declaration in combat.
-    Optionally give a source for gains, e.g. 'looted from goblin'."""
-    return await _transact_impl(context, item_id, delta, source)
+    """Exchange physical goods using a positive delta for gains or a negative delta for losses.
+    Use equip with delta=0 to wear an owned weapon, armor or shield outside combat. Narrate the change.
+    To heal, use the item's consume_id with activate or declare a consume action in combat.
+    Source is optional for gains."""
+    return await _transact_impl(context, item_id, delta, source, action=action)
 
 
 async def _transact_impl(
@@ -55,6 +48,7 @@ async def _transact_impl(
     delta: int,
     source: str = "",
     *,
+    action: Literal["exchange", "equip"] = "exchange",
     db_mod=db,
     mutations=db_mutations,
     inventory_mutations=db_mutations_inventory,
@@ -64,6 +58,18 @@ async def _transact_impl(
     # item_id is external (DM voice tool-call) — validate at the boundary.
     _validate_id(item_id, "item_id")
     _cap_str(source, 256, "source")
+    if action == "equip":
+        if delta != 0:
+            raise ToolError("Use delta=0 to equip gear.")
+        context.disallow_interruptions()
+        return await equipment_tools.equip(
+            context.userdata,
+            item_id,
+            await content.get_item(item_id),
+            db_mod=db_mod,
+            queries=queries,
+            inventory_mutations=inventory_mutations,
+        )
     if delta == 0:
         raise ToolError("delta must be non-zero — positive gains items, negative loses them.")
     if abs(delta) > _MAX_MAGNITUDE:
@@ -138,8 +144,9 @@ async def _lose(session, player_id, item_id, delta, item, *, db_mod, inventory_m
         slot = await queries.get_inventory_item(player_id, item_id, conn=conn, for_update=True)
         if slot is None:
             raise ToolError(f"Item '{item_id}' not in inventory.")
-        if slot.get("equipped", False):
-            raise ToolError(f"Item '{item_id}' is equipped. Unequip it first.")
+        if slot.get("equipped", False) and slot["quantity"] <= magnitude:
+            kind = item["type"] if item else "item for that slot"
+            raise ToolError(f"Item '{item_id}' is equipped. Equip another {kind} first.")
 
         session.validate_acting_player(player_id)
         remaining = await inventory_mutations.transact_inventory(player_id, item_id, delta, conn=conn)

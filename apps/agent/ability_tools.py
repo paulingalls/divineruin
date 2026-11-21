@@ -37,7 +37,7 @@ import db_queries
 import mentor_variants
 import reaction_gate
 import spells
-from combat_ability import condition_ability
+from combat_ability_gate import RALLYING_SHOUT, attack_recipe, combat_ability, require_rally_target
 from resource_costs import gate_pool
 from session_data import AuthenticatedActor, SessionData
 from tool_support import _validate_id
@@ -71,11 +71,11 @@ async def _request_ability_activation_impl(
     reaction_actor = session.require_reaction_actor() if ability.ability_type == "reaction" else None
     player_id = reaction_actor.player_id if reaction_actor is not None else session.acting_player_id
     if session.in_combat and ability.ability_type != "reaction":
-        # Only send the DM to declare_phase for an id that gate ACCEPTS. combat_phase's declare gate
-        # takes a spell-backed ability by its spell_id and a non-spell condition ability by its own
-        # id, and refuses every other ability outright — so naming declare_phase for one of those
-        # would bounce the DM between two refusals and burn the player's turn.
-        if ability.spell_id is None and condition_ability((ability, None)) is None:
+        if recipe := attack_recipe(ability.id):
+            if "riders" in recipe:
+                raise ToolError('Declare a weapon attack with rider="dash" or rider="hide".')
+            raise ToolError(f'Declare an attack with the equipped melee weapon and rider="{recipe["rider"]}".')
+        if not combat_ability(ability):
             raise ToolError(f"{ability.name} has no combat action — it cannot be used in a fight.")
         declared_id = ability.spell_id or variant_id or ability_id
         raise ToolError(f"{ability.name} cannot be activated in combat — declare {declared_id} in the combat phase.")
@@ -249,6 +249,18 @@ async def _request_ability_activation_unlocked(
             )
         except ValueError as e:
             raise ToolError(str(e)) from e
+        if ability.id == RALLYING_SHOUT and not session.in_combat:
+            eligible = {
+                pid
+                for pid, row in locked_rows.items()
+                if row["location_id"] == player["location_id"] and row.get("hp", {}).get("current", 0) > 0
+            }
+            if session.companion_can_act and session.companion is not None:
+                eligible.add(session.companion.id)
+            try:
+                require_rally_target(player_id, target_id, eligible)
+            except ValueError as e:
+                raise ToolError(str(e)) from e
         cost = variant.cost if variant is not None else ability.cost
 
         # Gate Stamina then Focus (fail-loud, pure); each returns the post-deduct

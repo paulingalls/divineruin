@@ -98,6 +98,7 @@ async def test_voice_offers_both_then_selects_on_later_authenticated_turn(liveki
                             "argument_type": "",
                         },
                         {
+                            "reshape": [],
                             "kind": "defend",
                             "actor_id": "outside-observer",
                             "action": "defend",

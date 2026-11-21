@@ -18,7 +18,10 @@ def test_award_commits_attributes_and_produces_redirect(harness):
         assert row["hp"] == {"current": 5, "max": 32}
         assert row["stamina"]["max"] == 14
         assert row["attributes"] == {**before["attributes"], "strength": 19}
-        (offer,) = json.loads(receipt.output)["attribute_increases"]
+        award = json.loads(receipt.output)
+        (elective,) = award["elective_choices"]
+        assert elective["choice_id"] == "elective_technique_4"
+        (offer,) = award["attribute_increases"]
         assert offer["choice_id"] == "attribute_increase_4"
         assert offer["scores"]["strength"] == 19
         assert offer["redirect_until"] == "next_long_rest"
@@ -116,6 +119,9 @@ def test_combat_exit_surfaces_guest_increase_and_private_snapshot(harness, monke
         result = json.loads(receipt.output)
         (offer,) = result["attribute_increases"]
         assert offer["player_id"] == guest and offer["scores"]["strength"] == 19
+        (elective,) = result["elective_choices"]
+        assert elective["player_id"] == guest and elective["choice_id"] == "elective_technique_4"
+        assert len(elective["options"]) == 4
         import db_queries
 
         guest_saved = await db_queries.get_player(guest)

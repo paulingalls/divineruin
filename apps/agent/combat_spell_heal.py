@@ -9,6 +9,7 @@ import dice
 import patron_passives
 from combat_down import is_terminally_down, revive
 from combat_enemy_active import heal, healed_hp
+from combat_structures import line_blocker
 from conditions import apply_condition
 from rules_engine import attribute_modifier
 from spells import normalize_target_list
@@ -61,7 +62,11 @@ def combat_recipients(
         raise ValueError(f"{spell.name} can only be cast outside combat")
     targets = _explicit_targets(spell, profile, caster.id, declaration.target_id, declaration.target_ids)
     if profile["recipients"] == "all_allies":
-        return [p for p in state.participants if p.is_ally and not is_terminally_down(p)]
+        return [
+            p
+            for p in state.participants
+            if p.is_ally and not is_terminally_down(p) and line_blocker(state, caster.id, p.id) is None
+        ]
     return [combat_ally(state, tid, spell.name) for tid in targets]
 
 

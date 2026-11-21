@@ -1,0 +1,310 @@
+"""Runtime wall participants and their spatial segments."""
+
+from __future__ import annotations
+
+import math
+from copy import deepcopy
+from fractions import Fraction
+from itertools import combinations
+from typing import TYPE_CHECKING, TypedDict
+
+from combat_participant import CombatParticipant
+from combat_spatial import distance, mapping, point, position, require_spatial
+from condition_sources import DeliveryRefused
+
+if TYPE_CHECKING:
+    from combat_state import CombatState
+
+Point = dict[str, int | float]
+Vector = tuple[Fraction, Fraction]
+WALL_AC = 19
+WALL_HP = 30
+
+
+class Segment(TypedDict):
+    start: Point
+    end: Point
+
+
+def _segment(value: object) -> Segment:
+    if not isinstance(value, dict) or set(value) != {"start", "end"}:
+        raise ValueError("structure segment requires start and end")
+    start, end = point(value["start"]), point(value["end"])
+    if (start["x"], start["y"]) == (end["x"], end["y"]):
+        raise ValueError("structure segment requires horizontal extent")
+    return {"start": start, "end": end}
+
+
+def validate_segments(value: object) -> None:
+    for segment in mapping(value, "structures").values():
+        _segment(segment)
+
+
+def add_wall(state: CombatState, wall_id: str, name: str, start: Point, end: Point) -> CombatParticipant:
+    spatial = require_spatial(state)
+    segment = _segment({"start": start, "end": end})
+    if not isinstance(wall_id, str) or not wall_id.strip():
+        raise ValueError("structure requires a nonempty ID")
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError("structure requires a nonempty name")
+    if any(wall_id in spatial[key] for key in ("positions", "locations", "zones")) or wall_id in state.initiative_order:
+        raise ValueError(f"Duplicate spatial ID {wall_id!r}")
+    wall = CombatParticipant(
+        id=wall_id, name=name, type="structure", initiative=0, hp_current=WALL_HP, hp_max=WALL_HP, ac=WALL_AC
+    )
+    _place_wall(spatial, wall_id, segment)
+    state.participants.append(wall)
+    spatial["speeds"][wall_id] = 0
+    return wall
+
+
+def move_wall(state: CombatState, wall_id: str, start: Point, end: Point) -> None:
+    spatial = require_spatial(state)
+    if wall_id not in spatial.get("structures", {}):
+        raise ValueError(f"Unknown live wall {wall_id!r}")
+    _place_wall(spatial, wall_id, _segment({"start": start, "end": end}))
+
+
+def _place_wall(spatial: dict, wall_id: str, segment: Segment) -> None:
+    start, end = segment["start"], segment["end"]
+    center = {"x": start["x"] / 2 + end["x"] / 2, "y": start["y"] / 2 + end["y"] / 2, "z": min(start["z"], end["z"])}
+    for other in (*spatial["positions"].values(), *spatial["locations"].values()):
+        distance(center, other)
+
+    spatial["positions"][wall_id] = center
+    spatial.setdefault("structures", {})[wall_id] = segment
+
+
+def validate_participants(state: CombatState) -> None:
+    walls = [p for p in state.participants if p.is_structure]
+    spatial = state.spatial
+    if spatial is None:
+        if walls:
+            raise ValueError("structure requires spatial placement")
+        return
+    wall_ids = {wall.id for wall in walls}
+    if wall_ids and sum(p.id in wall_ids for p in state.participants) != len(wall_ids):
+        raise ValueError("structures require a unique participant ID")
+    live_ids = set()
+    for wall in walls:
+        label = f"{wall.name} ({wall.id})"
+        if spatial["speeds"][wall.id] != 0:
+            raise ValueError(f"{label}: invalid structure speed")
+        if (wall.ac, wall.hp_max) != (WALL_AC, WALL_HP):
+            raise ValueError(f"{label}: invalid structure stats")
+        if wall.is_fallen or wall.is_dead:
+            if (wall.is_fallen, wall.is_dead, wall.hp_current) != (True, True, 0):
+                raise ValueError(f"{label}: invalid destroyed structure")
+        else:
+            if type(wall.hp_current) is not int or not 0 < wall.hp_current <= WALL_HP:
+                raise ValueError(f"{label}: invalid live structure HP")
+            live_ids.add(wall.id)
+    import architect_entomb
+
+    segments = set(spatial.get("structures", {}))
+    chambers = architect_entomb.chambers(spatial)
+    if segments.intersection(chambers) or segments.union(chambers) != live_ids:
+        raise ValueError("structure segments and chambers must identify exactly the live structures")
+    architect_entomb.validate_links(state, chambers)
+
+
+def _xy_delta(origin: Point, end: Point) -> Vector:
+    return Fraction(end["x"]) - Fraction(origin["x"]), Fraction(end["y"]) - Fraction(origin["y"])
+
+
+def _cross(left: Vector, right: Vector) -> Fraction:
+    return left[0] * right[1] - left[1] * right[0]
+
+
+def _intersection_interval(origin: Point, destination: Point, wall: Segment) -> tuple[Fraction, Fraction] | None:
+    # Exact arithmetic keeps boundary contacts closed even for nearly parallel paths.
+    path = _xy_delta(origin, destination)
+    edge = _xy_delta(wall["start"], wall["end"])
+    offset = _xy_delta(origin, wall["start"])
+    determinant = _cross(path, edge)
+    if determinant:
+        path_t = _cross(offset, edge) / determinant
+        wall_t = _cross(offset, path) / determinant
+        if 0 <= path_t <= 1 and 0 <= wall_t <= 1:
+            return path_t, path_t
+        return None
+
+    if _cross(offset, edge):
+        return None
+    axis = 0 if edge[0] else 1
+    if not path[axis]:
+        if 0 <= -offset[axis] / edge[axis] <= 1:
+            return Fraction(0), Fraction(1)
+        return None
+
+    start_t, end_t = sorted((offset[axis] / path[axis], (offset[axis] + edge[axis]) / path[axis]))
+    lo, hi = max(Fraction(0), start_t), min(Fraction(1), end_t)
+    return (lo, hi) if lo <= hi else None
+
+
+def _first_contact(origin: Point, destination: Point, wall: Segment) -> Fraction | None:
+    interval = _intersection_interval(origin, destination, wall)
+    if interval is None:
+        return None
+    lo, hi = interval
+    z = Fraction(origin["z"])
+    dz = Fraction(destination["z"]) - z
+    floor = Fraction(min(wall["start"]["z"], wall["end"]["z"]))
+    if not dz:
+        return lo if floor <= z <= floor + 20 else None
+    enter, leave = sorted(((floor - z) / dz, (floor + 20 - z) / dz))
+    contact = max(lo, enter)
+    return contact if contact <= min(hi, leave) else None
+
+
+def blocks_path(origin: Point, destination: Point, wall: Segment) -> bool:
+    return _first_contact(origin, destination, wall) is not None
+
+
+def first_wall_contact(spatial: dict, origin: Point, destination: Point) -> tuple[str, Point, Fraction] | None:
+    contacts = (
+        (fraction, wall_id)
+        for wall_id, wall in spatial.get("structures", {}).items()
+        if (fraction := _first_contact(origin, destination, wall)) is not None
+    )
+    nearest = min(contacts, default=None)
+    if nearest is None:
+        return None
+    fraction, wall_id = nearest
+    contact: Point = {
+        axis: float(Fraction(start) + fraction * (Fraction(destination[axis]) - Fraction(start)))
+        for axis, start in origin.items()
+    }
+    return wall_id, contact, fraction
+
+
+def _coords(point: Point) -> tuple[float, float, float]:
+    return (point["x"], point["y"], point["z"])
+
+
+def touches(point: Point, segment: Segment) -> bool:
+    return math.dist(_coords(point), _coords(nearest_wall_point(point, segment))) < 1e-9
+
+
+def chamber_line_blocker(
+    state: CombatState, spatial: dict, origin_id: str | None, target_id: str | None
+) -> CombatParticipant | None:
+    from architect_entomb import blocker
+
+    chamber_id = blocker(spatial, origin_id, target_id)
+    if chamber_id is None:
+        return None
+    chamber = state.get_participant(chamber_id)
+    if chamber is None:
+        raise ValueError(f"Unknown chamber participant {chamber_id!r}")
+    return chamber
+
+
+def blocking_wall(
+    state: CombatState,
+    spatial: dict,
+    origin: Point,
+    destination: Point,
+    *,
+    target_id: str | None = None,
+    origin_id: str | None = None,
+    effect_origin: bool = False,
+) -> CombatParticipant | None:
+    if chamber := chamber_line_blocker(state, spatial, origin_id, target_id):
+        return chamber
+    # A wall never blocks a line that starts or ends on it. For an effect (not a mover),
+    # that includes every wall the origin point touches: a blast centred on a wall reaches
+    # out along it, so movement keeps the strict contact rule.
+    for wall_id, segment in spatial.get("structures", {}).items():
+        if wall_id in (target_id, origin_id) or (effect_origin and touches(origin, segment)):
+            continue
+        if blocks_path(origin, destination, segment):
+            wall = state.get_participant(wall_id)
+            if wall is None:
+                raise ValueError(f"Unknown structure participant {wall_id!r}")
+            return wall
+    return None
+
+
+def nearest_wall_point(origin: Point, segment: Segment) -> Point:
+    start, end = segment["start"], segment["end"]
+    dx, dy = _xy_delta(start, end)
+    ox, oy = _xy_delta(start, origin)
+    along = min(1, max(0, (ox * dx + oy * dy) / (dx * dx + dy * dy)))
+    floor = min(start["z"], end["z"])
+    return {
+        "x": float(Fraction(start["x"]) + dx * along),
+        "y": float(Fraction(start["y"]) + dy * along),
+        "z": min(floor + 20, max(floor, origin["z"])),
+    }
+
+
+def line_blocker(
+    state: CombatState, origin_id: str, target_id: str | None, *, melee: bool = False
+) -> CombatParticipant | None:
+    if target_id is None or target_id == origin_id or state.spatial is None:
+        return None
+    if not (state.spatial.get("structures") or state.spatial.get("chambers")):
+        return None
+    if state.get_participant(target_id) is None:
+        return None
+    spatial = require_spatial(state)
+    origin = position(spatial, origin_id)
+    segment = spatial.get("structures", {}).get(target_id)
+    destination = nearest_wall_point(origin, segment) if melee and segment else position(spatial, target_id)
+    return blocking_wall(state, spatial, origin, destination, target_id=target_id, origin_id=origin_id)
+
+
+def blocked_reason(wall: CombatParticipant) -> str:
+    return f"Line blocked by {wall.name} ({wall.id})"
+
+
+def require_line(state: CombatState, origin_id: str, target_id: str | None, *, melee: bool = False) -> None:
+    if wall := line_blocker(state, origin_id, target_id, melee=melee):
+        raise DeliveryRefused(blocked_reason(wall))
+
+
+def action_has_direct_line(action: dict) -> bool:
+    from encounter_actions import action_kind
+
+    return action.get("type") != "area" and action_kind(action) in ("attack", "charm", "silence", "illusion")
+
+
+def wall_facts(state: CombatState, spatial: dict) -> tuple[list[dict], list[str]]:
+    segments = spatial.get("structures", {})
+    if not segments:
+        return [], []
+    combatants = sorted(
+        (p for p in state.participants if not (p.is_structure or p.is_fallen or p.is_dead)), key=lambda p: p.id
+    )
+    pairs = list(combinations(combatants, 2))
+    positions = {p.id: position(spatial, p.id) for p in combatants}
+    walls, spoken = [], []
+    for wall_id, segment in sorted(segments.items()):
+        wall = state.get_participant(wall_id)
+        if wall is None:
+            raise ValueError(f"Unknown structure participant {wall_id!r}")
+        separated = [(a, b) for a, b in pairs if blocks_path(positions[a.id], positions[b.id], segment)]
+        walls.append(
+            {
+                "id": wall_id,
+                "name": wall.name,
+                "segment": deepcopy(segment),
+                "separates": [[a.id, b.id] for a, b in separated],
+            }
+        )
+        if separated:
+            names = ", ".join(f"{a.name} and {b.name}" for a, b in separated)
+            spoken.append(f"{wall.name} separates {names}.")
+    return walls, spoken
+
+
+def collapse_wall(state: CombatState | None, wall: CombatParticipant) -> None:
+    if state is None or state.spatial is None:
+        raise ValueError(f"{wall.name} ({wall.id}) requires spatial placement")
+    import architect_entomb
+
+    if not architect_entomb.unlink(state, wall.id):
+        del state.spatial["structures"][wall.id]
+    wall.hp_current = 0
+    wall.is_dead = wall.is_fallen = True

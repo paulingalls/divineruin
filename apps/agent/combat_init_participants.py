@@ -3,6 +3,7 @@
 from livekit.agents.llm import ToolError
 
 import abilities
+import architect_scene
 import choir_scene
 import combat_enhancers
 import combat_resolution
@@ -103,6 +104,7 @@ async def assemble_participants(session, encounter, encounter_id, member_players
     except ValueError as error:
         raise ToolError(str(error)) from error
 
+    retained_architect = await architect_scene.preflight(session, encounter, queries=queries)
     retained_choir = await choir_scene.preflight(session, encounter, queries=queries)
 
     retained_still = await still_scene.preflight(session, encounter, queries=queries)
@@ -197,6 +199,7 @@ async def assemble_participants(session, encounter, encounter_id, member_players
                 damage_mult=derived["damage_mult"],
                 dc_mod=derived["dc_mod"],
                 legendary_actions=derived["legendary_actions"],
+                legendary=derived.get("legendary"),
                 signature_ability=derived["signature_ability"],
                 category=derived.get("category", ""),
                 tier=derived["tier"],
@@ -222,4 +225,12 @@ async def assemble_participants(session, encounter, encounter_id, member_players
             )
         )
 
-    return participants, spatial, initiative_entries, initiative_order, retained_choir, retained_still
+    return (
+        participants,
+        spatial,
+        initiative_entries,
+        initiative_order,
+        retained_choir,
+        retained_still,
+        retained_architect,
+    )

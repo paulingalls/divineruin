@@ -48,6 +48,17 @@
           "role": "named"
         }
       ]
+    },
+    {
+      "id": "fixture",
+      "recommended_party_level": 16,
+      "enemies": [
+        {
+          "id": "one",
+          "creature_id": "hollow_architect",
+          "role": "named"
+        }
+      ]
     }
   ],
   "invalid": [
@@ -785,21 +796,6 @@
       }
     },
     {
-      "name": "named_hollow_architect",
-      "field": "role",
-      "encounter": {
-        "id": "fixture",
-        "recommended_party_level": 16,
-        "enemies": [
-          {
-            "id": "one",
-            "creature_id": "hollow_architect",
-            "role": "named"
-          }
-        ]
-      }
-    },
-    {
       "name": "named_bandit",
       "field": "role",
       "encounter": {
@@ -884,6 +880,46 @@
           {
             "id": "two",
             "creature_id": "hollow_still",
+            "role": "named"
+          }
+        ]
+      }
+    },
+    {
+      "name": "architect_with_hollow_shadeling",
+      "field": "solitary",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 16,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_architect",
+            "role": "named"
+          },
+          {
+            "creature_id": "hollow_shadeling",
+            "role": "standard",
+            "id": "two"
+          }
+        ]
+      }
+    },
+    {
+      "name": "architect_with_hollow_architect",
+      "field": "solitary",
+      "encounter": {
+        "id": "fixture",
+        "recommended_party_level": 16,
+        "enemies": [
+          {
+            "id": "one",
+            "creature_id": "hollow_architect",
+            "role": "named"
+          },
+          {
+            "id": "two",
+            "creature_id": "hollow_architect",
             "role": "named"
           }
         ]

@@ -32,6 +32,7 @@ def test_navigation_preserves_travel_location_values():
         "greyvale_wilderness_north": "dense_forest",
         "ashmark_corrupted_front": "unmarked_wilderness",
         "ashmark_still": "unmarked_wilderness",
+        "ashmark_architect_works": "unmarked_wilderness",
         "greyvale_south_road": "established_road",
         "millhaven": "established_road",
         "thornveld_old_growth_grove": "dense_forest",

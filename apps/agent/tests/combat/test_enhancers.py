@@ -129,12 +129,6 @@ class TestMechanicalEnhancers:
 
 
 class TestNarratedRiders:
-    async def test_cunning_action_attaches_chosen_rider_without_extra_attack(self):
-        cs = _player_attacking(enhancers=["cunning_action"])
-        summary = await _resolve(cs, _attack(rider="hide"), _fixed_resolver(5))
-        assert summary["riders"] == ["cunning_action:hide"]
-        assert "attacks" not in summary
-
     async def test_quick_change_rider_surfaces_on_a_social_interact(self):
         # Quick Change rides a social declaration; INTERACT has no mechanical resolution
         # yet, but the rider still surfaces for the DM to voice.
@@ -188,7 +182,6 @@ _INTERACT_DECL = {"type": "interact", "action": "charm the guard"}
 # (enhancer, raw declaration, predicate over the player's resolved packet)
 _CAPSTONE_CASES = [
     ("shield_bash", _ATTACK_DECL, lambda p: p.get("attacks", [{}])[-1].get("action") == "Shield Bash"),
-    ("cunning_action", {**_ATTACK_DECL, "rider": "hide"}, lambda p: "cunning_action:hide" in p.get("riders", [])),
     ("hit_and_run", _ATTACK_DECL, lambda p: "hit_and_run:reposition_15ft" in p.get("riders", [])),
     ("command_lesser", _ATTACK_DECL, lambda p: "command_lesser:directs_lesser_hollow" in p.get("riders", [])),
     ("quick_change", _INTERACT_DECL, lambda p: "quick_change:identity_swap" in p.get("riders", [])),

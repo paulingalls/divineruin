@@ -2,10 +2,12 @@
 
 import random
 
+import architect_entomb
 import combat_grapple
 import combat_voice_rules
 import conditions
 from combat_condition_landing import _land_condition_on_one
+from combat_structures import collapse_wall
 from condition_restrictions import declaration_costs
 from declarations import ManeuverIntent
 from rules_engine import attribute_modifier
@@ -23,22 +25,29 @@ def resolve_maneuver(state, attacker, decl, *, rng=None) -> dict:
             "reason": f"target '{decl.target_id}' not found",
         }
     if decl.maneuver_intent is ManeuverIntent.ESCAPE:
-        if combat_grapple.grappler_id(attacker.conditions) != target.id:
+        chamber = target.is_structure
+        source = (
+            architect_entomb.source(state, attacker.id) if chamber else combat_grapple.grappler_id(attacker.conditions)
+        )
+        if source != target.id:
             return {
                 "actor_id": attacker.id,
                 "resolved": True,
                 "declaration_type": str(decl.type),
                 "target": target.name,
-                "escape": "grapple_already_released",
+                "escape": "chamber_already_released" if chamber else "grapple_already_released",
             }
-        total = roller.randint(1, 20) + max(
-            attribute_modifier(attacker.attributes.get("strength", 10)),
-            attribute_modifier(attacker.attributes.get("dexterity", 10)),
-        )
-        dc = combat_grapple.escape_dc(target)
+        modifier = attribute_modifier(attacker.attributes.get("strength", 10))
+        if not chamber:
+            modifier = max(modifier, attribute_modifier(attacker.attributes.get("dexterity", 10)))
+        total = roller.randint(1, 20) + modifier
+        dc = architect_entomb.ESCAPE_DC if chamber else combat_grapple.escape_dc(target)
         escaped = total >= dc
         if escaped:
-            attacker.conditions = conditions.remove_condition(attacker.conditions, "grappled")
+            if chamber:
+                collapse_wall(state, target)
+            else:
+                attacker.conditions = conditions.remove_condition(attacker.conditions, "grappled")
         return {
             "actor_id": attacker.id,
             "resolved": True,

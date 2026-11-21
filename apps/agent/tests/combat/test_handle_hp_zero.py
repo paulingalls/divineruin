@@ -278,14 +278,18 @@ class TestTheDoorIsTheOnlyDoor:
             ("draethar_inner_fire.py", "_inner_fire_locked"),
             # INSIDE the door — the Hollowed rise, max(1, hp_max // 2), which cannot be 0.
             ("combat_damage.py", "_handle_hp_zero"),
+            ("combat_structures.py", "collapse_wall"),
+            ("architect_constructs.py", "collapse"),
             ("combat_down.py", "revive"),
             ("combat_enemy_active.py", "heal"),
             ("combat_fortitude.py", "try_fortitude"),
         }
 
-    def test_is_fallen_is_set_in_one_place_and_cleared_in_one_place(self):
+    def test_fall_and_revival_writers_match_the_inventory(self):
         assert _attribute_writers("is_fallen") == {
             ("combat_damage.py", "_handle_hp_zero"),
+            ("combat_structures.py", "collapse_wall"),
+            ("architect_constructs.py", "collapse"),
             ("combat_down.py", "revive"),
         }
 

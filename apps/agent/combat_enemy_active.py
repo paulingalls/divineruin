@@ -5,6 +5,8 @@ import copy
 import conditions
 import dice
 from combat_condition_landing import _land_condition_on_one
+from combat_legendary_resistance import finalize_save, override_fields
+from combat_structures import line_blocker
 from encounter_actions import action_kind
 
 
@@ -40,6 +42,7 @@ def resolve_active(state, actor, action, declaration):
             and not ally.is_fallen
             and not ally.is_dead
             and ally.hp_current > 0
+            and line_blocker(state, actor.id, ally.id) is None
         }
     else:
         raise ValueError(f"{action['name']}: unsupported active kind {kind}")
@@ -86,13 +89,22 @@ def roll_critical_save(attacker, target, rider):
 
 
 def land_critical_save(state, attacker, target, action, summary, rider, result):
-    summary["critical_save"] = {"dc": result.dc, "roll": result.roll, "total": result.total, "success": result.success}
-    if already_hollowed(target, rider["applies_condition"]):
-        return
-    if not result.success and _land_condition_on_one(
-        state, target.id, attacker, rider["applies_condition"], source=action["name"], packet=summary
+    condition = rider["applies_condition"]
+    can_apply = not already_hollowed(target, condition)
+    result = finalize_save(state, target, result, failed_conditions=(condition,) if can_apply else ())
+    summary["critical_save"] = {
+        "dc": result.dc,
+        "roll": result.roll,
+        "total": result.total,
+        "success": result.success,
+        **override_fields(result),
+    }
+    if (
+        can_apply
+        and not result.success
+        and _land_condition_on_one(state, target.id, attacker, condition, source=action["name"], packet=summary)
     ):
-        summary["condition_inflicted"] = rider["applies_condition"]
+        summary["condition_inflicted"] = condition
 
 
 def apply_critical_save(state, attacker, target, action, summary):

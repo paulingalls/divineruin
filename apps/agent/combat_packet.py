@@ -8,33 +8,28 @@ single initiative-ordered packet to the right resolver (attack / ability /
 de-escalate / defend). The helpers mutate in-memory
 state and write through injected mutation/query modules, but own no transaction."""
 
-import combat_fate
+import architect_actions
+import architect_constructs
+import combat_cunning_action
 import combat_maneuver
 import combat_marks
+import combat_martial
 import combat_melee_approach
+import combat_player_ability
 import combat_recharge
 import combat_spatial_declarations
 import combat_voice_rules
 import item_heal
 import spell_casting
 from action_contracts_still import STILL_ZONE_KINDS
-from combat_ability import (
-    AbilityCastOutcome,
-    _attach_riders,
-    _find_action,
-    _resolve_ability_condition_packet,
-    _resolve_ability_packet,
-    condition_ability,
-)
-from combat_ability_gate import declared_ability
+from combat_ability import _attach_riders, _find_action
+from combat_ability_gate import DEVASTATING_STRIKE
 from combat_action_availability import begin_execution, replay_valid
-from combat_deescalation import (
-    _resolve_deescalation_packet,
-)
 from combat_down import target_unavailable
 from combat_enemy_action import resolve_enemy_strike
 from combat_enemy_active import resolve_active
 from combat_packet_gate import _prevalidate_ability_focus as _prevalidate_ability_focus
+from combat_structures import action_has_direct_line, blocked_reason, line_blocker
 from condition_restrictions import cannot_act
 from condition_sources import DeliveryRefused
 from declarations import DeclarationType
@@ -42,14 +37,14 @@ from encounter_actions import action_kind
 from session_data import SessionData
 
 
-async def _resolve_one_packet(session, state, packet, **deps) -> dict:
+async def _resolve_one_packet(session, state, packet, *, _reshape_prepared=False, **deps) -> dict:
     from combat_veilrender import turn_start
 
     progress = deps.get("progress")
     steps = progress.steps if progress is not None else {}
     # Turn-start effects run once per round; a Zhael-held packet keeps them for its resumed summary.
     effects = steps.pop("turn_start_effects", None)
-    if not effects:
+    if not effects and "legendary_kind" not in (deps.get("_held_head") or {}):
         effects = await turn_start(
             session,
             state,
@@ -58,7 +53,19 @@ async def _resolve_one_packet(session, state, packet, **deps) -> dict:
         )
         if effects is None:
             return {}
+    if packet.declaration.reshape and not _reshape_prepared:
+        from combat_reshape_packet import ReshapeRefused, resolve_reshape
+
+        try:
+            if not await resolve_reshape(
+                session, state, packet.actor_id, packet.declaration, steps, progress=progress, packet_deps=deps
+            ):
+                return {}
+        except ReshapeRefused as error:
+            return {"actor_id": packet.actor_id, "resolved": False, "reason": str(error)}
     result = await _resolve_action_packet(session, state, packet, **deps)
+    if "reshape_receipts" in steps:
+        result["reshape"] = steps["reshape_receipts"]
     if progress is not None and progress.paused:
         if effects:
             attack_cursor = deps.get("attack_cursor")
@@ -127,21 +134,23 @@ async def _resolve_action_packet(
     if stale is None:
         choir_encounter.guard_declaration(state, packet.actor_id, decl)
 
-    await choir_encounter.turn_start(
-        session,
-        state,
-        attacker,
-        conn=conn,
-        concentration_break_mod=concentration_break_mod,
-        sink=sink,
-        progress=progress.scope("choir_aura") if progress is not None else None,
-    )
-    if progress is not None and progress.paused:
-        return {}
+    forced_move = None
+    if "legendary_kind" not in (_held_head or {}):
+        await choir_encounter.turn_start(
+            session,
+            state,
+            attacker,
+            conn=conn,
+            concentration_break_mod=concentration_break_mod,
+            sink=sink,
+            progress=progress.scope("choir_aura") if progress is not None else None,
+        )
+        if progress is not None and progress.paused:
+            return {}
 
-    from choir_effects import approach
+        from choir_effects import approach
 
-    forced_move = approach(state, attacker)
+        forced_move = approach(state, attacker)
     if attacker is None or attacker.is_fallen:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": "actor unavailable"}
     if blocked := cannot_act(attacker.conditions):
@@ -200,6 +209,12 @@ async def _resolve_action_packet(
         else None
     )
 
+    devastating = combat_martial.attack_ability(decl) == DEVASTATING_STRIKE
+    if devastating:
+        if player is None:
+            raise ValueError("Devastating Strike requires a prevalidated player.")
+        action = combat_martial.main_hand(player)
+
     movement = {}
     movement_budget = {}
     if action is not None:
@@ -214,6 +229,13 @@ async def _resolve_action_packet(
             or (not replay and not combat_recharge.available(attacker, action))
         ):
             return {"actor_id": attacker.id, "resolved": False, "reason": "action unavailable"}
+        if (
+            not replay
+            and action_has_direct_line(action)
+            and not combat_melee_approach.is_melee(action)
+            and (wall := line_blocker(state, attacker.id, decl.target_id))
+        ):
+            return {"actor_id": attacker.id, "resolved": False, "reason": blocked_reason(wall)}
         if still_encounter.is_owner(state, attacker.id):
             import still_actions
 
@@ -249,6 +271,8 @@ async def _resolve_action_packet(
                     sink=sink,
                     advantage=reaction_save_advantage,
                 )
+        if action_kind(action) == architect_constructs.KIND:
+            return architect_constructs.resolve(state, attacker, action, decl)
         if not attacker.is_ally and action_kind(action) in ("healing", "prepare_attack"):
             action = begin_execution(state, attacker, action, decl)
             return resolve_active(state, attacker, action, decl)
@@ -267,6 +291,7 @@ async def _resolve_action_packet(
             )
         target = state.get_participant(decl.target_id) if decl.target_id else None
         if target is not None and not target_unavailable(target, action):
+            movement_budget = combat_cunning_action.movement_allowance(state, attacker, decl)
             # Move before any roll is prepared, and only once: a held head carries its approach, and a
             # Zhael-held ally swing resumes through its attack cursor, never back through here.
             if _melee_approach is not None:
@@ -274,6 +299,8 @@ async def _resolve_action_packet(
             else:
                 movement = combat_melee_approach.prepare(state, attacker, target, action, movement_budget)
             if movement.get("attack_resolved") is False:
+                if decl.rider == "dash" and movement.get("movement_spent_ft", 0) > 0:
+                    await combat_cunning_action.pay(attacker, queries=queries, conn=conn)
                 return movement
         if replay:
             assert _held_head is not None
@@ -286,6 +313,7 @@ async def _resolve_action_packet(
             )
             and (
                 decl.type is DeclarationType.ATTACK
+                or devastating
                 or action.get("applies_condition")
                 or action.get("half_on_success") is True
             )
@@ -338,64 +366,30 @@ async def _resolve_action_packet(
         if enemy_summary is not None:
             return {**movement, **enemy_summary}
 
-    if decl.type is DeclarationType.ABILITY:
-        # (Enemy condition-infliction ABILITY is handled by the type-agnostic branch above, which
-        # routes both ATTACK and ABILITY enemy actions carrying applies_condition. The branches
-        # below are the player-oriented paths.)
-        # De-escalate (M4.6a story-004) is an ABILITY but resolves socially, not as a cast:
-        # contested gate + one argument that can end combat. Its Focus/lockout were pre-gated
-        # in _prevalidate_ability_focus, and ``player`` is the for_update row from there.
-        if (decl.action or "").lower() == "de_escalate":
-            return await _resolve_deescalation_packet(
-                session,
-                attacker,
-                decl,
-                state=state,
-                conn=conn,
-                player=player,
-                sink=sink,
-                queries=queries,
-                progress=progress.scope("deescalation") if progress is not None else None,
-            )
-        # A non-spell condition ability (M4.8 story-005, e.g. bard_inspire) resolves via the dedicated
-        # ability-condition path — deduct its cost and land the condition on the target participant —
-        # NOT through _resolve_ability_packet (which casts a spell). Pre-gated in _prevalidate_ability_focus.
-        cond_ability = condition_ability(declared_ability(decl.action))
-        if cond_ability is not None:
-            return await _resolve_ability_condition_packet(
-                session,
-                attacker,
-                decl,
-                cond_ability,
-                state=state,
-                conn=conn,
-                player=player,
-                queries=queries,
-                progress=progress,
-            )
-        return await _resolve_ability_packet(
+    if decl.type is DeclarationType.ABILITY and not devastating:
+        return await combat_player_ability.resolve(
             session,
+            state,
             attacker,
             decl,
-            state=state,
-            cast_resolver=cast_resolver,
             conn=conn,
             player=player,
-            cast_outcome=cast_outcome if cast_outcome is not None else AbilityCastOutcome(),
+            sink=sink,
             progress=progress,
-            damage_deps={
-                "mutations": mutations,
-                "queries": queries,
-                "resolver": resolver,
-                "concentration_break_mod": concentration_break_mod,
-                "sink": sink,
-            },
+            queries=queries,
+            cast_resolver=cast_resolver,
+            cast_outcome=cast_outcome,
+            mutations=mutations,
+            resolver=resolver,
+            concentration_break_mod=concentration_break_mod,
         )
 
     if decl.type is DeclarationType.MANEUVER:
+        if wall := line_blocker(state, attacker.id, decl.target_id):
+            return {"actor_id": attacker.id, "resolved": False, "reason": blocked_reason(wall)}
         return combat_maneuver.resolve_maneuver(state, attacker, decl)
 
-    if decl.type is not DeclarationType.ATTACK:
+    if decl.type is not DeclarationType.ATTACK and not devastating:
         # Non-attack declarations don't resolve mechanically yet, but a narrated rider
         # (e.g. Quick Change on a social INTERACT) still surfaces for the DM to voice.
         summary = {
@@ -427,26 +421,29 @@ async def _resolve_action_packet(
             **outcome,
         }
 
-    return await combat_fate.attack_sequence(
+    return await architect_actions.resolve(
         session,
         state,
         packet,
         attacker,
         target,
         action,
-        attack_cursor=attack_cursor,
-        progress=progress,
-        mutations=mutations,
-        queries=queries,
-        resolver=resolver,
-        concentration_break_mod=concentration_break_mod,
-        conn=conn,
-        sink=sink,
-        reaction_ac_bonus=reaction_ac_bonus,
-        reaction_save_advantage=reaction_save_advantage,
-        shield_reaction=shield_reaction,
-        grapple_blocked=grapple_blocked,
-        publish_roll=publish_roll,
-        movement=movement,
-        movement_budget=movement_budget,
+        _held_head,
+        dict(
+            attack_cursor=attack_cursor,
+            progress=progress,
+            mutations=mutations,
+            queries=queries,
+            resolver=resolver,
+            concentration_break_mod=concentration_break_mod,
+            conn=conn,
+            sink=sink,
+            reaction_ac_bonus=reaction_ac_bonus,
+            reaction_save_advantage=reaction_save_advantage,
+            shield_reaction=shield_reaction,
+            grapple_blocked=grapple_blocked,
+            publish_roll=publish_roll,
+            movement=movement,
+            movement_budget=movement_budget,
+        ),
     )

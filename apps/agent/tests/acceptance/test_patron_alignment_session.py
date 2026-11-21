@@ -75,6 +75,10 @@ class LoopClock:
         get, drain = self.sd.event_bus.get, self.sd.event_bus.drain
         entered = asyncio.Event()
 
+        def observe_tick():
+            self.value = self.tick_value
+            self.seen = True
+
         async def observed_get(**kwargs):
             entered.set()
             if self.seen:
@@ -85,13 +89,13 @@ class LoopClock:
                 await self.held
             event = await get(**kwargs)
             if self.marker is not None and event is self.marker:
-                self.seen = True
+                observe_tick()
             return event
 
         def observed_drain():
             events = drain()
             if self.marker is not None and any(event is self.marker for event in events):
-                self.seen = True
+                observe_tick()
             return events
 
         self.monkeypatch.setattr(self.sd.event_bus, "get", observed_get)
@@ -102,7 +106,7 @@ class LoopClock:
         await until(lambda: self.sd.primary_player_id in self.sd.present_member_ids)
 
     async def tick(self, elapsed):
-        self.value = self.origin + elapsed
+        self.tick_value = self.origin + elapsed
         self.marker = GameEvent(E.DICE_ROLL, {})
         self.completed = asyncio.get_running_loop().create_future()
         if self.held is not None:

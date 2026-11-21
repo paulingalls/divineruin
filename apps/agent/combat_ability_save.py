@@ -9,6 +9,7 @@ from livekit.agents.llm import ToolError
 import check_resolution_save
 import rules_engine
 from combat_fate_rolls import packet_save
+from combat_legendary_resistance import finalize_save, override_fields
 
 if TYPE_CHECKING:
     from abilities import Ability
@@ -34,6 +35,14 @@ def gate_hostile_target(state: "CombatState", decl: "Declaration", ability: "Abi
     gate_hostile_condition_targets(state, decl, ability.applies_condition, ability.name)
 
 
+def player_ability_dc(attacker: "CombatParticipant", attribute: str) -> int:
+    return (
+        8
+        + rules_engine.proficiency_bonus(attacker.level)
+        + rules_engine.attribute_modifier(attacker.attributes[attribute])
+    )
+
+
 async def resolve_hostile_condition(
     session,
     state: "CombatState",
@@ -49,11 +58,7 @@ async def resolve_hostile_condition(
     assert cond_type is not None
     assert ability.save is not None
     assert ability.dc_attribute is not None
-    dc = (
-        8
-        + rules_engine.proficiency_bonus(attacker.level)
-        + rules_engine.attribute_modifier(attacker.attributes[ability.dc_attribute])
-    )
+    dc = player_ability_dc(attacker, ability.dc_attribute)
     result = await packet_save(
         progress,
         session,
@@ -66,13 +71,17 @@ async def resolve_hostile_condition(
             dc,
             cond_type,
             originating_participant_id=attacker.id,
+            combat_state=state,
         ),
     )
     if result is None:
         return {}
+    result = finalize_save(state, target, result, failed_conditions=(cond_type,))
     summary = {
+        **override_fields(result),
         "actor_id": attacker.id,
         "resolved": True,
+        "save_success": result.success,
         "declaration_type": str(decl.type),
         "action": ability.id,
         "target": target.name,

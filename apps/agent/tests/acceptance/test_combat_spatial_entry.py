@@ -41,6 +41,7 @@ LEVELS = {
     "hollow_corrupted_settlement": 14,
     "hollow_choir": 16,
     "hollow_still": 18,
+    "hollow_architect": 20,
     "hollow_knight_boss": 14,
     "hollow_veilrender_boss": 14,
 }
@@ -111,13 +112,26 @@ async def test_created_and_migrated_speed_limits_movement(spatial_entry, migrate
     before = deepcopy(state.to_dict())
     with pytest.raises(ToolError, match="exceeds speed"):
         await combat_turn.declare_phase(
-            ctx, [MoveDecl.model_validate({"kind": "move", "actor_id": pid, "destination": pos(30.0001)})]
+            ctx,
+            [
+                MoveDecl.model_validate(
+                    {
+                        "reshape": [],
+                        "movement_mode": "ground",
+                        "kind": "move",
+                        "actor_id": pid,
+                        "destination": pos(30.0001),
+                    }
+                )
+            ],
         )
     assert ctx.userdata.combat_state.to_dict() == before
     assert (await persisted(state.combat_id)) == before
-    payload = MoveDecl.model_validate({"kind": "move", "actor_id": pid, "destination": pos(30)})
+    payload = MoveDecl.model_validate(
+        {"reshape": [], "movement_mode": "ground", "kind": "move", "actor_id": pid, "destination": pos(30)}
+    )
     with pytest.raises(ToolError, match="more than once"):
-        await combat_turn.declare_phase(ctx, [payload, DefendDecl(kind="defend", actor_id=pid)])
+        await combat_turn.declare_phase(ctx, [payload, DefendDecl(reshape=[], kind="defend", actor_id=pid)])
     declared = json.loads(await combat_turn.declare_phase(ctx, [payload]))
     assert declared["spatial"] == facts(ctx.userdata.combat_state, pid)
     with pytest.raises(ToolError, match="declaration beat"):
@@ -135,7 +149,7 @@ async def test_created_and_migrated_speed_limits_movement(spatial_entry, migrate
 
 @pytest.mark.parametrize("template", TEMPLATES, ids=lambda row: row["id"])
 async def test_actual_catalog_entry_persists_placement_and_zone_ids(spatial_entry, template, mock_combat_agent_factory):
-    assert len(TEMPLATES) == 18 and {row["id"] for row in TEMPLATES} == set(LEVELS)
+    assert len(TEMPLATES) == 19 and {row["id"] for row in TEMPLATES} == set(LEVELS)
     assert any(row["scene_placement"]["zones"] for row in TEMPLATES)
     assert template["recommended_party_level"] == LEVELS[template["id"]]
     ctx, response = await spatial_entry(members=2, companion="companion_tam", encounter=template["id"])
@@ -166,6 +180,8 @@ async def test_actual_catalog_entry_persists_placement_and_zone_ids(spatial_entr
         assert {row["action"] for row in choir["search_actions"]} == {"choir_search_perception", "choir_search_arcana"}
     if template["id"] == "hollow_still":
         assert queried.pop("still") == response["still"]
+    if template["id"] == "hollow_architect":
+        assert queried.pop("architect") == response["architect"]
     assert queried == response["spatial"]
 
 
@@ -347,7 +363,7 @@ async def test_corrupt_pending_and_held_destination_refuses_before_roll(spatial_
 
 
 def test_spatial_contract_parity_has_nonempty_floor():
-    assert len(TEMPLATES) == 18
+    assert len(TEMPLATES) == 19
     assert any(row["scene_placement"]["zones"] for row in TEMPLATES)
     cases = []
     for row in TEMPLATES:

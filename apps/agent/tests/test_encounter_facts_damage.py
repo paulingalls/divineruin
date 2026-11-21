@@ -19,6 +19,7 @@ import db_mutations
 from _gods_content import load_gods
 from activate_tools import activate
 from combat_state import CombatState
+from combat_structures import add_wall
 from combat_turn import declare_phase, resolve_phase
 from query_tools import query_info
 
@@ -277,3 +278,24 @@ def test_malformed_checkpoint(bad: object) -> None:
     data = CombatState("malformed", [], []).to_dict()
     with pytest.raises(ValueError, match="encounter_facts"):
         CombatState.from_dict({**data, "encounter_facts": bad})
+
+
+async def test_blade_skips_a_missed_wall(world: SimpleNamespace) -> None:
+    async with fight(world, "zhael") as f:
+        state = f.session.combat_state
+        at = state.spatial["positions"][f.hero]
+        add_wall(
+            state,
+            "wall",
+            "Slate Wall",
+            {**at, "x": at["x"] + 3, "y": at["y"] - 5},
+            {**at, "x": at["x"] + 3, "y": at["y"] + 5},
+        )
+        await db_mutations.save_combat_state(f.combat_id, state.to_dict())
+        await f.reload()
+        await f.round(attack(f.hero, "wall"), faces=(1,))
+        assert f.session.combat_state.encounter_facts["misses"] == {}
+        packets = await f.round(attack(f.hero, "wall"), faces=(20,))
+        packet = next(p for p in packets if p["actor_id"] == f.hero)
+        assert packet["hit"] and packet.get("synergy_clause_id") is None
+        assert f.session.combat_state.encounter_facts["once_spent"] == {}

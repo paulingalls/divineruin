@@ -3,13 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 import temp_hp
+from encounter_roles import EncounterRole
 
 
 @dataclass
 class CombatParticipant:
     id: str
     name: str
-    type: str  # "player", "enemy", "companion", "temporary_hollowed" — use is_ally for the band check
+    type: str  # player, companion, enemy, temporary_hollowed, structure
     initiative: int
     hp_current: int
     hp_max: int
@@ -53,7 +54,7 @@ class CombatParticipant:
     deferred_effects: list[dict] = field(default_factory=list)
     xp_value: int = 0
     # Declaration enhancers this participant has been granted (M4.2, story-004). Keys:
-    # extra_attack, shield_bash, cunning_action, hit_and_run, command_lesser, quick_change.
+    # extra_attack, shield_bash, hit_and_run, command_lesser, quick_change.
     # An enhancer EXPANDS what one declaration resolves into; it never grants a 2nd
     # declaration. Populated from players.data.flags at combat init; serializes via asdict
     # and falls back to [] for rows written before the field existed.
@@ -77,6 +78,8 @@ class CombatParticipant:
     damage_mult: float = 1.0
     dc_mod: int = 0
     legendary_actions: int = 0
+    legendary: dict | None = None
+
     signature_ability: dict | None = None
     # Loot & currency overlay (M4.7, story-002). ``category`` is the enemy's creature category
     # (humanoid/beast/hollow_drift/hollow_rend/construct/undead/named) and ``loot_table_id`` points
@@ -130,6 +133,14 @@ class CombatParticipant:
 
     def __post_init__(self) -> None:
         temp_hp.validate(self.temp_hp)
+
+    @property
+    def legendary_capacity(self) -> int:
+        return self.legendary["points"] if self.legendary is not None else int(self.role == EncounterRole.BOSS)
+
+    @property
+    def is_structure(self) -> bool:
+        return self.type == "structure"
 
     @property
     def is_ally(self) -> bool:

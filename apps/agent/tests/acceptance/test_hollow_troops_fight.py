@@ -157,7 +157,7 @@ class TroopFight(MawlingHarness):
                 )
                 if distance(positions[actor.id], positions[target.id]) > 5:
                     if actor.type == "enemy" and turn == 0:
-                        declarations.append({"kind": "defend", "actor_id": actor.id})
+                        declarations.append({"reshape": [], "kind": "defend", "actor_id": actor.id})
                         continue
                     origin, destination = positions[actor.id], positions[target.id]
                     gap = distance(origin, destination)
@@ -165,11 +165,19 @@ class TroopFight(MawlingHarness):
                     destination = {
                         axis: origin[axis] + (destination[axis] - origin[axis]) * fraction for axis in origin
                     }
-                    declarations.append({"kind": "move", "actor_id": actor.id, "destination": destination})
+                    declarations.append(
+                        {
+                            "reshape": [],
+                            "movement_mode": "ground",
+                            "kind": "move",
+                            "actor_id": actor.id,
+                            "destination": destination,
+                        }
+                    )
                     continue
                 actions = [a for a in manifest[actor.id] if a["available"]]
                 if actor.type == "player" and not self.evidence_complete(required):
-                    declarations.append({"kind": "defend", "actor_id": actor.id})
+                    declarations.append({"reshape": [], "kind": "defend", "actor_id": actor.id})
                     continue
                 if actor.type == "enemy":
                     action = next((a for a in actions if a["name"] in required - self.hits), actions[0])
@@ -187,7 +195,7 @@ class TroopFight(MawlingHarness):
                         for strike in action["strikes"]
                     ]
                 else:
-                    declaration.update(target_id=target.id, held_item_id="", rider="")
+                    declaration.update(target_id=target.id, held_item_id="", rider="", reshape=[])
                 declarations.append(declaration)
             await self.command("declare_phase", {"declarations": declarations})
             await self.drain()

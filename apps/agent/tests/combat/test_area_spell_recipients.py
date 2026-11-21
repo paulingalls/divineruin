@@ -291,8 +291,9 @@ async def test_corruption_wave_cone_commits_each_player_once(area_party, elevate
     await combat_turn.declare_phase(
         ctx,
         [
-            DefendDecl(kind="defend", actor_id=ctx.userdata.player_id),
+            DefendDecl(reshape=[], kind="defend", actor_id=ctx.userdata.player_id),
             AttackDecl(
+                reshape=[],
                 kind="attack",
                 actor_id=boss.id,
                 action="Corruption Wave",
@@ -469,6 +470,7 @@ async def test_cone_refuses_coincident_aim_before_writes(area_party):
             ctx,
             [
                 AttackDecl(
+                    reshape=[],
                     kind="attack",
                     actor_id="foe",
                     action="Corruption Wave",
@@ -482,7 +484,6 @@ async def test_cone_refuses_coincident_aim_before_writes(area_party):
 
 
 async def test_first_dart_reduced_to_no_dice_lands_zero(spell_fight):
-    """A -1 damage die (e.g. a Veil Ward) leaves dart 0 with no dice: it deals 0, later darts still roll."""
     ctx = spell_fight
     spell = await prepare_spell(ctx, "arcane_magic_missile")
     await add_enemies(ctx, {"foe": (0, 0, 0), "other": (10, 0, 0)})

@@ -187,10 +187,20 @@ class TestActivation:
             state = _make_combat_state()
             from voice_condition_fixtures import place_actors
 
+            from session_data import CombatParticipant
+
+            actor = state.get_participant("player_1")
+            assert actor is not None
+            actor.archetype_id = ability.archetype_id
+            actor.level = ability.level_requirement
+            state.participants.append(CombatParticipant("ally", "Ally", "companion", 5, 10, 10, 10))
+            state.initiative_order.append("ally")
             place_actors(state)
             state.beat = PhaseBeat.DECLARATION
             action = {"type": "ability", "action": match.group(1)}
-            if spell is None or spell.heal is None:
+            if ability.id == "warrior_rallying_shout":
+                action["target_id"] = "ally"
+            elif ability.id != "warrior_second_wind" and (spell is None or spell.heal is None):
                 action["target_id"] = "goblin_scout_1"
             declaration = {"player_1": action}
             advance_combat_phase(state, declaration)  # ValueError here = the two gates disagree

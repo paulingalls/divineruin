@@ -8,7 +8,6 @@ from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
 import abilities
-import combat_ability
 import spells
 from combat_phase import advance_combat_phase
 from query_tools import _query_abilities_impl
@@ -40,6 +39,7 @@ def mock_context():
     context = AsyncMock(spec=RunContext)
     session_data = AsyncMock(spec=SessionData)
     session_data.player_id = "test_player"
+    session_data.acting_player_id = "test_player"
     session_data.location_id = "test_location"
     context.userdata = session_data
     return context
@@ -85,7 +85,7 @@ class TestQueryAbilities:
         assert reactions
         assert all(rows[ability.id]["window"] == ability.window for ability in reactions)
         assert rows["warrior_cleaving_blow"]["active_variant_id"] == "warrior_cleaving_blow_drathian"
-        assert rows["warrior_devastating_strike"]["combat"] is False
+        assert rows["warrior_cleaving_blow"]["combat"] is False
 
     @pytest.mark.asyncio
     async def test_spell_backed_row_names_its_combat_spell_id(self, mock_context):
@@ -97,27 +97,16 @@ class TestQueryAbilities:
         assert rows["cleric_heal_wounds"]["spell_id"] == "divine_heal_wounds"
 
     @pytest.mark.asyncio
-    async def test_rows_follow_canonical_declarability(self, mock_context, monkeypatch):
-        dependencies = self._dependencies(player={"class": "bard", "level": 1})
-
-        payload = json.loads(await self._read(mock_context, dependencies))
-        rows = {row["id"]: row for row in payload["abilities"]}
-        assert "combat" not in rows["bard_inspire"]
-
-        monkeypatch.setattr(combat_ability, "condition_ability", lambda _declaration: None)
-        payload = json.loads(await self._read(mock_context, dependencies))
-        rows = {row["id"]: row for row in payload["abilities"]}
-
-        assert rows["bard_inspire"]["combat"] is False
-
-    @pytest.mark.asyncio
     async def test_every_emitted_row_agrees_with_declaration_gate(self, mock_context):
         catalog = load_fixture_config()
         assert catalog, "ability catalog walk produced no rows"
         emitted_ids = set()
         state = _solo_player_state()
         state.participants.append(CombatParticipant("foe", "Foe", "enemy", 5, 100, 100, 10))
-        state.initiative_order.append("foe")
+        state.participants.append(CombatParticipant("ally", "Ally", "companion", 6, 100, 100, 10))
+        state.initiative_order.extend(("foe", "ally"))
+        actor = state.participants[0]
+        actor.action_pool = [{"name": "Longsword", "damage": "1d8"}]
         place_actors(state)
 
         archetype_ids = {ability.archetype_id for ability in catalog.values()}
@@ -129,6 +118,8 @@ class TestQueryAbilities:
                 if ability.ability_type == "elective"
             ]
             for level in sorted({ability.level_requirement for ability in class_abilities}):
+                actor.archetype_id = archetype_id
+                actor.level = level
                 dependencies = self._dependencies(player={"class": archetype_id, "level": level}, known=known)
                 payload = json.loads(await self._read(mock_context, dependencies))
 
@@ -141,6 +132,17 @@ class TestQueryAbilities:
                     # alone certifies nothing: a row naming no real spell would pass here and blow up
                     # at resolution instead. Pin the id on the spell catalog the cast path reads.
                     declaration = {"type": "ability", "action": action}
+                    if row["id"] == "warrior_rallying_shout":
+                        declaration["target_id"] = "ally"
+                    if row["id"] == "warrior_devastating_strike":
+                        declaration["target_id"] = "foe"
+                    if recipe := row.get("declaration"):
+                        declaration = {
+                            "type": recipe["kind"],
+                            "action": "Longsword",
+                            "target_id": "foe",
+                            "rider": recipe.get("rider") or recipe["riders"][0],
+                        }
                     if "spell_id" in row:
                         spell = spells.get_spell(row["spell_id"])
                         if spell.combat_damage:

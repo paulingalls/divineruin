@@ -98,6 +98,9 @@ async def test_luna_pilot_emits_every_tool_as_strict(monkeypatch, profile, tools
         assert schema["properties"]["difficulty"]["type"] == ["string", "null"]
         assert schema["properties"]["tier"]["type"] == ["integer", "null"]
 
+    if profile == "combat":
+        _assert_reshape_schema(functions["declare_phase"]["parameters"])
+
     if profile == "dispatch":
         function = next(t["function"] for t in emitted if t["function"]["name"] == "begin_activity")
         schema = function["parameters"]
@@ -121,3 +124,38 @@ async def test_luna_pilot_emits_every_tool_as_strict(monkeypatch, profile, tools
         assert set(purification["required"]) == {"kind", "item_id", "quantity"}
         assert purification["properties"]["quantity"]["type"] == "integer"
         assert purification["additionalProperties"] is False
+
+
+def _assert_reshape_schema(schema):
+    def branches(node):
+        return [
+            schema["$defs"][branch["$ref"].split("/")[-1]] if "$ref" in branch else branch for branch in node["anyOf"]
+        ]
+
+    def kind(branch):
+        discriminator = branch["properties"]["kind"]
+        return discriminator.get("const") or discriminator["enum"][0]
+
+    expected = {
+        "create_wall": {"start", "end"},
+        "move_wall": {"wall_id", "start", "end"},
+        "destroy_wall": {"wall_id"},
+        "open_floor": {"min", "max"},
+        "lower_ceiling": {"min", "max"},
+    }
+    declarations = branches(schema["properties"]["declarations"]["items"])
+    assert len(declarations) == 9
+    for declaration in declarations:
+        properties = declaration["properties"]
+        assert set(declaration["required"]) == set(properties)
+        if kind(declaration) == "move":
+            assert set(properties["movement_mode"]["enum"]) == {"ground", "flying"}
+        else:
+            assert "movement_mode" not in properties
+        if kind(declaration) in {"attack", "move", "defend"}:
+            operations = branches(properties["reshape"]["items"])
+            assert len(operations) == len(expected)
+            assert {kind(operation): set(operation["required"]) - {"kind"} for operation in operations} == expected
+            assert all(operation["additionalProperties"] is False for operation in operations)
+        else:
+            assert "reshape" not in properties

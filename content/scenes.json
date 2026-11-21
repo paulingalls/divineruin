@@ -283,5 +283,13 @@
     "region_type": "wilderness",
     "instructions": "Let the birdsong and the clear rush of the brook sound inviting. The wind is as warm as spring, even here. Let the perfection become unsettling as the party listens. Give the party time to explore and rest. If they try to destroy the Still, use the scene entry to call enter_mode(mode=\"combat\", encounter_id=\"hollow_still\").",
     "beats": []
+  },
+  {
+    "id": "scene_ashmark_architect_works",
+    "name": "The Architect's Works",
+    "type": "location",
+    "region_type": "wilderness",
+    "instructions": "Let the scraping stop when the party speaks. If they challenge the Architect, use the scene entry to call enter_mode(mode=\"combat\", encounter_id=\"hollow_architect\").",
+    "beats": []
   }
 ]

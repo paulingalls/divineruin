@@ -39,7 +39,7 @@ def mapping(value, label):
     return value
 
 
-def validate_maps(positions, locations, zones):
+def validate_maps(positions, locations, zones, *, zone_kinds):
     for label, points in (("positions", positions), ("locations", locations)):
         for value in mapping(points, label).values():
             point(value)
@@ -52,9 +52,9 @@ def validate_maps(positions, locations, zones):
             {"center_id", "radius_ft"},
             {"kind", "center_id", "radius_ft"},
         ):
-            raise ValueError("zone requires center_id and radius_ft, optionally kind=silence")
-        if "kind" in zone and zone["kind"] != "silence":
-            raise ValueError("zone kind must be silence")
+            raise ValueError("zone requires center_id and radius_ft, optionally kind")
+        if "kind" in zone and zone["kind"] not in zone_kinds:
+            raise ValueError(f"zone kind must be one of {', '.join(zone_kinds)}")
         center = zone["center_id"]
         if not isinstance(center, str) or center not in positions.keys() | locations.keys():
             raise ValueError("unknown zone center")
@@ -74,7 +74,7 @@ def validate_scene(encounter):
     ids = [enemy["id"] for enemy in enemies]
     if len(ids) != len(set(ids)) or set(mapping(scene["actors"], "actors")) != set(ids):
         raise ValueError("scene_placement must cover every enemy exactly")
-    validate_maps(scene["actors"], scene["locations"], scene["zones"])
+    validate_maps(scene["actors"], scene["locations"], scene["zones"], zone_kinds=("silence",))
     for start in (scene["party_start"], scene["companion_start"]):
         for other in [
             scene["party_start"],
@@ -87,21 +87,35 @@ def validate_scene(encounter):
 
 
 def validate_spatial(spatial, actor_ids):
-    if not isinstance(spatial, dict) or set(spatial) != {"positions", "locations", "zones", "speeds"}:
+    keys = {"positions", "locations", "zones", "speeds"}
+    if not isinstance(spatial, dict) or not keys <= set(spatial) <= keys | {"structures", "movement_areas", "chambers"}:
         raise ValueError("invalid persisted spatial record")
-    validate_maps(spatial["positions"], spatial["locations"], spatial["zones"])
+    validate_maps(spatial["positions"], spatial["locations"], spatial["zones"], zone_kinds=("silence", "cathedral"))
     speeds = mapping(spatial["speeds"], "speeds")
     if set(spatial["positions"]) != set(actor_ids) or set(speeds) != set(actor_ids):
         raise ValueError("spatial record must cover every actor")
     for value in speeds.values():
         number(value, "speed", nonnegative=True)
+    if "structures" in spatial:
+        from combat_structures import validate_segments
+
+        validate_segments(spatial["structures"])
+    if "chambers" in spatial:
+        mapping(spatial["chambers"], "chambers")
+    if "movement_areas" in spatial:
+        from combat_movement_cost import validate_areas
+
+        validate_areas(spatial["movement_areas"], actor_ids)
     return deepcopy(spatial)
 
 
 def require_spatial(state):
     if state is None or state.spatial is None:
         raise ValueError("Combat has no committed spatial placement")
+    from combat_structures import validate_participants
+
     validate_spatial(state.spatial, [p.id for p in state.participants])
+    validate_participants(state)
     return state.spatial
 
 
@@ -117,19 +131,28 @@ def place(state, target_id, destination):
     spatial = require_spatial(state)
     if target_id not in spatial["positions"]:
         raise ValueError(f"Unknown participant position {target_id!r}")
-    spatial["positions"][target_id] = point(destination)
+    destination = point(destination)
+    spatial["positions"][target_id] = destination
+    if (record := state.architect_encounter) and (floor_id := record["pits"].get(target_id)):
+        floor = record["floors"][floor_id]
+        if any(not floor["min"][axis] <= destination[axis] <= floor["max"][axis] for axis in ("x", "y", "z")):
+            del record["pits"][target_id]
+    from architect_encounter import end_cathedral_after_move
     from choir_effects import exposure
 
+    end_cathedral_after_move(state, target_id)
     exposure(state)
     return dict(spatial["positions"][target_id])
 
 
 def facts(state, origin_id):
+    import architect_entomb
+
     spatial = require_spatial(state)
     origin = position(spatial, origin_id)
-    distances = {
-        key: distance(origin, position(spatial, key)) for key in sorted([*spatial["positions"], *spatial["locations"]])
-    }
+    retired = {p.id for p in state.participants if p.is_structure and p.is_dead}
+    positions = {key: pos for key, pos in spatial["positions"].items() if key not in retired}
+    distances = {key: distance(origin, position(spatial, key)) for key in sorted([*positions, *spatial["locations"]])}
     inactive_auras = {
         f"{actor.id}_corruption_aura"
         for actor in state.participants
@@ -141,22 +164,37 @@ def facts(state, origin_id):
             "center": position(spatial, zone["center_id"]),
             "members": [
                 actor_id
-                for actor_id, pos in sorted(spatial["positions"].items())
+                for actor_id, pos in sorted(positions.items())
                 if inside(pos, position(spatial, zone["center_id"]), zone["radius_ft"])
             ],
         }
         for key, zone in spatial["zones"].items()
         if key not in inactive_auras
     }
-    return {
+    result = {
         "origin_id": origin_id,
-        "positions": deepcopy(spatial["positions"]),
+        "positions": deepcopy(positions),
         "locations": deepcopy(spatial["locations"]),
         "zones": zones,
         "distances_ft": distances,
-        "speeds_ft": deepcopy(spatial["speeds"]),
+        "speeds_ft": {key: spatial["speeds"][key] for key in positions},
         "spoken": [f"{key} is {value:g} feet from {origin_id}" for key, value in distances.items() if key != origin_id],
     }
+
+    if "movement_areas" in spatial:
+        result["movement_areas"] = deepcopy(spatial["movement_areas"])
+
+    from combat_structures import wall_facts
+
+    walls, spoken = wall_facts(state, spatial)
+    if walls:
+        result["walls"] = walls
+        result["spoken"].extend(spoken)
+    chambers, spoken = architect_entomb.facts(state, spatial)
+    if chambers:
+        result["chambers"] = chambers
+        result["spoken"].extend(spoken)
+    return result
 
 
 def response_facts(state, acting_id, primary_id):

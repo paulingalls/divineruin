@@ -196,8 +196,9 @@ async def test_running_combat_save_and_lock(dev_db_pool):
             "declare_phase",
             {
                 "declarations": [
-                    {"kind": "defend", "actor_id": w.player},
+                    {"reshape": [], "kind": "defend", "actor_id": w.player},
                     {
+                        "reshape": [],
                         "kind": "attack",
                         "actor_id": "enemy",
                         "action": "Dread",

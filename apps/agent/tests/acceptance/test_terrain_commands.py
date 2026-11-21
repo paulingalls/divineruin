@@ -206,7 +206,7 @@ async def test_combat_terrain_commands(
                 "targets": [pid],
                 "argument_type": "",
             },
-            *[{"kind": "defend", "actor_id": actor} for actor in (guest, "shadeling_1", "shadeling_2")],
+            *[{"reshape": [], "kind": "defend", "actor_id": actor} for actor in (guest, "shadeling_1", "shadeling_2")],
         ]
         for _ in range(3):
             commands += [

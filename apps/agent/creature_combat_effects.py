@@ -29,6 +29,20 @@ def deferred_effects(row, *, composite=False):
             key = (row["id"], source["name"])
             if key in (("hollow_knight", "Corrupted Blade"), ("hollow_knight", "Unholy Fortitude")):
                 continue
+            if row["id"] == "hollow_architect" and source["name"] in {
+                "Construct Slam",
+                "Architect's Domain",
+                "Incorporeal Movement",
+                "Geometry Strike",
+                "Entomb",
+                "Cathedral",
+                "Summon Constructs",
+                "Reshape",
+                "Shift Wall",
+                "Reactive Architecture",
+                "Legendary Resistance",
+            }:
+                continue
             if key == ("hollow_knight", "Dissolution Strike"):
                 source = {
                     "name": source["name"],
@@ -82,7 +96,7 @@ def deferred_effects(row, *, composite=False):
         if (
             group == "hollow"
             and row["category"] == "hollow"
-            and (row["hollow"]["class"] != "named" or row["id"] == "hollow_choir")
+            and (row["hollow"]["class"] != "named" or row["id"] in {"hollow_choir", "hollow_architect"})
         ):
             source.pop("corruption_aura")
             source.pop("resonance_on_death")

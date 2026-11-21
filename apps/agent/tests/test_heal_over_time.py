@@ -41,7 +41,9 @@ async def cast_in_combat(healer, *, hp=10, maximum=40, state=None, ally: str | N
 
 
 async def declare_defend(healer, *actors):
-    await healer.command("declare_phase", {"declarations": [{"kind": "defend", "actor_id": a} for a in actors]})
+    await healer.command(
+        "declare_phase", {"declarations": [{"reshape": [], "kind": "defend", "actor_id": a} for a in actors]}
+    )
 
 
 def effects(packets):

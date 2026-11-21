@@ -33,7 +33,7 @@ def test_hollow_metadata_retains_only_unimplemented_claims():
             assert deferred_effects(row) == []
             continue
         expected = dict(row["hollow"])
-        if row["id"] == "hollow_choir":
+        if row["id"] in {"hollow_choir", "hollow_architect"}:
             for field in ("corruption_aura", "resonance_on_death"):
                 expected.pop(field)
         expected["vulnerable_to"] = [
@@ -115,3 +115,14 @@ def test_executed_affinity_passives_leave_only_residual_guidance():
         for (cid, name), description in residual.items():
             if cid == row["id"]:
                 assert effects[name]["description"] == description
+
+
+def test_architect_metadata_retains_only_deferred_effects():
+    from creature_combat_effects import deferred_effects
+
+    architect = next(row for row in catalog() if row["id"] == "hollow_architect")
+    effects = {effect["name"]: effect["source"] for effect in deferred_effects(architect)}
+    assert effects.keys() == {
+        "Alien Intelligence",
+        "hollow",
+    }

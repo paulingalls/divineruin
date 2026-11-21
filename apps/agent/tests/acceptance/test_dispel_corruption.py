@@ -221,6 +221,6 @@ async def test_salvage_becomes_usable_martial_weapon(dispel):
     pushed = h.events()[0]["inventory"][0]
     assert pushed["damage_dice"] == "1d8" and "versatile" in pushed["properties"]
     h.sd.room.local_participant.publish_data.reset_mock()
-    await h.command("transact", {"item_id": "battleaxe_common", "delta": -1})
+    await h.command("transact", {"action": "exchange", "item_id": "battleaxe_common", "delta": -1})
     assert (await db_queries.get_player_inventory(owner))[0]["slot_info"]["quantity"] == 4
     await h.assert_snapshot(owner)

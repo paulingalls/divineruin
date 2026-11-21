@@ -41,6 +41,28 @@ _ROBES = {"name": "Robes", "ac_bonus": 10}
 _HALF_PLATE = {"name": "Half Plate", "ac_bonus": 15}
 _SHIELD = {"name": "Wooden Shield", "ac_bonus": 1}
 
+# Starting gear has no inventory row; equipping over it returns this catalog item to inventory.
+STARTER_ITEM_IDS = {
+    _LONGSWORD["name"]: "longsword_guild",
+    _GREATAXE["name"]: "greataxe_basic",
+    _SHORTSWORD["name"]: "shortsword_basic",
+    _DAGGER["name"]: "dagger_bone",
+    _MACE["name"]: "mace_common",
+    _QUARTERSTAFF["name"]: "quarterstaff_oak",
+    _SHORTBOW["name"]: "shortbow_common",
+    _WARHAMMER["name"]: "warhammer_common",
+    _RAPIER["name"]: "rapier_dueling",
+    _SPEAR["name"]: "spear_common",
+    _HANDAXE["name"]: "handaxe_common",
+    _LUTE["name"]: "lute_common",
+    _CHAIN_SHIRT["name"]: "chain_shirt",
+    _LEATHER["name"]: "leather_armor_basic",
+    _HIDE["name"]: "hide_armor",
+    _ROBES["name"]: "robes_common",
+    _HALF_PLATE["name"]: "half_plate",
+    _SHIELD["name"]: "shield_wooden",
+}
+
 # ---------------------------------------------------------------------------
 # Classes (18)
 # ---------------------------------------------------------------------------

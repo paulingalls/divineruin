@@ -10,7 +10,6 @@ NOT_ENFORCED: dict[str, dict[str, object]] = {
     "damage_resistance_all": {"waits_on": "producer", "carriers": {"petrified": 1}},
     "immune_poison_disease": {"waits_on": "producer", "carriers": {"petrified": 1}},
     "damage_reduction": {"waits_on": "producer", "carriers": {"shielded": 1}},
-    "ignores_structures": {"waits_on": "model", "model": "the-architect walls movement"},
     "no_approach_source": {"waits_on": "model", "model": "positioning"},
     "reduced_max_hp": {"waits_on": "producer", "carriers": {"wounded": 1}},
     "source_specific_penalty": {"waits_on": "producer", "carriers": {"cursed": 1}},
@@ -71,6 +70,10 @@ def declaration_costs(active_conditions: list[dict] | tuple[dict, ...]) -> tuple
     return _carriers(active_conditions, "costs_declaration")
 
 
+def ignores_structures(active_conditions: list[dict] | tuple[dict, ...]) -> bool:
+    return bool(_carriers(active_conditions, "ignores_structures"))
+
+
 def speed_zero(active_conditions: list[dict] | tuple[dict, ...]) -> tuple[str, ...]:
     return _carriers(active_conditions, "speed_0")
 
@@ -98,6 +101,7 @@ RESTRICTION_ENFORCERS = {
     "incoming_ranged_disadvantage": incoming_ranged_disadvantage,
     "costs_declaration": declaration_costs,
     "speed_0": speed_zero,
+    "ignores_structures": ignores_structures,
     "consumed_on_use": attack_consumed_conditions,
     "one_time": attack_consumed_conditions,
 }

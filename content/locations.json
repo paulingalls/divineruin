@@ -993,6 +993,9 @@
     "description": "Birdsong rises in perfect harmony over the clear rush of a brook. Warm wind brushes your face, like spring where nothing should be growing. The same notes return, down to the breath between them.",
     "atmosphere": "gentle warmth and impossibly perfect birdsong",
     "exits": {
+      "northwest": {
+        "destination": "ashmark_architect_works"
+      },
       "southeast": {
         "destination": "ashmark_corrupted_front"
       }
@@ -1003,6 +1006,32 @@
     "navigation": "unmarked_wilderness",
     "resource_table": {
       "common": ["plant_fiber"],
+      "uncommon": [],
+      "rare": []
+    }
+  },
+  {
+    "id": "ashmark_architect_works",
+    "name": "The Architect's Works",
+    "tier": 2,
+    "district": "ashmark_front",
+    "region": "ashmark",
+    "region_type": "wilderness",
+    "terrain": "mountain",
+    "tags": ["wilderness", "dangerous", "architect"],
+    "description": "Stone scrapes on stone. Three measured knocks echo above you. Dust tastes of chalk. A freestanding wall shifts in the dark.",
+    "atmosphere": "patient scraping and measured knocks",
+    "exits": {
+      "southeast": {
+        "destination": "ashmark_still"
+      }
+    },
+    "default_scene": "scene_ashmark_architect_works",
+    "danger_level": 3,
+    "recommended_level": 20,
+    "navigation": "unmarked_wilderness",
+    "resource_table": {
+      "common": [],
       "uncommon": [],
       "rare": []
     }

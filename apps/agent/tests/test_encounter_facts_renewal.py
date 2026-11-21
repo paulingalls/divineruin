@@ -23,6 +23,7 @@ import db_queries
 import still_encounter
 from _gods_content import load_gods
 from combat_participant import CombatParticipant
+from combat_structures import add_wall
 from creature_combat_loader import load_creature_enemy
 
 CLAUSE = "mortaen_death_feeds_renewal"
@@ -333,3 +334,24 @@ async def test_phase_death_and_renewal_roll_back_together(world: SimpleNamespace
         await rollback(world, f, resolve, GOBLIN, "hp_current", 0)
         assert renewals((await resolve())["packets"]) == [receipt(f.hero, GOBLIN, 3, 5)]
         assert await focus(world) == 5
+
+
+async def test_a_destroyed_wall_is_not_a_death(world: SimpleNamespace) -> None:
+    async with fight(world, "mortaen", archetype="druid") as f:
+        await setup_recipient(world, "druid")
+        state = f.session.combat_state
+        at = state.spatial["positions"][f.ally]
+        wall = add_wall(
+            state,
+            "wall",
+            "Slate Wall",
+            {**at, "x": at["x"] + 3, "y": at["y"] - 5},
+            {**at, "x": at["x"] + 3, "y": at["y"] + 5},
+        )
+        wall.hp_current = 1
+        await db_mutations.save_combat_state(f.combat_id, state.to_dict())
+        await f.reload()
+        packets = await f.round(attack(f.ally, "wall"), faces=(20,))
+        assert participant(f.session.combat_state, "wall").is_dead
+        assert renewals(packets) == []
+        assert await focus(world) == 3
