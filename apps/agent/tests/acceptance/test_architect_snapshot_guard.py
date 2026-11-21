@@ -53,6 +53,8 @@ import db_queries
         ("reaction_future", "Invalid Architect reaction round"),
         ("missing_domain", "Invalid Architect domain"),
         ("domain_exclusion", "Invalid Architect domain"),
+        ("domain_shape", "Invalid Architect domain"),
+        ("domain_radius", "Invalid Architect domain"),
         ("invalid_floor", "Invalid Architect section"),
         ("ceiling_shape", "Invalid Architect ceiling"),
         ("ceiling_exclusion", "Invalid Architect ceiling"),
@@ -125,6 +127,19 @@ async def test_bad_architect_snapshot_cannot_load(fight, defect, reason):
             data["spatial"]["movement_areas"].clear()
         case "domain_exclusion":
             next(iter(data["spatial"]["movement_areas"].values()))["excluded_actor_ids"] = []
+        case "domain_shape":
+            areas = data["spatial"]["movement_areas"]
+            key, domain = next(iter(areas.items()))
+            areas[key] = {
+                "kind": "architect_domain",
+                "shape": "rectangle",
+                "excluded_actor_ids": domain["excluded_actor_ids"],
+                "min": pos(0),
+                "max": pos(20, 20),
+            }
+        case "domain_radius":
+            domain = next(iter(data["spatial"]["movement_areas"].values()))
+            domain["radius_ft"] -= 1
         case "invalid_floor":
             record["floors"]["floor"] = {"min": pos(0), "max": pos(21, 1)}
         case "ceiling_shape":
