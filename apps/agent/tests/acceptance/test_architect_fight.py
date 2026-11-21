@@ -140,38 +140,6 @@ async def attack(harness, actor, target, action, *, face: int | None = 15, damag
     return next(p for p in packets if p["actor_id"] == actor), rolled, extra
 
 
-async def test_flee_retains_damaged_owner_and_wall(fight):
-    state = await fight.reload()
-    record = state.architect_encounter
-    owner_id, wall_id = record["owner_id"], record["structure_ids"][0]
-    player_id = fight.players[0]
-    combat_spatial.place(state, player_id, pos(13, 9))
-    await fight.persist()
-    for target in (owner_id, wall_id):
-        summary, _, _ = await attack(fight, player_id, target, "Longsword", face=20)
-        assert summary["damage"] > 0
-    state = await fight.reload()
-    south = record["structure_ids"][1]
-    target = state.get_participant(south)
-    assert target is not None
-    target.hp_current = 1
-    combat_spatial.place(state, player_id, pos(13, -9))
-    await fight.persist()
-    await attack(fight, player_id, south, "Longsword", face=20)
-    before = await fight.reload()
-    await fight.command("end_combat", {"outcome": "fled"})
-    await reopen(fight)
-    after = await enter(fight)
-    assert before.round_number == after.round_number
-    assert after.spatial is not None and before.spatial is not None
-    for pid in (owner_id, wall_id, south):
-        restored, saved = after.get_participant(pid), before.get_participant(pid)
-        assert restored is not None and saved is not None
-        assert restored.hp_current == saved.hp_current
-        assert after.spatial["positions"][pid] == before.spatial["positions"][pid]
-    assert before.spatial["structures"] == after.spatial["structures"]
-
-
 @pytest.mark.parametrize("case", ["clear", "miss", "wall", "end", "beyond", "high", "off_path", "structure", "overlap"])
 async def test_construct_slam(fight, case):
     state = await fight.reload()

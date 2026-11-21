@@ -116,7 +116,8 @@ async def test_changed_walls_and_terrain_survive_flee_reentry(fight):
     await fight.command("end_combat", {"outcome": "fled"})
     await reopen(fight)
     after = await enter(fight)
-    assert terrain(after) == terrain(before)
+    record, walls, areas = terrain(before)
+    assert terrain(after) == ({**record, "reshape_round": 0, "reshape_count": 0}, walls, areas)
     assert after.round_number == before.round_number
 
 

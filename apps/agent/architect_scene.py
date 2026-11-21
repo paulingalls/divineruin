@@ -7,6 +7,7 @@ from livekit.agents.llm import ToolError
 import architect_constructs
 import architect_encounter
 import architect_entomb
+import architect_reaction
 import combat_spatial
 from combat_state import CombatState
 
@@ -71,6 +72,7 @@ def restore(state: CombatState, record: dict) -> None:
     owner_id = old["owner_id"]
     owner = retained.get_participant(owner_id)
     assert owner is not None
+    owner.legendary_actions = owner.legendary_capacity
     owner.initiative = next(p.initiative for p in state.participants if p.id == owner_id)
     state.participants = [p for p in state.participants if p.id not in {owner_id, *new["structure_ids"]}]
     for wall_id in new["structure_ids"]:
@@ -97,8 +99,10 @@ def restore(state: CombatState, record: dict) -> None:
     old["pits"] = {actor: floor for actor, floor in old["pits"].items() if state.get_participant(actor) is not None}
     for actor in old["pits"]:
         spatial["positions"][actor] = previous_spatial["positions"][actor]
+    old.update(reshape_round=0, reshape_count=0, reaction_round=0)
     state.architect_encounter = old
     state.round_number = retained.round_number
+    architect_reaction.expire_walls(state)
     combat_spatial.require_spatial(state)
     architect_encounter.validate(state)
 
@@ -129,6 +133,7 @@ async def end(session, state: CombatState, outcome: str, *, mutations, queries, 
         await write(session, state, "destroyed", mutations=mutations, conn=conn)
     else:
         architect_entomb.release_all(state)
+        architect_reaction.expire_walls(state)
         await write(session, state, "dormant", snapshot=state.to_dict(), mutations=mutations, conn=conn)
 
 
