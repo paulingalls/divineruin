@@ -144,8 +144,9 @@ async def _lose(session, player_id, item_id, delta, item, *, db_mod, inventory_m
         slot = await queries.get_inventory_item(player_id, item_id, conn=conn, for_update=True)
         if slot is None:
             raise ToolError(f"Item '{item_id}' not in inventory.")
-        if slot.get("equipped", False):
-            raise ToolError(f"Item '{item_id}' is equipped. Unequip it first.")
+        if slot.get("equipped", False) and slot["quantity"] <= magnitude:
+            kind = item["type"] if item else "item for that slot"
+            raise ToolError(f"Item '{item_id}' is equipped. Equip another {kind} first.")
 
         session.validate_acting_player(player_id)
         remaining = await inventory_mutations.transact_inventory(player_id, item_id, delta, conn=conn)

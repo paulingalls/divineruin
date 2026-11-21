@@ -219,6 +219,24 @@ def test_equip_replaces_owned_gear(harness):
     harness.run_sync(check())
 
 
+def test_exchange_can_remove_a_spare_copy_of_equipped_gear(harness):
+    async def check():
+        walk = await IncreaseWalk().setup(harness, tools=[transact])
+        item = "longsword_guild"
+        await call(walk, "transact", action="exchange", item_id=item, delta=2)
+        await call(walk, "transact", action="equip", item_id=item, delta=0)
+        result = await call(walk, "transact", action="exchange", item_id=item, delta=-1)
+        assert result["quantity"] == 1
+        stack = await db_queries.get_inventory_item(walk.player, item)
+        assert stack is not None and stack["quantity"] == 1 and stack["equipped"]
+        before = await gear_state(walk)
+        refused = await walk.command("transact", {"action": "exchange", "item_id": item, "delta": -1})
+        assert refused.is_error and "Equip another weapon first" in refused.output
+        assert await gear_state(walk) == before
+
+    harness.run_sync(check())
+
+
 async def gear_state(walk):
     stacks = await walk.pool.fetch(
         "SELECT item_id, tainted, data FROM player_inventory WHERE player_id=$1 ORDER BY item_id, tainted",
