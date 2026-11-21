@@ -159,14 +159,6 @@ def validate_links(state: CombatState, links: dict) -> None:
                 raise ValueError("Chamber-sourced Restrained has no matching Entomb link")
 
 
-def retired_ids(state: CombatState) -> set[str]:
-    record = state.architect_encounter
-    if record is None:
-        return set()
-    prefix = _prefix(record["owner_id"])
-    return {p.id for p in state.participants if p.is_structure and p.is_dead and p.id.startswith(prefix)}
-
-
 def facts(state: CombatState, spatial: dict) -> tuple[list[dict], list[str]]:
     details = []
     spoken = []

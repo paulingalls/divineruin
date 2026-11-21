@@ -150,7 +150,7 @@ def facts(state, origin_id):
 
     spatial = require_spatial(state)
     origin = position(spatial, origin_id)
-    retired = architect_entomb.retired_ids(state)
+    retired = {p.id for p in state.participants if p.is_structure and p.is_dead}
     positions = {key: pos for key, pos in spatial["positions"].items() if key not in retired}
     distances = {key: distance(origin, position(spatial, key)) for key in sorted([*positions, *spatial["locations"]])}
     inactive_auras = {

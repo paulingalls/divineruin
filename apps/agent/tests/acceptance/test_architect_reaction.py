@@ -13,12 +13,14 @@ from acceptance.test_architect_fight import isolated_content_cache as isolated_c
 from acceptance.test_architect_fight import mock_combat_agent_factory as mock_combat_agent_factory
 from acceptance.test_architect_terrain import set_favor
 from acceptance.test_still_anchors import fresh_session
+from sample_fixtures import published_payloads
 from voice_condition_fixtures import participant
 
 import character_spells
 import combat_spatial
 import combat_structures
 import db_queries
+import event_types as E
 import spells
 from combat_structures import blocks_path
 from db_mutations_resonance import read_player_resonance
@@ -159,6 +161,14 @@ async def test_later_shots_and_next_round(archers):
         assert expired.id not in wrapped.spatial["structures"]
         assert expired.hp_current == 0 and expired.is_dead and expired.is_fallen
     assert set(before.spatial["structures"]) - {prior_wall} <= reloaded.spatial["structures"].keys()
+    facts = await archers.command("query_info", {"kind": "combat"})
+    hud = [event for event in published_payloads(archers.sd.room) if event["type"] == E.COMBAT_UI_UPDATE][-1]
+    tracked = {entry["id"] for entry in hud["combatants"]}
+    assert set(reloaded.spatial["structures"]) <= tracked
+    for expired in (prior_wall, wall.id, next_wall.id):
+        assert all(expired not in facts[field] for field in ("positions", "distances_ft", "speeds_ft"))
+        assert all(expired not in line for line in facts["spoken"])
+        assert expired not in tracked
 
 
 def bow(actor, target):
