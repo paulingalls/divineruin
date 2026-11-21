@@ -131,7 +131,12 @@ def place(state, target_id, destination):
     spatial = require_spatial(state)
     if target_id not in spatial["positions"]:
         raise ValueError(f"Unknown participant position {target_id!r}")
-    spatial["positions"][target_id] = point(destination)
+    destination = point(destination)
+    spatial["positions"][target_id] = destination
+    if (record := state.architect_encounter) and (floor_id := record["pits"].get(target_id)):
+        floor = record["floors"][floor_id]
+        if any(not floor["min"][axis] <= destination[axis] <= floor["max"][axis] for axis in ("x", "y", "z")):
+            del record["pits"][target_id]
     from architect_encounter import end_cathedral_after_move
     from choir_effects import exposure
 

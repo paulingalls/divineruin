@@ -4,6 +4,7 @@ from unittest.mock import patch
 import pytest
 from _zhael_fate_fixtures import attack, defend
 from acceptance._capstone_helpers import _d20, _damage_die
+from acceptance.test_architect_fight import attack as enemy_attack
 from acceptance.test_architect_fight import fight as fight
 from acceptance.test_architect_fight import isolated_content_cache as isolated_content_cache
 from acceptance.test_architect_fight import mock_combat_agent_factory as mock_combat_agent_factory
@@ -97,6 +98,23 @@ async def test_floor_save_and_full_movement_exit(fight, succeeds, approach):
     await play(fight, player, stand, defend(owner))
     result = await play(fight, player, move(player, pos(20)), defend(owner))
     assert result["moved_ft"] == 5 and result["movement_spent_ft"] == 10
+
+
+async def test_construct_slam_pushes_a_traveller_out_of_a_pit(fight):
+    state = await fight.reload()
+    player, owner = fight.players[0], state.architect_encounter["owner_id"]
+    combat_spatial.place(state, owner, pos(0))
+    combat_spatial.place(state, player, pos(5))
+    await fight.persist()
+    floor = {"kind": "open_floor", "min": pos(4, -1), "max": pos(6, 1)}
+    with patch("check_resolution.dice_roll", return_value=_d20(1)):
+        summary = await play(fight, owner, defend(player), {**defend(owner), "reshape": [floor]})
+    assert (await fight.reload()).architect_encounter["pits"][player] == summary["reshape"][0]["section_id"]
+
+    summary, _, _ = await enemy_attack(fight, owner, player, "Construct Slam")
+    state = await fight.reload()
+    assert summary["hit"] and state.spatial["positions"][player] == pos(20)
+    assert player not in state.architect_encounter["pits"]
 
 
 async def test_low_ceilings_use_the_union_and_block_flight(fight):
