@@ -291,7 +291,7 @@ async def _resolve_action_packet(
             )
         target = state.get_participant(decl.target_id) if decl.target_id else None
         if target is not None and not target_unavailable(target, action):
-            movement_budget = await combat_cunning_action.begin(state, attacker, decl, queries=queries, conn=conn)
+            movement_budget = combat_cunning_action.movement_allowance(state, attacker, decl)
             # Move before any roll is prepared, and only once: a held head carries its approach, and a
             # Zhael-held ally swing resumes through its attack cursor, never back through here.
             if _melee_approach is not None:
@@ -299,6 +299,8 @@ async def _resolve_action_packet(
             else:
                 movement = combat_melee_approach.prepare(state, attacker, target, action, movement_budget)
             if movement.get("attack_resolved") is False:
+                if decl.rider == "dash" and movement.get("movement_spent_ft", 0) > 0:
+                    await combat_cunning_action.pay(attacker, queries=queries, conn=conn)
                 return movement
         if replay:
             assert _held_head is not None

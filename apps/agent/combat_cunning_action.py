@@ -30,15 +30,16 @@ async def preflight(state: CombatState, *, queries) -> None:
         gate_pool(player, "stamina", ability.cost.stamina, label=ability.name)
 
 
-async def begin(state: CombatState, actor: CombatParticipant, decl: Declaration, *, queries, conn) -> dict:
-    if combat_martial.attack_ability(decl) != CUNNING_ACTION:
-        return {}
+def movement_allowance(state: CombatState, actor: CombatParticipant, decl: Declaration) -> dict:
+    if combat_martial.attack_ability(decl) == CUNNING_ACTION and decl.rider == "dash":
+        return {"remaining": 2 * combat_spatial.require_spatial(state)["speeds"][actor.id]}
+    return {}
+
+
+async def pay(actor: CombatParticipant, *, queries, conn) -> None:
     resolved = declared_ability(CUNNING_ACTION)
     assert resolved is not None
     await combat_martial.pay(actor.id, resolved, queries=queries, conn=conn)
-    if decl.rider == "dash":
-        return {"remaining": 2 * combat_spatial.require_spatial(state)["speeds"][actor.id]}
-    return {}
 
 
 async def hide(

@@ -207,3 +207,25 @@ async def test_cunning_hide_reloads_after_the_attack(rogue: MawlingHarness) -> N
     target = state.get_participant(foe)
     assert target is not None and target.hp_current == 91
     assert combat_spatial.position(combat_spatial.require_spatial(state), actor) == position
+
+
+@pytest.mark.parametrize(("rider", "stamina"), [("hide", 10), ("dash", 8)])
+async def test_cunning_action_cost_when_target_stays_out_of_reach(
+    rogue: MawlingHarness, rider: str, stamina: int
+) -> None:
+    actor = rogue.players[0]
+    await enter(rogue)
+    foe = await adjacent_foe(rogue)
+    state = await rogue.reload()
+    origin = combat_spatial.position(state.spatial, actor)
+    combat_spatial.place(state, foe, {**origin, "x": origin["x"] + 200})
+    await rogue.persist()
+
+    await rogue.command("declare_phase", {"declarations": [weapon_attack(actor, foe, rider)]})
+    with patch("check_resolution.dice_roll") as roll:
+        packet = next(packet for packet in await rogue.drain() if packet["actor_id"] == actor)
+    assert not packet["attack_resolved"] and packet["moved_ft"] > 0
+    assert "cunning_action" not in packet
+    roll.assert_not_called()
+    player = await db_queries.get_player(actor)
+    assert player is not None and player["stamina"]["current"] == stamina

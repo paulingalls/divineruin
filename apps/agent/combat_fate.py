@@ -293,6 +293,8 @@ async def continue_attack(
         if interception:
             sub.update(interception, target_id=target.id)
             attack_cursor.pop("reactive_architecture")
+        if martial == combat_cunning_action.CUNNING_ACTION and index == 0 and "hit" in sub:
+            await combat_cunning_action.pay(attacker, queries=queries, conn=conn)
         sub.update(swing_move)
         attack_summaries.append(sub)
         # Remove attack-spent conditions before the next swing in an expanded declaration. The
@@ -325,7 +327,7 @@ async def continue_attack(
     summary = combat_attack_summary.aggregate(attack_summaries, moved=bool(movement))
     if concealment_packet is not None:
         summary["concealment"] = concealment_packet
-    if martial == combat_cunning_action.CUNNING_ACTION:
+    if martial == combat_cunning_action.CUNNING_ACTION and "hit" in summary:
         summary["cunning_action"] = {"rider": decl.rider}
         if decl.rider == "hide":
             hidden = await combat_cunning_action.hide(
