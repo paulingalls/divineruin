@@ -44,6 +44,9 @@ import db_queries
         ("count_bool", "Invalid Architect Reshape budget"),
         ("count_three", "Invalid Architect Reshape budget"),
         ("future_round", "Invalid Architect Reshape budget"),
+        ("legendary_over_capacity", "invalid legendary points remaining"),
+        ("legendary_bool", "invalid legendary points remaining"),
+        ("legendary_negative", "invalid legendary points remaining"),
         ("reaction_missing", "Invalid Architect encounter record"),
         ("reaction_bool", "Invalid Architect reaction round"),
         ("reaction_negative", "Invalid Architect reaction round"),
@@ -103,6 +106,12 @@ async def test_bad_architect_snapshot_cannot_load(fight, defect, reason):
             record.update(reshape_round=1, reshape_count=3)
         case "future_round":
             record.update(reshape_round=state.round_number + 1, reshape_count=1)
+        case "legendary_over_capacity":
+            owner["legendary_actions"] = owner["legendary"]["points"] + 1
+        case "legendary_bool":
+            owner["legendary_actions"] = True
+        case "legendary_negative":
+            owner["legendary_actions"] = -1
         case "reaction_missing":
             record.pop("reaction_round")
         case "reaction_bool":
