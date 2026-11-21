@@ -228,10 +228,17 @@ async def test_old_unrelated_snapshot_does_not_require_architect_data(fight):
 
 
 @pytest.mark.parametrize(
-    "defect",
-    ["wrong_section", "wrong_target", "wrong_receipt_kind", "inconsistent_budget", "missing_receipt", "missing_roll"],
+    "defect,reason",
+    [
+        ("wrong_section", "Invalid Architect Reshape receipt section"),
+        ("wrong_target", "Invalid Architect Reshape floor receipt"),
+        ("wrong_receipt_kind", "Invalid Architect Reshape operation receipt"),
+        ("inconsistent_budget", "Invalid Architect Reshape receipts"),
+        ("missing_receipt", "Invalid Architect Reshape floor checkpoint"),
+        ("missing_roll", "Invalid Architect Reshape floor checkpoint"),
+    ],
 )
-async def test_malformed_reshape_receipts_refuse_reload(fight, defect):
+async def test_malformed_reshape_receipts_refuse_reload(fight, defect, reason):
     state = await fight.reload()
     owner, player = state.architect_encounter["owner_id"], fight.players[0]
     combat_spatial.place(state, player, pos(5))
@@ -259,5 +266,5 @@ async def test_malformed_reshape_receipts_refuse_reload(fight, defect):
         case "missing_roll":
             data["held_actions"][0]["roll_steps"]["reshape"].clear()
     await db_mutations.save_combat_state(state.combat_id, data)
-    with pytest.raises(ValueError, match="Architect Reshape"):
+    with pytest.raises(ValueError, match=reason):
         await db_mutations.load_combat_state(state.combat_id)
