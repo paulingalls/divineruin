@@ -924,7 +924,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/07_bestiary.md (210 lines)
+## milestones/07_bestiary.md (212 lines)
 
 ---
 
