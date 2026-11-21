@@ -54,7 +54,8 @@ import db_queries
         ("missing_domain", "Invalid Architect domain"),
         ("domain_exclusion", "Invalid Architect domain"),
         ("invalid_floor", "Invalid Architect section"),
-        ("invalid_ceiling", "Invalid Architect ceiling"),
+        ("ceiling_shape", "Invalid Architect ceiling"),
+        ("ceiling_exclusion", "Invalid Architect ceiling"),
         ("orphan_floor", "Invalid Architect pit membership"),
         ("orphan_actor", "Invalid Architect pit membership"),
     ],
@@ -126,9 +127,18 @@ async def test_bad_architect_snapshot_cannot_load(fight, defect, reason):
             next(iter(data["spatial"]["movement_areas"].values()))["excluded_actor_ids"] = []
         case "invalid_floor":
             record["floors"]["floor"] = {"min": pos(0), "max": pos(21, 1)}
-        case "invalid_ceiling":
-            domain = next(iter(data["spatial"]["movement_areas"].values()))
-            data["spatial"]["movement_areas"]["ceiling"] = {**domain, "kind": "low_ceiling"}
+        case "ceiling_shape":
+            areas = data["spatial"]["movement_areas"]
+            domain = next(iter(areas.values()))
+            areas["ceiling"] = {**domain, "kind": "low_ceiling", "excluded_actor_ids": []}
+        case "ceiling_exclusion":
+            data["spatial"]["movement_areas"]["ceiling"] = {
+                "kind": "low_ceiling",
+                "shape": "rectangle",
+                "excluded_actor_ids": [owner["id"]],
+                "min": pos(0),
+                "max": pos(20, 20),
+            }
         case "orphan_floor":
             record["pits"][fight.players[0]] = "missing"
         case "orphan_actor":
