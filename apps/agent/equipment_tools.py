@@ -4,7 +4,9 @@ import json
 
 from livekit.agents import ToolError
 
+import db_mutations
 from attribute_increase_events import publish_snapshots
+from creation_classes import STARTER_ITEM_IDS
 from creation_rules import calculate_ac
 from equipment_rules import loadout_entry
 from inventory_refresh import publish_inventory
@@ -38,6 +40,7 @@ async def equip(
                     raise ToolError("Cleanse your tainted gear with dispel_corruption before equipping it.")
                 raise ToolError(f"Item '{item_id}' is not owned.")
             slot, entry = loadout_entry(item_id, item, player["class"])
+            stowed = _starter_item(player["equipment"].get(slot), stacks)
             equipment = {**player["equipment"], slot: entry}
             ac = calculate_ac(equipment, player["attributes"]["dexterity"])
             session.validate_acting_player(actor)
@@ -45,6 +48,8 @@ async def equip(
             if changed_stacks or equipment != player["equipment"] or ac != player["ac"]:
                 await inventory_mutations.set_equipped_flags(actor, item_id, changed_stacks, conn=conn)
                 await inventory_mutations.save_loadout(actor, equipment, ac, conn=conn)
+            if stowed is not None:
+                await db_mutations.add_inventory_item(actor, stowed, 1, tainted=False, conn=conn)
         await publish_inventory(session, actor, queries=queries)
         await publish_snapshots(session, [actor])
     session.record_event(f"Equipped {entry['name']}")
@@ -57,3 +62,13 @@ async def equip(
             "narration_cue": f"Narrate the player equipping {entry['name']}.",
         }
     )
+
+
+def _starter_item(outgoing: dict | None, stacks: dict[str, dict]) -> str | None:
+    """The catalog item to stow for starting gear, which has no inventory row of its own."""
+    if outgoing is None or stacks.get(outgoing.get("id", ""), {}).get("equipped", False):
+        return None
+    item_id = STARTER_ITEM_IDS.get(outgoing["name"])
+    if item_id is None:
+        raise ToolError(f"{outgoing['name']} has no catalog item to stow, so it cannot be replaced.")
+    return item_id

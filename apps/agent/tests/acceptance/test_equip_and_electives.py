@@ -159,16 +159,18 @@ def test_equip_replaces_owned_gear(harness):
         assert row["equipment"]["main_hand"]["damage"] == "2d6"
         assert row["equipment"]["main_hand"]["damage_type"] == "slashing"
         assert row["equipment"]["armor"]["name"] == "Plate Armor"
-        for item, equipped in (
-            ("dagger_balanced", False),
-            ("longsword_guild", False),
-            ("chain_shirt", False),
-            ("half_plate", False),
-            ("greatsword_steel", True),
-            ("plate_armor", True),
+        # The warrior's starting Greataxe and Chain Shirt go back to inventory when replaced.
+        for item, quantity, equipped in (
+            ("greataxe_basic", 1, False),
+            ("dagger_balanced", 1, False),
+            ("longsword_guild", 1, False),
+            ("chain_shirt", 2, False),
+            ("half_plate", 1, False),
+            ("greatsword_steel", 1, True),
+            ("plate_armor", 1, True),
         ):
             stack = await db_queries.get_inventory_item(walk.player, item)
-            assert stack is not None and stack["quantity"] == 1 and stack["equipped"] is equipped
+            assert stack is not None and (stack["quantity"], stack["equipped"]) == (quantity, equipped), item
 
         before_retry = await gear_state(walk)
         await call(walk, "transact", action="equip", item_id="plate_armor", delta=0)
