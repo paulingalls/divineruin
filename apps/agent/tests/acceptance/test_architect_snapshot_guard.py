@@ -233,7 +233,8 @@ async def test_old_unrelated_snapshot_does_not_require_architect_data(fight):
         ("wrong_section", "Invalid Architect Reshape receipt section"),
         ("wrong_target", "Invalid Architect Reshape floor receipt"),
         ("wrong_receipt_kind", "Invalid Architect Reshape operation receipt"),
-        ("inconsistent_budget", "Invalid Architect Reshape receipts"),
+        ("wrong_budget_round", "Invalid Architect Reshape receipts"),
+        ("insufficient_budget_count", "Invalid Architect Reshape receipts"),
         ("missing_receipt", "Invalid Architect Reshape floor checkpoint"),
         ("missing_roll", "Invalid Architect Reshape floor checkpoint"),
     ],
@@ -243,15 +244,23 @@ async def test_malformed_reshape_receipts_refuse_reload(fight, defect, reason):
     owner, player = state.architect_encounter["owner_id"], fight.players[0]
     combat_spatial.place(state, player, pos(5))
     await fight.persist()
+    await declare(fight, defend(player), defend(owner))
+    await fight.drain()
     await set_favor(fight, "zhael", 40)
     floor = {"kind": "open_floor", "min": pos(4, -1), "max": pos(6, 1)}
-    await declare(fight, defend(player), {**defend(owner), "reshape": [floor]})
+    state = await fight.reload()
+    actor = state.get_participant(owner)
+    assert actor is not None
+    actor.hp_current = (actor.hp_max - 1) // 2
+    await fight.persist()
+    ceiling = {"kind": "lower_ceiling", "min": pos(4, -1), "max": pos(6, 1)}
+    await declare(fight, defend(player), {**defend(owner), "reshape": [ceiling, floor]})
     await fight.command("resolve_phase", {})
     with patch("check_resolution.dice_roll", return_value=_d20(1)):
         assert "fate_offer" in await fight.command("resolve_phase", {})
     state = await fight.reload()
     data = state.to_dict()
-    [receipt] = data["held_actions"][0]["reshape_receipts"]
+    _, receipt = data["held_actions"][0]["reshape_receipts"]
     match defect:
         case "wrong_section":
             receipt["section_id"] = "missing"
@@ -259,8 +268,10 @@ async def test_malformed_reshape_receipts_refuse_reload(fight, defect, reason):
             receipt["results"] = [{"target_id": "missing", "save_success": True}]
         case "wrong_receipt_kind":
             receipt["kind"] = "destroy_wall"
-        case "inconsistent_budget":
-            data["architect_encounter"].update(reshape_round=0, reshape_count=0)
+        case "wrong_budget_round":
+            data["architect_encounter"]["reshape_round"] = state.round_number - 1
+        case "insufficient_budget_count":
+            data["architect_encounter"]["reshape_count"] = 1
         case "missing_receipt":
             del data["held_actions"][0]["reshape_receipts"]
         case "missing_roll":
