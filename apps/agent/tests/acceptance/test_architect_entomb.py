@@ -304,6 +304,22 @@ async def test_companion_compresses_when_unable_to_act(fight):
     assert (await fight.reload()).get_participant(victim).hp_current == companion.hp_current - 3
 
 
+@pytest.mark.parametrize("fight", [((20,), "companion_kael")], indirect=True)
+async def test_dead_companion_is_not_compressed(fight):
+    state = await fight.reload()
+    companion = next(p for p in state.participants if p.type == "companion")
+    owner, victim, chamber = await seal(fight, companion.id)
+    target = (await fight.reload()).get_participant(victim)
+    target.hp_current = 0
+    target.is_dead = target.is_fallen = True
+    await fight.persist()
+    await fight.command("declare_phase", {"declarations": [{"reshape": [], "actor_id": owner, "kind": "defend"}]})
+    with patch("combat_turn_start.dice_roll", return_value=SimpleNamespace(total=3)) as damage:
+        packets = await fight.drain()
+    damage.assert_not_called()
+    assert all(packet.get("source_id") != chamber for packet in packets)
+
+
 async def test_live_chamber_blocks_an_already_declared_enemy_attack(fight):
     owner, action = discover_entomb(fight)
     victim = fight.players[0]
