@@ -4334,6 +4334,329 @@
   ],
   "invalid": [
     {
+      "name": "legendary_duplicate_id",
+      "block": {
+        "terrains": [
+          "forest"
+        ],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {
+          "STR": 12,
+          "DEX": 14,
+          "CON": 12,
+          "INT": 10,
+          "WIS": 10,
+          "CHA": 10
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Short Sword",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 4,
+            "damage": "1d6+2",
+            "damage_type": "slashing",
+            "special": null,
+            "audio": "bandit_sword"
+          },
+          {
+            "name": "Light Crossbow",
+            "type": "ranged",
+            "reach": 80,
+            "to_hit": 4,
+            "damage": "1d8+2",
+            "damage_type": "piercing",
+            "special": null,
+            "audio": "bandit_crossbow"
+          }
+        ],
+        "multiattack": null,
+        "passives": [],
+        "actives": [
+          {
+            "name": "Dirty Fighting",
+            "description": "Throw dirt/sand: target Blinded 1 round (DEX save DC 12).",
+            "narration_cue": "Throws dirt into your eyes.",
+            "recharge": "1/encounter",
+            "audio": null
+          }
+        ],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {
+          "tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.",
+          "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.",
+          "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)",
+          "environment": [
+            "Roads between settlements",
+            "forest ambush points",
+            "ruins"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A bandit steps from cover.",
+          "attack_cue": "The bandit strikes from cover.",
+          "wounded_cue": "The bandit staggers.",
+          "death_cue": "The bandit falls.",
+          "ambient_cue": "Voices carry from beside the road."
+        },
+        "audio": {
+          "ambient": "bandit_ambient",
+          "attack": "bandit_attack",
+          "hit": "bandit_hit",
+          "death": "bandit_death",
+          "special": {}
+        },
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": [
+          "greyvale"
+        ],
+        "legendary": {
+          "points": 2,
+          "actions": [
+            {
+              "id": "Short Sword",
+              "kind": "attack",
+              "cost": 1
+            },
+            {
+              "id": "Short Sword",
+              "kind": "attack",
+              "cost": 1
+            }
+          ]
+        }
+      },
+      "expected": [
+        "legendary.actions[1].id: expected unique nonempty action id"
+      ]
+    },
+    {
+      "name": "legendary_empty_id",
+      "block": {
+        "terrains": [
+          "forest"
+        ],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {
+          "STR": 12,
+          "DEX": 14,
+          "CON": 12,
+          "INT": 10,
+          "WIS": 10,
+          "CHA": 10
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Short Sword",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 4,
+            "damage": "1d6+2",
+            "damage_type": "slashing",
+            "special": null,
+            "audio": "bandit_sword"
+          },
+          {
+            "name": "Light Crossbow",
+            "type": "ranged",
+            "reach": 80,
+            "to_hit": 4,
+            "damage": "1d8+2",
+            "damage_type": "piercing",
+            "special": null,
+            "audio": "bandit_crossbow"
+          }
+        ],
+        "multiattack": null,
+        "passives": [],
+        "actives": [
+          {
+            "name": "Dirty Fighting",
+            "description": "Throw dirt/sand: target Blinded 1 round (DEX save DC 12).",
+            "narration_cue": "Throws dirt into your eyes.",
+            "recharge": "1/encounter",
+            "audio": null
+          }
+        ],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {
+          "tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.",
+          "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.",
+          "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)",
+          "environment": [
+            "Roads between settlements",
+            "forest ambush points",
+            "ruins"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A bandit steps from cover.",
+          "attack_cue": "The bandit strikes from cover.",
+          "wounded_cue": "The bandit staggers.",
+          "death_cue": "The bandit falls.",
+          "ambient_cue": "Voices carry from beside the road."
+        },
+        "audio": {
+          "ambient": "bandit_ambient",
+          "attack": "bandit_attack",
+          "hit": "bandit_hit",
+          "death": "bandit_death",
+          "special": {}
+        },
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": [
+          "greyvale"
+        ],
+        "legendary": {
+          "points": 2,
+          "actions": [
+            {
+              "id": "",
+              "kind": "attack",
+              "cost": 1
+            }
+          ]
+        }
+      },
+      "expected": [
+        "legendary.actions[0].id: expected unique nonempty action id"
+      ]
+    },
+    {
+      "name": "legendary_unbound_id",
+      "block": {
+        "terrains": [
+          "forest"
+        ],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {
+          "STR": 12,
+          "DEX": 14,
+          "CON": 12,
+          "INT": 10,
+          "WIS": 10,
+          "CHA": 10
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Short Sword",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 4,
+            "damage": "1d6+2",
+            "damage_type": "slashing",
+            "special": null,
+            "audio": "bandit_sword"
+          },
+          {
+            "name": "Light Crossbow",
+            "type": "ranged",
+            "reach": 80,
+            "to_hit": 4,
+            "damage": "1d8+2",
+            "damage_type": "piercing",
+            "special": null,
+            "audio": "bandit_crossbow"
+          }
+        ],
+        "multiattack": null,
+        "passives": [],
+        "actives": [
+          {
+            "name": "Dirty Fighting",
+            "description": "Throw dirt/sand: target Blinded 1 round (DEX save DC 12).",
+            "narration_cue": "Throws dirt into your eyes.",
+            "recharge": "1/encounter",
+            "audio": null
+          }
+        ],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {
+          "tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.",
+          "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.",
+          "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)",
+          "environment": [
+            "Roads between settlements",
+            "forest ambush points",
+            "ruins"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A bandit steps from cover.",
+          "attack_cue": "The bandit strikes from cover.",
+          "wounded_cue": "The bandit staggers.",
+          "death_cue": "The bandit falls.",
+          "ambient_cue": "Voices carry from beside the road."
+        },
+        "audio": {
+          "ambient": "bandit_ambient",
+          "attack": "bandit_attack",
+          "hit": "bandit_hit",
+          "death": "bandit_death",
+          "special": {}
+        },
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": [
+          "greyvale"
+        ],
+        "legendary": {
+          "points": 2,
+          "actions": [
+            {
+              "id": "Unbound Attack",
+              "kind": "attack",
+              "cost": 1
+            }
+          ]
+        }
+      },
+      "expected": [
+        "legendary.actions[0].id: no matching legendary action binding"
+      ]
+    },
+    {
       "name": "recharge_summon_constructs_strike",
       "block": {
         "terrains": [
