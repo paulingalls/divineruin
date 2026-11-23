@@ -1,6 +1,7 @@
 # xp project config (xp-plugin 1.0.0)
 trunk: develop       # sprints and free patches land here; main is what is live (scripts/promote-main.sh)
 versioning: notes    # branches add changes/<branch>.md; xp.py release stamp versions develop after merge
+github_issues: on   # xp-plugin 1.7+: bug/debt records file as GitHub issues (default off)
 version_files: package.json  # comma-separated JSON manifests
 worktree_setup: bash scripts/init-worktree.sh   # new story/free worktree, before agents
 worktree_teardown: bash scripts/teardown-worktree.sh   # before removal; red warns, removes anyway
