@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.64.1
+
+The xp config opts into GitHub issues, so bug and debt records keep filing as issues after the xp-plugin 1.7 upgrade.
+
+Release steps: none.
+
 ## 0.64.0
 
 The Architect fights with its own architecture. Walls rise and block every line between combatants. The floor opens into pits, the ceiling drops, and the Architect can seal a hero inside a stone chamber (Entomb). It raises a cathedral that turns the room into its domain, and summons constructs. Between turns it takes legendary actions, and it can shrug off a costly save three times a fight. It is tuned against a full level-20 party of four, which beats it in about 12 of 20 fights, typically in 11 rounds.
