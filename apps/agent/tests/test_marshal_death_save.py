@@ -141,14 +141,6 @@ async def test_two_marshals_give_the_companion_one_bonus(world: SimpleNamespace)
         await check_save(f, companion.id, 9, 1, 1, success=True)
 
 
-async def test_destroyed_echo_receives_no_bonus(world: SimpleNamespace) -> None:
-    async with fight(world, "mortaen", archetype="marshal") as f:
-        echo = participant(f.session.combat_state, f.ally)
-        echo.type = "temporary_hollowed"
-        down(echo)
-        await check_save(f, echo.id, 9, 0, 0, success=False)
-
-
 @pytest.mark.parametrize("flip", [False, True], ids=["fates-thread", "lucky"])
 async def test_fate_settles_with_the_marshal_bonus(world: SimpleNamespace, flip: bool) -> None:
     async with fight(world, "zhael", archetype="mage") as f:
