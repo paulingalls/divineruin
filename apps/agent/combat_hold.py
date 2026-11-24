@@ -7,7 +7,7 @@ every packet in one pass, so the blow was written before the DM spoke. This modu
 Two stages can offer windows on one attack: a PRE-ROLL window
 (on_targeted / on_ally_targeted / on_enemy_action) and a POST-ROLL, PRE-DAMAGE window
 (on_hit / on_ally_hit / on_enemy_miss / on_enemy_action, plus on_condition_imposed on a landed
-grapple). The window VOCABULARY is reaction_windows.py's — a pure function of the action. The
+grapple). A save-only restraint can offer on_condition_imposed after it takes hold. The
 pause decision uses reaction_gate's activation rules for each candidate stage, per
 gm_combat:131: narration flows when no player can react.
 
@@ -20,6 +20,7 @@ from uuid import uuid4
 
 import architect_actions
 import combat_enhancers
+import combat_hold_conditions
 import combat_marks as combat_marks
 import combat_melee_approach
 import combat_reaction_contest
@@ -165,9 +166,6 @@ async def pump(
     with the queue empty, the caller runs Beat 4 in that same commit (AC6 — the wrap fires once,
     in the last commit, because an enemy blow can be what ends the fight).
     """
-    # The DM came back, so whatever window we were paused on has closed. Capture it on the way
-    # out: a reaction spent at that window changes the held blow, and this is the one moment where
-    # the spend exists and the blow has not been applied yet (story-018).
     closed, state.open_window = state.open_window, None
     summaries: list[dict] = []
     reacted, reaction_packets = None, []
@@ -198,6 +196,10 @@ async def pump(
         head = state.held_actions[0]
         if execution_id is not None and head.get("execution_id") != execution_id:
             break
+        if "completed_condition" in head:
+            summaries.append(strike_summary(head, _with_reshape(head, head["completed_condition"])))
+            state.held_actions.pop(0)
+            continue
         import choir_encounter
         from choir_effects import approach
 
@@ -264,23 +266,21 @@ async def pump(
         summary_start = len(summaries)
         opens = _opens_windows(state, head)
         action = _attack_action(state, head) if opens else None
+        window_action = None
         if opens:
             actor = state.get_participant(head["actor_id"])
-            movement = combat_melee_approach.prepare_held(
-                state, head, _find_action(actor, _held_declaration(head).action)
-            )
+            window_action = _find_action(actor, declaration.action)
+            assert window_action is not None
+            movement = combat_melee_approach.prepare_held(state, head, window_action)
             if movement.get("attack_resolved") is False:
                 summaries.append(strike_summary(head, _with_reshape(head, movement)))
                 state.held_actions.pop(0)
                 continue
 
         try:
-            if opens:
+            if window_action is not None:
                 if PRE_ROLL not in head["opened"]:
                     head["opened"].append(PRE_ROLL)
-                    actor = state.get_participant(head["actor_id"])
-                    window_action = _find_action(actor, _held_declaration(head).action)
-                    assert window_action is not None
                     triggers = (
                         (reaction_windows.CATCH_ALL,)
                         if action_kind(window_action) in STILL_ZONE_KINDS
@@ -369,6 +369,14 @@ async def pump(
             combat_reaction_effect.record_shield_wear(recorded_reactions, state, head, summary)
             combat_reaction_effect.record_save_advantage(recorded_reactions, summary)
         summaries.extend(deferred_reactions)
+        if window_action is not None and (
+            candidate := combat_hold_conditions.window_for(state, head, window_action, summary)
+        ):
+            head["completed_condition"] = summary
+            head["opened"].append(POST_ROLL)
+            _open(state, candidate)
+            _assert_iteration_progress(state, head, summaries, summary_start)
+            return summaries
         summaries.append(strike_summary(head, _with_reshape(head, summary)))
         state.held_actions.pop(0)
         _assert_iteration_progress(state, head, summaries, summary_start)
