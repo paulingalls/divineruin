@@ -126,6 +126,7 @@ async def _resolve_cast(
         patron,
         session,
         player,
+        player_id=player_id,
         terrain=terrain,
         conn=conn,
         queries_mod=queries_mod,

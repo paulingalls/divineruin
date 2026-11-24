@@ -7,7 +7,6 @@ async def configure(w, patron, archetype, *, index=0, **fields):
         w.ids[index],
         json.dumps(
             {
-                "player_id": w.ids[index],
                 "class": archetype,
                 "divine_favor": {"patron": patron, "level": 40, "max": 100},
                 **fields,

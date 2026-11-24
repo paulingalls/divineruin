@@ -71,7 +71,7 @@ async def hide(
             ally_present=session.allies_present_for(actor.id),
             natural_terrain=await skill_natural_terrain(session, player, "stealth", combat_state=state),
             hearing_only=False,
-            first_stay=await check_first_stay(player, session, "stealth", conn=conn),
+            first_stay=await check_first_stay(player, session, "stealth", player_id=actor.id, conn=conn),
         )
 
     result = await progress.skill(session, actor.id, roll) if progress is not None else await roll()
