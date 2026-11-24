@@ -271,24 +271,66 @@ async def test_catalog_failed_commit_preserves_hp_availability_and_preparation(r
     await reload(ctx)
 
 
-async def test_captain_rally_skips_the_bandit_behind_a_wall(runtime):
-    ctx, pid, eid = await runtime("bandit_captain", [RALLY, {**BITE, "damage": "1d1"}])
+@pytest.mark.parametrize("legacy", [False, True], ids=["authored", "pre_range_save"])
+async def test_captain_rally_heals_only_eligible_bandits_in_range_and_in_clear_line(runtime, legacy):
+    ctx, pid, eid = await runtime("bandit_captain", None)
     state = ctx.userdata.combat_state
     captain = participant(state, eid)
-    captain.hp_current = 20
-    for bandit_id, x in (("bandit_open", 10), ("bandit_walled", -10)):
-        bandit = deepcopy(captain)
-        bandit.id, bandit.name, bandit.creature_id, bandit.hp_current = bandit_id, bandit_id, "bandit", 5
-        state.participants.append(bandit)
-        state.initiative_order.append(bandit_id)
-        state.spatial["positions"][bandit_id] = {"x": x, "y": 0, "z": 0}
-        state.spatial["speeds"][bandit_id] = 30
+    captain.hp_current, captain.hp_max = 20, 24
+    rally = next(action for action in captain.action_pool if action["name"] == "Rally")
+    assert rally["reach"] == 30
+    for ally_id, x, overrides in (
+        ("bandit_20", 25, {"hp_current": 6, "hp_max": 7}),
+        ("bandit_30", 35, {"hp_current": 5, "hp_max": 12}),
+        ("bandit_40", 45, {}),
+        ("bandit_walled", -10, {}),
+        ("other_species", 10, {"creature_id": "goblin"}),
+        ("fallen", 10, {"is_fallen": True}),
+        ("dead", 10, {"is_dead": True}),
+        ("zero", 10, {"hp_current": 0}),
+    ):
+        ally = deepcopy(captain)
+        ally.id, ally.name, ally.creature_id, ally.hp_current = ally_id, ally_id, "bandit", 5
+        for field, value in overrides.items():
+            setattr(ally, field, value)
+        state.participants.append(ally)
+        state.initiative_order.append(ally_id)
+        state.spatial["positions"][ally_id] = {"x": x, "y": 0, "z": 0}
+        state.spatial["speeds"][ally_id] = 30
     add_wall(state, "wall", "Slate Wall", {"x": 0, "y": -5, "z": 0}, {"x": 0, "y": 5, "z": 0})
-    await db_mutations.save_combat_state(state.combat_id, state.to_dict())
+    snapshot = state.to_dict()
+    if legacy:
+        saved_captain = next(p for p in snapshot["participants"] if p["id"] == eid)
+        saved_rally = next(action for action in saved_captain["action_pool"] if action["name"] == "Rally")
+        del saved_rally["reach"]
+    await db_mutations.save_combat_state(state.combat_id, snapshot)
     await reload(ctx)
+    player_hp = participant(state, pid).hp_current
+    wall_hp = participant(state, "wall").hp_current
     await declare(ctx, pid, eid, "Rally", "ability")
-    with patch("dice.roll", return_value=SimpleNamespace(total=5)):
+    with patch("dice.roll", return_value=SimpleNamespace(total=5)) as rolls:
         result = await _resolve_round(ctx)
-    assert result["packets"][-1]["healed"] == {eid: 5, "bandit_open": 5}
+    packet = next(packet for packet in result["packets"] if packet["actor_id"] == eid)
+    assert packet["resolved"]
+    assert [call.args[0] for call in rolls.call_args_list].count("1d8") == 1
     saved = await reload(ctx)
-    assert participant(saved, "bandit_walled").hp_current == 5
+    assert participant(saved, eid).action_ledger["rally"]["remaining"] == 0
+    assert (
+        packet["healed"],
+        {p.id: p.hp_current for p in saved.participants},
+    ) == (
+        {eid: 4, "bandit_20": 1, "bandit_30": 5},
+        {
+            pid: player_hp,
+            eid: 24,
+            "bandit_20": 7,
+            "bandit_30": 10,
+            "bandit_40": 5,
+            "bandit_walled": 5,
+            "other_species": 5,
+            "fallen": 5,
+            "dead": 5,
+            "zero": 0,
+            "wall": wall_hp,
+        },
+    )

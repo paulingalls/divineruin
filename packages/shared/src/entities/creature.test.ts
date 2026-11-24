@@ -192,6 +192,7 @@ const typedActives = [
     narration_cue: "A shout.",
     audio: null,
     kind: "healing",
+    reach: 30,
     target_group: "allied_bandits",
     healing: "1d8",
   },
