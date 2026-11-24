@@ -102,6 +102,7 @@ def apply_move(state, actor, declaration, *, allowance=None):
         "declaration_type": "maneuver",
         "moved_ft": travelled,
         "movement_spent_ft": spent,
+        "movement_mode": declaration.movement_mode,
         **({"left_pit": True} if climbed else {}),
         "destination": destination,
     }

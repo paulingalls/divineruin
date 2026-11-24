@@ -178,6 +178,8 @@ async def assemble_participants(session, encounter, encounter_id, member_players
                 level=derived.get("level", 1),
                 action_pool=derived.get("action_pool", []),
                 creature_id=derived["creature_id"],
+                fly_speed=derived.get("fly_speed"),
+                flyby=derived.get("flyby", False),
                 damage_affinities=derived["damage_affinities"],
                 resist_nonmagical_physical=derived["resist_nonmagical_physical"],
                 unholy_fortitude=derived["unholy_fortitude"],

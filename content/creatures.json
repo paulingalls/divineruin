@@ -123,6 +123,7 @@
     "hp": 4,
     "ac": 12,
     "speed": 30,
+    "fly_speed": 30,
     "attributes": {
       "STR": 2,
       "DEX": 14,
@@ -842,6 +843,7 @@
     "hp": 15,
     "ac": 13,
     "speed": 10,
+    "fly_speed": 60,
     "attributes": {
       "STR": 10,
       "DEX": 16,
@@ -879,6 +881,7 @@
     "passives": [
       {
         "name": "Flyby",
+        "flyby": true,
         "description": "Doesn't provoke opportunity attacks when flying away.",
         "narration_cue": "",
         "recharge": null,
@@ -2140,6 +2143,7 @@
     "hp": 90,
     "ac": 15,
     "speed": 20,
+    "fly_speed": 80,
     "attributes": {
       "STR": 18,
       "DEX": 16,
@@ -2188,6 +2192,7 @@
     "passives": [
       {
         "name": "Flyby",
+        "flyby": true,
         "description": "No opportunity attacks when flying away. Flies 80 ft.",
         "narration_cue": "",
         "recharge": null,
