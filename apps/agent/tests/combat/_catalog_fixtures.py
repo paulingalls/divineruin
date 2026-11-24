@@ -33,7 +33,7 @@ def deps(seed=0):
         mutations=MagicMock(update_player_hp=AsyncMock()),
         queries=MagicMock(
             get_player_inventory=AsyncMock(return_value=[]),
-            get_player=AsyncMock(side_effect=lambda pid, **kw: {"player_id": pid}),
+            get_player=AsyncMock(side_effect=lambda pid, **kw: {}),
         ),
         concentration_break_mod=MagicMock(break_concentration_on_damage=AsyncMock(return_value=None)),
     )
@@ -63,9 +63,7 @@ async def wrap(state):
         cast_outcome=AbilityCastOutcome(),
         mutations=MagicMock(save_combat_state=AsyncMock()),
         queries=MagicMock(
-            get_players_for_update=AsyncMock(
-                return_value={p.id: {"player_id": p.id} for p in state.participants if p.type == "player"}
-            )
+            get_players_for_update=AsyncMock(return_value={p.id: {} for p in state.participants if p.type == "player"})
         ),
         save_resolver=MagicMock(),
         resonance_mutations=MagicMock(update_player_resonance=AsyncMock()),

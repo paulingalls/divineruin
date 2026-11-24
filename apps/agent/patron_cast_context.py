@@ -20,9 +20,9 @@ class PatronCastFacts:
 
 
 async def apply_patron(
-    generated: int, standard: int, patron, session, player, *, spell, terrain, **context
+    generated: int, standard: int, patron, session, player, *, player_id: str, spell, terrain, **context
 ) -> tuple[int, dict | None, PatronCastFacts]:
-    facts = await _resolve_facts(patron, session, player, spell=spell, **context)
+    facts = await _resolve_facts(patron, session, player, player_id=player_id, spell=spell, **context)
     result, applied = cast_modifiers.apply_patron_generation(
         generated, spell, patron, terrain=terrain, facts=facts, player=player
     )
@@ -40,6 +40,7 @@ async def _resolve_facts(
     session,
     player,
     *,
+    player_id: str,
     conn,
     queries_mod,
     spell,
@@ -50,7 +51,13 @@ async def _resolve_facts(
     evidence = None
     if patron == "valdris" and target_id is not None and target_ids is None and not is_area_spell(spell.id):
         evidence = await combat_wrongdoing.wrongdoing(
-            session, player, target_id=target_id, combat_state=combat_state, conn=conn, queries_mod=queries_mod
+            session,
+            player,
+            player_id=player_id,
+            target_id=target_id,
+            combat_state=combat_state,
+            conn=conn,
+            queries_mod=queries_mod,
         )
     at_zero = False
     first_stay = False
@@ -63,12 +70,12 @@ async def _resolve_facts(
                 participant = next((p for p in state.participants if p.id == target), None)
                 hp = participant.hp_current if participant is not None else None
             else:
-                row = player if target == player["player_id"] else await queries_mod.get_player(target, conn=conn)
+                row = player if target == player_id else await queries_mod.get_player(target, conn=conn)
                 hp = (row.get("hp") or {}).get("current") if row is not None else None
             hit_points.append(hp)
         at_zero = bool(hit_points) and all(type(hp) is int and hp == 0 for hp in hit_points)
     if patron == "nythera":
-        first_stay = await first_stay_at_location(player, session.location_id, conn=conn)
+        first_stay = await first_stay_at_location(player_id, session.location_id, conn=conn)
     return PatronCastFacts(
         concealment.is_concealed(player),
         evidence is not None,

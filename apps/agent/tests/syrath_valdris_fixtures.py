@@ -30,7 +30,6 @@ async def world(dev_db_pool):
             for pid in ids:
                 row = {
                     **deepcopy(SAMPLE_PLAYER),
-                    "player_id": pid,
                     "class": "bard",
                     "level": 20,
                     "focus": {"current": 50},

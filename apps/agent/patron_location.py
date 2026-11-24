@@ -5,11 +5,11 @@ import json
 import db
 
 
-async def first_stay_at_location(player, location_id, *, conn=None) -> bool:
+async def first_stay_at_location(player_id: str, location_id: str, *, conn=None) -> bool:
     source = conn if conn is not None else await db.get_pool()
     row = await source.fetchrow(
         "SELECT data FROM player_map_progress WHERE player_id = $1 AND location_id = $2",
-        player["player_id"],
+        player_id,
         location_id,
     )
     if row is None:
@@ -20,9 +20,9 @@ async def first_stay_at_location(player, location_id, *, conn=None) -> bool:
     return not data.get("revisited", False)
 
 
-async def check_first_stay(player, session, skill, *, conn=None) -> bool:
+async def check_first_stay(player, session, skill, *, player_id: str, conn=None) -> bool:
     if (player.get("divine_favor") or {}).get("patron") != "nythera":
         return False
     if skill.lower() not in {"investigation", "perception", "animal_handling"}:
         return False
-    return await first_stay_at_location(player, session.location_id, conn=conn)
+    return await first_stay_at_location(player_id, session.location_id, conn=conn)
