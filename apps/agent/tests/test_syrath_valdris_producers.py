@@ -77,7 +77,6 @@ async def test_grievance_party_and_outsider(world, grievance):
     import session_tools
 
     ids, conn, database, queries = world
-    await conn.execute("UPDATE players SET data = data - 'player_id' WHERE player_id = ANY($1)", ids)
     npc = "guildmaster_torin"
     ctx = make_context(player_id=ids[0])
     ctx.mock_add_spec(RunContext)

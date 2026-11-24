@@ -112,7 +112,6 @@ def make_mock_room():
 
 SAMPLE_PLAYER = {
     "speed": 30,
-    "player_id": "player_1",
     "name": "Arwen",
     "class": "skirmisher",
     "level": 2,
