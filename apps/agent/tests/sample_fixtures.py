@@ -156,7 +156,6 @@ SAMPLE_ENCOUNTER = {
 # Distinct from SAMPLE_PLAYER (Arwen): level 1, xp 0, and a valid archetype.
 GUILD_PLAYER = {
     "speed": 30,
-    "player_id": "player_1",
     "name": "Kael",
     "class": "warrior",
     "level": 1,
