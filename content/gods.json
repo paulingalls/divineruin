@@ -1695,8 +1695,9 @@
         "clauses": [
           {
             "effect": "Allies at 0 HP within earshot gain +1 to death saving throws.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "mortaen_hold_the_crossing"
           }
         ]
       },

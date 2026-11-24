@@ -46,10 +46,12 @@ class TestMultiPlayerDeathSave:
         cs = _make_combat_state()  # primary standing
         _fallen_ally(cs, "player_2")
         ctx.userdata.combat_state = cs
-
         # A pinned ordinary failure (not a nat-1, which costs TWO failures, nor a nat-20, which
         # revives): one counter moves, so "whose counter" is the only thing this asserts.
-        with patch("combat_resolution.dice_roll", return_value=MagicMock(total=5, natural=5)):
+        with (
+            patch("combat_death_save.db_queries.get_player", return_value={"divine_favor": {"patron": "none"}}),
+            patch("combat_resolution.dice_roll", return_value=MagicMock(total=5, natural=5)),
+        ):
             result = json.loads(await _request_death_save_impl(ctx, mutations=mock_mutations, db_mod=mock_db))
 
         assert "roll" in result

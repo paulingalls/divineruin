@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 OATH_OF_VALOR = "kaelen_oath_of_valor"
 SECOND_BEFORE = "zhael_second_before"
 MORTAEN_THRESHOLD_SHIELD = "mortaen_threshold_shield"
+MORTAEN_HOLD_THE_CROSSING = "mortaen_hold_the_crossing"
 
 
 async def attack_player(participant, *, queries, conn) -> dict | None:
@@ -89,6 +90,22 @@ def fallen_ally_defense(defender: dict | None, state: CombatState | None, target
             for ally in state.participants
         )
     )
+
+
+async def marshal_death_save_bonus(state: CombatState, roller: CombatParticipant, *, queries) -> int:
+    from combat_veilrender import living
+
+    if not roller.is_ally:
+        return 0
+    for candidate in state.participants:
+        if candidate.type != "player" or not living(candidate):
+            continue
+        player = await queries.get_player(candidate.id)
+        if player is None:
+            raise RuntimeError(f"Death save ally {candidate.id!r} has no player row")
+        if has_engine_synergy(player, MORTAEN_HOLD_THE_CROSSING):
+            return 1
+    return 0
 
 
 def outnumbered_oath(player: dict, state: CombatState | None, attacker: CombatParticipant) -> bool:

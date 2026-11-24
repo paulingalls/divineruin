@@ -312,6 +312,24 @@ test("Mortaen's guardian has the registered Threshold Shield clause", () => {
   expect(guardian?.clauses).toHaveLength(1);
 });
 
+test("Mortaen's marshal has the registered Hold the Crossing clause", () => {
+  const marshal = validateGods(catalog).find((god) => god.god_id === "mortaen")
+    ?.layer_4_synergy_matrix.marshal;
+  expect(marshal).toMatchObject({
+    name: "Hold the Crossing",
+    type: "divine",
+    clauses: [
+      {
+        effect: "Allies at 0 HP within earshot gain +1 to death saving throws.",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "mortaen_hold_the_crossing",
+      },
+    ],
+  });
+  expect(marshal?.clauses).toHaveLength(1);
+});
+
 for (const entry of corpus.layer_1_cases) {
   test(`Layer 1 profile: ${entry.id}`, () => {
     const profile = structuredClone(corpus.valid[0]!.profile);
