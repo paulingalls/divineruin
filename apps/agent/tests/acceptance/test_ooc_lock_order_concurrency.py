@@ -56,7 +56,7 @@ async def _cast(conn: _TxnConn, barrier: asyncio.Barrier, *, caster: str, target
             party_member_ids=PARTY,
             conn=conn,
         )
-        assert caster_row["player_id"] == caster
+        assert caster_row is locked_rows[caster]
 
         # Read under the lock we just took, then write back +1. The loser's FOR UPDATE blocks until
         # the winner commits, so it re-reads the winner's value (READ COMMITTED) and lands 2, not 1.
