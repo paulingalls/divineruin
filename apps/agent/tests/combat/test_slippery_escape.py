@@ -198,7 +198,7 @@ def test_a_bystanders_malformed_spend_does_not_block_the_targets_grapple():
 
 def test_slippery_set_names_both_real_condition_imposed_reactions():
     catalog = load_fixture_config()
-    assert frozenset({"rogue_slippery", "spy_slippery"}) == combat_reaction_effect.ESCAPES_GRAPPLE
-    assert {catalog[ability_id].window for ability_id in combat_reaction_effect.ESCAPES_GRAPPLE} == {
+    assert frozenset({"rogue_slippery", "spy_slippery"}) == combat_reaction_effect.SLIPPERY_REACTIONS
+    assert {catalog[ability_id].window for ability_id in combat_reaction_effect.SLIPPERY_REACTIONS} == {
         "on_condition_imposed"
     }

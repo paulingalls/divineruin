@@ -61,6 +61,7 @@ _WINDOW_CENSUS = {
 }
 
 _GRAPPLE_CARRIERS = [("mawling_pack_adult", "Lunge"), ("generated_2", "Lunge")]
+_RESTRAINT_CARRIERS = [("hollow_architect", "Entomb")]
 _COMMAND_CARRIERS = [
     ("ashmark_patrol", "ashmark_sergeant", "Rally"),
     ("cult_cell", "cult_fanatic_1", "Bless"),
@@ -136,6 +137,8 @@ def _produced_windows() -> set[str]:
         produced.update(reaction_windows.pre_roll_triggers(action))
         produced.update(reaction_windows.post_roll_triggers(action, hit=True))
         produced.update(reaction_windows.post_roll_triggers(action, hit=False))
+        produced.update(reaction_windows.condition_triggers(action, imposed=True))
+        produced.update(reaction_windows.condition_triggers(action, imposed=False))
     return produced
 
 
@@ -173,6 +176,21 @@ def test_the_grapple_branch_carriers_are_pinned():
     assert _grapple_carriers() == _GRAPPLE_CARRIERS, (
         "authored encounters and the generated adult example must retain a grapple producer"
     )
+
+
+def test_only_imposed_restraint_carriers_open_the_condition_window():
+    carriers = []
+    for template in _templates():
+        for enemy in template["enemies"]:
+            for action in enemy["action_pool"]:
+                assert reaction_windows.condition_triggers(action, imposed=False) == ()
+                triggers = reaction_windows.condition_triggers(action, imposed=True)
+                if action.get("applies_condition") == "restrained":
+                    carriers.append((template["id"], action["name"]))
+                    assert triggers == ("on_condition_imposed",)
+                else:
+                    assert triggers == ()
+    assert carriers == _RESTRAINT_CARRIERS
 
 
 def test_social_subject_carriers_are_pinned():

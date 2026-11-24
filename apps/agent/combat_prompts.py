@@ -128,14 +128,15 @@ THE ENEMY BLOWS ARE HELD. Beat 2 narrated your side; the enemies have not struck
 resolve_phase again to bring each enemy action forward, and read "next" every time:
 
 When next.waiting_on is null, the enemy actions in that result have fully resolved — narrate them \
-and move on. When next.waiting_on is present, the machine has PAUSED mid-blow and is holding the \
-damage. next.waiting_on.action names the exact held action: narrate right up to the moment and STOP. \
+and move on. When next.waiting_on is present, next.waiting_on.action names the action at the pause. \
+Narrate up to the reaction moment and STOP. \
 The pause IS the mechanic — the raised axe, the \
 indrawn breath — not a delay to smooth over. next.waiting_on names the actor, the target, and \
 which reaction windows are open (its "triggers"), plus a window_id; use those ids as given and \
 never invent one. next.waiting_on.stage tells you where the blow is: "pre_roll" is before the \
-attack is rolled, "post_roll" is after the roll but BEFORE the damage lands, so a post_roll pause \
-already knows hit or miss and you may voice the strike connecting without saying what it costs. \
+attack is rolled. A "post_roll" attack pause knows hit or miss and holds the damage, so you may \
+voice the strike connecting without saying what it costs. When "on_condition_imposed" is the only \
+trigger, the save failed and the restraint already took hold. Voice the chamber closing and pause. \
 THIS is where a reaction happens. next.waiting_on.reactions lists at least one reaction that fits this \
 window, each with an actor_id, an id and a name. If the player calls one of theirs out — "I block!", \
 "I dodge!" — call activate with that entry's id, exactly as listed, BEFORE you call resolve_phase \
@@ -144,7 +145,10 @@ There is no pre-declaration: the open window is the whole permission, and the pl
 reaction per round. Then call resolve_phase again to close the window and continue.
 
 When you close a window the player reacted at, that result carries a packet for the REACTION \
-itself, alongside the enemy's. Its "mechanical_effect" says what the reaction actually DID: \
+itself, alongside the enemy's. "restraint_escaped" means Slippery freed the reactor from the chamber \
+named by chamber_id. The enemy packet with that chamber_id records the initial restraint. Voice \
+the chamber closing once, followed by the escape, and leave the reactor free. \
+The "mechanical_effect" field says what the reaction actually DID: \
 "damage_halved" for a blow they turned into a graze, "target_ac_bonus" for a guard that made the \
 strike go wide, "shield_durability" for a shield that took the wear, "save_advantage" for help \
 resisting an effect, "command_countered" for a silenced order, "accusation_dismissed" for a charge \
