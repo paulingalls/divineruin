@@ -242,16 +242,13 @@ class, grep `work.md` for the old name and re-resolve every record pointing at i
 written against. The rule is the wall; this is why it is where it is. Cite the
 item number, not this section.
 
-- **2 — tests cost what code costs (boundary tests).** For boundary tests of small
-  features, the lead ruled in sprint encounter-facts (notes `c8f59dee` and
-  `5043e1fb`) to count the card's production diff plus the existing lines the
-  tests first assert. Acceptance criteria cases are not waivable.
 - **4 — file cap.** Two reviewers spent a round arguing about `content/*.json`
   before the human ruled authored data exempt (2026-09-04).
 - **6 — fail fast, fail loud (tolerance).** Sprint-048's narration normalizer
   coerced the shapes I had seen and let its `else` absorb every shape I had not,
   so an errand "resolved" in silence.
-- **11 — code claims (falsifiers).** Four red at the sprint-052 close: three
+- **retired 5 — falsifiers (rule removed in 0ca3f345; see "A falsifier is a path
+  into a moving tree" above).** Four red at the sprint-052 close: three
   grepped a name the fix had put elsewhere or in camelCase, one debt's polarity
   was inverted.
 - **7 — name the producer.** Twice in sprint-045 we shipped a gate keyed on a
@@ -276,7 +273,8 @@ item number, not this section.
 - **12 — a failure that recurs is a defect.** The training midpoint judge red in
   sprints 48, 49 and 50, about 40% of pushes, each run shrugged off alone; the
   cause was the DM paraphrasing the resolved state away, one prompt line.
-- **6 — fail fast, fail loud (absence and floors).** SPRINT 54 CAUGHT SEVEN
+- **retired 12 — absence and floors (rule removed in 0ca3f345; the nearest
+  current item is 3).** SPRINT 54 CAUGHT SEVEN
   VACUOUS GUARDS WITH THIS RULE, five of them inside cards written to fix a
   vacuous guard: 062's
   `half_on_success` check (deletable on either side, all 16 Python and 95 TS
@@ -293,7 +291,7 @@ item number, not this section.
   refresh caught me writing one (`shorter than content/archetype_abilities.json`)
   that `query_info` can never meet, since it emits only the caller's
   class-and-level rows.
-- **6 — fail fast, fail loud (earlier absence and floors).** Sprint-053's review:
+- **retired 12, earlier.** Sprint-053's review:
   story-078's producer tripwire walked `archetype_abilities.json` only, so
   `content/spells.json` was walked by nothing; story-058's tripwire stayed green over an EMPTY corpus
   (`parents[4]` -> `parents[3]`); story-080's repo-wide line cap was vacuous
@@ -319,7 +317,13 @@ item number, not this section.
   registered tools: lock and rollback, receipts, falls and boss protections.
   "The lines they test" includes existing code that a new boundary test runs
   through and can fail on, not only the card's new lines. Reviewers still cut
-  duplicates under Constraint 1.
+  duplicates under Constraint 1. Sprint encounter-facts (notes `c8f59dee`,
+  `5043e1fb`) still ran over after that count: the death-save heal test was 169
+  lines against about 50, and Focus renewal was 442 against about 95. The lead
+  accepted both, on three conditions: each case is the only red for a distinct
+  fault injection or covers an AC; the harness is shared; and duplicates are
+  still cut. An AC case is not waivable, but citing an AC exempts no test that
+  fails those conditions.
 - **13 — wall clock is a quality budget.** Same day: story land gained the fast lane (~45 s) while
   acceptance stayed at sprint close, because land wall clock bounds the sprint.
   Human: efficient tests, harness and tiering keep wall clock down without
