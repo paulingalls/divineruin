@@ -1,9 +1,15 @@
+from typing import TYPE_CHECKING
+
 import combat_grapple
 import condition_voice_rules
 import conditions
 from combat_participant import CombatParticipant
 from condition_catalog import CONDITION_CATALOG
+from condition_produce import resolve_effective_targets
 from condition_restrictions import cannot_act
+
+if TYPE_CHECKING:
+    from declarations import Declaration
 
 
 def can_land_condition(state, target: CombatParticipant, cond_type: str) -> bool:
@@ -55,3 +61,37 @@ def _land_condition_on_one(
         if released:
             packet.setdefault("released_from_grapple", []).extend(released)
     return landed
+
+
+def land_condition_on_participant(
+    state,
+    attacker: CombatParticipant,
+    decl: "Declaration",
+    cond_type: str,
+    source: str,
+    *,
+    packet: dict,
+) -> bool:
+    """Single-target landing rule for the combat producers (the spell path in _resolve_ability_packet
+    and the non-spell ability path in _resolve_ability_condition_packet): land ``cond_type`` on
+    ``decl.target_id`` (self when absent). Returns True iff it landed. Thin wrapper over
+    ``_land_condition_on_one``; ``packet`` receives any release caused by the condition."""
+    return _land_condition_on_one(state, decl.target_id, attacker, cond_type, source, packet=packet)
+
+
+def land_condition_on_participants(
+    state, attacker: CombatParticipant, decl: "Declaration", cond_type: str, source: str, *, packet: dict
+) -> list[str]:
+    """Land ``cond_type`` on EACH participant of a multi-target declaration (M4.8 story-012).
+
+    Resolves the target list: ``decl.target_ids`` (order-preserving dedup) when present, else the
+    single ``decl.target_id``, else the caster (self-cast). The cap was already enforced at the
+    declare-gate (combat_packet via spells.normalize_target_list); dedup here just prevents
+    double-voicing the same ally. Returns the participant ids the buff actually LANDED on (an id not
+    on the working state, or an immunity no-op, is dropped) — the subset the DM should name."""
+    targets = resolve_effective_targets(decl.target_ids, decl.target_id, self_value=None, dedup=True)
+    voiced: list[str] = []
+    for target_id in targets:
+        if _land_condition_on_one(state, target_id, attacker, cond_type, source, packet=packet):
+            voiced.append(target_id if target_id is not None else attacker.id)
+    return voiced

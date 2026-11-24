@@ -24,10 +24,13 @@ import condition_voice_rules
 import db_queries
 import spell_casting
 from combat_ability_gate import DeclaredAbility
-from combat_condition_landing import _land_condition_on_one
+from combat_condition_landing import (
+    _land_condition_on_one,
+    land_condition_on_participant,
+    land_condition_on_participants,
+)
 from combat_down import damage_target_unavailable
 from combat_structures import blocked_reason, line_blocker
-from condition_produce import resolve_effective_targets
 from condition_sources import DeliveryRefused
 from mentor_variants import MentorVariant
 from patron_synergy_heal import for_cast
@@ -37,40 +40,6 @@ from session_data import CombatParticipant, SessionData
 if TYPE_CHECKING:
     from declarations import Declaration
     from spell_casting import CastResult
-
-
-def land_condition_on_participant(
-    state,
-    attacker: CombatParticipant,
-    decl: "Declaration",
-    cond_type: str,
-    source: str,
-    *,
-    packet: dict,
-) -> bool:
-    """Single-target landing rule for the combat producers (the spell path in _resolve_ability_packet
-    and the non-spell ability path in _resolve_ability_condition_packet): land ``cond_type`` on
-    ``decl.target_id`` (self when absent). Returns True iff it landed. Thin wrapper over
-    ``_land_condition_on_one``; ``packet`` receives any release caused by the condition."""
-    return _land_condition_on_one(state, decl.target_id, attacker, cond_type, source, packet=packet)
-
-
-def land_condition_on_participants(
-    state, attacker: CombatParticipant, decl: "Declaration", cond_type: str, source: str, *, packet: dict
-) -> list[str]:
-    """Land ``cond_type`` on EACH participant of a multi-target declaration (M4.8 story-012).
-
-    Resolves the target list: ``decl.target_ids`` (order-preserving dedup) when present, else the
-    single ``decl.target_id``, else the caster (self-cast). The cap was already enforced at the
-    declare-gate (combat_packet via spells.normalize_target_list); dedup here just prevents
-    double-voicing the same ally. Returns the participant ids the buff actually LANDED on (an id not
-    on the working state, or an immunity no-op, is dropped) — the subset the DM should name."""
-    targets = resolve_effective_targets(decl.target_ids, decl.target_id, self_value=None, dedup=True)
-    voiced: list[str] = []
-    for target_id in targets:
-        if _land_condition_on_one(state, target_id, attacker, cond_type, source, packet=packet):
-            voiced.append(target_id if target_id is not None else attacker.id)
-    return voiced
 
 
 def condition_ability(resolved: DeclaredAbility | None) -> DeclaredAbility | None:
