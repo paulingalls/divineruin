@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.64.2
+
+The scheduled native checks now open the Iron Resolve HUD with an authenticated character and verify its temporary hit point display.
+
+Release steps: none.
+
 ## 0.64.1
 
 The xp config opts into GitHub issues, so bug and debt records keep filing as issues after the xp-plugin 1.7 upgrade.
