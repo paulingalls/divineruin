@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.64.4
+
+The out-of-combat lock-order concurrency check passes again with player data in its production shape.
+
+Release steps: none.
+
 ## 0.64.3
 
 Patron healing effects now resolve for Valdris, Mortaen, and Nythera followers. Nythera followers also get their first-visit bonuses on eligible skill checks.
