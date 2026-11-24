@@ -4,7 +4,7 @@ import math
 
 from check_resolution_attack import _is_ranged
 from combat_down import has_damage
-from combat_movement_cost import reachable_point
+from combat_movement_cost import crosses_low_ceiling, reachable_point
 from combat_spatial import distance, number, position, require_spatial
 from combat_spatial_declarations import apply_move, ineligible
 from combat_structures import blocked_reason, blocking_wall, nearest_wall_point
@@ -35,7 +35,11 @@ def prepare(state, actor, target, action, budget):
     if target.is_structure and (segment := spatial.get("structures", {}).get(target.id)):
         destination = nearest_wall_point(origin, segment)
     separation = distance(origin, destination)
-    budget.setdefault("remaining", spatial["speeds"][actor.id])
+    ground_speed = spatial["speeds"][actor.id]
+    previous_allowance = budget.get("remaining")
+    mode = "ground" if actor.fly_speed is None else "flying"
+    speed = ground_speed if actor.fly_speed is None else actor.fly_speed
+    budget.setdefault("remaining", speed)
     if actor.choir_movement_round == state.round_number:
         budget["remaining"] = 0
     facts = {
@@ -58,11 +62,21 @@ def prepare(state, actor, target, action, budget):
             axis: origin[axis] + (destination[axis] - origin[axis]) * travel_needed / separation for axis in origin
         }
         end = reachable_point(spatial, actor.id, origin, desired, budget["remaining"])
+        if mode == "flying" and crosses_low_ceiling(spatial, actor.id, origin, end):
+            mode = "ground"
+            budget["remaining"] = ground_speed if previous_allowance is None else previous_allowance
+            end = reachable_point(spatial, actor.id, origin, desired, budget["remaining"])
         if end != origin:
             moved = apply_move(
                 state,
                 actor,
-                Declaration(type=DeclarationType.MANEUVER, action="move", target_id=actor.id, destination=end),
+                Declaration(
+                    type=DeclarationType.MANEUVER,
+                    action="move",
+                    target_id=actor.id,
+                    destination=end,
+                    movement_mode=mode,
+                ),
                 allowance=budget["remaining"],
             )
             if not moved["resolved"]:
@@ -72,6 +86,7 @@ def prepare(state, actor, target, action, budget):
             facts.update(
                 moved_ft=travel,
                 movement_spent_ft=spent,
+                movement_mode=moved["movement_mode"],
                 destination=moved["destination"],
                 closed_distance=travel > 0,
             )
@@ -95,7 +110,7 @@ def prepare_held(state, head, action):
     previous = head.get("melee_approach", {})
     if previous:
         return previous
-    budget = {"remaining": head.get("movement_remaining", require_spatial(state)["speeds"][actor.id])}
+    budget = {"remaining": head["movement_remaining"]} if "movement_remaining" in head else {}
     facts = prepare(state, actor, target, action, budget)
     head.update(melee_approach=facts, movement_remaining=budget["remaining"])
     if "composite" in head:

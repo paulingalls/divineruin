@@ -104,6 +104,9 @@ def validate_creature_stat_block(creature: object) -> list[str]:
     field(creature, "description", "", "string")
     for key in ("level", "hp", "ac", "speed"):
         field(creature, key, "", "integer")
+    fly_speed = creature.get("fly_speed")
+    if "fly_speed" in creature and (type(fly_speed) is not int or fly_speed <= 0):
+        problems.append("fly_speed: expected positive integer")
     attributes = field(creature, "attributes", "", "object")
     if isinstance(attributes, dict):
         for key in ATTRIBUTES:
@@ -202,6 +205,13 @@ def validate_creature_stat_block(creature: object) -> list[str]:
                 if not isinstance(ability, dict):
                     problems.append(f"{path}: expected object")
                     continue
+                if "flyby" in ability:
+                    if group != "passives":
+                        problems.append(f"{path}.flyby: only allowed on passives")
+                    elif ability["flyby"] is not True:
+                        problems.append(f"{path}.flyby: expected true")
+                    elif "fly_speed" not in creature:
+                        problems.append(f"{path}.flyby: requires fly_speed")
                 for key in ("name", "description", "narration_cue"):
                     field(ability, key, path, "string")
                 field(ability, "audio", path, "string", True)

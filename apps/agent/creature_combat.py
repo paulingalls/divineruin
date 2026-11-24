@@ -102,6 +102,8 @@ def _translate(row, encounter_id, enemy_id, role):
     enemy.update(
         id=enemy_id,
         creature_id=row["id"],
+        fly_speed=row.get("fly_speed"),
+        flyby=any(p.get("flyby") is True for p in row["passives"]),
         damage_affinities=deepcopy(row.get("damage_affinities", {})),
         resist_nonmagical_physical=row.get("resist_nonmagical_physical", False),
         unholy_fortitude=deepcopy(row.get("unholy_fortitude")),

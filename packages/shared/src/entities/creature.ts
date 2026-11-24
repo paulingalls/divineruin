@@ -49,6 +49,7 @@ export interface CreatureStatBlock {
   hp: number;
   ac: number;
   speed: number;
+  fly_speed?: number;
   attributes: Record<"STR" | "DEX" | "CON" | "INT" | "WIS" | "CHA", number>;
   save_proficiencies: string[];
   attacks: Attack[];
@@ -58,7 +59,7 @@ export interface CreatureStatBlock {
     attacks: string[];
     attacks_by_role?: Partial<Record<"elite" | "boss", string[]>>;
   };
-  passives: Ability[];
+  passives: PassiveAbility[];
   actives: ActiveAbility[];
   legendary?: Legendary;
   signature_ability?: CatalogSignatureAbility;
@@ -114,6 +115,10 @@ export interface Attack {
   advantage?: boolean;
   duration?: number;
   recharge?: Recharge;
+}
+
+export interface PassiveAbility extends Ability {
+  flyby?: true;
 }
 
 export interface Ability {

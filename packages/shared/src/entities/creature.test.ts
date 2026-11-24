@@ -151,7 +151,7 @@ const fieldName = (path: Path) =>
 test("every spec field is required", () => {
   for (const row of corpus.valid.filter((row) => row.spec_derived))
     for (const path of keyPaths(row.block)) {
-      if (["damage_affinities", "tags"].includes(String(path[0]))) continue;
+      if (["damage_affinities", "fly_speed", "tags"].includes(String(path[0]))) continue;
       const block = structuredClone(row.block);
       let parent = block as Record<string | number, unknown>;
       for (const part of path.slice(0, -1))
