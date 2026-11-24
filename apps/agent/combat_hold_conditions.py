@@ -8,8 +8,6 @@ from encounter_actions import action_kind
 
 
 def window_for(state: CombatState, head: dict, action: dict, summary: dict) -> dict | None:
-    if reaction_windows.POST_ROLL in head["opened"]:
-        return None
     triggers = reaction_windows.condition_triggers(action, imposed=summary.get("condition_inflicted") is not None)
     if not triggers:
         return None
