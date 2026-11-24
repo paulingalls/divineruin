@@ -330,6 +330,17 @@ test("Mortaen's marshal has the registered Hold the Crossing clause", () => {
   expect(marshal?.clauses).toHaveLength(1);
 });
 
+test("Kaelen's bard has the registered War Songs clause", () => {
+  const bard = validateGods(catalog).find((god) => god.god_id === "kaelen")?.layer_4_synergy_matrix
+    .bard;
+  expect(bard).toMatchObject({
+    name: "War Songs",
+    type: "unexpected",
+    clauses: [{ status: "active", resolution: "engine", implementation_id: "kaelen_war_songs" }],
+  });
+  expect(bard?.clauses).toHaveLength(1);
+});
+
 for (const entry of corpus.layer_1_cases) {
   test(`Layer 1 profile: ${entry.id}`, () => {
     const profile = structuredClone(corpus.valid[0]!.profile);

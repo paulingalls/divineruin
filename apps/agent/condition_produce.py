@@ -27,6 +27,7 @@ import condition_voice_rules
 import conditions
 import db_mutations_conditions
 import db_queries
+from patron_synergy_combat import inspire_attack_upgrade
 
 
 def resolve_effective_targets(
@@ -116,6 +117,7 @@ async def produce_ooc_condition(
     rows_by_id = dict(fetched)
     rows_by_id[caster_id] = caster_row
 
+    metadata = {"inspire_attack_upgrade": inspire_attack_upgrade(caster_row)} if condition == "inspired" else {}
     writes: dict[str, list[dict]] = {}
     voiced: list[str] = []
     for tid in cond_target_ids:
@@ -125,7 +127,7 @@ async def produce_ooc_condition(
         row = rows_by_id[tid]
         if condition == "inspired" and condition_voice_rules.no_spoken_buffs(row.get("conditions") or []):
             continue
-        new_conditions = conditions_mod.apply_condition(row.get("conditions", []), condition, source=source)
+        new_conditions = conditions_mod.apply_condition(row.get("conditions", []), condition, source=source, **metadata)
         if not conditions_mod.has_condition(new_conditions, condition):
             continue  # immunity / no-op apply — nothing to persist or voice
         writes[tid] = new_conditions
