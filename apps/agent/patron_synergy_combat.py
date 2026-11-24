@@ -98,11 +98,9 @@ def fallen_ally_defense(defender: dict | None, state: CombatState | None, target
     )
 
 
-async def marshal_death_save_bonus(state: CombatState, roller: CombatParticipant, *, queries) -> int:
+async def marshal_death_save_bonus(state: CombatState, *, queries) -> int:
     from combat_veilrender import living
 
-    if not roller.is_ally:
-        return 0
     for candidate in state.participants:
         if candidate.type != "player" or not living(candidate):
             continue

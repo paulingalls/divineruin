@@ -112,7 +112,7 @@ async def _roll_death_save(
 
     member = session.party.member(faller.id)
     personal_bonus = creation_deities.patron_death_save_bonus(member.patron_id if member is not None else "none")
-    synergy_bonus = await marshal_death_save_bonus(cs, faller, queries=queries)
+    synergy_bonus = await marshal_death_save_bonus(cs, queries=queries)
     bonus = personal_bonus + synergy_bonus
     bonus_receipt = {
         "bonus": bonus,
