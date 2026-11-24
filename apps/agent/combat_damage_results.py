@@ -62,6 +62,8 @@ def attack_fields(attack_result: check_resolution_attack.AttackResult, effective
         synergy_clause_id=attack_result.synergy_clause_id,
         synergy_ac_bonus=attack_result.synergy_ac_bonus,
         synergy_ac_clause_id=attack_result.synergy_ac_clause_id,
+        mortaen_ac_bonus=attack_result.mortaen_ac_bonus,
+        mortaen_ac_clause_id=attack_result.mortaen_ac_clause_id,
         consumed_conditions=attack_result.consumed_conditions,
     )
     if attack_result.attack_disadvantage_source is not None:

@@ -299,6 +299,19 @@ test("ten complete matrices cover the exact eighteen-archetype roster", () => {
   );
 });
 
+test("Mortaen's guardian has the registered Threshold Shield clause", () => {
+  const guardian = validateGods(catalog).find((god) => god.god_id === "mortaen")
+    ?.layer_4_synergy_matrix.guardian;
+  expect(guardian).toMatchObject({
+    name: "Threshold Shield",
+    type: "divine",
+    clauses: [
+      { status: "active", resolution: "engine", implementation_id: "mortaen_threshold_shield" },
+    ],
+  });
+  expect(guardian?.clauses).toHaveLength(1);
+});
+
 for (const entry of corpus.layer_1_cases) {
   test(`Layer 1 profile: ${entry.id}`, () => {
     const profile = structuredClone(corpus.valid[0]!.profile);

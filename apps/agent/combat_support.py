@@ -1,6 +1,7 @@
 """Shared helpers for combat tool modules."""
 
 import logging
+from inspect import getattr_static
 
 from livekit.agents.llm import ToolError
 
@@ -97,6 +98,7 @@ async def _resolve_attack_packet(
             weapon_attack=weapon_attack,
             player=player,
             defender=defender,
+            mortaen_ac_override=getattr_static(resolver, "mortaen_ac_bonus", None),
         )
     return await apply_rolled_attack(
         session,

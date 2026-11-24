@@ -32,6 +32,7 @@
   "zhael_bent_probability": "patron_synergy_combat:expanded_critical",
   "mortaen_last_vigil": "patron_synergy_combat:encounter_damage_clause",
   "zhael_threaded_blade": "patron_synergy_combat:encounter_damage_clause",
+  "mortaen_threshold_shield": "patron_synergy_combat:fallen_ally_defense",
   "zhael_second_before": "patron_synergy_combat:first_attack_defense",
   "zhael_appointed_mercy": "patron_synergy_heal:for_cast",
   "thyra_natures_edge": "patron_synergy_combat:critical_rider",
