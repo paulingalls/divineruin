@@ -2,6 +2,7 @@
 
 import copy
 
+import combat_spatial
 import conditions
 import dice
 from combat_condition_landing import _land_condition_on_one
@@ -32,6 +33,9 @@ def resolve_active(state, actor, action, declaration):
         actor.pending_preparation = {"on_hit": copy.deepcopy(action["on_hit"])}
         summary["prepared_attack"] = True
     elif kind == "healing":
+        spatial = combat_spatial.require_spatial(state)
+        origin = combat_spatial.position(spatial, actor.id)
+        reach = action["reach"]
         amount = dice.roll(action["healing"]).total
         summary["healed"] = {
             ally.id: heal(ally, amount)
@@ -42,6 +46,7 @@ def resolve_active(state, actor, action, declaration):
             and not ally.is_fallen
             and not ally.is_dead
             and ally.hp_current > 0
+            and combat_spatial.inside(origin, combat_spatial.position(spatial, ally.id), reach)
             and line_blocker(state, actor.id, ally.id) is None
         }
     else:

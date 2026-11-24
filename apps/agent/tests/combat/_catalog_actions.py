@@ -1,6 +1,7 @@
 RALLY = {
     "name": "Rally",
     "kind": "healing",
+    "reach": 30,
     "healing": "1d8",
     "target_group": "allied_bandits",
     "recharge": {"kind": "encounter", "uses": 1},

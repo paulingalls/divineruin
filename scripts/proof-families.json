@@ -5,7 +5,7 @@
       "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:m45_dramatic_dice_capstone)\\.py"
     ],
     "owns": ["apps/agent/(?:dice|dramatic|rules_engine)\\.py"],
-    "reads": []
+    "reads": ["content/creatures.json"]
   },
   {
     "name": "npc-repair",
@@ -14,6 +14,7 @@
       "apps/agent/(?:combat[^/]*|choir[^/]*|still[^/]*|encounter[^/]*|durability[^/]*|damage[^/]*|death[^/]*|enemy[^/]*|initiative[^/]*|reaction[^/]*|monster[^/]*)\\.py"
     ],
     "reads": [
+      "content/creatures.json",
       "content/items.json",
       "content/locations.json",
       "content/npcs.json",
@@ -68,6 +69,7 @@
       "content/archetype_abilities.json",
       "content/archetypes.json",
       "content/companions.json",
+      "content/creatures.json",
       "content/engine_implementations.json",
       "content/gods.json",
       "content/unbound.json",
@@ -87,6 +89,7 @@
       "apps/agent/(?:unbound_autonomy|alignment_heartbeat|archetyp[^/]*|role_archetypes|progression[^/]*|mentor[^/]*|milestone[^/]*|level[^/]*|xp[^/]*|favor[^/]*|training[^/]*)\\.py"
     ],
     "reads": [
+      "content/creatures.json",
       "content/items.json",
       "content/archetype_abilities.json",
       "content/archetype_milestones.json",
@@ -112,6 +115,7 @@
       "apps/agent/(?:inventory[^/]*|craft[^/]*|recipe[^/]*|loot[^/]*|material[^/]*|gather[^/]*|workspace[^/]*|quality[^/]*|equipment[^/]*|item[^/]*|artificer[^/]*)\\.py"
     ],
     "reads": [
+      "content/creatures.json",
       "content/items.json",
       "content/locations.json",
       "content/loot_tables.json",
@@ -134,6 +138,7 @@
     "reads": [
       "content/archetype_abilities.json",
       "content/archetypes.json",
+      "content/creatures.json",
       "content/gathering_nodes.json",
       "content/inventory_pools.json",
       "content/items.json",
@@ -156,6 +161,7 @@
     "reads": [
       "content/archetype_abilities.json",
       "content/archetypes.json",
+      "content/creatures.json",
       "content/locations.json",
       "content/npcs.json",
       "content/role_archetypes.json"
@@ -282,6 +288,7 @@
     ],
     "reads": [
       "content/companions.json",
+      "content/creatures.json",
       "content/errand_templates.json",
       "content/items.json",
       "content/locations.json",
@@ -308,6 +315,7 @@
       "content/archetypes.json",
       "content/combat_sounds.json",
       "content/companions.json",
+      "content/creatures.json",
       "content/engine_implementations.json",
       "content/errand_templates.json",
       "content/factions.json",
@@ -380,6 +388,7 @@
       "apps/agent/(?:activity_templates|async_worker[^/]*|db|database[^/]*|redis[^/]*|worker[^/]*)\\.py"
     ],
     "reads": [
+      "content/creatures.json",
       "content/items.json",
       "content/locations.json",
       "content/materials_catalog.json",
@@ -394,6 +403,7 @@
     "owns": [],
     "reads": [
       "content/companions.json",
+      "content/creatures.json",
       "content/items.json",
       "content/locations.json",
       "content/materials_catalog.json",

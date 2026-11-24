@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
 from dataclasses import asdict, dataclass, field
+from functools import cache
+from pathlib import Path
 
 import choir_effects
 import combat_reaction_contest
@@ -11,8 +14,32 @@ import condition_sources
 import encounter_facts
 import reaction_spend
 import reaction_windows
+from action_contracts import positive_integer
 from combat_attack_roll import held_reaction_ac
 from combat_participant import CombatParticipant
+
+
+@cache
+def _authored_rally_reach() -> int:
+    catalog = json.loads((Path(__file__).resolve().parents[2] / "content/creatures.json").read_text())
+    captain = next(row for row in catalog if row["id"] == "bandit_captain")
+    rally = next(action for action in captain["actives"] if action["name"] == "Rally")
+    reach = rally["reach"]
+    if not positive_integer(reach):
+        raise ValueError("bandit_captain.Rally.reach: invalid")
+    return reach
+
+
+def _upgrade_legacy_rally(participant: dict) -> dict:
+    if participant.get("creature_id") != "bandit_captain":
+        return participant
+    actions = participant.get("action_pool", [])
+    for index, action in enumerate(actions):
+        if action.get("name") == "Rally" and action.get("kind") == "healing" and "reach" not in action:
+            actions = actions.copy()
+            actions[index] = {**action, "reach": _authored_rally_reach()}
+            return {**participant, "action_pool": actions}
+    return participant
 
 
 @dataclass
@@ -160,7 +187,7 @@ class CombatState:
                 else None
             ),
             combat_id=data["combat_id"],
-            participants=[CombatParticipant(**p) for p in data["participants"]],
+            participants=[CombatParticipant(**_upgrade_legacy_rally(p)) for p in data["participants"]],
             initiative_order=data["initiative_order"],
             round_number=data.get("round_number", 1),
             current_turn_index=data.get("current_turn_index", 0),
