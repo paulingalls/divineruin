@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 OATH_OF_VALOR = "kaelen_oath_of_valor"
 SECOND_BEFORE = "zhael_second_before"
+MORTAEN_THRESHOLD_SHIELD = "mortaen_threshold_shield"
 
 
 async def attack_player(participant, *, queries, conn) -> dict | None:
@@ -69,6 +70,25 @@ def first_attack_defense(defender: dict | None, state: CombatState | None, targe
     ):
         return 1
     return 0
+
+
+def fallen_ally_defense(defender: dict | None, state: CombatState | None, target: CombatParticipant) -> int:
+    from combat_down import is_terminally_down
+    from combat_veilrender import living
+
+    if (
+        defender is None
+        or state is None
+        or not living(target)
+        or not has_engine_synergy(defender, MORTAEN_THRESHOLD_SHIELD)
+    ):
+        return 0
+    return int(
+        any(
+            ally.is_ally and ally.hp_current == 0 and ally.is_fallen and not is_terminally_down(ally)
+            for ally in state.participants
+        )
+    )
 
 
 def outnumbered_oath(player: dict, state: CombatState | None, attacker: CombatParticipant) -> bool:

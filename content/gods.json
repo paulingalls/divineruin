@@ -1571,8 +1571,9 @@
         "clauses": [
           {
             "effect": "Gain +1 AC while guarding an ally at 0 HP.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "mortaen_threshold_shield"
           }
         ]
       },

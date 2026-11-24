@@ -28,6 +28,7 @@ def roll_attack(
     weapon_attack: bool = True,
     player: dict | None = None,
     defender: dict | None = None,
+    mortaen_ac_override: int | None = None,
 ) -> tuple:
     """Roll without applying HP changes; held reactions pause before impact."""
     attacker_data, effective_ac, attack_mod = attack_roll_inputs(
@@ -39,6 +40,7 @@ def roll_attack(
         weapon_attack=weapon_attack,
         player=player,
         defender=defender,
+        mortaen_ac_override=mortaen_ac_override,
     )
     attack_result = resolver.resolve_attack(
         attacker_data,
@@ -55,7 +57,16 @@ def roll_attack(
 
 
 def attack_roll_inputs(
-    attacker, target, target_ac_bonus, combat_state, action, *, weapon_attack=True, player=None, defender=None
+    attacker,
+    target,
+    target_ac_bonus,
+    combat_state,
+    action,
+    *,
+    weapon_attack=True,
+    player=None,
+    defender=None,
+    mortaen_ac_override: int | None = None,
 ):
     """The attacker data, effective AC and to-hit bonus a d20 attack is prepared from.
 
@@ -101,8 +112,21 @@ def attack_roll_inputs(
     synergy_ac = patron_synergy_combat.first_attack_defense(defender, combat_state, target)
     if synergy_ac:
         attacker_data.update(synergy_ac_bonus=synergy_ac, synergy_ac_clause_id=patron_synergy_combat.SECOND_BEFORE)
+    mortaen_ac = (
+        mortaen_ac_override
+        if mortaen_ac_override is not None
+        else patron_synergy_combat.fallen_ally_defense(defender, combat_state, target)
+    )
+    attacker_data["mortaen_ac_bonus"] = mortaen_ac
+    if mortaen_ac:
+        attacker_data["mortaen_ac_clause_id"] = patron_synergy_combat.MORTAEN_THRESHOLD_SHIELD
     effective_ac = (
-        target.ac + target_ac_bonus + target_condition_ac + synergy_ac + cathedral_bonus(combat_state, target.id)
+        target.ac
+        + target_ac_bonus
+        + target_condition_ac
+        + synergy_ac
+        + mortaen_ac
+        + cathedral_bonus(combat_state, target.id)
     )
     attack_mod = attacker.attack_mod
     if not weapon_attack and player is not None:

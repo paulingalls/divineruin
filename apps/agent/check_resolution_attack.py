@@ -63,6 +63,8 @@ class AttackResult:
     synergy_clause_id: str | None = None
     synergy_ac_bonus: int = 0
     synergy_ac_clause_id: str | None = None
+    mortaen_ac_bonus: int = 0
+    mortaen_ac_clause_id: str | None = None
 
 
 def _is_ranged(weapon: dict) -> bool:
@@ -342,4 +344,6 @@ def finish_attack(
         synergy_clause_id=synergy_clause_id,
         synergy_ac_bonus=attacker_data.get("synergy_ac_bonus", 0),
         synergy_ac_clause_id=attacker_data.get("synergy_ac_clause_id"),
+        mortaen_ac_bonus=attacker_data.get("mortaen_ac_bonus", 0),
+        mortaen_ac_clause_id=attacker_data.get("mortaen_ac_clause_id"),
     )
