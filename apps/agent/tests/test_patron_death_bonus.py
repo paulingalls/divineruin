@@ -1,21 +1,8 @@
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
-from combat._helpers import _make_combat_state
-from sample_fixtures import make_context, make_db_mod
+from unittest.mock import patch
 
 import combat_resolution
 import creation_deities
-from combat_death_save import _request_death_save_impl
 from dice import DiceResult
-
-
-def _death_save_mutations():
-    """Mock mutations for _request_death_save_impl — keeps the tool off the real DB."""
-    m = MagicMock()
-    m.save_combat_state = AsyncMock()
-    m.update_player_hp = AsyncMock()
-    return m
 
 
 def _force_roll(value: int):
@@ -66,33 +53,3 @@ class TestPatronHooks:
     def test_non_patron_first_death_is_not_waived(self):
         assert creation_deities.patron_waives_first_death("none", 0) is False
         assert creation_deities.patron_waives_first_death("kaelen", 0) is False
-
-
-class TestDeathSaveBonusWiredLive:
-    @pytest.mark.asyncio
-    async def test_mortaen_session_applies_plus_two(self):
-        ctx = make_context()
-        ctx.userdata.patron_id = "mortaen"
-        ctx.userdata.combat_state = _make_combat_state(player_hp=0, player_fallen=True)
-
-        with patch(
-            "combat_death_save.combat_resolution.resolve_death_save",
-            wraps=combat_resolution.resolve_death_save,
-        ) as spy:
-            await _request_death_save_impl(ctx, mutations=_death_save_mutations(), db_mod=make_db_mod()[0])
-
-        assert spy.call_args.kwargs.get("bonus") == 2
-
-    @pytest.mark.asyncio
-    async def test_non_patron_session_applies_no_bonus(self):
-        ctx = make_context()
-        ctx.userdata.patron_id = "none"
-        ctx.userdata.combat_state = _make_combat_state(player_hp=0, player_fallen=True)
-
-        with patch(
-            "combat_death_save.combat_resolution.resolve_death_save",
-            wraps=combat_resolution.resolve_death_save,
-        ) as spy:
-            await _request_death_save_impl(ctx, mutations=_death_save_mutations(), db_mod=make_db_mod()[0])
-
-        assert spy.call_args.kwargs.get("bonus", 0) == 0

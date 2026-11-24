@@ -24,6 +24,7 @@ from combat_sound_events import publish_combat_sounds as _publish_sounds
 from combat_support import _require_combat
 from db_errors import db_tool
 from game_events import publish_game_event
+from patron_synergy_combat import MORTAEN_HOLD_THE_CROSSING, marshal_death_save_bonus
 from session_data import CombatState, SessionData
 from tool_support import (
     SOUND_DEATH_SAVE_CRITICAL,
@@ -117,10 +118,15 @@ async def _roll_death_save(
     # in memory for the next reload to silently lose. Mirrors resolve_phase's contract.
     faller = _resolve_faller(cs, player_id)
 
-    # Mortaen patrons roll death saves at +2 (M4.4 story-004). Read the ROLLER's own patron, not the
-    # primary's — patron_id lives on PartyMember. A companion has no member row and no patron.
     member = session.party.member(faller.id)
-    bonus = creation_deities.patron_death_save_bonus(member.patron_id if member is not None else "none")
+    personal_bonus = creation_deities.patron_death_save_bonus(member.patron_id if member is not None else "none")
+    synergy_bonus = await marshal_death_save_bonus(cs, faller, queries=queries)
+    bonus = personal_bonus + synergy_bonus
+    bonus_receipt = {
+        "bonus": bonus,
+        "synergy_bonus": synergy_bonus,
+        "synergy_clause_id": MORTAEN_HOLD_THE_CROSSING if synergy_bonus else None,
+    }
     successes, failures = faller.death_save_successes, faller.death_save_failures
     faller_id = faller.id
 
@@ -146,7 +152,15 @@ async def _roll_death_save(
                 ):
                     return zhael_fate.cancel(session, "The fallen ally's state changed while the death save was held.")
                 response = await _request_death_save_locked(
-                    session, current, faller_id, kept, mutations, db_mod, queries=queries, resumed=True
+                    session,
+                    current,
+                    faller_id,
+                    kept,
+                    mutations,
+                    db_mod,
+                    queries=queries,
+                    bonus_receipt=bonus_receipt,
+                    resumed=True,
                 )
                 return zhael_fate.Resumed(json.loads(response))
 
@@ -164,10 +178,23 @@ async def _roll_death_save(
             session.fate_offer = offer
             return json.dumps(offer.response())
 
-    return await _request_death_save_locked(session, cs, faller_id, result, mutations, db_mod, queries=queries)
+    return await _request_death_save_locked(
+        session, cs, faller_id, result, mutations, db_mod, queries=queries, bonus_receipt=bonus_receipt
+    )
 
 
-async def _request_death_save_locked(session, cs, faller_id, result, mutations, db_mod, *, queries, resumed=False):
+async def _request_death_save_locked(
+    session,
+    cs,
+    faller_id,
+    result,
+    mutations,
+    db_mod,
+    *,
+    queries,
+    bonus_receipt: dict[str, int | str | None],
+    resumed=False,
+) -> str:
     state = CombatState.from_dict(cs.to_dict())  # working copy; adopted post-commit
     working = state.get_participant(faller_id)
     assert working is not None  # copied from the state we just resolved against
@@ -236,6 +263,7 @@ async def _request_death_save_locked(session, cs, faller_id, result, mutations, 
     session.record_event(f"Death save: d{result.roll}, {outcome}")
 
     response = {
+        **bonus_receipt,
         "roll": result.roll,
         "success": result.success,
         "critical_success": result.critical_success,
