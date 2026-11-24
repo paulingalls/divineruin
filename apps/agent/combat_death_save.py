@@ -1,9 +1,4 @@
-"""Death-save combat tool — request_death_save.
-
-Extracted from combat_turn.py (story-004, debt faa6dd19ab64) to bring that file
-back under the 500-line cap. Behavior unchanged; this is the player's 0-HP death
-saving throw (nat-20 revives, three successes stabilize, three failures kill).
-"""
+"""Death saves for fallen players and companions."""
 
 import json
 import logging
@@ -20,6 +15,7 @@ import encounter_facts
 import event_types as E
 import zhael_fate
 from combat_down import revive, sync_companion_consciousness
+from combat_participant import CombatParticipant
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from combat_support import _require_combat
 from db_errors import db_tool
@@ -43,21 +39,15 @@ async def request_death_save(
     context: RunContext[SessionData],
     player_id: str | None = None,
 ) -> str:
-    """Roll a death saving throw for a fallen party member. Call this when someone is at 0 HP and
-    it's their turn (or when prompted). Nat 20 restores 1 HP. Three successes stabilize, three
-    failures mean death. Omit player_id when only one ally is down; when several are, name the one
-    who rolls — each carries their own successes, failures, and patron bonus."""
+    """Roll a death saving throw for a fallen player or companion at 0 HP when prompted.
+    Hollowed echoes never roll. Nat 20 restores 1 HP. Three successes stabilize, three failures
+    mean death. Omit player_id when only one ally is down. When several are down, name who rolls.
+    Each ally carries their own successes, failures, and patron bonus."""
     return await _request_death_save_impl(context, player_id)
 
 
-def _resolve_faller(cs, player_id: str | None):
-    """The participant whose save this is. Enemies never roll — they simply lie there.
-
-    Naming is required once more than one ally is down. The old code looked up session.player_id
-    unconditionally: a fallen NON-primary could never roll (the standing primary failed the
-    is_fallen gate), and when both were down the primary was rolled twice, its counters and HP
-    corrupted while the member actually dying was ignored."""
-    candidates = [p for p in cs.participants if p.type != "enemy" and p.is_fallen and not p.is_dead]
+def _resolve_faller(cs: CombatState, player_id: str | None) -> CombatParticipant:
+    candidates = [p for p in cs.participants if p.is_ally and p.is_fallen and not p.is_dead]
 
     if player_id is not None:
         chosen = cs.get_participant(player_id)
@@ -65,6 +55,8 @@ def _resolve_faller(cs, player_id: str | None):
             raise ToolError(f"No one named {player_id} is in this fight.")
         if chosen.type == "enemy":
             raise ToolError(f"{chosen.name} is an enemy — enemies do not roll death saves.")
+        if chosen.type == "temporary_hollowed":
+            raise ToolError(f"{chosen.name} is a Hollowed echo. Hollowed echoes do not roll death saves.")
         if not chosen.is_fallen or chosen.is_dead:
             raise ToolError(f"{chosen.name} has not fallen. Death saves only apply at 0 HP.")
         return chosen
