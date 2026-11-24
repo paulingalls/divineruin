@@ -17,6 +17,12 @@ SECOND_BEFORE = "zhael_second_before"
 MORTAEN_THRESHOLD_SHIELD = "mortaen_threshold_shield"
 MORTAEN_HOLD_THE_CROSSING = "mortaen_hold_the_crossing"
 
+KAELEN_WAR_SONGS = "kaelen_war_songs"
+
+
+def inspire_attack_upgrade(player: dict) -> bool:
+    return has_engine_synergy(player, KAELEN_WAR_SONGS)
+
 
 async def attack_player(participant, *, queries, conn) -> dict | None:
     if participant.type not in ("player", "temporary_hollowed"):

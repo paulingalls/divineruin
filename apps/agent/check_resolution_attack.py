@@ -65,6 +65,8 @@ class AttackResult:
     synergy_ac_clause_id: str | None = None
     mortaen_ac_bonus: int = 0
     mortaen_ac_clause_id: str | None = None
+    war_songs_bonus: int = 0
+    war_songs_clause_id: str | None = None
 
 
 def _is_ranged(weapon: dict) -> bool:
@@ -124,6 +126,8 @@ class PreparedAttack:
     original: D20CheckCore
     consumed: tuple[str, ...]
     attack_disadvantage_source: str | None = None
+    war_songs_bonus: int = 0
+    war_songs_clause_id: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict) -> "PreparedAttack":
@@ -132,6 +136,8 @@ class PreparedAttack:
             D20CheckCore(**data["original"]),
             tuple(data["consumed"]),
             data.get("attack_disadvantage_source"),
+            war_songs_bonus=data.get("war_songs_bonus", 0),
+            war_songs_clause_id=data.get("war_songs_clause_id"),
         )
 
 
@@ -183,10 +189,8 @@ def prepare_attack(
     base_modifier = weapon["to_hit"] if catalog else attack_modifier(attacker_data, weapon)
     atk_mod = base_modifier + effects.check_modifier + attack_mod
     attack_advantage, attack_disadvantage = attack_modes(attacker_data, weapon, target_conditions)
-    # Beneficial bonus die (M4.8 story-002): Blessed/Inspired add +1d4 to the TO-HIT roll (roll-kind
-    # "attack"), folded into atk_mod BEFORE the d20 so it can turn a miss into a hit. Rolls nothing
-    # when the attacker has no beneficial condition (existing seeded-rng attack tests unshifted).
-    bonus, consumed = roll_bonus_dice(
+    # Freeze beneficial dice in the d20 modifier so a Fate choice reuses their original rolls.
+    bonus = roll_bonus_dice(
         effects, "attack", rng=rng, spoken_buffs_eligible=attacker_data.get("spoken_buffs_eligible", True)
     )
     consumed = tuple(
@@ -196,12 +200,19 @@ def prepare_attack(
                     attacker_data.get("conditions") or [],
                     spoken_buffs_eligible=attacker_data.get("spoken_buffs_eligible", True),
                 ),
-                *consumed,
+                *bonus.consumed,
             )
         )
     )
-    d20 = D20Roll(atk_mod + bonus, target_ac, attack_advantage, attack_disadvantage)
-    return PreparedAttack(d20, d20.roll(rng), consumed, attacker_data.get("attack_disadvantage_source"))
+    d20 = D20Roll(atk_mod + bonus.total, target_ac, attack_advantage, attack_disadvantage)
+    return PreparedAttack(
+        d20,
+        d20.roll(rng),
+        consumed,
+        attacker_data.get("attack_disadvantage_source"),
+        war_songs_bonus=bonus.war_songs_bonus,
+        war_songs_clause_id=patron_synergy_combat.KAELEN_WAR_SONGS if bonus.war_songs_bonus else None,
+    )
 
 
 def finish_attack(
@@ -346,4 +357,6 @@ def finish_attack(
         synergy_ac_clause_id=attacker_data.get("synergy_ac_clause_id"),
         mortaen_ac_bonus=attacker_data.get("mortaen_ac_bonus", 0),
         mortaen_ac_clause_id=attacker_data.get("mortaen_ac_clause_id"),
+        war_songs_bonus=prepared.war_songs_bonus,
+        war_songs_clause_id=prepared.war_songs_clause_id,
     )

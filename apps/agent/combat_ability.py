@@ -33,6 +33,7 @@ from combat_down import damage_target_unavailable
 from combat_structures import blocked_reason, line_blocker
 from condition_sources import DeliveryRefused
 from mentor_variants import MentorVariant
+from patron_synergy_combat import inspire_attack_upgrade
 from patron_synergy_heal import for_cast
 from resource_costs import gate_pool
 from session_data import CombatParticipant, SessionData
@@ -117,7 +118,9 @@ async def _resolve_ability_condition_packet(
     # applies_condition is non-None on this path (condition_ability selected it). The source is the
     # base ability id, which differs from decl.action when a mentor variant was declared.
     cond_type = ability.applies_condition
+    upgrade = False
     if cond_type == "inspired":
+        upgrade = inspire_attack_upgrade(player)
         eligible = condition_voice_rules.spoken_buff_targets(
             cond_type, state, attacker.id, decl.target_ids or [decl.target_id or attacker.id]
         )
@@ -139,7 +142,9 @@ async def _resolve_ability_condition_packet(
             "action": ability.id,
         }
         if cond_type is not None:
-            voiced = land_condition_on_participants(state, attacker, decl, cond_type, source=ability.id, packet=summary)
+            voiced = land_condition_on_participants(
+                state, attacker, decl, cond_type, source=ability.id, packet=summary, inspire_attack_upgrade=upgrade
+            )
             if voiced:
                 summary["condition_applied"] = cond_type
                 summary["condition_targets"] = voiced
@@ -180,7 +185,7 @@ async def _resolve_ability_condition_packet(
         "action": ability.id,
     }
     if cond_type is not None and land_condition_on_participant(
-        state, attacker, decl, cond_type, source=ability.id, packet=summary
+        state, attacker, decl, cond_type, source=ability.id, packet=summary, inspire_attack_upgrade=upgrade
     ):
         summary["condition_applied"] = cond_type
     return _with_variant(summary, variant)

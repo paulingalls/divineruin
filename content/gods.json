@@ -680,8 +680,9 @@
         "clauses": [
           {
             "effect": "War songs: Inspire dice for attack rolls upgraded one die size (d6→d8, etc.)",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "kaelen_war_songs"
           }
         ]
       },
