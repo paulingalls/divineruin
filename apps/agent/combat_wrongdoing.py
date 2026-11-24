@@ -47,7 +47,7 @@ def grievance(player, target_id):
     return value
 
 
-async def wrongdoing(session, player, *, target_id, combat_state, conn, queries_mod):
+async def wrongdoing(session, player, *, player_id: str, target_id, combat_state, conn, queries_mod):
     """Evidence that the single explicit target wronged the party, or None."""
     state = combat_state if combat_state is not None else session.combat_state
     evidence = None
@@ -61,7 +61,7 @@ async def wrongdoing(session, player, *, target_id, combat_state, conn, queries_
     # grievance and the cast generates standard Resonance.
     # Exact runtime identity: creature templates never inherit an NPC's grievance.
     for pid in session.party.member_ids:
-        row = player if pid == player["player_id"] else await queries_mod.get_player(pid, conn=conn)
+        row = player if pid == player_id else await queries_mod.get_player(pid, conn=conn)
         if row is None:
             raise ToolError(f"Player '{pid}' not found")
         kind = grievance(row, target_id)
