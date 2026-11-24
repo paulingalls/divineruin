@@ -242,35 +242,43 @@ class, grep `work.md` for the old name and re-resolve every record pointing at i
 written against. The rule is the wall; this is why it is where it is. Cite the
 item number, not this section.
 
-- **2 — file cap.** Two reviewers spent a round arguing about `content/*.json`
+- **2 — tests cost what code costs (boundary tests).** For boundary tests of small
+  features, the lead ruled in sprint encounter-facts (notes `c8f59dee` and
+  `5043e1fb`) to count the card's production diff plus the existing lines the
+  tests first assert. Acceptance criteria cases are not waivable.
+- **4 — file cap.** Two reviewers spent a round arguing about `content/*.json`
   before the human ruled authored data exempt (2026-09-04).
-- **4 — tolerance.** Sprint-048's narration normalizer coerced the shapes I had
-  seen and let its `else` absorb every shape I had not, so an errand "resolved"
-  in silence.
-- **5 — falsifiers.** Four red at the sprint-052 close: three grepped a name the
-  fix had put elsewhere or in camelCase, one debt's polarity was inverted.
-- **6 — producers.** Twice in sprint-045 we shipped a gate keyed on a token
-  nothing produced: a reaction `window` the DM had to guess among 9.
-- **7 — both sides.** Sprint-051 lost three land rounds to pins outside a card's
-  directories. The acceptance clause is sprint-053's: a combat declaration or
-  band card whose only lane is `test:all` ships untested against the harness.
-- **8 — inventories.** Sprint-046 story-008 excluded four `companion_kael` sites
-  without grepping; the reviewer found sixteen more on the session path.
-- **9 — someone else's contract.** Sprint-047: a schema walk went green while
+- **6 — fail fast, fail loud (tolerance).** Sprint-048's narration normalizer
+  coerced the shapes I had seen and let its `else` absorb every shape I had not,
+  so an errand "resolved" in silence.
+- **11 — code claims (falsifiers).** Four red at the sprint-052 close: three
+  grepped a name the fix had put elsewhere or in camelCase, one debt's polarity
+  was inverted.
+- **7 — name the producer.** Twice in sprint-045 we shipped a gate keyed on a
+  token nothing produced: a reaction `window` the DM had to guess among 9.
+- **8 — a cross-language AC names both sides.** Sprint-051 lost three land
+  rounds to pins outside a card's directories. The acceptance clause is
+  sprint-053's: a combat declaration or band card whose only lane is
+  `test:all` ships untested against the harness.
+- **9 — replacing a literal means an inventory.** Sprint-046 story-008 excluded
+  four `companion_kael` sites without grepping; the reviewer found sixteen more
+  on the session path.
+- **10 — someone else's contract.** Sprint-047: a schema walk went green while
   the live API refused three agents, and a `MagicMock` invented every attribute
   production read (again in sprint-051). Sprint-048 added the PARSING side — we
   read the model's narration `segments` assuming dicts, and it sent a bare
   string. ADR 0004's strict ceilings are the gameplay agents' toolsets;
   narration's one tool was accepted strict the day we finally asked (sprint-050).
-- **10 — code claims.** Sprint-048: four lead assertions taken from a
+- **11 — code claims.** Sprint-048: four lead assertions taken from a
   DESCRIPTION were wrong, one stating `reactions_available`'s polarity backwards
   from its name. Sprint-053: five CARD claims were, including a `Verify:` naming
   a test file that does not exist — pytest exits 4 and nothing reds.
-- **11 — recurrence.** The training midpoint judge red in sprints 48, 49 and 50,
-  about 40% of pushes, each run shrugged off alone; the cause was the DM
-  paraphrasing the resolved state away, one prompt line.
-- **12 — absence and floors.** SPRINT 54 CAUGHT SEVEN VACUOUS GUARDS WITH THIS
-  RULE, five of them inside cards written to fix a vacuous guard: 062's
+- **12 — a failure that recurs is a defect.** The training midpoint judge red in
+  sprints 48, 49 and 50, about 40% of pushes, each run shrugged off alone; the
+  cause was the DM paraphrasing the resolved state away, one prompt line.
+- **6 — fail fast, fail loud (absence and floors).** SPRINT 54 CAUGHT SEVEN
+  VACUOUS GUARDS WITH THIS RULE, five of them inside cards written to fix a
+  vacuous guard: 062's
   `half_on_success` check (deletable on either side, all 16 Python and 95 TS
   tests green, because every fixture row carrying the flag also carried damage);
   067's parity pin (mage and warrior of eighteen archetypes); 055's declarability
@@ -285,33 +293,34 @@ item number, not this section.
   refresh caught me writing one (`shorter than content/archetype_abilities.json`)
   that `query_info` can never meet, since it emits only the caller's
   class-and-level rows.
-- **12, earlier.** Sprint-053's review: story-078's producer
-  tripwire walked `archetype_abilities.json` only, so `content/spells.json` was
-  walked by nothing; story-058's tripwire stayed green over an EMPTY corpus
+- **6 — fail fast, fail loud (earlier absence and floors).** Sprint-053's review:
+  story-078's producer tripwire walked `archetype_abilities.json` only, so
+  `content/spells.json` was walked by nothing; story-058's tripwire stayed green over an EMPTY corpus
   (`parents[4]` -> `parents[3]`); story-080's repo-wide line cap was vacuous
   against its own relocation, because `os.walk` over a missing directory yields
   nothing.
-- **3, amended 2026-10-10.** Sprint 67's slate asked for a committed test of
-  the land hook and of the Luna probe script; both would have run on every push.
+- **3 — guard fault injection (amended 2026-10-10).** Sprint 67's slate asked for
+  a committed test of the land hook and of the Luna probe script; both would
+  have run on every push.
   Human: tests of tests are fine while building them, not in the regular runs.
   Three meta-tests in the line-cap and strict-budget files were deleted (869e5222).
-- **3, per condition (human 2026-11-19).** In sprint patron-passage, Veilstep's
-  guards went green twice with half of them deleted: `ally_continuation or
-  held_actions` (story review; only the first operand had a case) and
+- **3 — guard fault injection (per condition, human 2026-11-19).** In sprint
+  patron-passage, Veilstep's guards went green twice with half of them deleted:
+  `ally_continuation or held_actions` (story review; only the first operand had a case) and
   `beat == "resolution" and queued` (sprint review; every case ran at the
   resolution beat). Each time the executor's fault injection had removed the
   guard whole, so one red seemed to cover all of it. A guard with several
   conditions is fault-injected once PER CONDITION: drop each operand on its own,
   and each drop needs its own red.
-- **2, ratio (human 2026-11-20).** In sprints patron-last-stand and
-  wildmothers-wrath, Dawn's Embrace's and Wildmother's Wrath's new tests ran
-  about 3x their new production lines, and each story reviewer asked the lead
+- **2 — tests cost what code costs (ratio, human 2026-11-20).** In sprints
+  patron-last-stand and wildmothers-wrath, Dawn's Embrace's and Wildmother's
+  Wrath's new tests ran about 3x their new production lines, and each story reviewer asked the lead
   how to count. Those tests drove the existing shared damage path through the
   registered tools: lock and rollback, receipts, falls and boss protections.
   "The lines they test" includes existing code that a new boundary test runs
   through and can fail on, not only the card's new lines. Reviewers still cut
   duplicates under Constraint 1.
-- **13 — wall clock.** Same day: story land gained the fast lane (~45 s) while
+- **13 — wall clock is a quality budget.** Same day: story land gained the fast lane (~45 s) while
   acceptance stayed at sprint close, because land wall clock bounds the sprint.
   Human: efficient tests, harness and tiering keep wall clock down without
   lowering the bar.
