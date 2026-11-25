@@ -67,6 +67,7 @@ export const CONDITION_NAMES = [
   "temporary_hollowed",
   "iron_resolve",
   "battle_cry",
+  "war_cry_rally",
   "worthy_foe",
   "mark_of_justice",
   "incorporeal",

@@ -28,6 +28,11 @@ describe("CONDITION_DISPLAY completeness", () => {
   });
 
   test("buff conditions use the hollow accent, debuffs the ember accent", () => {
+    expect(getConditionDisplay("war_cry_rally")).toEqual({
+      label: "Rallied",
+      icon: "bullhorn",
+      color: BrandColors.hollow,
+    });
     expect(CONDITION_DISPLAY.blessed.color).toBe(BrandColors.hollow);
     expect(CONDITION_DISPLAY.inspired.color).toBe(BrandColors.hollow);
     expect(CONDITION_DISPLAY.regenerating).toMatchObject({

@@ -28,6 +28,7 @@ from combat_ability_gate import (
     SINGLE_TARGET_WEAPON_ABILITIES,
     SMOKE_BOMB,
     VANISH,
+    WAR_CRIES,
     WAR_CRY,
     WHIRLWIND,
     declared_ability,
@@ -146,9 +147,9 @@ async def _prevalidate_ability_focus(
                 except ValueError as e:
                     raise ToolError(str(e)) from e
             _gate_ability_condition(player, ability, variant)
-        elif resolved_ability is not None and resolved_ability[0].id == WAR_CRY:
+        elif resolved_ability is not None and resolved_ability[0].id in WAR_CRIES:
             ability, variant = resolved_ability
-            if not war_cry_targets(state):
+            if ability.id == WAR_CRY and not war_cry_targets(state, actor, ability.id):
                 raise ToolError("War Cry requires a standing foe who can hear.")
             _gate_ability_condition(player, ability, variant)
         elif (cond_ability := condition_ability(resolved_ability)) is not None:

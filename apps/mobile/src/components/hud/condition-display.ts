@@ -44,6 +44,7 @@ export const CONDITION_TYPES = [
   "hollowed",
   "iron_resolve",
   "battle_cry",
+  "war_cry_rally",
   "worthy_foe",
   "mark_of_justice",
   "incorporeal",
@@ -60,6 +61,7 @@ export interface ConditionDisplay {
 // Beneficial conditions take the Veil-teal hollow accent; harmful ones the danger ember;
 // neutral/structural ones the muted ash. Labels are short for a smartwatch-level HUD.
 export const CONDITION_DISPLAY: Record<ConditionType, ConditionDisplay> = {
+  war_cry_rally: { label: "Rallied", icon: "bullhorn", color: BrandColors.hollow },
   battle_cry: { label: "Battle Cry", icon: "bullhorn", color: BrandColors.hollow },
   worthy_foe: { label: "Worthy Foe", icon: "target", color: BrandColors.ember },
   incorporeal: { label: "Incorporeal", icon: "ghost", color: BrandColors.hollow },

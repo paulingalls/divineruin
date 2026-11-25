@@ -12,7 +12,7 @@ import ability_voice_rules
 import combat_grapple
 import condition_voice_rules
 import spells
-from combat_ability_gate import MARSHAL_ORDERS, WAR_CRY, declared_ability, war_cry_targets
+from combat_ability_gate import MARSHAL_ORDERS, WAR_CRIES, declared_ability, war_cry_targets
 from combat_ability_save import BENEFICIAL_CONDITIONS
 from condition_sources import charm_sources, require_hostile_targets
 from declarations import DeclarationType, ManeuverIntent
@@ -97,10 +97,10 @@ def guard_declaration(
                     ability_voice_rules.require_ability_delivery(base.id, state, actor.id, allies)
                     require_hostile_targets(state, actor, foes)
                 else:
-                    if base.id == WAR_CRY:
+                    if base.id in WAR_CRIES:
                         if war_cry_started:
                             return
-                        targets = war_cry_targets(state)
+                        targets = war_cry_targets(state, actor, base.id)
                     if base.applies_condition == "inspired":
                         targets = condition_voice_rules.spoken_buff_targets("inspired", state, actor.id, targets)
                     ability_voice_rules.policy(base.id)

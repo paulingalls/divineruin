@@ -25,7 +25,7 @@ import concealment
 import condition_voice_rules
 import db_queries
 import spell_casting
-from combat_ability_gate import WAR_CRY, DeclaredAbility
+from combat_ability_gate import WAR_CRIES, DeclaredAbility
 from combat_condition_landing import (
     _land_condition_on_one,
     land_condition_on_participant,
@@ -115,7 +115,7 @@ async def _resolve_ability_condition_packet(
         return {"actor_id": attacker.id, "resolved": False, "reason": "no active combat or player"}
 
     ability, variant = resolved
-    if ability.id == WAR_CRY:
+    if ability.id in WAR_CRIES:
         summary = await combat_ability_save.resolve_war_cry(
             session,
             state,
@@ -126,7 +126,7 @@ async def _resolve_ability_condition_packet(
             pay=partial(
                 _deduct_ability_cost, attacker.id, ability, variant, persistence=persistence, queries=queries, conn=conn
             ),
-            progress=progress.scope(WAR_CRY) if progress is not None else None,
+            progress=progress.scope(ability.id) if progress is not None else None,
         )
         return _with_variant(summary, variant) if summary else {}
 

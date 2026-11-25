@@ -28,7 +28,7 @@ import spell_casting
 import thyra_thornwall
 from action_contracts_still import STILL_ZONE_KINDS
 from combat_ability import _attach_riders, _find_action
-from combat_ability_gate import MULTI_TARGET_WEAPON_ABILITIES, SINGLE_TARGET_WEAPON_ABILITIES, WAR_CRY
+from combat_ability_gate import MULTI_TARGET_WEAPON_ABILITIES, SINGLE_TARGET_WEAPON_ABILITIES, WAR_CRIES
 from combat_action_availability import begin_execution, replay_valid
 from combat_down import target_unavailable
 from combat_enemy_action import resolve_enemy_strike
@@ -192,7 +192,7 @@ async def _resolve_action_packet(
 
     try:
         combat_voice_rules.guard_declaration(
-            state, attacker, decl, war_cry_started=progress is not None and WAR_CRY in progress.steps
+            state, attacker, decl, war_cry_started=bool(progress and WAR_CRIES & progress.steps.keys())
         )
     except DeliveryRefused as e:
         return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}
