@@ -6,6 +6,8 @@ from unittest.mock import patch
 import pytest
 from acceptance._capstone_helpers import _d20, _damage_die
 from acceptance.mawling_harness import MawlingHarness
+from acceptance.test_architect_fight import WORKS, pos
+from acceptance.test_architect_fight import enter as enter_architect
 from acceptance.test_self_buff_electives import declare, defend, discovered, enter_bandit_fight, equip, receipt, stamina
 from acceptance.test_still_anchors import fresh_session
 from acceptance.test_still_anchors import mock_combat_agent_factory as mock_combat_agent_factory
@@ -157,6 +159,50 @@ async def test_taunt_preserves_queued_attack_and_expires_after_next_round(fight:
     assert all(c["type"] != "taunted" for c in bandit(fight).conditions)
     await declare(fight, attack(fight, companion), defend(warrior))
     await resolve_attack(fight, companion)
+
+
+async def test_taunt_keeps_queued_reshape_and_its_original_target(reset_db_pool: str) -> None:
+    walk = MawlingHarness()
+    try:
+        await walk.prepare((20, 20), companion=None, location=WORKS)
+        state = await enter_architect(walk)
+        target, taunter = walk.players
+        encounter = state.architect_encounter
+        assert encounter is not None
+        owner_id = encounter["owner_id"]
+        wall = encounter["structure_ids"][0]
+        combat_spatial.place(state, owner_id, pos(0))
+        combat_spatial.place(state, target, pos(20, 11))
+        combat_spatial.place(state, taunter, pos(10))
+        await walk.persist()
+        before = await db_queries.get_player(target)
+        assert before is not None
+        await declare(
+            walk,
+            defend(target),
+            defend(taunter),
+            {
+                "kind": "attack",
+                "actor_id": owner_id,
+                "target_id": target,
+                "action": "Geometry Strike",
+                "held_item_id": "",
+                "rider": "",
+                "reshape": [{"kind": "move_wall", "wall_id": wall, "start": pos(20, 15), "end": pos(38, 15)}],
+            },
+        )
+        state = await walk.reload()
+        owner = state.get_participant(owner_id)
+        assert owner is not None
+        owner.conditions = conditions.apply_condition(owner.conditions, TAUNTED, source=taunter, duration=2)
+        await walk.persist()
+        with patch("dice.roll", return_value=_damage_die(12)):
+            result = receipt(await walk.drain(), owner_id)
+        assert result.get("reshape") == [{"kind": "move_wall", "section_id": wall}], result
+        after = await db_queries.get_player(target)
+        assert after is not None and after["hp"]["current"] < before["hp"]["current"]
+    finally:
+        await walk.close()
 
 
 async def test_successful_wisdom_save_still_costs_stamina(fight: MawlingHarness) -> None:
