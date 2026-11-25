@@ -255,6 +255,19 @@ async def _apply_damage(
     elif hp_status in ("bloodied", "critical") and (not save_damage or attack_result.damage > 0):
         sounds.append(SOUND_HEARTBEAT)
 
+    if isinstance(attack_result, check_resolution_attack.AttackResult) and attack_result.coordinated_rider is not None:
+        assert combat_state is not None
+        first_hit = None
+        if attack_result.hit and not target.is_fallen:
+            first_hit = combat_order_riders.FirstHit(
+                ally_id=attacker.id,
+                target_id=target.id,
+                damage_type=attack_result.damage_type,
+                magical=bool(action.get("magical")),
+                spell_source=action.get("spell_source"),
+            )
+        combat_order_riders.settle_coordinated(combat_state, attacker.id, attack_result.coordinated_rider, first_hit)
+
     encounter_facts.record_landing(combat_state, attacker, target, attack_result, hp_before)
 
     if combat_hollow_death.new_destruction(target, death_resolved_before, was_fallen, hp_before):

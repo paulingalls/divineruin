@@ -12,7 +12,7 @@ from dataclasses import dataclass
 import patron_synergy_combat
 import thyra_seasons
 from check_resolution import D20CheckCore, D20Roll, roll_bonus_dice
-from combat_order_riders import OrderRider
+from combat_order_riders import CoordinatedRider, DirectStrikeRider
 from condition_catalog import STUDIED_WEAKNESS
 from condition_restrictions import (
     attack_consumed_conditions,
@@ -70,9 +70,12 @@ class AttackResult:
     mortaen_ac_clause_id: str | None = None
     war_songs_bonus: int = 0
     war_songs_clause_id: str | None = None
-    order_rider: OrderRider | None = None
+    order_rider: DirectStrikeRider | None = None
     order_damage_dice: str | None = None
     order_raw_damage: int = 0
+    coordinated_rider: CoordinatedRider | None = None
+    pincer_dice: str | None = None
+    pincer_raw_damage: int = 0
 
 
 def _is_ranged(weapon: dict) -> bool:
@@ -123,6 +126,7 @@ def attack_modes(attacker_data: dict, weapon: dict, target_conditions=()) -> tup
         or incoming_advantage(target_conditions)
         or incoming_mode_advantage
         or attacker_data.get("order_rider") is not None
+        or attacker_data.get("coordinated_rider") is not None
     )
     return advantage, disadvantage
 
@@ -264,6 +268,8 @@ def finish_attack(
     order_rider = attacker_data.get("order_rider")
     order_damage_dice = None
     order_raw_damage = 0
+    pincer_dice = None
+    pincer_raw_damage = 0
     if hit:
         season = attacker_data.get("season")
         damage_notation = weapon.get("damage", "1d4")
@@ -315,6 +321,10 @@ def finish_attack(
             order_damage_dice = "2d4" if critical else "1d4"
             order_raw_damage = dice_roll(order_damage_dice, rng=rng).total
             damage += order_raw_damage
+        if attacker_data.get("confirming_pincer"):
+            pincer_dice = "2d6" if critical else "1d6"
+            pincer_raw_damage = dice_roll(pincer_dice, rng=rng).total
+            damage += pincer_raw_damage
         on_hit = weapon.get("prepared_on_hit")
         if on_hit is not None and "damage" in on_hit:
             rider_damage = dice_roll(on_hit["damage"], rng=rng).total
@@ -396,4 +406,7 @@ def finish_attack(
         order_rider=order_rider,
         order_damage_dice=order_damage_dice,
         order_raw_damage=order_raw_damage,
+        coordinated_rider=attacker_data.get("coordinated_rider"),
+        pincer_dice=pincer_dice,
+        pincer_raw_damage=pincer_raw_damage,
     )

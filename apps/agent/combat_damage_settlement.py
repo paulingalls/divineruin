@@ -1,5 +1,6 @@
 """Settle damage and resume held saves without rolling the original blow again."""
 
+from collections.abc import Awaitable, Callable
 from functools import partial
 
 import check_resolution_attack
@@ -9,7 +10,9 @@ import db_queries
 from combat_damage_results import AutomaticDamageResult, SaveDamageResult, freeze_blow, thaw_blow
 from combat_enemy_active import apply_prepared_hit, critical_save_rider, land_critical_save, roll_critical_save
 from combat_fate_rolls import packet_save
-from session_data import SessionData
+from combat_order_riders import COORDINATED_ASSAULT_NAME, FirstHit
+from dice import roll as dice_roll
+from session_data import CombatParticipant, CombatState, SessionData
 
 
 async def apply_attack_result(
@@ -32,25 +35,35 @@ async def apply_attack_result(
 ) -> dict:
     from combat_damage import _apply_damage
 
+    land_damage = partial(
+        _apply_damage,
+        session,
+        shield_reaction=shield_reaction,
+        publish_roll=publish_roll,
+        mutations=mutations,
+        queries=queries,
+        concentration_break_mod=concentration_break_mod,
+        combat_state=combat_state,
+        conn=conn,
+        sink=sink,
+    )
+    land_deferred = partial(
+        apply_attack_result,
+        session,
+        publish_roll=False,
+        mutations=mutations,
+        queries=queries,
+        concentration_break_mod=concentration_break_mod,
+        combat_state=combat_state,
+        conn=conn,
+        sink=sink,
+    )
     if progress is None:
         assert attack_result is not None
-        direct = await _apply_damage(
-            session,
-            attacker,
-            action,
-            target,
-            attack_result,
-            effective_ac,
-            shield_reaction=shield_reaction,
-            mutations=mutations,
-            queries=queries,
-            concentration_break_mod=concentration_break_mod,
-            combat_state=combat_state,
-            conn=conn,
-            sink=sink,
-            publish_roll=publish_roll,
-        )
+        direct = await land_damage(attacker, action, target, attack_result, effective_ac)
         assert direct is not None  # only a fortitude_progress hold pauses
+        if (first_hit := _pincer_first_hit(attack_result)) is not None:
+            await _settle_pincer(combat_state, attacker, target, direct, first_hit, land_deferred, None)
         return direct
 
     receipt = progress.steps.get("damage_receipt")
@@ -60,21 +73,12 @@ async def apply_attack_result(
         receipt = None
     if receipt is None:
         assert attack_result is not None
-        response = await _apply_damage(
-            session,
+        response = await land_damage(
             attacker,
             action,
             target,
             attack_result,
             effective_ac,
-            shield_reaction=shield_reaction,
-            mutations=mutations,
-            queries=queries,
-            concentration_break_mod=concentration_break_mod,
-            combat_state=combat_state,
-            conn=conn,
-            sink=sink,
-            publish_roll=publish_roll,
             defer_concentration=True,
             fortitude_progress=progress.scope("fortitude"),
         )
@@ -85,6 +89,8 @@ async def apply_attack_result(
         if "consumed_conditions" in response:
             response["consumed_conditions"] = list(response["consumed_conditions"])
         receipt = {"response": response, "automatic": isinstance(attack_result, AutomaticDamageResult)}
+        if (first_hit := _pincer_first_hit(attack_result)) is not None:
+            receipt["pincer_first_hit"] = first_hit
         progress.steps["damage_receipt"] = receipt
     response = receipt["response"]
     if target.type == "player" and not receipt.get("concentration_settled"):
@@ -101,7 +107,7 @@ async def apply_attack_result(
         if progress.paused:
             return {}
         receipt["concentration_settled"] = True
-    if combat_state is not None and not receipt["automatic"]:
+    if combat_state is not None and not receipt["automatic"] and not receipt.get("consequences_settled"):
         rider = critical_save_rider(action, response)
         save = None
         if rider is not None:
@@ -119,5 +125,64 @@ async def apply_attack_result(
         apply_prepared_hit(combat_state, attacker, target, action, response)
         if save is not None:
             land_critical_save(combat_state, attacker, target, action, response, rider, save)
+        receipt["consequences_settled"] = True
+    if (first_hit := receipt.get("pincer_first_hit")) is not None:
+        await _settle_pincer(
+            combat_state, attacker, target, response, first_hit, land_deferred, progress.scope("pincer")
+        )
+        if progress.paused:
+            return {}
     del progress.steps["damage_receipt"]
     return response
+
+
+def _pincer_first_hit(
+    result: check_resolution_attack.AttackResult | SaveDamageResult | AutomaticDamageResult,
+) -> FirstHit | None:
+    if isinstance(result, check_resolution_attack.AttackResult) and result.pincer_dice is not None:
+        assert result.coordinated_rider is not None and result.coordinated_rider["first_hit"] is not None
+        return result.coordinated_rider["first_hit"]
+    return None
+
+
+async def _settle_pincer(
+    state: CombatState | None,
+    attacker: CombatParticipant,
+    target: CombatParticipant,
+    response: dict,
+    first_hit: FirstHit,
+    land: Callable[..., Awaitable[dict]],
+    progress,
+) -> None:
+    assert state is not None
+    coordinated = response["coordinated_assault"]
+    second = dict(
+        ally_id=attacker.id,
+        dice=coordinated["dice"],
+        raw_damage=coordinated["raw_damage"],
+        landing={key: response[key] for key in ("damage", "damage_type", "target_hp_status", "target_fallen")},
+    )
+    first: dict = dict(ally_id=first_hit["ally_id"], dice="1d6")
+    if target.is_fallen:
+        first["skipped"] = "target_fallen"
+    else:
+        source = state.get_participant(first_hit["ally_id"])
+        assert source is not None
+        steps = progress.steps if progress is not None else {}
+        if "raw_damage" not in steps:
+            steps["raw_damage"] = dice_roll("1d6").total
+        raw_damage = steps["raw_damage"]
+        delivery = dict(
+            name=COORDINATED_ASSAULT_NAME,
+            magical=first_hit["magical"],
+            spell_source=first_hit["spell_source"],
+        )
+        result = AutomaticDamageResult(raw_damage, first_hit["damage_type"], COORDINATED_ASSAULT_NAME)
+        landing = await land(source, delivery, target, result, target.ac, progress=progress)
+        if progress is not None and progress.paused:
+            return
+        first.update(raw_damage=raw_damage, landing=landing)
+        for key in ("target_hp_status", "target_fallen", "target_rose_hollowed"):
+            response[key] = landing[key]
+    del coordinated["dice"], coordinated["raw_damage"]
+    coordinated["pincer"] = dict(target_id=target.id, landings=[second, first])

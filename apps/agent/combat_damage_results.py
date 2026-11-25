@@ -3,7 +3,7 @@
 from dataclasses import asdict, dataclass
 
 import check_resolution_attack
-from combat_order_riders import DIRECT_STRIKE_NAME
+from combat_order_riders import COORDINATED_ASSAULT_NAME, DIRECT_STRIKE_NAME
 
 
 @dataclass(frozen=True)
@@ -80,4 +80,11 @@ def attack_fields(attack_result: check_resolution_attack.AttackResult, effective
         }
         if attack_result.hit and action.get("bonus_damage") is not None:
             fields["bonus_damage_source"] = action["name"]
+    if (coordinated := attack_result.coordinated_rider) is not None:
+        order: dict = dict(
+            order_id=coordinated["order_id"], name=COORDINATED_ASSAULT_NAME, source_id=coordinated["source_id"]
+        )
+        if attack_result.pincer_dice is not None:
+            order.update(dice=attack_result.pincer_dice, raw_damage=attack_result.pincer_raw_damage)
+        fields["coordinated_assault"] = order
     return fields

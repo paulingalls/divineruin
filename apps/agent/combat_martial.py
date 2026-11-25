@@ -158,11 +158,11 @@ async def narrated_order(
     allies, foes = order_recipients(state, actor, decl, ability)
     await pay(actor.id, resolved, queries=queries, conn=conn)
     grant = await grant_marshal_rally(state, actor.id, allies[0], queries=queries, conn=conn)
-    rider = (
-        combat_order_riders.grant_direct_strike(state, actor.id, allies[0], foes[0])
-        if ability.id == DIRECT_STRIKE
-        else None
-    )
+    rider = None
+    if ability.id == DIRECT_STRIKE:
+        rider = combat_order_riders.grant_direct_strike(state, actor.id, allies[0], foes[0])
+    elif ability.id == COORDINATED_ASSAULT:
+        rider = combat_order_riders.grant_coordinated_assault(state, actor.id, allies)
     return {
         **({"order_rider_grant": rider} if rider is not None else {}),
         **({"rally_grant": grant} if grant is not None else {}),

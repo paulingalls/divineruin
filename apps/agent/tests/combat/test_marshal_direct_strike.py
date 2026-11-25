@@ -20,10 +20,12 @@ import db_queries
 HP = 100
 
 
-async def arrange(marshal, *, earlier=False, bonus=False, fate=False, architect=False) -> MawlingHarness:
+async def arrange(
+    marshal, *, earlier=False, bonus=False, fate=False, architect=False, extra_ally=False
+) -> MawlingHarness:
     location = {"location": "ashmark_architect_works"} if architect else {}
-    fight = await marshal(2, **location)
-    host, ally, _ = fight.players
+    fight = await marshal(2, extra_ally=extra_ally, **location)
+    host, ally, *_ = fight.players
     if bonus:
         player = await db_queries.get_player(ally)
         assert player is not None
@@ -42,7 +44,7 @@ async def arrange(marshal, *, earlier=False, bonus=False, fate=False, architect=
     state = await fight.reload()
     assert state.spatial is not None
     initiatives = (25, 30, 20) if earlier else (30, 20, 25)
-    for pid, initiative in zip(fight.players, initiatives, strict=True):
+    for pid, initiative in zip(fight.players, (*initiatives, 15) if extra_ally else initiatives, strict=True):
         actor = required_player(state, pid)
         actor.initiative = initiative
         actor.attributes["strength"] = 10
@@ -90,6 +92,7 @@ async def round_packets(fight: MawlingHarness, *actions: dict, faces=(), damage=
     with (
         patch("check_resolution.dice_roll", side_effect=map(_d20, faces)) as d20,
         patch("check_resolution_attack.dice_roll", side_effect=[_damage_die(value) for _, value in damage]) as dice,
+        patch("combat_damage_settlement.dice_roll", dice),
     ):
         packets = await fight.drain()
     assert [call.args[0] for call in d20.call_args_list] == ["d20"] * len(faces)

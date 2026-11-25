@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import abilities
 import mentor_variants
+from combat_order_riders import COORDINATED_ASSAULT as COORDINATED_ASSAULT
 from combat_order_riders import DIRECT_STRIKE as DIRECT_STRIKE
 from communication_voice_rules import can_hear
 from mentor_variants import MentorVariant
@@ -38,7 +39,6 @@ ELECTIVE_RIDER_ABILITIES = frozenset((*ELECTIVE_ATTACK_RIDERS.values(), CRIPPLIN
 SECOND_WIND = "warrior_second_wind"
 RALLYING_SHOUT = "warrior_rallying_shout"
 
-COORDINATED_ASSAULT = "marshal_coordinated_assault"
 MARSHAL_ORDERS = frozenset(
     {
         DIRECT_STRIKE,
