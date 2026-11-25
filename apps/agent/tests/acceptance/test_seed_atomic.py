@@ -1,4 +1,5 @@
 import asyncio
+import importlib
 import json
 import uuid
 
@@ -253,3 +254,70 @@ def test_production_requires_fixture_inventory(fresh_migrated_db, tmp_path, monk
         asyncio.run(seed_content.main())
     assert "players.json: expected nonempty fixture corpus with valid player ids" in capsys.readouterr().out
     assert all(count == 0 for count in asyncio.run(row_counts(fresh_migrated_db)).values())
+
+
+@pytest.mark.parametrize("mode,gate", [("", "both"), ("1", "both"), ("", "python"), ("", "typescript")])
+def test_invalid_weapon_catalog_rolls_back(fresh_migrated_db, tmp_path, monkeypatch, capfd, mode, gate):
+    from test_weapon_proficiency import FIXTURE, mutate
+
+    seed_catalogs = importlib.import_module("seed_catalogs")
+    monkeypatch.setenv("DATABASE_URL", fresh_migrated_db)
+    monkeypatch.setenv("SEED_PRODUCTION", mode)
+    monkeypatch.setattr(seed_content, "CONTENT_DIR", tmp_path)
+    for name in seed_content.TABLE_MAP:
+        source = ROOT / "content" / name
+        if source.exists():
+            (tmp_path / name).write_bytes(source.read_bytes())
+
+    typescript_calls = []
+    if gate == "python":
+
+        async def accept_typescript(snapshot):
+            typescript_calls.append(snapshot)
+
+        monkeypatch.setattr(seed_catalogs, "_validate_typescript", accept_typescript)
+    elif gate == "typescript":
+        import archetypes
+        import weapon_proficiency
+
+        monkeypatch.setattr(weapon_proficiency, "validate_weapon_profile", lambda *_: None)
+        monkeypatch.setattr(archetypes, "parse_weapon_proficiencies", lambda *_: ())
+
+    def check_refusal(file, item_id, mutation, field):
+        path = tmp_path / file
+        original = path.read_text()
+        catalog = json.loads(original)
+        path.write_text(json.dumps([mutate(row, mutation) if row["id"] == item_id else row for row in catalog]))
+        try:
+            with pytest.raises(ValueError) as error:
+                asyncio.run(seed_content.main())
+            capture = capfd.readouterr()
+            diagnostic = f"{error.value}\n{capture.out}\n{capture.err}"
+            assert any(item_id in line and field in line for line in diagnostic.splitlines()), diagnostic
+            assert ("TypeScript runtime catalog validation failed" in str(error.value)) == (gate != "python")
+        finally:
+            path.write_text(original)
+
+    invalid_item = (
+        "items.json",
+        "dagger_balanced",
+        FIXTURE["malformed_weapons"]["weapon_range_unknown"],
+        "weapon_range",
+    )
+    invalid_archetype = (
+        "archetypes.json",
+        "warrior",
+        FIXTURE["malformed_proficiencies"]["valid_then_unknown"],
+        "weapon_proficiencies",
+    )
+    for args in (invalid_item, invalid_archetype):
+        check_refusal(*args)
+        assert not any(asyncio.run(row_counts(fresh_migrated_db)).values())
+    if gate == "python":
+        assert len(typescript_calls) == 2
+    if gate == "both" and mode == "":
+        asyncio.run(seed_content.main())
+        before = asyncio.run(rows(fresh_migrated_db))
+        assert before["items"] and before["archetypes"]
+        check_refusal(*invalid_item)
+        assert asyncio.run(rows(fresh_migrated_db)) == before

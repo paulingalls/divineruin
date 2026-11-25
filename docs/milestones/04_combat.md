@@ -86,7 +86,7 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 **Deliverables:**
 - 6 declaration types: Attack, Ability, Interact, Maneuver, Defend, Retreat
 - Declaration enhancers: Cunning Action (Rogue), Extra Attack (Warrior) expand what one declaration resolves into, not separate actions
-- Attack roll: `d20 + attribute modifier + proficiency bonus` (if weapon-proficient) vs AC
+- Attack roll: `d20 + attribute modifier + proficiency bonus` vs AC. An unproficient weapon attacks at disadvantage.
 - AC calculation by armor type: Unarmored (`10 + DEX`), Light (`12 + DEX`), Medium (`14 + DEX max 2`), Heavy (`16-18, no DEX`)
 - Weapon damage table: `1d4` (dagger) through `1d12` (greataxe) `+ attribute modifier`
 - Player intent interpretation: player speaks freely, DM agent interprets intent and calls appropriate mechanics tools
@@ -99,7 +99,7 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 **Acceptance criteria:**
 - [x] All 6 declaration types are defined with validation rules
 - [x] Only one declaration per actor per phase (enhancers expand resolution, not declaration count)
-- [x] Attack roll correctly applies proficiency bonus when weapon-proficient
+- [x] Weapon attack rolls always apply the proficiency bonus. An unproficient weapon attacks at disadvantage.
 - [x] AC calculation is correct for all armor categories (unarmored, light, medium, heavy)
 - [x] Weapon damage ranges from 1d4 to 1d12 + correct attribute modifier
 - [x] Critical hit (natural 20) doubles damage dice
@@ -112,7 +112,7 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - [ ] The 14 martial L4/L8 elective techniques other than Quick Fingers work in a fight. Wired in sprint martial-electives: `warrior_precision_strike`, `warrior_reckless_assault`, `rogue_dirty_trick`, `warrior_taunt`, `warrior_war_cry`, `rogue_crippling_strike`, `rogue_exploit_weakness`, `warrior_cleaving_blow`, `warrior_whirlwind`, `rogue_blade_flurry`. Still refused:
   `warrior_iron_stance`, `rogue_smoke_bomb`, `rogue_shadow_step`, `rogue_vanish`.
 - [ ] rogue_quick_fingers steals, plants or swaps a real item mid-combat
-- [ ] Weapon equips check proficiency once item weapon categories are normalized in both loaders.
+- [x] Weapon equips check proficiency once item weapon categories are normalized in both loaders. Registered-tool tests cover the spoken equip warning, attack disadvantage, advantage cancellation, and combat reload (`test_weapon_proficiency_equip.py`).
 - [x] A Retreat declaration moves the player through the enemy-opportunity route driver, so it provokes unless Disengaged.
 
 **Key references:**

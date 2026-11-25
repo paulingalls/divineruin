@@ -9,6 +9,7 @@ from sample_fixtures import published_payloads
 from test_aelora_gift import _live_party
 from test_patron_engine_valdris import checkpoint, reload_state
 from voice_condition_fixtures import participant
+from weapon_fixtures import DAGGER
 
 import character_spells
 import db_mutations
@@ -26,7 +27,7 @@ GIFT = "mortaen_threshold_walk"
 FOE = "mawling_1"
 ENCOUNTER = "ruins_mawling_pair"
 OTHER_GIFTS = {"mortaen_speak_with_dead": {"spent": True}}
-SWORD = {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}
+SWORD = dict(DAGGER)
 
 
 @asynccontextmanager

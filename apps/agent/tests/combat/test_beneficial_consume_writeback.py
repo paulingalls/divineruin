@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import FixedRng
+from weapon_fixtures import LONGSWORD
 
 import combat_packet
 from check_resolution_save import resolve_saving_throw
@@ -68,7 +69,7 @@ async def test_concentration_break_save_passes_eligible_false():
     assert kwargs.get("bonus_dice_eligible") is False
 
 
-_WEAPON = {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}
+_WEAPON = dict(LONGSWORD)
 
 
 def _combat_mocks():
@@ -76,7 +77,7 @@ def _combat_mocks():
     mutations.update_player_hp = AsyncMock()
     mutations.save_combat_state = AsyncMock()
     queries = MagicMock()
-    queries.get_player = AsyncMock(side_effect=lambda pid, **kw: {"player_id": pid})
+    queries.get_player = AsyncMock(side_effect=lambda pid, **kw: {"player_id": pid, "class": "warrior"})
     break_mod = MagicMock()
     break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
     return mutations, queries, break_mod

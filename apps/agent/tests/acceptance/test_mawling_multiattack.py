@@ -23,7 +23,10 @@ async def maw(reset_db_pool, request):
     harness = MawlingHarness()
     try:
         param = getattr(request, "param", False)
-        await harness.start(**param if isinstance(param, dict) else {"reactions": param})
+        if isinstance(param, dict):
+            await harness.start(**param)
+        else:
+            await harness.start(reactions=param)
         yield harness
     finally:
         if hasattr(harness, "encounter_id"):

@@ -1,5 +1,4 @@
 import json
-import re
 from pathlib import Path
 
 import pytest
@@ -39,10 +38,6 @@ REQUIRED_KEYS = {
     "starting_skills",
 }
 
-# Armor is a naturally closed vocabulary (classes + non-metal qualifiers + the
-# unarmored sentinel). Weapon tokens are open-ended (specific weapon ids), so
-# they are checked only for well-formedness. story-002/003 loaders will own the
-# fail-loud closed-vocabulary validation; until then this catches typos/casing.
 ARMOR_VOCAB = {
     "heavy",
     "medium",
@@ -54,7 +49,6 @@ ARMOR_VOCAB = {
     "shield_nonmetal",
     "none",
 }
-TOKEN_RE = re.compile(r"^[a-z][a-z_]*$")
 
 
 @pytest.fixture(scope="module")
@@ -83,11 +77,3 @@ def test_armor_proficiencies_in_closed_vocab(archetypes):
         assert isinstance(armor, list) and armor, f"{aid} armor_proficiencies must be a non-empty list"
         unknown = [t for t in armor if t not in ARMOR_VOCAB]
         assert not unknown, f"{aid} armor_proficiencies has out-of-vocab token(s): {unknown}"
-
-
-def test_weapon_proficiencies_well_formed(archetypes):
-    for aid, row in archetypes.items():
-        weapons = row["weapon_proficiencies"]
-        assert isinstance(weapons, list) and weapons, f"{aid} weapon_proficiencies must be a non-empty list"
-        malformed = [t for t in weapons if not (isinstance(t, str) and TOKEN_RE.match(t))]
-        assert not malformed, f"{aid} weapon_proficiencies has malformed token(s): {malformed}"

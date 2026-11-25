@@ -5,6 +5,7 @@ from uuid import uuid4
 import pytest
 from acceptance.mawling_harness import MawlingHarness
 from acceptance.test_architect_fight import pos
+from weapon_fixtures import DAGGER
 
 from combat_spatial import require_spatial
 
@@ -17,7 +18,10 @@ async def fight(reset_db_pool: str, request: pytest.FixtureRequest) -> AsyncIter
         await harness.prepare((6, 6), companion=options.get("companion"))
         mover, ally = harness.players
         for actor, key in ((mover, "player"), (ally, "ally")):
-            if player := options.get(key):
+            player = options.get(key, {})
+            if player.get("class") == "rogue":
+                player = {"equipment": {"main_hand": DAGGER}, **player}
+            if player:
                 await harness.pool.execute(
                     "UPDATE players SET data=data || $2::jsonb WHERE player_id=$1", actor, json.dumps(player)
                 )

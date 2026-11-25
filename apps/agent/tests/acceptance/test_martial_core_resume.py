@@ -11,6 +11,7 @@ from acceptance.test_martial_core_kit import rogue as rogue
 from acceptance.test_martial_core_kit import warriors as warriors
 from acceptance.test_still_anchors import fresh_session
 from acceptance.test_still_anchors import mock_combat_agent_factory as mock_combat_agent_factory
+from weapon_fixtures import DAGGER
 
 import combat_spatial
 import db_mutations
@@ -178,7 +179,7 @@ async def test_cunning_hide_reloads_after_the_attack(rogue: MawlingHarness) -> N
         "declare_phase",
         {
             "declarations": [
-                weapon_attack(actor, foe, "hide"),
+                weapon_attack(actor, foe, "hide", weapon=DAGGER["name"]),
                 {**weapon_attack(foe, actor, ""), "action": enemy.action_pool[0]["name"]},
             ]
         },
@@ -229,7 +230,7 @@ async def test_cunning_action_cost_when_target_stays_out_of_reach(
     combat_spatial.place(state, foe, {**origin, "x": origin["x"] + 200})
     await rogue.persist()
 
-    await rogue.command("declare_phase", {"declarations": [weapon_attack(actor, foe, rider)]})
+    await rogue.command("declare_phase", {"declarations": [weapon_attack(actor, foe, rider, weapon=DAGGER["name"])]})
     with patch("check_resolution.dice_roll") as roll:
         packet = next(packet for packet in await rogue.drain() if packet["actor_id"] == actor)
     assert not packet["attack_resolved"] and packet["moved_ft"] > 0

@@ -468,10 +468,9 @@ async def main() -> None:
                 for err in errors:
                     print(f"  - {err}")
                 sys.exit(1)
-            if production:
-                from seed_catalogs import validate_runtime_catalogs
+            from seed_catalogs import validate_runtime_catalogs
 
-                await validate_runtime_catalogs(conn)
+            await validate_runtime_catalogs(conn)
         if production:
             from seed_catalogs import invalidate_content_cache
 

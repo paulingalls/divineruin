@@ -3,6 +3,7 @@ from typing import Any, cast
 from unittest.mock import AsyncMock
 
 from voice_condition_fixtures import place_actors
+from weapon_fixtures import LONGSWORD, SHORTBOW
 
 import check_resolution_attack
 from combat_attack_roll import deserialize_roll
@@ -53,17 +54,14 @@ def _prone():
 
 def _attack(values, *, ranged=False, attacker_prone=False):
     rng = ScriptedRng(values)
-    weapon = {
-        "name": "Bow" if ranged else "Sword",
-        "damage": "1d6",
-        "damage_type": "piercing" if ranged else "slashing",
-        "properties": ["ranged"] if ranged else [],
-    }
+    weapon = {**(SHORTBOW if ranged else LONGSWORD), "damage": "1d6"}
     result, _ = roll_attack(
         _participant("attacker", "player", conditions=[_prone()] if attacker_prone else []),
         weapon,
         _participant("target", "enemy", conditions=[_prone()]),
         resolver=cast(Any, RealResolver(rng)),
+        weapon_profile=weapon,
+        player={"class": "warrior"},
     )
     return result, rng
 

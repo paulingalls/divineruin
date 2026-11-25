@@ -11,6 +11,7 @@ from acceptance._capstone_helpers import _d20, _resolve_round
 from acceptance._catalog_cutover_helpers import cold_catalog_reads as cold_catalog_reads
 from acceptance.seeds import seed_player
 from sample_fixtures import make_context, make_mock_room
+from weapon_fixtures import LONGSWORD
 
 import combat_init
 import combat_turn
@@ -21,7 +22,7 @@ import encounter_budget
 import encounter_loot
 from encounter_roles import _is_active_ability
 
-_BIG_WEAPON = {"name": "Capstone Greatblade", "damage": "100d6", "damage_type": "slashing", "properties": []}
+_BIG_WEAPON = {**LONGSWORD, "name": "Capstone Greatblade", "damage": "100d6"}
 
 _ENCOUNTER = "cult_cell"
 _BOSS_ID = "cult_leader"

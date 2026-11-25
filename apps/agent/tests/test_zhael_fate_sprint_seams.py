@@ -91,7 +91,7 @@ async def test_prepared_sneak_attack_spends_its_allowance_only_when_finished(wor
     rogue, foe = required_player(state, pid), required_player(state, "foe")
     rogue.archetype_id, rogue.level = "rogue", 1
     action = {**rogue.action_pool[0], "advantage": True}
-    data, ac, mod = attack_roll_inputs(rogue, foe, 0, state, action)
+    data, ac, mod = attack_roll_inputs(rogue, foe, 0, state, action, weapon_profile=action, player={"class": "rogue"})
     assert data["sneak_attack_available"]
     with patch("check_resolution.dice_roll", side_effect=[_d20(3), _d20(4)]):
         prepared = check_resolution_attack.prepare_attack(data, action, ac, attack_mod=mod)
@@ -101,7 +101,9 @@ async def test_prepared_sneak_attack_spends_its_allowance_only_when_finished(wor
     assert kept.critical_success and kept.sneak_attack_dice == "2d6"
     spend_sneak_attack(rogue, state, kept)
     assert rogue.sneak_attack_round == state.round_number
-    assert not attack_roll_inputs(rogue, foe, 0, state, action)[0]["sneak_attack_available"]
+    assert not attack_roll_inputs(rogue, foe, 0, state, action, weapon_profile=action, player={"class": "rogue"})[0][
+        "sneak_attack_available"
+    ]
 
 
 def test_finished_attack_keeps_the_prepared_disadvantage_cancel():
@@ -193,9 +195,16 @@ def test_sneak_attack_is_spent_only_when_its_dice_land(first_face):
         patch("check_resolution.dice_roll", side_effect=[_d20(first_face), _d20(15), _d20(15)]),
         patch("check_resolution_attack.dice_roll", return_value=_damage_die(3)),
     ):
-        first, _ = roll_attack(rogue, plain, foe, combat_state=state)
+        first, _ = roll_attack(rogue, plain, foe, combat_state=state, weapon_profile=plain, player={"class": "rogue"})
         assert first.sneak_attack_dice is None and rogue.sneak_attack_round != state.round_number
-        earned, _ = roll_attack(rogue, {**plain, "advantage": True}, foe, combat_state=state)
+        earned, _ = roll_attack(
+            rogue,
+            {**plain, "advantage": True},
+            foe,
+            combat_state=state,
+            weapon_profile=plain,
+            player={"class": "rogue"},
+        )
     assert earned.hit and earned.sneak_attack_dice == "1d6"
     assert rogue.sneak_attack_round == state.round_number
 

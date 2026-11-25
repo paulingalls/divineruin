@@ -61,6 +61,7 @@
       "apps/agent/temp_hp.py",
       "apps/agent/terrain.py",
       "apps/agent/thyra_seasons.py",
+      "apps/agent/weapon_proficiency.py",
       "apps/agent/world_effect_targets.py",
       "apps/agent/world_regions.py",
       "apps/agent/world_season.py",

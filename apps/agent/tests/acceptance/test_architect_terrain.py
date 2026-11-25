@@ -89,7 +89,7 @@ async def test_floor_save_and_full_movement_exit(fight, succeeds, approach):
     assert state.architect_encounter["pits"] == {player: receipt["section_id"]}
     assert any(condition["type"] == "prone" for condition in state.get_participant(player).conditions)
 
-    action = attack(player, "far_wall") if approach else move(player, pos(40))
+    action = attack(player, "far_wall", "Longsword") if approach else move(player, pos(40))
     await declare(fight, action, defend(owner))
     with patch("check_resolution.dice_roll", return_value=_d20(1)):
         phase = await fight.command("resolve_phase", {})
@@ -247,7 +247,7 @@ async def test_partial_melee_approach_uses_domain_allowance(fight):
     combat_spatial.place(state, player, pos(0))
     state.spatial["speeds"][player] = 30
     await fight.persist()
-    packet = await play(fight, player, attack(player, owner), defend(owner))
+    packet = await play(fight, player, attack(player, owner, "Longsword"), defend(owner))
     assert not packet["attack_resolved"]
     assert (packet["moved_ft"], packet["movement_spent_ft"], packet["destination"]) == (15, 30, pos(15))
 
@@ -279,7 +279,7 @@ async def test_owned_and_condition_bypasses_apply_only_to_movement(fight):
     state = await fight.reload()
     assert any(condition["type"] == "incorporeal" for condition in state.get_participant(player).conditions)
     before = await fight.snapshot()
-    assert "Line blocked" in await declare(fight, attack(player, owner), error=True)
+    assert "Line blocked" in await declare(fight, attack(player, owner, "Longsword"), error=True)
     spell = {"kind": "ability", "actor_id": player, "action": "arcane_bolt", "targets": [owner], "argument_type": ""}
     assert "Line blocked" in await declare(fight, spell, error=True)
     assert await fight.snapshot() == before

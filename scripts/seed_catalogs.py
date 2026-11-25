@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 PYTHON_CATALOGS = (
+    ("items", "weapon_proficiency", "validate_weapon_profile"),
     ("spells", "spells", "parse_spell_row"),
     ("archetypes", "archetypes", "parse_archetype_row"),
     ("racial_resonance_bonuses", "racial_resonance", "parse_racial_resonance_row"),
@@ -43,7 +44,15 @@ async def validate_runtime_catalogs(conn) -> None:
         if not rows:
             raise ValueError(f"{table} produced no rows")
         snapshot[table] = [{"id": row["id"], "data": json.loads(row["data"])} for row in rows]
-    # Validate both languages independently, before either can publish new content.
+    await _validate_typescript(snapshot)
+    for table, name, parser in PYTHON_CATALOGS:
+        module = importlib.import_module(name)
+        parsed = {row["id"]: getattr(module, parser)(row["id"], row["data"]) for row in snapshot[table]}
+        if name == "spells":
+            module.set_spells(parsed)
+
+
+async def _validate_typescript(snapshot: dict) -> None:
     command = Path(__file__).with_name("seed_catalogs.ts")
     process = await asyncio.create_subprocess_exec(
         "bun", "--no-env-file", "run", str(command), stdin=asyncio.subprocess.PIPE
@@ -51,11 +60,6 @@ async def validate_runtime_catalogs(conn) -> None:
     await process.communicate(json.dumps(snapshot).encode())
     if process.returncode:
         raise ValueError("TypeScript runtime catalog validation failed")
-    for table, name, parser in PYTHON_CATALOGS:
-        module = importlib.import_module(name)
-        parsed = {row["id"]: getattr(module, parser)(row["id"], row["data"]) for row in snapshot[table]}
-        if name == "spells":
-            module.set_spells(parsed)
 
 
 async def invalidate_content_cache() -> None:

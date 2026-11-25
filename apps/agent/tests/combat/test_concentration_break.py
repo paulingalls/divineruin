@@ -4,6 +4,7 @@ import pytest
 from combat._helpers import _damage_resolver, _fake_db_mod, _resolve_round
 from sample_fixtures import make_context
 from voice_condition_fixtures import place_actors
+from weapon_fixtures import LONGSWORD
 
 import concentration_break
 from session_data import CombatParticipant, CombatState
@@ -40,7 +41,7 @@ def _two_pc_incapacitating_state() -> CombatState:
                     hp_current=25,
                     hp_max=25,
                     ac=14,
-                    action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+                    action_pool=[dict(LONGSWORD)],
                 ),
                 CombatParticipant(
                     id="player_2",
@@ -50,7 +51,7 @@ def _two_pc_incapacitating_state() -> CombatState:
                     hp_current=12,
                     hp_max=25,
                     ac=14,
-                    action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+                    action_pool=[dict(LONGSWORD)],
                 ),
                 CombatParticipant(
                     id="goblin_1",
@@ -99,7 +100,7 @@ class TestConcentrationBreakE2E:
             side_effect=lambda ids, **kw: {pid: {"player_id": pid} for pid in ids}
         )
         queries_mod.get_player_inventory = AsyncMock(return_value=[])
-        queries_mod.get_player = AsyncMock(side_effect=lambda pid, **kw: {"player_id": pid})
+        queries_mod.get_player = AsyncMock(side_effect=lambda pid, **kw: {"player_id": pid, "class": "warrior"})
         resonance_mutations = MagicMock()
         resonance_mutations.update_player_resonance = AsyncMock()
         resonance_events_mod = MagicMock()

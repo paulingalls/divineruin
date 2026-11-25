@@ -9,6 +9,7 @@ from inventory_snapshot_fixture import snapshot_query
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 from voice_condition_fixtures import place_actors
+from weapon_fixtures import LONGSWORD
 
 import conditions
 from combat_phase import (
@@ -195,7 +196,7 @@ def _boss_resolution_state(*, boss_hp=40):
                     hp_current=25,
                     hp_max=25,
                     ac=14,
-                    action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+                    action_pool=[dict(LONGSWORD)],
                 ),
                 CombatParticipant(
                     id="warlord_1",
@@ -230,7 +231,9 @@ def _resolve_deps(damage=3):
     queries.get_players_for_update = AsyncMock(side_effect=lambda ids, **kw: {pid: {"player_id": pid} for pid in ids})
     queries.get_player_inventory = AsyncMock(return_value=[])
     queries.get_inventory_snapshot = snapshot_query([])
-    queries.get_player = AsyncMock(return_value={"player_id": "player_1", "focus": {"current": 10, "max": 10}})
+    queries.get_player = AsyncMock(
+        return_value={"player_id": "player_1", "class": "warrior", "focus": {"current": 10, "max": 10}}
+    )
     break_mod = MagicMock()
     break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
     mutations = MagicMock()

@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from combat._helpers import _make_combat_state
 from sample_fixtures import make_context
+from weapon_fixtures import LONGSWORD
 
 import check_resolution_attack
 import combat_packet
@@ -11,7 +12,7 @@ from combat_phase import ResolutionPacket
 from conditions import apply_condition
 from declarations import Declaration, DeclarationType
 
-WEAPON = {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}
+WEAPON = LONGSWORD
 
 
 class ScriptedRng:
@@ -47,7 +48,7 @@ def _combat_mocks():
     mutations.save_combat_state = AsyncMock()
     queries = MagicMock()
     queries.get_player_inventory = AsyncMock(return_value=[])
-    queries.get_player = AsyncMock(side_effect=lambda pid, **kw: {"player_id": pid})
+    queries.get_player = AsyncMock(side_effect=lambda pid, **kw: {"player_id": pid, "class": "warrior"})
     concentration = MagicMock()
     concentration.break_concentration_on_damage = AsyncMock(return_value=None)
     return mutations, queries, concentration
