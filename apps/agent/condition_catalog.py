@@ -91,6 +91,7 @@ CONDITION_CATALOG: dict[str, ConditionSpec] = {
         ],
     ),
     "battle_cry": ConditionSpec(clearance="duration", bonus_die="1d4", bonus_die_scopes=("attack",)),
+    "reckless_assault": ConditionSpec(clearance="next_declaration", restrictions=("incoming_advantage",)),
     "worthy_foe": ConditionSpec(clearance="end_of_combat_or_dismissed", restrictions=("incoming_advantage",)),
     # --- Combat conditions ---
     "wounded": ConditionSpec(

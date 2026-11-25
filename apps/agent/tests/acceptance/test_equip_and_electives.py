@@ -37,6 +37,26 @@ DESIGNED_POOLS = {
 }
 
 
+COMBAT_BY_ELECTIVE = {
+    "bard_song_of_rest": False,
+    "diplomat_mediators_presence": False,
+    "diplomat_treaty": False,
+    "guardian_taunt": False,
+    "guardian_unbreakable": False,
+    "marshal_overwatch": False,
+    "marshal_grand_stratagem": False,
+    "paladin_zealous_charge": False,
+    "rogue_dirty_trick": True,
+    "rogue_shadow_step": False,
+    "skirmisher_hamstring": False,
+    "skirmisher_spring_attack": False,
+    "spy_poison_craft": False,
+    "spy_double_agent": False,
+    "warrior_cleaving_blow": False,
+    "warrior_unstoppable_charge": True,
+}
+
+
 async def call(walk, name, *, actor=None, **arguments):
     receipt = await walk.command(name, arguments, actor=actor)
     assert not receipt.is_error, receipt.output
@@ -112,7 +132,7 @@ def test_award_and_select_electives(harness, monkeypatch):
                 query = await call(walk, "query_info", kind="abilities")
                 assert query["elective_choices"] == offers[index + 1 :]
                 picked = next(a for a in query["abilities"] if a["id"] == option)
-                assert picked["combat"] is (option == "warrior_unstoppable_charge")
+                assert picked["combat"] is COMBAT_BY_ELECTIVE[option]
             if archetype == "warrior":
                 fight = await enter_fight(walk)
                 foe = await adjacent_foe(fight)

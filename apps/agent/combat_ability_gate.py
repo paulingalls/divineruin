@@ -6,9 +6,15 @@ from mentor_variants import MentorVariant
 
 DEVASTATING_STRIKE = "warrior_devastating_strike"
 SHIELD_BASH = "warrior_shield_bash"
+DIRTY_TRICK = "rogue_dirty_trick"
 SHIELD_BASH_RIDER = "shield_bash"
 CUNNING_ACTION = "rogue_cunning_action"
 CUNNING_RIDERS = ("dash", "hide", "disengage")
+RECKLESS_ASSAULT_RIDER = "reckless_assault"
+ELECTIVE_ATTACK_RIDERS = {
+    "precision_strike": "warrior_precision_strike",
+    RECKLESS_ASSAULT_RIDER: "warrior_reckless_assault",
+}
 
 SECOND_WIND = "warrior_second_wind"
 RALLYING_SHOUT = "warrior_rallying_shout"
@@ -43,6 +49,9 @@ def attack_recipe(ability_id: str) -> dict[str, str | list[str]] | None:
         return {"kind": "attack", "riders": list(CUNNING_RIDERS)}
     if ability_id == SHIELD_BASH:
         return {"kind": "attack", "rider": SHIELD_BASH_RIDER}
+    for rider, elective_id in ELECTIVE_ATTACK_RIDERS.items():
+        if ability_id == elective_id:
+            return {"kind": "attack", "rider": rider}
     return None
 
 

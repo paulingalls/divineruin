@@ -37,7 +37,8 @@ import db_queries
 import mentor_variants
 import reaction_gate
 import spells
-from combat_ability_gate import RALLYING_SHOUT, attack_recipe, combat_ability, require_rally_target
+from combat_ability_gate import RALLYING_SHOUT, SHIELD_BASH, attack_recipe, combat_ability, require_rally_target
+from combat_ability_save import requires_hostile_target
 from resource_costs import gate_pool
 from session_data import AuthenticatedActor, SessionData
 from tool_support import _validate_id
@@ -75,7 +76,8 @@ async def _request_ability_activation_impl(
             if "riders" in recipe:
                 riders = " or ".join(f'rider="{rider}"' for rider in recipe["riders"])
                 raise ToolError(f"Declare a weapon attack with {riders}.")
-            raise ToolError(f'Declare an attack with the equipped melee weapon and rider="{recipe["rider"]}".')
+            weapon = "melee weapon" if ability.id == SHIELD_BASH else "weapon"
+            raise ToolError(f'Declare an attack with the equipped {weapon} and rider="{recipe["rider"]}".')
         if not combat_ability(ability):
             raise ToolError(f"{ability.name} has no combat action — it cannot be used in a fight.")
         declared_id = ability.spell_id or variant_id or ability_id
@@ -163,9 +165,7 @@ async def _request_ability_activation_unlocked(
     except ValueError as e:
         raise ToolError(str(e)) from e
 
-    # A save-gated ability lands its condition only through a combat declaration on a foe; this
-    # path would spend the cost and produce the condition onto a party member instead.
-    if ability.save is not None:
+    if requires_hostile_target(ability):
         raise ToolError(f"{ability.name} needs a foe — use it in a fight.")
 
     # Multi-target cap (M4.8 story-017): normalize + validate a party-wide ability target list through

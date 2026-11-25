@@ -211,7 +211,7 @@ async def _query_abilities_impl(
         if ability.ability_type == "reaction":
             row["window"] = ability.window
         if ability.ability_type == "elective":
-            row["combat"] = combat_ability(ability)
+            row["combat"] = "declaration" in row or combat_ability(ability)
             active_variant_id = await persistence.get_active_variant(player_id, ability.id)
             if active_variant_id is not None:
                 row["active_variant_id"] = active_variant_id

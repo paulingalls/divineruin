@@ -153,6 +153,7 @@ def test_blockable_conditions_partition_the_condition_catalog():
         "enraged",
         "inspired",
         "precise_strike",
+        "reckless_assault",
         "temporary_hollowed",
         "iron_resolve",
         "battle_cry",

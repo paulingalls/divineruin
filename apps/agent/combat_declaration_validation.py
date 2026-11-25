@@ -1,5 +1,6 @@
 """The shared atomic declaration gate, including each selected composite strike."""
 
+import abilities
 import architect_constructs
 import architect_encounter
 import architect_entomb
@@ -11,7 +12,14 @@ import combat_voice_rules
 import still_encounter
 from action_contracts_still import STILL_ZONE_KINDS
 from combat_ability import _find_action
-from combat_ability_gate import CUNNING_ACTION, DEVASTATING_STRIKE, SHIELD_BASH, combat_ability, declared_ability
+from combat_ability_gate import (
+    CUNNING_ACTION,
+    DEVASTATING_STRIKE,
+    ELECTIVE_ATTACK_RIDERS,
+    SHIELD_BASH,
+    combat_ability,
+    declared_ability,
+)
 from combat_action_availability import require_available
 from combat_structures import THORNWALL, action_has_direct_line, blocked_reason, line_blocker, require_line
 from condition_restrictions import cannot_act, declaration_costs, speed_zero
@@ -88,9 +96,9 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
     martial = combat_martial.attack_ability(declaration)
     if declaration.type is DeclarationType.ATTACK and declaration.rider and martial is None:
         raise ValueError(f"Unknown attack rider {declaration.rider!r}.")
+    if martial is not None and martial in ELECTIVE_ATTACK_RIDERS.values() and actor.type != "player":
+        raise ValueError(f"{actor.name} hasn't learned {abilities.get_ability(martial).name}.")
     if martial in (CUNNING_ACTION, SHIELD_BASH):
-        import abilities
-
         ability = abilities.get_ability(martial)
         if actor.type != "player" or not abilities.owns_ability(
             actor.archetype_id, actor.level, ability, owns_elective=False

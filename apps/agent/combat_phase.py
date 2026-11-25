@@ -21,11 +21,12 @@ import architect_constructs
 import architect_reaction
 import choir_effects
 import reaction_spend
+from combat_ability_gate import RECKLESS_ASSAULT_RIDER
 from combat_declaration_validation import validate_declaration
 from combat_down import DEATH_SAVE_LIMIT, is_terminally_down
 from condition_catalog import INCORPOREAL
 from condition_restrictions import cannot_act
-from conditions import apply_condition, has_condition, tick_conditions
+from conditions import apply_condition, has_condition, remove_conditions, tick_conditions
 from declarations import Declaration, resolve_declaration
 from encounter_roles import EncounterRole
 from session_data import CombatParticipant, CombatState
@@ -138,6 +139,9 @@ def advance_combat_phase(
         persisted_declarations = copy.deepcopy(declarations)
         for actor_id, declaration in resolved.items():
             validate_declaration(next_state, actor_id, declaration, persisted_declarations)
+        for participant in next_state.participants:
+            if participant.id in resolved:
+                participant.conditions = remove_conditions(participant.conditions, (RECKLESS_ASSAULT_RIDER,))
         next_state.pending_declarations = persisted_declarations
         next_state.reactions_available = {
             p.id: next_state.reactions_available.get(p.id, reaction_spend.unspent())

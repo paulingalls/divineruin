@@ -14,7 +14,14 @@ from combat_ability import (
     _gate_ability_condition,
     condition_ability,
 )
-from combat_ability_gate import CUNNING_ACTION, DEVASTATING_STRIKE, SECOND_WIND, SHIELD_BASH, declared_ability
+from combat_ability_gate import (
+    CUNNING_ACTION,
+    DEVASTATING_STRIKE,
+    ELECTIVE_ATTACK_RIDERS,
+    SECOND_WIND,
+    SHIELD_BASH,
+    declared_ability,
+)
 from combat_deescalation import (
     _gate_deescalation,
     _validate_argument_type,
@@ -102,8 +109,11 @@ async def _prevalidate_ability_focus(
             DEVASTATING_STRIKE,
             SHIELD_BASH,
             CUNNING_ACTION,
+            *ELECTIVE_ATTACK_RIDERS.values(),
         ):
             ability, variant = resolved_ability
+            if ability.id in ELECTIVE_ATTACK_RIDERS.values():
+                variant = await combat_martial.active_rider_variant(actor_id, ability.id, conn=conn)
             if ability.id == DEVASTATING_STRIKE:
                 try:
                     combat_martial.main_hand(player)
