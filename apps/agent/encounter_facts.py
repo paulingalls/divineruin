@@ -7,13 +7,14 @@ from typing import TYPE_CHECKING, TypedDict
 from livekit.agents.llm import ToolError
 
 import ability_persistence
-from check_resolution_attack import AttackResult
+import check_resolution_attack
 from combat_down import DEATH_SAVE_LIMIT
 from patron_synergy import has_engine_synergy
 
 if TYPE_CHECKING:
     from asyncpg import Connection
 
+    from check_resolution_attack import AttackResult
     from combat_damage_results import AutomaticDamageResult, SaveDamageResult
     from combat_participant import CombatParticipant
     from combat_state import CombatState
@@ -172,7 +173,9 @@ def record_landing(
     facts = state.encounter_facts
     if attacker.id != target.id and hp_before > 0 and target.is_ally and target.is_fallen:
         _remember(facts["ally_downers"], attacker.id)
-    if isinstance(result, AttackResult):
+    # A module attribute, not a from-import: check_resolution_attack imports this module back
+    # through patron_synergy_combat, so the class exists only once both have finished loading.
+    if isinstance(result, check_resolution_attack.AttackResult):
         _remember(facts["attacked"], target.id)
         # Threaded Blade reads a foe; missing masonry must not arm its one use.
         if not result.hit and not target.is_structure:
