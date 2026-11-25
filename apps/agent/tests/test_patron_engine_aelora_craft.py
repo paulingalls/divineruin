@@ -22,6 +22,8 @@ from dispatch_agent import DispatchAgent
 from quality_outcomes import get_quality_outcomes
 
 BLESSING = {"id": "aelora_craft_blessing", "name": "Craft Blessing", "patron": "aelora"}
+BLESSING_HIT_SEED = 4192
+BLESSING_MISS_SEED = 118797
 TIERS = [
     (39, 100, "Acknowledged"),
     (40, 100, "Devoted"),
@@ -135,7 +137,7 @@ async def set_patron(world, patron: str) -> None:
 async def blessing_lifecycle(world, seed: int, tier: str) -> None:
     await prepare(world, "wooden_club", "aelora", 0, 100)
     row = await create(world, "wooden_club")
-    if seed == 36:
+    if seed == BLESSING_HIT_SEED:
         await set_patron(world, "none")
     outcome, prompt, rng = await poll(world, row, seed)
     assert outcome["tier"] == tier
@@ -144,7 +146,7 @@ async def blessing_lifecycle(world, seed: int, tier: str) -> None:
     expected_rng.randint(1, 20)
     if tier == "success":
         expected_rng.random()
-    if seed == 12:
+    if seed == BLESSING_MISS_SEED:
         assert outcome["bonus_property"] is None
         assert "craft_blessing" not in ctx and "Aelora" not in prompt
     else:
@@ -166,7 +168,7 @@ SCENARIOS = {
     BLESSING["id"]: (
         "async_rules:resolve_crafting",
         blessing_lifecycle,
-        [(36, "success"), (12, "success"), (5, "exceptional")],
+        [(BLESSING_HIT_SEED, "success"), (BLESSING_MISS_SEED, "success"), (5, "exceptional")],
     )
 }
 
