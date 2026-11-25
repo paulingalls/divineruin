@@ -17,8 +17,11 @@ from sample_fixtures import published_payloads
 from voice_condition_fixtures import participant
 
 import character_spells
+import combat_round_checkpoint
 import combat_spatial
 import combat_structures
+import db
+import db_mutations
 import db_queries
 import event_types as E
 import spells
@@ -138,6 +141,9 @@ async def test_later_shots_and_next_round(archers):
     encounter["structure_ids"].append(prior_wall)
     encounter["reaction_round"] = 1
     state.round_number = 2
+    async with db.transaction() as conn:
+        # Round 2 starts here, so it takes the round-start checkpoint a real wrap would.
+        await combat_round_checkpoint.capture(archers.sd, state, conn=conn, mutations=db_mutations)
     before = await archers.persist()
     await declare(archers, *(bow(actor, owner) for actor in archers.players))
     with forced_rolls() as (rolled, _):
