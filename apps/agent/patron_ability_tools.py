@@ -208,7 +208,9 @@ async def _spend_activation(conn, session, actor, ability_id, target_id, conditi
     return ability, updated, response, health
 
 
-async def _activate_wrath(session: "SessionData", actor: str, ability_id: str) -> tuple[dict, dict, tuple | None]:
+async def _activate_combat_damage(
+    session: "SessionData", actor: str, ability_id: str, *, target_id: str | None
+) -> tuple[dict, dict, tuple | None]:
     import lost_scout_combat
     from attribute_increase_events import publish_snapshots
     from combat_end import _end_combat_db, _end_combat_finish
@@ -219,13 +221,17 @@ async def _activate_wrath(session: "SessionData", actor: str, ability_id: str) -
     from patron_zero_hp import lock_damage_players
     from resonance_events import publish_resonance_changed
     from thyra_wrath import wildmothers_wrath
+    from valdris_verdict import scales_verdict
 
     sink = EventSink()
     end_data = None
     async with scratch_guard(session), db.transaction() as conn:
         await lock_damage_players(session, None, queries=db_queries, conn=conn)
         ability = await _locked_ability(conn, actor, ability_id)
-        updated, response = await wildmothers_wrath(session, actor, conn=conn, sink=sink)
+        if ability_id == patron_combat_edges.SCALES_VERDICT:
+            updated, response = await scales_verdict(session, actor, target_id=target_id, conn=conn, sink=sink)
+        else:
+            updated, response = await wildmothers_wrath(session, actor, conn=conn, sink=sink)
         totals = take_totals(updated)
         await _write_spend(conn, session, actor, ability_id)
         outcome = combat_outcome(updated)
@@ -241,6 +247,7 @@ async def _activate_wrath(session: "SessionData", actor: str, ability_id: str) -
             if residue is not None:
                 end_data["lost_scout_residue"] = residue
 
+    name = ability["name"]
     handoff = None
     if outcome is None:
         session.combat_state = updated
@@ -252,20 +259,20 @@ async def _activate_wrath(session: "SessionData", actor: str, ability_id: str) -
             member.resonance.current = totals[member.player_id]
 
     if end_data is not None:
-        with isolated_publish("Wildmother's Wrath level snapshots"):
+        with isolated_publish(f"{name} level snapshots"):
             await publish_snapshots(session, end_data["level_up_recipients"])
-    with isolated_publish("Wildmother's Wrath events"):
+    with isolated_publish(f"{name} events"):
         await sink.flush()
     if handoff is None:
-        with isolated_publish("Wildmother's Wrath combat update"):
+        with isolated_publish(f"{name} combat update"):
             await publish_game_event(
                 session.room, E.COMBAT_UI_UPDATE, build_combat_ui_update(updated), event_bus=session.event_bus
             )
-    with isolated_publish("Wildmother's Wrath patron abilities"):
+    with isolated_publish(f"{name} patron abilities"):
         await publish_patron_abilities(session.room, actor, session.event_bus)
     for member in session.party.members:
         if member.player_id in totals:
-            with isolated_publish(f"Wildmother's Wrath resonance update ({member.player_id})"):
+            with isolated_publish(f"{name} resonance update ({member.player_id})"):
                 await publish_resonance_changed(session, resonance_track=member.resonance, caster_id=member.player_id)
     return ability, response, handoff
 
@@ -301,11 +308,12 @@ async def activate(
     return json.dumps(_activation_response(ability_id, ability, response))
 
 
-async def activate_wrath(session: "SessionData") -> str | tuple:
+async def activate_combat_damage(
+    session: "SessionData", ability_id: str, *, target_id: str | None = None
+) -> str | tuple:
     actor = session.acting_player_id
-    ability_id = patron_combat_edges.WILDMOTHERS_WRATH
     async with session.combat_state_lock:
-        ability, response, handoff = await _activate_wrath(session, actor, ability_id)
+        ability, response, handoff = await _activate_combat_damage(session, actor, ability_id, target_id=target_id)
     result = _activation_response(ability_id, ability, response)
     if handoff is not None:
         agent, settlement = handoff

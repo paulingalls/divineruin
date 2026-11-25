@@ -130,7 +130,7 @@ def record_landing(
     if state is None:
         return
     facts = state.encounter_facts
-    if hp_before > 0 and target.is_ally and target.is_fallen:
+    if attacker.id != target.id and hp_before > 0 and target.is_ally and target.is_fallen:
         _remember(facts["ally_downers"], attacker.id)
     if isinstance(result, AttackResult):
         _remember(facts["attacked"], target.id)
