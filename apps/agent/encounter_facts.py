@@ -111,9 +111,12 @@ def validate(value: object) -> EncounterFacts:
 
 
 def pending_rally(state: CombatState | None, ally_id: str) -> tuple[str, ...]:
-    if state is None:
+    if state is None or not (pending := state.encounter_facts["rally_pending"]):
         return ()
-    return tuple(sorted(source for source, ally in state.encounter_facts["rally_pending"].items() if ally == ally_id))
+    recipient = state.get_participant(ally_id)
+    if recipient is None or not recipient.is_ally:
+        return ()
+    return tuple(sorted(source for source, ally in pending.items() if ally == ally_id))
 
 
 def consume_rally(state: CombatState | None, ally_id: str, sources: tuple[str, ...]) -> None:
