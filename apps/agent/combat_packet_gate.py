@@ -20,6 +20,7 @@ from combat_ability_gate import (
     CUNNING_ACTION,
     ELECTIVE_RIDER_ABILITIES,
     EXPLOIT_WEAKNESS,
+    MARSHAL_ORDERS,
     MULTI_TARGET_WEAPON_ABILITIES,
     SECOND_WIND,
     SHIELD_BASH,
@@ -108,10 +109,6 @@ async def _prevalidate_ability_focus(
                 active_variant_id = await ability_persistence.get_active_variant(actor_id, ability.id, conn=conn)
                 if active_variant_id != variant.id:
                     raise ToolError(f"{actor.name} does not have {variant.id} active for {ability.name}.")
-        # Three non-spell-vs-spell ABILITY gates (pre-resolution, no writes): de_escalate (M4.6a)
-        # has its own Focus+lockout gate; a non-spell condition ability (M4.8 story-005, e.g.
-        # bard_inspire) gates its catalog Stamina/Focus; everything else is a spell-backed ability
-        # gated against the spell catalog. _gate_spell would raise "Unknown spell" for the first two.
         if is_deescalation:
             _gate_deescalation(player, state)
             # Validate the Tier-3 argument category before resolution writes so a bad category
@@ -126,6 +123,7 @@ async def _prevalidate_ability_focus(
             *ELECTIVE_RIDER_ABILITIES,
             *SINGLE_TARGET_WEAPON_ABILITIES,
             *MULTI_TARGET_WEAPON_ABILITIES,
+            *MARSHAL_ORDERS,
         ):
             ability, variant = resolved_ability
             if ability.id in ELECTIVE_RIDER_ABILITIES:

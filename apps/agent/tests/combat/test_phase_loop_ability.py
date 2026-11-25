@@ -158,7 +158,9 @@ class TestResolvePhaseAbilityResonance:
         # Spy break: record what concentration spell it observes when the lower-initiative enemy hits.
         seen: list[str | None] = []
 
-        async def _spy_break(session, damage, incapacitated, *, damaged_player_id, combat_state=None, conn=None):
+        async def _spy_break(
+            session, damage, incapacitated, *, damaged_player_id, combat_state=None, conn=None, receipt=None
+        ):
             seen.append(session.concentration.spell_id)
             return None
 

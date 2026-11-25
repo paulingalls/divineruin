@@ -372,6 +372,7 @@ async def continue_attack(
                     act,
                     decl,
                     sub,
+                    state=state,
                     queries=queries,
                     conn=conn,
                     sink=sink,

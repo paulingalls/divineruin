@@ -108,7 +108,14 @@ async def end(session, state, outcome, *, mutations, queries, conn):
     if destroyed:
         await write(session, state, "destroyed", mutations=mutations, conn=conn)
     else:
-        await write(session, state, "dormant", snapshot=state.to_dict(), mutations=mutations, conn=conn)
+        await write(
+            session,
+            state,
+            "dormant",
+            snapshot=state.to_dict(),
+            mutations=mutations,
+            conn=conn,
+        )
 
 
 async def facts(session, *, queries, location_id, location):

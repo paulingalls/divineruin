@@ -4,6 +4,7 @@ from dataclasses import replace
 from functools import partial
 
 import check_resolution_save
+import encounter_facts
 import spells
 from choir_effects import suppressed
 from combat_fate_rolls import packet_save
@@ -11,7 +12,7 @@ from condition_restrictions import cannot_act
 from spell_voice_rules import is_silenced
 
 
-async def effective_declaration(session, state, caster, declaration, *, progress=None):
+async def effective_declaration(session, state, caster, declaration, *, progress=None, receipts=None):
     spell = spells.get_spell(declaration.action)
     if not spell.verbal:
         return declaration
@@ -47,10 +48,23 @@ async def effective_declaration(session, state, caster, declaration, *, progress
                     action["dc"],
                     action["name"],
                     bonus_dice_eligible=False,
+                    combat_state=state,
                 ),
+                state=state,
             )
             if save is None:
                 return None
+            if receipts is not None and save.rally_sources:
+                receipts.append(
+                    {
+                        "target_id": target.id,
+                        "roll": save.roll,
+                        "total": save.total,
+                        "dc": save.dc,
+                        "success": save.success,
+                        **encounter_facts.rally_receipt(caster.id, save.rally_sources),
+                    }
+                )
             if not save.success:
                 target_id = caster.id
         redirected.append(target_id)

@@ -309,6 +309,7 @@ async def _resolve_ability_packet(
 
     spell = spells.get_spell(decl.action)
     steps = progress.steps if progress is not None else {}
+    shield_receipts = steps.setdefault("harmonic_shield_saves", [])
     shield = progress.scope("shield") if progress is not None else None
     deliveries = None
     recipient_profile = spell.combat_damage and spell.combat_damage.get("recipients")
@@ -339,13 +340,14 @@ async def _resolve_ability_packet(
                 attacker,
                 replace(decl, target_id=target_id, target_ids=None),
                 progress=shield.scope(target_id) if shield is not None else None,
+                receipts=shield_receipts,
             )
             if redirected is None:
                 return {}
             redirects[target_id] = redirected.target_id
         deliveries = [{**d, "target_id": redirects[d["target_id"]]} for d in selected]
     elif spell.heal is None:
-        decl = await effective_declaration(session, state, attacker, decl, progress=shield)
+        decl = await effective_declaration(session, state, attacker, decl, progress=shield, receipts=shield_receipts)
         if decl is None:
             return {}
     landing_intent, deliveries, interception = architect_reaction.spell_targets(
@@ -378,6 +380,8 @@ async def _resolve_ability_packet(
         if result.concentration_spell_id is not spell_casting._UNCHANGED:
             caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
         cast_packet = result.packet
+        if shield_receipts:
+            cast_packet["harmonic_shield_saves"] = shield_receipts
         if heal is not None:
             if player is None:
                 raise RuntimeError(f"Missing locked player row for healing caster {attacker.id}")

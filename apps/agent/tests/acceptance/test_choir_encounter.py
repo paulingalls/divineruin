@@ -113,9 +113,10 @@ async def test_choir_real_spell_lands_on_core(started, face, redirect):
     recipient = state.get_participant(pid if redirect else "choir_zone")
     hp_before = recipient.hp_current
     effective_ac = recipient.ac + (0 if redirect else 2)
+    saved = SimpleNamespace(success=not redirect, rally_sources=())
     with (
         patch("check_resolution_attack.resolve_attack", wraps=check_resolution_attack.resolve_attack) as attack,
-        patch("check_resolution_save.roll_participant_save", return_value=SimpleNamespace(success=not redirect)),
+        patch("check_resolution_save.roll_participant_save", return_value=saved),
     ):
         result = await bolt(ctx, face)
     packet = next(p for p in result["packets"] if p["actor_id"] == pid)

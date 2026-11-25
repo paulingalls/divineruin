@@ -110,3 +110,18 @@ async def test_all_authored_pairs_and_guest_selection(dev_db_pool):
                 "unbound_raw_channeling",
                 "unbound_veil_mastery",
             }
+
+
+def test_zhael_foretold_words_clauses():
+    zhael = next(god for god in load_gods() if god["god_id"] == "zhael")
+    for archetype in ("bard", "diplomat"):
+        row = zhael["layer_4_synergy_matrix"][archetype]
+        assert row["name"] == "Foretold Words"
+        assert row["clauses"] == [
+            {
+                "effect": "Social encounters: once per NPC per session, know the exact DC of the next social check before attempting",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "zhael_foretold_words",
+            }
+        ]

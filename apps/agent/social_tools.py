@@ -28,12 +28,14 @@ import db_queries
 import event_types as E
 import rules_engine
 import social_resolution
+import zhael_foretold_words
 from condition_consume import consume_beneficial_conditions, serialize_combat_check
 from db_errors import validated_player_conditions
 from disposition import resolve_disposition
 from game_events import publish_game_event
+from patron_synergy import has_engine_synergy
 from session_data import SessionData
-from skill_fate import SkillScope, prepare_skill_offer
+from skill_fate import SkillScope, StaleSkillOperation, prepare_skill_offer
 from tool_support import _validate_id
 
 logger = logging.getLogger("divineruin.tools")
@@ -95,11 +97,19 @@ async def _check_social_impl(
     except ValueError as e:
         raise ToolError(str(e)) from e
 
+    session_id = session.session_id
+    binding = (
+        await zhael_foretold_words.pending(player_id, npc_id, session_id)
+        if has_engine_synergy(player, zhael_foretold_words.CLAUSE)
+        else None
+    )
+    if binding is not None and binding["skill"] != skill_lower:
+        raise ToolError(f"Foretold Words binds the next check against {npc_id} to {binding['skill']}.")
     base_dc = rules_engine.dc_for_tier(difficulty.lower())
     roll = check_resolution.resolve_skill_check_dc(
         condition_voice_rules.roll_data(player, session.combat_state, player_id),
         skill_lower,
-        base_dc,
+        binding["dc"] if binding is not None else base_dc,
         rng,
         ally_present=session.allies_present_for(player_id),
         natural_terrain=False,
@@ -114,6 +124,8 @@ async def _check_social_impl(
         npc_id,
         skill_lower,
         base_dc,
+        session_id=session_id,
+        binding=binding,
         queries=queries,
         content=content,
         mutations=mutations,
@@ -130,7 +142,18 @@ async def _check_social_impl(
         session.fate_offer = offer
         return json.dumps(offer.response())
 
-    flush = await finish(roll)
+    if binding is None:
+        flush = await finish(roll)
+    else:
+        try:
+            async with db_mod.transaction() as conn:
+                locked_player = await queries.get_player(player_id, conn=conn, for_update=True)
+                session.validate_acting_player(player_id)
+                if locked_player is None:
+                    raise ToolError(f"Player '{player_id}' not found.")
+                flush = await finish(roll, conn=conn)
+        except StaleSkillOperation as error:
+            raise ToolError(str(error)) from error
     return json.dumps(await flush())
 
 
@@ -142,6 +165,8 @@ async def _finish_social(
     base_dc,
     roll,
     *,
+    session_id: str,
+    binding: zhael_foretold_words.Binding | None,
     queries,
     content,
     mutations,
@@ -155,7 +180,11 @@ async def _finish_social(
     )
     try:
         outcome = social_resolution.resolve_social_check(
-            disposition=current, skill=skill, roll_total=roll.total, base_dc=base_dc
+            disposition=current,
+            skill=skill,
+            roll_total=roll.total,
+            base_dc=base_dc,
+            exact_dc=binding["dc"] if binding is not None else None,
         )
     except ValueError as error:
         raise ToolError(str(error)) from error
@@ -190,6 +219,10 @@ async def _finish_social(
                     f"social_check: {skill}",
                     **({"conn": write_conn} if write_conn is not None else {}),
                 )
+
+    if binding is not None:
+        assert conn is not None
+        await zhael_foretold_words.clear(conn, player_id, npc_id, session_id, binding)
 
     async def flush():
         if consumed_state is not None:
@@ -231,6 +264,7 @@ async def _finish_social(
             "disposition_shift": outcome.disposition_shift,
             "previous_disposition": current,
             "new_disposition": outcome.new_disposition,
+            **(zhael_foretold_words.CLAUSE_RECEIPT if binding is not None else {}),
             **({"gift_name": roll.gift_name} if roll.gift_name else {}),
         }
 

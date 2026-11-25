@@ -190,7 +190,11 @@ async def test_winning_objection_leaves_other_spends_null(reverse):
     before = state.get_participant("player_2").hp_current
     deps.pop("db_mod")
     deps.pop("character_spells_mod")
-    packets.extend(await combat_hold.pump(ctx.userdata, state, packet_deps=deps, contest_rng=SequenceRng([10, 8])))
+    packets.extend(
+        await combat_hold.pump(
+            ctx.userdata, state, packet_deps={**deps, "conn": None}, contest_rng=SequenceRng([10, 8])
+        )
+    )
 
     effects = {packet["ability_id"]: packet["mechanical_effect"] for packet in _reaction_packets(packets)}
     assert effects == {"diplomat_objection": "action_hesitated", "cleric_shield_of_faith": None}

@@ -12,7 +12,7 @@ import ability_voice_rules
 import combat_grapple
 import condition_voice_rules
 import spells
-from combat_ability_gate import WAR_CRY, declared_ability, war_cry_targets
+from combat_ability_gate import MARSHAL_ORDERS, WAR_CRY, declared_ability, war_cry_targets
 from combat_ability_save import BENEFICIAL_CONDITIONS
 from condition_sources import charm_sources, require_hostile_targets
 from declarations import DeclarationType, ManeuverIntent
@@ -90,6 +90,12 @@ def guard_declaration(
                 base, _variant = ability
                 if base.spell_id is not None:
                     guard_spell(state, actor.id, spells.get_spell(base.spell_id), decl.target_id, decl.target_ids)
+                elif base.id in MARSHAL_ORDERS:
+                    from combat_martial import order_recipients
+
+                    allies, foes = order_recipients(state, actor, decl, base)
+                    ability_voice_rules.require_ability_delivery(base.id, state, actor.id, allies)
+                    require_hostile_targets(state, actor, foes)
                 else:
                     if base.id == WAR_CRY:
                         if war_cry_started:

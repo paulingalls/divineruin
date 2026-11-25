@@ -5,6 +5,7 @@ import copy
 import combat_spatial
 import conditions
 import dice
+import encounter_facts
 from combat_condition_landing import _land_condition_on_one
 from combat_legendary_resistance import finalize_save, override_fields
 from combat_structures import line_blocker
@@ -80,7 +81,7 @@ def critical_save_rider(action, summary):
     return rider
 
 
-def roll_critical_save(attacker, target, rider):
+def roll_critical_save(state, attacker, target, rider):
     import check_resolution_save
 
     return check_resolution_save.roll_participant_save(
@@ -89,6 +90,7 @@ def roll_critical_save(attacker, target, rider):
         rider["dc"],
         rider["applies_condition"],
         dc_mod=attacker.dc_mod,
+        combat_state=state,
         bonus_dice_eligible=False,
     )
 
@@ -103,6 +105,7 @@ def land_critical_save(state, attacker, target, action, summary, rider, result):
         "total": result.total,
         "success": result.success,
         **override_fields(result),
+        **encounter_facts.rally_receipt(target.id, result.rally_sources),
     }
     if (
         can_apply
@@ -115,7 +118,9 @@ def land_critical_save(state, attacker, target, action, summary, rider, result):
 def apply_critical_save(state, attacker, target, action, summary):
     rider = critical_save_rider(action, summary)
     if rider is not None:
-        land_critical_save(state, attacker, target, action, summary, rider, roll_critical_save(attacker, target, rider))
+        save = roll_critical_save(state, attacker, target, rider)
+        encounter_facts.consume_rally(state, target.id, save.rally_sources)
+        land_critical_save(state, attacker, target, action, summary, rider, save)
 
 
 def already_hollowed(target, condition):

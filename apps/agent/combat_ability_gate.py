@@ -37,6 +37,18 @@ ELECTIVE_RIDER_ABILITIES = frozenset((*ELECTIVE_ATTACK_RIDERS.values(), CRIPPLIN
 SECOND_WIND = "warrior_second_wind"
 RALLYING_SHOUT = "warrior_rallying_shout"
 
+DIRECT_STRIKE = "marshal_direct_strike"
+COORDINATED_ASSAULT = "marshal_coordinated_assault"
+MARSHAL_ORDERS = frozenset(
+    {
+        DIRECT_STRIKE,
+        "marshal_reposition",
+        COORDINATED_ASSAULT,
+        "marshal_field_medic_order",
+        "marshal_sacrifice_play",
+    }
+)
+
 DeclaredAbility = tuple[abilities.Ability, MentorVariant | None]
 
 
@@ -60,6 +72,7 @@ def combat_ability(ability: abilities.Ability) -> bool:
         or ability.applies_condition is not None
         or ability.id
         in (SECOND_WIND, EXPLOIT_WEAKNESS, *SINGLE_TARGET_WEAPON_ABILITIES, *MULTI_TARGET_WEAPON_ABILITIES)
+        or ability.id in MARSHAL_ORDERS
     )
 
 

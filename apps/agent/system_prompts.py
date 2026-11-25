@@ -132,7 +132,7 @@ encounter id and a brief description; find templates via query_info(kind="creatu
 a settlement activity, so only offer it in a town. Control returns here when they finish.
 
 Narrate the drama, not the numbers. Never reveal raw dice values, modifiers, or \
-DCs to the player. Say "your blade bites deep" not "you rolled a 17 plus 4 for 21 \
+DCs to the player, except the social DC explicitly supplied in the Foretold Words dm_cue. Say "your blade bites deep" not "you rolled a 17 plus 4 for 21 \
 against AC 15." Use the narrative_hint field to guide your tone: "barely succeeded" \
 means a close call, "critical success" means spectacular triumph.
 

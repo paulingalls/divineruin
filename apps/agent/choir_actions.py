@@ -109,7 +109,9 @@ async def resolve_effect(
             "charmed",
             bonus_dice_eligible=False,
             advantage=reaction_save_advantage,
+            combat_state=state,
         ),
+        state=state,
     )
     if save is None:
         return {}
@@ -119,7 +121,13 @@ async def resolve_effect(
         save = finalize_save(state, target, save, failed_conditions=("charmed",) if duration else ())
     else:
         duration = 0
-    result = {"actor_id": actor.id, "resolved": True, "save_success": save.success, **override_fields(save)}
+    result = {
+        "actor_id": actor.id,
+        "resolved": True,
+        "save_success": save.success,
+        **override_fields(save),
+        **encounter_facts.rally_receipt(target.id, save.rally_sources),
+    }
     if reaction_save_advantage and save.advantage_applied:
         result["save_advantage"] = True
     if not save.success:

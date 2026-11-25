@@ -1,4 +1,4 @@
-"""The `check` verb (skill/social/discover/save/dice/gather kinds) + skill-breakthrough tool.
+"""The `check` verb (skill/social/foretell_social/discover/save/dice/gather kinds) + skill-breakthrough tool.
 
 `check(roll)` is the consolidated uncertain-action verb (M5, ADR 0007, Verbs &
 Stages §7/§10): it folds request_skill_check, discover_hidden_element,
@@ -28,6 +28,7 @@ import db_mutations_conditions
 import db_mutations_skill_advancement
 import db_queries
 import dice
+import encounter_facts
 import event_types as E
 import rules_engine
 import zhael_fate
@@ -39,16 +40,17 @@ from db_errors import db_tool, validated_player_conditions
 from game_events import publish_game_event
 from gathering_tools import _check_gather_impl
 from patron_passives import scholars_ward
-from session_data import SessionData
+from session_data import CombatState, SessionData
 from skill_check_effects import SkillCheckEffects
 from social_tools import _check_social_impl
 from tool_support import _cap_str
+from zhael_foretold_words import foretell
 
 logger = logging.getLogger("divineruin.tools")
 
 VALID_SKILLS = set(rules_engine.SKILLS.keys())
 VALID_DIFFICULTIES = set(rules_engine.DC_TIERS.keys())
-VALID_CHECK_MODES = ("skill", "discover", "save", "dice", "social", "gather")
+VALID_CHECK_MODES = ("skill", "discover", "save", "dice", "social", "foretell_social", "gather")
 
 
 @function_tool()
@@ -57,18 +59,19 @@ async def check(
     context: RunContext[SessionData],
     roll: CheckPayload,
 ) -> str:
-    """Resolve an uncertain action with a dice roll.
+    """Resolve an uncertain action or foretell a social check.
 
     Pass one roll object, picked by its kind: "skill" (the player attempts something
-    risky), "social" (sway a specific NPC), "discover" (search or examine a visible
+    risky), "social" (sway a specific NPC), "foretell_social" (reveal a social DC
+    with Zhael's Foretold Words before the attempt), "discover" (search or examine a visible
     thing), "save" (an effect forces the player to resist), "dice" (a narrative-only
     random moment), or "gather" (forage at the current location). Each kind's fields
     describe themselves. Successful Stealth conceals the acting player. Call another
     Stealth check when a watcher might notice, using that watcher's difficulty;
     failure reveals the player. Casting or attacking also ends concealment.
 
-    Narrate the result from narrative_hint / narrative_cue. Follow dm_cue when offered Fate's
-    Thread. For other checks, never speak raw numbers or DCs."""
+    Narrate the result from narrative_hint / narrative_cue. Follow dm_cue for Fate's Thread
+    and Foretold Words. For other checks, never speak raw numbers or DCs."""
     mode, kwargs = check_payloads.to_impl_args(roll)
     return await _check_impl(context, mode, **kwargs)
 
@@ -106,6 +109,8 @@ async def _check_impl(
         return await _check_social_impl(
             context, npc_id, skill, difficulty, queries=queries, mutations=mutations, content=content
         )
+    if mode == "foretell_social":
+        return await foretell(context, npc_id, skill, difficulty, queries=queries, content=content)
     if mode == "discover":
         return await _check_discover_impl(
             context, skill, target, hearing_only=hearing_only, content=content, queries=queries, mutations=mutations
@@ -178,6 +183,8 @@ async def _check_save_impl(
     # Validate the stored conditions at this read boundary (M4.4 story-008): a corrupt row otherwise
     # reaches get_condition_effects and raises a raw KeyError instead of a DM-narratable ToolError.
     validated_player_conditions(player, player_id)
+    state = session.combat_state
+    combat_id = state.combat_id if state is not None else None
 
     try:
         result = check_resolution_save.resolve_saving_throw(
@@ -186,6 +193,7 @@ async def _check_save_impl(
             dc,
             effect_on_fail,
             scholars_ward=scholars_ward(player),
+            rally_sources=encounter_facts.pending_rally(state, player_id),
         )
     except ValueError as e:
         raise ToolError(str(e)) from e
@@ -198,9 +206,11 @@ async def _check_save_impl(
             async with session.combat_state_lock:
                 if player_id not in session.present_member_ids:
                     return zhael_fate.cancel(session, "The saving throw's roller is no longer present.")
-                return zhael_fate.Resumed(
-                    json.loads(await _finish_save(session, player_id, kept, conditions_mutations, db_mod, resumed=True))
-                )
+                current = session.combat_state
+                if kept.rally_sources and (current is None or current.combat_id != combat_id):
+                    return zhael_fate.cancel(session, "Combat changed while the saving throw was held.")
+                response = await _finish_save(session, player_id, kept, conditions_mutations, db_mod, resumed=True)
+                return zhael_fate.Resumed(json.loads(response))
 
         offer = zhael_fate.make_offer(
             "save",
@@ -220,11 +230,23 @@ async def _check_save_impl(
 
 
 async def _finish_save(session, player_id, result, conditions_mutations, db_mod, *, resumed=False):
-    # Consume the single-use beneficial die (M4.8 story-003): a player-initiated save spends Blessed/
-    # Inspired's +1d4, so remove the signalled conditions and persist. One write (no competing
-    # mutation here), so no transaction is needed.
     consumed_state = None
-    if result.consumed_conditions:
+    state = session.combat_state
+    if result.rally_sources:
+        assert state is not None
+        if not resumed:
+            session.validate_acting_player(player_id)
+        working = CombatState.from_dict(state.to_dict())
+        async with db_mod.transaction() as conn:
+            encounter_facts.consume_rally(working, player_id, result.rally_sources)
+            if result.consumed_conditions:
+                working = await consume_beneficial_conditions(
+                    player_id, result.consumed_conditions, conditions_mutations, combat_state=working, conn=conn
+                )
+            else:
+                await db_mutations.save_combat_state(working.combat_id, working.to_dict(), conn=conn)
+        consumed_state = working
+    elif result.consumed_conditions:
         if not resumed:
             session.validate_acting_player(player_id)
         consumed_state = await consume_beneficial_conditions(
@@ -246,6 +268,7 @@ async def _finish_save(session, player_id, result, conditions_mutations, db_mod,
         E.DICE_ROLL,
         {
             "roll_type": "saving_throw",
+            **encounter_facts.rally_receipt(player_id, result.rally_sources),
             "save_type": result.save_type,
             "roll": result.roll,
             "total": result.total,
@@ -261,6 +284,7 @@ async def _finish_save(session, player_id, result, conditions_mutations, db_mod,
 
     response = {
         "outcome": outcome,
+        **encounter_facts.rally_receipt(player_id, result.rally_sources),
         "save_type": result.save_type,
         "roll": result.roll,
         "modifier": result.modifier,

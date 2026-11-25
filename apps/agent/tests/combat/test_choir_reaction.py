@@ -57,7 +57,8 @@ async def test_shield_failed_wis16_redirects_real_spell(dev_db_pool, success, mu
         player = await db_queries.get_player(pid, conn=pool)
         assert player is not None
         with patch(
-            "check_resolution_save.roll_participant_save", return_value=SimpleNamespace(success=success)
+            "check_resolution_save.roll_participant_save",
+            return_value=SimpleNamespace(success=success, rally_sources=()),
         ) as save:
             result = await _resolve_ability_packet(
                 ctx.userdata,

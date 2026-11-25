@@ -113,9 +113,11 @@ async def _roll_death_save(
     member = session.party.member(faller.id)
     personal_bonus = creation_deities.patron_death_save_bonus(member.patron_id if member is not None else "none")
     synergy_bonus = await marshal_death_save_bonus(cs, queries=queries)
-    bonus = personal_bonus + synergy_bonus
+    rally_sources = encounter_facts.pending_rally(cs, faller.id)
+    bonus = personal_bonus + synergy_bonus + len(rally_sources)
     bonus_receipt = {
         "bonus": bonus,
+        **encounter_facts.rally_receipt(faller.id, rally_sources),
         "synergy_bonus": synergy_bonus,
         "synergy_clause_id": MORTAEN_HOLD_THE_CROSSING if synergy_bonus else None,
     }
@@ -152,6 +154,7 @@ async def _roll_death_save(
                     db_mod,
                     queries=queries,
                     bonus_receipt=bonus_receipt,
+                    rally_sources=rally_sources,
                     resumed=True,
                 )
                 return zhael_fate.Resumed(json.loads(response))
@@ -171,7 +174,15 @@ async def _roll_death_save(
             return json.dumps(offer.response())
 
     return await _request_death_save_locked(
-        session, cs, faller_id, result, mutations, db_mod, queries=queries, bonus_receipt=bonus_receipt
+        session,
+        cs,
+        faller_id,
+        result,
+        mutations,
+        db_mod,
+        queries=queries,
+        bonus_receipt=bonus_receipt,
+        rally_sources=rally_sources,
     )
 
 
@@ -184,7 +195,8 @@ async def _request_death_save_locked(
     db_mod,
     *,
     queries,
-    bonus_receipt: dict[str, int | str | None],
+    bonus_receipt: dict,
+    rally_sources: tuple[str, ...],
     resumed=False,
 ) -> str:
     state = CombatState.from_dict(cs.to_dict())  # working copy; adopted post-commit
@@ -219,6 +231,7 @@ async def _request_death_save_locked(
     # a live 1-HP character that the combat_instances SSOT still called fallen, and the DM went on
     # prompting death saves for someone already revived.
     async with db_mod.transaction() as conn:
+        encounter_facts.consume_rally(state, faller_id, rally_sources)
         if revive_player_id is not None:
             await mutations.update_player_hp(revive_player_id, 1, conn=conn)
         renewals = await encounter_facts.renew_on_death(state, working, counted_before, queries=queries, conn=conn)
@@ -236,6 +249,7 @@ async def _request_death_save_locked(
         E.DICE_ROLL,
         {
             "roll_type": "death_save",
+            **encounter_facts.rally_receipt(faller_id, rally_sources),
             "roll": result.roll,
             "success": result.success,
             "critical_success": result.critical_success,

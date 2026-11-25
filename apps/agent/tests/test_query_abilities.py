@@ -2,7 +2,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from archetype_abilities_config_fixture import load_fixture_config
+from archetype_abilities_config_fixture import load_fixture_config, marshal_order_targets
 from combat._helpers import place_actors
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
@@ -104,7 +104,9 @@ class TestQueryAbilities:
         state = _solo_player_state()
         state.participants.append(CombatParticipant("foe", "Foe", "enemy", 5, 100, 100, 10))
         state.participants.append(CombatParticipant("ally", "Ally", "companion", 6, 100, 100, 10))
-        state.initiative_order.extend(("foe", "ally"))
+        state.participants.append(CombatParticipant("second_ally", "Second Ally", "companion", 7, 100, 100, 10))
+        state.initiative_order.extend(("foe", "ally", "second_ally"))
+        order_targets = marshal_order_targets("foe")
         actor = state.participants[0]
         actor.action_pool = [{"name": "Longsword", "damage": "1d8"}]
         place_actors(state)
@@ -131,7 +133,7 @@ class TestQueryAbilities:
                     # spell-backed row (the prompt tells the DM to declare its spell_id) acceptance
                     # alone certifies nothing: a row naming no real spell would pass here and blow up
                     # at resolution instead. Pin the id on the spell catalog the cast path reads.
-                    declaration = {"type": "ability", "action": action}
+                    declaration = {"type": "ability", "action": action, **order_targets.get(action, {})}
                     if row["id"] == "warrior_rallying_shout":
                         declaration["target_id"] = "ally"
                     if row["id"] in (
@@ -225,4 +227,4 @@ class TestQueryAbilities:
 
         assert expected <= ids
         assert ("bard_mass_inspire" in ids) is (level >= 9)
-        assert "combat" not in rows["bard_inspire"]
+        assert rows["bard_inspire"]["combat"] is True

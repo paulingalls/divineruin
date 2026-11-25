@@ -268,7 +268,7 @@ class TestResolvePhaseSurfacesLegendary:
         boss.conditions = conditions.apply_condition([], "paralyzed", source="hold_person")
         ctx.userdata.combat_state = state
         save_resolver = MagicMock()
-        save_resolver.roll_participant_save.return_value = MagicMock(success=True)
+        save_resolver.roll_participant_save.return_value = MagicMock(success=True, rally_sources=())
 
         result = await _resolve_round(ctx, **_resolve_deps(damage=3), save_resolver=save_resolver)
 

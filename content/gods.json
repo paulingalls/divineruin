@@ -3422,8 +3422,9 @@
         "clauses": [
           {
             "effect": "Once per encounter, an ally who follows your order gains +1 on their next saving throw.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_moment_to_rally"
           }
         ]
       },
@@ -3449,9 +3450,10 @@
         "name": "Foretold Words",
         "clauses": [
           {
-            "effect": "Social encounters: once per encounter, know the exact DC of the next social check before attempting",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "Social encounters: once per NPC per session, know the exact DC of the next social check before attempting",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_foretold_words"
           }
         ]
       },
@@ -3460,9 +3462,10 @@
         "name": "Foretold Words",
         "clauses": [
           {
-            "effect": "Social encounters: once per encounter, know the exact DC of the next social check before attempting",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "Social encounters: once per NPC per session, know the exact DC of the next social check before attempting",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_foretold_words"
           }
         ]
       },

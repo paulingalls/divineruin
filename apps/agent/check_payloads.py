@@ -46,13 +46,22 @@ class SkillCheck(BaseModel):
         return self
 
 
-class SocialCheck(BaseModel):
-    """The player tries to sway a specific NPC. Disposition shifts the DC and may change."""
-
-    kind: Literal["social"]
+class SocialCheckFields(BaseModel):
     npc_id: str = Field(description="The NPC being swayed.")
     skill: Literal["persuasion", "deception", "intimidation"] = Field(description="The social approach.")
     difficulty: str = Field(description="One of trivial, easy, moderate, hard, very_hard, extreme, legendary.")
+
+
+class SocialCheck(SocialCheckFields):
+    """The player tries to sway a specific NPC. Disposition shifts the DC and may change."""
+
+    kind: Literal["social"]
+
+
+class ForetellSocialCheck(SocialCheckFields):
+    """Reveal a social DC before rolling with Zhael's Foretold Words, once per NPC per session."""
+
+    kind: Literal["foretell_social"]
 
 
 class DiscoverCheck(BaseModel):
@@ -102,10 +111,18 @@ class Gather(BaseModel):
     )
 
 
-CheckVariant = Union[SkillCheck, SocialCheck, DiscoverCheck, SaveCheck, DiceRoll, Gather]
+CheckVariant = Union[SkillCheck, SocialCheck, ForetellSocialCheck, DiscoverCheck, SaveCheck, DiceRoll, Gather]
 CheckPayload = Annotated[CheckVariant, Field(discriminator="kind")]
 
-CHECK_VARIANTS: tuple[type[BaseModel], ...] = (SkillCheck, SocialCheck, DiscoverCheck, SaveCheck, DiceRoll, Gather)
+CHECK_VARIANTS: tuple[type[BaseModel], ...] = (
+    SkillCheck,
+    SocialCheck,
+    ForetellSocialCheck,
+    DiscoverCheck,
+    SaveCheck,
+    DiceRoll,
+    Gather,
+)
 
 
 def to_impl_args(roll: CheckVariant) -> tuple[str, dict]:
@@ -117,8 +134,8 @@ def to_impl_args(roll: CheckVariant) -> tuple[str, dict]:
             "context_description": roll.context_description,
             "hearing_only": roll.hearing_only,
         }
-    if isinstance(roll, SocialCheck):
-        return "social", {"npc_id": roll.npc_id, "skill": roll.skill, "difficulty": roll.difficulty}
+    if isinstance(roll, (SocialCheck, ForetellSocialCheck)):
+        return roll.kind, {"npc_id": roll.npc_id, "skill": roll.skill, "difficulty": roll.difficulty}
     if isinstance(roll, DiscoverCheck):
         return "discover", {"skill": roll.skill, "target": roll.target, "hearing_only": roll.hearing_only}
     if isinstance(roll, SaveCheck):
