@@ -201,7 +201,19 @@ async def continue_attack(
                 return {}
             attack_cursor["swing_move"] = swing_move
         else:
-            swing_move = combat_melee_approach.prepare(state, attacker, declared_target, act, movement_budget)
+            swing_move = await combat_melee_approach.prepare(
+                session,
+                state,
+                attacker,
+                declared_target,
+                act,
+                movement_budget,
+                progress=progress.scope("swing_approach") if progress is not None else None,
+            )
+            if swing_move is None:
+                checkpoint()
+                return {}
+            attack_cursor["swing_move"] = swing_move
         if index > 0 and act == actions[0] and swing_move:
             swing_move = {**swing_move, "moved_ft": 0, "closed_distance": False}
         if swing_move.get("attack_resolved") is False:

@@ -122,7 +122,9 @@ def test_move_consumes_one_declaration_and_only_moves_actor():
     assert list(declared.pending_declarations) == ["a"]
     working, advance = advance_combat_phase(declared)
     packet = advance.packets[0]
-    result = apply_move(working, working.get_participant("a"), packet.declaration)
+    actor = working.get_participant("a")
+    assert actor is not None
+    result = apply_move(working, actor, packet.declaration)
     assert result["moved_ft"] == 30
     assert working.spatial is not None and state.spatial is not None
     assert working.spatial["positions"] == {"a": pos(30), "b": pos(40)}
@@ -153,7 +155,7 @@ def test_move_eligibility_refuses(condition):
     before = deepcopy(state.to_dict())
     with pytest.raises(ValueError):
         advance_combat_phase(state, {"a": {**move(), "movement_mode": "ground"}})
-    assert apply_move(state, state.get_participant("a"), resolve_declaration(move()))["resolved"] is False
+    assert apply_move(state, actor, resolve_declaration(move()))["resolved"] is False
     assert state.to_dict() == before
 
 

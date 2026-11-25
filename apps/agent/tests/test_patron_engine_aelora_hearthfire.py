@@ -7,7 +7,6 @@ from _aelora_hearthfire_fixtures import (
     COMPANION,
     GIFT,
     OTHER_GIFTS,
-    enabled,
     fall,
     healing_rolls,
     hearth,
@@ -34,28 +33,31 @@ from zhael_fate import FATE, FateOffer, Resumed
 
 async def test_places_fixed_sphere_spends_and_reports_occupants(world: SimpleNamespace) -> None:
     async with hearth(world) as call:
-        await refuse(world, call, "pending implementation")
         owner, guest = world.ids
         active(world).spatial["positions"][COMPANION] = point(5, 15.01)
         await checkpoint(world)
         before = await row(world, 0)
 
-        with enabled():
-            result = await call("activate", id=GIFT)
-            assert result["id"] == GIFT and result["recharge"] == "per_session"
-            assert "Rook" in result["dm_cue"] and "Iris" in result["dm_cue"]
-            zone = {"source_id": owner, "center": point(5), "radius_ft": 15, "rounds_remaining": 3}
-            occupants = [
-                {"id": p.id, "name": p.name} for p in active(world).participants if p.id in {owner, guest, FOE}
-            ]
-            facts = {
-                "zones": [{**zone, "occupants": occupants}],
-                "heals": [],
-            }
-            assert result["hearthfire"] == facts
-            assert (await row(world, 0)) == {**before, "patron_gifts": {**OTHER_GIFTS, GIFT: {"spent": True}}}
-            assert active(world).hearthfire_zones == (await reload_state(world)).hearthfire_zones == [zone]
-            await refuse(world, call, "Already spent; requires a new session")
+        result = await call("activate", id=GIFT)
+        assert result["id"] == GIFT and result["recharge"] == "per_session"
+        assert "Rook" in result["dm_cue"] and "Iris" in result["dm_cue"]
+        zone = {
+            "source_id": owner,
+            "center": point(5),
+            "radius_ft": 15,
+            "rounds_remaining": 3,
+            "admitted_ids": [],
+            "failed_rounds": {},
+        }
+        occupants = [{"id": p.id, "name": p.name} for p in active(world).participants if p.id in {owner, guest, FOE}]
+        facts = {
+            "zones": [{**zone, "occupants": occupants}],
+            "heals": [],
+        }
+        assert result["hearthfire"] == facts
+        assert (await row(world, 0)) == {**before, "patron_gifts": {**OTHER_GIFTS, GIFT: {"spent": True}}}
+        assert active(world).hearthfire_zones == (await reload_state(world)).hearthfire_zones == [zone]
+        await refuse(world, call, "Already spent; requires a new session")
 
         await declare(world, call)
         ally_pass = await call("resolve_phase")
@@ -75,8 +77,7 @@ async def test_round_heals_once_to_cap_and_tracks_current_occupants_until_expiry
         owner, guest = world.ids
         active(world).spatial["positions"][guest] = point(10)
         await checkpoint(world)
-        with enabled():
-            zone = (await call("activate", id=GIFT))["hearthfire"]["zones"][0]
+        zone = (await call("activate", id=GIFT))["hearthfire"]["zones"][0]
         await fall(world, 1)
         await checkpoint(world)
         await declare(world, call)
@@ -148,8 +149,7 @@ async def test_round_heals_once_to_cap_and_tracks_current_occupants_until_expiry
 
 async def test_wrap_raises_every_recoverable_fallen_ally_before_death_saves(world: SimpleNamespace) -> None:
     async with hearth(world) as call:
-        with enabled():
-            await call("activate", id=GIFT)
+        await call("activate", id=GIFT)
         await fall(world, 0, failures=3)
         await fall(world, 1)
         companion = participant(active(world), COMPANION)
@@ -179,8 +179,7 @@ async def test_wrap_raises_every_recoverable_fallen_ally_before_death_saves(worl
 
 async def test_ending_wrap_includes_heal_in_handoff(world: SimpleNamespace) -> None:
     async with hearth(world) as call:
-        with enabled():
-            await call("activate", id=GIFT)
+        await call("activate", id=GIFT)
         state = active(world)
         for foe in (p for p in state.participants if p.type == "enemy"):
             foe.hp_current, foe.is_fallen = 0, True
@@ -198,8 +197,7 @@ async def test_ending_wrap_includes_heal_in_handoff(world: SimpleNamespace) -> N
 
 async def test_wrap_healing_rolls_back_after_first_hp_write_and_retries(world: SimpleNamespace) -> None:
     async with hearth(world) as call:
-        with enabled():
-            await call("activate", id=GIFT)
+        await call("activate", id=GIFT)
         await declare(world, call)
         await call("resolve_phase")
         before = await snapshot(world)
@@ -232,68 +230,64 @@ async def test_wrap_healing_rolls_back_after_first_hp_write_and_retries(world: S
 
 
 async def test_queued_resolution_allows_activation_but_held_actions_refuse_it(world: SimpleNamespace) -> None:
-    with enabled():
-        async with hearth(world) as call:
-            await declare(world, call)
-            queued = active(world).pending_declarations
-            await call("resolve_phase")
-            assert active(world).held_actions
-            await refuse(world, call, "Finish the partially resolved round before using Hearthfire")
+    async with hearth(world) as call:
+        await declare(world, call)
+        queued = active(world).pending_declarations
+        await call("resolve_phase")
+        assert active(world).held_actions
+        await refuse(world, call, "Finish the partially resolved round before using Hearthfire")
 
-            await drain(world, call)
-            await declare(world, call)
-            resources = await row(world, 0)
-            await call("activate", id=GIFT)
-            assert active(world).beat == "resolution" and active(world).pending_declarations == queued
-            assert await row(world, 0) == {**resources, "patron_gifts": {**OTHER_GIFTS, GIFT: {"spent": True}}}
+        await drain(world, call)
+        await declare(world, call)
+        resources = await row(world, 0)
+        await call("activate", id=GIFT)
+        assert active(world).beat == "resolution" and active(world).pending_declarations == queued
+        assert await row(world, 0) == {**resources, "patron_gifts": {**OTHER_GIFTS, GIFT: {"spent": True}}}
 
 
 async def test_live_fate_offer_refuses_activation_without_settling(world: SimpleNamespace) -> None:
-    with enabled():
-        async with hearth(world) as call:
-            owner, guest = world.ids
-            session = world.ctx.userdata
-            original = AsyncMock(return_value=Resumed({"outcome": "original"}))
-            offer = FateOffer("live-save", "save", owner, 12, 12, {FATE: (guest,)}, Mock(), original, Mock())
-            assert active(world).ally_continuation is None and not active(world).held_actions
-            session.fate_offer = offer
-            await refuse(world, call, "Finish the partially resolved round before using Hearthfire")
-            assert session.fate_offer is offer
-            original.assert_not_called()
+    async with hearth(world) as call:
+        owner, guest = world.ids
+        session = world.ctx.userdata
+        original = AsyncMock(return_value=Resumed({"outcome": "original"}))
+        offer = FateOffer("live-save", "save", owner, 12, 12, {FATE: (guest,)}, Mock(), original, Mock())
+        assert active(world).ally_continuation is None and not active(world).held_actions
+        session.fate_offer = offer
+        await refuse(world, call, "Finish the partially resolved round before using Hearthfire")
+        assert session.fate_offer is offer
+        original.assert_not_called()
 
 
 async def test_paused_wrap_refuses_activation_after_its_offer_is_gone(world: SimpleNamespace) -> None:
     # A reload keeps the persisted wrap cursor but drops the in-memory Fate offer.
-    with enabled():
-        async with hearth(world) as call:
-            owner = world.ids[0]
-            state = active(world)
-            state.round_number = 3
-            participant(state, owner).conditions = apply_condition([], "frightened", source=FOE, duration=3)
-            await checkpoint(world)
-            await declare(world, call)
-            await call("resolve_phase")
-            with patch("check_resolution.dice_roll", return_value=_d20(18)):
-                assert (await call("resolve_phase"))["fate_offer"]
-            world.ctx.userdata.fate_offer = None
-            assert active(world).wrap_continuation is not None
-            await refuse(world, call, "Finish the partially resolved round before using Hearthfire")
+    async with hearth(world) as call:
+        owner = world.ids[0]
+        state = active(world)
+        state.round_number = 3
+        participant(state, owner).conditions = apply_condition([], "frightened", source=FOE, duration=3)
+        await checkpoint(world)
+        await declare(world, call)
+        await call("resolve_phase")
+        with patch("check_resolution.dice_roll", return_value=_d20(18)):
+            assert (await call("resolve_phase"))["fate_offer"]
+        world.ctx.userdata.fate_offer = None
+        assert active(world).wrap_continuation is not None
+        await refuse(world, call, "Finish the partially resolved round before using Hearthfire")
 
 
 async def test_hearthfire_requires_a_standing_player_in_combat(world: SimpleNamespace) -> None:
-    with enabled():
-        async with hearth(world) as call:
-            session = world.ctx.userdata
-            state = session.combat_state
-            session.combat_state = None
-            explore = game_tools(session, agent=ExplorationAgent())
-            try:
-                await refuse(world, explore, "Hearthfire can only be used in combat")
-            finally:
-                session.combat_state = state
-            await fall(world, 0)
-            await checkpoint(world)
-            await refuse(world, call, "Hearthfire requires a standing player in this fight")
+    async with hearth(world) as call:
+        session = world.ctx.userdata
+        state = session.combat_state
+        session.combat_state = None
+        explore = game_tools(session, agent=ExplorationAgent())
+        try:
+            await refuse(world, explore, "Hearthfire can only be used in combat")
+        finally:
+            session.combat_state = state
+        await fall(world, 0)
+        await checkpoint(world)
+        await refuse(world, call, "Hearthfire requires a standing player in this fight")
 
 
 @pytest.mark.parametrize(
@@ -306,6 +300,5 @@ async def test_hearthfire_requires_a_standing_player_in_combat(world: SimpleName
 async def test_hearthfire_requires_exalted_aelora_favor(
     world: SimpleNamespace, patron: str, favor: int, reason: str
 ) -> None:
-    with enabled():
-        async with hearth(world, patron=patron, favor=favor) as call:
-            await refuse(world, call, reason)
+    async with hearth(world, patron=patron, favor=favor) as call:
+        await refuse(world, call, reason)

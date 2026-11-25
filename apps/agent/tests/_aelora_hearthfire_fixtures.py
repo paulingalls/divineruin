@@ -13,7 +13,6 @@ from test_patron_engine_valdris import checkpoint
 from voice_condition_fixtures import participant
 
 import db_mutations
-import patron_ability_tools
 from combat_agent import CombatAgent
 from combat_participant import CombatParticipant
 from dice import DiceResult
@@ -46,15 +45,6 @@ async def hearth(world: SimpleNamespace, *, patron: str = "aelora", favor: int =
         participant(state, FOE).hp_current = 1
         await checkpoint(world)
         yield game_tools(session, agent=CombatAgent())
-
-
-@contextmanager
-def enabled() -> Iterator[None]:
-    catalog = patron_ability_tools.catalog()
-    patron, tier, gift = catalog[GIFT]
-    catalog[GIFT] = (patron, tier, {**gift, "status": "active", "implementation_id": GIFT})
-    with patch.object(patron_ability_tools, "catalog", return_value=catalog):
-        yield
 
 
 async def snapshot(world: SimpleNamespace) -> tuple:
