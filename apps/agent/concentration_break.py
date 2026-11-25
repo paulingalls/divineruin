@@ -11,6 +11,7 @@ import concentration
 import conditions
 import db_mutations_concentration
 import db_queries
+import encounter_facts
 import spells
 from combat_fate_rolls import packet_save
 from session_data import SessionData
@@ -29,6 +30,7 @@ async def break_concentration_on_damage(
     combat_state=None,
     conn=None,
     progress=None,
+    receipt: dict | None = None,
 ) -> str | None:
     """Resolve the DAMAGED party member's (``damaged_player_id``) CON save after taking ``damage``;
     end concentration on a failed save or incapacitation. Returns the spell_id that broke (for the
@@ -87,12 +89,27 @@ async def break_concentration_on_damage(
             damaged_player_id,
             "concentration",
             partial(
-                resolver.resolve_saving_throw, player, "constitution", dc, "concentration", bonus_dice_eligible=False
+                resolver.resolve_saving_throw,
+                player,
+                "constitution",
+                dc,
+                "concentration",
+                bonus_dice_eligible=False,
+                rally_sources=encounter_facts.pending_rally(combat_state, damaged_player_id),
             ),
+            state=combat_state,
         )
         if save is None:
             return None
         save_total = save.total
+        if receipt is not None and save.rally_sources:
+            receipt["concentration_save"] = {
+                "roll": save.roll,
+                "total": save.total,
+                "dc": save.dc,
+                "success": save.success,
+                **encounter_facts.rally_receipt(damaged_player_id, save.rally_sources),
+            }
 
     if concentration.concentration_holds(save_total, dc, incapacitated=incapacitated):
         return None

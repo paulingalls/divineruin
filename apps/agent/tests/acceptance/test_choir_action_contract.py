@@ -118,7 +118,10 @@ async def test_shield_real_cast_transaction_replay(runtime, success):
         raise RuntimeError("injected Shield save failure")
 
     with (
-        patch("check_resolution_save.roll_participant_save", return_value=SimpleNamespace(success=success)),
+        patch(
+            "check_resolution_save.roll_participant_save",
+            return_value=SimpleNamespace(success=success, rally_sources=()),
+        ),
         patch("db_mutations.save_combat_state", side_effect=fail_after_write),
     ):
         with pytest.raises(RuntimeError, match="injected Shield save failure"):
@@ -126,7 +129,10 @@ async def test_shield_real_cast_transaction_replay(runtime, success):
     assert (await reload(ctx)).to_dict() == before
     assert await db_queries.get_player(pid) == player_before
     with (
-        patch("check_resolution_save.roll_participant_save", return_value=SimpleNamespace(success=success)) as saves,
+        patch(
+            "check_resolution_save.roll_participant_save",
+            return_value=SimpleNamespace(success=success, rally_sources=()),
+        ) as saves,
         patch("spell_casting._resolve_cast", wraps=spell_casting._resolve_cast) as casts,
     ):
         result = await _resolve_round(ctx)
@@ -166,7 +172,9 @@ async def test_choir_public_actions_hold_reload(runtime):
         ],
     )
     with (
-        patch("check_resolution_save.roll_participant_save", return_value=SimpleNamespace(success=False)) as saves,
+        patch(
+            "check_resolution_save.roll_participant_save", return_value=SimpleNamespace(success=False, rally_sources=())
+        ) as saves,
         patch("combat_recharge.roll", return_value=SimpleNamespace(total=4)),
     ):
         raw = await combat_turn._resolve_phase_impl(ctx)

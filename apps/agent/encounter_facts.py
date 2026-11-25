@@ -22,6 +22,9 @@ MORTAEN_RENEWAL = "mortaen_death_feeds_renewal"
 ZHAEL_THREADED_BLADE = "zhael_threaded_blade"
 
 
+ZHAEL_RALLY = "zhael_moment_to_rally"
+
+
 class EncounterFacts(TypedDict):
     ally_downers: list[str]
     attacked: list[str]
@@ -29,6 +32,7 @@ class EncounterFacts(TypedDict):
     misses: dict[str, list[str]]
     once_spent: dict[str, list[str]]
     party_aggressors: dict[str, list[str]] | None
+    rally_pending: dict[str, str]
 
 
 def empty() -> EncounterFacts:
@@ -39,6 +43,7 @@ def empty() -> EncounterFacts:
         "misses": {},
         "once_spent": {},
         "party_aggressors": {},
+        "rally_pending": {},
     }
 
 
@@ -83,21 +88,60 @@ def validate_history(value: object) -> dict[str, list[str]] | None:
 
 def validate(value: object) -> EncounterFacts:
     current = EncounterFacts.__required_keys__
-    prior = current - {"party_aggressors"}
-    if not isinstance(value, dict) or value.keys() not in (current, prior):
-        raise ValueError(
-            f"encounter_facts requires exactly {', '.join(sorted(prior))}, "
-            "with party_aggressors as an ID map or null in the current shape"
-        )
+    previous = current - {"rally_pending"}
+    prior = previous - {"party_aggressors"}
+    if not isinstance(value, dict) or value.keys() not in (current, previous, prior):
+        raise ValueError(f"encounter_facts requires {', '.join(sorted(prior))} and a supported snapshot shape")
     history = value.get("party_aggressors")
+    spent = _id_map(value["once_spent"], "once_spent")
+    pending = value.get("rally_pending", {})
+    if not isinstance(pending, dict) or not all(_is_id(source) and _is_id(ally) for source, ally in pending.items()):
+        raise ValueError("encounter_facts.rally_pending requires a map of nonblank string IDs")
+    if not pending.keys() <= set(spent.get(ZHAEL_RALLY, [])):
+        raise ValueError("encounter_facts.rally_pending requires each source to have spent its rally")
     return {
         "ally_downers": _ids(value["ally_downers"], "ally_downers"),
         "attacked": _ids(value["attacked"], "attacked"),
         "death_save_success_round": _death_save_rounds(value["death_save_success_round"]),
         "misses": _id_map(value["misses"], "misses"),
-        "once_spent": _id_map(value["once_spent"], "once_spent"),
+        "once_spent": spent,
+        "rally_pending": dict(pending),
         "party_aggressors": validate_history(history),
     }
+
+
+def pending_rally(state: CombatState | None, ally_id: str) -> tuple[str, ...]:
+    if state is None or not (pending := state.encounter_facts["rally_pending"]):
+        return ()
+    recipient = state.get_participant(ally_id)
+    if recipient is None or not recipient.is_ally:
+        return ()
+    return tuple(sorted(source for source, ally in pending.items() if ally == ally_id))
+
+
+def consume_rally(state: CombatState | None, ally_id: str, sources: tuple[str, ...]) -> None:
+    if not sources:
+        return
+    if state is None or not set(sources) <= set(pending_rally(state, ally_id)):
+        raise ValueError(f"Cannot consume rally from {sources!r} for {ally_id!r}")
+    for source in sources:
+        del state.encounter_facts["rally_pending"][source]
+
+
+def rally_entry(source: str, ally_id: str) -> dict[str, str | int]:
+    return {"clause_id": ZHAEL_RALLY, "marshal_id": source, "ally_id": ally_id, "bonus": 1}
+
+
+def rally_receipt(ally_id: str, sources: tuple[str, ...]) -> dict[str, list[dict[str, str | int]]]:
+    return {"rally_bonuses": [rally_entry(source, ally_id) for source in sources]} if sources else {}
+
+
+def snapshot_without_rally(state: CombatState) -> dict:
+    snapshot = state.to_dict()
+    facts = snapshot["encounter_facts"]
+    facts["rally_pending"].clear()
+    facts["once_spent"].pop(ZHAEL_RALLY, None)
+    return snapshot
 
 
 def _remember(ids: list[str], participant_id: str) -> None:

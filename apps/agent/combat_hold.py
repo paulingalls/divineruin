@@ -23,6 +23,7 @@ import combat_opportunity
 import combat_reaction_contest
 import combat_reaction_effect
 import event_types as E
+import patron_synergy_combat
 import reaction_gate
 import reaction_spend
 import reaction_windows
@@ -170,6 +171,9 @@ async def pump(
         reacted = state.held_actions[0]
         reaction_packets = combat_reaction_effect.close(
             state, reacted, closed, attack_action=_attack_action(state, reacted), contest_rng=contest_rng
+        )
+        await patron_synergy_combat.grant_interceding_rallies(
+            state, reaction_packets, closed["target_id"], queries=packet_deps["queries"], conn=packet_deps["conn"]
         )
         summaries.extend(reaction_packets)
         hesitation_reason = combat_reaction_contest.hesitation_reason(reacted)

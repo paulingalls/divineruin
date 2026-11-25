@@ -14,6 +14,7 @@ import combat_phase
 import combat_recharge
 import concealment
 import conditions
+import encounter_facts
 import event_types as E
 import fatigue_narration
 import reaction_gate
@@ -175,6 +176,19 @@ async def wrap_phase(
                 state.wrap_continuation = cursor
                 state.beat = combat_phase.PhaseBeat.NARRATION
                 return state, None, combat_phase.PhaseAdvance(beat_completed=state.beat), {}, None, None, {}, []
+            encounter_facts.consume_rally(state, actor.id, result.rally_sources)
+            if result.rally_sources:
+                receipt = {
+                    "actor_id": actor.id,
+                    "condition": event["type"],
+                    "roll": result.roll,
+                    "total": result.total,
+                    "dc": result.dc,
+                    "success": result.success,
+                    **encounter_facts.rally_receipt(actor.id, result.rally_sources),
+                }
+                wrap.rally_saves.append(receipt)
+                cursor["wrap"]["rally_saves"] = wrap.rally_saves
             if result.success:
                 actor.conditions = conditions.remove_condition(actor.conditions, event["type"])
             cursor["index"] += 1

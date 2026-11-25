@@ -96,11 +96,17 @@ async def test_warrior_action_is_complete_before_a_reloaded_hostile_blow(
 
 @pytest.mark.parametrize("bash", [False, True], ids=["devastating_attack", "bash_save"])
 async def test_martial_roll_reloads_without_rolling_or_charging_again(warriors: MawlingHarness, bash: bool) -> None:
+    from _zhael_marshal_rally_fixtures import pending
+
     actor = warriors.players[0]
     await enter(warriors)
     foe = await adjacent_foe(warriors)
     await favor(warriors)
     if bash:
+        state = await warriors.reload()
+        source = warriors.players[1]
+        pending(state, actor, source)
+        await warriors.persist()
         await warriors.command(
             "declare_phase",
             {
@@ -147,6 +153,8 @@ async def test_martial_roll_reloads_without_rolling_or_charging_again(warriors: 
     assert receipt["damage"] == (5 if bash else 9)
     if bash:
         assert receipt["condition_inflicted"] == "stunned"
+        assert "rally_bonuses" not in receipt
+        assert (await warriors.reload()).encounter_facts["rally_pending"] == {warriors.players[1]: actor}
     row = await db_queries.get_player(actor)
     assert row is not None and row["stamina"]["current"] == (8 if bash else 7)
     target = (await warriors.reload()).get_participant(foe)

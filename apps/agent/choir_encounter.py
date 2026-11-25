@@ -6,6 +6,7 @@ from functools import partial
 import check_resolution
 import condition_voice_rules
 import db_queries
+import encounter_facts
 import event_types as E
 from combat_damage_affinity import DAMAGE_TYPES
 from combat_events import emit_or_publish
@@ -258,7 +259,9 @@ async def turn_start(session, state, actor, *, conn, concentration_break_mod, pr
             15,
             "Aura of Lost Voices",
             bonus_dice_eligible=False,
+            combat_state=state,
         ),
+        state=state,
     )
     if save is None:
         return None
@@ -277,6 +280,7 @@ async def turn_start(session, state, actor, *, conn, concentration_break_mod, pr
         "success": save.success,
         "concentration_broken": broken,
         "cue": "Lost voices tug at your focus.",
+        **encounter_facts.rally_receipt(actor.id, save.rally_sources),
     }
 
     if sink is not None:

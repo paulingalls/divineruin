@@ -123,6 +123,8 @@ async def test_changed_walls_and_terrain_survive_flee_reentry(fight):
 
 
 async def test_floor_captures_multiple_creatures_and_resolves_each_save(reset_db_pool):
+    from _zhael_marshal_rally_fixtures import bonus, pending
+
     fight = MawlingHarness()
     try:
         await fight.prepare((20, 20), companion=None, location=WORKS)
@@ -137,6 +139,7 @@ async def test_floor_captures_multiple_creatures_and_resolves_each_save(reset_db
             actor = state.get_participant(actor_id)
             assert actor is not None
             actor.attributes["dexterity"] = 10
+        pending(state, failed, saved)
         await fight.persist()
         await set_favor(fight, "zhael", 40)
         await update_player_concentration(failed, "divine_bless")
@@ -167,6 +170,8 @@ async def test_floor_captures_multiple_creatures_and_resolves_each_save(reset_db
             state = await fight.reload()
             [first_result] = state.held_actions[0]["reshape_receipts"][0]["results"]
             assert first_result["target_id"] == failed
+            assert first_result["rally_bonuses"] == [bonus(saved, failed)]
+            assert state.encounter_facts["rally_pending"] == {}
             assert state.encounter_facts["party_aggressors"] == {owner: [failed]}
             resolved = await keep(second_save)
         [summary] = [packet for packet in resolved["packets"] if packet["actor_id"] == owner]

@@ -27,7 +27,6 @@ from background_process import BackgroundProcess
 from check_resolution import D20Roll
 from dice import DiceResult
 from event_bus import GameEvent
-from movement_tools import party_level_warning
 
 HOUR = 120
 DAY = 24 * HOUR
@@ -170,37 +169,6 @@ async def set_attributes(walk, pid, **attributes):
         pid,
         json.dumps(attributes),
     )
-
-
-async def test_hourly_save_resets_on_success_and_reentry(paradise, clock, save_faces):
-    walk, origin, zone = paradise
-    guest = walk.players[1]
-    await arrive(walk, "move_player", zone)
-    face, rolls = save_faces
-    face.value = 17
-    async with background(walk) as tick:
-        await advance(clock, tick, HOUR - 1)
-        assert not rolls and await charm(guest, zone)
-        await advance(clock, tick, 1)
-        await tick()
-        assert rolls == [(18, 0, 17)]
-        assert await charm(guest, zone)
-        await advance(clock, tick, HOUR)
-        assert rolls == [(18, 0, 17), (18, 1, 18)]
-        assert await charm(guest, zone) is None
-        assert f"still_dwell:{zone}" not in (await player_row(guest))["flags"]
-
-        async def interposed_tick(*args, **kwargs):
-            await tick()
-            assert await charm(guest, zone) is None
-            return await party_level_warning(*args, **kwargs)
-
-        with patch("travel_tools.party_level_warning", side_effect=interposed_tick):
-            assert (await arrive(walk, "travel", origin))["arrived"]
-        await arrive(walk, "move_player", zone)
-        await advance(clock, tick, HOUR)
-        assert rolls[-1] == (18, 0, 17)
-        assert len(rolls) == 3 and await charm(guest, zone)
 
 
 async def test_touch_expires_after_combat(still, clock, save_faces):

@@ -33,7 +33,11 @@ async def _reroll(call, offer):
 
 
 async def _reloaded(session, combat_id, pid):
-    fresh = make_context(player_id=pid, room=session.room).userdata
+    fresh = make_context(
+        player_id=pid,
+        party_member_ids=[member for member in session.party.member_ids if member != pid],
+        room=session.room,
+    ).userdata
     fresh.combat_state = await db_mutations.load_combat_state(combat_id)
     return fresh, game_tools(fresh, resolve_phase, activate)
 
@@ -91,8 +95,11 @@ async def test_unholy_fortitude_save_is_held(world, reload):
     await configure(world, "zhael", "mage")
     pid = world.ids[0]
     knight = _enemy("knight", 5)
+    from _zhael_marshal_rally_fixtures import pending
+
     knight.unholy_fortitude = {"save": "CON", "dc": 10, "increment": 5, "narration_cue": "It rises."}
     state = _build_state(pid, pid, [knight])
+    pending(state, pid, world.ids[1])
     session = world.ctx.userdata
     session.combat_state = state
     call = game_tools(session, declare_phase, resolve_phase, activate)
@@ -111,6 +118,8 @@ async def test_unholy_fortitude_save_is_held(world, reload):
             assert dice.call_count == (2 if reload else 3)
         fortitude = result["packets"][0]["unholy_fortitude"]
         assert fortitude["roll"] == (2 if reload else 18) and fortitude["success"] is not reload
+        assert "rally_bonuses" not in fortitude
+        assert final.encounter_facts["rally_pending"] == {world.ids[1]: pid}
         fallen = required_player(final, "knight")
         assert fallen.is_fallen is reload and fallen.hp_current == (0 if reload else 1)
     finally:

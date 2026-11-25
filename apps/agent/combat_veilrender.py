@@ -129,7 +129,9 @@ async def turn_start(
                     spec["dc"],
                     "Corruption Field",
                     bonus_dice_eligible=False,
+                    combat_state=state,
                 ),
+                state=state,
             )
             if save is None:
                 return None
@@ -140,6 +142,7 @@ async def turn_start(
                 "effect": "corruption_field",
                 "save_success": save.success,
                 "save_dc": spec["dc"],
+                **encounter_facts.rally_receipt(actor.id, save.rally_sources),
             }
             if scope is not None:
                 scope.steps["effect"] = effect

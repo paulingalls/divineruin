@@ -3,6 +3,7 @@
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass
 
+import encounter_facts
 import zhael_fate
 from check_resolution import D20CheckCore, D20Roll, SkillCheckResult, skill_with_roll
 from check_resolution_save import SavingThrowResult, _save_result
@@ -113,15 +114,17 @@ class PacketRolls:
         return original
 
 
-async def packet_save(progress, session, roller_id, effect, roll):
-    if progress is None:
-        return roll()
-    return await progress.save(session, roller_id, effect, roll)
+async def packet_save(progress, session, roller_id, effect, roll, *, state=None):
+    result = roll() if progress is None else await progress.save(session, roller_id, effect, roll)
+    if result is not None and state is not None:
+        encounter_facts.consume_rally(state, roller_id, result.rally_sources)
+    return result
 
 
 def store_throw(result: SavingThrowResult) -> dict:
     fields = asdict(result)
     fields["consumed_conditions"] = list(result.consumed_conditions)
+    fields["rally_sources"] = list(result.rally_sources)
     return fields
 
 
@@ -129,4 +132,5 @@ def saved_throw(data: dict) -> SavingThrowResult:
     fields = dict(data)
     d20 = fields.pop("d20")
     fields["consumed_conditions"] = tuple(fields["consumed_conditions"])
+    fields["rally_sources"] = tuple(fields.get("rally_sources", ()))
     return SavingThrowResult(**fields, d20=D20Roll(**d20) if d20 is not None else None)

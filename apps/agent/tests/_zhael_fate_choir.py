@@ -108,10 +108,14 @@ async def hostile_condition_ability(world):
     await configure(world, "zhael", "warrior", level=8, stamina={"current": 20, "max": 20})
     ability_id = "warrior_unstoppable_charge"
     await set_elective_equipped(pid, ability_id, True)
-    foe = _enemy("foe", 30)
+    foe = _enemy(world.ids[1], 30)
+    foe.type = "temporary_hollowed"
     state = _build_state(pid, pid, [foe])
     required_player(state, pid).attributes["strength"] = 16
     required_player(state, pid).level = 8
+    from _zhael_marshal_rally_fixtures import pending
+
+    pending(state, foe.id, "zhael-marshal")
     session = world.ctx.userdata
     session.combat_state = state
     call = game_tools(session, declare_phase, resolve_phase, activate)
@@ -125,13 +129,16 @@ async def hostile_condition_ability(world):
         )
         with patch("check_resolution.dice_roll", return_value=_d20(8)) as dice:
             offer = (await call("resolve_phase"))["fate_offer"]
-            assert offer["roller_id"] == foe.id
+            assert (offer["roller_id"], offer["total"]) == (foe.id, 8)
             assert not has_condition(required_player(session.combat_state, foe.id).conditions, "prone")
             charged = (await row(world, 0))["stamina"]["current"]
             assert charged < 20
             result = await _keep(call, offer)
             assert dice.call_count == 1
         assert result["packets"][0]["condition_inflicted"] == "prone"
+        assert "rally_bonuses" not in result["packets"][0]
+        saved = await db_mutations.load_combat_state(state.combat_id)
+        assert saved is not None and saved.encounter_facts["rally_pending"] == {"zhael-marshal": foe.id}
         assert (await row(world, 0))["stamina"]["current"] == charged
     finally:
         await db_mutations.delete_combat_state(state.combat_id)

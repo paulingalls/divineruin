@@ -2,7 +2,6 @@
 
 from dataclasses import replace
 from functools import partial
-from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 import architect_entomb
@@ -14,16 +13,15 @@ import conditions
 import encounter_facts
 import event_types as E
 from combat_ability import _attach_riders, _resolve_condition_target
-from combat_condition_landing import _land_condition_on_one
 from combat_damage import apply_attack_result
 from combat_damage_results import SaveDamageResult
 from combat_down import damage_target_unavailable, has_damage
 from combat_enemy_active import already_hollowed
+from combat_enemy_conditions import land_outcome
 from combat_events import emit_or_publish
 from combat_fate_rolls import packet_save, saved_throw, store_throw
 from combat_legendary_resistance import finalize_save, override_fields
 from combat_support import _resolve_attack_packet
-from condition_restrictions import cannot_act
 from dice import roll as dice_roll
 from session_data import CombatParticipant, SessionData
 
@@ -43,9 +41,10 @@ def is_combined_attack_action(action: dict) -> bool:
     )
 
 
-def _save_fields(result) -> dict:
+def _save_fields(result, roller_id: str) -> dict:
     return {
         **override_fields(result),
+        **encounter_facts.rally_receipt(roller_id, result.rally_sources),
         "save_type": result.save_type,
         "save_roll": result.roll,
         "save_total": result.total,
@@ -61,49 +60,6 @@ def failed_conditions(target: CombatParticipant, action: dict) -> tuple[str, ...
         condition = action.get("applies_condition")
         conditions = [condition] if condition is not None else []
     return tuple(condition for condition in conditions if not already_hollowed(target, condition))
-
-
-async def _apply_condition_result(
-    session: SessionData,
-    attacker: CombatParticipant,
-    target: CombatParticipant,
-    decl: "Declaration",
-    cond_type: str,
-    result,
-    summary: dict,
-    *,
-    state,
-    conn,
-    concentration_break_mod,
-    duration=None,
-) -> None:
-    if result.success:
-        summary["condition_resisted"] = cond_type
-        return
-    if already_hollowed(target, cond_type):
-        return
-    if _land_condition_on_one(
-        state,
-        target.id,
-        attacker,
-        cond_type,
-        source=decl.action or "",
-        packet=summary,
-        duration=duration,
-    ):
-        summary["condition_inflicted"] = cond_type
-        if target.type == "player" and cond_type in cannot_act(target.conditions):
-            broken = await concentration_break_mod.break_concentration_on_incapacitation(
-                session, target.id, combat_state=state, conn=conn
-            )
-            if broken is not None:
-                summary["concentration_broken"] = broken
-        return
-    summary["condition_immune"] = cond_type
-    if item_immunity := target.condition_immunities.get(cond_type):
-        summary["condition_immunity_source"] = item_immunity
-    if cond_type == "prone" and target.prone_immunity:
-        summary["prone_immunity"] = target.prone_immunity
 
 
 async def _resolve_enemy_condition_packet(
@@ -139,7 +95,9 @@ async def _resolve_enemy_condition_packet(
             dc_mod=attacker.dc_mod,
             bonus_dice_eligible=False,
             advantage=reaction_save_advantage,
+            combat_state=state,
         ),
+        state=state,
     )
     if result is None:
         return {}
@@ -151,7 +109,7 @@ async def _resolve_enemy_condition_packet(
         "declaration_type": str(decl.type),
         "action": decl.action,
         "target": target.name,
-        **_save_fields(result),
+        **_save_fields(result, target.id),
     }
     if reaction_save_advantage and result.advantage_applied:
         summary["save_advantage"] = True
@@ -288,7 +246,9 @@ async def resolve_save_damage_action(
                 dc_mod=attacker.dc_mod,
                 bonus_dice_eligible=False,
                 advantage=reaction_save_advantage,
+                combat_state=state,
             ),
+            state=state,
         )
         if result is None:
             return {}
@@ -329,6 +289,7 @@ async def resolve_save_damage_action(
             E.DICE_ROLL,
             {
                 **override_fields(result),
+                **encounter_facts.rally_receipt(target.id, result.rally_sources),
                 "roll_type": "saving_throw",
                 "save_type": result.save_type,
                 "roll": result.roll,
@@ -359,7 +320,7 @@ async def resolve_save_damage_action(
     if progress is not None and progress.paused:
         steps["selected_save"] = store_throw(result)
         return {}
-    summary.update(_save_fields(result))
+    summary.update(_save_fields(result, target.id))
     summary["half_on_success"] = action.get("save_success_damage", "half") == "half"
     summary["damage_halved"] = result.success and summary["half_on_success"]
     if reaction_save_advantage and result.advantage_applied:
@@ -472,25 +433,3 @@ async def resolve_enemy_strike(
         )
 
     return None
-
-
-async def land_outcome(session, attacker, target, decl, action, result, summary, **kwargs):
-    if "resolution" not in action:
-        return await _apply_condition_result(
-            session, attacker, target, decl, action["applies_condition"], result, summary, **kwargs
-        )
-    branch = "conditions_on_success" if result.success else "conditions_on_failure"
-    summary["conditions_inflicted"] = []
-    for rider in action[branch]:
-        await _apply_condition_result(
-            session,
-            attacker,
-            target,
-            decl,
-            rider["applies_condition"],
-            SimpleNamespace(success=False),
-            summary,
-            **{**kwargs, "duration": rider["duration"]},
-        )
-        if summary.get("condition_inflicted") == rider["applies_condition"]:
-            summary["conditions_inflicted"].append(rider["applies_condition"])

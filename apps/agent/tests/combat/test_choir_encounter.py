@@ -7,6 +7,8 @@ from sample_fixtures import CONTENT_ROOT, load_test_creature, make_context, make
 import combat_init
 from tests.combat.test_start_combat import _make_start_combat_mocks
 
+SAVE_ROLL = "check_resolution_save.roll_participant_save"
+
 
 async def start_choir():
     mutations, queries, content = _make_start_combat_mocks()
@@ -220,7 +222,7 @@ async def test_choir_aura_turn_start_once_across_hold_resume(phase, distance, el
     packet = ResolutionPacket(
         actor_id=actor.id, declaration=resolve_declaration({"type": "defend"}), initiative=actor.initiative
     )
-    with patch("check_resolution_save.roll_participant_save", return_value=SimpleNamespace(success=False)) as save:
+    with patch(SAVE_ROLL, return_value=SimpleNamespace(success=False, rally_sources=())) as save:
         await combat_packet._resolve_one_packet(
             ctx.userdata,
             state,
@@ -368,7 +370,7 @@ async def test_choir_aura_movement_uses_turn_start_position(mock_combat_agent_fa
     move = resolve_declaration(
         {"type": "maneuver", "action": "move", "target_id": actor.id, "destination": {"x": 659, "y": 0, "z": 0}}
     )
-    with patch("check_resolution_save.roll_participant_save", return_value=SimpleNamespace(success=True)) as save:
+    with patch(SAVE_ROLL, return_value=SimpleNamespace(success=True, rally_sources=())) as save:
         await combat_packet._resolve_one_packet(
             ctx.userdata,
             state,
@@ -487,7 +489,7 @@ async def test_choir_aura_eligibility_and_success(ineligible, mock_combat_agent_
     elif ineligible == "destroyed":
         state.choir_encounter["phase"] = "destroyed"
     end = MagicMock(end_concentration=AsyncMock())
-    with patch("check_resolution_save.roll_participant_save", return_value=SimpleNamespace(success=True)) as save:
+    with patch(SAVE_ROLL, return_value=SimpleNamespace(success=True, rally_sources=())) as save:
         await choir_encounter.turn_start(ctx.userdata, state, actor, conn=None, concentration_break_mod=end)
         state.round_number += 1
         await choir_encounter.turn_start(ctx.userdata, state, actor, conn=None, concentration_break_mod=end)

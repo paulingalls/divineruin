@@ -70,6 +70,7 @@ class SavingThrowResult:
     advantage_applied: bool = False
     d20: D20Roll | None = None
     success_override: str | None = None
+    rally_sources: tuple[str, ...] = ()
 
 
 def resolve_saving_throw(
@@ -84,6 +85,7 @@ def resolve_saving_throw(
     advantage: bool = False,
     scholars_ward: bool = False,
     modifier_bonus: int = 0,
+    rally_sources: tuple[str, ...] = (),
     originating_participant_id: str | None = None,
 ) -> SavingThrowResult:
     # ``bonus_dice_eligible`` gates the beneficial +1d4 fold/consume (M4.8 story-003). Player-initiated
@@ -144,7 +146,7 @@ def resolve_saving_throw(
         if bonus_dice_eligible
         else BonusDiceRoll(0, ())
     )
-    save_modifier = mod + flat_mod + bonus.total
+    save_modifier = mod + flat_mod + bonus.total + len(rally_sources)
     ward_advantage = scholars_ward and effect_on_fail.strip().lower() == "hollowed"
     d20 = D20Roll(save_modifier, dc, advantage or condition_advantage or ward_advantage, disadvantage)
     return _save_result(
@@ -161,6 +163,7 @@ def resolve_saving_throw(
             consumed_conditions=bonus.consumed,
             advantage_applied=advantage and not disadvantage,
             d20=d20,
+            rally_sources=rally_sources,
         ),
         d20.roll(rng),
         effect_on_fail,
@@ -216,6 +219,7 @@ def roll_participant_save(
     # passes the load gate must also expand here — else it slips through to resolve_saving_throw
     # unexpanded and raises "Unknown save type" mid-fight, the load-gate/runtime divergence this SSOT exists to prevent.
     from architect_encounter import cathedral_bonus
+    from encounter_facts import pending_rally
 
     save_type = _ATTR_FULL.get(save.lower(), save.lower())
     item_advantage = save_type in participant.save_advantages
@@ -236,5 +240,6 @@ def roll_participant_save(
         advantage=advantage or item_advantage,
         scholars_ward=participant.scholars_ward,
         modifier_bonus=cathedral_bonus(combat_state, participant.id),
+        rally_sources=pending_rally(combat_state, participant.id),
         originating_participant_id=originating_participant_id,
     )

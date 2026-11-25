@@ -38,6 +38,7 @@
   "syrath_two_round_veil": "patron_synergy_combat:shadow_veil_rounds",
   "syrath_veiled_strike": "patron_synergy_combat:veiled_strike",
   "kaelen_war_songs": "patron_synergy_combat:inspire_attack_upgrade",
+  "zhael_moment_to_rally": "patron_synergy_combat:grant_marshal_rally",
   "mortaen_hold_the_crossing": "patron_synergy_combat:marshal_death_save_bonus",
   "zhael_second_before": "patron_synergy_combat:first_attack_defense",
   "zhael_appointed_mercy": "patron_synergy_heal:for_cast",

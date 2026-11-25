@@ -243,3 +243,23 @@ async def test_cunning_disengage_survives_fate_reload_and_later_approach(fight: 
     assert require_spatial(await fight.reload())["positions"][mover] == pos(10)
     after = await db_queries.get_player(mover)
     assert after is not None and after["stamina"]["current"] == before["stamina"]["current"] - 2
+
+
+@pytest.mark.parametrize("fight", [{"bandit": "hollow_knight"}], indirect=True)
+async def test_opportunity_critical_save_spends_pending_rally(fight: MawlingHarness) -> None:
+    from _zhael_marshal_rally_fixtures import bonus, pending
+
+    mover, marshal = fight.players
+    pending(await fight.reload(), mover, marshal)
+    await fight.persist()
+    await declare(fight, move(mover, 20))
+    with (
+        patch("check_resolution.dice_roll", side_effect=[_d20(20), _d20(11)]),
+        patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
+    ):
+        (strike,) = strikes(await resolve_allies(fight))
+    save = strike["critical_save"]
+    assert (strike["action"], strike["critical"], strike.get("condition_inflicted")) == ("Corrupted Blade", True, None)
+    assert (save["roll"], save["total"], save["success"]) == (11, 14, True)
+    assert save["rally_bonuses"] == [bonus(marshal, mover)]
+    assert (await fight.reload()).encounter_facts["rally_pending"] == {}

@@ -30,6 +30,7 @@ from combat_legendary_resistance import finalize_save, override_fields
 from combat_participant import CombatParticipant
 from condition_sources import DeliveryRefused
 from declarations import Declaration, DeclarationType
+from patron_synergy_combat import grant_marshal_rally
 from session_data import CombatState
 
 
@@ -115,12 +116,15 @@ async def preflight_orders(state: CombatState, *, queries) -> None:
 
 
 async def narrated_order(
-    actor: CombatParticipant, decl: Declaration, resolved: DeclaredAbility, *, conn, queries
+    state: CombatState, actor: CombatParticipant, decl: Declaration, resolved: DeclaredAbility, *, conn, queries
 ) -> dict:
     ability, variant = resolved
     authored = variant or ability
+    allies, _ = order_recipients(state, actor, decl, ability)
     await pay(actor.id, resolved, queries=queries, conn=conn)
+    grant = await grant_marshal_rally(state, actor.id, allies[0], queries=queries, conn=conn)
     return {
+        **({"rally_grant": grant} if grant is not None else {}),
         "actor_id": actor.id,
         "resolved": True,
         "declaration_type": "ability",

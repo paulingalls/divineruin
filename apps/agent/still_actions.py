@@ -74,7 +74,7 @@ def _freeze_zone(state, actor, action):
     return {"targets": targets, "trigger": trigger, "duration": duration, "results": []}
 
 
-async def _save(session, target, action, effect, progress, advantage=False):
+async def _save(session, state, target, action, effect, progress, advantage=False):
     return await packet_save(
         progress,
         session,
@@ -88,7 +88,9 @@ async def _save(session, target, action, effect, progress, advantage=False):
             effect,
             bonus_dice_eligible=False,
             advantage=advantage,
+            combat_state=state,
         ),
+        state=state,
     )
 
 
@@ -132,7 +134,7 @@ async def resolve_zone(
     for target_id in execution["targets"][len(results) :]:
         target = state.get_participant(target_id)
         save = await _save(
-            session, target, action, "stunned", progress.scope("still_save") if progress is not None else None
+            session, state, target, action, "stunned", progress.scope("still_save") if progress is not None else None
         )
         if save is None:
             return {}
@@ -141,7 +143,7 @@ async def resolve_zone(
         if trigger is None:
             failed_conditions = ("stunned", "charmed") if duration else ("charmed",)
             save = finalize_save(state, target, save, failed_conditions=failed_conditions)
-        result = {"target_id": target_id, **_save_fields(save)}
+        result = {"target_id": target_id, **_save_fields(save, target.id)}
         if trigger is not None and not save.success:
             result["destination"] = zone_edge(state, actor, target_id)
         else:
@@ -218,6 +220,7 @@ async def resolve_touch(
     if not target.is_fallen:
         save = await _save(
             session,
+            state,
             target,
             action,
             "charmed",
@@ -227,7 +230,7 @@ async def resolve_touch(
         if save is None:
             return {}
         save = finalize_save(state, target, save, failed_conditions=("charmed",))
-        summary.update(_save_fields(save))
+        summary.update(_save_fields(save, target.id))
         if not save.success:
             summary["charmed"] = await _charm(
                 state,

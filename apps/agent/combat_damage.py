@@ -187,7 +187,7 @@ async def apply_attack_result(
         receipt = {"response": response, "automatic": isinstance(attack_result, AutomaticDamageResult)}
         progress.steps["damage_receipt"] = receipt
     response = receipt["response"]
-    if target.type == "player":
+    if target.type == "player" and not receipt.get("concentration_settled"):
         response["concentration_broken"] = await concentration_break_mod.break_concentration_on_damage(
             session,
             response["damage"],
@@ -196,9 +196,11 @@ async def apply_attack_result(
             combat_state=combat_state,
             conn=conn,
             progress=progress.scope("concentration"),
+            receipt=response,
         )
         if progress.paused:
             return {}
+        receipt["concentration_settled"] = True
     if combat_state is not None and not receipt["automatic"]:
         rider = critical_save_rider(action, response)
         save = None
@@ -209,7 +211,8 @@ async def apply_attack_result(
                 session,
                 target.id,
                 rider["applies_condition"],
-                partial(roll_critical_save, attacker, target, rider),
+                partial(roll_critical_save, combat_state, attacker, target, rider),
+                state=combat_state,
             )
             if save is None:
                 return {}
@@ -388,6 +391,7 @@ async def _apply_damage(
     # (incapacitated) — ends concentration. The helper no-ops when the player isn't concentrating
     # or the attack dealt no damage; its return (the broken spell id, or None) is narrated below.
     concentration_broken = None
+    concentration_receipt: dict = {}
     if target.type == "player" and not defer_concentration:
         # Thread the phase loop's WORKING combat state so the concentration break strips the linked
         # condition (Bless → blessed) from the state that actually gets persisted — during resolution
@@ -400,6 +404,7 @@ async def _apply_damage(
             damaged_player_id=target.id,
             combat_state=combat_state,
             conn=conn,
+            receipt=concentration_receipt,
         )
 
     if gift_owner and isinstance(attack_result, check_resolution_attack.AttackResult):
@@ -450,6 +455,7 @@ async def _apply_damage(
         "narrative_hint": attack_result.narrative_hint,
         "durability": durability_results,
         "concentration_broken": concentration_broken,
+        **concentration_receipt,
         "dramatic": attack_result.dramatic,
         "context": attack_result.context,
         "target_rose_hollowed": rose_hollowed,
