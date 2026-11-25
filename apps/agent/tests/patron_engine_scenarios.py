@@ -32,6 +32,7 @@ from test_syrath_two_round_veil import SCENARIOS as two_round_veil
 from test_syrath_veiled_strike import SCENARIOS as veiled_strikes
 from test_zhael_fate import SCENARIOS as lucky
 from test_zhael_fate_callers import SCENARIOS as zhael
+from test_zhael_oracle_twice_woven import SCENARIOS as twice_woven
 
 ENGINE_SCENARIOS = {
     **valdris,
@@ -63,6 +64,7 @@ ENGINE_SCENARIOS = {
     **thyra,
     **thyra_wrath,
     **zhael,
+    **twice_woven,
     **lucky,
     **passives,
     **senses,

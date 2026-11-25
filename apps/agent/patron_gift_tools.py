@@ -79,6 +79,7 @@ async def recharge(player_id, player, rest_type, *, conn):
     from _gods_content import load_gods
     from patron_ability_tools import spent_state
     from unbound_tools import DIVINE_IMMUNITY, is_unbound
+    from zhael_fate import FATE, uses_spent
 
     patron_id = (player.get("divine_favor") or {}).get("patron")
     if is_unbound(patron_id):
@@ -96,7 +97,9 @@ async def recharge(player_id, player, rest_type, *, conn):
         if use["recharge"] not in recharges:
             continue
         ability_id = use["id"]
-        if ability_id == VEYTHAR_INSIGHT:
+        if ability_id == FATE:
+            state, default = {"uses_spent": uses_spent(player)}, {"uses_spent": 0}
+        elif ability_id == VEYTHAR_INSIGHT:
             state, default = gift_state(player), {"spent": False, "pending": None}
         else:
             state, default = spent_state(player, ability_id), {"spent": False}

@@ -49,7 +49,7 @@ async def test_two_eligible_followers_race_for_one_offer(world):
             loser = 1 - winner
             assert isinstance(results[loser], ToolError) and world.ids[winner] in str(results[loser])
             assert dice.call_count == 2
-        assert (await row(world, winner))["patron_gifts"][FATE] == {"spent": True}
+        assert (await row(world, winner))["patron_gifts"][FATE] == {"uses_spent": 1}
         assert FATE not in (await row(world, loser)).get("patron_gifts", {})
         with pytest.raises(ToolError, match=world.ids[winner]):
             await respond(world.ids[loser], offer["offer_id"], keep="reroll")
@@ -58,25 +58,53 @@ async def test_two_eligible_followers_race_for_one_offer(world):
         await lifecycle.aclose()
 
 
-async def test_two_sessions_serialize_spend_on_the_player_row(world):
+@pytest.mark.parametrize("archetype,spent", [("mage", 0), ("oracle", 1)])
+async def test_two_sessions_serialize_spend_on_the_player_row(world, archetype, spent):
     pid = world.ids[0]
-    await configure(world, "zhael", "mage")
+    await configure(world, "zhael", archetype, patron_gifts={FATE: {"uses_spent": spent}} if spent else {})
     sessions = [world.ctx.userdata, SessionData(player_id=pid, location_id="accord_guild_hall")]
     calls = [game_tools(session, check, activate) for session in sessions]
-    with patch("check_resolution.dice_roll", side_effect=[_d20(2), _d20(3), _d20(20)]) as dice:
+    tasks = []
+    with patch("check_resolution.dice_roll", side_effect=[_d20(2), _d20(3), _d20(20), _d20(20)]) as dice:
         offers = [(await call("check", roll=SAVE))["fate_offer"] for call in calls]
-        results = await asyncio.gather(
-            *(call("activate", id=FATE, offer_id=offer["offer_id"]) for call, offer in zip(calls, offers, strict=True)),
-            return_exceptions=True,
-        )
-        loser = next(i for i, result in enumerate(results) if isinstance(result, ToolError))
-        assert "spent" in str(results[loser])
+        choices = [{"id": FATE, "offer_id": offer["offer_id"]} for offer in offers]
+        try:
+            async with world.pool.acquire() as writer, writer.transaction():
+                await writer.fetchrow("SELECT * FROM players WHERE player_id=$1 FOR UPDATE", pid)
+                backend = await writer.fetchval("SELECT pg_backend_pid()")
+                tasks = [
+                    asyncio.create_task(call("activate", **choice)) for call, choice in zip(calls, choices, strict=True)
+                ]
+                async with asyncio.timeout(5):
+                    while (
+                        await world.pool.fetchval(
+                            """WITH RECURSIVE blocked(pid) AS (
+                                SELECT pid FROM pg_stat_activity WHERE $1=ANY(pg_blocking_pids(pid))
+                                UNION SELECT a.pid FROM pg_stat_activity a JOIN blocked b
+                                ON b.pid=ANY(pg_blocking_pids(a.pid))) SELECT count(*) FROM blocked""",
+                            backend,
+                        )
+                        < 2
+                    ):
+                        assert not any(task.done() for task in tasks)
+                        await asyncio.sleep(0.01)
+            results = await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), 10)
+        finally:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+        refusals = [index for index, result in enumerate(results) if isinstance(result, ToolError)]
+        assert len(refusals) == 1 and "unavailable or spent" in str(results[refusals[0]]), results
+        loser = refusals[0]
         result = results[1 - loser]
-        assert isinstance(result, dict) and result["reroll"]["die"] == 20
+        assert isinstance(result, dict) and result["reroll"]["die"] == 20 and result["remaining_uses"] == 0
         assert dice.call_count == 3
-    original = await calls[loser]("activate", id=FATE, offer_id=offers[loser]["offer_id"], keep="original")
+    expected = {"uses_spent": spent + 1}
+    assert (await row(world, 0))["patron_gifts"][FATE] == expected
+    original = await calls[loser]("activate", **choices[loser], keep="original")
     assert original["roll"] == offers[loser]["die"] and original["effect_applied"] == "frightened"
-    assert (await row(world, 0))["patron_gifts"][FATE] == {"spent": True}
+    assert (await row(world, 0))["patron_gifts"][FATE] == expected
 
 
 async def test_transaction_abort_preserves_offer_and_attack_checkpoint(world):
@@ -115,7 +143,7 @@ async def test_transaction_abort_preserves_offer_and_attack_checkpoint(world):
             assert session.combat_state.to_dict() == checkpoint
             saved = await db_mutations.load_combat_state(state.combat_id)
             assert saved is not None and saved.to_dict() == checkpoint
-            assert (await row(world, 0))["patron_gifts"][FATE] == {"spent": True}
+            assert (await row(world, 0))["patron_gifts"][FATE] == {"uses_spent": 1}
             kept = await call("activate", **accept, keep="reroll")
             assert kept["packets"][0]["damage"] == 8 and dice.call_count == 3
         saved = await db_mutations.load_combat_state(state.combat_id)
