@@ -94,7 +94,7 @@ def preflight(state, declarations):
             try:
                 validate_move(projection, actor_id, declaration, eligibility=False)
             except ThornwallMoveRefused:
-                # A gift can change a queued route. Resolve it as a stopped move.
+                # A wall raised after declaration refuses the ally move at resolution, not the whole phase.
                 continue
 
 
