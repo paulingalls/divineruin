@@ -96,6 +96,7 @@ SCENARIOS = {
             for season, active in (("autumn", "insight"), ("winter", "stealth"))
             for skill in SKILLS
         ]
+        + [(season, skill, "thyra", 0) for season in ("spring", "summer") for skill in ("insight", "stealth")]
         + [("autumn", "insight", "veythar", 0)],
     ),
 }
@@ -133,6 +134,8 @@ async def test_patron_query_reports_active_season(dev_db_pool):
         ("spell", False, "spring", THYRA, 16, 4),
         ("spell", True, "spring", THYRA, 16, 4),
         ("item", False, "summer", THYRA, 3, 5),
+        ("spell", False, "autumn", THYRA, 3, 5),
+        ("item", True, "winter", THYRA, 3, 5),
         ("item", True, "spring", None, 3, 5),
         ("spell", False, "spring", {"patron": "none", "level": 0, "max": 100}, 3, 5),
         ("spell", True, "spring", {**THYRA, "level": 90}, 3, 6),
@@ -206,6 +209,8 @@ async def test_spring_regenerate_surge_tick_and_settle(dev_db_pool):
         ("arcane_fireball", "summer", 1, 6, True, False, [3], "thyra"),
         ("arcane_fireball", "summer", 20, 6, False, False, [3], "thyra"),
         ("arcane_fireball", "spring", 1, 7, False, False, [7], "thyra"),
+        ("arcane_fireball", "autumn", 1, 7, False, False, [7], "thyra"),
+        ("arcane_fireball", "winter", 1, 7, False, False, [7], "thyra"),
         pytest.param("arcane_fireball", "summer", 1, 7, False, False, [7], "aelora", id="other_patron"),
         ("primal_produce_flame", "summer", 15, 7, False, False, [8], "thyra"),
         ("primal_produce_flame", "summer", 1, 7, False, False, [0], "thyra"),
