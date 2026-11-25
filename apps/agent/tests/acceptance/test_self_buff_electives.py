@@ -12,6 +12,7 @@ from acceptance.test_still_anchors import mock_combat_agent_factory as mock_comb
 
 import ability_persistence
 import combat_spatial
+import conditions
 import db_mutations
 import db_mutations_conditions
 import db_queries
@@ -151,7 +152,8 @@ async def test_precision_resumes_without_rolling_or_paying_twice(electives: Mawl
     assert await stamina(actor) == before - 3
 
 
-async def test_reckless_exposure_ends_on_next_declaration(electives: MawlingHarness) -> None:
+@pytest.mark.parametrize("stunned", [False, True], ids=["warrior_declares", "warrior_omitted"])
+async def test_reckless_exposure_ends_at_next_declaration_beat(electives: MawlingHarness, stunned: bool) -> None:
     actor, ally = electives.players
     await equip(electives, RECKLESS)
     await db_mutations.set_player_flag(actor, "extra_attack", True)
@@ -174,13 +176,23 @@ async def test_reckless_exposure_ends_on_next_declaration(electives: MawlingHarn
     assert await stamina(actor) == before - 2
     assert "reckless_assault" in await condition_types(electives, actor)
     assert "reckless_assault" not in await condition_types(electives, ally)
-    await declare(electives, weapon_attack(actor, foe, ""), strike)
+    if stunned:
+        state = await electives.reload()
+        warrior = state.get_participant(actor)
+        assert warrior is not None
+        warrior.conditions = conditions.apply_condition(warrior.conditions, "stunned", source=foe, duration=1)
+        await electives.persist()
+        await declare(electives, strike)
+    else:
+        await declare(electives, weapon_attack(actor, foe, ""), strike)
     assert "reckless_assault" not in await condition_types(electives, actor)
-    with patch("check_resolution.dice_roll", side_effect=map(_d20, [2, 3, 4])) as rolls:
+    ordinary_faces = [4] if stunned else [2, 3, 4]
+    with patch("check_resolution.dice_roll", side_effect=map(_d20, ordinary_faces)) as rolls:
         ordinary = await electives.drain()
-    assert [swing["roll"] for swing in receipt(ordinary, actor)["attacks"]] == [2, 3]
+    if not stunned:
+        assert [swing["roll"] for swing in receipt(ordinary, actor)["attacks"]] == [2, 3]
     assert receipt(ordinary, foe)["roll"] == 4
-    assert rolls.call_count == 3
+    assert rolls.call_count == len(ordinary_faces)
 
 
 async def prepare_rogue(walk: MawlingHarness) -> None:

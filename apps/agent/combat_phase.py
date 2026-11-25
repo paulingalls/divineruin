@@ -140,8 +140,7 @@ def advance_combat_phase(
         for actor_id, declaration in resolved.items():
             validate_declaration(next_state, actor_id, declaration, persisted_declarations)
         for participant in next_state.participants:
-            if participant.id in resolved:
-                participant.conditions = remove_conditions(participant.conditions, (RECKLESS_ASSAULT_RIDER,))
+            participant.conditions = remove_conditions(participant.conditions, (RECKLESS_ASSAULT_RIDER,))
         next_state.pending_declarations = persisted_declarations
         next_state.reactions_available = {
             p.id: next_state.reactions_available.get(p.id, reaction_spend.unspent())

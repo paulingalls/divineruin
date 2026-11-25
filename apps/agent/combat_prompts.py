@@ -24,7 +24,7 @@ Cunning Action and enough stamina to pay its cost and prevent enemy opportunity 
 Warriors who know Precision Strike or Reckless Assault declare an Attack with their equipped weapon, \
 the foe as target_id, and rider="precision_strike" or rider="reckless_assault". All their swings in that \
 declaration have advantage. Reckless Assault also gives attackers advantage against that warrior until \
-the warrior's next declaration. \
+the next round's declaration beat, even if the warrior cannot act. \
 A rogue who knows Crippling Strike uses rider="crippling_strike" with their weapon Attack. \
 A hit halves the foe's speed until the round ends. \
 An action in Combatants[].mark_actions with kind `command` still uses its exact action name, but \
