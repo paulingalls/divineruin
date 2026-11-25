@@ -154,6 +154,7 @@ async def test_departure_and_strike(fight: MawlingHarness, strike: str) -> None:
         assert require_spatial(state)["positions"][MOVER] == pos(5)
         assert state.held_actions[0]["opportunity_approach"]["endpoint"] == pos(20)
         assert state.held_actions[0]["roll"] is None
+        assert party_victims(state, MOVER) == []
         rolls.assert_not_called()
         movement = next(packet for packet in result["packets"] if packet["actor_id"] == MOVER)
         assert movement["attack_pending"] and movement["moved_ft"] == 2
@@ -176,7 +177,7 @@ async def test_departure_and_strike(fight: MawlingHarness, strike: str) -> None:
         reactions = [packet for packet in result["packets"] if packet.get("reaction") == STRIKE]
         assert require_spatial(state)["positions"][warrior] == pos(0)
         assert party_victims(state, warrior) == []
-        # The warrior's strike records nothing; only the mover's own rolled attempt is a party attack.
+        # The warrior's strike records nothing; the mover counts only once its own attack rolls.
         assert party_victims(state, MOVER) == ([] if strike == "drop" else [target])
         if strike == "decline":
             assert not reactions and MOVER not in state.encounter_facts["attacked"]
