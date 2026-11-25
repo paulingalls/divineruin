@@ -13,6 +13,7 @@ import combat_grapple
 import combat_hollow_resonance
 import combat_phase
 import combat_recharge
+import combat_round_checkpoint
 import concealment
 import conditions
 import encounter_facts
@@ -127,7 +128,6 @@ async def wrap_phase(
     *,
     conn,
     sink,
-    cast_outcome,
     mutations,
     queries,
     save_resolver,
@@ -231,7 +231,12 @@ async def wrap_phase(
                 if decayed != base:
                     pending_by_member[m.player_id] = decayed
                     await resonance_mutations.update_player_resonance(m.player_id, decayed, conn=conn)
-        await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
+        await combat_round_checkpoint.capture(
+            session,
+            state,
+            conn=conn,
+            mutations=mutations,
+        )
         # Push the HUD's combat-tracker + condition icons live (M12 story-001). Built from the
         # post-tick state (save-cleared conditions are gone) and buffered in the sink so the
         # packet only reaches the client AFTER the phase tx commits — a rolled-back phase

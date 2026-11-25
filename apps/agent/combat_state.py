@@ -7,6 +7,7 @@ from pathlib import Path
 
 import choir_effects
 import combat_reaction_contest
+import combat_round_checkpoint
 import combat_spatial
 import combat_structures
 import combat_wrongdoing
@@ -138,6 +139,8 @@ class CombatState:
     spatial: dict | None = None
     encounter_facts: encounter_facts.EncounterFacts = field(default_factory=encounter_facts.empty)
 
+    round_checkpoints: list[dict] = field(default_factory=list)
+
     def get_participant(self, participant_id: str) -> CombatParticipant | None:
         for p in self.participants:
             if p.id == participant_id:
@@ -244,4 +247,7 @@ class CombatState:
         architect_actions.validate_continuations(state)
         choir_encounter.validate(state)
         still_encounter.validate(state)
+        state.round_checkpoints = combat_round_checkpoint.load_history(
+            data.get("round_checkpoints", []), state.combat_id, state.round_number
+        )
         return state

@@ -228,6 +228,7 @@ async def test_fate_pause_keeps_final_round_zone_and_does_not_repeat_healing(wor
         state = active(world)
         state.hearthfire_zones[0]["rounds_remaining"] = 1
         state.round_number = 3
+        state.round_checkpoints = []  # the jump skips rounds, so earlier round-start checkpoints no longer chain
         participant(state, owner).conditions = apply_condition([], "frightened", source=FOE, duration=3)
         participant(state, FOE).conditions = apply_condition([], "frightened", source=owner, duration=3)
         await fall(world, 1)

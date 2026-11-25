@@ -14,6 +14,7 @@ import unbound_tools
 import veythar_wellspring
 import zhael_fate
 import zhael_foretold_words
+import zhael_unravel_fate
 from _gods_content import load_gods
 from aelora_hearthfire import GIFT as HEARTHFIRE
 from combat_terrain import resolve_terrain
@@ -142,6 +143,11 @@ async def query_patron(
         elif ability["id"] == SCALES_VERDICT:
             ability["activation_hint"] = (
                 f'Use activate(id="{SCALES_VERDICT}", target_id=<living hostile creature id in this fight>).'
+            )
+        elif ability["id"] == zhael_unravel_fate.GIFT:
+            ability["activation_hint"] = (
+                f'Use activate(id="{zhael_unravel_fate.GIFT}") at a round boundary before declarations. '
+                "The previous round unhappens and everyone declares again."
             )
         elif ability["id"] == patron_gateway.GATEWAY and ability["available"]:
             ability["destinations"] = await patron_gateway.destinations(player_id, session.location_id)

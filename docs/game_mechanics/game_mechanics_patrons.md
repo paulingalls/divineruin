@@ -323,7 +323,7 @@ Unique interaction: instead of modifying generation rates, Zhael alters the Holl
 |---|---|---|
 | Acknowledged | Lucky | Once per long rest, turn a natural 1 into a natural 20, or a natural 20 into a natural 1 (before result is narrated) |
 | Devoted | Prophecy Fragment | Start of each session, DM gives a cryptic one-sentence prophecy. Recognizing the moment and acting on it grants advantage |
-| Exalted | Unravel Fate | Once per session, undo one event from the last round. Damage reversed, positions restored, resources returned. One round unhappens. Generates 8 Resonance on the user regardless of caster status |
+| Exalted | Unravel Fate | Once per session, at a round boundary before declarations, undo the entire last round. Damage reversed, positions restored, resources returned. One round unhappens and everyone declares again. Generates 8 Resonance on the user regardless of caster status |
 
 **Layer 4 — Archetype Resonance**
 

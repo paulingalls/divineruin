@@ -29,6 +29,7 @@ from combat_init_participants import assemble_participants
 from combat_init_participants import class_reaction_ids as class_reaction_ids
 from combat_init_validation import validate_enemy_action_shapes as validate_enemy_action_shapes
 from combat_init_validation import validate_enemy_resistance_tags as validate_enemy_resistance_tags
+from combat_round_checkpoint import ENTRY_RESET_FLAGS
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from combat_support import _participant_roster
 from combat_ui_update import build_combat_ui_update
@@ -218,10 +219,8 @@ async def _start_combat_locked(
     # (a swing outside combat won't leak into this encounter's end-of-combat accrual). M18
     # story-003: every party member's own flags reset, so no member's prior-encounter swing leaks.
     for member in session.party.members:
-        member.weapon_used = False
-        member.weapon_crit_vs_heavy = False
-        member.draethar_inner_fire_used = False
-        member.unbound_raw_channeling_used = False
+        for name in ENTRY_RESET_FLAGS:
+            setattr(member, name, False)
 
     # Build initiative summary once for event + response
     initiative_summary = [

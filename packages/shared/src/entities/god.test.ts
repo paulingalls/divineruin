@@ -182,6 +182,18 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     implementation_id: verdict,
     recharge: "per_session",
   });
+  const unravel = "zhael_unravel_fate";
+  expect(
+    validateGods(catalog).find((god) => god.god_id === "zhael")?.layer_3_tier_abilities.exalted,
+  ).toMatchObject({
+    id: unravel,
+    status: "active",
+    resolution: "engine",
+    implementation_id: unravel,
+    recharge: "per_session",
+    effect:
+      "Once per session, at a round boundary before declarations, undo the entire last round. Damage reversed, positions restored, resources returned. One round unhappens and everyone declares again. Generates 8 Resonance on the user regardless of caster status",
+  });
   const ward = "mortaen_death_ward";
   expect(
     validateGods(catalog).find((god) => god.god_id === "mortaen")?.layer_3_tier_abilities
@@ -261,6 +273,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     wrath,
     thornwall,
     verdict,
+    unravel,
     ward,
     embrace,
     echo,
@@ -272,7 +285,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     ),
   ).toEqual(engine);
   const pending = abilities.filter((a) => !narrated.has(a.id) && !engine.has(a.id));
-  expect(pending.map((a) => a.id)).toEqual(["zhael_unravel_fate"]);
+  expect(pending).toEqual([]);
   for (const ability of abilities.filter((a) => passives.has(a.id))) {
     expect([ability.recharge, ability.implementation_id]).toEqual(["always", ability.id]);
   }
@@ -365,3 +378,28 @@ for (const entry of corpus.layer_1_cases) {
     }
   });
 }
+
+test("Syrath's Shadow Veil duration and strike are registered for rogue, spy and whisper", () => {
+  const matrix = validateGods(catalog).find(
+    (god) => god.god_id === "syrath",
+  )?.layer_4_synergy_matrix;
+  for (const archetype of ["rogue", "spy", "whisper"] as const) {
+    expect(matrix?.[archetype]?.clauses).toEqual([
+      {
+        effect: "Shadow Veil extends to 2 rounds.",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "syrath_two_round_veil",
+      },
+      {
+        effect:
+          archetype === "rogue"
+            ? "Invisible Sneak Attack +1d6"
+            : "Weapon attacks from Shadow Veil deal +1d6",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "syrath_veiled_strike",
+      },
+    ]);
+  }
+});
