@@ -214,6 +214,7 @@ def _put(row: dict, path: tuple, value) -> None:
         ((0, "players", "actor", "data"), []),
         ((0, "players", "actor", "data", "conditions"), []),
         ((0, "players", "actor", "data", "flags"), {"story": True}),
+        ((0, "players", "actor", "data", "flags"), {"shadow_veil": True}),
         ((0, "players", "actor", "data", "flags"), []),
         ((0, "players", "actor", "session_flags"), []),
         ((0, "players", "actor", "session_flags"), {}),

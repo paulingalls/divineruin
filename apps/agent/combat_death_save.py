@@ -200,6 +200,8 @@ async def _request_death_save_locked(
     resumed=False,
 ) -> str:
     state = CombatState.from_dict(cs.to_dict())  # working copy; adopted post-commit
+    if state.beat == "declaration":
+        state.round_opening_settled = True
     working = state.get_participant(faller_id)
     assert working is not None  # copied from the state we just resolved against
     counted_before = encounter_facts.counted_death(working)
