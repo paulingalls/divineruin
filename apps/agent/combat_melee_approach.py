@@ -1,12 +1,13 @@
 """One declaration shares its movement allowance across all melee strikes."""
 
 import math
+from typing import TYPE_CHECKING
 
 from check_resolution_attack import _is_ranged
 from combat_down import has_damage
 from combat_movement_cost import crosses_low_ceiling, reachable_point
 from combat_spatial import distance, number, position, require_spatial
-from combat_spatial_declarations import apply_move, ineligible
+from combat_spatial_declarations import apply_move, ineligible, resolve_traversal
 from combat_structures import (
     THORNWALL,
     blocked_reason,
@@ -18,6 +19,12 @@ from combat_structures import (
 from condition_restrictions import effective_speed
 from declarations import Declaration, DeclarationType
 from encounter_actions import action_kind
+
+if TYPE_CHECKING:
+    from combat_fate_rolls import PacketRolls
+    from combat_participant import CombatParticipant
+    from combat_state import CombatState
+    from session_data import SessionData
 
 
 def is_melee(action):
@@ -73,7 +80,9 @@ def plan(state, actor, target, action, budget) -> tuple[dict, dict | None]:
         # The strike stays blocked however far the approach gets; contact needs the wall reached.
         facts.update(thornwall_blocked=wall.id, reason=blocked_reason(wall))
         # Shorten the route to the wall before any reach exits are computed from its endpoint.
-        endpoint = reachable_point(spatial, actor.id, origin, destination, budget["remaining"])
+        endpoint = reachable_point(
+            spatial, actor.id, origin, destination, budget["remaining"], tidewalker=actor.tidewalker
+        )
         segment = spatial["structures"][wall.id]
         if blocks_path(origin, endpoint, segment):
             endpoint = stop_before_wall(origin, endpoint, segment)
@@ -89,11 +98,11 @@ def plan(state, actor, target, action, budget) -> tuple[dict, dict | None]:
         desired = {
             axis: origin[axis] + (destination[axis] - origin[axis]) * travel_needed / separation for axis in origin
         }
-        end = reachable_point(spatial, actor.id, origin, desired, budget["remaining"])
+        end = reachable_point(spatial, actor.id, origin, desired, budget["remaining"], tidewalker=actor.tidewalker)
         if mode == "flying" and crosses_low_ceiling(spatial, actor.id, origin, end):
             mode = "ground"
             budget["remaining"] = ground_speed if previous_allowance is None else previous_allowance
-            end = reachable_point(spatial, actor.id, origin, desired, budget["remaining"])
+            end = reachable_point(spatial, actor.id, origin, desired, budget["remaining"], tidewalker=actor.tidewalker)
         if end != origin:
             return facts, {"endpoint": end, "mode": mode, "target": destination, "reach": reach}
     return finish(facts, destination, reach, reason), None
@@ -110,7 +119,32 @@ def apply_leg(state, actor, facts: dict, endpoint: dict, mode: str, budget: dict
         leg_declaration(actor.id, endpoint, mode),
         allowance=budget["remaining"],
     )
-    if not moved["resolved"]:
+    return _record_leg(facts, moved, budget)
+
+
+async def resolve_leg(
+    session: "SessionData | None",
+    state: "CombatState",
+    actor: "CombatParticipant",
+    facts: dict,
+    endpoint: dict,
+    mode: str,
+    budget: dict,
+    progress: "PacketRolls | None",
+) -> dict | None:
+    moved = await resolve_traversal(
+        session,
+        state,
+        actor,
+        leg_declaration(actor.id, endpoint, mode),
+        allowance=budget["remaining"],
+        progress=progress,
+    )
+    return None if moved is None else _record_leg(facts, moved, budget)
+
+
+def _record_leg(facts: dict, moved: dict, budget: dict) -> dict:
+    if "moved_ft" not in moved:
         return {**facts, **moved, "attack_resolved": False}
     travel = facts["moved_ft"] + moved["moved_ft"]
     spent = min(budget["remaining"], moved["movement_spent_ft"])
@@ -124,8 +158,11 @@ def apply_leg(state, actor, facts: dict, endpoint: dict, mode: str, budget: dict
         "closed_distance": travel > 0,
         **({"left_pit": True} if moved.get("left_pit") else {}),
     }
-    if moved.get("left_pit"):
-        # Climbing out of a pit spends the whole move, so the mover never reaches the Thornwall.
+    if "hearthfire_entries" in moved:
+        result["hearthfire_entries"] = facts.get("hearthfire_entries", []) + moved["hearthfire_entries"]
+    if not moved["resolved"]:
+        result.update(resolved=False, attack_resolved=False, reason=moved["reason"])
+    if moved.get("left_pit") or not moved["resolved"]:
         result.pop("thornwall_id", None)
     return result
 
@@ -143,13 +180,43 @@ def finish(facts: dict, target: dict, reach: float, reason: str | None = None) -
     return facts
 
 
-def prepare(state, actor, target, action, budget):
-    facts, route = plan(state, actor, target, action, budget)
-    if route is not None:
-        facts = apply_leg(state, actor, facts, route["endpoint"], route["mode"], budget)
-        if facts["resolved"]:
-            finish(facts, route["target"], route["reach"])
-    return facts
+async def prepare(
+    session: "SessionData | None",
+    state: "CombatState",
+    actor: "CombatParticipant",
+    target: "CombatParticipant",
+    action: dict,
+    budget: dict,
+    *,
+    progress: "PacketRolls | None" = None,
+) -> dict | None:
+    saved = progress.steps.pop("melee_plan", None) if progress is not None else None
+    if saved is None:
+        facts, route = plan(state, actor, target, action, budget)
+    else:
+        facts, route = saved["facts"], saved["route"]
+        budget.update(saved["budget"])
+    if route is None:
+        return facts
+    result = await resolve_leg(session, state, actor, facts, route["endpoint"], route["mode"], budget, progress)
+    if result is None:
+        assert progress is not None
+        progress.steps["melee_plan"] = {"facts": facts, "route": route, "budget": budget}
+        return None
+    return finish(result, route["target"], route["reach"]) if result["resolved"] else result
+
+
+async def prepare_packet(
+    session: "SessionData",
+    state: "CombatState",
+    actor: "CombatParticipant",
+    target: "CombatParticipant",
+    action: dict,
+    budget: dict,
+    progress: "PacketRolls | None",
+) -> dict | None:
+    approach = progress.scope("melee_approach") if progress is not None else None
+    return await prepare(session, state, actor, target, action, budget, progress=approach)
 
 
 def cache_held(state, head: dict, facts: dict, budget: dict) -> None:

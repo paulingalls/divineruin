@@ -123,6 +123,7 @@ async def test_pending_and_always_on_refuse_without_writes(dev_db_pool, monkeypa
     [
         ("veythar", "veythar_scholars_ward"),
         ("kaelen", "kaelen_warriors_endurance"),
+        ("nythera", "nythera_tidewalker"),
     ],
 )
 async def test_engine_passives_are_eligible_but_never_spend(dev_db_pool, patron, ability_id):

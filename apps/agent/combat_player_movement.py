@@ -220,7 +220,9 @@ class PlayerMovement:
     def _leg(self, actor: CombatParticipant, route: dict, endpoint: dict) -> None:
         facts, budget = route["facts"], route["budget"]
         remaining = budget["remaining"]
-        cost = movement_cost(require_spatial(self.state), actor.id, facts["destination"], endpoint)
+        cost = movement_cost(
+            require_spatial(self.state), actor.id, facts["destination"], endpoint, tidewalker=actor.tidewalker
+        )
         if cost > remaining and math.isclose(cost, remaining, rel_tol=1e-12, abs_tol=1e-12):
             budget["remaining"] = cost
         route["facts"] = melee.apply_leg(self.state, actor, facts, endpoint, route["mode"], budget)

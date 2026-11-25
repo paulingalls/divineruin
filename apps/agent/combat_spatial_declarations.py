@@ -1,11 +1,20 @@
 """Movement uses one phase declaration and the actor's effective speed."""
 
+from typing import TYPE_CHECKING
+
+import aelora_hearthfire
 from architect_encounter import is_owner
 from combat_movement_cost import crosses_low_ceiling, movement_cost
 from combat_spatial import distance, place, point, position, require_spatial
 from combat_structures import THORNWALL, blocking_wall, stop_before_wall
 from condition_restrictions import cannot_act, effective_speed, ignores_structures, speed_zero
-from declarations import DeclarationType, resolve_declaration
+from declarations import Declaration, DeclarationType, resolve_declaration
+
+if TYPE_CHECKING:
+    from combat_fate_rolls import PacketRolls
+    from combat_participant import CombatParticipant
+    from combat_state import CombatState
+    from session_data import SessionData
 
 
 class MovementRefused(ValueError):
@@ -30,7 +39,7 @@ def movement_geometry(state, actor_id, declaration, *, allowance=None):
     speed = effective_speed(spatial["speeds"][actor_id], actor.conditions) if allowance is None else allowance
     if in_pit(state, actor_id):
         return origin, 0, speed, None
-    spent = movement_cost(spatial, actor_id, origin, destination)
+    spent = movement_cost(spatial, actor_id, origin, destination, tidewalker=actor.tidewalker)
     if declaration.movement_mode == "flying" and crosses_low_ceiling(spatial, actor_id, origin, destination):
         raise MovementRefused(f"{actor_id} cannot fly through a lowered ceiling")
     melody = actor.choir_movement_round == state.round_number or any(
@@ -46,7 +55,7 @@ def movement_geometry(state, actor_id, declaration, *, allowance=None):
         if actor.is_ally:
             raise ThornwallMoveRefused(reason)
         destination = stop_before_wall(origin, destination, spatial["structures"][wall.id])
-        spent = movement_cost(spatial, actor_id, origin, destination)
+        spent = movement_cost(spatial, actor_id, origin, destination, tidewalker=actor.tidewalker)
     return destination, distance(origin, destination), spent, wall
 
 
@@ -98,7 +107,9 @@ def preflight(state, declarations):
                 continue
 
 
-def apply_move(state, actor, declaration, *, allowance=None):
+def apply_move(
+    state: "CombatState", actor: "CombatParticipant", declaration: Declaration, *, allowance: float | None = None
+) -> dict:
     if reason := ineligible(actor):
         return {"actor_id": actor.id, "resolved": False, "reason": reason}
     try:
@@ -107,10 +118,9 @@ def apply_move(state, actor, declaration, *, allowance=None):
         return {"actor_id": actor.id, "resolved": False, "reason": str(error)}
     climbed = in_pit(state, actor.id)
     if climbed:
+        assert state.architect_encounter is not None
         del state.architect_encounter["pits"][actor.id]
-    else:
-        place(state, actor.id, destination)
-    return {
+    facts = {
         "actor_id": actor.id,
         "resolved": True,
         "declaration_type": "maneuver",
@@ -121,6 +131,66 @@ def apply_move(state, actor, declaration, *, allowance=None):
         **({"thornwall_id": wall.id, "reason": f"Stopped by {wall.name}"} if wall else {}),
         "destination": destination,
     }
+
+    if climbed:
+        return facts
+    spatial = require_spatial(state)
+    origin = position(spatial, actor.id)
+    contacts = aelora_hearthfire.contacts(state, actor, origin, destination)
+    if contacts:
+        edge = contacts[0]["edge"]
+        place(state, actor.id, edge)
+        return {
+            **_at_edge(spatial, actor, origin, edge, facts),
+            "hearthfire_route": {"origin": origin, "contacts": contacts, "entries": [], "finish": facts},
+        }
+    place(state, actor.id, destination)
+    return facts
+
+
+def _at_edge(spatial: dict, actor: "CombatParticipant", origin: dict, edge: dict, finish: dict) -> dict:
+    return {
+        **{key: value for key, value in finish.items() if key not in ("thornwall_id", "reason")},
+        "resolved": False,
+        "reason": "Hearthfire stops movement",
+        "destination": edge,
+        "moved_ft": distance(origin, edge),
+        "movement_spent_ft": movement_cost(spatial, actor.id, origin, edge, tidewalker=actor.tidewalker),
+    }
+
+
+async def resolve_traversal(
+    session: "SessionData | None",
+    state: "CombatState",
+    actor: "CombatParticipant",
+    declaration: Declaration,
+    *,
+    allowance: float | None = None,
+    progress: "PacketRolls | None" = None,
+) -> dict | None:
+    pending = progress.steps.pop("hearthfire_move", None) if progress is not None else None
+    if pending is None:
+        facts = apply_move(state, actor, declaration, allowance=allowance)
+        pending = facts.pop("hearthfire_route", None)
+        if pending is None:
+            return facts
+    contacts, entries = pending["contacts"], pending["entries"]
+    for index in range(len(entries), len(contacts)):
+        contact = contacts[index]
+        receipt = await aelora_hearthfire.settle_entry(session, state, actor, contact["zone_index"], progress)
+        if receipt is None:
+            assert progress is not None
+            progress.steps["hearthfire_move"] = pending
+            return None
+        entries.append(receipt)
+        if not receipt["success"]:
+            facts = _at_edge(require_spatial(state), actor, pending["origin"], contact["edge"], pending["finish"])
+            return {**facts, "reason": receipt["dm_cue"], "hearthfire_entries": entries}
+        if index + 1 < len(contacts):
+            place(state, actor.id, contacts[index + 1]["edge"])
+    finish = pending["finish"]
+    place(state, actor.id, finish["destination"])
+    return {**finish, "hearthfire_entries": entries}
 
 
 def preflight_state(state):

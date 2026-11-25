@@ -97,7 +97,10 @@ class TestSessionSummary:
             "next_hooks": ["The ruins hold deeper secrets"],
         }
 
-        with patch("session_summary._call_llm_summary", new_callable=AsyncMock, return_value=llm_response):
+        with (
+            patch("session_summary._call_llm_summary", new_callable=AsyncMock, return_value=llm_response),
+            patch("db_activity_queries.get_session_story_moments", new_callable=AsyncMock, return_value=[]),
+        ):
             result = await generate_session_summary(sd, None, time.time() - 600)
 
         assert result["summary"] == "You ventured into the ruins and found a sword."
@@ -115,7 +118,10 @@ class TestSessionSummary:
         sd.record_event("Defeated a goblin")
         sd.record_event("Found a key")
 
-        with patch("session_summary._call_llm_summary", new_callable=AsyncMock, return_value=None):
+        with (
+            patch("session_summary._call_llm_summary", new_callable=AsyncMock, return_value=None),
+            patch("db_activity_queries.get_session_story_moments", new_callable=AsyncMock, return_value=[]),
+        ):
             result = await generate_session_summary(sd, None, time.time() - 300)
 
         assert "Defeated a goblin" in result["summary"]
@@ -140,7 +146,10 @@ class TestSessionSummary:
             "next_hooks": [],
         }
 
-        with patch("session_summary._call_llm_summary", new_callable=AsyncMock, return_value=llm_response) as mock_llm:
+        with (
+            patch("session_summary._call_llm_summary", new_callable=AsyncMock, return_value=llm_response) as mock_llm,
+            patch("db_activity_queries.get_session_story_moments", new_callable=AsyncMock, return_value=[]),
+        ):
             await generate_session_summary(sd, str(transcript), time.time() - 60)
             call_kwargs = mock_llm.call_args[1]
             assert "Line 1" in call_kwargs["transcript_tail"]

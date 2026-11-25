@@ -14,13 +14,16 @@ import unbound_tools
 import veythar_wellspring
 import zhael_fate
 import zhael_foretold_words
+import zhael_unravel_fate
 from _gods_content import load_gods
+from aelora_hearthfire import GIFT as HEARTHFIRE
 from combat_terrain import resolve_terrain
 from crafting_tools import CRAFT_BLESSING
 from patron_ability_tools import project_abilities
 from patron_combat_edges import COMMUNITY_SHIELD, SCALES_VERDICT, VEILSTEP, VEILSTEP_RANGE_FT, WILDMOTHERS_WRATH
 from patron_favor import get_patron_tier
 from patron_gifts import UNBOUND_ALONE_BONUS, thyra_gift
+from patron_passives import TIDEWALKER
 from patron_synergy import has_engine_clause, synergy_for_patron
 from patron_zero_hp import DAWNS_EMBRACE, DEATH_WARD
 from session_data import SessionData
@@ -109,6 +112,17 @@ async def query_patron(
                 "Grants temporary HP immediately in or out of combat, equal to your level plus your Charisma "
                 "modifier, at least 1. Refuses if it would not increase the target's pool."
             )
+        elif ability["id"] == HEARTHFIRE:
+            ability["activation_hint"] = (
+                f'Use activate(id="{HEARTHFIRE}") in combat. '
+                "The fixed sphere has a 15-foot radius and lasts three rounds. "
+                "Foes must pass a Wisdom save when they reach its edge to enter."
+            )
+        elif ability["id"] == TIDEWALKER:
+            ability["activation_hint"] = (
+                "Automatically move at normal cost through water, mud, and the Architect's shifting ground. "
+                "Low ceilings still slow walking and block flight. Other hindrances keep their normal penalties."
+            )
         elif ability["id"] == VEILSTEP:
             ability["activation_hint"] = (
                 f'Use activate(id="{VEILSTEP}", destination={{x,y,z}}). '
@@ -129,6 +143,11 @@ async def query_patron(
         elif ability["id"] == SCALES_VERDICT:
             ability["activation_hint"] = (
                 f'Use activate(id="{SCALES_VERDICT}", target_id=<living hostile creature id in this fight>).'
+            )
+        elif ability["id"] == zhael_unravel_fate.GIFT:
+            ability["activation_hint"] = (
+                f'Use activate(id="{zhael_unravel_fate.GIFT}") at a round boundary before declarations. '
+                "The previous round unhappens and everyone declares again."
             )
         elif ability["id"] == patron_gateway.GATEWAY and ability["available"]:
             ability["destinations"] = await patron_gateway.destinations(player_id, session.location_id)

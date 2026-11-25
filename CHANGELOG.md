@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.74.0
+
+Aelora's Exalted followers can light Hearthfire once a session in a fight. It is a fixed 15 ft hearth that lasts 3 rounds. At each round's end it heals every ally inside by 1d6 before the round's outcome is decided, so fallen allies inside rise. Allies inside roll their ability saves with advantage (not death saves), including the condition saves at the end of the third round. A foe moving in must pass a Wisdom save or stop at the edge, and Zhael's Fate's Thread can reroll that save. Every patron tier ability now works in play.
+
+Release steps: after deploying the compatible code, run `bun run seed` from the deployed repository root against the target database (gods.json changed). This is an unpaid production write.
+
+## 0.73.0
+
+An Exalted Zhael follower can unravel fate once per session. At the start of a combat round, before anyone has acted, they can ask the DM to undo the round that just ended. Everyone's health, Focus, Stamina, Resonance, concentration, items, positions and patron gifts return to how they stood when that round began, and the party declares again. Unravel Fate's own use is the exception: it stays spent. The follower takes 8 Resonance for bending time, whether or not they cast spells. Each combat round now starts with a saved checkpoint of the fight and the party, which makes this possible.
+
+Release steps: none.
+
+## 0.72.0
+
+Water and mud now slow a fight. Mud on the bandits' slope and shallow water at the mawling crossing cost twice the movement for anyone crossing them. Nythera's Acknowledged followers (Tidewalker) stride through water, mud and the Architect's shifting ground at full speed, while every other kind of slowing ground still costs them as usual.
+
+Release steps: after deploying the compatible code, run `bun run seed` from the deployed repository root against the target database (encounter templates and gods.json changed). This is an unpaid production write.
+
+## 0.71.1
+
+Refresh the app, agent, and browser test dependencies. LiveKit now registers voice event callbacks without triggering Python's asyncio deprecation warning.
+
+Release steps: none.
+
 ## 0.71.0
 
 Marshals can now give orders in a fight. Direct Strike, Reposition, Coordinated Assault, Field Medic Order and Sacrifice Play can be declared in combat. The engine checks each order's targets and charges its cost, and the DM narrates what the order does.

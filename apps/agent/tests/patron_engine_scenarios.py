@@ -14,6 +14,7 @@ from test_kaelen_war_songs import SCENARIOS as war_songs
 from test_marshal_death_save import SCENARIOS as marshal_death_save
 from test_patron_engine_aelora import SCENARIOS as aelora
 from test_patron_engine_aelora_craft import SCENARIOS as aelora_craft
+from test_patron_engine_aelora_hearthfire_entry import SCENARIOS as hearthfire
 from test_patron_engine_aelora_shield import SCENARIOS as aelora_shield
 from test_patron_engine_beacon import SCENARIOS as beacon
 from test_patron_engine_dawns_embrace import SCENARIOS as dawns_embrace
@@ -22,6 +23,7 @@ from test_patron_engine_judgment import SCENARIOS as judgment
 from test_patron_engine_kaelen import SCENARIOS as kaelen
 from test_patron_engine_mortaen import SCENARIOS as mortaen
 from test_patron_engine_nythera import SCENARIOS as nythera
+from test_patron_engine_nythera_tidewalker import SCENARIOS as tidewalker
 from test_patron_engine_orenthel import SCENARIOS as orenthel
 from test_patron_engine_syrath import SCENARIOS as syrath
 from test_patron_engine_thyra import SCENARIOS as thyra
@@ -40,13 +42,16 @@ from test_zhael_fate_callers import SCENARIOS as zhael
 from test_zhael_foretold_words import SCENARIOS as foretold_words
 from test_zhael_marshal_rally import SCENARIOS as rally
 from test_zhael_oracle_twice_woven import SCENARIOS as twice_woven
+from test_zhael_unravel_fate import SCENARIOS as unravel_fate
 
 ENGINE_SCENARIOS = {
+    **unravel_fate,
     **valdris,
     **valdris_verdict,
     **wellspring,
     **aelora,
     **aelora_craft,
+    **hearthfire,
     **aelora_shield,
     **beacon,
     **dawns_mercy,
@@ -69,6 +74,7 @@ ENGINE_SCENARIOS = {
     **death_ward,
     **dawns_embrace,
     **nythera,
+    **tidewalker,
     **orenthel,
     **syrath,
     **two_round_veil,

@@ -43,6 +43,7 @@ import veil_anchor_tools
 import veil_ward
 import veil_ward_tools
 import zhael_fate
+import zhael_unravel_fate
 from action_sound_content import publish_action_sound
 from db_errors import db_tool
 from declaration_payloads import Destination
@@ -138,6 +139,9 @@ async def activate(
     Choose an id from query_info(kind="patron").abilities[].destinations. Outside combat, the whole
     party crosses together. The follower gains 5 Resonance and the gift recharges next session.
 
+    Unravel Fate uses activate(id="zhael_unravel_fate") at a round boundary before declarations.
+    The whole previous round unhappens. Ask everyone to declare again.
+
     Pass target_id for a selected location or ONE entity (a spell/ability target). A Veil
     Ward is always raised or dismissed by the player speaking; omit target_id for it. Pass target_ids (a list)
     for a spell or ability that hits several allies/enemies at once — not both. Omit both for a
@@ -180,6 +184,10 @@ async def activate(
         return await zhael_fate.activate(context.userdata, id, offer_id, keep)
     if offer_id is not None or keep is not None:
         raise ToolError("offer_id is for a held roll; keep belongs to Fate's Thread.")
+    if id == zhael_unravel_fate.GIFT:
+        if target_id is not None or target_ids is not None or condition is not None:
+            raise ToolError("Unravel Fate affects the whole fight. Omit entity and condition selectors.")
+        return await zhael_unravel_fate.activate(context.userdata)
     if id == patron_gateway.GATEWAY:
         if target_ids is not None or condition is not None:
             raise ToolError("Beyond the Horizon takes one location. Use target_id.")

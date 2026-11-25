@@ -331,7 +331,11 @@ async def _resolve_action_packet(
                 if movement is None:
                     return {}
             else:
-                movement = combat_melee_approach.prepare(state, attacker, target, action, movement_budget)
+                movement = await combat_melee_approach.prepare_packet(
+                    session, state, attacker, target, action, movement_budget, progress
+                )
+                if movement is None:
+                    return {}
             if movement.get("attack_resolved") is False:
                 if decl.rider in ("dash", "disengage") and movement.get("movement_spent_ft", 0) > 0:
                     await combat_cunning_action.pay(attacker, queries=queries, conn=conn)

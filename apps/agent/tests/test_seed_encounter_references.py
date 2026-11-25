@@ -3,6 +3,7 @@ import json
 from unittest.mock import AsyncMock
 
 import pytest
+from acceptance._spatial_helpers import AREA_CASES, add_movement_areas
 from test_encounter_references import CASES, ROOT
 
 spec = importlib.util.spec_from_file_location("seed_references", ROOT / "scripts/seed_content.py")
@@ -24,7 +25,7 @@ async def test_seed_shared_reference_cases(case, tmp_path, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_seed_all_seventeen_templates():
+async def test_seed_all_templates():
     conn = AsyncMock()
     counts = await seed_content.seed(conn)
     assert counts["encounter_templates"] == 19
@@ -35,6 +36,15 @@ async def test_seed_all_seventeen_templates():
     ]
     assert len(writes) == 19
     assert all(set(enemy) == {"id", "creature_id", "role"} for row in writes for enemy in row["enemies"])
+    assert {
+        row["id"]: row["scene_placement"]["movement_areas"]
+        for row in writes
+        if "movement_areas" in row["scene_placement"]
+    } == {
+        row["id"]: row["scene_placement"]["movement_areas"]
+        for row in StoredConnection().encounters
+        if row["id"] in {"bandit_ambush", "hollow_mawling_pack"}
+    }
 
 
 class StoredConnection:
@@ -67,6 +77,46 @@ async def test_seed_stored_reference_cases(case):
     assert conn.creatures and conn.encounters
     errors = await seed_content.validate(conn)
     assert any(case["field"] in error and "fixture" in error for error in errors), errors
+
+
+@pytest.fixture(
+    params=[
+        pytest.param((group == "valid", areas), id=name)
+        for group, cases in AREA_CASES.items()
+        for name, areas in cases.items()
+    ]
+)
+def movement_area_catalog(request: pytest.FixtureRequest) -> tuple[bool, StoredConnection]:
+    valid, areas = request.param
+    stored = StoredConnection()
+    index = next(i for i, row in enumerate(stored.encounters) if row["id"] == "ruins_mawling_pair")
+    stored.encounters[index] = add_movement_areas(stored.encounters[index], areas)
+    return valid, stored
+
+
+async def test_movement_areas_seed(movement_area_catalog, tmp_path, monkeypatch):
+    valid, stored = movement_area_catalog
+    (tmp_path / "encounter_templates.json").write_text(json.dumps(stored.encounters))
+    (tmp_path / "creatures.json").write_text(json.dumps(stored.creatures))
+    monkeypatch.setattr(seed_content, "CONTENT_DIR", tmp_path)
+    conn = AsyncMock()
+    if valid:
+        await seed_content.seed(conn)
+    else:
+        with pytest.raises(seed_content.InvalidContent):
+            await seed_content.seed(conn)
+    writes = [
+        json.loads(call.args[2])
+        for call in conn.execute.call_args_list
+        if "INSERT INTO encounter_templates" in call.args[0]
+    ]
+    assert writes == (stored.encounters if valid else [])
+
+
+async def test_movement_areas_stored_validation(movement_area_catalog):
+    valid, stored = movement_area_catalog
+    errors = await seed_content.validate(stored)
+    assert len(errors) == (0 if valid else 1), errors
 
 
 @pytest.mark.asyncio

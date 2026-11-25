@@ -174,6 +174,35 @@ Compatibility exceptions:
 | iOS | passed | passed | passed on iOS 26.5 on story-208-sdk57 (`DC457949-200B-479A-95FD-611E33210F12`) | launch: passed; auth: passed |
 | Android | passed | missing: no Android device was attached, so no native Android build is claimed | missing: adb devices returned no attached device | export: passed |
 
+### Expo SDK 57 release-age exceptions, 2026-11-25
+
+Expo's SDK 57 dependency check required seven releases inside the seven-day
+cooldown. The lead approved those exact releases and the ten exact transitive
+releases required to install them. A temporary Bun
+`install.minimumReleaseAgeExcludes` list selected only the coordinates below
+during `expo install --fix --bun` and lock generation. Frozen installs use the
+committed lockfile and the standard seven-day policy.
+
+| Release-age exception | npm publish time (UTC) | Scope |
+|---|---|---|
+| `expo@57.0.34` | 2026-11-23T13:12:05.894Z | Expo compatibility target |
+| `expo-asset@57.0.22` | 2026-11-23T13:09:08.702Z | Expo compatibility target |
+| `expo-build-properties@57.0.24` | 2026-11-23T13:11:20.336Z | Expo compatibility target |
+| `expo-dev-client@57.0.22` | 2026-11-23T13:11:29.357Z | Expo compatibility target |
+| `expo-notifications@57.0.26` | 2026-11-23T13:13:44.109Z | Expo compatibility target |
+| `expo-router@57.0.32` | 2026-11-23T13:16:14.396Z | Expo compatibility target |
+| `expo-splash-screen@57.0.12` | 2026-11-23T13:09:37.075Z | Expo compatibility target |
+| `@expo/cli@57.0.35` | 2026-11-23T13:10:54.970Z | Required transitive dependency |
+| `@expo/config@57.0.12` | 2026-11-23T13:09:29.860Z | Required transitive dependency |
+| `expo-constants@57.0.25` | 2026-11-23T13:11:04.753Z | Required transitive dependency |
+| `@expo/fingerprint@0.20.17` | 2026-11-23T13:10:29.783Z | Required transitive dependency |
+| `expo-dev-menu@57.0.22` | 2026-11-23T13:11:54.871Z | Required transitive dependency |
+| `expo-dev-launcher@57.0.23` | 2026-11-23T13:13:29.765Z | Required transitive dependency |
+| `@expo/metro-runtime@57.0.19` | 2026-11-23T13:11:55.761Z | Required transitive dependency |
+| `agent-cli-detector@0.1.8` | 2026-11-18T23:00:27.054Z | Required transitive dependency |
+| `@expo/router-server@57.0.16` | 2026-11-23T13:10:14.110Z | Required transitive dependency |
+| `@expo/inline-modules@0.1.10` | 2026-11-23T13:09:24.921Z | Required transitive dependency |
+
 ### Native LiveKit transport
 
 - Status: passed on `DC457949-200B-479A-95FD-611E33210F12` with @livekit/react-native 2.12.0 / @livekit/react-native-webrtc 144.1.2.

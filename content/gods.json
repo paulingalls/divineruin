@@ -844,10 +844,11 @@
       "exalted": {
         "id": "aelora_hearthfire",
         "name": "Hearthfire",
-        "effect": "Once per session, create sanctuary zone: 3 rounds, allies regain 1d6 HP/round, advantage on saves, enemies WIS save to enter",
+        "effect": "Once per session in combat, create a fixed sphere with a 15-foot radius for 3 rounds. Allies inside regain 1d6 HP each round and have advantage on ability saves. Foes must pass a Wisdom save to enter.",
         "recharge": "per_session",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "aelora_hearthfire"
       }
     },
     "layer_4_synergy_matrix": {
@@ -2570,10 +2571,11 @@
       "acknowledged": {
         "id": "nythera_tidewalker",
         "name": "Tidewalker",
-        "effect": "Ignore water/mud/shifting ground difficult terrain. Full speed through slowing environments",
+        "effect": "Water, mud, and the Architect's shifting ground cost no extra movement. Low ceilings and other hindrances keep their normal penalties.",
         "recharge": "always",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "nythera_tidewalker"
       },
       "devoted": {
         "id": "nythera_charted_course",
@@ -3274,10 +3276,11 @@
       "exalted": {
         "id": "zhael_unravel_fate",
         "name": "Unravel Fate",
-        "effect": "Once per session, undo one event from the last round. Damage reversed, positions restored, resources returned. One round unhappens. Generates 8 Resonance on the user regardless of caster status",
+        "effect": "Once per session, at a round boundary before declarations, undo the entire last round. Damage reversed, positions restored, resources returned. One round unhappens and everyone declares again. Generates 8 Resonance on the user regardless of caster status",
         "recharge": "per_session",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "zhael_unravel_fate"
       }
     },
     "layer_4_synergy_matrix": {

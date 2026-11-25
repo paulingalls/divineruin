@@ -7,6 +7,7 @@ from pathlib import Path
 
 import choir_effects
 import combat_reaction_contest
+import combat_round_checkpoint
 import combat_spatial
 import combat_structures
 import combat_wrongdoing
@@ -108,6 +109,7 @@ class CombatState:
     # encounter duration, so nothing has to tear this down. story-006 seeds it in combat_init and ticks
     # rounds_remaining at the WRAP beat, beside tick_conditions.
     veil_ward: dict | None = None
+    hearthfire_zones: list[dict] = field(default_factory=list)
     ally_continuation: dict | None = None
     wrap_continuation: dict | None = None
     legendary_continuation: dict | None = None
@@ -136,6 +138,8 @@ class CombatState:
     choir_silences: dict = field(default_factory=dict)
     spatial: dict | None = None
     encounter_facts: encounter_facts.EncounterFacts = field(default_factory=encounter_facts.empty)
+
+    round_checkpoints: list[dict] = field(default_factory=list)
 
     def get_participant(self, participant_id: str) -> CombatParticipant | None:
         for p in self.participants:
@@ -215,6 +219,7 @@ class CombatState:
             deescalation_scene=DeEscalationState(**data.get("deescalation_scene", {})),
             # Plain dict (or None) — no rebuild. Absent on rows written before story-004.
             veil_ward=data.get("veil_ward"),
+            hearthfire_zones=data.get("hearthfire_zones", []),
             # Plain dicts — no rebuild. Absent on rows written before story-016, which rehydrate
             # with no held actions and no open window: a legacy combat is simply not mid-pause.
             ally_continuation=data.get("ally_continuation"),
@@ -242,4 +247,7 @@ class CombatState:
         architect_actions.validate_continuations(state)
         choir_encounter.validate(state)
         still_encounter.validate(state)
+        state.round_checkpoints = combat_round_checkpoint.load_history(
+            data.get("round_checkpoints", []), state.combat_id, state.round_number
+        )
         return state

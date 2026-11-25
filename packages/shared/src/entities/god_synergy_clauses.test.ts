@@ -198,3 +198,65 @@ test.each(["druid", "warden"] as const)(
     });
   },
 );
+
+test("Zhael's oracle has both Woven Prophecy clauses", () => {
+  const matrix = validateGods(catalog).find(
+    (god) => god.god_id === "zhael",
+  )?.layer_4_synergy_matrix;
+  expect(matrix?.oracle).toEqual({
+    type: "natural",
+    name: "Woven Prophecy",
+    clauses: [
+      {
+        effect: "Prophecy Fragment becomes 2-sentence vision with more detail.",
+        status: "active",
+        resolution: "narrated",
+      },
+      {
+        effect: "Fate's Thread usable twice per long rest",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "zhael_twice_woven",
+      },
+    ],
+  });
+});
+
+test("Zhael's marshal has the registered Moment to Rally clause", () => {
+  const marshal = validateGods(catalog).find((god) => god.god_id === "zhael")
+    ?.layer_4_synergy_matrix.marshal;
+  expect(marshal).toEqual({
+    name: "Moment to Rally",
+    type: "divine",
+    clauses: [
+      {
+        effect:
+          "Once per encounter, an ally who follows your order gains +1 on their next saving throw.",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "zhael_moment_to_rally",
+      },
+    ],
+  });
+});
+
+test("Zhael's bard and diplomat have the registered Foretold Words clause", () => {
+  const matrix = validateGods(catalog).find(
+    (god) => god.god_id === "zhael",
+  )?.layer_4_synergy_matrix;
+  for (const archetype of ["bard", "diplomat"] as const) {
+    expect(matrix?.[archetype]).toEqual({
+      name: "Foretold Words",
+      type: "unexpected",
+      clauses: [
+        {
+          effect:
+            "Social encounters: once per NPC per session, know the exact DC of the next social check before attempting",
+          status: "active",
+          resolution: "engine",
+          implementation_id: "zhael_foretold_words",
+        },
+      ],
+    });
+  }
+});

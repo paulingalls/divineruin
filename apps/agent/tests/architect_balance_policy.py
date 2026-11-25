@@ -118,7 +118,9 @@ def move(
 ) -> MoveDecl | None:
     spatial = require_spatial(state)
     origin = position(spatial, actor.id)
-    endpoint = reachable_point(spatial, actor.id, origin, destination, spatial["speeds"][actor.id])
+    endpoint = reachable_point(
+        spatial, actor.id, origin, destination, spatial["speeds"][actor.id], tidewalker=actor.tidewalker
+    )
     if movement_blocker(state, spatial, actor, origin, endpoint):
         return None
     return MoveDecl(
@@ -167,6 +169,7 @@ def shadow_step(
         origin,
         approach.destination.model_dump(),
         effective_speed(spatial["speeds"][actor.id], actor.conditions),
+        tidewalker=actor.tidewalker,
     )
     steps = ceil(distance(origin, endpoint) / COVER_FEET)
     separation = distance(origin, target)

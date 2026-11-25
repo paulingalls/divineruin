@@ -192,6 +192,7 @@ async def _check_save_impl(
             save_type,
             dc,
             effect_on_fail,
+            advantage=encounter_facts.hearth_save_advantage(state, player_id),
             scholars_ward=scholars_ward(player),
             rally_sources=encounter_facts.pending_rally(state, player_id),
         )

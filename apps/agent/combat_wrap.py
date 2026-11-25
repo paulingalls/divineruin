@@ -5,13 +5,15 @@ Both pieces belong to the END of a round rather than to its orchestration:
 the DM does after whichever commit just landed.
 """
 
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from functools import partial
 
+import aelora_hearthfire
 import combat_grapple
 import combat_hollow_resonance
 import combat_phase
 import combat_recharge
+import combat_round_checkpoint
 import concealment
 import conditions
 import encounter_facts
@@ -126,7 +128,6 @@ async def wrap_phase(
     *,
     conn,
     sink,
-    cast_outcome,
     mutations,
     queries,
     save_resolver,
@@ -150,9 +151,12 @@ async def wrap_phase(
             for p in state.participants
             if (narrative := fatigue_narration.exhaustion_narrative_for_conditions(p.conditions))
         }
+        hearthfire_heals = await aelora_hearthfire.heal_round(
+            session, state, conn=conn, mutations=mutations, queries=queries, sink=sink
+        )
         state, wrap_adv = combat_phase.advance_combat_phase(state, defer_legendary=True)
         assert wrap_adv.wrap is not None
-        wrap = wrap_adv.wrap
+        wrap = replace(wrap_adv.wrap, hearthfire_heals=hearthfire_heals)
         cursor = {"wrap": asdict(wrap), "exhaustion": exhaustion_narration, "index": 0}
     else:
         wrap = combat_phase.WrapOutcome(**cursor["wrap"])
@@ -192,6 +196,8 @@ async def wrap_phase(
             if result.success:
                 actor.conditions = conditions.remove_condition(actor.conditions, event["type"])
             cursor["index"] += 1
+        # Hearthfire covers clearing saves on its last round, including a save held by Fate.
+        state.hearthfire_zones = aelora_hearthfire.tick(state.hearthfire_zones)
         state.beat = combat_phase.PhaseBeat.DECLARATION
         combat_phase._reset_legendary_actions(state)
     state.wrap_continuation = None
@@ -225,7 +231,12 @@ async def wrap_phase(
                 if decayed != base:
                     pending_by_member[m.player_id] = decayed
                     await resonance_mutations.update_player_resonance(m.player_id, decayed, conn=conn)
-        await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
+        await combat_round_checkpoint.capture(
+            session,
+            state,
+            conn=conn,
+            mutations=mutations,
+        )
         # Push the HUD's combat-tracker + condition icons live (M12 story-001). Built from the
         # post-tick state (save-cleared conditions are gone) and buffered in the sink so the
         # packet only reaches the client AFTER the phase tx commits — a rolled-back phase

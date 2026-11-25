@@ -224,7 +224,7 @@ Additional topics: TTS Evaluation: Provider comparison: Inworld, Cartesia, Chatt
 
 ---
 
-## dependency_upgrade.md (228 lines)
+## dependency_upgrade.md (257 lines)
 
 Reproducible inventory of all direct dependencies, lock resolutions, compatibility and release-age decisions, infrastructure holds, and executed validation lanes.
 
@@ -232,8 +232,8 @@ Reproducible inventory of all direct dependencies, lock resolutions, compatibili
 |---|---|---|
 | Python environments | 7-39 | Python environment and lockfile inventory. |
 | Bun workspace | 40-128 | Release age policy: 604800 seconds. |
-| Independent browser toolchain | 129-196 | Browser toolchain dependencies and validation. |
-| Historical validation outcomes | 197-228 | Recorded compatibility checks and test results. |
+| Independent browser toolchain | 129-225 | Browser toolchain dependencies and validation. |
+| Historical validation outcomes | 226-257 | Recorded compatibility checks and test results. |
 
 ---
 

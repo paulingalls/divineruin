@@ -113,9 +113,8 @@ def resolve_declaration(raw: dict) -> Declaration:
     elif decl_type in (DeclarationType.ABILITY, DeclarationType.INTERACT):
         if not action:
             raise ValueError(f"{decl_type} declaration requires an 'action'")
-    elif decl_type is DeclarationType.MANEUVER:
-        if not target_id:
-            raise ValueError("maneuver declaration requires a 'target_id'")
+    elif decl_type is DeclarationType.MANEUVER and not target_id:
+        raise ValueError("maneuver declaration requires a 'target_id'")
     is_move = decl_type is DeclarationType.MANEUVER and action == "move"
     is_shadow_step = False
     if decl_type is DeclarationType.ABILITY and isinstance(action, str):
