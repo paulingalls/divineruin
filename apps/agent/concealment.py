@@ -1,4 +1,4 @@
-"""Persisted concealment and optional Shadow Veil combat lifetime."""
+"""Persisted concealment with encounter and Shadow Veil lifetimes."""
 
 import asyncpg
 from livekit.agents.llm import ToolError
@@ -38,7 +38,14 @@ def gift_lifetime(player: dict) -> ShadowVeilLifetime:
 
 
 async def transition(
-    player_id: str, player: dict, concealed: bool, *, ended_by=None, lifetime: ShadowVeilLifetime = False, conn
+    player_id: str,
+    player: dict,
+    concealed: bool,
+    *,
+    ended_by=None,
+    lifetime: ShadowVeilLifetime = False,
+    combat_only: bool = False,
+    conn,
 ) -> dict:
     _validate_lifetime(lifetime, concealed)
     before = is_concealed(player)
@@ -51,6 +58,9 @@ async def transition(
         )
     if lifetime:
         await db_mutations.set_player_flag(player_id, "shadow_veil", lifetime, conn=conn)
+    encounter_concealment = concealed and combat_only
+    if player.get("flags", {}).get("encounter_concealment", False) != encounter_concealment:
+        await db_mutations.set_player_flag(player_id, "encounter_concealment", encounter_concealment, conn=conn)
     await db_mutations.set_player_flag(player_id, "concealed", concealed, conn=conn)
     packet = {"player_id": player_id, "before": before, "concealed": concealed}
     if ended_by:
@@ -101,10 +111,10 @@ async def tick_gift_round(state, *, conn, queries) -> list[dict]:
     return facts
 
 
-async def expire_gift(state, *, conn, queries) -> None:
+async def expire_combat(state, *, conn, queries) -> None:
     players = await _lock_players(state, conn=conn, queries=queries)
     for player_id, player in players.items():
-        if gift_lifetime(player):
+        if gift_lifetime(player) or player.get("flags", {}).get("encounter_concealment", False):
             await transition(player_id, player, False, conn=conn)
 
 

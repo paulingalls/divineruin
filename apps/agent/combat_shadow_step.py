@@ -96,7 +96,7 @@ async def resolve(
             **summary,
             "resolved": True,
             "deducted": {"focus": cost.focus, "stamina": cost.stamina},
-            "concealment": await concealment.transition(actor.id, player, True, conn=conn),
+            "concealment": await concealment.transition(actor.id, player, True, combat_only=True, conn=conn),
         },
         variant,
     )

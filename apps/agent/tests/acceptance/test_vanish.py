@@ -20,6 +20,7 @@ from acceptance.test_still_anchors import mock_combat_agent_factory as mock_comb
 
 import ability_persistence
 import combat_spatial
+import db_mutations
 import db_queries
 import mentor_variant_progress
 from activate_tools import activate
@@ -105,6 +106,23 @@ async def test_vanish_wastes_queued_attack_and_survives_reload(walk: MawlingHarn
     result = receipt(await walk.drain(), rogue)
     assert result["concealment"]["before"] is True
     assert result["variant_id"] == variant and result["deducted"] == {"stamina": 4, "focus": 0}
+
+
+async def test_vanish_ends_with_the_encounter(walk: MawlingHarness) -> None:
+    rogue, ally = walk.players
+    await db_mutations.set_player_flag(ally, "concealed", True, conn=walk.pool)
+    await equip(walk, VANISH)
+    foe = await enter_bandit_fight(walk)
+    await declare(walk, vanish(rogue), defend(foe))
+    assert receipt(await walk.drain(), rogue)["concealment"]["concealed"] is True
+
+    await walk.command("end_combat", {"outcome": "fled"})
+    party = walk.sd.party
+    await fresh_session(walk)
+    walk.sd.party = party
+    foe = await enter_bandit_fight(walk)
+    await refuse(walk, await bandit_attack(walk, foe, ally), ally)
+    await declare(walk, await bandit_attack(walk, foe, rogue))
 
 
 @pytest.mark.parametrize("kind", ["combined", "multiattack"])
