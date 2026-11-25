@@ -3,7 +3,7 @@
 import json
 from unittest.mock import patch
 
-import httpx
+import httpx2
 import openai as openai_sdk
 import pytest
 from agent_tool_profiles import AGENT_TOOL_LISTS
@@ -54,15 +54,15 @@ async def test_luna_pilot_emits_every_tool_as_strict(monkeypatch, profile, tools
     assert tools, f"{profile} tool profile is empty"
     requests = []
 
-    async def respond(request: httpx.Request) -> httpx.Response:
+    async def respond(request: httpx2.Request) -> httpx2.Response:
         requests.append(json.loads((await request.aread()).decode()))
-        return httpx.Response(
+        return httpx2.Response(
             200,
             headers={"content-type": "text/event-stream"},
             content=b"data: [DONE]\n\n",
         )
 
-    http_client = httpx.AsyncClient(transport=httpx.MockTransport(respond))
+    http_client = httpx2.AsyncClient(transport=httpx2.MockTransport(respond))
     sdk_client = openai_sdk.AsyncOpenAI(api_key="test", base_url="http://localhost/v1", http_client=http_client)
     monkeypatch.delenv("GAMEPLAY_LLM", raising=False)
     monkeypatch.setenv("OPENAI_API_KEY", "test")

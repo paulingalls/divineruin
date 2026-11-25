@@ -72,28 +72,39 @@ def install_paid_call_guard() -> None:
     """Refuse provider connections process-wide, including outside function fixtures."""
     import aiohttp
     import httpx
+    import httpx2
 
     global _installed
     if _installed:
         return
-    sync_send = httpx.Client._send_single_request
-    async_send = httpx.AsyncClient._send_single_request
     connect = aiohttp.BaseConnector.connect
 
-    def guarded_sync_send(self, request):
-        _refuse_paid_request(request.url.host)
-        return sync_send(self, request)
+    def guard_sync_send(client_class):
+        send = client_class._send_single_request
 
-    async def guarded_async_send(self, request):
-        _refuse_paid_request(request.url.host)
-        return await async_send(self, request)
+        def guarded_send(self, request):
+            _refuse_paid_request(request.url.host)
+            return send(self, request)
+
+        client_class._send_single_request = guarded_send
+
+    def guard_async_send(client_class):
+        send = client_class._send_single_request
+
+        async def guarded_send(self, request):
+            _refuse_paid_request(request.url.host)
+            return await send(self, request)
+
+        client_class._send_single_request = guarded_send
 
     async def guarded_connect(self, req, *args, **kwargs):
         _refuse_paid_request(req.url.host or "")
         return await connect(self, req, *args, **kwargs)
 
-    httpx.Client._send_single_request = guarded_sync_send
-    httpx.AsyncClient._send_single_request = guarded_async_send
+    guard_sync_send(httpx.Client)
+    guard_sync_send(httpx2.Client)
+    guard_async_send(httpx.AsyncClient)
+    guard_async_send(httpx2.AsyncClient)
     aiohttp.BaseConnector.connect = guarded_connect
     _installed = True
 
