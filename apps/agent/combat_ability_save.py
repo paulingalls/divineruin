@@ -1,6 +1,6 @@
 """Targeting and resolution for hostile player condition abilities."""
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from functools import partial
 from typing import TYPE_CHECKING
 
@@ -14,8 +14,9 @@ from combat_legendary_resistance import finalize_save, override_fields
 
 if TYPE_CHECKING:
     from abilities import Ability
+    from combat_fate_rolls import PacketRolls
     from declarations import Declaration
-    from session_data import CombatParticipant, CombatState
+    from session_data import CombatParticipant, CombatState, SessionData
 
 
 BENEFICIAL_CONDITIONS = frozenset({"blessed", "shielded", "enraged", "inspired", "precise_strike"})
@@ -100,10 +101,62 @@ async def resolve_hostile_condition(
     if ability.id == combat_ability_gate.TAUNT:
         source = attacker.id
         duration = 2
-    elif ability.id == combat_ability_gate.DIRTY_TRICK:
+    elif ability.id in (combat_ability_gate.DIRTY_TRICK, combat_ability_gate.WAR_CRY):
         duration = 1
     if land_condition(state, target.id, attacker, cond_type, source, duration=duration, packet=summary):
         summary["condition_inflicted"] = cond_type
     else:
         summary["condition_immune"] = cond_type
     return summary
+
+
+async def resolve_war_cry(
+    session: "SessionData",
+    state: "CombatState",
+    attacker: "CombatParticipant",
+    decl: "Declaration",
+    ability: "Ability",
+    land_condition: Callable[..., bool],
+    *,
+    pay: Callable[[], Awaitable[None]],
+    progress: "PacketRolls | None",
+) -> dict:
+    steps = progress.steps if progress is not None else {}
+    if "target_ids" not in steps:
+        steps["target_ids"] = combat_ability_gate.war_cry_targets(state)
+    target_ids = steps["target_ids"]
+    summary = {"actor_id": attacker.id, "declaration_type": str(decl.type), "action": ability.id}
+    if not target_ids:
+        return {**summary, "resolved": False, "reason": "War Cry has no standing foes who can hear."}
+    if not steps.get("cost_paid"):
+        await pay()
+        steps["cost_paid"] = True
+    results = steps.setdefault("condition_results", [])
+    for target_id in target_ids[len(results) :]:
+        target = state.get_participant(target_id)
+        if target is None:
+            raise ValueError(f"War Cry recipient {target_id!r} disappeared during resolution")
+        result = await resolve_hostile_condition(
+            session,
+            state,
+            attacker,
+            target,
+            decl,
+            ability,
+            land_condition,
+            progress=progress.scope(target_id) if progress is not None else None,
+        )
+        if not result:
+            return {}
+        results.append(
+            {
+                "target_id": target_id,
+                **{key: value for key, value in result.items() if key not in summary and key != "resolved"},
+            }
+        )
+    return {
+        **summary,
+        "resolved": True,
+        "condition_results": results,
+        "condition_targets": [result["target_id"] for result in results if "condition_inflicted" in result],
+    }

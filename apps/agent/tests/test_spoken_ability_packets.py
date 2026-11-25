@@ -13,7 +13,6 @@ import ability_tools
 import ability_voice_rules as voice
 import mentor_variants
 import reaction_windows
-from combat_ability_gate import TAUNT
 from combat_ability_save import requires_hostile_target
 from conditions import apply_condition
 
@@ -87,19 +86,21 @@ async def activate(
     return json.loads(result), persistence, queries
 
 
-@pytest.mark.parametrize("ability_id", [ability for ability in SPEAKERS if ability != TAUNT])
+@pytest.mark.parametrize("ability_id", SPEAKERS)
 @pytest.mark.asyncio
 async def test_unlocked_packet_requires_source_speech_for_activatable_abilities(ability_id):
-    with pytest.raises(ToolError, match=r"silenced|speak"):
+    expected = "needs a foe" if requires_hostile_target(abilities.get_ability(ability_id)) else r"silenced|speak"
+    with pytest.raises(ToolError, match=expected):
         await activate(
             ability_id, combat=True, source_silent=True, entry=ability_tools._request_ability_activation_unlocked
         )
 
 
-@pytest.mark.parametrize("ability_id", [ability for ability in LISTENERS if ability != TAUNT])
+@pytest.mark.parametrize("ability_id", LISTENERS)
 @pytest.mark.asyncio
 async def test_actual_ooc_packets_require_target_hearing_and_lock_target(ability_id):
-    with pytest.raises(ToolError, match=r"hear|eligible"):
+    expected = "needs a foe" if requires_hostile_target(abilities.get_ability(ability_id)) else r"hear|eligible"
+    with pytest.raises(ToolError, match=expected):
         await activate(ability_id, target_deaf=True)
 
 

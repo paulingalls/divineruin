@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import abilities
 import mentor_variants
+from communication_voice_rules import can_hear
 from mentor_variants import MentorVariant
+
+if TYPE_CHECKING:
+    from combat_state import CombatState
 
 DEVASTATING_STRIKE = "warrior_devastating_strike"
 SHIELD_BASH = "warrior_shield_bash"
 DIRTY_TRICK = "rogue_dirty_trick"
 TAUNT = "warrior_taunt"
+WAR_CRY = "warrior_war_cry"
 SHIELD_BASH_RIDER = "shield_bash"
 CUNNING_ACTION = "rogue_cunning_action"
 CUNNING_RIDERS = ("dash", "hide", "disengage")
@@ -43,6 +50,17 @@ def combat_ability(ability: abilities.Ability) -> bool:
         or ability.applies_condition is not None
         or ability.id in (SECOND_WIND, DEVASTATING_STRIKE)
     )
+
+
+def war_cry_targets(state: CombatState) -> list[str]:
+    return [
+        participant.id
+        for participant in state.participants
+        if not participant.is_ally
+        and not participant.is_structure
+        and not participant.is_fallen
+        and can_hear(state, participant.id)
+    ]
 
 
 def attack_recipe(ability_id: str) -> dict[str, str | list[str]] | None:
