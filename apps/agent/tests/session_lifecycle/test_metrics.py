@@ -358,7 +358,10 @@ class TestSessionLifecycleIntegration:
             "decisions": [],
             "next_hooks": ["The ring glows"],
         }
-        with patch("session_summary._call_llm_summary", new_callable=AsyncMock, return_value=llm_response):
+        with (
+            patch("session_summary._call_llm_summary", new_callable=AsyncMock, return_value=llm_response),
+            patch("db_activity_queries.get_session_story_moments", new_callable=AsyncMock, return_value=[]),
+        ):
             summary = await generate_session_summary(ctx.userdata, None, time.time() - 300)
 
         assert summary["xp_earned"] == 200

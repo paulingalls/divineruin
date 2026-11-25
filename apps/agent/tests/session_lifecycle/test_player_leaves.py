@@ -211,9 +211,12 @@ async def test_room_admin_raises_every_other_removal_failure():
 @pytest.mark.asyncio
 async def test_departure_summary_names_the_guest_as_focus():
     sd = _party()
-    with patch(
-        "session_summary._call_llm_summary", new_callable=AsyncMock, return_value={"summary": "Guest's journey"}
-    ) as llm:
+    with (
+        patch(
+            "session_summary._call_llm_summary", new_callable=AsyncMock, return_value={"summary": "Guest's journey"}
+        ) as llm,
+        patch("db_activity_queries.get_session_story_moments", new_callable=AsyncMock, return_value=[]),
+    ):
         await generate_session_summary(sd, None, player_id="guest")
     assert llm.await_args is not None
     assert llm.await_args.kwargs["focus_player_id"] == "guest"
