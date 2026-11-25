@@ -322,7 +322,7 @@ async def record_departure(
 async def set_player_flag(
     player_id: str,
     flag: str,
-    value: bool | str | int,
+    value: bool | str | int | dict,
     *,
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
 ) -> None:

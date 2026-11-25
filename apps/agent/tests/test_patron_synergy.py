@@ -25,7 +25,7 @@ def doc_rows():
         patron = section.split(",", 1)[0].lower()
         table = section.split("**Layer 4 — Archetype Resonance**", 1)[1]
         rows = re.findall(r"^\| ([^|]+) \| (Natural|Divine|Unexpected|Primary) \| ([^|]+) \|$", table, re.M)
-        assert len(rows) == 3
+        assert len(rows) == (4 if patron == "syrath" else 3)
         for archetypes, kind, effect in rows:
             for archetype in archetypes.lower().split(", "):
                 if (patron, archetype, kind) == ("veythar", "seeker", "Unexpected"):

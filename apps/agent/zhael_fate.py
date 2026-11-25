@@ -11,12 +11,14 @@ from livekit.agents.llm import ToolError
 import db
 import db_queries
 from _gods_content import load_gods
-from patron_ability_tools import LUCKY, lucky_ready, spend, spent_state
+from patron_ability_tools import LUCKY, lucky_ready, spend
+from patron_synergy import has_engine_synergy
 
 if TYPE_CHECKING:
     from session_data import SessionData
 
 FATE = "zhael_fates_thread"
+TWICE_WOVEN = "zhael_twice_woven"
 ROLL_ABILITIES = (FATE, LUCKY)
 # LiveKit folds a nullable multi-value Literal into an enum containing null, which strict schemas reject.
 Keep = Literal["original"] | Literal["reroll"]
@@ -82,17 +84,39 @@ class FateOffer:
         }
 
 
+def uses_spent(player: dict) -> int:
+    namespace = player.get("patron_gifts", {})
+    if not isinstance(namespace, dict):
+        raise ValueError("Malformed patron_gifts")
+    state = namespace.get(FATE, {"uses_spent": 0})
+    if isinstance(state, dict):
+        if state.keys() == {"spent"} and type(state["spent"]) is bool:
+            return int(state["spent"])
+        if state.keys() == {"uses_spent"}:
+            count = state["uses_spent"]
+            if type(count) is int and 0 <= count <= 2:
+                return count
+    raise ValueError(f"Malformed patron ability state: {FATE}")
+
+
+def _usage(player: dict, count: int) -> dict:
+    enhanced = has_engine_synergy(player, TWICE_WOVEN)
+    limit = 2 if enhanced else 1
+    return {
+        "remaining_uses": max(0, limit - count),
+        "use_limit": limit,
+        "clause_id": TWICE_WOVEN if enhanced else None,
+    }
+
+
+def _gift_active(gift: dict) -> bool:
+    return gift["status"] == "active" and gift.get("resolution") == "engine"
+
+
 def availability(player: dict, gift: dict) -> dict:
-    spent = spent_state(player, FATE)["spent"]
-    active = gift["status"] == "active" and gift.get("resolution") == "engine"
-    return {"available": active and not spent, "spent": spent}
-
-
-def _eligible(player: dict) -> bool:
-    if (player.get("divine_favor") or {}).get("patron") != "zhael":
-        return False
-    gift = next(god["layer_1_gift"] for god in load_gods() if god["god_id"] == "zhael")
-    return availability(player, gift)["available"]
+    usage = _usage(player, uses_spent(player))
+    spent = usage["remaining_uses"] == 0
+    return {**usage, "available": _gift_active(gift) and not spent, "spent": spent}
 
 
 async def candidates(
@@ -205,22 +229,28 @@ async def activate(session: SessionData, ability_id: str, offer_id: str | None, 
 
     async with db.transaction() as conn:
         player = await db_queries.get_player(actor, conn=conn, for_update=True)
-        if player is None or not _eligible(player):
+        if player is None or (player.get("divine_favor") or {}).get("patron") != "zhael":
+            raise ToolError("Fate's Thread is unavailable or spent.")
+        gift = next(god["layer_1_gift"] for god in load_gods() if god["god_id"] == "zhael")
+        count = uses_spent(player)
+        if not _gift_active(gift) or _usage(player, count)["remaining_uses"] == 0:
             raise ToolError("Fate's Thread is unavailable or spent.")
         try:
             session.validate_acting_player(actor)
         except (RuntimeError, ValueError) as exc:
             raise ToolError(str(exc)) from exc
         candidate = offer.reroll()
-        await write_state(actor, {"spent": True}, gift_id=FATE, conn=conn)
+        count += 1
+        await write_state(actor, {"uses_spent": count}, gift_id=FATE, conn=conn)
     offer.accepted_by, offer.rerolled = actor, candidate
     return json.dumps(
         {
             "offer_id": offer.id,
             "original": {"die": offer.die, "total": offer.total},
             "reroll": {"die": candidate[0], "total": candidate[1]},
+            **_usage(player, count),
             "dm_cue": "Voice both Fate's Thread results and wait for the follower to keep one. "
-            "Any other tool call lets the original stand. The gift stays spent.",
+            "Any other tool call lets the original stand. This use is spent. The receipt gives the uses left.",
         }
     )
 

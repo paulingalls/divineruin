@@ -159,7 +159,7 @@ async def test_fate_attack_offer_and_choice_reach_guest_microphone(livekit_serve
             assert required_player(await encounter.reload(), "foe").hp_current == 22
             guest_row = await db_queries.get_player(guest)
             host_row = await db_queries.get_player(host)
-            assert guest_row is not None and guest_row["patron_gifts"]["zhael_fates_thread"] == {"spent": True}
+            assert guest_row is not None and guest_row["patron_gifts"]["zhael_fates_thread"] == {"uses_spent": 1}
             assert host_row is not None and "zhael_fates_thread" not in host_row.get("patron_gifts", {})
             assert len(encounter.transcripts) == 4
     finally:

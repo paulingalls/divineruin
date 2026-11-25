@@ -13,7 +13,7 @@ import character_spells
 import check_resolution_attack
 import check_resolution_save
 import choir_encounter
-import combat_fate
+import combat_ally_pass
 import combat_hold
 import combat_hollow_resonance
 import combat_phase
@@ -96,6 +96,7 @@ async def _resolve_phase_locked(
 
     # Ally results commit before held actions; only the drained held pass wraps the phase.
     pending_by_member: dict[str, int] = {}
+    shadow_veils: list[dict] = []
     end_data: dict | None = None
     # Capture before recovery can restore state, so rollback cannot imply ward expiry.
     ward_before = cs.veil_ward
@@ -148,14 +149,14 @@ async def _resolve_phase_locked(
                     raise PrevalidationRefusal(error) from error
 
                 ally_packets, enemy_packets = combat_phase.partition_packets(state, adv.packets)
-                cursor = combat_fate.begin_ally_pass(state, ally_packets, enemy_packets, players_by_id)
+                cursor = combat_ally_pass.begin_ally_pass(state, ally_packets, enemy_packets, players_by_id)
             else:
                 state = copy.deepcopy(cs)
                 cursor = state.ally_continuation
                 assert cursor is not None
-                players_by_id = await combat_fate.lock_remaining_players(cursor, queries, conn)
+                players_by_id = await combat_ally_pass.lock_remaining_players(cursor, queries, conn)
 
-            packet_summaries = await combat_fate.run_ally_pass(
+            packet_summaries = await combat_ally_pass.run_ally_pass(
                 session,
                 state,
                 cursor,
@@ -178,7 +179,7 @@ async def _resolve_phase_locked(
 
         residue = await lost_scout_combat.residue(session, state, queries=queries, mutations=mutations, conn=conn)
         # A held argument that ends combat must hand off before the incoming tool can run.
-        ended_on_argument = state.deescalated and combat_fate.held_argument(cs.ally_continuation) is not None
+        ended_on_argument = state.deescalated and combat_ally_pass.held_argument(cs.ally_continuation) is not None
         if (
             legendary is None
             and (not resolving_allies or ended_on_argument)
@@ -193,6 +194,7 @@ async def _resolve_phase_locked(
                 ended_outcome,
                 end_data,
                 pending_by_member,
+                shadow_veils,
             ) = await combat_wrap.wrap_phase(
                 session,
                 state,
@@ -352,6 +354,8 @@ async def _resolve_phase_locked(
         )
     if residue is not None:
         response["lost_scout_residue"] = residue
+    if shadow_veils:
+        response["shadow_veils"] = shadow_veils
     if judgment_rewards:
         response["judgment_rewards"] = judgment_rewards
     if offer is not None:

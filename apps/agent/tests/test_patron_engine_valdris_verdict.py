@@ -25,7 +25,7 @@ from livekit.agents.llm import ToolError
 from sample_fixtures import published_payloads
 from voice_condition_fixtures import participant
 
-import combat_fate
+import combat_ally_pass
 import combat_hold
 import combat_phase
 import db_mutations
@@ -320,7 +320,7 @@ async def test_partial_round_refuses_verdict(world, field) -> None:
         if field == "ally_continuation":
             resolving, advance_result = combat_phase.advance_combat_phase(state)
             allies, hostiles = combat_phase.partition_packets(resolving, advance_result.packets)
-            state.ally_continuation = combat_fate.begin_ally_pass(resolving, allies, hostiles, {})
+            state.ally_continuation = combat_ally_pass.begin_ally_pass(resolving, allies, hostiles, {})
         else:
             state.held_actions = combat_hold.hold_enemy_packets(state, [SimpleNamespace(actor_id=FOE, initiative=10)])
         assert bool(state.ally_continuation) is (field == "ally_continuation")

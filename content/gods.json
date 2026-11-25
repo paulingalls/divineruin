@@ -1350,13 +1350,15 @@
         "clauses": [
           {
             "effect": "Shadow Veil extends to 2 rounds.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "syrath_two_round_veil"
           },
           {
             "effect": "Invisible Sneak Attack +1d6",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "syrath_veiled_strike"
           }
         ]
       },
@@ -1366,13 +1368,15 @@
         "clauses": [
           {
             "effect": "Shadow Veil extends to 2 rounds.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "syrath_two_round_veil"
           },
           {
-            "effect": "Invisible Sneak Attack +1d6",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "Weapon attacks from Shadow Veil deal +1d6",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "syrath_veiled_strike"
           }
         ]
       },
@@ -1382,13 +1386,15 @@
         "clauses": [
           {
             "effect": "Shadow Veil extends to 2 rounds.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "syrath_two_round_veil"
           },
           {
-            "effect": "Invisible Sneak Attack +1d6",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "Weapon attacks from Shadow Veil deal +1d6",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "syrath_veiled_strike"
           }
         ]
       },
@@ -3428,8 +3434,9 @@
           },
           {
             "effect": "Fate's Thread usable twice per long rest",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_twice_woven"
           }
         ]
       },
