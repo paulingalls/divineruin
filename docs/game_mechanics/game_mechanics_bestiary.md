@@ -569,7 +569,7 @@ Blessed weapons and Turn Undead/Hollow remain source/effect guidance, not damage
 
 > *The most alarming Named. It builds. Deep within the Ashmark, near the Voidmaw — structures that shouldn't exist.*
 
-**Level:** 20 | **HP:** 154 (spec 300) | **AC:** 19 | **Speed:** 40 ft (incorporeal movement — passes through its own structures)
+**Level:** 20 | **HP:** 175 (spec 300) | **AC:** 19 | **Speed:** 40 ft (incorporeal movement — passes through its own structures)
 **STR** 20 (+5) **DEX** 14 (+2) **CON** 20 (+5) **INT** 22 (+6) **WIS** 18 (+4) **CHA** 16 (+3)
 **Save Prof:** INT, CON, WIS, CHA | **XP:** 5000
 
@@ -594,15 +594,16 @@ Blessed weapons and Turn Undead/Hollow remain source/effect guidance, not damage
 **Reactions:**
 - **Reactive Architecture.** When targeted by a ranged attack or spell, the Architect can raise a wall section (AC 19, 30 HP) as a reaction. The wall takes the hit instead. One wall per round. It crumbles at the end of the round in which it rises (decision 14 originally kept it standing). Reshape walls persist.
 
-The level-20 reference warrior, mage, rogue and cleric entered with earned attribute increases, trained electives, patron gifts and the best compatible authored equipment. At 300 HP and spec dice, the party won 0 of 20 fights under the original rules, 1 after reaction walls expired at round end, and 2 after Entomb moved to recharge 6 and escape DC 12. Both damage profiles below use these wall and Entomb rules. At 300 HP the middle dice yielded 1 victory. The low dice yielded 4 with Geometry Strike at 1d6+6, 8 at 1d4+6, and 12 at 1d2+6.
+The level-20 reference warrior, mage, rogue and cleric entered with earned attribute increases, trained electives, patron gifts and the best compatible authored equipment. At 300 HP and spec dice, the party won 0 of 20 fights under the original rules, 1 after reaction walls expired at round end, and 2 after Entomb moved to recharge 6 and escape DC 12. The historical middle and low damage profiles used those wall and Entomb rules. At 300 HP the middle dice yielded 1 victory. The low dice yielded 4 with Geometry Strike at 1d6+6, 8 at 1d4+6, and 12 at 1d2+6.
 
 | Profile | HP | Construct Slam | Geometry Strike | Cathedral | Entomb compression | Wins | Median rounds | Max rounds |
 |---|---:|---|---|---|---|---:|---:|---:|
 | Original spec | 300 | 3d10+5 + 2d6 force | 2d8+6 | 4d10 | 3d8 | 0/20 | 17 | 40 |
-| Low dice | 300 | 1d6+5 + 1d4 force | 1d2+6 | 1d8 | 1d4 | 12/20 | 22 | 48 |
-| Middle dice, original release | 154 | 2d10+5 + 1d6 force | 1d8+6 | 2d10 | 2d8 | 12/20 | 11 | 39 |
+| Historical low dice | 300 | 1d6+5 + 1d4 force | 1d2+6 | 1d8 | 1d4 | 12/20 | 22 | 48 |
+| Historical middle dice, original release | 154 | 2d10+5 + 1d6 force | 1d8+6 | 2d10 | 2d8 | 12/20 | 11 | 39 |
+| Current, Shadow Step policy | 175 | 2d10+4 + 1d6 force | 1d8+6 | 2d10 | 2d8 | 13/20 | 12 | 28 |
 
-The original release used the middle profile for its shorter median fight. Every integer HP from 155 through 300 produced at least nine defeats with the middle dice. After enemy opportunity attacks brought the release profile to 11 wins, reducing Construct Slam by 1 bludgeoning damage restored 12 wins on the same 20 seeds.
+The original release used the middle profile for its shorter median fight. After enemy opportunity attacks brought the release profile to 11 wins, reducing Construct Slam by 1 bludgeoning damage restored 12 wins on the same 20 seeds. With the rogue using Shadow Step when a covered flank was available, the 5 HP-step bisection result was 175 HP. The party won 13 of 20 fixed seeds in a median of 12 rounds. The next step, 180 HP, yielded 11 wins.
 
 **Legendary Actions (3/round, between other creatures' turns):**
 - **Shift Wall (1 action).** Move one wall section up to 30 ft.
