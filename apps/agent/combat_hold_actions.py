@@ -26,7 +26,8 @@ def _held_declaration(head: dict):
 async def concealed_target_reason(
     state: CombatState, head: dict, declaration: Declaration, *, packet_deps: dict
 ) -> str | None:
-    if head["roll"] is not None or head.get("fate_attack") is not None or "execution_receipt" in head:
+    # begin_execution writes the receipt before any d20 is committed or Fate-held: a started action finishes.
+    if "execution_receipt" in head:
         return None
     actor = state.get_participant(head["actor_id"])
     if actor is None or actor.is_ally:

@@ -203,6 +203,43 @@ async def test_shadow_veil_cancels_a_strike_resumed_after_its_pre_roll_window(wa
     assert not result["resolved"] and "vanished" in result["reason"]
 
 
+@pytest.mark.parametrize("hold", ["post_roll", "fate"])
+async def test_shadow_veil_keeps_a_strike_whose_d20_is_committed(walk: MawlingHarness, hold: str) -> None:
+    rogue = walk.players[0]
+    if hold == "fate":
+        await walk.pool.execute(
+            """UPDATE players SET data = data || '{"divine_favor":{"patron":"zhael","level":40,"max":100}}'
+            WHERE player_id = $1""",
+            rogue,
+        )
+    foe = await enter_bandit_fight(walk)
+    await declare(walk, await bandit_attack(walk, foe, rogue))
+    with (
+        patch("check_resolution.dice_roll", return_value=_d20(18)) as rolls,
+        patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
+    ):
+        for _ in range(3):
+            paused = await walk.command("resolve_phase", {})
+            if "fate_offer" in paused or (paused["next"]["waiting_on"] or {}).get("stage") == "post_roll":
+                break
+        if hold == "fate":
+            assert paused["fate_offer"]["roller_id"] == foe
+        else:
+            waiting = paused["next"]["waiting_on"]
+            assert any(r["actor_id"] == rogue and r["id"] == "rogue_uncanny_dodge" for r in waiting["reactions"])
+        rolls.assert_called_once()
+        # A live offer settles before any other tool runs; a reload drops it but keeps the held d20.
+        await fresh_session(walk, await walk.reload())
+        await veil(walk)
+        await fresh_session(walk, await walk.reload())
+        packets = await walk.drain()
+    rolls.assert_called_once()
+    result = receipt(packets, foe)
+    assert result["resolved"] and result["hit"] and result["damage"] > 0
+    row = await db_queries.get_player(rogue)
+    assert row is not None and row["hp"]["current"] == 100 - result["damage"]
+
+
 async def test_fireball_reaches_a_concealed_ally_in_its_area(walk: MawlingHarness) -> None:
     rogue, ally = walk.players
     await walk.pool.execute(
