@@ -206,12 +206,11 @@ async def _query_abilities_impl(
             row["spell_id"] = ability.spell_id
         elif recipe := attack_recipe(ability.id):
             row["declaration"] = recipe
-        elif ability.ability_type != "reaction" and not combat_ability(ability):
-            row["combat"] = False
+        elif ability.ability_type != "reaction":
+            row["combat"] = combat_ability(ability)
         if ability.ability_type == "reaction":
             row["window"] = ability.window
         if ability.ability_type == "elective":
-            row["combat"] = combat_ability(ability)
             active_variant_id = await persistence.get_active_variant(player_id, ability.id)
             if active_variant_id is not None:
                 row["active_variant_id"] = active_variant_id

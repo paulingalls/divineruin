@@ -4,6 +4,7 @@ import re
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from archetype_abilities_config_fixture import marshal_order_targets
 from combat._helpers import _make_combat_state
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
@@ -15,6 +16,7 @@ import reaction_windows
 import spells
 from ability_tools import _request_ability_activation_impl
 from combat_phase import PhaseBeat, advance_combat_phase
+from session_data import CombatParticipant
 
 
 def _player(stamina: int = 10, focus: int = 10, class_: str = "paladin") -> dict:
@@ -172,6 +174,7 @@ class TestActivation:
         catalog = [ability for ability in abilities._abilities.values() if ability.ability_type != "reaction"]
         assert len(catalog) >= 100, f"catalog walk went thin ({len(catalog)}) — abilities did not load"
         compared = 0
+        order_targets = marshal_order_targets("goblin_scout_1")
 
         for ability in catalog:
             ctx = make_context()
@@ -185,20 +188,19 @@ class TestActivation:
             compared += 1
             spell = spells.get_spell(match.group(1)) if ability.spell_id is not None else None
             state = _make_combat_state()
-            from voice_condition_fixtures import place_actors
-
-            from session_data import CombatParticipant
-
             actor = state.get_participant("player_1")
             assert actor is not None
             actor.archetype_id = ability.archetype_id
             actor.level = ability.level_requirement
             state.participants.append(CombatParticipant("ally", "Ally", "companion", 5, 10, 10, 10))
-            state.initiative_order.append("ally")
+            state.participants.append(CombatParticipant("second_ally", "Second Ally", "companion", 4, 10, 10, 10))
+            state.initiative_order.extend(("ally", "second_ally"))
             place_actors(state)
             state.beat = PhaseBeat.DECLARATION
             action = {"type": "ability", "action": match.group(1)}
-            if ability.id == "warrior_rallying_shout":
+            if targets := order_targets.get(ability.id):
+                action.update(targets)
+            elif ability.id == "warrior_rallying_shout":
                 action["target_id"] = "ally"
             elif ability.id != "warrior_second_wind" and (spell is None or spell.heal is None):
                 action["target_id"] = "goblin_scout_1"

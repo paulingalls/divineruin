@@ -23,3 +23,13 @@ def setup_archetype_abilities_config_fixture() -> None:
     """Populate abilities._abilities from the content JSON, mirroring the
     production loader."""
     set_abilities(load_fixture_config())
+
+
+def marshal_order_targets(foe_id: str) -> dict[str, dict[str, str | list[str]]]:
+    return {
+        "marshal_direct_strike": {"target_ids": ["ally", foe_id]},
+        "marshal_coordinated_assault": {"target_ids": ["ally", "second_ally"]},
+        "marshal_reposition": {"target_id": "ally"},
+        "marshal_field_medic_order": {"target_id": "ally"},
+        "marshal_sacrifice_play": {"target_id": "ally"},
+    }
