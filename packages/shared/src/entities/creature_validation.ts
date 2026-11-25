@@ -108,6 +108,9 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
   }
   field(creature, "description", "", "string");
   for (const key of ["level", "hp", "ac", "speed"]) field(creature, key, "", "integer");
+  const flySpeed = creature.fly_speed;
+  if ("fly_speed" in creature && (!Number.isInteger(flySpeed) || Number(flySpeed) <= 0))
+    problems.push("fly_speed: expected positive integer");
   const attributes = field(creature, "attributes", "", "object");
   if (isObject(attributes))
     for (const key of ATTRIBUTES) field(attributes, key, "attributes", "integer");
@@ -211,6 +214,11 @@ export function validateCreatureStatBlock(creature: unknown): string[] {
         if (!isObject(ability)) {
           problems.push(`${path}: expected object`);
           return;
+        }
+        if ("flyby" in ability) {
+          if (group !== "passives") problems.push(`${path}.flyby: only allowed on passives`);
+          else if (ability.flyby !== true) problems.push(`${path}.flyby: expected true`);
+          else if (!("fly_speed" in creature)) problems.push(`${path}.flyby: requires fly_speed`);
         }
         for (const key of ["name", "description", "narration_cue"])
           field(ability, key, path, "string");

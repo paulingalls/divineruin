@@ -185,6 +185,7 @@ def test_catalog_critical_keeps_authored_damage_without_attribute():
             {
                 "name": "Rally",
                 "kind": "healing",
+                "reach": 30,
                 "target_group": "allied_bandits",
                 "healing": "1d8",
                 "attack_source": "catalog",
@@ -195,6 +196,7 @@ def test_catalog_critical_keeps_authored_damage_without_attribute():
             {
                 "name": "Rally",
                 "kind": "healing",
+                "reach": 30,
                 "target_group": "allied_bandits",
                 "healing": "1d8",
                 "self_heal": "damage_dealt",

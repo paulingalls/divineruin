@@ -1,9 +1,10 @@
-"""Resolve and checkpoint the ally pass of a combat phase."""
+"""Resolve the ally band and persist its place while a declaration is suspended."""
 
 from livekit.agents.llm import ToolError
 
-import combat_fate
+from combat_fate import continue_attack
 from combat_fate_rolls import PacketRolls
+from combat_player_movement import PlayerMovement
 
 
 def begin_ally_pass(state, allies, hostiles, players_by_id):
@@ -51,6 +52,10 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
         actor = state.get_participant(actor_id) if actor_id is not None else None
         attack = cursor["attack"]
         steps = cursor.setdefault("steps", {})
+        movement = PlayerMovement(session, state, steps, packet_deps, fate_rolls, summaries)
+        if movement.route is not None and not await movement.advance():
+            return summaries
+        player_movement = movement if actor is not None and actor.type == "player" else None
         progress = (
             PacketRolls(
                 fate_rolls, steps, packet_deps["queries"], packet_deps["conn"], cursor.get("deescalation_round")
@@ -86,7 +91,7 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
                     "reason": "The original roller is no longer present.",
                 }
             else:
-                summary = await combat_fate.continue_attack(
+                summary = await continue_attack(
                     session,
                     state,
                     packet,
@@ -97,6 +102,7 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
                     attack["is_first_attack"],
                     attack_cursor=attack,
                     progress=progress,
+                    player_movement=player_movement,
                     **{
                         key: packet_deps[key]
                         for key in ("mutations", "queries", "resolver", "concentration_break_mod", "conn", "sink")
@@ -133,8 +139,9 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
                     players_by_id=players,
                     attack_cursor=attack,
                     progress=progress,
+                    player_movement=player_movement,
                 )
-        if fate_rolls.pending is not None:
+        if fate_rolls.pending is not None or state.open_window is not None:
             if "reactive_architecture" in summary:
                 summaries.append(summary)
             state.beat = PhaseBeat.RESOLUTION

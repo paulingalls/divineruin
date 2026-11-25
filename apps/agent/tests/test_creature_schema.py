@@ -66,7 +66,7 @@ def test_every_spec_field_is_required():
         if not case.get("spec_derived"):
             continue
         for path in key_paths(case["block"]):
-            if path[0] in {"damage_affinities", "tags"}:
+            if path[0] in {"damage_affinities", "fly_speed", "tags"}:
                 continue
             block = copy.deepcopy(case["block"])
             parent = block

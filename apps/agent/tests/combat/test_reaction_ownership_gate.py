@@ -141,7 +141,7 @@ def test_declaration_refresh_seeds_only_known_owners():
 
     refreshed, _ = combat_phase.advance_combat_phase(state, {known_owner.id: {"type": "defend"}})
 
-    assert set(refreshed.reactions_available) == {"player_1"}
+    assert set(refreshed.reactions_available) == {"player_1", "goblin_scout_1"}
 
 
 def _start_mocks(player_class, player_level=6):

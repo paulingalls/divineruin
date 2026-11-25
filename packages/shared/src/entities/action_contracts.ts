@@ -181,6 +181,7 @@ export function validateActionExtensions(action: ActionExtensions, path: string)
       "escape_dc",
     ];
     if (kind === "healing") {
+      if (!positive(action.reach)) invalid(`${path}.reach`);
       forbidden.push("advantage", "on_hit");
       if (action.target_group !== "allied_bandits") invalid(`${path}.target_group`);
       if (

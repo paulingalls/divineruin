@@ -357,7 +357,11 @@ async def test_corrupt_pending_and_held_destination_refuses_before_roll(spatial_
         assert ctx.userdata.combat_state.spatial == spatial
         if not held:
             # A refused stored declaration reopens the declaration beat; RESOLUTION would refuse forever.
-            before = {**before, "beat": "declaration", "pending_declarations": {}}
+            before = {
+                **before,
+                "beat": "declaration",
+                "pending_declarations": {},
+            }
         assert await persisted(state.combat_id) == before
         assert ctx.userdata.room.local_participant.publish_data.call_count == calls
 

@@ -19,7 +19,8 @@ attack — action is the EXACT name of one of the actor's Combatants[].actions (
 equipped weapons, for example "Longsword"), because that is what resolve_phase matches against, and \
 target_id is who they strike. A warrior using Shield Bash sets rider="shield_bash" on a melee Attack. \
 Use an empty rider for ordinary attacks. Rogues can use rider="dash" to double approach movement \
-or rider="hide" to attempt Stealth after the attack. Narrate Hide from cunning_action.concealed. \
+or rider="hide" to attempt Stealth after the attack. Use rider="disengage" to avoid enemy opportunity attacks \
+during the declaration. Narrate Hide from cunning_action.concealed. \
 An action in Combatants[].mark_actions with kind `command` still uses its exact action name, but \
 target_id is the foe the commander's band will focus, not someone the commander strikes. \
 An action with kind `accusation` follows the same mark-action flow, but target_id is the accused \
@@ -72,8 +73,8 @@ For an action or composite strike with durability_rider, query_info(kind="invent
 When Still facts are present, use the surfaced Interact searches and strike only revealed anchors. Never voice an unrevealed anchor. The Still and its anchors take no actions.
 
 Beat 2 — Resolution. Call resolve_phase. It resolves the PLAYER's and the companions' \
-declarations in initiative order against the combatants' HP — silently — and holds every enemy \
-action back for Beat 3. Produce NO narration yet; wait for it to return the result packets. \
+declarations in initiative order against the combatants' HP — silently — and holds ordinary enemy \
+actions back for Beat 3. Produce NO narration yet; wait for it to return the result packets. \
 resolve_phase is the only source of truth — never improvise hit-or-miss. It ends combat for you \
 on victory (last enemy down) or defeat (player dead); call end_combat yourself only when the \
 player flees, with 'fled' — and it will refuse while enemy actions are still held, so close \
@@ -124,18 +125,24 @@ When a tool result has fate_offer, narrate any finished packets, follow its dm_c
 the eligible follower. Use activate with that offer_id to accept or decline, and wait for the \
 follower to choose after a reroll. Every other tool call keeps the original.
 
-THE ENEMY BLOWS ARE HELD. Beat 2 narrated your side; the enemies have not struck yet. Call \
-resolve_phase again to bring each enemy action forward, and read "next" every time:
+An enemy can strike as a player leaves its reach during movement or a melee approach. If \
+next.waiting_on.opportunity_attack is true, narrate the enemy catching the player mid-step and \
+pause there. Narrate completed opportunity_attack packets in order before the player's continued \
+movement or attack. A fallen player stops where the blow landed. Normal enemy actions still \
+follow the ally band. Call resolve_phase to bring them forward, and read "next" every time:
 
 When next.waiting_on is null, the enemy actions in that result have fully resolved — narrate them \
-and move on. When next.waiting_on is present, the machine has PAUSED mid-blow and is holding the \
-damage. next.waiting_on.action names the exact held action: narrate right up to the moment and STOP. \
+and move on. When next.waiting_on is present, next.waiting_on.action names the action at the pause. \
+Narrate up to the reaction moment and STOP. \
 The pause IS the mechanic — the raised axe, the \
 indrawn breath — not a delay to smooth over. next.waiting_on names the actor, the target, and \
 which reaction windows are open (its "triggers"), plus a window_id; use those ids as given and \
-never invent one. next.waiting_on.stage tells you where the blow is: "pre_roll" is before the \
-attack is rolled, "post_roll" is after the roll but BEFORE the damage lands, so a post_roll pause \
-already knows hit or miss and you may voice the strike connecting without saying what it costs. \
+never invent one. At "movement", the enemy pauses within melee reach before it can move farther. \
+Narrate a packet with reaction="warrior_opportunity_strike" from its attack outcome. \
+next.waiting_on.stage tells you where the blow is: "pre_roll" is before the \
+attack is rolled. A "post_roll" attack pause knows hit or miss and holds the damage, so you may \
+voice the strike connecting without saying what it costs. When "on_condition_imposed" is the only \
+trigger, the save failed and the restraint already took hold. Voice the chamber closing and pause. \
 THIS is where a reaction happens. next.waiting_on.reactions lists at least one reaction that fits this \
 window, each with an actor_id, an id and a name. If the player calls one of theirs out — "I block!", \
 "I dodge!" — call activate with that entry's id, exactly as listed, BEFORE you call resolve_phase \
@@ -144,7 +151,10 @@ There is no pre-declaration: the open window is the whole permission, and the pl
 reaction per round. Then call resolve_phase again to close the window and continue.
 
 When you close a window the player reacted at, that result carries a packet for the REACTION \
-itself, alongside the enemy's. Its "mechanical_effect" says what the reaction actually DID: \
+itself, alongside the enemy's. "restraint_escaped" means Slippery freed the reactor from the chamber \
+named by chamber_id. The enemy packet with that chamber_id records the initial restraint. Voice \
+the chamber closing once, followed by the escape, and leave the reactor free. \
+The "mechanical_effect" field says what the reaction actually DID: \
 "damage_halved" for a blow they turned into a graze, "target_ac_bonus" for a guard that made the \
 strike go wide, "shield_durability" for a shield that took the wear, "save_advantage" for help \
 resisting an effect, "command_countered" for a silenced order, "accusation_dismissed" for a charge \
@@ -162,7 +172,7 @@ one. A cue that has the attacker grunting in pain, or the blade finding only air
 where "mechanical_effect" and the enemy's own packet say it is — read the outcome off those two \
 and let the cue give you the picture, never the result.
 
-For an attack packet, closed_distance, moved_ft and destination report its charge; attack_resolved: false means no swing happened, never a miss.
+For an attack packet, closed_distance, moved_ft and destination report its charge. Read each swing in attacks if present. attack_resolved: false means the swing stopped before rolling.
 For a maneuver packet, moved_ft and destination report movement; stood_up and shove are authoritative outcomes; prone_immunity names the \
 skill capability that resisted a knockdown, and advantage_vs names the carried item that aided \
 the shove defence.

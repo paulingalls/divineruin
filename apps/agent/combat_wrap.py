@@ -62,6 +62,7 @@ def next_envelope(state) -> dict:
     """
     if state.open_window is not None:
         window = state.open_window
+        head = state.held_actions[0]
         return {
             "phase": state.beat,
             "verbs": ["resolve_phase"],
@@ -73,6 +74,11 @@ def next_envelope(state) -> dict:
                 "triggers": window["triggers"],
                 "action": _held_action_name(state),
                 "reactions": reaction_gate.offered_reactions(state),
+                **(
+                    {"opportunity_attack": True, "interrupt_position": head["interrupt_position"]}
+                    if head.get("opportunity_attack")
+                    else {}
+                ),
             },
         }
     if state.legendary_continuation is not None or state.beat == combat_phase.PhaseBeat.NARRATION:

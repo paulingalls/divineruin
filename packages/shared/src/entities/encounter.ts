@@ -124,6 +124,7 @@ export interface EncounterAccusationAction extends EncounterActionBase {
 
 export interface EncounterHealingAction extends EncounterActionBase {
   kind: "healing";
+  reach: number;
   target_group: "allied_bandits";
   healing: string;
   recharge?: Recharge;

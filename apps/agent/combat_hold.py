@@ -4,12 +4,9 @@ decision 46 / game_mechanics_combat.md:182-187: the DM narrates each enemy actio
 reaction window, and the engine holds enemy damage until each window closes. Sprint 45 resolved
 every packet in one pass, so the blow was written before the DM spoke. This module is the hold.
 
-Two stages can offer windows on one attack: a PRE-ROLL window
-(on_targeted / on_ally_targeted / on_enemy_action) and a POST-ROLL, PRE-DAMAGE window
-(on_hit / on_ally_hit / on_enemy_miss / on_enemy_action, plus on_condition_imposed on a landed
-grapple). The window VOCABULARY is reaction_windows.py's — a pure function of the action. The
-pause decision uses reaction_gate's activation rules for each candidate stage, per
-gm_combat:131: narration flows when no player can react.
+Movement can pause at a warrior's reach before the roll. Attack windows can
+pause before the roll or between its outcome and damage. A save-only restraint
+can open a window after it takes hold.
 
 The queue is stepped by ``resolve_phase``, one pause per call — no new verb (the open window
 reaches the DM through the result's ``next`` field, ADR 0008 decision 4).
@@ -20,8 +17,9 @@ from uuid import uuid4
 
 import architect_actions
 import combat_enhancers
+import combat_hold_conditions
 import combat_marks as combat_marks
-import combat_melee_approach
+import combat_opportunity
 import combat_reaction_contest
 import combat_reaction_effect
 import event_types as E
@@ -46,7 +44,7 @@ from combat_packet import _resolve_one_packet
 from combat_reshape_packet import ReshapeRefused, resolve_reshape
 from encounter_actions import action_kind
 from patron_zero_hp import provisional_ward_verdict
-from reaction_windows import POST_ROLL, PRE_ROLL
+from reaction_windows import MOVEMENT, POST_ROLL, PRE_ROLL
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -60,29 +58,28 @@ class HeldActionUnresolvable(ValueError):
     """
 
 
-def hold_enemy_packets(state, packets: list) -> list[dict]:
-    """Build the Beat-3 queue from the hostile band's resolution packets.
+def new_head(state, actor_id: str, initiative: int, declaration: dict, **provenance) -> dict:
+    seq = state.held_sequence
+    state.held_sequence += 1
+    return {
+        "seq": seq,
+        "execution_id": uuid4().hex,
+        "actor_id": actor_id,
+        "initiative": initiative,
+        "declaration": declaration,
+        "roll": None,
+        "roll_published": False,
+        "opened": [],
+        **provenance,
+    }
 
-    Each entry is JSONB-native so it round-trips through CombatState.to_dict/from_dict untouched:
-    a crash between commits reloads to a paused combat, never to a deleted enemy turn (AC7).
-    """
-    queue = []
-    for packet in packets:
-        for declaration, provenance in held_declarations(state, packet):
-            queue.append(
-                {
-                    "seq": len(queue),
-                    "execution_id": uuid4().hex,
-                    "actor_id": packet.actor_id,
-                    "initiative": packet.initiative,
-                    "declaration": declaration,
-                    "roll": None,
-                    "roll_published": False,
-                    "opened": [],
-                    **provenance,
-                }
-            )
-    return queue
+
+def hold_enemy_packets(state, packets: list) -> list[dict]:
+    return [
+        new_head(state, packet.actor_id, packet.initiative, declaration, **provenance)
+        for packet in packets
+        for declaration, provenance in held_declarations(state, packet)
+    ]
 
 
 def preflight_spend(state, actor_id: str, ability_id: str) -> dict:
@@ -166,13 +163,10 @@ async def pump(
     with the queue empty, the caller runs Beat 4 in that same commit (AC6 — the wrap fires once,
     in the last commit, because an enemy blow can be what ends the fight).
     """
-    # The DM came back, so whatever window we were paused on has closed. Capture it on the way
-    # out: a reaction spent at that window changes the held blow, and this is the one moment where
-    # the spend exists and the blow has not been applied yet (story-018).
     closed, state.open_window = state.open_window, None
     summaries: list[dict] = []
     reacted, reaction_packets = None, []
-    if closed is not None and state.held_actions:
+    if closed is not None and closed["stage"] != MOVEMENT and state.held_actions:
         reacted = state.held_actions[0]
         reaction_packets = combat_reaction_effect.close(
             state, reacted, closed, attack_action=_attack_action(state, reacted), contest_rng=contest_rng
@@ -199,6 +193,10 @@ async def pump(
         head = state.held_actions[0]
         if execution_id is not None and head.get("execution_id") != execution_id:
             break
+        if "completed_condition" in head:
+            summaries.append(strike_summary(head, _with_reshape(head, head["completed_condition"])))
+            state.held_actions.pop(0)
+            continue
         import choir_encounter
         from choir_effects import approach
 
@@ -263,25 +261,29 @@ async def pump(
             state.held_actions.pop(0)
             continue
         summary_start = len(summaries)
-        opens = _opens_windows(state, head)
+        opens = "opportunity_approach" in head or _opens_windows(state, head)
         action = _attack_action(state, head) if opens else None
+        window_action = None
         if opens:
             actor = state.get_participant(head["actor_id"])
-            movement = combat_melee_approach.prepare_held(
-                state, head, _find_action(actor, _held_declaration(head).action)
-            )
+            window_action = _find_action(actor, declaration.action)
+            assert window_action is not None
+            movement = {}
+            if not head.get("opportunity_attack"):
+                movement = await combat_opportunity.prepare_held(
+                    session, state, head, window_action, summaries, packet_deps=packet_deps, fate_rolls=fate_rolls
+                )
+            if movement is None:
+                return summaries
             if movement.get("attack_resolved") is False:
                 summaries.append(strike_summary(head, _with_reshape(head, movement)))
                 state.held_actions.pop(0)
                 continue
 
         try:
-            if opens:
+            if window_action is not None:
                 if PRE_ROLL not in head["opened"]:
                     head["opened"].append(PRE_ROLL)
-                    actor = state.get_participant(head["actor_id"])
-                    window_action = _find_action(actor, _held_declaration(head).action)
-                    assert window_action is not None
                     triggers = (
                         (reaction_windows.CATCH_ALL,)
                         if action_kind(window_action) in STILL_ZONE_KINDS
@@ -302,7 +304,8 @@ async def pump(
                         state, head["actor_id"], action, head["declaration"]["target_id"]
                     ):
                         raise HeldActionUnresolvable(reason)
-                    _assert_single_swing(state, head, action)
+                    if not head.get("opportunity_attack"):
+                        _assert_single_swing(state, head, action)
                     contribution = combat_reaction_effect.ac_bonus(state, head)
                     if not await roll_hostile(
                         session, state, head, _held_declaration(head), action, contribution, packet_deps, fate_rolls
@@ -370,6 +373,14 @@ async def pump(
             combat_reaction_effect.record_shield_wear(recorded_reactions, state, head, summary)
             combat_reaction_effect.record_save_advantage(recorded_reactions, summary)
         summaries.extend(deferred_reactions)
+        if window_action is not None and (
+            candidate := combat_hold_conditions.window_for(state, head, window_action, summary)
+        ):
+            head["completed_condition"] = summary
+            head["opened"].append(POST_ROLL)
+            _open(state, candidate)
+            _assert_iteration_progress(state, head, summaries, summary_start)
+            return summaries
         summaries.append(strike_summary(head, _with_reshape(head, summary)))
         state.held_actions.pop(0)
         _assert_iteration_progress(state, head, summaries, summary_start)
@@ -452,9 +463,12 @@ async def _resolve_held(
         mark_cancelled=mark_cancelled,
         publish_roll=not head.get("roll_published", False),
         _held_head=head
-        if "legendary_kind" in head or head.get("execution_receipt") is not None or "progress" in deps
+        if head.get("opportunity_attack")
+        or "legendary_kind" in head
+        or head.get("execution_receipt") is not None
+        or "progress" in deps
         else None,
-        _melee_approach=head.get("melee_approach"),
+        _melee_approach={} if head.get("opportunity_attack") else head.get("melee_approach"),
         _reshape_prepared=True,
         **deps,
     )

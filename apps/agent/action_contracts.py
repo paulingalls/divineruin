@@ -110,6 +110,8 @@ def validate_action_extensions(action: dict, path: str) -> None:
     elif kind in ("healing", "prepare_attack"):
         forbidden = STRIKE_FIELDS
         if kind == "healing":
+            if not positive_integer(action.get("reach")):
+                invalid(f"{path}.reach")
             forbidden += ("advantage", "on_hit")
             if action.get("target_group") != "allied_bandits":
                 invalid(f"{path}.target_group")
