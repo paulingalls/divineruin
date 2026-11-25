@@ -18,6 +18,11 @@ MORTAEN_THRESHOLD_SHIELD = "mortaen_threshold_shield"
 MORTAEN_HOLD_THE_CROSSING = "mortaen_hold_the_crossing"
 
 KAELEN_WAR_SONGS = "kaelen_war_songs"
+TWO_ROUND_VEIL = "syrath_two_round_veil"
+
+
+def shadow_veil_rounds(player: dict) -> int:
+    return 2 if has_engine_synergy(player, TWO_ROUND_VEIL) else 1
 
 
 def inspire_attack_upgrade(player: dict) -> bool:

@@ -371,7 +371,8 @@ async def test_terminal_wrap_expires_hidden_defender(veil):
     assert (await row(h))["patron_gifts"][GIFT]["spent"]
 
 
-async def test_fresh_hydration_expires_only_gift_hiding(veil):
+@pytest.mark.parametrize("archetype", ["warrior", "rogue"])
+async def test_fresh_hydration_expires_only_gift_hiding(veil, archetype):
     from types import SimpleNamespace
     from typing import Any, cast
 
@@ -387,7 +388,14 @@ async def test_fresh_hydration_expires_only_gift_hiding(veil):
         await stealth(h, 20)
     finally:
         h.players.reverse()
+    await h.pool.execute(
+        "UPDATE players SET data=jsonb_set(data,'{class}', $2::jsonb) WHERE player_id=$1",
+        h.players[0],
+        json.dumps(archetype),
+    )
     await use(h)
+    marker = (await row(h))["flags"]["shadow_veil"]
+    assert marker == ({"remaining_rounds": 2, "clause_id": "syrath_two_round_veil"} if archetype == "rogue" else True)
     await h.session.aclose()
     fresh = SessionData(player_id=h.players[1], location_id=h.sd.location_id, room=h.sd.room)
     await hydrate_session_state(fresh, await row(h, 1))
@@ -410,8 +418,9 @@ async def test_fresh_hydration_expires_only_gift_hiding(veil):
     # Primary startup uses the same cleanup and never restores the abandoned combat.
     await h.pool.execute(
         "UPDATE players SET data=jsonb_set(jsonb_set(data,'{flags,concealed}','true'),"
-        "'{flags,shadow_veil}','true') WHERE player_id=$1",
+        "'{flags,shadow_veil}',$2::jsonb) WHERE player_id=$1",
         h.players[0],
+        json.dumps(marker),
     )
     fresh = SessionData(player_id=h.players[0], location_id=h.sd.location_id, room=h.sd.room)
     await hydrate_session_state(fresh, await row(h))

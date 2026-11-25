@@ -13,6 +13,7 @@ import db_queries
 from check_skill import _check_skill_run
 from condition_consume import serialize_combat_check
 from patron_gifts import KNOWLEDGE_SKILLS, SYRATH_SHADOW_VEIL, VEYTHAR_INSIGHT, syrath_gift, veythar_gift
+from patron_synergy_combat import TWO_ROUND_VEIL, shadow_veil_rounds
 from quest_progress import lock_discovery_rows
 from skill_check_effects import SkillCheckEffects
 
@@ -171,7 +172,7 @@ async def activate_shadow_veil(context):
     session = context.userdata
     state = session.combat_state
     if state is None:
-        raise ToolError("Shadow Veil is combat-only. It lasts until the current round ends.")
+        raise ToolError("Shadow Veil is combat-only.")
     player_id = session.acting_player_id
     participant = state.get_participant(player_id)
     if participant is None or participant.type != "player":
@@ -189,5 +190,9 @@ async def activate_shadow_veil(context):
             raise ToolError("Already hidden. Shadow Veil remains available.")
         session.validate_acting_player(player_id)
         await write_state(player_id, {"spent": True}, gift_id=SYRATH_SHADOW_VEIL, conn=conn)
-        packet = await concealment.transition(player_id, player, True, lifetime=True, conn=conn)
-    return json.dumps({"concealment": packet, "expires_round": state.round_number})
+        remaining = shadow_veil_rounds(player)
+        clause_id = TWO_ROUND_VEIL if remaining == 2 else None
+        lifetime = {"remaining_rounds": remaining, "clause_id": clause_id} if clause_id else True
+        packet = await concealment.transition(player_id, player, True, lifetime=lifetime, conn=conn)
+    packet.update(remaining_rounds=remaining, clause_id=clause_id)
+    return json.dumps({"concealment": packet, "expires_round": state.round_number + remaining - 1})
