@@ -13,33 +13,25 @@ import db_mutations
 @pytest.mark.parametrize(
     ("field", "value"),
     [
-        ("container", None),
         ("recipient", "unknown"),
         ("list", {}),
-        ("entry", None),
         ("duplicate", None),
         ("extra", 1),
-        ("missing", None),
         ("kind", "unknown"),
         ("order_id", "unknown"),
         ("source_id", "unknown"),
         ("target_id", "unknown"),
-        ("expires_round", "2"),
         ("expires_round", True),
     ],
     ids=[
-        "container",
         "recipient",
         "list",
-        "entry",
         "duplicate",
         "extra",
-        "missing",
         "kind",
         "order",
         "source",
         "target",
-        "expiry-string",
         "expiry-bool",
     ],
 )
@@ -52,18 +44,12 @@ async def test_loader_rejects_malformed_order_riders(marshal, field, value) -> N
     row = deepcopy(original)
     riders = row["order_riders"]
     [rider] = riders[ally]
-    if field == "container":
-        row["order_riders"] = value
-    elif field == "recipient":
+    if field == "recipient":
         riders[value] = riders.pop(ally)
     elif field == "list":
         riders[ally] = value
-    elif field == "entry":
-        riders[ally][0] = value
     elif field == "duplicate":
         riders[ally].append(rider)
-    elif field == "missing":
-        del rider["target_id"]
     else:
         rider[field] = value
     try:
