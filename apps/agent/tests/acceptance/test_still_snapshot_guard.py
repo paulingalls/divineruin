@@ -80,7 +80,9 @@ async def test_dormant_ledger_distinguishes_legacy_and_corrupt_shapes(still, his
     await fresh_session(still)
 
     prior = deepcopy(dormant)
+    # A snapshot from before party aggression history also predates the rally ledger.
     del prior["snapshot"]["encounter_facts"]["party_aggressors"]
+    del prior["snapshot"]["encounter_facts"]["rally_pending"]
     if history == "absent":
         del prior["snapshot"]["encounter_facts"]
     else:
