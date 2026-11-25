@@ -230,9 +230,12 @@ async def test_nearest_stone_refuses_enemy_move_and_blocks_effects(world):
             await declare(world, call, {**attack(enemy.id, world.ids[0]), "action": "Bow"})
 
 
-@pytest.mark.parametrize("x,speed,damage", [(14, 0, 5), (25, 5, 0)])
-async def test_contact_requires_reaching_wall(world, x, speed, damage):
-    enemy = fighter("marauder", action_pool=[CLAW])
+@pytest.mark.parametrize(
+    "x,speed,moved,damage,conditions",
+    [(14, 0, 0, 5, []), (25, 5, 5, 0, []), (25, 30, 0, 0, [{"type": "restrained", "duration": None}])],
+)
+async def test_contact_requires_reaching_wall(world, x, speed, moved, damage, conditions):
+    enemy = fighter("marauder", action_pool=[CLAW], conditions=conditions)
     async with battlefield(world, enemy) as call:
         state = world.ctx.userdata.combat_state
         spatial_record(state)["positions"][enemy.id]["x"] = x
@@ -250,7 +253,7 @@ async def test_contact_requires_reaching_wall(world, x, speed, damage):
         assert roll.call_count == bool(damage)
         persisted = await saved(world)
         assert participant(persisted, enemy.id).hp_current == 50 - damage
-        assert spatial_record(persisted)["positions"][enemy.id]["x"] == x - speed
+        assert spatial_record(persisted)["positions"][enemy.id]["x"] == x - moved
         assert participant(persisted, player).hp_current == 50
 
 
