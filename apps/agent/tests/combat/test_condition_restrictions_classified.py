@@ -104,6 +104,7 @@ def test_exact_restriction_partition_and_complete_spoken_corpus():
                 "consumed_on_use",
                 "one_time",
                 "no_hostile_source",
+                "must_target_source",
                 "auto_fail_hearing_perception",
                 "no_spoken_buffs",
             }

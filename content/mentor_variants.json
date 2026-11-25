@@ -112,7 +112,7 @@
       "focus": 0,
       "scaling": null
     },
-    "effect": "Force one enemy to attack you for 1 round (WIS save negates). Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "effect": "Through the next round, one foe must aim new attacks at you while you are standing and it can target you. A Wisdom save negates this. Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
     "narration_cue": "Taunt loosed with a clansman's abandon — heavier, wider, unstoppable once begun.",
     "cultural_attribution": "Drathian Clans technique"
   },
@@ -125,7 +125,7 @@
       "focus": 1,
       "scaling": null
     },
-    "effect": "Force one enemy to attack you for 1 round (WIS save negates). Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "effect": "Through the next round, one foe must aim new attacks at you while you are standing and it can target you. A Wisdom save negates this. Keldaran discipline trades raw power for flawless control, never overcommitting.",
     "narration_cue": "Taunt measured to the breath — stone-patient, then precise as a chisel.",
     "cultural_attribution": "Keldaran Holds technique"
   },

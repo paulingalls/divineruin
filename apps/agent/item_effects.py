@@ -31,6 +31,7 @@ BLOCKABLE_CONDITIONS = frozenset(
         "blinded",
         "frightened",
         "charmed",
+        "taunted",
         "deafened",
         "shaken",
         "petrified",

@@ -25,13 +25,18 @@ function chargeRow(): Record<string, unknown> {
 }
 
 describe("ability save fields", () => {
-  test("the real charge reaches the runtime contract", async () => {
+  test("the real warrior save abilities reach the runtime contract", async () => {
     const saveAbilities = (await rows())
       .filter((row) => row.save !== undefined)
       .map((row) => parseAbilityRow(row.id as string, row));
     const charge = saveAbilities.find((ability) => ability.id === "warrior_unstoppable_charge");
 
-    expect(saveAbilities.length).toBeGreaterThan(0);
+    const taunt = saveAbilities.find((ability) => ability.id === "warrior_taunt");
+
+    expect(taunt?.applies_condition).toBe("taunted");
+    expect(taunt?.save).toBe("wisdom");
+    expect(taunt?.dc_attribute).toBe("strength");
+    expect(taunt?.cost.stamina).toBe(2);
     expect(charge?.applies_condition).toBe("prone");
     expect(charge?.save).toBe("strength");
     expect(charge?.dc_attribute).toBe("strength");

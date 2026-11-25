@@ -1,5 +1,8 @@
 """The shared atomic declaration gate, including each selected composite strike."""
 
+from dataclasses import replace
+from typing import TYPE_CHECKING
+
 import abilities
 import architect_constructs
 import architect_encounter
@@ -22,12 +25,41 @@ from combat_ability_gate import (
 )
 from combat_action_availability import require_available
 from combat_structures import THORNWALL, action_has_direct_line, blocked_reason, line_blocker, require_line
-from condition_restrictions import cannot_act, declaration_costs, speed_zero
-from declarations import DeclarationType, ManeuverIntent
+from condition_restrictions import cannot_act, declaration_costs, required_attack_sources, speed_zero
+from declarations import Declaration, DeclarationType, ManeuverIntent
 from encounter_actions import action_kind
 
+if TYPE_CHECKING:
+    from combat_participant import CombatParticipant
+    from combat_state import CombatState
 
-def validate_declaration(next_state, actor_id, declaration, persisted_declarations):
+
+def _require_taunt_target(state: "CombatState", actor: "CombatParticipant", declaration: Declaration) -> None:
+    targets = declaration.target_ids or [declaration.target_id]
+    for source in required_attack_sources(actor.conditions):
+        taunter = state.get_participant(source)
+        if taunter is None:
+            raise ValueError(f"Taunt source {source!r} is not a combat participant")
+        if taunter.is_fallen or source in targets:
+            continue
+        # Check the retargeted attack against the same rules that would validate its redeclaration.
+        try:
+            validate_declaration(
+                state, actor.id, replace(declaration, target_id=source, target_ids=None, reshape=None), {}
+            )
+        except ValueError:
+            continue
+        raise ValueError(f"{actor.name} is under Taunt and must attack {taunter.name} ({source}).")
+
+
+def validate_declaration(
+    next_state: "CombatState",
+    actor_id: str,
+    declaration: Declaration,
+    persisted_declarations: dict,
+    *,
+    queued: bool = False,
+) -> None:
     if declaration.reshape:
         from architect_reshape import proposed_state
 
@@ -43,7 +75,7 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
         from combat_multiattack import expand_declaration
 
         for child in expand_declaration(actor, declaration):
-            validate_declaration(next_state, actor_id, child, persisted_declarations)
+            validate_declaration(next_state, actor_id, child, persisted_declarations, queued=queued)
         return
     import choir_encounter
 
@@ -92,6 +124,8 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
             f"Unknown attack action {declaration.action!r} for {actor.name} ({actor.id}); "
             f"available actions: {available}"
         )
+    if declaration.type is DeclarationType.ATTACK and not queued:
+        _require_taunt_target(next_state, actor, declaration)
     pool_action = _find_action(actor, declaration.action)
     martial = combat_martial.attack_ability(declaration)
     if declaration.type is DeclarationType.ATTACK and declaration.rider and martial is None:
@@ -132,6 +166,7 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
         import combat_spell_profile
         import spells
 
+        assert declaration.action is not None
         try:
             spell = spells.get_spell(declaration.action)
         except ValueError:

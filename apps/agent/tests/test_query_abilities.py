@@ -134,9 +134,9 @@ class TestQueryAbilities:
                     declaration = {"type": "ability", "action": action}
                     if row["id"] == "warrior_rallying_shout":
                         declaration["target_id"] = "ally"
-                    if row["id"] in ("warrior_devastating_strike", "rogue_dirty_trick"):
+                    if row["id"] in ("warrior_devastating_strike", "rogue_dirty_trick", "warrior_taunt"):
                         declaration["target_id"] = "foe"
-                    if row["id"] == "rogue_dirty_trick":
+                    if row["id"] in ("rogue_dirty_trick", "warrior_taunt"):
                         assert row["combat"] is True
                     if row["id"] in ("warrior_precision_strike", "warrior_reckless_assault"):
                         assert row["combat"] is True

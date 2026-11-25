@@ -75,6 +75,7 @@ class ConditionEffects:
 
 MARK_OF_JUSTICE = "mark_of_justice"
 INCORPOREAL = "incorporeal"
+TAUNTED = "taunted"
 
 
 CONDITION_CATALOG: dict[str, ConditionSpec] = {
@@ -91,6 +92,7 @@ CONDITION_CATALOG: dict[str, ConditionSpec] = {
         ],
     ),
     "battle_cry": ConditionSpec(clearance="duration", bonus_die="1d4", bonus_die_scopes=("attack",)),
+    TAUNTED: ConditionSpec(clearance="duration", restrictions=("must_target_source",)),
     "reckless_assault": ConditionSpec(clearance="next_declaration", restrictions=("incoming_advantage",)),
     "worthy_foe": ConditionSpec(clearance="end_of_combat_or_dismissed", restrictions=("incoming_advantage",)),
     # --- Combat conditions ---

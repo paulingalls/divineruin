@@ -35,6 +35,7 @@ const BLOCKABLE_CONDITIONS = new Set([
   "blinded",
   "frightened",
   "charmed",
+  "taunted",
   "deafened",
   "shaken",
   "petrified",

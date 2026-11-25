@@ -26,6 +26,18 @@ def _carriers(active_conditions: list[dict] | tuple[dict, ...], restriction: str
     )
 
 
+def required_attack_sources(active_conditions: list[dict] | tuple[dict, ...]) -> tuple[str, ...]:
+    sources = []
+    for condition in active_conditions:
+        if "must_target_source" not in get_condition_effects([condition]).restrictions:
+            continue
+        source = condition.get("source")
+        if not isinstance(source, str) or not source.strip():
+            raise ValueError("Taunt source must be a nonempty actor ID")
+        sources.append(source)
+    return tuple(sources)
+
+
 def mark_save_penalty(active_conditions: list[dict], originating_participant_id: str | None) -> int:
     if originating_participant_id is not None and any(
         c["type"] == MARK_OF_JUSTICE and c.get("source") == originating_participant_id for c in active_conditions
@@ -91,6 +103,7 @@ def attack_consumed_conditions(
 
 RESTRICTION_ENFORCERS = {
     "no_hostile_source": no_hostile_source,
+    "must_target_source": required_attack_sources,
     "auto_fail_hearing_perception": auto_fail_hearing_perception,
     "no_spoken_buffs": no_spoken_buffs,
     "skip_phase": cannot_act,
