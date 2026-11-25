@@ -165,7 +165,7 @@ async def _resolve_ability_condition_packet(
         await _deduct_ability_cost(attacker.id, ability, variant, persistence=persistence, queries=queries, conn=conn)
         steps["cost_paid"] = True
 
-    if ability.save is not None:
+    if combat_ability_save.requires_hostile_target(ability):
         summary = await combat_ability_save.resolve_hostile_condition(
             session,
             state,

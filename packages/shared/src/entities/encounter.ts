@@ -58,6 +58,7 @@ export const CONDITION_NAMES = [
   "inspired",
   "regenerating",
   "precise_strike",
+  "reckless_assault",
   "hollowed",
   "temporary_hollowed",
   "iron_resolve",

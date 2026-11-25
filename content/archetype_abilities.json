@@ -482,6 +482,7 @@
     "ability_type": "elective",
     "level_requirement": 4,
     "cost": { "stamina": 2, "focus": 0, "scaling": null },
+    "applies_condition": "shaken",
     "effect": "Target has disadvantage on their next action.",
     "narration_cue": "Sand in the eyes, a stomped foot, a cheap shot."
   },

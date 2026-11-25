@@ -134,8 +134,13 @@ class TestQueryAbilities:
                     declaration = {"type": "ability", "action": action}
                     if row["id"] == "warrior_rallying_shout":
                         declaration["target_id"] = "ally"
-                    if row["id"] == "warrior_devastating_strike":
+                    if row["id"] in ("warrior_devastating_strike", "rogue_dirty_trick"):
                         declaration["target_id"] = "foe"
+                    if row["id"] == "rogue_dirty_trick":
+                        assert row["combat"] is True
+                    if row["id"] in ("warrior_precision_strike", "warrior_reckless_assault"):
+                        assert row["combat"] is True
+                        assert row["declaration"] == {"kind": "attack", "rider": row["id"].removeprefix("warrior_")}
                     if recipe := row.get("declaration"):
                         declaration = {
                             "type": recipe["kind"],

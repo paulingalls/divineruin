@@ -7,10 +7,12 @@ import combat_melee_approach
 import combat_recharge
 import combat_spell_heal
 import dice
+import mentor_variants
 from combat_ability_gate import (
     CUNNING_ACTION,
     CUNNING_RIDERS,
     DEVASTATING_STRIKE,
+    ELECTIVE_ATTACK_RIDERS,
     RALLYING_SHOUT,
     SECOND_WIND,
     SHIELD_BASH,
@@ -25,6 +27,7 @@ from combat_fate_rolls import PacketRolls, packet_save
 from combat_legendary_resistance import finalize_save, override_fields
 from combat_participant import CombatParticipant
 from declarations import Declaration, DeclarationType
+from mentor_variants import MentorVariant
 from session_data import CombatState
 
 
@@ -72,6 +75,8 @@ def attack_ability(decl: Declaration) -> str | None:
         return SHIELD_BASH
     if decl.type is DeclarationType.ABILITY and decl.action == DEVASTATING_STRIKE:
         return DEVASTATING_STRIKE
+    if decl.type is DeclarationType.ATTACK and decl.rider is not None:
+        return ELECTIVE_ATTACK_RIDERS.get(decl.rider)
     return None
 
 
@@ -82,11 +87,19 @@ def main_hand(player: dict) -> dict:
     return weapon
 
 
-async def pay(player_id: str, resolved: DeclaredAbility, *, queries, conn) -> None:
+async def active_rider_variant(player_id: str, ability_id: str, *, conn) -> MentorVariant | None:
+    variant_id = await ability_persistence.get_active_variant(player_id, ability_id, conn=conn)
+    return mentor_variants.get_variant(ability_id, variant_id) if variant_id is not None else None
+
+
+async def pay(player_id: str, resolved: DeclaredAbility, *, queries, conn) -> MentorVariant | None:
     from combat_ability import _deduct_ability_cost
 
     ability, variant = resolved
+    if ability.id in ELECTIVE_ATTACK_RIDERS.values():
+        variant = await active_rider_variant(player_id, ability.id, conn=conn)
     await _deduct_ability_cost(player_id, ability, variant, persistence=ability_persistence, queries=queries, conn=conn)
+    return variant
 
 
 async def bash_save(

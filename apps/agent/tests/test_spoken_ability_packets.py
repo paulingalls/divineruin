@@ -13,6 +13,7 @@ import ability_tools
 import ability_voice_rules as voice
 import mentor_variants
 import reaction_windows
+from combat_ability_save import requires_hostile_target
 from conditions import apply_condition
 
 ROWS = json.loads((Path(__file__).resolve().parents[3] / "content/archetype_abilities.json").read_text())
@@ -104,7 +105,7 @@ async def test_actual_ooc_packets_require_target_hearing_and_lock_target(ability
 @pytest.mark.parametrize("ability_id", sorted(voice.POLICIES))
 @pytest.mark.asyncio
 async def test_existing_eligible_packets_preserve_authored_effect(ability_id):
-    if abilities.get_ability(ability_id).save is not None:
+    if requires_hostile_target(abilities.get_ability(ability_id)):
         with pytest.raises(ToolError, match="needs a foe"):
             await activate(ability_id)
         return

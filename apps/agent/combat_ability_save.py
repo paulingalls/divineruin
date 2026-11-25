@@ -1,4 +1,4 @@
-"""Hostile saving-throw mechanics for player condition abilities."""
+"""Targeting and resolution for hostile player condition abilities."""
 
 from collections.abc import Callable
 from functools import partial
@@ -18,6 +18,12 @@ if TYPE_CHECKING:
 
 
 BENEFICIAL_CONDITIONS = frozenset({"blessed", "shielded", "enraged", "inspired", "precise_strike"})
+
+
+def requires_hostile_target(ability: "Ability") -> bool:
+    return ability.save is not None or (
+        ability.applies_condition is not None and ability.applies_condition not in BENEFICIAL_CONDITIONS
+    )
 
 
 def gate_hostile_condition_targets(state: "CombatState", decl: "Declaration", condition: str, action_name: str) -> None:
@@ -56,39 +62,40 @@ async def resolve_hostile_condition(
 ) -> dict:
     cond_type = ability.applies_condition
     assert cond_type is not None
-    assert ability.save is not None
-    assert ability.dc_attribute is not None
-    dc = player_ability_dc(attacker, ability.dc_attribute)
-    result = await packet_save(
-        progress,
-        session,
-        target.id,
-        cond_type,
-        partial(
-            check_resolution_save.roll_participant_save,
-            target,
-            ability.save,
-            dc,
-            cond_type,
-            originating_participant_id=attacker.id,
-            combat_state=state,
-        ),
-    )
-    if result is None:
-        return {}
-    result = finalize_save(state, target, result, failed_conditions=(cond_type,))
     summary = {
-        **override_fields(result),
         "actor_id": attacker.id,
         "resolved": True,
-        "save_success": result.success,
         "declaration_type": str(decl.type),
         "action": ability.id,
         "target": target.name,
     }
-    if result.success:
-        summary["condition_resisted"] = cond_type
-    elif land_condition(state, target.id, attacker, cond_type, ability.id, packet=summary):
+    if ability.save is not None:
+        assert ability.dc_attribute is not None
+        dc = player_ability_dc(attacker, ability.dc_attribute)
+        result = await packet_save(
+            progress,
+            session,
+            target.id,
+            cond_type,
+            partial(
+                check_resolution_save.roll_participant_save,
+                target,
+                ability.save,
+                dc,
+                cond_type,
+                originating_participant_id=attacker.id,
+                combat_state=state,
+            ),
+        )
+        if result is None:
+            return {}
+        result = finalize_save(state, target, result, failed_conditions=(cond_type,))
+        summary.update(override_fields(result), save_success=result.success)
+        if result.success:
+            summary["condition_resisted"] = cond_type
+            return summary
+    duration = 1 if ability.id == "rogue_dirty_trick" else None
+    if land_condition(state, target.id, attacker, cond_type, ability.id, duration=duration, packet=summary):
         summary["condition_inflicted"] = cond_type
     else:
         summary["condition_immune"] = cond_type

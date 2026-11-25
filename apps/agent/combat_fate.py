@@ -13,8 +13,14 @@ import combat_resolution
 import concealment
 import conditions
 import zhael_fate
-from combat_ability import _attach_riders
-from combat_ability_gate import DEVASTATING_STRIKE, SHIELD_BASH, declared_ability
+from combat_ability import _attach_riders, _with_variant
+from combat_ability_gate import (
+    DEVASTATING_STRIKE,
+    ELECTIVE_ATTACK_RIDERS,
+    RECKLESS_ASSAULT_RIDER,
+    SHIELD_BASH,
+    declared_ability,
+)
 from combat_attack_roll import attack_roll_inputs, promote_attack, spend_sneak_attack
 from combat_down import damage_target_unavailable
 from combat_item_rider import resolve_rider
@@ -44,18 +50,25 @@ async def attack_sequence(
     if martial == SHIELD_BASH:
         enhancers = [enhancer for enhancer in enhancers if enhancer != combat_enhancers.SHIELD_BASH]
     actions = combat_enhancers.attack_sequence(enhancers, action)
-    if martial == DEVASTATING_STRIKE:
+    if attack_cursor is None:
+        attack_cursor = {}
+    if martial == DEVASTATING_STRIKE or martial in ELECTIVE_ATTACK_RIDERS.values():
         resolved = declared_ability(martial)
         assert resolved is not None
-        await combat_martial.pay(attacker.id, resolved, queries=deps["queries"], conn=deps["conn"])
+        variant = await combat_martial.pay(attacker.id, resolved, queries=deps["queries"], conn=deps["conn"])
+        if martial in ELECTIVE_ATTACK_RIDERS.values():
+            actions = [{**swing, "advantage": True} for swing in actions]
+            attack_cursor["variant_receipt"] = _with_variant({}, variant)
+            if packet.declaration.rider == RECKLESS_ASSAULT_RIDER:
+                attacker.conditions = conditions.apply_condition(
+                    attacker.conditions, RECKLESS_ASSAULT_RIDER, source=martial
+                )
     # Encounter-context dramatic signals (M4.5, story-004) the per-attack resolver can't see:
     # the count of foes still standing as this declaration is resolved (==1 => last enemy), and
     # whether any attack has resolved this whole combat yet (the opening strike). Computed once
     # before the swing loop so all swings of an expanded sequence share one verdict.
     enemies_remaining = sum(1 for p in state.participants if p.type == "enemy" and not p.is_fallen)
     is_first_attack = not state.first_attack_resolved
-    if attack_cursor is None:
-        attack_cursor = {}
     return await continue_attack(
         session,
         state,
@@ -364,6 +377,7 @@ async def continue_attack(
             summary["cunning_action"].update(hidden)
     if effects := attack_cursor.pop("turn_start_effects", None):
         summary["turn_start_effects"] = effects
+    summary.update(attack_cursor.get("variant_receipt", {}))
     summary["actor_id"] = packet.actor_id
     summary["resolved"] = interrupted is None
     if interrupted is not None:

@@ -46,7 +46,9 @@ class AttackDecl(BaseModel):
     rider: str = Field(
         description='For a rogue using Cunning Action, choose "dash" for double approach movement, '
         '"hide" for Stealth after the attack, or "disengage" to avoid enemy opportunity attacks. '
-        'Use "shield_bash" for the warrior ability, or an empty string for an ordinary attack.'
+        'Use "shield_bash" for Shield Bash. A warrior who knows "precision_strike" or "reckless_assault" '
+        "can use that rider for advantage on every swing of this weapon attack. Reckless Assault also gives attackers "
+        "advantage against that warrior until their next declaration. Use an empty string for an ordinary attack."
     )
     reshape: list[ReshapeSelection] = Field(description=RESHAPE_DESCRIPTION)
 
