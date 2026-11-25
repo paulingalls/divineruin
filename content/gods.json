@@ -130,10 +130,11 @@
       "exalted": {
         "id": "veythar_wellspring_echo",
         "name": "Wellspring Echo",
-        "effect": "Once per session, cast any known spell at 0 Focus cost. Generates double normal Resonance — the power is free but the Veil pays",
+        "effect": "Arm once per session. Your next completed Focus-costing spell costs no Focus and generates double its normal Resonance.",
         "recharge": "per_session",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "veythar_wellspring_echo"
       }
     },
     "layer_4_synergy_matrix": {

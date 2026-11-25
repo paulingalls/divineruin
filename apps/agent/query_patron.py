@@ -10,6 +10,7 @@ import db_queries
 import patron_gateway
 import patron_senses
 import unbound_tools
+import veythar_wellspring
 import zhael_fate
 from _gods_content import load_gods
 from combat_terrain import resolve_terrain
@@ -76,7 +77,15 @@ async def query_patron(
         gift = {**gift, **zhael_fate.availability(player, gift)}
     abilities = project_abilities(player, patron)
     for ability in abilities:
-        if ability["id"] == DEATH_WARD:
+        if ability["id"] == veythar_wellspring.ECHO:
+            if veythar_wellspring.state(player).get("armed"):
+                ability["activation_hint"] = "Wellspring Echo is armed. " + veythar_wellspring.ARMED_HINT
+            elif ability["available"]:
+                ability["activation_hint"] = (
+                    f'Use activate(id="{veythar_wellspring.ECHO}") to arm Wellspring Echo. '
+                    + veythar_wellspring.ARMED_HINT
+                )
+        elif ability["id"] == DEATH_WARD:
             ability["activation_hint"] = (
                 "Triggers automatically when damage reduces you from above 0 HP to 0 HP. You stay at 1 HP."
             )

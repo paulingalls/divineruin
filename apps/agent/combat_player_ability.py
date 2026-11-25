@@ -1,6 +1,7 @@
 """Player ability packet dispatch inside the phase transaction."""
 
 import combat_martial
+import veythar_wellspring
 from combat_ability import (
     AbilityCastOutcome,
     _resolve_ability_condition_packet,
@@ -61,7 +62,7 @@ async def resolve(
             queries=queries,
             progress=progress,
         )
-    return await _resolve_ability_packet(
+    summary = await _resolve_ability_packet(
         session,
         attacker,
         decl,
@@ -79,3 +80,7 @@ async def resolve(
             "sink": sink,
         },
     )
+    if summary.get("resolved") is True and "wellspring_echo" in summary["cast"]:
+        await veythar_wellspring.settle(attacker.id, conn=conn)
+        sink.patron_refreshes[attacker.id] = (session.room, session.event_bus)
+    return summary

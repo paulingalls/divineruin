@@ -10,6 +10,7 @@ import db
 import db_mutations_conditions
 import db_mutations_skill_advancement
 import db_queries
+import veythar_wellspring
 from check_skill import _check_skill_run
 from condition_consume import serialize_combat_check
 from patron_gifts import KNOWLEDGE_SKILLS, SYRATH_SHADOW_VEIL, VEYTHAR_INSIGHT, syrath_gift, veythar_gift
@@ -101,6 +102,8 @@ async def recharge(player_id, player, rest_type, *, conn):
             state, default = {"uses_spent": uses_spent(player)}, {"uses_spent": 0}
         elif ability_id == VEYTHAR_INSIGHT:
             state, default = gift_state(player), {"spent": False, "pending": None}
+        elif ability_id == veythar_wellspring.ECHO:
+            state, default = veythar_wellspring.state(player), {"spent": False}
         else:
             state, default = spent_state(player, ability_id), {"spent": False}
         if state != default:

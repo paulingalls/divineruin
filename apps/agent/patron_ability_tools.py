@@ -11,6 +11,7 @@ import db_mutations
 import db_queries
 import event_types as E
 import patron_combat_edges
+import veythar_wellspring
 from _gods_content import load_gods
 from combat_state import CombatState
 from combat_ui_update import build_combat_ui_update
@@ -37,6 +38,8 @@ def catalog():
 
 
 def spent_state(player, ability_id):
+    if ability_id == veythar_wellspring.ECHO:
+        return {"spent": veythar_wellspring.state(player)["spent"]}
     namespace = player.get("patron_gifts", {})
     if not isinstance(namespace, dict):
         raise ValueError("Malformed patron_gifts")
@@ -122,13 +125,17 @@ async def _locked_ability(conn, actor, ability_id):
     return ability
 
 
-async def _write_spend(conn, session, actor, ability_id):
-    from patron_gift_tools import write_state
-
+def _validate_actor(session, actor):
     try:
         session.validate_acting_player(actor)
     except (RuntimeError, ValueError) as exc:
         raise ToolError(str(exc)) from exc
+
+
+async def _write_spend(conn, session, actor, ability_id):
+    from patron_gift_tools import write_state
+
+    _validate_actor(session, actor)
     await write_state(actor, {"spent": True}, gift_id=ability_id, conn=conn)
 
 
@@ -192,6 +199,9 @@ async def _spend_activation(conn, session, actor, ability_id, target_id, conditi
         ability, updated, response, health = await _prepare_shield(conn, session, actor, target_id)
     else:
         ability = await _locked_ability(conn, actor, ability_id)
+        if ability_id == veythar_wellspring.ECHO:
+            _validate_actor(session, actor)
+            return ability, None, await veythar_wellspring.arm(actor, conn=conn), None
         updated = None
         response = {}
         if ability.get("resolution") == "engine":
