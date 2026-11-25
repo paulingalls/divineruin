@@ -343,9 +343,10 @@ def _resolve_skill_check_impl(
     if _check_auto_fail(dc, tier):
         bonus, consumed = 0, ()
     else:
-        bonus, consumed = roll_bonus_dice(
+        rolled = roll_bonus_dice(
             effects, "check", rng=rng, spoken_buffs_eligible=player_data.get("spoken_buffs_eligible", True)
         )
+        bonus, consumed = rolled.total, rolled.consumed
 
     gift_name = None
     if not _check_auto_fail(dc, tier):

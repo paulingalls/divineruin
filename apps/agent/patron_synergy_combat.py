@@ -14,6 +14,14 @@ if TYPE_CHECKING:
 
 OATH_OF_VALOR = "kaelen_oath_of_valor"
 SECOND_BEFORE = "zhael_second_before"
+MORTAEN_THRESHOLD_SHIELD = "mortaen_threshold_shield"
+MORTAEN_HOLD_THE_CROSSING = "mortaen_hold_the_crossing"
+
+KAELEN_WAR_SONGS = "kaelen_war_songs"
+
+
+def inspire_attack_upgrade(player: dict) -> bool:
+    return has_engine_synergy(player, KAELEN_WAR_SONGS)
 
 
 async def attack_player(participant, *, queries, conn) -> dict | None:
@@ -68,6 +76,39 @@ def first_attack_defense(defender: dict | None, state: CombatState | None, targe
         and has_engine_synergy(defender, SECOND_BEFORE)
     ):
         return 1
+    return 0
+
+
+def fallen_ally_defense(defender: dict | None, state: CombatState | None, target: CombatParticipant) -> int:
+    from combat_down import is_terminally_down
+    from combat_veilrender import living
+
+    if (
+        defender is None
+        or state is None
+        or not living(target)
+        or not has_engine_synergy(defender, MORTAEN_THRESHOLD_SHIELD)
+    ):
+        return 0
+    return int(
+        any(
+            ally.is_ally and ally.hp_current == 0 and ally.is_fallen and not is_terminally_down(ally)
+            for ally in state.participants
+        )
+    )
+
+
+async def marshal_death_save_bonus(state: CombatState, *, queries) -> int:
+    from combat_veilrender import living
+
+    for candidate in state.participants:
+        if candidate.type != "player" or not living(candidate):
+            continue
+        player = await queries.get_player(candidate.id)
+        if player is None:
+            raise RuntimeError(f"Death save ally {candidate.id!r} has no player row")
+        if has_engine_synergy(player, MORTAEN_HOLD_THE_CROSSING):
+            return 1
     return 0
 
 

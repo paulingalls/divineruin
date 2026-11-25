@@ -18,6 +18,7 @@ from check_resolution import (
     _apply_condition_modifiers,
     roll_bonus_dice,
 )
+from condition_bonus import BonusDiceRoll
 from condition_restrictions import mark_save_penalty
 from conditions import get_condition_effects
 from dramatic import DramaticContext, evaluate_dramatic_context
@@ -138,12 +139,12 @@ def resolve_saving_throw(
     # "save"), folded into the modifier so the total reflects it. Reached only past the auto-fail
     # gate, so an auto-failed save never spends the die. The consumed condition is signalled for
     # story-003 to remove.
-    bonus, consumed = (
+    bonus = (
         roll_bonus_dice(effects, "save", rng=rng, spoken_buffs_eligible=player_data.get("spoken_buffs_eligible", True))
         if bonus_dice_eligible
-        else (0, ())
+        else BonusDiceRoll(0, ())
     )
-    save_modifier = mod + flat_mod + bonus
+    save_modifier = mod + flat_mod + bonus.total
     ward_advantage = scholars_ward and effect_on_fail.strip().lower() == "hollowed"
     d20 = D20Roll(save_modifier, dc, advantage or condition_advantage or ward_advantage, disadvantage)
     return _save_result(
@@ -157,7 +158,7 @@ def resolve_saving_throw(
             margin=0,
             effect_applied=effect_on_fail,
             narrative_hint="",
-            consumed_conditions=consumed,
+            consumed_conditions=bonus.consumed,
             advantage_applied=advantage and not disadvantage,
             d20=d20,
         ),

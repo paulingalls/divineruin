@@ -1,5 +1,7 @@
 """Numeric patron clauses at the check, activation and combat boundaries."""
 
+from importlib import import_module
+
 import pytest
 from _unbound_path_fixtures import world as world
 from patron_engine_scenarios import ENGINE_SCENARIOS
@@ -22,4 +24,6 @@ async def test_registered_engine_implementation(world, implementation_id, args):
     target, scenario, cases = ENGINE_SCENARIOS[implementation_id]
     assert cases, f"{implementation_id} needs at least one executable production scenario"
     assert registry[implementation_id] == target
+    module, name = target.split(":")
+    assert callable(getattr(import_module(module), name)), f"{implementation_id} target {target} is not callable"
     await scenario(world, *args)

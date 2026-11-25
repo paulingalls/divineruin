@@ -101,6 +101,7 @@ def apply_condition(
     source: str | None = None,
     max_stacks: int | None = None,
     originating_participant_id: str | None = None,
+    inspire_attack_upgrade: bool = False,
 ) -> list[dict]:
     """Return a new condition list with ``condition_type`` applied.
 
@@ -131,6 +132,8 @@ def apply_condition(
         None,
     )
     applied = {"type": condition_type, "duration": duration, "source": source}
+    if condition_type == "inspired":
+        applied["inspire_attack_upgrade"] = inspire_attack_upgrade
     if originating_participant_id is not None:
         applied["originating_participant_id"] = originating_participant_id
 
@@ -258,7 +261,14 @@ def get_condition_effects(conditions: list[dict]) -> ConditionEffects:
         # Beneficial bonus die (M4.8): surfaced per-condition (consumed-on-use needs the source), so
         # a bearer who is both Blessed and Inspired yields two dice — no silent last-wins drop.
         if spec.bonus_die is not None:
-            bonus_dice.append(BonusDie(source=c["type"], dice=spec.bonus_die, scopes=frozenset(spec.bonus_die_scopes)))
+            bonus_dice.append(
+                BonusDie(
+                    source=c["type"],
+                    dice=spec.bonus_die,
+                    scopes=frozenset(spec.bonus_die_scopes),
+                    inspire_attack_upgrade=c.get("inspire_attack_upgrade", False) if c["type"] == "inspired" else False,
+                )
+            )
         if c["type"] == "hollowed":
             hol_dis, hol_res = _hollowed_effects(c["stage"])
             disadvantage |= hol_dis

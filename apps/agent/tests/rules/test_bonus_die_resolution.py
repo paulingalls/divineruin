@@ -12,6 +12,7 @@ from test_rules_core import SAMPLE_PLAYER
 from check_resolution import resolve_skill_check_dc, roll_bonus_dice
 from check_resolution_attack import resolve_attack
 from check_resolution_save import resolve_saving_throw
+from condition_bonus import BonusDiceRoll
 from conditions import ConditionEffects, apply_condition, get_condition_effects
 
 BLESSED = apply_condition([], "blessed")
@@ -34,26 +35,26 @@ def _effects(conditions: list[dict]) -> ConditionEffects:
 
 
 def test_blessed_die_applies_to_attack_and_save_not_check():
-    assert roll_bonus_dice(_effects(BLESSED), "attack", FixedRng(3)) == (3, ("blessed",))
-    assert roll_bonus_dice(_effects(BLESSED), "save", FixedRng(3)) == (3, ("blessed",))
+    assert roll_bonus_dice(_effects(BLESSED), "attack", FixedRng(3)) == BonusDiceRoll(3, ("blessed",))
+    assert roll_bonus_dice(_effects(BLESSED), "save", FixedRng(3)) == BonusDiceRoll(3, ("blessed",))
     # Blessed is scoped attack+save only — a skill check gets nothing.
-    assert roll_bonus_dice(_effects(BLESSED), "check", FixedRng(3)) == (0, ())
+    assert roll_bonus_dice(_effects(BLESSED), "check", FixedRng(3)) == BonusDiceRoll(0, ())
 
 
 def test_inspired_die_applies_to_every_roll_kind():
     for kind in ("attack", "save", "check"):
-        assert roll_bonus_dice(_effects(INSPIRED), kind, FixedRng(2)) == (2, ("inspired",))
+        assert roll_bonus_dice(_effects(INSPIRED), kind, FixedRng(2)) == BonusDiceRoll(2, ("inspired",))
 
 
 def test_both_dice_sum_and_signal_both():
-    total, consumed = roll_bonus_dice(_effects(BOTH), "attack", FixedRng(4))
-    assert total == 8  # two 1d4, each forced to 4
-    assert set(consumed) == {"blessed", "inspired"}
+    result = roll_bonus_dice(_effects(BOTH), "attack", FixedRng(4))
+    assert result.total == 8  # two 1d4, each forced to 4
+    assert set(result.consumed) == {"blessed", "inspired"}
 
 
 def test_no_beneficial_condition_rolls_nothing():
-    assert roll_bonus_dice(_effects([]), "attack", FixedRng(4)) == (0, ())
-    assert roll_bonus_dice(_effects(apply_condition([], "poisoned")), "attack", FixedRng(4)) == (0, ())
+    assert roll_bonus_dice(_effects([]), "attack", FixedRng(4)) == BonusDiceRoll(0, ())
+    assert roll_bonus_dice(_effects(apply_condition([], "poisoned")), "attack", FixedRng(4)) == BonusDiceRoll(0, ())
 
 
 # --- resolve_attack: +1d4 folds into the to-hit roll (content/spells.json: "+1d4 on attack rolls") ---
