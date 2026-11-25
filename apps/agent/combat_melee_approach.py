@@ -73,7 +73,9 @@ def plan(state, actor, target, action, budget) -> tuple[dict, dict | None]:
         # The strike stays blocked however far the approach gets; contact needs the wall reached.
         facts.update(thornwall_blocked=wall.id, reason=blocked_reason(wall))
         # Shorten the route to the wall before any reach exits are computed from its endpoint.
-        endpoint = reachable_point(spatial, actor.id, origin, destination, budget["remaining"])
+        endpoint = reachable_point(
+            spatial, actor.id, origin, destination, budget["remaining"], tidewalker=actor.tidewalker
+        )
         segment = spatial["structures"][wall.id]
         if blocks_path(origin, endpoint, segment):
             endpoint = stop_before_wall(origin, endpoint, segment)
@@ -89,11 +91,11 @@ def plan(state, actor, target, action, budget) -> tuple[dict, dict | None]:
         desired = {
             axis: origin[axis] + (destination[axis] - origin[axis]) * travel_needed / separation for axis in origin
         }
-        end = reachable_point(spatial, actor.id, origin, desired, budget["remaining"])
+        end = reachable_point(spatial, actor.id, origin, desired, budget["remaining"], tidewalker=actor.tidewalker)
         if mode == "flying" and crosses_low_ceiling(spatial, actor.id, origin, end):
             mode = "ground"
             budget["remaining"] = ground_speed if previous_allowance is None else previous_allowance
-            end = reachable_point(spatial, actor.id, origin, desired, budget["remaining"])
+            end = reachable_point(spatial, actor.id, origin, desired, budget["remaining"], tidewalker=actor.tidewalker)
         if end != origin:
             return facts, {"endpoint": end, "mode": mode, "target": destination, "reach": reach}
     return finish(facts, destination, reach, reason), None

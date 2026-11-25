@@ -211,7 +211,9 @@ async def prepare_held(
     if facts["resolved"]:
         if facts["closed_distance"]:
             # Splitting the integral can round the last leg above the remaining allowance.
-            spent = movement_cost(require_spatial(state), mover.id, facts["destination"], route["endpoint"])
+            spent = movement_cost(
+                require_spatial(state), mover.id, facts["destination"], route["endpoint"], tidewalker=mover.tidewalker
+            )
             remaining = budget["remaining"]
             if spent > remaining and math.isclose(spent, remaining, rel_tol=1e-12, abs_tol=1e-12):
                 budget["remaining"] = spent
