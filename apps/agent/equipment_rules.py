@@ -54,10 +54,10 @@ def needs_weapon_profile(attacker_type: str, action: dict, *, weapon_attack: boo
 async def resolve_weapon_profile(attacker_type: str, action: dict, *, weapon_attack: bool, conn) -> dict | None:
     if not needs_weapon_profile(attacker_type, action, weapon_attack=weapon_attack):
         return None
-    if PROFILE_FIELDS.keys() <= action.keys() and "properties" in action:
+    if PROFILE_FIELDS.keys() <= action.keys():
         return action
 
-    # Older equipment and combat snapshots omit the catalog profile, including light properties.
+    # Older equipment and combat snapshots omit the catalog profile.
     name = action.get("name")
     item_id = action.get("id", STARTER_ITEM_IDS.get(name))
     if not isinstance(item_id, str) or not item_id:
