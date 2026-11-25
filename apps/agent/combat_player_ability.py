@@ -69,7 +69,7 @@ async def resolve(
     if resolved is not None and resolved[0].id == REPOSITION:
         return await combat_reposition.resolve(state, attacker, decl, resolved, conn=conn, queries=queries)
     if resolved is not None and resolved[0].id in MARSHAL_ORDERS:
-        return await combat_martial.narrated_order(state, attacker, decl, resolved, conn=conn, queries=queries)
+        return await combat_martial.resolve_order(state, attacker, decl, resolved, conn=conn, queries=queries)
     if resolved is not None and resolved[0].id == EXPLOIT_WEAKNESS:
         return await combat_martial.exploit_weakness(state, attacker, decl, resolved, conn=conn, queries=queries)
     cond_ability = condition_ability(resolved)

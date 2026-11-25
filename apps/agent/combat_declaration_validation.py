@@ -29,6 +29,7 @@ from combat_ability_gate import (
     war_cry_targets,
 )
 from combat_action_availability import require_available
+from combat_order_riders import FIELD_MEDIC_NAME, select_field_medic
 from combat_structures import THORNWALL, action_has_direct_line, blocked_reason, line_blocker, require_line
 from condition_restrictions import cannot_act, declaration_costs, required_attack_sources, speed_zero
 from declarations import Declaration, DeclarationType, ManeuverIntent
@@ -75,6 +76,10 @@ def validate_declaration(
         raise ValueError(f"Unknown actor {actor_id!r}; participants: {participant_ids}")
     if actor.is_structure:
         raise ValueError(f"{actor.name} ({actor.id}) is a structure and cannot act")
+    if declaration.healing_item is not None and (
+        actor.type != "player" or select_field_medic(next_state, actor_id) is None
+    ):
+        raise ValueError(f"{actor.name} needs an active {FIELD_MEDIC_NAME} to attack and use a healing item.")
     still_encounter.guard_declaration(next_state, actor_id, declaration)
     if declaration.type is DeclarationType.MULTIATTACK:
         from combat_multiattack import expand_declaration

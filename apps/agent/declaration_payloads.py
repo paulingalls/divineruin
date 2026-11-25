@@ -110,6 +110,18 @@ class ConsumeDecl(BaseModel):
     target_id: str = Field(description='The ally receiving the item. Empty string ("") for the holder.')
 
 
+class AttackConsumeDecl(BaseModel):
+    """Attack and use one held healing item under an active Field Medic Order."""
+
+    model_config = {"extra": "forbid"}
+    kind: Literal["attack_consume"]
+    actor_id: str = Field(description="The ordered party player holding the healing item.")
+    action: str = Field(description="The exact name of one of the actor's equipped weapons.")
+    target_id: str = Field(description="The participant being struck.")
+    item_id: str = Field(description="The healing item's inventory ID from query_info.")
+    heal_target_id: str = Field(description='The ally receiving the item. Empty string ("") for the holder.')
+
+
 class ManeuverDecl(BaseModel):
     """Shove, grapple or otherwise physically move a target."""
 
@@ -165,6 +177,7 @@ DeclVariant = Union[
     AbilityDecl,
     InteractDecl,
     ConsumeDecl,
+    AttackConsumeDecl,
     ManeuverDecl,
     MoveDecl,
     RepositionDecl,
@@ -179,6 +192,7 @@ DECL_VARIANTS: tuple[type[BaseModel], ...] = (
     AbilityDecl,
     InteractDecl,
     ConsumeDecl,
+    AttackConsumeDecl,
     ManeuverDecl,
     MoveDecl,
     RepositionDecl,
@@ -212,6 +226,13 @@ def _raw(decl: DeclVariant) -> dict:
         if decl.argument_type:
             raw["argument_type"] = decl.argument_type
         return raw
+    if isinstance(decl, AttackConsumeDecl):
+        return {
+            "type": "attack",
+            "action": decl.action,
+            "target_id": decl.target_id,
+            "healing_item": {"item_id": decl.item_id, "target_id": decl.heal_target_id or decl.actor_id},
+        }
     if isinstance(decl, ConsumeDecl):
         return {
             "type": "interact",

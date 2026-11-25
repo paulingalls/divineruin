@@ -194,7 +194,8 @@ class TestActivation:
             actor.level = ability.level_requirement
             state.participants.append(CombatParticipant("ally", "Ally", "companion", 5, 10, 10, 10))
             state.participants.append(CombatParticipant("second_ally", "Second Ally", "companion", 4, 10, 10, 10))
-            state.initiative_order.extend(("ally", "second_ally"))
+            state.participants.append(CombatParticipant("player_ally", "Player Ally", "player", 3, 10, 10, 10))
+            state.initiative_order.extend(("ally", "second_ally", "player_ally"))
             place_actors(state)
             state.beat = PhaseBeat.DECLARATION
             action = {"type": "ability", "action": match.group(1)}

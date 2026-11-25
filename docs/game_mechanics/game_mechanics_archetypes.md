@@ -1114,7 +1114,7 @@ Whisper draws from a unique catalog unavailable to other archetypes. These spell
 | Overwatch | 3 Focus | Designate an area (15 ft). Any ally in that area: +2 AC and advantage on saves until your next turn. "Stay behind that wall — I've got you covered" |
 | Exploit Opening | 2 Stam | When an ally crits: grant a different ally an immediate free attack against the same target. "Now — while it's staggered!" |
 | War Cry | 3 Stam | All enemies within 30 ft: WIS save or Frightened 1 round. Shared with Warrior, but the Marshal version also grants allies +1 to attacks for that round |
-| Field Medic Order | 3 Focus | Command an ally to use a healing item or ability as a declaration enhancer (they can attack AND heal in the same phase). "Drink the potion — I'll cover you" |
+| Field Medic Order | 3 Focus | Command one player ally to attack and use one held healing item in the same phase. The order lasts through the end of the following round. "Drink the potion — I'll cover you" |
 
 #### Elective Technique — Level 8 (choose 1 of 4)
 

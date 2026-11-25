@@ -21,10 +21,10 @@ HP = 100
 
 
 async def arrange(
-    marshal, *, earlier=False, bonus=False, fate=False, architect=False, extra_ally=False
+    marshal, *, earlier=False, bonus=False, fate=False, architect=False, extra_ally=False, level=2, owned=()
 ) -> MawlingHarness:
     location = {"location": "ashmark_architect_works"} if architect else {}
-    fight = await marshal(2, extra_ally=extra_ally, **location)
+    fight = await marshal(level, extra_ally=extra_ally, owned=owned, **location)
     host, ally, *_ = fight.players
     if bonus:
         player = await db_queries.get_player(ally)
@@ -69,10 +69,10 @@ def attack(actor: str, foe: str) -> dict:
     return dict(kind="attack", actor_id=actor, action="Longsword", target_id=foe, held_item_id="", rider="", reshape=[])
 
 
-async def declare_round(fight: MawlingHarness, *actions: dict) -> None:
+async def declare_round(fight: MawlingHarness, *actions: dict, error: bool = False) -> dict | str:
     actors = {action["actor_id"] for action in actions}
     state = await fight.reload()
-    await fight.command(
+    return await fight.command(
         "declare_phase",
         {
             "declarations": [
@@ -84,6 +84,7 @@ async def declare_round(fight: MawlingHarness, *actions: dict) -> None:
                 ),
             ]
         },
+        error=error,
     )
 
 
