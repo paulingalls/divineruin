@@ -10,6 +10,7 @@ import random
 from dataclasses import dataclass
 
 import patron_synergy_combat
+import thyra_seasons
 from check_resolution import D20CheckCore, D20Roll, roll_bonus_dice
 from condition_restrictions import (
     attack_consumed_conditions,
@@ -252,11 +253,13 @@ def finish_attack(
     synergy_clause_id = None
     veiled_strike = attacker_data.get("veiled_strike")
     if hit:
+        season = attacker_data.get("season")
         damage_notation = weapon.get("damage", "1d4")
-        damage = dice_roll(damage_notation, rng=rng).total if damage_notation != "0" else 0
-        if critical and damage_notation != "0":
-            crit_result = dice_roll(damage_notation, rng=rng)
-            damage += crit_result.total
+        if damage_notation != "0":
+            damage = dice_roll(damage_notation, rng=rng).total
+            if critical:
+                damage += dice_roll(damage_notation, rng=rng).total
+            damage += thyra_seasons.damage_bonus(attacker_data, season, damage_type)
         damage += patron_synergy_combat.weapon_damage_bonus(attacker_data, critical, rng=rng)
         if weapon.get("attack_source") != "catalog" and weapon.get("damage_attribute", True) and damage_notation != "0":
             damage += weapon_attribute_modifier(attacker_data, weapon)
@@ -280,6 +283,7 @@ def finish_attack(
         if effects.bonus_damage_dice is not None:
             bonus_damage = dice_roll(effects.bonus_damage_dice, rng=rng).total
             bonus_damage_type = effects.bonus_damage_type
+            bonus_damage += thyra_seasons.damage_bonus(attacker_data, season, bonus_damage_type)
             damage += bonus_damage
         if count := weapon.get("devastating_strike_dice"):
             damage += dice_roll(f"{count * (2 if critical else 1)}d8", rng=rng).total
@@ -289,25 +293,30 @@ def finish_attack(
                 raise ValueError("multiple bonus damage sources")
             bonus_damage = dice_roll(authored_bonus["dice"], rng=rng).total
             bonus_damage_type = authored_bonus["damage_type"]
+            bonus_damage += thyra_seasons.damage_bonus(attacker_data, season, bonus_damage_type)
             damage += bonus_damage
         on_hit = weapon.get("prepared_on_hit")
         if on_hit is not None and "damage" in on_hit:
             rider_damage = dice_roll(on_hit["damage"], rng=rng).total
             rider_damage_type = on_hit["damage_type"]
+            rider_damage += thyra_seasons.damage_bonus(attacker_data, season, rider_damage_type)
             rider_ignores_resistance = on_hit["ignores_resistance"]
             damage += rider_damage
         if veiled_strike == "weapon":
             synergy_clause_id = patron_synergy_combat.VEILED_STRIKE
             synergy_damage = dice_roll("2d6" if critical else "1d6", rng=rng).total
             synergy_damage_type = damage_type
+            synergy_damage += thyra_seasons.damage_bonus(attacker_data, season, synergy_damage_type)
         elif (encounter_clause := attacker_data.get("encounter_damage_clause")) is not None:
             synergy_clause_id = encounter_clause
             synergy_damage, synergy_damage_type = 1, damage_type
         elif attacker_data.get("outnumbered_oath"):
             synergy_clause_id = patron_synergy_combat.OATH_OF_VALOR
             synergy_damage, synergy_damage_type = patron_synergy_combat.outnumbered_rider(critical, rng=rng)
+            synergy_damage += thyra_seasons.damage_bonus(attacker_data, season, synergy_damage_type)
         else:
             synergy_damage, synergy_damage_type = patron_synergy_combat.critical_rider(attacker_data, critical, rng=rng)
+            synergy_damage += thyra_seasons.damage_bonus(attacker_data, season, synergy_damage_type)
         damage += synergy_damage
         synergy_damage = int(synergy_damage * damage_mult)
         bonus_damage = int(bonus_damage * damage_mult)

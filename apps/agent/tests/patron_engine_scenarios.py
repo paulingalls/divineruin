@@ -25,6 +25,7 @@ from test_patron_engine_nythera import SCENARIOS as nythera
 from test_patron_engine_orenthel import SCENARIOS as orenthel
 from test_patron_engine_syrath import SCENARIOS as syrath
 from test_patron_engine_thyra import SCENARIOS as thyra
+from test_patron_engine_thyra_seasons import SCENARIOS as thyra_seasons
 from test_patron_engine_thyra_thornwall import SCENARIOS as thyra_thornwall
 from test_patron_engine_thyra_wrath import SCENARIOS as thyra_wrath
 from test_patron_engine_valdris import SCENARIOS as valdris
@@ -69,6 +70,7 @@ ENGINE_SCENARIOS = {
     **two_round_veil,
     **veiled_strikes,
     **thyra,
+    **thyra_seasons,
     **thyra_wrath,
     **thyra_thornwall,
     **zhael,

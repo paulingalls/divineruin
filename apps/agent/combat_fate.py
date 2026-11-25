@@ -12,6 +12,7 @@ import combat_melee_approach
 import combat_resolution
 import concealment
 import conditions
+import thyra_seasons
 import zhael_fate
 from combat_ability import _attach_riders
 from combat_ability_gate import DEVASTATING_STRIKE, SHIELD_BASH, declared_ability
@@ -185,6 +186,7 @@ async def continue_attack(
                 act,
                 player=player,
                 defender=defender,
+                season=await thyra_seasons.season_for(player, conn=conn),
                 veiled_strike=strike_mode,
             )
             prepared = check_resolution_attack.prepare_attack(

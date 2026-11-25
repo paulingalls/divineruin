@@ -5,8 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, NotRequired, TypedDict
 
 import db_mutations
+import db_queries
 import dice
 import patron_passives
+import thyra_seasons
 from combat_down import is_terminally_down, revive
 from combat_enemy_active import heal, healed_hp
 from combat_structures import line_blocker
@@ -122,7 +124,15 @@ def _receipt(
     return result
 
 
-async def restore(target: CombatParticipant, amount: int, *, conn, mutations=db_mutations) -> int:
+async def restore(
+    target: CombatParticipant, amount: int, *, conn, mutations=db_mutations, queries=db_queries, heals: int = 1
+) -> int:
+    if amount > 0 and target.hp_current < target.hp_max and target.type == "player":
+        player = await queries.get_player(target.id, conn=conn)
+        if player is None:
+            raise ValueError(f"Missing authoritative player {target.id!r}")
+        season = await thyra_seasons.season_for(player, conn=conn)
+        amount += thyra_seasons.healing_bonus(season, heals)
     restored = heal(target, amount)
     if target.is_fallen and restored > 0:
         revive(target, target.hp_current)
@@ -204,7 +214,12 @@ async def land_exploration(
         current = row["hp"]["current"]
         maximum = patron_passives.effective_hp(row)["max"]
         components = synergy(pid, current, base_heal) if synergy is not None else []
-        amount = base_heal + profile.get("regeneration_rounds", 0) + sum(c["bonus"] for c in components)
+        ticks = profile.get("regeneration_rounds", 0)
+        initial = base_heal + sum(c["bonus"] for c in components)
+        amount = initial + ticks
+        if amount > 0 and current < maximum:
+            season = await thyra_seasons.season_for(row, conn=conn)
+            amount += thyra_seasons.healing_bonus(season, ticks + int(initial > 0))
         hp = healed_hp(current, maximum, amount)
         if hp != current:
             await db_mutations.update_player_hp(pid, hp, conn=conn)

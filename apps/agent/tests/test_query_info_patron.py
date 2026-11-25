@@ -90,6 +90,7 @@ async def test_real_patron_gift_round_trip_from_gods_content(patron_id, monkeypa
         "db_content_queries.get_all_locations",
         AsyncMock(return_value={context.userdata.location_id: {"name": "Guild Hall"}}),
     )
+    monkeypatch.setattr("world_season.current_season", AsyncMock(return_value="spring"))
     with patch("query_tools.db_queries.get_player", queries.get_player):
         response = json.loads(await query_tools._query_info_impl(context, "patron"))
 

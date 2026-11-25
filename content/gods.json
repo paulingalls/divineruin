@@ -1888,8 +1888,9 @@
         "name": "Seasonal Attunement",
         "effect": "Passive bonuses by in-game season. Spring: +1 healing received. Summer: +1 fire/lightning damage. Autumn: +1 Insight. Winter: +1 Stealth",
         "recharge": "always",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "thyra_seasonal_attunement"
       },
       "devoted": {
         "id": "thyra_thornwall",
