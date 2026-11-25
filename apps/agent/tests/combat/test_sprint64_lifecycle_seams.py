@@ -31,6 +31,7 @@ async def test_reentry_discards_old_silence_exposure_without_extending_suppressi
         "round": 4,
     }
     queries.get_player.return_value = {"flags": {choir_scene.key(state.location_id): json.dumps(retained)}}
+    retained = await choir_scene.load(ctx.userdata, queries=queries)
     await choir_scene.start(
         ctx.userdata, state, retained, mutations=mutations, queries=queries, db_mod=make_db_mod()[0]
     )

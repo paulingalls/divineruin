@@ -35,6 +35,7 @@ async def test_save_failure_rolls_back_wall_spend_and_publications(world):
 @pytest.mark.parametrize(
     "selectors,reason",
     [
+        ({}, "requires start and end points"),
         ({"destination": SEGMENT["start"]}, "takes start and end points"),
         ({"destination": {"start": SEGMENT["start"]}}, "Error parsing arguments"),
         ({"destination": SEGMENT, "target_id": "companion"}, "Omit entity"),

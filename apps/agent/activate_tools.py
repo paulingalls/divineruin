@@ -169,10 +169,7 @@ async def activate(
     if id == VEILSTEP and isinstance(destination, WallEndpoints):
         raise ToolError("Veilstep takes a destination point.")
     if id == THORNWALL and (
-        not isinstance(destination, WallEndpoints)
-        or target_id is not None
-        or target_ids is not None
-        or condition is not None
+        isinstance(destination, Destination) or target_id is not None or target_ids is not None or condition is not None
     ):
         raise ToolError("Thornwall takes start and end points. Omit entity and condition selectors.")
     if id == VEILSTEP and (target_id is not None or target_ids is not None):
