@@ -360,7 +360,11 @@ export interface SpatialPoint {
 export type SpatialZone =
   | { center_id: string; radius_ft: number }
   | { kind: "silence"; center_id: string; radius_ft: number };
-export type SpatialMovementArea = { kind: string; excluded_actor_ids: string[] } & (
+const AUTHORED_MOVEMENT_AREA_KINDS = ["water", "mud"] as const;
+export type SpatialMovementArea = {
+  kind: (typeof AUTHORED_MOVEMENT_AREA_KINDS)[number];
+  excluded_actor_ids: string[];
+} & (
   | { shape: "sphere"; center: SpatialPoint; radius_ft: number }
   | { shape: "rectangle"; min: SpatialPoint; max: SpatialPoint }
 );
@@ -399,7 +403,7 @@ function spatialPoint(value: unknown): SpatialPoint {
 
 function validateMovementAreas(value: unknown, actors: Record<string, unknown>): void {
   const common = ["shape", "kind", "excluded_actor_ids"];
-  for (const entry of Object.values(spatialMap(value))) {
+  for (const [id, entry] of Object.entries(spatialMap(value))) {
     const area = spatialMap(entry);
     if (area.shape === "sphere" && hasFields(area, [...common, "center", "radius_ft"])) {
       spatialPoint(area.center);
@@ -414,8 +418,8 @@ function validateMovementAreas(value: unknown, actors: Record<string, unknown>):
     } else {
       throw new Error("invalid movement area shape");
     }
-    if (typeof area.kind !== "string" || !area.kind.trim())
-      throw new Error("movement area requires a kind");
+    if (!AUTHORED_MOVEMENT_AREA_KINDS.some((kind) => kind === area.kind))
+      throw new Error(`Authored movement area "${id}" requires water or mud`);
     const excluded = area.excluded_actor_ids;
     if (!Array.isArray(excluded) || new Set(excluded).size !== excluded.length)
       throw new Error("movement area exclusions must be a list of unique actor IDs");

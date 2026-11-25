@@ -79,7 +79,11 @@ def validate_scene(encounter):
     if "movement_areas" in scene:
         from combat_movement_cost import validate_areas
 
-        validate_areas(scene["movement_areas"], ids)
+        areas = scene["movement_areas"]
+        validate_areas(areas, ids)
+        for area_id, area in areas.items():
+            if area["kind"] not in ("water", "mud"):
+                raise ValueError(f"Authored movement area {area_id!r} requires water or mud, got {area['kind']!r}")
     for start in (scene["party_start"], scene["companion_start"]):
         for other in [
             scene["party_start"],

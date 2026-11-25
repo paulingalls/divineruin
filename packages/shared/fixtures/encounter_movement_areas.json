@@ -384,6 +384,23 @@
         "excluded_actor_ids": []
       }
     },
+    "unknown kind": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "Mud",
+        "min": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 10,
+          "z": 0
+        },
+        "excluded_actor_ids": []
+      }
+    },
     "blank kind": {
       "ground": {
         "shape": "rectangle",
