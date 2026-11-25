@@ -112,7 +112,7 @@ async def end(session, state, outcome, *, mutations, queries, conn):
             session,
             state,
             "dormant",
-            snapshot=encounter_facts.snapshot_without_rally(state),
+            snapshot=state.to_dict(),
             mutations=mutations,
             conn=conn,
         )

@@ -136,14 +136,6 @@ def rally_receipt(ally_id: str, sources: tuple[str, ...]) -> dict[str, list[dict
     return {"rally_bonuses": [rally_entry(source, ally_id) for source in sources]} if sources else {}
 
 
-def snapshot_without_rally(state: CombatState) -> dict:
-    snapshot = state.to_dict()
-    facts = snapshot["encounter_facts"]
-    facts["rally_pending"].clear()
-    facts["once_spent"].pop(ZHAEL_RALLY, None)
-    return snapshot
-
-
 def _remember(ids: list[str], participant_id: str) -> None:
     if participant_id not in ids:
         ids.append(participant_id)

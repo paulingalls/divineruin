@@ -1,9 +1,8 @@
 """Still arrival and dwell saves across the lifetime of an encounter rally."""
 
-import json
 from unittest.mock import patch
 
-from _zhael_marshal_rally_fixtures import CLAUSE, pending
+from _zhael_marshal_rally_fixtures import pending
 from acceptance.test_still_absorption import HOUR, advance, background, charm
 from acceptance.test_still_absorption import clock as clock
 from acceptance.test_still_absorption import save_faces as save_faces
@@ -32,8 +31,6 @@ async def test_hourly_save_resets_on_success_and_reentry(paradise, clock, save_f
         assert (await walk.reload()).encounter_facts["rally_pending"] == {walk.players[0]: guest}
         await walk.command("end_combat", {"outcome": "fled"})
         assert await db_mutations.load_combat_state(state.combat_id) is None
-        player = await player_row(walk.players[0])
-        assert CLAUSE not in json.dumps(player.get("flags", {}))
         await tick()
         await advance(clock, tick, HOUR - 1)
         assert not rolls and await charm(guest, zone)

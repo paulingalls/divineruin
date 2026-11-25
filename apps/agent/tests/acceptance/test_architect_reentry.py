@@ -1,10 +1,8 @@
 """Round and encounter state across a return to the Works."""
 
-import copy
 import json
 
 import pytest
-from _zhael_marshal_rally_fixtures import CLAUSE, pending
 from acceptance.mawling_harness import MawlingHarness
 from acceptance.test_architect_fight import WORKS, attack, enter, pos, reopen
 from acceptance.test_architect_fight import isolated_content_cache as isolated_content_cache
@@ -69,23 +67,20 @@ async def test_flee_retains_damaged_owner_and_wall(fight, history):
     combat_structures.add_wall(before, reaction, "Architect's reaction wall", pos(5, -3), pos(5, 3))
     walls.append(reaction)
     before = await fight.persist()
-    fight.sd.combat_state = copy.deepcopy(before)
-    pending(fight.sd.combat_state, follower, player_id)
-    await fight.persist()
     await fight.command("end_combat", {"outcome": "fled"})
     dormant = architect_scene.read(await db_queries.get_player(player_id), WORKS)
     assert dormant is not None and reaction not in dormant["snapshot"]["spatial"]["structures"]
-    assert CLAUSE not in json.dumps(dormant["snapshot"]["encounter_facts"])
     assert dormant["snapshot"]["encounter_facts"]["party_aggressors"] == {owner_id: [follower]}
-    snapshot = before.to_dict()
-    if history == "absent":
-        del snapshot["encounter_facts"]
-    elif history == "prior":
-        del snapshot["encounter_facts"]["party_aggressors"]
-        del snapshot["encounter_facts"]["rally_pending"]
-    await db_mutations.set_player_flag(
-        player_id, architect_scene.key(WORKS), json.dumps({**dormant, "snapshot": snapshot})
-    )
+    if history != "known":
+        snapshot = before.to_dict()
+        if history == "absent":
+            del snapshot["encounter_facts"]
+        else:
+            del snapshot["encounter_facts"]["party_aggressors"]
+            del snapshot["encounter_facts"]["rally_pending"]
+        await db_mutations.set_player_flag(
+            player_id, architect_scene.key(WORKS), json.dumps({**dormant, "snapshot": snapshot})
+        )
     await reopen(fight)
     fight.sd.party.members.extend(PartyState.solo(follower).members)
     after = await enter(fight)
