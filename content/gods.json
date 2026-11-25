@@ -1350,8 +1350,9 @@
         "clauses": [
           {
             "effect": "Shadow Veil extends to 2 rounds.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "syrath_two_round_veil"
           },
           {
             "effect": "Invisible Sneak Attack +1d6",
@@ -1366,8 +1367,9 @@
         "clauses": [
           {
             "effect": "Shadow Veil extends to 2 rounds.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "syrath_two_round_veil"
           },
           {
             "effect": "Invisible Sneak Attack +1d6",
@@ -1382,8 +1384,9 @@
         "clauses": [
           {
             "effect": "Shadow Veil extends to 2 rounds.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "syrath_two_round_veil"
           },
           {
             "effect": "Invisible Sneak Attack +1d6",
