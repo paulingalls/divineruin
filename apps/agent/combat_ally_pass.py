@@ -44,6 +44,8 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
     from combat_hold import hold_enemy_packets
     from combat_phase import PhaseBeat, _resolve_packets
     from combat_turn_start import turn_start
+    from condition_catalog import IRON_STANCE
+    from conditions import remove_condition
 
     packets = {packet.actor_id: packet for packet in _resolve_packets(state)}
     summaries = []
@@ -125,6 +127,8 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
                 if started is not None:
                     summaries.append(started)
             if packet_id is None:
+                if actor is not None:
+                    actor.conditions = remove_condition(actor.conditions, IRON_STANCE)
                 cursor.pop("steps", None)
                 cursor["turns"].pop(0)
                 continue

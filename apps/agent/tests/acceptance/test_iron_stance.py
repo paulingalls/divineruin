@@ -133,11 +133,7 @@ async def test_stance_survives_until_own_packet(walk: MawlingHarness, next_actio
     actor, ally = walk.players
     foe = await place_foe(walk, "bandit_captain")
     blow = attack(foe, actor, "Longsword")
-    await declare(walk, stance(actor))
-    await walk.drain()
-    await fresh_session(walk, await walk.reload())
-    before = await stamina(actor)
-    await declare(walk, defend(ally), blow)
+    await declare(walk, stance(actor), defend(ally), blow)
     with (
         patch("check_resolution.dice_roll", return_value=_d20(19)),
         patch("check_resolution_attack.dice_roll", return_value=_damage_die(9)),
@@ -145,6 +141,8 @@ async def test_stance_survives_until_own_packet(walk: MawlingHarness, next_actio
         result = receipt(await walk.drain(), foe)
     assert (result["damage_type"], result["damage"]) == ("slashing", 5)
     assert participant(await walk.reload(), actor).hp_current == 95
+    await fresh_session(walk, await walk.reload())
+    before = await stamina(actor)
     assert "iron_stance" in await condition_types(walk, actor)
 
     move = {"kind": "move", "actor_id": actor, "reshape": [], "destination": pos(4), "movement_mode": "ground"}

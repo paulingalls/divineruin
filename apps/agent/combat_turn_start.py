@@ -13,13 +13,13 @@ from condition_restrictions import cannot_act
 from dice import roll as dice_roll
 
 
-def _finish_packet_start(state, actor, *, expires_stance: bool = True) -> dict | None:
+def _finish_packet_start(state, actor) -> dict | None:
     from choir_effects import approach
     from condition_catalog import IRON_STANCE
     from conditions import remove_condition
 
     movement = approach(state, actor)
-    if expires_stance and actor is not None:
+    if actor is not None:
         actor.conditions = remove_condition(actor.conditions, IRON_STANCE)
     return movement
 
@@ -74,9 +74,7 @@ async def start_held_packet(session, state, head: dict, fate_rolls, deps: dict) 
     effects = await combat_veilrender.turn_start(session, state, actor, **{**deps, "progress": field})
     if effects is None:
         return None
-    movement = _finish_packet_start(
-        state, actor, expires_stance=not (head.get("opportunity_attack") or "legendary_kind" in head)
-    )
+    movement = _finish_packet_start(state, actor)
     if movement is not None and "movement_blocked" in movement:
         effects.append({"effect": "choir_approach", **movement})
     return effects
