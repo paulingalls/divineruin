@@ -21,7 +21,7 @@ from db_mutations_resonance import read_player_resonance
 from mode_tools import enter_mode
 from query_tools import query_info
 from scene_tools import enter_location
-from session_data import SessionData
+from session_data import CompanionState, SessionData
 
 
 @pytest.fixture
@@ -151,12 +151,14 @@ async def destroy(harness, target):
 
 
 async def fresh_session(harness, state=None):
+    companion = harness.sd.companion
     await harness.session.aclose()
     if harness.sd.background is not None:
         await harness.sd.background.stop()
     harness.sd = SessionData(
         player_id=harness.players[0], location_id=harness.sd.location_id, room=harness.sd.room, combat_state=state
     )
+    harness.sd.companion = companion
     resonance = await read_player_resonance(harness.players[0])
     member = harness.sd.member_state(harness.players[0])
     member.resonance.current = resonance["current"]
@@ -185,8 +187,25 @@ def enemy_snapshot(state):
     }
 
 
+async def touch(harness, state, owner: str, victim: str) -> None:
+    original = state.spatial["positions"][victim]
+    state.spatial["positions"][victim] = {**state.spatial["positions"][owner], "x": 120}
+    state.get_participant(victim).attributes["wisdom"] = 30
+    await harness.persist()
+    await declare(harness, actor_id=owner, **strike(victim, action="Serenity's Touch"))
+    with patch("check_resolution.dice_roll", return_value=_d20(20)), patch("dice.roll", return_value=_damage_die(2)):
+        packets = await harness.drain()
+    packet = next(p for p in packets if p.get("action") == "Serenity's Touch")
+    assert packet["damage"] == 2 and packet["save_success"]
+    state = await harness.reload()
+    state.spatial["positions"][victim] = original
+    await harness.persist()
+
+
 async def test_still_flee_reload_and_settle_once(still):
     pid = still.players[0]
+    follower = "companion_kael"
+    still.sd.companion = CompanionState(id=follower, name="Kael", player_level=18)
     await still.pool.execute(
         "UPDATE players SET data=data || $2::jsonb WHERE player_id=$1", pid, json.dumps({"class": "mage"})
     )
@@ -221,11 +240,21 @@ async def test_still_flee_reload_and_settle_once(still):
     saved = await still.reload()
     assert saved.still_encounter["revealed_ids"] == anchors[:3]
     assert all(saved.get_participant(target).hp_current == 0 for target in anchors[:2])
+    await touch(still, saved, owner_id, follower)
+    saved = await still.reload()
+    assert saved.encounter_facts["party_aggressors"] == {owner_id: [follower]}
     await still.command("end_combat", {"outcome": "fled"})
+    dormant = still_scene.read(await db_queries.get_player(pid), saved.location_id)
+    assert dormant is not None
+    assert dormant["snapshot"]["encounter_facts"]["party_aggressors"] == {owner_id: [follower]}
     await fresh_session(still)
     _, reentered = await enter(still)
     assert enemy_snapshot(reentered) == enemy_snapshot(saved)
     assert reentered.still_encounter == {**saved.still_encounter, "illusion": None}
+    assert reentered.combat_id != saved.combat_id
+    assert reentered.encounter_facts["party_aggressors"] == {owner_id: [follower]}
+    await touch(still, reentered, owner_id, pid)
+    assert (await still.reload()).encounter_facts["party_aggressors"] == {owner_id: [follower, pid]}
 
     accrue_death = combat_hollow_death.accrue_death
     awards = []

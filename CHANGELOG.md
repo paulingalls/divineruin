@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.66.0
+
+The Still and the Architect remember whom their attacks targeted when the party flees and returns. Combat now keeps that history for misses and resisted offensive actions too.
+
+Release steps: none.
+
+Exalted followers of Valdris can call down The Scale's Verdict once per session in combat. Name a foe, and Valdris judges it by what it did this fight. A foe that attacked anyone in the party, even if it missed, takes 4d8 radiant damage and is stunned for a round. Judge an innocent foe and you take 2d8 radiant yourself. Fights now remember who attacked whom, even if you retreat from the Still, the Architect or the Choir and come back.
+
+Release steps: none.
+
 ## 0.65.1
 
 The Python test run no longer prints pytest-asyncio's fixture loop-scope deprecation warning. Behaviour is unchanged.

@@ -2,6 +2,8 @@
 
 from livekit.agents.llm import ToolError
 
+import encounter_facts
+
 GRIEVANCES = {"broken_promise", "injustice"}
 
 
@@ -16,6 +18,7 @@ def validate_ledger(ledger, participants):
 
 
 def record_attack(state, attacker, target):
+    encounter_facts.record_party_attack(state, attacker, target)
     if state is None or attacker.is_ally == target.is_ally:
         return
     hostile = target if attacker.is_ally else attacker

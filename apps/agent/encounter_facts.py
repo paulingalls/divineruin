@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, TypedDict
 
+from livekit.agents.llm import ToolError
+
 import ability_persistence
 from check_resolution_attack import AttackResult
 from combat_down import DEATH_SAVE_LIMIT
@@ -26,10 +28,26 @@ class EncounterFacts(TypedDict):
     death_save_success_round: dict[str, int]
     misses: dict[str, list[str]]
     once_spent: dict[str, list[str]]
+    party_aggressors: dict[str, list[str]] | None
 
 
 def empty() -> EncounterFacts:
-    return {"ally_downers": [], "attacked": [], "death_save_success_round": {}, "misses": {}, "once_spent": {}}
+    return {
+        "ally_downers": [],
+        "attacked": [],
+        "death_save_success_round": {},
+        "misses": {},
+        "once_spent": {},
+        "party_aggressors": {},
+    }
+
+
+def upgrade_legacy_snapshot(snapshot: dict) -> dict:
+    if "encounter_facts" in snapshot:
+        return snapshot
+    facts = empty()
+    facts["party_aggressors"] = None
+    return {**snapshot, "encounter_facts": facts}
 
 
 def _is_id(value: object) -> bool:
@@ -59,21 +77,51 @@ def _death_save_rounds(value: object) -> dict[str, int]:
     return dict(value)
 
 
+def validate_history(value: object) -> dict[str, list[str]] | None:
+    return None if value is None else _id_map(value, "party_aggressors")
+
+
 def validate(value: object) -> EncounterFacts:
-    if not isinstance(value, dict) or value.keys() != EncounterFacts.__required_keys__:
-        raise ValueError(f"encounter_facts requires exactly {', '.join(sorted(EncounterFacts.__required_keys__))}")
+    current = EncounterFacts.__required_keys__
+    prior = current - {"party_aggressors"}
+    if not isinstance(value, dict) or value.keys() not in (current, prior):
+        raise ValueError(
+            f"encounter_facts requires exactly {', '.join(sorted(prior))}, "
+            "with party_aggressors as an ID map or null in the current shape"
+        )
+    history = value.get("party_aggressors")
     return {
         "ally_downers": _ids(value["ally_downers"], "ally_downers"),
         "attacked": _ids(value["attacked"], "attacked"),
         "death_save_success_round": _death_save_rounds(value["death_save_success_round"]),
         "misses": _id_map(value["misses"], "misses"),
         "once_spent": _id_map(value["once_spent"], "once_spent"),
+        "party_aggressors": validate_history(history),
     }
 
 
 def _remember(ids: list[str], participant_id: str) -> None:
     if participant_id not in ids:
         ids.append(participant_id)
+
+
+def record_party_attack(state: CombatState | None, attacker: CombatParticipant, target: CombatParticipant) -> None:
+    if state is None or attacker.is_ally or not target.is_ally:
+        return
+    history = state.encounter_facts["party_aggressors"]
+    if history is not None:
+        _remember(history.setdefault(attacker.id, []), target.id)
+
+
+def party_victims(state: CombatState, hostile_id: str) -> list[str]:
+    history = state.encounter_facts["party_aggressors"]
+    if history is None:
+        raise ToolError("This encounter's party aggression history is unknown.")
+    return list(history.get(hostile_id, ()))
+
+
+def has_attacked_party(state: CombatState, hostile_id: str) -> bool:
+    return bool(party_victims(state, hostile_id))
 
 
 def record_landing(
@@ -86,7 +134,7 @@ def record_landing(
     if state is None:
         return
     facts = state.encounter_facts
-    if hp_before > 0 and target.is_ally and target.is_fallen:
+    if attacker.id != target.id and hp_before > 0 and target.is_ally and target.is_fallen:
         _remember(facts["ally_downers"], attacker.id)
     if isinstance(result, AttackResult):
         _remember(facts["attacked"], target.id)

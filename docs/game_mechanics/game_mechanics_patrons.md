@@ -226,7 +226,7 @@ When casting a spell targeting a specific creature that has wronged you or allie
 |---|---|---|
 | Acknowledged | Discern Lies | Once per long rest, know with certainty whether an NPC's last statement was true, false, or deliberately misleading. No check, no save |
 | Devoted | Mark of Justice | Once per long rest, mark an unjust creature for the rest of the encounter. It takes -2 on saves against your spells and abilities. |
-| Exalted | The Scale's Verdict | Once per session, declare judgment. DM (as Valdris) weighs target's actions. If unjust: 4d8 radiant + Stunned 1 round. If just: you take 2d8 radiant. Outcome depends on actual NPC behavior |
+| Exalted | The Scale's Verdict | Once per session during combat, judge one living hostile creature. The engine rules it unjust if it attacked a party member or companion in this fight, even if it missed. An unjust foe takes 4d8 radiant damage and is Stunned for one round if still standing. On a just verdict, you take 2d8 radiant damage. Valdris voices the engine's verdict. |
 
 **Layer 4 — Archetype Resonance**
 
@@ -381,7 +381,7 @@ When the Veythar reveal occurs:
 | Thyra | Nature | Advantage Perception/Survival in nature | -1 Resonance on natural ground | 3d8 terrain damage, no save |
 | Syrath | Shadows | 1-round invisibility | -2 Resonance from stealth | See through the Veil for 6 seconds |
 | Orenthel | Healing | Heal others → self-heal 2 HP | Healing = 0 Resonance | Auto-stabilize fallen ally at half HP |
-| Valdris | Justice | Compel NPC to acknowledge truth | Half Resonance on justified spells | Divine judgment (4d8 + stun if unjust) |
+| Valdris | Justice | Compel NPC to acknowledge truth | Half Resonance on justified spells | Combat judgment (4d8 radiant + survivor stun if unjust, 2d8 radiant to follower if just) |
 | Mortaen | Death | Sense creatures below 25% HP | 0 Resonance on 0 HP targets | Incorporeal for 1 round |
 | Nythera | Exploration | Always know direction and distance | -1 Resonance in new locations | Gateway to visited location |
 | Zhael | Fate | Force reroll any d20 | Choose between 2 Echo results | Undo 1 round of time (8 Resonance) |
