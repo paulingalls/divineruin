@@ -176,6 +176,7 @@ def test_full_state_save_sites_match_the_inventory():
             ("architect_scene.py", "start", "call"): 1,
             ("still_illusions.py", "investigate", "call"): 1,
             ("condition_consume.py", "persist_combat_consumption", "call"): 1,
+            ("check_tools.py", "_finish_save", "call"): 1,
             ("veil_ward_tools.py", "_activate_veil_ward_locked", "call"): 1,
             ("veil_ward_tools.py", "_dismiss_impl", "call"): 1,
             ("combat_turn.py", "_declare_phase_locked", "call"): 1,

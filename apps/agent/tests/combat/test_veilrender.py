@@ -24,6 +24,7 @@ def boss_state():
 
 def save(success=False):
     return SimpleNamespace(
+        rally_sources=(),
         success=success,
         save_type="constitution",
         roll=10,
