@@ -41,6 +41,9 @@ self-cast. Second Wind uses empty targets. War Cry uses empty targets and reache
 Iron Stance (action="warrior_iron_stance") uses empty targets. Until the warrior's next turn, \
 forced movement fails, saves have advantage, and all damage is resisted. \
 Vanish (action="rogue_vanish") uses empty targets and conceals the rogue. \
+Smoke Bomb (action="rogue_smoke_bomb") uses empty targets or targets the rogue. \
+The smoke cloud stays at the throw point until the next round starts. \
+Name who is inside using the spoken spatial facts. \
 Rallying Shout names one standing ally. \
 Devastating Strike names one foe and uses the main-hand melee weapon. \
 Cleaving Blow (action="warrior_cleaving_blow") takes one or two standing foe ids in targets, in strike order. \

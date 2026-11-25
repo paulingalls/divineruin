@@ -102,6 +102,13 @@ def attack_roll_inputs(
             player, combat_state, attacker, target, action
         )
 
+    if (
+        combat_state is not None
+        and combat_state.spatial is not None
+        and combat_spatial.smoke_obscures(combat_state.spatial, attacker.id, target.id)
+    ):
+        attacker_data["attack_disadvantage_source"] = "Smoke cloud"
+
     attack_mod = attacker.attack_mod
     if weapon_attack and attacker.type == "player" and attacker.archetype_id == "rogue":
         if combat_state is None:

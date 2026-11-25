@@ -109,8 +109,7 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - [x] An eligible enemy can spend one opportunity attack per round when a player moves or approaches beyond its reach. The player may react to the blow, then continues from that point if able.
 - [x] All combat math functions are pure with no side effects
 - [x] Tests cover all declaration types, armor categories, and weapon damage ranges
-- [ ] The 14 martial L4/L8 elective techniques other than Quick Fingers work in a fight. Wired in sprint martial-electives: `warrior_precision_strike`, `warrior_reckless_assault`, `rogue_dirty_trick`, `warrior_taunt`, `warrior_war_cry`, `rogue_crippling_strike`, `rogue_exploit_weakness`, `warrior_cleaving_blow`, `warrior_whirlwind`, `rogue_blade_flurry`, `rogue_vanish`. Still refused:
-  `rogue_smoke_bomb`, `rogue_shadow_step`.
+- [ ] The 14 martial L4/L8 elective techniques other than Quick Fingers work in a fight. Wired in sprint martial-electives: `warrior_precision_strike`, `warrior_reckless_assault`, `rogue_dirty_trick`, `warrior_taunt`, `warrior_war_cry`, `rogue_crippling_strike`, `rogue_exploit_weakness`, `warrior_cleaving_blow`, `warrior_whirlwind`, `rogue_blade_flurry`, `rogue_vanish`, `rogue_smoke_bomb`. Still refused: `rogue_shadow_step`.
 - [ ] rogue_quick_fingers steals, plants or swaps a real item mid-combat
 - [ ] Weapon equips check proficiency once item weapon categories are normalized in both loaders.
 - [x] A Retreat declaration moves the player through the enemy-opportunity route driver, so it provokes unless Disengaged.

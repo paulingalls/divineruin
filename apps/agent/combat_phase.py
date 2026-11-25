@@ -20,6 +20,7 @@ from enum import StrEnum
 import architect_constructs
 import architect_reaction
 import choir_effects
+import combat_spatial
 import reaction_spend
 from combat_ability_gate import RECKLESS_ASSAULT_RIDER, WAR_CRY
 from combat_declaration_validation import validate_declaration
@@ -168,6 +169,7 @@ def advance_combat_phase(
         legendary_available: list[dict] = []
         if not wrap.combat_ended:
             next_state.round_number += 1
+            combat_spatial.expire_smoke(next_state)
             architect_constructs.expire(next_state)
             choir_effects.advance_round(next_state)
             next_state.current_turn_index = 0

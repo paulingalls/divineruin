@@ -8,7 +8,7 @@ from combat_ability import (
     _resolve_ability_packet,
     condition_ability,
 )
-from combat_ability_gate import EXPLOIT_WEAKNESS, MARSHAL_ORDERS, SECOND_WIND, VANISH, declared_ability
+from combat_ability_gate import EXPLOIT_WEAKNESS, MARSHAL_ORDERS, SECOND_WIND, SMOKE_BOMB, VANISH, declared_ability
 from combat_deescalation import _resolve_deescalation_packet
 
 
@@ -47,6 +47,8 @@ async def resolve(
     resolved = declared_ability(decl.action)
     if resolved is not None and resolved[0].id == VANISH:
         return await combat_martial.vanish(attacker, resolved, conn=conn, queries=queries)
+    if resolved is not None and resolved[0].id == SMOKE_BOMB:
+        return await combat_martial.smoke_bomb(state, attacker, resolved, conn=conn, queries=queries)
     if resolved is not None and resolved[0].id == SECOND_WIND:
         return await combat_martial.second_wind(
             state, attacker, resolved, conn=conn, queries=queries, mutations=mutations

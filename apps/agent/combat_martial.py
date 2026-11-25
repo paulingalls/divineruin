@@ -35,6 +35,7 @@ from combat_ability_gate import (
     SHIELD_BASH,
     SHIELD_BASH_RIDER,
     SINGLE_TARGET_WEAPON_ABILITIES,
+    SMOKE_BOMB,
     VANISH,
     WHIRLWIND,
     DeclaredAbility,
@@ -59,8 +60,8 @@ from session_data import CombatState
 def require_targets(
     state: CombatState, actor: CombatParticipant, decl: Declaration, ability: abilities.Ability
 ) -> None:
-    if ability.id == VANISH and (decl.target_ids or decl.target_id not in (None, actor.id)):
-        raise ValueError("Vanish targets only the rogue.")
+    if ability.id in (VANISH, SMOKE_BOMB) and (decl.target_ids or decl.target_id not in (None, actor.id)):
+        raise ValueError(f"{ability.name} targets only the rogue.")
     if ability.id == IRON_STANCE_ABILITY and (decl.target_ids or decl.target_id not in (None, actor.id)):
         raise ValueError("Iron Stance only protects the warrior using it.")
     if ability.id == SECOND_WIND:
@@ -276,6 +277,25 @@ async def vanish(actor: CombatParticipant, resolved: DeclaredAbility, *, conn, q
             "action": VANISH,
             "deducted": {"focus": cost.focus, "stamina": cost.stamina},
             "concealment": await concealment.transition(actor.id, player, True, conn=conn),
+        },
+        variant,
+    )
+
+
+async def smoke_bomb(state: CombatState, actor: CombatParticipant, resolved: DeclaredAbility, *, conn, queries) -> dict:
+    from combat_ability import _with_variant
+
+    ability, _ = resolved
+    variant = await pay(actor.id, resolved, queries=queries, conn=conn)
+    cost = (variant or ability).cost
+    return _with_variant(
+        {
+            "actor_id": actor.id,
+            "resolved": True,
+            "declaration_type": "ability",
+            "action": SMOKE_BOMB,
+            "deducted": {"focus": cost.focus, "stamina": cost.stamina},
+            "zone_id": combat_spatial.add_smoke(state, actor.id),
         },
         variant,
     )

@@ -420,15 +420,17 @@ describe("spatial scene placement", () => {
   });
 });
 
-test("typed silence zones pass the real scene boundary", () => {
+test("typed silence and smoke zones pass the real scene boundary", () => {
   const row = structuredClone(references[0]!);
+  row.scene_placement.locations.smoke_origin = { x: 15, y: 0, z: 0 };
   row.scene_placement.zones = {
     quiet: { kind: "silence", center_id: row.enemies[0]!.id, radius_ft: 10 },
+    cloud: { kind: "smoke", center_id: "smoke_origin", radius_ft: 10 },
   };
   expect(() => validateScenePlacement(row)).not.toThrow();
   for (const kind of [undefined, null, true, 1, "generic", "Silence", "fire"]) {
     const invalid = structuredClone(row);
-    Object.assign(invalid.scene_placement.zones.quiet!, { kind });
+    Object.assign(invalid.scene_placement.zones.cloud!, { kind });
     expect(() => validateScenePlacement(invalid)).toThrow(/zone/);
   }
 });
