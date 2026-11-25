@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.65.1
+
+The Python test run no longer prints pytest-asyncio's fixture loop-scope deprecation warning. Behaviour is unchanged.
+
+Release steps: none.
+
 ## 0.65.0
 
 Three more patron synergies now work in combat. A Mortaen guardian gains +1 AC while another ally lies at 0 HP. A standing Mortaen marshal gives fallen allies, companions included, +1 on death saves; it adds to a Mortaen roller's own +2 and holds through Fate rerolls and flips. A Kaelen bard's Inspire and Mass Inspire give a d6 instead of a d4 on attack rolls. The DM reads each bonus by name in the roll result.
