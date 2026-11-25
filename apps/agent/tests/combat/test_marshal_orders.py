@@ -36,8 +36,15 @@ def mock_combat_agent_factory() -> None:
 async def marshal(dev_db_pool):
     harness = MawlingHarness()
 
-    async def prepare(level: int, *, focus: int = 8, stamina: int = 8, owned: tuple[str, ...] = ()) -> MawlingHarness:
-        await harness.prepare((level, 2, 2), companion=None, tools=(activate,))
+    async def prepare(
+        level: int,
+        *,
+        focus: int = 8,
+        stamina: int = 8,
+        owned: tuple[str, ...] = (),
+        location: str = "greyvale_wilderness_north",
+    ) -> MawlingHarness:
+        await harness.prepare((level, 2, 2), companion=None, location=location, tools=(activate,))
         pid = harness.players[0]
         player = await db_queries.get_player(pid)
         assert player is not None
@@ -135,7 +142,7 @@ async def test_order_resolves_in_initiative_order(marshal, order, level, slots, 
         action=order,
         name=authored.name,
         target_ids=targets,
-        effect_resolution="narrated",
+        effect_resolution="engine" if order == DIRECT else "narrated",
         effect=authored.effect,
         narration_cue=authored.narration_cue,
         deducted=deducted,
@@ -143,6 +150,11 @@ async def test_order_resolves_in_initiative_order(marshal, order, level, slots, 
     assert {key: receipt[key] for key in expected} == expected
     assert "rally_grant" not in receipt
     live = await harness.reload()
+    if order == DIRECT:
+        ally, foe = targets
+        assert live.order_riders == {
+            ally: [dict(kind="direct_strike", target_id=foe, expires_round=2, order_id=DIRECT, source_id=actor)]
+        }
     assert live.encounter_facts["rally_pending"] == {}
     assert "zhael_moment_to_rally" not in live.encounter_facts["once_spent"]
     assert target_facts(live, targets) == before_targets

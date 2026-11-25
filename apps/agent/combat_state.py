@@ -6,6 +6,7 @@ from functools import cache
 from pathlib import Path
 
 import choir_effects
+import combat_order_riders
 import combat_reaction_contest
 import combat_round_checkpoint
 import combat_spatial
@@ -92,6 +93,7 @@ class CombatState:
     # signal so the opening strike earns the dice (story-004).
     first_attack_resolved: bool = False
     beacon_attacks: dict[str, list[str]] = field(default_factory=dict)
+    order_riders: dict[str, list[combat_order_riders.OrderRider]] = field(default_factory=dict)
     first_hostility: dict[str, str] = field(default_factory=dict)
     # Diplomat de-escalation (M4.6a story-004). Combat-scoped, never reset within an encounter.
     # ``deescalated`` flips True when a de-escalation argument lands; _wrap reads it to end
@@ -213,6 +215,7 @@ class CombatState:
                 if "encounter_facts" in data
                 else encounter_facts.empty()
             ),
+            order_riders=combat_order_riders.validate(data.get("order_riders", {}), data["participants"]),
             first_hostility=combat_wrongdoing.validate_ledger(data.get("first_hostility", {}), data["participants"]),
             deescalated=data.get("deescalated", False),
             deescalation_scene=DeEscalationState(**data.get("deescalation_scene", {})),

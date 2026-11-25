@@ -5,6 +5,7 @@ import ability_persistence
 import check_resolution
 import check_resolution_save
 import combat_melee_approach
+import combat_order_riders
 import combat_recharge
 import combat_spatial
 import combat_spell_heal
@@ -154,10 +155,16 @@ async def narrated_order(
 ) -> dict:
     ability, variant = resolved
     authored = variant or ability
-    allies, _ = order_recipients(state, actor, decl, ability)
+    allies, foes = order_recipients(state, actor, decl, ability)
     await pay(actor.id, resolved, queries=queries, conn=conn)
     grant = await grant_marshal_rally(state, actor.id, allies[0], queries=queries, conn=conn)
+    rider = (
+        combat_order_riders.grant_direct_strike(state, actor.id, allies[0], foes[0])
+        if ability.id == DIRECT_STRIKE
+        else None
+    )
     return {
+        **({"order_rider_grant": rider} if rider is not None else {}),
         **({"rally_grant": grant} if grant is not None else {}),
         "actor_id": actor.id,
         "resolved": True,
@@ -165,7 +172,7 @@ async def narrated_order(
         "action": decl.action,
         "name": ability.name,
         "target_ids": _order_targets(decl),
-        "effect_resolution": "narrated",
+        "effect_resolution": "engine" if rider is not None else "narrated",
         "effect": authored.effect,
         "narration_cue": authored.narration_cue,
         "deducted": {"focus": authored.cost.focus, "stamina": authored.cost.stamina},
