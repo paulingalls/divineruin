@@ -289,6 +289,8 @@ async def _apply_damage(
     impact = temp_hp.absorb(
         attack_result.damage, hp_before, pool_before, hp_floor=conditions.damage_hp_floor(target.conditions)
     )
+    if save_damage:
+        encounter_facts.record_party_attack(combat_state, attacker, target)
     target.hp_current = impact.hp
     target.temp_hp = impact.temporary
     if (
