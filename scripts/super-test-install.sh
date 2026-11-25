@@ -31,7 +31,7 @@ with open(path, "wb") as output:
         "WorkingDirectory": working_dir,
         "EnvironmentVariables": {"PATH": tool_path, "SUPER_REMOTE": remote},
         "StartCalendarInterval": [
-            {"Weekday": day, "Hour": 2, "Minute": 0} for day in (2, 4, 6)
+            {"Weekday": day, "Hour": 0, "Minute": 30} for day in (2, 4, 6)
         ],
         "StandardOutPath": logs + "/launchd.stdout.log",
         "StandardErrorPath": logs + "/launchd.stderr.log",
@@ -44,4 +44,4 @@ if launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1; then
 fi
 launchctl bootstrap "$DOMAIN" "$PLIST"
 launchctl print "$DOMAIN/$LABEL" >/dev/null
-echo "Installed $LABEL: $PLIST; Tuesday, Thursday, Saturday at 02:00"
+echo "Installed $LABEL: $PLIST; Tuesday, Thursday, Saturday at 00:30"
