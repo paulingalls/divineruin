@@ -251,13 +251,24 @@ async def test_two_followers_cannot_rewind_twice_without_replay_and_keep_both_sp
     assert point["data"]["patron_gifts"][GIFT]["spent"]
     assert not point["session_flags"]["weapon_used"]
     point["data"]["patron_gifts"][GIFT]["spent"] = False
-    await patch_player(fight, first, patron_gifts={GIFT: {"spent": True}, "zhael_lucky": {"spent": True}})
+    point["data"].pop("temp_hp")
+    point["data"].pop("flags", None)
+    veil = {"shadow_veil": {"remaining_rounds": 1, "clause_id": "syrath_shadow_veil"}, "concealed": True}
+    await patch_player(
+        fight,
+        first,
+        patron_gifts={GIFT: {"spent": True}, "zhael_lucky": {"spent": True}},
+        temp_hp=4,
+        flags={"met_oracle": True, **veil},
+    )
     fight.session.member_state(first).weapon_used = True
     await fight.write_row(state.to_dict())
     await activate(fight, second)
     players = (await durable(fight))["players"]
     assert all(players[pid]["data"]["patron_gifts"][GIFT]["spent"] for pid in (first, second))
     assert "zhael_lucky" not in players[first]["data"]["patron_gifts"]
+    assert "temp_hp" not in players[first]["data"]
+    assert players[first]["data"]["flags"] == {"met_oracle": True}
     assert not fight.session.member_state(first).weapon_used
 
     await fight.declare()
