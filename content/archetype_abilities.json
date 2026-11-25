@@ -69,7 +69,7 @@
     "ability_type": "elective",
     "level_requirement": 4,
     "cost": { "stamina": 4, "focus": 0, "scaling": null },
-    "effect": "A single melee attack hits up to 2 adjacent enemies.",
+    "effect": "Sweep at up to two foes within main-hand melee reach. Roll two d20s once. Each foe uses the higher die with advantage, the lower with disadvantage, or the first otherwise. Roll damage for each hit.",
     "narration_cue": "One sweeping arc bites through two foes at once."
   },
   {

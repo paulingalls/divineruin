@@ -52,7 +52,7 @@ COMBAT_BY_ELECTIVE = {
     "skirmisher_spring_attack": False,
     "spy_poison_craft": False,
     "spy_double_agent": False,
-    "warrior_cleaving_blow": False,
+    "warrior_cleaving_blow": True,
     "warrior_unstoppable_charge": True,
 }
 

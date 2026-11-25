@@ -85,7 +85,7 @@ class TestQueryAbilities:
         assert reactions
         assert all(rows[ability.id]["window"] == ability.window for ability in reactions)
         assert rows["warrior_cleaving_blow"]["active_variant_id"] == "warrior_cleaving_blow_drathian"
-        assert rows["warrior_cleaving_blow"]["combat"] is False
+        assert rows["warrior_cleaving_blow"]["combat"] is True
 
     @pytest.mark.asyncio
     async def test_spell_backed_row_names_its_combat_spell_id(self, mock_context):
@@ -136,6 +136,7 @@ class TestQueryAbilities:
                         declaration["target_id"] = "ally"
                     if row["id"] in (
                         "warrior_devastating_strike",
+                        "warrior_cleaving_blow",
                         "rogue_dirty_trick",
                         "warrior_taunt",
                         "rogue_exploit_weakness",

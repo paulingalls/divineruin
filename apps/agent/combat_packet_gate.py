@@ -15,13 +15,16 @@ from combat_ability import (
     condition_ability,
 )
 from combat_ability_gate import (
+    CLEAVING_BLOW,
     CUNNING_ACTION,
     DEVASTATING_STRIKE,
     ELECTIVE_RIDER_ABILITIES,
     EXPLOIT_WEAKNESS,
+    MULTI_TARGET_WEAPON_ABILITIES,
     SECOND_WIND,
     SHIELD_BASH,
     WAR_CRY,
+    WHIRLWIND,
     declared_ability,
     war_cry_targets,
 )
@@ -75,7 +78,8 @@ async def _prevalidate_ability_focus(
             combat_voice_rules.guard_declaration(state, actor, decl)
         except ValueError as e:
             raise ToolError(str(e)) from e
-        action = combat_martial.attack_ability(decl) or decl.action
+        action = decl.action if decl.type is DeclarationType.ABILITY else combat_martial.attack_ability(decl)
+        assert action is not None
         is_deescalation = action.lower() == "de_escalate"
         resolved_ability = (
             (abilities.get_ability("diplomat_de_escalate"), None) if is_deescalation else declared_ability(action)
@@ -87,10 +91,15 @@ async def _prevalidate_ability_focus(
                 if ability.ability_type == "elective"
                 else False
             )
-            if not abilities.owns_ability(player.get("class"), player["level"], ability, owns_elective=owned_elective):
+            if (
+                ability.id in MULTI_TARGET_WEAPON_ABILITIES and player.get("class") != ability.archetype_id
+            ) or not abilities.owns_ability(
+                player.get("class"), player["level"], ability, owns_elective=owned_elective
+            ):
                 raise ToolError(f"{actor.name} hasn't learned {ability.name}.")
             try:
-                combat_martial.require_targets(state, actor, decl, ability)
+                if ability.id not in MULTI_TARGET_WEAPON_ABILITIES:
+                    combat_martial.require_targets(state, actor, decl, ability)
             except ValueError as e:
                 raise ToolError(str(e)) from e
             if variant is not None:
@@ -114,13 +123,20 @@ async def _prevalidate_ability_focus(
             CUNNING_ACTION,
             EXPLOIT_WEAKNESS,
             *ELECTIVE_RIDER_ABILITIES,
+            *MULTI_TARGET_WEAPON_ABILITIES,
         ):
             ability, variant = resolved_ability
             if ability.id in ELECTIVE_RIDER_ABILITIES:
                 variant = await combat_martial.active_rider_variant(actor_id, ability.id, conn=conn)
-            if ability.id == DEVASTATING_STRIKE:
+            if ability.id in (DEVASTATING_STRIKE, *MULTI_TARGET_WEAPON_ABILITIES):
                 try:
-                    combat_martial.main_hand(player)
+                    weapon = combat_martial.main_hand(player, ability.name)
+                    if ability.id == CLEAVING_BLOW:
+                        for target_id in combat_martial.cleave_targets(decl):
+                            if reason := combat_martial.reach_refusal(state, actor, target_id, weapon):
+                                raise ValueError(reason)
+                    if ability.id == WHIRLWIND and not combat_martial.whirlwind_targets(state, actor, weapon):
+                        raise ValueError("Whirlwind requires a standing foe within main-hand melee reach.")
                 except ValueError as e:
                     raise ToolError(str(e)) from e
             _gate_ability_condition(player, ability, variant)

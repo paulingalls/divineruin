@@ -1,7 +1,17 @@
 """One declaration's attack summary, aggregated across the swings of an expanded sequence."""
 
 
-def aggregate(attack_summaries: list[dict], *, moved: bool) -> dict:
+def aggregate(attack_summaries: list[dict], *, moved: bool, multi_target: bool = False) -> dict:
+    if multi_target:
+        dramatic = next((s for s in attack_summaries if s.get("dramatic")), None)
+        return {
+            "attacks": attack_summaries,
+            "damage": sum(s.get("damage", 0) for s in attack_summaries),
+            "hit": any(s.get("hit") for s in attack_summaries),
+            "critical": any(s.get("critical") for s in attack_summaries),
+            "dramatic": dramatic is not None,
+            "context": dramatic["context"] if dramatic is not None else "",
+        }
     summary = dict(attack_summaries[0])
     last = None
     if len(attack_summaries) > 1:

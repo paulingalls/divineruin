@@ -11,6 +11,9 @@ if TYPE_CHECKING:
     from combat_state import CombatState
 
 DEVASTATING_STRIKE = "warrior_devastating_strike"
+CLEAVING_BLOW = "warrior_cleaving_blow"
+WHIRLWIND = "warrior_whirlwind"
+MULTI_TARGET_WEAPON_ABILITIES = (CLEAVING_BLOW, WHIRLWIND)
 SHIELD_BASH = "warrior_shield_bash"
 DIRTY_TRICK = "rogue_dirty_trick"
 TAUNT = "warrior_taunt"
@@ -53,7 +56,7 @@ def combat_ability(ability: abilities.Ability) -> bool:
     return (
         ability.spell_id is not None
         or ability.applies_condition is not None
-        or ability.id in (SECOND_WIND, DEVASTATING_STRIKE, EXPLOIT_WEAKNESS)
+        or ability.id in (SECOND_WIND, DEVASTATING_STRIKE, EXPLOIT_WEAKNESS, *MULTI_TARGET_WEAPON_ABILITIES)
     )
 
 

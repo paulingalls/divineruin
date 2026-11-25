@@ -8,7 +8,7 @@
       "focus": 0,
       "scaling": null
     },
-    "effect": "A single melee attack hits up to 2 adjacent enemies. Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
+    "effect": "Sweep at up to two foes within main-hand melee reach. Roll two d20s once. Each foe uses the higher die with advantage, the lower with disadvantage, or the first otherwise. Roll damage for each hit. Drathian clans throw their full weight behind it — wider and heavier, trading footing for force.",
     "narration_cue": "Cleaving Blow, the Drathian way — all muscle and momentum, footing spent for force.",
     "cultural_attribution": "Drathian Clans technique"
   },
@@ -21,7 +21,7 @@
       "focus": 1,
       "scaling": null
     },
-    "effect": "A single melee attack hits up to 2 adjacent enemies. Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "effect": "Sweep at up to two foes within main-hand melee reach. Roll two d20s once. Each foe uses the higher die with advantage, the lower with disadvantage, or the first otherwise. Roll damage for each hit. Keldaran discipline trades raw power for flawless control, never overcommitting.",
     "narration_cue": "Cleaving Blow, Hold-forged — economical and exact, the weak seam found and split.",
     "cultural_attribution": "Keldaran Holds technique"
   },

@@ -2,14 +2,17 @@
 
 import abilities
 import ability_persistence
+import check_resolution
 import check_resolution_save
 import combat_melee_approach
 import combat_recharge
+import combat_spatial
 import combat_spell_heal
 import conditions
 import dice
 import mentor_variants
 from combat_ability_gate import (
+    CLEAVING_BLOW,
     CRIPPLING_STRIKE,
     CRIPPLING_STRIKE_RIDER,
     CUNNING_ACTION,
@@ -18,11 +21,14 @@ from combat_ability_gate import (
     ELECTIVE_ATTACK_RIDERS,
     ELECTIVE_RIDER_ABILITIES,
     EXPLOIT_WEAKNESS,
+    MULTI_TARGET_WEAPON_ABILITIES,
     RALLYING_SHOUT,
     SECOND_WIND,
     SHIELD_BASH,
     SHIELD_BASH_RIDER,
+    WHIRLWIND,
     DeclaredAbility,
+    declared_ability,
     require_rally_target,
 )
 from combat_ability_save import player_ability_dc
@@ -31,7 +37,9 @@ from combat_down import damage_target_unavailable
 from combat_fate_rolls import PacketRolls, packet_save
 from combat_legendary_resistance import finalize_save, override_fields
 from combat_participant import CombatParticipant
+from combat_structures import blocked_reason, line_blocker
 from condition_catalog import CRIPPLED, STUDIED_WEAKNESS
+from condition_sources import require_hostile_targets
 from declarations import Declaration, DeclarationType
 from mentor_variants import MentorVariant
 from session_data import CombatState
@@ -51,11 +59,64 @@ def require_targets(
         target = state.get_participant(decl.target_id) if decl.target_id else None
         if decl.target_ids or target is None or target.is_ally or damage_target_unavailable(target):
             raise ValueError("Devastating Strike requires one standing foe.")
+    if ability.id == CLEAVING_BLOW:
+        targets = cleave_targets(decl)
+        if (
+            (decl.target_id is not None and decl.target_ids)
+            or not 1 <= len(targets) <= 2
+            or len(set(targets)) != len(targets)
+            or any(not standing_foe(state.get_participant(tid)) for tid in targets)
+        ):
+            raise ValueError("Cleaving Blow requires one or two distinct standing foes.")
+    if ability.id == WHIRLWIND and (decl.target_id is not None or decl.target_ids):
+        raise ValueError("Whirlwind chooses its own targets. Leave targets empty.")
     if ability.id == EXPLOIT_WEAKNESS and _study_target(state, decl) is None:
         raise ValueError("Exploit Weakness requires one standing foe.")
     if ability.id == RALLYING_SHOUT:
         standing = {p.id for p in state.participants if p.is_ally and p.hp_current > 0 and not p.is_fallen}
         require_rally_target(actor.id, decl.target_id if not decl.target_ids else None, standing)
+
+
+def cleave_targets(decl: Declaration) -> list[str]:
+    return [decl.target_id] if decl.target_id is not None else list(decl.target_ids or ())
+
+
+def standing_foe(target: CombatParticipant | None) -> bool:
+    return (
+        target is not None
+        and not target.is_ally
+        and not target.is_structure
+        and not target.is_fallen
+        and not target.is_dead
+        and target.hp_current > 0
+    )
+
+
+def reach_refusal(state: CombatState, actor: CombatParticipant, target_id: str, weapon: dict) -> str | None:
+    spatial = combat_spatial.require_spatial(state)
+    origin = combat_spatial.position(spatial, actor.id)
+    destination = combat_spatial.position(spatial, target_id)
+    if combat_spatial.distance(origin, destination) > combat_melee_approach.melee_reach(weapon):
+        return f"{target_id} is outside main-hand melee reach."
+    if wall := line_blocker(state, actor.id, target_id, melee=True):
+        return blocked_reason(wall)
+    return None
+
+
+def whirlwind_targets(state: CombatState, actor: CombatParticipant, weapon: dict) -> list[str]:
+    targets = sorted(
+        p.id for p in state.participants if standing_foe(p) and reach_refusal(state, actor, p.id, weapon) is None
+    )
+    require_hostile_targets(state, actor, targets)
+    return targets
+
+
+def cleave_faces() -> list[int]:
+    return [check_resolution.dice_roll("d20").total for _ in range(2)]
+
+
+def skip_swing(target_id: str, reason: str) -> dict:
+    return {"target_id": target_id, "skipped": True, "reason": reason}
 
 
 def _study_target(state: CombatState, decl: Declaration) -> CombatParticipant | None:
@@ -119,17 +180,21 @@ def attack_ability(decl: Declaration) -> str | None:
         return SHIELD_BASH
     if decl.type is DeclarationType.ATTACK and decl.rider == CRIPPLING_STRIKE_RIDER:
         return CRIPPLING_STRIKE
-    if decl.type is DeclarationType.ABILITY and decl.action == DEVASTATING_STRIKE:
-        return DEVASTATING_STRIKE
+    if (
+        decl.type is DeclarationType.ABILITY
+        and (resolved := declared_ability(decl.action)) is not None
+        and resolved[0].id in (DEVASTATING_STRIKE, *MULTI_TARGET_WEAPON_ABILITIES)
+    ):
+        return resolved[0].id
     if decl.type is DeclarationType.ATTACK and decl.rider is not None:
         return ELECTIVE_ATTACK_RIDERS.get(decl.rider)
     return None
 
 
-def main_hand(player: dict) -> dict:
+def main_hand(player: dict, ability_name: str) -> dict:
     weapon = player.get("equipment", {}).get("main_hand")
     if not isinstance(weapon, dict) or not combat_melee_approach.is_melee(weapon):
-        raise ValueError("Devastating Strike requires an equipped main-hand melee weapon.")
+        raise ValueError(f"{ability_name} requires an equipped main-hand melee weapon.")
     return weapon
 
 
