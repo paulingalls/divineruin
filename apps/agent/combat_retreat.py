@@ -42,8 +42,6 @@ def _endpoint(state: CombatState, actor: CombatParticipant, spatial: dict, origi
         nearest = aside[min(aside, key=lambda foe_id: (distance(origin, aside[foe_id]), foe_id))]
         dx, dy = origin["x"] - nearest["x"], origin["y"] - nearest["y"]
     length = math.hypot(dx, dy)
-    if not length:
-        return None
 
     speed = effective_speed(spatial["speeds"][actor.id], actor.conditions)
     destination = {**origin, "x": origin["x"] + speed * dx / length, "y": origin["y"] + speed * dy / length}
