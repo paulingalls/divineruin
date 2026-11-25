@@ -8,6 +8,8 @@ from livekit.agents.llm import ToolError
 from test_patron_engine_thyra_thornwall import GIFT, SEGMENT, battlefield
 
 import db_mutations
+from combat_spatial import position
+from combat_structures import add_wall
 
 
 async def test_save_failure_rolls_back_wall_spend_and_publications(world):
@@ -78,3 +80,15 @@ async def test_invalid_placement_is_atomic(world, start, end, overlap, reason):
                 },
             )
         assert await snapshot(world) == before
+
+
+async def test_placement_can_cross_an_existing_structure(world):
+    async with battlefield(world) as call:
+        state = world.ctx.userdata.combat_state
+        spatial = state.spatial
+        add_wall(state, "stone", "Stone Wall", {"x": 5, "y": 0, "z": 0}, {"x": 15, "y": 0, "z": 0})
+        assert position(spatial, "stone") == {"x": 10, "y": 0, "z": 0}
+        await checkpoint(world)
+        wall = (await call("activate", id=GIFT, destination=SEGMENT))["wall"]
+        assert set(state.spatial["structures"]) == {"stone"}
+        assert set(world.ctx.userdata.combat_state.spatial["structures"]) == {"stone", wall["id"]}

@@ -19,7 +19,7 @@ from voice_condition_fixtures import participant, spatial_record
 import character_spells
 import db_mutations
 import event_types as E
-from combat_structures import add_wall
+from combat_structures import add_wall, collapse_wall
 from dice import DiceResult
 
 GIFT = "thyra_thornwall"
@@ -209,17 +209,21 @@ async def test_hostile_targeting(world, mode):
 
 
 async def test_nearest_stone_refuses_enemy_move_and_blocks_effects(world):
-    enemy = fighter("marauder", action_pool=[BOW])
+    enemy = fighter("marauder", action_pool=[BOW, CLAW])
     async with battlefield(world, enemy) as call:
         await call("activate", id=GIFT, destination=SEGMENT)
+        player = world.ids[0]
+        maneuver = {"kind": "maneuver", "actor_id": enemy.id, "target_id": player, "reshape": []}
+        with pytest.raises(ToolError, match="Thornwall"):
+            await declare(world, call, maneuver)
         state = world.ctx.userdata.combat_state
-        add_wall(state, "outer", "Outer Stone", {"x": 15, "y": -5, "z": 0}, {"x": 15, "y": 5, "z": 0})
+        outer = add_wall(state, "outer", "Outer Stone", {"x": 15, "y": -5, "z": 0}, {"x": 15, "y": 5, "z": 0})
         await checkpoint(world)
         with pytest.raises(ToolError, match="Outer Stone"):
             await declare(world, call, move(enemy.id, 0))
-        del spatial_record(state)["structures"]["outer"]
-        participant(state, "outer").hp_current = 0
-        participant(state, "outer").is_dead = participant(state, "outer").is_fallen = True
+        with pytest.raises(ToolError, match="Outer Stone"):
+            await declare(world, call, {**attack(enemy.id, player), "action": "Claw"})
+        collapse_wall(state, outer)
         add_wall(state, "inner", "Inner Stone", {"x": 5, "y": -5, "z": 0}, {"x": 5, "y": 5, "z": 0})
         await checkpoint(world)
         with pytest.raises(ToolError, match="Inner Stone"):
@@ -359,6 +363,7 @@ async def test_placement_at_both_range_limits(world):
     [
         ("arcane_bolt", "mage"),
         ("arcane_fireball", "mage"),
+        ("arcane_chain_lightning", "mage"),
         ("divine_heal_wounds", "cleric"),
     ],
 )
@@ -372,6 +377,11 @@ async def test_spell_delivery_across_thornwall(world, spell, archetype):
         spatial_record(state)["positions"][ally]["x"] = 25
         participant(state, ally).hp_current = 3
         await world.pool.execute("UPDATE players SET data=jsonb_set(data,'{hp,current}','3') WHERE player_id=$1", ally)
+        if spell == "arcane_chain_lightning":
+            participant(state, caster).level = 15
+            await world.pool.execute(
+                "UPDATE players SET data=jsonb_set(data,'{level}','15') WHERE player_id=$1", caster
+            )
         await checkpoint(world)
         wall = (await call("activate", id=GIFT, destination=SEGMENT))["wall"]
         await prepare_spell(world.ctx, spell)
@@ -384,7 +394,7 @@ async def test_spell_delivery_across_thornwall(world, spell, archetype):
                 "kind": "ability",
                 "actor_id": caster,
                 "action": spell,
-                "targets": [target],
+                "targets": [target, near.id] if spell == "arcane_chain_lightning" else [target],
                 "argument_type": "",
                 "reshape": [],
             },
@@ -401,6 +411,8 @@ async def test_spell_delivery_across_thornwall(world, spell, archetype):
             assert wall_hp < 20 and participant(result, near.id).hp_current < 50
         else:
             assert wall_hp == 20
+            if spell == "arcane_chain_lightning":
+                assert participant(result, near.id).hp_current < 50
 
 
 async def test_wall_raised_after_declaration_stops_queued_ally_move(world):
