@@ -26,6 +26,7 @@ from test_patron_engine_syrath import SCENARIOS as syrath
 from test_patron_engine_thyra import SCENARIOS as thyra
 from test_patron_engine_thyra_wrath import SCENARIOS as thyra_wrath
 from test_patron_engine_valdris import SCENARIOS as valdris
+from test_patron_engine_valdris_verdict import SCENARIOS as valdris_verdict
 from test_patron_passives import SCENARIOS as passives
 from test_patron_senses import SCENARIOS as senses
 from test_syrath_two_round_veil import SCENARIOS as two_round_veil
@@ -36,6 +37,7 @@ from test_zhael_oracle_twice_woven import SCENARIOS as twice_woven
 
 ENGINE_SCENARIOS = {
     **valdris,
+    **valdris_verdict,
     **aelora,
     **aelora_shield,
     **beacon,

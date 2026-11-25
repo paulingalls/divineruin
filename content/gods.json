@@ -2246,10 +2246,11 @@
       "exalted": {
         "id": "valdris_the_scales_verdict",
         "name": "The Scale's Verdict",
-        "effect": "Once per session, declare judgment. DM (as Valdris) weighs target's actions. If unjust: 4d8 radiant + Stunned 1 round. If just: you take 2d8 radiant. Outcome depends on actual NPC behavior",
+        "effect": "Once per session during combat, judge one living hostile creature. The engine rules it unjust if it attacked a party member or companion in this fight, even if it missed. An unjust foe takes 4d8 radiant damage and is Stunned for one round if still standing. On a just verdict, you take 2d8 radiant damage. Valdris voices the engine's verdict.",
         "recharge": "per_session",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "valdris_the_scales_verdict"
       }
     },
     "layer_4_synergy_matrix": {

@@ -189,7 +189,7 @@ def test_full_state_save_sites_match_the_inventory():
             ("ability_tools.py", "_request_ability_activation_unlocked", "call"): 1,
             ("unbound_tools.py", "_activate_milestone_locked", "call"): 1,
             ("patron_ability_tools.py", "_spend_activation", "call"): 1,
-            ("patron_ability_tools.py", "_activate_wrath", "call"): 1,
+            ("patron_ability_tools.py", "_activate_combat_damage", "call"): 1,
         }
     )
     assert _save_references() == expected

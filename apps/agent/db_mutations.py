@@ -239,6 +239,7 @@ async def load_combat_state(
     dependency) into every db_mutations importer. asyncpg returns JSONB as a str unless a
     codec is registered (none is here), so json.loads it — same shape db_training._to_dict
     handles. This path is forward-wired; story-003 wires the reconnect-resume caller."""
+    from encounter_facts import upgrade_legacy_snapshot
     from session_data import CombatState
 
     _conn = conn or await db.get_pool()
@@ -247,7 +248,7 @@ async def load_combat_state(
         return None
     raw = row["data"]
     data = json.loads(raw) if isinstance(raw, str) else raw
-    return CombatState.from_dict(data)
+    return CombatState.from_dict(upgrade_legacy_snapshot(data))
 
 
 async def delete_combat_state(combat_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> None:

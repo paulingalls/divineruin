@@ -14,7 +14,7 @@ import zhael_fate
 from _gods_content import load_gods
 from combat_terrain import resolve_terrain
 from patron_ability_tools import project_abilities
-from patron_combat_edges import COMMUNITY_SHIELD, VEILSTEP, VEILSTEP_RANGE_FT, WILDMOTHERS_WRATH
+from patron_combat_edges import COMMUNITY_SHIELD, SCALES_VERDICT, VEILSTEP, VEILSTEP_RANGE_FT, WILDMOTHERS_WRATH
 from patron_favor import get_patron_tier
 from patron_gifts import UNBOUND_ALONE_BONUS, thyra_gift
 from patron_synergy import synergy_for_patron
@@ -101,6 +101,10 @@ async def query_patron(
             ability["activation_hint"] = (
                 f'Use activate(id="{WILDMOTHERS_WRATH}") in combat on natural ground. '
                 "The gift lands immediately on every living, unprotected foe."
+            )
+        elif ability["id"] == SCALES_VERDICT:
+            ability["activation_hint"] = (
+                f'Use activate(id="{SCALES_VERDICT}", target_id=<living hostile creature id in this fight>).'
             )
         elif ability["id"] == patron_gateway.GATEWAY and ability["available"]:
             ability["destinations"] = await patron_gateway.destinations(player_id, session.location_id)

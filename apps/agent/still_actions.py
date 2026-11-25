@@ -7,6 +7,7 @@ import check_resolution_save
 import combat_spatial
 import conditions
 import dice
+import encounter_facts
 import still_charm
 from action_contracts_still import STILL_ZONE_KINDS
 from combat_action_availability import begin_execution
@@ -135,6 +136,7 @@ async def resolve_zone(
         )
         if save is None:
             return {}
+        encounter_facts.record_party_attack(state, actor, target)
         duration = execution["duration"]
         if trigger is None:
             failed_conditions = ("stunned", "charmed") if duration else ("charmed",)

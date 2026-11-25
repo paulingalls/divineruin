@@ -13,6 +13,7 @@ import combat_damage_affinity
 import combat_spatial
 import combat_structures
 import dice
+import encounter_facts
 from combat_condition_landing import _land_condition_on_one
 from combat_damage import apply_attack_result
 from combat_damage_results import AutomaticDamageResult
@@ -181,6 +182,7 @@ async def _floor_target(
             _, adjusted = combat_damage_affinity.apply(target, action, damage, state=state)
             save = finalize_save(state, target, save, failed_conditions=("prone",), failed_damage=adjusted.damage)
         steps.update(save_success=save.success, **override_fields(save))
+    encounter_facts.record_party_attack(state, actor, target)
     effect = {"target_id": target_id, "save_success": steps["save_success"], "save_dc": 15}
     if "success_override" in steps:
         effect["success_override"] = steps["success_override"]
