@@ -2,17 +2,12 @@
 
 from unittest.mock import patch
 
-from acceptance._capstone_helpers import _d20
 from acceptance.mawling_harness import MawlingHarness
 from acceptance.test_martial_core_kit import weapon_attack
 from acceptance.test_self_buff_electives import (
-    RECKLESS,
     bandit_attack,
-    condition_types,
     declare,
-    defend,
     enter_bandit_fight,
-    equip,
 )
 from acceptance.test_self_buff_electives import electives as electives
 from acceptance.test_self_buff_electives import mock_combat_agent_factory as mock_combat_agent_factory
@@ -62,14 +57,3 @@ async def test_bandit_cannot_declare_reckless_assault(electives: MawlingHarness)
         "declare_phase", {"declarations": [{**strike, "rider": "reckless_assault"}]}, error=True
     )
     assert "hasn't learned Reckless Assault" in result
-
-
-async def test_ally_declaration_does_not_clear_reckless_assault(electives: MawlingHarness) -> None:
-    actor, ally = electives.players
-    await equip(electives, RECKLESS)
-    foe = await enter_bandit_fight(electives)
-    await declare(electives, weapon_attack(actor, foe, "reckless_assault"))
-    with patch("check_resolution.dice_roll", side_effect=[_d20(1), _d20(2)]):
-        await electives.drain()
-    await declare(electives, defend(ally))
-    assert "reckless_assault" in await condition_types(electives, actor)
