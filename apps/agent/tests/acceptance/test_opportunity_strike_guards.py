@@ -201,3 +201,18 @@ async def test_a_wall_blocks_the_strike_without_blocking_the_approach(fight: Maw
         result = await advance_to_departure(fight)
         assert result["next"]["waiting_on"]["stage"] == "post_roll"
     assert require_spatial(await fight.reload())["positions"][MOVER] == pos(20, 3)
+
+
+async def test_a_full_speed_diagonal_approach_resumes_within_its_allowance(fight: MawlingHarness) -> None:
+    # The two legs' floating costs can sum one ulp above the 30-foot allowance on this diagonal.
+    state = await fight.reload()
+    require_spatial(state)["positions"][fight.players[1]] = pos(30, -27)
+    await fight.persist()
+    with (
+        patch("check_resolution.dice_roll", return_value=_d20(18)),
+        patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
+    ):
+        assert (await advance_to_departure(fight))["next"]["waiting_on"]["stage"] == "movement"
+        result = await fight.command("resolve_phase", {})
+    attack = next(packet for packet in result["packets"] if packet["actor_id"] == MOVER)
+    assert attack["resolved"] and attack["movement_spent_ft"] == pytest.approx(30)
