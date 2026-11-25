@@ -18,6 +18,7 @@ from combat_spatial import require_spatial
     "case",
     [
         "able",
+        "diagonal",
         "spent",
         "fallen",
         "dead",
@@ -37,8 +38,11 @@ async def test_provocation_requires_an_able_enemy_and_a_reach_exit(fight: Mawlin
     bandit = participant(state, "bandit")
     positions = require_spatial(state)["positions"]
     positions[ally] = pos(0)
-    destination = 20
-    if case == "fallen":
+    destination = pos(20)
+    if case == "diagonal":
+        # The exit point of this route lands at 5.000000000000001 ft in floats.
+        destination = pos(9, 8)
+    elif case == "fallen":
         bandit.is_fallen = True
     elif case == "dead":
         bandit.is_dead = True
@@ -50,28 +54,28 @@ async def test_provocation_requires_an_able_enemy_and_a_reach_exit(fight: Mawlin
         bandit.action_pool = [action for action in bandit.action_pool if action.get("type") == "ranged"]
         bandit.action_ledger.clear()
         positions[mover] = pos(79)
-        destination = 90
+        destination = pos(90)
     elif case == "outside":
         positions[mover] = pos(6)
     elif case == "within":
-        destination = 4
+        destination = pos(4)
     elif case == "boundary":
-        destination = 5
+        destination = pos(5)
     elif case == "blocked":
         wall(state, 1)
     elif case == "spent":
         state.reactions_available[bandit.id] = {**reaction_spend.unspent(), "spent": True}
     await fight.persist()
-    await declare(fight, move(mover, destination))
+    await declare(fight, {**move(mover, 0), "destination": destination})
     if case == "stunned":
         participant(await fight.reload(), "bandit").conditions = [{"type": "stunned", "duration": 2, "source": "test"}]
         await fight.persist()
     with patch("check_resolution.dice_roll", return_value=_d20(1)) as rolls:
         opportunities = strikes(await resolve_allies(fight))
     state = await fight.reload()
-    assert require_spatial(state)["positions"][mover] == pos(destination)
-    assert rolls.call_count == len(opportunities) == (case == "able")
-    assert state.reactions_available[bandit.id]["spent"] is (case in ("able", "spent"))
+    assert require_spatial(state)["positions"][mover] == destination
+    assert rolls.call_count == len(opportunities) == (case in ("able", "diagonal"))
+    assert state.reactions_available[bandit.id]["spent"] is (case in ("able", "diagonal", "spent"))
     assert not state.reactions_available[ally]["spent"]
 
 

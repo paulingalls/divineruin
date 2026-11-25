@@ -457,6 +457,8 @@ async def _resolve_action_packet(
         movement_budget=movement_budget,
     )
     if opportunity_attack:
+        # An opportunity swing skips encounter-owner resolution (the Architect's Slam push and
+        # Geometry auto-hit): displacing the mover would break the paused route it resumes.
         return await continue_attack(
             session,
             state,

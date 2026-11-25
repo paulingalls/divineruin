@@ -140,7 +140,7 @@ async def continue_attack(
             swing_move = {**swing_move, "moved_ft": 0, "closed_distance": False}
         if swing_move.get("attack_resolved") is False:
             attack_summaries.append(swing_move)
-            if not swing_move["resolved"] or attacker.is_fallen or attacker.is_dead:
+            if not swing_move["resolved"]:
                 interrupted = swing_move
             break
         if martial == DEVASTATING_STRIKE and not any(sub.get("hit") for sub in attack_summaries):
