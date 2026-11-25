@@ -81,6 +81,7 @@ async def test_expiry_preserves_ordinary_hiding(veil, boundary):
         h.players.reverse()
     state = await h.reload()
     state.round_number = 3
+    state.round_checkpoints = []
     await h.persist()
     h.players.reverse()
     try:

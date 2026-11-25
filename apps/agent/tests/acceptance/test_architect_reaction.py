@@ -138,6 +138,7 @@ async def test_later_shots_and_next_round(archers):
     encounter["structure_ids"].append(prior_wall)
     encounter["reaction_round"] = 1
     state.round_number = 2
+    state.round_checkpoints = []
     before = await archers.persist()
     await declare(archers, *(bow(actor, owner) for actor in archers.players))
     with forced_rolls() as (rolled, _):
