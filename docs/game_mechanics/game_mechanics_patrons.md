@@ -149,7 +149,7 @@ The world shares one season in `world_flags`, seeded to spring. The Phase 11 wor
 
 Spring adds 1 HP per heal to the Thyra recipient, including each Regenerate tick and Dawn's Embrace, up to maximum HP. Natural-20 death-save revival and post-fight stabilization restore 1 HP. A long rest restores full HP. A short rest leaves HP unchanged.
 
-Summer adds 1 to each rolled fire or lightning component, including separately rolled riders, before save halving and damage affinities. Draethar Inner Fire counts as a fire roll against the caster. An attack critical adds extra dice within the same component.
+Summer adds 1 to each rolled fire or lightning component (the base damage and a critical rider), before save halving and damage affinities. Riders with no player producer yet (condition, authored, on-hit, Veiled Strike and Oath of Valor riders) get no bonus until one exists. Draethar Inner Fire counts as a fire roll against the caster. An attack critical adds extra dice within the same component.
 
 Wildmother's Wrath deals piercing in ancient forest and forest, slashing in grassland and farmland, bludgeoning on mountains and underground, cold on the coast, and poison in wetlands. Villages and cities refuse the gift.
 The Still and its unrevealed anchors, and the Choir's unexposed core, are spared. If no living foe can be hit, the gift stays unspent.
