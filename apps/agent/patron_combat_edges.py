@@ -33,6 +33,7 @@ PARTIAL_ROUND_GIFTS = {
     WILDMOTHERS_WRATH: "Wildmother's Wrath",
     COMMUNITY_SHIELD: "Community Shield",
     SCALES_VERDICT: "The Scale's Verdict",
+    "zhael_unravel_fate": "Unravel Fate",
 }
 VEILSTEP_RANGE_FT = 60
 BATTLE_CRY = "kaelen_battle_cry_of_the_ironhand"

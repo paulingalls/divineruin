@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from session_data import SessionData
 
 RESTORE_KEYS = frozenset({"hp", "temp_hp", "stamina", "focus", "resonance", "concentration", "patron_gifts"})
+RESTORE_FLAGS = frozenset({"shadow_veil", "concealed"})
 ENTRY_RESET_FLAGS = ("weapon_used", "weapon_crit_vs_heavy", "draethar_inner_fire_used", "unbound_raw_channeling_used")
 MASTERY_FLAG = "unbound_veil_mastery_used"
 SESSION_FLAGS = frozenset((*ENTRY_RESET_FLAGS, MASTERY_FLAG))
@@ -42,11 +43,19 @@ async def read_party(conn: asyncpg.Connection, ids: list[str]) -> dict[str, dict
     for row in rows:
         raw = _json_object(row["data"])
         data = {key: raw[key] for key in RESTORE_KEYS if key in raw}
-        if "shadow_veil" in (flags := raw.get("flags") or {}):
-            data["flags"] = {"shadow_veil": flags["shadow_veil"]}
-        players[row["player_id"]] = {"data": data, "inventory": []}
+        flags = raw.get("flags") or {}
+        if captured := {key: flags[key] for key in RESTORE_FLAGS & flags.keys()}:
+            data["flags"] = captured
+        players[row["player_id"]] = {"data": data}
     if missing := set(ids) - players.keys():
         raise ValueError(f"Round checkpoint missing players: {sorted(missing)}")
+    for pid, inventory in (await read_inventory(conn, ids)).items():
+        players[pid]["inventory"] = inventory
+    return players
+
+
+async def read_inventory(conn: asyncpg.Connection, ids: list[str]) -> dict[str, list[dict]]:
+    inventory: dict[str, list[dict]] = {pid: [] for pid in ids}
     slots = await conn.fetch(
         """
         SELECT player_id, item_id, tainted, data FROM player_inventory
@@ -55,10 +64,10 @@ async def read_party(conn: asyncpg.Connection, ids: list[str]) -> dict[str, dict
         ids,
     )
     for row in slots:
-        players[row["player_id"]]["inventory"].append(
+        inventory[row["player_id"]].append(
             {"item_id": row["item_id"], "tainted": row["tainted"], "data": _json_object(row["data"])}
         )
-    return players
+    return inventory
 
 
 async def capture(
@@ -68,14 +77,19 @@ async def capture(
     conn: asyncpg.Connection,
     mutations,
     entry: bool = False,
+    session_flags: dict[str, dict[str, bool]] | None = None,
 ) -> None:
-    flags = {
-        member.player_id: {
-            **{name: False if entry else getattr(member, name) for name in ENTRY_RESET_FLAGS},
-            MASTERY_FLAG: member.unbound_veil_mastery_used,
+    flags = (
+        session_flags
+        if session_flags is not None
+        else {
+            member.player_id: {
+                **{name: False if entry else getattr(member, name) for name in ENTRY_RESET_FLAGS},
+                MASTERY_FLAG: member.unbound_veil_mastery_used,
+            }
+            for member in session.party.members
         }
-        for member in session.party.members
-    }
+    )
     players = await read_party(conn, sorted(flags))
     for pid, image in players.items():
         image["session_flags"] = flags[pid]
@@ -100,8 +114,11 @@ def _validate_player(player: object) -> None:
     data, slots, flags = player["data"], player["inventory"], player["session_flags"]
     if not isinstance(data, dict) or data.keys() - (RESTORE_KEYS | {"flags"}):
         raise ValueError("invalid restore fields")
-    if "flags" in data and (not isinstance(data["flags"], dict) or data["flags"].keys() != {"shadow_veil"}):
+    restore_flags = data.get("flags", {})
+    if not isinstance(restore_flags, dict) or restore_flags.keys() - RESTORE_FLAGS:
         raise ValueError("invalid restore flags")
+    if restore_flags.get("shadow_veil") and restore_flags.get("concealed") is not True:
+        raise ValueError("Shadow Veil requires concealment in the checkpoint")
     if not isinstance(flags, dict) or flags.keys() != SESSION_FLAGS or any(type(v) is not bool for v in flags.values()):
         raise ValueError("invalid session flags")
     if not isinstance(slots, list):

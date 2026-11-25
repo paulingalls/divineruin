@@ -167,6 +167,7 @@ def advance_combat_phase(
         legendary_available: list[dict] = []
         if not wrap.combat_ended:
             next_state.round_number += 1
+            next_state.round_opening_settled = False
             architect_constructs.expire(next_state)
             choir_effects.advance_round(next_state)
             next_state.current_turn_index = 0
@@ -223,6 +224,8 @@ def consume_legendary_action(
     if blocked := cannot_act(boss.conditions):
         raise ValueError(f"{boss.name} ({boss.id}) is {blocked[0]} and cannot take a legendary action")
     require_boundary(next_state, authored=boss.legendary is not None)
+    if next_state.beat == PhaseBeat.DECLARATION:
+        next_state.round_opening_settled = True
     if boss.legendary is not None:
         if boss.is_fallen or boss.is_dead or boss.hp_current <= 0:
             raise ValueError(f"{boss.name} is unavailable to take a legendary action")

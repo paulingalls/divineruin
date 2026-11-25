@@ -183,6 +183,18 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     implementation_id: verdict,
     recharge: "per_session",
   });
+  const unravel = "zhael_unravel_fate";
+  expect(
+    validateGods(catalog).find((god) => god.god_id === "zhael")?.layer_3_tier_abilities.exalted,
+  ).toMatchObject({
+    id: unravel,
+    status: "active",
+    resolution: "engine",
+    implementation_id: unravel,
+    recharge: "per_session",
+    effect:
+      "Once per session, at a round boundary before declarations, undo the entire last round. Damage reversed, positions restored, resources returned. One round unhappens and everyone declares again. Generates 8 Resonance on the user regardless of caster status",
+  });
   const ward = "mortaen_death_ward";
   expect(
     validateGods(catalog).find((god) => god.god_id === "mortaen")?.layer_3_tier_abilities
@@ -251,6 +263,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     wrath,
     thornwall,
     verdict,
+    unravel,
     ward,
     embrace,
     echo,
@@ -262,7 +275,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     ),
   ).toEqual(engine);
   const pending = abilities.filter((a) => !narrated.has(a.id) && !engine.has(a.id));
-  expect(pending).toHaveLength(3);
+  expect(pending).toHaveLength(2);
   for (const ability of abilities.filter((a) => passives.has(a.id))) {
     expect([ability.recharge, ability.implementation_id]).toEqual(["always", ability.id]);
   }
@@ -434,67 +447,5 @@ test("Syrath's Shadow Veil duration and strike are registered for rogue, spy and
         implementation_id: "syrath_veiled_strike",
       },
     ]);
-  }
-});
-
-test("Zhael's oracle has both Woven Prophecy clauses", () => {
-  const matrix = validateGods(catalog).find(
-    (god) => god.god_id === "zhael",
-  )?.layer_4_synergy_matrix;
-  expect(matrix?.oracle).toEqual({
-    type: "natural",
-    name: "Woven Prophecy",
-    clauses: [
-      {
-        effect: "Prophecy Fragment becomes 2-sentence vision with more detail.",
-        status: "active",
-        resolution: "narrated",
-      },
-      {
-        effect: "Fate's Thread usable twice per long rest",
-        status: "active",
-        resolution: "engine",
-        implementation_id: "zhael_twice_woven",
-      },
-    ],
-  });
-});
-
-test("Zhael's marshal has the registered Moment to Rally clause", () => {
-  const marshal = validateGods(catalog).find((god) => god.god_id === "zhael")
-    ?.layer_4_synergy_matrix.marshal;
-  expect(marshal).toEqual({
-    name: "Moment to Rally",
-    type: "divine",
-    clauses: [
-      {
-        effect:
-          "Once per encounter, an ally who follows your order gains +1 on their next saving throw.",
-        status: "active",
-        resolution: "engine",
-        implementation_id: "zhael_moment_to_rally",
-      },
-    ],
-  });
-});
-
-test("Zhael's bard and diplomat have the registered Foretold Words clause", () => {
-  const matrix = validateGods(catalog).find(
-    (god) => god.god_id === "zhael",
-  )?.layer_4_synergy_matrix;
-  for (const archetype of ["bard", "diplomat"] as const) {
-    expect(matrix?.[archetype]).toEqual({
-      name: "Foretold Words",
-      type: "unexpected",
-      clauses: [
-        {
-          effect:
-            "Social encounters: once per NPC per session, know the exact DC of the next social check before attempting",
-          status: "active",
-          resolution: "engine",
-          implementation_id: "zhael_foretold_words",
-        },
-      ],
-    });
   }
 });

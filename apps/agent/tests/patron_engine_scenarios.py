@@ -40,8 +40,10 @@ from test_zhael_fate_callers import SCENARIOS as zhael
 from test_zhael_foretold_words import SCENARIOS as foretold_words
 from test_zhael_marshal_rally import SCENARIOS as rally
 from test_zhael_oracle_twice_woven import SCENARIOS as twice_woven
+from test_zhael_unravel_fate import SCENARIOS as unravel_fate
 
 ENGINE_SCENARIOS = {
+    **unravel_fate,
     **valdris,
     **valdris_verdict,
     **wellspring,

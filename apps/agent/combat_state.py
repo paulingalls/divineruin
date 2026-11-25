@@ -77,6 +77,7 @@ class CombatState:
     # cycle — combat_phase owns combat_phase.PhaseBeat (a StrEnum whose members ==
     # these strings) and compares against it. Defaults to the declaration beat.
     beat: str = "declaration"
+    round_opening_settled: bool = False
     # Declarations collected in Beat 1 (actor_id -> opaque declaration dict; typed by
     # M4.2), consumed in Beat 2, cleared at the wrap loop-back.
     pending_declarations: dict[str, dict] = field(default_factory=dict)
@@ -197,6 +198,7 @@ class CombatState:
             terrain=data.get("terrain"),
             faction_id=data.get("faction_id"),
             beat=data.get("beat", "declaration"),
+            round_opening_settled=data.get("round_opening_settled", False),
             # A row written before story-017 can carry a REACTION pre-declaration, whose type
             # resolve_declaration no longer knows (see reaction_spend.drop_pre_declared_reactions).
             pending_declarations=reaction_spend.drop_pre_declared_reactions(data.get("pending_declarations", {})),

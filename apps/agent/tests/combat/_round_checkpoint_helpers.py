@@ -181,8 +181,9 @@ class Fight:
         for pid in self.ids:
             raw = json.loads(await self.pool.fetchval("SELECT data FROM players WHERE player_id=$1", pid))
             expected = {key: raw[key] for key in RESTORE_KEYS if key in raw}
-            if "shadow_veil" in raw.get("flags", {}):
-                expected["flags"] = {"shadow_veil": raw["flags"]["shadow_veil"]}
+            flags = raw.get("flags", {})
+            if captured := {key: flags[key] for key in ("shadow_veil", "concealed") if key in flags}:
+                expected["flags"] = captured
             slots = await self.pool.fetch(
                 "SELECT item_id, tainted, data FROM player_inventory WHERE player_id=$1 ORDER BY item_id, tainted", pid
             )
