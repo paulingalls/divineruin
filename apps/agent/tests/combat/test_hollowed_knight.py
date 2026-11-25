@@ -81,6 +81,33 @@ async def test_blade_packets(seed, ac, critical):
         assert result["critical_save"]["dc"] == 14
 
 
+async def test_direct_blade_critical_save_spends_pending_rally():
+    import random
+    from unittest.mock import patch
+
+    from _zhael_marshal_rally_fixtures import bonus, pending
+    from combat._catalog_fixtures import deps, setup
+    from sample_fixtures import make_context
+
+    from combat_packet import _resolve_one_packet
+
+    blade = translate_creature(knight(), encounter_id="knight", enemy_id="knight", role="standard")["action_pool"][0]
+    saves = []
+    for rally in (False, True):
+        state, _actor, packet = setup(blade)
+        target = state.participants[0]
+        target.hp_current = target.hp_max = 100
+        if rally:
+            pending(state, target.id, "zhael-marshal")
+        with patch("dice.random.SystemRandom", return_value=random.Random(5)):
+            result = await _resolve_one_packet(make_context().userdata, state, packet, **deps(5))
+        saves.append(result["critical_save"])
+    plain, rallied = saves
+    assert (rallied["roll"], rallied["total"]) == (plain["roll"], plain["total"] + 1)
+    assert rallied["rally_bonuses"] == [bonus("zhael-marshal", target.id)] and "rally_bonuses" not in plain
+    assert state.encounter_facts["rally_pending"] == {}
+
+
 @pytest.mark.parametrize("creature", ["hollow_knight", "war_golem", "deepstone_guardian"])
 @pytest.mark.parametrize("dtype", ["slashing", "piercing", "bludgeoning"])
 @pytest.mark.parametrize("magical", [False, True])

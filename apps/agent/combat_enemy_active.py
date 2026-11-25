@@ -119,6 +119,7 @@ def apply_critical_save(state, attacker, target, action, summary):
     rider = critical_save_rider(action, summary)
     if rider is not None:
         save = roll_critical_save(state, attacker, target, rider)
+        encounter_facts.consume_rally(state, target.id, save.rally_sources)
         land_critical_save(state, attacker, target, action, summary, rider, save)
 
 
