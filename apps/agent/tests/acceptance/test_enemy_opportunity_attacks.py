@@ -1,3 +1,4 @@
+from itertools import chain, repeat
 from unittest.mock import patch
 
 import pytest
@@ -275,3 +276,51 @@ async def test_hostile_fate_roll_reloads_at_the_boundary(fight: MawlingHarness) 
     damage.assert_called_once()
     assert strike["hit"] and strike["damage"] == 4
     assert require_spatial(await fight.reload())["positions"][mover] == pos(20)
+
+
+@pytest.mark.parametrize("fight", [{**ROGUE, "include_second_bandit": True}], indirect=True)
+@pytest.mark.parametrize(
+    "rider,face,partial", [("", 18, False), ("disengage", 18, False), ("disengage", 1, False), ("disengage", 18, True)]
+)
+async def test_cunning_disengage_departure(fight: MawlingHarness, rider: str, face: int, partial: bool) -> None:
+    mover = fight.players[0]
+    await fight.pool.execute(
+        "UPDATE players SET data=jsonb_set(data, '{stamina,current}', '2') WHERE player_id=$1", mover
+    )
+    state = await fight.reload()
+    spatial = require_spatial(state)
+    speed = spatial["speeds"][mover]
+    if partial:
+        spatial["positions"]["lookout"] = pos(3 + speed + 15)
+        await fight.persist()
+    await declare(fight, attack(mover, "lookout", "Longsword", rider=rider))
+    with (
+        patch(
+            "check_resolution.dice_roll",
+            side_effect=chain([_d20(1)] * (0 if rider else 2), [] if partial else [_d20(face)], repeat(_d20(1))),
+        ) as rolls,
+        patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
+    ):
+        if rider:
+            result = await fight.command("resolve_phase", {})
+            assert result["next"]["waiting_on"] is None
+            packets = result["packets"]
+        else:
+            packets = await resolve_allies(fight)
+    assert len(strikes(packets)) == (0 if rider else 2)
+    assert rolls.call_count == (0 if rider else 2) + (not partial)
+    (receipt,) = (packet for packet in packets if packet["actor_id"] == mover)
+    assert receipt["attack_resolved"] is not partial
+    if partial:
+        assert receipt["movement_spent_ft"] == speed
+    else:
+        assert receipt["hit"] is (face != 1)
+        if rider:
+            assert receipt["cunning_action"] == {"rider": rider}
+    saved = await fight.reload()
+    assert require_spatial(saved)["positions"][mover] == pos(3 + speed if partial else 20)
+    for bandit in ("bandit", "second_bandit"):
+        assert saved.reactions_available[bandit]["spent"] is (not rider)
+    player = await db_queries.get_player(mover)
+    assert player is not None and player["hp"]["current"] == 100
+    assert player["stamina"]["current"] == (0 if rider else 2)

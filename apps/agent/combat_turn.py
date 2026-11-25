@@ -45,7 +45,8 @@ async def declare_phase(
     Second Wind is an ability with empty targets. Rallying Shout names one standing ally.
     Devastating Strike is an ability naming one foe. For Shield Bash, declare a melee weapon attack
     with rider="shield_bash". A rogue can set rider="dash" for double approach movement
-    or rider="hide" to attempt Stealth after the attack. Use an empty rider for an ordinary attack.
+    or rider="hide" to attempt Stealth after the attack. Use rider="disengage" to avoid enemy opportunity
+    attacks during the declaration. Use an empty rider for an ordinary attack.
     Include the player, every
     conscious companion, and every enemy that acts this phase — one declaration each.
     Call this once per round at the declaration beat; resolve_phase resolves and

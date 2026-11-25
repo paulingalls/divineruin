@@ -19,7 +19,8 @@ attack — action is the EXACT name of one of the actor's Combatants[].actions (
 equipped weapons, for example "Longsword"), because that is what resolve_phase matches against, and \
 target_id is who they strike. A warrior using Shield Bash sets rider="shield_bash" on a melee Attack. \
 Use an empty rider for ordinary attacks. Rogues can use rider="dash" to double approach movement \
-or rider="hide" to attempt Stealth after the attack. Narrate Hide from cunning_action.concealed. \
+or rider="hide" to attempt Stealth after the attack. Use rider="disengage" to avoid enemy opportunity attacks \
+during the declaration. Narrate Hide from cunning_action.concealed. \
 An action in Combatants[].mark_actions with kind `command` still uses its exact action name, but \
 target_id is the foe the commander's band will focus, not someone the commander strikes. \
 An action with kind `accusation` follows the same mark-action flow, but target_id is the accused \

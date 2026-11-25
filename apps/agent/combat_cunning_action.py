@@ -31,8 +31,11 @@ async def preflight(state: CombatState, *, queries) -> None:
 
 
 def movement_allowance(state: CombatState, actor: CombatParticipant, decl: Declaration) -> dict:
-    if combat_martial.attack_ability(decl) == CUNNING_ACTION and decl.rider == "dash":
-        return {"remaining": 2 * combat_spatial.require_spatial(state)["speeds"][actor.id]}
+    if combat_martial.attack_ability(decl) == CUNNING_ACTION:
+        if decl.rider == "dash":
+            return {"remaining": 2 * combat_spatial.require_spatial(state)["speeds"][actor.id]}
+        if decl.rider == "disengage":
+            return {"disengage": True}
     return {}
 
 
