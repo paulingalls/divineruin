@@ -108,6 +108,7 @@ class CombatState:
     # encounter duration, so nothing has to tear this down. story-006 seeds it in combat_init and ticks
     # rounds_remaining at the WRAP beat, beside tick_conditions.
     veil_ward: dict | None = None
+    hearthfire_zones: list[dict] = field(default_factory=list)
     ally_continuation: dict | None = None
     wrap_continuation: dict | None = None
     legendary_continuation: dict | None = None
@@ -215,6 +216,7 @@ class CombatState:
             deescalation_scene=DeEscalationState(**data.get("deescalation_scene", {})),
             # Plain dict (or None) — no rebuild. Absent on rows written before story-004.
             veil_ward=data.get("veil_ward"),
+            hearthfire_zones=data.get("hearthfire_zones", []),
             # Plain dicts — no rebuild. Absent on rows written before story-016, which rehydrate
             # with no held actions and no open window: a legacy combat is simply not mid-pause.
             ally_continuation=data.get("ally_continuation"),
