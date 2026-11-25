@@ -197,7 +197,6 @@ def _put(row: dict, path: tuple, value) -> None:
         ((), None),
         ((), {}),
         ((0,), None),
-        ((0, "combat_id"), ""),
         ((0, "combat_id"), "another_combat"),
         ((0, "round_number"), True),
         ((0, "round_number"), 0),
@@ -238,7 +237,9 @@ async def test_loader_refuses_a_corrupt_checkpoint(fight: Fight, path, value) ->
         await fight.reload()
 
 
-@pytest.mark.parametrize("damage", ("too_many", "missing", "bad_id", "future", "duplicate", "reversed", "gap"))
+@pytest.mark.parametrize(
+    "damage", ("too_many", "missing", "bad_id", "blank_combat_id", "future", "duplicate", "reversed", "gap")
+)
 async def test_loader_refuses_invalid_checkpoint_history(fight: Fight, damage) -> None:
     await fight.prepare("greyvale_ruins_inner")
     await fight.start()
@@ -254,6 +255,8 @@ async def test_loader_refuses_invalid_checkpoint_history(fight: Fight, damage) -
             del second["players"]
         case "bad_id":
             second["players"][""] = second["players"].pop(fight.ids[0])
+        case "blank_combat_id":
+            row["combat_id"] = second["combat_id"] = second["combat"]["combat_id"] = ""
         case "future":
             row["round_number"] = 2
         case "duplicate":
