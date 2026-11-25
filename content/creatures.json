@@ -3379,7 +3379,7 @@
         "type": "melee",
         "reach": 15,
         "to_hit": 11,
-        "damage": "2d10+5",
+        "damage": "2d10+4",
         "damage_type": "bludgeoning",
         "bonus_damage": {"dice": "1d6", "damage_type": "force"},
         "special": "Plus 1d6 force. Push target 15 ft; collision with a wall deals 2d6 bludgeoning.",

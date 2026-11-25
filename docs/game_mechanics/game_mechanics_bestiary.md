@@ -576,7 +576,7 @@ Blessed weapons and Turn Undead/Hollow remain source/effect guidance, not damage
 **Attacks:**
 | Name | Type | Reach | Hit | Damage | Special |
 |---|---|---|---|---|---|
-| Construct Slam | Melee | 15 ft | +11 | 2d10+5 bludgeoning (spec 3d10+5) + 1d6 force (spec 2d6) | Target pushed 15 ft. If they hit a wall: additional 2d6 bludgeoning |
+| Construct Slam | Melee | 15 ft | +11 | 2d10+4 bludgeoning (spec 3d10+5) + 1d6 force (spec 2d6) | Target pushed 15 ft. If they hit a wall: additional 2d6 bludgeoning |
 | Geometry Strike | Ranged | 120 ft | +10 | 1d8+6 force (spec 2d8+6) | A piece of the architecture detaches and hurls itself. Auto-hit against targets touching the Architect's structures |
 
 **Passives:**
@@ -600,9 +600,9 @@ The level-20 reference warrior, mage, rogue and cleric entered with earned attri
 |---|---:|---|---|---|---|---:|---:|---:|
 | Original spec | 300 | 3d10+5 + 2d6 force | 2d8+6 | 4d10 | 3d8 | 0/20 | 17 | 40 |
 | Low dice | 300 | 1d6+5 + 1d4 force | 1d2+6 | 1d8 | 1d4 | 12/20 | 22 | 48 |
-| Middle dice, shipped | 154 | 2d10+5 + 1d6 force | 1d8+6 | 2d10 | 2d8 | 12/20 | 11 | 39 |
+| Middle dice, original release | 154 | 2d10+5 + 1d6 force | 1d8+6 | 2d10 | 2d8 | 12/20 | 11 | 39 |
 
-The middle profile ships because it had the shorter median fight. Every integer HP from 155 through 300 produced at least nine defeats with the middle dice.
+The original release used the middle profile for its shorter median fight. Every integer HP from 155 through 300 produced at least nine defeats with the middle dice. After enemy opportunity attacks brought the release profile to 11 wins, reducing Construct Slam by 1 bludgeoning damage restored 12 wins on the same 20 seeds.
 
 **Legendary Actions (3/round, between other creatures' turns):**
 - **Shift Wall (1 action).** Move one wall section up to 30 ft.
