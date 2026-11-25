@@ -57,13 +57,16 @@ async def exercise_rewind(fight: Fight) -> None:
             "temp_hp": 2,
         },
     )
-    for item, slot in (
-        ("healing_potion_minor", {"quantity": 1}),
-        ("leather_armor_basic", {"quantity": 1, "equipped": True, "current_hits": 10}),
+    # The rogue stays concealed under Shadow Veil through round 2, so no enemy may target it there:
+    # the potion it drinks proves a removed slot comes back, and the warrior's armor (hit by bandit_3)
+    # proves an edited slot and spent temp HP come back.
+    for owner, item, slot in (
+        (rogue, "healing_potion_minor", {"quantity": 1}),
+        (warrior, "leather_armor_basic", {"quantity": 1, "equipped": True, "current_hits": 10}),
     ):
         await fight.pool.execute(
             "INSERT INTO player_inventory (player_id,item_id,data) VALUES ($1,$2,$3::jsonb)",
-            rogue,
+            owner,
             item,
             json.dumps(slot),
         )
@@ -91,6 +94,9 @@ async def exercise_rewind(fight: Fight) -> None:
     before_events = published_payloads(room)
     last_inventory = {event["player_id"]: event for event in before_events if event["type"] == E.INVENTORY_UPDATED}
     assert rogue in last_inventory
+    # Armor wear publishes no inventory event, so the warrior's baseline is its pre-rewind revision.
+    revisions = {pid: int(row["inventory_revision"]) for pid, row in third["players"].items()}
+    assert int(last_inventory[rogue]["inventory_revision"]) <= revisions[rogue]
     ability = await discovered(fight)
     assert ability["id"] == GIFT and ability["state"] == "ready"
     assert ability["eligible"] and ability["available"] and not ability["spent"]
@@ -123,7 +129,7 @@ async def exercise_rewind(fight: Fight) -> None:
     }
     assert all(snap == (committed, committed["combat"], expected_tracks, True) for snap in observed)
     assert_restored(fight, committed, start, warrior)
-    assert_snapshots(fight, before_events, start, last_inventory, committed, warrior, rogue, mover)
+    assert_snapshots(fight, before_events, start, revisions, committed, warrior, rogue, mover)
 
     await fight.declare()
     await fight.finish_round(3)
@@ -146,10 +152,9 @@ async def play_second_round(fight: Fight, warrior: str, mage: str, rogue: str, m
             "destination": {"x": -10, "y": 0, "z": 0},
             "reshape": [],
         },
-        {**attack("bandit_1", rogue), "action": "Short Sword"},
         {**attack("bandit_2", "companion_kael"), "action": "Short Sword"},
         {**attack("bandit_3", warrior), "action": "Light Crossbow"},
-        *(defend(pid) for pid in ("bandit_captain", "bandit_4", "companion_kael")),
+        *(defend(pid) for pid in ("bandit_captain", "bandit_1", "bandit_4", "companion_kael")),
     )
     with (
         patch("check_resolution.dice_roll", return_value=_d20(19)),
@@ -177,12 +182,12 @@ def assert_round_changed(start: dict, third: dict, warrior: str, mage: str, rogu
     assert after[mage]["resonance"]["current"] > prior[mage]["resonance"]["current"]
     assert after[mage]["concentration"]["spell_id"] == "arcane_haste"
     assert after[warrior]["hp"]["current"] < prior[warrior]["hp"]["current"]
-    assert after[rogue]["hp"]["current"] < prior[rogue]["hp"]["current"]
-    assert after[rogue]["temp_hp"] < prior[rogue]["temp_hp"]
+    assert after[rogue]["hp"]["current"] > prior[rogue]["hp"]["current"]
+    assert after[warrior]["temp_hp"] < prior[warrior]["temp_hp"]
     assert not after[rogue]["flags"].get("shadow_veil")
-    inventory = {slot["item_id"]: slot["data"] for slot in third["slots"] if slot["player_id"] == rogue}
-    assert "healing_potion_minor" not in inventory
-    assert inventory["leather_armor_basic"]["current_hits"] < 10
+    inventory = {(slot["player_id"], slot["item_id"]): slot["data"] for slot in third["slots"]}
+    assert (rogue, "healing_potion_minor") not in inventory
+    assert inventory[warrior, "leather_armor_basic"]["current_hits"] < 10
     before_combat, combat = start["combat"], third["combat"]
     assert combat["spatial"]["positions"][mover] != before_combat["spatial"]["positions"][mover]
     before = {p["id"]: p for p in before_combat["participants"]}
@@ -194,7 +199,7 @@ def assert_round_changed(start: dict, third: dict, warrior: str, mage: str, rogu
 
 
 def assert_snapshots(
-    fight: Fight, before: list, start: dict, last_inventory: dict, committed: dict, warrior: str, rogue: str, mover: str
+    fight: Fight, before: list, start: dict, revisions: dict, committed: dict, warrior: str, rogue: str, mover: str
 ) -> None:
     room = fight.session.room
     output = [
@@ -221,13 +226,15 @@ def assert_snapshots(
     assert next(row for row in patron[warrior]["abilities"] if row["id"] == GIFT)["spent"]
     assert not next(row for row in patron[mover]["abilities"] if row["id"] == "valdris_mark_of_justice")["spent"]
     inventory = {data["player_id"]: data for data, _ in output if data["type"] == E.INVENTORY_UPDATED}
-    assert inventory.keys() == {rogue}
+    assert inventory.keys() == {rogue, warrior}
     for owner, data in inventory.items():
-        assert int(data["inventory_revision"]) > int(last_inventory[owner]["inventory_revision"])
+        assert int(data["inventory_revision"]) > revisions[owner]
         assert int(data["inventory_revision"]) == committed["players"][owner]["inventory_revision"]
-        restored_slots = {item["id"]: item["slot_info"] for item in data["inventory"]}
-        assert restored_slots["healing_potion_minor"]["quantity"] == 1
-        assert restored_slots["leather_armor_basic"]["current_hits"] == 10
+    restored_slots = {
+        (owner, item["id"]): item["slot_info"] for owner, data in inventory.items() for item in data["inventory"]
+    }
+    assert restored_slots[rogue, "healing_potion_minor"]["quantity"] == 1
+    assert restored_slots[warrior, "leather_armor_basic"]["current_hits"] == 10
 
 
 SCENARIOS = {GIFT: ("zhael_unravel_fate:activate", whole_round, [()])}
