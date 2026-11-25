@@ -3433,8 +3433,9 @@
           },
           {
             "effect": "Fate's Thread usable twice per long rest",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_twice_woven"
           }
         ]
       },

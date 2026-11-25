@@ -379,3 +379,26 @@ test("Syrath's Shadow Veil duration and strike are registered for rogue, spy and
     ]);
   }
 });
+
+test("Zhael's oracle has both Woven Prophecy clauses", () => {
+  const matrix = validateGods(catalog).find(
+    (god) => god.god_id === "zhael",
+  )?.layer_4_synergy_matrix;
+  expect(matrix?.oracle).toEqual({
+    type: "natural",
+    name: "Woven Prophecy",
+    clauses: [
+      {
+        effect: "Prophecy Fragment becomes 2-sentence vision with more detail.",
+        status: "active",
+        resolution: "narrated",
+      },
+      {
+        effect: "Fate's Thread usable twice per long rest",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "zhael_twice_woven",
+      },
+    ],
+  });
+});
