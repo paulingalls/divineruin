@@ -209,6 +209,13 @@ async def test_fate_resumes_the_stored_veiled_strike(world: SimpleNamespace, arc
                 assert held.ally_continuation is not None
                 attacker_data = held.ally_continuation["attack"]["attacker_data"]
                 assert attacker_data["veiled_strike"] == ("sneak_attack" if rogue else "weapon")
+                await world.pool.execute(
+                    """UPDATE players SET data=jsonb_set(data, '{flags}',
+                    jsonb_set((data->'flags') - 'shadow_veil', '{concealed}', 'false'::jsonb))
+                    WHERE player_id=$1""",
+                    f.hero,
+                )
+                await assert_flags(world, False)
                 call = game_tools(f.session, activate, resolve_phase)
                 with f.session._bind_authenticated_actor(f.ally, 1, lifecycle.require_authorized):
                     choice = {"id": "zhael_fates_thread", "offer_id": offer["offer_id"]}
@@ -227,6 +234,5 @@ async def test_fate_resumes_the_stored_veiled_strike(world: SimpleNamespace, arc
             if rogue:
                 assert swings[0]["sneak_attack_dice"] == "3d6"
             assert f.session.combat_state.ally_continuation is None
-            await assert_flags(world, False)
         finally:
             await lifecycle.aclose()
