@@ -21,6 +21,7 @@ from acceptance.test_still_anchors import mock_combat_agent_factory as mock_comb
 
 import db_queries
 from combat_spatial import require_spatial
+from encounter_facts import party_victims
 
 
 @pytest.mark.parametrize("hit", [True, False])
@@ -44,6 +45,7 @@ async def test_move_out_of_enemy_reach(fight: MawlingHarness, hit: bool) -> None
     assert state.reactions_available["bandit"]["spent"]
     assert state.first_hostility["bandit"] == "hostile"
     assert mover in state.encounter_facts["attacked"]
+    assert party_victims(state, "bandit") == [mover]
     if not hit:
         assert state.encounter_facts["misses"]["bandit"] == [mover]
     rolls.assert_called_once()
@@ -321,6 +323,7 @@ async def test_cunning_disengage_departure(fight: MawlingHarness, rider: str, fa
     assert require_spatial(saved)["positions"][mover] == pos(3 + speed if partial else 20)
     for bandit in ("bandit", "second_bandit"):
         assert saved.reactions_available[bandit]["spent"] is (not rider)
+        assert party_victims(saved, bandit) == ([] if rider else [mover])
     player = await db_queries.get_player(mover)
     assert player is not None and player["hp"]["current"] == 100
     assert player["stamina"]["current"] == (0 if rider else 2)

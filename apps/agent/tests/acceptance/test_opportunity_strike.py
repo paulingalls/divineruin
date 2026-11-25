@@ -14,6 +14,7 @@ from acceptance.test_still_anchors import mock_combat_agent_factory as mock_comb
 import combat_wrap
 import db_queries
 from combat_spatial import require_spatial
+from encounter_facts import party_victims
 from session_data import CombatParticipant, CombatState
 
 STRIKE = "warrior_opportunity_strike"
@@ -174,6 +175,9 @@ async def test_departure_and_strike(fight: MawlingHarness, strike: str) -> None:
         state = await fight.reload()
         reactions = [packet for packet in result["packets"] if packet.get("reaction") == STRIKE]
         assert require_spatial(state)["positions"][warrior] == pos(0)
+        assert party_victims(state, warrior) == []
+        # The warrior's strike records nothing; only the mover's own rolled attempt is a party attack.
+        assert party_victims(state, MOVER) == ([] if strike == "drop" else [target])
         if strike == "decline":
             assert not reactions and MOVER not in state.encounter_facts["attacked"]
         else:
