@@ -69,12 +69,14 @@ def plan(state, actor, target, action, budget) -> tuple[dict, dict | None]:
             return blocked, None
         if separation <= reach:
             return {**blocked, "thornwall_id": wall.id}, None
+        # The strike stays blocked however far the approach gets; contact needs the wall reached.
+        facts.update(thornwall_blocked=wall.id, reason=blocked_reason(wall))
         # Shorten the route to the wall before any reach exits are computed from its endpoint.
         endpoint = reachable_point(spatial, actor.id, origin, destination, budget["remaining"])
         segment = spatial["structures"][wall.id]
         if blocks_path(origin, endpoint, segment):
             endpoint = stop_before_wall(origin, endpoint, segment)
-            facts.update(thornwall_id=wall.id, reason=blocked_reason(wall))
+            facts["thornwall_id"] = wall.id
         if endpoint == origin:
             return finish(facts, destination, reach), None
         return facts, {"endpoint": endpoint, "mode": mode, "target": destination, "reach": reach}
@@ -124,12 +126,11 @@ def apply_leg(state, actor, facts: dict, endpoint: dict, mode: str, budget: dict
     if moved.get("left_pit"):
         # Climbing out of a pit spends the whole move, so the mover never reaches the Thornwall.
         result.pop("thornwall_id", None)
-        result.pop("reason", None)
     return result
 
 
 def finish(facts: dict, target: dict, reach: float, reason: str | None = None) -> dict:
-    if "thornwall_id" in facts:
+    if "thornwall_blocked" in facts:
         facts.update(resolved=False, attack_resolved=False)
         return facts
     remaining = distance(facts["destination"], target)
