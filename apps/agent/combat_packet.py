@@ -21,6 +21,7 @@ import combat_spatial_declarations
 import combat_voice_rules
 import item_heal
 import spell_casting
+import thyra_thornwall
 from action_contracts_still import STILL_ZONE_KINDS
 from combat_ability import _attach_riders, _find_action
 from combat_ability_gate import DEVASTATING_STRIKE
@@ -160,7 +161,9 @@ async def _resolve_action_packet(
     if combat_spatial_declarations.is_move(decl) and forced_move is not None:
         return forced_move
     if combat_spatial_declarations.is_move(decl):
-        return combat_spatial_declarations.apply_move(state, attacker, decl)
+        return await thyra_thornwall.resolve_move(
+            session, state, attacker, decl, conn=conn, sink=sink, progress=progress
+        )
 
     if stale is not None:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": stale}
@@ -301,7 +304,9 @@ async def _resolve_action_packet(
             if movement.get("attack_resolved") is False:
                 if decl.rider == "dash" and movement.get("movement_spent_ft", 0) > 0:
                     await combat_cunning_action.pay(attacker, queries=queries, conn=conn)
-                return movement
+                return await thyra_thornwall.apply_contact(
+                    session, state, attacker, movement, conn=conn, sink=sink, progress=progress
+                )
         if replay:
             assert _held_head is not None
             action = _held_head["executed_action"]
@@ -385,7 +390,7 @@ async def _resolve_action_packet(
         )
 
     if decl.type is DeclarationType.MANEUVER:
-        if wall := line_blocker(state, attacker.id, decl.target_id):
+        if wall := line_blocker(state, attacker.id, decl.target_id, melee=True):
             return {"actor_id": attacker.id, "resolved": False, "reason": blocked_reason(wall)}
         return combat_maneuver.resolve_maneuver(state, attacker, decl)
 

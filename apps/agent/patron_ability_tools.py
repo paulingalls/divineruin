@@ -199,7 +199,9 @@ async def _spend_activation(conn, session, actor, ability_id, target_id, conditi
             if handler is None:
                 raise ToolError("This ability cannot be activated directly.")
             selector = (
-                {"destination": destination} if ability_id == patron_combat_edges.VEILSTEP else {"target_id": target_id}
+                {"destination": destination}
+                if ability_id in patron_combat_edges.DESTINATION_GIFTS
+                else {"target_id": target_id}
             )
             updated, response = handler(session.combat_state, actor, **selector)
     await _write_spend(conn, session, actor, ability_id)

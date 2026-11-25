@@ -49,7 +49,9 @@ from declaration_payloads import Destination
 from item_effects import CONSUME_PREFIX
 from patron_combat_edges import RESTORATION_SURGE, SCALES_VERDICT, VEILSTEP, WILDMOTHERS_WRATH, SurgeCondition
 from patron_gifts import SYRATH_SHADOW_VEIL, VEYTHAR_INSIGHT
+from reshape_payloads import WallEndpoints
 from session_data import SessionData
+from thyra_thornwall import GIFT as THORNWALL
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -81,7 +83,7 @@ async def activate(
     offer_id: str | None = None,
     keep: zhael_fate.Keep | None = None,
     condition: SurgeCondition | None = None,
-    destination: Destination | None = None,
+    destination: Destination | WallEndpoints | None = None,
 ) -> str | tuple:
     """Activate a capability: cast a spell, use an archetype ability, deploy a Veil Anchor, raise
     or dismiss a Veil Ward, or trigger the Draethar's Inner Fire.
@@ -113,7 +115,7 @@ async def activate(
     For a voiced Fate's Thread offer, activate 'zhael_fates_thread' with offer_id to spend it and
     show the reroll. Then call again with the same offer_id and keep='original' or 'reroll'.
     Before spending, keep='original' declines. Any other tool call keeps the original, and an
-    already rolled gift stays spent. Veilstep and Threshold Walk refuse during a partially resolved
+    already rolled gift stays spent. Veilstep, Threshold Walk, and Thornwall refuse during a partially resolved
     round and leave the Fate offer open. For offered 'zhael_lucky', use offer_id alone to flip the die and resolve it.
 
     Patron tier ids come from query_info(kind='patron').abilities: spend only when available;
@@ -127,6 +129,10 @@ async def activate(
     up to 60 feet from the follower. Coordinates are in feet. It costs no movement or Resonance and recharges
     on a long rest. A queued move is removed; ask for a new move from the new position at the next
     declaration beat. Without fight geometry, omit destination and narrate the step through shadow.
+
+    Thornwall uses activate(id="thyra_thornwall", destination={start:{x,y,z},end:{x,y,z}}) in combat.
+    Choose two points in feet. Keep the barrier clear of creatures, up to 30 feet long and within 30 feet
+    at its nearest point. It blocks movement and melee reach and recharges on a long rest.
 
     Beyond the Horizon uses activate(id="nythera_beyond_the_horizon", target_id=<visited location id>).
     Choose an id from query_info(kind="patron").abilities[].destinations. Outside combat, the whole
@@ -158,8 +164,17 @@ async def activate(
     answers a different window, or when the round's one reaction is already spent. Outside combat
     reactions activate freely. Cantrips are free and scale
     their damage with level."""
-    if destination is not None and id != VEILSTEP:
-        raise ToolError("The destination selector is only for Veilstep.")
+    if destination is not None and id not in (VEILSTEP, THORNWALL):
+        raise ToolError("The destination selector is only for Veilstep or Thornwall.")
+    if id == VEILSTEP and isinstance(destination, WallEndpoints):
+        raise ToolError("Veilstep takes a destination point.")
+    if id == THORNWALL and (
+        not isinstance(destination, WallEndpoints)
+        or target_id is not None
+        or target_ids is not None
+        or condition is not None
+    ):
+        raise ToolError("Thornwall takes start and end points. Omit entity and condition selectors.")
     if id == VEILSTEP and (target_id is not None or target_ids is not None):
         raise ToolError("Veilstep takes a destination point. Omit entity target selectors.")
     if id in zhael_fate.ROLL_ABILITIES:

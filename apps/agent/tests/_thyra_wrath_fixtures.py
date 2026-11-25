@@ -60,7 +60,9 @@ def add_foe(state, foe):
 
 
 @asynccontextmanager
-async def fight(world, *foes, terrain="forest", patron="thyra", favor=75, encounter=None, archetype="warrior"):
+async def fight(
+    world, *foes, terrain="forest", patron="thyra", favor=75, encounter=None, archetype="warrior", gifts=OTHER_GIFTS
+):
     session = world.ctx.userdata
     async with catalog_fight(
         world,
@@ -71,7 +73,7 @@ async def fight(world, *foes, terrain="forest", patron="thyra", favor=75, encoun
         max_hp=50,
         guest_hp=50,
         guest_class="warrior",
-        gifts=OTHER_GIFTS,
+        gifts=gifts,
         encounter_id=encounter or ENCOUNTER,
     ):
         lifecycle = session.multiplayer_owner.lifecycle

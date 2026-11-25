@@ -188,7 +188,7 @@ async def test_attacks_damage_hold_and_destroy_wall(spatial_entry: Any) -> None:
         state.get_participant(actor_id).attributes["strength"] = 16
     add_wall(state, WALL, NAME, START, END)
     other_wall = {"start": pos(10, 30), "end": pos(10, 35)}
-    add_wall(state, "far_wall", "Far Wall", **other_wall)
+    add_wall(state, "far_wall", "Far Wall", other_wall["start"], other_wall["end"])
     saved = await _save_and_reload(ctx)
     wall = saved.get_participant(WALL)
     assert wall is not None and saved.spatial is not None

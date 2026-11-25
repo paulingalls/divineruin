@@ -3,13 +3,17 @@
 from architect_encounter import is_owner
 from combat_movement_cost import crosses_low_ceiling, movement_cost
 from combat_spatial import distance, place, point, position, require_spatial
-from combat_structures import blocking_wall
+from combat_structures import THORNWALL, blocking_wall, stop_before_wall
 from condition_restrictions import cannot_act, ignores_structures, speed_zero
 from declarations import DeclarationType, resolve_declaration
 
 
 class MovementRefused(ValueError):
     """A well-formed move whose route is unavailable on the current battlefield."""
+
+
+class ThornwallMoveRefused(MovementRefused):
+    """A Thornwall raised after declaration can stop a previously valid move."""
 
 
 def is_move(declaration):
@@ -25,8 +29,7 @@ def movement_geometry(state, actor_id, declaration, *, allowance=None):
     origin = position(spatial, actor_id)
     speed = spatial["speeds"][actor_id] if allowance is None else allowance
     if in_pit(state, actor_id):
-        return origin, 0, speed
-    travelled = distance(origin, destination)
+        return origin, 0, speed, None
     spent = movement_cost(spatial, actor_id, origin, destination)
     if declaration.movement_mode == "flying" and crosses_low_ceiling(spatial, actor_id, origin, destination):
         raise MovementRefused(f"{actor_id} cannot fly through a lowered ceiling")
@@ -35,9 +38,16 @@ def movement_geometry(state, actor_id, declaration, *, allowance=None):
     )
     if spent > speed and not melody:
         raise MovementRefused(f"{actor_id} move exceeds speed {speed:g} feet")
-    if wall := movement_blocker(state, spatial, actor, origin, destination):
-        raise MovementRefused(f"{actor_id} move is blocked by {wall.name} ({wall.id})")
-    return destination, travelled, spent
+    wall = movement_blocker(state, spatial, actor, origin, destination)
+    if wall is not None:
+        reason = f"{actor_id} move is blocked by {wall.name} ({wall.id})"
+        if wall.structure_kind != THORNWALL:
+            raise MovementRefused(reason)
+        if actor.is_ally:
+            raise ThornwallMoveRefused(reason)
+        destination = stop_before_wall(origin, destination, spatial["structures"][wall.id])
+        spent = movement_cost(spatial, actor_id, origin, destination)
+    return destination, distance(origin, destination), spent, wall
 
 
 def in_pit(state, actor_id):
@@ -53,7 +63,7 @@ def movement_blocker(state, spatial, actor, origin, destination):
             **spatial,
             "structures": {key: value for key, value in spatial.get("structures", {}).items() if key not in owned},
         }
-    return blocking_wall(state, spatial, origin, destination)
+    return blocking_wall(state, spatial, origin, destination, physical=True)
 
 
 def ineligible(actor):
@@ -81,14 +91,18 @@ def preflight(state, declarations):
                 projection = proposed_state(state, actor_id, declaration.reshape)
             else:
                 projection = state
-            validate_move(projection, actor_id, declaration, eligibility=False)
+            try:
+                validate_move(projection, actor_id, declaration, eligibility=False)
+            except ThornwallMoveRefused:
+                # A gift can change a queued route. Resolve it as a stopped move.
+                continue
 
 
 def apply_move(state, actor, declaration, *, allowance=None):
     if reason := ineligible(actor):
         return {"actor_id": actor.id, "resolved": False, "reason": reason}
     try:
-        destination, travelled, spent = movement_geometry(state, actor.id, declaration, allowance=allowance)
+        destination, travelled, spent, wall = movement_geometry(state, actor.id, declaration, allowance=allowance)
     except MovementRefused as error:
         return {"actor_id": actor.id, "resolved": False, "reason": str(error)}
     climbed = in_pit(state, actor.id)
@@ -103,6 +117,7 @@ def apply_move(state, actor, declaration, *, allowance=None):
         "moved_ft": travelled,
         "movement_spent_ft": spent,
         **({"left_pit": True} if climbed else {}),
+        **({"thornwall_id": wall.id, "reason": f"Stopped by {wall.name}"} if wall else {}),
         "destination": destination,
     }
 

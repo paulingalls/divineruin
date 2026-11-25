@@ -12,6 +12,7 @@ from combat_damage_results import AutomaticDamageResult
 from combat_events import EventSink
 from combat_participant import CombatParticipant
 from combat_state import CombatState
+from combat_structures import THORNWALL
 from combat_terrain import resolve_terrain
 from patron_combat_edges import WILDMOTHERS_WRATH, require_complete_round
 from session_data import SessionData
@@ -19,7 +20,12 @@ from terrain import WRATH_DAMAGE_TYPES, TerrainType, is_natural
 
 
 def _living(participant: CombatParticipant) -> bool:
-    return participant.hp_current > 0 and not participant.is_fallen and not participant.is_dead
+    return (
+        participant.structure_kind != THORNWALL
+        and participant.hp_current > 0
+        and not participant.is_fallen
+        and not participant.is_dead
+    )
 
 
 def _recipients(state: CombatState) -> tuple[list[CombatParticipant], list[str]]:

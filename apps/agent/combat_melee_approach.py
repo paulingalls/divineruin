@@ -4,10 +4,17 @@ import math
 
 from check_resolution_attack import _is_ranged
 from combat_down import has_damage
-from combat_movement_cost import reachable_point
-from combat_spatial import distance, number, position, require_spatial
+from combat_movement_cost import movement_cost, reachable_point
+from combat_spatial import distance, number, place, position, require_spatial
 from combat_spatial_declarations import apply_move, ineligible
-from combat_structures import blocked_reason, blocking_wall, nearest_wall_point
+from combat_structures import (
+    THORNWALL,
+    blocked_reason,
+    blocking_wall,
+    blocks_path,
+    nearest_wall_point,
+    stop_before_wall,
+)
 from declarations import Declaration, DeclarationType
 from encounter_actions import action_kind
 
@@ -46,8 +53,28 @@ def prepare(state, actor, target, action, budget):
         "moved_ft": 0,
         "destination": dict(origin),
     }
-    if wall := blocking_wall(state, spatial, origin, destination, target_id=target.id, origin_id=actor.id):
-        return {**facts, "resolved": False, "attack_resolved": False, "reason": blocked_reason(wall)}
+    if wall := blocking_wall(
+        state, spatial, origin, destination, target_id=target.id, origin_id=actor.id, physical=True
+    ):
+        facts.update(resolved=False, attack_resolved=False, reason=blocked_reason(wall))
+        if not actor.is_ally and wall.structure_kind == THORNWALL and ineligible(actor) is None:
+            if separation <= reach:
+                facts["thornwall_id"] = wall.id
+            else:
+                towards = reachable_point(spatial, actor.id, origin, destination, budget["remaining"])
+                segment = spatial["structures"][wall.id]
+                contact = blocks_path(origin, towards, segment)
+                end = stop_before_wall(origin, towards, segment) if contact else towards
+                if end != origin:
+                    place(state, actor.id, end)
+                    spent = movement_cost(spatial, actor.id, origin, end)
+                    budget["remaining"] -= spent
+                    facts.update(
+                        moved_ft=distance(origin, end), movement_spent_ft=spent, destination=end, closed_distance=True
+                    )
+                if contact:
+                    facts["thornwall_id"] = wall.id
+        return facts
     if separation <= reach:
         return facts
     reason = ineligible(actor)

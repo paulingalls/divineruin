@@ -138,7 +138,7 @@ In natural terrain: primal Resonance multiplier improves by one step (0.3→0.2,
 | Tier | Name | Effect |
 |---|---|---|
 | Acknowledged | Seasonal Attunement | Passive bonuses by in-game season. Spring: +1 healing received. Summer: +1 fire/lightning damage. Autumn: +1 Insight. Winter: +1 Stealth |
-| Devoted | Thornwall | Once per long rest, barrier of thorns blocking a passage. 20 HP, 1d6 to passers. 10 minutes |
+| Devoted | Thornwall | Once per long rest in combat, choose two points up to 30 feet apart. The nearest point of the wall must be within 30 feet of the follower, and the wall must be clear of creatures. It blocks movement and melee reach for everyone. An enemy stopped by its own move or melee approach takes 1d6 piercing damage once per turn. Ranged attacks and spells pass through. The wall has AC 19 and 20 HP. It lasts until destroyed or combat ends. |
 | Exalted | Wildmother's Wrath | Once per session, activate immediately in combat on natural ground. One shared 3d8 damages every living, unprotected foe. No save. |
 
 Wildmother's Wrath deals piercing in ancient forest and forest, slashing in grassland and farmland, bludgeoning on mountains and underground, cold on the coast, and poison in wetlands. Villages and cities refuse the gift.

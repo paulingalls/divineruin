@@ -21,6 +21,7 @@ from patron_synergy import synergy_for_patron
 from patron_zero_hp import DAWNS_EMBRACE, DEATH_WARD
 from session_data import SessionData
 from terrain import is_natural
+from thyra_thornwall import GIFT as THORNWALL
 
 
 async def query_patron(
@@ -96,6 +97,11 @@ async def query_patron(
                 f"Choose a visible shadow within {VEILSTEP_RANGE_FT} feet. Coordinates are in feet. "
                 "Full movement is retained. A queued move is removed and can be redeclared at the next declaration beat. "
                 "Omit destination without fight geometry and narrate the step."
+            )
+        elif ability["id"] == THORNWALL:
+            ability["activation_hint"] = (
+                f'Use activate(id="{THORNWALL}", destination={{start:{{x,y,z}},end:{{x,y,z}}}}) in combat. '
+                "Use feet. The wall can be up to 30 feet long, with its nearest point within 30 feet, clear of creatures."
             )
         elif ability["id"] == WILDMOTHERS_WRATH:
             ability["activation_hint"] = (
