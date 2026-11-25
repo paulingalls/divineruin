@@ -28,6 +28,7 @@ from combat_attack_roll import attack_roll_inputs, promote_attack, spend_sneak_a
 from combat_down import damage_target_unavailable
 from combat_item_rider import resolve_rider
 from combat_support import _resolve_attack_packet, apply_rolled_attack
+from equipment_rules import resolve_weapon_profile
 from patron_synergy_combat import attack_player, veiled_strike
 
 
@@ -107,6 +108,7 @@ async def _prepare_swing(
         state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus,
         state,
         act,
+        weapon_profile=await resolve_weapon_profile(attacker.type, act, weapon_attack=True, conn=conn),
         player=player,
         defender=defender,
         season=await thyra_seasons.season_for(player, conn=conn),

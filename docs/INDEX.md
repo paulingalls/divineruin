@@ -528,17 +528,17 @@ Event-driven price fluctuation, three-phase event lifecycle, standard economic e
 
 ---
 
-## game_mechanics/game_mechanics_archetypes.md (1357 lines)
+## game_mechanics/game_mechanics_archetypes.md (1359 lines)
 
 18 archetype profiles with abilities, specializations, and spell acquisition.
 
 | Section | Lines | What's There |
 |---|---|---|
-| Archetype Profiles | 9-416 | Overview of 18 archetypes: Martial(3), Arcane(3), Primal(3), Divine(3), Shadow(3), Support(3) |
-| All Archetype Profiles — Complete (18 of 18) | 417-1148 | Individual stat blocks: HP, armor, skills, passives, actives, reactions, milestones |
-| Core + Elective Ability Model | 1149-1221 | Core (always available) vs Elective (chosen at L4/L8), reaction abilities |
-| Spell Acquisition System — Three Tracks | 1222-1286 | Core spells, Training study cycles, Discovery (scrolls/mentors) |
-| Martial Mentor-Style System | 1287-1357 | Technique variants via NPC mentors, cultural attribution, 2-3 session loops |
+| Archetype Profiles | 9-418 | Overview of 18 archetypes: Martial(3), Arcane(3), Primal(3), Divine(3), Shadow(3), Support(3) |
+| All Archetype Profiles — Complete (18 of 18) | 419-1150 | Individual stat blocks: HP, armor, skills, passives, actives, reactions, milestones |
+| Core + Elective Ability Model | 1151-1223 | Core (always available) vs Elective (chosen at L4/L8), reaction abilities |
+| Spell Acquisition System — Three Tracks | 1224-1288 | Core spells, Training study cycles, Discovery (scrolls/mentors) |
+| Martial Mentor-Style System | 1289-1359 | Technique variants via NPC mentors, cultural attribution, 2-3 session loops |
 
 ---
 

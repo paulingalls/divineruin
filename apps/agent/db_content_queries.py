@@ -12,6 +12,7 @@ import asyncpg
 import db
 from creature_combat_loader import load_creature_enemy as load_creature_enemy
 from item_effects import heal_profile
+from weapon_proficiency import validate_weapon_profile
 
 logger = logging.getLogger("divineruin.db")
 
@@ -117,6 +118,7 @@ async def get_item(item_id: str, *, conn: asyncpg.Connection | None = None) -> d
     cached = await db._cache_get(cache_key)
     if cached is not None:
         data = json.loads(cached)
+        validate_weapon_profile(item_id, data)
         heal_profile(item_id, data)
         return data
 
@@ -126,6 +128,7 @@ async def get_item(item_id: str, *, conn: asyncpg.Connection | None = None) -> d
         return None
 
     data = json.loads(row["data"])
+    validate_weapon_profile(item_id, data)
     heal_profile(item_id, data)
     await db._cache_set(cache_key, json.dumps(data))
     return data

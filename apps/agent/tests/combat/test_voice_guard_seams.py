@@ -4,6 +4,7 @@ import pytest
 from combat.test_voice_condition_restrictions import attack, charm_state
 from sample_fixtures import make_context
 from voice_condition_fixtures import place_actors
+from weapon_fixtures import LONGSWORD
 
 import abilities
 import combat_ability
@@ -137,7 +138,10 @@ def test_attack_producer_carries_position_eligibility_to_real_resolver():
     actor = state.participants[0]
     actor.conditions = [{"type": "inspired"}, {"type": "blessed"}]
     state.spatial["zones"] = {"quiet": {"kind": "silence", "center_id": "other", "radius_ft": 0}}
-    result, _ = roll_attack(actor, actor.action_pool[0], state.participants[1], combat_state=state)
+    weapon = dict(LONGSWORD)
+    result, _ = roll_attack(
+        actor, weapon, state.participants[1], combat_state=state, weapon_profile=weapon, player={"class": "warrior"}
+    )
     assert result.consumed_conditions == ("blessed",)
     assert any(c["type"] == "inspired" for c in actor.conditions)
 

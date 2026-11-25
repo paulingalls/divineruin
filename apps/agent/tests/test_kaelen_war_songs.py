@@ -16,6 +16,7 @@ from sample_fixtures import make_context
 from test_aelora_gift import _live_party
 from test_encounter_facts_damage import GOBLIN, Fight, fight
 from voice_condition_fixtures import participant, place_actors
+from weapon_fixtures import DAGGER
 
 import db_mutations
 from _gods_content import load_gods
@@ -186,9 +187,7 @@ async def test_exploration_inspire_survives_combat_hydration(world: SimpleNamesp
             speed=30,
             hp={"current": 20, "max": 20},
             attributes={"strength": 10, "dexterity": 10},
-            equipment={
-                "main_hand": {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}
-            },
+            equipment={"main_hand": DAGGER},
         )
     host, guest = world.ids
     await game_tools(world.ctx.userdata, activate)("activate", id="bard_inspire", target_id=guest)

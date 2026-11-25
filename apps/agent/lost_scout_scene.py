@@ -8,6 +8,7 @@ from livekit.agents.llm import ToolError
 import still_charm
 from catalog_parse import parse_str
 from game_events import publish_hidden_revealed
+from npcs import lost_scout_report_lines
 from tool_preconditions import require_npc_present
 
 ENTRANCE = "greyvale_ruins_entrance"
@@ -19,7 +20,6 @@ TORIN = "guildmaster_torin"
 FLAG = "lost_scout"
 CHOICE = "lost_scout_report"
 Outcome = Literal["fought", "fled", "withdrew"]
-OUTCOMES = {"fought", "fled", "withdrew"}
 
 
 class Record(TypedDict):
@@ -126,20 +126,10 @@ async def depart(session, member_ids, *, queries, mutations, conn):
         await write(primary_id, record, mutations=mutations, conn=conn)
 
 
-def report_lines(npc_id, npc):
-    lines = npc.get("lost_scout_reports")
-    if not isinstance(lines, dict) or lines.keys() != OUTCOMES:
-        raise ValueError(f"{npc_id}.lost_scout_reports must have fought, fled and withdrew responses")
-    responses = {outcome: parse_str(line, f"{npc_id}.lost_scout_reports.{outcome}") for outcome, line in lines.items()}
-    if any(not line.strip() for line in responses.values()):
-        raise ValueError(f"{npc_id}.lost_scout_reports has a blank response")
-    return responses
-
-
 async def torin_facts(session, npc, narration, *, queries):
     record = read(await queries.get_player(session.primary_player_id))
     if reported := record["reported"]:
-        narration["knowledge"].append(report_lines(TORIN, npc)[reported])
+        narration["knowledge"].append(lost_scout_report_lines(TORIN, npc)[reported])
     if record["outcome"] and any(
         present["id"] == TORIN for present in await queries.get_npcs_at_location(session.location_id)
     ):
@@ -156,7 +146,7 @@ async def report(session, option, *, db_mod, queries, content, mutations):
         npc = await content.get_npc(TORIN)
         if npc is None:
             raise ValueError("Missing Guildmaster Torin")
-        lines = report_lines(TORIN, npc)
+        lines = lost_scout_report_lines(TORIN, npc)
         async with db_mod.transaction() as conn:
             player = await queries.get_player(primary_id, conn=conn, for_update=True)
             if player is None:

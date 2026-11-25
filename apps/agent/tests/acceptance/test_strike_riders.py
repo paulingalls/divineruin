@@ -1,5 +1,6 @@
 """Rogue strike riders through the registered combat tools and persisted phases."""
 
+import json
 from collections.abc import AsyncIterator
 from contextlib import contextmanager
 from unittest.mock import patch
@@ -15,6 +16,7 @@ from acceptance.test_opportunity_strike import participant
 from acceptance.test_self_buff_electives import bandit_attack, discovered, enter_bandit_fight, equip, receipt, stamina
 from acceptance.test_still_anchors import fresh_session
 from acceptance.test_still_anchors import mock_combat_agent_factory as mock_combat_agent_factory
+from weapon_fixtures import DAGGER
 
 import combat_spatial
 import conditions
@@ -31,7 +33,9 @@ async def rogue(reset_db_pool: str) -> AsyncIterator[MawlingHarness]:
         await walk.prepare((8, 8), companion=None)
         walk.encounter_id = "bandit_ambush"
         await walk.pool.execute(
-            """UPDATE players SET data = data || '{"class":"rogue"}' WHERE player_id = $1""", walk.players[0]
+            "UPDATE players SET data = data || $2::jsonb WHERE player_id = $1",
+            walk.players[0],
+            json.dumps({"class": "rogue", "equipment": {"main_hand": DAGGER}}),
         )
         await equip(walk, CRIPPLING)
         await equip(walk, STUDY)
@@ -96,7 +100,7 @@ async def test_crippling_approach_reloads_and_expires(rogue: MawlingHarness, hit
     assert rider == "crippling_strike"
     before = await stamina(actor)
     approach = await bandit_attack(rogue, foe, ally)
-    await declare(rogue, weapon_attack(actor, foe, rider), approach)
+    await declare(rogue, weapon_attack(actor, foe, rider, weapon=DAGGER["name"]), approach)
     with rolls(17 if hit else 1) as (d20, _):
         attack = receipt(await resolve_allies(rogue), actor)
         assert attack["hit"] is hit
@@ -179,7 +183,7 @@ async def test_slowed_dash_approach(rogue: MawlingHarness) -> None:
     await rogue.persist()
     await slow(rogue, actor)
     for allowance in (30, 60):
-        await declare(rogue, weapon_attack(actor, foe, "dash"))
+        await declare(rogue, weapon_attack(actor, foe, "dash", weapon=DAGGER["name"]))
         assert receipt(await rogue.drain(), actor)["movement_spent_ft"] == allowance
 
 
@@ -201,7 +205,7 @@ async def test_study_reloads_and_maximizes_next_round_sneak(rogue: MawlingHarnes
     assert mark is not None and mark["source"] == foe
 
     hp = participant(state, foe).hp_current
-    await declare(rogue, weapon_attack(actor, foe, ""))
+    await declare(rogue, weapon_attack(actor, foe, "", weapon=DAGGER["name"]))
     with rolls(face) as (_, damage):
         hit = receipt(await resolve_allies(rogue), actor)
     count = 4 if face == 20 else 2
@@ -221,7 +225,7 @@ async def test_other_target_preserves_study_until_expiry(rogue: MawlingHarness) 
     await rogue.drain()
     await restart(rogue)
     for target in (other, foe):
-        await declare(rogue, weapon_attack(actor, target, ""))
+        await declare(rogue, weapon_attack(actor, target, "", weapon=DAGGER["name"]))
         with rolls(17) as (_, damage):
             hit = receipt(await resolve_allies(rogue), actor)
         assert hit["sneak_attack_raw_damage"] == 2

@@ -10,6 +10,7 @@ from acceptance.test_architect_fight import pos
 from acceptance.test_combat_wall_lines import wall
 from acceptance.test_opportunity_strike import participant, reconnect
 from acceptance.test_still_anchors import mock_combat_agent_factory as mock_combat_agent_factory
+from weapon_fixtures import DAGGER
 
 import db_queries
 import reaction_spend
@@ -219,7 +220,7 @@ async def test_cunning_disengage_survives_fate_reload_and_later_approach(fight: 
     spatial["speeds"][mover] = 7
     participant(state, "lookout").hp_current = 100
     await fight.persist()
-    await declare(fight, attack(mover, "lookout", "Longsword", rider="disengage"))
+    await declare(fight, attack(mover, "lookout", DAGGER["name"], rider="disengage"))
 
     with (
         patch("check_resolution.dice_roll", return_value=_d20(18)) as rolls,

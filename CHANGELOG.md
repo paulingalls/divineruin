@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.75.0
+
+Every catalog weapon now has a category, range and kind, and both catalog loaders validate weapon profiles and archetype proficiency. A character can equip a weapon they are not trained with, and the DM warns them when they do. Their attacks with it roll at disadvantage, which cancels with advantage as usual. The proficiency bonus still applies. Artificers, spies and bards are now proficient with their starting Warhammer, Rapier and Lute, so every starting kit is proficient.
+
+Release steps:
+
+- Set `SEED_PRODUCTION=1` in the deployment seed environment and run `bun run seed` from the repository root after deploying the updated seed code and before restarting the catalog consumers. This unpaid command writes the production catalog.
+
 ## 0.74.0
 
 Aelora's Exalted followers can light Hearthfire once a session in a fight. It is a fixed 15 ft hearth that lasts 3 rounds. At each round's end it heals every ally inside by 1d6 before the round's outcome is decided, so fallen allies inside rise. Allies inside roll their ability saves with advantage (not death saves), including the condition saves at the end of the third round. A foe moving in must pass a Wisdom save or stop at the edge, and Zhael's Fate's Thread can reroll that save. Every patron tier ability now works in play.

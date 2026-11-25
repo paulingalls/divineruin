@@ -5,6 +5,7 @@ import pytest
 from combat._helpers import _fake_db_mod, _make_combat_state
 from sample_fixtures import make_context
 from voice_condition_fixtures import place_actors
+from weapon_fixtures import LONGSWORD
 
 import combat_packet
 import combat_turn
@@ -15,7 +16,7 @@ from session_data import CombatParticipant, CombatState
 
 pytestmark = pytest.mark.asyncio
 
-_WEAPON = {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}
+_WEAPON = dict(LONGSWORD)
 
 
 def _fixed_resolver(damage: int):
@@ -53,7 +54,7 @@ def _mutations():
 
 def _queries():
     q = MagicMock()
-    q.get_player = AsyncMock(side_effect=lambda pid, **kw: {"player_id": pid})
+    q.get_player = AsyncMock(side_effect=lambda pid, **kw: {"player_id": pid, "class": "warrior"})
     q.get_player_inventory = AsyncMock(return_value=[])
     return q
 

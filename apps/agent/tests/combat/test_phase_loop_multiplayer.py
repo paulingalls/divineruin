@@ -7,6 +7,7 @@ from combat._helpers import _damage_resolver, _fake_db_mod, _resolve_round
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context
 from voice_condition_fixtures import place_actors
+from weapon_fixtures import DAGGER
 
 import spells
 from session_data import CombatParticipant, CombatState
@@ -29,7 +30,7 @@ def _mp_state(*, player_ids=("player_1", "player_2"), enemy_hp=20, attacks_only=
                 hp_current=25,
                 hp_max=25,
                 ac=14,
-                action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+                action_pool=[dict(DAGGER)],
             )
         )
         initiative -= 5
@@ -47,7 +48,7 @@ def _mp_state(*, player_ids=("player_1", "player_2"), enemy_hp=20, attacks_only=
         )
     )
     if attacks_only:
-        pending = {pid: {"type": "attack", "action": "Longsword", "target_id": "goblin_1"} for pid in player_ids}
+        pending = {pid: {"type": "attack", "action": DAGGER["name"], "target_id": "goblin_1"} for pid in player_ids}
     else:
         pending = {pid: {"type": "ability", "action": "arcane_detect_magic"} for pid in player_ids}
     pending["goblin_1"] = {"type": "attack", "action": "Scimitar", "target_id": player_ids[0]}

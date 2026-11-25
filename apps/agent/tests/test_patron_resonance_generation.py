@@ -346,7 +346,9 @@ async def test_declared_nonprimary_cast_uses_working_targets(patron, spell_id, d
         "focus": {"current": 50},
         "divine_favor": {"patron": patron},
     }
-    deps["queries"].get_player = AsyncMock(return_value=row)
+    deps["queries"].get_player = AsyncMock(
+        side_effect=lambda pid, **_: row if pid == "caster_2" else {"player_id": pid, "class": "warrior"}
+    )
     deps["queries"].get_players_for_update = AsyncMock(return_value={"caster_2": row})
     library = MagicMock(get_known=AsyncMock(return_value=[{"spell_id": spell_id}]))
     deps["character_spells_mod"] = library

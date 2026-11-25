@@ -145,7 +145,7 @@ async def test_construct_slam_leaves_cloud_at_throw_point_until_wrap(smoke_walk:
 
 @pytest.mark.parametrize(
     "mode,draws,face",
-    [("enemy", 2, 15), ("warrior", 2, 15), ("prone", 1, 19), ("outside", 1, 19)],
+    [("enemy", 2, 15), ("warrior", 2, 15), ("prone", 1, 19), ("outside", 1, 19), ("unproficient", 2, 15)],
 )
 async def test_smoke_weapon_rolls(smoke_walk: MawlingHarness, mode: str, draws: int, face: int) -> None:
     walk = smoke_walk
@@ -155,6 +155,9 @@ async def test_smoke_weapon_rolls(smoke_walk: MawlingHarness, mode: str, draws: 
         assert player is not None
         player["equipment"]["main_hand"].update(name="Shortbow", ranged=True, reach=80, damage_type="piercing")
         await walk.pool.execute("UPDATE players SET data=$2::jsonb WHERE player_id=$1", warrior, json.dumps(player))
+    if mode == "unproficient":
+        # A mage holding the warrior's martial weapon is untrained, so proficiency and smoke both apply.
+        await walk.pool.execute("""UPDATE players SET data = data || '{"class":"mage"}' WHERE player_id=$1""", warrior)
     await enter(walk)
     state = await walk.reload()
     foe = next(p for p in state.participants if p.creature_id == "bandit")
@@ -192,6 +195,8 @@ async def test_smoke_weapon_rolls(smoke_walk: MawlingHarness, mode: str, draws: 
         packets = [*first["packets"], *(await walk.drain())]
     assert receipt(packets, swing["actor_id"])["roll"] == face
     assert rolls.call_count == draws
+    if mode == "unproficient":
+        assert receipt(packets, warrior)["attack_disadvantage_source"] == "Smoke cloud"
     if mode == "warrior":
         next_spatial = combat_spatial.require_spatial(await walk.reload())
         assert next_spatial["zones"]["future_cloud"]["expires_round"] == state.round_number + 2

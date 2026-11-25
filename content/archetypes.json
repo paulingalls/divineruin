@@ -80,7 +80,7 @@
     },
     "save_proficiencies": ["intelligence", "constitution"],
     "armor_proficiencies": ["medium", "light"],
-    "weapon_proficiencies": ["simple", "hand_crossbow", "tools"],
+    "weapon_proficiencies": ["simple", "hand_crossbow", "tools", "warhammer"],
     "starting_skills": {
       "options": ["arcana", "crafting", "investigation", "sleight_of_hand"],
       "num_choices": 4
@@ -240,7 +240,7 @@
     },
     "save_proficiencies": ["charisma", "dexterity"],
     "armor_proficiencies": ["light"],
-    "weapon_proficiencies": ["light_weapons", "hand_crossbow", "garrote"],
+    "weapon_proficiencies": ["light_weapons", "hand_crossbow", "garrote", "rapier"],
     "starting_skills": {
       "options": ["deception", "persuasion", "insight", "stealth", "performance"],
       "num_choices": 5
@@ -276,7 +276,7 @@
     },
     "save_proficiencies": ["charisma", "dexterity"],
     "armor_proficiencies": ["light"],
-    "weapon_proficiencies": ["light_weapons", "hand_crossbow", "longsword", "rapier"],
+    "weapon_proficiencies": ["light_weapons", "hand_crossbow", "longsword", "rapier", "lute"],
     "starting_skills": {
       "options": ["persuasion", "performance", "deception", "insight", "history"],
       "num_choices": 5

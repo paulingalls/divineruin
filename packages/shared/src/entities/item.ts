@@ -1,3 +1,4 @@
+import type { WeaponProfile } from "../weapon-proficiency";
 export interface ItemEffect {
   magical?: boolean;
   type: string;
@@ -26,7 +27,7 @@ export interface ItemArtTemplate {
 export type ItemAttunement =
   { kind: "none" } | { kind: "required" } | { kind: "class"; class: string };
 
-export interface Item {
+export interface Item extends Partial<WeaponProfile> {
   id: string;
   name: string;
   tier: 1 | 2 | 3 | 4;
