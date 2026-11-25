@@ -13,6 +13,11 @@ Measure: python3 scripts/proof_key_breadth.py
 Reading (b293a068, 2026-11-20): distance=25 mean=4.9 files=2525 (was 816 at d4bbc919, 2026-11-16)
 Candidates: sprint proof-targeted-selection (super run, docs out of keys, shared-code representatives, content keyed by reader, free land runs land+sprint sets and CI only lints); target below 50 files keying more than 20 expensive tasks, with a mean below 5.
 
+## Combat action economy (Phase 4)
+Goal: every martial technique a player owns works in a fight, and Retreat provokes like any other move: the open boxes in `docs/milestones/04_combat.md` (human 2026-11-24 chose the martial-electives + retreat sprint).
+Measure: python3 -c 'import re; print("distance=%d" % len(re.findall(r"^- \[ \] ",open("docs/milestones/04_combat.md").read(),re.M)))'
+Candidates: the 15 martial L4/L8 electives refused in combat; Retreat through the enemy-opportunity route driver; weapon-equip proficiency once item weapon categories are normalized in both loaders. Then re-tune the Architect toward 300 HP against the full player kit (benchmark 12/20, zero margin at v0.68.0). Marshal combat wiring waits for divineruin2's zhael-orders-and-omens. Electives split (human 2026-11-24): sprint martial-electives wires 10; Iron Stance, Vanish, Shadow Step and Smoke Bomb follow; Quick Fingers gets its own sprint with real item transfer (enemy inventories that can be stolen from or planted on).
+
 ## Hollow creatures (Phase 7 M7.3)
 Goal: the corruption aura, resonance-on-death and the Tier 4 Hollow behaviours (Choir, Still, Architect) work in play: `docs/milestones/07_bestiary.md` Milestone 7.3 ACs, including the Hollow edge cases (Execution plan Milestone 33, in progress).
 Measure: python3 -c 'import re; s=open("docs/milestones/07_bestiary.md").read(); b=re.search(r"^### Milestone 7.3 .*?(?=^### |\Z)",s,re.M|re.S).group(0); print("distance=%d" % len(re.findall(r"^- \[ \] ",b,re.M)))'
