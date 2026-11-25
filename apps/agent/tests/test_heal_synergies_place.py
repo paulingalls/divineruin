@@ -147,6 +147,7 @@ async def thyra_mass(walk: ItemHealWalk, combat: bool) -> None:
         await walk.fight()
     with (
         patch("db_content_queries.get_location_terrain", AsyncMock(return_value="forest")),
+        patch("world_season.current_season", AsyncMock(return_value="spring")),
         rolls(**{"2d8": 5, "1d4": 2}) as roll,
     ):
         if combat:
@@ -155,10 +156,11 @@ async def thyra_mass(walk: ItemHealWalk, combat: bool) -> None:
         else:
             packet = await walk.cast(MASS)
     assert sorted(c.args[0] for c in roll.call_args_list) == ["1d4", "2d8"]
+    hp = dict.fromkeys(recipients, 13) | {walk.player: 14}
     assert sorted(packet["healing_results"], key=lambda r: r["target_id"]) == [
-        healed(target, 10, 13, bonus=2, implementation=VERDANT) for target in sorted(recipients)
+        healed(target, hp[target] - 3, hp[target], bonus=2, implementation=VERDANT) for target in sorted(recipients)
     ]
-    await assert_hp(walk, combat, dict.fromkeys(recipients, 13))
+    await assert_hp(walk, combat, hp)
     assert await walk.focus() == 24
 
 

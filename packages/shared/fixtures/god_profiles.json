@@ -1697,12 +1697,13 @@
             "resolution": "engine"
           },
           "exalted": {
-            "id": "veythar_fixture_exalted",
-            "name": "Synthetic ability",
-            "effect": "Synthetic effect.",
-            "recharge": "always",
-            "status": "pending",
-            "resolution": "narrated"
+            "id": "veythar_wellspring_echo",
+            "name": "Wellspring Echo",
+            "effect": "Arm the next Focus-costing spell this session.",
+            "recharge": "per_session",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "veythar_wellspring_echo"
           }
         },
         "layer_4_synergy_matrix": {

@@ -204,7 +204,41 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     implementation_id: embrace,
     recharge: "per_session",
   });
+  const echo = "veythar_wellspring_echo";
+  expect(
+    validateGods(catalog).find((god) => god.god_id === "veythar")?.layer_3_tier_abilities.exalted,
+  ).toMatchObject({
+    id: echo,
+    status: "active",
+    resolution: "engine",
+    implementation_id: echo,
+    recharge: "per_session",
+  });
+  const blessing = "aelora_craft_blessing";
+  expect(
+    validateGods(catalog).find((god) => god.god_id === "aelora")?.layer_3_tier_abilities
+      .acknowledged,
+  ).toMatchObject({
+    id: blessing,
+    status: "active",
+    resolution: "engine",
+    implementation_id: blessing,
+    recharge: "always",
+  });
+  const season = "thyra_seasonal_attunement";
+  expect(
+    validateGods(catalog).find((god) => god.god_id === "thyra")?.layer_3_tier_abilities
+      .acknowledged,
+  ).toMatchObject({
+    id: season,
+    status: "active",
+    resolution: "engine",
+    implementation_id: season,
+    recharge: "always",
+  });
+  passives.add(season);
   const engine = new Set([
+    blessing,
     "zhael_lucky",
     battleCry,
     judgment,
@@ -219,6 +253,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     verdict,
     ward,
     embrace,
+    echo,
     ...passives,
   ]);
   expect(
@@ -227,7 +262,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     ),
   ).toEqual(engine);
   const pending = abilities.filter((a) => !narrated.has(a.id) && !engine.has(a.id));
-  expect(pending).toHaveLength(6);
+  expect(pending).toHaveLength(3);
   for (const ability of abilities.filter((a) => passives.has(a.id))) {
     expect([ability.recharge, ability.implementation_id]).toEqual(["always", ability.id]);
   }
