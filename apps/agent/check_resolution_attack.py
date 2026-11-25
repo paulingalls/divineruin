@@ -12,6 +12,7 @@ from dataclasses import dataclass
 import patron_synergy_combat
 import thyra_seasons
 from check_resolution import D20CheckCore, D20Roll, roll_bonus_dice
+from combat_order_riders import OrderRider
 from condition_catalog import STUDIED_WEAKNESS
 from condition_restrictions import (
     attack_consumed_conditions,
@@ -69,6 +70,9 @@ class AttackResult:
     mortaen_ac_clause_id: str | None = None
     war_songs_bonus: int = 0
     war_songs_clause_id: str | None = None
+    order_rider: OrderRider | None = None
+    order_damage_dice: str | None = None
+    order_raw_damage: int = 0
 
 
 def _is_ranged(weapon: dict) -> bool:
@@ -118,6 +122,7 @@ def attack_modes(attacker_data: dict, weapon: dict, target_conditions=()) -> tup
         or "attack" in effects.advantage_scopes
         or incoming_advantage(target_conditions)
         or incoming_mode_advantage
+        or attacker_data.get("order_rider") is not None
     )
     return advantage, disadvantage
 
@@ -256,6 +261,9 @@ def finish_attack(
     synergy_damage, synergy_damage_type = 0, None
     synergy_clause_id = None
     veiled_strike = attacker_data.get("veiled_strike")
+    order_rider = attacker_data.get("order_rider")
+    order_damage_dice = None
+    order_raw_damage = 0
     if hit:
         season = attacker_data.get("season")
         damage_notation = weapon.get("damage", "1d4")
@@ -303,6 +311,10 @@ def finish_attack(
             bonus_damage = dice_roll(authored_bonus["dice"], rng=rng).total
             bonus_damage_type = authored_bonus["damage_type"]
             damage += bonus_damage
+        if order_rider is not None:
+            order_damage_dice = "2d4" if critical else "1d4"
+            order_raw_damage = dice_roll(order_damage_dice, rng=rng).total
+            damage += order_raw_damage
         on_hit = weapon.get("prepared_on_hit")
         if on_hit is not None and "damage" in on_hit:
             rider_damage = dice_roll(on_hit["damage"], rng=rng).total
@@ -381,4 +393,7 @@ def finish_attack(
         mortaen_ac_clause_id=attacker_data.get("mortaen_ac_clause_id"),
         war_songs_bonus=prepared.war_songs_bonus,
         war_songs_clause_id=prepared.war_songs_clause_id,
+        order_rider=order_rider,
+        order_damage_dice=order_damage_dice,
+        order_raw_damage=order_raw_damage,
     )

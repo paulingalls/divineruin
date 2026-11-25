@@ -4,6 +4,7 @@ from dataclasses import asdict, replace
 
 import check_resolution_attack
 import combat_marks
+import combat_order_riders
 import combat_spatial
 import condition_voice_rules
 import conditions
@@ -85,6 +86,9 @@ def attack_roll_inputs(
         "level": attacker.level,
         "conditions": attacker.conditions,
     }
+
+    if (rider := combat_order_riders.select(combat_state, attacker.id, target.id)) is not None:
+        attacker_data["order_rider"] = rider
 
     if veiled_strike is not None:
         attacker_data["veiled_strike"] = veiled_strike

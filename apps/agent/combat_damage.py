@@ -9,6 +9,7 @@ import combat_damage_affinity
 import combat_grapple
 import combat_hollow_death
 import combat_melee_approach
+import combat_order_riders
 import combat_resolution
 import combat_spatial
 import concentration_break
@@ -272,6 +273,9 @@ async def _apply_damage(
         )
         if fortitude_save is None:
             return None
+    if isinstance(attack_result, check_resolution_attack.AttackResult) and attack_result.order_rider is not None:
+        assert combat_state is not None
+        combat_order_riders.consume(combat_state, attacker.id, attack_result.order_rider)
     automatic = isinstance(attack_result, AutomaticDamageResult)
     save_damage = isinstance(attack_result, (SaveDamageResult, AutomaticDamageResult))
     if save_damage and publish_roll:
@@ -472,7 +476,7 @@ async def _apply_damage(
         response["death_save_failures"] = target.death_save_failures
     log_outcome = record_damage_event(session, attacker, action, target, attack_result)
     if isinstance(attack_result, check_resolution_attack.AttackResult):
-        response.update(attack_fields(attack_result, effective_ac))
+        response.update(attack_fields(attack_result, effective_ac, action))
     if action.get("self_heal") == "damage_dealt":
         response["self_healed"] = self_healed
         response["attacker_hp_status"] = combat_resolution.hp_threshold_status(attacker.hp_current, attacker.hp_max)
