@@ -39,7 +39,7 @@ def _covered(state: "CombatState", destination: dict) -> bool:
     ):
         return True
     return any(
-        zone["kind"] == "smoke" and inside(destination, position(spatial, zone["center_id"]), zone["radius_ft"])
+        zone.get("kind") == "smoke" and inside(destination, position(spatial, zone["center_id"]), zone["radius_ft"])
         for zone in spatial["zones"].values()
     )
 

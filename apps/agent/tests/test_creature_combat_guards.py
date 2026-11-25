@@ -186,8 +186,10 @@ def test_unknown_named_refused():
 
 
 def test_architect_named_translation_preserves_authored_attacks():
-    enemy = translate(next(r for r in catalog() if r["id"] == "hollow_architect"), role="named")
-    assert (enemy["hp"], enemy["ac"], enemy["level"], enemy["speed"], enemy["xp_value"]) == (154, 19, 20, 40, 5000)
+    source = next(r for r in catalog() if r["id"] == "hollow_architect")
+    enemy = translate(source, role="named")
+    assert enemy["hp"] == source["hp"]
+    assert (enemy["ac"], enemy["level"], enemy["speed"], enemy["xp_value"]) == (19, 20, 40, 5000)
     assert [(action["name"], action.get("damage")) for action in enemy["action_pool"]] == [
         ("Construct Slam", "2d10+4"),
         ("Geometry Strike", "1d8+6"),

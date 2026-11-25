@@ -40,6 +40,7 @@ def trap(state: CombatState, rogue: str) -> None:
         ("outside_chamber", "cover"),
         ("outside_smoke", "cover"),
         ("silence", "cover"),
+        ("untyped_zone", "cover"),
         ("too_far", "speed"),
         ("terrain", "speed"),
         ("blocked", "blocked by Architect"),
@@ -64,6 +65,8 @@ async def test_refused_declarations_leave_the_snapshot_unchanged(
         combat_spatial.add_smoke(state, ally)
     elif case == "silence":
         spatial["zones"]["silence"] = {"kind": "silence", "center_id": ally, "radius_ft": 10}
+    elif case == "untyped_zone":
+        spatial["zones"]["untyped_zone"] = {"center_id": ally, "radius_ft": 10}
     elif case in ("too_far", "terrain", "blocked", "pit"):
         if case == "too_far":
             destination = pos(31)

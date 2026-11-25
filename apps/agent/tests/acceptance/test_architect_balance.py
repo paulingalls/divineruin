@@ -1,10 +1,18 @@
 """The level-20 reference party beats the shipped Architect on at least twelve seeds."""
 
 import json
+from statistics import median
 from unittest.mock import AsyncMock
 
 from asyncpg import Pool
-from first_blood_harness import ARCHETYPES, ARCHITECT_WORKS, architect_party, drive_architect_fight
+from first_blood_harness import (
+    ARCHETYPES,
+    ARCHITECT_TECHNIQUES,
+    ARCHITECT_WORKS,
+    TechniqueReport,
+    architect_party,
+    drive_architect_fight,
+)
 from livekit.agents import RunContext
 from sample_fixtures import CONTENT_ROOT
 
@@ -14,6 +22,7 @@ import db
 import db_content_queries
 import db_queries
 from architect_encounter import CREATURE_ID
+from combat_ability_gate import SHADOW_STEP
 from creature_catalog import query_creature_by_id
 from mode_tools import enter_mode
 from patron_passives import effective_hp
@@ -35,29 +44,46 @@ async def test_architect_balance(reset_db_pool, monkeypatch):
     assert template["recommended_party_level"] == 20
     assert template["enemies"] == [{"id": "architect", "creature_id": CREATURE_ID, "role": "named"}]
 
+    print(f"Architect techniques tracked: {', '.join(ARCHITECT_TECHNIQUES)}", flush=True)
     results = {}
+    held = set()
+    resolved = set()
     for seed in SEEDS:
         assert seed not in results, f"Duplicate Architect seed {seed}"
-        results[seed] = await reference_fight(pool, seed, creature)
-        print(f"Architect seed {seed:2}: {results[seed][0]}, {results[seed][1]} rounds", flush=True)
+        outcome, rounds, techniques = await reference_fight(pool, seed, creature)
+        results[seed] = outcome, rounds
+        print(f"Architect seed {seed:2}: {outcome}, {rounds} rounds, {json.dumps(techniques)}", flush=True)
+        assert SHADOW_STEP in techniques["rogue"]["held"]
+        for archetype, report in techniques.items():
+            assert set(report["resolved"]) <= set(report["declared"]) <= set(report["held"]), (seed, archetype, report)
+            held.update((archetype, technique) for technique in report["held"])
+            resolved.update((archetype, technique) for technique in report["resolved"])
     assert tuple(results) == tuple(range(20))
     wins = sum(outcome == "victory" for outcome, _ in results.values())
-    print(f"Architect wins: {wins}/20", flush=True)
+    rounds = [count for _, count in results.values()]
+    print(
+        f"Architect {creature['hp']} HP: {wins}/20 wins, median {median(rounds):g} rounds, max {max(rounds)}",
+        flush=True,
+    )
+    assert held <= resolved, f"Held techniques never resolved: {held - resolved}"
     assert 12 <= wins <= 20, results
 
 
-async def reference_fight(pool: Pool, seed: int, creature: dict) -> tuple[str, int]:
+async def reference_fight(pool: Pool, seed: int, creature: dict) -> tuple[str, int, dict[str, TechniqueReport]]:
     async with architect_party(pool, seed) as (ctx, loadouts):
         player_ids = tuple(loadouts)
+        assert loadouts[player_ids[0]] == ("warrior_cleaving_blow", "warrior_war_cry")
+        assert loadouts[player_ids[2]] == ("rogue_dirty_trick", SHADOW_STEP)
         await enter_reference(ctx, player_ids, creature)
-        outcome, rounds = await drive_architect_fight(ctx, loadouts, seed)
+        outcome, rounds, report = await drive_architect_fight(ctx, loadouts, seed)
+        techniques: dict[str, TechniqueReport] = dict(zip(ARCHETYPES, (report[pid] for pid in player_ids), strict=True))
         if outcome == "victory":
             row = await db_queries.get_player(player_ids[0])
             scene = architect_scene.read(row, ARCHITECT_WORKS)
             assert scene is not None and scene["status"] == "destroyed", (seed, scene)
     for player_id in player_ids:
         assert await db_queries.get_player(player_id) is None, seed
-    return outcome, rounds
+    return outcome, rounds, techniques
 
 
 async def enter_reference(ctx: RunContext[SessionData], player_ids: tuple[str, ...], creature: dict) -> None:
