@@ -1098,7 +1098,7 @@ Whisper draws from a unique catalog unavailable to other archetypes. These spell
 | 1 | Direct Strike | 2 Focus | Active | Name an ally and a target. That ally's next attack against that target has advantage and deals +1d4 damage. In voice play: "Kael, the one on the left — now!" |
 | 1 | Reposition | 2 Stam | Active | Command an ally to move 15 ft without provoking reactions. Declared during your phase, resolved immediately. "Fall back to the doorway!" |
 | 1 | Rally | 3 Focus | Active | All allies within 30 ft gain temporary HP equal to your CHA mod + level. Lasts until next rest. "Hold the line! We've got this!" |
-| 2 | Coordinated Assault | 4 Focus | Active | Choose 2 allies. Both gain advantage on their next attack this phase. If both hit the same target: bonus 1d6 damage each. The Marshal turns two separate attacks into a pincer |
+| 2 | Coordinated Assault | 4 Focus | Active | Choose 2 allies. Both gain advantage on their next attack, through the end of the following round. If both hit the same target: bonus 1d6 damage each. The Marshal turns two separate attacks into a pincer |
 
 #### Core Reactions
 
