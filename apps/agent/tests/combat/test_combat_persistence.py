@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from combat._helpers import _damage_resolver, _make_combat_state
 from voice_condition_fixtures import place_actors
+from weapon_fixtures import LONGSWORD
 
 import combat_phase
 import combat_turn
@@ -349,7 +350,7 @@ def _rollback_resolution_state(combat_id: str, player_id: str, enemy_id: str) ->
                 hp_current=25,
                 hp_max=25,
                 ac=14,
-                action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+                action_pool=[dict(LONGSWORD)],
             ),
             CombatParticipant(
                 id=enemy_id,
@@ -391,7 +392,7 @@ async def test_resolve_phase_rolls_back_player_hp_when_save_combat_state_fails(d
     monkeypatch.setattr(db_mutations, "save_combat_state", AsyncMock(side_effect=RuntimeError("boom")))
     queries = MagicMock()
     queries.get_player_inventory = AsyncMock(return_value=[])  # no equipped items -> no durability writes
-    queries.get_player = AsyncMock(side_effect=lambda pid, **kw: {"player_id": pid})
+    queries.get_player = AsyncMock(side_effect=lambda pid, **kw: {"player_id": pid, "class": "warrior"})
     break_mod = MagicMock()
     break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
 

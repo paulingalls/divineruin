@@ -77,7 +77,7 @@ async def test_phase_trigger_bonus_and_expiry(reset_db_pool):
             await combat_turn._declare_phase_impl(
                 ctx,
                 {
-                    pid: {"type": "attack", "action": "Longsword", "target_id": "goblin_a"},
+                    pid: {"type": "attack", "action": pc.action_pool[0]["name"], "target_id": "goblin_a"},
                     "goblin_a": {"type": "defend"},
                 },
             )

@@ -63,7 +63,7 @@ async def test_strike_precedes_rogue_approach(fight: MawlingHarness, drop: bool)
     if drop:
         participant(state, mover).hp_current = 3
         await fight.persist()
-    await declare(fight, attack(mover, "lookout", "Longsword"))
+    await declare(fight, attack(mover, "lookout", participant(state, mover).action_pool[0]["name"]))
     with (
         patch("check_resolution.dice_roll", return_value=_d20(18)) as rolls,
         patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
@@ -99,7 +99,15 @@ async def test_later_swing_approach_resumes_with_shared_allowance(fight: Mawling
     spatial["positions"]["bandit"] = pos(2)
     spatial["speeds"][mover] = 8
     await fight.persist()
-    await declare(fight, attack(mover, "lookout", "Longsword", rider="hide" if drop else ""))
+    await declare(
+        fight,
+        attack(
+            mover,
+            "lookout",
+            participant(state, mover).action_pool[0]["name"],
+            rider="hide" if drop else "",
+        ),
+    )
 
     with (
         patch("check_resolution.dice_roll", return_value=_d20(18)) as rolls,
@@ -295,7 +303,7 @@ async def test_cunning_disengage_departure(fight: MawlingHarness, rider: str, fa
     if partial:
         spatial["positions"]["lookout"] = pos(3 + speed + 15)
         await fight.persist()
-    await declare(fight, attack(mover, "lookout", "Longsword", rider=rider))
+    await declare(fight, attack(mover, "lookout", participant(state, mover).action_pool[0]["name"], rider=rider))
     with (
         patch(
             "check_resolution.dice_roll",

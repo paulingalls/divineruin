@@ -17,6 +17,7 @@ from livekit.agents.llm import ToolError
 from test_encounter_facts_damage import GOBLIN, OTHER, Fight, dice, fight, goblin_strike
 from test_encounter_facts_heal import wrap
 from voice_condition_fixtures import participant, place_actors
+from weapon_fixtures import QUARTERSTAFF
 
 import db_mutations
 import db_queries
@@ -80,7 +81,7 @@ async def test_multiple_deaths_and_independent_pools(world: SimpleNamespace, sta
         state.participants.append(second)
         state.initiative_order.append(second.id)
         place_actors(state)
-        packets = await f.round(attack(f.ally, GOBLIN), attack(f.hero, second.id), faces=(15, 15))
+        packets = await f.round(attack(f.ally, GOBLIN), attack(f.hero, second.id, QUARTERSTAFF["name"]), faces=(15, 15))
         got = renewals(packets)
         assert len(got) == 4
         for index, original in enumerate((start, 3)):
@@ -224,7 +225,10 @@ async def test_damage_observes_the_zero_hp_outcome(world: SimpleNamespace, contr
 
         target = f.ally if control == "hollowed" else GOBLIN
         actor = f.ally if control == "ward" else f.hero
-        packets = await f.round(attack(actor, target), faces=(15, 1))
+        if control == "ward":
+            participant(state, actor).action_pool[0] = dict(QUARTERSTAFF)
+        action = participant(state, actor).action_pool[0]["name"]
+        packets = await f.round(attack(actor, target, action), faces=(15, 1))
         prior = 5 if control == "instant" else 3
         expected = [receipt(recipient, target, prior, prior + 2)]
         if control == "ward":

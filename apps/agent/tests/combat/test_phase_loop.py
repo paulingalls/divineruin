@@ -31,7 +31,9 @@ def _resolve_deps(damage=3):
     queries.get_inventory_snapshot = snapshot_query([])
     # The ability Focus pre-validation fetches the player for_update; a sufficient-Focus default so
     # the happy-path ability tests pass the gate (the all-attacks tests never fetch — no ability).
-    queries.get_player = AsyncMock(return_value={"player_id": "player_1", "focus": {"current": 10, "max": 10}})
+    queries.get_player = AsyncMock(
+        return_value={"player_id": "player_1", "class": "warrior", "focus": {"current": 10, "max": 10}}
+    )
     break_mod = MagicMock()
     break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
     return {

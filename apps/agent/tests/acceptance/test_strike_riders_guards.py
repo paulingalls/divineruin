@@ -1,5 +1,6 @@
 """Write boundaries, target gates, and reloads for the rogue strike electives."""
 
+import json
 from unittest.mock import patch
 
 import pytest
@@ -13,6 +14,7 @@ from acceptance.test_self_buff_electives import discovered, receipt, stamina
 from acceptance.test_still_anchors import mock_combat_agent_factory as mock_combat_agent_factory
 from acceptance.test_strike_riders import CRIPPLING, STUDY, enter_ambush, marker, restart, rolls, study
 from acceptance.test_strike_riders import rogue as rogue
+from weapon_fixtures import DAGGER
 
 import ability_persistence
 import combat_structures
@@ -57,7 +59,9 @@ async def test_preflight_refuses_before_ally_damage(rogue: MawlingHarness, abili
     participant(state, ally).initiative = participant(state, actor).initiative + 1
     await rogue.persist()
     action = (
-        weapon_attack(actor, foe, "crippling_strike") if ability == CRIPPLING else study(actor, foe, action=variant)
+        weapon_attack(actor, foe, "crippling_strike", weapon=DAGGER["name"])
+        if ability == CRIPPLING
+        else study(actor, foe, action=variant)
     )
     await declare(rogue, weapon_attack(ally, foe, ""), action)
     state_before, players_before = await rogue.snapshot()
@@ -137,11 +141,15 @@ async def test_only_studying_rogues_eligible_hit_consumes_the_mark(
 ) -> None:
     owner, ally = rogue.players
     if gate == "other_rogue":
-        await rogue.pool.execute("""UPDATE players SET data=data || '{"class":"rogue"}' WHERE player_id=$1""", ally)
+        await rogue.pool.execute(
+            "UPDATE players SET data=data || $2::jsonb WHERE player_id=$1",
+            ally,
+            json.dumps({"class": "rogue", "equipment": {"main_hand": DAGGER}}),
+        )
     foe, _ = await enter_ambush(rogue, ally_x=20 if gate == "ineligible" else 0)
     await seed_study(rogue, foe, duration=2 if gate == "not_ready" else 1)
     attacker = ally if gate == "other_rogue" else owner
-    await declare(rogue, weapon_attack(attacker, foe, ""))
+    await declare(rogue, weapon_attack(attacker, foe, "", weapon=DAGGER["name"]))
     with rolls(face) as (_, damage):
         result = receipt(await resolve_allies(rogue), attacker)
     assert result["hit"] is (face != 1)
@@ -172,7 +180,9 @@ async def test_fate_pause_and_reload_finishes_once(rogue: MawlingHarness, abilit
     assert player is not None
     focus = player["focus"]["current"]
     hp_before = participant(await rogue.reload(), foe).hp_current
-    await declare(rogue, weapon_attack(actor, foe, "crippling_strike" if ability == CRIPPLING else ""))
+    await declare(
+        rogue, weapon_attack(actor, foe, "crippling_strike" if ability == CRIPPLING else "", weapon=DAGGER["name"])
+    )
     with rolls(17) as (d20, damage):
         first = await rogue.command("resolve_phase", {})
         assert first["fate_offer"]["roller_id"] == actor
@@ -212,7 +222,7 @@ async def test_crippling_does_not_mark_a_downed_or_warded_foe(rogue: MawlingHarn
     else:
         target.hp_current = 1
     await rogue.persist()
-    await declare(rogue, weapon_attack(actor, foe, "crippling_strike"))
+    await declare(rogue, weapon_attack(actor, foe, "crippling_strike", weapon=DAGGER["name"]))
     with rolls(17):
         hit = receipt(await resolve_allies(rogue), actor)
     assert hit["hit"] and "condition_inflicted" not in hit

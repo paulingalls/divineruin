@@ -10,6 +10,7 @@ from acceptance.seeds import seed_player_with_pools
 from combat._helpers import _damage_resolver
 from sample_fixtures import make_context
 from voice_condition_fixtures import participant, place_actors
+from weapon_fixtures import DAGGER
 
 import combat_events
 import combat_turn
@@ -45,15 +46,15 @@ async def encounter(reset_db_pool, monkeypatch):
         )
     players = [CombatParticipant(pid, pid, "player", 30 - i * 10, 28, 28, 15) for i, pid in enumerate(ids)]
     for p in players:
-        p.action_pool = [{"name": "Strike", "damage": "1d8", "damage_type": "slashing", "properties": []}]
+        p.action_pool = [dict(DAGGER)]
     enemies = [hollow(f"victim_{i}") for i in range(2)] + [hollow("survivor")]
     state = place_actors(
         CombatState(f"combat_{uuid4().hex}", players + enemies, ids + [e.id for e in enemies], beat="resolution")
     )
     state.pending_declarations = {
-        ids[0]: {"type": "attack", "action": "Strike", "target_id": "victim_0"},
+        ids[0]: {"type": "attack", "action": DAGGER["name"], "target_id": "victim_0"},
         ids[1]: {"type": "ability", "action": "arcane_magic_missile", "target_id": "survivor"},
-        ids[2]: {"type": "attack", "action": "Strike", "target_id": "victim_1"},
+        ids[2]: {"type": "attack", "action": DAGGER["name"], "target_id": "victim_1"},
     }
     ctx.userdata.combat_state = state
     await db_mutations.save_combat_state(state.combat_id, state.to_dict(), conn=pool)

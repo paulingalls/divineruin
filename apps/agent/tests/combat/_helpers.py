@@ -8,6 +8,7 @@ from _combat_end_fixtures import combat_end_mutations
 from inventory_snapshot_fixture import snapshot_query
 from sample_fixtures import make_context, make_db_mod
 from voice_condition_fixtures import place_actors
+from weapon_fixtures import LONGSWORD
 
 import combat_turn
 import reaction_spend
@@ -64,14 +65,7 @@ def _make_combat_state(player_hp=25, player_fallen=False, enemy_hp=7, enemy_fall
                     hp_current=player_hp,
                     hp_max=25,
                     ac=14,
-                    action_pool=[
-                        {
-                            "name": "Longsword",
-                            "damage": "1d8",
-                            "damage_type": "slashing",
-                            "properties": [],
-                        }
-                    ],
+                    action_pool=[dict(LONGSWORD)],
                     is_fallen=player_fallen,
                 ),
                 CombatParticipant(
@@ -134,7 +128,7 @@ def _resolution_state(
                     ac=14,
                     attributes=player_attributes if player_attributes is not None else {},
                     level=player_level,
-                    action_pool=[{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}],
+                    action_pool=[dict(LONGSWORD)],
                     conditions=player_conditions or [],
                     has_reaction_ability=True,
                 ),
@@ -205,7 +199,7 @@ def _resolve_deps(damage=3):
     # The ability Focus pre-validation fetches the player for_update; a sufficient-Focus default so
     # the happy-path ability tests pass the gate (the all-attacks tests never fetch — no ability).
     queries.get_player = AsyncMock(
-        return_value={"player_id": "player_1", "class": "mage", "level": 1, "focus": {"current": 10, "max": 10}}
+        return_value={"player_id": "player_1", "class": "warrior", "level": 1, "focus": {"current": 10, "max": 10}}
     )
     character_spells_mod = MagicMock()
     character_spells_mod.get_known = AsyncMock(return_value=[])

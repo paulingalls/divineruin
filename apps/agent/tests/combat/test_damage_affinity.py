@@ -11,6 +11,7 @@ from acceptance._capstone_helpers import _d20, _resolve_round
 from combat.test_spell_damage_lands import declare_spell, load_combat, prepare_spell, saved_player
 from combat.test_spell_damage_lands import spell_fight as spell_fight
 from voice_condition_fixtures import participant
+from weapon_fixtures import DAGGER
 
 import combat_init
 import combat_turn
@@ -49,12 +50,7 @@ async def catalog_fight(spell_fight, dev_db_pool):
         await dev_db_pool.execute(
             "UPDATE players SET data=jsonb_set(data,'{equipment}', $2::jsonb) WHERE player_id=$1",
             ctx.userdata.player_id,
-            json.dumps(
-                {
-                    "main_hand": weapon
-                    or {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}
-                }
-            ),
+            json.dumps({"main_hand": weapon or DAGGER}),
         )
         ctx.userdata.combat_state = None
         await combat_init._start_combat_impl(ctx, template_id, "A foe approaches.")
@@ -90,6 +86,7 @@ async def resolve(ctx, *, face=15, raw=5, no_save=False):
 
 
 async def declare_weapon(ctx):
+    actor = participant(ctx.userdata.combat_state, ctx.userdata.player_id)
     await combat_turn.declare_phase(
         ctx,
         [
@@ -97,7 +94,7 @@ async def declare_weapon(ctx):
                 reshape=[],
                 kind="attack",
                 actor_id=ctx.userdata.player_id,
-                action="Longsword",
+                action=actor.action_pool[0]["name"],
                 target_id="foe",
                 held_item_id="",
                 rider="",

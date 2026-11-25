@@ -39,7 +39,7 @@ async def equip(
                 if tainted is not None and tainted.get("quantity", 0) > 0:
                     raise ToolError("Cleanse your tainted gear with dispel_corruption before equipping it.")
                 raise ToolError(f"Item '{item_id}' is not owned.")
-            slot, entry = loadout_entry(item_id, item, player["class"])
+            slot, entry, weapon_proficient = loadout_entry(item_id, item, player["class"])
             stowed = _starter_item(player["equipment"].get(slot), stacks)
             equipment = {**player["equipment"], slot: entry}
             ac = calculate_ac(equipment, player["attributes"]["dexterity"])
@@ -53,13 +53,18 @@ async def equip(
         await publish_inventory(session, actor, queries=queries)
         await publish_snapshots(session, [actor])
     session.record_event(f"Equipped {entry['name']}")
+    narration_cue = f"Narrate the player equipping {entry['name']}."
+    if weapon_proficient is False:
+        narration_cue += (
+            f" Tell the player they are not proficient with {entry['name']} and attacks with it have disadvantage."
+        )
     return json.dumps(
         {
             "action": "equipped",
             "item_id": item_id,
             "item_name": entry["name"],
             "slot": slot,
-            "narration_cue": f"Narrate the player equipping {entry['name']}.",
+            "narration_cue": narration_cue,
         }
     )
 

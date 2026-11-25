@@ -11,6 +11,7 @@ from combat.test_spell_damage_lands import load_combat, saved_player
 from combat.test_spell_damage_lands import spell_fight as spell_fight
 from sample_fixtures import make_context
 from voice_condition_fixtures import participant
+from weapon_fixtures import DAGGER
 
 import check_resolution_attack
 import combat_turn
@@ -111,7 +112,7 @@ async def test_precise_strike_and_held_reload(rogue_fight, dev_db_pool):
     await combat_turn._declare_phase_impl(
         ctx,
         {
-            pid: {"type": "attack", "action": "Longsword", "target_id": "foe"},
+            pid: {"type": "attack", "action": DAGGER["name"], "target_id": "foe"},
             "foe": {"type": "attack", "action": "Short Sword", "target_id": pid},
         },
     )
