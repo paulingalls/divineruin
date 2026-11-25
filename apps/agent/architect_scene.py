@@ -8,6 +8,7 @@ import architect_constructs
 import architect_encounter
 import architect_entomb
 import architect_reaction
+import combat_round_checkpoint
 import combat_spatial
 import encounter_facts
 from combat_state import CombatState
@@ -117,7 +118,7 @@ async def start(session, state: CombatState, retained: dict | None, *, mutations
         if retained is not None:
             restore(state, retained)
         await write(session, state, "combat", combat_id=state.combat_id, mutations=mutations, conn=conn)
-        await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
+        await combat_round_checkpoint.capture(session, state, conn=conn, mutations=mutations, entry=True)
 
 
 async def end(session, state: CombatState, outcome: str, *, mutations, queries, conn) -> None:
@@ -140,7 +141,7 @@ async def end(session, state: CombatState, outcome: str, *, mutations, queries, 
             session,
             state,
             "dormant",
-            snapshot=state.to_dict(),
+            snapshot=combat_round_checkpoint.combat_image(state),
             mutations=mutations,
             conn=conn,
         )

@@ -2,6 +2,7 @@
 
 from livekit.agents.llm import ToolError
 
+import combat_round_checkpoint
 import db_content_queries
 import lost_scout_scene as scene
 
@@ -24,7 +25,7 @@ async def start(session, state, *, mutations, queries, db_mod):
         session.validate_acting_player(actor_id)
         record["outcome"] = "fought"
         await scene.write(session.primary_player_id, record, mutations=mutations, conn=conn)
-        await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
+        await combat_round_checkpoint.capture(session, state, conn=conn, mutations=mutations, entry=True)
 
 
 async def residue(session, state, *, mutations, queries, conn):

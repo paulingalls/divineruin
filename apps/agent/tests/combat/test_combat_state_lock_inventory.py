@@ -170,10 +170,7 @@ def test_combat_check_decorator_reaches_its_wrapped_function_under_lock():
 def test_full_state_save_sites_match_the_inventory():
     expected = Counter(
         {
-            ("choir_scene.py", "start", "call"): 2,
-            ("lost_scout_combat.py", "start", "call"): 1,
-            ("still_scene.py", "start", "call"): 1,
-            ("architect_scene.py", "start", "call"): 1,
+            ("combat_round_checkpoint.py", "capture", "call"): 1,
             ("still_illusions.py", "investigate", "call"): 1,
             ("condition_consume.py", "persist_combat_consumption", "call"): 1,
             ("check_tools.py", "_finish_save", "call"): 1,
@@ -183,7 +180,6 @@ def test_full_state_save_sites_match_the_inventory():
             ("combat_resolve_phase.py", "_resolve_phase_locked", "call"): 1,
             ("combat_phase_recovery.py", "phase_transaction_with_recovery", "call"): 1,
             ("combat_turn.py", "_consume_legendary_action_locked", "call"): 1,
-            ("combat_wrap.py", "wrap_phase", "call"): 1,
             ("combat_death_save.py", "_request_death_save_locked", "call"): 1,
             ("draethar_inner_fire.py", "_inner_fire_locked", "call"): 1,
             ("draethar_inner_fire.py", "resume_inner_fire", "call"): 1,
@@ -376,7 +372,7 @@ async def test_two_concurrent_combat_starts_create_one_row_and_refuse_one(mock_c
     release_first = asyncio.Event()
     saved_ids = []
 
-    async def save(combat_id, _payload):
+    async def save(combat_id, _payload, *, conn):
         saved_ids.append(combat_id)
         if len(saved_ids) == 1:
             first_save.set()
@@ -386,7 +382,11 @@ async def test_two_concurrent_combat_starts_create_one_row_and_refuse_one(mock_c
     first = asyncio.create_task(
         _start_combat_impl(ctx, "goblin_patrol", "First", mutations=mutations, queries=queries, content=content)
     )
-    await first_save.wait()
+    reached = asyncio.create_task(first_save.wait())
+    done, _ = await asyncio.wait({first, reached}, return_when=asyncio.FIRST_COMPLETED)
+    if first in done:
+        reached.cancel()
+        pytest.fail(f"First entry returned before its save: {await first}")
     lock.attempted.clear()
     second = asyncio.create_task(
         _start_combat_impl(ctx, "goblin_patrol", "Second", mutations=mutations, queries=queries, content=content)

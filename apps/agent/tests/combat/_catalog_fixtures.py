@@ -51,16 +51,16 @@ def setup(action=LUNGE):
 
 
 async def wrap(state):
+    from sample_fixtures import make_db_mod
+
     import combat_wrap
-    from combat_ability import AbilityCastOutcome
 
     state.beat = "narration"
     result = await combat_wrap.wrap_phase(
         make_context().userdata,
         state,
-        conn=None,
+        conn=make_db_mod()[1],
         sink=MagicMock(emit=AsyncMock()),
-        cast_outcome=AbilityCastOutcome(),
         mutations=MagicMock(save_combat_state=AsyncMock()),
         queries=MagicMock(
             get_players_for_update=AsyncMock(return_value={p.id: {} for p in state.participants if p.type == "player"})
