@@ -5,6 +5,7 @@ from collections.abc import Iterator
 from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
 from acceptance._capstone_helpers import _d20, _damage_die
@@ -22,6 +23,7 @@ from acceptance.test_still_anchors import mock_combat_agent_factory as mock_comb
 import ability_persistence
 import archetypes
 import conditions
+import db
 import event_types as E
 from creation_classes import CLASSES
 from inventory_tools import transact
@@ -133,6 +135,40 @@ def test_weapon_roll_and_reload(harness: SimpleNamespace, variant: str) -> None:
         if variant == "equipped":
             await fresh_session(fight, await fight.reload())
             await assert_attack(walk, fight, foe, weapon["name"], (18, 4), 4, SOURCE)
+
+    harness.run_sync(check())
+
+
+def test_weapon_attack_uses_reclassified_catalog_profile(
+    harness: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    prefix = f"weapon_reclassification:{uuid4().hex}:"
+    monkeypatch.setenv("CONTENT_CACHE_PREFIX", prefix)
+
+    async def check() -> None:
+        walk = await setup(harness, "artificer")
+        original = await walk.pool.fetchval("SELECT data FROM items WHERE id = $1", GREATSWORD)
+        redis = await db.get_redis()
+        key = f"{prefix}item:{GREATSWORD}"
+
+        async def restore_catalog() -> None:
+            await walk.pool.execute("UPDATE items SET data = $2::jsonb WHERE id = $1", GREATSWORD, original)
+            await redis.delete(key)
+
+        harness.stack.callback(lambda: harness.run_sync(restore_catalog()))
+        assert "disadvantage" in await equip(walk, GREATSWORD)
+        row = await walk.row()
+        weapon = row["equipment"]["main_hand"]
+        weapon.update(weapon_category="martial", weapon_range="melee", weapon_kind="greatsword")
+        await walk.pool.execute("UPDATE players SET data=$2::jsonb WHERE player_id=$1", walk.player, json.dumps(row))
+        fight = await enter_fight(walk)
+        harness.stack.callback(lambda: harness.run_sync(fight.session.aclose()))
+        foe = await adjacent_foe(fight)
+        await walk.pool.execute(
+            """UPDATE items SET data = data || '{"weapon_category":"simple"}' WHERE id = $1""", GREATSWORD
+        )
+        await redis.delete(key)
+        await assert_attack(walk, fight, foe, weapon["name"], (17,), 17, None)
 
     harness.run_sync(check())
 

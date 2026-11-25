@@ -23,9 +23,8 @@ def loadout_entry(item_id: str, item: dict, archetype: str) -> tuple[str, dict, 
     weapon_proficient = None
     if kind == "weapon":
         effect = next(effect for effect in item["effects"] if effect["type"] == "weapon")
-        entry.update({field: item[field] for field in PROFILE_FIELDS})
         entry.update(damage=item["damage_dice"], damage_type=effect["damage_type"], properties=item["properties"])
-        weapon_proficient = has_weapon_proficiency(chassis.weapon_proficiencies, entry)
+        weapon_proficient = has_weapon_proficiency(chassis.weapon_proficiencies, item)
         if item["weapon_range"] == "ranged":
             entry["ranged"] = True
     else:
@@ -54,7 +53,7 @@ def needs_weapon_profile(attacker_type: str, action: dict, *, weapon_attack: boo
 async def resolve_weapon_profile(attacker_type: str, action: dict, *, weapon_attack: bool, conn) -> dict | None:
     if not needs_weapon_profile(attacker_type, action, weapon_attack=weapon_attack):
         return None
-    if PROFILE_FIELDS.keys() <= action.keys():
+    if "id" not in action and PROFILE_FIELDS.keys() <= action.keys():
         return action
 
     # Older equipment and combat snapshots omit the catalog profile.
