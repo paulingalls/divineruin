@@ -152,15 +152,15 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
                 if started is not None:
                     summaries.append(started)
             if packet_id is None:
+                if actor is not None and actor.is_ally:
+                    effects = await _packetless_turn_start(session, state, actor, progress, steps, packet_deps)
+                    if fate_rolls.pending is not None:
+                        state.beat = PhaseBeat.RESOLUTION
+                        return summaries
+                    if effects:
+                        summaries.append({"actor_id": actor.id, "turn_start_effects": effects})
                 cancelled = cursor.get("cancelled_moves", [])
                 if actor is not None and actor.id in cancelled:
-                    if actor.is_ally:
-                        effects = await _cancelled_move_turn_start(session, state, actor, progress, steps, packet_deps)
-                        if fate_rolls.pending is not None:
-                            state.beat = PhaseBeat.RESOLUTION
-                            return summaries
-                        if effects:
-                            summaries.append({"actor_id": actor.id, "turn_start_effects": effects})
                     cancelled.remove(actor.id)
                 cursor.pop("steps", None)
                 cursor["turns"].pop(0)
@@ -195,7 +195,7 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
     return summaries
 
 
-async def _cancelled_move_turn_start(
+async def _packetless_turn_start(
     session: "SessionData",
     state: "CombatState",
     actor: "CombatParticipant",

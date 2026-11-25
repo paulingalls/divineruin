@@ -372,6 +372,28 @@ async def test_cancelled_move_keeps_a_corruption_save_across_reload(marshal):
         await lifecycle.aclose()
 
 
+async def test_undeclared_ally_still_makes_the_corruption_save(marshal):
+    harness, actor, ally, bystander = await arrange_field(marshal)
+    state = await harness.reload()
+    spatial_record(state)["positions"][harness.enemies[0]] = point(0, 2)
+    await harness.persist()
+    lifecycle = _live_party(harness.sd, actor, ally, bystander)
+    try:
+        await declare(harness, omit=(ally,))
+        with patch("check_resolution.dice_roll", return_value=_d20(20)):
+            first = await harness.command("resolve_phase", {})
+            offer = first["fate_offer"]
+            assert (offer["roll_kind"], offer["roller_id"]) == ("save", ally)
+            resumed = await harness.command(
+                "activate", {"id": "zhael_fates_thread", "offer_id": offer["offer_id"], "keep": "original"}
+            )
+        packets = first["packets"] + resumed["packets"] + await harness.drain()
+        effects = [e for p in packets for e in p.get("turn_start_effects", []) if e.get("actor_id") == ally]
+        assert [(e["effect"], e["save_success"]) for e in effects] == [("corruption_field", True)]
+    finally:
+        await lifecycle.aclose()
+
+
 async def test_cancelled_move_keeps_the_choir_turn_start_save(marshal):
     harness = await battlefield(marshal, encounter="hollow_choir")
     _, ally, _ = harness.players
