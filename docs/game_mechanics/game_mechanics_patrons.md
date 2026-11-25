@@ -115,7 +115,7 @@ When a Veil Ward is active in your area, your spells inside it suffer no damage/
 |---|---|---|
 | Acknowledged | Craft Blessing | Crafting takes 75% of its normal duration. A normal Success has a 25% chance to draw a bonus property from the recipe category’s Exceptional table. Eligibility is captured when crafting starts. |
 | Devoted | Community Shield | Once per long rest, immediately grant another standing, present party player temporary HP equal to your level plus your Charisma modifier (minimum 1). A smaller pool is replaced. An equal or larger pool leaves the gift unspent. Works in and out of combat with no action, reaction or distance cost. A partially resolved round or live Fate offer blocks activation. |
-| Exalted | Hearthfire | Once per session, create sanctuary zone: 3 rounds, allies regain 1d6 HP/round, advantage on saves, enemies WIS save to enter |
+| Exalted | Hearthfire | Once per session in combat, create a fixed sphere with a 15-foot radius centered where you stand. It lasts 3 rounds. Allies inside regain 1d6 HP each round and have advantage on ability saves. A foe reaching its edge makes a WIS save (DC 8 + your proficiency bonus + your WIS modifier). Success admits that foe for the duration. Failure stops it at the edge until it can try again next round. Foes already inside can stay or leave freely and save if they return. |
 
 **Layer 4 — Archetype Resonance**
 

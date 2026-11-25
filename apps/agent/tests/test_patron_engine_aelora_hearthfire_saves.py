@@ -4,7 +4,7 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
-from _aelora_hearthfire_fixtures import COMPANION, GIFT, enabled, fall, healing_rolls, hearth, point, snapshot
+from _aelora_hearthfire_fixtures import COMPANION, GIFT, fall, healing_rolls, hearth, point, snapshot
 from _mortaen_threshold_fixtures import FOE, active, claw, declare, events
 from _unbound_path_fixtures import row
 from _unbound_path_fixtures import world as world
@@ -23,11 +23,17 @@ SPELL = "divine_bless"
 
 
 async def light_hearth(world: SimpleNamespace, call: Any) -> None:
-    with enabled():
-        await call("activate", id=GIFT)
+    await call("activate", id=GIFT)
     assert (await row(world, 0))["patron_gifts"][GIFT] == {"spent": True}
     assert (await reload_state(world)).hearthfire_zones == [
-        {"source_id": world.ids[0], "center": point(5), "radius_ft": 15, "rounds_remaining": 3}
+        {
+            "source_id": world.ids[0],
+            "center": point(5),
+            "radius_ft": 15,
+            "rounds_remaining": 3,
+            "admitted_ids": [],
+            "failed_rounds": {},
+        }
     ]
 
 
