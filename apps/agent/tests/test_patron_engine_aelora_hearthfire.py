@@ -326,6 +326,24 @@ async def test_live_fate_offer_refuses_activation_without_settling(world: Simple
             original.assert_not_called()
 
 
+async def test_paused_wrap_refuses_activation_after_its_offer_is_gone(world: SimpleNamespace) -> None:
+    # A reload keeps the persisted wrap cursor but drops the in-memory Fate offer.
+    with enabled():
+        async with hearth(world) as call:
+            owner = world.ids[0]
+            state = active(world)
+            state.round_number = 3
+            participant(state, owner).conditions = apply_condition([], "frightened", source=FOE, duration=3)
+            await checkpoint(world)
+            await declare(world, call)
+            await call("resolve_phase")
+            with patch("check_resolution.dice_roll", return_value=_d20(18)):
+                assert (await call("resolve_phase"))["fate_offer"]
+            world.ctx.userdata.fate_offer = None
+            assert active(world).wrap_continuation is not None
+            await refuse(world, call, "Finish the partially resolved round before using Hearthfire")
+
+
 async def test_hearthfire_requires_a_standing_player_in_combat(world: SimpleNamespace) -> None:
     with enabled():
         async with hearth(world) as call:

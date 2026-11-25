@@ -44,6 +44,9 @@ def place(state: CombatState | None, actor: str, *, target_id: str | None) -> tu
     if state is None:
         raise ToolError("Hearthfire can only be used in combat.")
     require_complete_round(state, GIFT)
+    # A zone placed mid-wrap would tick on resume without its first heal.
+    if state.wrap_continuation is not None:
+        raise ToolError("Finish the partially resolved round before using Hearthfire.")
     follower = state.get_participant(actor)
     if (
         follower is None
