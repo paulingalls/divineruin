@@ -73,7 +73,8 @@ async def _request_ability_activation_impl(
     if session.in_combat and ability.ability_type != "reaction":
         if recipe := attack_recipe(ability.id):
             if "riders" in recipe:
-                raise ToolError('Declare a weapon attack with rider="dash" or rider="hide".')
+                riders = " or ".join(f'rider="{rider}"' for rider in recipe["riders"])
+                raise ToolError(f"Declare a weapon attack with {riders}.")
             raise ToolError(f'Declare an attack with the equipped melee weapon and rider="{recipe["rider"]}".')
         if not combat_ability(ability):
             raise ToolError(f"{ability.name} has no combat action — it cannot be used in a fight.")

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
 from dataclasses import asdict, dataclass, field
+from functools import cache
+from pathlib import Path
 
 import choir_effects
 import combat_reaction_contest
@@ -11,8 +14,32 @@ import condition_sources
 import encounter_facts
 import reaction_spend
 import reaction_windows
+from action_contracts import positive_integer
 from combat_attack_roll import held_reaction_ac
 from combat_participant import CombatParticipant
+
+
+@cache
+def _authored_rally_reach() -> int:
+    catalog = json.loads((Path(__file__).resolve().parents[2] / "content/creatures.json").read_text())
+    captain = next(row for row in catalog if row["id"] == "bandit_captain")
+    rally = next(action for action in captain["actives"] if action["name"] == "Rally")
+    reach = rally["reach"]
+    if not positive_integer(reach):
+        raise ValueError("bandit_captain.Rally.reach: invalid")
+    return reach
+
+
+def _upgrade_legacy_rally(participant: dict) -> dict:
+    if participant.get("creature_id") != "bandit_captain":
+        return participant
+    actions = participant.get("action_pool", [])
+    for index, action in enumerate(actions):
+        if action.get("name") == "Rally" and action.get("kind") == "healing" and "reach" not in action:
+            actions = actions.copy()
+            actions[index] = {**action, "reach": _authored_rally_reach()}
+            return {**participant, "action_pool": actions}
+    return participant
 
 
 @dataclass
@@ -52,9 +79,7 @@ class CombatState:
     # Declarations collected in Beat 1 (actor_id -> opaque declaration dict; typed by
     # M4.2), consumed in Beat 2, cleared at the wrap loop-back.
     pending_declarations: dict[str, dict] = field(default_factory=dict)
-    # Round budget/spend state per eligible player; ownership lives on CombatParticipant.
-    # Players only by design: a reaction is an archetype technique, and enemy action_pool entries
-    # carry no catalog id. The wrap loop-back clears it. Absent actor => no budget (never a free spend).
+    # Enemy spends are unbound. Only player spends modify a specific held window.
     reactions_available: dict[str, dict] = field(default_factory=dict)
     # Phase-scoped AC modifiers (actor_id -> bonus), e.g. Defend's +2 (M4.2, story-002).
     # Set during resolution, cleared at the wrap loop-back so a stance lasts one phase.
@@ -89,6 +114,7 @@ class CombatState:
     legendary_sequence: int = 0
     inner_fire_continuation: dict | None = None
     inner_fire_used_by: list[str] = field(default_factory=list)
+    held_sequence: int = 0
     # Enemy declarations HELD for Beat 3 (M29, story-016), initiative-ordered, popped as each
     # resolves. The ally band commits first and the enemy band waits here, so a reload mid-window
     # finds the enemy's turn still pending rather than silently deleted. Each entry:
@@ -160,7 +186,7 @@ class CombatState:
                 else None
             ),
             combat_id=data["combat_id"],
-            participants=[CombatParticipant(**p) for p in data["participants"]],
+            participants=[CombatParticipant(**_upgrade_legacy_rally(p)) for p in data["participants"]],
             initiative_order=data["initiative_order"],
             round_number=data.get("round_number", 1),
             current_turn_index=data.get("current_turn_index", 0),
@@ -197,6 +223,7 @@ class CombatState:
             legendary_sequence=data.get("legendary_sequence", 0),
             inner_fire_continuation=data.get("inner_fire_continuation"),
             inner_fire_used_by=data.get("inner_fire_used_by", []),
+            held_sequence=data.get("held_sequence", 0),
             held_actions=held_actions,
             open_window=reaction_windows.upgrade_legacy_window(
                 data.get("open_window"), data.get("held_actions", []), data["participants"]

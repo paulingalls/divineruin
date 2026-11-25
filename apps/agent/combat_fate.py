@@ -97,6 +97,7 @@ async def continue_attack(
     progress=None,
     movement=None,
     movement_budget=None,
+    player_movement=None,
 ):
     decl = packet.declaration
     attack_summaries = attack_cursor.get("summaries", [])
@@ -121,16 +122,26 @@ async def continue_attack(
         )
 
     start = len(attack_summaries)
+    interrupted = None
     for index, act in enumerate(actions[start:], start):
-        swing_move = (
-            movement
-            if index == 0 or act == actions[0]
-            else combat_melee_approach.prepare(state, attacker, declared_target, act, movement_budget)
-        )
+        if index == 0 or act == actions[0]:
+            swing_move = movement
+        elif "swing_move" in attack_cursor:
+            swing_move = attack_cursor["swing_move"]
+        elif player_movement is not None:
+            swing_move = await player_movement.approach(attacker, declared_target, act, movement_budget)
+            if swing_move is None:
+                checkpoint()
+                return {}
+            attack_cursor["swing_move"] = swing_move
+        else:
+            swing_move = combat_melee_approach.prepare(state, attacker, declared_target, act, movement_budget)
         if index > 0 and act == actions[0] and swing_move:
             swing_move = {**swing_move, "moved_ft": 0, "closed_distance": False}
         if swing_move.get("attack_resolved") is False:
             attack_summaries.append(swing_move)
+            if not swing_move["resolved"]:
+                interrupted = swing_move
             break
         if martial == DEVASTATING_STRIKE and not any(sub.get("hit") for sub in attack_summaries):
             count = 3 if attacker.level >= 17 else 2 if attacker.level >= 10 else 1
@@ -305,6 +316,7 @@ async def continue_attack(
             await combat_cunning_action.pay(attacker, queries=queries, conn=conn)
         sub.update(swing_move)
         attack_summaries.append(sub)
+        attack_cursor.pop("swing_move", None)
         # Remove attack-spent conditions before the next swing in an expanded declaration. The
         # first consuming swing leaves later consumed_conditions empty. Persistence rides the
         # phase's save_combat_state.
@@ -335,7 +347,7 @@ async def continue_attack(
     summary = combat_attack_summary.aggregate(attack_summaries, moved=bool(movement))
     if concealment_packet is not None:
         summary["concealment"] = concealment_packet
-    if martial == combat_cunning_action.CUNNING_ACTION and "hit" in summary:
+    if interrupted is None and martial == combat_cunning_action.CUNNING_ACTION and "hit" in summary:
         summary["cunning_action"] = {"rider": decl.rider}
         if decl.rider == "hide":
             hidden = await combat_cunning_action.hide(
@@ -353,5 +365,7 @@ async def continue_attack(
     if effects := attack_cursor.pop("turn_start_effects", None):
         summary["turn_start_effects"] = effects
     summary["actor_id"] = packet.actor_id
-    summary["resolved"] = True
+    summary["resolved"] = interrupted is None
+    if interrupted is not None:
+        summary.update(attack_resolved=False, reason=interrupted["reason"])
     return _attach_riders(summary, attacker, decl)

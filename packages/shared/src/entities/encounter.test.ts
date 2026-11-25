@@ -310,7 +310,13 @@ test("catalog runtime extensions pass the public encounter boundary", () => {
 });
 
 test("catalog runtime extensions reject contradictory action shapes", () => {
-  const rally = { name: "Rally", kind: "healing", target_group: "allied_bandits", healing: "1d8" };
+  const rally = {
+    name: "Rally",
+    kind: "healing",
+    reach: 30,
+    target_group: "allied_bandits",
+    healing: "1d8",
+  };
   expect(() =>
     validateEncounterActionShape({ ...rally, attack_source: "catalog" }, "catalog"),
   ).toThrow("attack_source");

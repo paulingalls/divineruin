@@ -576,7 +576,7 @@ Blessed weapons and Turn Undead/Hollow remain source/effect guidance, not damage
 **Attacks:**
 | Name | Type | Reach | Hit | Damage | Special |
 |---|---|---|---|---|---|
-| Construct Slam | Melee | 15 ft | +11 | 2d10+5 bludgeoning (spec 3d10+5) + 1d6 force (spec 2d6) | Target pushed 15 ft. If they hit a wall: additional 2d6 bludgeoning |
+| Construct Slam | Melee | 15 ft | +11 | 2d10+4 bludgeoning (spec 3d10+5) + 1d6 force (spec 2d6) | Target pushed 15 ft. If they hit a wall: additional 2d6 bludgeoning |
 | Geometry Strike | Ranged | 120 ft | +10 | 1d8+6 force (spec 2d8+6) | A piece of the architecture detaches and hurls itself. Auto-hit against targets touching the Architect's structures |
 
 **Passives:**
@@ -600,9 +600,9 @@ The level-20 reference warrior, mage, rogue and cleric entered with earned attri
 |---|---:|---|---|---|---|---:|---:|---:|
 | Original spec | 300 | 3d10+5 + 2d6 force | 2d8+6 | 4d10 | 3d8 | 0/20 | 17 | 40 |
 | Low dice | 300 | 1d6+5 + 1d4 force | 1d2+6 | 1d8 | 1d4 | 12/20 | 22 | 48 |
-| Middle dice, shipped | 154 | 2d10+5 + 1d6 force | 1d8+6 | 2d10 | 2d8 | 12/20 | 11 | 39 |
+| Middle dice, original release | 154 | 2d10+5 + 1d6 force | 1d8+6 | 2d10 | 2d8 | 12/20 | 11 | 39 |
 
-The middle profile ships because it had the shorter median fight. Every integer HP from 155 through 300 produced at least nine defeats with the middle dice.
+The original release used the middle profile for its shorter median fight. Every integer HP from 155 through 300 produced at least nine defeats with the middle dice. After enemy opportunity attacks brought the release profile to 11 wins, reducing Construct Slam by 1 bludgeoning damage restored 12 wins on the same 20 seeds.
 
 **Legendary Actions (3/round, between other creatures' turns):**
 - **Shift Wall (1 action).** Move one wall section up to 30 ft.
@@ -1498,7 +1498,7 @@ resistance, Dire Bear cold resistance and construct poison/psychic immunities ex
 | bandit | actives | Dirty Fighting | {"name":"Dirty Fighting","description":"1/encounter: throw dirt or sand. Target is Blinded for 1 round unless it passes a DEX save DC 12.","narration_cue":"Dirt scatters with a dry hiss before the target cries out.","recharge":{"kind":"encounter","uses":1},"audio":"bandit_dirty_fighting","kind":"attack","damage":"0","damage_type":"none","applies_condition":"blinded","save":"DEX","dc":12,"duration":1} | executable | kind attack; damage0/type none; blinded DEX DC12 duration1; encounter uses1 | combat_enemy_action._resolve_enemy_condition_packet | none | none |
 | bandit_captain | attacks | Longsword | {"name":"Longsword","type":"melee","reach":5,"to_hit":6,"damage":"1d8+3","damage_type":"slashing","special":null,"audio":"bandit_captain_longsword"} | executable | Base 1d8+3 slashing damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
 | bandit_captain | attacks | Heavy Crossbow | {"name":"Heavy Crossbow","type":"ranged","reach":100,"to_hit":6,"damage":"1d10+3","damage_type":"piercing","special":null,"audio":"bandit_captain_heavy_crossbow"} | executable | Base 1d10+3 piercing damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
-| bandit_captain | actives | Rally | {"name":"Rally","description":"All allied bandits within 30 ft regain 1d8 HP.","narration_cue":"","recharge":{"kind":"encounter","uses":1},"audio":null,"kind":"healing","target_group":"allied_bandits","healing":"1d8"} | mixed | kind healing; target_group allied_bandits; healing1d8; encounter uses1; 30 ft DM adjudicated | combat_enemy_active.resolve_active / combat_enemy_active.heal | 30 ft range is DM adjudicated | none |
+| bandit_captain | actives | Rally | {"name":"Rally","description":"All allied bandits within 30 ft regain 1d8 HP.","narration_cue":"","recharge":{"kind":"encounter","uses":1},"audio":null,"kind":"healing","reach":30,"target_group":"allied_bandits","healing":"1d8"} | executable | kind healing; reach 30 ft; target_group allied_bandits; healing1d8; encounter uses1 | combat_enemy_active.resolve_active / combat_enemy_active.heal | none | none |
 | bandit_captain | actives | Dirty Fighting | {"name":"Dirty Fighting","description":"Advantage on next attack; on hit, target Blinded 1 round.","narration_cue":"","recharge":{"kind":"encounter","uses":1},"audio":null,"kind":"prepare_attack","advantage":true,"on_hit":{"applies_condition":"blinded","duration":1}} | executable | kind prepare_attack; next attack advantage true; on_hit blinded duration1; encounter uses1 | combat_enemy_active.resolve_active / combat_enemy_active.apply_prepared_hit | none | none |
 | bandit_captain | passives | Leadership Aura | {"name":"Leadership Aura","description":"Bandits within 30 ft gain +1 to attack rolls.","narration_cue":"","recharge":null,"audio":null} | deferred | Allied bandits within30 ft attack plus1 | future custom mechanics | No dedicated consumer for these authored passive effects | none |
 | bandit_captain | passives | Cunning Action | {"name":"Cunning Action","description":"Can Dash, Disengage, or Hide as a bonus action.","narration_cue":"","recharge":null,"audio":null} | deferred | Bonus action Dash/Disengage/Hide | future custom mechanics | No dedicated consumer for these authored passive effects | none |

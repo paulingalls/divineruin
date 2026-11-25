@@ -4,10 +4,17 @@ import math
 
 from check_resolution_attack import _is_ranged
 from combat_down import has_damage
-from combat_movement_cost import reachable_point
+from combat_movement_cost import crosses_low_ceiling, reachable_point
 from combat_spatial import distance, number, position, require_spatial
 from combat_spatial_declarations import apply_move, ineligible
-from combat_structures import THORNWALL, blocked_reason, blocking_wall, nearest_wall_point
+from combat_structures import (
+    THORNWALL,
+    blocked_reason,
+    blocking_wall,
+    blocks_path,
+    nearest_wall_point,
+    stop_before_wall,
+)
 from declarations import Declaration, DeclarationType
 from encounter_actions import action_kind
 
@@ -26,16 +33,24 @@ def is_melee(action):
     )
 
 
-def prepare(state, actor, target, action, budget):
+def melee_reach(action: dict) -> float:
+    return number(action.get("reach", 10 if "reach" in action.get("properties", []) else 5), "reach", nonnegative=True)
+
+
+def plan(state, actor, target, action, budget) -> tuple[dict, dict | None]:
     if not is_melee(action):
-        return {}
+        return {}, None
     spatial = require_spatial(state)
-    reach = number(action.get("reach", 10 if "reach" in action.get("properties", []) else 5), "reach", nonnegative=True)
+    reach = melee_reach(action)
     origin, destination = position(spatial, actor.id), position(spatial, target.id)
     if target.is_structure and (segment := spatial.get("structures", {}).get(target.id)):
         destination = nearest_wall_point(origin, segment)
     separation = distance(origin, destination)
-    budget.setdefault("remaining", spatial["speeds"][actor.id])
+    ground_speed = spatial["speeds"][actor.id]
+    previous_allowance = budget.get("remaining")
+    mode = "ground" if actor.fly_speed is None else "flying"
+    speed = ground_speed if actor.fly_speed is None else actor.fly_speed
+    budget.setdefault("remaining", speed)
     if actor.choir_movement_round == state.round_number:
         budget["remaining"] = 0
     facts = {
@@ -49,64 +64,75 @@ def prepare(state, actor, target, action, budget):
     if wall := blocking_wall(
         state, spatial, origin, destination, target_id=target.id, origin_id=actor.id, physical=True
     ):
-        facts.update(resolved=False, attack_resolved=False, reason=blocked_reason(wall))
-        if not actor.is_ally and wall.structure_kind == THORNWALL and ineligible(actor) is None:
-            if separation <= reach:
-                facts["thornwall_id"] = wall.id
-            else:
-                towards = reachable_point(spatial, actor.id, origin, destination, budget["remaining"])
-                if towards != origin:
-                    moved = apply_move(
-                        state,
-                        actor,
-                        Declaration(
-                            type=DeclarationType.MANEUVER, action="move", target_id=actor.id, destination=towards
-                        ),
-                        allowance=budget["remaining"],
-                    )
-                    if not moved["resolved"]:
-                        return {**facts, **moved, "attack_resolved": False}
-                    spent = min(budget["remaining"], moved["movement_spent_ft"])
-                    budget["remaining"] -= spent
-                    facts.update(
-                        moved_ft=moved["moved_ft"],
-                        movement_spent_ft=spent,
-                        destination=moved["destination"],
-                        closed_distance=moved["moved_ft"] > 0,
-                    )
-                    facts.update({key: moved[key] for key in ("left_pit", "thornwall_id") if key in moved})
-        return facts
+        blocked = {**facts, "resolved": False, "attack_resolved": False, "reason": blocked_reason(wall)}
+        if actor.is_ally or wall.structure_kind != THORNWALL or ineligible(actor) is not None:
+            return blocked, None
+        if separation <= reach:
+            return {**blocked, "thornwall_id": wall.id}, None
+        # Shorten the route to the wall before any reach exits are computed from its endpoint.
+        endpoint = reachable_point(spatial, actor.id, origin, destination, budget["remaining"])
+        segment = spatial["structures"][wall.id]
+        if blocks_path(origin, endpoint, segment):
+            endpoint = stop_before_wall(origin, endpoint, segment)
+            facts.update(thornwall_id=wall.id, reason=blocked_reason(wall))
+        if endpoint == origin:
+            return finish(facts, destination, reach), None
+        return facts, {"endpoint": endpoint, "mode": mode, "target": destination, "reach": reach}
     if separation <= reach:
-        return facts
+        return facts, None
     reason = ineligible(actor)
-    travel = 0.0
     travel_needed = separation - reach
     if reason is None and budget["remaining"] > 0:
         desired = {
             axis: origin[axis] + (destination[axis] - origin[axis]) * travel_needed / separation for axis in origin
         }
         end = reachable_point(spatial, actor.id, origin, desired, budget["remaining"])
+        if mode == "flying" and crosses_low_ceiling(spatial, actor.id, origin, end):
+            mode = "ground"
+            budget["remaining"] = ground_speed if previous_allowance is None else previous_allowance
+            end = reachable_point(spatial, actor.id, origin, desired, budget["remaining"])
         if end != origin:
-            moved = apply_move(
-                state,
-                actor,
-                Declaration(type=DeclarationType.MANEUVER, action="move", target_id=actor.id, destination=end),
-                allowance=budget["remaining"],
-            )
-            if not moved["resolved"]:
-                return {**facts, **moved, "attack_resolved": False}
-            travel = moved["moved_ft"]
-            spent = min(budget["remaining"], moved["movement_spent_ft"])
-            facts.update(
-                moved_ft=travel,
-                movement_spent_ft=spent,
-                destination=moved["destination"],
-                closed_distance=travel > 0,
-            )
-            if moved.get("left_pit"):
-                facts["left_pit"] = True
-            budget["remaining"] -= spent
-    remaining = distance(facts["destination"], destination)
+            return facts, {"endpoint": end, "mode": mode, "target": destination, "reach": reach}
+    return finish(facts, destination, reach, reason), None
+
+
+def leg_declaration(actor_id: str, endpoint: dict, mode: str) -> Declaration:
+    return Declaration(DeclarationType.MANEUVER, "move", target_id=actor_id, destination=endpoint, movement_mode=mode)
+
+
+def apply_leg(state, actor, facts: dict, endpoint: dict, mode: str, budget: dict) -> dict:
+    moved = apply_move(
+        state,
+        actor,
+        leg_declaration(actor.id, endpoint, mode),
+        allowance=budget["remaining"],
+    )
+    if not moved["resolved"]:
+        return {**facts, **moved, "attack_resolved": False}
+    travel = facts["moved_ft"] + moved["moved_ft"]
+    spent = min(budget["remaining"], moved["movement_spent_ft"])
+    budget["remaining"] -= spent
+    result = {
+        **facts,
+        "moved_ft": travel,
+        "movement_spent_ft": facts.get("movement_spent_ft", 0) + spent,
+        "movement_mode": moved["movement_mode"],
+        "destination": moved["destination"],
+        "closed_distance": travel > 0,
+        **({"left_pit": True} if moved.get("left_pit") else {}),
+    }
+    if moved.get("left_pit"):
+        # Climbing out of a pit spends the whole move, so the mover never reaches the Thornwall.
+        result.pop("thornwall_id", None)
+        result.pop("reason", None)
+    return result
+
+
+def finish(facts: dict, target: dict, reach: float, reason: str | None = None) -> dict:
+    if "thornwall_id" in facts:
+        facts.update(resolved=False, attack_resolved=False)
+        return facts
+    remaining = distance(facts["destination"], target)
     facts["attack_resolved"] = reason is None and (remaining <= reach or math.isclose(remaining, reach, rel_tol=1e-12))
     if not facts["attack_resolved"]:
         facts["reason"] = (
@@ -115,19 +141,18 @@ def prepare(state, actor, target, action, budget):
     return facts
 
 
-def prepare_held(state, head, action):
-    actor = state.get_participant(head["actor_id"])
-    target = state.get_participant(head["declaration"].get("target_id"))
-    if action is None or target is None or not is_melee(action):
-        return {}
-    previous = head.get("melee_approach", {})
-    if previous:
-        return previous
-    budget = {"remaining": head.get("movement_remaining", require_spatial(state)["speeds"][actor.id])}
-    facts = prepare(state, actor, target, action, budget)
+def prepare(state, actor, target, action, budget):
+    facts, route = plan(state, actor, target, action, budget)
+    if route is not None:
+        facts = apply_leg(state, actor, facts, route["endpoint"], route["mode"], budget)
+        if facts["resolved"]:
+            finish(facts, route["target"], route["reach"])
+    return facts
+
+
+def cache_held(state, head: dict, facts: dict, budget: dict) -> None:
     head.update(melee_approach=facts, movement_remaining=budget["remaining"])
     if "composite" in head:
         for sibling in state.held_actions:
-            if sibling["actor_id"] == actor.id and sibling.get("composite") == head["composite"]:
+            if sibling["actor_id"] == head["actor_id"] and sibling.get("composite") == head["composite"]:
                 sibling["movement_remaining"] = budget["remaining"]
-    return facts

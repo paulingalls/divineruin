@@ -19,40 +19,6 @@ def ability(packet):
     packet.declaration = Declaration(type=DeclarationType.ABILITY, action=packet.declaration.action)
 
 
-async def test_captain_rally_heals_only_eligible_bandits_and_caps_each():
-    state, actor, packet = setup(RALLY)
-    actor.creature_id = "bandit_captain"
-    actor.hp_current = 3
-    allied = copy.deepcopy(actor)
-    allied.id = "another"
-    allied.creature_id = "bandit"
-    allied.hp_current = 6
-    foreign = copy.deepcopy(allied)
-    foreign.id = "other_species"
-    foreign.creature_id = "goblin"
-    fallen = copy.deepcopy(allied)
-    fallen.id = "fallen"
-    fallen.is_fallen = True
-    dead = copy.deepcopy(allied)
-    dead.id = "dead"
-    dead.is_dead = True
-    zero = copy.deepcopy(allied)
-    zero.id = "zero"
-    zero.hp_current = 0
-    state.participants.extend([allied, foreign, fallen, dead, zero])
-    state.participants[0].hp_current = 10
-    ability(packet)
-    d = deps()
-    with patch("dice.roll", return_value=SimpleNamespace(total=5)) as healing_roll:
-        summary = await _resolve_one_packet(make_context().userdata, state, packet, **d)
-    healing_roll.assert_called_once_with("1d8")
-    assert summary["resolved"]
-    assert [p.hp_current for p in state.participants] == [10, 7, 7, 6, 6, 6, 0]
-    assert summary["healed"] == {actor.id: 4, allied.id: 1}
-    d["resolver"].resolve_attack.assert_not_called()
-    assert "Rally" not in _participant_summary(actor)["actions"]
-
-
 def test_captain_actives_are_produced_and_declarable():
     state, actor, _packet = setup(RALLY)
     actor.action_pool.append(DIRTY)

@@ -560,6 +560,7 @@
         "hp": 4,
         "ac": 12,
         "speed": 30,
+        "fly_speed": 30,
         "attributes": {
           "STR": 2,
           "DEX": 14,
@@ -851,6 +852,37 @@
         "regions": [
           "greyvale"
         ]
+      }
+    },
+    {
+      "name": "flight_with_flyby",
+      "block": {
+        "terrains": ["forest"],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {"STR": 12, "DEX": 14, "CON": 12, "INT": 10, "WIS": 10, "CHA": 10},
+        "save_proficiencies": ["DEX"],
+        "attacks": [{"name": "Short Sword", "type": "melee", "reach": 5, "to_hit": 4, "damage": "1d6+2", "damage_type": "slashing", "special": null, "audio": "bandit_sword"}, {"name": "Light Crossbow", "type": "ranged", "reach": 80, "to_hit": 4, "damage": "1d8+2", "damage_type": "piercing", "special": null, "audio": "bandit_crossbow"}],
+        "multiattack": null,
+        "passives": [{"name": "Flyby", "description": "Flies clear.", "narration_cue": "", "recharge": null, "audio": null, "flyby": true}],
+        "actives": [{"name": "Dirty Fighting", "description": "Throw dirt/sand: target Blinded 1 round (DEX save DC 12).", "narration_cue": "Throws dirt into your eyes.", "recharge": "1/encounter", "audio": null}],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {"tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.", "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.", "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)", "environment": ["Roads between settlements", "forest ambush points", "ruins"]},
+        "narration": {"first_sighting": "A bandit steps from cover.", "attack_cue": "The bandit strikes from cover.", "wounded_cue": "The bandit staggers.", "death_cue": "The bandit falls.", "ambient_cue": "Voices carry from beside the road."},
+        "audio": {"ambient": "bandit_ambient", "attack": "bandit_attack", "hit": "bandit_hit", "death": "bandit_death", "special": {}},
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": ["greyvale"],
+        "fly_speed": 80
       }
     },
     {
@@ -3226,6 +3258,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "target_group": "allied_bandits",
             "healing": "1d8",
             "recharge": {
@@ -4333,6 +4366,517 @@
     }
   ],
   "invalid": [
+    {
+      "name": "fly_speed_null",
+      "block": {
+        "terrains": ["forest"],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {"STR": 12, "DEX": 14, "CON": 12, "INT": 10, "WIS": 10, "CHA": 10},
+        "save_proficiencies": ["DEX"],
+        "attacks": [{"name": "Short Sword", "type": "melee", "reach": 5, "to_hit": 4, "damage": "1d6+2", "damage_type": "slashing", "special": null, "audio": "bandit_sword"}, {"name": "Light Crossbow", "type": "ranged", "reach": 80, "to_hit": 4, "damage": "1d8+2", "damage_type": "piercing", "special": null, "audio": "bandit_crossbow"}],
+        "multiattack": null,
+        "passives": [],
+        "actives": [{"name": "Dirty Fighting", "description": "Throw dirt/sand: target Blinded 1 round (DEX save DC 12).", "narration_cue": "Throws dirt into your eyes.", "recharge": "1/encounter", "audio": null}],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {"tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.", "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.", "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)", "environment": ["Roads between settlements", "forest ambush points", "ruins"]},
+        "narration": {"first_sighting": "A bandit steps from cover.", "attack_cue": "The bandit strikes from cover.", "wounded_cue": "The bandit staggers.", "death_cue": "The bandit falls.", "ambient_cue": "Voices carry from beside the road."},
+        "audio": {"ambient": "bandit_ambient", "attack": "bandit_attack", "hit": "bandit_hit", "death": "bandit_death", "special": {}},
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": ["greyvale"],
+        "fly_speed": null
+      },
+      "expected": ["fly_speed: expected positive integer"]
+    },
+    {
+      "name": "fly_speed_boolean",
+      "block": {
+        "terrains": ["forest"],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {"STR": 12, "DEX": 14, "CON": 12, "INT": 10, "WIS": 10, "CHA": 10},
+        "save_proficiencies": ["DEX"],
+        "attacks": [{"name": "Short Sword", "type": "melee", "reach": 5, "to_hit": 4, "damage": "1d6+2", "damage_type": "slashing", "special": null, "audio": "bandit_sword"}, {"name": "Light Crossbow", "type": "ranged", "reach": 80, "to_hit": 4, "damage": "1d8+2", "damage_type": "piercing", "special": null, "audio": "bandit_crossbow"}],
+        "multiattack": null,
+        "passives": [],
+        "actives": [{"name": "Dirty Fighting", "description": "Throw dirt/sand: target Blinded 1 round (DEX save DC 12).", "narration_cue": "Throws dirt into your eyes.", "recharge": "1/encounter", "audio": null}],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {"tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.", "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.", "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)", "environment": ["Roads between settlements", "forest ambush points", "ruins"]},
+        "narration": {"first_sighting": "A bandit steps from cover.", "attack_cue": "The bandit strikes from cover.", "wounded_cue": "The bandit staggers.", "death_cue": "The bandit falls.", "ambient_cue": "Voices carry from beside the road."},
+        "audio": {"ambient": "bandit_ambient", "attack": "bandit_attack", "hit": "bandit_hit", "death": "bandit_death", "special": {}},
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": ["greyvale"],
+        "fly_speed": true
+      },
+      "expected": ["fly_speed: expected positive integer"]
+    },
+    {
+      "name": "fly_speed_string",
+      "block": {
+        "terrains": ["forest"],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {"STR": 12, "DEX": 14, "CON": 12, "INT": 10, "WIS": 10, "CHA": 10},
+        "save_proficiencies": ["DEX"],
+        "attacks": [{"name": "Short Sword", "type": "melee", "reach": 5, "to_hit": 4, "damage": "1d6+2", "damage_type": "slashing", "special": null, "audio": "bandit_sword"}, {"name": "Light Crossbow", "type": "ranged", "reach": 80, "to_hit": 4, "damage": "1d8+2", "damage_type": "piercing", "special": null, "audio": "bandit_crossbow"}],
+        "multiattack": null,
+        "passives": [],
+        "actives": [{"name": "Dirty Fighting", "description": "Throw dirt/sand: target Blinded 1 round (DEX save DC 12).", "narration_cue": "Throws dirt into your eyes.", "recharge": "1/encounter", "audio": null}],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {"tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.", "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.", "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)", "environment": ["Roads between settlements", "forest ambush points", "ruins"]},
+        "narration": {"first_sighting": "A bandit steps from cover.", "attack_cue": "The bandit strikes from cover.", "wounded_cue": "The bandit staggers.", "death_cue": "The bandit falls.", "ambient_cue": "Voices carry from beside the road."},
+        "audio": {"ambient": "bandit_ambient", "attack": "bandit_attack", "hit": "bandit_hit", "death": "bandit_death", "special": {}},
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": ["greyvale"],
+        "fly_speed": "80"
+      },
+      "expected": ["fly_speed: expected positive integer"]
+    },
+    {
+      "name": "fly_speed_zero",
+      "block": {
+        "terrains": ["forest"],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {"STR": 12, "DEX": 14, "CON": 12, "INT": 10, "WIS": 10, "CHA": 10},
+        "save_proficiencies": ["DEX"],
+        "attacks": [{"name": "Short Sword", "type": "melee", "reach": 5, "to_hit": 4, "damage": "1d6+2", "damage_type": "slashing", "special": null, "audio": "bandit_sword"}, {"name": "Light Crossbow", "type": "ranged", "reach": 80, "to_hit": 4, "damage": "1d8+2", "damage_type": "piercing", "special": null, "audio": "bandit_crossbow"}],
+        "multiattack": null,
+        "passives": [],
+        "actives": [{"name": "Dirty Fighting", "description": "Throw dirt/sand: target Blinded 1 round (DEX save DC 12).", "narration_cue": "Throws dirt into your eyes.", "recharge": "1/encounter", "audio": null}],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {"tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.", "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.", "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)", "environment": ["Roads between settlements", "forest ambush points", "ruins"]},
+        "narration": {"first_sighting": "A bandit steps from cover.", "attack_cue": "The bandit strikes from cover.", "wounded_cue": "The bandit staggers.", "death_cue": "The bandit falls.", "ambient_cue": "Voices carry from beside the road."},
+        "audio": {"ambient": "bandit_ambient", "attack": "bandit_attack", "hit": "bandit_hit", "death": "bandit_death", "special": {}},
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": ["greyvale"],
+        "fly_speed": 0
+      },
+      "expected": ["fly_speed: expected positive integer"]
+    },
+    {
+      "name": "fly_speed_negative",
+      "block": {
+        "terrains": ["forest"],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {"STR": 12, "DEX": 14, "CON": 12, "INT": 10, "WIS": 10, "CHA": 10},
+        "save_proficiencies": ["DEX"],
+        "attacks": [{"name": "Short Sword", "type": "melee", "reach": 5, "to_hit": 4, "damage": "1d6+2", "damage_type": "slashing", "special": null, "audio": "bandit_sword"}, {"name": "Light Crossbow", "type": "ranged", "reach": 80, "to_hit": 4, "damage": "1d8+2", "damage_type": "piercing", "special": null, "audio": "bandit_crossbow"}],
+        "multiattack": null,
+        "passives": [],
+        "actives": [{"name": "Dirty Fighting", "description": "Throw dirt/sand: target Blinded 1 round (DEX save DC 12).", "narration_cue": "Throws dirt into your eyes.", "recharge": "1/encounter", "audio": null}],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {"tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.", "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.", "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)", "environment": ["Roads between settlements", "forest ambush points", "ruins"]},
+        "narration": {"first_sighting": "A bandit steps from cover.", "attack_cue": "The bandit strikes from cover.", "wounded_cue": "The bandit staggers.", "death_cue": "The bandit falls.", "ambient_cue": "Voices carry from beside the road."},
+        "audio": {"ambient": "bandit_ambient", "attack": "bandit_attack", "hit": "bandit_hit", "death": "bandit_death", "special": {}},
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": ["greyvale"],
+        "fly_speed": -1
+      },
+      "expected": ["fly_speed: expected positive integer"]
+    },
+    {
+      "name": "fly_speed_fraction",
+      "block": {
+        "terrains": ["forest"],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {"STR": 12, "DEX": 14, "CON": 12, "INT": 10, "WIS": 10, "CHA": 10},
+        "save_proficiencies": ["DEX"],
+        "attacks": [{"name": "Short Sword", "type": "melee", "reach": 5, "to_hit": 4, "damage": "1d6+2", "damage_type": "slashing", "special": null, "audio": "bandit_sword"}, {"name": "Light Crossbow", "type": "ranged", "reach": 80, "to_hit": 4, "damage": "1d8+2", "damage_type": "piercing", "special": null, "audio": "bandit_crossbow"}],
+        "multiattack": null,
+        "passives": [],
+        "actives": [{"name": "Dirty Fighting", "description": "Throw dirt/sand: target Blinded 1 round (DEX save DC 12).", "narration_cue": "Throws dirt into your eyes.", "recharge": "1/encounter", "audio": null}],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {"tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.", "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.", "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)", "environment": ["Roads between settlements", "forest ambush points", "ruins"]},
+        "narration": {"first_sighting": "A bandit steps from cover.", "attack_cue": "The bandit strikes from cover.", "wounded_cue": "The bandit staggers.", "death_cue": "The bandit falls.", "ambient_cue": "Voices carry from beside the road."},
+        "audio": {"ambient": "bandit_ambient", "attack": "bandit_attack", "hit": "bandit_hit", "death": "bandit_death", "special": {}},
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": ["greyvale"],
+        "fly_speed": 80.5
+      },
+      "expected": ["fly_speed: expected positive integer"]
+    },
+    {
+      "name": "fly_speed_decimal",
+      "block": {
+        "terrains": ["forest"],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {"STR": 12, "DEX": 14, "CON": 12, "INT": 10, "WIS": 10, "CHA": 10},
+        "save_proficiencies": ["DEX"],
+        "attacks": [{"name": "Short Sword", "type": "melee", "reach": 5, "to_hit": 4, "damage": "1d6+2", "damage_type": "slashing", "special": null, "audio": "bandit_sword"}, {"name": "Light Crossbow", "type": "ranged", "reach": 80, "to_hit": 4, "damage": "1d8+2", "damage_type": "piercing", "special": null, "audio": "bandit_crossbow"}],
+        "multiattack": null,
+        "passives": [],
+        "actives": [{"name": "Dirty Fighting", "description": "Throw dirt/sand: target Blinded 1 round (DEX save DC 12).", "narration_cue": "Throws dirt into your eyes.", "recharge": "1/encounter", "audio": null}],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {"tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.", "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.", "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)", "environment": ["Roads between settlements", "forest ambush points", "ruins"]},
+        "narration": {"first_sighting": "A bandit steps from cover.", "attack_cue": "The bandit strikes from cover.", "wounded_cue": "The bandit staggers.", "death_cue": "The bandit falls.", "ambient_cue": "Voices carry from beside the road."},
+        "audio": {"ambient": "bandit_ambient", "attack": "bandit_attack", "hit": "bandit_hit", "death": "bandit_death", "special": {}},
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": ["greyvale"],
+        "fly_speed": 80.0
+      },
+      "expected": ["fly_speed: expected positive integer"]
+    },
+    {
+      "name": "fly_speed_exponent",
+      "block": {
+        "terrains": ["forest"],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {"STR": 12, "DEX": 14, "CON": 12, "INT": 10, "WIS": 10, "CHA": 10},
+        "save_proficiencies": ["DEX"],
+        "attacks": [{"name": "Short Sword", "type": "melee", "reach": 5, "to_hit": 4, "damage": "1d6+2", "damage_type": "slashing", "special": null, "audio": "bandit_sword"}, {"name": "Light Crossbow", "type": "ranged", "reach": 80, "to_hit": 4, "damage": "1d8+2", "damage_type": "piercing", "special": null, "audio": "bandit_crossbow"}],
+        "multiattack": null,
+        "passives": [],
+        "actives": [{"name": "Dirty Fighting", "description": "Throw dirt/sand: target Blinded 1 round (DEX save DC 12).", "narration_cue": "Throws dirt into your eyes.", "recharge": "1/encounter", "audio": null}],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {"tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.", "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.", "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)", "environment": ["Roads between settlements", "forest ambush points", "ruins"]},
+        "narration": {"first_sighting": "A bandit steps from cover.", "attack_cue": "The bandit strikes from cover.", "wounded_cue": "The bandit staggers.", "death_cue": "The bandit falls.", "ambient_cue": "Voices carry from beside the road."},
+        "audio": {"ambient": "bandit_ambient", "attack": "bandit_attack", "hit": "bandit_hit", "death": "bandit_death", "special": {}},
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": ["greyvale"],
+        "fly_speed": 8e1
+      },
+      "expected": ["fly_speed: expected positive integer"]
+    },
+    {
+      "name": "flyby_false",
+      "block": {
+        "terrains": ["forest"],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {"STR": 12, "DEX": 14, "CON": 12, "INT": 10, "WIS": 10, "CHA": 10},
+        "save_proficiencies": ["DEX"],
+        "attacks": [{"name": "Short Sword", "type": "melee", "reach": 5, "to_hit": 4, "damage": "1d6+2", "damage_type": "slashing", "special": null, "audio": "bandit_sword"}, {"name": "Light Crossbow", "type": "ranged", "reach": 80, "to_hit": 4, "damage": "1d8+2", "damage_type": "piercing", "special": null, "audio": "bandit_crossbow"}],
+        "multiattack": null,
+        "passives": [{"name": "Flyby", "description": "Flies clear.", "narration_cue": "", "recharge": null, "audio": null, "flyby": false}],
+        "actives": [{"name": "Dirty Fighting", "description": "Throw dirt/sand: target Blinded 1 round (DEX save DC 12).", "narration_cue": "Throws dirt into your eyes.", "recharge": "1/encounter", "audio": null}],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {"tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.", "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.", "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)", "environment": ["Roads between settlements", "forest ambush points", "ruins"]},
+        "narration": {"first_sighting": "A bandit steps from cover.", "attack_cue": "The bandit strikes from cover.", "wounded_cue": "The bandit staggers.", "death_cue": "The bandit falls.", "ambient_cue": "Voices carry from beside the road."},
+        "audio": {"ambient": "bandit_ambient", "attack": "bandit_attack", "hit": "bandit_hit", "death": "bandit_death", "special": {}},
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": ["greyvale"],
+        "fly_speed": 80
+      },
+      "expected": ["passives[0].flyby: expected true"]
+    },
+    {
+      "name": "flyby_null",
+      "block": {
+        "terrains": ["forest"],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {"STR": 12, "DEX": 14, "CON": 12, "INT": 10, "WIS": 10, "CHA": 10},
+        "save_proficiencies": ["DEX"],
+        "attacks": [{"name": "Short Sword", "type": "melee", "reach": 5, "to_hit": 4, "damage": "1d6+2", "damage_type": "slashing", "special": null, "audio": "bandit_sword"}, {"name": "Light Crossbow", "type": "ranged", "reach": 80, "to_hit": 4, "damage": "1d8+2", "damage_type": "piercing", "special": null, "audio": "bandit_crossbow"}],
+        "multiattack": null,
+        "passives": [{"name": "Flyby", "description": "Flies clear.", "narration_cue": "", "recharge": null, "audio": null, "flyby": null}],
+        "actives": [{"name": "Dirty Fighting", "description": "Throw dirt/sand: target Blinded 1 round (DEX save DC 12).", "narration_cue": "Throws dirt into your eyes.", "recharge": "1/encounter", "audio": null}],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {"tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.", "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.", "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)", "environment": ["Roads between settlements", "forest ambush points", "ruins"]},
+        "narration": {"first_sighting": "A bandit steps from cover.", "attack_cue": "The bandit strikes from cover.", "wounded_cue": "The bandit staggers.", "death_cue": "The bandit falls.", "ambient_cue": "Voices carry from beside the road."},
+        "audio": {"ambient": "bandit_ambient", "attack": "bandit_attack", "hit": "bandit_hit", "death": "bandit_death", "special": {}},
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": ["greyvale"],
+        "fly_speed": 80
+      },
+      "expected": ["passives[0].flyby: expected true"]
+    },
+    {
+      "name": "flyby_number",
+      "block": {
+        "terrains": ["forest"],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {"STR": 12, "DEX": 14, "CON": 12, "INT": 10, "WIS": 10, "CHA": 10},
+        "save_proficiencies": ["DEX"],
+        "attacks": [{"name": "Short Sword", "type": "melee", "reach": 5, "to_hit": 4, "damage": "1d6+2", "damage_type": "slashing", "special": null, "audio": "bandit_sword"}, {"name": "Light Crossbow", "type": "ranged", "reach": 80, "to_hit": 4, "damage": "1d8+2", "damage_type": "piercing", "special": null, "audio": "bandit_crossbow"}],
+        "multiattack": null,
+        "passives": [{"name": "Flyby", "description": "Flies clear.", "narration_cue": "", "recharge": null, "audio": null, "flyby": 1}],
+        "actives": [{"name": "Dirty Fighting", "description": "Throw dirt/sand: target Blinded 1 round (DEX save DC 12).", "narration_cue": "Throws dirt into your eyes.", "recharge": "1/encounter", "audio": null}],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {"tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.", "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.", "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)", "environment": ["Roads between settlements", "forest ambush points", "ruins"]},
+        "narration": {"first_sighting": "A bandit steps from cover.", "attack_cue": "The bandit strikes from cover.", "wounded_cue": "The bandit staggers.", "death_cue": "The bandit falls.", "ambient_cue": "Voices carry from beside the road."},
+        "audio": {"ambient": "bandit_ambient", "attack": "bandit_attack", "hit": "bandit_hit", "death": "bandit_death", "special": {}},
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": ["greyvale"],
+        "fly_speed": 80
+      },
+      "expected": ["passives[0].flyby: expected true"]
+    },
+    {
+      "name": "flyby_string",
+      "block": {
+        "terrains": ["forest"],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {"STR": 12, "DEX": 14, "CON": 12, "INT": 10, "WIS": 10, "CHA": 10},
+        "save_proficiencies": ["DEX"],
+        "attacks": [{"name": "Short Sword", "type": "melee", "reach": 5, "to_hit": 4, "damage": "1d6+2", "damage_type": "slashing", "special": null, "audio": "bandit_sword"}, {"name": "Light Crossbow", "type": "ranged", "reach": 80, "to_hit": 4, "damage": "1d8+2", "damage_type": "piercing", "special": null, "audio": "bandit_crossbow"}],
+        "multiattack": null,
+        "passives": [{"name": "Flyby", "description": "Flies clear.", "narration_cue": "", "recharge": null, "audio": null, "flyby": "true"}],
+        "actives": [{"name": "Dirty Fighting", "description": "Throw dirt/sand: target Blinded 1 round (DEX save DC 12).", "narration_cue": "Throws dirt into your eyes.", "recharge": "1/encounter", "audio": null}],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {"tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.", "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.", "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)", "environment": ["Roads between settlements", "forest ambush points", "ruins"]},
+        "narration": {"first_sighting": "A bandit steps from cover.", "attack_cue": "The bandit strikes from cover.", "wounded_cue": "The bandit staggers.", "death_cue": "The bandit falls.", "ambient_cue": "Voices carry from beside the road."},
+        "audio": {"ambient": "bandit_ambient", "attack": "bandit_attack", "hit": "bandit_hit", "death": "bandit_death", "special": {}},
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": ["greyvale"],
+        "fly_speed": 80
+      },
+      "expected": ["passives[0].flyby: expected true"]
+    },
+    {
+      "name": "flyby_object",
+      "block": {
+        "terrains": ["forest"],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {"STR": 12, "DEX": 14, "CON": 12, "INT": 10, "WIS": 10, "CHA": 10},
+        "save_proficiencies": ["DEX"],
+        "attacks": [{"name": "Short Sword", "type": "melee", "reach": 5, "to_hit": 4, "damage": "1d6+2", "damage_type": "slashing", "special": null, "audio": "bandit_sword"}, {"name": "Light Crossbow", "type": "ranged", "reach": 80, "to_hit": 4, "damage": "1d8+2", "damage_type": "piercing", "special": null, "audio": "bandit_crossbow"}],
+        "multiattack": null,
+        "passives": [{"name": "Flyby", "description": "Flies clear.", "narration_cue": "", "recharge": null, "audio": null, "flyby": {}}],
+        "actives": [{"name": "Dirty Fighting", "description": "Throw dirt/sand: target Blinded 1 round (DEX save DC 12).", "narration_cue": "Throws dirt into your eyes.", "recharge": "1/encounter", "audio": null}],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {"tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.", "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.", "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)", "environment": ["Roads between settlements", "forest ambush points", "ruins"]},
+        "narration": {"first_sighting": "A bandit steps from cover.", "attack_cue": "The bandit strikes from cover.", "wounded_cue": "The bandit staggers.", "death_cue": "The bandit falls.", "ambient_cue": "Voices carry from beside the road."},
+        "audio": {"ambient": "bandit_ambient", "attack": "bandit_attack", "hit": "bandit_hit", "death": "bandit_death", "special": {}},
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": ["greyvale"],
+        "fly_speed": 80
+      },
+      "expected": ["passives[0].flyby: expected true"]
+    },
+    {
+      "name": "flyby_in_actives",
+      "block": {
+        "terrains": ["forest"],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {"STR": 12, "DEX": 14, "CON": 12, "INT": 10, "WIS": 10, "CHA": 10},
+        "save_proficiencies": ["DEX"],
+        "attacks": [{"name": "Short Sword", "type": "melee", "reach": 5, "to_hit": 4, "damage": "1d6+2", "damage_type": "slashing", "special": null, "audio": "bandit_sword"}, {"name": "Light Crossbow", "type": "ranged", "reach": 80, "to_hit": 4, "damage": "1d8+2", "damage_type": "piercing", "special": null, "audio": "bandit_crossbow"}],
+        "multiattack": null,
+        "passives": [],
+        "actives": [{"name": "Flyby", "description": "Flies clear.", "narration_cue": "", "recharge": null, "audio": null, "flyby": true}],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {"tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.", "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.", "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)", "environment": ["Roads between settlements", "forest ambush points", "ruins"]},
+        "narration": {"first_sighting": "A bandit steps from cover.", "attack_cue": "The bandit strikes from cover.", "wounded_cue": "The bandit staggers.", "death_cue": "The bandit falls.", "ambient_cue": "Voices carry from beside the road."},
+        "audio": {"ambient": "bandit_ambient", "attack": "bandit_attack", "hit": "bandit_hit", "death": "bandit_death", "special": {}},
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": ["greyvale"],
+        "fly_speed": 80
+      },
+      "expected": ["actives[0].flyby: only allowed on passives"]
+    },
+    {
+      "name": "flyby_in_reactions",
+      "block": {
+        "terrains": ["forest"],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {"STR": 12, "DEX": 14, "CON": 12, "INT": 10, "WIS": 10, "CHA": 10},
+        "save_proficiencies": ["DEX"],
+        "attacks": [{"name": "Short Sword", "type": "melee", "reach": 5, "to_hit": 4, "damage": "1d6+2", "damage_type": "slashing", "special": null, "audio": "bandit_sword"}, {"name": "Light Crossbow", "type": "ranged", "reach": 80, "to_hit": 4, "damage": "1d8+2", "damage_type": "piercing", "special": null, "audio": "bandit_crossbow"}],
+        "multiattack": null,
+        "passives": [],
+        "actives": [{"name": "Dirty Fighting", "description": "Throw dirt/sand: target Blinded 1 round (DEX save DC 12).", "narration_cue": "Throws dirt into your eyes.", "recharge": "1/encounter", "audio": null}],
+        "reactions": [{"name": "Flyby", "description": "Flies clear.", "narration_cue": "", "recharge": null, "audio": null, "flyby": true}],
+        "hollow": null,
+        "behavior": {"tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.", "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.", "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)", "environment": ["Roads between settlements", "forest ambush points", "ruins"]},
+        "narration": {"first_sighting": "A bandit steps from cover.", "attack_cue": "The bandit strikes from cover.", "wounded_cue": "The bandit staggers.", "death_cue": "The bandit falls.", "ambient_cue": "Voices carry from beside the road."},
+        "audio": {"ambient": "bandit_ambient", "attack": "bandit_attack", "hit": "bandit_hit", "death": "bandit_death", "special": {}},
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": ["greyvale"],
+        "fly_speed": 80
+      },
+      "expected": ["reactions[0].flyby: only allowed on passives"]
+    },
+    {
+      "name": "flyby_without_fly_speed",
+      "block": {
+        "terrains": ["forest"],
+        "id": "schema_beast",
+        "name": "Beast",
+        "category": "beast",
+        "tier": 1,
+        "description": "Bandit",
+        "level": 2,
+        "hp": 16,
+        "ac": 13,
+        "speed": 30,
+        "attributes": {"STR": 12, "DEX": 14, "CON": 12, "INT": 10, "WIS": 10, "CHA": 10},
+        "save_proficiencies": ["DEX"],
+        "attacks": [{"name": "Short Sword", "type": "melee", "reach": 5, "to_hit": 4, "damage": "1d6+2", "damage_type": "slashing", "special": null, "audio": "bandit_sword"}, {"name": "Light Crossbow", "type": "ranged", "reach": 80, "to_hit": 4, "damage": "1d8+2", "damage_type": "piercing", "special": null, "audio": "bandit_crossbow"}],
+        "multiattack": null,
+        "passives": [{"name": "Flyby", "description": "Flies clear.", "narration_cue": "", "recharge": null, "audio": null, "flyby": true}],
+        "actives": [{"name": "Dirty Fighting", "description": "Throw dirt/sand: target Blinded 1 round (DEX save DC 12).", "narration_cue": "Throws dirt into your eyes.", "recharge": "1/encounter", "audio": null}],
+        "reactions": [],
+        "hollow": null,
+        "behavior": {"tactics": "Ambush from cover. Focus downed targets. Demand surrender before attacking if outnumbered.", "morale": "Flees at half HP or if leader falls. Surrenders if clearly outmatched.", "group_size": "Gang of 3-6, often with 1 Bandit Captain (Tier 2)", "environment": ["Roads between settlements", "forest ambush points", "ruins"]},
+        "narration": {"first_sighting": "A bandit steps from cover.", "attack_cue": "The bandit strikes from cover.", "wounded_cue": "The bandit staggers.", "death_cue": "The bandit falls.", "ambient_cue": "Voices carry from beside the road."},
+        "audio": {"ambient": "bandit_ambient", "attack": "bandit_attack", "hit": "bandit_hit", "death": "bandit_death", "special": {}},
+        "loot_table_id": "loot_humanoid_bandit",
+        "xp_reward": 50,
+        "home_region": "multi_region",
+        "regions": ["greyvale"]
+      },
+      "expected": ["passives[0].flyby: requires fly_speed"]
+    },
     {
       "name": "legendary_duplicate_id",
       "block": {
@@ -21216,6 +21760,894 @@
       ]
     },
     {
+      "name": "active_healing_missing_reach",
+      "block": {
+        "terrains": [
+          "forest"
+        ],
+        "id": "fixture_legacy_no_combat_fields",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Test",
+            "description": "Test",
+            "narration_cue": "A hiss.",
+            "audio": null,
+            "kind": "healing",
+            "target_group": "allied_bandits",
+            "healing": "1d8",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            }
+          }
+        ],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ]
+      },
+      "field": "reach",
+      "expected": [
+        "actives[0].reach: invalid"
+      ]
+    },
+    {
+      "name": "active_healing_null_reach",
+      "block": {
+        "terrains": [
+          "forest"
+        ],
+        "id": "fixture_legacy_no_combat_fields",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Test",
+            "description": "Test",
+            "narration_cue": "A hiss.",
+            "audio": null,
+            "kind": "healing",
+            "target_group": "allied_bandits",
+            "healing": "1d8",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "reach": null
+          }
+        ],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ]
+      },
+      "field": "reach",
+      "expected": [
+        "actives[0].reach: invalid"
+      ]
+    },
+    {
+      "name": "active_healing_boolean_reach",
+      "block": {
+        "terrains": [
+          "forest"
+        ],
+        "id": "fixture_legacy_no_combat_fields",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Test",
+            "description": "Test",
+            "narration_cue": "A hiss.",
+            "audio": null,
+            "kind": "healing",
+            "target_group": "allied_bandits",
+            "healing": "1d8",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "reach": true
+          }
+        ],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ]
+      },
+      "field": "reach",
+      "expected": [
+        "actives[0].reach: invalid"
+      ]
+    },
+    {
+      "name": "active_healing_zero_reach",
+      "block": {
+        "terrains": [
+          "forest"
+        ],
+        "id": "fixture_legacy_no_combat_fields",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Test",
+            "description": "Test",
+            "narration_cue": "A hiss.",
+            "audio": null,
+            "kind": "healing",
+            "target_group": "allied_bandits",
+            "healing": "1d8",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "reach": 0
+          }
+        ],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ]
+      },
+      "field": "reach",
+      "expected": [
+        "actives[0].reach: invalid"
+      ]
+    },
+    {
+      "name": "active_healing_negative_reach",
+      "block": {
+        "terrains": [
+          "forest"
+        ],
+        "id": "fixture_legacy_no_combat_fields",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Test",
+            "description": "Test",
+            "narration_cue": "A hiss.",
+            "audio": null,
+            "kind": "healing",
+            "target_group": "allied_bandits",
+            "healing": "1d8",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "reach": -1
+          }
+        ],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ]
+      },
+      "field": "reach",
+      "expected": [
+        "actives[0].reach: invalid"
+      ]
+    },
+    {
+      "name": "active_healing_fractional_reach",
+      "block": {
+        "terrains": [
+          "forest"
+        ],
+        "id": "fixture_legacy_no_combat_fields",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Test",
+            "description": "Test",
+            "narration_cue": "A hiss.",
+            "audio": null,
+            "kind": "healing",
+            "target_group": "allied_bandits",
+            "healing": "1d8",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "reach": 1.5
+          }
+        ],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ]
+      },
+      "field": "reach",
+      "expected": [
+        "actives[0].reach: invalid"
+      ]
+    },
+    {
+      "name": "active_healing_string_reach",
+      "block": {
+        "terrains": [
+          "forest"
+        ],
+        "id": "fixture_legacy_no_combat_fields",
+        "name": "Shadeling",
+        "category": "hollow",
+        "tier": 1,
+        "description": "The smallest and most common Hollow expression. A smear of wrongness that drifts along the ground.",
+        "level": 1,
+        "hp": 8,
+        "ac": 10,
+        "speed": 20,
+        "attributes": {
+          "STR": 4,
+          "DEX": 12,
+          "CON": 8,
+          "INT": 1,
+          "WIS": 6,
+          "CHA": 1
+        },
+        "save_proficiencies": [
+          "DEX"
+        ],
+        "attacks": [
+          {
+            "name": "Corrosive Touch",
+            "type": "melee",
+            "reach": 5,
+            "to_hit": 3,
+            "damage": "1d4+1",
+            "damage_type": "necrotic",
+            "special": "Organic materials (wood, leather) take double damage",
+            "audio": "hlw_corrosive_touch"
+          }
+        ],
+        "multiattack": null,
+        "passives": [
+          {
+            "name": "Amorphous",
+            "description": "Can move through spaces as narrow as 1 inch. Cannot be grappled or restrained.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Corruption Trail",
+            "description": "Organic surfaces crossed take 1 necrotic damage. Leaves visible marks.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          },
+          {
+            "name": "Sunlight Sensitivity",
+            "description": "In direct sunlight: disadvantage on attacks and -2 AC.",
+            "narration_cue": "",
+            "recharge": null,
+            "audio": null
+          }
+        ],
+        "actives": [
+          {
+            "name": "Test",
+            "description": "Test",
+            "narration_cue": "A hiss.",
+            "audio": null,
+            "kind": "healing",
+            "target_group": "allied_bandits",
+            "healing": "1d8",
+            "recharge": {
+              "kind": "encounter",
+              "uses": 1
+            },
+            "reach": "30"
+          }
+        ],
+        "reactions": [],
+        "hollow": {
+          "class": "drift",
+          "corruption_aura": 0,
+          "resonance_on_death": 0,
+          "veil_effect": "Ambient sounds thin in 10 ft radius. Birdsong stops.",
+          "vulnerable_to": [
+            "radiant",
+            "fire",
+            "blessed_weapons"
+          ]
+        },
+        "behavior": {
+          "tactics": "No tactics. Drifts toward nearest life energy. Clusters naturally but does not coordinate.",
+          "morale": "fights_to_death",
+          "group_size": "swarm_6_20",
+          "environment": [
+            "Ashmark",
+            "northern Greyvale",
+            "corrupted zones"
+          ]
+        },
+        "narration": {
+          "first_sighting": "A wet hiss skims the ground. A shapeless smear of darkness trails withered grass.",
+          "attack_cue": "A static hiss presses close as its whole form reaches for you. Its touch burns cold.",
+          "wounded_cue": "A thin crackle breaks as the shadeling shudders and its edges dissolve.",
+          "death_cue": "A brief hiss escapes as it disperses into black mist. The ground beneath is grey and dead.",
+          "ambient_cue": "A low hum swallows birdsong beside a patch of moving shadow. The grass beneath it is dying."
+        },
+        "audio": {
+          "ambient": "HLW-001",
+          "attack": "wet static hiss",
+          "hit": "muffled impact on nothing solid",
+          "death": "brief static burst",
+          "special": {}
+        },
+        "loot_table_id": "loot_hollow_drift",
+        "xp_reward": 25,
+        "home_region": "ashmark",
+        "regions": [
+          "ashmark",
+          "greyvale"
+        ]
+      },
+      "field": "reach",
+      "expected": [
+        "actives[0].reach: invalid"
+      ]
+    },
+    {
       "name": "active_healing_target_group_0",
       "block": {
         "terrains": ["forest"],
@@ -21282,6 +22714,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "target_group": "allies",
             "healing": "1d8",
             "recharge": {
@@ -21406,6 +22839,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "target_group": null,
             "healing": "1d8",
             "recharge": {
@@ -21530,6 +22964,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "target_group": 1,
             "healing": "1d8",
             "recharge": {
@@ -21654,6 +23089,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "healing": "1d8",
             "recharge": {
               "kind": "encounter",
@@ -21777,6 +23213,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "target_group": "allied_bandits",
             "healing": "0d8",
             "recharge": {
@@ -21901,6 +23338,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "target_group": "allied_bandits",
             "healing": "1d0",
             "recharge": {
@@ -22025,6 +23463,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "target_group": "allied_bandits",
             "healing": "1d8-1",
             "recharge": {
@@ -22149,6 +23588,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "target_group": "allied_bandits",
             "healing": "heal",
             "recharge": {
@@ -22273,6 +23713,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "target_group": "allied_bandits",
             "healing": null,
             "recharge": {
@@ -22397,6 +23838,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "target_group": "allied_bandits",
             "healing": 1,
             "recharge": {
@@ -22521,6 +23963,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "target_group": "allied_bandits",
             "recharge": {
               "kind": "encounter",
@@ -22644,6 +24087,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "target_group": "allied_bandits",
             "healing": "1d8",
             "recharge": {
@@ -22769,6 +24213,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "target_group": "allied_bandits",
             "healing": "1d8",
             "recharge": {
@@ -22894,6 +24339,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "target_group": "allied_bandits",
             "healing": "1d8",
             "recharge": {
@@ -23019,6 +24465,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "target_group": "allied_bandits",
             "healing": "1d8",
             "recharge": {
@@ -23144,6 +24591,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "target_group": "allied_bandits",
             "healing": "1d8",
             "recharge": {
@@ -23269,6 +24717,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "target_group": "allied_bandits",
             "healing": "1d8",
             "recharge": {
@@ -23394,6 +24843,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "target_group": "allied_bandits",
             "healing": "1d8",
             "recharge": {
@@ -23519,6 +24969,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "target_group": "allied_bandits",
             "healing": "1d8",
             "recharge": "once"
@@ -23640,6 +25091,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "target_group": "allied_bandits",
             "healing": "1d8",
             "recharge": null
@@ -28355,6 +29807,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "target_group": "allied_bandits",
             "healing": "1d8",
             "recharge": {
@@ -28480,6 +29933,7 @@
             "narration_cue": "A hiss.",
             "audio": null,
             "kind": "healing",
+            "reach": 30,
             "target_group": "allied_bandits",
             "healing": "1d8",
             "recharge": {

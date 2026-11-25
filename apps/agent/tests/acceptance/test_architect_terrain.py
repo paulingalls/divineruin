@@ -4,11 +4,12 @@ from unittest.mock import patch
 import pytest
 from _zhael_fate_fixtures import attack, defend
 from acceptance._capstone_helpers import _d20, _damage_die
+from acceptance.mawling_harness import MawlingHarness
+from acceptance.test_architect_fight import WORKS, enter, pos
 from acceptance.test_architect_fight import attack as enemy_attack
 from acceptance.test_architect_fight import fight as fight
 from acceptance.test_architect_fight import isolated_content_cache as isolated_content_cache
 from acceptance.test_architect_fight import mock_combat_agent_factory as mock_combat_agent_factory
-from acceptance.test_architect_fight import pos
 
 import check_resolution_save
 import combat_spatial
@@ -51,6 +52,8 @@ async def test_floor_save_and_full_movement_exit(fight, succeeds, approach):
     owner = state.architect_encounter["owner_id"]
     start = pos(25)
     combat_spatial.place(state, player, start)
+    if approach:
+        combat_structures.add_wall(state, "far_wall", "Far wall", pos(43, -1), pos(43, 1))
     state.spatial["speeds"][player] = 30
     state.get_participant(player).attributes["dexterity"] = 10
     state = await fight.persist()
@@ -86,18 +89,61 @@ async def test_floor_save_and_full_movement_exit(fight, succeeds, approach):
     assert state.architect_encounter["pits"] == {player: receipt["section_id"]}
     assert any(condition["type"] == "prone" for condition in state.get_participant(player).conditions)
 
-    action = attack(player, owner) if approach else move(player, pos(20))
-    result = await play(fight, player, action, defend(owner))
+    action = attack(player, "far_wall") if approach else move(player, pos(40))
+    await declare(fight, action, defend(owner))
+    with patch("check_resolution.dice_roll", return_value=_d20(1)):
+        phase = await fight.command("resolve_phase", {})
+    assert not any(packet.get("opportunity_attack") for packet in phase["packets"])
+    [result] = [packet for packet in phase["packets"] if packet["actor_id"] == player]
     assert result["left_pit"] and result["moved_ft"] == 0 and result["movement_spent_ft"] == 30
     if approach:
         assert not result["attack_resolved"]
     state = await fight.reload()
+    assert state.spatial["positions"][player] == start
+    assert not state.reactions_available[owner]["spent"]
     assert not state.architect_encounter["pits"]
     assert any(condition["type"] == "prone" for condition in state.get_participant(player).conditions)
+    await fight.drain()
     stand = {"kind": "maneuver", "actor_id": player, "target_id": player}
     await play(fight, player, stand, defend(owner))
     result = await play(fight, player, move(player, pos(20)), defend(owner))
     assert result["moved_ft"] == 5 and result["movement_spent_ft"] == 10
+
+
+async def test_held_enemy_climbs_before_it_can_provoke(reset_db_pool: str) -> None:
+    fight = MawlingHarness()
+    try:
+        await fight.prepare((20, 20), companion=None, location=WORKS)
+        state = await enter(fight)
+        warrior, target = fight.players
+        assert state.architect_encounter is not None
+        owner = state.architect_encounter["owner_id"]
+        architect = state.get_participant(owner)
+        assert architect is not None
+        origin = pos(25)
+        for actor, point in ((owner, origin), (warrior, pos(22)), (target, pos(55))):
+            combat_spatial.place(state, actor, point)
+        architect.action_ledger["legendary resistance"]["remaining"] = 0
+        await fight.persist()
+        floor = {"kind": "open_floor", "min": pos(24, -1), "max": pos(26, 1)}
+        with patch("check_resolution.dice_roll", return_value=_d20(1)):
+            await play(fight, owner, defend(warrior), defend(target), {**defend(owner), "reshape": [floor]})
+        state = await fight.reload()
+        assert state.architect_encounter is not None and owner in state.architect_encounter["pits"]
+
+        slam = {**attack(owner, target), "action": "Construct Slam"}
+        await declare(fight, defend(warrior), defend(target), slam)
+        await fight.command("resolve_phase", {})
+        assert not (await fight.reload()).reactions_available[warrior]["spent"]
+        phase = await fight.command("resolve_phase", {})
+        assert phase["next"]["waiting_on"] is None
+        [result] = [packet for packet in phase["packets"] if packet["actor_id"] == owner]
+        assert result["left_pit"] and result["moved_ft"] == 0 and not result["attack_resolved"]
+        state = await fight.reload()
+        assert combat_spatial.require_spatial(state)["positions"][owner] == origin
+        assert state.architect_encounter is not None and owner not in state.architect_encounter["pits"]
+    finally:
+        await fight.close()
 
 
 async def test_construct_slam_pushes_a_traveller_out_of_a_pit(fight):

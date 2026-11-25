@@ -415,10 +415,6 @@ async def test_cunning_action(rogue: MawlingHarness, rider: str, face: int) -> N
     if rider == "dash":
         combat_spatial.place(state, foe, {**origin, "x": origin["x"] + speed + 15})
     await rogue.persist()
-    result = await rogue.command("query_info", {"kind": "abilities"})
-    row = next(row for row in result["abilities"] if row["id"] == "rogue_cunning_action")
-    assert row.get("combat") is not False
-    assert row["declaration"] == {"kind": "attack", "riders": ["dash", "hide"]}
     await rogue.command("declare_phase", {"declarations": [weapon_attack(actor, foe, rider)]})
     with (
         patch("check_resolution.dice_roll", side_effect=[_d20(15), _d20(face)] if rider == "hide" else [_d20(face)]),
@@ -445,23 +441,38 @@ async def test_cunning_action(rogue: MawlingHarness, rider: str, face: int) -> N
         assert player["stamina"]["current"] == 8
 
 
+async def test_cunning_action_discovery(rogue: MawlingHarness) -> None:
+    await enter(rogue)
+    result = await rogue.command("query_info", {"kind": "abilities"})
+    row = next(row for row in result["abilities"] if row["id"] == "rogue_cunning_action")
+    assert row.get("combat") is not False
+    assert row["declaration"] == {"kind": "attack", "riders": ["dash", "hide", "disengage"]}
+    refusal = await rogue.command("activate", {"id": row["id"]}, error=True)
+    assert "weapon attack" in refusal
+    for rider in row["declaration"]["riders"]:
+        assert f'rider="{rider}"' in refusal
+
+
 async def test_cunning_action_refusals(rogue: MawlingHarness) -> None:
     actor = rogue.players[0]
     await enter(rogue)
     foe = await adjacent_foe(rogue)
-    for rider, reason in (("disengage", "reaction window"), ("teleport", "rider")):
-        refusal = await rogue.command("declare_phase", {"declarations": [weapon_attack(actor, foe, rider)]}, error=True)
-        assert reason in refusal
+    unknown = weapon_attack(actor, foe, "teleport")
+    assert "rider" in await rogue.command("declare_phase", {"declarations": [unknown]}, error=True)
     attack = weapon_attack(actor, foe, "dash")
     refusal = await rogue.command("declare_phase", {"declarations": [attack, attack]}, error=True)
     assert actor in refusal
     await rogue.pool.execute(
         "UPDATE players SET data=jsonb_set(data, '{stamina,current}', '1') WHERE player_id=$1", actor
     )
-    refusal = await rogue.command("declare_phase", {"declarations": [attack]}, error=True)
+    before = (await rogue.reload()).to_dict()
+    before_player = await db_queries.get_player(actor)
+    assert before_player is not None and before_player["stamina"]["current"] == 1
+    disengage = weapon_attack(actor, foe, "disengage")
+    refusal = await rogue.command("declare_phase", {"declarations": [disengage]}, error=True)
     assert "Stamina" in refusal
-    player = await db_queries.get_player(actor)
-    assert player is not None and player["stamina"]["current"] == 1
+    assert await db_queries.get_player(actor) == before_player
+    assert (await rogue.reload()).to_dict() == before
 
 
 async def test_devastating_strike_refuses_a_foe_behind_a_wall(fight: MawlingHarness) -> None:

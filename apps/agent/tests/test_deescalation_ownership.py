@@ -32,15 +32,16 @@ async def test_unlearned_deescalation_reopens_declaration(world: SimpleNamespace
 
         await f.declare(argument(f.hero))
         assert f.session.combat_state.beat == "resolution"
+        reopened = {**before, "reactions_available": f.session.combat_state.to_dict()["reactions_available"]}
         with patch.object(db_mutations, "save_combat_state", wraps=db_mutations.save_combat_state) as save:
             with pytest.raises(ToolError, match="hasn't learned De-escalate"):
                 await f.call("resolve_phase")
 
         save.assert_awaited_once()
-        assert save.await_args is not None and save.await_args.args == (f.combat_id, before)
+        assert save.await_args is not None and save.await_args.args == (f.combat_id, reopened)
         assert await row(world, 0) == player_before
-        assert f.session.combat_state.to_dict() == before
-        assert (await f.reload()).to_dict() == before
+        assert f.session.combat_state.to_dict() == reopened
+        assert (await f.reload()).to_dict() == reopened
 
 
 async def test_level_one_diplomat_can_deescalate_for_three_focus(world: SimpleNamespace) -> None:

@@ -87,8 +87,6 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
     pool_action = _find_action(actor, declaration.action)
     martial = combat_martial.attack_ability(declaration)
     if declaration.type is DeclarationType.ATTACK and declaration.rider and martial is None:
-        if declaration.rider == "disengage":
-            raise ValueError("Disengage is unavailable because movement opens no hostile reaction window.")
         raise ValueError(f"Unknown attack rider {declaration.rider!r}.")
     if martial in (CUNNING_ACTION, SHIELD_BASH):
         import abilities

@@ -116,6 +116,7 @@ def apply_move(state, actor, declaration, *, allowance=None):
         "declaration_type": "maneuver",
         "moved_ft": travelled,
         "movement_spent_ft": spent,
+        "movement_mode": declaration.movement_mode,
         **({"left_pit": True} if climbed else {}),
         **({"thornwall_id": wall.id, "reason": f"Stopped by {wall.name}"} if wall else {}),
         "destination": destination,

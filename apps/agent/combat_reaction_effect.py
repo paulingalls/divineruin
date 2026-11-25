@@ -13,8 +13,10 @@ from typing import cast
 
 import abilities
 import ability_voice_rules
+import architect_entomb
 import combat_grapple
 import combat_reaction_contest
+import combat_structures
 import conditions
 import reaction_spend
 import reaction_windows
@@ -33,7 +35,7 @@ logger = logging.getLogger("divineruin.tools")
 # catalog is pinned by test_reaction_resolution's drift guard, not by this comment.
 HALVES_DAMAGE = frozenset({"rogue_uncanny_dodge"})
 SHIELD_BEARING = frozenset({"guardian_retaliating_shield"})
-ESCAPES_GRAPPLE = frozenset({"rogue_slippery", "spy_slippery"})
+SLIPPERY_REACTIONS = frozenset({"rogue_slippery", "spy_slippery"})
 AC_BONUS = {
     "cleric_shield_of_faith": 2,
     "oracle_shield_of_faith": 2,
@@ -46,13 +48,12 @@ SAVE_ADVANTAGE = {
 }
 
 
-def bound_spends(state, head: dict, stage: str) -> list[dict]:
+def bound_spends(state, head: dict, stage: str, *, window_id: str | None = None) -> list[dict]:
     """Every spend answering this held action at this stage, with each reactor's id.
 
     ``held_seq`` is what makes a reaction change only the blow it was spent against; ``stage``
-    is what stops a pre-roll spend from firing a second time when the post-roll window closes.
-    Matched on the record's own fields rather than on ``window_id`` because ``reaction_spend``
-    deliberately refused to make the id's ``r<n>-<seq>-<stage>`` format a contract.
+    is what stops a pre-roll spend from firing when the post-roll window closes. Movement can
+    open several windows per action, so it also matches the opaque id of the closing window.
 
     A legacy bool upgraded by ``reaction_spend.normalize`` carries ``stage: None`` and so matches
     nothing — "spent, no binding" applies no modifier, exactly as that upgrade documents.
@@ -60,7 +61,10 @@ def bound_spends(state, head: dict, stage: str) -> list[dict]:
     return [
         {"actor_id": actor_id, **entry}
         for actor_id, entry in state.reactions_available.items()
-        if reaction_spend.is_spent(entry) and entry["stage"] == stage and entry["held_seq"] == head["seq"]
+        if reaction_spend.is_spent(entry)
+        and entry["stage"] == stage
+        and entry["held_seq"] == head["seq"]
+        and (stage != reaction_windows.MOVEMENT or entry["window_id"] == window_id)
     ]
 
 
@@ -111,7 +115,7 @@ def shield_reaction(state, head: dict) -> str | None:
 def grapple_blocked(state, head: dict) -> bool:
     target = _held_target(state, head)
     return target is not None and any(
-        spend["ability_id"] in ESCAPES_GRAPPLE and spend["actor_id"] == target.id
+        spend["ability_id"] in SLIPPERY_REACTIONS and spend["actor_id"] == target.id
         for spend in bound_spends(state, head, reaction_windows.POST_ROLL)
     )
 
@@ -221,7 +225,14 @@ def _apply(
         halve(head, target)
         logger.info("reaction %s halved %s's blow against %s", ability_id, head["actor_id"], target.id)
         return "damage_halved"
-    if ability_id in ESCAPES_GRAPPLE and target is not None and spend["actor_id"] == target.id:
+    if ability_id in SLIPPERY_REACTIONS and target is not None and spend["actor_id"] == target.id:
+        if "completed_condition" in head:
+            chamber_id = head["completed_condition"]["chamber_id"]
+            chamber = state.get_participant(chamber_id)
+            if chamber is None or architect_entomb.source(state, target.id) != chamber_id:
+                raise ValueError(f"Entomb chamber {chamber_id!r} is not linked to {target.id!r}")
+            combat_structures.collapse_wall(state, chamber)
+            return "restraint_escaped"
         if conditions.has_condition(target.conditions, "grappled"):
             return "grapple_blocked_still_held"
         return "grapple_escaped"
@@ -234,8 +245,7 @@ def close(state, head: dict, window: dict, *, attack_action: dict | None, contes
     Two AC bonuses do not stack, so only the first spend carrying the largest one reports
     ``target_ac_bonus``; a winning Objection leaves every other spend at the window null.
 
-    Called by ``combat_hold.pump`` as it discards the window the DM has come back from — the one
-    moment where the spend is known and the blow has not yet been applied.
+    Called by ``combat_hold.pump`` before it applies a held attack or emits a completed condition packet.
 
     The packet is SYNTHESIZED here rather than read from a declaration: story-017 retired
     ``DeclarationType.REACTION``, so a reaction produces no declaration packet at all. ``resolved``
@@ -273,6 +283,8 @@ def close(state, head: dict, window: dict, *, attack_action: dict | None, contes
         if contest is not None:
             packet["reactor_total"] = contest["reactor_total"]
             packet["opposer_total"] = contest["opposer_total"]
+        if effect == "restraint_escaped":
+            packet["chamber_id"] = head["completed_condition"]["chamber_id"]
         if effect == "grapple_blocked_still_held":
             target = cast(CombatParticipant, _held_target(state, head))
             grappler_id = combat_grapple.grappler_id(target.conditions)

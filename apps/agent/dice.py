@@ -65,14 +65,25 @@ def roll(notation: str, rng: random.Random | None = None) -> DiceResult:
     )
 
 
-def maximum(notation: str) -> int:
-    """Maximum of ordinary dice notation; keep modes have no spell damage contract."""
-    if notation == "0":
-        return 0
+def _ordinary_dice(notation: str) -> tuple[int, int, int]:
+    if notation.strip() == "0":
+        return 0, 0, 0
     match = _DICE_RE.fullmatch(notation.strip())
     if not match or match.group(3):
-        raise ValueError(f"Invalid maximum dice notation: '{notation}'")
+        raise ValueError(f"Invalid ordinary dice notation: '{notation}'")
     count, sides = int(match.group(1) or 1), int(match.group(2))
     if count < 1 or sides < 1:
-        raise ValueError(f"Invalid maximum dice notation: '{notation}'")
-    return count * sides + int(match.group(5) or 0)
+        raise ValueError(f"Invalid ordinary dice notation: '{notation}'")
+    return count, sides, int(match.group(5) or 0)
+
+
+def maximum(notation: str) -> int:
+    """Maximum of ordinary dice notation; keep modes have no spell damage contract."""
+    count, sides, bonus = _ordinary_dice(notation)
+    return count * sides + bonus
+
+
+def average(notation: str) -> float:
+    """Expected total of ordinary dice before any combat modifiers."""
+    count, sides, bonus = _ordinary_dice(notation)
+    return count * (sides + 1) / 2 + bonus

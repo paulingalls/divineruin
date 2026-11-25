@@ -89,7 +89,7 @@ async def activate(
     or dismiss a Veil Ward, or trigger the Draethar's Inner Fire.
 
     In combat, use declare_phase for non-reaction archetype actions. Shield Bash uses rider="shield_bash"
-    on a melee weapon attack. Cunning Action uses rider="dash" or rider="hide" on a weapon attack.
+    on a melee weapon attack. Declare a weapon attack with a Cunning Action rider.
     Query abilities for the actor's available ids and attack riders.
 
     Pass the id of the thing being activated. For spells, abilities, and learned mentor variants

@@ -6,18 +6,8 @@ window closes. Nothing in the tree mapped an enemy action to a member of
 ``abilities.REACTION_WINDOWS`` before this module, so the DM had to guess a window among nine
 (constraint 6). This is that map.
 
-Pure: a function of the action dict alone. It cannot see ownership or budget. The Beat-3 pump
-checks each candidate window against the activation rules before pausing.
-
-WHY `properties` AND NOT `applies_condition`. `properties` is a bounded vocabulary across
-catalog-derived runtime action_pool entries — ranged, buff, grapple,
-control, aoe, healing, or none — and only `grapple` has a reaction consumer
-today: rogue_slippery ("Reaction to a restrain/grapple effect: automatically escape") and
-spy_slippery ("Reaction when restrained/grappled"). `applies_condition` is deliberately NOT read:
-its carriers are Hollow Shriek (`frightened`), Hold Person (`paralyzed`), and four Shield Bashes
-(`prone`), and no on_condition_imposed consumer reads those conditions — both read grapple/restrain — so deriving off it would open a window nothing
-can use. Fear IS consumed, by bard_countercharm and diplomat_countercharm on `on_ally_targeted`,
-which the pre-roll window already reaches.
+Window triggers depend on the action and its outcome. The Beat-3 pump checks each
+candidate against the activation rules before pausing.
 """
 
 from __future__ import annotations
@@ -41,14 +31,15 @@ CATCH_ALL = "on_enemy_action"
 PRE_ROLL = "pre_roll"
 POST_ROLL = "post_roll"
 
-_STAGES = (PRE_ROLL, POST_ROLL)
+MOVEMENT = "movement"
+ENEMY_MOVE = "on_enemy_move"
+STAGES = (MOVEMENT, PRE_ROLL, POST_ROLL)
 
 
 def pre_roll_triggers(action: dict) -> tuple[str, ...]:
     """The windows a held enemy action opens BEFORE its roll.
 
-    The targeting windows plus the catch-all. `on_condition_imposed` is not here: both its
-    consumers escape a grapple that has already landed, which only the post-roll stage knows.
+    Targeting and catch-all windows precede the outcome needed by `on_condition_imposed`.
     """
     if classify_action(action) in ("healing", "prepare_attack", "summon_constructs"):
         return (CATCH_ALL,)
@@ -72,6 +63,12 @@ def post_roll_triggers(action: dict, *, hit: bool) -> tuple[str, ...]:
     return tuple(triggers)
 
 
+def condition_triggers(action: dict, *, imposed: bool) -> tuple[str, ...]:
+    if imposed and action.get("applies_condition") == "restrained":
+        return ("on_condition_imposed",)
+    return ()
+
+
 def open_window_for(
     *,
     round_number: int,
@@ -81,6 +78,7 @@ def open_window_for(
     target_id: str | None,
     action_kind: str,
     triggers: tuple[str, ...],
+    movement_ordinal: int | None = None,
 ) -> dict:
     """The window descriptor the DM reads out of ``resolve_phase``'s ``next.waiting_on``.
 
@@ -88,10 +86,13 @@ def open_window_for(
     an id the engine minted rather than one it guessed (constraint 6). JSONB-native throughout —
     it round-trips through CombatState.to_dict/from_dict untouched.
     """
-    if stage not in _STAGES:
-        raise ValueError(f"unknown reaction window stage {stage!r}; expected one of {_STAGES}")
+    if stage not in STAGES:
+        raise ValueError(f"unknown reaction window stage {stage!r}; expected one of {STAGES}")
+    if (stage == MOVEMENT) != (movement_ordinal is not None):
+        raise ValueError("Only movement windows require an exit ordinal")
+    suffix = f"-{movement_ordinal}" if movement_ordinal is not None else ""
     return {
-        "id": f"r{round_number}-{seq}-{stage}",
+        "id": f"r{round_number}-{seq}-{stage}{suffix}",
         "stage": stage,
         "actor_id": actor_id,
         "target_id": target_id,

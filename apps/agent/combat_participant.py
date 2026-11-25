@@ -94,6 +94,8 @@ class CombatParticipant:
     # Authored creature tier (creature_tiers.py bands), read for currency scaling. None on
     # players/companions; CombatState.from_dict refuses a saved row with no tier key.
     tier: int | None = None
+    fly_speed: int | None = None
+    flyby: bool = False
     # Saving-throw proficiencies (M13 close-fix): the attribute save names this participant is
     # proficient in (e.g. ["wisdom", "charisma"]), sourced from players.data at combat init for
     # a player. resolve_saving_throw adds the proficiency bonus when the rolled save is listed —

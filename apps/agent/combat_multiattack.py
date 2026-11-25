@@ -52,4 +52,12 @@ def strike_summary(head, summary):
             action=head["declaration"]["action"],
             target_id=head["declaration"]["target_id"],
         )
+    if head.get("opportunity_attack"):
+        summary.update(
+            opportunity_attack=True,
+            interrupt_position=head["interrupt_position"],
+            held_seq=head["seq"],
+            action=head["declaration"]["action"],
+            target_id=head["declaration"]["target_id"],
+        )
     return summary

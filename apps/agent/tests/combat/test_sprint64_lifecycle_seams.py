@@ -29,6 +29,7 @@ async def test_reentry_discards_old_silence_exposure_without_extending_suppressi
         "owner": asdict(source),
         "phase": "search",
         "round": 4,
+        "party_aggressors": {},
     }
     queries.get_player.return_value = {"flags": {choir_scene.key(state.location_id): json.dumps(retained)}}
     retained = await choir_scene.load(ctx.userdata, queries=queries)

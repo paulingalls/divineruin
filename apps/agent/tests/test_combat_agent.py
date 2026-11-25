@@ -138,11 +138,10 @@ class TestCombatBeatContract:
         assert "call request_death_save" in low
         assert "call consume_legendary_action" in low
 
-    def test_beat2_says_the_enemy_blows_are_held(self):
-        """The prompt must not imply a held enemy blow has already resolved."""
+    def test_beat2_holds_ordinary_enemy_actions_and_surfaces_opportunity_attacks(self):
         low = COMBAT_SYSTEM_PROMPT.lower()
-        assert "holds every enemy action back for beat 3" in low
-        assert "the enemy blows are held" in low
+        assert "holds ordinary enemy actions back for beat 3" in low
+        assert "next.waiting_on.opportunity_attack is true" in low
 
     def test_the_prompt_warns_that_end_combat_is_refused_mid_beat(self):
         """The DM needs the refusal state before attempting another declaration."""

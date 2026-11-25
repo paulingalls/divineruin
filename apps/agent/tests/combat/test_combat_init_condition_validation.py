@@ -256,7 +256,7 @@ def test_active_contract_healing_uses_real_dice(expression):
             {
                 "id": "captain",
                 "action_pool": [
-                    {"kind": "healing", "target_group": "allied_bandits", "healing": expression},
+                    {"kind": "healing", "reach": 30, "target_group": "allied_bandits", "healing": expression},
                 ],
             }
         ]

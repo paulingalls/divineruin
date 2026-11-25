@@ -8,7 +8,7 @@ DEVASTATING_STRIKE = "warrior_devastating_strike"
 SHIELD_BASH = "warrior_shield_bash"
 SHIELD_BASH_RIDER = "shield_bash"
 CUNNING_ACTION = "rogue_cunning_action"
-CUNNING_RIDERS = ("dash", "hide")
+CUNNING_RIDERS = ("dash", "hide", "disengage")
 
 SECOND_WIND = "warrior_second_wind"
 RALLYING_SHOUT = "warrior_rallying_shout"
