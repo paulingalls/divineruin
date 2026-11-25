@@ -67,7 +67,7 @@ class PlayerMovement:
             if moves.ineligible(actor):
                 return moves.apply_move(self.state, actor, declaration)
             try:
-                endpoint, _, _ = moves.movement_geometry(self.state, actor.id, declaration)
+                endpoint, _, _, _ = moves.movement_geometry(self.state, actor.id, declaration)
             except moves.MovementRefused as error:
                 return {"actor_id": actor.id, "resolved": False, "reason": str(error)}
             spatial = require_spatial(self.state)
@@ -186,7 +186,9 @@ class PlayerMovement:
                 key=_damage_average,
                 default=None,
             )
-            if action is None or blocking_wall(state, spatial, center, point, target_id=mover.id, origin_id=reactor.id):
+            if action is None or blocking_wall(
+                state, spatial, center, point, target_id=mover.id, origin_id=reactor.id, physical=True
+            ):
                 continue
             self._leg(mover, route, point)
             if not route["facts"]["resolved"]:

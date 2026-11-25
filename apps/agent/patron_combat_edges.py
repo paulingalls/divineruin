@@ -9,6 +9,7 @@ from livekit.agents.llm import ToolError
 import ability_persistence
 import combat_spatial
 import temp_hp
+import thyra_thornwall
 from archetypes import get_archetype_chassis
 from combat_down import is_terminally_down
 from combat_participant import CombatParticipant
@@ -26,6 +27,7 @@ WILDMOTHERS_WRATH = "thyra_wildmothers_wrath"
 SCALES_VERDICT = "valdris_the_scales_verdict"
 COMMUNITY_SHIELD = "aelora_community_shield"
 PARTIAL_ROUND_GIFTS = {
+    thyra_thornwall.GIFT: "Thornwall",
     VEILSTEP: "Veilstep",
     THRESHOLD_WALK: "Threshold Walk",
     WILDMOTHERS_WRATH: "Wildmother's Wrath",
@@ -241,7 +243,10 @@ async def reward_worthy_foe(state: CombatState, target: CombatParticipant, *, qu
     )
 
 
+DESTINATION_GIFTS = {VEILSTEP, thyra_thornwall.GIFT}
+
 ACTIVE_GIFTS = {
+    thyra_thornwall.GIFT: thyra_thornwall.thornwall,
     BATTLE_CRY: battle_cry,
     JUDGMENT: kaelens_judgment,
     MARK_OF_JUSTICE_GIFT: mark_of_justice,

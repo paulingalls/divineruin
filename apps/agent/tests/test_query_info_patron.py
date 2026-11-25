@@ -141,6 +141,7 @@ async def test_real_patron_gift_round_trip_from_gods_content(patron_id, monkeypa
                 "syrath_veilstep",
                 "mortaen_death_ward",
                 "orenthel_dawns_embrace",
+                "thyra_thornwall",
                 "thyra_wildmothers_wrath",
                 "valdris_the_scales_verdict",
             }

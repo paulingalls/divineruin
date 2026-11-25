@@ -1,4 +1,4 @@
-"""Which seeded content a test entry reads with its own SQL."""
+"""Discover content filenames and seeded catalog queries in Python source."""
 
 import ast
 import re
@@ -23,20 +23,27 @@ def seed_tables():
     return _TABLES
 
 
-def sql_reads(path, content):
-    """Content whose seeded table the file SELECTs or JOINs.
+def string_literals(path):
+    tree = ast.parse(Path(path).read_text())
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)) and (
+            ast.get_docstring(node, clean=False) is not None
+        ):
+            node.body.pop(0)
+    return {n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)}
 
-    INSERT and DELETE statements are fixture rows the test writes itself, not catalog reads.
-    """
+
+def content_literals(path, content):
+    literals = string_literals(path)
+    return {source for source in content if source in literals or Path(source).name in literals}
+
+
+def sql_reads(path, content):
+    """Exclude INSERT and DELETE statements that set up test-owned fixture rows."""
     files = {table: f"content/{name}" for name, table in seed_tables().items()}
-    literals = (
-        n.value
-        for n in ast.walk(ast.parse(Path(path).read_text()))
-        if isinstance(n, ast.Constant) and isinstance(n.value, str)
-    )
     return {
         files[table]
-        for text in literals
+        for text in string_literals(path)
         if not text.lstrip().upper().startswith(("INSERT", "DELETE"))
         for table in SQL_READ.findall(text)
         if table in files and files[table] in content

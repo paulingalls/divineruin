@@ -18,7 +18,9 @@ from acceptance.test_opportunity_strike import fight as fight
 from acceptance.test_opportunity_strike import mock_combat_agent_factory as mock_combat_agent_factory
 
 from combat_spatial import require_spatial
-from combat_structures import add_wall
+from combat_structures import THORNWALL, add_wall
+from dice import DiceResult
+from encounter_facts import party_victims
 
 
 @pytest.mark.parametrize(
@@ -224,3 +226,39 @@ async def test_a_full_speed_diagonal_approach_resumes_within_its_allowance(fight
         result = await fight.command("resolve_phase", {})
     attack = next(packet for packet in result["packets"] if packet["actor_id"] == MOVER)
     assert attack["resolved"] and attack["movement_spent_ft"] == pytest.approx(30)
+
+
+@pytest.mark.parametrize("wall_x,provokes", [(4, False), (12, True)])
+async def test_a_thornwall_shortens_the_route_before_its_reach_exits(
+    fight: MawlingHarness, wall_x: int, provokes: bool
+) -> None:
+    warrior, target = fight.players
+    state = await fight.reload()
+    add_wall(state, "thorns", "Thornwall", pos(wall_x, -5), pos(wall_x, 5), kind=THORNWALL)
+    hp = participant(state, MOVER).hp_current
+    await fight.persist()
+    with (
+        patch("check_resolution.dice_roll", return_value=_d20(15)),
+        patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
+        patch("dice.roll", return_value=DiceResult("1d6", [3], [], 3)),
+    ):
+        result = await advance_to_departure(fight)
+        waiting = result["next"]["waiting_on"]
+        assert bool(waiting and waiting["stage"] == "movement") is provokes
+        struck = 0
+        if provokes:
+            state = await fight.reload()
+            assert require_spatial(state)["positions"][MOVER] == pos(5)
+            assert state.held_actions[0]["opportunity_approach"]["endpoint"]["x"] < wall_x
+            await activate_as(fight, warrior)
+            result = await fight.command("resolve_phase", {})
+            (reaction,) = [packet for packet in result["packets"] if packet.get("reaction") == STRIKE]
+            struck = reaction["damage"]
+            assert reaction["hit"] and struck > 0
+        if result["next"]["phase"] != "declaration":
+            await fight.drain()
+    state = await fight.reload()
+    assert wall_x - 1 < require_spatial(state)["positions"][MOVER]["x"] < wall_x
+    assert participant(state, MOVER).hp_current == hp - 3 - struck
+    assert participant(state, target).hp_current == 100
+    assert party_victims(state, MOVER) == []

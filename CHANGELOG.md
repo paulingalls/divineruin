@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.68.2
+
+Proof now reruns the relevant acceptance tests when a content catalog they read through a test helper changes.
+
+Release steps: none.
+
+## 0.68.1
+
+Devoted followers of Thyra can raise a Thornwall in combat. The barrier stops movement and melee attacks, tears enemies that run into it, and lets arrows and spells pass through. Foes can hack it apart.
+
+Release steps: After deploy, run `bun run seed` from the deployed repository root against the production database. This is an unpaid production write.
+
 ## 0.68.0
 
 Moving in a fight now matters. Walk out of an enemy's reach and it gets a free swing at you as you go. A rogue can avoid that with Cunning Action's Disengage, for 2 stamina. A warrior with Opportunity Strike gets the same chance when an enemy walks away. Either way, the mover stops at the edge of reach and the blow lands there. If it survives, it carries on where it was going.
