@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.66.1
+
+Sprint close now runs the fast lane on the final sprint tree before the acceptance and browser tests. A commit made after the last story landed can no longer reach develop untested (#730).
+
+Release steps: none.
+
 ## 0.66.0
 
 The Still and the Architect remember whom their attacks targeted when the party flees and returns. Combat now keeps that history for misses and resisted offensive actions too.
