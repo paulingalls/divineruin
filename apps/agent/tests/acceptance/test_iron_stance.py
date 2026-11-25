@@ -169,9 +169,9 @@ async def test_stance_survives_until_own_packet(walk: MawlingHarness, next_actio
     assert await stamina(actor) == before
 
 
-@pytest.mark.parametrize("stanced", [False, True])
+@pytest.mark.parametrize(("stanced", "faces"), [(False, [1]), (True, [1, 20]), (True, [20, 1])])
 @pytest.mark.parametrize("walk", [("fragment_shadeling", "greyvale_wilderness_north")], indirect=True)
-async def test_necrotic_hit_and_death_save(walk: MawlingHarness, stanced: bool) -> None:
+async def test_necrotic_hit_and_death_save(walk: MawlingHarness, stanced: bool, faces: list[int]) -> None:
     await enter(walk)
     actor = walk.players[0]
     foe = await place_foe(walk, "hollow_shadeling")
@@ -186,7 +186,7 @@ async def test_necrotic_hit_and_death_save(walk: MawlingHarness, stanced: bool) 
         result = receipt(await walk.drain(), foe)
     assert (result["damage_type"], result["damage"]) == ("necrotic", 4 if stanced else 9)
     assert participant(await walk.reload(), actor).is_fallen
-    with patch("combat_resolution.dice_roll", side_effect=map(_d20, [1, 20])) as rolls:
+    with patch("combat_resolution.dice_roll", side_effect=map(_d20, faces)) as rolls:
         saved = await walk.command("request_death_save", {"player_id": actor})
     assert rolls.call_count == (2 if stanced else 1)
     assert saved["roll"] == (20 if stanced else 1)
