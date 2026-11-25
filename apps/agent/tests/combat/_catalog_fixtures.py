@@ -33,7 +33,7 @@ def deps(seed=0):
         mutations=MagicMock(update_player_hp=AsyncMock()),
         queries=MagicMock(
             get_player_inventory=AsyncMock(return_value=[]),
-            get_player=AsyncMock(side_effect=lambda pid, **kw: {}),
+            get_player=AsyncMock(return_value={"class": "warrior"}),
         ),
         concentration_break_mod=MagicMock(break_concentration_on_damage=AsyncMock(return_value=None)),
     )

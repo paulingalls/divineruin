@@ -421,7 +421,7 @@ async def test_destroyed_architect_cannot_intercept_a_later_cast(archers):
     give_melee(state, striker)
     combat_spatial.place(state, striker, pos(-28, 25))
     before = await archers.persist()
-    await declare(archers, attack(striker, owner), cast(caster, "arcane_bolt", owner))
+    await declare(archers, attack(striker, owner, "Longsword"), cast(caster, "arcane_bolt", owner))
     with forced_rolls() as (rolled, _):
         resolved = await archers.command("resolve_phase", {})
     after = await archers.reload()

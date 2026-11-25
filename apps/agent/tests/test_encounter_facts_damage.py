@@ -15,6 +15,7 @@ from combat.test_handle_hp_zero import _hollowed
 from livekit.agents.llm import ToolError
 from sample_fixtures import published_payloads
 from voice_condition_fixtures import participant, place_actors
+from weapon_fixtures import DAGGER, QUARTERSTAFF, SHORTBOW
 
 import db_mutations
 import encounter_facts
@@ -77,7 +78,7 @@ class Fight:
                     return packets
         raise AssertionError("round did not wrap")
 
-    async def hit(self, clause: str | None, target: str = GOBLIN, *, weapon: str = "Longsword") -> None:
+    async def hit(self, clause: str | None, target: str = GOBLIN, *, weapon: str = DAGGER["name"]) -> None:
         before = participant(self.session.combat_state, target).hp_current
         packets = await self.round({**attack(self.hero, target), "action": weapon})
         packet = next(p for p in packets if p["actor_id"] == self.hero)
@@ -109,7 +110,9 @@ async def fight(
     hero = participant(state, f.hero)
     hero.archetype_id, hero.level = archetype, 5
     hero.enhancers = ["extra_attack"] if extra else []
-    hero.action_pool.append({"name": "Shortbow", "damage": "1d6", "damage_type": "piercing", "ranged": True})
+    if archetype == "druid":
+        hero.action_pool[0] = dict(QUARTERSTAFF)
+    hero.action_pool.append(dict(SHORTBOW))
     ally = _player(f.ally, ally_hp)
     ally.hp_max, ally.conditions = 20, (_hollowed(2) if hollowed else [])
     state.participants.append(ally)
@@ -192,7 +195,9 @@ async def test_blade_controls(world: SimpleNamespace, control: str) -> None:
     async with fight(world, "zhael", archetype="mage" if control == "non_warrior" else "warrior") as f:
         await f.round(attack(f.ally if control == "other_attacker" else f.hero, GOBLIN), faces=(1,))
         await f.hit(
-            None, {"other_target": OTHER}.get(control, GOBLIN), weapon={"ranged": "Shortbow"}.get(control, "Longsword")
+            None,
+            {"other_target": OTHER}.get(control, GOBLIN),
+            weapon=SHORTBOW["name"] if control == "ranged" else DAGGER["name"],
         )
         assert f.session.combat_state.encounter_facts["once_spent"] == {}
         if control != "non_warrior":

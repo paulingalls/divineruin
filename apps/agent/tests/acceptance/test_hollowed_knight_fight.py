@@ -24,6 +24,7 @@ from combat_spatial import distance
 from creation_rules import build_character_data
 from progression_tools import _award_xp_core
 from rules_engine import XP_FOR_LEVEL
+from weapon_proficiency import PROFILE_FIELDS
 
 
 async def player_row(pid, *, conn=None):
@@ -61,14 +62,17 @@ class KnightFight(MawlingHarness):
             row = build_character_data(
                 f"Knight challenger {index}", "human", cls, None, "", created_at=datetime(2026, 11, 18, tzinfo=UTC)
             )
-            item = json.loads(await self.pool.fetchval("SELECT data FROM items WHERE id='blade_of_the_ashmark'"))
+            item_id = {"rogue": "hollow_edge_blade", "cleric": "warhammer_common"}.get(cls, "blade_of_the_ashmark")
+            item = json.loads(await self.pool.fetchval("SELECT data FROM items WHERE id=$1", item_id))
             effect = next(e for e in item["effects"] if e["type"] == "weapon")
             row["equipment"]["main_hand"] = {
+                "id": item_id,
                 "name": item["name"],
+                **{field: item[field] for field in PROFILE_FIELDS},
                 "damage": item["damage_dice"],
                 "damage_type": effect["damage_type"],
                 "properties": effect["properties"],
-                "magical": effect["magical"],
+                "magical": True,
             }
             row.update(player_id=pid, location_id=self.location)
             await self.pool.execute("UPDATE players SET data=$2::jsonb WHERE player_id=$1", pid, json.dumps(row))

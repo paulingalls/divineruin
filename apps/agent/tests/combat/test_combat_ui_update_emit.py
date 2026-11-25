@@ -24,7 +24,7 @@ async def _seed_player(pool, player_id: str) -> None:
         "INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb) "
         "ON CONFLICT (player_id) DO UPDATE SET data = $2::jsonb",
         player_id,
-        json.dumps({"player_id": player_id, "attributes": {"wisdom": 14}, "level": 5}),
+        json.dumps({"player_id": player_id, "class": "warrior", "attributes": {"wisdom": 14}, "level": 5}),
     )
 
 

@@ -2,6 +2,7 @@ from typing import Any, cast
 
 import pytest
 from sample_fixtures import catalog_encounters
+from weapon_fixtures import LONGSWORD, SHORTBOW
 
 import check_resolution_attack
 from combat_hold import _replay_resolver
@@ -68,11 +69,16 @@ def _participant(pid: str, *, conditions=(), ac=10) -> CombatParticipant:
 
 def _roll(values, *, target_condition, attacker_conditions=(), weapon=None):
     rng = ScriptedRng(values)
+    action = weapon or {**LONGSWORD, "damage": "1d6"}
+    weapon_attack = action.get("name") != "Shadow Bolt"
     result, effective_ac = roll_attack(
         _participant("attacker", conditions=attacker_conditions),
-        weapon or {"name": "Sword", "damage": "1d6", "damage_type": "slashing", "properties": []},
+        action,
         _participant("target", conditions=[_condition(target_condition)]),
         resolver=cast(Any, RealResolver(rng)),
+        weapon_attack=weapon_attack,
+        weapon_profile=action if weapon_attack else None,
+        player={"class": "warrior"},
     )
     return result, effective_ac, rng
 
@@ -116,7 +122,7 @@ def _shadow_bolt() -> dict:
 @pytest.mark.parametrize(
     ("weapon", "base_damage_dice"),
     [
-        ({"name": "Bow", "damage": "1d6", "damage_type": "piercing", "ranged": True}, 1),
+        (dict(SHORTBOW), 1),
         (_shadow_bolt(), 2),
     ],
 )

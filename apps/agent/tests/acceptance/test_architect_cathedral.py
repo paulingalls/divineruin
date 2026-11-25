@@ -107,7 +107,7 @@ async def test_cathedral_defense_ends_on_first_exit(fight):
             patch("check_resolution.dice_roll", return_value=_d20(17)),
             patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
         ):
-            summary = await play(fight, player, attack(player, owner))
+            summary = await play(fight, player, attack(player, owner, "Longsword"))
         assert (summary["attack_total"], summary["target_ac"], summary["hit"]) == (20, expected, expected == 19)
         assert (await fight.reload()).get_participant(owner).ac == 19
 
@@ -338,7 +338,7 @@ async def test_cathedral_collapses_in_the_lethal_transaction(fight, monkeypatch)
             saved.append(deepcopy(data))
 
     monkeypatch.setattr(db_mutations, "save_combat_state", capture)
-    await fight.command("declare_phase", {"declarations": [attack(player, owner)]})
+    await fight.command("declare_phase", {"declarations": [attack(player, owner, "Longsword")]})
     with (
         patch("check_resolution.dice_roll", return_value=_d20(20)),
         patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),

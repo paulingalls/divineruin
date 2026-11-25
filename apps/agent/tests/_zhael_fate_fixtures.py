@@ -4,6 +4,7 @@ from typing import Any
 from livekit.agents.llm import FunctionCall, FunctionTool, RawFunctionTool
 from livekit.agents.llm.utils import prepare_function_arguments
 from livekit.agents.voice import AgentSession, RunContext, SpeechHandle
+from weapon_fixtures import DAGGER
 
 from base_agent import BaseGameAgent
 
@@ -30,12 +31,12 @@ def game_tools(session, *tools, agent=None):
     return call
 
 
-def attack(actor_id, target_id):
+def attack(actor_id, target_id, action=DAGGER["name"]):
     return {
         "reshape": [],
         "kind": "attack",
         "actor_id": actor_id,
-        "action": "Longsword",
+        "action": action,
         "target_id": target_id,
         "held_item_id": "",
         "rider": "",
