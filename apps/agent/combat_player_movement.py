@@ -43,7 +43,10 @@ def _exits(state: CombatState, mover: CombatParticipant, endpoint: dict) -> list
         actions = _melee_actions(state, actor)
         if actions:
             reaches[actor.id] = (position(spatial, actor.id), max(melee.melee_reach(action) for action in actions))
-    return reach_exits(position(spatial, mover.id), endpoint, reaches)
+    exits = reach_exits(position(spatial, mover.id), endpoint, reaches)
+    for group in exits:
+        group["reactors"].sort()
+    return exits
 
 
 @dataclass

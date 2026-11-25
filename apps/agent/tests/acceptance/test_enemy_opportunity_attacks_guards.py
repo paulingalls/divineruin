@@ -126,7 +126,7 @@ async def test_catalog_melee_reach_and_damage_order(
 async def test_each_exit_resumes_once_in_route_order(fight: MawlingHarness, coincident: bool, drop: bool) -> None:
     mover = fight.players[0]
     state = await fight.reload()
-    require_spatial(state)["positions"]["lookout"] = pos(0 if coincident else 2)
+    require_spatial(state)["positions"]["lookout"] = pos(-1e-12 if coincident else 2)
     if drop:
         participant(state, mover).hp_current = 3
     await fight.persist()
@@ -140,7 +140,7 @@ async def test_each_exit_resumes_once_in_route_order(fight: MawlingHarness, coin
         first_window = first["next"]["waiting_on"]
         assert first_window["actor_id"] == "bandit"
         assert not strikes(first["packets"])
-        assert require_spatial(await fight.reload())["positions"][mover] == pos(5)
+        assert require_spatial(await fight.reload())["positions"][mover] == pytest.approx(pos(5))
         await reconnect(fight)
         if drop:
             (blow,) = strikes(await resolve_allies(fight))
@@ -151,13 +151,15 @@ async def test_each_exit_resumes_once_in_route_order(fight: MawlingHarness, coin
             assert blow["actor_id"] == "bandit"
             second_window = second["next"]["waiting_on"]
             assert second_window["actor_id"] == "lookout" and second_window["window_id"] != first_window["window_id"]
-            assert require_spatial(await fight.reload())["positions"][mover] == pos(5 if coincident else 7)
+            assert require_spatial(await fight.reload())["positions"][mover] == pytest.approx(
+                pos(5 if coincident else 7)
+            )
             await reconnect(fight)
             (blow,) = strikes(await resolve_allies(fight))
             assert blow["actor_id"] == "lookout"
     state = await fight.reload()
     assert rolls.call_count == (1 if drop else 2)
-    assert require_spatial(state)["positions"][mover] == pos(5 if drop else 20)
+    assert require_spatial(state)["positions"][mover] == pytest.approx(pos(5 if drop else 20))
     assert state.reactions_available["lookout"]["spent"] is not drop
 
 
