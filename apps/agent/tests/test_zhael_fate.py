@@ -36,11 +36,13 @@ async def test_unanswered_reroll_settles_original_before_query(world):
         assert "effect_applied" not in offered
         shown = await call("activate", id="zhael_fates_thread", offer_id=offer["offer_id"])
         assert shown["reroll"]["die"] == 20
+        assert shown["remaining_uses"] == 0 and shown["use_limit"] == 1 and shown["clause_id"] is None
     assert not published_payloads(session.room)
     queried = await call("query_info", kind="patron")
     assert queried["settled_fate"]["effect_applied"] == "frightened"
-    assert queried["layer_1_gift"]["spent"]
-    assert (await row(world, 0))["patron_gifts"]["zhael_fates_thread"] == {"spent": True}
+    gift = queried["layer_1_gift"]
+    assert gift["spent"] and gift["remaining_uses"] == 0 and gift["use_limit"] == 1 and gift["clause_id"] is None
+    assert (await row(world, 0))["patron_gifts"]["zhael_fates_thread"] == {"uses_spent": 1}
     assert [event["roll"] for event in published_payloads(session.room) if event["type"] == "dice_roll"] == [2]
     with patch("check_resolution.dice_roll", return_value=_d20(10)):
         immediate = await call(
@@ -48,10 +50,10 @@ async def test_unanswered_reroll_settles_original_before_query(world):
         )
     assert immediate["effect_applied"] == "frightened" and "fate_offer" not in immediate
     await call("rest", rest_type="short")
-    assert (await call("query_info", kind="patron"))["layer_1_gift"]["spent"]
+    assert (await call("query_info", kind="patron"))["layer_1_gift"]["remaining_uses"] == 0
     await call("rest", rest_type="long")
     restored = (await call("query_info", kind="patron"))["layer_1_gift"]
-    assert restored["available"] and not restored["spent"]
+    assert restored["available"] and not restored["spent"] and restored["remaining_uses"] == 1
     with patch("check_resolution.dice_roll", return_value=_d20(10)):
         offered_again = await call("check", roll=SAVE)
     assert offered_again["fate_offer"]["eligible_followers"] == world.ids[:1]
@@ -206,7 +208,7 @@ async def lucky_save(world, fate_spent, chose_fate=False):
             await call("activate", **args)
         kept = await call("activate", **fate_args, keep="reroll")
         assert kept["roll"] == 10
-        assert (await row(world, 0))["patron_gifts"] == {FATE: SPENT}
+        assert (await row(world, 0))["patron_gifts"] == {FATE: {"uses_spent": 1}}
         assert lucky_projection(await call("query_info", kind="patron"))["available"]
         assert [e["roll"] for e in dice_events(world)] == [10]
         return

@@ -15,8 +15,12 @@ ART="$PWD/flake-artifacts"
 mkdir -p "$ART" || exit 1
 # Providers own endpoints; the E2E runner preserves browser artifacts before sandbox removal.
 unset DATABASE_URL REDIS_URL
-REQUIRE_DOCKER=1 TESTCONTAINERS_RYUK_DISABLED=true \
-  bunx proof run --set sprint 2>&1 | tee "$ART/last-sprint.log"
+# The land set first: a commit after the last story land (a lead or fixer commit) has
+# no fast-lane proof otherwise, and the sprint set holds no agent-pytest (#730).
+{
+  REQUIRE_DOCKER=1 TESTCONTAINERS_RYUK_DISABLED=true bunx proof run --set land &&
+    REQUIRE_DOCKER=1 TESTCONTAINERS_RYUK_DISABLED=true bunx proof run --set sprint
+} 2>&1 | tee "$ART/last-sprint.log"
 status=${PIPESTATUS[0]}
 if [ "$status" -ne 0 ]; then
   snap="$ART/$(date +%Y%m%d-%H%M%S)-$(git rev-parse --short HEAD)"

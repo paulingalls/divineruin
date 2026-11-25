@@ -82,21 +82,41 @@ async def test_two_sessions_wait_then_spend_once(veil):
         await other.session.aclose()
 
 
+VEIL_MARKER = {"remaining_rounds": 2, "clause_id": "syrath_two_round_veil"}
+BAD_LIFETIME = "Malformed stored Shadow Veil lifetime"
+
+
 @pytest.mark.parametrize(
-    "data",
+    "data, message",
     [
-        {"patron_gifts": []},
-        {"patron_gifts": {GIFT: {"spent": "false"}}},
-        {"patron_gifts": {GIFT: {}}},
-        {"flags": {"concealed": False, "shadow_veil": True}},
-        {"flags": {"concealed": True, "shadow_veil": 1}},
+        ({"patron_gifts": []}, None),
+        ({"patron_gifts": {GIFT: {"spent": "false"}}}, None),
+        ({"patron_gifts": {GIFT: {}}}, None),
+        ({"flags": {"concealed": False, "shadow_veil": True}}, "requires concealment"),
+        ({"flags": {"concealed": True, "shadow_veil": 1}}, BAD_LIFETIME),
+        pytest.param({"flags": {"concealed": False, "shadow_veil": 2}}, BAD_LIFETIME, id="scalar"),
+        *[
+            pytest.param({"flags": {"concealed": True, "shadow_veil": value}}, BAD_LIFETIME, id=case)
+            for case, value in {
+                "extra-key": {**VEIL_MARKER, "extra": True},
+                "missing-key": {"remaining_rounds": 2},
+                "bool-rounds": {**VEIL_MARKER, "remaining_rounds": True},
+                "too-many-rounds": {**VEIL_MARKER, "remaining_rounds": 3},
+                "zero-rounds": {**VEIL_MARKER, "remaining_rounds": 0},
+                "wrong-clause": {**VEIL_MARKER, "clause_id": "other"},
+            }.items()
+        ],
+        pytest.param({"flags": {"concealed": False, "shadow_veil": VEIL_MARKER}}, "requires concealment", id="visible"),
+        pytest.param({"flags": {"concealed": True, "shadow_veil": VEIL_MARKER}}, "Already hidden", id="valid"),
     ],
 )
-async def test_malformed_activation_is_loud_and_preserves_row(veil, data):
+async def test_malformed_activation_is_loud_and_preserves_row(veil, data, message):
     h = veil
     await h.pool.execute("UPDATE players SET data=data || $2::jsonb WHERE player_id=$1", h.players[0], json.dumps(data))
     before = await row(h)
-    await h.command("activate", {"id": GIFT}, error=True)
+    error = await h.command("activate", {"id": GIFT}, error=True)
+    if message:
+        assert message in error
     assert await row(h) == before
 
 

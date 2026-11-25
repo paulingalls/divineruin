@@ -365,3 +365,51 @@ for (const entry of corpus.layer_1_cases) {
     }
   });
 }
+
+test("Syrath's Shadow Veil duration and strike are registered for rogue, spy and whisper", () => {
+  const matrix = validateGods(catalog).find(
+    (god) => god.god_id === "syrath",
+  )?.layer_4_synergy_matrix;
+  for (const archetype of ["rogue", "spy", "whisper"] as const) {
+    expect(matrix?.[archetype]?.clauses).toEqual([
+      {
+        effect: "Shadow Veil extends to 2 rounds.",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "syrath_two_round_veil",
+      },
+      {
+        effect:
+          archetype === "rogue"
+            ? "Invisible Sneak Attack +1d6"
+            : "Weapon attacks from Shadow Veil deal +1d6",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "syrath_veiled_strike",
+      },
+    ]);
+  }
+});
+
+test("Zhael's oracle has both Woven Prophecy clauses", () => {
+  const matrix = validateGods(catalog).find(
+    (god) => god.god_id === "zhael",
+  )?.layer_4_synergy_matrix;
+  expect(matrix?.oracle).toEqual({
+    type: "natural",
+    name: "Woven Prophecy",
+    clauses: [
+      {
+        effect: "Prophecy Fragment becomes 2-sentence vision with more detail.",
+        status: "active",
+        resolution: "narrated",
+      },
+      {
+        effect: "Fate's Thread usable twice per long rest",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "zhael_twice_woven",
+      },
+    ],
+  });
+});

@@ -174,7 +174,7 @@ async def wrap_phase(
             if result is None:
                 state.wrap_continuation = cursor
                 state.beat = combat_phase.PhaseBeat.NARRATION
-                return state, None, combat_phase.PhaseAdvance(beat_completed=state.beat), {}, None, None, {}
+                return state, None, combat_phase.PhaseAdvance(beat_completed=state.beat), {}, None, None, {}, []
             if result.success:
                 actor.conditions = conditions.remove_condition(actor.conditions, event["type"])
             cursor["index"] += 1
@@ -190,8 +190,9 @@ async def wrap_phase(
     pending_by_member = combat_hollow_resonance.take_totals(state)
 
     ended_outcome = wrap.outcome if (wrap is not None and wrap.combat_ended and wrap.outcome) else None
+    shadow_veils = []
     if ended_outcome is None:
-        await concealment.expire_gift(state, conn=conn, queries=queries)
+        shadow_veils = await concealment.tick_gift_round(state, conn=conn, queries=queries)
         combat_recharge.recharge_round(state)
         from still_illusions import generate
 
@@ -233,4 +234,4 @@ async def wrap_phase(
         end_data = await _end_combat_db(
             session, state, ended_outcome, mutations=mutations, queries=queries, conn=conn, sink=sink
         )
-    return state, wrap, wrap_adv, exhaustion_narration, ended_outcome, end_data, pending_by_member
+    return state, wrap, wrap_adv, exhaustion_narration, ended_outcome, end_data, pending_by_member, shadow_veils

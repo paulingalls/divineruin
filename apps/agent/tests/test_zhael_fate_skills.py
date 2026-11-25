@@ -248,7 +248,7 @@ async def test_veythar_reroll_gets_its_own_fate_offer(world, party, roll, decisi
     assert kept["roll"] == (20 if success else 2) and "reroll_offer" not in kept
     assert die.call_count == (2 if decision == "decline" else 3)
     assert await uses() == expected_uses
-    expected_spend = None if decision == "decline" else {"spent": True}
+    expected_spend = None if decision == "decline" else {"uses_spent": 1}
     assert (await row(world, 0)).get("patron_gifts", {}).get(FATE) == expected_spend
     if roll is DISCOVER:
         assert await quantity(guest, JOURNAL) == int(success)

@@ -96,6 +96,7 @@ async def _resolve_phase_locked(
 
     # Ally results commit before held actions; only the drained held pass wraps the phase.
     pending_by_member: dict[str, int] = {}
+    shadow_veils: list[dict] = []
     end_data: dict | None = None
     # Capture before recovery can restore state, so rollback cannot imply ward expiry.
     ward_before = cs.veil_ward
@@ -193,6 +194,7 @@ async def _resolve_phase_locked(
                 ended_outcome,
                 end_data,
                 pending_by_member,
+                shadow_veils,
             ) = await combat_wrap.wrap_phase(
                 session,
                 state,
@@ -352,6 +354,8 @@ async def _resolve_phase_locked(
         )
     if residue is not None:
         response["lost_scout_residue"] = residue
+    if shadow_veils:
+        response["shadow_veils"] = shadow_veils
     if judgment_rewards:
         response["judgment_rewards"] = judgment_rewards
     if offer is not None:

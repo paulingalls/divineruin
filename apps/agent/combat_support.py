@@ -21,7 +21,7 @@ from combat_attack_roll import serialize_roll as serialize_roll
 from combat_condition_landing import _land_condition_on_one
 from combat_damage import apply_attack_result
 from condition_restrictions import cannot_act
-from patron_synergy_combat import attack_player
+from patron_synergy_combat import VeiledStrike, attack_player
 from session_data import CombatParticipant, CombatState, SessionData
 
 logger = logging.getLogger("divineruin.tools")
@@ -80,6 +80,7 @@ async def _resolve_attack_packet(
     publish_roll: bool = True,
     progress=None,
     weapon_attack: bool = True,
+    veiled_strike: VeiledStrike | None = None,
 ) -> dict:
     if progress is not None and "damage_receipt" in progress.steps:
         attack_result, effective_ac = None, target.ac
@@ -96,6 +97,7 @@ async def _resolve_attack_packet(
             resolver=resolver,
             combat_state=combat_state,
             weapon_attack=weapon_attack,
+            veiled_strike=veiled_strike,
             player=player,
             defender=defender,
             mortaen_ac_override=getattr_static(resolver, "mortaen_ac_bonus", None),

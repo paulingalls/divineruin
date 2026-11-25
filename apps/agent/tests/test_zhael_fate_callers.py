@@ -46,7 +46,7 @@ async def attack_choice(world):
         assert packet["hit"] and packet["critical"] and packet["damage"] == 8
         saved = await db_mutations.load_combat_state(state.combat_id)
         assert required_player(saved, "foe").hp_current == 22
-        assert (await row(world, 0))["patron_gifts"]["zhael_fates_thread"] == {"spent": True}
+        assert (await row(world, 0))["patron_gifts"]["zhael_fates_thread"] == {"uses_spent": 1}
     finally:
         await db_mutations.delete_combat_state(state.combat_id)
 
@@ -177,7 +177,7 @@ async def test_reload_applies_original_and_preserves_spend(world):
             assert dice.call_count == 2
         assert done["beat"] == "narration" and "fate_offer" not in done
         assert done["packets"][0]["critical"] and required_player(fresh.combat_state, "foe").hp_current == 22
-        assert (await row(world, 0))["patron_gifts"]["zhael_fates_thread"] == {"spent": True}
+        assert (await row(world, 0))["patron_gifts"]["zhael_fates_thread"] == {"uses_spent": 1}
         assert fresh.combat_state is not None
         assert fresh.combat_state.ally_continuation is None and len(fresh.combat_state.held_actions) == 1
     finally:

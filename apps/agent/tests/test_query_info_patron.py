@@ -96,7 +96,14 @@ async def test_real_patron_gift_round_trip_from_gods_content(patron_id, monkeypa
     assert response["favor_actions"] == patron["favor_actions"]
     expected = patron["layer_1_gift"]
     if patron_id == "zhael":
-        expected = {**expected, "available": True, "spent": False}
+        expected = {
+            **expected,
+            "available": True,
+            "spent": False,
+            "remaining_uses": 1,
+            "use_limit": 1,
+            "clause_id": None,
+        }
     assert response["layer_1_gift"] == expected
     rows = response["abilities"]
     assert len(rows) == 3

@@ -104,8 +104,8 @@ async def activate(
     'unbound_self_reliant_charisma'. 'unbound_divine_immunity' at Self-Forged negates
     one chosen divine ability once per long rest. query_info(kind='patron') lists availability.
 
-    'syrath_shadow_veil' is combat-only: hide until the current round ends, or until attacking,
-    casting, or failing Stealth. A short rest restores this gift.
+    'syrath_shadow_veil' is combat-only: hide through the current round, plus the next round for a
+    Syrath rogue, spy, or whisper. Attacking, casting, or failing Stealth ends it. A short rest restores it.
 
     After an offered failed knowledge check, 'veythar_lorekeepers_insight' rerolls it once;
     take the new result. A short rest restores this gift.
