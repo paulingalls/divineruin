@@ -3,7 +3,7 @@
 from dataclasses import asdict, dataclass
 
 import check_resolution_attack
-from combat_order_riders import COORDINATED_ASSAULT_NAME, DIRECT_STRIKE_NAME
+from combat_order_riders import COORDINATED_ASSAULT_NAME, DIRECT_STRIKE_NAME, SACRIFICE_PLAY_NAME
 
 
 @dataclass(frozen=True)
@@ -87,4 +87,10 @@ def attack_fields(attack_result: check_resolution_attack.AttackResult, effective
         if attack_result.pincer_dice is not None:
             order.update(dice=attack_result.pincer_dice, raw_damage=attack_result.pincer_raw_damage)
         fields["coordinated_assault"] = order
+    if (sacrifice := attack_result.sacrifice_rider) is not None:
+        fields["sacrifice_play"] = {
+            "order_id": sacrifice["order_id"],
+            "name": SACRIFICE_PLAY_NAME,
+            "source_id": sacrifice["source_id"],
+        }
     return fields

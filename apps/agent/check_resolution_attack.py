@@ -12,7 +12,7 @@ from dataclasses import dataclass
 import patron_synergy_combat
 import thyra_seasons
 from check_resolution import D20CheckCore, D20Roll, roll_bonus_dice
-from combat_order_riders import CoordinatedRider, DirectStrikeRider
+from combat_order_riders import CoordinatedRider, DirectStrikeRider, SacrificePlayRider
 from condition_catalog import STUDIED_WEAKNESS
 from condition_restrictions import (
     attack_consumed_conditions,
@@ -76,6 +76,7 @@ class AttackResult:
     coordinated_rider: CoordinatedRider | None = None
     pincer_dice: str | None = None
     pincer_raw_damage: int = 0
+    sacrifice_rider: SacrificePlayRider | None = None
 
 
 def _is_ranged(weapon: dict) -> bool:
@@ -245,10 +246,12 @@ def finish_attack(
     d20 = core.roll
     attack_total = core.total
     expanded = patron_synergy_combat.expanded_critical(attacker_data, d20)
-    hit = core.success or expanded
+    sacrifice_rider = attacker_data.get("sacrifice_rider")
+    forced_critical = expanded or sacrifice_rider is not None
+    hit = core.success or forced_critical
     critical = (
         core.critical_success
-        or expanded
+        or forced_critical
         or (hit and incoming_melee_autocrit(target_conditions) and not _is_ranged(weapon))
     )
 
@@ -378,13 +381,13 @@ def finish_attack(
         damage=damage,
         damage_type=damage_type,
         critical_success=critical,
-        critical_failure=core.critical_failure,
+        critical_failure=core.critical_failure and sacrifice_rider is None,
         target_hp_remaining=new_hp,
         target_killed=killed,
         overkill=overkill,
-        narrative_hint="critical success" if expanded else core.narrative_hint,
-        dramatic=expanded or verdict.dramatic,
-        context="critical_hit" if expanded else verdict.context,
+        narrative_hint="critical success" if forced_critical else core.narrative_hint,
+        dramatic=forced_critical or verdict.dramatic,
+        context="critical_hit" if forced_critical else verdict.context,
         bonus_damage=bonus_damage,
         bonus_damage_type=bonus_damage_type,
         rider_damage=rider_damage,
@@ -409,4 +412,5 @@ def finish_attack(
         coordinated_rider=attacker_data.get("coordinated_rider"),
         pincer_dice=pincer_dice,
         pincer_raw_damage=pincer_raw_damage,
+        sacrifice_rider=sacrifice_rider,
     )

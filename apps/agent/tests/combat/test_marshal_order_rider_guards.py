@@ -10,6 +10,7 @@ from combat.test_marshal_coordinated_assault import coordinate
 from combat.test_marshal_direct_strike import arrange, attack, declare_round, order, pending, round_packets
 from combat.test_marshal_orders import marshal as marshal
 from combat.test_marshal_orders import mock_combat_agent_factory as mock_combat_agent_factory
+from combat.test_marshal_sacrifice_play import arrange_sacrifice, sacrifice
 
 import combat_attack_roll
 import db_mutations
@@ -150,3 +151,20 @@ async def test_attack_roll_against_fallen_target_cannot_confirm_pincer(marshal) 
         result, _ = combat_attack_roll.roll_attack(attacker, attacker.action_pool[0], target, combat_state=state)
     assert result.hit and result.roll == 16 and result.pincer_dice is None
     dice.assert_called_once()
+
+
+async def test_loader_rejects_a_foe_scope_on_sacrifice_play(marshal) -> None:
+    fight = await arrange_sacrifice(marshal)
+    _, ally, _ = fight.players
+    await round_packets(fight, sacrifice(fight))
+    state = await fight.reload()
+    original = state.to_dict()
+    row = deepcopy(original)
+    [rider] = row["order_riders"][ally]
+    rider["target_id"] = fight.enemies[0]
+    try:
+        await db_mutations.save_combat_state(state.combat_id, row)
+        with pytest.raises(ValueError, match="Malformed order_riders entry"):
+            await db_mutations.load_combat_state(state.combat_id)
+    finally:
+        await db_mutations.save_combat_state(state.combat_id, original)

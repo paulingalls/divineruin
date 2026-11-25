@@ -11,6 +11,8 @@ DIRECT_STRIKE = "marshal_direct_strike"
 DIRECT_STRIKE_NAME = "Direct Strike"
 COORDINATED_ASSAULT = "marshal_coordinated_assault"
 COORDINATED_ASSAULT_NAME = "Coordinated Assault"
+SACRIFICE_PLAY = "marshal_sacrifice_play"
+SACRIFICE_PLAY_NAME = "Sacrifice Play"
 
 
 class _Rider(TypedDict):
@@ -39,7 +41,11 @@ class CoordinatedRider(_Rider):
     first_hit: FirstHit | None
 
 
-OrderRider = DirectStrikeRider | CoordinatedRider
+class SacrificePlayRider(_Rider):
+    kind: Literal["sacrifice_play"]
+
+
+OrderRider = DirectStrikeRider | CoordinatedRider | SacrificePlayRider
 
 
 def _validate_coordinated(rider: dict, recipient: str, participant_ids: tuple[str, ...]) -> None:
@@ -80,6 +86,8 @@ def validate(data: object, participants: list[dict]) -> dict[str, list[OrderRide
                 shape, order = DirectStrikeRider, DIRECT_STRIKE
             elif kind == "coordinated_assault":
                 shape, order = CoordinatedRider, COORDINATED_ASSAULT
+            elif kind == "sacrifice_play":
+                shape, order = SacrificePlayRider, SACRIFICE_PLAY
             else:
                 raise ValueError(f"Malformed order_riders kind for {recipient!r}")
             if rider.keys() != shape.__required_keys__ or rider["order_id"] != order:
@@ -91,7 +99,7 @@ def validate(data: object, participants: list[dict]) -> dict[str, list[OrderRide
                 raise ValueError(f"Malformed order_riders source_id for {recipient!r}")
             if kind == "coordinated_assault":
                 _validate_coordinated(rider, recipient, participant_ids)
-            elif rider["target_id"] not in participant_ids:
+            if kind == "direct_strike" and rider["target_id"] not in participant_ids:
                 raise ValueError(f"Malformed order_riders target_id for {recipient!r}")
             if type(rider["expires_round"]) is not int:
                 raise ValueError(f"Malformed order_riders expires_round for {recipient!r}")
@@ -153,6 +161,16 @@ def grant_coordinated_assault(state: CombatState, source_id: str, recipients: li
     }
 
 
+def grant_sacrifice_play(state: CombatState, source_id: str, recipient_id: str) -> dict:
+    rider = SacrificePlayRider(
+        kind="sacrifice_play",
+        expires_round=state.round_number + 1,
+        order_id=SACRIFICE_PLAY,
+        source_id=source_id,
+    )
+    return {"name": SACRIFICE_PLAY_NAME, **_grant(state, recipient_id, rider)}
+
+
 def select(state: CombatState | None, attacker_id: str, target_id: str) -> DirectStrikeRider | None:
     if state is None:
         return None
@@ -169,6 +187,12 @@ def _coordinated(state: CombatState, ally_id: str) -> CoordinatedRider | None:
 def select_coordinated(state: CombatState | None, attacker_id: str) -> CoordinatedRider | None:
     rider = _coordinated(state, attacker_id) if state is not None else None
     return rider.copy() if rider is not None else None
+
+
+def select_sacrifice(state: CombatState | None, attacker_id: str) -> SacrificePlayRider | None:
+    if state is None:
+        return None
+    return next((r.copy() for r in state.order_riders.get(attacker_id, ()) if r["kind"] == "sacrifice_play"), None)
 
 
 def consume(state: CombatState, attacker_id: str, rider: OrderRider) -> None:
