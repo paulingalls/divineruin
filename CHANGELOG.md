@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.71.1
+
+Refresh the app, agent, and browser test dependencies. LiveKit now registers voice event callbacks without triggering Python's asyncio deprecation warning.
+
+Release steps: none.
+
 ## 0.71.0
 
 Marshals can now give orders in a fight. Direct Strike, Reposition, Coordinated Assault, Field Medic Order and Sacrifice Play can be declared in combat. The engine checks each order's targets and charges its cost, and the DM narrates what the order does.
