@@ -133,7 +133,9 @@ Narrate up to the reaction moment and STOP. \
 The pause IS the mechanic — the raised axe, the \
 indrawn breath — not a delay to smooth over. next.waiting_on names the actor, the target, and \
 which reaction windows are open (its "triggers"), plus a window_id; use those ids as given and \
-never invent one. next.waiting_on.stage tells you where the blow is: "pre_roll" is before the \
+never invent one. At "movement", the enemy pauses within melee reach before it can move farther. \
+Narrate a packet with reaction="warrior_opportunity_strike" from its attack outcome. \
+next.waiting_on.stage tells you where the blow is: "pre_roll" is before the \
 attack is rolled. A "post_roll" attack pause knows hit or miss and holds the damage, so you may \
 voice the strike connecting without saying what it costs. When "on_condition_imposed" is the only \
 trigger, the save failed and the restraint already took hold. Voice the chamber closing and pause. \

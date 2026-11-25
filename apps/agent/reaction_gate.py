@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import math
+
 import abilities
 import ability_voice_rules
+import combat_melee_approach
 import reaction_spend
 import reaction_windows
+from combat_spatial import distance, position
 from communication_voice_rules import DeliveryRefused
 from condition_restrictions import cannot_act
 from encounter_actions import ACTION_KINDS
@@ -83,7 +87,7 @@ def validate_reaction_activation(state: CombatState, actor_id: str, ability_id: 
 def _validate_for_window(state: CombatState, actor_id: str, ability_id: str, window: dict | None) -> None:
     delivery_policy = ability_voice_rules.policy(ability_id)
     if window is not None:
-        if not isinstance(window, dict) or window.get("stage") not in ("pre_roll", "post_roll"):
+        if not isinstance(window, dict) or window.get("stage") not in reaction_windows.STAGES:
             raise ValueError("Malformed reaction window")
         for key in ("id", "actor_id", "action_kind"):
             if not isinstance(window[key], str) or not window[key]:
@@ -128,6 +132,23 @@ def _validate_for_window(state: CombatState, actor_id: str, ability_id: str, win
             f"reaction {ability_id!r} fires on {catalog_window!r}, but the open window "
             f"{window['id']!r} offers {window['triggers']}"
         )
+
+    if catalog_window == reaction_windows.ENEMY_MOVE:
+        if window["stage"] != reaction_windows.MOVEMENT:
+            raise ReactionUnavailable("Opportunity Strike requires a movement window")
+        mover = state.get_participant(window["actor_id"])
+        assert mover is not None
+        if mover.is_fallen or mover.is_ally:
+            raise ReactionUnavailable("Opportunity Strike requires a standing hostile")
+        if actor_id not in window["reactors"]:
+            raise ReactionUnavailable(f"{actor_id!r} has no Opportunity Strike at this exit")
+        weapon = window["reactors"][actor_id]
+        if not combat_melee_approach.is_melee(weapon["action"]):
+            raise ReactionUnavailable("Opportunity Strike requires a melee weapon")
+        reach = weapon["reach"]
+        separation = distance(position(state.spatial, actor_id), position(state.spatial, mover.id))
+        if separation > reach and not math.isclose(separation, reach, rel_tol=1e-12):
+            raise ReactionUnavailable("Opportunity Strike target is beyond melee reach")
 
     _validate_social_subject(state, actor_id, ability_id, window)
 

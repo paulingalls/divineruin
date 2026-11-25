@@ -5,9 +5,13 @@ from collections import Counter
 from pathlib import Path
 from random import Random
 
+from combat._helpers import _make_combat_state
 from sample_fixtures import catalog_encounters
 
 import abilities
+import combat_melee_approach as melee
+import combat_opportunity
+import combat_spatial
 import reaction_windows
 from creature_combat import translate_creature
 from encounter_builder import build_encounter
@@ -40,11 +44,11 @@ EXPECTED: dict[str, str] = {
     "marshal_countermand": "reachable",  # five authored commands
     "rogue_slippery": "reachable",
     "spy_slippery": "reachable",
-    "warrior_opportunity_strike": "unproducible",  # on_enemy_move: no movement in the engine
+    "warrior_opportunity_strike": "reachable",
     "mage_counterspell": "unproducible",  # on_spell_cast: no enemy casts (combat_ability.py:300)
 }
 
-_TOTALS = {"reachable": 23, "inapplicable": 0, "unproducible": 2}
+_TOTALS = {"reachable": 24, "inapplicable": 0, "unproducible": 1}
 
 # The measured window census of the 25 rows. Pinned literally so a content edit that RE-LABELS a
 # row's window (rather than adding one) reds here instead of silently changing what is reachable.
@@ -70,7 +74,7 @@ _COMMAND_CARRIERS = [
 ]
 _ACCUSATION_CARRIERS = [("ashmark_patrol", "ashmark_sergeant", "Accusation")]
 
-_NO_PRODUCER = {"on_enemy_move", "on_spell_cast"}
+_NO_PRODUCER = {"on_spell_cast"}
 
 
 def _reaction_rows() -> list[dict]:
@@ -130,6 +134,27 @@ def _kind_carriers(kind: str) -> list[tuple[str, str, str]]:
     )
 
 
+def movement_state():
+    state = _make_combat_state()
+    actor_id, reactor_id = "goblin_scout_1", "player_1"
+    origin, endpoint, center = ({"x": x, "y": 0, "z": 0} for x in (3, 20, 0))
+    action = next(action for action in _enemy_actions() if melee.is_melee(action))
+    reactor = state.get_participant(reactor_id)
+    assert reactor is not None
+    weapon = reactor.action_pool[0]
+    reach = melee.melee_reach(weapon)
+    exits = combat_opportunity.reach_exits(origin, endpoint, {reactor_id: (center, reach)})
+    (exit_point,) = exits
+    combat_spatial.place(state, reactor_id, center)
+    combat_spatial.place(state, actor_id, exit_point["point"])
+    head = {"seq": 0, "actor_id": actor_id, "declaration": {"action": action["name"], "target_id": reactor_id}}
+    state.held_actions = [head]
+    state.open_window = combat_opportunity.movement_candidate(
+        state, head, action, exit_point, {reactor_id: {"action": weapon, "reach": reach}}, 0
+    )
+    return state
+
+
 def _produced_windows() -> set[str]:
     """Derive windows from authored encounters and a real generated adult encounter."""
     produced: set[str] = set()
@@ -139,6 +164,9 @@ def _produced_windows() -> set[str]:
         produced.update(reaction_windows.post_roll_triggers(action, hit=False))
         produced.update(reaction_windows.condition_triggers(action, imposed=True))
         produced.update(reaction_windows.condition_triggers(action, imposed=False))
+    window = movement_state().open_window
+    assert window is not None
+    produced.update(window["triggers"])
     return produced
 
 
@@ -202,5 +230,5 @@ def test_every_produced_trigger_is_a_member_of_the_closed_vocabulary():
     assert _produced_windows() <= abilities.REACTION_WINDOWS
 
 
-def test_the_two_unproducible_windows_are_never_opened():
+def test_unproducible_window_is_never_opened():
     assert _produced_windows().isdisjoint(_NO_PRODUCER)

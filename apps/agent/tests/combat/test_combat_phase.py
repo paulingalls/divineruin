@@ -120,7 +120,7 @@ class TestValidateReactionActivation:
     """A reaction is an interrupt at an open window, not a Beat-1 declaration."""
 
     accepts = "warrior_brace_for_impact"  # catalog window on_hit
-    refuses = "warrior_opportunity_strike"  # catalog window on_enemy_move — never in a held window
+    refuses = "warrior_opportunity_strike"  # requires a movement window
 
     def _window_state(self, *, hit=True):
         """A phase PAUSED on a real post-roll window, built by the real producer.

@@ -31,7 +31,9 @@ CATCH_ALL = "on_enemy_action"
 PRE_ROLL = "pre_roll"
 POST_ROLL = "post_roll"
 
-_STAGES = (PRE_ROLL, POST_ROLL)
+MOVEMENT = "movement"
+ENEMY_MOVE = "on_enemy_move"
+STAGES = (MOVEMENT, PRE_ROLL, POST_ROLL)
 
 
 def pre_roll_triggers(action: dict) -> tuple[str, ...]:
@@ -76,6 +78,7 @@ def open_window_for(
     target_id: str | None,
     action_kind: str,
     triggers: tuple[str, ...],
+    movement_ordinal: int | None = None,
 ) -> dict:
     """The window descriptor the DM reads out of ``resolve_phase``'s ``next.waiting_on``.
 
@@ -83,10 +86,13 @@ def open_window_for(
     an id the engine minted rather than one it guessed (constraint 6). JSONB-native throughout —
     it round-trips through CombatState.to_dict/from_dict untouched.
     """
-    if stage not in _STAGES:
-        raise ValueError(f"unknown reaction window stage {stage!r}; expected one of {_STAGES}")
+    if stage not in STAGES:
+        raise ValueError(f"unknown reaction window stage {stage!r}; expected one of {STAGES}")
+    if (stage == MOVEMENT) != (movement_ordinal is not None):
+        raise ValueError("Only movement windows require an exit ordinal")
+    suffix = f"-{movement_ordinal}" if movement_ordinal is not None else ""
     return {
-        "id": f"r{round_number}-{seq}-{stage}",
+        "id": f"r{round_number}-{seq}-{stage}{suffix}",
         "stage": stage,
         "actor_id": actor_id,
         "target_id": target_id,
