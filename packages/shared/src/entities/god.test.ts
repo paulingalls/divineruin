@@ -26,7 +26,6 @@ const generated = Object.entries(corpus.vocabulary).flatMap(([kind, spec]) =>
 test("the actual catalog validates against the exact ten-patron floor", () => {
   expect(corpus.patron_ids).toHaveLength(10);
   expect(new Set(corpus.patron_ids).size).toBe(10);
-  expect(catalog).toHaveLength(10);
   expect(catalog.map((g) => g.god_id).sort()).toEqual([...corpus.patron_ids].sort());
   expect(Object.is(validateGods(catalog), catalog)).toBe(true);
   for (const [patron, id] of [
@@ -90,6 +89,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     "veythar_scholars_ward",
     "kaelen_warriors_endurance",
     "orenthel_beacon",
+    "nythera_tidewalker",
   ]);
   const battleCry = "kaelen_battle_cry_of_the_ironhand";
   const judgment = "kaelen_kaelens_judgment";
@@ -262,7 +262,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     ),
   ).toEqual(engine);
   const pending = abilities.filter((a) => !narrated.has(a.id) && !engine.has(a.id));
-  expect(pending).toHaveLength(3);
+  expect(pending).toHaveLength(2);
   for (const ability of abilities.filter((a) => passives.has(a.id))) {
     expect([ability.recharge, ability.implementation_id]).toEqual(["always", ability.id]);
   }

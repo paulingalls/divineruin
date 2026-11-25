@@ -5,6 +5,7 @@ import math
 from combat_spatial import distance, mapping, number, point
 
 AXES = ("x", "y", "z")
+TIDEWALKER_KINDS = {"water", "mud", "architect_domain"}
 
 
 def rectangle(low: dict, high: dict) -> tuple[dict, dict]:
@@ -66,12 +67,15 @@ def _interval(area: dict, origin: dict, destination: dict) -> tuple[float, float
     return enter, leave
 
 
-def _covered(spatial: dict, actor_id: str, origin: dict, destination: dict, *, kind: str | None = None):
+def _covered(
+    spatial: dict, actor_id: str, origin: dict, destination: dict, *, kind: str | None = None, tidewalker: bool = False
+) -> list[tuple[float, float]]:
     return sorted(
         interval
         for area in spatial.get("movement_areas", {}).values()
         if actor_id not in area["excluded_actor_ids"]
         and (kind is None or area["kind"] == kind)
+        and not (tidewalker and area["kind"] in TIDEWALKER_KINDS)
         and (interval := _interval(area, origin, destination)) is not None
         and interval[0] < interval[1]
     )
@@ -81,9 +85,11 @@ def crosses_low_ceiling(spatial: dict, actor_id: str, origin: dict, destination:
     return origin != destination and bool(_covered(spatial, actor_id, origin, destination, kind="low_ceiling"))
 
 
-def _union(spatial: dict, actor_id: str, origin: dict, destination: dict) -> list[tuple[float, float]]:
+def _union(
+    spatial: dict, actor_id: str, origin: dict, destination: dict, *, tidewalker: bool
+) -> list[tuple[float, float]]:
     intervals: list[tuple[float, float]] = []
-    for start, end in _covered(spatial, actor_id, origin, destination):
+    for start, end in _covered(spatial, actor_id, origin, destination, tidewalker=tidewalker):
         if intervals and start <= intervals[-1][1]:
             previous, stop = intervals[-1]
             intervals[-1] = previous, max(stop, end)
@@ -92,18 +98,22 @@ def _union(spatial: dict, actor_id: str, origin: dict, destination: dict) -> lis
     return intervals
 
 
-def movement_cost(spatial: dict, actor_id: str, origin: dict, destination: dict) -> float:
+def movement_cost(spatial: dict, actor_id: str, origin: dict, destination: dict, *, tidewalker: bool) -> float:
     length = distance(origin, destination)
-    return length * (1 + sum(end - start for start, end in _union(spatial, actor_id, origin, destination)))
+    return length * (
+        1 + sum(end - start for start, end in _union(spatial, actor_id, origin, destination, tidewalker=tidewalker))
+    )
 
 
-def reachable_point(spatial: dict, actor_id: str, origin: dict, destination: dict, allowance: float) -> dict:
+def reachable_point(
+    spatial: dict, actor_id: str, origin: dict, destination: dict, allowance: float, *, tidewalker: bool
+) -> dict:
     length = distance(origin, destination)
     if not length:
         return destination
     remaining = allowance / length
     previous = 0.0
-    for start, end in _union(spatial, actor_id, origin, destination):
+    for start, end in _union(spatial, actor_id, origin, destination, tidewalker=tidewalker):
         if remaining <= start - previous:
             break
         remaining -= start - previous
@@ -114,10 +124,10 @@ def reachable_point(spatial: dict, actor_id: str, origin: dict, destination: dic
         remaining -= 2 * (end - start)
         previous = end
     fraction = min(1.0, previous + remaining)
-    if fraction == 1 and movement_cost(spatial, actor_id, origin, destination) <= allowance:
+    if fraction == 1 and movement_cost(spatial, actor_id, origin, destination, tidewalker=tidewalker) <= allowance:
         return destination
     end = {axis: origin[axis] + fraction * (destination[axis] - origin[axis]) for axis in AXES}
     # Interpolation can round beyond the available allowance.
-    while movement_cost(spatial, actor_id, origin, end) > allowance:
+    while movement_cost(spatial, actor_id, origin, end, tidewalker=tidewalker) > allowance:
         end = {axis: math.nextafter(end[axis], origin[axis]) for axis in AXES}
     return end

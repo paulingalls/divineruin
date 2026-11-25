@@ -30,7 +30,7 @@ def movement_geometry(state, actor_id, declaration, *, allowance=None):
     speed = effective_speed(spatial["speeds"][actor_id], actor.conditions) if allowance is None else allowance
     if in_pit(state, actor_id):
         return origin, 0, speed, None
-    spent = movement_cost(spatial, actor_id, origin, destination)
+    spent = movement_cost(spatial, actor_id, origin, destination, tidewalker=actor.tidewalker)
     if declaration.movement_mode == "flying" and crosses_low_ceiling(spatial, actor_id, origin, destination):
         raise MovementRefused(f"{actor_id} cannot fly through a lowered ceiling")
     melody = actor.choir_movement_round == state.round_number or any(
@@ -46,7 +46,7 @@ def movement_geometry(state, actor_id, declaration, *, allowance=None):
         if actor.is_ally:
             raise ThornwallMoveRefused(reason)
         destination = stop_before_wall(origin, destination, spatial["structures"][wall.id])
-        spent = movement_cost(spatial, actor_id, origin, destination)
+        spent = movement_cost(spatial, actor_id, origin, destination, tidewalker=actor.tidewalker)
     return destination, distance(origin, destination), spent, wall
 
 

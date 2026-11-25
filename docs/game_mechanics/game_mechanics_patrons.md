@@ -291,7 +291,7 @@ Spells cast in locations you've never visited before generate **-1 Resonance** (
 
 | Tier | Name | Effect |
 |---|---|---|
-| Acknowledged | Tidewalker | Ignore water/mud/shifting ground difficult terrain. Full speed through slowing environments |
+| Acknowledged | Tidewalker | Water, mud, and the Architect's shifting ground cost no extra movement. Low ceilings still slow walking and block flight. Other hindrances keep their normal penalties. |
 | Devoted | Charted Course | Once per long rest, learn the safest route between two known locations (fewest encounters, lowest Hollow exposure) |
 | Exalted | Beyond the Horizon | Once per session outside combat, bring the whole party through a gateway to another location the follower has visited. The follower gains exactly 5 Resonance. The Still can prevent departure. |
 
