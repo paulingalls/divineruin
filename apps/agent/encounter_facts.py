@@ -77,6 +77,10 @@ def _death_save_rounds(value: object) -> dict[str, int]:
     return dict(value)
 
 
+def validate_history(value: object) -> dict[str, list[str]] | None:
+    return None if value is None else _id_map(value, "party_aggressors")
+
+
 def validate(value: object) -> EncounterFacts:
     current = EncounterFacts.__required_keys__
     prior = current - {"party_aggressors"}
@@ -92,7 +96,7 @@ def validate(value: object) -> EncounterFacts:
         "death_save_success_round": _death_save_rounds(value["death_save_success_round"]),
         "misses": _id_map(value["misses"], "misses"),
         "once_spent": _id_map(value["once_spent"], "once_spent"),
-        "party_aggressors": _id_map(history, "party_aggressors") if history is not None else None,
+        "party_aggressors": validate_history(history),
     }
 
 
