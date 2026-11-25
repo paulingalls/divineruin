@@ -48,8 +48,6 @@ def movement_geometry(state, actor_id, declaration, *, allowance: float | None =
     )
     if spent > speed and (hard_limit or not melody):
         raise MovementRefused(f"{actor_id} move exceeds speed {speed:g} feet")
-    if climbing:
-        return origin, 0, speed, None
     wall = movement_blocker(state, spatial, actor, origin, destination)
     if wall is not None:
         reason = f"{actor_id} move is blocked by {wall.name} ({wall.id})"

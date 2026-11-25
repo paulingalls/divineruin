@@ -308,8 +308,11 @@ async def test_reposition_climbs_out_and_reports_the_actual_stopping_point(marsh
         await harness.drain()
     state = await harness.reload()
     assert ally in state.architect_encounter["pits"]
+    combat_structures.add_wall(state, "pit_wall", "Slate wall", point(-3, -5), point(-3, 5))
+    await harness.persist()
     before = await harness.snapshot()
     assert "15 feet" in await declare(harness, order(harness, point(20)), error=True)
+    assert "blocked by Slate wall" in await declare(harness, order(harness, point(-5)), error=True)
     assert await harness.snapshot() == before
     await declare(harness, order(harness, point(5)))
     [receipt] = [p for p in (await harness.command("resolve_phase", {}))["packets"] if p.get("action") == REPOSITION]
