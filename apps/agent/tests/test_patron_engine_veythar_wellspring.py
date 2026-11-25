@@ -321,3 +321,20 @@ async def test_ineligible_echo_activation_refuses(world, options, reason):
     with pytest.raises(ToolError, match=reason):
         await tools(world)("activate", id=ECHO)
     assert await row(world, 0) == before
+
+
+@pytest.mark.parametrize(
+    "stored",
+    [
+        {"spent": 0},
+        {"spent": True, "armed": True},
+        {**ARMED, "extra": True},
+        {"spent": False, "armed": 1},
+    ],
+)
+async def test_malformed_echo_cannot_authorize_a_cast(world, stored):
+    await caster(world, HASTE, gifts={ECHO: stored})
+    before = await row(world, 0)
+    with pytest.raises(ValueError, match=f"Malformed patron ability state: {ECHO}"):
+        await tools(world)("activate", id=HASTE)
+    assert await row(world, 0) == before
