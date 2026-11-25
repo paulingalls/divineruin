@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.70.0
+
+Warriors and rogues can now use ten more of their chosen techniques in a fight:
+- Precision Strike and Reckless Assault ride an attack.
+- Dirty Trick spoils a foe's next swing.
+- Taunt draws a foe's next attack.
+- War Cry frightens every foe in earshot that fails its save.
+- Crippling Strike halves a foe's speed.
+- Exploit Weakness studies a foe for a maximum Sneak Attack.
+- Cleaving Blow and Whirlwind strike every foe in reach.
+- Blade Flurry strikes three times, and each hit can Sneak Attack.
+
+Retreat now moves the player away from the fight. Foes it leaves get an opportunity attack, unless a rogue Disengages with Cunning Action.
+
+Release steps: `bun run seed` (content/archetype_abilities.json and content/mentor_variants.json changed).
+
 ## 0.69.0
 
 Three more patron gifts work in play. An Exalted follower of Veythar can arm Wellspring Echo: their next spell that costs Focus is free, but it stirs the Veil twice as much. Cantrips leave the echo armed. Aelora's Acknowledged followers craft a quarter faster, and a plain success has a one-in-four chance of a blessed bonus property, by voice or through the app. The world now has a season, starting in spring, and Thyra's Acknowledged followers feel it: extra healing in spring (Dawn's Embrace included), extra fire and lightning damage in summer, sharper Insight in autumn, and quieter Stealth in winter.
