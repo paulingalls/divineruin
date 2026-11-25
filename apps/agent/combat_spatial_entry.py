@@ -21,6 +21,8 @@ def build_spatial(encounter, players, enemies, companion=None):
         positions[actor_id] = deepcopy(scene["companion_start"])
         speeds[actor_id] = number(speed, "companion speed", nonnegative=True)
     spatial = {"positions": positions, "speeds": speeds, "locations": scene["locations"], "zones": scene["zones"]}
+    if "movement_areas" in scene:
+        spatial["movement_areas"] = scene["movement_areas"]
     return validate_spatial(spatial, list(positions))
 
 

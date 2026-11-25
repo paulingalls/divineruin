@@ -340,11 +340,42 @@ test("catalog runtime extensions reject contradictory action shapes", () => {
   ).toThrow("self_heal");
 });
 
+const areaCases = (await Bun.file(
+  new URL("../../fixtures/encounter_movement_areas.json", import.meta.url),
+).json()) as Record<"valid" | "invalid", Record<string, unknown>>;
+
 describe("spatial scene placement", () => {
-  test("eighteen shipped templates have valid spatial placement", () => {
+  const template = references.find((row) => row.id === "ruins_mawling_pair")!;
+  const withAreas = (movement_areas: unknown) => ({
+    ...template,
+    scene_placement: { ...template.scene_placement, movement_areas },
+  });
+
+  test("shipped templates have valid spatial placement", () => {
     expect(references.length).toBe(19);
     for (const row of references) expect(() => validateScenePlacement(row)).not.toThrow();
   });
+  for (const [name, areas] of Object.entries(areaCases.valid)) {
+    test(`accepts movement areas: ${name}`, () => {
+      expect(() => validateScenePlacement(withAreas(areas))).not.toThrow();
+    });
+  }
+  for (const [name, areas] of Object.entries(areaCases.invalid)) {
+    test(`rejects movement areas: ${name}`, () => {
+      expect(() => validateScenePlacement(withAreas(areas))).toThrow();
+    });
+  }
+  for (const nonfinite of [NaN, Infinity]) {
+    const sphere = { shape: "sphere", kind: "water", excluded_actor_ids: [] };
+    test(`rejects movement area coordinate: ${nonfinite}`, () => {
+      const ground = { ...sphere, center: { x: nonfinite, y: 0, z: 0 }, radius_ft: 5 };
+      expect(() => validateScenePlacement(withAreas({ ground }))).toThrow();
+    });
+    test(`rejects movement area radius: ${nonfinite}`, () => {
+      const ground = { ...sphere, center: { x: 0, y: 0, z: 0 }, radius_ft: nonfinite };
+      expect(() => validateScenePlacement(withAreas({ ground }))).toThrow();
+    });
+  }
   test("spatial zone radii follow the creature catalog owner", () => {
     for (const row of references) {
       const expected: Record<string, { center_id: string; radius_ft: number }> = {};
