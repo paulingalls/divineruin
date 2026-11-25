@@ -7,4 +7,4 @@ A Zhael marshal's order steadies the ally it names (Moment to Rally). Once per e
 Zhael bards and diplomats hear the threads before they speak (Foretold Words). Once per NPC each session, they learn the exact DC of their next social check against that NPC, and that DC holds even if the NPC's mood shifts before they try.
 
 Release steps:
-- Apply migration 066_zhael_foretold_words.sql (adds the zhael_foretold_words table) with the normal migrate step, before deploying the agent and server. It is free and writes the production schema.
+- Apply migration 067_zhael_foretold_words.sql (adds the zhael_foretold_words table) with the normal migrate step, before deploying the agent and server. It is free and writes the production schema.

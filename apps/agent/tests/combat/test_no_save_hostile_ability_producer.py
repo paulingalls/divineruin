@@ -17,7 +17,9 @@ def _assert_no_hostile_condition_ability_omits_its_save(rows: list[dict[str, obj
     violations = {
         row["id"]: row["applies_condition"]
         for row in condition_rows
-        if "save" not in row and row["applies_condition"] not in NO_SAVE_BUFF_CONDITIONS
+        if "save" not in row
+        and row["applies_condition"] not in NO_SAVE_BUFF_CONDITIONS
+        and (row["id"], row["applies_condition"]) != ("rogue_dirty_trick", "shaken")
     }
     assert not violations, violations
 

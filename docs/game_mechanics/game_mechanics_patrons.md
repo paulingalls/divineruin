@@ -55,7 +55,11 @@ Arcane casters under Veythar: Flickering threshold bonus damage increases to **+
 |---|---|---|
 | Acknowledged | Scholar's Ward | Advantage on saves against the Hollowed condition |
 | Devoted | Lorekeeper's Library | Once per long rest, ask the DM one mechanical question about an enemy, item, or location (AC, weakness, trap DC, etc.). The god whispers the answer |
-| Exalted | Wellspring Echo | Once per session, cast any known spell at 0 Focus cost. Generates double normal Resonance — the power is free but the Veil pays |
+| Exalted | Wellspring Echo | Arm once per session. The next completed Focus-costing spell costs no Focus and generates double its normal Resonance. |
+
+Activate Wellspring Echo in or out of combat. Free and refused casts leave it armed.
+Double the spell's generation after its usual modifiers, before applying decay or checking Overreach.
+The arm survives reconnecting to the same session and clears when a new session begins.
 
 **Layer 4 — Archetype Resonance**
 
@@ -109,7 +113,7 @@ When a Veil Ward is active in your area, your spells inside it suffer no damage/
 
 | Tier | Name | Effect |
 |---|---|---|
-| Acknowledged | Craft Blessing | Async crafting 25% faster. Crafted items have chance of bonus property |
+| Acknowledged | Craft Blessing | Crafting takes 75% of its normal duration. A normal Success has a 25% chance to draw a bonus property from the recipe category’s Exceptional table. Eligibility is captured when crafting starts. |
 | Devoted | Community Shield | Once per long rest, immediately grant another standing, present party player temporary HP equal to your level plus your Charisma modifier (minimum 1). A smaller pool is replaced. An equal or larger pool leaves the gift unspent. Works in and out of combat with no action, reaction or distance cost. A partially resolved round or live Fate offer blocks activation. |
 | Exalted | Hearthfire | Once per session, create sanctuary zone: 3 rounds, allies regain 1d6 HP/round, advantage on saves, enemies WIS save to enter |
 
@@ -137,9 +141,15 @@ In natural terrain: primal Resonance multiplier improves by one step (0.3→0.2,
 
 | Tier | Name | Effect |
 |---|---|---|
-| Acknowledged | Seasonal Attunement | Passive bonuses by in-game season. Spring: +1 healing received. Summer: +1 fire/lightning damage. Autumn: +1 Insight. Winter: +1 Stealth |
+| Acknowledged | Seasonal Attunement | Spring: +1 healing received per heal. Summer: +1 per fire or lightning damage roll. Autumn: +1 to Insight checks. Winter: +1 to Stealth checks. |
 | Devoted | Thornwall | Once per long rest in combat, choose two points up to 30 feet apart. The nearest point of the wall must be within 30 feet of the follower, and the wall must be clear of creatures. It blocks movement and melee reach for everyone. An enemy stopped by its own move or melee approach takes 1d6 piercing damage once per turn. Ranged attacks and spells pass through. The wall has AC 19 and 20 HP. It lasts until destroyed or combat ends. |
 | Exalted | Wildmother's Wrath | Once per session, activate immediately in combat on natural ground. One shared 3d8 damages every living, unprotected foe. No save. |
+
+The world shares one season in `world_flags`, seeded to spring. The Phase 11 world loop will advance it. The patron query gives the DM the current season and its active bonus.
+
+Spring adds 1 HP per heal to the Thyra recipient, including each Regenerate tick and Dawn's Embrace, up to maximum HP. Natural-20 death-save revival and post-fight stabilization restore 1 HP. A long rest restores full HP. A short rest leaves HP unchanged.
+
+Summer adds 1 to each rolled fire or lightning component (the base damage and a critical rider), before save halving and damage affinities. Riders with no player producer yet (condition, authored, on-hit, Veiled Strike and Oath of Valor riders) get no bonus until one exists. Draethar Inner Fire counts as a fire roll against the caster. An attack critical adds extra dice within the same component.
 
 Wildmother's Wrath deals piercing in ancient forest and forest, slashing in grassland and farmland, bludgeoning on mountains and underground, cold on the coast, and poison in wetlands. Villages and cities refuse the gift.
 The Still and its unrevealed anchors, and the Choir's unexposed core, are spared. If no living foe can be hit, the gift stays unspent.

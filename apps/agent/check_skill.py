@@ -15,6 +15,7 @@ import event_types as E
 import patron_deeds
 import rules_engine
 import skill_persistence
+import thyra_seasons
 from combat_terrain import skill_natural_terrain
 from condition_consume import consume_beneficial_conditions
 from condition_voice_rules import validate_hearing_check
@@ -83,6 +84,7 @@ async def _check_skill_run(
         first_stay=await check_first_stay(player, session, skill, player_id=player_id, conn=conn),
         natural_terrain=await skill_natural_terrain(session, player, skill),
         hearing_only=hearing_only,
+        season=await thyra_seasons.skill_season(player, skill, conn=conn),
     )
 
     scope = SkillScope.capture(session, player_id)

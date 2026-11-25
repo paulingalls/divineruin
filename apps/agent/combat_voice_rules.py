@@ -12,7 +12,7 @@ import ability_voice_rules
 import combat_grapple
 import condition_voice_rules
 import spells
-from combat_ability_gate import MARSHAL_ORDERS, declared_ability
+from combat_ability_gate import MARSHAL_ORDERS, WAR_CRY, declared_ability, war_cry_targets
 from combat_ability_save import BENEFICIAL_CONDITIONS
 from condition_sources import charm_sources, require_hostile_targets
 from declarations import DeclarationType, ManeuverIntent
@@ -47,7 +47,9 @@ def guard_spell(
         require_hostile_targets(state, actor, targets, area=is_area_spell(spell.id))
 
 
-def guard_declaration(state: CombatState, actor: CombatParticipant, decl: Declaration):
+def guard_declaration(
+    state: CombatState, actor: CombatParticipant, decl: Declaration, *, war_cry_started: bool = False
+) -> None:
     if actor.creature_id == "hollow_choir" and decl.type in (DeclarationType.ATTACK, DeclarationType.ABILITY):
         from choir_effects import suppressed
         from condition_sources import DeliveryRefused
@@ -95,6 +97,10 @@ def guard_declaration(state: CombatState, actor: CombatParticipant, decl: Declar
                     ability_voice_rules.require_ability_delivery(base.id, state, actor.id, allies)
                     require_hostile_targets(state, actor, foes)
                 else:
+                    if base.id == WAR_CRY:
+                        if war_cry_started:
+                            return
+                        targets = war_cry_targets(state)
                     if base.applies_condition == "inspired":
                         targets = condition_voice_rules.spoken_buff_targets("inspired", state, actor.id, targets)
                     ability_voice_rules.policy(base.id)

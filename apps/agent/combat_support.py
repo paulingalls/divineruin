@@ -14,6 +14,7 @@ import conditions
 import db_mutations
 import db_queries
 import reaction_windows
+import thyra_seasons
 from combat_action_availability import action_summary
 from combat_attack_roll import deserialize_roll as deserialize_roll
 from combat_attack_roll import roll_attack
@@ -100,6 +101,7 @@ async def _resolve_attack_packet(
             veiled_strike=veiled_strike,
             player=player,
             defender=defender,
+            season=await thyra_seasons.season_for(player, conn=conn),
             mortaen_ac_override=getattr_static(resolver, "mortaen_ac_bonus", None),
         )
     return await apply_rolled_attack(

@@ -44,7 +44,7 @@ async def resolve_reshape(
     if "reshape_receipts" not in cursor:
         try:
             proposal = proposed_state(state, actor_id, declaration.reshape)
-            validate_declaration(proposal, actor_id, replace(declaration, reshape=None), {})
+            validate_declaration(proposal, actor_id, replace(declaration, reshape=None), {}, queued=True)
             if declaration.type is DeclarationType.ATTACK:
                 action = _find_action(actor, declaration.action)
                 assert action is not None

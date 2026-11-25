@@ -130,10 +130,11 @@
       "exalted": {
         "id": "veythar_wellspring_echo",
         "name": "Wellspring Echo",
-        "effect": "Once per session, cast any known spell at 0 Focus cost. Generates double normal Resonance — the power is free but the Veil pays",
+        "effect": "Arm once per session. Your next completed Focus-costing spell costs no Focus and generates double its normal Resonance.",
         "recharge": "per_session",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "veythar_wellspring_echo"
       }
     },
     "layer_4_synergy_matrix": {
@@ -825,10 +826,11 @@
       "acknowledged": {
         "id": "aelora_craft_blessing",
         "name": "Craft Blessing",
-        "effect": "Async crafting 25% faster. Crafted items have chance of bonus property",
+        "effect": "Crafting takes 75% of its normal duration. A normal Success has a 25% chance to draw a bonus property from the recipe category’s Exceptional table. Eligibility is captured when crafting starts",
         "recharge": "always",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "aelora_craft_blessing"
       },
       "devoted": {
         "id": "aelora_community_shield",
@@ -1886,8 +1888,9 @@
         "name": "Seasonal Attunement",
         "effect": "Passive bonuses by in-game season. Spring: +1 healing received. Summer: +1 fire/lightning damage. Autumn: +1 Insight. Winter: +1 Stealth",
         "recharge": "always",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "thyra_seasonal_attunement"
       },
       "devoted": {
         "id": "thyra_thornwall",

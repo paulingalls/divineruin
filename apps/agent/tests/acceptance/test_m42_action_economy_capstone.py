@@ -17,6 +17,7 @@ import combat_turn
 import db
 import db_mutations
 from check_resolution_attack import attack_modifier, resolve_attack, weapon_attribute_modifier
+from combat_spatial import require_spatial
 from dice import roll as dice_roll
 
 # A 1d12 Heavy weapon (STR-governed: no finesse/ranged/override). combat_init synthesizes the
@@ -101,13 +102,8 @@ async def test_full_action_economy_lifecycle_on_real_pg(reset_db_pool: str) -> N
         )
         assert hp_row["hp"] == live_player.hp_current
 
-        # INTERACT / RETREAT remain narrated-only.
-        for decl, dtype in (
-            ({"type": "interact", "action": "torch"}, "interact"),
-            ({"type": "retreat"}, "retreat"),
-        ):
-            pkt = _player_packet(await _run_phase(decl), player_id)
-            assert pkt["resolved"] is False and pkt["declaration_type"] == dtype
+        interact = _player_packet(await _run_phase({"type": "interact", "action": "torch"}), player_id)
+        assert interact["resolved"] is False and interact["declaration_type"] == "interact"
 
         with patch("random.randint", side_effect=[18, 3]):
             maneuver_pkt = _player_packet(await _run_phase({"type": "maneuver", "target_id": enemy.id}), player_id)
@@ -142,6 +138,11 @@ async def test_full_action_economy_lifecycle_on_real_pg(reset_db_pool: str) -> N
         reloaded_player = reloaded.get_participant(player_id)
         assert reloaded_player is not None
         assert "extra_attack" in reloaded_player.enhancers
+
+        retreat = _player_packet(await _run_phase({"type": "retreat"}), player_id)
+        assert retreat["resolved"] is True and retreat["declaration_type"] == "retreat"
+        assert retreat["moved_ft"] > 0
+        assert retreat["destination"] == require_spatial(ctx.userdata.combat_state)["positions"][player_id]
 
         # --- AC4: drive the fight to victory; end_combat clears state + deletes the SSOT row in-tx. ---
         result: str | tuple = ""

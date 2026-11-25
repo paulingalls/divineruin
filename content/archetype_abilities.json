@@ -69,7 +69,7 @@
     "ability_type": "elective",
     "level_requirement": 4,
     "cost": { "stamina": 4, "focus": 0, "scaling": null },
-    "effect": "A single melee attack hits up to 2 adjacent enemies.",
+    "effect": "Sweep at up to two foes within main-hand melee reach. Roll two d20s once. Each foe uses the higher die with advantage, the lower with disadvantage, or the first otherwise. Roll damage for each hit.",
     "narration_cue": "One sweeping arc bites through two foes at once."
   },
   {
@@ -89,7 +89,10 @@
     "ability_type": "elective",
     "level_requirement": 4,
     "cost": { "stamina": 2, "focus": 0, "scaling": null },
-    "effect": "Force one enemy to attack you for 1 round (WIS save negates).",
+    "applies_condition": "taunted",
+    "save": "wisdom",
+    "dc_attribute": "strength",
+    "effect": "Through the next round, one foe must aim new attacks at you while you are standing and it can target you. A Wisdom save negates this.",
     "narration_cue": "A jeer cuts deep and the foe turns, seeing only you."
   },
   {
@@ -110,7 +113,10 @@
     "level_requirement": 8,
     "cost": { "stamina": 5, "focus": 0, "scaling": null },
     "effect": "All enemies in earshot: WIS save or Frightened 1 round.",
-    "narration_cue": "A roar that rattles the ribs of everyone who hears it."
+    "narration_cue": "A roar that rattles the ribs of everyone who hears it.",
+    "applies_condition": "frightened",
+    "save": "wisdom",
+    "dc_attribute": "strength"
   },
   {
     "id": "warrior_unstoppable_charge",
@@ -482,6 +488,7 @@
     "ability_type": "elective",
     "level_requirement": 4,
     "cost": { "stamina": 2, "focus": 0, "scaling": null },
+    "applies_condition": "shaken",
     "effect": "Target has disadvantage on their next action.",
     "narration_cue": "Sand in the eyes, a stomped foot, a cheap shot."
   },

@@ -22,6 +22,7 @@ import racial_resonance
 import resonance
 import resonance_events
 import temp_hp
+import thyra_seasons
 import zhael_fate
 from combat_damage import _handle_hp_zero
 from combat_events import isolated_publish, scratch_guard
@@ -84,7 +85,8 @@ async def _inner_fire_locked(
 
         reduction = racial_mod.get_racial_resonance_modifier(_DRAETHAR, "inner_fire_resonance_reduction")
         damage_dice = racial_mod.get_racial_resonance_modifier(_DRAETHAR, "inner_fire_self_damage")
-        fire_damage = dice_mod.roll(damage_dice).total
+        season = await thyra_seasons.season_for(player, conn=conn)
+        fire_damage = dice_mod.roll(damage_dice).total + thyra_seasons.damage_bonus(player, season, "fire")
 
         new_resonance = max(0, member.resonance.current - reduction)
         counted_before = encounter_facts.counted_death(participant)

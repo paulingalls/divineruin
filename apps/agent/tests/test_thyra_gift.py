@@ -23,6 +23,7 @@ def world(monkeypatch):
     database, _ = make_db_mod()
     monkeypatch.setattr("db.transaction", database.transaction)
     monkeypatch.setattr("patron_deeds.record_deed", AsyncMock())
+    monkeypatch.setattr("world_season.current_season", AsyncMock(return_value="spring"))
     ctx = make_context(location_id="forest_here")
     queries, mutations = _skill_mocks()
     queries.get_player.return_value = {

@@ -12,7 +12,7 @@ from combat_fate_rolls import PhaseRolls
 from combat_movement_cost import movement_cost
 from combat_spatial import distance, position, require_spatial
 from combat_structures import blocking_wall
-from condition_restrictions import cannot_act
+from condition_restrictions import cannot_act, effective_speed
 from declarations import Declaration
 from session_data import CombatParticipant, CombatState, SessionData
 
@@ -62,7 +62,7 @@ class PlayerMovement:
     def route(self) -> dict | None:
         return self.steps.get("movement_route")
 
-    async def move(self, actor: CombatParticipant, declaration: Declaration) -> dict | None:
+    async def move(self, actor: CombatParticipant, declaration: Declaration, *, disengage: bool = False) -> dict | None:
         if self.route is None:
             if moves.ineligible(actor):
                 return moves.apply_move(self.state, actor, declaration)
@@ -81,7 +81,7 @@ class PlayerMovement:
                     "moved_ft": 0,
                     "destination": position(spatial, actor.id),
                 },
-                {"remaining": spatial["speeds"][actor.id]},
+                {"remaining": effective_speed(spatial["speeds"][actor.id], actor.conditions), "disengage": disengage},
             ):
                 return moves.apply_move(self.state, actor, declaration)
         route = await self._finish(actor)

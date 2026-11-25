@@ -9,9 +9,10 @@ import condition_voice_rules
 import conditions
 import patron_synergy_combat
 from architect_encounter import cathedral_bonus
-from condition_catalog import INCORPOREAL
+from condition_catalog import INCORPOREAL, STUDIED_WEAKNESS
 from dramatic import DramaticContext, evaluate_dramatic_context
 from patron_synergy_combat import VeiledStrike
+from world_season import Season
 
 BEACON = "Beacon"
 
@@ -31,6 +32,7 @@ def roll_attack(
     defender: dict | None = None,
     mortaen_ac_override: int | None = None,
     veiled_strike: VeiledStrike | None = None,
+    season: Season | None = None,
 ) -> tuple:
     """Roll without applying HP changes; held reactions pause before impact."""
     attacker_data, effective_ac, attack_mod = attack_roll_inputs(
@@ -44,6 +46,7 @@ def roll_attack(
         defender=defender,
         mortaen_ac_override=mortaen_ac_override,
         veiled_strike=veiled_strike,
+        season=season,
     )
     attack_result = resolver.resolve_attack(
         attacker_data,
@@ -71,6 +74,7 @@ def attack_roll_inputs(
     defender=None,
     mortaen_ac_override: int | None = None,
     veiled_strike: VeiledStrike | None = None,
+    season: Season | None = None,
 ):
     """The attacker data, effective AC and to-hit bonus a d20 attack is prepared from.
 
@@ -89,6 +93,7 @@ def attack_roll_inputs(
         attacker_data["damage_type_override"] = "necrotic"
 
     if player is not None:
+        attacker_data.update(divine_favor=player.get("divine_favor"), season=season)
         attacker_data.update(patron_synergy_combat.attack_flags(player))
         attacker_data["outnumbered_oath"] = weapon_attack and patron_synergy_combat.outnumbered_oath(
             player, combat_state, attacker
@@ -97,10 +102,20 @@ def attack_roll_inputs(
             player, combat_state, attacker, target, action
         )
 
+    attack_mod = attacker.attack_mod
     if weapon_attack and attacker.type == "player" and attacker.archetype_id == "rogue":
         if combat_state is None:
             raise ValueError("rogue weapon attack requires combat state")
-        attacker_data["sneak_attack_available"] = attacker.sneak_attack_round != combat_state.round_number
+        blade_flurry = action.get("blade_flurry") is True
+        if blade_flurry:
+            attack_mod -= 2
+        attacker_data["sneak_attack_available"] = (
+            blade_flurry or attacker.sneak_attack_round != combat_state.round_number
+        )
+        attacker_data["maximize_sneak_attack"] = any(
+            c["type"] == STUDIED_WEAKNESS and c["source"] == target.id and c["duration"] == 1
+            for c in attacker.conditions
+        )
         advantage, disadvantage = check_resolution_attack.attack_modes(attacker_data, action, target.conditions)
         if attacker_data["sneak_attack_available"] and not (advantage and not disadvantage):
             spatial = combat_spatial.require_spatial(combat_state)
@@ -135,7 +150,6 @@ def attack_roll_inputs(
         + mortaen_ac
         + cathedral_bonus(combat_state, target.id)
     )
-    attack_mod = attacker.attack_mod
     if not weapon_attack and player is not None:
         attack_mod += patron_synergy_combat.spell_attack_bonus(player, target)
     if combat_state is not None:

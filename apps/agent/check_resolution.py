@@ -8,6 +8,7 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass, replace
 
+import thyra_seasons
 from condition_bonus import roll_bonus_dice as roll_bonus_dice
 from condition_voice_rules import auto_fail_hearing_perception
 from conditions import ConditionEffects, get_condition_effects
@@ -25,6 +26,7 @@ from rules_engine import (
     narrative_hint,
     proficiency_bonus,
 )
+from world_season import Season
 
 # --- Result dataclasses ---
 
@@ -167,6 +169,11 @@ class D20Roll:
     def evaluate(self, face: int) -> D20CheckCore:
         return _evaluate_d20(face, self.modifier, self.dc)
 
+    def evaluate_pair(self, first: int, second: int) -> D20CheckCore:
+        if self.advantage == self.disadvantage:
+            return self.evaluate(first)
+        return self.evaluate(max(first, second) if self.advantage else min(first, second))
+
     def roll(self, rng: random.Random | None = None) -> D20CheckCore:
         return _roll_d20_check(
             self.modifier, self.dc, rng=rng, advantage=self.advantage, disadvantage=self.disadvantage
@@ -301,6 +308,7 @@ def _resolve_skill_check_impl(
     natural_terrain: bool,
     hearing_only: bool,
     first_stay: bool = False,
+    season: Season | None = None,
 ) -> SkillCheckResult:
     skill_lower = skill.lower()
     if auto_fail_hearing_perception(player_data.get("conditions") or [], skill=skill, hearing_only=hearing_only):
@@ -353,7 +361,7 @@ def _resolve_skill_check_impl(
         gift_bonus, gift_advantage, gift_name = skill_gift(
             player_data, skill_lower, ally_present=ally_present, natural_terrain=natural_terrain, first_stay=first_stay
         )
-        bonus += gift_bonus
+        bonus += gift_bonus + thyra_seasons.skill_bonus(player_data, season, skill_lower)
         advantage = advantage or gift_advantage
 
     check = resolve_check(
@@ -395,6 +403,7 @@ def resolve_skill_check(
     natural_terrain: bool,
     hearing_only: bool,
     first_stay: bool = False,
+    season: Season | None = None,
 ) -> SkillCheckResult:
     return _resolve_skill_check_impl(
         player_data,
@@ -405,6 +414,7 @@ def resolve_skill_check(
         natural_terrain=natural_terrain,
         hearing_only=hearing_only,
         first_stay=first_stay,
+        season=season,
     )
 
 
@@ -418,6 +428,7 @@ def resolve_skill_check_dc(
     natural_terrain: bool,
     hearing_only: bool,
     first_stay: bool = False,
+    season: Season | None = None,
 ) -> SkillCheckResult:
     """Like resolve_skill_check but accepts a numeric DC directly.
 
@@ -433,6 +444,7 @@ def resolve_skill_check_dc(
         natural_terrain=natural_terrain,
         hearing_only=hearing_only,
         first_stay=first_stay,
+        season=season,
     )
 
 

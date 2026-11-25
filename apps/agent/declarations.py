@@ -49,7 +49,7 @@ class ManeuverIntent(StrEnum):
 
 @dataclass(frozen=True)
 class Declaration:
-    """One phase action, with an optional attack enhancer carried in its rider."""
+    """One phase action, with an optional declaration enhancer carried in its rider."""
 
     type: DeclarationType
     action: str | None = None

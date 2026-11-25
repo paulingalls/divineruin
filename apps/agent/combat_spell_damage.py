@@ -13,6 +13,7 @@ import db_queries
 import dice
 import encounter_facts
 import spells
+import thyra_seasons
 from combat_attack_roll import attack_roll_inputs
 from combat_damage_results import AutomaticDamageResult, SaveDamageResult
 from combat_fate_rolls import packet_save
@@ -140,7 +141,19 @@ async def _land_one(
             roll, save_info = None, progress.steps.get("save_info")
         else:
             rolled = await _roll_save_damage(
-                session, state, profile, spell, caster, target, cast_packet, components, action, delivery, progress
+                session,
+                state,
+                profile,
+                spell,
+                caster,
+                target,
+                cast_packet,
+                components,
+                action,
+                delivery,
+                progress,
+                conn=conn,
+                queries=queries,
             )
             if rolled is None:
                 return
@@ -181,7 +194,20 @@ async def _land_one(
 
 
 async def _roll_save_damage(
-    session, state, profile, spell, caster, target, cast_packet, components, action, delivery, progress
+    session,
+    state,
+    profile,
+    spell,
+    caster,
+    target,
+    cast_packet,
+    components,
+    action,
+    delivery,
+    progress,
+    *,
+    conn,
+    queries,
 ):
     """Roll the recipient's save, then the damage. Returns ``(roll, save_info)``, or None while a
     Fate's Thread choice holds the save (anyone's d20 is in scope)."""
@@ -220,17 +246,23 @@ async def _roll_save_damage(
         if dart_indices is not None
         else scaled(profile, "projectile_scaling", profile.get("projectiles", 1), caster.level)
     )
+    player = (
+        await attack_player(caster, queries=queries, conn=conn)
+        if any(c["damage_type"] in thyra_seasons.DAMAGE_TYPES for c in components)
+        else None
+    )
+    season = await thyra_seasons.season_for(player, conn=conn)
     rolled = []
     for i, component in enumerate(components):
         if dart_indices is not None:
             assert delivery is not None
             total = sum(delivery["dart_rolls"][index] for index in dart_indices)
         else:
-            total = (
-                dice.maximum(component["dice"])
-                if plant_blight
-                else (dice.roll(component["dice"]).total if component["dice"] != "0" else 0)
-            )
+            notation = component["dice"]
+            total = 0
+            if notation != "0":
+                total = dice.maximum(notation) if plant_blight else dice.roll(notation).total
+                total += thyra_seasons.damage_bonus(player, season, component["damage_type"])
             if multiplier > 1:
                 base = profile["components"][i]["dice"]
                 total += sum(dice.roll(base).total for _ in range(multiplier - 1))
@@ -308,7 +340,15 @@ async def _land_attack(
             player = await attack_player(caster, queries=queries, conn=conn)
             defender = await attack_player(target, queries=queries, conn=conn)
             attacker_data, ac, modifier = attack_roll_inputs(
-                caster, target, ac_bonus, state, action, weapon_attack=False, player=player, defender=defender
+                caster,
+                target,
+                ac_bonus,
+                state,
+                action,
+                weapon_attack=False,
+                player=player,
+                defender=defender,
+                season=await thyra_seasons.season_for(player, conn=conn),
             )
             prepared = check_resolution_attack.prepare_attack(
                 attacker_data, action, ac, attack_mod=modifier, target_conditions=target.conditions

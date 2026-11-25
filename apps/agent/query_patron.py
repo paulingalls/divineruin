@@ -9,11 +9,14 @@ import db_mutations_resonance
 import db_queries
 import patron_gateway
 import patron_senses
+import thyra_seasons
 import unbound_tools
+import veythar_wellspring
 import zhael_fate
 import zhael_foretold_words
 from _gods_content import load_gods
 from combat_terrain import resolve_terrain
+from crafting_tools import CRAFT_BLESSING
 from patron_ability_tools import project_abilities
 from patron_combat_edges import COMMUNITY_SHIELD, SCALES_VERDICT, VEILSTEP, VEILSTEP_RANGE_FT, WILDMOTHERS_WRATH
 from patron_favor import get_patron_tier
@@ -77,14 +80,28 @@ async def query_patron(
         gift = {**gift, **zhael_fate.availability(player, gift)}
     abilities = project_abilities(player, patron)
     for ability in abilities:
-        if ability["id"] == DEATH_WARD:
+        if ability["id"] == veythar_wellspring.ECHO:
+            if veythar_wellspring.state(player).get("armed"):
+                ability["activation_hint"] = "Wellspring Echo is armed. " + veythar_wellspring.ARMED_HINT
+            elif ability["available"]:
+                ability["activation_hint"] = (
+                    f'Use activate(id="{veythar_wellspring.ECHO}") to arm Wellspring Echo. '
+                    + veythar_wellspring.ARMED_HINT
+                )
+        elif ability["id"] == CRAFT_BLESSING:
+            ability["activation_hint"] = (
+                "Begin a craft normally. Aelora's blessing applies automatically at the start, shortening the "
+                "duration to 75% of normal. A Success has a 25% chance to gain a property from the Exceptional table."
+            )
+        elif ability["id"] == DEATH_WARD:
             ability["activation_hint"] = (
                 "Triggers automatically when damage reduces you from above 0 HP to 0 HP. You stay at 1 HP."
             )
         elif ability["id"] == DAWNS_EMBRACE:
             ability["activation_hint"] = (
                 "Triggers automatically when damage drops another party player or the companion to 0 HP. "
-                "They stand at half maximum HP, rounded down with a minimum of 1."
+                "They stand at half maximum HP, rounded down with a minimum of 1. "
+                "A Thyra follower in spring restores 1 extra HP, up to maximum."
             )
         elif ability["id"] == COMMUNITY_SHIELD:
             ability["activation_hint"] = (
@@ -128,6 +145,12 @@ async def query_patron(
         senses["deaths_awareness"] = await patron_senses.deaths_awareness(session, player, queries=queries)
     elif patron_id == "nythera":
         senses["horizon_sense"] = await patron_senses.horizon_sense(session, player)
+    if (season := await thyra_seasons.season_for(player)) is not None:
+        senses["seasonal_attunement"] = {
+            "id": thyra_seasons.GIFT,
+            "season": season,
+            "active_bonus": thyra_seasons.ACTIVE_BONUS[season],
+        }
     return json.dumps(
         {
             "patron_id": patron_id,

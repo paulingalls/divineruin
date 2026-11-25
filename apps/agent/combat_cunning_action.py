@@ -6,10 +6,12 @@ import combat_spatial
 import concealment
 import condition_voice_rules
 import conditions
+import thyra_seasons
 from combat_ability_gate import CUNNING_ACTION, declared_ability
 from combat_fate_rolls import PacketRolls
 from combat_participant import CombatParticipant
 from combat_terrain import skill_natural_terrain
+from condition_restrictions import effective_speed
 from declarations import Declaration, resolve_declaration
 from patron_location import check_first_stay
 from resource_costs import gate_pool
@@ -33,7 +35,8 @@ async def preflight(state: CombatState, *, queries) -> None:
 def movement_allowance(state: CombatState, actor: CombatParticipant, decl: Declaration) -> dict:
     if combat_martial.attack_ability(decl) == CUNNING_ACTION:
         if decl.rider == "dash":
-            return {"remaining": 2 * combat_spatial.require_spatial(state)["speeds"][actor.id]}
+            speed = combat_spatial.require_spatial(state)["speeds"][actor.id]
+            return {"remaining": 2 * effective_speed(speed, actor.conditions)}
         if decl.rider == "disengage":
             return {"disengage": True}
     return {}
@@ -74,6 +77,7 @@ async def hide(
             ally_present=session.allies_present_for(actor.id),
             natural_terrain=await skill_natural_terrain(session, player, "stealth", combat_state=state),
             hearing_only=False,
+            season=await thyra_seasons.skill_season(player, "stealth", conn=conn),
             first_stay=await check_first_stay(player, session, "stealth", player_id=actor.id, conn=conn),
         )
 

@@ -1,23 +1,31 @@
-"""Hostile saving-throw mechanics for player condition abilities."""
+"""Targeting and resolution for hostile player condition abilities."""
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from functools import partial
 from typing import TYPE_CHECKING
 
 from livekit.agents.llm import ToolError
 
 import check_resolution_save
+import combat_ability_gate
 import rules_engine
 from combat_fate_rolls import packet_save
 from combat_legendary_resistance import finalize_save, override_fields
 
 if TYPE_CHECKING:
     from abilities import Ability
+    from combat_fate_rolls import PacketRolls
     from declarations import Declaration
-    from session_data import CombatParticipant, CombatState
+    from session_data import CombatParticipant, CombatState, SessionData
 
 
 BENEFICIAL_CONDITIONS = frozenset({"blessed", "shielded", "enraged", "inspired", "precise_strike"})
+
+
+def requires_hostile_target(ability: "Ability") -> bool:
+    return ability.save is not None or (
+        ability.applies_condition is not None and ability.applies_condition not in BENEFICIAL_CONDITIONS
+    )
 
 
 def gate_hostile_condition_targets(state: "CombatState", decl: "Declaration", condition: str, action_name: str) -> None:
@@ -56,40 +64,99 @@ async def resolve_hostile_condition(
 ) -> dict:
     cond_type = ability.applies_condition
     assert cond_type is not None
-    assert ability.save is not None
-    assert ability.dc_attribute is not None
-    dc = player_ability_dc(attacker, ability.dc_attribute)
-    result = await packet_save(
-        progress,
-        session,
-        target.id,
-        cond_type,
-        partial(
-            check_resolution_save.roll_participant_save,
-            target,
-            ability.save,
-            dc,
-            cond_type,
-            originating_participant_id=attacker.id,
-            combat_state=state,
-        ),
-    )
-    if result is None:
-        return {}
-    result = finalize_save(state, target, result, failed_conditions=(cond_type,))
     summary = {
-        **override_fields(result),
         "actor_id": attacker.id,
         "resolved": True,
-        "save_success": result.success,
         "declaration_type": str(decl.type),
         "action": ability.id,
         "target": target.name,
     }
-    if result.success:
-        summary["condition_resisted"] = cond_type
-    elif land_condition(state, target.id, attacker, cond_type, ability.id, packet=summary):
+    if ability.save is not None:
+        assert ability.dc_attribute is not None
+        dc = player_ability_dc(attacker, ability.dc_attribute)
+        result = await packet_save(
+            progress,
+            session,
+            target.id,
+            cond_type,
+            partial(
+                check_resolution_save.roll_participant_save,
+                target,
+                ability.save,
+                dc,
+                cond_type,
+                originating_participant_id=attacker.id,
+                combat_state=state,
+            ),
+        )
+        if result is None:
+            return {}
+        result = finalize_save(state, target, result, failed_conditions=(cond_type,))
+        summary.update(override_fields(result), save_success=result.success)
+        if result.success:
+            summary["condition_resisted"] = cond_type
+            return summary
+    source = ability.id
+    duration = None
+    if ability.id == combat_ability_gate.TAUNT:
+        source = attacker.id
+        duration = 2
+    elif ability.id in (combat_ability_gate.DIRTY_TRICK, combat_ability_gate.WAR_CRY):
+        duration = 1
+    if land_condition(state, target.id, attacker, cond_type, source, duration=duration, packet=summary):
         summary["condition_inflicted"] = cond_type
     else:
         summary["condition_immune"] = cond_type
     return summary
+
+
+async def resolve_war_cry(
+    session: "SessionData",
+    state: "CombatState",
+    attacker: "CombatParticipant",
+    decl: "Declaration",
+    ability: "Ability",
+    land_condition: Callable[..., bool],
+    *,
+    pay: Callable[[], Awaitable[None]],
+    progress: "PacketRolls | None",
+) -> dict:
+    steps = progress.steps if progress is not None else {}
+    if "target_ids" not in steps:
+        steps["target_ids"] = combat_ability_gate.war_cry_targets(state)
+    target_ids = steps["target_ids"]
+    summary = {"actor_id": attacker.id, "declaration_type": str(decl.type), "action": ability.id}
+    if not target_ids:
+        return {**summary, "resolved": False, "reason": "War Cry has no standing foes who can hear."}
+    if not steps.get("cost_paid"):
+        await pay()
+        steps["cost_paid"] = True
+    results = steps.setdefault("condition_results", [])
+    for target_id in target_ids[len(results) :]:
+        target = state.get_participant(target_id)
+        if target is None:
+            raise ValueError(f"War Cry recipient {target_id!r} disappeared during resolution")
+        result = await resolve_hostile_condition(
+            session,
+            state,
+            attacker,
+            target,
+            decl,
+            ability,
+            land_condition,
+            progress=progress.scope(target_id) if progress is not None else None,
+        )
+        if not result:
+            return {}
+        results.append(
+            {
+                "target_id": target_id,
+                **{key: value for key, value in result.items() if key not in summary and key != "resolved"},
+            }
+        )
+    return {
+        **summary,
+        "resolved": True,
+        "condition_results": results,
+        "condition_targets": [result["target_id"] for result in results if "condition_inflicted" in result],
+    }
