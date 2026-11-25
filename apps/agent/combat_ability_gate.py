@@ -7,6 +7,7 @@ from mentor_variants import MentorVariant
 DEVASTATING_STRIKE = "warrior_devastating_strike"
 SHIELD_BASH = "warrior_shield_bash"
 DIRTY_TRICK = "rogue_dirty_trick"
+TAUNT = "warrior_taunt"
 SHIELD_BASH_RIDER = "shield_bash"
 CUNNING_ACTION = "rogue_cunning_action"
 CUNNING_RIDERS = ("dash", "hide", "disengage")

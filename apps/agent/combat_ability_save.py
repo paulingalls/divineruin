@@ -95,8 +95,14 @@ async def resolve_hostile_condition(
         if result.success:
             summary["condition_resisted"] = cond_type
             return summary
-    duration = 1 if ability.id == combat_ability_gate.DIRTY_TRICK else None
-    if land_condition(state, target.id, attacker, cond_type, ability.id, duration=duration, packet=summary):
+    source = ability.id
+    duration = None
+    if ability.id == combat_ability_gate.TAUNT:
+        source = attacker.id
+        duration = 2
+    elif ability.id == combat_ability_gate.DIRTY_TRICK:
+        duration = 1
+    if land_condition(state, target.id, attacker, cond_type, source, duration=duration, packet=summary):
         summary["condition_inflicted"] = cond_type
     else:
         summary["condition_immune"] = cond_type

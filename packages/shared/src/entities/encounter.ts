@@ -51,6 +51,7 @@ export const CONDITION_NAMES = [
   "blinded",
   "frightened",
   "charmed",
+  "taunted",
   "deafened",
   "shaken",
   "petrified",

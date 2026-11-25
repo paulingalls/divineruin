@@ -89,7 +89,10 @@
     "ability_type": "elective",
     "level_requirement": 4,
     "cost": { "stamina": 2, "focus": 0, "scaling": null },
-    "effect": "Force one enemy to attack you for 1 round (WIS save negates).",
+    "applies_condition": "taunted",
+    "save": "wisdom",
+    "dc_attribute": "strength",
+    "effect": "Through the next round, one foe must aim new attacks at you while you are standing and it can target you. A Wisdom save negates this.",
     "narration_cue": "A jeer cuts deep and the foe turns, seeing only you."
   },
   {
