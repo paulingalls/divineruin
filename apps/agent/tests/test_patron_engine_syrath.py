@@ -9,7 +9,7 @@ from _zhael_fate_fixtures import defend, game_tools
 from livekit.agents.llm import ToolError
 from test_aelora_gift import _live_party
 
-import combat_fate
+import combat_ally_pass
 import combat_hold
 import combat_phase
 import db_mutations
@@ -239,7 +239,7 @@ async def test_veilstep_refuses_ineligible_or_partly_resolved(
             state = world.ctx.userdata.combat_state
             resolving, advance = combat_phase.advance_combat_phase(state)
             allies, hostiles = combat_phase.partition_packets(resolving, advance.packets)
-            state.ally_continuation = combat_fate.begin_ally_pass(resolving, allies, hostiles, {})
+            state.ally_continuation = combat_ally_pass.begin_ally_pass(resolving, allies, hostiles, {})
         elif flag == "held_actions":
             foe = state.get_participant("foe")
             foe.action_pool = [{"name": "Claw", "damage": "1d4", "damage_type": "slashing", "properties": []}]

@@ -101,7 +101,7 @@ tables versus JSONB backfills. Existing implementations do not authorize
 rewriting those criteria.
 
 The M4.7/M4.8 capstones exercise encounter roles and beneficial conditions;
-Phase 4 records 73/75. Beat-3 natural narration pauses remain unverified here.
+Phase 4 records 74/76. Beat-3 natural narration pauses remain unverified here.
 Phase 7 M7.4 is reconciled on 2026-11-06 (`mbp-generated-combat`): generated entry and creature queries use player-derived tiers, active companion profile factors and difficulty-specific HP/DPR windows. The five remaining Phase 7 criteria belong to M7.3; native Choir audio certification remains separate.
 
 The story-111 retired-tool-name guard was deleted in `cb5dd18e`; it no longer

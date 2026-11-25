@@ -105,7 +105,8 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - [x] Critical hit (natural 20) doubles damage dice
 - [x] `request_attack` returns structured result with hit/miss/crit, damage, and dramatic flag The current DM verb is `declare_phase`.
 - [x] the saving throw resolution returns structured result with success/fail and margin
-- [x] Declaration enhancers (Cunning Action, Extra Attack) correctly expand single declarations. Cunning Action doubles the approach allowance with Dash or attempts Stealth after the attack with Hide. Disengage is refused until movement opens hostile reaction windows (#706).
+- [x] Declaration enhancers (Cunning Action, Extra Attack) correctly expand single declarations. Cunning Action doubles the approach allowance with Dash or attempts Stealth after the attack with Hide. Disengage is refused (#706).
+- [x] An eligible enemy can spend one opportunity attack per round when a player moves or approaches beyond its reach. The player may react to the blow, then continues from that point if able.
 - [x] All combat math functions are pure with no side effects
 - [x] Tests cover all declaration types, armor categories, and weapon damage ranges
 - [ ] The 15 martial L4/L8 elective techniques that are refused in combat work in a fight

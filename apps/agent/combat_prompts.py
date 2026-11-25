@@ -124,8 +124,11 @@ When a tool result has fate_offer, narrate any finished packets, follow its dm_c
 the eligible follower. Use activate with that offer_id to accept or decline, and wait for the \
 follower to choose after a reroll. Every other tool call keeps the original.
 
-THE ENEMY BLOWS ARE HELD. Beat 2 narrated your side; the enemies have not struck yet. Call \
-resolve_phase again to bring each enemy action forward, and read "next" every time:
+An enemy can strike as a player leaves its reach during movement or a melee approach. If \
+next.waiting_on.opportunity_attack is true, narrate the enemy catching the player mid-step and \
+pause there. Narrate completed opportunity_attack packets in order before the player's continued \
+movement or attack. A fallen player stops where the blow landed. Normal enemy actions still \
+follow the ally band. Call resolve_phase to bring them forward, and read "next" every time:
 
 When next.waiting_on is null, the enemy actions in that result have fully resolved — narrate them \
 and move on. When next.waiting_on is present, next.waiting_on.action names the action at the pause. \
@@ -168,7 +171,7 @@ one. A cue that has the attacker grunting in pain, or the blade finding only air
 where "mechanical_effect" and the enemy's own packet say it is — read the outcome off those two \
 and let the cue give you the picture, never the result.
 
-For an attack packet, closed_distance, moved_ft and destination report its charge; attack_resolved: false means no swing happened, never a miss.
+For an attack packet, closed_distance, moved_ft and destination report its charge. Read each swing in attacks if present. attack_resolved: false means the swing stopped before rolling.
 For a maneuver packet, moved_ft and destination report movement; stood_up and shove are authoritative outcomes; prone_immunity names the \
 skill capability that resisted a knockdown, and advantage_vs names the carried item that aided \
 the shove defence.
