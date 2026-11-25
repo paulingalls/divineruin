@@ -1,5 +1,7 @@
 """Martial combat abilities, weapon riders and order receipts."""
 
+from livekit.agents.llm import ToolError
+
 import abilities
 import ability_persistence
 import check_resolution
@@ -8,6 +10,7 @@ import combat_melee_approach
 import combat_recharge
 import combat_spatial
 import combat_spell_heal
+import concealment
 import conditions
 import dice
 import mentor_variants
@@ -32,6 +35,7 @@ from combat_ability_gate import (
     SHIELD_BASH,
     SHIELD_BASH_RIDER,
     SINGLE_TARGET_WEAPON_ABILITIES,
+    VANISH,
     WHIRLWIND,
     DeclaredAbility,
     declared_ability,
@@ -55,6 +59,8 @@ from session_data import CombatState
 def require_targets(
     state: CombatState, actor: CombatParticipant, decl: Declaration, ability: abilities.Ability
 ) -> None:
+    if ability.id == VANISH and (decl.target_ids or decl.target_id not in (None, actor.id)):
+        raise ValueError("Vanish targets only the rogue.")
     if ability.id == IRON_STANCE_ABILITY and (decl.target_ids or decl.target_id not in (None, actor.id)):
         raise ValueError("Iron Stance only protects the warrior using it.")
     if ability.id == SECOND_WIND:
@@ -251,6 +257,28 @@ def cripple(state: CombatState, actor: CombatParticipant, target: CombatParticip
         receipt["condition_inflicted"] = CRIPPLED
     else:
         receipt["condition_immune"] = CRIPPLED
+
+
+async def vanish(actor: CombatParticipant, resolved: DeclaredAbility, *, conn, queries) -> dict:
+    from combat_ability import _with_variant
+
+    ability, _ = resolved
+    variant = await pay(actor.id, resolved, queries=queries, conn=conn)
+    cost = (variant or ability).cost
+    player = await queries.get_player(actor.id, conn=conn, for_update=True)
+    if player is None:
+        raise ToolError(f"Unknown player: {actor.id}")
+    return _with_variant(
+        {
+            "actor_id": actor.id,
+            "resolved": True,
+            "declaration_type": "ability",
+            "action": VANISH,
+            "deducted": {"focus": cost.focus, "stamina": cost.stamina},
+            "concealment": await concealment.transition(actor.id, player, True, conn=conn),
+        },
+        variant,
+    )
 
 
 async def second_wind(

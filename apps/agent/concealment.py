@@ -58,14 +58,14 @@ async def transition(
     return packet
 
 
-async def reveal_attacker(player_id, *, conn, queries):
+async def reveal_attacker(player_id: str, *, conn, queries, ended_by: str = "attack") -> dict | None:
     if conn is None:
         raise ToolError("Player attacks require a transaction")
     player = await queries.get_player(player_id, conn=conn, for_update=True)
     if player is None:
         raise ToolError(f"Player '{player_id}' not found")
     if is_concealed(player):
-        return await transition(player_id, player, False, ended_by="attack", conn=conn)
+        return await transition(player_id, player, False, ended_by=ended_by, conn=conn)
     return None
 
 
@@ -73,6 +73,11 @@ async def _lock_players(state, *, conn, queries) -> dict[str, dict]:
     ids = sorted(p.id for p in state.participants if p.type == "player")
     # A seat with no player row holds no lifetime and must not block the party's wrap or XP.
     return await queries.get_players_for_update(ids, conn=conn)
+
+
+async def concealed_ids(state, *, conn=None, queries=db_queries) -> frozenset[str]:
+    players = await _lock_players(state, conn=conn, queries=queries)
+    return frozenset(player_id for player_id, player in players.items() if is_concealed(player))
 
 
 async def tick_gift_round(state, *, conn, queries) -> list[dict]:

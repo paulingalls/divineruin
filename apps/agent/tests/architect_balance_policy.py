@@ -40,7 +40,8 @@ def owner_of(state: CombatState) -> CombatParticipant:
     return participants(state, (state.architect_encounter["owner_id"],))[0]
 
 
-def targets(players: list[CombatParticipant]) -> list[CombatParticipant]:
+def targets(players: list[CombatParticipant], concealed: frozenset[str]) -> list[CombatParticipant]:
+    players = [p for p in players if p.id not in concealed]
     standing = [p for p in players if not p.is_fallen]
     return sorted(standing, key=lambda p: p.hp_current) or [p for p in players if not is_terminally_down(p)]
 

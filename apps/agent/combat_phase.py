@@ -122,6 +122,7 @@ def advance_combat_phase(
     rng: random.Random | None = None,
     *,
     defer_legendary: bool = False,
+    concealed: frozenset[str] = frozenset(),
 ) -> tuple[CombatState, PhaseAdvance]:
     """Advance the combat phase machine by exactly one beat.
 
@@ -139,7 +140,7 @@ def advance_combat_phase(
         resolved = {actor_id: resolve_declaration(raw) for actor_id, raw in declarations.items()}
         persisted_declarations = copy.deepcopy(declarations)
         for actor_id, declaration in resolved.items():
-            validate_declaration(next_state, actor_id, declaration, persisted_declarations)
+            validate_declaration(next_state, actor_id, declaration, persisted_declarations, concealed=concealed)
         for participant in next_state.participants:
             participant.conditions = remove_conditions(participant.conditions, (RECKLESS_ASSAULT_RIDER,))
         next_state.pending_declarations = persisted_declarations
@@ -209,7 +210,13 @@ def _boss_legendaries(state: CombatState) -> list[dict]:
 
 
 def consume_legendary_action(
-    state: CombatState, boss_id: str, *, action_id: str = "", target_id: str = "", reshape: tuple[dict, ...] = ()
+    state: CombatState,
+    boss_id: str,
+    *,
+    action_id: str = "",
+    target_id: str = "",
+    reshape: tuple[dict, ...] = (),
+    concealed: frozenset[str] = frozenset(),
 ) -> CombatState:
     """Return a spent copy, with an authored action queued when one was selected."""
     from combat_legendary import prepare, require_boundary
@@ -226,7 +233,7 @@ def consume_legendary_action(
     if boss.legendary is not None:
         if boss.is_fallen or boss.is_dead or boss.hp_current <= 0:
             raise ValueError(f"{boss.name} is unavailable to take a legendary action")
-        prepare(next_state, boss, action_id, target_id, reshape)
+        prepare(next_state, boss, action_id, target_id, reshape, concealed=concealed)
         return next_state
     if action_id or target_id or reshape:
         raise ValueError("A legacy Boss spend requires empty action_id, target_id, and reshape.")

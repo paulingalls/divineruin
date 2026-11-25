@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import combat_melee_approach as melee
 import combat_spatial_declarations as moves
+import concealment
 import dice
 import reaction_spend
 from combat_action_availability import available_actions
@@ -14,6 +15,7 @@ from combat_spatial import distance, position, require_spatial
 from combat_structures import blocking_wall
 from condition_restrictions import cannot_act, effective_speed
 from declarations import Declaration
+from patron_synergy_combat import attack_player
 from session_data import CombatParticipant, CombatState, SessionData
 
 
@@ -190,6 +192,12 @@ class PlayerMovement:
                 state, spatial, center, point, target_id=mover.id, origin_id=reactor.id, physical=True
             ):
                 continue
+            if mover.type == "player":
+                player = await attack_player(mover, queries=self.packet_deps["queries"], conn=self.packet_deps["conn"])
+                assert player is not None
+                if concealment.is_concealed(player):
+                    route["exits"].clear()
+                    continue
             self._leg(mover, route, point)
             if not route["facts"]["resolved"]:
                 break

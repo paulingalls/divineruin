@@ -260,7 +260,6 @@ async def drive_architect_fight(
             detail = f"seed={seed}, round={round_number}, beat={state.beat}"
             players = architect_policy.participants(state, player_ids)
             owner = architect_policy.owner_of(state)
-            candidates = architect_policy.targets(players)
             try:
                 if (
                     state.beat in ("declaration", "narration")
@@ -274,33 +273,40 @@ async def drive_architect_fight(
                     and not cannot_act(owner.conditions)
                     and owner.legendary_actions >= 2
                     and last_legendary_round != round_number
-                    and (target := architect_policy.geometry_target(state, owner, candidates)) is not None
+                    and (
+                        target := architect_policy.geometry_target(
+                            state, owner, architect_policy.targets(players, await concealment.concealed_ids(state))
+                        )
+                    )
+                    is not None
                 ):
                     result = await consume_legendary_action(ctx, owner.id, architect_policy.GEOMETRY, target.id, [])
                     last_legendary_round = round_number
                 elif state.beat == "declaration" and state.legendary_continuation is None:
                     declarations: list[DeclVariant] = []
-                    for actor in [*players, *(p for p in state.participants if not p.is_ally and not p.is_structure)]:
+                    for actor in players:
                         if actor.is_fallen or cannot_act(actor.conditions):
                             continue
-                        if actor.id in damage:
-                            row = await db_queries.get_player(actor.id)
-                            assert row is not None, detail
-                            declaration = architect_policy.player_declaration(
-                                state, actor, owner, players, row, damage, rallied, loadouts[actor.id]
-                            )
-                            if (
-                                isinstance(declaration, AttackDecl)
-                                and syrath_gift(row)
-                                and not concealment.is_concealed(row)
-                                and not patron_gift_tools.shadow_veil_state(row)["spent"]
-                            ):
-                                with ctx.userdata._bind_authenticated_actor(actor.id, 1, lambda *_: None):
-                                    result = await activate(ctx, SYRATH_SHADOW_VEIL)
-                                assert isinstance(result, str) and json.loads(result)["concealment"]["concealed"], (
-                                    detail
-                                )
-                        elif actor.id == owner.id:
+                        row = await db_queries.get_player(actor.id)
+                        assert row is not None, detail
+                        declaration = architect_policy.player_declaration(
+                            state, actor, owner, players, row, damage, rallied, loadouts[actor.id]
+                        )
+                        if (
+                            isinstance(declaration, AttackDecl)
+                            and syrath_gift(row)
+                            and not concealment.is_concealed(row)
+                            and not patron_gift_tools.shadow_veil_state(row)["spent"]
+                        ):
+                            with ctx.userdata._bind_authenticated_actor(actor.id, 1, lambda *_: None):
+                                result = await activate(ctx, SYRATH_SHADOW_VEIL)
+                            assert isinstance(result, str) and json.loads(result)["concealment"]["concealed"], detail
+                        declarations.append(declaration)
+                    candidates = architect_policy.targets(players, await concealment.concealed_ids(state))
+                    for actor in state.participants:
+                        if actor.is_ally or actor.is_structure or actor.is_fallen or cannot_act(actor.conditions):
+                            continue
+                        if actor.id == owner.id:
                             declaration = architect_policy.owner_declaration(state, owner, candidates)
                         else:
                             declaration = architect_policy.construct_declaration(state, actor, candidates)

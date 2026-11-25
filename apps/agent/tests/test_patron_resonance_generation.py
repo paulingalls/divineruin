@@ -347,6 +347,7 @@ async def test_declared_nonprimary_cast_uses_working_targets(patron, spell_id, d
         "divine_favor": {"patron": patron},
     }
     deps["queries"].get_player = AsyncMock(return_value=row)
+    deps["queries"].get_players_for_update = AsyncMock(return_value={"caster_2": row})
     library = MagicMock(get_known=AsyncMock(return_value=[{"spell_id": spell_id}]))
     deps["character_spells_mod"] = library
     persistence = MagicMock(update_player_resources=AsyncMock())
@@ -370,6 +371,7 @@ async def test_declared_nonprimary_cast_uses_working_targets(patron, spell_id, d
             "goblin_scout_1": {"type": "defend"},
         },
         mutations=deps["mutations"],
+        queries=deps["queries"],
     )
     raw = await combat_turn._resolve_phase_impl(ctx, **deps)
     assert isinstance(raw, str)

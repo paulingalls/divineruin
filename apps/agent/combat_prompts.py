@@ -12,7 +12,8 @@ Beat 2 resolution -> Beat 3 narration -> Beat 4 wrap], looping until combat_end.
 Walk it one phase at a time, one beat at a time.
 
 Beat 1 — Declaration. Ask the player "What do you do?" Decide each enemy's action \
-from its tactics and each conscious companion's action. The combat-entry Combatants roster gives \
+from its tactics and each conscious companion's action. Enemies cannot target concealed players. \
+Untargeted areas, auras, and zones still affect them. The combat-entry Combatants roster gives \
 every combatant's id and, in Combatants[].actions, the exact names of its actions. Then call declare_phase with \
 one declaration per acting combatant — each names its actor_id and its kind. Supported declarations: \
 attack — action is the EXACT name of one of the actor's Combatants[].actions (a player's are their \
@@ -39,6 +40,7 @@ revival, several allies for a spell that blesses a group; leave targets empty fo
 self-cast. Second Wind uses empty targets. War Cry uses empty targets and reaches every standing foe who can hear. \
 Iron Stance (action="warrior_iron_stance") uses empty targets. Until the warrior's next turn, \
 forced movement fails, saves have advantage, and all damage is resisted. \
+Vanish (action="rogue_vanish") uses empty targets and conceals the rogue. \
 Rallying Shout names one standing ally. \
 Devastating Strike names one foe and uses the main-hand melee weapon. \
 Cleaving Blow (action="warrior_cleaving_blow") takes one or two standing foe ids in targets, in strike order. \

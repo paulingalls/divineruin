@@ -21,6 +21,7 @@ import combat_spell_damage
 import combat_spell_heal
 import combat_veilrender
 import combat_voice_rules
+import concealment
 import condition_voice_rules
 import db_queries
 import spell_casting
@@ -446,6 +447,14 @@ async def _resolve_ability_packet(
                 if interception is not None
                 else {}
             )
+    if (
+        (spell.combat_damage or {}).get("resolution") == "attack"
+        and "hit" not in cast_packet.get("damage_result", {})
+        and "concealment" not in cast_packet
+    ):
+        queries = (damage_deps or {}).get("queries", db_queries)
+        if reveal := await concealment.reveal_attacker(attacker.id, conn=conn, queries=queries, ended_by="cast"):
+            cast_packet["concealment"] = reveal
     # Beneficial-condition PRODUCER (M4.8 story-004), in-combat half: land the produced condition on the
     # recipients that remain after Absorb Magic. The mutation rides this phase's save_combat_state.
     cond_type = cast_packet.get("condition_applied")

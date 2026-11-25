@@ -162,6 +162,7 @@ async def test_choir_phase_lands_extra_damage_dice(patron, bonus, mock_combat_ag
         "divine_favor": {"patron": patron},
     }
     queries.get_player = AsyncMock(return_value=row)
+    queries.get_players_for_update = AsyncMock(return_value={"player_1": row})
     deps: dict = _resolve_deps()
     deps.update(mutations=mutations, queries=queries, resolver=check_resolution_attack)
     deps["character_spells_mod"].get_known.return_value = [{"spell_id": "arcane_bolt"}]

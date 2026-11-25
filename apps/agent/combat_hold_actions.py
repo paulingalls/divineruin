@@ -4,20 +4,41 @@ import architect_actions
 import combat_melee_approach
 import combat_recharge
 import combat_voice_rules
+import concealment
 from action_contracts_still import STILL_ZONE_KINDS
 from combat_ability import _find_action
 from combat_action_availability import replay_valid
 from combat_down import target_unavailable
 from combat_enemy_action import is_combined_attack_action, is_save_damage_action
+from combat_state import CombatState
 from combat_structures import action_has_direct_line, line_blocker
 from condition_restrictions import cannot_act
 from condition_sources import DeliveryRefused
-from declarations import DeclarationType, resolve_declaration
+from declarations import Declaration, DeclarationType, resolve_declaration
 from encounter_actions import action_kind
+from patron_synergy_combat import attack_player
 
 
 def _held_declaration(head: dict):
     return resolve_declaration(head["declaration"])
+
+
+async def concealed_target_reason(
+    state: CombatState, head: dict, declaration: Declaration, *, packet_deps: dict
+) -> str | None:
+    if head["roll"] is not None or head.get("fate_attack") is not None or "execution_receipt" in head:
+        return None
+    actor = state.get_participant(head["actor_id"])
+    if actor is None or actor.is_ally:
+        return None
+    for target_id in dict.fromkeys((declaration.target_id, *(declaration.target_ids or ()))):
+        target = state.get_participant(target_id) if target_id is not None else None
+        if target is not None and not target.is_dead and target.type == "player":
+            player = await attack_player(target, queries=packet_deps["queries"], conn=packet_deps["conn"])
+            assert player is not None
+            if concealment.is_concealed(player):
+                return f"{target.name} ({target.id}) vanished and is concealed."
+    return None
 
 
 def _is_wasted(state, head: dict) -> bool:

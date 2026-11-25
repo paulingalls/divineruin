@@ -6,6 +6,7 @@ from functools import partial
 import check_resolution_attack
 import check_resolution_save
 import combat_damage_affinity
+import concealment
 import concentration_break
 import conditions
 import db_mutations
@@ -124,6 +125,7 @@ async def _land_one(
             caster,
             target,
             action,
+            cast_packet,
             conn=conn,
             sink=sink,
             mutations=mutations,
@@ -317,6 +319,7 @@ async def _land_attack(
     caster,
     target,
     action,
+    cast_packet,
     *,
     conn,
     sink,
@@ -367,6 +370,10 @@ async def _land_attack(
                 frozen["consumed"] = list(prepared.consumed)
                 progress.steps.update(prepared=frozen, attacker_data=attacker_data)
                 return None
+    if "concealment" not in cast_packet and (
+        reveal := await concealment.reveal_attacker(caster.id, conn=conn, queries=queries)
+    ):
+        cast_packet["concealment"] = reveal
     deps = {
         "combat_state": state,
         "conn": conn,
