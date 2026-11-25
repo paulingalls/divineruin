@@ -10,6 +10,7 @@ import combat_melee_approach
 import reaction_spend
 import reaction_windows
 from combat_spatial import distance, position
+from combat_structures import blocked_reason, line_blocker
 from communication_voice_rules import DeliveryRefused
 from condition_restrictions import cannot_act
 from encounter_actions import ACTION_KINDS
@@ -149,6 +150,8 @@ def _validate_for_window(state: CombatState, actor_id: str, ability_id: str, win
         separation = distance(position(state.spatial, actor_id), position(state.spatial, mover.id))
         if separation > reach and not math.isclose(separation, reach, rel_tol=1e-12):
             raise ReactionUnavailable("Opportunity Strike target is beyond melee reach")
+        if blocker := line_blocker(state, actor_id, mover.id, melee=True):
+            raise ReactionUnavailable(blocked_reason(blocker))
 
     _validate_social_subject(state, actor_id, ability_id, window)
 

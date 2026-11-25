@@ -18,6 +18,7 @@ from acceptance.test_opportunity_strike import fight as fight
 from acceptance.test_opportunity_strike import mock_combat_agent_factory as mock_combat_agent_factory
 
 from combat_spatial import require_spatial
+from combat_structures import add_wall
 
 
 @pytest.mark.parametrize(
@@ -185,3 +186,18 @@ async def test_coincident_spends_stop_on_fall_and_resume_from_completed_strike(
         assert attack["actor_id"] == second and not attack["hit"]
         assert rolls.call_count == 3
         damage.assert_called_once()
+
+
+async def test_a_wall_blocks_the_strike_without_blocking_the_approach(fight: MawlingHarness) -> None:
+    _, target = fight.players
+    state = await fight.reload()
+    require_spatial(state)["positions"].update({MOVER: pos(3, 3), target: pos(25, 3)})
+    add_wall(state, "wall", "Slate Wall", pos(-5, 1), pos(10, 1))
+    await fight.persist()
+    with (
+        patch("check_resolution.dice_roll", return_value=_d20(18)),
+        patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
+    ):
+        result = await advance_to_departure(fight)
+        assert result["next"]["waiting_on"]["stage"] == "post_roll"
+    assert require_spatial(await fight.reload())["positions"][MOVER] == pos(20, 3)
