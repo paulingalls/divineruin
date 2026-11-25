@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from livekit.agents.llm import ToolError
 
 import check_resolution_save
+import combat_ability_gate
 import rules_engine
 from combat_fate_rolls import packet_save
 from combat_legendary_resistance import finalize_save, override_fields
@@ -94,7 +95,7 @@ async def resolve_hostile_condition(
         if result.success:
             summary["condition_resisted"] = cond_type
             return summary
-    duration = 1 if ability.id == "rogue_dirty_trick" else None
+    duration = 1 if ability.id == combat_ability_gate.DIRTY_TRICK else None
     if land_condition(state, target.id, attacker, cond_type, ability.id, duration=duration, packet=summary):
         summary["condition_inflicted"] = cond_type
     else:
