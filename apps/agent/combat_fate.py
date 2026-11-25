@@ -202,7 +202,7 @@ async def continue_attack(
         if martial == DEVASTATING_STRIKE and not any(sub.get("hit") for sub in attack_summaries):
             count = 3 if attacker.level >= 17 else 2 if attacker.level >= 10 else 1
             act = {**act, "devastating_strike_dice": count}
-        # Each multi-target swing starts with a checked melee line.
+        # Multi-target swings checked reach and melee line at sequence start; never re-check per swing.
         target, interception = architect_reaction.weapon_target(
             state, attacker, declared_target, act, attack_cursor, index if swing_targets is None else 0
         )

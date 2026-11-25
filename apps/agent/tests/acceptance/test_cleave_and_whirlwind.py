@@ -226,3 +226,35 @@ async def test_reload_finishes_the_receipt_for_a_foe_dropped_by_the_pending_swin
     assert result["attacks"][0]["critical_save"]["roll"] == 15
     assert d20.call_count == damage.call_count == 3
     assert await stamina(actor) == before - 5
+
+
+async def test_held_swing_finishes_once_when_its_target_falls_during_the_hold(warrior: MawlingHarness) -> None:
+    targets = (await battlefield(warrior, WHIRLWIND, (2, 3, 4)))[:3]
+    actor = warrior.players[0]
+    await favor(warrior)
+    await declare(warrior, WHIRLWIND, [])
+    with (
+        patch("check_resolution.dice_roll", side_effect=[_d20(face) for face in (15, 16, 17)]) as d20,
+        patch("check_resolution_attack.dice_roll", side_effect=[_damage_die(n) for n in (4, 5, 6)]) as damage,
+    ):
+        await warrior.command("resolve_phase", {})
+        await warrior.command("resolve_phase", {})
+        saved = await warrior.reload()
+        assert saved.ally_continuation and saved.ally_continuation["attack"]["prepared"]
+        held = participant(saved, targets[1])
+        held.is_fallen = True
+        held.hp_current = 0
+        await fresh_session(warrior, await warrior.persist())
+        resumed = await warrior.command("resolve_phase", {})
+        assert resumed["fate_offer"]["roller_id"] == actor
+        assert d20.call_count == 3
+        wrapped = await warrior.command("resolve_phase", {})
+        result = receipt(wrapped["settled_fate"]["packets"], actor)
+    assert [(s["target_id"], s["roll"], s.get("skipped")) for s in result["attacks"]] == [
+        (targets[0], 15, None),
+        (targets[1], 16, None),
+        (targets[2], 17, None),
+    ], result
+    assert d20.call_count == 3 and damage.call_count == 3
+    state = await warrior.reload()
+    assert participant(state, targets[2]).hp_current == 93

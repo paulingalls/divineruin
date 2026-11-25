@@ -226,3 +226,47 @@ async def test_empty_start_spends_nothing_after_ally_drops_only_foe(warrior: Maw
     assert result["resolved"] is False
     assert d20.call_count == damage.call_count == 1
     assert await stamina(actor) == before
+
+
+@pytest.mark.parametrize("warrior", [(10, 10)], indirect=True)
+async def test_first_real_swing_after_a_skip_reveals_a_concealed_warrior(warrior: MawlingHarness) -> None:
+    first, second, *_ = await battlefield(warrior, CLEAVE, (2, 3))
+    actor, ally = warrior.players
+    state = await warrior.reload()
+    participant(state, first).hp_current = 1
+    participant(state, ally).initiative = participant(state, actor).initiative + 1
+    state.initiative_order.remove(ally)
+    state.initiative_order.insert(0, ally)
+    combat_spatial.place(state, ally, pos(0))
+    await warrior.persist()
+    await warrior.pool.execute(
+        """UPDATE players SET data = jsonb_set(data, '{flags}', COALESCE(data->'flags', '{}'::jsonb)
+               || '{"concealed": true}'::jsonb) WHERE player_id = $1""",
+        actor,
+    )
+    await warrior.command(
+        "declare_phase",
+        {"declarations": [weapon_attack(ally, first, ""), declare_cleave(actor, [first, second])]},
+    )
+    with (
+        patch("check_resolution.dice_roll", side_effect=[_d20(face) for face in (15, 16, 17)]),
+        patch("check_resolution_attack.dice_roll", side_effect=[_damage_die(4), _damage_die(4)]),
+    ):
+        packets = (await warrior.command("resolve_phase", {}))["packets"]
+    assert receipt(packets, ally)["target_fallen"] is True
+    result = receipt(packets, actor)
+    assert [(s["target_id"], s.get("skipped")) for s in result["attacks"]] == [(first, True), (second, None)]
+    assert result["concealment"] == {"player_id": actor, "before": True, "concealed": False, "ended_by": "attack"}
+    player = await db_queries.get_player(actor)
+    assert player is not None and player["flags"]["concealed"] is False
+
+
+def declare_cleave(actor: str, targets: list[str]) -> dict:
+    return {
+        "kind": "ability",
+        "actor_id": actor,
+        "action": CLEAVE,
+        "targets": targets,
+        "argument_type": "",
+        "reshape": [],
+    }
