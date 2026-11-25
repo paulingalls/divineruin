@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from session_data import SessionData
 
 RESTORE_KEYS = frozenset({"hp", "temp_hp", "stamina", "focus", "resonance", "concentration", "patron_gifts"})
-RESTORE_FLAGS = frozenset({"shadow_veil", "concealed"})
+RESTORE_FLAGS = frozenset({"shadow_veil", "concealed", "encounter_concealment"})
 ENTRY_RESET_FLAGS = ("weapon_used", "weapon_crit_vs_heavy", "draethar_inner_fire_used", "unbound_raw_channeling_used")
 MASTERY_FLAG = "unbound_veil_mastery_used"
 SESSION_FLAGS = frozenset((*ENTRY_RESET_FLAGS, MASTERY_FLAG))
@@ -119,6 +119,9 @@ def _validate_player(player: object) -> None:
         raise ValueError("invalid restore flags")
     if restore_flags.get("shadow_veil") and restore_flags.get("concealed") is not True:
         raise ValueError("Shadow Veil requires concealment in the checkpoint")
+    marker = restore_flags.get("encounter_concealment", False)
+    if type(marker) is not bool or (marker and restore_flags.get("concealed") is not True):
+        raise ValueError("Encounter concealment requires concealment in the checkpoint")
     if not isinstance(flags, dict) or flags.keys() != SESSION_FLAGS or any(type(v) is not bool for v in flags.values()):
         raise ValueError("invalid session flags")
     if not isinstance(slots, list):

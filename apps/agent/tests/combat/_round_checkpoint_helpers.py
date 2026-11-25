@@ -58,7 +58,14 @@ class Fight:
                     "resonance": {"current": 3 + index},
                     "concentration": None,
                     "patron_gifts": {"test": {"spent": True}},
-                    "flags": {"ignored": True, **({"shadow_veil": True, "concealed": True} if index == 1 else {})},
+                    "flags": {
+                        "ignored": True,
+                        **(
+                            {"shadow_veil": True, "concealed": True, "encounter_concealment": True}
+                            if index == 1
+                            else {}
+                        ),
+                    },
                 }
             ),
         )
@@ -182,7 +189,9 @@ class Fight:
             raw = json.loads(await self.pool.fetchval("SELECT data FROM players WHERE player_id=$1", pid))
             expected = {key: raw[key] for key in RESTORE_KEYS if key in raw}
             flags = raw.get("flags", {})
-            if captured := {key: flags[key] for key in ("shadow_veil", "concealed") if key in flags}:
+            if captured := {
+                key: flags[key] for key in ("shadow_veil", "concealed", "encounter_concealment") if key in flags
+            }:
                 expected["flags"] = captured
             slots = await self.pool.fetch(
                 "SELECT item_id, tainted, data FROM player_inventory WHERE player_id=$1 ORDER BY item_id, tainted", pid
