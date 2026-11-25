@@ -208,6 +208,7 @@ async def test_joiner_can_rewind_without_rewinding_joiner_or_departed_member(unr
     joiner_member = deepcopy(fight.session.member_state(joiner))
     bystander_member = deepcopy(fight.session.member_state(bystander))
     await activate(fight, joiner)
+    await fight.reload()
     after = await durable(fight)
     restored = fight.session.combat_state
     expected = deepcopy(before["players"][joiner]["data"])
