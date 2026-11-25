@@ -64,7 +64,7 @@ class PlayerMovement:
 
     async def move(self, actor: CombatParticipant, declaration: Declaration) -> dict | None:
         if self.route is None:
-            if moves.ineligible(actor) or moves.in_pit(self.state, actor.id):
+            if moves.ineligible(actor):
                 return moves.apply_move(self.state, actor, declaration)
             try:
                 endpoint, _, _ = moves.movement_geometry(self.state, actor.id, declaration)
