@@ -47,7 +47,7 @@ from action_sound_content import publish_action_sound
 from db_errors import db_tool
 from declaration_payloads import Destination
 from item_effects import CONSUME_PREFIX
-from patron_combat_edges import RESTORATION_SURGE, VEILSTEP, WILDMOTHERS_WRATH, SurgeCondition
+from patron_combat_edges import RESTORATION_SURGE, SCALES_VERDICT, VEILSTEP, WILDMOTHERS_WRATH, SurgeCondition
 from patron_gifts import SYRATH_SHADOW_VEIL, VEYTHAR_INSIGHT
 from session_data import SessionData
 
@@ -172,8 +172,12 @@ async def activate(
         if target_ids is not None or condition is not None:
             raise ToolError("Beyond the Horizon takes one location. Use target_id.")
         return await patron_gateway.activate(context, target_id=target_id)
+    if id == SCALES_VERDICT:
+        if not target_id or target_ids is not None or condition is not None:
+            raise ToolError("Use target_id to select one living hostile creature for The Scale's Verdict.")
+        return await patron_ability_tools.activate_combat_damage(context.userdata, id, target_id=target_id)
     if id == WILDMOTHERS_WRATH and condition is None:
-        return await patron_ability_tools.activate_wrath(context.userdata)
+        return await patron_ability_tools.activate_combat_damage(context.userdata, id)
     return await _activate_impl(
         context,
         id,
