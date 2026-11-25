@@ -132,7 +132,6 @@ async def wrap_phase(
     save_resolver,
     resonance_mutations,
     fate_rolls=None,
-    spent_mastery: frozenset[str] = frozenset(),
 ) -> tuple:
     """Advance to wrap once, then drain clearing saves before round finalization.
 
@@ -231,7 +230,6 @@ async def wrap_phase(
             state,
             conn=conn,
             mutations=mutations,
-            spent_mastery=spent_mastery,
         )
         # Push the HUD's combat-tracker + condition icons live (M12 story-001). Built from the
         # post-tick state (save-cleared conditions are gone) and buffered in the sink so the

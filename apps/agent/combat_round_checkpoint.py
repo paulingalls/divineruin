@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from copy import deepcopy
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
@@ -69,12 +68,11 @@ async def capture(
     conn: asyncpg.Connection,
     mutations,
     entry: bool = False,
-    spent_mastery: frozenset[str] = frozenset(),
 ) -> None:
     flags = {
         member.player_id: {
             **{name: False if entry else getattr(member, name) for name in ENTRY_RESET_FLAGS},
-            MASTERY_FLAG: member.unbound_veil_mastery_used or member.player_id in spent_mastery,
+            MASTERY_FLAG: member.unbound_veil_mastery_used,
         }
         for member in session.party.members
     }
@@ -86,7 +84,7 @@ async def capture(
         "combat_id": state.combat_id,
         "round_number": state.round_number,
         "combat": combat_image(state),
-        "players": deepcopy(players),
+        "players": players,
     }
     state.round_checkpoints = [*state.round_checkpoints[-1:], snapshot]
     await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)

@@ -177,9 +177,6 @@ async def _resolve_phase_locked(
             if legendary is not None and state.open_window is None and fate_rolls.pending is None:
                 state.legendary_continuation = None
 
-        spent_mastery = frozenset(
-            caster_id for caster_id, result in cast_outcome.results.items() if result.unbound_veil_mastery_spent
-        )
         residue = await lost_scout_combat.residue(session, state, queries=queries, mutations=mutations, conn=conn)
         # A held argument that ends combat must hand off before the incoming tool can run.
         ended_on_argument = state.deescalated and combat_ally_pass.held_argument(cs.ally_continuation) is not None
@@ -208,7 +205,6 @@ async def _resolve_phase_locked(
                 save_resolver=save_resolver,
                 resonance_mutations=resonance_mutations,
                 fate_rolls=fate_rolls,
-                spent_mastery=spent_mastery,
             )
 
         if (
@@ -294,8 +290,9 @@ async def _resolve_phase_locked(
         if m.player_id in pending_by_member:
             m.resonance.current = pending_by_member[m.player_id]
 
-    for caster_id in spent_mastery:
-        session.member_state(caster_id).unbound_veil_mastery_used = True
+    for caster_id, cr in cast_outcome.results.items():
+        if cr.unbound_veil_mastery_spent:
+            session.member_state(caster_id).unbound_veil_mastery_used = True
 
     # Isolate each publish: a failed mirror must not block handoff or another member's update.
     if end_data is not None:
