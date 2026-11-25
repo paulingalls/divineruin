@@ -15,6 +15,7 @@ import conditions
 import zhael_fate
 from combat_ability import _attach_riders, _with_variant
 from combat_ability_gate import (
+    CRIPPLING_STRIKE,
     DEVASTATING_STRIKE,
     ELECTIVE_ATTACK_RIDERS,
     RECKLESS_ASSAULT_RIDER,
@@ -228,11 +229,14 @@ async def continue_attack(
                 }
         if reveal:
             concealment_packet = await concealment.reveal_attacker(attacker.id, conn=conn, queries=queries)
-        bash = martial == SHIELD_BASH and index == len(actions) - 1
-        if bash and not resumed_swing:
-            resolved = declared_ability(SHIELD_BASH)
+        last_swing = index == len(actions) - 1
+        bash = martial == SHIELD_BASH and last_swing
+        crippling = martial == CRIPPLING_STRIKE and last_swing
+        if (bash or crippling) and not resumed_swing:
+            resolved = declared_ability(martial)
             assert resolved is not None
-            await combat_martial.pay(attacker.id, resolved, queries=queries, conn=conn)
+            variant = await combat_martial.pay(attacker.id, resolved, queries=queries, conn=conn)
+            attack_cursor["variant_receipt"] = _with_variant({}, variant)
         stored_summary = swing.steps.get("attack_summary") if swing is not None else None
         if stored_summary is not None:
             sub = stored_summary
@@ -298,6 +302,8 @@ async def continue_attack(
         if swing is not None and swing.paused:
             checkpoint()
             return {}
+        if crippling:
+            combat_martial.cripple(state, attacker, target, sub)
         if bash or "durability_rider" in act:
             rider_progress = swing.scope("rider") if swing is not None else None
             if bash:

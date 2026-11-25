@@ -18,7 +18,7 @@ from combat_ability import _find_action
 from combat_ability_gate import (
     CUNNING_ACTION,
     DEVASTATING_STRIKE,
-    ELECTIVE_ATTACK_RIDERS,
+    ELECTIVE_RIDER_ABILITIES,
     SHIELD_BASH,
     WAR_CRY,
     combat_ability,
@@ -132,7 +132,7 @@ def validate_declaration(
     martial = combat_martial.attack_ability(declaration)
     if declaration.type is DeclarationType.ATTACK and declaration.rider and martial is None:
         raise ValueError(f"Unknown attack rider {declaration.rider!r}.")
-    if martial is not None and martial in ELECTIVE_ATTACK_RIDERS.values() and actor.type != "player":
+    if martial is not None and martial in ELECTIVE_RIDER_ABILITIES and actor.type != "player":
         raise ValueError(f"{actor.name} hasn't learned {abilities.get_ability(martial).name}.")
     if martial in (CUNNING_ACTION, SHIELD_BASH):
         ability = abilities.get_ability(martial)

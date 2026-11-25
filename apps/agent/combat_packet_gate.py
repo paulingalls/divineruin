@@ -17,7 +17,8 @@ from combat_ability import (
 from combat_ability_gate import (
     CUNNING_ACTION,
     DEVASTATING_STRIKE,
-    ELECTIVE_ATTACK_RIDERS,
+    ELECTIVE_RIDER_ABILITIES,
+    EXPLOIT_WEAKNESS,
     SECOND_WIND,
     SHIELD_BASH,
     WAR_CRY,
@@ -111,10 +112,11 @@ async def _prevalidate_ability_focus(
             DEVASTATING_STRIKE,
             SHIELD_BASH,
             CUNNING_ACTION,
-            *ELECTIVE_ATTACK_RIDERS.values(),
+            EXPLOIT_WEAKNESS,
+            *ELECTIVE_RIDER_ABILITIES,
         ):
             ability, variant = resolved_ability
-            if ability.id in ELECTIVE_ATTACK_RIDERS.values():
+            if ability.id in ELECTIVE_RIDER_ABILITIES:
                 variant = await combat_martial.active_rider_variant(actor_id, ability.id, conn=conn)
             if ability.id == DEVASTATING_STRIKE:
                 try:

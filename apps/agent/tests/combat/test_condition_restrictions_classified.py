@@ -78,6 +78,7 @@ def test_grapple_and_speed_restriction_carriers_are_exactly_enforced():
     expected = {
         "costs_declaration": {"prone", "grappled"},
         "speed_0": {"grappled", "restrained"},
+        "speed_halved": {"crippled"},
     }
     for restriction, expected_carriers in expected.items():
         carriers = {name for name, spec in conditions.CONDITION_CATALOG.items() if restriction in spec.restrictions}
@@ -100,6 +101,7 @@ def test_exact_restriction_partition_and_complete_spoken_corpus():
                 "incoming_ranged_disadvantage",
                 "costs_declaration",
                 "speed_0",
+                "speed_halved",
                 "ignores_structures",
                 "consumed_on_use",
                 "one_time",

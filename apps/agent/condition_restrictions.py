@@ -90,6 +90,14 @@ def speed_zero(active_conditions: list[dict] | tuple[dict, ...]) -> tuple[str, .
     return _carriers(active_conditions, "speed_0")
 
 
+def speed_halved(active_conditions: list[dict] | tuple[dict, ...]) -> bool:
+    return bool(_carriers(active_conditions, "speed_halved"))
+
+
+def effective_speed(base_speed: float, active_conditions: list[dict]) -> float:
+    return base_speed / 2 if speed_halved(active_conditions) else base_speed
+
+
 def attack_consumed_conditions(
     active_conditions: list[dict] | tuple[dict, ...], *, spoken_buffs_eligible: bool = True
 ) -> tuple[str, ...]:
@@ -114,6 +122,7 @@ RESTRICTION_ENFORCERS = {
     "incoming_ranged_disadvantage": incoming_ranged_disadvantage,
     "costs_declaration": declaration_costs,
     "speed_0": speed_zero,
+    "speed_halved": speed_halved,
     "ignores_structures": ignores_structures,
     "consumed_on_use": attack_consumed_conditions,
     "one_time": attack_consumed_conditions,

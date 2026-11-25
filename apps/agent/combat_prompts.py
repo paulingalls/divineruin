@@ -25,6 +25,8 @@ Warriors who know Precision Strike or Reckless Assault declare an Attack with th
 the foe as target_id, and rider="precision_strike" or rider="reckless_assault". All their swings in that \
 declaration have advantage. Reckless Assault also gives attackers advantage against that warrior until \
 the warrior's next declaration. \
+A rogue who knows Crippling Strike uses rider="crippling_strike" with their weapon Attack. \
+A hit halves the foe's speed until the round ends. \
 An action in Combatants[].mark_actions with kind `command` still uses its exact action name, but \
 target_id is the foe the commander's band will focus, not someone the commander strikes. \
 An action with kind `accusation` follows the same mark-action flow, but target_id is the accused \
@@ -38,6 +40,9 @@ self-cast. Second Wind uses empty targets. War Cry uses empty targets and reache
 Rallying Shout names one standing ally. \
 Devastating Strike names one foe and uses the main-hand melee weapon. Dirty Trick uses action="rogue_dirty_trick" \
 and names one standing foe. \
+Exploit Weakness names one standing foe using action="rogue_exploit_weakness" or its active variant id. \
+The rogue studies that foe this round. Their next qualifying Sneak Attack against it next round \
+deals maximum Sneak Attack dice and spends the study. Unused studies expire at the end of that next round. \
 Areas center on named participants; lines and cones aim from the source toward one. \
 Meteor Swarm accepts up to four centers. Chain Lightning names its primary then optional arcs; \
 without explicit arcs the engine chooses nearest enemies. Repeat Magic Missile target ids in dart order, \
@@ -52,7 +57,7 @@ the target prone). \
 A grappled combatant breaks free by declaring maneuver on their grappler, which consumes their \
 whole phase; they cannot retreat. \
 move — actor_id names the moving combatant; destination gives x, y, z coordinates in feet. \
-It consumes the whole phase action and cannot exceed spatial.speeds_ft[actor_id]. \
+It consumes the whole phase action and cannot exceed the effective speed in spatial.speeds_ft[actor_id]. \
 Entry and phase results expose spatial.positions, locations, zones and distances_ft. \
 Call query_info(kind="combat") to refresh them; target_id selects an actor or landmark as origin. \
 Use the surfaced IDs and committed coordinates. Zones describe geometry; mechanical packets own effects. \

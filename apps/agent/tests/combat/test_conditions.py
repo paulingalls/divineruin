@@ -43,7 +43,7 @@ def test_catalog_has_all_21_spec_conditions():
     assert "temporary_hollowed" in CONDITION_CATALOG
     assert "mark_of_justice" in CONDITION_CATALOG
     assert "ignores_structures" in CONDITION_CATALOG["incorporeal"].restrictions
-    assert len(CONDITION_CATALOG) == 31
+    assert len(CONDITION_CATALOG) == 33
 
 
 @pytest.mark.parametrize("condition_type", ALL_CONDITIONS)
