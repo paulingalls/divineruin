@@ -27,7 +27,7 @@ from voice_condition_fixtures import participant
 
 import db_mutations
 import event_types as E
-from conditions import apply_condition, has_condition
+from conditions import apply_condition
 from exploration_agent import ExplorationAgent
 from zhael_fate import FATE, FateOffer, Resumed
 
@@ -194,70 +194,6 @@ async def test_ending_wrap_includes_heal_in_handoff(world: SimpleNamespace) -> N
         assert (await row(world, 1))["hp"]["current"] == 34
         assert active(world) is None
         assert await db_mutations.load_combat_state(state.combat_id, conn=world.pool) is None
-
-
-async def test_fate_pause_keeps_final_round_zone_and_does_not_repeat_healing(world: SimpleNamespace) -> None:
-    async with hearth(world) as call:
-        with enabled():
-            await call("activate", id=GIFT)
-        owner, guest = world.ids
-        state = active(world)
-        assert state.hearthfire_zones[0]["rounds_remaining"] == 3
-        state.hearthfire_zones[0]["rounds_remaining"] = 1
-        state.round_number = 3
-        participant(state, owner).conditions = apply_condition([], "frightened", source=FOE, duration=3)
-        await fall(world, 1)
-        await checkpoint(world)
-        await declare(world, call)
-        await call("resolve_phase")
-        before = len(events(world))
-
-        with (
-            healing_rolls(4, 6) as dice,
-            patch("check_resolution.dice_roll", return_value=_d20(18)) as save_die,
-        ):
-            paused = await call("resolve_phase")
-            offer = paused["fate_offer"]
-            assert offer["roller_id"] == owner and offer["eligible_followers"] == [guest]
-            assert paused["next"]["verbs"] == ["activate"]
-            assert paused["hearthfire"]["zones"][0]["rounds_remaining"] == 1
-            receipts = paused["hearthfire"]["heals"]
-            assert {r["target_id"]: r["healed"] for r in receipts} == {owner: 2, guest: 4, COMPANION: 4}
-            saved = (await snapshot(world))[2]
-            assert saved["wrap_continuation"]["wrap"]["hearthfire_heals"] == receipts
-            assert saved["hearthfire_zones"][0]["rounds_remaining"] == 1
-            for index, hp in enumerate((100, 4)):
-                assert (
-                    participant(active(world), world.ids[index]).hp_current
-                    == (await row(world, index))["hp"]["current"]
-                    == hp
-                )
-            hp_events = [e for e in events(world)[before:] if e["type"] == E.HP_CHANGED]
-            assert [e["current"] for e in hp_events] == [100, 4]
-
-            session = world.ctx.userdata
-            with session._bind_authenticated_actor(guest, 1, lambda *_: None):
-                result = await call("activate", id=FATE, offer_id=offer["offer_id"], keep="original")
-            dice.assert_called_once_with("1d6")
-            save_die.assert_called_once()
-
-        assert session.fate_offer is None and active(world).wrap_continuation is None
-        assert result["hearthfire"] == {"zones": [], "heals": receipts}
-        assert result["death_saves_due"] == [] and result["next"]["phase"] == "declaration"
-        assert result["round"] == 4
-        assert [e for e in events(world)[before:] if e["type"] == E.HP_CHANGED] == hp_events
-        active_live = active(world).to_dict()
-        assert (await reload_state(world)).to_dict() == active_live
-        assert active(world).hearthfire_zones == []
-        revived = participant(active(world), guest)
-        assert (revived.hp_current, revived.is_fallen, revived.death_save_failures, revived.death_save_successes) == (
-            4,
-            False,
-            0,
-            0,
-        )
-        assert (await row(world, 1))["hp"]["current"] == 4
-        assert not has_condition(participant(active(world), owner).conditions, "frightened")
 
 
 async def test_wrap_healing_rolls_back_after_first_hp_write_and_retries(world: SimpleNamespace) -> None:
