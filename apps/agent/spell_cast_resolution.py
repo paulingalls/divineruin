@@ -26,6 +26,7 @@ import spell_item_resolution
 import spells
 import vaelti_echo_warning
 import veil_ward as veil_ward_mod
+import veythar_wellspring
 import ward_resolution
 from combat_terrain import resolve_terrain
 from party_state import PartyMember
@@ -97,6 +98,7 @@ async def _resolve_cast(
     race = player.get("race")
     patron = (player.get("divine_favor") or {}).get("patron")
     current_focus = (player.get("focus") or {}).get("current", 0)
+    focus_cost = veythar_wellspring.effective_focus_cost(player, spell.focus_cost)
 
     terrain = (
         await resolve_terrain(session, combat_state=combat_state, content_mod=content_mod)
@@ -136,6 +138,11 @@ async def _resolve_cast(
         target_ids=target_ids,
     )
 
+    echo = None
+    if focus_cost < spell.focus_cost:
+        echo = veythar_wellspring.cast_receipt(spell.focus_cost - focus_cost, generated)
+        generated = echo["resonance_generated"]
+
     concealment_packet = None
     if concealment.is_concealed(player):
         if revalidate_actor:
@@ -147,10 +154,10 @@ async def _resolve_cast(
         purified = await spell_item_resolution.purify_item(
             session, item_target, conn, caster_id=player_id, revalidate_actor=revalidate_actor
         )
-    if spell.focus_cost > 0:
+    if focus_cost > 0:
         if revalidate_actor:
             session.validate_acting_player(player_id)
-        await persistence_mod.update_player_resources(player_id, focus=current_focus - spell.focus_cost, conn=conn)
+        await persistence_mod.update_player_resources(player_id, focus=current_focus - focus_cost, conn=conn)
 
     # The post-cast total is persisted via conn but kept LOCAL: the caller syncs session.resonance
     # post-commit, so a rollback leaves the in-memory track untouched.
@@ -176,7 +183,7 @@ async def _resolve_cast(
         await concentration_mutations_mod.update_player_concentration(player_id, spell_id, conn=conn)
         concentration_spell_id = spell_id
 
-    return await _finish_cast(
+    result = await _finish_cast(
         session=session,
         spell_id=spell_id,
         spell=spell,
@@ -216,3 +223,12 @@ async def _resolve_cast(
         conditions_mod=conditions_mod,
         conditions_mutations_mod=conditions_mutations_mod,
     )
+    if echo is not None:
+        result.packet["wellspring_echo"] = echo
+        result.packet["dm_cue"] = veythar_wellspring.describe_cast(echo)
+        if combat_state is None:
+            if revalidate_actor:
+                session.validate_acting_player(player_id)
+            await veythar_wellspring.settle(player_id, conn=conn)
+            result.events.append(lambda: veythar_wellspring.publish_spend(session, player_id))
+    return result

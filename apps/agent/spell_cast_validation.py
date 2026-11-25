@@ -9,6 +9,7 @@ import patron_echo_choice
 import spell_item_resolution
 import spell_knowledge
 import spells
+import veythar_wellspring
 from party_state import PartyMember
 from resource_costs import gate_pool
 from session_data import CombatState, SessionData
@@ -24,7 +25,7 @@ def _gate_spell(player: dict, spell_id: str, known_spell_ids: frozenset[str], *,
         raise ToolError(str(e)) from e
     if spell.id not in known_spell_ids:
         raise ToolError(f"{spell.id} isn't a spell you know")
-    gate_pool(player, "focus", spell.focus_cost, label=spell.name)
+    gate_pool(player, "focus", veythar_wellspring.effective_focus_cost(player, spell.focus_cost), label=spell.name)
     return spell
 
 

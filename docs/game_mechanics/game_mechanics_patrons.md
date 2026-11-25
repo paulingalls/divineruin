@@ -55,7 +55,11 @@ Arcane casters under Veythar: Flickering threshold bonus damage increases to **+
 |---|---|---|
 | Acknowledged | Scholar's Ward | Advantage on saves against the Hollowed condition |
 | Devoted | Lorekeeper's Library | Once per long rest, ask the DM one mechanical question about an enemy, item, or location (AC, weakness, trap DC, etc.). The god whispers the answer |
-| Exalted | Wellspring Echo | Once per session, cast any known spell at 0 Focus cost. Generates double normal Resonance — the power is free but the Veil pays |
+| Exalted | Wellspring Echo | Arm once per session. The next completed Focus-costing spell costs no Focus and generates double its normal Resonance. |
+
+Activate Wellspring Echo in or out of combat. Free and refused casts leave it armed.
+Double the spell's generation after its usual modifiers, before applying decay or checking Overreach.
+The arm survives reconnecting to the same session and clears when a new session begins.
 
 **Layer 4 — Archetype Resonance**
 

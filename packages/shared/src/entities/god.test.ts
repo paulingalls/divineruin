@@ -204,6 +204,16 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     implementation_id: embrace,
     recharge: "per_session",
   });
+  const echo = "veythar_wellspring_echo";
+  expect(
+    validateGods(catalog).find((god) => god.god_id === "veythar")?.layer_3_tier_abilities.exalted,
+  ).toMatchObject({
+    id: echo,
+    status: "active",
+    resolution: "engine",
+    implementation_id: echo,
+    recharge: "per_session",
+  });
   const engine = new Set([
     "zhael_lucky",
     battleCry,
@@ -219,6 +229,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     verdict,
     ward,
     embrace,
+    echo,
     ...passives,
   ]);
   expect(
@@ -227,7 +238,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     ),
   ).toEqual(engine);
   const pending = abilities.filter((a) => !narrated.has(a.id) && !engine.has(a.id));
-  expect(pending).toHaveLength(6);
+  expect(pending).toHaveLength(5);
   for (const ability of abilities.filter((a) => passives.has(a.id))) {
     expect([ability.recharge, ability.implementation_id]).toEqual(["always", ability.id]);
   }
