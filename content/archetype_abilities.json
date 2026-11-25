@@ -113,7 +113,10 @@
     "level_requirement": 8,
     "cost": { "stamina": 5, "focus": 0, "scaling": null },
     "effect": "All enemies in earshot: WIS save or Frightened 1 round.",
-    "narration_cue": "A roar that rattles the ribs of everyone who hears it."
+    "narration_cue": "A roar that rattles the ribs of everyone who hears it.",
+    "applies_condition": "frightened",
+    "save": "wisdom",
+    "dc_attribute": "strength"
   },
   {
     "id": "warrior_unstoppable_charge",

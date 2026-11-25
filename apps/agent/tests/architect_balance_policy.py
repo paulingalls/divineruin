@@ -215,15 +215,6 @@ def player_declaration(
         bash = not target.is_structure and not has_condition(target.conditions, "stunned")
         if bash and separation <= reach and stamina >= abilities.get_ability(SHIELD_BASH).cost.stamina:
             return attack(actor, target, weapon["name"], rider="shield_bash")
-        charge = "warrior_unstoppable_charge"
-        if (
-            charge in loadout
-            and target is owner
-            and separation <= reach
-            and not has_condition(target.conditions, "prone")
-            and stamina >= abilities.get_ability(charge).cost.stamina
-        ):
-            return ability(actor, charge, target)
         if stamina >= abilities.get_ability(DEVASTATING_STRIKE).cost.stamina:
             return ability(actor, DEVASTATING_STRIKE, target)
         return attack(actor, target, weapon["name"])

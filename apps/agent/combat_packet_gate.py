@@ -20,7 +20,9 @@ from combat_ability_gate import (
     ELECTIVE_ATTACK_RIDERS,
     SECOND_WIND,
     SHIELD_BASH,
+    WAR_CRY,
     declared_ability,
+    war_cry_targets,
 )
 from combat_deescalation import (
     _gate_deescalation,
@@ -119,6 +121,11 @@ async def _prevalidate_ability_focus(
                     combat_martial.main_hand(player)
                 except ValueError as e:
                     raise ToolError(str(e)) from e
+            _gate_ability_condition(player, ability, variant)
+        elif resolved_ability is not None and resolved_ability[0].id == WAR_CRY:
+            ability, variant = resolved_ability
+            if not war_cry_targets(state):
+                raise ToolError("War Cry requires a standing foe who can hear.")
             _gate_ability_condition(player, ability, variant)
         elif (cond_ability := condition_ability(resolved_ability)) is not None:
             ability, variant = cond_ability

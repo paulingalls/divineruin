@@ -20,8 +20,10 @@ from combat_ability_gate import (
     DEVASTATING_STRIKE,
     ELECTIVE_ATTACK_RIDERS,
     SHIELD_BASH,
+    WAR_CRY,
     combat_ability,
     declared_ability,
+    war_cry_targets,
 )
 from combat_action_availability import require_available
 from combat_structures import THORNWALL, action_has_direct_line, blocked_reason, line_blocker, require_line
@@ -181,6 +183,10 @@ def validate_declaration(
             if not combat_ability(ability):
                 raise ValueError(f"{declaration.action} is not declarable in combat")
             combat_martial.require_targets(next_state, actor, declaration, ability)
+            if ability.id == WAR_CRY:
+                if not war_cry_targets(next_state):
+                    raise ValueError("War Cry requires a standing foe who can hear.")
+                return
             if ability.id == DEVASTATING_STRIKE:
                 # A weapon strike, not a ranged line: check its target by melee reach to the wall's nearest point.
                 require_line(next_state, actor.id, declaration.target_id, melee=True)

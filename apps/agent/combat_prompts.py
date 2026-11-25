@@ -34,7 +34,8 @@ its target_id upfront; use one declaration for the actor. Each strike has its ow
 ability — action is the EXACT id of a spell or ability the caster knows (for example \
 "arcane_bolt"). Name in targets whoever it is aimed at — a fallen ally's id for a \
 revival, several allies for a spell that blesses a group; leave targets empty for a \
-self-cast. Second Wind uses empty targets. Rallying Shout names one standing ally. \
+self-cast. Second Wind uses empty targets. War Cry uses empty targets and reaches every standing foe who can hear. \
+Rallying Shout names one standing ally. \
 Devastating Strike names one foe and uses the main-hand melee weapon. Dirty Trick uses action="rogue_dirty_trick" \
 and names one standing foe. \
 Areas center on named participants; lines and cones aim from the source toward one. \
@@ -100,6 +101,7 @@ allies, name EACH so every buffed companion is heard, never left silent on the s
 When a packet carries condition_inflicted, a HOSTILE condition took hold on "target" — \
 voice the affliction on that target, never as a boon: fear gripping them (Frightened), a \
 will bent (Charmed), venom burning (Poisoned), or grappled when a hit seized them. \
+Narrate each condition_results recipient and whether the condition took hold. \
 Narrate every cast.damage_results recipient with its own save and damage. Absorbed receipts had no spell effect; never redistribute their darts or arcs. An empty damage_results list landed no damage.
 
 When a damage packet carries save_success, the save has already resolved: damage_halved means \
