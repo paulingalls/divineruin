@@ -256,18 +256,16 @@ def blocking_wall(
     return min(contacts)[2] if contacts else None
 
 
-def nearest_wall_point(origin: Point, segment: Segment, *, segment_only: bool = False) -> Point:
+def nearest_wall_point(origin: Point, segment: Segment) -> Point:
     start, end = segment["start"], segment["end"]
     dx, dy = _xy_delta(start, end)
     ox, oy = _xy_delta(start, origin)
-    dz = Fraction(end["z"]) - Fraction(start["z"]) if segment_only else Fraction(0)
-    oz = Fraction(origin["z"]) - Fraction(start["z"])
-    along = min(1, max(0, (ox * dx + oy * dy + oz * dz) / (dx * dx + dy * dy + dz * dz)))
+    along = min(1, max(0, (ox * dx + oy * dy) / (dx * dx + dy * dy)))
     floor = min(start["z"], end["z"])
     return {
         "x": float(Fraction(start["x"]) + dx * along),
         "y": float(Fraction(start["y"]) + dy * along),
-        "z": float(Fraction(start["z"]) + dz * along) if segment_only else min(floor + 20, max(floor, origin["z"])),
+        "z": min(floor + 20, max(floor, origin["z"])),
     }
 
 

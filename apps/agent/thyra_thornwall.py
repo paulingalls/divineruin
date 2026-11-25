@@ -51,7 +51,7 @@ def thornwall(state: CombatState | None, actor: str, *, destination: dict | None
         if (start["x"], start["y"]) == (end["x"], end["y"]):
             raise ToolError("Thornwall requires horizontal extent.")
         origin = position(spatial, actor)
-        nearest = nearest_wall_point(origin, segment, segment_only=True)
+        nearest = nearest_wall_point(origin, segment)
         if distance(origin, nearest) > 30:
             raise ToolError("The nearest point of Thornwall must be within 30 feet.")
         for creature in state.participants:
