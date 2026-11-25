@@ -320,7 +320,7 @@ Unique interaction: instead of modifying generation rates, Zhael alters the Holl
 | Archetypes | Synergy Type | Enhancement |
 |---|---|---|
 | Oracle | Primary | Prophecy Fragment becomes 2-sentence vision with more detail. Fate's Thread usable twice per long rest |
-| Bard, Diplomat | Unexpected | Social encounters: once per encounter, know the exact DC of the next social check before attempting |
+| Bard, Diplomat | Unexpected | Social encounters: once per NPC per session, know the exact DC of the next social check before attempting |
 | Rogue, Mage | Divine | Critical hits on natural 19–20 (expanded crit range). Zhael bends probability |
 
 ---

@@ -155,6 +155,10 @@ class SocialResult:
     new_disposition: str
 
 
+def social_dc(base_dc: int, disposition: str) -> int:
+    return base_dc + social_dc_modifier(disposition)
+
+
 def resolve_social_check(
     *,
     disposition: str,
@@ -164,9 +168,11 @@ def resolve_social_check(
     argument_type: str | None = None,
     resistance_tags: tuple[str, ...] = (),
     stakes: str = "normal",
+    exact_dc: int | None = None,
 ) -> SocialResult:
     """Resolve a social check (spec L636-687). Pure: the caller supplies `roll_total`
     (d20 + skill modifier) and the `base_dc`; the NPC disposition modifies the DC.
+    A foretold `exact_dc` fixes the target while disposition still governs the shift.
 
     Tier 1 leaves `argument_type=None`. Tier 3 passes a structured argument category plus the
     NPC's `resistance_tags`, which further shift the DC (argument_dc_adjust): a favored argument
@@ -176,7 +182,11 @@ def resolve_social_check(
     of truth. Raises ValueError for an off-ladder disposition, a non-social skill, or an unknown
     argument category / personality tag.
     """
-    dc = base_dc + social_dc_modifier(disposition) + argument_dc_adjust(argument_type, resistance_tags)
+    dc = (
+        exact_dc
+        if exact_dc is not None
+        else (social_dc(base_dc, disposition) + argument_dc_adjust(argument_type, resistance_tags))
+    )
     margin = roll_total - dc
     success = roll_total >= dc
     delta = disposition_shift(skill, margin)

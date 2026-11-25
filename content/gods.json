@@ -3446,9 +3446,10 @@
         "name": "Foretold Words",
         "clauses": [
           {
-            "effect": "Social encounters: once per encounter, know the exact DC of the next social check before attempting",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "Social encounters: once per NPC per session, know the exact DC of the next social check before attempting",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_foretold_words"
           }
         ]
       },
@@ -3457,9 +3458,10 @@
         "name": "Foretold Words",
         "clauses": [
           {
-            "effect": "Social encounters: once per encounter, know the exact DC of the next social check before attempting",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "Social encounters: once per NPC per session, know the exact DC of the next social check before attempting",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_foretold_words"
           }
         ]
       },

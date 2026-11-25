@@ -30,9 +30,13 @@ def has_engine_synergy(player: dict, implementation_id: str) -> bool:
         return False
     row = get_archetype_synergy(player["class"], patron)
     assert row is not None
+    return has_engine_clause(row, implementation_id)
+
+
+def has_engine_clause(synergy: dict, implementation_id: str) -> bool:
     return any(
         clause["status"] == "active"
         and clause["resolution"] == "engine"
         and clause.get("implementation_id") == implementation_id
-        for clause in row["clauses"]
+        for clause in synergy["clauses"]
     )
