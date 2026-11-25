@@ -1,0 +1,553 @@
+{
+  "valid": {
+    "empty": {},
+    "mud rectangle": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "mud",
+        "min": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 10,
+          "z": 0
+        },
+        "excluded_actor_ids": []
+      }
+    },
+    "water sphere": {
+      "ground": {
+        "shape": "sphere",
+        "kind": "water",
+        "center": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "radius_ft": 5,
+        "excluded_actor_ids": []
+      }
+    },
+    "water rectangle": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "water",
+        "min": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 10,
+          "z": 0
+        },
+        "excluded_actor_ids": []
+      }
+    },
+    "authored enemy exclusion": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "mud",
+        "min": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 10,
+          "z": 0
+        },
+        "excluded_actor_ids": ["mawling_1"]
+      }
+    }
+  },
+  "invalid": {
+    "null map": null,
+    "array map": [],
+    "scalar map": 5,
+    "blank area ID": {
+      " ": {
+        "shape": "rectangle",
+        "kind": "mud",
+        "min": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 10,
+          "z": 0
+        },
+        "excluded_actor_ids": []
+      }
+    },
+    "nonobject area": {
+      "ground": 5
+    },
+    "missing area field": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "mud",
+        "min": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "excluded_actor_ids": []
+      }
+    },
+    "extra area field": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "mud",
+        "min": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 10,
+          "z": 0
+        },
+        "excluded_actor_ids": [],
+        "extra": true
+      }
+    },
+    "extra sphere field": {
+      "ground": {
+        "shape": "sphere",
+        "kind": "water",
+        "center": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "radius_ft": 5,
+        "excluded_actor_ids": [],
+        "extra": true
+      }
+    },
+    "unknown shape": {
+      "ground": {
+        "shape": "triangle",
+        "kind": "mud",
+        "min": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 10,
+          "z": 0
+        },
+        "excluded_actor_ids": []
+      }
+    },
+    "incomplete point": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "mud",
+        "min": {
+          "x": 0,
+          "y": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 10,
+          "z": 0
+        },
+        "excluded_actor_ids": []
+      }
+    },
+    "extra coordinate": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "mud",
+        "min": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 10,
+          "z": 0
+        },
+        "excluded_actor_ids": []
+      }
+    },
+    "combined coordinates key": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "mud",
+        "min": {
+          "x,y,z": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 10,
+          "z": 0
+        },
+        "excluded_actor_ids": []
+      }
+    },
+    "boolean coordinate": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "mud",
+        "min": {
+          "x": true,
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 10,
+          "z": 0
+        },
+        "excluded_actor_ids": []
+      }
+    },
+    "string coordinate": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "mud",
+        "min": {
+          "x": "0",
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 10,
+          "z": 0
+        },
+        "excluded_actor_ids": []
+      }
+    },
+    "invalid sphere center": {
+      "ground": {
+        "shape": "sphere",
+        "kind": "water",
+        "center": {
+          "x": 0,
+          "y": false,
+          "z": 0
+        },
+        "radius_ft": 5,
+        "excluded_actor_ids": []
+      }
+    },
+    "zero radius": {
+      "ground": {
+        "shape": "sphere",
+        "kind": "water",
+        "center": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "radius_ft": 0,
+        "excluded_actor_ids": []
+      }
+    },
+    "negative radius": {
+      "ground": {
+        "shape": "sphere",
+        "kind": "water",
+        "center": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "radius_ft": -1,
+        "excluded_actor_ids": []
+      }
+    },
+    "boolean radius": {
+      "ground": {
+        "shape": "sphere",
+        "kind": "water",
+        "center": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "radius_ft": true,
+        "excluded_actor_ids": []
+      }
+    },
+    "string radius": {
+      "ground": {
+        "shape": "sphere",
+        "kind": "water",
+        "center": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "radius_ft": "5",
+        "excluded_actor_ids": []
+      }
+    },
+    "zero x extent": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "mud",
+        "min": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": 0,
+          "y": 10,
+          "z": 0
+        },
+        "excluded_actor_ids": []
+      }
+    },
+    "reversed x extent": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "mud",
+        "min": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": -1,
+          "y": 10,
+          "z": 0
+        },
+        "excluded_actor_ids": []
+      }
+    },
+    "zero y extent": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "mud",
+        "min": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 0,
+          "z": 0
+        },
+        "excluded_actor_ids": []
+      }
+    },
+    "reversed y extent": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "mud",
+        "min": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": 10,
+          "y": -1,
+          "z": 0
+        },
+        "excluded_actor_ids": []
+      }
+    },
+    "different heights": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "mud",
+        "min": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 10,
+          "z": 1
+        },
+        "excluded_actor_ids": []
+      }
+    },
+    "unknown kind": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "Mud",
+        "min": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 10,
+          "z": 0
+        },
+        "excluded_actor_ids": []
+      }
+    },
+    "blank kind": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": " ",
+        "min": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 10,
+          "z": 0
+        },
+        "excluded_actor_ids": []
+      }
+    },
+    "nonstring kind": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": 5,
+        "min": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 10,
+          "z": 0
+        },
+        "excluded_actor_ids": []
+      }
+    },
+    "missing exclusions": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "mud",
+        "min": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 10,
+          "z": 0
+        }
+      }
+    },
+    "non-list exclusions": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "mud",
+        "min": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 10,
+          "z": 0
+        },
+        "excluded_actor_ids": ""
+      }
+    },
+    "nonstring excluded actor": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "mud",
+        "min": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 10,
+          "z": 0
+        },
+        "excluded_actor_ids": [["mawling_1"]]
+      }
+    },
+    "unknown excluded actor": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "mud",
+        "min": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 10,
+          "z": 0
+        },
+        "excluded_actor_ids": ["unknown"]
+      }
+    },
+    "duplicate excluded actor": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "mud",
+        "min": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 10,
+          "z": 0
+        },
+        "excluded_actor_ids": ["mawling_1", "mawling_1"]
+      }
+    },
+    "substituted coordinate": {
+      "ground": {
+        "shape": "rectangle",
+        "kind": "mud",
+        "min": {
+          "w": 0,
+          "y": 0,
+          "z": 0
+        },
+        "max": {
+          "x": 10,
+          "y": 10,
+          "z": 0
+        },
+        "excluded_actor_ids": []
+      }
+    },
+    "unknown sphere shape": {
+      "ground": {
+        "shape": "triangle",
+        "kind": "water",
+        "center": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "radius_ft": 5,
+        "excluded_actor_ids": []
+      }
+    }
+  }
+}

@@ -19,7 +19,7 @@ from companion_scaling import companion_attacks_to_action_pool, scale_companion_
 from db_errors import validated_player_conditions
 from encounter_actions import validate_encounter_actions
 from encounter_references import validate_encounter_references
-from patron_passives import effective_hp, orenthel_beacon, scholars_ward
+from patron_passives import effective_hp, orenthel_beacon, scholars_ward, tidewalker
 from session_data import CombatParticipant
 
 
@@ -160,6 +160,7 @@ async def assemble_participants(session, encounter, encounter_id, member_players
                 save_advantages=traits.save_advantages,
                 scholars_ward=scholars_ward(row),
                 orenthel_beacon=orenthel_beacon(row),
+                tidewalker=tidewalker(row),
                 advantage_vs=traits.advantage_vs,
             )
         )

@@ -6,12 +6,26 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
-from sample_fixtures import make_context, make_mock_room
+from sample_fixtures import CONTENT_ROOT, make_context, make_mock_room
 
 import db
 import db_mutations
 from creation_rules import build_character_data
 from mode_tools import enter_mode
+
+AREA_CASES = json.loads((CONTENT_ROOT / "packages/shared/fixtures/encounter_movement_areas.json").read_text())
+
+
+def add_movement_areas(template: dict, areas: object) -> dict:
+    return {**template, "scene_placement": {**template["scene_placement"], "movement_areas": areas}}
+
+
+def movement_area_encounters(template: dict) -> list[tuple[bool, dict]]:
+    return [
+        (group == "valid", add_movement_areas(template, areas))
+        for group, cases in AREA_CASES.items()
+        for areas in cases.values()
+    ]
 
 
 @pytest.fixture

@@ -99,7 +99,9 @@ def move(
 ) -> MoveDecl | None:
     spatial = require_spatial(state)
     origin = position(spatial, actor.id)
-    endpoint = reachable_point(spatial, actor.id, origin, destination, spatial["speeds"][actor.id])
+    endpoint = reachable_point(
+        spatial, actor.id, origin, destination, spatial["speeds"][actor.id], tidewalker=actor.tidewalker
+    )
     if movement_blocker(state, spatial, actor, origin, endpoint):
         return None
     return MoveDecl(

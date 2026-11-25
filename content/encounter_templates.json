@@ -272,7 +272,7 @@
   {
     "id": "bandit_ambush",
     "name": "Bandit Ambush",
-    "description": "Gravel shifts on the slope above — too deliberate for an animal. Figures rise from cover with crossbows half-raised, and a broad-shouldered captain steps onto the road. \"Coin and cargo,\" he calls, almost bored. \"Or we do this the loud way.\"",
+    "description": "Boots suck at the mud on the slope above. Crossbows click as a captain steps onto the road. \"Coin and cargo,\" he calls, almost bored. \"Or we do this the loud way.\"",
     "difficulty": "moderate",
     "enemies": [
       {
@@ -341,7 +341,16 @@
         }
       },
       "locations": {},
-      "zones": {}
+      "zones": {},
+      "movement_areas": {
+        "muddy_slope": {
+          "shape": "rectangle",
+          "kind": "mud",
+          "min": { "x": 20, "y": -20, "z": 10 },
+          "max": { "x": 30, "y": -10, "z": 10 },
+          "excluded_actor_ids": []
+        }
+      }
     }
   },
   {
@@ -827,7 +836,7 @@
   {
     "id": "hollow_mawling_pack",
     "name": "Lone Adult Mawling",
-    "description": "Heavy claws scrape stone. An adult mawling probes forward, feinting and retreating. Its maw rasps like wet cloth tearing; the air tastes of iron.",
+    "description": "A stream babbles over stones. Heavy claws splash as an adult mawling feints and pulls back. Its maw rasps like wet cloth tearing, and the air tastes of iron.",
     "difficulty": "moderate",
     "enemies": [
       {
@@ -860,6 +869,15 @@
         "mawling_pack_adult_corruption_aura": {
           "center_id": "mawling_pack_adult",
           "radius_ft": 5
+        }
+      },
+      "movement_areas": {
+        "stream_crossing": {
+          "shape": "rectangle",
+          "kind": "water",
+          "min": { "x": 15, "y": -15, "z": 0 },
+          "max": { "x": 25, "y": -5, "z": 0 },
+          "excluded_actor_ids": []
         }
       }
     }

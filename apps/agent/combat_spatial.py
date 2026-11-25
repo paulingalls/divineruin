@@ -66,7 +66,8 @@ def validate_maps(positions, locations, zones, *, zone_kinds):
 
 def validate_scene(encounter):
     scene = encounter.get("scene_placement")
-    if not isinstance(scene, dict) or set(scene) != {"party_start", "companion_start", "actors", "locations", "zones"}:
+    keys = {"party_start", "companion_start", "actors", "locations", "zones"}
+    if not isinstance(scene, dict) or not keys <= set(scene) <= keys | {"movement_areas"}:
         raise ValueError("scene_placement requires explicit starts, actors, locations and zones")
     point(scene["party_start"])
     point(scene["companion_start"])
@@ -75,6 +76,14 @@ def validate_scene(encounter):
     if len(ids) != len(set(ids)) or set(mapping(scene["actors"], "actors")) != set(ids):
         raise ValueError("scene_placement must cover every enemy exactly")
     validate_maps(scene["actors"], scene["locations"], scene["zones"], zone_kinds=("silence",))
+    if "movement_areas" in scene:
+        from combat_movement_cost import validate_areas
+
+        areas = scene["movement_areas"]
+        validate_areas(areas, ids)
+        for area_id, area in areas.items():
+            if area["kind"] not in ("water", "mud"):
+                raise ValueError(f"Authored movement area {area_id!r} requires water or mud, got {area['kind']!r}")
     for start in (scene["party_start"], scene["companion_start"]):
         for other in [
             scene["party_start"],

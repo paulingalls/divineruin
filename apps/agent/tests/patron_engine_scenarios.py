@@ -22,6 +22,7 @@ from test_patron_engine_judgment import SCENARIOS as judgment
 from test_patron_engine_kaelen import SCENARIOS as kaelen
 from test_patron_engine_mortaen import SCENARIOS as mortaen
 from test_patron_engine_nythera import SCENARIOS as nythera
+from test_patron_engine_nythera_tidewalker import SCENARIOS as tidewalker
 from test_patron_engine_orenthel import SCENARIOS as orenthel
 from test_patron_engine_syrath import SCENARIOS as syrath
 from test_patron_engine_thyra import SCENARIOS as thyra
@@ -71,6 +72,7 @@ ENGINE_SCENARIOS = {
     **death_ward,
     **dawns_embrace,
     **nythera,
+    **tidewalker,
     **orenthel,
     **syrath,
     **two_round_veil,

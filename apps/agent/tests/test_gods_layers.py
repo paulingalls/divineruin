@@ -64,7 +64,7 @@ def test_authored_layers_match_mechanics():
     abilities = [a for row in rows for a in row["layer_3_tier_abilities"].values()]
     assert len(abilities) == len({a["id"] for a in abilities}) == 30
     assert {a["id"] for a in abilities if (a["status"], a["resolution"]) == ("active", "narrated")} == narrated
-    passives = {"veythar_scholars_ward", "kaelen_warriors_endurance", "orenthel_beacon"}
+    passives = {"veythar_scholars_ward", "kaelen_warriors_endurance", "orenthel_beacon", "nythera_tidewalker"}
     battle_cry = "kaelen_battle_cry_of_the_ironhand"
     judgment = "kaelen_kaelens_judgment"
     surge = "orenthel_restoration_surge"
@@ -225,7 +225,7 @@ def test_authored_layers_match_mechanics():
     }
     assert {a["id"] for a in abilities if (a["status"], a["resolution"]) == ("active", "engine")} == engine
     pending = [a for a in abilities if a["id"] not in narrated | engine]
-    assert len(pending) == 2
+    assert len(pending) == 1
     for ability in abilities:
         if ability["id"] in passives:
             assert (ability["recharge"], ability["implementation_id"]) == ("always", ability["id"])

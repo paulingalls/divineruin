@@ -22,6 +22,7 @@ from patron_ability_tools import project_abilities
 from patron_combat_edges import COMMUNITY_SHIELD, SCALES_VERDICT, VEILSTEP, VEILSTEP_RANGE_FT, WILDMOTHERS_WRATH
 from patron_favor import get_patron_tier
 from patron_gifts import UNBOUND_ALONE_BONUS, thyra_gift
+from patron_passives import TIDEWALKER
 from patron_synergy import has_engine_clause, synergy_for_patron
 from patron_zero_hp import DAWNS_EMBRACE, DEATH_WARD
 from session_data import SessionData
@@ -109,6 +110,11 @@ async def query_patron(
                 f'Use activate(id="{COMMUNITY_SHIELD}", target_id=<other present party player id>). '
                 "Grants temporary HP immediately in or out of combat, equal to your level plus your Charisma "
                 "modifier, at least 1. Refuses if it would not increase the target's pool."
+            )
+        elif ability["id"] == TIDEWALKER:
+            ability["activation_hint"] = (
+                "Automatically move at normal cost through water, mud, and the Architect's shifting ground. "
+                "Low ceilings still slow walking and block flight. Other hindrances keep their normal penalties."
             )
         elif ability["id"] == VEILSTEP:
             ability["activation_hint"] = (

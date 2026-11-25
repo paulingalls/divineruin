@@ -5,6 +5,7 @@ from patron_favor import get_patron_tier
 
 ORENTHEL_BEACON = "orenthel_beacon"
 DAWNS_RESILIENCE = "orenthel_dawns_resilience"
+TIDEWALKER = "nythera_tidewalker"
 SCHOLARS_WARD = "veythar_scholars_ward"
 WARRIORS_ENDURANCE = "kaelen_warriors_endurance"
 
@@ -45,6 +46,10 @@ def dawns_resilience(player: dict) -> dict | None:
 
 def scholars_ward(player: dict) -> bool:
     return acknowledged_passive(player, "veythar", SCHOLARS_WARD)
+
+
+def tidewalker(player: dict) -> bool:
+    return acknowledged_passive(player, "nythera", TIDEWALKER)
 
 
 def warriors_endurance(player: dict) -> int:

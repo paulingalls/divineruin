@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.72.0
+
+Water and mud now slow a fight. Mud on the bandits' slope and shallow water at the mawling crossing cost twice the movement for anyone crossing them. Nythera's Acknowledged followers (Tidewalker) stride through water, mud and the Architect's shifting ground at full speed, while every other kind of slowing ground still costs them as usual.
+
+Release steps: after deploying the compatible code, run `bun run seed` from the deployed repository root against the target database (encounter templates and gods.json changed). This is an unpaid production write.
+
+## 0.71.1
+
+Refresh the app, agent, and browser test dependencies. LiveKit now registers voice event callbacks without triggering Python's asyncio deprecation warning.
+
+Release steps: none.
+
 ## 0.71.0
 
 Marshals can now give orders in a fight. Direct Strike, Reposition, Coordinated Assault, Field Medic Order and Sacrifice Play can be declared in combat. The engine checks each order's targets and charges its cost, and the DM narrates what the order does.
