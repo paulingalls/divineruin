@@ -24,6 +24,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from combat_ability_gate import REPOSITION
 from reshape_payloads import parse_operations
 
 # Defend grants +2 AC until the next phase (gm_combat:105).
@@ -117,12 +118,15 @@ def resolve_declaration(raw: dict) -> Declaration:
     elif decl_type is DeclarationType.MANEUVER and not target_id:
         raise ValueError("maneuver declaration requires a 'target_id'")
     is_move = decl_type is DeclarationType.MANEUVER and action == "move"
-    if is_move:
+    is_reposition = decl_type is DeclarationType.ABILITY and action == REPOSITION
+    if is_reposition and raw.get("destination") is None:
+        raise ValueError('Declare Reposition with kind="reposition", a target_id, and a destination.')
+    if is_move or is_reposition:
         from combat_spatial import point
 
         point(raw.get("destination"))
     elif "destination" in raw:
-        raise ValueError("destination is only valid for move")
+        raise ValueError("destination is only valid for move or Reposition")
     if "held_item_id" in raw and (
         not isinstance(raw["held_item_id"], str) or not raw["held_item_id"] or decl_type is not DeclarationType.ATTACK
     ):

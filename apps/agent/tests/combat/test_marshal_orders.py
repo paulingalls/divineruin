@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pytest
 from acceptance.mawling_harness import MawlingHarness
+from voice_condition_fixtures import spatial_record
 
 import abilities
 import ability_persistence
@@ -83,11 +84,19 @@ async def enter(harness: MawlingHarness) -> None:
 async def declare(harness: MawlingHarness, order: str, targets: list[str], *, error: bool = False, attack=None):
     state = await harness.reload()
     actor = harness.players[0]
+    payload = dict(kind="ability", actor_id=actor, action=order, targets=targets, argument_type="")
+    if order == REPOSITION:
+        target = targets[0] if targets else ""
+        positions = spatial_record(state)["positions"]
+        origin = positions.get(target, positions[actor])
+        payload = dict(
+            kind="reposition", actor_id=actor, target_id=target, destination={**origin, "x": origin["x"] + 1}
+        )
     return await harness.command(
         "declare_phase",
         {
             "declarations": [
-                dict(kind="ability", actor_id=actor, action=order, targets=targets, argument_type="", reshape=[]),
+                payload,
                 *(
                     attack
                     if attack and participant.id == attack["actor_id"]
@@ -144,7 +153,7 @@ async def test_order_resolves_in_initiative_order(marshal, order, level, slots, 
         action=order,
         name=authored.name,
         target_ids=targets,
-        effect_resolution="engine" if order in (DIRECT, COORDINATED) else "narrated",
+        effect_resolution="engine" if order in (DIRECT, COORDINATED, REPOSITION) else "narrated",
         effect=authored.effect,
         narration_cue=authored.narration_cue,
         deducted=deducted,
@@ -165,7 +174,11 @@ async def test_order_resolves_in_initiative_order(marshal, order, level, slots, 
             assert rider["partner_id"] == partner and rider["source_id"] == actor
     assert live.encounter_facts["rally_pending"] == {}
     assert "zhael_moment_to_rally" not in live.encounter_facts["once_spent"]
-    assert target_facts(live, targets) == before_targets
+    if order == REPOSITION:
+        [(hp, conditions, origin)] = before_targets
+        assert target_facts(live, targets) == [(hp, conditions, {**origin, "x": origin["x"] + 1})]
+    else:
+        assert target_facts(live, targets) == before_targets
     _, after_players = await harness.snapshot()
     assert pools(after_players[0]) == {pool: value - deducted[pool] for pool, value in pools(before_players[0]).items()}
     assert list(map(pools, after_players[1:])) == list(map(pools, before_players[1:]))

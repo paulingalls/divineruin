@@ -29,7 +29,7 @@ def is_move(declaration):
     return declaration.type is DeclarationType.MANEUVER and declaration.action == "move"
 
 
-def movement_geometry(state, actor_id, declaration, *, allowance=None):
+def movement_geometry(state, actor_id, declaration, *, allowance: float | None = None, hard_limit: bool = False):
     spatial = require_spatial(state)
     actor = state.get_participant(actor_id)
     if actor is None or declaration.target_id != actor_id:
@@ -37,7 +37,8 @@ def movement_geometry(state, actor_id, declaration, *, allowance=None):
     destination = point(declaration.destination)
     origin = position(spatial, actor_id)
     speed = effective_speed(spatial["speeds"][actor_id], actor.conditions) if allowance is None else allowance
-    if in_pit(state, actor_id):
+    climbing = in_pit(state, actor_id)
+    if climbing and not hard_limit:
         return origin, 0, speed, None
     spent = movement_cost(spatial, actor_id, origin, destination, tidewalker=actor.tidewalker)
     if declaration.movement_mode == "flying" and crosses_low_ceiling(spatial, actor_id, origin, destination):
@@ -45,8 +46,10 @@ def movement_geometry(state, actor_id, declaration, *, allowance=None):
     melody = actor.choir_movement_round == state.round_number or any(
         c["type"] == "charmed" and c.get("choir_melody") is True for c in actor.conditions
     )
-    if spent > speed and not melody:
+    if spent > speed and (hard_limit or not melody):
         raise MovementRefused(f"{actor_id} move exceeds speed {speed:g} feet")
+    if climbing:
+        return origin, 0, speed, None
     wall = movement_blocker(state, spatial, actor, origin, destination)
     if wall is not None:
         reason = f"{actor_id} move is blocked by {wall.name} ({wall.id})"
