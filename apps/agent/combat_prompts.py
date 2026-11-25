@@ -59,6 +59,10 @@ without explicit arcs the engine chooses nearest enemies. Repeat Magic Missile t
 or name one recipient for all darts. Send argument_type as an empty string except for Elemental Burst \
 (fire, cold, or lightning) and de_escalate (below). resolve_phase handles ability costs, \
 weapon damage, and any Focus and Resonance for spells. \
+ability_move — Shadow Step uses action="rogue_shadow_step" or its active variant id and destination \
+with x, y, z coordinates from combat facts. Move up to effective speed using normal movement rules. \
+End within 5 feet of the nearest point on a wall segment or of a standing structure, or inside smoke. \
+No opportunity attacks are provoked, and the rogue finishes concealed. \
 defend — the actor makes no attack and gains +2 AC until the next \
 phase (use it when the player guards, takes cover, or braces). \
 maneuver — target_id names who is moved. A prone combatant stands by declaring maneuver on itself, \
@@ -81,7 +85,7 @@ For Ability rows with active_variant_id, declare that exact variant id. \
 Reaction rows name the window where their id can interrupt through activate. \
 Cover the player, every conscious companion, and every enemy that acts this round. \
 An actor listed in cannot_act declares nothing; omit them and narrate their helplessness. \
-In combat, an ordinary spell or ability without an Attack recipe is an Ability declaration through \
+In combat, an ordinary spell or ability without a declaration recipe is an Ability declaration through \
 declare_phase — never a free \
 cast via activate. Three things are still done through activate, even mid-fight: a REACTION at an \
 open Beat-3 window (below), a Draethar's Inner Fire (activate "draethar_inner_fire"), and raising \

@@ -3,9 +3,8 @@
 The spec's action economy is "one declaration per phase per participant" across the
 six categories in gm_combat §Action Economy (L99-106). ``resolve_declaration`` turns a
 raw declaration dict (what the DM emits into ``declare_phase``) into a typed
-``Declaration``, or raises ``ValueError`` on a bad shape. Pure: no IO, no mutation, no
-catalog lookup. The pure-engine boundary raises ``ValueError``; the tool layer
-(``combat_turn``) translates it to ``ToolError`` (the established idiom).
+``Declaration``, or raises ``ValueError`` on a bad shape. It performs no IO or mutation.
+The tool layer (``combat_turn``) translates that error to ``ToolError``.
 
 A REACTION was a seventh category until story-017 made a reaction an INTERRUPT against an
 open Beat-3 window (decision 46). It is not a declaration: it costs no phase action, and the
@@ -118,12 +117,18 @@ def resolve_declaration(raw: dict) -> Declaration:
         if not target_id:
             raise ValueError("maneuver declaration requires a 'target_id'")
     is_move = decl_type is DeclarationType.MANEUVER and action == "move"
-    if is_move:
+    is_shadow_step = False
+    if decl_type is DeclarationType.ABILITY and isinstance(action, str):
+        from combat_ability_gate import SHADOW_STEP, declared_ability
+
+        resolved = declared_ability(action)
+        is_shadow_step = action == SHADOW_STEP or (resolved is not None and resolved[0].id == SHADOW_STEP)
+    if is_move or is_shadow_step:
         from combat_spatial import point
 
         point(raw.get("destination"))
     elif "destination" in raw:
-        raise ValueError("destination is only valid for move")
+        raise ValueError("destination is only valid for move or Shadow Step")
     if "held_item_id" in raw and (
         not isinstance(raw["held_item_id"], str) or not raw["held_item_id"] or decl_type is not DeclarationType.ATTACK
     ):

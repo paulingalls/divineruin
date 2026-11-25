@@ -10,6 +10,7 @@ import architect_entomb
 import combat_grapple
 import combat_martial
 import combat_melee_approach
+import combat_shadow_step
 import combat_spatial_declarations
 import combat_voice_rules
 import still_encounter
@@ -19,6 +20,7 @@ from combat_ability_gate import (
     CUNNING_ACTION,
     ELECTIVE_RIDER_ABILITIES,
     MULTI_TARGET_WEAPON_ABILITIES,
+    SHADOW_STEP,
     SHIELD_BASH,
     SINGLE_TARGET_WEAPON_ABILITIES,
     WAR_CRY,
@@ -199,6 +201,9 @@ def validate_declaration(
             if not combat_ability(ability):
                 raise ValueError(f"{declaration.action} is not declarable in combat")
             combat_martial.require_targets(next_state, actor, declaration, ability)
+            if ability.id == SHADOW_STEP:
+                combat_shadow_step.validate(next_state, actor.id, declaration)
+                return
             if ability.id == WAR_CRY:
                 if not war_cry_targets(next_state):
                     raise ValueError("War Cry requires a standing foe who can hear.")

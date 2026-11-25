@@ -38,12 +38,16 @@ async def declare_phase(
     """Open a combat phase by recording every combatant's declared action for this
     round, then call resolve_phase to resolve them. Pass one declaration per acting
     combatant, each naming its actor_id and picked by its kind: attack, ability,
-    interact, consume, maneuver, move, defend or retreat. For a potion, salve or berry,
+    ability_move, interact, consume, maneuver, move, defend or retreat. For a potion, salve or berry,
     declare consume with the holder's actor_id and the queried item_id. Set target_id
     to the ally receiving it or an empty string for the holder. Move names an explicit destination in feet and consumes
     this phase action, limited to the actor's persisted speed. Only the Architect may include
     Reshape operations, on an attack, move or defend. The sections resolve before the action.
     Use the Architect's live wall ids and remaining Reshape uses from the combat facts.
+    Shadow Step uses ability_move with action rogue_shadow_step or its active variant id and a destination
+    from combat facts. Move up to effective speed using normal movement rules. End within 5 feet of the
+    nearest point on a wall segment or of a standing structure, or inside smoke. No opportunity attacks
+    are provoked, and the rogue finishes concealed.
     Second Wind is an ability with empty targets. Rallying Shout names one standing ally.
     Marshal orders use ability declarations and name standing allies other than the marshal.
     Use marshal_direct_strike with [ally, foe], marshal_coordinated_assault with two distinct

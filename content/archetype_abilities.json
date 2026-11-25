@@ -530,7 +530,7 @@
     "ability_type": "elective",
     "level_requirement": 8,
     "cost": { "stamina": 4, "focus": 0, "scaling": null },
-    "effect": "Move undetected to a new position. Must end in cover or shadow.",
+    "effect": "Move up to your speed using normal movement rules. End within 5 feet of a wall segment or standing structure, or inside smoke. You provoke no opportunity attacks and finish concealed.",
     "narration_cue": "You melt into one shadow and emerge from another."
   },
   {

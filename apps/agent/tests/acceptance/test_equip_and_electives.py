@@ -47,7 +47,7 @@ COMBAT_BY_ELECTIVE = {
     "marshal_grand_stratagem": False,
     "paladin_zealous_charge": False,
     "rogue_dirty_trick": True,
-    "rogue_shadow_step": False,
+    "rogue_shadow_step": True,
     "skirmisher_hamstring": False,
     "skirmisher_spring_attack": False,
     "spy_poison_craft": False,

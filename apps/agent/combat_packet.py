@@ -418,6 +418,7 @@ async def _resolve_action_packet(
             mutations=mutations,
             resolver=resolver,
             concentration_break_mod=concentration_break_mod,
+            player_movement=player_movement,
         )
 
     if decl.type is DeclarationType.MANEUVER:
@@ -426,8 +427,6 @@ async def _resolve_action_packet(
         return combat_maneuver.resolve_maneuver(state, attacker, decl)
 
     if decl.type is not DeclarationType.ATTACK and not (single_target or multi_target):
-        # Non-attack declarations don't resolve mechanically yet, but a narrated rider
-        # (e.g. Quick Change on a social INTERACT) still surfaces for the DM to voice.
         summary = {
             "actor_id": packet.actor_id,
             "resolved": False,

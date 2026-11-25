@@ -92,6 +92,15 @@ class AbilityDecl(BaseModel):
     )
 
 
+class AbilityMoveDecl(BaseModel):
+    """Use Shadow Step to move to a covered point in feet."""
+
+    kind: Literal["ability_move"]
+    actor_id: str
+    action: str = Field(description="The exact Shadow Step id or its active mentor variant id from query_info.")
+    destination: Destination
+
+
 class InteractDecl(BaseModel):
     """Interact with the scene. For healing items, use consume."""
 
@@ -150,7 +159,16 @@ class RetreatDecl(BaseModel):
 
 
 DeclVariant = Union[
-    MultiattackDecl, AttackDecl, AbilityDecl, InteractDecl, ConsumeDecl, ManeuverDecl, MoveDecl, DefendDecl, RetreatDecl
+    MultiattackDecl,
+    AttackDecl,
+    AbilityDecl,
+    AbilityMoveDecl,
+    InteractDecl,
+    ConsumeDecl,
+    ManeuverDecl,
+    MoveDecl,
+    DefendDecl,
+    RetreatDecl,
 ]
 DeclPayload = Annotated[DeclVariant, Field(discriminator="kind")]
 
@@ -158,6 +176,7 @@ DECL_VARIANTS: tuple[type[BaseModel], ...] = (
     AttackDecl,
     MultiattackDecl,
     AbilityDecl,
+    AbilityMoveDecl,
     InteractDecl,
     ConsumeDecl,
     ManeuverDecl,
@@ -181,6 +200,8 @@ def _raw(decl: DeclVariant) -> dict:
         if decl.rider:
             raw["rider"] = decl.rider
         return raw
+    if isinstance(decl, AbilityMoveDecl):
+        return {"type": "ability", "action": decl.action, "destination": decl.destination.model_dump()}
     if isinstance(decl, AbilityDecl):
         raw: dict = {"type": "ability", "action": decl.action}
         # target_id XOR target_ids: spells.normalize_target_list refuses both at the
