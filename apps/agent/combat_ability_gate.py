@@ -37,6 +37,7 @@ ELECTIVE_RIDER_ABILITIES = frozenset((*ELECTIVE_ATTACK_RIDERS.values(), CRIPPLIN
 IRON_STANCE_ABILITY = "warrior_iron_stance"
 VANISH = "rogue_vanish"
 SMOKE_BOMB = "rogue_smoke_bomb"
+SHADOW_STEP = "rogue_shadow_step"
 SECOND_WIND = "warrior_second_wind"
 RALLYING_SHOUT = "warrior_rallying_shout"
 
@@ -78,6 +79,7 @@ def combat_ability(ability: abilities.Ability) -> bool:
             SECOND_WIND,
             VANISH,
             SMOKE_BOMB,
+            SHADOW_STEP,
             EXPLOIT_WEAKNESS,
             *SINGLE_TARGET_WEAPON_ABILITIES,
             *MULTI_TARGET_WEAPON_ABILITIES,

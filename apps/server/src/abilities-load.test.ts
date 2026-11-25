@@ -60,6 +60,12 @@ describe("content/archetype_abilities.json — parseAbilityRow conformance", () 
       effect:
         "Throw a fixed 10-foot-radius smoke cloud at your position. Attacks with either endpoint inside have disadvantage until the next round starts.",
     });
+    expect(load("rogue_shadow_step")).toMatchObject({
+      level_requirement: 8,
+      cost: { stamina: 4, focus: 0 },
+      effect:
+        "Move up to your speed using normal movement rules. End within 5 feet of a wall segment or standing structure, or inside smoke. You provoke no opportunity attacks and finish concealed.",
+    });
     const trick = load("rogue_dirty_trick");
     expect(trick.applies_condition).toBe("shaken");
     expect(trick.save).toBeUndefined();

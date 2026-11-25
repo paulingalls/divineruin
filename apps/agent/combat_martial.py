@@ -32,6 +32,7 @@ from combat_ability_gate import (
     MULTI_TARGET_WEAPON_ABILITIES,
     RALLYING_SHOUT,
     SECOND_WIND,
+    SHADOW_STEP,
     SHIELD_BASH,
     SHIELD_BASH_RIDER,
     SINGLE_TARGET_WEAPON_ABILITIES,
@@ -60,7 +61,7 @@ from session_data import CombatState
 def require_targets(
     state: CombatState, actor: CombatParticipant, decl: Declaration, ability: abilities.Ability
 ) -> None:
-    if ability.id in (VANISH, SMOKE_BOMB) and (decl.target_ids or decl.target_id not in (None, actor.id)):
+    if ability.id in (VANISH, SMOKE_BOMB, SHADOW_STEP) and (decl.target_ids or decl.target_id not in (None, actor.id)):
         raise ValueError(f"{ability.name} targets only the rogue.")
     if ability.id == IRON_STANCE_ABILITY and (decl.target_ids or decl.target_id not in (None, actor.id)):
         raise ValueError("Iron Stance only protects the warrior using it.")
