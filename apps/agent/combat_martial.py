@@ -153,8 +153,7 @@ async def preflight_orders(state: CombatState, *, queries) -> None:
 async def narrated_order(
     state: CombatState, actor: CombatParticipant, decl: Declaration, resolved: DeclaredAbility, *, conn, queries
 ) -> dict:
-    ability, variant = resolved
-    authored = variant or ability
+    ability = resolved[0]
     allies, foes = order_recipients(state, actor, decl, ability)
     await pay(actor.id, resolved, queries=queries, conn=conn)
     grant = await grant_marshal_rally(state, actor.id, allies[0], queries=queries, conn=conn)
@@ -164,7 +163,22 @@ async def narrated_order(
     elif ability.id == COORDINATED_ASSAULT:
         rider = combat_order_riders.grant_coordinated_assault(state, actor.id, allies)
     return {
+        **order_receipt(actor, decl, resolved, grant, effect_resolution="engine" if rider is not None else "narrated"),
         **({"order_rider_grant": rider} if rider is not None else {}),
+    }
+
+
+def order_receipt(
+    actor: CombatParticipant,
+    decl: Declaration,
+    resolved: DeclaredAbility,
+    grant: dict | None,
+    *,
+    effect_resolution: str,
+) -> dict:
+    ability, variant = resolved
+    authored = variant or ability
+    return {
         **({"rally_grant": grant} if grant is not None else {}),
         "actor_id": actor.id,
         "resolved": True,
@@ -172,7 +186,7 @@ async def narrated_order(
         "action": decl.action,
         "name": ability.name,
         "target_ids": _order_targets(decl),
-        "effect_resolution": "engine" if rider is not None else "narrated",
+        "effect_resolution": effect_resolution,
         "effect": authored.effect,
         "narration_cue": authored.narration_cue,
         "deducted": {"focus": authored.cost.focus, "stamina": authored.cost.stamina},

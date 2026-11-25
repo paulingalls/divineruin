@@ -158,9 +158,11 @@ async def _apply_damage(
         )
         if fortitude_save is None:
             return None
-    if isinstance(attack_result, check_resolution_attack.AttackResult) and attack_result.order_rider is not None:
-        assert combat_state is not None
-        combat_order_riders.consume(combat_state, attacker.id, attack_result.order_rider)
+    if isinstance(attack_result, check_resolution_attack.AttackResult):
+        for rider in (attack_result.order_rider, attack_result.sacrifice_rider):
+            if rider is not None:
+                assert combat_state is not None
+                combat_order_riders.consume(combat_state, attacker.id, rider)
     automatic = isinstance(attack_result, AutomaticDamageResult)
     save_damage = isinstance(attack_result, (SaveDamageResult, AutomaticDamageResult))
     if save_damage and publish_roll:

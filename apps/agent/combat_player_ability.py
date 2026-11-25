@@ -1,6 +1,7 @@
 """Player ability packet dispatch inside the phase transaction."""
 
 import combat_martial
+import combat_sacrifice_play
 import veythar_wellspring
 from combat_ability import (
     AbilityCastOutcome,
@@ -10,6 +11,7 @@ from combat_ability import (
 )
 from combat_ability_gate import EXPLOIT_WEAKNESS, MARSHAL_ORDERS, SECOND_WIND, declared_ability
 from combat_deescalation import _resolve_deescalation_packet
+from combat_order_riders import SACRIFICE_PLAY
 
 
 async def resolve(
@@ -45,6 +47,20 @@ async def resolve(
     # ability-condition path — deduct its cost and land the condition on the target participant —
     # NOT through _resolve_ability_packet (which casts a spell). Pre-gated in _prevalidate_ability_focus.
     resolved = declared_ability(decl.action)
+    if resolved is not None and resolved[0].id == SACRIFICE_PLAY:
+        return await combat_sacrifice_play.resolve(
+            session,
+            state,
+            attacker,
+            decl,
+            resolved,
+            conn=conn,
+            sink=sink,
+            progress=progress,
+            queries=queries,
+            mutations=mutations,
+            concentration_break_mod=concentration_break_mod,
+        )
     if resolved is not None and resolved[0].id == SECOND_WIND:
         return await combat_martial.second_wind(
             state, attacker, resolved, conn=conn, queries=queries, mutations=mutations

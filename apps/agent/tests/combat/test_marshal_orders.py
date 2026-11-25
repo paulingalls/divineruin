@@ -113,9 +113,9 @@ def target_facts(state, targets: list[str]) -> list[tuple]:
     ]
 
 
-@pytest.mark.parametrize("order,level,slots,focus,stamina", ORDERS)
+@pytest.mark.parametrize("order,level,slots,focus,stamina", [row for row in ORDERS if row[0] != SACRIFICE])
 async def test_order_resolves_in_initiative_order(marshal, order, level, slots, focus, stamina) -> None:
-    owned = (order,) if order in (MEDIC, SACRIFICE) else ()
+    owned = (order,) if order == MEDIC else ()
     harness = await marshal(level, focus=focus or 8, stamina=stamina or 8, owned=owned)
     await enter(harness)
     actor = harness.players[0]
