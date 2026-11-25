@@ -19,7 +19,7 @@ from combat_attack_roll import attack_roll_inputs, promote_attack, spend_sneak_a
 from combat_down import damage_target_unavailable
 from combat_item_rider import resolve_rider
 from combat_support import _resolve_attack_packet, apply_rolled_attack
-from patron_synergy_combat import attack_player
+from patron_synergy_combat import attack_player, veiled_strike
 
 
 async def attack_sequence(
@@ -143,6 +143,15 @@ async def continue_attack(
             break
         swing = progress.scope("swing") if progress is not None else None
         prepared_data = attack_cursor.get("prepared")
+        resumed_swing = swing is not None and ("damage_receipt" in swing.steps or "attack_summary" in swing.steps)
+        reveal = start == 0 and not attack_summaries and attacker.type == "player" and not resumed_swing
+        strike_mode = None
+        player = None
+        if reveal and prepared_data is None:
+            player = await attack_player(attacker, queries=queries, conn=conn)
+            assert player is not None
+            if concealment.gift_lifetime(player):
+                strike_mode = veiled_strike(player)
         prepared = None
         if prepared_data is not None:
             prepared = check_resolution_attack.PreparedAttack.from_dict(prepared_data)
@@ -154,7 +163,8 @@ async def continue_attack(
             and attacker.is_ally
             and (candidates := await zhael_fate.candidates(session, queries=queries, conn=conn)).choices(attacker.id)
         ):
-            player = await attack_player(attacker, queries=queries, conn=conn)
+            if player is None:
+                player = await attack_player(attacker, queries=queries, conn=conn)
             defender = await attack_player(target, queries=queries, conn=conn)
             attacker_data, target_ac, attack_mod = attack_roll_inputs(
                 attacker,
@@ -164,6 +174,7 @@ async def continue_attack(
                 act,
                 player=player,
                 defender=defender,
+                veiled_strike=strike_mode,
             )
             prepared = check_resolution_attack.prepare_attack(
                 attacker_data, act, target_ac, attack_mod=attack_mod, target_conditions=target.conditions
@@ -191,8 +202,7 @@ async def continue_attack(
                     "reason": "awaiting a Zhael roll choice",
                     **interception,
                 }
-        resumed_swing = swing is not None and ("damage_receipt" in swing.steps or "attack_summary" in swing.steps)
-        if start == 0 and not attack_summaries and attacker.type == "player" and not resumed_swing:
+        if reveal:
             concealment_packet = await concealment.reveal_attacker(attacker.id, conn=conn, queries=queries)
         bash = martial == SHIELD_BASH and index == len(actions) - 1
         if bash and not resumed_swing:
@@ -225,6 +235,7 @@ async def continue_attack(
                 sink=sink,
                 publish_roll=publish_roll,
                 progress=swing,
+                veiled_strike=strike_mode,
             )
         else:
             result = check_resolution_attack.finish_attack(

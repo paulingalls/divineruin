@@ -34,6 +34,7 @@
   "zhael_threaded_blade": "patron_synergy_combat:encounter_damage_clause",
   "mortaen_threshold_shield": "patron_synergy_combat:fallen_ally_defense",
   "syrath_two_round_veil": "patron_synergy_combat:shadow_veil_rounds",
+  "syrath_veiled_strike": "patron_synergy_combat:veiled_strike",
   "kaelen_war_songs": "patron_synergy_combat:inspire_attack_upgrade",
   "mortaen_hold_the_crossing": "patron_synergy_combat:marshal_death_save_bonus",
   "zhael_second_before": "patron_synergy_combat:first_attack_defense",

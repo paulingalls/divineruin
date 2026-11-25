@@ -11,6 +11,7 @@ import patron_synergy_combat
 from architect_encounter import cathedral_bonus
 from condition_catalog import INCORPOREAL
 from dramatic import DramaticContext, evaluate_dramatic_context
+from patron_synergy_combat import VeiledStrike
 
 BEACON = "Beacon"
 
@@ -29,6 +30,7 @@ def roll_attack(
     player: dict | None = None,
     defender: dict | None = None,
     mortaen_ac_override: int | None = None,
+    veiled_strike: VeiledStrike | None = None,
 ) -> tuple:
     """Roll without applying HP changes; held reactions pause before impact."""
     attacker_data, effective_ac, attack_mod = attack_roll_inputs(
@@ -41,6 +43,7 @@ def roll_attack(
         player=player,
         defender=defender,
         mortaen_ac_override=mortaen_ac_override,
+        veiled_strike=veiled_strike,
     )
     attack_result = resolver.resolve_attack(
         attacker_data,
@@ -67,6 +70,7 @@ def attack_roll_inputs(
     player=None,
     defender=None,
     mortaen_ac_override: int | None = None,
+    veiled_strike: VeiledStrike | None = None,
 ):
     """The attacker data, effective AC and to-hit bonus a d20 attack is prepared from.
 
@@ -77,6 +81,9 @@ def attack_roll_inputs(
         "level": attacker.level,
         "conditions": attacker.conditions,
     }
+
+    if veiled_strike is not None:
+        attacker_data["veiled_strike"] = veiled_strike
 
     if weapon_attack and conditions.has_condition(attacker.conditions, INCORPOREAL):
         attacker_data["damage_type_override"] = "necrotic"

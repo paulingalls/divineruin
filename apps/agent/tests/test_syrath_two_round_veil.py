@@ -32,8 +32,8 @@ def marker(rounds: int) -> dict:
 
 
 @asynccontextmanager
-async def scene(w: SimpleNamespace, archetype: str) -> AsyncIterator[Fight]:
-    async with fight(w, "syrath", archetype=archetype, ally_hp=20) as f:
+async def scene(w: SimpleNamespace, archetype: str, *, extra: bool = False) -> AsyncIterator[Fight]:
+    async with fight(w, "syrath", archetype=archetype, ally_hp=20, extra=extra) as f:
         f.call = game_tools(f.session, declare_phase, resolve_phase, activate, query_info, check, end_combat)
         await db_mutations.save_combat_state(f.combat_id, f.session.combat_state.to_dict())
         yield f
@@ -100,7 +100,14 @@ async def two_round_veil(w: SimpleNamespace, archetype: str) -> None:
             "resolution": "engine",
             "implementation_id": CLAUSE,
         },
-        {"effect": "Invisible Sneak Attack +1d6", "status": "pending", "resolution": "engine"},
+        {
+            "effect": (
+                "Invisible Sneak Attack +1d6" if archetype == "rogue" else "Weapon attacks from Shadow Veil deal +1d6"
+            ),
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "syrath_veiled_strike",
+        },
     ]
     async with scene(w, archetype) as f:
         assert (await f.call("query_info", kind="patron"))["synergy"] == authored
