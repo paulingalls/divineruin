@@ -15,7 +15,7 @@ from _aelora_hearthfire_fixtures import (
     refuse,
     snapshot,
 )
-from _mortaen_threshold_fixtures import FOE, active, declare, drain, events
+from _mortaen_threshold_fixtures import FOE, active, declare, drain, events, fight
 from _unbound_path_fixtures import row
 from _unbound_path_fixtures import world as world
 from _zhael_fate_fixtures import game_tools
@@ -287,6 +287,11 @@ async def test_hearthfire_requires_a_standing_player_in_combat(world: SimpleName
             session.combat_state = state
         await fall(world, 0)
         await checkpoint(world)
+        await refuse(world, call, "Hearthfire requires a standing player in this fight")
+
+
+async def test_hearthfire_refuses_a_player_who_enters_combat_at_zero_hp(world: SimpleNamespace) -> None:
+    async with fight(world, patron="aelora", hp=0, gifts=OTHER_GIFTS) as call:
         await refuse(world, call, "Hearthfire requires a standing player in this fight")
 
 
