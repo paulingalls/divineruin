@@ -8,6 +8,7 @@ from typing import Any
 from livekit.agents.llm import ToolError
 from livekit.agents.voice import RunContext
 
+import aelora_hearthfire
 import architect_encounter
 import character_spells
 import check_resolution_attack
@@ -323,7 +324,14 @@ async def _resolve_phase_locked(
                     session, resonance_track=m.resonance, caster_id=m.player_id
                 )
 
+    hearthfire_heals = wrap.hearthfire_heals if wrap is not None else []
+    if state.wrap_continuation is not None:
+        hearthfire_heals = state.wrap_continuation["wrap"].get("hearthfire_heals", [])
+
     if handoff is not None:
+        if hearthfire_heals:
+            agent, payload = handoff
+            handoff = agent, json.dumps({**json.loads(payload), "hearthfire": {"zones": [], "heals": hearthfire_heals}})
         logger.info("resolve_phase: engine end-condition %s -> end_combat", ended_outcome)
         return handoff
 
@@ -347,6 +355,8 @@ async def _resolve_phase_locked(
         "exhaustion_narration": exhaustion_narration,
         "legendary_available": wrap_adv.legendary_available,
     }
+    if state.hearthfire_zones or hearthfire_heals:
+        response["hearthfire"] = aelora_hearthfire.facts(state, hearthfire_heals)
     if legendary is not None:
         response.update(
             actor_id=legendary["actor_id"],

@@ -96,6 +96,7 @@ class WrapOutcome:
     tick_conditions_due: list[dict] = field(default_factory=list)
     rally_saves: list[dict] = field(default_factory=list)
     threshold_walk_returns: list[dict[str, str]] = field(default_factory=list)
+    hearthfire_heals: list[dict] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
