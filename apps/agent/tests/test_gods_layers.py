@@ -203,7 +203,17 @@ def test_authored_layers_match_mechanics():
         "always",
     )
     passives.add(season_id)
+    hearthfire_id = "aelora_hearthfire"
+    hearthfire = next(row["layer_3_tier_abilities"]["exalted"] for row in rows if row["god_id"] == "aelora")
+    assert tuple(hearthfire.get(key) for key in ("id", "status", "resolution", "implementation_id", "recharge")) == (
+        hearthfire_id,
+        "active",
+        "engine",
+        hearthfire_id,
+        "per_session",
+    )
     engine = {
+        hearthfire_id,
         blessing_id,
         "zhael_lucky",
         battle_cry,
@@ -225,7 +235,7 @@ def test_authored_layers_match_mechanics():
     }
     assert {a["id"] for a in abilities if (a["status"], a["resolution"]) == ("active", "engine")} == engine
     pending = [a for a in abilities if a["id"] not in narrated | engine]
-    assert len(pending) == 1
+    assert pending == []
     for ability in abilities:
         if ability["id"] in passives:
             assert (ability["recharge"], ability["implementation_id"]) == ("always", ability["id"])

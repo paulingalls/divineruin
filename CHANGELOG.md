@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.74.0
+
+Aelora's Exalted followers can light Hearthfire once a session in a fight. It is a fixed 15 ft hearth that lasts 3 rounds. At each round's end it heals every ally inside by 1d6 before the round's outcome is decided, so fallen allies inside rise. Allies inside roll their ability saves with advantage (not death saves), including the condition saves at the end of the third round. A foe moving in must pass a Wisdom save or stop at the edge, and Zhael's Fate's Thread can reroll that save. Every patron tier ability now works in play.
+
+Release steps: after deploying the compatible code, run `bun run seed` from the deployed repository root against the target database (gods.json changed). This is an unpaid production write.
+
 ## 0.73.0
 
 An Exalted Zhael follower can unravel fate once per session. At the start of a combat round, before anyone has acted, they can ask the DM to undo the round that just ended. Everyone's health, Focus, Stamina, Resonance, concentration, items, positions and patron gifts return to how they stood when that round began, and the party declares again. Unravel Fate's own use is the exception: it stays spent. The follower takes 8 Resonance for bending time, whether or not they cast spells. Each combat round now starts with a saved checkpoint of the fight and the party, which makes this possible.

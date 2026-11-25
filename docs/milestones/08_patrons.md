@@ -135,14 +135,14 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
  historical patron_ability_unlock table is superseded; no unlock table is added.
  activate_patron_ability maps to registered activate(id=...); check_patron_tier
  maps to query_info(kind="patron"). Historical daily recharge is per_session.
- Authored pending effects remain pending; AC6 stays open. -->
+ AC6 closed 2026-11-25 when the last pending ability became active. -->
 
 - [x] All 10 patrons have abilities defined for all 3 tiers (Acknowledged, Devoted, Exalted)
 - [x] Each ability has name, effect, and recharge condition specified
 - [x] Recharge tracking prevents ability use before recharge completes (short rest / long rest / daily)
 - [x] Ability unlock triggers automatically when favor tier advances
 - [x] Higher-tier abilities become unavailable (not deleted) when favor drops below tier threshold
-- [ ] `activate_patron_ability` validates availability, applies effect, and sets recharge timer <!-- Dawn’s Embrace, Tidewalker and Unravel Fate resolve in the engine; Unravel Fate rewinds the previous combat round from a round-start checkpoint at the next round's opening. Aelora’s Hearthfire remains pending. -->
+- [x] `activate_patron_ability` validates availability, applies effect, and sets recharge timer <!-- sprint-aelora-hearthfire (2026-11-25): every authored tier ability is active, either engine or narrated, and none is pending. Hearthfire (fixed 15 ft sanctuary, pre-outcome heal, ally save advantage, Fate-reachable WIS entry save) and Unravel Fate (round-start checkpoint rewind) closed the last two. test_gods_layers.py and god.test.ts both assert the pending set is empty. -->
 - [x] `activate_patron_ability` returns error if ability is on cooldown or tier is insufficient
 - [x] `check_patron_tier` returns current tier, favor value, and list of available abilities
 - [x] Client receives patron ability data for character sheet and favor bar for HUD

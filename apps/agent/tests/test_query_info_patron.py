@@ -143,6 +143,7 @@ async def test_real_patron_gift_round_trip_from_gods_content(patron_id, monkeypa
             in {
                 "aelora_craft_blessing",
                 "aelora_community_shield",
+                "aelora_hearthfire",
                 "syrath_veilstep",
                 "mortaen_death_ward",
                 "orenthel_dawns_embrace",

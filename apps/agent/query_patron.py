@@ -16,6 +16,7 @@ import zhael_fate
 import zhael_foretold_words
 import zhael_unravel_fate
 from _gods_content import load_gods
+from aelora_hearthfire import GIFT as HEARTHFIRE
 from combat_terrain import resolve_terrain
 from crafting_tools import CRAFT_BLESSING
 from patron_ability_tools import project_abilities
@@ -110,6 +111,12 @@ async def query_patron(
                 f'Use activate(id="{COMMUNITY_SHIELD}", target_id=<other present party player id>). '
                 "Grants temporary HP immediately in or out of combat, equal to your level plus your Charisma "
                 "modifier, at least 1. Refuses if it would not increase the target's pool."
+            )
+        elif ability["id"] == HEARTHFIRE:
+            ability["activation_hint"] = (
+                f'Use activate(id="{HEARTHFIRE}") in combat. '
+                "The fixed sphere has a 15-foot radius and lasts three rounds. "
+                "Foes must pass a Wisdom save when they reach its edge to enter."
             )
         elif ability["id"] == TIDEWALKER:
             ability["activation_hint"] = (

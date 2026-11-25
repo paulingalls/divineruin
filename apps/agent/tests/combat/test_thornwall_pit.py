@@ -21,18 +21,19 @@ def field(enemy_x: float, player_x: float, speed: int):
     return state, enemy, player
 
 
-def test_enemy_short_of_thornwall_cannot_strike_across_it():
+async def test_enemy_short_of_thornwall_cannot_strike_across_it():
     state, enemy, player = field(14.0, 8.0, 3)
     add_wall(state, "thorns", "Thornwall", {"x": 10, "y": -10, "z": 0}, {"x": 10, "y": 10, "z": 0}, kind=THORNWALL)
 
-    facts = combat_melee_approach.prepare(state, enemy, player, CLAW, {})
+    facts = await combat_melee_approach.prepare(None, state, enemy, player, CLAW, {})
+    assert facts is not None
 
     assert require_spatial(state)["positions"]["brute"]["x"] == 11.0
     assert facts["attack_resolved"] is False and facts["reason"] == "Line blocked by Thornwall (thorns)"
     assert "thornwall_id" not in facts
 
 
-def test_pitted_enemy_climbs_out_instead_of_reaching_thornwall():
+async def test_pitted_enemy_climbs_out_instead_of_reaching_thornwall():
     state, enemy, player = field(25.0, 0.0, 30)
     state.architect_encounter = {
         "owner_id": "architect",
@@ -47,7 +48,8 @@ def test_pitted_enemy_climbs_out_instead_of_reaching_thornwall():
     }
     add_wall(state, "thorns", "Thornwall", {"x": 10, "y": -10, "z": 0}, {"x": 10, "y": 10, "z": 0}, kind=THORNWALL)
 
-    facts = combat_melee_approach.prepare(state, enemy, player, CLAW, {})
+    facts = await combat_melee_approach.prepare(None, state, enemy, player, CLAW, {})
+    assert facts is not None
 
     assert facts["left_pit"] is True
     assert "thornwall_id" not in facts

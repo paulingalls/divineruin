@@ -122,10 +122,15 @@ async def resolve_move(
     sink: EventSink | None,
     progress: PacketRolls | None,
 ) -> dict:
-    from combat_spatial_declarations import apply_move
+    from combat_spatial_declarations import resolve_traversal
 
     previous = progress.steps.pop("thornwall_move", None) if progress is not None else None
-    facts = previous if previous is not None else apply_move(state, actor, declaration)
+    facts = previous
+    if facts is None:
+        traversal = progress.scope("traversal") if progress is not None else None
+        facts = await resolve_traversal(session, state, actor, declaration, progress=traversal)
+        if facts is None:
+            return {}
     result = await apply_contact(session, state, actor, facts, conn=conn, sink=sink, progress=progress)
     if progress is not None and progress.paused:
         progress.steps["thornwall_move"] = facts

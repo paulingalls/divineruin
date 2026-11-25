@@ -94,6 +94,7 @@ async def break_concentration_on_damage(
                 "constitution",
                 dc,
                 "concentration",
+                advantage=encounter_facts.hearth_save_advantage(cstate, damaged_player_id),
                 bonus_dice_eligible=False,
                 rally_sources=encounter_facts.pending_rally(combat_state, damaged_player_id),
             ),
