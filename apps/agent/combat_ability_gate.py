@@ -6,7 +6,7 @@ import abilities
 import mentor_variants
 from combat_order_riders import COORDINATED_ASSAULT as COORDINATED_ASSAULT
 from combat_order_riders import DIRECT_STRIKE as DIRECT_STRIKE
-from combat_order_riders import SACRIFICE_PLAY
+from combat_order_riders import FIELD_MEDIC, SACRIFICE_PLAY
 from communication_voice_rules import can_hear
 from mentor_variants import MentorVariant
 
@@ -48,7 +48,7 @@ MARSHAL_ORDERS = frozenset(
         DIRECT_STRIKE,
         REPOSITION,
         COORDINATED_ASSAULT,
-        "marshal_field_medic_order",
+        FIELD_MEDIC,
         SACRIFICE_PLAY,
     }
 )

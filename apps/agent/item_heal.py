@@ -1,6 +1,7 @@
 """Spend a held healing item and land HP in the caller's transaction."""
 
 import json
+from typing import TYPE_CHECKING
 
 from livekit.agents.llm import ToolError
 
@@ -20,6 +21,9 @@ from game_events import publish_game_event
 from item_effects import CONSUME_PREFIX, heal_profile
 from session_data import SessionData
 from tool_support import _validate_id
+
+if TYPE_CHECKING:
+    from combat_state import CombatState
 
 
 def is_consume(decl: Declaration) -> bool:
@@ -63,11 +67,21 @@ async def preflight(session, state, declarations, *, conn=None, queries=db_queri
             await _combat_use(session, state, state.get_participant(actor_id), decl, conn=conn, queries=queries)
 
 
-async def preflight_declarations(session, state):
+def attached_consume(item: dict[str, str]) -> Declaration:
+    return Declaration(
+        type=DeclarationType.INTERACT, action=f"{CONSUME_PREFIX}{item['item_id']}", target_id=item["target_id"]
+    )
+
+
+async def preflight_declarations(session: SessionData, state: "CombatState") -> None:
+    declarations = ((actor_id, resolve_declaration(raw)) for actor_id, raw in state.pending_declarations.items())
     await preflight(
         session,
         state,
-        ((actor_id, resolve_declaration(raw)) for actor_id, raw in state.pending_declarations.items()),
+        (
+            (actor_id, attached_consume(decl.healing_item) if decl.healing_item else decl)
+            for actor_id, decl in declarations
+        ),
     )
 
 

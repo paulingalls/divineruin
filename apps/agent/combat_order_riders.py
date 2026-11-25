@@ -13,6 +13,8 @@ COORDINATED_ASSAULT = "marshal_coordinated_assault"
 COORDINATED_ASSAULT_NAME = "Coordinated Assault"
 SACRIFICE_PLAY = "marshal_sacrifice_play"
 SACRIFICE_PLAY_NAME = "Sacrifice Play"
+FIELD_MEDIC = "marshal_field_medic_order"
+FIELD_MEDIC_NAME = "Field Medic Order"
 
 
 class _Rider(TypedDict):
@@ -45,7 +47,11 @@ class SacrificePlayRider(_Rider):
     kind: Literal["sacrifice_play"]
 
 
-OrderRider = DirectStrikeRider | CoordinatedRider | SacrificePlayRider
+class FieldMedicRider(_Rider):
+    kind: Literal["field_medic"]
+
+
+OrderRider = DirectStrikeRider | CoordinatedRider | SacrificePlayRider | FieldMedicRider
 
 
 def _validate_coordinated(rider: dict, recipient: str, participant_ids: tuple[str, ...]) -> None:
@@ -88,6 +94,8 @@ def validate(data: object, participants: list[dict]) -> dict[str, list[OrderRide
                 shape, order = CoordinatedRider, COORDINATED_ASSAULT
             elif kind == "sacrifice_play":
                 shape, order = SacrificePlayRider, SACRIFICE_PLAY
+            elif kind == "field_medic":
+                shape, order = FieldMedicRider, FIELD_MEDIC
             else:
                 raise ValueError(f"Malformed order_riders kind for {recipient!r}")
             if rider.keys() != shape.__required_keys__ or rider["order_id"] != order:
@@ -169,6 +177,27 @@ def grant_sacrifice_play(state: CombatState, source_id: str, recipient_id: str) 
         source_id=source_id,
     )
     return {"name": SACRIFICE_PLAY_NAME, **_grant(state, recipient_id, rider)}
+
+
+def grant_field_medic(state: CombatState, source_id: str, recipient_id: str) -> dict:
+    rider = FieldMedicRider(
+        kind="field_medic",
+        expires_round=state.round_number + 1,
+        order_id=FIELD_MEDIC,
+        source_id=source_id,
+    )
+    return {"name": FIELD_MEDIC_NAME, "declaration_kind": "attack_consume", **_grant(state, recipient_id, rider)}
+
+
+def select_field_medic(state: CombatState, ally_id: str) -> FieldMedicRider | None:
+    return next(
+        (
+            rider
+            for rider in state.order_riders.get(ally_id, ())
+            if rider["kind"] == "field_medic" and rider["expires_round"] >= state.round_number
+        ),
+        None,
+    )
 
 
 def select(state: CombatState | None, attacker_id: str, target_id: str) -> DirectStrikeRider | None:

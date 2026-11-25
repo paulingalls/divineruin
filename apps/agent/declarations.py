@@ -75,6 +75,7 @@ class Declaration:
     held_item_id: str | None = None
     reshape: list[dict] | None = None
     movement_mode: str = "ground"
+    healing_item: dict[str, str] | None = None
 
 
 def resolve_declaration(raw: dict) -> Declaration:
@@ -131,6 +132,14 @@ def resolve_declaration(raw: dict) -> Declaration:
         not isinstance(raw["held_item_id"], str) or not raw["held_item_id"] or decl_type is not DeclarationType.ATTACK
     ):
         raise ValueError("held_item_id requires an attack and a nonempty string")
+    healing_item = raw.get("healing_item")
+    if "healing_item" in raw and (
+        decl_type is not DeclarationType.ATTACK
+        or not isinstance(healing_item, dict)
+        or healing_item.keys() != {"item_id", "target_id"}
+        or not all(isinstance(value, str) and value for value in healing_item.values())
+    ):
+        raise ValueError("healing_item requires an attack and nonempty item_id and target_id strings")
     movement_mode = raw.get("movement_mode", "ground")
     if "movement_mode" in raw and (not is_move or movement_mode not in ("ground", "flying")):
         raise ValueError("movement_mode must be ground or flying on a move")
@@ -148,6 +157,7 @@ def resolve_declaration(raw: dict) -> Declaration:
         movement_mode=movement_mode,
         strikes=raw.get("strikes"),
         held_item_id=raw.get("held_item_id"),
+        healing_item=healing_item,
         destination=raw.get("destination"),
         action=action,
         target_id=target_id,

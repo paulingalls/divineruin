@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pytest
 from acceptance.mawling_harness import MawlingHarness
+from sample_fixtures import published_payloads
 from voice_condition_fixtures import spatial_record
 
 import abilities
@@ -13,6 +14,7 @@ import ability_persistence
 import combat_structures
 import db_queries
 from activate_tools import activate
+from session_data import CompanionState
 
 DIRECT = "marshal_direct_strike"
 REPOSITION = "marshal_reposition"
@@ -153,7 +155,7 @@ async def test_order_resolves_in_initiative_order(marshal, order, level, slots, 
         action=order,
         name=authored.name,
         target_ids=targets,
-        effect_resolution="engine" if order in (DIRECT, COORDINATED, REPOSITION) else "narrated",
+        effect_resolution="engine",
         effect=authored.effect,
         narration_cue=authored.narration_cue,
         deducted=deducted,
@@ -165,6 +167,17 @@ async def test_order_resolves_in_initiative_order(marshal, order, level, slots, 
         ally, foe = targets
         assert live.order_riders == {
             ally: [dict(kind="direct_strike", target_id=foe, expires_round=2, order_id=DIRECT, source_id=actor)]
+        }
+    if order == MEDIC:
+        [ally] = targets
+        rider = dict(kind="field_medic", expires_round=2, order_id=MEDIC, source_id=actor)
+        assert live.order_riders == {ally: [rider]}
+        assert receipt["order_rider_grant"] == {
+            **rider,
+            "recipient_id": ally,
+            "name": "Field Medic Order",
+            "declaration_kind": "attack_consume",
+            "replaced": None,
         }
     if order == COORDINATED:
         grants = receipt["order_rider_grant"]["recipients"]
@@ -280,6 +293,17 @@ async def test_invalid_orders_leave_declaration_and_resources_unchanged(marshal)
     participant.hp_current = 0
     await harness.persist()
     await refuse(harness, REPOSITION, [ally], "standing ally")
+
+
+async def test_field_medic_cannot_command_a_companion(marshal) -> None:
+    harness = await marshal(4, owned=(MEDIC,))
+    companion = "companion_kael"
+    harness.sd.companion = CompanionState(id=companion, name="Kael")
+    await enter(harness)
+    assert (await harness.reload()).get_participant(companion).type == "companion"
+    events = published_payloads(harness.sd.room)
+    await refuse(harness, MEDIC, [companion], "player ally")
+    assert published_payloads(harness.sd.room) == events
 
 
 async def test_late_resource_loss_reopens_declaration(marshal) -> None:
