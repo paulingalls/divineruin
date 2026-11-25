@@ -5,6 +5,7 @@ import json
 from livekit.agents.llm import ToolError
 
 import combat_spatial
+import encounter_facts
 import still_charm
 import still_encounter
 from combat_state import CombatState
@@ -51,7 +52,7 @@ async def write(session, state, status, *, mutations, conn, **data):
 
 
 def restore(state, record):
-    retained = CombatState.from_dict(record["snapshot"])
+    retained = CombatState.from_dict(encounter_facts.dormant_snapshot(record["snapshot"]))
     spatial = combat_spatial.require_spatial(retained)
     old = retained.still_encounter
     new = state.still_encounter
@@ -75,6 +76,7 @@ def restore(state, record):
             state.spatial["positions"][participant.id] = spatial["positions"][participant.id]
     state.still_encounter = {**old, "illusion": None}
     state.round_number = retained.round_number
+    state.encounter_facts["party_aggressors"] = retained.encounter_facts["party_aggressors"]
     combat_spatial.require_spatial(state)
     still_encounter.validate(state)
 
@@ -123,7 +125,7 @@ async def facts(session, *, queries, location_id, location):
     if record is not None and record["status"] != "destroyed":
         if record["status"] == "combat":
             raise ValueError("Active Still combat must be hydrated before scene narration")
-        retained = still_encounter.facts(CombatState.from_dict(record["snapshot"]))
+        retained = still_encounter.facts(CombatState.from_dict(encounter_facts.dormant_snapshot(record["snapshot"])))
         if retained is None or retained["phase"] != "active":
             raise ValueError("Invalid dormant Still encounter")
         retained.pop("charmed_player_ids")

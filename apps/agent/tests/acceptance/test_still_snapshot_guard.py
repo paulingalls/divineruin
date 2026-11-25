@@ -5,13 +5,17 @@ from unittest.mock import patch
 import pytest
 from acceptance._capstone_helpers import _d20, _damage_die
 from acceptance.seeds import seed_player
-from acceptance.test_still_anchors import declare, destroy, enter, hit, search_round, strike
+from acceptance.test_still_actions import reveal_and_wake
+from acceptance.test_still_anchors import declare, destroy, enter, fresh_session, hit, search_round, strike, touch
 from acceptance.test_still_anchors import mock_combat_agent_factory as mock_combat_agent_factory
 from acceptance.test_still_anchors import still as still
+from livekit.agents.llm import ToolError
 from sample_fixtures import published_payloads
 
 import db_mutations
 import db_queries
+import encounter_facts
+import still_scene
 from caster_state import ConcentrationState, ResonanceTrack
 from party_state import PartyMember
 
@@ -62,6 +66,33 @@ async def test_load_rejects_corrupt_still_snapshots(still):
     finally:
         await db_mutations.save_combat_state(state.combat_id, original)
     assert (await still.reload()).to_dict() == original
+
+
+async def test_dormant_ledger_allows_prior_shape_and_rejects_corruption(still):
+    state = await reveal_and_wake(still)
+    pid = still.players[0]
+    location = state.location_id
+    owner = state.still_encounter["owner_id"]
+    await still.command("end_combat", {"outcome": "fled"})
+    dormant = still_scene.read(await db_queries.get_player(pid), location)
+    assert dormant is not None
+    await fresh_session(still)
+
+    prior = deepcopy(dormant)
+    del prior["snapshot"]["encounter_facts"]["party_aggressors"]
+    for invalid in ({"misses": []}, {"extra": []}, {"party_aggressors": {owner: [None]}}):
+        broken = deepcopy(prior)
+        broken["snapshot"]["encounter_facts"].update(invalid)
+        await db_mutations.set_player_flag(pid, still_scene.key(location), json.dumps(broken))
+        with pytest.raises(ValueError, match="encounter_facts"):
+            await still_scene.facts(still.sd, queries=db_queries, location_id=location, location={"tags": ["still"]})
+
+    await db_mutations.set_player_flag(pid, still_scene.key(location), json.dumps(prior))
+    _, restored = await enter(still)
+    assert restored.encounter_facts["party_aggressors"] is None
+    await touch(still, restored, owner, pid)
+    with pytest.raises(ToolError, match="history is unknown"):
+        encounter_facts.party_victims(await still.reload(), owner)
 
 
 async def test_held_weapon_cannot_land_on_unrevealed_anchor(still):

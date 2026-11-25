@@ -6,6 +6,7 @@ import architect_entomb
 import combat_grapple
 import combat_voice_rules
 import conditions
+import encounter_facts
 from combat_condition_landing import _land_condition_on_one
 from combat_structures import collapse_wall
 from condition_restrictions import declaration_costs
@@ -94,6 +95,7 @@ def resolve_maneuver(state, attacker, decl, *, rng=None) -> dict:
         attribute_modifier(target.attributes.get("strength", 10)),
         attribute_modifier(target.attributes.get("dexterity", 10)),
     )
+    encounter_facts.record_party_attack(state, attacker, target)
     summary.update(actor_total=actor_total, target_total=target_total)
     if advantage_sources:
         summary["advantage_vs"] = ", ".join(sorted(advantage_sources))

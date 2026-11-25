@@ -20,6 +20,7 @@ import encounter_facts
 import event_types as E
 import temp_hp
 from combat_attack_roll import build_attack_dice_roll_payload
+from combat_damage_events import record_damage_event
 from combat_damage_results import AutomaticDamageResult, SaveDamageResult, attack_fields, freeze_blow, thaw_blow
 from combat_durability import _accrue_durability, _find_equipped
 from combat_enemy_active import (
@@ -288,6 +289,8 @@ async def _apply_damage(
     impact = temp_hp.absorb(
         attack_result.damage, hp_before, pool_before, hp_floor=conditions.damage_hp_floor(target.conditions)
     )
+    if save_damage:
+        encounter_facts.record_party_attack(combat_state, attacker, target)
     target.hp_current = impact.hp
     target.temp_hp = impact.temporary
     if (
@@ -461,23 +464,9 @@ async def _apply_damage(
         response["damage_components"] = action["damage_components"]
     if was_fallen:
         response["death_save_failures"] = target.death_save_failures
-    if isinstance(attack_result, AutomaticDamageResult):
-        log_outcome = "automatic damage"
-        session.record_event(
-            f"{attacker.name} uses {action.get('name', '')} on {target.name}: {attack_result.damage} automatic damage"
-        )
-    elif isinstance(attack_result, SaveDamageResult):
-        save_outcome = "succeeded" if attack_result.save_success else "failed"
-        session.record_event(
-            f"{attacker.name} uses {action.get('name', '')} on {target.name}: "
-            f"{attack_result.save_type} save {save_outcome}, {attack_result.damage} damage"
-        )
-        log_outcome = f"{attack_result.save_type} save {save_outcome}"
-    else:
-        hit_miss = "hit" if attack_result.hit else "miss"
-        session.record_event(f"{attacker.name} attacks {target.name}: {hit_miss}, {attack_result.damage} damage")
+    log_outcome = record_damage_event(session, attacker, action, target, attack_result)
+    if isinstance(attack_result, check_resolution_attack.AttackResult):
         response.update(attack_fields(attack_result, effective_ac))
-        log_outcome = hit_miss
     if action.get("self_heal") == "damage_dealt":
         response["self_healed"] = self_healed
         response["attacker_hp_status"] = combat_resolution.hp_threshold_status(attacker.hp_current, attacker.hp_max)
