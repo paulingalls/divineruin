@@ -86,6 +86,7 @@ async def resolve(ctx, *, face=15, raw=5, no_save=False):
 
 
 async def declare_weapon(ctx):
+    actor = participant(ctx.userdata.combat_state, ctx.userdata.player_id)
     await combat_turn.declare_phase(
         ctx,
         [
@@ -93,7 +94,7 @@ async def declare_weapon(ctx):
                 reshape=[],
                 kind="attack",
                 actor_id=ctx.userdata.player_id,
-                action=DAGGER["name"],
+                action=actor.action_pool[0]["name"],
                 target_id="foe",
                 held_item_id="",
                 rider="",

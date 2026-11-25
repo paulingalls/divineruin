@@ -50,7 +50,7 @@ async def test_registered_wrap_keeps_the_last_two_starts(fight: Fight) -> None:
     foe = state.get_participant("mawling_1")
     state.spatial["positions"][host] = state.spatial["positions"][foe.id].copy()
     await fight.declare(
-        attack(host, foe.id),
+        attack(host, foe.id, state.get_participant(host).action_pool[0]["name"]),
         {**defend(guest), "kind": "ability", "action": "arcane_haste", "targets": [guest]},
         *[defend(p.id) for p in state.participants if p.type == "enemy"],
     )
