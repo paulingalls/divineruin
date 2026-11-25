@@ -42,7 +42,7 @@ def empty() -> EncounterFacts:
     }
 
 
-def dormant_snapshot(snapshot: dict) -> dict:
+def upgrade_legacy_snapshot(snapshot: dict) -> dict:
     if "encounter_facts" in snapshot:
         return snapshot
     facts = empty()

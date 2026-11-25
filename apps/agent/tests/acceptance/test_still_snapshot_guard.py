@@ -68,7 +68,8 @@ async def test_load_rejects_corrupt_still_snapshots(still):
     assert (await still.reload()).to_dict() == original
 
 
-async def test_dormant_ledger_allows_prior_shape_and_rejects_corruption(still):
+@pytest.mark.parametrize("history", ["prior", "absent"])
+async def test_dormant_ledger_distinguishes_legacy_and_corrupt_shapes(still, history):
     state = await reveal_and_wake(still)
     pid = still.players[0]
     location = state.location_id
@@ -80,12 +81,17 @@ async def test_dormant_ledger_allows_prior_shape_and_rejects_corruption(still):
 
     prior = deepcopy(dormant)
     del prior["snapshot"]["encounter_facts"]["party_aggressors"]
-    for invalid in ({"misses": []}, {"extra": []}, {"party_aggressors": {owner: [None]}}):
-        broken = deepcopy(prior)
-        broken["snapshot"]["encounter_facts"].update(invalid)
-        await db_mutations.set_player_flag(pid, still_scene.key(location), json.dumps(broken))
-        with pytest.raises(ValueError, match="encounter_facts"):
-            await still_scene.facts(still.sd, queries=db_queries, location_id=location, location={"tags": ["still"]})
+    if history == "absent":
+        del prior["snapshot"]["encounter_facts"]
+    else:
+        for invalid in ({"misses": []}, {"extra": []}, {"party_aggressors": {owner: [None]}}):
+            broken = deepcopy(prior)
+            broken["snapshot"]["encounter_facts"].update(invalid)
+            await db_mutations.set_player_flag(pid, still_scene.key(location), json.dumps(broken))
+            with pytest.raises(ValueError, match="encounter_facts"):
+                await still_scene.facts(
+                    still.sd, queries=db_queries, location_id=location, location={"tags": ["still"]}
+                )
 
     await db_mutations.set_player_flag(pid, still_scene.key(location), json.dumps(prior))
     _, restored = await enter(still)

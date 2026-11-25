@@ -52,7 +52,7 @@ async def write(session, state, status, *, mutations, conn, **data):
 
 
 def restore(state, record):
-    retained = CombatState.from_dict(encounter_facts.dormant_snapshot(record["snapshot"]))
+    retained = CombatState.from_dict(encounter_facts.upgrade_legacy_snapshot(record["snapshot"]))
     spatial = combat_spatial.require_spatial(retained)
     old = retained.still_encounter
     new = state.still_encounter
@@ -125,7 +125,9 @@ async def facts(session, *, queries, location_id, location):
     if record is not None and record["status"] != "destroyed":
         if record["status"] == "combat":
             raise ValueError("Active Still combat must be hydrated before scene narration")
-        retained = still_encounter.facts(CombatState.from_dict(encounter_facts.dormant_snapshot(record["snapshot"])))
+        retained = still_encounter.facts(
+            CombatState.from_dict(encounter_facts.upgrade_legacy_snapshot(record["snapshot"]))
+        )
         if retained is None or retained["phase"] != "active":
             raise ValueError("Invalid dormant Still encounter")
         retained.pop("charmed_player_ids")

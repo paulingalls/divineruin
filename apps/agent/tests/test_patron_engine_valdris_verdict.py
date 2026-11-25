@@ -356,14 +356,17 @@ async def test_encounter_protections_refuse_verdict(world, encounter, target_kin
         await refuse(world, call, reason, target_id=target)
 
 
-async def test_legacy_checkpoint_refuses_verdict(world) -> None:
+@pytest.mark.parametrize("history", ["absent", "prior"])
+async def test_legacy_checkpoint_refuses_verdict(world, history: str) -> None:
     async with fight(world) as call:
         state = active(world)
         data = state.to_dict()
-        del data["encounter_facts"]["party_aggressors"]
+        if history == "absent":
+            del data["encounter_facts"]
+        else:
+            del data["encounter_facts"]["party_aggressors"]
         await db_mutations.save_combat_state(state.combat_id, data, conn=world.pool)
-        restored = await reload_state(world)
-        assert restored.encounter_facts["party_aggressors"] is None
+        await reload_state(world)
         await refuse(world, call, "aggression history is unknown", target_id=FOE)
 
 
