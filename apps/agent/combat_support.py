@@ -22,6 +22,7 @@ from combat_attack_roll import serialize_roll as serialize_roll
 from combat_condition_landing import _land_condition_on_one
 from combat_damage import apply_attack_result
 from condition_restrictions import cannot_act
+from equipment_rules import resolve_weapon_profile
 from patron_synergy_combat import VeiledStrike, attack_player
 from session_data import CombatParticipant, CombatState, SessionData
 
@@ -98,6 +99,7 @@ async def _resolve_attack_packet(
             resolver=resolver,
             combat_state=combat_state,
             weapon_attack=weapon_attack,
+            weapon_profile=await resolve_weapon_profile(attacker.type, action, weapon_attack=weapon_attack, conn=conn),
             veiled_strike=veiled_strike,
             player=player,
             defender=defender,

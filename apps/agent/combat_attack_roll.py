@@ -8,10 +8,13 @@ import combat_spatial
 import condition_voice_rules
 import conditions
 import patron_synergy_combat
+from archetypes import get_archetype_chassis
 from architect_encounter import cathedral_bonus
 from condition_catalog import INCORPOREAL, STUDIED_WEAKNESS
 from dramatic import DramaticContext, evaluate_dramatic_context
+from equipment_rules import needs_weapon_profile
 from patron_synergy_combat import VeiledStrike
+from weapon_proficiency import has_weapon_proficiency
 from world_season import Season
 
 BEACON = "Beacon"
@@ -28,6 +31,7 @@ def roll_attack(
     resolver=check_resolution_attack,
     combat_state=None,
     weapon_attack: bool = True,
+    weapon_profile: dict | None = None,
     player: dict | None = None,
     defender: dict | None = None,
     mortaen_ac_override: int | None = None,
@@ -42,6 +46,7 @@ def roll_attack(
         combat_state,
         action,
         weapon_attack=weapon_attack,
+        weapon_profile=weapon_profile,
         player=player,
         defender=defender,
         mortaen_ac_override=mortaen_ac_override,
@@ -70,6 +75,7 @@ def attack_roll_inputs(
     action,
     *,
     weapon_attack=True,
+    weapon_profile: dict | None = None,
     player=None,
     defender=None,
     mortaen_ac_override: int | None = None,
@@ -101,6 +107,15 @@ def attack_roll_inputs(
         attacker_data["encounter_damage_clause"] = patron_synergy_combat.encounter_damage_clause(
             player, combat_state, attacker, target, action
         )
+
+    if needs_weapon_profile(attacker.type, action, weapon_attack=weapon_attack):
+        if weapon_profile is None:
+            raise ValueError(f"Player weapon attack {action.get('name')!r} requires a resolved weapon profile")
+        if player is None:
+            raise ValueError(f"Player weapon attack requires player data for {attacker.id!r}")
+        proficiencies = get_archetype_chassis(player["class"]).weapon_proficiencies
+        if not has_weapon_proficiency(proficiencies, weapon_profile):
+            attacker_data["attack_disadvantage_source"] = "weapon_proficiency"
 
     attack_mod = attacker.attack_mod
     if weapon_attack and attacker.type == "player" and attacker.archetype_id == "rogue":
