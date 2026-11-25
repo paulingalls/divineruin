@@ -9,7 +9,7 @@ import condition_voice_rules
 import conditions
 import patron_synergy_combat
 from architect_encounter import cathedral_bonus
-from condition_catalog import INCORPOREAL, STUDIED_WEAKNESS
+from condition_catalog import INCORPOREAL, STUDIED_WEAKNESS, WAR_CRY_RALLY
 from dramatic import DramaticContext, evaluate_dramatic_context
 from patron_synergy_combat import VeiledStrike
 from world_season import Season
@@ -110,6 +110,8 @@ def attack_roll_inputs(
         attacker_data["attack_disadvantage_source"] = "Smoke cloud"
 
     attack_mod = attacker.attack_mod
+    if conditions.has_condition(attacker.conditions, WAR_CRY_RALLY):
+        attack_mod += 1
     if weapon_attack and attacker.type == "player" and attacker.archetype_id == "rogue":
         if combat_state is None:
             raise ValueError("rogue weapon attack requires combat state")

@@ -34,7 +34,7 @@ test("combat vocabularies match the Python corpus", () => {
   expect(corpus.action_kinds).toEqual([...ENCOUNTER_ACTION_KIND_VALUES]);
   expect(CONDITION_NAMES).toContain("mark_of_justice");
   expect(CONDITION_NAMES).toContain("incorporeal");
-  expect(corpus.condition_names.length).toBe(34);
+  expect(corpus.condition_names.length).toBe(35);
   expect(corpus.resistance_tags.length).toBe(7);
   expect(([...CONDITION_NAMES] as string[]).sort()).toEqual([...corpus.condition_names].sort());
   expect(([...RESISTANCE_TAG_VALUES] as string[]).sort()).toEqual(

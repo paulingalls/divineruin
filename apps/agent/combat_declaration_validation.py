@@ -23,6 +23,7 @@ from combat_ability_gate import (
     SHADOW_STEP,
     SHIELD_BASH,
     SINGLE_TARGET_WEAPON_ABILITIES,
+    WAR_CRIES,
     WAR_CRY,
     combat_ability,
     declared_ability,
@@ -204,8 +205,8 @@ def validate_declaration(
             if ability.id == SHADOW_STEP:
                 combat_shadow_step.validate(next_state, actor.id, declaration)
                 return
-            if ability.id == WAR_CRY:
-                if not war_cry_targets(next_state):
+            if ability.id in WAR_CRIES:
+                if ability.id == WAR_CRY and not war_cry_targets(next_state, actor, ability.id):
                     raise ValueError("War Cry requires a standing foe who can hear.")
                 return
             if ability.id in MULTI_TARGET_WEAPON_ABILITIES:

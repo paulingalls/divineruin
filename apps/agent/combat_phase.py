@@ -22,7 +22,7 @@ import architect_reaction
 import choir_effects
 import combat_spatial
 import reaction_spend
-from combat_ability_gate import RECKLESS_ASSAULT_RIDER, WAR_CRY
+from combat_ability_gate import RECKLESS_ASSAULT_RIDER, WAR_CRIES
 from combat_declaration_validation import validate_declaration
 from combat_down import DEATH_SAVE_LIMIT, is_terminally_down
 from condition_catalog import INCORPOREAL
@@ -347,7 +347,9 @@ def _wrap(state: CombatState) -> WrapOutcome:
         if has_condition(p.conditions, INCORPOREAL) and not has_condition(survivors, INCORPOREAL):
             returning.append(p)
         p.conditions = survivors
-        tick_conditions_due.extend({"actor_id": p.id, **event} for event in save_events if event["source"] != WAR_CRY)
+        tick_conditions_due.extend(
+            {"actor_id": p.id, **event} for event in save_events if event["source"] not in WAR_CRIES
+        )
 
     # The encounter Veil Ward's round clock (M24). Like conditions, the ward lives ON CombatState,
     # so the engine advances it here rather than signalling through WrapOutcome. Decrement first,

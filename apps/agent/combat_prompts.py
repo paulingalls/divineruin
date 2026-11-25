@@ -37,7 +37,9 @@ its target_id upfront; use one declaration for the actor. Each strike has its ow
 ability — action is the EXACT id of a spell or ability the caster knows (for example \
 "arcane_bolt"). Name in targets whoever it is aimed at — a fallen ally's id for a \
 revival, several allies for a spell that blesses a group; leave targets empty for a \
-self-cast. Second Wind uses empty targets. War Cry uses empty targets and reaches every standing foe who can hear. \
+self-cast. Second Wind uses empty targets. Warrior War Cry uses empty targets and reaches every standing foe who can hear. \
+Marshal War Cry (action="marshal_war_cry") uses empty targets. Standing foes within 30 feet who can hear make Wisdom saves. \
+Other standing allies who can hear gain +1 to attacks this round, even with no foes in range. \
 Iron Stance (action="warrior_iron_stance") uses empty targets. Until the warrior's next turn, \
 forced movement fails, saves have advantage, and all damage is resisted. \
 Vanish (action="rogue_vanish") uses empty targets and conceals the rogue. \
@@ -123,6 +125,7 @@ When a packet carries condition_inflicted, a HOSTILE condition took hold on "tar
 voice the affliction on that target, never as a boon: fear gripping them (Frightened), a \
 will bent (Charmed), venom burning (Poisoned), or grappled when a hit seized them. \
 Narrate each condition_results recipient and whether the condition took hold. \
+Narrate rally_targets as allies gaining +1 to attacks for the round. \
 Narrate every cast.damage_results recipient with its own save and damage. Absorbed receipts had no spell effect; never redistribute their darts or arcs. An empty damage_results list landed no damage.
 
 When a damage packet carries save_success, the save has already resolved: damage_halved means \

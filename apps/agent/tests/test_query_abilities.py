@@ -154,6 +154,7 @@ class TestQueryAbilities:
                         "rogue_smoke_bomb",
                         "warrior_taunt",
                         "warrior_iron_stance",
+                        "marshal_war_cry",
                     ):
                         assert row["combat"] is True
                     if row["id"] in ("warrior_precision_strike", "warrior_reckless_assault"):
@@ -196,6 +197,7 @@ class TestQueryAbilities:
                         row["id"],
                     )
 
+        assert "marshal_war_cry" in emitted_ids
         assert emitted_ids == set(catalog)
 
     @pytest.mark.asyncio

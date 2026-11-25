@@ -8,10 +8,12 @@ from livekit.agents.llm import ToolError
 
 import check_resolution_save
 import combat_ability_gate
+import conditions
 import rules_engine
 from combat_fate_rolls import packet_save
 from combat_legendary_resistance import finalize_save, override_fields
-from condition_catalog import IRON_STANCE
+from communication_voice_rules import can_hear
+from condition_catalog import IRON_STANCE, WAR_CRY_RALLY
 
 if TYPE_CHECKING:
     from abilities import Ability
@@ -102,7 +104,7 @@ async def resolve_hostile_condition(
     if ability.id == combat_ability_gate.TAUNT:
         source = attacker.id
         duration = 2
-    elif ability.id in (combat_ability_gate.DIRTY_TRICK, combat_ability_gate.WAR_CRY):
+    elif ability.id in (combat_ability_gate.DIRTY_TRICK, *combat_ability_gate.WAR_CRIES):
         duration = 1
     if land_condition(state, target.id, attacker, cond_type, source, duration=duration, packet=summary):
         summary["condition_inflicted"] = cond_type
@@ -124,10 +126,14 @@ async def resolve_war_cry(
 ) -> dict:
     steps = progress.steps if progress is not None else {}
     if "target_ids" not in steps:
-        steps["target_ids"] = combat_ability_gate.war_cry_targets(state)
+        steps["target_ids"] = combat_ability_gate.war_cry_targets(state, attacker, ability.id)
     target_ids = steps["target_ids"]
-    summary = {"actor_id": attacker.id, "declaration_type": str(decl.type), "action": ability.id}
-    if not target_ids:
+    summary: dict[str, str | list[str]] = {
+        "actor_id": attacker.id,
+        "declaration_type": str(decl.type),
+        "action": ability.id,
+    }
+    if not target_ids and ability.id == combat_ability_gate.WAR_CRY:
         return {**summary, "resolved": False, "reason": "War Cry has no standing foes who can hear."}
     if not steps.get("cost_paid"):
         await pay()
@@ -155,9 +161,22 @@ async def resolve_war_cry(
                 **{key: value for key, value in result.items() if key not in summary and key != "resolved"},
             }
         )
+    if ability.id == combat_ability_gate.MARSHAL_WAR_CRY:
+        summary["rally_targets"] = rally_allies(state, attacker.id)
     return {
         **summary,
         "resolved": True,
         "condition_results": results,
         "condition_targets": [result["target_id"] for result in results if "condition_inflicted" in result],
     }
+
+
+def rally_allies(state: "CombatState", marshal_id: str) -> list[str]:
+    targets = []
+    for ally in state.participants:
+        if ally.is_ally and ally.id != marshal_id and not ally.is_fallen and can_hear(state, ally.id):
+            ally.conditions = conditions.apply_condition(
+                ally.conditions, WAR_CRY_RALLY, duration=1, source=combat_ability_gate.MARSHAL_WAR_CRY
+            )
+            targets.append(ally.id)
+    return targets

@@ -1464,7 +1464,10 @@
     "level_requirement": 4,
     "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "All enemies within 30 ft: WIS save or Frightened 1 round. Allies also gain +1 to attacks that round.",
-    "narration_cue": "A rallying roar that shakes the foe and lifts your own."
+    "narration_cue": "A rallying roar that shakes the foe and lifts your own.",
+    "applies_condition": "frightened",
+    "save": "wisdom",
+    "dc_attribute": "strength"
   },
   {
     "id": "marshal_field_medic_order",
