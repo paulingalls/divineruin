@@ -7,6 +7,7 @@ from _zhael_fate_fixtures import defend, game_tools
 from _zhael_unravel_fixtures import (
     GIFT,
     activate,
+    adopt_opening,
     assert_restored,
     cached,
     discovered,
@@ -111,6 +112,24 @@ async def assert_refused(
     assert cached(fight) == scratch
 
 
+@pytest.mark.parametrize(
+    ("patron", "ability"),
+    [("valdris", "valdris_mark_of_justice"), ("syrath", "syrath_veilstep"), (None, "unbound_raw_channeling")],
+)
+async def test_effect_settled_at_opening_blocks_rewind(unravel: Fight, patron: str | None, ability: str) -> None:
+    fight = unravel
+    await opening(fight)
+    guest = fight.ids[1]
+    if patron is not None:
+        await favor(fight, guest, patron, 70)
+    arguments: dict[str, object] = {"target_id": "mawling_1"} if patron == "valdris" else {}
+    if patron == "syrath":
+        origin = fight.session.combat_state.spatial["positions"][guest]
+        arguments["destination"] = {**origin, "y": origin["y"] + 5}
+    await fight.call("activate", id=ability, actor=guest, **arguments)
+    await assert_refused(fight, "untouched declaration beat")
+
+
 async def test_rewind_accepts_no_entity_or_condition_selectors(unravel: Fight) -> None:
     fight = unravel
     await opening(fight)
@@ -156,6 +175,14 @@ async def test_settled_legendary_action_blocks_rewind_after_reload(unravel) -> N
     assert (await activate(fight))["round"] == 3
 
 
+async def test_row_carrying_the_retired_settled_flag_still_loads(unravel) -> None:
+    fight = unravel
+    await opening(fight)
+    await fight.write_row({**await fight.row(), "round_opening_settled": False})
+    await fight.reload()
+    assert (await activate(fight))["round"] == 2
+
+
 async def test_refused_declaration_leaves_rewind_available(unravel) -> None:
     fight = unravel
     old = await opening(fight)
@@ -166,11 +193,18 @@ async def test_refused_declaration_leaves_rewind_available(unravel) -> None:
         defend("mawling_1"),
         defend("mawling_2"),
     )
-    await fight.pool.execute(
-        "DELETE FROM player_inventory WHERE player_id=$1 AND item_id=$2", guest, "healing_potion_minor"
-    )
+    potion = ("healing_potion_minor", guest)
+    slot = await fight.pool.fetchrow("SELECT * FROM player_inventory WHERE item_id=$1 AND player_id=$2", *potion)
+    await fight.pool.execute("DELETE FROM player_inventory WHERE item_id=$1 AND player_id=$2", *potion)
     with pytest.raises(ToolError, match="whole phase"):
         await fight.call("resolve_phase")
+    await fight.pool.execute(
+        "INSERT INTO player_inventory (player_id,item_id,tainted,data) VALUES ($1,$2,$3,$4)",
+        slot["player_id"],
+        slot["item_id"],
+        slot["tainted"],
+        slot["data"],
+    )
     reopened = await fight.row()
     assert reopened["beat"] == "declaration" and reopened["pending_declarations"] == {}
     await activate(fight)
@@ -262,8 +296,8 @@ async def test_two_followers_cannot_rewind_twice_without_replay_and_keep_both_sp
         temp_hp=4,
         flags={"met_oracle": True, **veil},
     )
+    await adopt_opening(fight)
     fight.session.member_state(first).weapon_used = True
-    await fight.write_row(state.to_dict())
     await activate(fight, second)
     players = (await durable(fight))["players"]
     assert all(players[pid]["data"]["patron_gifts"][GIFT]["spent"] for pid in (first, second))

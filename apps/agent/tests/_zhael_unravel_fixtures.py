@@ -82,6 +82,17 @@ async def durable(fight: Fight, *, conn=None) -> dict:
     }
 
 
+async def adopt_opening(fight: Fight) -> None:
+    """Count out-of-band player writes made since the wrap as part of the current round's opening."""
+    from combat_round_checkpoint import read_party
+
+    state = fight.session.combat_state
+    saved = state.round_checkpoints[-1]["players"]
+    for pid, image in (await read_party(fight.pool, sorted(saved))).items():
+        saved[pid].update(image)
+    await fight.write_row(state.to_dict())
+
+
 def cached(fight: Fight) -> dict:
     session = fight.session
     return {

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import KeysView
 from copy import deepcopy
 from typing import TYPE_CHECKING
 
@@ -16,6 +17,7 @@ import db_mutations_resonance
 import db_queries
 import event_types as E
 import patron_ability_tools
+import reaction_spend
 from combat_down import sync_companion_consciousness
 from combat_events import isolated_publish
 from combat_phase import combat_outcome
@@ -33,13 +35,14 @@ if TYPE_CHECKING:
 GIFT = "zhael_unravel_fate"
 _RESONANCE_COST = 8
 _NO_FIGHT = "Unravel Fate requires an active fight."
+_UNTOUCHED = "Use Unravel Fate at an untouched declaration beat."
 
 
 def _require_opening(state: CombatState) -> None:
     if combat_outcome(state) is not None:
         raise ToolError(_NO_FIGHT)
-    if state.beat != "declaration" or state.round_opening_settled:
-        raise ToolError("Use Unravel Fate at an untouched declaration beat.")
+    if state.beat != "declaration":
+        raise ToolError(_UNTOUCHED)
     if state.open_window is not None:
         raise ToolError("Close the reaction window before using Unravel Fate.")
     if (
@@ -80,6 +83,36 @@ def _restore_combat(previous: dict, live: CombatState, roster: set[str]) -> Comb
                 if pid in live.spatial[key]:
                     restored.spatial[key][pid] = deepcopy(live.spatial[key][pid])
     return restored
+
+
+def _rewindable(player: dict) -> dict:
+    """The restore-set image a rewind would overwrite; Unravel Fate spends never restore."""
+    data = dict(player["data"])
+    if gifts := {key: value for key, value in data.pop("patron_gifts", {}).items() if key != GIFT}:
+        data["patron_gifts"] = gifts
+    return {"data": data, "inventory": player["inventory"]}
+
+
+def _opening_image(state: CombatState) -> dict:
+    image = checkpoints.combat_image(state)
+    # A declaration refused before validation reopens keeping the unspent reaction grants it made.
+    image["reactions_available"] = {
+        pid: entry for pid, entry in image["reactions_available"].items() if entry != reaction_spend.unspent()
+    }
+    return image
+
+
+async def _require_untouched(conn: asyncpg.Connection, committed: CombatState, party: KeysView[str]) -> None:
+    """Refuse when anything settled since the current round's opening was captured."""
+    current_opening = committed.round_checkpoints[-1]
+    saved = current_opening["players"]
+    roster = party & saved.keys()
+    untouched = _restore_combat(current_opening["combat"], committed, roster)
+    if _opening_image(untouched) != _opening_image(committed):
+        raise ToolError(_UNTOUCHED)
+    now = await checkpoints.read_party(conn, sorted(roster))
+    if any(_rewindable(now[pid]) != _rewindable(saved[pid]) for pid in roster):
+        raise ToolError(_UNTOUCHED)
 
 
 async def _restore_player(conn: asyncpg.Connection, pid: str, current: dict, saved: dict) -> dict:
@@ -181,6 +214,7 @@ async def activate(session: SessionData) -> str:
             if committed.combat_id != live.combat_id or committed.round_number != live.round_number:
                 raise ToolError("The fight opening changed. Reload it before using Unravel Fate.")
             previous = _previous_opening(committed)
+            await _require_untouched(conn, committed, members.keys())
             saved = previous["players"]
             roster = members.keys() & saved.keys()
             restored = _restore_combat(previous["combat"], committed, roster)

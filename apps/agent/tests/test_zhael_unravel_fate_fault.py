@@ -1,5 +1,5 @@
 import pytest
-from _zhael_unravel_fixtures import GIFT, activate, cached, durable, opening, patch_player
+from _zhael_unravel_fixtures import GIFT, activate, adopt_opening, cached, durable, opening, patch_player
 from _zhael_unravel_fixtures import unravel as unravel
 
 import db_mutations
@@ -18,6 +18,7 @@ async def test_late_restore_failure_rolls_back_before_adoption(unravel, monkeypa
         VALUES ($1, 'healing_potion_minor', '{"quantity": 1}')""",
         actor,
     )
+    await adopt_opening(fight)
     before, scratch = await durable(fight), cached(fight)
     state = fight.session.combat_state
     save = db_mutations.save_combat_state
