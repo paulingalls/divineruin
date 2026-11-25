@@ -161,6 +161,7 @@ async def _inner_fire_locked(
                 damaged_player_id=player_id,
                 combat_state=state,
                 conn=conn,
+                receipt=facts,
                 **kwargs,
             )
         state.inner_fire_used_by.append(player_id)
@@ -222,6 +223,7 @@ async def resume_inner_fire(session, *, db_mod, queries, mutations, concentratio
             combat_state=state,
             conn=conn,
             progress=PacketRolls(fate_rolls, cursor["steps"], queries, conn),
+            receipt=facts,
         )
         assert fate_rolls.pending is None and fate_rolls.kept is None
         state.inner_fire_continuation = None

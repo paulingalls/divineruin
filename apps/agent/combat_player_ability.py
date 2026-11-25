@@ -49,7 +49,7 @@ async def resolve(
             state, attacker, resolved, conn=conn, queries=queries, mutations=mutations
         )
     if resolved is not None and resolved[0].id in MARSHAL_ORDERS:
-        return await combat_martial.narrated_order(attacker, decl, resolved, conn=conn, queries=queries)
+        return await combat_martial.narrated_order(state, attacker, decl, resolved, conn=conn, queries=queries)
     cond_ability = condition_ability(resolved)
     if cond_ability is not None:
         return await _resolve_ability_condition_packet(

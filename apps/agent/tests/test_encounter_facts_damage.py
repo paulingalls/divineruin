@@ -23,6 +23,7 @@ from activate_tools import activate
 from combat_state import CombatState
 from combat_structures import add_wall
 from combat_turn import declare_phase, resolve_phase
+from condition_restrictions import cannot_act
 from query_tools import query_info
 
 MORTAEN = "mortaen_last_vigil"
@@ -56,7 +57,12 @@ class Fight:
 
     async def declare(self, *strikes: dict) -> None:
         actors = {strike["actor_id"] for strike in strikes}
-        others = [defend(pid) for pid in self.session.combat_state.initiative_order if pid not in actors]
+        state = self.session.combat_state
+        others = [
+            defend(pid)
+            for pid in state.initiative_order
+            if pid not in actors and not cannot_act(participant(state, pid).conditions)
+        ]
         await self.call("declare_phase", declarations=[*strikes, *others])
 
     async def round(self, *strikes: dict, faces: tuple[int, ...] = (15,)) -> list[dict]:

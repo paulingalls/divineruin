@@ -3,24 +3,18 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from combat._catalog_fixtures import deps, setup
+from creature_combat_helpers import catalog
 from sample_fixtures import make_context
 from voice_condition_fixtures import spatial_record
 
 from combat_packet import _resolve_one_packet
 
+SAVE_ROLL = "check_resolution_save.roll_participant_save"
+FAILED_SAVE = SimpleNamespace(success=False, rally_sources=())
+
 SCREAM = {
-    "name": "Memory Scream",
     "kind": "attack",
-    "resolution": "save",
-    "damage": "3d8",
-    "damage_type": "psychic",
-    "save": "WIS",
-    "dc": 18,
-    "reach": 60,
-    "type": "area",
-    "save_success_damage": "none",
-    "conditions_on_failure": [{"applies_condition": "stunned", "duration": 1}],
-    "conditions_on_success": [],
+    **next(row for row in catalog() if row["id"] == "hollow_choir")["attacks"][0],
 }
 
 
@@ -30,6 +24,7 @@ async def test_memory_scream_save_negates(success):
     actor.creature_id = "hollow_choir"
     actor.hp_current = actor.hp_max = 100
     saves = SimpleNamespace(
+        rally_sources=(),
         success=success,
         save_type="wisdom",
         roll=20 if success else 1,
@@ -43,7 +38,7 @@ async def test_memory_scream_save_negates(success):
     d = deps()
     d["concentration_break_mod"].break_concentration_on_incapacitation = AsyncMock(return_value=None)
     with (
-        patch("check_resolution_save.roll_participant_save", return_value=saves) as saved,
+        patch(SAVE_ROLL, return_value=saves) as saved,
         patch("combat_enemy_action.dice_roll", return_value=SimpleNamespace(total=12)) as damage_rolls,
     ):
         result = await _resolve_one_packet(make_context().userdata, state, packet, **d)
@@ -110,7 +105,7 @@ async def test_melody_source_duration_movement(source_x, immobilized):
     state, actor, packet = setup(action)
     actor.creature_id = "hollow_choir"
     spatial_record(state)["positions"][actor.id] = {"x": 100, "y": 0, "z": 0}
-    with patch("check_resolution_save.roll_participant_save", return_value=SimpleNamespace(success=False)):
+    with patch(SAVE_ROLL, return_value=FAILED_SAVE):
         result = await _resolve_one_packet(make_context().userdata, state, packet, **deps())
     assert result["resolved"]
     target = state.participants[0]
@@ -137,13 +132,12 @@ async def test_melody_source_duration_movement(source_x, immobilized):
 async def test_cacophony_branch_conditions(success):
     import copy
 
-    from creature_combat_helpers import catalog
-
     action = copy.deepcopy(next(r for r in catalog() if r["id"] == "hollow_choir")["actives"][1])
     state, actor, packet = setup(action)
     actor.creature_id = "hollow_choir"
     actor.hp_current = actor.hp_max = 100
     save = SimpleNamespace(
+        rally_sources=(),
         success=success,
         save_type="constitution",
         roll=1,
@@ -157,7 +151,7 @@ async def test_cacophony_branch_conditions(success):
     d = deps()
     d["concentration_break_mod"].break_concentration_on_incapacitation = AsyncMock(return_value=None)
     with (
-        patch("check_resolution_save.roll_participant_save", return_value=save),
+        patch(SAVE_ROLL, return_value=save),
         patch("combat_enemy_action.dice_roll", return_value=SimpleNamespace(total=12)),
     ):
         result = await _resolve_one_packet(make_context().userdata, state, packet, **d)
@@ -178,6 +172,7 @@ async def test_choir_range_target_boundaries(distance, included):
     d = deps()
     d["concentration_break_mod"].break_concentration_on_incapacitation = AsyncMock(return_value=None)
     save = SimpleNamespace(
+        rally_sources=(),
         success=False,
         save_type="wisdom",
         roll=1,
@@ -189,7 +184,7 @@ async def test_choir_range_target_boundaries(distance, included):
         advantage_applied=False,
     )
     with (
-        patch("check_resolution_save.roll_participant_save", return_value=save),
+        patch(SAVE_ROLL, return_value=save),
         patch("combat_enemy_action.dice_roll", return_value=SimpleNamespace(total=12)),
     ):
         await _resolve_one_packet(make_context().userdata, state, packet, **d)
@@ -200,7 +195,6 @@ async def test_choir_range_target_boundaries(distance, included):
 @pytest.mark.parametrize("hit,success", [(False, False), (True, True), (True, False)])
 async def test_dissonant_hit_then_save(hit, success):
     from combat.test_combined_actions import _attack_result
-    from creature_combat_helpers import catalog
 
     action = next(r for r in catalog() if r["id"] == "hollow_choir")["attacks"][1]
     state, actor, packet = setup(action)
@@ -208,8 +202,10 @@ async def test_dissonant_hit_then_save(hit, success):
     d = deps()
     d["resolver"].resolve_attack.side_effect = None
     d["resolver"].resolve_attack.return_value = _attack_result(hit=hit)
-    save = SimpleNamespace(success=success, save_type="constitution", roll=1, total=1, dc=18, advantage_applied=False)
-    with patch("check_resolution_save.roll_participant_save", return_value=save) as rolls:
+    save = SimpleNamespace(
+        success=success, save_type="constitution", roll=1, total=1, dc=18, advantage_applied=False, rally_sources=()
+    )
+    with patch(SAVE_ROLL, return_value=save) as rolls:
         await _resolve_one_packet(make_context().userdata, state, packet, **d)
     assert rolls.call_count == int(hit)
     conditions = state.participants[0].conditions
@@ -222,8 +218,6 @@ async def test_dissonant_hit_then_save(hit, success):
     "immune,damage,source", [(True, 0, "choir"), (False, 1, "choir"), (False, 0, "choir"), (False, 1, "other")]
 )
 async def test_melody_movement_requires_landed_live_charm(immune, damage, source):
-    from creature_combat_helpers import catalog
-
     from choir_effects import approach
     from condition_sources import clear_charm_from_damage
 
@@ -234,7 +228,7 @@ async def test_melody_movement_requires_landed_live_charm(immune, damage, source
     target = state.participants[0]
     if immune:
         target.condition_immunities["charmed"] = "test immunity"
-    with patch("check_resolution_save.roll_participant_save", return_value=SimpleNamespace(success=False)):
+    with patch(SAVE_ROLL, return_value=FAILED_SAVE):
         await _resolve_one_packet(make_context().userdata, state, packet, **deps())
     target.conditions = clear_charm_from_damage(target.conditions, actor.id if source == "choir" else "other", damage)
     approach(state, target)
@@ -318,7 +312,6 @@ async def test_runtime_effect_roundtrip_validation():
 
 async def test_melody_movement_stops_at_charm_expiry():
     from combat._catalog_fixtures import wrap
-    from creature_combat_helpers import catalog
 
     from choir_effects import approach
     from combat_state import CombatState
@@ -328,7 +321,7 @@ async def test_melody_movement_stops_at_charm_expiry():
     actor.creature_id = "hollow_choir"
     spatial_record(state)["positions"][actor.id] = {"x": 100, "y": 0, "z": 0}
     with (
-        patch("check_resolution_save.roll_participant_save", return_value=SimpleNamespace(success=False)),
+        patch(SAVE_ROLL, return_value=FAILED_SAVE),
         patch("dice.roll", return_value=SimpleNamespace(total=1)),
     ):
         await _resolve_one_packet(make_context().userdata, state, packet, **deps())
@@ -357,8 +350,6 @@ def test_melody_replacement_removes_subordinate_movement():
 
 @pytest.mark.parametrize("face,recharged", [(4, False), (5, True), (6, True)])
 async def test_melody_recharge_hold_reload(face, recharged):
-    from creature_combat_helpers import catalog
-
     import combat_recharge
     from combat_state import CombatState
 
@@ -366,7 +357,7 @@ async def test_melody_recharge_hold_reload(face, recharged):
     state, actor, packet = setup(action)
     actor.creature_id = "hollow_choir"
     with (
-        patch("check_resolution_save.roll_participant_save", return_value=SimpleNamespace(success=True)) as save,
+        patch(SAVE_ROLL, return_value=SimpleNamespace(success=True, rally_sources=())) as save,
         patch("dice.roll") as duration,
     ):
         assert (await _resolve_one_packet(make_context().userdata, state, packet, **deps()))["resolved"]

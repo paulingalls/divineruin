@@ -112,6 +112,9 @@ async def hostile_condition_ability(world):
     state = _build_state(pid, pid, [foe])
     required_player(state, pid).attributes["strength"] = 16
     required_player(state, pid).level = 8
+    from _zhael_marshal_rally_fixtures import pending
+
+    pending(state, pid, world.ids[1])
     session = world.ctx.userdata
     session.combat_state = state
     call = game_tools(session, declare_phase, resolve_phase, activate)
@@ -132,6 +135,9 @@ async def hostile_condition_ability(world):
             result = await _keep(call, offer)
             assert dice.call_count == 1
         assert result["packets"][0]["condition_inflicted"] == "prone"
+        assert "rally_bonuses" not in result["packets"][0]
+        saved = await db_mutations.load_combat_state(state.combat_id)
+        assert saved is not None and saved.encounter_facts["rally_pending"] == {world.ids[1]: pid}
         assert (await row(world, 0))["stamina"]["current"] == charged
     finally:
         await db_mutations.delete_combat_state(state.combat_id)

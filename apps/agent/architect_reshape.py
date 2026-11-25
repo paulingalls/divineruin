@@ -174,6 +174,7 @@ async def _floor_target(
             partial(
                 check_resolution_save.roll_participant_save, target, "DEX", 15, "Reshape floor", combat_state=state
             ),
+            state=state,
         )
         if save is None:
             return None
@@ -181,11 +182,17 @@ async def _floor_target(
             damage = AutomaticDamageResult(dice.roll("2d6").total, "bludgeoning", context="reshape_floor")
             _, adjusted = combat_damage_affinity.apply(target, action, damage, state=state)
             save = finalize_save(state, target, save, failed_conditions=("prone",), failed_damage=adjusted.damage)
-        steps.update(save_success=save.success, **override_fields(save))
+        steps.update(
+            save_success=save.success,
+            **override_fields(save),
+            **encounter_facts.rally_receipt(target.id, save.rally_sources),
+        )
     encounter_facts.record_party_attack(state, actor, target)
     effect = {"target_id": target_id, "save_success": steps["save_success"], "save_dc": 15}
     if "success_override" in steps:
         effect["success_override"] = steps["success_override"]
+    if "rally_bonuses" in steps:
+        effect["rally_bonuses"] = steps["rally_bonuses"]
     if effect["save_success"]:
         return effect
     landed = await apply_attack_result(

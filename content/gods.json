@@ -3418,8 +3418,9 @@
         "clauses": [
           {
             "effect": "Once per encounter, an ally who follows your order gains +1 on their next saving throw.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_moment_to_rally"
           }
         ]
       },

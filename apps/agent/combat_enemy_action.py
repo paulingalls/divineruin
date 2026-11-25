@@ -41,9 +41,10 @@ def is_combined_attack_action(action: dict) -> bool:
     )
 
 
-def _save_fields(result) -> dict:
+def _save_fields(result, roller_id: str) -> dict:
     return {
         **override_fields(result),
+        **encounter_facts.rally_receipt(roller_id, result.rally_sources),
         "save_type": result.save_type,
         "save_roll": result.roll,
         "save_total": result.total,
@@ -94,7 +95,9 @@ async def _resolve_enemy_condition_packet(
             dc_mod=attacker.dc_mod,
             bonus_dice_eligible=False,
             advantage=reaction_save_advantage,
+            combat_state=state,
         ),
+        state=state,
     )
     if result is None:
         return {}
@@ -106,7 +109,7 @@ async def _resolve_enemy_condition_packet(
         "declaration_type": str(decl.type),
         "action": decl.action,
         "target": target.name,
-        **_save_fields(result),
+        **_save_fields(result, target.id),
     }
     if reaction_save_advantage and result.advantage_applied:
         summary["save_advantage"] = True
@@ -243,7 +246,9 @@ async def resolve_save_damage_action(
                 dc_mod=attacker.dc_mod,
                 bonus_dice_eligible=False,
                 advantage=reaction_save_advantage,
+                combat_state=state,
             ),
+            state=state,
         )
         if result is None:
             return {}
@@ -284,6 +289,7 @@ async def resolve_save_damage_action(
             E.DICE_ROLL,
             {
                 **override_fields(result),
+                **encounter_facts.rally_receipt(target.id, result.rally_sources),
                 "roll_type": "saving_throw",
                 "save_type": result.save_type,
                 "roll": result.roll,
@@ -314,7 +320,7 @@ async def resolve_save_damage_action(
     if progress is not None and progress.paused:
         steps["selected_save"] = store_throw(result)
         return {}
-    summary.update(_save_fields(result))
+    summary.update(_save_fields(result, target.id))
     summary["half_on_success"] = action.get("save_success_damage", "half") == "half"
     summary["damage_halved"] = result.success and summary["half_on_success"]
     if reaction_save_advantage and result.advantage_applied:

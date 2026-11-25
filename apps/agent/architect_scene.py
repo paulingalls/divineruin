@@ -136,7 +136,14 @@ async def end(session, state: CombatState, outcome: str, *, mutations, queries, 
     else:
         architect_entomb.release_all(state)
         architect_reaction.expire_walls(state)
-        await write(session, state, "dormant", snapshot=state.to_dict(), mutations=mutations, conn=conn)
+        await write(
+            session,
+            state,
+            "dormant",
+            snapshot=encounter_facts.snapshot_without_rally(state),
+            mutations=mutations,
+            conn=conn,
+        )
 
 
 async def facts(session, *, queries, location_id: str, location: dict) -> dict | None:

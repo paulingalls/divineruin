@@ -76,6 +76,7 @@ async def test_flee_retains_damaged_owner_and_wall(fight, history):
         del snapshot["encounter_facts"]
     elif history == "prior":
         del snapshot["encounter_facts"]["party_aggressors"]
+        del snapshot["encounter_facts"]["rally_pending"]
     await db_mutations.set_player_flag(
         player_id, architect_scene.key(WORKS), json.dumps({**dormant, "snapshot": snapshot})
     )

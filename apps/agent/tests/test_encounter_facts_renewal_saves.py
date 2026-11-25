@@ -87,11 +87,20 @@ async def test_death_save_and_renewal_roll_back_together(world: SimpleNamespace)
         for _ in range(2):
             await save(call, f.ally, 5)
 
+        from _zhael_marshal_rally_fixtures import bonus, pending
+
+        state = await f.reload()
+        pending(state, f.ally, f.hero)
+        await db_mutations.save_combat_state(f.combat_id, state.to_dict())
+
         async def finish() -> dict:
             return await save(call, f.ally, 5)
 
         await rollback(world, f, finish, f.ally, "death_save_failures", 3)
-        assert (await finish())["focus_renewals"] == [receipt(f.hero, f.ally, 3, 5)]
+        result = await finish()
+        assert result["focus_renewals"] == [receipt(f.hero, f.ally, 3, 5)]
+        assert result["rally_bonuses"] == [bonus(f.hero, f.ally)]
+        assert (await f.reload()).encounter_facts["rally_pending"] == {}
         assert await focus(world) == 5
 
 

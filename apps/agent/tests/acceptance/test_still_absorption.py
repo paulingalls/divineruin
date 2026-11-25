@@ -176,9 +176,23 @@ async def test_hourly_save_resets_on_success_and_reentry(paradise, clock, save_f
     walk, origin, zone = paradise
     guest = walk.players[1]
     await arrive(walk, "move_player", zone)
+    from _zhael_marshal_rally_fixtures import CLAUSE, pending
+
+    await exploration(walk)
+    _, state = await enter(walk)
+    pending(state, guest, walk.players[0])
+    await walk.persist()
     face, rolls = save_faces
     face.value = 17
     async with background(walk) as tick:
+        await advance(clock, tick, HOUR)
+        assert rolls == []
+        assert (await walk.reload()).encounter_facts["rally_pending"] == {walk.players[0]: guest}
+        await walk.command("end_combat", {"outcome": "fled"})
+        assert await db_mutations.load_combat_state(state.combat_id) is None
+        player = await player_row(walk.players[0])
+        assert CLAUSE not in json.dumps(player.get("flags", {}))
+        await tick()
         await advance(clock, tick, HOUR - 1)
         assert not rolls and await charm(guest, zone)
         await advance(clock, tick, 1)

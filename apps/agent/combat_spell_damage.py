@@ -11,6 +11,7 @@ import conditions
 import db_mutations
 import db_queries
 import dice
+import encounter_facts
 import spells
 from combat_attack_roll import attack_roll_inputs
 from combat_damage_results import AutomaticDamageResult, SaveDamageResult
@@ -209,6 +210,7 @@ async def _roll_save_damage(
                 originating_participant_id=caster.id,
                 combat_state=state,
             ),
+            state=state,
         )
         if save is None:
             return None
@@ -272,6 +274,7 @@ async def _roll_save_damage(
         "success": save.success,
         "half_on_success": profile["half"],
         **override_fields(save),
+        **encounter_facts.rally_receipt(target.id, save.rally_sources),
     }
     return roll, save_info
 

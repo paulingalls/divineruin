@@ -5,6 +5,7 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING, Literal
 
+import encounter_facts
 from dice import roll as dice_roll
 from patron_synergy import has_engine_synergy
 
@@ -124,6 +125,33 @@ async def marshal_death_save_bonus(state: CombatState, *, queries) -> int:
         if has_engine_synergy(player, MORTAEN_HOLD_THE_CROSSING):
             return 1
     return 0
+
+
+async def grant_marshal_rally(
+    state: CombatState, marshal_id: str, ally_id: str, *, queries, conn
+) -> dict[str, str | int] | None:
+    ally = state.get_participant(ally_id)
+    if ally is None or not ally.is_ally or ally_id == marshal_id:
+        return None
+    spent = state.encounter_facts["once_spent"]
+    if marshal_id in spent.get(encounter_facts.ZHAEL_RALLY, ()):
+        return None
+    player = await queries.get_player(marshal_id, conn=conn)
+    if player is None:
+        raise RuntimeError(f"Marshal {marshal_id!r} has no player row")
+    if not has_engine_synergy(player, encounter_facts.ZHAEL_RALLY):
+        return None
+    spent.setdefault(encounter_facts.ZHAEL_RALLY, []).append(marshal_id)
+    state.encounter_facts["rally_pending"][marshal_id] = ally_id
+    return encounter_facts.rally_entry(marshal_id, ally_id)
+
+
+async def grant_interceding_rallies(state: CombatState, packets: list[dict], ally_id: str, *, queries, conn) -> None:
+    for packet in packets:
+        if packet["ability_id"] == "marshal_interceding_order" and packet["mechanical_effect"] == "target_ac_bonus":
+            grant = await grant_marshal_rally(state, packet["actor_id"], ally_id, queries=queries, conn=conn)
+            if grant is not None:
+                packet["rally_grant"] = grant
 
 
 def outnumbered_oath(player: dict, state: CombatState | None, attacker: CombatParticipant) -> bool:

@@ -110,6 +110,37 @@ def validate(value: object) -> EncounterFacts:
     }
 
 
+def pending_rally(state: CombatState | None, ally_id: str) -> tuple[str, ...]:
+    if state is None:
+        return ()
+    return tuple(sorted(source for source, ally in state.encounter_facts["rally_pending"].items() if ally == ally_id))
+
+
+def consume_rally(state: CombatState | None, ally_id: str, sources: tuple[str, ...]) -> None:
+    if not sources:
+        return
+    if state is None or not set(sources) <= set(pending_rally(state, ally_id)):
+        raise ValueError(f"Cannot consume rally from {sources!r} for {ally_id!r}")
+    for source in sources:
+        del state.encounter_facts["rally_pending"][source]
+
+
+def rally_entry(source: str, ally_id: str) -> dict[str, str | int]:
+    return {"clause_id": ZHAEL_RALLY, "marshal_id": source, "ally_id": ally_id, "bonus": 1}
+
+
+def rally_receipt(ally_id: str, sources: tuple[str, ...]) -> dict[str, list[dict[str, str | int]]]:
+    return {"rally_bonuses": [rally_entry(source, ally_id) for source in sources]} if sources else {}
+
+
+def snapshot_without_rally(state: CombatState) -> dict:
+    snapshot = state.to_dict()
+    facts = snapshot["encounter_facts"]
+    facts["rally_pending"].clear()
+    facts["once_spent"].pop(ZHAEL_RALLY, None)
+    return snapshot
+
+
 def _remember(ids: list[str], participant_id: str) -> None:
     if participant_id not in ids:
         ids.append(participant_id)

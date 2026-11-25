@@ -141,7 +141,10 @@ async def test_order_resolves_in_initiative_order(marshal, order, level, slots, 
         deducted=deducted,
     )
     assert {key: receipt[key] for key in expected} == expected
+    assert "rally_grant" not in receipt
     live = await harness.reload()
+    assert live.encounter_facts["rally_pending"] == {}
+    assert "zhael_moment_to_rally" not in live.encounter_facts["once_spent"]
     assert target_facts(live, targets) == before_targets
     _, after_players = await harness.snapshot()
     assert pools(after_players[0]) == {pool: value - deducted[pool] for pool, value in pools(before_players[0]).items()}
@@ -160,7 +163,19 @@ async def test_discovery_at_level_eight(marshal) -> None:
 
 
 async def test_direct_strike_activation_outside_combat(marshal) -> None:
+    from _zhael_fate_fixtures import game_tools
+    from acceptance.test_architect_terrain import set_favor
+    from test_encounter_facts_damage import dice
+
+    from check_tools import check
+
     harness = await marshal(2)
+    await set_favor(harness, "zhael", 40)
+    await harness.pool.execute(
+        """UPDATE players SET data=data || '{"patron_gifts":{"zhael_fates_thread":{"spent":true},
+        "zhael_lucky":{"spent":true}}}'::jsonb WHERE player_id=$1""",
+        harness.players[0],
+    )
     actor = harness.players[0]
     before = await db_queries.get_player(actor)
     assert before is not None
@@ -176,6 +191,11 @@ async def test_direct_strike_activation_outside_combat(marshal) -> None:
     assert pools(after) == {"focus": pools(before)["focus"] - 2, "stamina": pools(before)["stamina"]}
     assert after.get("conditions") == before.get("conditions")
     assert harness.sd.combat_state is None
+    with dice(10):
+        rolled = await game_tools(harness.sd, check)(
+            "check", roll={"kind": "save", "save_type": "wisdom", "dc": 11, "effect_on_fail": "shaken"}
+        )
+    assert "rally_bonuses" not in rolled
 
 
 async def refuse(harness: MawlingHarness, order: str, targets: list[str], reason: str) -> None:
@@ -246,7 +266,16 @@ async def test_late_resource_loss_reopens_declaration(marshal) -> None:
 
 
 async def test_direct_strike_is_wasted_if_earlier_ally_kills_foe(marshal) -> None:
+    from acceptance.test_architect_terrain import set_favor
+
     harness = await marshal(2)
+    await set_favor(harness, "zhael", 40)
+    actor_id = harness.players[0]
+    await harness.pool.execute(
+        """UPDATE players SET data=data || '{"patron_gifts":{"zhael_fates_thread":{"spent":true},
+        "zhael_lucky":{"spent":true}}}'::jsonb WHERE player_id=$1""",
+        actor_id,
+    )
     await enter(harness)
     actor, ally, _ = harness.players
     foe = harness.enemies[0]
@@ -274,6 +303,8 @@ async def test_direct_strike_is_wasted_if_earlier_ally_kills_foe(marshal) -> Non
     receipt = packets[1]
     assert receipt["actor_id"] == actor and receipt["resolved"] is False and "standing foe" in receipt["reason"]
     assert await db_queries.get_player(actor) == before
+    facts = (await harness.reload()).encounter_facts
+    assert facts["rally_pending"] == {} and "zhael_moment_to_rally" not in facts["once_spent"]
 
 
 async def test_direct_strike_speaks_to_ally_and_checks_hostility_against_foe(marshal) -> None:

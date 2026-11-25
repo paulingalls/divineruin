@@ -413,3 +413,21 @@ test("Zhael's oracle has both Woven Prophecy clauses", () => {
     ],
   });
 });
+
+test("Zhael's marshal has the registered Moment to Rally clause", () => {
+  const marshal = validateGods(catalog).find((god) => god.god_id === "zhael")
+    ?.layer_4_synergy_matrix.marshal;
+  expect(marshal).toEqual({
+    name: "Moment to Rally",
+    type: "divine",
+    clauses: [
+      {
+        effect:
+          "Once per encounter, an ally who follows your order gains +1 on their next saving throw.",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "zhael_moment_to_rally",
+      },
+    ],
+  });
+});
