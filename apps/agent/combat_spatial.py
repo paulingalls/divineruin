@@ -147,6 +147,7 @@ def place(state, target_id, destination):
 
 def facts(state, origin_id):
     import architect_entomb
+    from condition_restrictions import effective_speed
 
     spatial = require_spatial(state)
     origin = position(spatial, origin_id)
@@ -177,7 +178,11 @@ def facts(state, origin_id):
         "locations": deepcopy(spatial["locations"]),
         "zones": zones,
         "distances_ft": distances,
-        "speeds_ft": {key: spatial["speeds"][key] for key in positions},
+        "speeds_ft": {
+            p.id: effective_speed(spatial["speeds"][p.id], p.conditions)
+            for p in state.participants
+            if p.id in positions
+        },
         "spoken": [f"{key} is {value:g} feet from {origin_id}" for key, value in distances.items() if key != origin_id],
     }
 

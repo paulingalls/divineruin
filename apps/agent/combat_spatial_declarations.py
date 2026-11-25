@@ -1,10 +1,10 @@
-"""Movement uses one phase declaration and the actor's committed base speed."""
+"""Movement uses one phase declaration and the actor's effective speed."""
 
 from architect_encounter import is_owner
 from combat_movement_cost import crosses_low_ceiling, movement_cost
 from combat_spatial import distance, place, point, position, require_spatial
 from combat_structures import THORNWALL, blocking_wall, stop_before_wall
-from condition_restrictions import cannot_act, ignores_structures, speed_zero
+from condition_restrictions import cannot_act, effective_speed, ignores_structures, speed_zero
 from declarations import DeclarationType, resolve_declaration
 
 
@@ -27,7 +27,7 @@ def movement_geometry(state, actor_id, declaration, *, allowance=None):
         raise ValueError("move must target its own known actor")
     destination = point(declaration.destination)
     origin = position(spatial, actor_id)
-    speed = spatial["speeds"][actor_id] if allowance is None else allowance
+    speed = effective_speed(spatial["speeds"][actor_id], actor.conditions) if allowance is None else allowance
     if in_pit(state, actor_id):
         return origin, 0, speed, None
     spent = movement_cost(spatial, actor_id, origin, destination)

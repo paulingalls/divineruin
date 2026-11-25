@@ -38,6 +38,7 @@ const BLOCKABLE_CONDITIONS = new Set([
   "taunted",
   "deafened",
   "shaken",
+  "crippled",
   "petrified",
   "cursed",
   "hollowed",

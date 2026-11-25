@@ -76,6 +76,8 @@ class ConditionEffects:
 MARK_OF_JUSTICE = "mark_of_justice"
 INCORPOREAL = "incorporeal"
 TAUNTED = "taunted"
+CRIPPLED = "crippled"
+STUDIED_WEAKNESS = "studied_weakness"
 
 
 CONDITION_CATALOG: dict[str, ConditionSpec] = {
@@ -101,6 +103,8 @@ CONDITION_CATALOG: dict[str, ConditionSpec] = {
         persists_across_encounters=True,
         restrictions=("reduced_max_hp",),
     ),
+    CRIPPLED: ConditionSpec(clearance="duration", restrictions=("speed_halved",)),
+    STUDIED_WEAKNESS: ConditionSpec(clearance="duration"),
     "stunned": ConditionSpec(
         clearance="end_of_next_turn",
         restrictions=("skip_phase",),

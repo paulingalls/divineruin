@@ -10,6 +10,7 @@ from combat_ability_gate import CUNNING_ACTION, declared_ability
 from combat_fate_rolls import PacketRolls
 from combat_participant import CombatParticipant
 from combat_terrain import skill_natural_terrain
+from condition_restrictions import effective_speed
 from declarations import Declaration, resolve_declaration
 from patron_location import check_first_stay
 from resource_costs import gate_pool
@@ -33,7 +34,8 @@ async def preflight(state: CombatState, *, queries) -> None:
 def movement_allowance(state: CombatState, actor: CombatParticipant, decl: Declaration) -> dict:
     if combat_martial.attack_ability(decl) == CUNNING_ACTION:
         if decl.rider == "dash":
-            return {"remaining": 2 * combat_spatial.require_spatial(state)["speeds"][actor.id]}
+            speed = combat_spatial.require_spatial(state)["speeds"][actor.id]
+            return {"remaining": 2 * effective_speed(speed, actor.conditions)}
         if decl.rider == "disengage":
             return {"disengage": True}
     return {}

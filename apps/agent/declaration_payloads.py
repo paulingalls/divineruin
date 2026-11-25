@@ -48,7 +48,9 @@ class AttackDecl(BaseModel):
         '"hide" for Stealth after the attack, or "disengage" to avoid enemy opportunity attacks. '
         'Use "shield_bash" for Shield Bash. A warrior who knows "precision_strike" or "reckless_assault" '
         "can use that rider for advantage on every swing of this weapon attack. Reckless Assault also gives attackers "
-        "advantage against that warrior until their next declaration. Use an empty string for an ordinary attack."
+        "advantage against that warrior until their next declaration. "
+        'Use "crippling_strike" to halve a foe\'s speed on hit until the round ends. '
+        "Use an empty string for an ordinary attack."
     )
     reshape: list[ReshapeSelection] = Field(description=RESHAPE_DESCRIPTION)
 
@@ -82,7 +84,7 @@ class AbilityDecl(BaseModel):
         "Areas center on named participants; lines and cones aim "
         "from the caster toward one participant. Meteor Swarm accepts up to four centers. "
         "Chain Lightning names its primary first, then optional arcs. Magic Missile repeats "
-        "ids in dart order, or uses one id for every dart."
+        "ids in dart order, or uses one id for every dart. Exploit Weakness names one standing foe."
     )
     argument_type: str = Field(
         description='Only for action "de_escalate": the kind of case made this round — reason, '

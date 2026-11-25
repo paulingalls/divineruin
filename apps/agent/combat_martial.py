@@ -1,4 +1,4 @@
-"""Rules for the warrior's core combat actions."""
+"""Martial combat abilities and weapon riders."""
 
 import abilities
 import ability_persistence
@@ -6,13 +6,18 @@ import check_resolution_save
 import combat_melee_approach
 import combat_recharge
 import combat_spell_heal
+import conditions
 import dice
 import mentor_variants
 from combat_ability_gate import (
+    CRIPPLING_STRIKE,
+    CRIPPLING_STRIKE_RIDER,
     CUNNING_ACTION,
     CUNNING_RIDERS,
     DEVASTATING_STRIKE,
     ELECTIVE_ATTACK_RIDERS,
+    ELECTIVE_RIDER_ABILITIES,
+    EXPLOIT_WEAKNESS,
     RALLYING_SHOUT,
     SECOND_WIND,
     SHIELD_BASH,
@@ -26,6 +31,7 @@ from combat_down import damage_target_unavailable
 from combat_fate_rolls import PacketRolls, packet_save
 from combat_legendary_resistance import finalize_save, override_fields
 from combat_participant import CombatParticipant
+from condition_catalog import CRIPPLED, STUDIED_WEAKNESS
 from declarations import Declaration, DeclarationType
 from mentor_variants import MentorVariant
 from session_data import CombatState
@@ -45,9 +51,47 @@ def require_targets(
         target = state.get_participant(decl.target_id) if decl.target_id else None
         if decl.target_ids or target is None or target.is_ally or damage_target_unavailable(target):
             raise ValueError("Devastating Strike requires one standing foe.")
+    if ability.id == EXPLOIT_WEAKNESS and _study_target(state, decl) is None:
+        raise ValueError("Exploit Weakness requires one standing foe.")
     if ability.id == RALLYING_SHOUT:
         standing = {p.id for p in state.participants if p.is_ally and p.hp_current > 0 and not p.is_fallen}
         require_rally_target(actor.id, decl.target_id if not decl.target_ids else None, standing)
+
+
+def _study_target(state: CombatState, decl: Declaration) -> CombatParticipant | None:
+    target = state.get_participant(decl.target_id) if decl.target_id else None
+    if (
+        target is None
+        or target.is_ally
+        or target.is_structure
+        or target.hp_current <= 0
+        or damage_target_unavailable(target)
+    ):
+        return None
+    return target
+
+
+async def exploit_weakness(
+    state: CombatState, actor: CombatParticipant, decl: Declaration, resolved: DeclaredAbility, *, queries, conn
+) -> dict:
+    from combat_ability import _with_variant
+
+    target = _study_target(state, decl)
+    summary = {"actor_id": actor.id, "declaration_type": "ability", "action": EXPLOIT_WEAKNESS, "resolved": False}
+    if target is None:
+        return {**summary, "reason": "Exploit Weakness requires one standing foe."}
+    variant = await pay(actor.id, resolved, queries=queries, conn=conn)
+    actor.conditions = conditions.apply_condition(actor.conditions, STUDIED_WEAKNESS, source=target.id, duration=2)
+    return _with_variant({**summary, "resolved": True, "target_id": target.id}, variant)
+
+
+def cripple(state: CombatState, actor: CombatParticipant, target: CombatParticipant, receipt: dict) -> None:
+    if not receipt["hit"] or damage_target_unavailable(target):
+        return
+    if _land_condition_on_one(state, target.id, actor, CRIPPLED, CRIPPLING_STRIKE, packet=receipt, duration=1):
+        receipt["condition_inflicted"] = CRIPPLED
+    else:
+        receipt["condition_immune"] = CRIPPLED
 
 
 async def second_wind(
@@ -73,6 +117,8 @@ def attack_ability(decl: Declaration) -> str | None:
         return CUNNING_ACTION
     if decl.type is DeclarationType.ATTACK and decl.rider == SHIELD_BASH_RIDER:
         return SHIELD_BASH
+    if decl.type is DeclarationType.ATTACK and decl.rider == CRIPPLING_STRIKE_RIDER:
+        return CRIPPLING_STRIKE
     if decl.type is DeclarationType.ABILITY and decl.action == DEVASTATING_STRIKE:
         return DEVASTATING_STRIKE
     if decl.type is DeclarationType.ATTACK and decl.rider is not None:
@@ -96,7 +142,7 @@ async def pay(player_id: str, resolved: DeclaredAbility, *, queries, conn) -> Me
     from combat_ability import _deduct_ability_cost
 
     ability, variant = resolved
-    if ability.id in ELECTIVE_ATTACK_RIDERS.values():
+    if ability.id in ELECTIVE_RIDER_ABILITIES:
         variant = await active_rider_variant(player_id, ability.id, conn=conn)
     await _deduct_ability_cost(player_id, ability, variant, persistence=ability_persistence, queries=queries, conn=conn)
     return variant

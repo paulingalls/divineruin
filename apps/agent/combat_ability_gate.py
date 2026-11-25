@@ -16,6 +16,9 @@ DIRTY_TRICK = "rogue_dirty_trick"
 TAUNT = "warrior_taunt"
 WAR_CRY = "warrior_war_cry"
 SHIELD_BASH_RIDER = "shield_bash"
+CRIPPLING_STRIKE = "rogue_crippling_strike"
+CRIPPLING_STRIKE_RIDER = "crippling_strike"
+EXPLOIT_WEAKNESS = "rogue_exploit_weakness"
 CUNNING_ACTION = "rogue_cunning_action"
 CUNNING_RIDERS = ("dash", "hide", "disengage")
 RECKLESS_ASSAULT_RIDER = "reckless_assault"
@@ -23,6 +26,8 @@ ELECTIVE_ATTACK_RIDERS = {
     "precision_strike": "warrior_precision_strike",
     RECKLESS_ASSAULT_RIDER: "warrior_reckless_assault",
 }
+
+ELECTIVE_RIDER_ABILITIES = frozenset((*ELECTIVE_ATTACK_RIDERS.values(), CRIPPLING_STRIKE))
 
 SECOND_WIND = "warrior_second_wind"
 RALLYING_SHOUT = "warrior_rallying_shout"
@@ -48,7 +53,7 @@ def combat_ability(ability: abilities.Ability) -> bool:
     return (
         ability.spell_id is not None
         or ability.applies_condition is not None
-        or ability.id in (SECOND_WIND, DEVASTATING_STRIKE)
+        or ability.id in (SECOND_WIND, DEVASTATING_STRIKE, EXPLOIT_WEAKNESS)
     )
 
 
@@ -68,6 +73,8 @@ def attack_recipe(ability_id: str) -> dict[str, str | list[str]] | None:
         return {"kind": "attack", "riders": list(CUNNING_RIDERS)}
     if ability_id == SHIELD_BASH:
         return {"kind": "attack", "rider": SHIELD_BASH_RIDER}
+    if ability_id == CRIPPLING_STRIKE:
+        return {"kind": "attack", "rider": CRIPPLING_STRIKE_RIDER}
     for rider, elective_id in ELECTIVE_ATTACK_RIDERS.items():
         if ability_id == elective_id:
             return {"kind": "attack", "rider": rider}
