@@ -19,8 +19,8 @@ attack — action is the EXACT name of one of the actor's Combatants[].actions (
 equipped weapons, for example "Longsword"), because that is what resolve_phase matches against, and \
 target_id is who they strike. A warrior using Shield Bash sets rider="shield_bash" on a melee Attack. \
 Use an empty rider for ordinary attacks. Rogues can use rider="dash" to double approach movement \
-or rider="hide" to attempt Stealth after the attack. Use rider="disengage" to avoid enemy opportunity attacks \
-during the declaration. Narrate Hide from cunning_action.concealed. \
+or rider="hide" to attempt Stealth after the attack. Use rider="disengage" on Attack or Retreat with learned \
+Cunning Action and enough stamina to pay its cost and prevent enemy opportunity attacks. Narrate Hide from cunning_action.concealed. \
 Warriors who know Precision Strike or Reckless Assault declare an Attack with their equipped weapon, \
 the foe as target_id, and rider="precision_strike" or rider="reckless_assault". All their swings in that \
 declaration have advantage. Reckless Assault also gives attackers advantage against that warrior until \
@@ -59,6 +59,8 @@ consuming the whole phase; a maneuver on anyone else is a shove (contested Stren
 the target prone). \
 A grappled combatant breaks free by declaring maneuver on their grappler, which consumes their \
 whole phase; they cannot retreat. \
+retreat — the player or companion withdraws at full speed from the standing foes' centroid, shortened by walls or terrain, \
+with an empty rider unless Disengaging. Narrate the committed destination and any opportunity attack, and keep combat active. \
 move — actor_id names the moving combatant; destination gives x, y, z coordinates in feet. \
 It consumes the whole phase action and cannot exceed the effective speed in spatial.speeds_ft[actor_id]. \
 Entry and phase results expose spatial.positions, locations, zones and distances_ft. \

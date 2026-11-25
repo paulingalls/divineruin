@@ -41,6 +41,10 @@ RUNTIME_DOCUMENTS = {
         "docs/game_mechanics/game_mechanics_patrons.md",
     ],
 }
+# Registered-tool tests reach their feature modules through packet dispatch.
+REGISTERED_TOOL_READERS = {
+    "agent-acceptance:test_retreat": "apps/agent/combat_retreat.py",
+}
 SHARED_KEY = "packages/shared/**/*.{ts,tsx,json}"
 PROVIDER_DRIVER = {"scripts/proof_acceptance_stack.py"}
 MARKERS = "acceptance and not real_llm and not openai_real_llm and not live_voice"
@@ -403,6 +407,11 @@ def main():
     content = content_inventory()
     families = load_families(content)
     inventory = task_inventory(acceptance, e2e, graph, families)
+    for task, source in REGISTERED_TOOL_READERS.items():
+        reader = inventory[task]
+        if source not in reader["closure"]:
+            raise ValueError(f"{task}: registered tool cannot reach {source}")
+        reader["direct"].add(source)
     add_provider_readers(inventory)
     for meta in inventory.values():
         meta["closure"].add("scripts/worktree-docker.sh")

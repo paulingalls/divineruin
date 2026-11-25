@@ -334,7 +334,7 @@ def test_interact_maneuver_defend_and_retreat_map_to_their_engine_shapes():
             InteractDecl(kind="interact", actor_id="player_1", action="lever"),
             ManeuverDecl(kind="maneuver", actor_id="companion_kael", target_id="goblin_1"),
             DefendDecl(reshape=[], kind="defend", actor_id="goblin_1"),
-            RetreatDecl(kind="retreat", actor_id="goblin_2"),
+            RetreatDecl(kind="retreat", actor_id="goblin_2", rider=""),
         ]
     )
     assert engine == {
@@ -379,7 +379,7 @@ _ENGINE_CASES = [
     ManeuverDecl(kind="maneuver", actor_id="a", target_id="goblin_1"),
     MoveDecl(reshape=[], movement_mode="ground", kind="move", actor_id="a", destination=Destination(x=30, y=0, z=0)),
     DefendDecl(reshape=[], kind="defend", actor_id="a"),
-    RetreatDecl(kind="retreat", actor_id="a"),
+    RetreatDecl(kind="retreat", actor_id="a", rider=""),
 ]
 
 
@@ -389,8 +389,7 @@ def test_a_fully_specified_variant_satisfies_the_engine_classifier(payload):
     assert resolve_declaration(raw).type.value == raw["type"]
 
 
-def test_declare_phase_offers_no_reaction_kind():
-    """Inspect the emitted vendor schema: an advertised reaction declaration would consume an action without activating."""
+def test_declare_phase_schema_advertises_declarations_and_retreat_rider():
     parsed = ToolContext([combat_turn.declare_phase]).parse_function_tools("anthropic", strict=True)
     schema = next(tool["input_schema"] for tool in parsed if tool["name"] == "declare_phase")
 
@@ -402,6 +401,9 @@ def test_declare_phase_offers_no_reaction_kind():
     }
     assert kinds == {t.value for t in DeclarationType} | {"move", "consume"}
     assert "trigger" not in json.dumps(schema)
+    retreat = schema["$defs"]["RetreatDecl"]
+    assert "rider" in retreat["required"]
+    assert set(retreat["properties"]["rider"]["enum"]) == {"", "disengage"}
 
 
 @pytest.mark.parametrize("variant", DECL_VARIANTS)
