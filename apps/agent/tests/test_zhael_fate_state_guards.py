@@ -32,3 +32,12 @@ async def test_patron_query_rejects_malformed_fate_state(world, state):
     with pytest.raises(ValueError, match=f"Malformed patron ability state: {FATE}"):
         await call("query_info", kind="patron")
     assert (await row(world, 0))["patron_gifts"] == stored
+
+
+async def test_lower_current_limit_preserves_valid_spend_count(world):
+    stored = {FATE: {"uses_spent": 2}}
+    await configure(world, "zhael", "mage", patron_gifts=stored)
+    call = game_tools(world.ctx.userdata, query_info)
+    gift = (await call("query_info", kind="patron"))["layer_1_gift"]
+    assert gift["remaining_uses"] == 0 and gift["spent"] and not gift["available"]
+    assert (await row(world, 0))["patron_gifts"] == stored
