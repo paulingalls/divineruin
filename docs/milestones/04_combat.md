@@ -114,7 +114,7 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - [ ] rogue_quick_fingers steals, plants or swaps a real item mid-combat
 - [ ] Weapon equips check proficiency once item weapon categories are normalized in both loaders.
 - [x] Direct Strike gives the named ally advantage and +1d4 damage on their next attack against the named foe, in the engine.
-- [ ] Coordinated Assault gives two allies advantage on their next attack, and +1d6 each when both hit the same foe, in the engine.
+- [x] Coordinated Assault gives two allies advantage on their next attack, and +1d6 each when both hit the same foe, in the engine.
 - [ ] Reposition moves an ally 15 ft at once without provoking reactions, in the engine.
 - [ ] Sacrifice Play costs the ally 2d6 untyped damage, and their next attack automatically hits and crits, in the engine.
 - [ ] Field Medic Order lets a player ally attack and use a healing item in the same phase, in the engine.

@@ -40,11 +40,13 @@ async def marshal(dev_db_pool):
         level: int,
         *,
         focus: int = 8,
+        extra_ally: bool = False,
         stamina: int = 8,
         owned: tuple[str, ...] = (),
         location: str = "greyvale_wilderness_north",
     ) -> MawlingHarness:
-        await harness.prepare((level, 2, 2), companion=None, location=location, tools=(activate,))
+        levels = (level, 2, 2, 2) if extra_ally else (level, 2, 2)
+        await harness.prepare(levels, companion=None, location=location, tools=(activate,))
         pid = harness.players[0]
         player = await db_queries.get_player(pid)
         assert player is not None
@@ -71,7 +73,7 @@ async def enter(harness: MawlingHarness) -> None:
         result = await harness.command("enter_mode", {"mode": "combat", "encounter_id": harness.encounter_id})
     harness.enemies = [p["id"] for p in result["participants"] if p["type"] == "enemy"]
     state = await harness.reload()
-    for pid, initiative in zip(harness.players, (20, 25, 15), strict=True):
+    for pid, initiative in zip(harness.players[:3], (20, 25, 15), strict=True):
         participant = state.get_participant(pid)
         assert participant is not None
         participant.initiative = initiative
@@ -142,7 +144,7 @@ async def test_order_resolves_in_initiative_order(marshal, order, level, slots, 
         action=order,
         name=authored.name,
         target_ids=targets,
-        effect_resolution="engine" if order == DIRECT else "narrated",
+        effect_resolution="engine" if order in (DIRECT, COORDINATED) else "narrated",
         effect=authored.effect,
         narration_cue=authored.narration_cue,
         deducted=deducted,
@@ -155,6 +157,12 @@ async def test_order_resolves_in_initiative_order(marshal, order, level, slots, 
         assert live.order_riders == {
             ally: [dict(kind="direct_strike", target_id=foe, expires_round=2, order_id=DIRECT, source_id=actor)]
         }
+    if order == COORDINATED:
+        grants = receipt["order_rider_grant"]["recipients"]
+        assert [grant["recipient_id"] for grant in grants] == targets
+        for grant, partner in zip(grants, reversed(targets), strict=True):
+            [rider] = live.order_riders[grant["recipient_id"]]
+            assert rider["partner_id"] == partner and rider["source_id"] == actor
     assert live.encounter_facts["rally_pending"] == {}
     assert "zhael_moment_to_rally" not in live.encounter_facts["once_spent"]
     assert target_facts(live, targets) == before_targets

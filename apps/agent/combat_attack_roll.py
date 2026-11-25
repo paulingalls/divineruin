@@ -89,6 +89,12 @@ def attack_roll_inputs(
 
     if (rider := combat_order_riders.select(combat_state, attacker.id, target.id)) is not None:
         attacker_data["order_rider"] = rider
+    if (coordinated := combat_order_riders.select_coordinated(combat_state, attacker.id)) is not None:
+        attacker_data["coordinated_rider"] = coordinated
+        first = coordinated["first_hit"]
+        attacker_data["confirming_pincer"] = (
+            first is not None and first["target_id"] == target.id and not target.is_fallen
+        )
 
     if veiled_strike is not None:
         attacker_data["veiled_strike"] = veiled_strike
