@@ -9,6 +9,7 @@ from livekit.agents.voice import RunContext
 import choir_encounter
 import combat_cunning_action
 import combat_item_rider
+import combat_martial
 import combat_phase
 import combat_spatial
 import combat_spatial_declarations
@@ -43,6 +44,10 @@ async def declare_phase(
     Reshape operations, on an attack, move or defend. The sections resolve before the action.
     Use the Architect's live wall ids and remaining Reshape uses from the combat facts.
     Second Wind is an ability with empty targets. Rallying Shout names one standing ally.
+    Marshal orders use ability declarations and name standing allies other than the marshal.
+    Use marshal_direct_strike with [ally, foe], marshal_coordinated_assault with two distinct
+    allies in the requested order, and marshal_reposition, marshal_field_medic_order, and
+    marshal_sacrifice_play with one ally each.
     Devastating Strike is an ability naming one foe. For Shield Bash, declare a melee weapon attack
     with rider="shield_bash". A rogue can set rider="dash" for double approach movement
     or rider="hide" to attempt Stealth after the attack. Use rider="disengage" to avoid enemy opportunity
@@ -93,6 +98,7 @@ async def _declare_phase_locked(
         combat_spatial_declarations.preflight_state(cs)
         next_state, _adv = combat_phase.advance_combat_phase(cs, declarations=declarations)
         await combat_cunning_action.preflight(next_state, queries=queries)
+        await combat_martial.preflight_orders(next_state, queries=queries)
         await combat_item_rider.preflight(session, next_state)
         await item_heal.preflight_declarations(session, next_state)
         choir_facts = await choir_encounter.facts(next_state, queries=queries)

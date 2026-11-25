@@ -1,4 +1,4 @@
-"""Rules for the warrior's core combat actions."""
+"""Martial combat abilities and their resolution receipts."""
 
 import abilities
 import ability_persistence
@@ -8,14 +8,18 @@ import combat_recharge
 import combat_spell_heal
 import dice
 from combat_ability_gate import (
+    COORDINATED_ASSAULT,
     CUNNING_ACTION,
     CUNNING_RIDERS,
     DEVASTATING_STRIKE,
+    DIRECT_STRIKE,
+    MARSHAL_ORDERS,
     RALLYING_SHOUT,
     SECOND_WIND,
     SHIELD_BASH,
     SHIELD_BASH_RIDER,
     DeclaredAbility,
+    declared_ability,
     require_rally_target,
 )
 from combat_ability_save import player_ability_dc
@@ -24,6 +28,7 @@ from combat_down import damage_target_unavailable
 from combat_fate_rolls import PacketRolls, packet_save
 from combat_legendary_resistance import finalize_save, override_fields
 from combat_participant import CombatParticipant
+from condition_sources import DeliveryRefused
 from declarations import Declaration, DeclarationType
 from session_data import CombatState
 
@@ -45,6 +50,88 @@ def require_targets(
     if ability.id == RALLYING_SHOUT:
         standing = {p.id for p in state.participants if p.is_ally and p.hp_current > 0 and not p.is_fallen}
         require_rally_target(actor.id, decl.target_id if not decl.target_ids else None, standing)
+
+
+def _order_targets(decl: Declaration) -> list[str]:
+    return decl.target_ids or ([decl.target_id] if decl.target_id is not None else [])
+
+
+def order_recipients(
+    state: CombatState, actor: CombatParticipant, decl: Declaration, ability: abilities.Ability
+) -> tuple[list[str], list[str]]:
+    targets = _order_targets(decl)
+    if ability.id == DIRECT_STRIKE:
+        if len(targets) != 2:
+            raise DeliveryRefused(f"{ability.name} requires one ally and one foe.")
+        allies, foes = targets[:1], targets[1:]
+    elif ability.id == COORDINATED_ASSAULT:
+        if len(targets) != 2 or len(set(targets)) != len(targets):
+            raise DeliveryRefused(f"{ability.name} requires two distinct allies.")
+        allies, foes = targets, []
+    else:
+        if len(targets) != 1:
+            raise DeliveryRefused(f"{ability.name} requires one ally.")
+        allies, foes = targets, []
+
+    for index, target_id in enumerate(targets):
+        target = state.get_participant(target_id)
+        if target is None:
+            raise DeliveryRefused(f"{ability.name}: Unknown order target {target_id!r}.")
+        if index < len(allies):
+            if not target.is_ally:
+                raise DeliveryRefused(f"{ability.name} requires an ally in the command slot.")
+            if target_id == actor.id:
+                raise DeliveryRefused(f"{actor.name} cannot command themselves with {ability.name}.")
+            if target.hp_current <= 0 or target.is_fallen:
+                raise DeliveryRefused(f"{ability.name} requires a standing ally. {target.name} is unavailable.")
+        else:
+            if target.is_ally or target.is_structure:
+                raise DeliveryRefused(f"{ability.name} requires a foe in the second slot.")
+            if damage_target_unavailable(target):
+                raise DeliveryRefused(f"{ability.name} requires a standing foe. {target.name} is unavailable.")
+    return allies, foes
+
+
+async def preflight_orders(state: CombatState, *, queries) -> None:
+    from combat_ability import _gate_ability_condition
+
+    for actor in state.participants:
+        raw = state.pending_declarations.get(actor.id, {})
+        if actor.type != "player" or raw.get("type") != DeclarationType.ABILITY:
+            continue
+        resolved = declared_ability(raw.get("action"))
+        if resolved is None or resolved[0].id not in MARSHAL_ORDERS:
+            continue
+        ability, variant = resolved
+        player = await queries.get_player(actor.id)
+        if player is None:
+            raise ValueError(f"Unknown player: {actor.id}")
+        owned_elective = ability.ability_type == "elective" and await ability_persistence.owns_elective(
+            actor.id, ability.id
+        )
+        if not abilities.owns_ability(player.get("class"), player["level"], ability, owns_elective=owned_elective):
+            raise ValueError(f"{actor.name} hasn't learned {ability.name}.")
+        _gate_ability_condition(player, ability, variant)
+
+
+async def narrated_order(
+    actor: CombatParticipant, decl: Declaration, resolved: DeclaredAbility, *, conn, queries
+) -> dict:
+    ability, variant = resolved
+    authored = variant or ability
+    await pay(actor.id, resolved, queries=queries, conn=conn)
+    return {
+        "actor_id": actor.id,
+        "resolved": True,
+        "declaration_type": "ability",
+        "action": decl.action,
+        "name": ability.name,
+        "target_ids": _order_targets(decl),
+        "effect_resolution": "narrated",
+        "effect": authored.effect,
+        "narration_cue": authored.narration_cue,
+        "deducted": {"focus": authored.cost.focus, "stamina": authored.cost.stamina},
+    }
 
 
 async def second_wind(

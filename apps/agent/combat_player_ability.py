@@ -7,7 +7,7 @@ from combat_ability import (
     _resolve_ability_packet,
     condition_ability,
 )
-from combat_ability_gate import SECOND_WIND, declared_ability
+from combat_ability_gate import MARSHAL_ORDERS, SECOND_WIND, declared_ability
 from combat_deescalation import _resolve_deescalation_packet
 
 
@@ -48,6 +48,8 @@ async def resolve(
         return await combat_martial.second_wind(
             state, attacker, resolved, conn=conn, queries=queries, mutations=mutations
         )
+    if resolved is not None and resolved[0].id in MARSHAL_ORDERS:
+        return await combat_martial.narrated_order(attacker, decl, resolved, conn=conn, queries=queries)
     cond_ability = condition_ability(resolved)
     if cond_ability is not None:
         return await _resolve_ability_condition_packet(
