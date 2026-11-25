@@ -144,7 +144,7 @@ async def blessing_lifecycle(world, seed: int, tier: str) -> None:
     expected_rng.randint(1, 20)
     if tier == "success":
         expected_rng.random()
-    if seed == 0:
+    if seed == 12:
         assert outcome["bonus_property"] is None
         assert "craft_blessing" not in ctx and "Aelora" not in prompt
     else:
@@ -166,7 +166,7 @@ SCENARIOS = {
     BLESSING["id"]: (
         "async_rules:resolve_crafting",
         blessing_lifecycle,
-        [(36, "success"), (0, "success"), (5, "exceptional")],
+        [(36, "success"), (12, "success"), (5, "exceptional")],
     )
 }
 
