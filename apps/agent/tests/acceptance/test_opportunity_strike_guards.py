@@ -164,8 +164,16 @@ async def test_coincident_spends_stop_on_fall_and_resume_from_completed_strike(
         await activate_as(fight, second)
         result = await fight.command("resolve_phase", {})
         if drop:
-            (attack,) = [packet for packet in result["packets"] if packet.get("reaction") == STRIKE]
+            attack, skipped = [packet for packet in result["packets"] if packet.get("reaction") == STRIKE]
             assert attack["actor_id"] == first
+            assert skipped == {
+                "reaction": STRIKE,
+                "actor_id": second,
+                "window_id": waiting["window_id"],
+                "target_id": MOVER,
+                "resolved": False,
+                "reason": "target already fell",
+            }
             saved = await fight.reload()
             assert require_spatial(saved)["positions"][MOVER] == pos(5) and participant(saved, MOVER).is_fallen
             assert participant(saved, target).hp_current == 100

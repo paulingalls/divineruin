@@ -176,10 +176,18 @@ async def prepare_held(
             )
         for spend in list(route["spends"]):
             if mover.is_fallen:
-                break
-            receipt = await _strike(session, state, mover, window, spend, packet_deps, fate_rolls)
-            if fate_rolls is not None and fate_rolls.pending is not None:
-                return None
+                receipt = {
+                    "reaction": STRIKE,
+                    "actor_id": spend["actor_id"],
+                    "window_id": window["id"],
+                    "target_id": mover.id,
+                    "resolved": False,
+                    "reason": "target already fell",
+                }
+            else:
+                receipt = await _strike(session, state, mover, window, spend, packet_deps, fate_rolls)
+                if fate_rolls is not None and fate_rolls.pending is not None:
+                    return None
             summaries.append(receipt)
             route["spends"].pop(0)
         del route["window"], route["spends"]
