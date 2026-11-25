@@ -1,5 +1,4 @@
-import { AgentDispatch, Room } from "@livekit/protocol";
-import { ServerError } from "livekit-server-sdk";
+import { AgentDispatch, Room, ServerError } from "livekit-server-sdk";
 
 process.env.LIVEKIT_URL = "ws://localhost:7880";
 process.env.LIVEKIT_API_KEY = "session-test-key";
