@@ -10,10 +10,11 @@ from acceptance.test_architect_entomb import favor
 from acceptance.test_architect_fight import pos
 from acceptance.test_martial_core_kit import declare, enter
 from acceptance.test_opportunity_strike import participant
-from acceptance.test_self_buff_electives import discovered, equip, receipt, stamina
+from acceptance.test_self_buff_electives import discovered, receipt, stamina
 from acceptance.test_still_anchors import fresh_session
 from acceptance.test_still_anchors import mock_combat_agent_factory as mock_combat_agent_factory
 
+import ability_persistence
 import combat_enhancers
 import combat_spatial
 import conditions
@@ -33,12 +34,15 @@ async def warrior(reset_db_pool: str, request: pytest.FixtureRequest) -> AsyncIt
         await walk.close()
 
 
-async def battlefield(walk: MawlingHarness, ability: str, distances: tuple[int, ...]) -> list[str]:
-    await equip(walk, ability)
+async def battlefield(
+    walk: MawlingHarness, ability: str, distances: tuple[int, ...], *, actor: str | None = None
+) -> list[str]:
+    actor = walk.players[0] if actor is None else actor
+    await ability_persistence.set_elective_equipped(actor, ability, True, conn=walk.pool)
     await enter(walk)
     state = await walk.reload()
     foes = sorted(p.id for p in state.participants if p.creature_id == "bandit")
-    combat_spatial.place(state, walk.players[0], pos(0))
+    combat_spatial.place(state, actor, pos(0))
     for foe in state.participants:
         if not foe.is_ally:
             foe.hp_current = foe.hp_max = 100

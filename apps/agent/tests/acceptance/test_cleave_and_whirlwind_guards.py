@@ -6,11 +6,13 @@ import pytest
 from acceptance._capstone_helpers import _d20, _damage_die
 from acceptance.mawling_harness import MawlingHarness
 from acceptance.test_architect_fight import pos
+from acceptance.test_architect_terrain import set_favor
 from acceptance.test_cleave_and_whirlwind import CLEAVE, WHIRLWIND, battlefield
 from acceptance.test_cleave_and_whirlwind import warrior as warrior
 from acceptance.test_martial_core_kit import declare, weapon_attack
 from acceptance.test_opportunity_strike import participant
 from acceptance.test_self_buff_electives import discovered, receipt, stamina
+from acceptance.test_still_anchors import fresh_session
 from acceptance.test_still_anchors import mock_combat_agent_factory as mock_combat_agent_factory
 from acceptance.test_strike_riders_guards import activate_variant
 
@@ -259,6 +261,46 @@ async def test_first_real_swing_after_a_skip_reveals_a_concealed_warrior(warrior
     assert result["concealment"] == {"player_id": actor, "before": True, "concealed": False, "ended_by": "attack"}
     player = await db_queries.get_player(actor)
     assert player is not None and player["flags"]["concealed"] is False
+
+
+@pytest.mark.parametrize("warrior", [(10, 10)], indirect=True)
+async def test_cleave_skips_foe_that_moves_out_of_reach_before_its_packet(warrior: MawlingHarness) -> None:
+    ally, actor = warrior.players
+    first, second, *_ = await battlefield(warrior, CLEAVE, (2, 3), actor=actor)
+    state = await warrior.reload()
+    participant(state, ally).initiative = participant(state, actor).initiative + 1
+    state.initiative_order.remove(ally)
+    state.initiative_order.insert(0, ally)
+    combat_spatial.place(state, ally, pos(0))
+    await warrior.persist()
+    await set_favor(warrior, "zhael", 40)
+    await warrior.command(
+        "declare_phase",
+        {"declarations": [weapon_attack(ally, first, ""), declare_cleave(actor, [first, second])]},
+    )
+    before = await stamina(actor)
+    with (
+        patch("check_resolution.dice_roll", side_effect=[_d20(face) for face in (15, 16, 17)]),
+        patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
+    ):
+        held = await warrior.command("resolve_phase", {})
+        assert held["fate_offer"]["roller_id"] == ally
+        assert await stamina(actor) == before
+        state = await warrior.reload()
+        combat_spatial.place(state, second, pos(20))
+        await set_favor(warrior, "mortaen", 0)
+        member = warrior.sd.member_state(actor)
+        await fresh_session(warrior, await warrior.persist())
+        warrior.sd.party.members.append(member)
+        resumed = await warrior.command("resolve_phase", {})
+        result = receipt(resumed["packets"], actor)
+    assert len(result["attacks"]) == 2
+    hit, skipped = result["attacks"]
+    assert hit["target_id"] == first and hit["damage"] > 0
+    assert skipped["target_id"] == second and skipped.get("skipped") is True, skipped
+    assert "outside main-hand melee reach" in skipped["reason"]
+    assert participant(await warrior.reload(), second).hp_current == 100
+    assert await stamina(actor) == before - 4
 
 
 def declare_cleave(actor: str, targets: list[str]) -> dict:
