@@ -112,11 +112,11 @@ async def test_budget_by_actor_npc_and_session(world, party) -> None:
         await call(0, "check", roll=FORETELL)
     await db_mutations.set_npc_disposition(OTHER_NPC, world.ids[0], "neutral", "setup")
     await call(0, "check", roll={**FORETELL, "npc_id": OTHER_NPC})
+    await configure(world, "zhael", "diplomat", index=1, patron_gifts={FATE: {"uses_spent": 1}})
     await db_mutations.set_npc_disposition(NPC, world.ids[1], "unfriendly", "setup")
     with patch("check_resolution.dice_roll", return_value=_d20(13)):
         guest = await call(1, "check", roll=ATTEMPT)
-    assert guest["dc"] == 15 and "clause_id" not in guest
-    await configure(world, "zhael", "diplomat", index=1)
+    assert guest.get("dc") == 15 and "clause_id" not in guest, guest
     await db_mutations.set_npc_disposition(NPC, world.ids[1], "neutral", "setup")
     await call(1, "check", roll=FORETELL)
 
