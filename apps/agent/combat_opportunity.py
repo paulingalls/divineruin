@@ -11,7 +11,7 @@ from combat_fate_rolls import PacketRolls
 from combat_movement_cost import AXES, movement_cost
 from combat_phase import ResolutionPacket
 from combat_spatial import distance, position, require_spatial
-from combat_spatial_declarations import in_pit, movement_blocker
+from combat_spatial_declarations import in_pit
 from condition_restrictions import cannot_act
 from declarations import Declaration, DeclarationType
 from encounter_actions import action_kind
@@ -72,8 +72,6 @@ async def _find_exits(state: CombatState, mover: CombatParticipant, route: dict,
     spatial = require_spatial(state)
     origin = position(spatial, mover.id)
     endpoint = route["endpoint"]
-    if movement_blocker(state, spatial, mover, origin, endpoint):
-        return []
     reaches, weapons = {}, {}
     for reactor in state.participants:
         if (
