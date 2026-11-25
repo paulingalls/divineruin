@@ -15,6 +15,7 @@ from combat_structures import (
     nearest_wall_point,
     stop_before_wall,
 )
+from condition_restrictions import effective_speed
 from declarations import Declaration, DeclarationType
 from encounter_actions import action_kind
 
@@ -46,10 +47,10 @@ def plan(state, actor, target, action, budget) -> tuple[dict, dict | None]:
     if target.is_structure and (segment := spatial.get("structures", {}).get(target.id)):
         destination = nearest_wall_point(origin, segment)
     separation = distance(origin, destination)
-    ground_speed = spatial["speeds"][actor.id]
+    ground_speed = effective_speed(spatial["speeds"][actor.id], actor.conditions)
     previous_allowance = budget.get("remaining")
     mode = "ground" if actor.fly_speed is None else "flying"
-    speed = ground_speed if actor.fly_speed is None else actor.fly_speed
+    speed = ground_speed if actor.fly_speed is None else effective_speed(actor.fly_speed, actor.conditions)
     budget.setdefault("remaining", speed)
     if actor.choir_movement_round == state.round_number:
         budget["remaining"] = 0

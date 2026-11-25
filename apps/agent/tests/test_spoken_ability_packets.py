@@ -13,6 +13,7 @@ import ability_tools
 import ability_voice_rules as voice
 import mentor_variants
 import reaction_windows
+from combat_ability_save import requires_hostile_target
 from conditions import apply_condition
 
 ROWS = json.loads((Path(__file__).resolve().parents[3] / "content/archetype_abilities.json").read_text())
@@ -87,8 +88,9 @@ async def activate(
 
 @pytest.mark.parametrize("ability_id", SPEAKERS)
 @pytest.mark.asyncio
-async def test_unlocked_packet_requires_source_speech_for_every_authored_id(ability_id):
-    with pytest.raises(ToolError, match=r"silenced|speak"):
+async def test_unlocked_packet_requires_source_speech_for_activatable_abilities(ability_id):
+    expected = "needs a foe" if requires_hostile_target(abilities.get_ability(ability_id)) else r"silenced|speak"
+    with pytest.raises(ToolError, match=expected):
         await activate(
             ability_id, combat=True, source_silent=True, entry=ability_tools._request_ability_activation_unlocked
         )
@@ -97,14 +99,15 @@ async def test_unlocked_packet_requires_source_speech_for_every_authored_id(abil
 @pytest.mark.parametrize("ability_id", LISTENERS)
 @pytest.mark.asyncio
 async def test_actual_ooc_packets_require_target_hearing_and_lock_target(ability_id):
-    with pytest.raises(ToolError, match=r"hear|eligible"):
+    expected = "needs a foe" if requires_hostile_target(abilities.get_ability(ability_id)) else r"hear|eligible"
+    with pytest.raises(ToolError, match=expected):
         await activate(ability_id, target_deaf=True)
 
 
 @pytest.mark.parametrize("ability_id", sorted(voice.POLICIES))
 @pytest.mark.asyncio
 async def test_existing_eligible_packets_preserve_authored_effect(ability_id):
-    if abilities.get_ability(ability_id).save is not None:
+    if requires_hostile_target(abilities.get_ability(ability_id)):
         with pytest.raises(ToolError, match="needs a foe"):
             await activate(ability_id)
         return
@@ -122,7 +125,7 @@ async def test_source_only_and_preparation_packets_do_not_invent_self_hearing(ab
     assert result["effect"]
 
 
-@pytest.mark.parametrize("ability_id", ["guardian_fortify", "warrior_taunt", "bard_silver_tongue"])
+@pytest.mark.parametrize("ability_id", ["guardian_fortify", "bard_silver_tongue"])
 @pytest.mark.asyncio
 async def test_mentor_form_inherits_guard_and_existing_packet(ability_id):
     variant = mentor_variants.get_variants_for_ability(ability_id)[0]
@@ -157,7 +160,7 @@ async def test_spoken_combat_boundaries_refuse_before_mutations_or_delegate(entr
         spatial_record(state)["zones"]["quiet"] = {"kind": "silence", "center_id": actor_id, "radius_ft": 5}
     else:
         participant(state, "player_2").conditions = apply_condition([], "deafened", source="test")
-    raw = {"type": "ability", "action": "warrior_taunt", "target_id": "player_2"}
+    raw = {"type": "ability", "action": "warrior_taunt_drathian", "target_id": "player_2"}
     before = state.to_dict()
     mutations = MagicMock(save_combat_state=AsyncMock())
     caster = MagicMock(_resolve_cast=AsyncMock(side_effect=AssertionError("delegated")))

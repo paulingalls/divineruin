@@ -10,15 +10,17 @@ state and write through injected mutation/query modules, but own no transaction.
 
 from typing import Any
 
-import architect_actions
+import abilities
 import architect_constructs
 import combat_cunning_action
 import combat_maneuver
 import combat_marks
 import combat_martial
 import combat_melee_approach
+import combat_packet_weapon
 import combat_player_ability
 import combat_recharge
+import combat_retreat
 import combat_spatial_declarations
 import combat_voice_rules
 import item_heal
@@ -26,12 +28,11 @@ import spell_casting
 import thyra_thornwall
 from action_contracts_still import STILL_ZONE_KINDS
 from combat_ability import _attach_riders, _find_action
-from combat_ability_gate import DEVASTATING_STRIKE
+from combat_ability_gate import MULTI_TARGET_WEAPON_ABILITIES, SINGLE_TARGET_WEAPON_ABILITIES, WAR_CRY
 from combat_action_availability import begin_execution, replay_valid
 from combat_down import target_unavailable
 from combat_enemy_action import resolve_enemy_strike
 from combat_enemy_active import resolve_active
-from combat_fate import continue_attack
 from combat_packet_gate import _prevalidate_ability_focus as _prevalidate_ability_focus
 from combat_structures import action_has_direct_line, blocked_reason, line_blocker
 from condition_restrictions import cannot_act
@@ -170,7 +171,8 @@ async def _resolve_action_packet(
         reason = f"{attacker.name} is {blocked[0]} and loses the phase"
         return {"actor_id": packet.actor_id, "resolved": False, "reason": reason}
 
-    if combat_spatial_declarations.is_move(decl) and forced_move is not None:
+    retreating = attacker.is_ally and decl.type is DeclarationType.RETREAT
+    if (combat_spatial_declarations.is_move(decl) or retreating) and forced_move is not None:
         return forced_move
     if combat_spatial_declarations.is_move(decl):
         if player_movement is not None:
@@ -179,11 +181,18 @@ async def _resolve_action_packet(
             session, state, attacker, decl, conn=conn, sink=sink, progress=progress
         )
 
+    if retreating:
+        return await combat_retreat.resolve(
+            session, state, attacker, decl, player_movement, conn=conn, sink=sink, progress=progress, queries=queries
+        )
+
     if stale is not None:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": stale}
 
     try:
-        combat_voice_rules.guard_declaration(state, attacker, decl)
+        combat_voice_rules.guard_declaration(
+            state, attacker, decl, war_cry_started=progress is not None and WAR_CRY in progress.steps
+        )
     except DeliveryRefused as e:
         return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}
 
@@ -226,11 +235,14 @@ async def _resolve_action_packet(
         else None
     )
 
-    devastating = combat_martial.attack_ability(decl) == DEVASTATING_STRIKE
-    if devastating:
+    martial = combat_martial.attack_ability(decl)
+    single_target = martial in SINGLE_TARGET_WEAPON_ABILITIES
+    multi_target = martial in MULTI_TARGET_WEAPON_ABILITIES
+    if martial is not None and single_target:
+        name = abilities.get_ability(martial).name
         if player is None:
-            raise ValueError("Devastating Strike requires a prevalidated player.")
-        action = combat_martial.main_hand(player)
+            raise ValueError(f"{name} requires a prevalidated player.")
+        action = combat_martial.main_hand(player, name)
 
     movement = {}
     movement_budget = {}
@@ -336,7 +348,7 @@ async def _resolve_action_packet(
             )
             and (
                 decl.type is DeclarationType.ATTACK
-                or devastating
+                or single_target
                 or action.get("applies_condition")
                 or action.get("half_on_success") is True
             )
@@ -389,7 +401,7 @@ async def _resolve_action_packet(
         if enemy_summary is not None:
             return {**movement, **enemy_summary}
 
-    if decl.type is DeclarationType.ABILITY and not devastating:
+    if decl.type is DeclarationType.ABILITY and not (single_target or multi_target):
         return await combat_player_ability.resolve(
             session,
             state,
@@ -412,7 +424,7 @@ async def _resolve_action_packet(
             return {"actor_id": attacker.id, "resolved": False, "reason": blocked_reason(wall)}
         return combat_maneuver.resolve_maneuver(state, attacker, decl)
 
-    if decl.type is not DeclarationType.ATTACK and not devastating:
+    if decl.type is not DeclarationType.ATTACK and not (single_target or multi_target):
         # Non-attack declarations don't resolve mechanically yet, but a narrated rider
         # (e.g. Quick Change on a social INTERACT) still surfaces for the DM to voice.
         summary = {
@@ -422,6 +434,28 @@ async def _resolve_action_packet(
             "reason": f"{decl.type} resolution not yet implemented",
         }
         return _attach_riders(summary, attacker, decl)
+
+    attack_deps: dict[str, Any] = dict(
+        attack_cursor=attack_cursor,
+        progress=progress,
+        mutations=mutations,
+        queries=queries,
+        resolver=resolver,
+        concentration_break_mod=concentration_break_mod,
+        conn=conn,
+        sink=sink,
+        reaction_ac_bonus=reaction_ac_bonus,
+        reaction_save_advantage=reaction_save_advantage,
+        shield_reaction=shield_reaction,
+        grapple_blocked=grapple_blocked,
+        publish_roll=publish_roll,
+        movement=movement,
+        movement_budget=movement_budget,
+    )
+    if multi_target:
+        if player is None:
+            raise ValueError("A multi-target weapon ability requires a prevalidated player.")
+        return await combat_packet_weapon.resolve_multi_target(session, state, packet, attacker, player, attack_deps)
 
     target = state.get_participant(decl.target_id) if decl.target_id else None
     # `action` was resolved once above (the single _find_action for this packet).
@@ -444,37 +478,15 @@ async def _resolve_action_packet(
             **outcome,
         }
 
-    attack_deps: dict[str, Any] = dict(
-        attack_cursor=attack_cursor,
-        progress=progress,
-        mutations=mutations,
-        queries=queries,
-        resolver=resolver,
-        concentration_break_mod=concentration_break_mod,
-        conn=conn,
-        sink=sink,
-        reaction_ac_bonus=reaction_ac_bonus,
-        reaction_save_advantage=reaction_save_advantage,
-        shield_reaction=shield_reaction,
-        grapple_blocked=grapple_blocked,
-        publish_roll=publish_roll,
-        movement=movement,
-        movement_budget=movement_budget,
+    return await combat_packet_weapon.resolve(
+        session,
+        state,
+        packet,
+        attacker,
+        target,
+        action,
+        _held_head,
+        attack_deps,
+        opportunity_attack=opportunity_attack,
+        player_movement=player_movement,
     )
-    if opportunity_attack:
-        # An opportunity swing skips encounter-owner resolution (the Architect's Slam push and
-        # Geometry auto-hit): displacing the mover would break the paused route it resumes.
-        return await continue_attack(
-            session,
-            state,
-            packet,
-            attacker,
-            target,
-            [action],
-            sum(p.type == "enemy" and not p.is_fallen for p in state.participants),
-            not state.first_attack_resolved,
-            **{**attack_deps, "attack_cursor": {}},
-        )
-    if player_movement is not None:
-        attack_deps["player_movement"] = player_movement
-    return await architect_actions.resolve(session, state, packet, attacker, target, action, _held_head, attack_deps)

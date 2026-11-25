@@ -75,6 +75,9 @@ class ConditionEffects:
 
 MARK_OF_JUSTICE = "mark_of_justice"
 INCORPOREAL = "incorporeal"
+TAUNTED = "taunted"
+CRIPPLED = "crippled"
+STUDIED_WEAKNESS = "studied_weakness"
 
 
 CONDITION_CATALOG: dict[str, ConditionSpec] = {
@@ -91,6 +94,8 @@ CONDITION_CATALOG: dict[str, ConditionSpec] = {
         ],
     ),
     "battle_cry": ConditionSpec(clearance="duration", bonus_die="1d4", bonus_die_scopes=("attack",)),
+    TAUNTED: ConditionSpec(clearance="duration", restrictions=("must_target_source",)),
+    "reckless_assault": ConditionSpec(clearance="next_declaration", restrictions=("incoming_advantage",)),
     "worthy_foe": ConditionSpec(clearance="end_of_combat_or_dismissed", restrictions=("incoming_advantage",)),
     # --- Combat conditions ---
     "wounded": ConditionSpec(
@@ -98,6 +103,8 @@ CONDITION_CATALOG: dict[str, ConditionSpec] = {
         persists_across_encounters=True,
         restrictions=("reduced_max_hp",),
     ),
+    CRIPPLED: ConditionSpec(clearance="duration", restrictions=("speed_halved",)),
+    STUDIED_WEAKNESS: ConditionSpec(clearance="duration"),
     "stunned": ConditionSpec(
         clearance="end_of_next_turn",
         restrictions=("skip_phase",),

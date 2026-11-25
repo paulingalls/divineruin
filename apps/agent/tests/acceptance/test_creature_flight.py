@@ -21,6 +21,7 @@ from acceptance.test_architect_fight import (
 from acceptance.test_architect_terrain import play
 
 import combat_spatial
+import conditions
 import db_queries
 
 
@@ -67,14 +68,16 @@ async def enter_fight(reset_db_pool):
 
 
 @pytest.mark.parametrize(
-    "separation,ceiling,mode,moved,spent,hit",
+    "separation,ceiling,mode,moved,spent,hit,crippled",
     [
-        (60, None, "flying", 55, 55, True),
-        (95, "beyond", "flying", 80, 80, False),
-        (60, "across", "ground", 10, 20, False),
+        (60, None, "flying", 55, 55, True, False),
+        (95, "beyond", "flying", 80, 80, False, False),
+        (60, "across", "ground", 10, 20, False, False),
+        (60, None, "flying", 40, 40, False, True),
+        (60, "across", "ground", 5, 10, False, True),
     ],
 )
-async def test_thunderbird_melee_approach(enter_fight, separation, ceiling, mode, moved, spent, hit):
+async def test_thunderbird_melee_approach(enter_fight, separation, ceiling, mode, moved, spent, hit, crippled):
     fight, roster = await enter_fight("thunderbird")
     bird = "thunderbird"
     beak = next(
@@ -112,6 +115,13 @@ async def test_thunderbird_melee_approach(enter_fight, separation, ceiling, mode
         section = {"kind": "lower_ceiling", "min": pos(start, -5), "max": pos(start + 20, 5)}
         lowered = await play(fight, owner, {**defend(owner), "reshape": [section]}, defend(target), defend(bird))
         assert len(lowered["reshape"]) == 1
+    if crippled:
+        state = await fight.reload()
+        slowed = state.get_participant(bird)
+        slowed.conditions = conditions.apply_condition(
+            slowed.conditions, "crippled", source="rogue_crippling_strike", duration=1
+        )
+        await fight.persist()
 
     await declare_attack(fight, bird, target, beak)
     with (

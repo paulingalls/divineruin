@@ -12,6 +12,7 @@ from dataclasses import dataclass
 import patron_synergy_combat
 import thyra_seasons
 from check_resolution import D20CheckCore, D20Roll, roll_bonus_dice
+from condition_catalog import STUDIED_WEAKNESS
 from condition_restrictions import (
     attack_consumed_conditions,
     incoming_advantage,
@@ -173,6 +174,8 @@ def prepare_attack(
     rng: random.Random | None = None,
     attack_mod: int = 0,
     target_conditions: list[dict] | tuple = (),
+    *,
+    faces: list[int] | None = None,
 ) -> PreparedAttack:
     # Attacker condition effects (M4.3): Exhausted -1/stack folds into the attack roll,
     # Prone/Blinded etc. impose disadvantage (scope "attack"), Enraged adds +2 damage below.
@@ -208,7 +211,7 @@ def prepare_attack(
     d20 = D20Roll(atk_mod + bonus.total, target_ac, attack_advantage, attack_disadvantage)
     return PreparedAttack(
         d20,
-        d20.roll(rng),
+        d20.roll(rng) if faces is None else d20.evaluate_pair(*faces),
         consumed,
         attacker_data.get("attack_disadvantage_source"),
         war_songs_bonus=bonus.war_songs_bonus,
@@ -229,6 +232,7 @@ def finish_attack(
     target_conditions: list[dict] | tuple = (),
 ) -> AttackResult:
     effects = get_condition_effects(attacker_data.get("conditions") or [])
+    consumed = prepared.consumed
     d20 = core.roll
     attack_total = core.total
     expanded = patron_synergy_combat.expanded_critical(attacker_data, d20)
@@ -271,8 +275,14 @@ def finish_attack(
             if veiled_strike == "sneak_attack":
                 count += 1
                 synergy_clause_id = patron_synergy_combat.VEILED_STRIKE
-            sneak_attack_dice = f"{count * (2 if critical else 1)}d6"
-            sneak_attack_raw_damage = dice_roll(sneak_attack_dice, rng=rng).total
+            if critical:
+                count *= 2
+            sneak_attack_dice = f"{count}d6"
+            if attacker_data.get("maximize_sneak_attack"):
+                sneak_attack_raw_damage = count * 6
+                consumed = (*consumed, STUDIED_WEAKNESS)
+            else:
+                sneak_attack_raw_damage = dice_roll(sneak_attack_dice, rng=rng).total
             damage += sneak_attack_raw_damage
         # Condition damage modifier (M4.3): Enraged adds +2 damage. Applied once, like
         # the attribute mod, before the floor.
@@ -358,7 +368,7 @@ def finish_attack(
         rider_damage=rider_damage,
         rider_damage_type=rider_damage_type,
         rider_ignores_resistance=rider_ignores_resistance,
-        consumed_conditions=prepared.consumed,
+        consumed_conditions=consumed,
         sneak_attack_dice=sneak_attack_dice,
         sneak_attack_raw_damage=sneak_attack_raw_damage,
         attack_disadvantage_source=prepared.attack_disadvantage_source,

@@ -19,8 +19,14 @@ attack — action is the EXACT name of one of the actor's Combatants[].actions (
 equipped weapons, for example "Longsword"), because that is what resolve_phase matches against, and \
 target_id is who they strike. A warrior using Shield Bash sets rider="shield_bash" on a melee Attack. \
 Use an empty rider for ordinary attacks. Rogues can use rider="dash" to double approach movement \
-or rider="hide" to attempt Stealth after the attack. Use rider="disengage" to avoid enemy opportunity attacks \
-during the declaration. Narrate Hide from cunning_action.concealed. \
+or rider="hide" to attempt Stealth after the attack. Use rider="disengage" on Attack or Retreat with learned \
+Cunning Action and enough stamina to pay its cost and prevent enemy opportunity attacks. Narrate Hide from cunning_action.concealed. \
+Warriors who know Precision Strike or Reckless Assault declare an Attack with their equipped weapon, \
+the foe as target_id, and rider="precision_strike" or rider="reckless_assault". All their swings in that \
+declaration have advantage. Reckless Assault also gives attackers advantage against that warrior until \
+the next round's declaration beat, even if the warrior cannot act. \
+A rogue who knows Crippling Strike uses rider="crippling_strike" with their weapon Attack. \
+A hit halves the foe's speed until the round ends. \
 An action in Combatants[].mark_actions with kind `command` still uses its exact action name, but \
 target_id is the foe the commander's band will focus, not someone the commander strikes. \
 An action with kind `accusation` follows the same mark-action flow, but target_id is the accused \
@@ -30,8 +36,16 @@ its target_id upfront; use one declaration for the actor. Each strike has its ow
 ability — action is the EXACT id of a spell or ability the caster knows (for example \
 "arcane_bolt"). Name in targets whoever it is aimed at — a fallen ally's id for a \
 revival, several allies for a spell that blesses a group; leave targets empty for a \
-self-cast. Second Wind uses empty targets. Rallying Shout names one standing ally. \
+self-cast. Second Wind uses empty targets. War Cry uses empty targets and reaches every standing foe who can hear. \
+Rallying Shout names one standing ally. \
 Devastating Strike names one foe and uses the main-hand melee weapon. \
+Cleaving Blow (action="warrior_cleaving_blow") takes one or two standing foe ids in targets, in strike order. \
+Whirlwind (action="warrior_whirlwind") uses empty targets and strikes every standing foe within main-hand melee reach. \
+Either can use its active variant id. Narrate each swing from attacks, including any skipped foe. Dirty Trick uses action="rogue_dirty_trick" \
+and names one standing foe. \
+Exploit Weakness names one standing foe using action="rogue_exploit_weakness" or its active variant id. \
+The rogue studies that foe this round. Their next qualifying Sneak Attack against it next round \
+deals maximum Sneak Attack dice and spends the study. Unused studies expire at the end of that next round. \
 Areas center on named participants; lines and cones aim from the source toward one. \
 Meteor Swarm accepts up to four centers. Chain Lightning names its primary then optional arcs; \
 without explicit arcs the engine chooses nearest enemies. Repeat Magic Missile target ids in dart order, \
@@ -45,19 +59,22 @@ consuming the whole phase; a maneuver on anyone else is a shove (contested Stren
 the target prone). \
 A grappled combatant breaks free by declaring maneuver on their grappler, which consumes their \
 whole phase; they cannot retreat. \
+retreat — the player or companion withdraws at full speed from the standing foes' centroid, shortened by walls or terrain, \
+with an empty rider unless Disengaging. Narrate the committed destination and any opportunity attack, and keep combat active. \
 move — actor_id names the moving combatant; destination gives x, y, z coordinates in feet. \
-It consumes the whole phase action and cannot exceed spatial.speeds_ft[actor_id]. \
+It consumes the whole phase action and cannot exceed the effective speed in spatial.speeds_ft[actor_id]. \
 Entry and phase results expose spatial.positions, locations, zones and distances_ft. \
 Call query_info(kind="combat") to refresh them; target_id selects an actor or landmark as origin. \
 Use the surfaced IDs and committed coordinates. Zones describe geometry; mechanical packets own effects. \
 Reactions are NOT declared here — they interrupt a held enemy blow in Beat 3 (below). \
 Call query_info(kind="abilities") before declaring one: declare its spell id from the row's spell_id when present. \
 A combat: false row has no combat action at all — never declare it, and never activate it mid-fight. \
-When a row you may declare carries active_variant_id, declare that exact variant id. \
+When a row has a declaration recipe, follow it. For an Attack rider the engine uses any active mentor variant. \
+For Ability rows with active_variant_id, declare that exact variant id. \
 Reaction rows name the window where their id can interrupt through activate. \
 Cover the player, every conscious companion, and every enemy that acts this round. \
 An actor listed in cannot_act declares nothing; omit them and narrate their helplessness. \
-In combat, an ordinary spell or ability (any row not marked combat: false) is an Ability declaration through \
+In combat, an ordinary spell or ability without an Attack recipe is an Ability declaration through \
 declare_phase — never a free \
 cast via activate. Three things are still done through activate, even mid-fight: a REACTION at an \
 open Beat-3 window (below), a Draethar's Inner Fire (activate "draethar_inner_fire"), and raising \
@@ -94,6 +111,7 @@ allies, name EACH so every buffed companion is heard, never left silent on the s
 When a packet carries condition_inflicted, a HOSTILE condition took hold on "target" — \
 voice the affliction on that target, never as a boon: fear gripping them (Frightened), a \
 will bent (Charmed), venom burning (Poisoned), or grappled when a hit seized them. \
+Narrate each condition_results recipient and whether the condition took hold. \
 Narrate every cast.damage_results recipient with its own save and damage. Absorbed receipts had no spell effect; never redistribute their darts or arcs. An empty damage_results list landed no damage.
 
 When a damage packet carries save_success, the save has already resolved: damage_halved means \

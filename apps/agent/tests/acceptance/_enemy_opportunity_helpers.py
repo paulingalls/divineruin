@@ -13,15 +13,15 @@ from combat_spatial import require_spatial
 async def fight(reset_db_pool: str, request: pytest.FixtureRequest) -> AsyncIterator[MawlingHarness]:
     harness = MawlingHarness()
     try:
-        await harness.prepare((6, 6), companion=None)
-        mover, ally = harness.players
         options = getattr(request, "param", {})
+        await harness.prepare((6, 6), companion=options.get("companion"))
+        mover, ally = harness.players
         for actor, key in ((mover, "player"), (ally, "ally")):
             if player := options.get(key):
                 await harness.pool.execute(
                     "UPDATE players SET data=data || $2::jsonb WHERE player_id=$1", actor, json.dumps(player)
                 )
-        placements = {"bandit": pos(0), "lookout": pos(25)}
+        placements = dict(options.get("placements", {"bandit": pos(0), "lookout": pos(25)}))
         if options.get("include_second_bandit"):
             placements["second_bandit"] = pos(0)
         harness.encounter_id = f"roadside_{uuid4().hex}"

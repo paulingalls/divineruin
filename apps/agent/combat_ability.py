@@ -6,6 +6,7 @@ carries the cast result back to the phase loop, action lookup, and enhancer-ride
 attachment. Consumed by the phase loop (combat_turn)."""
 
 from dataclasses import dataclass, field, replace
+from functools import partial
 from typing import TYPE_CHECKING, cast
 
 from livekit.agents.llm import ToolError
@@ -23,7 +24,7 @@ import combat_voice_rules
 import condition_voice_rules
 import db_queries
 import spell_casting
-from combat_ability_gate import DeclaredAbility
+from combat_ability_gate import WAR_CRY, DeclaredAbility
 from combat_condition_landing import (
     _land_condition_on_one,
     land_condition_on_participant,
@@ -112,8 +113,23 @@ async def _resolve_ability_condition_packet(
     if state is None or player is None:
         return {"actor_id": attacker.id, "resolved": False, "reason": "no active combat or player"}
 
-    combat_voice_rules.guard_declaration(state, attacker, decl)
     ability, variant = resolved
+    if ability.id == WAR_CRY:
+        summary = await combat_ability_save.resolve_war_cry(
+            session,
+            state,
+            attacker,
+            decl,
+            ability,
+            _land_condition_on_one,
+            pay=partial(
+                _deduct_ability_cost, attacker.id, ability, variant, persistence=persistence, queries=queries, conn=conn
+            ),
+            progress=progress.scope(WAR_CRY) if progress is not None else None,
+        )
+        return _with_variant(summary, variant) if summary else {}
+
+    combat_voice_rules.guard_declaration(state, attacker, decl)
 
     # applies_condition is non-None on this path (condition_ability selected it). The source is the
     # base ability id, which differs from decl.action when a mentor variant was declared.
@@ -165,7 +181,7 @@ async def _resolve_ability_condition_packet(
         await _deduct_ability_cost(attacker.id, ability, variant, persistence=persistence, queries=queries, conn=conn)
         steps["cost_paid"] = True
 
-    if ability.save is not None:
+    if combat_ability_save.requires_hostile_target(ability):
         summary = await combat_ability_save.resolve_hostile_condition(
             session,
             state,

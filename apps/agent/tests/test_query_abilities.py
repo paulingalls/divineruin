@@ -85,7 +85,7 @@ class TestQueryAbilities:
         assert reactions
         assert all(rows[ability.id]["window"] == ability.window for ability in reactions)
         assert rows["warrior_cleaving_blow"]["active_variant_id"] == "warrior_cleaving_blow_drathian"
-        assert rows["warrior_cleaving_blow"]["combat"] is False
+        assert rows["warrior_cleaving_blow"]["combat"] is True
 
     @pytest.mark.asyncio
     async def test_spell_backed_row_names_its_combat_spell_id(self, mock_context):
@@ -134,8 +134,25 @@ class TestQueryAbilities:
                     declaration = {"type": "ability", "action": action}
                     if row["id"] == "warrior_rallying_shout":
                         declaration["target_id"] = "ally"
-                    if row["id"] == "warrior_devastating_strike":
+                    if row["id"] in (
+                        "warrior_devastating_strike",
+                        "warrior_cleaving_blow",
+                        "rogue_dirty_trick",
+                        "warrior_taunt",
+                        "rogue_exploit_weakness",
+                        "rogue_blade_flurry",
+                    ):
                         declaration["target_id"] = "foe"
+                    if row["id"] in ("rogue_dirty_trick", "warrior_taunt"):
+                        assert row["combat"] is True
+                    if row["id"] in ("warrior_precision_strike", "warrior_reckless_assault"):
+                        assert row["combat"] is True
+                        assert row["declaration"] == {"kind": "attack", "rider": row["id"].removeprefix("warrior_")}
+                    if row["id"] == "rogue_crippling_strike":
+                        assert row["combat"] is True
+                        assert row["declaration"] == {"kind": "attack", "rider": "crippling_strike"}
+                    if row["id"] in ("rogue_exploit_weakness", "rogue_blade_flurry"):
+                        assert row["combat"] is True and "declaration" not in row
                     if recipe := row.get("declaration"):
                         declaration = {
                             "type": recipe["kind"],
