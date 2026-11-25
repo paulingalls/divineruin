@@ -361,7 +361,6 @@ async def test_corrupt_pending_and_held_destination_refuses_before_roll(spatial_
                 **before,
                 "beat": "declaration",
                 "pending_declarations": {},
-                "reactions_available": {pid: before["reactions_available"][pid]},
             }
         assert await persisted(state.combat_id) == before
         assert ctx.userdata.room.local_participant.publish_data.call_count == calls
