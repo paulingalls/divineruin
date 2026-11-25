@@ -355,7 +355,7 @@ for (const entry of corpus.layer_1_cases) {
   });
 }
 
-test("Syrath's two-round Shadow Veil is registered for rogue, spy and whisper", () => {
+test("Syrath's Shadow Veil duration and strike are registered for rogue, spy and whisper", () => {
   const matrix = validateGods(catalog).find(
     (god) => god.god_id === "syrath",
   )?.layer_4_synergy_matrix;
@@ -367,7 +367,15 @@ test("Syrath's two-round Shadow Veil is registered for rogue, spy and whisper", 
         resolution: "engine",
         implementation_id: "syrath_two_round_veil",
       },
-      { effect: "Invisible Sneak Attack +1d6", status: "pending", resolution: "engine" },
+      {
+        effect:
+          archetype === "rogue"
+            ? "Invisible Sneak Attack +1d6"
+            : "Weapon attacks from Shadow Veil deal +1d6",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "syrath_veiled_strike",
+      },
     ]);
   }
 });
