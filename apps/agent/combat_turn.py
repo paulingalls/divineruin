@@ -13,6 +13,7 @@ import combat_martial
 import combat_phase
 import combat_spatial
 import combat_spatial_declarations
+import concealment
 import db_mutations
 import db_queries
 import declaration_payloads
@@ -37,12 +38,16 @@ async def declare_phase(
     """Open a combat phase by recording every combatant's declared action for this
     round, then call resolve_phase to resolve them. Pass one declaration per acting
     combatant, each naming its actor_id and picked by its kind: attack, ability,
-    interact, consume, maneuver, move, defend or retreat. For a potion, salve or berry,
+    ability_move, interact, consume, maneuver, move, defend or retreat. For a potion, salve or berry,
     declare consume with the holder's actor_id and the queried item_id. Set target_id
     to the ally receiving it or an empty string for the holder. Move names an explicit destination in feet and consumes
     this phase action, limited to the actor's persisted speed. Only the Architect may include
     Reshape operations, on an attack, move or defend. The sections resolve before the action.
     Use the Architect's live wall ids and remaining Reshape uses from the combat facts.
+    Shadow Step uses ability_move with action rogue_shadow_step or its active variant id and a destination
+    from combat facts. Move up to effective speed using normal movement rules. End within 5 feet of the
+    nearest point on a wall segment or of a standing structure, or inside smoke. No opportunity attacks
+    are provoked, and the rogue finishes concealed.
     Second Wind is an ability with empty targets. Rallying Shout names one standing ally.
     Marshal orders use ability declarations and name standing allies other than the marshal.
     Use marshal_direct_strike with [ally, foe], marshal_coordinated_assault with two distinct
@@ -96,7 +101,12 @@ async def _declare_phase_locked(
     # ToolError so the DM re-prompts rather than crashing combat.
     try:
         combat_spatial_declarations.preflight_state(cs)
-        next_state, _adv = combat_phase.advance_combat_phase(cs, declarations=declarations)
+        concealed = (
+            await concealment.concealed_ids(cs, queries=queries)
+            if any(not p.is_ally and p.id in declarations for p in cs.participants)
+            else frozenset()
+        )
+        next_state, _adv = combat_phase.advance_combat_phase(cs, declarations=declarations, concealed=concealed)
         await combat_cunning_action.preflight(next_state, queries=queries)
         await combat_martial.preflight_orders(next_state, queries=queries)
         await combat_item_rider.preflight(session, next_state)
@@ -186,11 +196,18 @@ async def _consume_legendary_action_impl(
     target_id: str = "",
     reshape: tuple[dict, ...] = (),
     mutations=db_mutations,
+    queries=db_queries,
 ) -> str:
     session: SessionData = context.userdata
     async with session.combat_state_lock:
         return await _consume_legendary_action_locked(
-            context, boss_id, action_id=action_id, target_id=target_id, reshape=reshape, mutations=mutations
+            context,
+            boss_id,
+            action_id=action_id,
+            target_id=target_id,
+            reshape=reshape,
+            mutations=mutations,
+            queries=queries,
         )
 
 
@@ -202,6 +219,7 @@ async def _consume_legendary_action_locked(
     target_id: str,
     reshape: tuple[dict, ...],
     mutations,
+    queries,
 ) -> str:
     session: SessionData = context.userdata
     cs = _require_combat(session)
@@ -210,8 +228,9 @@ async def _consume_legendary_action_locked(
     if cs.legendary_continuation is not None or session.fate_offer is not None:
         raise ToolError("Finish the held roll or action before spending a legendary action.")
     try:
+        concealed = await concealment.concealed_ids(cs, queries=queries) if target_id else frozenset()
         next_state = combat_phase.consume_legendary_action(
-            cs, boss_id, action_id=action_id, target_id=target_id, reshape=reshape
+            cs, boss_id, action_id=action_id, target_id=target_id, reshape=reshape, concealed=concealed
         )
     except ValueError as e:
         raise ToolError(str(e)) from e

@@ -45,6 +45,27 @@ describe("content/archetype_abilities.json — parseAbilityRow conformance", () 
         id,
         rows.find((row) => row.id === id),
       );
+    const stance = load("warrior_iron_stance");
+    expect(stance.applies_condition).toBe("iron_stance");
+    expect(stance.level_requirement).toBe(8);
+    expect(stance.cost.stamina).toBe(3);
+    expect(stance.save).toBeUndefined();
+    expect(stance.dc_attribute).toBeUndefined();
+    expect(load("rogue_smoke_bomb")).toMatchObject({
+      id: "rogue_smoke_bomb",
+      archetype_id: "rogue",
+      ability_type: "elective",
+      level_requirement: 4,
+      cost: { stamina: 3, focus: 0 },
+      effect:
+        "Throw a fixed 10-foot-radius smoke cloud at your position. Attacks with either endpoint inside have disadvantage until the next round starts.",
+    });
+    expect(load("rogue_shadow_step")).toMatchObject({
+      level_requirement: 8,
+      cost: { stamina: 4, focus: 0 },
+      effect:
+        "Move up to your speed using normal movement rules. End within 5 feet of a wall segment or standing structure, or inside smoke. You provoke no opportunity attacks and finish concealed.",
+    });
     const trick = load("rogue_dirty_trick");
     expect(trick.applies_condition).toBe("shaken");
     expect(trick.save).toBeUndefined();

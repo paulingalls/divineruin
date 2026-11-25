@@ -1,23 +1,41 @@
 """Fixed declarations for the level-20 Architect reference fight."""
 
 from collections.abc import Iterable
+from math import ceil
 
 import abilities
 import architect_entomb
 import architect_reshape
 import combat_recharge
 import spells
-from combat_ability_gate import CUNNING_ACTION, DEVASTATING_STRIKE, RALLYING_SHOUT, SECOND_WIND, SHIELD_BASH
+from combat_ability_gate import (
+    CUNNING_ACTION,
+    DEVASTATING_STRIKE,
+    RALLYING_SHOUT,
+    SECOND_WIND,
+    SHADOW_STEP,
+    SHIELD_BASH,
+)
 from combat_action_availability import available_actions
 from combat_down import is_terminally_down
 from combat_movement_cost import reachable_point
 from combat_participant import CombatParticipant
+from combat_shadow_step import COVER_FEET, _covered
 from combat_spatial import distance, position, require_spatial
 from combat_spatial_declarations import in_pit, movement_blocker
 from combat_state import CombatState
 from combat_structures import line_blocker, nearest_wall_point
+from condition_restrictions import effective_speed
 from conditions import get_condition_effects, has_condition
-from declaration_payloads import AbilityDecl, AttackDecl, DeclVariant, DefendDecl, ManeuverDecl, MoveDecl
+from declaration_payloads import (
+    AbilityDecl,
+    AbilityMoveDecl,
+    AttackDecl,
+    DeclVariant,
+    DefendDecl,
+    ManeuverDecl,
+    MoveDecl,
+)
 from reshape_payloads import Destination, OpenFloor, ReshapeSelection
 
 GEOMETRY = "Geometry Strike"
@@ -40,7 +58,8 @@ def owner_of(state: CombatState) -> CombatParticipant:
     return participants(state, (state.architect_encounter["owner_id"],))[0]
 
 
-def targets(players: list[CombatParticipant]) -> list[CombatParticipant]:
+def targets(players: list[CombatParticipant], concealed: frozenset[str]) -> list[CombatParticipant]:
+    players = [p for p in players if p.id not in concealed]
     standing = [p for p in players if not p.is_fallen]
     return sorted(standing, key=lambda p: p.hp_current) or [p for p in players if not is_terminally_down(p)]
 
@@ -138,6 +157,40 @@ def flank(state: CombatState, actor: CombatParticipant, owner: CombatParticipant
     return move(state, actor, {**origin, "x": target["x"] - side * dy, "y": target["y"] + side * dx})
 
 
+def shadow_step(
+    state: CombatState, actor: CombatParticipant, owner: CombatParticipant, approach: MoveDecl
+) -> AbilityMoveDecl | None:
+    spatial = require_spatial(state)
+    origin = position(spatial, actor.id)
+    target = position(spatial, owner.id)
+    endpoint = reachable_point(
+        spatial,
+        actor.id,
+        origin,
+        approach.destination.model_dump(),
+        effective_speed(spatial["speeds"][actor.id], actor.conditions),
+        tidewalker=actor.tidewalker,
+    )
+    steps = ceil(distance(origin, endpoint) / COVER_FEET)
+    separation = distance(origin, target)
+    for step in range(steps, 0, -1):
+        fraction = step / steps
+        destination = (
+            endpoint
+            if step == steps
+            else {axis: origin[axis] + (endpoint[axis] - origin[axis]) * fraction for axis in origin}
+        )
+        if (
+            distance(destination, target) < separation
+            and _covered(state, destination)
+            and not movement_blocker(state, spatial, actor, origin, destination)
+        ):
+            return AbilityMoveDecl(
+                kind="ability_move", actor_id=actor.id, action=SHADOW_STEP, destination=Destination(**destination)
+            )
+    return None
+
+
 def recover(state: CombatState, actor: CombatParticipant) -> DeclVariant | None:
     if chamber := architect_entomb.source(state, actor.id):
         return ManeuverDecl(kind="maneuver", actor_id=actor.id, target_id=chamber)
@@ -212,6 +265,12 @@ def player_declaration(
         ):
             return ability(actor, RALLYING_SHOUT, max(allies, key=lambda p: damage[p.id]))
     if target is owner and separation > reach and (approach := flank(state, actor, owner)):
+        if (
+            SHADOW_STEP in loadout
+            and stamina >= abilities.get_ability(SHADOW_STEP).cost.stamina
+            and (step := shadow_step(state, actor, owner, approach))
+        ):
+            return step
         return approach
     if actor.archetype_id == "warrior":
         bash = not target.is_structure and not has_condition(target.conditions, "stunned")

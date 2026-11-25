@@ -10,7 +10,7 @@ import conditions
 import patron_synergy_combat
 from archetypes import get_archetype_chassis
 from architect_encounter import cathedral_bonus
-from condition_catalog import INCORPOREAL, STUDIED_WEAKNESS
+from condition_catalog import INCORPOREAL, STUDIED_WEAKNESS, WAR_CRY_RALLY
 from dramatic import DramaticContext, evaluate_dramatic_context
 from equipment_rules import needs_weapon_profile
 from patron_synergy_combat import VeiledStrike
@@ -117,7 +117,16 @@ def attack_roll_inputs(
         if not has_weapon_proficiency(proficiencies, weapon_profile):
             attacker_data["attack_disadvantage_source"] = "weapon_proficiency"
 
+    if (
+        combat_state is not None
+        and combat_state.spatial is not None
+        and combat_spatial.smoke_obscures(combat_state.spatial, attacker.id, target.id)
+    ):
+        attacker_data["attack_disadvantage_source"] = "Smoke cloud"
+
     attack_mod = attacker.attack_mod
+    if conditions.has_condition(attacker.conditions, WAR_CRY_RALLY):
+        attack_mod += 1
     if weapon_attack and attacker.type == "player" and attacker.archetype_id == "rogue":
         if combat_state is None:
             raise ValueError("rogue weapon attack requires combat state")

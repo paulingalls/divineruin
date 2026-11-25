@@ -3,11 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import abilities
+import combat_spatial
 import mentor_variants
 from communication_voice_rules import can_hear
 from mentor_variants import MentorVariant
 
 if TYPE_CHECKING:
+    from combat_participant import CombatParticipant
     from combat_state import CombatState
 
 DEVASTATING_STRIKE = "warrior_devastating_strike"
@@ -20,6 +22,8 @@ SHIELD_BASH = "warrior_shield_bash"
 DIRTY_TRICK = "rogue_dirty_trick"
 TAUNT = "warrior_taunt"
 WAR_CRY = "warrior_war_cry"
+MARSHAL_WAR_CRY = "marshal_war_cry"
+WAR_CRIES = frozenset({WAR_CRY, MARSHAL_WAR_CRY})
 SHIELD_BASH_RIDER = "shield_bash"
 CRIPPLING_STRIKE = "rogue_crippling_strike"
 CRIPPLING_STRIKE_RIDER = "crippling_strike"
@@ -34,6 +38,10 @@ ELECTIVE_ATTACK_RIDERS = {
 
 ELECTIVE_RIDER_ABILITIES = frozenset((*ELECTIVE_ATTACK_RIDERS.values(), CRIPPLING_STRIKE))
 
+IRON_STANCE_ABILITY = "warrior_iron_stance"
+VANISH = "rogue_vanish"
+SMOKE_BOMB = "rogue_smoke_bomb"
+SHADOW_STEP = "rogue_shadow_step"
 SECOND_WIND = "warrior_second_wind"
 RALLYING_SHOUT = "warrior_rallying_shout"
 
@@ -71,13 +79,21 @@ def combat_ability(ability: abilities.Ability) -> bool:
         ability.spell_id is not None
         or ability.applies_condition is not None
         or ability.id
-        in (SECOND_WIND, EXPLOIT_WEAKNESS, *SINGLE_TARGET_WEAPON_ABILITIES, *MULTI_TARGET_WEAPON_ABILITIES)
+        in (
+            SECOND_WIND,
+            VANISH,
+            SMOKE_BOMB,
+            SHADOW_STEP,
+            EXPLOIT_WEAKNESS,
+            *SINGLE_TARGET_WEAPON_ABILITIES,
+            *MULTI_TARGET_WEAPON_ABILITIES,
+        )
         or ability.id in MARSHAL_ORDERS
     )
 
 
-def war_cry_targets(state: CombatState) -> list[str]:
-    return [
+def war_cry_targets(state: CombatState, actor: CombatParticipant, ability_id: str) -> list[str]:
+    hearing_foes = [
         participant.id
         for participant in state.participants
         if not participant.is_ally
@@ -85,6 +101,16 @@ def war_cry_targets(state: CombatState) -> list[str]:
         and not participant.is_fallen
         and can_hear(state, participant.id)
     ]
+
+    if ability_id == MARSHAL_WAR_CRY:
+        spatial = combat_spatial.require_spatial(state)
+        origin = combat_spatial.position(spatial, actor.id)
+        return [
+            target_id
+            for target_id in hearing_foes
+            if combat_spatial.inside(origin, combat_spatial.position(spatial, target_id), 30)
+        ]
+    return hearing_foes
 
 
 def attack_recipe(ability_id: str) -> dict[str, str | list[str]] | None:

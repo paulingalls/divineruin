@@ -1,6 +1,7 @@
 """Player ability packet dispatch inside the phase transaction."""
 
 import combat_martial
+import combat_shadow_step
 import veythar_wellspring
 from combat_ability import (
     AbilityCastOutcome,
@@ -8,7 +9,15 @@ from combat_ability import (
     _resolve_ability_packet,
     condition_ability,
 )
-from combat_ability_gate import EXPLOIT_WEAKNESS, MARSHAL_ORDERS, SECOND_WIND, declared_ability
+from combat_ability_gate import (
+    EXPLOIT_WEAKNESS,
+    MARSHAL_ORDERS,
+    SECOND_WIND,
+    SHADOW_STEP,
+    SMOKE_BOMB,
+    VANISH,
+    declared_ability,
+)
 from combat_deescalation import _resolve_deescalation_packet
 
 
@@ -28,6 +37,7 @@ async def resolve(
     mutations,
     resolver,
     concentration_break_mod,
+    player_movement,
 ) -> dict:
     if (decl.action or "").lower() == "de_escalate":
         return await _resolve_deescalation_packet(
@@ -45,6 +55,16 @@ async def resolve(
     # ability-condition path — deduct its cost and land the condition on the target participant —
     # NOT through _resolve_ability_packet (which casts a spell). Pre-gated in _prevalidate_ability_focus.
     resolved = declared_ability(decl.action)
+    if resolved is not None and resolved[0].id == SHADOW_STEP:
+        if player_movement is None:
+            raise ValueError("Shadow Step requires player movement")
+        return await combat_shadow_step.resolve(
+            state, attacker, decl, resolved, player_movement, conn=conn, queries=queries
+        )
+    if resolved is not None and resolved[0].id == VANISH:
+        return await combat_martial.vanish(attacker, resolved, conn=conn, queries=queries)
+    if resolved is not None and resolved[0].id == SMOKE_BOMB:
+        return await combat_martial.smoke_bomb(state, attacker, resolved, conn=conn, queries=queries)
     if resolved is not None and resolved[0].id == SECOND_WIND:
         return await combat_martial.second_wind(
             state, attacker, resolved, conn=conn, queries=queries, mutations=mutations

@@ -19,7 +19,7 @@ from check_resolution import (
     roll_bonus_dice,
 )
 from condition_bonus import BonusDiceRoll
-from condition_restrictions import mark_save_penalty
+from condition_restrictions import mark_save_penalty, saving_throw_advantage
 from conditions import get_condition_effects
 from dramatic import DramaticContext, evaluate_dramatic_context
 from rules_engine import attribute_modifier, proficiency_bonus
@@ -148,6 +148,7 @@ def resolve_saving_throw(
     )
     save_modifier = mod + flat_mod + bonus.total + len(rally_sources)
     ward_advantage = scholars_ward and effect_on_fail.strip().lower() == "hollowed"
+    condition_advantage = condition_advantage or saving_throw_advantage(conditions)
     d20 = D20Roll(save_modifier, dc, advantage or condition_advantage or ward_advantage, disadvantage)
     return _save_result(
         SavingThrowResult(

@@ -59,6 +59,7 @@ export const CONDITION_NAMES = [
   "inspired",
   "regenerating",
   "precise_strike",
+  "iron_stance",
   "reckless_assault",
   "crippled",
   "studied_weakness",
@@ -66,6 +67,7 @@ export const CONDITION_NAMES = [
   "temporary_hollowed",
   "iron_resolve",
   "battle_cry",
+  "war_cry_rally",
   "worthy_foe",
   "mark_of_justice",
   "incorporeal",
@@ -359,7 +361,7 @@ export interface SpatialPoint {
 }
 export type SpatialZone =
   | { center_id: string; radius_ft: number }
-  | { kind: "silence"; center_id: string; radius_ft: number };
+  | { kind: "silence" | "smoke"; center_id: string; radius_ft: number };
 const AUTHORED_MOVEMENT_AREA_KINDS = ["water", "mud"] as const;
 export type SpatialMovementArea = {
   kind: (typeof AUTHORED_MOVEMENT_AREA_KINDS)[number];
@@ -468,7 +470,7 @@ export function validateScenePlacement(encounter: unknown): void {
       !["center_id,radius_ft", "center_id,kind,radius_ft"].includes(
         Object.keys(zone).sort().join(","),
       ) ||
-      (Object.hasOwn(zone, "kind") && zone.kind !== "silence") ||
+      (Object.hasOwn(zone, "kind") && zone.kind !== "silence" && zone.kind !== "smoke") ||
       typeof zone.center_id !== "string" ||
       !(Object.hasOwn(actors, zone.center_id) || Object.hasOwn(locations, zone.center_id)) ||
       typeof zone.radius_ft !== "number" ||

@@ -5,18 +5,19 @@ resolve_phase (in combat_turn) orchestrates the per-phase transaction; the
 helpers here do the actual resolution work it drives: _prevalidate_ability_focus
 gates player ability Focus before the loop, _resolve_one_packet dispatches a
 single initiative-ordered packet to the right resolver (attack / ability /
-de-escalate / defend). The helpers mutate in-memory
+de-escalate / defend), handing encounter-specific action kinds to combat_packet_special.
+The helpers mutate in-memory
 state and write through injected mutation/query modules, but own no transaction."""
 
 from typing import Any
 
 import abilities
-import architect_constructs
 import combat_cunning_action
 import combat_maneuver
 import combat_marks
 import combat_martial
 import combat_melee_approach
+import combat_packet_special
 import combat_packet_weapon
 import combat_player_ability
 import combat_recharge
@@ -26,15 +27,14 @@ import combat_voice_rules
 import item_heal
 import spell_casting
 import thyra_thornwall
-from action_contracts_still import STILL_ZONE_KINDS
 from combat_ability import _attach_riders, _find_action
-from combat_ability_gate import MULTI_TARGET_WEAPON_ABILITIES, SINGLE_TARGET_WEAPON_ABILITIES, WAR_CRY
+from combat_ability_gate import MULTI_TARGET_WEAPON_ABILITIES, SINGLE_TARGET_WEAPON_ABILITIES, WAR_CRIES
 from combat_action_availability import begin_execution, replay_valid
 from combat_down import target_unavailable
 from combat_enemy_action import resolve_enemy_strike
-from combat_enemy_active import resolve_active
 from combat_packet_gate import _prevalidate_ability_focus as _prevalidate_ability_focus
 from combat_structures import action_has_direct_line, blocked_reason, line_blocker
+from concealment import reveal_attacker
 from condition_restrictions import cannot_act
 from condition_sources import DeliveryRefused
 from declarations import DeclarationType
@@ -71,7 +71,7 @@ async def _resolve_one_packet(session, state, packet, *, _reshape_prepared=False
                 return {}
         except ReshapeRefused as error:
             return {"actor_id": packet.actor_id, "resolved": False, "reason": str(error)}
-    result = await _resolve_action_packet(session, state, packet, **deps)
+    result = await _resolve_action_packet(session, state, packet, turn_effects=effects, **deps)
     if "reshape_receipts" in steps:
         result["reshape"] = steps["reshape_receipts"]
     if (progress is not None and progress.paused) or (
@@ -111,6 +111,7 @@ async def _resolve_action_packet(
     attack_cursor=None,
     progress=None,
     player_movement=None,
+    turn_effects: list[dict],
 ) -> dict:
     """Resolve a single initiative-ordered ResolutionPacket against ``state``.
 
@@ -150,21 +151,20 @@ async def _resolve_action_packet(
     opportunity_attack = held_head.get("opportunity_attack", False)
     resuming_movement = player_movement is not None and player_movement.route is not None
     if not (resuming_movement or opportunity_attack or "legendary_kind" in held_head):
-        await choir_encounter.turn_start(
+        from combat_turn_start import start_choir_packet
+
+        forced_move = await start_choir_packet(
             session,
             state,
             attacker,
             conn=conn,
             concentration_break_mod=concentration_break_mod,
             sink=sink,
-            progress=progress.scope("choir_aura") if progress is not None else None,
+            progress=progress,
+            effects=turn_effects,
         )
         if progress is not None and progress.paused:
             return {}
-
-        from choir_effects import approach
-
-        forced_move = approach(state, attacker)
     if attacker is None or (attacker.is_fallen and not resuming_movement):
         return {"actor_id": packet.actor_id, "resolved": False, "reason": "actor unavailable"}
     if not resuming_movement and (blocked := cannot_act(attacker.conditions)):
@@ -191,7 +191,7 @@ async def _resolve_action_packet(
 
     try:
         combat_voice_rules.guard_declaration(
-            state, attacker, decl, war_cry_started=progress is not None and WAR_CRY in progress.steps
+            state, attacker, decl, war_cry_started=bool(progress and WAR_CRIES & progress.steps.keys())
         )
     except DeliveryRefused as e:
         return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}
@@ -265,59 +265,24 @@ async def _resolve_action_packet(
             and (wall := line_blocker(state, attacker.id, decl.target_id))
         ):
             return {"actor_id": attacker.id, "resolved": False, "reason": blocked_reason(wall)}
-        if still_encounter.is_owner(state, attacker.id):
-            import still_actions
-
-            if not replay and (reason := still_actions.range_refusal(state, attacker, action, decl)):
-                return {"actor_id": attacker.id, "resolved": False, "reason": reason}
-            if action_kind(action) in STILL_ZONE_KINDS:
-                return await still_actions.resolve_zone(
-                    session,
-                    state,
-                    attacker,
-                    action,
-                    decl,
-                    head=_held_head,
-                    progress=progress,
-                    conn=conn,
-                    concentration=concentration_break_mod,
-                    queries=queries,
-                    mutations=mutations,
-                )
-            if action.get("auto_hit"):
-                return await still_actions.resolve_touch(
-                    session,
-                    state,
-                    attacker,
-                    action,
-                    decl,
-                    head=_held_head,
-                    progress=progress,
-                    conn=conn,
-                    mutations=mutations,
-                    queries=queries,
-                    concentration=concentration_break_mod,
-                    sink=sink,
-                    advantage=reaction_save_advantage,
-                )
-        if action_kind(action) == architect_constructs.KIND:
-            return architect_constructs.resolve(state, attacker, action, decl)
-        if not attacker.is_ally and action_kind(action) in ("healing", "prepare_attack"):
-            action = begin_execution(state, attacker, action, decl)
-            return resolve_active(state, attacker, action, decl)
-        if action_kind(action) in ("charm", "silence"):
-            from choir_actions import resolve_effect
-
-            return await resolve_effect(
-                session,
-                state,
-                attacker,
-                action,
-                decl,
-                reaction_save_advantage=reaction_save_advantage,
-                progress=progress,
-                head=_held_head,
-            )
+        special = await combat_packet_special.resolve(
+            session,
+            state,
+            attacker,
+            action,
+            decl,
+            replay=replay,
+            head=_held_head,
+            progress=progress,
+            conn=conn,
+            mutations=mutations,
+            queries=queries,
+            concentration_break_mod=concentration_break_mod,
+            sink=sink,
+            reaction_save_advantage=reaction_save_advantage,
+        )
+        if special is not None:
+            return special
         target = state.get_participant(decl.target_id) if decl.target_id else None
         if target is not None and not target_unavailable(target, action):
             movement_budget = combat_cunning_action.movement_allowance(state, attacker, decl)
@@ -421,6 +386,7 @@ async def _resolve_action_packet(
             mutations=mutations,
             resolver=resolver,
             concentration_break_mod=concentration_break_mod,
+            player_movement=player_movement,
         )
 
     if decl.type is DeclarationType.MANEUVER:
@@ -429,8 +395,6 @@ async def _resolve_action_packet(
         return combat_maneuver.resolve_maneuver(state, attacker, decl)
 
     if decl.type is not DeclarationType.ATTACK and not (single_target or multi_target):
-        # Non-attack declarations don't resolve mechanically yet, but a narrated rider
-        # (e.g. Quick Change on a social INTERACT) still surfaces for the DM to voice.
         summary = {
             "actor_id": packet.actor_id,
             "resolved": False,
@@ -463,10 +427,17 @@ async def _resolve_action_packet(
 
     target = state.get_participant(decl.target_id) if decl.target_id else None
     # `action` was resolved once above (the single _find_action for this packet).
-    if target is None:
-        return {"actor_id": packet.actor_id, "resolved": False, "reason": f"target '{decl.target_id}' not found"}
-    if target_unavailable(target, action):
-        return {"actor_id": packet.actor_id, "resolved": False, "reason": f"{target.name} already fell"}
+    if target is None or target_unavailable(target, action):
+        reason = f"target '{decl.target_id}' not found" if target is None else f"{target.name} already fell"
+        summary: dict = {"actor_id": packet.actor_id, "resolved": False, "reason": reason}
+        if (
+            attacker.type == "player"
+            and action is not None
+            and (decl.type is DeclarationType.ATTACK or single_target)
+            and (reveal := await reveal_attacker(attacker.id, conn=conn, queries=queries))
+        ):
+            summary["concealment"] = reveal
+        return summary
     if action is None:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": f"action '{decl.action}' not found"}
 

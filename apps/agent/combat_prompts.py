@@ -12,7 +12,8 @@ Beat 2 resolution -> Beat 3 narration -> Beat 4 wrap], looping until combat_end.
 Walk it one phase at a time, one beat at a time.
 
 Beat 1 — Declaration. Ask the player "What do you do?" Decide each enemy's action \
-from its tactics and each conscious companion's action. The combat-entry Combatants roster gives \
+from its tactics and each conscious companion's action. Enemies cannot target concealed players. \
+Untargeted areas, auras, and zones still affect them. The combat-entry Combatants roster gives \
 every combatant's id and, in Combatants[].actions, the exact names of its actions. Then call declare_phase with \
 one declaration per acting combatant — each names its actor_id and its kind. Supported declarations: \
 attack — action is the EXACT name of one of the actor's Combatants[].actions (a player's are their \
@@ -36,7 +37,15 @@ its target_id upfront; use one declaration for the actor. Each strike has its ow
 ability — action is the EXACT id of a spell or ability the caster knows (for example \
 "arcane_bolt"). Name in targets whoever it is aimed at — a fallen ally's id for a \
 revival, several allies for a spell that blesses a group; leave targets empty for a \
-self-cast. Second Wind uses empty targets. War Cry uses empty targets and reaches every standing foe who can hear. \
+self-cast. Second Wind uses empty targets. Warrior War Cry uses empty targets and reaches every standing foe who can hear. \
+Marshal War Cry (action="marshal_war_cry") uses empty targets. Standing foes within 30 feet who can hear make Wisdom saves. \
+Other standing allies who can hear gain +1 to attacks this round, even with no foes in range. \
+Iron Stance (action="warrior_iron_stance") uses empty targets. Until the warrior's next turn, \
+forced movement fails, saves have advantage, and all damage is resisted. \
+Vanish (action="rogue_vanish") uses empty targets and conceals the rogue. \
+Smoke Bomb (action="rogue_smoke_bomb") uses empty targets or targets the rogue. \
+The smoke cloud stays at the throw point until the next round starts. \
+Name who is inside using the spoken spatial facts. \
 Rallying Shout names one standing ally. \
 Devastating Strike names one foe and uses the main-hand melee weapon. \
 Cleaving Blow (action="warrior_cleaving_blow") takes one or two standing foe ids in targets, in strike order. \
@@ -52,6 +61,10 @@ without explicit arcs the engine chooses nearest enemies. Repeat Magic Missile t
 or name one recipient for all darts. Send argument_type as an empty string except for Elemental Burst \
 (fire, cold, or lightning) and de_escalate (below). resolve_phase handles ability costs, \
 weapon damage, and any Focus and Resonance for spells. \
+ability_move — Shadow Step uses action="rogue_shadow_step" or its active variant id and destination \
+with x, y, z coordinates from combat facts. Move up to effective speed using normal movement rules. \
+End within 5 feet of the nearest point on a wall segment or of a standing structure, or inside smoke. \
+No opportunity attacks are provoked, and the rogue finishes concealed. \
 defend — the actor makes no attack and gains +2 AC until the next \
 phase (use it when the player guards, takes cover, or braces). \
 maneuver — target_id names who is moved. A prone combatant stands by declaring maneuver on itself, \
@@ -74,7 +87,7 @@ For Ability rows with active_variant_id, declare that exact variant id. \
 Reaction rows name the window where their id can interrupt through activate. \
 Cover the player, every conscious companion, and every enemy that acts this round. \
 An actor listed in cannot_act declares nothing; omit them and narrate their helplessness. \
-In combat, an ordinary spell or ability without an Attack recipe is an Ability declaration through \
+In combat, an ordinary spell or ability without a declaration recipe is an Ability declaration through \
 declare_phase — never a free \
 cast via activate. Three things are still done through activate, even mid-fight: a REACTION at an \
 open Beat-3 window (below), a Draethar's Inner Fire (activate "draethar_inner_fire"), and raising \
@@ -112,6 +125,7 @@ When a packet carries condition_inflicted, a HOSTILE condition took hold on "tar
 voice the affliction on that target, never as a boon: fear gripping them (Frightened), a \
 will bent (Charmed), venom burning (Poisoned), or grappled when a hit seized them. \
 Narrate each condition_results recipient and whether the condition took hold. \
+Narrate rally_targets as allies gaining +1 to attacks for the round. \
 Narrate every cast.damage_results recipient with its own save and damage. Absorbed receipts had no spell effect; never redistribute their darts or arcs. An empty damage_results list landed no damage.
 
 When a damage packet carries save_success, the save has already resolved: damage_halved means \

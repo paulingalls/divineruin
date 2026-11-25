@@ -102,7 +102,7 @@ async def test_round_budget_is_strictly_below_half(fight):
         "max": {**origin, "x": origin["x"] + 45, "y": origin["y"] + 20},
     }
     action = {"kind": "defend", "actor_id": owner}
-    actor.hp_current = actor.hp_max // 2
+    actor.hp_current = (actor.hp_max + 1) // 2  # the lowest HP that is not below half
     state = await fight.persist()
     response = await declare(fight, {**action, "reshape": [first, second]}, error=True)
     assert "budget" in response

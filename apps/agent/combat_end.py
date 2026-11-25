@@ -251,7 +251,7 @@ async def _end_combat_db(
             continue
         await reconcile_member_conditions(player_part, conn=conn)
 
-    await concealment.expire_gift(cs, conn=conn, queries=queries)
+    await concealment.expire_combat(cs, conn=conn, queries=queries)
     await mutations.delete_combat_state(cs.combat_id, conn=conn)
 
     # Deleting the combat row IS the encounter ward's expiry (scope_model.md §2), so the HUD must be

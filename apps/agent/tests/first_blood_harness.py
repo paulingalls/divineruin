@@ -6,7 +6,7 @@ import random
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-from typing import cast
+from typing import TypedDict, cast
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -26,6 +26,7 @@ import patron_gift_tools
 import spell_knowledge
 import spells
 from activate_tools import activate
+from combat_ability_gate import IRON_STANCE_ABILITY, SHADOW_STEP, SMOKE_BOMB, VANISH
 from combat_death_save import request_death_save
 from combat_down import is_terminally_down
 from combat_turn import consume_legendary_action, declare_phase, resolve_phase
@@ -33,7 +34,7 @@ from companion_profiles import get_companion_profile, select_companion_for_arche
 from companion_scaling import scale_companion_stats_to_player_level
 from condition_restrictions import cannot_act
 from creation_rules import build_character_data
-from declaration_payloads import AbilityDecl, AttackDecl, DeclVariant, MultiattackDecl, StrikeSelection
+from declaration_payloads import AbilityDecl, AbilityMoveDecl, AttackDecl, DeclVariant, MultiattackDecl, StrikeSelection
 from mode_tools import enter_mode
 from patron_gifts import SYRATH_SHADOW_VEIL, syrath_gift
 from progression_tools import _award_xp_core
@@ -245,10 +246,27 @@ async def win_counts(pool, encounter_id=PATROL, player_level=1, *, policy="basic
     return counts, standing
 
 
+ARCHITECT_TECHNIQUES = (IRON_STANCE_ABILITY, VANISH, SMOKE_BOMB, SHADOW_STEP)
+
+
+class TechniqueReport(TypedDict):
+    held: list[str]
+    declared: list[str]
+    resolved: list[str]
+
+
 async def drive_architect_fight(
     ctx: RunContext[SessionData], loadouts: dict[str, tuple[str, ...]], seed: int
-) -> tuple[str, int]:
+) -> tuple[str, int, dict[str, TechniqueReport]]:
     player_ids = tuple(loadouts)
+    techniques: dict[str, TechniqueReport] = {
+        pid: {
+            "held": [technique for technique in ARCHITECT_TECHNIQUES if technique in loadout],
+            "declared": [],
+            "resolved": [],
+        }
+        for pid, loadout in loadouts.items()
+    }
     damage = dict.fromkeys(player_ids, 0)
     rallied = False
     last_legendary_round = 0
@@ -260,7 +278,6 @@ async def drive_architect_fight(
             detail = f"seed={seed}, round={round_number}, beat={state.beat}"
             players = architect_policy.participants(state, player_ids)
             owner = architect_policy.owner_of(state)
-            candidates = architect_policy.targets(players)
             try:
                 if (
                     state.beat in ("declaration", "narration")
@@ -274,33 +291,40 @@ async def drive_architect_fight(
                     and not cannot_act(owner.conditions)
                     and owner.legendary_actions >= 2
                     and last_legendary_round != round_number
-                    and (target := architect_policy.geometry_target(state, owner, candidates)) is not None
+                    and (
+                        target := architect_policy.geometry_target(
+                            state, owner, architect_policy.targets(players, await concealment.concealed_ids(state))
+                        )
+                    )
+                    is not None
                 ):
                     result = await consume_legendary_action(ctx, owner.id, architect_policy.GEOMETRY, target.id, [])
                     last_legendary_round = round_number
                 elif state.beat == "declaration" and state.legendary_continuation is None:
                     declarations: list[DeclVariant] = []
-                    for actor in [*players, *(p for p in state.participants if not p.is_ally and not p.is_structure)]:
+                    for actor in players:
                         if actor.is_fallen or cannot_act(actor.conditions):
                             continue
-                        if actor.id in damage:
-                            row = await db_queries.get_player(actor.id)
-                            assert row is not None, detail
-                            declaration = architect_policy.player_declaration(
-                                state, actor, owner, players, row, damage, rallied, loadouts[actor.id]
-                            )
-                            if (
-                                isinstance(declaration, AttackDecl)
-                                and syrath_gift(row)
-                                and not concealment.is_concealed(row)
-                                and not patron_gift_tools.shadow_veil_state(row)["spent"]
-                            ):
-                                with ctx.userdata._bind_authenticated_actor(actor.id, 1, lambda *_: None):
-                                    result = await activate(ctx, SYRATH_SHADOW_VEIL)
-                                assert isinstance(result, str) and json.loads(result)["concealment"]["concealed"], (
-                                    detail
-                                )
-                        elif actor.id == owner.id:
+                        row = await db_queries.get_player(actor.id)
+                        assert row is not None, detail
+                        declaration = architect_policy.player_declaration(
+                            state, actor, owner, players, row, damage, rallied, loadouts[actor.id]
+                        )
+                        if (
+                            isinstance(declaration, AttackDecl)
+                            and syrath_gift(row)
+                            and not concealment.is_concealed(row)
+                            and not patron_gift_tools.shadow_veil_state(row)["spent"]
+                        ):
+                            with ctx.userdata._bind_authenticated_actor(actor.id, 1, lambda *_: None):
+                                result = await activate(ctx, SYRATH_SHADOW_VEIL)
+                            assert isinstance(result, str) and json.loads(result)["concealment"]["concealed"], detail
+                        declarations.append(declaration)
+                    candidates = architect_policy.targets(players, await concealment.concealed_ids(state))
+                    for actor in state.participants:
+                        if actor.is_ally or actor.is_structure or actor.is_fallen or cannot_act(actor.conditions):
+                            continue
+                        if actor.id == owner.id:
                             declaration = architect_policy.owner_declaration(state, owner, candidates)
                         else:
                             declaration = architect_policy.construct_declaration(state, actor, candidates)
@@ -308,6 +332,13 @@ async def drive_architect_fight(
                     logger.debug("%s declarations: %s", detail, declarations)
                     accepted = json.loads(await declare_phase(ctx, declarations))
                     assert accepted["accepted_actors"] == [d.actor_id for d in declarations], detail
+                    for declared in declarations:
+                        if (
+                            declared.actor_id in techniques
+                            and isinstance(declared, (AbilityDecl, AbilityMoveDecl))
+                            and declared.action in ARCHITECT_TECHNIQUES
+                        ):
+                            techniques[declared.actor_id]["declared"].append(declared.action)
                     continue
                 else:
                     result = await resolve_phase(ctx)
@@ -319,7 +350,7 @@ async def drive_architect_fight(
                 assert outcome in ("victory", "defeat"), (detail, outcome)
                 assert ctx.userdata.combat_state is None, detail
                 assert await db_mutations.load_combat_state(state.combat_id) is None, detail
-                return outcome, round_number
+                return outcome, round_number, techniques
 
             ctx.userdata.event_bus.drain()
             packet = json.loads(result)
@@ -330,6 +361,8 @@ async def drive_architect_fight(
                     damage[actor_id] += sum(
                         strike.get("damage", 0) for strike in action.get("attacks", [action])
                     ) + action.get("cast", {}).get("damage_result", {}).get("damage", 0)
+                    if action.get("action") in ARCHITECT_TECHNIQUES and action.get("resolved"):
+                        techniques[actor_id]["resolved"].append(action["action"])
                 if action.get("action") == architect_policy.RALLYING_SHOUT and action.get("resolved"):
                     rallied = True
                 logger.debug("%s: %s", detail, action)

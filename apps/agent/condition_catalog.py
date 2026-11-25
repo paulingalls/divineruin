@@ -78,6 +78,8 @@ INCORPOREAL = "incorporeal"
 TAUNTED = "taunted"
 CRIPPLED = "crippled"
 STUDIED_WEAKNESS = "studied_weakness"
+IRON_STANCE = "iron_stance"
+WAR_CRY_RALLY = "war_cry_rally"
 
 
 CONDITION_CATALOG: dict[str, ConditionSpec] = {
@@ -94,7 +96,12 @@ CONDITION_CATALOG: dict[str, ConditionSpec] = {
         ],
     ),
     "battle_cry": ConditionSpec(clearance="duration", bonus_die="1d4", bonus_die_scopes=("attack",)),
+    WAR_CRY_RALLY: ConditionSpec(clearance="duration"),
     TAUNTED: ConditionSpec(clearance="duration", restrictions=("must_target_source",)),
+    IRON_STANCE: ConditionSpec(
+        clearance="start_of_next_turn",
+        restrictions=("damage_resistance_all", "saving_throw_advantage", "immovable"),
+    ),
     "reckless_assault": ConditionSpec(clearance="next_declaration", restrictions=("incoming_advantage",)),
     "worthy_foe": ConditionSpec(clearance="end_of_combat_or_dismissed", restrictions=("incoming_advantage",)),
     # --- Combat conditions ---

@@ -103,6 +103,9 @@ def test_exact_restriction_partition_and_complete_spoken_corpus():
                 "speed_0",
                 "speed_halved",
                 "ignores_structures",
+                "damage_resistance_all",
+                "saving_throw_advantage",
+                "immovable",
                 "consumed_on_use",
                 "one_time",
                 "no_hostile_source",
@@ -115,7 +118,6 @@ def test_exact_restriction_partition_and_complete_spoken_corpus():
     )
     assert set(NOT_ENFORCED) == {
         "removed_from_combat",
-        "damage_resistance_all",
         "immune_poison_disease",
         "damage_reduction",
         "no_approach_source",

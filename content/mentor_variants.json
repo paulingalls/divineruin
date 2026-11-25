@@ -762,7 +762,7 @@
       "focus": 1,
       "scaling": null
     },
-    "effect": "Move undetected to a new position. Must end in cover or shadow. Keldaran discipline trades raw power for flawless control, never overcommitting.",
+    "effect": "Move up to your speed using normal movement rules. End within 5 feet of a wall segment or standing structure, or inside smoke. You provoke no opportunity attacks and finish concealed. Keldaran discipline trades raw power for flawless control, never overcommitting.",
     "narration_cue": "The Holds teach shadow step as craft: pressure, timing, armor undone by technique.",
     "cultural_attribution": "Keldaran Holds technique"
   },
@@ -775,7 +775,7 @@
       "focus": 1,
       "scaling": null
     },
-    "effect": "Move undetected to a new position. Must end in cover or shadow. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "effect": "Move up to your speed using normal movement rules. End within 5 feet of a wall segment or standing structure, or inside smoke. You provoke no opportunity attacks and finish concealed. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
     "narration_cue": "Shadow Step drawn slow as rising sap, then sudden — the forest's own ambush.",
     "cultural_attribution": "Thornwardens technique"
   },
@@ -788,7 +788,7 @@
       "focus": 1,
       "scaling": null
     },
-    "effect": "10 ft obscurement cloud; attacks through it have disadvantage. Lasts 1 round. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
+    "effect": "Throw a fixed 10-foot-radius smoke cloud at your position. Attacks with either endpoint inside have disadvantage until the next round starts. Thornwarden cunning sets the strike like a snare, timed to punish the unwary.",
     "narration_cue": "The Thornveld way of smoke bomb: yield like a branch, bind like a thorn.",
     "cultural_attribution": "Thornwardens technique"
   },
@@ -801,7 +801,7 @@
       "focus": 0,
       "scaling": null
     },
-    "effect": "10 ft obscurement cloud; attacks through it have disadvantage. Lasts 1 round. Tidecaller rhythm flows with the fight, striking from motion for less.",
+    "effect": "Throw a fixed 10-foot-radius smoke cloud at your position. Attacks with either endpoint inside have disadvantage until the next round starts. Tidecaller rhythm flows with the fight, striking from motion for less.",
     "narration_cue": "Smoke Bomb like water finding its level — unhurried, then sudden as a breaking wave.",
     "cultural_attribution": "Tidecallers technique"
   },

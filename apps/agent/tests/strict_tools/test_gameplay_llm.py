@@ -144,7 +144,9 @@ def _assert_reshape_schema(schema):
         "lower_ceiling": {"min", "max"},
     }
     declarations = branches(schema["properties"]["declarations"]["items"])
-    assert len(declarations) == 9
+    assert len(declarations) == 10
+    [shadow_step] = [declaration for declaration in declarations if kind(declaration) == "ability_move"]
+    assert set(shadow_step["required"]) == {"kind", "actor_id", "action", "destination"}
     for declaration in declarations:
         properties = declaration["properties"]
         assert set(declaration["required"]) == set(properties)

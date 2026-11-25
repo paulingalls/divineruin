@@ -7,7 +7,6 @@ from conditions import get_condition_effects
 
 NOT_ENFORCED: dict[str, dict[str, object]] = {
     "removed_from_combat": {"waits_on": "producer", "carriers": {"petrified": 1}},
-    "damage_resistance_all": {"waits_on": "producer", "carriers": {"petrified": 1}},
     "immune_poison_disease": {"waits_on": "producer", "carriers": {"petrified": 1}},
     "damage_reduction": {"waits_on": "producer", "carriers": {"shielded": 1}},
     "no_approach_source": {"waits_on": "model", "model": "positioning"},
@@ -44,6 +43,18 @@ def mark_save_penalty(active_conditions: list[dict], originating_participant_id:
     ):
         return -2
     return 0
+
+
+def damage_resistance_all(active_conditions: list[dict]) -> bool:
+    return bool(_carriers(active_conditions, "damage_resistance_all"))
+
+
+def saving_throw_advantage(active_conditions: list[dict]) -> bool:
+    return bool(_carriers(active_conditions, "saving_throw_advantage"))
+
+
+def immovable(active_conditions: list[dict]) -> bool:
+    return bool(_carriers(active_conditions, "immovable"))
 
 
 def incoming_advantage(active_conditions: list[dict] | tuple[dict, ...]) -> bool:
@@ -110,6 +121,9 @@ def attack_consumed_conditions(
 
 
 RESTRICTION_ENFORCERS = {
+    "damage_resistance_all": damage_resistance_all,
+    "saving_throw_advantage": saving_throw_advantage,
+    "immovable": immovable,
     "no_hostile_source": no_hostile_source,
     "must_target_source": required_attack_sources,
     "auto_fail_hearing_perception": auto_fail_hearing_perception,

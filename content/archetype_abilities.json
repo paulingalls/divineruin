@@ -148,6 +148,7 @@
     "ability_type": "elective",
     "level_requirement": 8,
     "cost": { "stamina": 3, "focus": 0, "scaling": null },
+    "applies_condition": "iron_stance",
     "effect": "Until next turn: can't be moved, advantage on saves, resistance to all damage.",
     "narration_cue": "Feet planted like roots, an immovable wall of iron."
   },
@@ -509,7 +510,7 @@
     "ability_type": "elective",
     "level_requirement": 4,
     "cost": { "stamina": 3, "focus": 0, "scaling": null },
-    "effect": "10 ft obscurement cloud; attacks through it have disadvantage. Lasts 1 round.",
+    "effect": "Throw a fixed 10-foot-radius smoke cloud at your position. Attacks with either endpoint inside have disadvantage until the next round starts.",
     "narration_cue": "A glass vial shatters and grey smoke billows up."
   },
   {
@@ -529,7 +530,7 @@
     "ability_type": "elective",
     "level_requirement": 8,
     "cost": { "stamina": 4, "focus": 0, "scaling": null },
-    "effect": "Move undetected to a new position. Must end in cover or shadow.",
+    "effect": "Move up to your speed using normal movement rules. End within 5 feet of a wall segment or standing structure, or inside smoke. You provoke no opportunity attacks and finish concealed.",
     "narration_cue": "You melt into one shadow and emerge from another."
   },
   {
@@ -1463,7 +1464,10 @@
     "level_requirement": 4,
     "cost": { "stamina": 3, "focus": 0, "scaling": null },
     "effect": "All enemies within 30 ft: WIS save or Frightened 1 round. Allies also gain +1 to attacks that round.",
-    "narration_cue": "A rallying roar that shakes the foe and lifts your own."
+    "narration_cue": "A rallying roar that shakes the foe and lifts your own.",
+    "applies_condition": "frightened",
+    "save": "wisdom",
+    "dc_attribute": "strength"
   },
   {
     "id": "marshal_field_medic_order",

@@ -16,6 +16,7 @@ import reaction_windows
 import spells
 from ability_tools import _request_ability_activation_impl
 from combat_phase import PhaseBeat, advance_combat_phase
+from combat_spatial import add_smoke, position, require_spatial
 from session_data import CombatParticipant
 
 
@@ -198,13 +199,21 @@ class TestActivation:
             place_actors(state)
             state.beat = PhaseBeat.DECLARATION
             action = {"type": "ability", "action": match.group(1)}
-            if targets := order_targets.get(ability.id):
+            if ability.id == "rogue_shadow_step":
+                assert "ability_move" in message and "destination" in message
+                add_smoke(state, "ally")
+                action["destination"] = position(require_spatial(state), "ally")
+            elif targets := order_targets.get(ability.id):
                 action.update(targets)
             elif ability.id == "warrior_rallying_shout":
                 action["target_id"] = "ally"
-            elif ability.id not in ("warrior_second_wind", "warrior_whirlwind") and (
-                spell is None or spell.heal is None
-            ):
+            elif ability.id not in (
+                "warrior_second_wind",
+                "warrior_whirlwind",
+                "warrior_iron_stance",
+                "rogue_vanish",
+                "rogue_smoke_bomb",
+            ) and (spell is None or spell.heal is None):
                 action["target_id"] = "goblin_scout_1"
             declaration = {"player_1": action}
             advance_combat_phase(state, declaration)  # ValueError here = the two gates disagree

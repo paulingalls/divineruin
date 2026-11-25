@@ -10,6 +10,7 @@ from livekit.agents.voice import RunContext
 import abilities
 import spells
 from combat_phase import advance_combat_phase
+from combat_spatial import add_smoke, position, require_spatial
 from query_tools import _query_abilities_impl
 from session_data import CombatParticipant, CombatState, SessionData
 
@@ -110,6 +111,8 @@ class TestQueryAbilities:
         actor = state.participants[0]
         actor.action_pool = [{"name": "Longsword", "damage": "1d8"}]
         place_actors(state)
+        add_smoke(state, actor.id)
+        step_destination = position(require_spatial(state), actor.id)
 
         archetype_ids = {ability.archetype_id for ability in catalog.values()}
         for archetype_id in sorted(archetype_ids):
@@ -145,7 +148,14 @@ class TestQueryAbilities:
                         "rogue_blade_flurry",
                     ):
                         declaration["target_id"] = "foe"
-                    if row["id"] in ("rogue_dirty_trick", "warrior_taunt"):
+                    if row["id"] in (
+                        "rogue_dirty_trick",
+                        "rogue_vanish",
+                        "rogue_smoke_bomb",
+                        "warrior_taunt",
+                        "warrior_iron_stance",
+                        "marshal_war_cry",
+                    ):
                         assert row["combat"] is True
                     if row["id"] in ("warrior_precision_strike", "warrior_reckless_assault"):
                         assert row["combat"] is True
@@ -155,7 +165,11 @@ class TestQueryAbilities:
                         assert row["declaration"] == {"kind": "attack", "rider": "crippling_strike"}
                     if row["id"] in ("rogue_exploit_weakness", "rogue_blade_flurry"):
                         assert row["combat"] is True and "declaration" not in row
-                    if recipe := row.get("declaration"):
+                    recipe = row.get("declaration")
+                    if recipe and recipe["kind"] == "ability_move":
+                        declaration["destination"] = step_destination
+                        declaration["action"] = row.get("active_variant_id", action)
+                    elif recipe:
                         declaration = {
                             "type": recipe["kind"],
                             "action": "Longsword",
@@ -183,6 +197,7 @@ class TestQueryAbilities:
                         row["id"],
                     )
 
+        assert "marshal_war_cry" in emitted_ids
         assert emitted_ids == set(catalog)
 
     @pytest.mark.asyncio
