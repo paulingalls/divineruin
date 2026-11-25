@@ -10,6 +10,7 @@ state and write through injected mutation/query modules, but own no transaction.
 
 from typing import Any
 
+import abilities
 import architect_constructs
 import combat_cunning_action
 import combat_maneuver
@@ -26,7 +27,7 @@ import spell_casting
 import thyra_thornwall
 from action_contracts_still import STILL_ZONE_KINDS
 from combat_ability import _attach_riders, _find_action
-from combat_ability_gate import DEVASTATING_STRIKE, MULTI_TARGET_WEAPON_ABILITIES, WAR_CRY
+from combat_ability_gate import MULTI_TARGET_WEAPON_ABILITIES, SINGLE_TARGET_WEAPON_ABILITIES, WAR_CRY
 from combat_action_availability import begin_execution, replay_valid
 from combat_down import target_unavailable
 from combat_enemy_action import resolve_enemy_strike
@@ -228,12 +229,13 @@ async def _resolve_action_packet(
     )
 
     martial = combat_martial.attack_ability(decl)
-    devastating = martial == DEVASTATING_STRIKE
+    single_target = martial in SINGLE_TARGET_WEAPON_ABILITIES
     multi_target = martial in MULTI_TARGET_WEAPON_ABILITIES
-    if devastating:
+    if martial is not None and single_target:
+        name = abilities.get_ability(martial).name
         if player is None:
-            raise ValueError("Devastating Strike requires a prevalidated player.")
-        action = combat_martial.main_hand(player, "Devastating Strike")
+            raise ValueError(f"{name} requires a prevalidated player.")
+        action = combat_martial.main_hand(player, name)
 
     movement = {}
     movement_budget = {}
@@ -339,7 +341,7 @@ async def _resolve_action_packet(
             )
             and (
                 decl.type is DeclarationType.ATTACK
-                or devastating
+                or single_target
                 or action.get("applies_condition")
                 or action.get("half_on_success") is True
             )
@@ -392,7 +394,7 @@ async def _resolve_action_packet(
         if enemy_summary is not None:
             return {**movement, **enemy_summary}
 
-    if decl.type is DeclarationType.ABILITY and not (devastating or multi_target):
+    if decl.type is DeclarationType.ABILITY and not (single_target or multi_target):
         return await combat_player_ability.resolve(
             session,
             state,
@@ -415,7 +417,7 @@ async def _resolve_action_packet(
             return {"actor_id": attacker.id, "resolved": False, "reason": blocked_reason(wall)}
         return combat_maneuver.resolve_maneuver(state, attacker, decl)
 
-    if decl.type is not DeclarationType.ATTACK and not (devastating or multi_target):
+    if decl.type is not DeclarationType.ATTACK and not (single_target or multi_target):
         # Non-attack declarations don't resolve mechanically yet, but a narrated rider
         # (e.g. Quick Change on a social INTERACT) still surfaces for the DM to voice.
         summary = {

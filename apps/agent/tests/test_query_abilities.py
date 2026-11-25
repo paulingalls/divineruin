@@ -140,6 +140,7 @@ class TestQueryAbilities:
                         "rogue_dirty_trick",
                         "warrior_taunt",
                         "rogue_exploit_weakness",
+                        "rogue_blade_flurry",
                     ):
                         declaration["target_id"] = "foe"
                     if row["id"] in ("rogue_dirty_trick", "warrior_taunt"):
@@ -150,7 +151,7 @@ class TestQueryAbilities:
                     if row["id"] == "rogue_crippling_strike":
                         assert row["combat"] is True
                         assert row["declaration"] == {"kind": "attack", "rider": "crippling_strike"}
-                    if row["id"] == "rogue_exploit_weakness":
+                    if row["id"] in ("rogue_exploit_weakness", "rogue_blade_flurry"):
                         assert row["combat"] is True and "declaration" not in row
                     if recipe := row.get("declaration"):
                         declaration = {

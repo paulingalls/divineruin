@@ -12,6 +12,7 @@ import conditions
 import dice
 import mentor_variants
 from combat_ability_gate import (
+    BLADE_FLURRY,
     CLEAVING_BLOW,
     CRIPPLING_STRIKE,
     CRIPPLING_STRIKE_RIDER,
@@ -26,6 +27,7 @@ from combat_ability_gate import (
     SECOND_WIND,
     SHIELD_BASH,
     SHIELD_BASH_RIDER,
+    SINGLE_TARGET_WEAPON_ABILITIES,
     WHIRLWIND,
     DeclaredAbility,
     declared_ability,
@@ -59,6 +61,10 @@ def require_targets(
         target = state.get_participant(decl.target_id) if decl.target_id else None
         if decl.target_ids or target is None or target.is_ally or damage_target_unavailable(target):
             raise ValueError("Devastating Strike requires one standing foe.")
+    if ability.id == BLADE_FLURRY:
+        target = state.get_participant(decl.target_id) if decl.target_id else None
+        if decl.target_ids or not standing_foe(target):
+            raise ValueError("Blade Flurry requires one standing foe.")
     if ability.id == CLEAVING_BLOW:
         targets = cleave_targets(decl)
         if (
@@ -183,7 +189,7 @@ def attack_ability(decl: Declaration) -> str | None:
     if (
         decl.type is DeclarationType.ABILITY
         and (resolved := declared_ability(decl.action)) is not None
-        and resolved[0].id in (DEVASTATING_STRIKE, *MULTI_TARGET_WEAPON_ABILITIES)
+        and resolved[0].id in (*SINGLE_TARGET_WEAPON_ABILITIES, *MULTI_TARGET_WEAPON_ABILITIES)
     ):
         return resolved[0].id
     if decl.type is DeclarationType.ATTACK and decl.rider is not None:

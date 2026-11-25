@@ -17,10 +17,10 @@ from action_contracts_still import STILL_ZONE_KINDS
 from combat_ability import _find_action
 from combat_ability_gate import (
     CUNNING_ACTION,
-    DEVASTATING_STRIKE,
     ELECTIVE_RIDER_ABILITIES,
     MULTI_TARGET_WEAPON_ABILITIES,
     SHIELD_BASH,
+    SINGLE_TARGET_WEAPON_ABILITIES,
     WAR_CRY,
     combat_ability,
     declared_ability,
@@ -190,7 +190,7 @@ def validate_declaration(
                 return
             if ability.id in MULTI_TARGET_WEAPON_ABILITIES:
                 return
-            if ability.id == DEVASTATING_STRIKE:
+            if ability.id in SINGLE_TARGET_WEAPON_ABILITIES:
                 # A weapon strike, not a ranged line: check its target by melee reach to the wall's nearest point.
                 require_line(next_state, actor.id, declaration.target_id, melee=True)
                 return

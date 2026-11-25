@@ -97,10 +97,16 @@ def attack_roll_inputs(
             player, combat_state, attacker, target, action
         )
 
+    attack_mod = attacker.attack_mod
     if weapon_attack and attacker.type == "player" and attacker.archetype_id == "rogue":
         if combat_state is None:
             raise ValueError("rogue weapon attack requires combat state")
-        attacker_data["sneak_attack_available"] = attacker.sneak_attack_round != combat_state.round_number
+        blade_flurry = action.get("blade_flurry") is True
+        if blade_flurry:
+            attack_mod -= 2
+        attacker_data["sneak_attack_available"] = (
+            blade_flurry or attacker.sneak_attack_round != combat_state.round_number
+        )
         attacker_data["maximize_sneak_attack"] = any(
             c["type"] == STUDIED_WEAKNESS and c["source"] == target.id and c["duration"] == 1
             for c in attacker.conditions
@@ -139,7 +145,6 @@ def attack_roll_inputs(
         + mortaen_ac
         + cathedral_bonus(combat_state, target.id)
     )
-    attack_mod = attacker.attack_mod
     if not weapon_attack and player is not None:
         attack_mod += patron_synergy_combat.spell_attack_bonus(player, target)
     if combat_state is not None:

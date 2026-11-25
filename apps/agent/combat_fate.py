@@ -15,6 +15,7 @@ import conditions
 import zhael_fate
 from combat_ability import _attach_riders, _with_variant
 from combat_ability_gate import (
+    BLADE_FLURRY,
     CRIPPLING_STRIKE,
     DEVASTATING_STRIKE,
     ELECTIVE_ATTACK_RIDERS,
@@ -50,9 +51,16 @@ async def attack_sequence(
     enhancers = attacker.enhancers
     if martial == SHIELD_BASH:
         enhancers = [enhancer for enhancer in enhancers if enhancer != combat_enhancers.SHIELD_BASH]
-    actions = combat_enhancers.attack_sequence(enhancers, action)
     if attack_cursor is None:
         attack_cursor = {}
+    if martial == BLADE_FLURRY:
+        actions = [{**action, "blade_flurry": True}] * 3
+        resolved = declared_ability(packet.declaration.action)
+        assert resolved is not None
+        variant = await combat_martial.pay(attacker.id, resolved, queries=deps["queries"], conn=deps["conn"])
+        attack_cursor["variant_receipt"] = _with_variant({}, variant)
+    else:
+        actions = combat_enhancers.attack_sequence(enhancers, action)
     if martial == DEVASTATING_STRIKE or martial in ELECTIVE_ATTACK_RIDERS.values():
         resolved = declared_ability(martial)
         assert resolved is not None
