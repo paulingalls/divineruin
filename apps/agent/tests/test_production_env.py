@@ -5,6 +5,7 @@ import signal
 import subprocess
 import sys
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -62,12 +63,21 @@ def test_production_requires_server_url(script, url):
     env = dict(startup_env(), AGENT_ENV="production")
     if url is not None:
         env["SERVER_URL"] = url
-    args = [sys.executable, str(AGENT / script)] + (["start"] if script == "agent.py" else [])
+    # -X faulthandler: a child still alive at the deadline dumps every thread's stack on SIGABRT.
+    args = [sys.executable, "-X", "faulthandler", str(AGENT / script)] + (["start"] if script == "agent.py" else [])
+    started = datetime.now(UTC).isoformat()
     process = subprocess.Popen(
         args, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, start_new_session=True
     )
     try:
-        output, _ = process.communicate(timeout=18)
+        try:
+            output, _ = process.communicate(timeout=18)
+        except subprocess.TimeoutExpired:
+            # Super saw a child that had logged its fatal yet was alive at 18s; the start time and
+            # stack tell slow startup apart from a hang after the fatal.
+            process.send_signal(signal.SIGABRT)
+            output, _ = process.communicate(timeout=5)
+            pytest.fail(f"{script} alive 18s after start at {started}; output and stacks:\n{output}")
         assert process.returncode != 0 and "SERVER_URL" in output, output
         assert "failed to connect to livekit" not in output and "Async worker starting" not in output
     finally:
