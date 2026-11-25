@@ -6,6 +6,7 @@ import combat_spatial
 import concealment
 import condition_voice_rules
 import conditions
+import thyra_seasons
 from combat_ability_gate import CUNNING_ACTION, declared_ability
 from combat_fate_rolls import PacketRolls
 from combat_participant import CombatParticipant
@@ -76,6 +77,7 @@ async def hide(
             ally_present=session.allies_present_for(actor.id),
             natural_terrain=await skill_natural_terrain(session, player, "stealth", combat_state=state),
             hearing_only=False,
+            season=await thyra_seasons.skill_season(player, "stealth", conn=conn),
             first_stay=await check_first_stay(player, session, "stealth", player_id=actor.id, conn=conn),
         )
 

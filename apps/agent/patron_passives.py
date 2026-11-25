@@ -9,7 +9,7 @@ SCHOLARS_WARD = "veythar_scholars_ward"
 WARRIORS_ENDURANCE = "kaelen_warriors_endurance"
 
 
-def _acknowledged_passive(player: dict, patron_id: str, ability_id: str) -> bool:
+def acknowledged_passive(player: dict, patron_id: str, ability_id: str) -> bool:
     favor = player.get("divine_favor")
     if favor is None or favor.get("patron") != patron_id or get_patron_tier(favor) is None:
         return False
@@ -25,7 +25,7 @@ def _acknowledged_passive(player: dict, patron_id: str, ability_id: str) -> bool
 
 
 def orenthel_beacon(player: dict) -> bool:
-    return _acknowledged_passive(player, "orenthel", ORENTHEL_BEACON)
+    return acknowledged_passive(player, "orenthel", ORENTHEL_BEACON)
 
 
 def dawns_resilience(player: dict) -> dict | None:
@@ -44,11 +44,11 @@ def dawns_resilience(player: dict) -> dict | None:
 
 
 def scholars_ward(player: dict) -> bool:
-    return _acknowledged_passive(player, "veythar", SCHOLARS_WARD)
+    return acknowledged_passive(player, "veythar", SCHOLARS_WARD)
 
 
 def warriors_endurance(player: dict) -> int:
-    return 5 if _acknowledged_passive(player, "kaelen", WARRIORS_ENDURANCE) else 0
+    return 5 if acknowledged_passive(player, "kaelen", WARRIORS_ENDURANCE) else 0
 
 
 def effective_max_hp(player: dict, base_max: int, *, override_delta: int = 0) -> int:

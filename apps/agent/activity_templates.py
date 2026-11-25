@@ -216,14 +216,12 @@ def _format_replacement_notice(ctx: dict) -> str:
 
 
 def _format_quality_note(ctx: dict) -> str:
-    """Render the M5.3 crafting quality property for the narration prompt.
-
-    Exceptional rolls carry a bonus_property, Partial rolls a flaw (both narration-only
-    {id,name,description} from quality_outcomes); Success/Failure carry neither. Returns a
-    sensory cue line for the DM to weave in, or "" when there's nothing to surface.
-    """
     bonus = ctx.get("bonus_property")
     if bonus:
+        if ctx.get("craft_blessing") is not None:
+            return (
+                f"Name Aelora's Craft Blessing as the source of this property — {bonus['name']}: {bonus['description']}"
+            )
         return f"Exceptional touch — {bonus['name']}: {bonus['description']}"
     flaw = ctx.get("flaw")
     if flaw:

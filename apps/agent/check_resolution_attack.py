@@ -10,6 +10,7 @@ import random
 from dataclasses import dataclass
 
 import patron_synergy_combat
+import thyra_seasons
 from check_resolution import D20CheckCore, D20Roll, roll_bonus_dice
 from condition_catalog import STUDIED_WEAKNESS
 from condition_restrictions import (
@@ -256,11 +257,13 @@ def finish_attack(
     synergy_clause_id = None
     veiled_strike = attacker_data.get("veiled_strike")
     if hit:
+        season = attacker_data.get("season")
         damage_notation = weapon.get("damage", "1d4")
-        damage = dice_roll(damage_notation, rng=rng).total if damage_notation != "0" else 0
-        if critical and damage_notation != "0":
-            crit_result = dice_roll(damage_notation, rng=rng)
-            damage += crit_result.total
+        if damage_notation != "0":
+            damage = dice_roll(damage_notation, rng=rng).total
+            if critical:
+                damage += dice_roll(damage_notation, rng=rng).total
+            damage += thyra_seasons.damage_bonus(attacker_data, season, damage_type)
         damage += patron_synergy_combat.weapon_damage_bonus(attacker_data, critical, rng=rng)
         if weapon.get("attack_source") != "catalog" and weapon.get("damage_attribute", True) and damage_notation != "0":
             damage += weapon_attribute_modifier(attacker_data, weapon)
@@ -318,6 +321,7 @@ def finish_attack(
             synergy_damage, synergy_damage_type = patron_synergy_combat.outnumbered_rider(critical, rng=rng)
         else:
             synergy_damage, synergy_damage_type = patron_synergy_combat.critical_rider(attacker_data, critical, rng=rng)
+            synergy_damage += thyra_seasons.damage_bonus(attacker_data, season, synergy_damage_type)
         damage += synergy_damage
         synergy_damage = int(synergy_damage * damage_mult)
         bonus_damage = int(bonus_damage * damage_mult)

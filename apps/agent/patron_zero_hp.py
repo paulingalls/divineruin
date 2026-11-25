@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import db_queries
 import temp_hp
+import thyra_seasons
 from combat_down import is_terminally_down, revive
 from combat_participant import CombatParticipant
 from kaelen_gift import trigger_iron_resolve
@@ -73,8 +74,9 @@ async def lock_lethal_damage_players(
     )
 
 
-def _embrace_hp(target: CombatParticipant) -> int:
-    return max(1, target.hp_max // 2)
+async def _embrace_hp(target: CombatParticipant, player: dict | None, *, conn: "Connection | None") -> int:
+    season = await thyra_seasons.season_for(player, conn=conn)
+    return min(target.hp_max, max(1, target.hp_max // 2) + thyra_seasons.healing_bonus(season))
 
 
 async def _embrace_donor(
@@ -117,7 +119,8 @@ async def trigger_dawns_embrace(
         return {}
     donor_id, donor_name = donor
     await write_state(donor_id, {"spent": True}, gift_id=DAWNS_EMBRACE, conn=conn)
-    revive(target, _embrace_hp(target))
+    player = players[target.id] if target.type == "player" else None
+    revive(target, await _embrace_hp(target, player, conn=conn))
     return {
         "gift_triggered": "Dawn's Embrace",
         "gift_owner": {"id": donor_id, "name": donor_name},
@@ -171,6 +174,7 @@ async def provisional_ward_verdict(
     assert target is not None
     _, result = apply(target, action, result, state=state)
     if result.target_killed:
+        player = None
         temporary = temp_hp.player_pool(target)
         if _drops_to_zero(target, target.hp_current, result.target_hp_remaining):
             # The phase transaction sees a ward an earlier packet spent before commit.
@@ -183,7 +187,11 @@ async def provisional_ward_verdict(
             session, state, target, players=None, queries=queries, conn=conn
         ):
             return with_landed_damage(
-                result, result.damage, target.hp_current, temporary=temporary, hp_floor=_embrace_hp(target)
+                result,
+                result.damage,
+                target.hp_current,
+                temporary=temporary,
+                hp_floor=await _embrace_hp(target, player, conn=conn),
             )
     return result
 

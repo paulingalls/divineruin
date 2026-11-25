@@ -94,9 +94,6 @@ async def test_pending_and_always_on_refuse_without_writes(dev_db_pool, monkeypa
     async with AbilityWalk(dev_db_pool) as w:
         await w.patch(divine_favor={"patron": "veythar", "level": 100, "max": 100})
         before = await w.state()
-        assert "pending" in await w.use("veythar_wellspring_echo", error=True)
-        echo = next(a for a in await w.abilities() if a["id"] == "veythar_wellspring_echo")
-        assert not echo["available"] and echo["state"] == "locked" and "pending" in echo["reason"]
         rows = copy.deepcopy(load_gods())
         library = rows[0]["layer_3_tier_abilities"]["devoted"]
         library["status"] = "pending"

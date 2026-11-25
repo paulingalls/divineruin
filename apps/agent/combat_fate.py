@@ -12,6 +12,7 @@ import combat_melee_approach
 import combat_resolution
 import concealment
 import conditions
+import thyra_seasons
 import zhael_fate
 from combat_ability import _attach_riders, _with_variant
 from combat_ability_gate import (
@@ -108,6 +109,7 @@ async def _prepare_swing(
         act,
         player=player,
         defender=defender,
+        season=await thyra_seasons.season_for(player, conn=conn),
         veiled_strike=strike_mode,
     )
     return attacker_data, check_resolution_attack.prepare_attack(

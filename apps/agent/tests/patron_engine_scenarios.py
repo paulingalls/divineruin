@@ -13,6 +13,7 @@ from test_heal_synergies_place import SCENARIOS as place_healing
 from test_kaelen_war_songs import SCENARIOS as war_songs
 from test_marshal_death_save import SCENARIOS as marshal_death_save
 from test_patron_engine_aelora import SCENARIOS as aelora
+from test_patron_engine_aelora_craft import SCENARIOS as aelora_craft
 from test_patron_engine_aelora_shield import SCENARIOS as aelora_shield
 from test_patron_engine_beacon import SCENARIOS as beacon
 from test_patron_engine_dawns_embrace import SCENARIOS as dawns_embrace
@@ -24,10 +25,12 @@ from test_patron_engine_nythera import SCENARIOS as nythera
 from test_patron_engine_orenthel import SCENARIOS as orenthel
 from test_patron_engine_syrath import SCENARIOS as syrath
 from test_patron_engine_thyra import SCENARIOS as thyra
+from test_patron_engine_thyra_seasons import SCENARIOS as thyra_seasons
 from test_patron_engine_thyra_thornwall import SCENARIOS as thyra_thornwall
 from test_patron_engine_thyra_wrath import SCENARIOS as thyra_wrath
 from test_patron_engine_valdris import SCENARIOS as valdris
 from test_patron_engine_valdris_verdict import SCENARIOS as valdris_verdict
+from test_patron_engine_veythar_wellspring import SCENARIOS as wellspring
 from test_patron_passives import SCENARIOS as passives
 from test_patron_senses import SCENARIOS as senses
 from test_syrath_two_round_veil import SCENARIOS as two_round_veil
@@ -39,7 +42,9 @@ from test_zhael_oracle_twice_woven import SCENARIOS as twice_woven
 ENGINE_SCENARIOS = {
     **valdris,
     **valdris_verdict,
+    **wellspring,
     **aelora,
+    **aelora_craft,
     **aelora_shield,
     **beacon,
     **dawns_mercy,
@@ -65,6 +70,7 @@ ENGINE_SCENARIOS = {
     **two_round_veil,
     **veiled_strikes,
     **thyra,
+    **thyra_seasons,
     **thyra_wrath,
     **thyra_thornwall,
     **zhael,

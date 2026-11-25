@@ -6,7 +6,7 @@ import re
 from functools import cache
 from pathlib import Path
 
-from proof_content_sql import seed_tables, sql_reads
+from proof_content_sql import content_literals, seed_tables, sql_reads
 
 SHARED_CONTENT = {"content/players.json"}
 SHARED_INPUTS = {"scripts/seed_content.py", "scripts/migrations/**", *SHARED_CONTENT}
@@ -118,18 +118,6 @@ def behavioral_closure(entry, graph):
     return found
 
 
-def content_literals(path, content):
-    tree = ast.parse(Path(path).read_text())
-    for node in ast.walk(tree):
-        body = getattr(node, "body", None)
-        if isinstance(body, list) and body and isinstance(body[0], ast.Expr):
-            value = body[0].value
-            if isinstance(value, ast.Constant) and isinstance(value.value, str):
-                body.pop(0)
-    literals = {n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)}
-    return {source for source in content if source in literals or Path(source).name in literals}
-
-
 def load_families(content):
     path = "scripts/proof-families.json"
     rows = json.loads(Path(path).read_text())
@@ -223,14 +211,18 @@ def runtime_closure(entry, graph):
 
 def task_inventory(acceptance, e2e, graph, families):
     inventory = {}
-    cache = {}
+    runtime_closures = {}
     behavioral, literals = {}, {}
     content = content_inventory()
 
     def closure(path):
-        if path not in cache:
-            cache[path] = runtime_closure(path, graph)
-        return cache[path]
+        if path not in runtime_closures:
+            runtime_closures[path] = runtime_closure(path, graph)
+        return runtime_closures[path]
+
+    @cache
+    def read_sql(path):
+        return sql_reads(path, content)
 
     for task, paths in {**{t: [p] for t, p in acceptance.items()}, **e2e}.items():
         memberships = set()
@@ -262,10 +254,13 @@ def task_inventory(acceptance, e2e, graph, families):
             for module in behavioral[entry]:
                 if module not in literals:
                     literals[module] = content_literals(module, content)
+        modules = behavioral.get(entry, set())
+        helpers = {p for p in modules - {entry} if p.startswith("apps/agent/tests/")}
         inventory[task] = {
-            "content_closure": behavioral.get(entry, set()),
-            "content_direct": literals.get(entry, set()) | (sql_reads(entry, content) if entry in graph else set()),
-            "content_reads": set().union(*(literals[p] for p in behavioral.get(entry, set())), set()),
+            "content_closure": modules,
+            "content_direct": literals.get(entry, set()) | (read_sql(entry) if entry in graph else set()),
+            "content_helper_reads": set().union(*(literals[p] | read_sql(p) for p in helpers)),
+            "content_literals": set().union(*(literals[p] for p in modules)),
             "path": entry,
             "family": memberships.pop(),
             "preferred": preferred,
@@ -454,9 +449,10 @@ def content_readers(inventory, families, content):
             t
             for t, m in inventory.items()
             if source in m["content_direct"]
+            or source in m["content_helper_reads"]
             or (
                 source in families[m["family"]]["reads"]
-                and (roots & m["content_closure"] or source in m["content_reads"] or m["family"] == "mobile-e2e")
+                and (roots & m["content_closure"] or source in m["content_literals"] or m["family"] == "mobile-e2e")
             )
         }
     return readers
