@@ -8,6 +8,7 @@ from livekit.agents.llm import ToolError
 
 import ability_persistence
 import check_resolution_attack
+import combat_spatial
 from combat_down import DEATH_SAVE_LIMIT
 from patron_synergy import has_engine_synergy
 
@@ -118,6 +119,18 @@ def pending_rally(state: CombatState | None, ally_id: str) -> tuple[str, ...]:
     if recipient is None or not recipient.is_ally:
         return ()
     return tuple(sorted(source for source, ally in pending.items() if ally == ally_id))
+
+
+def hearth_save_advantage(state: CombatState | None, ally_id: str) -> bool:
+    from aelora_hearthfire import _occupants
+
+    if state is None or not state.hearthfire_zones:
+        return False
+    recipient = state.get_participant(ally_id)
+    if recipient is None or not recipient.is_ally:
+        return False
+    spatial = combat_spatial.require_spatial(state)
+    return any(p.id == ally_id for zone in state.hearthfire_zones for p in _occupants(state, spatial, zone))
 
 
 def consume_rally(state: CombatState | None, ally_id: str, sources: tuple[str, ...]) -> None:
