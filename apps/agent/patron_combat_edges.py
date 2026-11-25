@@ -7,6 +7,7 @@ import asyncpg
 from livekit.agents.llm import ToolError
 
 import ability_persistence
+import aelora_hearthfire
 import combat_spatial
 import temp_hp
 import thyra_thornwall
@@ -27,6 +28,7 @@ WILDMOTHERS_WRATH = "thyra_wildmothers_wrath"
 SCALES_VERDICT = "valdris_the_scales_verdict"
 COMMUNITY_SHIELD = "aelora_community_shield"
 PARTIAL_ROUND_GIFTS = {
+    aelora_hearthfire.GIFT: "Hearthfire",
     thyra_thornwall.GIFT: "Thornwall",
     VEILSTEP: "Veilstep",
     THRESHOLD_WALK: "Threshold Walk",
@@ -247,6 +249,7 @@ async def reward_worthy_foe(state: CombatState, target: CombatParticipant, *, qu
 DESTINATION_GIFTS = {VEILSTEP, thyra_thornwall.GIFT}
 
 ACTIVE_GIFTS = {
+    aelora_hearthfire.GIFT: aelora_hearthfire.place,
     thyra_thornwall.GIFT: thyra_thornwall.thornwall,
     BATTLE_CRY: battle_cry,
     JUDGMENT: kaelens_judgment,

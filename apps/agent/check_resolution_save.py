@@ -219,7 +219,7 @@ def roll_participant_save(
     # passes the load gate must also expand here — else it slips through to resolve_saving_throw
     # unexpanded and raises "Unknown save type" mid-fight, the load-gate/runtime divergence this SSOT exists to prevent.
     from architect_encounter import cathedral_bonus
-    from encounter_facts import pending_rally
+    from encounter_facts import hearth_save_advantage, pending_rally
 
     save_type = _ATTR_FULL.get(save.lower(), save.lower())
     item_advantage = save_type in participant.save_advantages
@@ -237,7 +237,7 @@ def roll_participant_save(
         rng=rng,
         dc_mod=dc_mod,
         bonus_dice_eligible=bonus_dice_eligible,
-        advantage=advantage or item_advantage,
+        advantage=advantage or item_advantage or hearth_save_advantage(combat_state, participant.id),
         scholars_ward=participant.scholars_ward,
         modifier_bonus=cathedral_bonus(combat_state, participant.id),
         rally_sources=pending_rally(combat_state, participant.id),

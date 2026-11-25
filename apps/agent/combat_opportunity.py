@@ -193,12 +193,22 @@ async def prepare_held(
         del route["window"], route["spends"]
 
     facts, budget = route["facts"], route["budget"]
+    progress = None
+    if fate_rolls is not None and (session.fate_lock.locked() or head.get("roll_steps")):
+        progress = PacketRolls(
+            fate_rolls, head.setdefault("roll_steps", {}), packet_deps["queries"], packet_deps["conn"]
+        ).scope("opportunity_traversal")
     assert action is not None
     while route["next_exit"] < len(route["exits"]):
         ordinal = route["next_exit"]
         exit_point = route["exits"][ordinal]
+        moved = await melee.resolve_leg(
+            session, state, mover, facts, exit_point["point"], route["mode"], budget, progress
+        )
+        if moved is None:
+            return None
+        facts = route["facts"] = moved
         route["next_exit"] += 1
-        facts = melee.apply_leg(state, mover, facts, exit_point["point"], route["mode"], budget)
         if not facts["resolved"]:
             break
         candidate = movement_candidate(state, head, action, exit_point, exit_point["weapons"], ordinal)
@@ -217,7 +227,12 @@ async def prepare_held(
             remaining = budget["remaining"]
             if spent > remaining and math.isclose(spent, remaining, rel_tol=1e-12, abs_tol=1e-12):
                 budget["remaining"] = spent
-        facts = melee.apply_leg(state, mover, facts, route["endpoint"], route["mode"], budget)
+        moved = await melee.resolve_leg(
+            session, state, mover, facts, route["endpoint"], route["mode"], budget, progress
+        )
+        if moved is None:
+            return None
+        facts = moved
         if facts["resolved"]:
             melee.finish(facts, route["target"], route["reach"])
     melee.cache_held(state, head, facts, budget)
