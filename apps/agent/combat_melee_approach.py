@@ -216,13 +216,7 @@ async def prepare_packet(
     progress: "PacketRolls | None",
 ) -> dict | None:
     approach = progress.scope("melee_approach") if progress is not None else None
-    if approach is not None and (settled := approach.steps.get("settled")) is not None:
-        budget.update(settled["budget"])
-        return settled["movement"]
-    movement = await prepare(session, state, actor, target, action, budget, progress=approach)
-    if approach is not None and movement is not None and "hearthfire_entries" in movement:
-        approach.steps["settled"] = {"movement": movement, "budget": budget}
-    return movement
+    return await prepare(session, state, actor, target, action, budget, progress=approach)
 
 
 def cache_held(state, head: dict, facts: dict, budget: dict) -> None:
