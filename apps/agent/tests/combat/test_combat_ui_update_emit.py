@@ -32,9 +32,7 @@ def _saves_always_resolver():
     """A check_resolution_save mock whose every roll succeeds — so any save-to-clear
     condition at the Beat-4 tick gets removed. Used to drive the post-tick assertion."""
     mock = MagicMock()
-    result = MagicMock()
-    result.success = True
-    mock.resolve_saving_throw = MagicMock(return_value=result)
+    mock.roll_participant_save.return_value = MagicMock(success=True, rally_sources=())
     return mock
 
 
