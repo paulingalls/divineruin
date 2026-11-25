@@ -29,7 +29,7 @@ MORTAEN = "mortaen_last_vigil"
 ZHAEL = "zhael_threaded_blade"
 GOBLIN, OTHER = "goblin_one", "goblin_two"
 PRIOR = {"ally_downers": [], "attacked": [], "death_save_success_round": {}, "misses": {}, "once_spent": {}}
-EMPTY = {**PRIOR, "party_aggressors": {}}
+EMPTY = {**PRIOR, "party_aggressors": {}, "rally_pending": {}}
 
 
 @contextmanager
