@@ -9,6 +9,7 @@ import db_mutations_resonance
 import db_queries
 import patron_gateway
 import patron_senses
+import thyra_seasons
 import unbound_tools
 import veythar_wellspring
 import zhael_fate
@@ -98,7 +99,8 @@ async def query_patron(
         elif ability["id"] == DAWNS_EMBRACE:
             ability["activation_hint"] = (
                 "Triggers automatically when damage drops another party player or the companion to 0 HP. "
-                "They stand at half maximum HP, rounded down with a minimum of 1."
+                "They stand at half maximum HP, rounded down with a minimum of 1. "
+                "A Thyra follower in spring restores 1 extra HP, up to maximum."
             )
         elif ability["id"] == COMMUNITY_SHIELD:
             ability["activation_hint"] = (
@@ -138,6 +140,12 @@ async def query_patron(
         senses["deaths_awareness"] = await patron_senses.deaths_awareness(session, player, queries=queries)
     elif patron_id == "nythera":
         senses["horizon_sense"] = await patron_senses.horizon_sense(session, player)
+    if (season := await thyra_seasons.season_for(player)) is not None:
+        senses["seasonal_attunement"] = {
+            "id": thyra_seasons.GIFT,
+            "season": season,
+            "active_bonus": thyra_seasons.ACTIVE_BONUS[season],
+        }
     return json.dumps(
         {
             "patron_id": patron_id,

@@ -225,6 +225,18 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     implementation_id: blessing,
     recharge: "always",
   });
+  const season = "thyra_seasonal_attunement";
+  expect(
+    validateGods(catalog).find((god) => god.god_id === "thyra")?.layer_3_tier_abilities
+      .acknowledged,
+  ).toMatchObject({
+    id: season,
+    status: "active",
+    resolution: "engine",
+    implementation_id: season,
+    recharge: "always",
+  });
+  passives.add(season);
   const engine = new Set([
     blessing,
     "zhael_lucky",
@@ -250,7 +262,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     ),
   ).toEqual(engine);
   const pending = abilities.filter((a) => !narrated.has(a.id) && !engine.has(a.id));
-  expect(pending).toHaveLength(4);
+  expect(pending).toHaveLength(3);
   for (const ability of abilities.filter((a) => passives.has(a.id))) {
     expect([ability.recharge, ability.implementation_id]).toEqual(["always", ability.id]);
   }

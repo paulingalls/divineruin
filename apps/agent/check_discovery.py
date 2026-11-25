@@ -30,6 +30,7 @@ import event_types as E
 import lost_scout_scene
 import rules_engine
 import still_encounter
+import thyra_seasons
 from action_sound_content import ACTION_SOUND_EXPORTS, publish_action_sound
 from combat_terrain import skill_natural_terrain
 from condition_consume import consume_beneficial_conditions, serialize_combat_check
@@ -154,8 +155,6 @@ async def _check_discover_impl(
     player = await queries.get_player(player_id)
     if player is None:
         raise ToolError(f"Player '{player_id}' not found.")
-    # Validate the stored conditions at this read boundary (M4.4 story-008): a corrupt row otherwise
-    # reaches get_condition_effects and raises a raw KeyError instead of a DM-narratable ToolError.
     validated_player_conditions(player, player_id)
     player = await choir_scene.check_data(session, player, queries=queries)
 
@@ -273,6 +272,7 @@ async def _resolve_discovery(
         first_stay=await check_first_stay(player, session, skill_lower, player_id=player_id, conn=conn),
         natural_terrain=await skill_natural_terrain(session, player, skill_lower, content_mod=content),
         hearing_only=hearing_only,
+        season=await thyra_seasons.skill_season(player, skill_lower, conn=conn),
     )
     if result.auto_fail:
 

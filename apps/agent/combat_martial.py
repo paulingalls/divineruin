@@ -53,7 +53,9 @@ async def second_wind(
     await pay(actor.id, resolved, queries=queries, conn=conn)
     combat_recharge.spend(actor, combat_recharge.SECOND_WIND_BUDGET, state.round_number)
     rolled = dice.roll("1d10").total
-    healed = await combat_spell_heal.restore(actor, rolled + actor.level, conn=conn, mutations=mutations)
+    healed = await combat_spell_heal.restore(
+        actor, rolled + actor.level, conn=conn, mutations=mutations, queries=queries
+    )
     return {
         "actor_id": actor.id,
         "resolved": True,

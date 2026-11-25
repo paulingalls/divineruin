@@ -47,7 +47,8 @@ async def settle(state: CombatState, *, conn, mutations) -> set[str]:
             continue
         if not target.is_ally or is_terminally_down(target):
             continue
-        await restore(target, _remaining(condition), conn=conn, mutations=mutations)
+        remaining = _remaining(condition)
+        await restore(target, remaining, conn=conn, mutations=mutations, heals=remaining)
         regenerated.add(target.id)
     return regenerated
 

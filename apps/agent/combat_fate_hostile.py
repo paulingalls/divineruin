@@ -4,6 +4,7 @@ from dataclasses import asdict
 
 import check_resolution_attack
 import combat_wrongdoing
+import thyra_seasons
 import zhael_fate
 from combat_action_availability import begin_execution
 from combat_attack_roll import (
@@ -38,7 +39,14 @@ async def roll_hostile(session, state, head, declaration, action, contribution, 
             player = await attack_player(attacker, queries=packet_deps["queries"], conn=packet_deps["conn"])
             defender = await attack_player(target, queries=packet_deps["queries"], conn=packet_deps["conn"])
             attacker_data, ac, attack_mod = attack_roll_inputs(
-                attacker, target, ac_bonus, state, action, player=player, defender=defender
+                attacker,
+                target,
+                ac_bonus,
+                state,
+                action,
+                player=player,
+                defender=defender,
+                season=await thyra_seasons.season_for(player, conn=packet_deps["conn"]),
             )
             prepared = check_resolution_attack.prepare_attack(
                 attacker_data, action, ac, attack_mod=attack_mod, target_conditions=target.conditions
@@ -88,6 +96,7 @@ async def roll_hostile(session, state, head, declaration, action, contribution, 
             combat_state=state,
             player=player,
             defender=defender,
+            season=await thyra_seasons.season_for(player, conn=packet_deps["conn"]),
         )
     combat_wrongdoing.record_attack(state, attacker, target)
     record_beacon_attack(state, attacker, target, result)
