@@ -207,6 +207,7 @@ class TestActivation:
                 "warrior_whirlwind",
                 "warrior_iron_stance",
                 "rogue_vanish",
+                "rogue_smoke_bomb",
             ) and (spell is None or spell.heal is None):
                 action["target_id"] = "goblin_scout_1"
             declaration = {"player_1": action}

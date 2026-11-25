@@ -36,6 +36,7 @@ ELECTIVE_RIDER_ABILITIES = frozenset((*ELECTIVE_ATTACK_RIDERS.values(), CRIPPLIN
 
 IRON_STANCE_ABILITY = "warrior_iron_stance"
 VANISH = "rogue_vanish"
+SMOKE_BOMB = "rogue_smoke_bomb"
 SECOND_WIND = "warrior_second_wind"
 RALLYING_SHOUT = "warrior_rallying_shout"
 
@@ -73,7 +74,14 @@ def combat_ability(ability: abilities.Ability) -> bool:
         ability.spell_id is not None
         or ability.applies_condition is not None
         or ability.id
-        in (SECOND_WIND, VANISH, EXPLOIT_WEAKNESS, *SINGLE_TARGET_WEAPON_ABILITIES, *MULTI_TARGET_WEAPON_ABILITIES)
+        in (
+            SECOND_WIND,
+            VANISH,
+            SMOKE_BOMB,
+            EXPLOIT_WEAKNESS,
+            *SINGLE_TARGET_WEAPON_ABILITIES,
+            *MULTI_TARGET_WEAPON_ABILITIES,
+        )
         or ability.id in MARSHAL_ORDERS
     )
 
