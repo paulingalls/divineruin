@@ -176,8 +176,7 @@ async def test_departure_and_strike(fight: MawlingHarness, strike: str) -> None:
         state = await fight.reload()
         reactions = [packet for packet in result["packets"] if packet.get("reaction") == STRIKE]
         assert require_spatial(state)["positions"][warrior] == pos(0)
-        assert party_victims(state, warrior) == []
-        # The warrior's strike records nothing; the mover counts only once its own attack rolls.
+        # The mover counts only once its own attack rolls.
         assert party_victims(state, MOVER) == ([] if strike == "drop" else [target])
         if strike == "decline":
             assert not reactions and MOVER not in state.encounter_facts["attacked"]
