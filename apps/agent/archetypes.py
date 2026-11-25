@@ -19,6 +19,8 @@ import logging
 from dataclasses import dataclass
 from typing import Literal, get_args
 
+from weapon_proficiency import parse_weapon_proficiencies
+
 logger = logging.getLogger("divineruin.archetypes")
 
 HPCategory = Literal["martial", "primal_divine", "arcane_shadow"]
@@ -134,7 +136,7 @@ def parse_archetype_row(archetype_id: str, data: dict) -> Chassis:
             ),
             save_proficiencies=tuple(data["save_proficiencies"]),
             armor_proficiencies=tuple(data["armor_proficiencies"]),
-            weapon_proficiencies=tuple(data["weapon_proficiencies"]),
+            weapon_proficiencies=parse_weapon_proficiencies(archetype_id, data.get("weapon_proficiencies")),
             skill_options=tuple(skills["options"]),
             num_skill_choices=skills["num_choices"],
             magic_source=magic_source,
