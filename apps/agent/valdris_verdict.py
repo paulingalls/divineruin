@@ -26,7 +26,7 @@ def _living(participant: CombatParticipant) -> bool:
     return participant.hp_current > 0 and not participant.is_fallen and not participant.is_dead
 
 
-def _judged_foe(state: CombatState, target_id: str | None) -> CombatParticipant:
+def _judged_foe(state: CombatState, target_id: str) -> CombatParticipant:
     if target_id in still_encounter.hidden_ids(state):
         raise ToolError("An unrevealed Still anchor cannot be judged.")
     if target_id in still_encounter.protected_ids(state):
@@ -34,7 +34,7 @@ def _judged_foe(state: CombatState, target_id: str | None) -> CombatParticipant:
     choir = state.choir_encounter
     if choir is not None and target_id == choir["owner_id"] and choir["phase"] != "exposed":
         raise ToolError("The Choir is protected until its core is exposed.")
-    foe = state.get_participant(target_id) if target_id else None
+    foe = state.get_participant(target_id)
     if foe is None or foe.is_ally or foe.is_structure or not _living(foe):
         raise ToolError(f"{NAME} requires a living hostile creature in this fight.")
     return foe
@@ -47,6 +47,8 @@ async def scales_verdict(
     if state is None:
         raise ToolError(f"{NAME} can only be used in combat.")
     require_complete_round(state, SCALES_VERDICT)
+    if not target_id:
+        raise ToolError(f"Use target_id to select one living hostile creature for {NAME}.")
     working = deepcopy(state)
     actor = working.get_participant(actor_id)
     if actor is None or actor.type != "player" or not _living(actor):

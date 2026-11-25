@@ -173,7 +173,7 @@ async def activate(
             raise ToolError("Beyond the Horizon takes one location. Use target_id.")
         return await patron_gateway.activate(context, target_id=target_id)
     if id == SCALES_VERDICT:
-        if not target_id or target_ids is not None or condition is not None:
+        if target_ids is not None or condition is not None:
             raise ToolError("Use target_id to select one living hostile creature for The Scale's Verdict.")
         return await patron_ability_tools.activate_combat_damage(context.userdata, id, target_id=target_id)
     if id == WILDMOTHERS_WRATH and condition is None:
