@@ -24,6 +24,7 @@ from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, Field
 
+from combat_ability_gate import REPOSITION
 from item_effects import CONSUME_PREFIX
 from reshape_payloads import Destination, ReshapeSelection
 
@@ -131,6 +132,15 @@ class MoveDecl(BaseModel):
     reshape: list[ReshapeSelection] = Field(description=RESHAPE_DESCRIPTION)
 
 
+class RepositionDecl(BaseModel):
+    """Order a standing ally to move up to 15 feet immediately."""
+
+    kind: Literal["reposition"]
+    actor_id: str = Field(description="The Marshal issuing the order.")
+    target_id: str = Field(description="The standing ally who moves.")
+    destination: Destination
+
+
 class DefendDecl(BaseModel):
     """Make no attack and gain +2 AC until the next phase."""
 
@@ -150,7 +160,16 @@ class RetreatDecl(BaseModel):
 
 
 DeclVariant = Union[
-    MultiattackDecl, AttackDecl, AbilityDecl, InteractDecl, ConsumeDecl, ManeuverDecl, MoveDecl, DefendDecl, RetreatDecl
+    MultiattackDecl,
+    AttackDecl,
+    AbilityDecl,
+    InteractDecl,
+    ConsumeDecl,
+    ManeuverDecl,
+    MoveDecl,
+    RepositionDecl,
+    DefendDecl,
+    RetreatDecl,
 ]
 DeclPayload = Annotated[DeclVariant, Field(discriminator="kind")]
 
@@ -162,6 +181,7 @@ DECL_VARIANTS: tuple[type[BaseModel], ...] = (
     ConsumeDecl,
     ManeuverDecl,
     MoveDecl,
+    RepositionDecl,
     DefendDecl,
     RetreatDecl,
 )
@@ -208,6 +228,13 @@ def _raw(decl: DeclVariant) -> dict:
         elif decl.action in still_encounter.SEARCH_ACTIONS:
             raw["target_id"] = still_encounter.SEARCH_TARGET
         return raw
+    if isinstance(decl, RepositionDecl):
+        return {
+            "type": "ability",
+            "action": REPOSITION,
+            "target_id": decl.target_id or None,
+            "destination": decl.destination.model_dump(),
+        }
     if isinstance(decl, MoveDecl):
         return {
             "type": "maneuver",

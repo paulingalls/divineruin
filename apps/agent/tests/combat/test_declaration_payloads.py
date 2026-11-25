@@ -366,7 +366,7 @@ def test_a_repeated_actor_fails_loud():
 
 def test_variant_kinds_match_the_engine_declaration_types():
     kinds = {typing.get_args(v.model_fields["kind"].annotation)[0] for v in DECL_VARIANTS}
-    assert kinds == {t.value for t in DeclarationType} | {"move", "consume"}
+    assert kinds == {t.value for t in DeclarationType} | {"move", "consume", "reposition"}
 
 
 _ENGINE_CASES = [
@@ -399,7 +399,7 @@ def test_declare_phase_schema_advertises_declarations_and_retreat_rider():
         for branch in declarations
         for kind in [schema["$defs"][branch["$ref"].split("/")[-1]]["properties"]["kind"]]
     }
-    assert kinds == {t.value for t in DeclarationType} | {"move", "consume"}
+    assert kinds == {t.value for t in DeclarationType} | {"move", "consume", "reposition"}
     assert "trigger" not in json.dumps(schema)
     retreat = schema["$defs"]["RetreatDecl"]
     assert "rider" in retreat["required"]

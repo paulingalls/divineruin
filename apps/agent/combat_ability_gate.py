@@ -40,10 +40,13 @@ ELECTIVE_RIDER_ABILITIES = frozenset((*ELECTIVE_ATTACK_RIDERS.values(), CRIPPLIN
 SECOND_WIND = "warrior_second_wind"
 RALLYING_SHOUT = "warrior_rallying_shout"
 
+REPOSITION = "marshal_reposition"
+REPOSITION_FEET = 15
+
 MARSHAL_ORDERS = frozenset(
     {
         DIRECT_STRIKE,
-        "marshal_reposition",
+        REPOSITION,
         COORDINATED_ASSAULT,
         "marshal_field_medic_order",
         SACRIFICE_PLAY,
