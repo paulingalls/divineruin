@@ -49,6 +49,7 @@ class BonusDie:
     source: str  # condition type that granted the die, e.g. "blessed"
     dice: str  # dice notation, e.g. "1d4"
     scopes: frozenset[str]  # roll kinds it applies to: subset of {"attack", "save", "check"}
+    inspire_attack_upgrade: bool = False
 
 
 @dataclass(frozen=True)

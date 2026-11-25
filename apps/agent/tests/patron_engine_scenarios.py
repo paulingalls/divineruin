@@ -7,8 +7,11 @@ from test_encounter_facts_defense import SCENARIOS as defense
 from test_encounter_facts_heal import SCENARIOS as appointed_mercy
 from test_encounter_facts_outnumbered import SCENARIOS as outnumbered
 from test_encounter_facts_renewal import SCENARIOS as renewal
+from test_fallen_ally_guard import SCENARIOS as fallen_ally_guard
 from test_heal_synergies import SCENARIOS as dawns_mercy
 from test_heal_synergies_place import SCENARIOS as place_healing
+from test_kaelen_war_songs import SCENARIOS as war_songs
+from test_marshal_death_save import SCENARIOS as marshal_death_save
 from test_patron_engine_aelora import SCENARIOS as aelora
 from test_patron_engine_aelora_shield import SCENARIOS as aelora_shield
 from test_patron_engine_beacon import SCENARIOS as beacon
@@ -41,6 +44,9 @@ ENGINE_SCENARIOS = {
     **crit_edges,
     **encounter_facts,
     **defense,
+    **fallen_ally_guard,
+    **marshal_death_save,
+    **war_songs,
     **appointed_mercy,
     **renewal,
     **outnumbered,
