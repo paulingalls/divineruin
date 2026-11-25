@@ -21,7 +21,7 @@ class CraftingOutcome:
     tier: str  # exceptional | success | partial | failure (spec bands, M5.3)
     crafted_item_id: str | None
     crafted_item_name: str | None
-    bonus_property: dict | None  # {id,name,description} on exceptional, else None
+    bonus_property: dict | None  # {id,name,description} from the exceptional quality table
     flaw: dict | None  # {id,name,description} on partial, else None
     materials_consumed: list[str]
     materials_returned: list[str]
@@ -66,9 +66,8 @@ def resolve_crafting(
     miswired producer surfaces immediately instead of mis-gating the craft.
 
     `quality_tables` is the recipe category's parsed quality_outcomes row (story-002);
-    the crafting_resolution orchestrator fetches it and threads it in. On an Exceptional
-    roll a bonus_property is drawn from it, on Partial a flaw; it is None-tolerant so a
-    missing content row degrades to a plain item rather than crashing the pure resolver.
+    Exceptional and blessed Success can draw a bonus property; Partial can draw a flaw.
+    A missing quality table yields an item without a quality property.
     """
     if workspace_access is None:
         raise ValueError("resolve_crafting requires workspace_access captured at creation")
@@ -134,6 +133,7 @@ def resolve_crafting(
     margin = total - dc
 
     bonus_property = None
+    blessing_receipt = None
     flaw = None
     if margin >= 10:
         tier = "exceptional"
@@ -149,6 +149,10 @@ def resolve_crafting(
         ]
     elif margin >= 0:
         tier = "success"
+        blessing = parameters.get("craft_blessing")
+        if blessing is not None and r.random() < 0.25 and quality_tables is not None:
+            bonus_property = apply_quality_outcome("exceptional", quality_tables, rng=r)
+            blessing_receipt = blessing
         crafted_item_id = result_item_id
         crafted_item_name = result_item_name
         decisions = [
@@ -186,6 +190,9 @@ def resolve_crafting(
         "flaw": flaw,
         "npc_id": parameters.get("npc_id", "grimjaw_blacksmith"),
     }
+
+    if blessing_receipt is not None:
+        narrative_context["craft_blessing"] = blessing_receipt
 
     return CraftingOutcome(
         tier=tier,

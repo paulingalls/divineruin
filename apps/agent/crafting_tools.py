@@ -43,10 +43,13 @@ import rules_engine
 import workspace
 from disposition import resolve_disposition
 from inventory_refresh import publish_inventory
+from patron_favor import get_patron_tier
 from session_data import SessionData
 from tool_preconditions import require_npc_present
 from tool_support import _validate_id
 from workspace import WorkspaceType
+
+CRAFT_BLESSING = "aelora_craft_blessing"
 
 logger = logging.getLogger("divineruin.crafting_tools")
 
@@ -315,6 +318,12 @@ async def _start_crafting_project_impl(
         if not player:
             raise ToolError(f"Unknown player: {player_id}")
 
+        favor = player.get("divine_favor")
+        try:
+            patron_tier = get_patron_tier(favor) if favor is not None else None
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ToolError(f"Cannot craft {recipe['name']}: invalid divine favor ({exc})") from exc
+
         # Portable-Lab ownership read ONCE, fed to BOTH the slot exception and the
         # workspace grant below — the single-read contract the TS twin uses.
         has_portable_lab = await _owns_portable_lab(queries_mod, player_id, conn=conn)
@@ -364,17 +373,19 @@ async def _start_crafting_project_impl(
         cycles = recipe["async_cycles"]
         min_seconds = cycles * _SECONDS_PER_CYCLE if cycles > 0 else _FIELD_CRAFT_FLOOR_SECONDS
         max_seconds = min_seconds * 2
+        blessing = {}
+        if favor is not None and favor.get("patron") == "aelora":
+            blessing["craft_blessing"] = {
+                "id": CRAFT_BLESSING,
+                "name": "Craft Blessing",
+                "patron": "aelora",
+                "tier": patron_tier,
+            }
+            min_seconds = min_seconds * 3 // 4
+            max_seconds = max_seconds * 3 // 4
         now = (now_fn or _default_now)()
         resolve_at = now + timedelta(seconds=(rng or random.Random()).randint(min_seconds, max_seconds))
 
-        # Shared parameters shape so async_worker / resolve_crafting reads it the same
-        # regardless of entry point. The first five keys match the TS create path
-        # (activities.ts). workspace_required/workspace_access/crafting_tier/
-        # tainted_materials are the story-005 resolution gate inputs: resolve_crafting
-        # re-checks workspace access + tainted-Expert at completion. The TS path does
-        # NOT capture these yet — Slice 2 adds them in activities.ts to re-converge the
-        # two entry points. resolve_crafting reads them via .get(), so the lag is
-        # additive-safe. workspace_access is sorted so the stored JSONB is deterministic.
         data = {
             "status": "in_progress",
             "activity_type": "crafting",
@@ -396,6 +407,7 @@ async def _start_crafting_project_impl(
                 "workspace_access": sorted(accessible),
                 "crafting_tier": crafting_tier,
                 "tainted_materials": recipe["tainted_materials"],
+                **blessing,
             },
             "outcome": None,
             "narration_text": None,

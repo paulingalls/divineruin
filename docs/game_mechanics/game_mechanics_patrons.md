@@ -113,7 +113,7 @@ When a Veil Ward is active in your area, your spells inside it suffer no damage/
 
 | Tier | Name | Effect |
 |---|---|---|
-| Acknowledged | Craft Blessing | Async crafting 25% faster. Crafted items have chance of bonus property |
+| Acknowledged | Craft Blessing | Crafting takes 75% of its normal duration. A normal Success has a 25% chance to draw a bonus property from the recipe category’s Exceptional table. Eligibility is captured when crafting starts. |
 | Devoted | Community Shield | Once per long rest, immediately grant another standing, present party player temporary HP equal to your level plus your Charisma modifier (minimum 1). A smaller pool is replaced. An equal or larger pool leaves the gift unspent. Works in and out of combat with no action, reaction or distance cost. A partially resolved round or live Fate offer blocks activation. |
 | Exalted | Hearthfire | Once per session, create sanctuary zone: 3 rounds, allies regain 1d6 HP/round, advantage on saves, enemies WIS save to enter |
 

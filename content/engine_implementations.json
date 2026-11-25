@@ -2,6 +2,7 @@
   "kaelen_iron_resolve": "kaelen_gift:trigger_iron_resolve",
   "kaelen_tempered_resolve": "kaelen_gift:trigger_iron_resolve",
   "kaelen_extra_attack_damage": "patron_synergy_combat:weapon_damage_bonus",
+  "aelora_craft_blessing": "async_rules:resolve_crafting",
   "aelora_community_shield": "patron_combat_edges:community_shield",
   "kaelen_oath_of_valor": "patron_synergy_combat:outnumbered_rider",
   "aelora_common_bond": "patron_gifts:skill_gift",

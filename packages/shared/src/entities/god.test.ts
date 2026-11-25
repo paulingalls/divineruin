@@ -214,7 +214,19 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     implementation_id: echo,
     recharge: "per_session",
   });
+  const blessing = "aelora_craft_blessing";
+  expect(
+    validateGods(catalog).find((god) => god.god_id === "aelora")?.layer_3_tier_abilities
+      .acknowledged,
+  ).toMatchObject({
+    id: blessing,
+    status: "active",
+    resolution: "engine",
+    implementation_id: blessing,
+    recharge: "always",
+  });
   const engine = new Set([
+    blessing,
     "zhael_lucky",
     battleCry,
     judgment,
@@ -238,7 +250,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     ),
   ).toEqual(engine);
   const pending = abilities.filter((a) => !narrated.has(a.id) && !engine.has(a.id));
-  expect(pending).toHaveLength(5);
+  expect(pending).toHaveLength(4);
   for (const ability of abilities.filter((a) => passives.has(a.id))) {
     expect([ability.recharge, ability.implementation_id]).toEqual(["always", ability.id]);
   }

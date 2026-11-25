@@ -107,6 +107,9 @@ async def test_real_patron_gift_round_trip_from_gods_content(patron_id, monkeypa
     assert response["layer_1_gift"] == expected
     rows = response["abilities"]
     assert len(rows) == 3
+    if patron_id == "aelora":
+        hint = rows[0]["activation_hint"]
+        assert all(text in hint for text in ("automatically", "75%", "25%", "Success", "at the start"))
     if patron_id == "orenthel":
         assert rows[0] == {
             "id": "orenthel_beacon",
@@ -137,6 +140,7 @@ async def test_real_patron_gift_round_trip_from_gods_content(patron_id, monkeypa
             {"activation_hint"}
             if authored["id"]
             in {
+                "aelora_craft_blessing",
                 "aelora_community_shield",
                 "syrath_veilstep",
                 "mortaen_death_ward",

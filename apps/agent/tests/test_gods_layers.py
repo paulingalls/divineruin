@@ -175,7 +175,17 @@ def test_authored_layers_match_mechanics():
         echo_id,
         "per_session",
     )
+    blessing_id = "aelora_craft_blessing"
+    blessing = next(row["layer_3_tier_abilities"]["acknowledged"] for row in rows if row["god_id"] == "aelora")
+    assert tuple(blessing.get(key) for key in ("id", "status", "resolution", "implementation_id", "recharge")) == (
+        blessing_id,
+        "active",
+        "engine",
+        blessing_id,
+        "always",
+    )
     engine = {
+        blessing_id,
         "zhael_lucky",
         battle_cry,
         judgment,
@@ -195,7 +205,7 @@ def test_authored_layers_match_mechanics():
     }
     assert {a["id"] for a in abilities if (a["status"], a["resolution"]) == ("active", "engine")} == engine
     pending = [a for a in abilities if a["id"] not in narrated | engine]
-    assert len(pending) == 5
+    assert len(pending) == 4
     for ability in abilities:
         if ability["id"] in passives:
             assert (ability["recharge"], ability["implementation_id"]) == ("always", ability["id"])
