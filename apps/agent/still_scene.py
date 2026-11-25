@@ -4,6 +4,7 @@ import json
 
 from livekit.agents.llm import ToolError
 
+import combat_round_checkpoint
 import combat_spatial
 import encounter_facts
 import still_charm
@@ -91,7 +92,7 @@ async def start(session, state, retained, *, mutations, queries, db_mod):
             restore(state, retained)
         still_charm.project(state, state.still_encounter["owner_id"], players)
         await write(session, state, "combat", combat_id=state.combat_id, mutations=mutations, conn=conn)
-        await mutations.save_combat_state(state.combat_id, state.to_dict(), conn=conn)
+        await combat_round_checkpoint.capture(session, state, conn=conn, mutations=mutations, entry=True)
 
 
 async def end(session, state, outcome, *, mutations, queries, conn):
@@ -112,7 +113,7 @@ async def end(session, state, outcome, *, mutations, queries, conn):
             session,
             state,
             "dormant",
-            snapshot=state.to_dict(),
+            snapshot=combat_round_checkpoint.combat_image(state),
             mutations=mutations,
             conn=conn,
         )

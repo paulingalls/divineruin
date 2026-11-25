@@ -3275,10 +3275,11 @@
       "exalted": {
         "id": "zhael_unravel_fate",
         "name": "Unravel Fate",
-        "effect": "Once per session, undo one event from the last round. Damage reversed, positions restored, resources returned. One round unhappens. Generates 8 Resonance on the user regardless of caster status",
+        "effect": "Once per session, at a round boundary before declarations, undo the entire last round. Damage reversed, positions restored, resources returned. One round unhappens and everyone declares again. Generates 8 Resonance on the user regardless of caster status",
         "recharge": "per_session",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "zhael_unravel_fate"
       }
     },
     "layer_4_synergy_matrix": {

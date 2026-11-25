@@ -19,7 +19,7 @@ Candidates: re-verify the aura and resonance boxes against `apps/agent/hollow_re
 ## Patron abilities (Phase 8 M8.2)
 Goal: every patron's abilities across the three favor tiers, with recharge, can be granted and activated by the DM in play: `docs/milestones/08_patrons.md` Milestone 8.2 ACs.
 Measure: python3 -c 'import json,re; s=open("docs/milestones/08_patrons.md").read(); b=re.search(r"^### Milestone 8.2 .*?(?=^### |\Z)",s,re.M|re.S).group(0); g=json.load(open("content/gods.json")); print("distance=%d pending_engine=%d" % (len(re.findall(r"^- \[ \] ",b,re.M)),sum(a["status"]=="pending" and a["resolution"]=="engine" for p in g for a in p["layer_3_tier_abilities"].values())))'
-Candidates: see the phase doc; depends on M8.1's Layer 3 definitions.
+Candidates: Aelora's Hearthfire is the last pending engine ability (divineruin-mini's aelora-hearthfire slate; all hearth state lives in CombatState, so Unravel Fate's round checkpoint covers it). Unravel Fate (v0.73 sprint zhael-unravel-fate) rewinds the previous round from `combat_round_checkpoint` at the next opening.
 
 ## Archetype synergies and the Unbound Path (Phase 8 M8.3)
 Goal: Layer 4 archetype synergy bonuses work, and the Unbound Path is a mechanically complete alternative to a patron: `docs/milestones/08_patrons.md` Milestone 8.3 ACs.

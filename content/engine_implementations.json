@@ -29,6 +29,7 @@
   "orenthel_restoration_surge": "patron_combat_edges:restoration_surge",
   "syrath_veilstep": "patron_combat_edges:veilstep",
   "mortaen_death_ward": "patron_zero_hp:trigger_death_ward",
+  "zhael_unravel_fate": "zhael_unravel_fate:activate",
   "valdris_the_scales_verdict": "valdris_verdict:scales_verdict",
   "thyra_seasonal_attunement": "thyra_seasons:skill_bonus",
   "thyra_thornwall": "thyra_thornwall:thornwall",

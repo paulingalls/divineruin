@@ -34,17 +34,22 @@ HEAL_ITEMS = {
 async def test_item_reader_rejects_invalid_heals(dev_db_pool, cached, effects, index):
     item_id = f"invalid_heal_{uuid4().hex}"
     data = json.dumps({"id": item_id, "effects": effects})
+    key = f"item:{item_id}"
+    match = rf"{item_id}.*effects\[{index}\]"
     if cached:
-        await db._cache_set(f"item:{item_id}", data)
-        assert await db._cache_get(f"item:{item_id}") == data
+        await db._cache_set(key, data)
+        try:
+            assert await db._cache_get(key) == data
+            with pytest.raises(ValueError, match=match):
+                await db_content_queries.get_item(item_id)
+        finally:
+            await (await db.get_redis()).delete(key)
     else:
-        await dev_db_pool.execute("INSERT INTO items (id, data) VALUES ($1, $2::jsonb)", item_id, data)
-    try:
-        with pytest.raises(ValueError, match=rf"{item_id}.*effects\[{index}\]"):
-            await db_content_queries.get_item(item_id)
-    finally:
-        await dev_db_pool.execute("DELETE FROM items WHERE id=$1", item_id)
-        await (await db.get_redis()).delete(f"item:{item_id}")
+        async with dev_db_pool.acquire() as conn:
+            with pytest.raises(ValueError, match=match):
+                async with conn.transaction():
+                    await conn.execute("INSERT INTO items (id, data) VALUES ($1, $2::jsonb)", item_id, data)
+                    await db_content_queries.get_item(item_id, conn=conn)
 
 
 async def test_authored_heals_survive_python_item_loading(dev_db_pool):
