@@ -84,20 +84,13 @@ def approach(state, actor):
     origin, voice = combat_spatial.position(spatial, actor.id), combat_spatial.position(spatial, source.id)
     distance = combat_spatial.distance(origin, voice)
     step = min(distance, spatial["speeds"][actor.id])
+    movement = {"destination": origin, "distance_ft": 0}
     if distance:
-        combat_spatial.place(
-            state,
-            actor.id,
-            {axis: origin[axis] + (voice[axis] - origin[axis]) * step / distance for axis in origin},
-        )
+        destination = {axis: origin[axis] + (voice[axis] - origin[axis]) * step / distance for axis in origin}
+        movement = combat_spatial.force_place(state, actor.id, destination)
     actor.choir_movement_round = state.round_number
-    return {
-        "actor_id": actor.id,
-        "resolved": True,
-        "moved_ft": step,
-        "destination": deepcopy(spatial["positions"][actor.id]),
-        "forced_movement": True,
-    }
+    moved = movement.pop("distance_ft")
+    return {**movement, "actor_id": actor.id, "resolved": True, "moved_ft": moved, "forced_movement": True}
 
 
 def validate_data(data):

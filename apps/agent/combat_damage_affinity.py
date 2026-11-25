@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import temp_hp
 from condition_catalog import INCORPOREAL
+from condition_restrictions import damage_resistance_all
 from conditions import damage_hp_floor, has_condition
 
 PHYSICAL_DAMAGE_TYPES = ("slashing", "piercing", "bludgeoning")
@@ -105,6 +106,7 @@ def apply(target, action, result, *, state=None):
     from still_encounter import owner_alias
 
     traits = target.damage_affinities
+    resists_all = damage_resistance_all(target.conditions)
     incorporeal = has_condition(target.conditions, INCORPOREAL)
     divine_vulnerable = action.get("spell_source") == "divine" and owner_alias(state, target.id) != target.id
 
@@ -114,7 +116,7 @@ def apply(target, action, result, *, state=None):
         )
         if (incorporeal and dtype in PHYSICAL_DAMAGE_TYPES) or dtype in traits.get("immune", []):
             return 0
-        if not ignores_resistance and (conditional or dtype in traits.get("resistant", [])):
+        if not ignores_resistance and (resists_all or conditional or dtype in traits.get("resistant", [])):
             return damage // 2
         if dtype in traits.get("vulnerable", []) or divine_vulnerable:
             return damage * 2

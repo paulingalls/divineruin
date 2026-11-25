@@ -148,6 +148,7 @@
     "ability_type": "elective",
     "level_requirement": 8,
     "cost": { "stamina": 3, "focus": 0, "scaling": null },
+    "applies_condition": "iron_stance",
     "effect": "Until next turn: can't be moved, advantage on saves, resistance to all damage.",
     "narration_cue": "Feet planted like roots, an immovable wall of iron."
   },

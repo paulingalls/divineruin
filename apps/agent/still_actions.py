@@ -52,7 +52,7 @@ def zone_edge(state, owner, target_id):
         edge = {axis: center[axis] + (origin[axis] - center[axis]) * radius / distance for axis in center}
     while not combat_spatial.inside(edge, center, radius):
         edge = {axis: math.nextafter(edge[axis], center[axis]) for axis in center}
-    return combat_spatial.place(state, target_id, edge)
+    return combat_spatial.force_place(state, target_id, edge)
 
 
 def _freeze_zone(state, actor, action):
@@ -145,7 +145,7 @@ async def resolve_zone(
             save = finalize_save(state, target, save, failed_conditions=failed_conditions)
         result = {"target_id": target_id, **_save_fields(save, target.id)}
         if trigger is not None and not save.success:
-            result["destination"] = zone_edge(state, actor, target_id)
+            result.update(zone_edge(state, actor, target_id))
         else:
             if trigger is None and save.success:
                 duration //= 2

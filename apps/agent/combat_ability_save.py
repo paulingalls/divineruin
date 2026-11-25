@@ -11,6 +11,7 @@ import combat_ability_gate
 import rules_engine
 from combat_fate_rolls import packet_save
 from combat_legendary_resistance import finalize_save, override_fields
+from condition_catalog import IRON_STANCE
 
 if TYPE_CHECKING:
     from abilities import Ability
@@ -19,7 +20,7 @@ if TYPE_CHECKING:
     from session_data import CombatParticipant, CombatState, SessionData
 
 
-BENEFICIAL_CONDITIONS = frozenset({"blessed", "shielded", "enraged", "inspired", "precise_strike"})
+BENEFICIAL_CONDITIONS = frozenset({"blessed", "shielded", "enraged", "inspired", "precise_strike", IRON_STANCE})
 
 
 def requires_hostile_target(ability: "Ability") -> bool:

@@ -145,6 +145,21 @@ def place(state, target_id, destination):
     return dict(spatial["positions"][target_id])
 
 
+def force_place(state, target_id: str, destination: dict) -> dict:
+    from condition_restrictions import immovable
+
+    spatial = require_spatial(state)
+    target = state.get_participant(target_id)
+    if target is None or target_id not in spatial["positions"]:
+        raise ValueError(f"Unknown participant position {target_id!r}")
+    origin = position(spatial, target_id)
+    destination = point(destination)
+    if immovable(target.conditions):
+        return {"destination": origin, "distance_ft": 0, "movement_blocked": "Iron Stance"}
+    destination = place(state, target_id, destination)
+    return {"destination": destination, "distance_ft": distance(origin, destination)}
+
+
 def facts(state, origin_id):
     import architect_entomb
     from condition_restrictions import effective_speed

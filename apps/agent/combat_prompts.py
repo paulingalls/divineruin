@@ -37,6 +37,8 @@ ability — action is the EXACT id of a spell or ability the caster knows (for e
 "arcane_bolt"). Name in targets whoever it is aimed at — a fallen ally's id for a \
 revival, several allies for a spell that blesses a group; leave targets empty for a \
 self-cast. Second Wind uses empty targets. War Cry uses empty targets and reaches every standing foe who can hear. \
+Iron Stance (action="warrior_iron_stance") uses empty targets. Until the warrior's next turn, \
+forced movement fails, saves have advantage, and all damage is resisted. \
 Rallying Shout names one standing ally. \
 Devastating Strike names one foe and uses the main-hand melee weapon. \
 Cleaving Blow (action="warrior_cleaving_blow") takes one or two standing foe ids in targets, in strike order. \
