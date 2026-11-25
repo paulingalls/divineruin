@@ -43,6 +43,7 @@ async def fight(
     archetype="warrior",
     encounter_id=ENCOUNTER,
     guest_class="mage",
+    guest_favor=40,
     guest_hp=100,
     conditions=(),
 ):
@@ -65,7 +66,7 @@ async def fight(
             resonance={"current": 0},
             equipment={"main_hand": SWORD},
             attributes={"strength": 10, "intelligence": 18, "dexterity": 10},
-            divine_favor={"patron": deity, "level": favor if index == 0 else 40, "max": 100},
+            divine_favor={"patron": deity, "level": favor if index == 0 else guest_favor, "max": 100},
             patron_gifts=gifts if index == 0 else {},
             conditions=list(conditions) if index == 0 else [],
         )

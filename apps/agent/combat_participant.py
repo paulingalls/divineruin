@@ -128,6 +128,7 @@ class CombatParticipant:
     save_advantages: dict[str, str] = field(default_factory=dict)
     scholars_ward: bool = False
     orenthel_beacon: bool = False
+    tidewalker: bool = False
     advantage_vs: dict[str, str] = field(default_factory=dict)
 
     hollow: dict | None = None

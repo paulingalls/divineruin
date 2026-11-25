@@ -45,7 +45,7 @@ def _endpoint(state: CombatState, actor: CombatParticipant, spatial: dict, origi
 
     speed = effective_speed(spatial["speeds"][actor.id], actor.conditions)
     destination = {**origin, "x": origin["x"] + speed * dx / length, "y": origin["y"] + speed * dy / length}
-    endpoint = reachable_point(spatial, actor.id, origin, destination, speed)
+    endpoint = reachable_point(spatial, actor.id, origin, destination, speed, tidewalker=actor.tidewalker)
     wall = moves.movement_blocker(state, spatial, actor, origin, endpoint)
     if wall is not None:
         endpoint = stop_before_wall(origin, endpoint, spatial["structures"][wall.id])

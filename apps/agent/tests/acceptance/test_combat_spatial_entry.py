@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 from acceptance._capstone_helpers import _resolve_round
-from acceptance._spatial_helpers import move, persisted, pos
+from acceptance._spatial_helpers import AREA_CASES, move, movement_area_encounters, persisted, pos
 from acceptance._spatial_helpers import spatial_entry as spatial_entry
 from livekit.agents.llm import ToolError
 from sample_fixtures import CONTENT_ROOT
@@ -165,6 +165,8 @@ async def test_actual_catalog_entry_persists_placement_and_zone_ids(spatial_entr
     assert saved.spatial["speeds"]["companion_tam"] == 35
     assert saved.spatial["locations"] == scene["locations"]
     assert saved.spatial["zones"] == scene["zones"]
+    if template["id"] != "hollow_architect":
+        assert saved.spatial.get("movement_areas") == scene.get("movement_areas")
     assert response["spatial"] == facts(saved, ctx.userdata.player_id)
     handoff = mock_combat_agent_factory.call_args.kwargs["chat_ctx"]
     assert any(
@@ -183,6 +185,30 @@ async def test_actual_catalog_entry_persists_placement_and_zone_ids(spatial_entr
     if template["id"] == "hollow_architect":
         assert queried.pop("architect") == response["architect"]
     assert queried == response["spatial"]
+
+
+@pytest.mark.parametrize(
+    "encounter,actor,area,kind,destination",
+    [
+        ("bandit_ambush", "bandit_1", "muddy_slope", "mud", pos(30, -15, 10)),
+        ("hollow_mawling_pack", "mawling_pack_adult", "stream_crossing", "water", pos(15, -10)),
+    ],
+)
+async def test_authored_ground_doubles_enemy_movement_spend(spatial_entry, encounter, actor, area, kind, destination):
+    template = next(row for row in TEMPLATES if row["id"] == encounter)
+    areas = template["scene_placement"]["movement_areas"]
+    assert set(areas) == {area}
+    assert areas[area]["kind"] == kind and areas[area]["excluded_actor_ids"] == []
+    ctx, _ = await spatial_entry(encounter=encounter)
+    combat_id = ctx.userdata.combat_state.combat_id
+    await combat_turn._declare_phase_impl(ctx, {actor: {**move(actor), "destination": destination}})
+    result = await _resolve_round(ctx)
+    packet = next(p for p in result["packets"] if p.get("actor_id") == actor and "moved_ft" in p)
+    assert packet["resolved"]
+    assert (packet["moved_ft"], packet["movement_spent_ft"], packet["destination"]) == (10, 20, destination)
+    saved = (await persisted(combat_id))["spatial"]
+    assert saved["positions"][actor] == destination
+    assert saved["movement_areas"] == areas
 
 
 async def test_authored_zone_entry_and_actor_centered_membership(spatial_entry):
@@ -214,7 +240,9 @@ async def test_authored_zone_entry_and_actor_centered_membership(spatial_entry):
         )
 
 
-@pytest.mark.parametrize("mutation", ["missing", "coverage", "point", "center", "radius", "collision"])
+@pytest.mark.parametrize(
+    "mutation", ["missing", "coverage", "point", "center", "radius", "collision", *AREA_CASES["invalid"]]
+)
 async def test_missing_or_invalid_placement_refuses_before_roll(spatial_entry, mutation):
     pool = await db.get_pool()
     original = await db_content_queries.get_encounter_template("ruins_mawling_pair")
@@ -233,6 +261,8 @@ async def test_missing_or_invalid_placement_refuses_before_roll(spatial_entry, m
         scene["zones"]["z"] = {"center_id": "mawling_1", "radius_ft": -1}
     if mutation == "collision":
         scene["locations"]["mawling_1"] = pos()
+    if mutation in AREA_CASES["invalid"]:
+        scene["movement_areas"] = AREA_CASES["invalid"][mutation]
     ctx, _ = await spatial_entry(enter=False)
     before = await pool.fetchval("SELECT count(*) FROM combat_instances")
     try:
@@ -369,12 +399,18 @@ async def test_corrupt_pending_and_held_destination_refuses_before_roll(spatial_
 def test_spatial_contract_parity_has_nonempty_floor():
     assert len(TEMPLATES) == 19
     assert any(row["scene_placement"]["zones"] for row in TEMPLATES)
-    cases = []
+    assert {row["id"] for row in TEMPLATES if "movement_areas" in row["scene_placement"]} == {
+        "bandit_ambush",
+        "hollow_mawling_pack",
+    }
+    template = next(row for row in TEMPLATES if row["id"] == "ruins_mawling_pair")
+    cases = movement_area_encounters(template)
     for row in TEMPLATES:
         cases.append((True, row))
         for mutate in (
             lambda s: s.pop("scene_placement"),
             lambda s: s["scene_placement"].pop("party_start"),
+            lambda s: s["scene_placement"].update(extra=True),
             lambda s: s["scene_placement"]["actors"].clear(),
             lambda s: s["scene_placement"]["party_start"].update(x=True),
             lambda s: s["scene_placement"]["party_start"].update(x="1"),
