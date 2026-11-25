@@ -5,18 +5,19 @@ resolve_phase (in combat_turn) orchestrates the per-phase transaction; the
 helpers here do the actual resolution work it drives: _prevalidate_ability_focus
 gates player ability Focus before the loop, _resolve_one_packet dispatches a
 single initiative-ordered packet to the right resolver (attack / ability /
-de-escalate / defend). The helpers mutate in-memory
+de-escalate / defend), handing encounter-specific action kinds to combat_packet_special.
+The helpers mutate in-memory
 state and write through injected mutation/query modules, but own no transaction."""
 
 from typing import Any
 
 import abilities
-import architect_constructs
 import combat_cunning_action
 import combat_maneuver
 import combat_marks
 import combat_martial
 import combat_melee_approach
+import combat_packet_special
 import combat_packet_weapon
 import combat_player_ability
 import combat_recharge
@@ -26,13 +27,11 @@ import combat_voice_rules
 import item_heal
 import spell_casting
 import thyra_thornwall
-from action_contracts_still import STILL_ZONE_KINDS
 from combat_ability import _attach_riders, _find_action
 from combat_ability_gate import MULTI_TARGET_WEAPON_ABILITIES, SINGLE_TARGET_WEAPON_ABILITIES, WAR_CRIES
 from combat_action_availability import begin_execution, replay_valid
 from combat_down import target_unavailable
 from combat_enemy_action import resolve_enemy_strike
-from combat_enemy_active import resolve_active
 from combat_packet_gate import _prevalidate_ability_focus as _prevalidate_ability_focus
 from combat_structures import action_has_direct_line, blocked_reason, line_blocker
 from concealment import reveal_attacker
@@ -266,59 +265,24 @@ async def _resolve_action_packet(
             and (wall := line_blocker(state, attacker.id, decl.target_id))
         ):
             return {"actor_id": attacker.id, "resolved": False, "reason": blocked_reason(wall)}
-        if still_encounter.is_owner(state, attacker.id):
-            import still_actions
-
-            if not replay and (reason := still_actions.range_refusal(state, attacker, action, decl)):
-                return {"actor_id": attacker.id, "resolved": False, "reason": reason}
-            if action_kind(action) in STILL_ZONE_KINDS:
-                return await still_actions.resolve_zone(
-                    session,
-                    state,
-                    attacker,
-                    action,
-                    decl,
-                    head=_held_head,
-                    progress=progress,
-                    conn=conn,
-                    concentration=concentration_break_mod,
-                    queries=queries,
-                    mutations=mutations,
-                )
-            if action.get("auto_hit"):
-                return await still_actions.resolve_touch(
-                    session,
-                    state,
-                    attacker,
-                    action,
-                    decl,
-                    head=_held_head,
-                    progress=progress,
-                    conn=conn,
-                    mutations=mutations,
-                    queries=queries,
-                    concentration=concentration_break_mod,
-                    sink=sink,
-                    advantage=reaction_save_advantage,
-                )
-        if action_kind(action) == architect_constructs.KIND:
-            return architect_constructs.resolve(state, attacker, action, decl)
-        if not attacker.is_ally and action_kind(action) in ("healing", "prepare_attack"):
-            action = begin_execution(state, attacker, action, decl)
-            return resolve_active(state, attacker, action, decl)
-        if action_kind(action) in ("charm", "silence"):
-            from choir_actions import resolve_effect
-
-            return await resolve_effect(
-                session,
-                state,
-                attacker,
-                action,
-                decl,
-                reaction_save_advantage=reaction_save_advantage,
-                progress=progress,
-                head=_held_head,
-            )
+        special = await combat_packet_special.resolve(
+            session,
+            state,
+            attacker,
+            action,
+            decl,
+            replay=replay,
+            head=_held_head,
+            progress=progress,
+            conn=conn,
+            mutations=mutations,
+            queries=queries,
+            concentration_break_mod=concentration_break_mod,
+            sink=sink,
+            reaction_save_advantage=reaction_save_advantage,
+        )
+        if special is not None:
+            return special
         target = state.get_participant(decl.target_id) if decl.target_id else None
         if target is not None and not target_unavailable(target, action):
             movement_budget = combat_cunning_action.movement_allowance(state, attacker, decl)
