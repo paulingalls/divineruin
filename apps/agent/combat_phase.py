@@ -111,6 +111,12 @@ def reopen_declaration(state: CombatState) -> CombatState:
     reopened = copy.deepcopy(state)
     reopened.beat = PhaseBeat.DECLARATION
     reopened.pending_declarations = {}
+    enemies = {p.id for p in reopened.participants if p.type == "enemy"}
+    reopened.reactions_available = {
+        actor_id: spend
+        for actor_id, spend in reopened.reactions_available.items()
+        if actor_id not in enemies or reaction_spend.is_spent(spend)
+    }
     return reopened
 
 
@@ -142,7 +148,7 @@ def advance_combat_phase(
         next_state.reactions_available = {
             p.id: next_state.reactions_available.get(p.id, reaction_spend.unspent())
             for p in next_state.participants
-            if p.type == "player" and p.has_reaction_ability is True
+            if p.type == "enemy" or (p.type == "player" and p.has_reaction_ability is True)
         }
         next_state.beat = PhaseBeat.RESOLUTION
         return next_state, PhaseAdvance(beat_completed=PhaseBeat.DECLARATION)
@@ -168,6 +174,7 @@ def advance_combat_phase(
             next_state.current_turn_index = 0
             next_state.pending_declarations = {}
             next_state.reactions_available = {}
+            next_state.held_sequence = 0
             next_state.ac_modifiers = {}  # phase-scoped Defend bonuses expire here
             next_state.focus_marks = {}
             if not defer_legendary:

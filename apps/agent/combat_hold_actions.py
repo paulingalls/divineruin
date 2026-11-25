@@ -98,6 +98,8 @@ def _attack_action(state, head: dict) -> dict | None:
     action = _find_action(actor, declaration.action) if actor is not None else None
     if action is None or action.get("auto_hit") or is_save_damage_action(action) or action_kind(action) != "attack":
         return None
+    if head.get("opportunity_attack"):
+        return action
     if architect_actions.geometry_auto_hit(state, head["actor_id"], action, declaration.target_id, head):
         return None
     if is_combined_attack_action(action):

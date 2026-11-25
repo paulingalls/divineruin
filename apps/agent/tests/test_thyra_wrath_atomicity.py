@@ -8,8 +8,8 @@ from _unbound_path_fixtures import world as world
 from sample_fixtures import published_payloads
 from voice_condition_fixtures import participant
 
+import combat_ally_pass
 import combat_damage
-import combat_fate
 import combat_hold
 import combat_phase
 import event_types as E
@@ -25,7 +25,7 @@ async def test_partly_resolved_round_refuses_wrath(world, field):
         if field == "ally_continuation":
             resolving, advance = combat_phase.advance_combat_phase(state)
             allies, hostiles = combat_phase.partition_packets(resolving, advance.packets)
-            state.ally_continuation = combat_fate.begin_ally_pass(resolving, allies, hostiles, {})
+            state.ally_continuation = combat_ally_pass.begin_ally_pass(resolving, allies, hostiles, {})
         else:
             state.held_actions = combat_hold.hold_enemy_packets(
                 state, [SimpleNamespace(actor_id=foe.id, initiative=10)]

@@ -74,11 +74,15 @@ def plan(state, actor, target, action, budget) -> tuple[dict, dict | None]:
     return finish(facts, destination, reach, reason), None
 
 
+def leg_declaration(actor_id: str, endpoint: dict, mode: str) -> Declaration:
+    return Declaration(DeclarationType.MANEUVER, "move", target_id=actor_id, destination=endpoint, movement_mode=mode)
+
+
 def apply_leg(state, actor, facts: dict, endpoint: dict, mode: str, budget: dict) -> dict:
     moved = apply_move(
         state,
         actor,
-        Declaration(DeclarationType.MANEUVER, "move", target_id=actor.id, destination=endpoint, movement_mode=mode),
+        leg_declaration(actor.id, endpoint, mode),
         allowance=budget["remaining"],
     )
     if not moved["resolved"]:

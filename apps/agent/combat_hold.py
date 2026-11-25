@@ -58,29 +58,28 @@ class HeldActionUnresolvable(ValueError):
     """
 
 
-def hold_enemy_packets(state, packets: list) -> list[dict]:
-    """Build the Beat-3 queue from the hostile band's resolution packets.
+def new_head(state, actor_id: str, initiative: int, declaration: dict, **provenance) -> dict:
+    seq = state.held_sequence
+    state.held_sequence += 1
+    return {
+        "seq": seq,
+        "execution_id": uuid4().hex,
+        "actor_id": actor_id,
+        "initiative": initiative,
+        "declaration": declaration,
+        "roll": None,
+        "roll_published": False,
+        "opened": [],
+        **provenance,
+    }
 
-    Each entry is JSONB-native so it round-trips through CombatState.to_dict/from_dict untouched:
-    a crash between commits reloads to a paused combat, never to a deleted enemy turn (AC7).
-    """
-    queue = []
-    for packet in packets:
-        for declaration, provenance in held_declarations(state, packet):
-            queue.append(
-                {
-                    "seq": len(queue),
-                    "execution_id": uuid4().hex,
-                    "actor_id": packet.actor_id,
-                    "initiative": packet.initiative,
-                    "declaration": declaration,
-                    "roll": None,
-                    "roll_published": False,
-                    "opened": [],
-                    **provenance,
-                }
-            )
-    return queue
+
+def hold_enemy_packets(state, packets: list) -> list[dict]:
+    return [
+        new_head(state, packet.actor_id, packet.initiative, declaration, **provenance)
+        for packet in packets
+        for declaration, provenance in held_declarations(state, packet)
+    ]
 
 
 def preflight_spend(state, actor_id: str, ability_id: str) -> dict:
@@ -269,9 +268,11 @@ async def pump(
             actor = state.get_participant(head["actor_id"])
             window_action = _find_action(actor, declaration.action)
             assert window_action is not None
-            movement = await combat_opportunity.prepare_held(
-                session, state, head, window_action, summaries, packet_deps=packet_deps, fate_rolls=fate_rolls
-            )
+            movement = {}
+            if not head.get("opportunity_attack"):
+                movement = await combat_opportunity.prepare_held(
+                    session, state, head, window_action, summaries, packet_deps=packet_deps, fate_rolls=fate_rolls
+                )
             if movement is None:
                 return summaries
             if movement.get("attack_resolved") is False:
@@ -303,7 +304,8 @@ async def pump(
                         state, head["actor_id"], action, head["declaration"]["target_id"]
                     ):
                         raise HeldActionUnresolvable(reason)
-                    _assert_single_swing(state, head, action)
+                    if not head.get("opportunity_attack"):
+                        _assert_single_swing(state, head, action)
                     contribution = combat_reaction_effect.ac_bonus(state, head)
                     if not await roll_hostile(
                         session, state, head, _held_declaration(head), action, contribution, packet_deps, fate_rolls
@@ -461,9 +463,12 @@ async def _resolve_held(
         mark_cancelled=mark_cancelled,
         publish_roll=not head.get("roll_published", False),
         _held_head=head
-        if "legendary_kind" in head or head.get("execution_receipt") is not None or "progress" in deps
+        if head.get("opportunity_attack")
+        or "legendary_kind" in head
+        or head.get("execution_receipt") is not None
+        or "progress" in deps
         else None,
-        _melee_approach=head.get("melee_approach"),
+        _melee_approach={} if head.get("opportunity_attack") else head.get("melee_approach"),
         _reshape_prepared=True,
         **deps,
     )

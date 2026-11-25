@@ -37,7 +37,7 @@ ATTACKS = {
         ("Perfect Memory", "ranged", 120, 12, "3d8", "psychic", "WIS save DC 20", "WIS", 20, None),
     ),
     "hollow_architect": (
-        ("Construct Slam", "melee", 15, 11, "2d10+5", "bludgeoning", "1d6 force", None, None, None),
+        ("Construct Slam", "melee", 15, 11, "2d10+4", "bludgeoning", "1d6 force", None, None, None),
         ("Geometry Strike", "ranged", 120, 10, "1d8+6", "force", "Auto-hit against targets touching", None, None, None),
     ),
 }

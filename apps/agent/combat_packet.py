@@ -8,6 +8,8 @@ single initiative-ordered packet to the right resolver (attack / ability /
 de-escalate / defend). The helpers mutate in-memory
 state and write through injected mutation/query modules, but own no transaction."""
 
+from typing import Any
+
 import architect_actions
 import architect_constructs
 import combat_cunning_action
@@ -28,6 +30,7 @@ from combat_action_availability import begin_execution, replay_valid
 from combat_down import target_unavailable
 from combat_enemy_action import resolve_enemy_strike
 from combat_enemy_active import resolve_active
+from combat_fate import continue_attack
 from combat_packet_gate import _prevalidate_ability_focus as _prevalidate_ability_focus
 from combat_structures import action_has_direct_line, blocked_reason, line_blocker
 from condition_restrictions import cannot_act
@@ -41,10 +44,13 @@ async def _resolve_one_packet(session, state, packet, *, _reshape_prepared=False
     from combat_veilrender import turn_start
 
     progress = deps.get("progress")
-    steps = progress.steps if progress is not None else {}
+    player_movement = deps.get("player_movement")
+    steps = progress.steps if progress is not None else player_movement.steps if player_movement is not None else {}
+    held_head = deps.get("_held_head") or {}
+    resuming_movement = player_movement is not None and player_movement.route is not None
     # Turn-start effects run once per round; a Zhael-held packet keeps them for its resumed summary.
     effects = steps.pop("turn_start_effects", None)
-    if not effects and "legendary_kind" not in (deps.get("_held_head") or {}):
+    if not (effects or resuming_movement or "legendary_kind" in held_head or held_head.get("opportunity_attack")):
         effects = await turn_start(
             session,
             state,
@@ -66,7 +72,9 @@ async def _resolve_one_packet(session, state, packet, *, _reshape_prepared=False
     result = await _resolve_action_packet(session, state, packet, **deps)
     if "reshape_receipts" in steps:
         result["reshape"] = steps["reshape_receipts"]
-    if progress is not None and progress.paused:
+    if (progress is not None and progress.paused) or (
+        player_movement is not None and player_movement.route is not None
+    ):
         if effects:
             attack_cursor = deps.get("attack_cursor")
             (attack_cursor if attack_cursor else steps)["turn_start_effects"] = effects
@@ -100,6 +108,7 @@ async def _resolve_action_packet(
     _melee_approach=None,
     attack_cursor=None,
     progress=None,
+    player_movement=None,
 ) -> dict:
     """Resolve a single initiative-ordered ResolutionPacket against ``state``.
 
@@ -135,7 +144,10 @@ async def _resolve_action_packet(
         choir_encounter.guard_declaration(state, packet.actor_id, decl)
 
     forced_move = None
-    if "legendary_kind" not in (_held_head or {}):
+    held_head = _held_head or {}
+    opportunity_attack = held_head.get("opportunity_attack", False)
+    resuming_movement = player_movement is not None and player_movement.route is not None
+    if not (resuming_movement or opportunity_attack or "legendary_kind" in held_head):
         await choir_encounter.turn_start(
             session,
             state,
@@ -151,15 +163,17 @@ async def _resolve_action_packet(
         from choir_effects import approach
 
         forced_move = approach(state, attacker)
-    if attacker is None or attacker.is_fallen:
+    if attacker is None or (attacker.is_fallen and not resuming_movement):
         return {"actor_id": packet.actor_id, "resolved": False, "reason": "actor unavailable"}
-    if blocked := cannot_act(attacker.conditions):
+    if not resuming_movement and (blocked := cannot_act(attacker.conditions)):
         reason = f"{attacker.name} is {blocked[0]} and loses the phase"
         return {"actor_id": packet.actor_id, "resolved": False, "reason": reason}
 
     if combat_spatial_declarations.is_move(decl) and forced_move is not None:
         return forced_move
     if combat_spatial_declarations.is_move(decl):
+        if player_movement is not None:
+            return await player_movement.move(attacker, decl) or {}
         return combat_spatial_declarations.apply_move(state, attacker, decl)
 
     if stale is not None:
@@ -296,6 +310,10 @@ async def _resolve_action_packet(
             # Zhael-held ally swing resumes through its attack cursor, never back through here.
             if _melee_approach is not None:
                 movement = _melee_approach
+            elif player_movement is not None:
+                movement = await player_movement.approach(attacker, target, action, movement_budget)
+                if movement is None:
+                    return {}
             else:
                 movement = combat_melee_approach.prepare(state, attacker, target, action, movement_budget)
             if movement.get("attack_resolved") is False:
@@ -421,29 +439,37 @@ async def _resolve_action_packet(
             **outcome,
         }
 
-    return await architect_actions.resolve(
-        session,
-        state,
-        packet,
-        attacker,
-        target,
-        action,
-        _held_head,
-        dict(
-            attack_cursor=attack_cursor,
-            progress=progress,
-            mutations=mutations,
-            queries=queries,
-            resolver=resolver,
-            concentration_break_mod=concentration_break_mod,
-            conn=conn,
-            sink=sink,
-            reaction_ac_bonus=reaction_ac_bonus,
-            reaction_save_advantage=reaction_save_advantage,
-            shield_reaction=shield_reaction,
-            grapple_blocked=grapple_blocked,
-            publish_roll=publish_roll,
-            movement=movement,
-            movement_budget=movement_budget,
-        ),
+    attack_deps: dict[str, Any] = dict(
+        attack_cursor=attack_cursor,
+        progress=progress,
+        mutations=mutations,
+        queries=queries,
+        resolver=resolver,
+        concentration_break_mod=concentration_break_mod,
+        conn=conn,
+        sink=sink,
+        reaction_ac_bonus=reaction_ac_bonus,
+        reaction_save_advantage=reaction_save_advantage,
+        shield_reaction=shield_reaction,
+        grapple_blocked=grapple_blocked,
+        publish_roll=publish_roll,
+        movement=movement,
+        movement_budget=movement_budget,
     )
+    if opportunity_attack:
+        # An opportunity swing skips encounter-owner resolution (the Architect's Slam push and
+        # Geometry auto-hit): displacing the mover would break the paused route it resumes.
+        return await continue_attack(
+            session,
+            state,
+            packet,
+            attacker,
+            target,
+            [action],
+            sum(p.type == "enemy" and not p.is_fallen for p in state.participants),
+            not state.first_attack_resolved,
+            **{**attack_deps, "attack_cursor": {}},
+        )
+    if player_movement is not None:
+        attack_deps["player_movement"] = player_movement
+    return await architect_actions.resolve(session, state, packet, attacker, target, action, _held_head, attack_deps)

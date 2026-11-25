@@ -13,6 +13,7 @@ import combat_resolve_phase
 import combat_turn
 import db_mutations
 import db_queries
+import reaction_spend
 from session_data import CombatParticipant, CombatState
 
 
@@ -160,6 +161,10 @@ async def test_malformed_stored_declaration_reopens_and_allows_retry(dev_db_pool
 def test_reopen_helper_is_pure_and_changes_only_declaration_fields():
     original = _state("combat_reset_pure", "reset_pure", "invented_ability")
 
+    original.reactions_available = {
+        "reset_pure": reaction_spend.unspent(),
+        "reset_foe": {**reaction_spend.unspent(), "spent": True},
+    }
     reopened = combat_phase.reopen_declaration(original)
 
     assert reopened is not original
@@ -169,6 +174,7 @@ def test_reopen_helper_is_pure_and_changes_only_declaration_fields():
     assert reopened.pending_declarations == {}
     assert reopened.participants == original.participants
     assert reopened.round_number == original.round_number
+    assert reopened.reactions_available == original.reactions_available
 
 
 @pytest.mark.asyncio

@@ -28,17 +28,17 @@ class TestDeclarationBeat:
         assert advance.packets == []
         assert advance.wrap is None
 
-    def test_refreshes_reaction_for_players_only(self):
+    def test_refreshes_reaction_for_player_owners_and_enemies(self):
         state = _make_combat_state()
         state.beat = PhaseBeat.DECLARATION
-        for participant in state.participants:
-            # The enemy owns a reaction too, so TYPE is the only thing that can exclude it —
-            # with the ownership gate alone, every enemy is skipped for carrying None.
-            participant.has_reaction_ability = True
+        _own_reaction(state, "warrior_brace_for_impact")
 
         next_state, _ = advance_combat_phase(state, _declarations())
 
-        assert next_state.reactions_available == {"player_1": reaction_spend.unspent()}
+        assert next_state.reactions_available == {
+            "player_1": reaction_spend.unspent(),
+            "goblin_scout_1": reaction_spend.unspent(),
+        }
 
     def test_declaration_beat_requires_declarations(self):
         state = _make_combat_state()

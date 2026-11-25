@@ -79,9 +79,7 @@ class CombatState:
     # Declarations collected in Beat 1 (actor_id -> opaque declaration dict; typed by
     # M4.2), consumed in Beat 2, cleared at the wrap loop-back.
     pending_declarations: dict[str, dict] = field(default_factory=dict)
-    # Round budget/spend state per eligible player; ownership lives on CombatParticipant.
-    # Players only by design: a reaction is an archetype technique, and enemy action_pool entries
-    # carry no catalog id. The wrap loop-back clears it. Absent actor => no budget (never a free spend).
+    # Enemy spends are unbound. Only player spends modify a specific held window.
     reactions_available: dict[str, dict] = field(default_factory=dict)
     # Phase-scoped AC modifiers (actor_id -> bonus), e.g. Defend's +2 (M4.2, story-002).
     # Set during resolution, cleared at the wrap loop-back so a stance lasts one phase.
@@ -116,6 +114,7 @@ class CombatState:
     legendary_sequence: int = 0
     inner_fire_continuation: dict | None = None
     inner_fire_used_by: list[str] = field(default_factory=list)
+    held_sequence: int = 0
     # Enemy declarations HELD for Beat 3 (M29, story-016), initiative-ordered, popped as each
     # resolves. The ally band commits first and the enemy band waits here, so a reload mid-window
     # finds the enemy's turn still pending rather than silently deleted. Each entry:
@@ -224,6 +223,7 @@ class CombatState:
             legendary_sequence=data.get("legendary_sequence", 0),
             inner_fire_continuation=data.get("inner_fire_continuation"),
             inner_fire_used_by=data.get("inner_fire_used_by", []),
+            held_sequence=data.get("held_sequence", 0),
             held_actions=held_actions,
             open_window=reaction_windows.upgrade_legacy_window(
                 data.get("open_window"), data.get("held_actions", []), data["participants"]
