@@ -11,6 +11,7 @@ import combat_damage_affinity
 import combat_wrongdoing
 import concentration_break
 import conditions
+import encounter_facts
 import event_types as E
 from combat_ability import _attach_riders, _resolve_condition_target
 from combat_condition_landing import _land_condition_on_one
@@ -142,6 +143,7 @@ async def _resolve_enemy_condition_packet(
     )
     if result is None:
         return {}
+    encounter_facts.record_party_attack(state, attacker, target)
     result = finalize_save(state, target, result, failed_conditions=failed_conditions(target, action))
     summary = {
         "actor_id": attacker.id,

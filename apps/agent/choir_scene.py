@@ -11,6 +11,7 @@ import choir_encounter
 import db
 import db_mutations
 import db_queries
+import encounter_facts
 from combat_participant import CombatParticipant
 
 
@@ -40,8 +41,11 @@ def read(player, location_id):
         }:
             raise ValueError("invalid active Choir owner pointer")
     elif record["status"] == "dormant":
-        if set(record) != {"source_id", "location_id", "status", "owner", "phase", "round"}:
+        prior = {"source_id", "location_id", "status", "owner", "phase", "round"}
+        if set(record) not in (prior, prior | {"party_aggressors"}):
             raise ValueError("invalid retained Choir owner")
+        # A receipt from before party_aggressors existed has unknown history; Verdict refuses on it.
+        record["party_aggressors"] = encounter_facts.validate_history(record.get("party_aggressors"))
         source = CombatParticipant(**record["owner"])
         if source.creature_id != "hollow_choir" or source.hp_current <= 0 or source.hollow_death_resolved:
             raise ValueError("invalid retained Choir HP owner")
@@ -86,6 +90,7 @@ async def start(session, state, retained, *, mutations=db_mutations, queries=db_
             state.participants[state.participants.index(source)] = restored
             state.choir_encounter["phase"] = retained["phase"]
             state.round_number = retained["round"]
+            state.encounter_facts["party_aggressors"] = retained["party_aggressors"]
             choir_effects.exposure(state)
         combat_facts = await choir_encounter.facts(state, queries=queries, conn=conn)
         record = {
@@ -118,7 +123,12 @@ async def end(session, state, outcome, *, mutations, queries, conn):
         "status": "destroyed" if source.hollow_death_resolved else "dormant",
     }
     if result["status"] == "dormant":
-        result.update(owner=asdict(source), phase=state.choir_encounter["phase"], round=state.round_number)
+        result.update(
+            owner=asdict(source),
+            phase=state.choir_encounter["phase"],
+            round=state.round_number,
+            party_aggressors=state.encounter_facts["party_aggressors"],
+        )
     await mutations.set_player_flag(session.primary_player_id, key(state.location_id), json.dumps(result), conn=conn)
 
 

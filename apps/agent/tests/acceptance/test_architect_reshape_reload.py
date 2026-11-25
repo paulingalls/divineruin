@@ -18,6 +18,7 @@ from acceptance.test_architect_terrain import declare, play, set_favor
 
 import combat_spatial
 import db_queries
+import encounter_facts
 from db_mutations_concentration import update_player_concentration
 
 
@@ -166,6 +167,7 @@ async def test_floor_captures_multiple_creatures_and_resolves_each_save(reset_db
             state = await fight.reload()
             [first_result] = state.held_actions[0]["reshape_receipts"][0]["results"]
             assert first_result["target_id"] == failed
+            assert state.encounter_facts["party_aggressors"] == {owner: [failed]}
             resolved = await keep(second_save)
         [summary] = [packet for packet in resolved["packets"] if packet["actor_id"] == owner]
         [receipt] = summary["reshape"]
@@ -176,6 +178,7 @@ async def test_floor_captures_multiple_creatures_and_resolves_each_save(reset_db
         reloaded = await fight.reload()
         assert reloaded.architect_encounter is not None
         assert reloaded.architect_encounter["pits"] == {failed: receipt["section_id"]}
+        assert encounter_facts.party_victims(reloaded, owner) == [failed, saved]
         untouched = reloaded.get_participant(saved)
         assert untouched is not None and untouched.hp_current == 100 and not untouched.conditions
     finally:

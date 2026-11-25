@@ -4,6 +4,7 @@ from dataclasses import replace
 from functools import partial
 
 import combat_spatial
+import encounter_facts
 from combat_enemy_action import resolve_save_damage_action
 from combat_fate_rolls import packet_save
 from combat_legendary_resistance import finalize_save, override_fields
@@ -109,6 +110,7 @@ async def resolve_effect(
     )
     if save is None:
         return {}
+    encounter_facts.record_party_attack(state, actor, target)
     if not save.success:
         duration = roll(action["duration_dice"]).total
         save = finalize_save(state, target, save, failed_conditions=("charmed",) if duration else ())

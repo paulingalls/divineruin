@@ -163,6 +163,16 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     implementation_id: wrath,
     recharge: "per_session",
   });
+  const verdict = "valdris_the_scales_verdict";
+  expect(
+    validateGods(catalog).find((god) => god.god_id === "valdris")?.layer_3_tier_abilities.exalted,
+  ).toMatchObject({
+    id: verdict,
+    status: "active",
+    resolution: "engine",
+    implementation_id: verdict,
+    recharge: "per_session",
+  });
   const ward = "mortaen_death_ward";
   expect(
     validateGods(catalog).find((god) => god.god_id === "mortaen")?.layer_3_tier_abilities
@@ -195,6 +205,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     gateway,
     walk,
     wrath,
+    verdict,
     ward,
     embrace,
     ...passives,
@@ -205,7 +216,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     ),
   ).toEqual(engine);
   const pending = abilities.filter((a) => !narrated.has(a.id) && !engine.has(a.id));
-  expect(pending).toHaveLength(8);
+  expect(pending).toHaveLength(7);
   for (const ability of abilities.filter((a) => passives.has(a.id))) {
     expect([ability.recharge, ability.implementation_id]).toEqual(["always", ability.id]);
   }

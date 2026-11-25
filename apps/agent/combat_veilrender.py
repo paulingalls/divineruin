@@ -6,6 +6,7 @@ from functools import partial
 import check_resolution_save
 import combat_spatial
 import dice
+import encounter_facts
 import spells
 import ward_resolution
 from combat_enemy_active import heal
@@ -132,6 +133,7 @@ async def turn_start(
             )
             if save is None:
                 return None
+            encounter_facts.record_party_attack(state, source, actor)
             effect = {
                 "actor_id": actor.id,
                 "source_id": source.id,

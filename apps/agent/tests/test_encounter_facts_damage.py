@@ -12,10 +12,12 @@ from _unbound_path_fixtures import world as world
 from _zhael_fate_fixtures import attack, defend, game_tools
 from acceptance._capstone_helpers import _build_state, _d20, _damage_die, _enemy, _player
 from combat.test_handle_hp_zero import _hollowed
+from livekit.agents.llm import ToolError
 from sample_fixtures import published_payloads
 from voice_condition_fixtures import participant, place_actors
 
 import db_mutations
+import encounter_facts
 from _gods_content import load_gods
 from activate_tools import activate
 from combat_state import CombatState
@@ -26,7 +28,8 @@ from query_tools import query_info
 MORTAEN = "mortaen_last_vigil"
 ZHAEL = "zhael_threaded_blade"
 GOBLIN, OTHER = "goblin_one", "goblin_two"
-EMPTY = {"ally_downers": [], "attacked": [], "death_save_success_round": {}, "misses": {}, "once_spent": {}}
+PRIOR = {"ally_downers": [], "attacked": [], "death_save_success_round": {}, "misses": {}, "once_spent": {}}
+EMPTY = {**PRIOR, "party_aggressors": {}}
 
 
 @contextmanager
@@ -134,6 +137,7 @@ async def mortaen_vigil(world: SimpleNamespace) -> None:
             **EMPTY,
             "ally_downers": [GOBLIN],
             "attacked": [f.ally, GOBLIN],
+            "party_aggressors": {GOBLIN: [f.ally]},
         }
         await catalog_clause(f, "mortaen", MORTAEN)
 
@@ -217,12 +221,12 @@ async def test_blade_fate_hold(world: SimpleNamespace) -> None:
         assert saved.encounter_facts["once_spent"] == {ZHAEL: [f.hero]}
 
 
-@pytest.mark.parametrize("fact", ["ally_downers", "attacked", "misses", "once_spent"])
+@pytest.mark.parametrize("fact", ["ally_downers", "attacked", "misses", "once_spent", "party_aggressors"])
 async def test_fact_rolls_back(world: SimpleNamespace, fact: str) -> None:
     async with fight(world, "zhael") as f:
         if fact == "once_spent":
             await f.round(attack(f.hero, GOBLIN), faces=(1,))
-        fall = fact == "ally_downers"
+        fall = fact in ("ally_downers", "party_aggressors")
         await f.declare(goblin_strike(GOBLIN, f.ally) if fall else attack(f.hero, GOBLIN))
         if fall:
             await f.call("resolve_phase")
@@ -232,6 +236,7 @@ async def test_fact_rolls_back(world: SimpleNamespace, fact: str) -> None:
             "attacked": [GOBLIN],
             "misses": {f.hero: [GOBLIN]},
             "once_spent": {ZHAEL: [f.hero]},
+            "party_aggressors": {GOBLIN: [f.ally]},
         }
         save = db_mutations.save_combat_state
 
@@ -254,22 +259,40 @@ async def test_fact_rolls_back(world: SimpleNamespace, fact: str) -> None:
 async def test_legacy_checkpoint(world: SimpleNamespace) -> None:
     async with fight(world, "mortaen") as f:
         data = f.session.combat_state.to_dict()
-        del data["encounter_facts"]
+        data["encounter_facts"] = PRIOR
         await db_mutations.save_combat_state(f.combat_id, data)
-        assert (await f.reload()).encounter_facts == EMPTY
+        saved = await f.reload()
+        assert saved.encounter_facts == {**EMPTY, "party_aggressors": None}
+        await f.round(goblin_strike(GOBLIN, f.hero))
+        saved = await f.reload()
+        assert saved.encounter_facts["party_aggressors"] is None
+        for reader in (encounter_facts.party_victims, encounter_facts.has_attacked_party):
+            with pytest.raises(ToolError, match="history is unknown"):
+                reader(saved, GOBLIN)
+
+
+def test_fresh_facts_are_independent() -> None:
     fresh, other = CombatState("fresh", [], []), CombatState("other", [], [])
+    assert fresh.encounter_facts == EMPTY
     assert all(fresh.encounter_facts[key] is not other.encounter_facts[key] for key in EMPTY)
 
 
 BAD_MAP = ([], {" ": []}, {1: []}, {"actor": {}}, {"actor": [None]}, {"actor": [" "]})
-MALFORMED = [None, 42, [], {"misses": {}, "once_spent": {}}, {**EMPTY, "extra": []}]
-MALFORMED += [{**EMPTY, field: bad} for field in ("ally_downers", "attacked") for bad in ({}, [3], [" "])]
-MALFORMED += [{**EMPTY, field: bad} for field in ("misses", "once_spent") for bad in BAD_MAP]
-
-MALFORMED += [{key: value for key, value in EMPTY.items() if key != "death_save_success_round"}]
-MALFORMED += [
-    {**EMPTY, "death_save_success_round": bad}
+INVALID_PRIOR = [{key: value for key, value in PRIOR.items() if key != missing} for missing in PRIOR]
+INVALID_PRIOR += [{**PRIOR, "extra": []}]
+INVALID_PRIOR += [{**PRIOR, field: bad} for field in ("ally_downers", "attacked") for bad in ({}, [3], [" "])]
+INVALID_PRIOR += [{**PRIOR, field: bad} for field in ("misses", "once_spent") for bad in BAD_MAP]
+INVALID_PRIOR += [
+    {**PRIOR, "death_save_success_round": bad}
     for bad in ([], {" ": 1}, {1: 1}, *({"actor": value} for value in (True, 1.0, None, 0, -1, "1")))
+]
+MALFORMED = [
+    None,
+    42,
+    [],
+    *INVALID_PRIOR,
+    *({**bad, "party_aggressors": {}} for bad in INVALID_PRIOR),
+    *({**EMPTY, "party_aggressors": bad} for bad in BAD_MAP),
 ]
 
 
