@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.68.2
+
+Proof now reruns the relevant acceptance tests when a content catalog they read through a test helper changes.
+
+Release steps: none.
+
 ## 0.68.1
 
 Devoted followers of Thyra can raise a Thornwall in combat. The barrier stops movement and melee attacks, tears enemies that run into it, and lets arrows and spells pass through. Foes can hack it apart.
