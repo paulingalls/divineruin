@@ -15,14 +15,15 @@ from combat_ability import (
     condition_ability,
 )
 from combat_ability_gate import (
+    BLADE_FLURRY,
     CLEAVING_BLOW,
     CUNNING_ACTION,
-    DEVASTATING_STRIKE,
     ELECTIVE_RIDER_ABILITIES,
     EXPLOIT_WEAKNESS,
     MULTI_TARGET_WEAPON_ABILITIES,
     SECOND_WIND,
     SHIELD_BASH,
+    SINGLE_TARGET_WEAPON_ABILITIES,
     WAR_CRY,
     WHIRLWIND,
     declared_ability,
@@ -92,7 +93,8 @@ async def _prevalidate_ability_focus(
                 else False
             )
             if (
-                ability.id in MULTI_TARGET_WEAPON_ABILITIES and player.get("class") != ability.archetype_id
+                ability.id in (BLADE_FLURRY, *MULTI_TARGET_WEAPON_ABILITIES)
+                and player.get("class") != ability.archetype_id
             ) or not abilities.owns_ability(
                 player.get("class"), player["level"], ability, owns_elective=owned_elective
             ):
@@ -118,17 +120,17 @@ async def _prevalidate_ability_focus(
             _validate_argument_type(decl)
         elif resolved_ability is not None and resolved_ability[0].id in (
             SECOND_WIND,
-            DEVASTATING_STRIKE,
             SHIELD_BASH,
             CUNNING_ACTION,
             EXPLOIT_WEAKNESS,
             *ELECTIVE_RIDER_ABILITIES,
+            *SINGLE_TARGET_WEAPON_ABILITIES,
             *MULTI_TARGET_WEAPON_ABILITIES,
         ):
             ability, variant = resolved_ability
             if ability.id in ELECTIVE_RIDER_ABILITIES:
                 variant = await combat_martial.active_rider_variant(actor_id, ability.id, conn=conn)
-            if ability.id in (DEVASTATING_STRIKE, *MULTI_TARGET_WEAPON_ABILITIES):
+            if ability.id in (*SINGLE_TARGET_WEAPON_ABILITIES, *MULTI_TARGET_WEAPON_ABILITIES):
                 try:
                     weapon = combat_martial.main_hand(player, ability.name)
                     if ability.id == CLEAVING_BLOW:
