@@ -176,7 +176,8 @@ Spells cast while hidden or from stealth generate **-2 Resonance** (minimum 0). 
 
 | Archetypes | Synergy Type | Enhancement |
 |---|---|---|
-| Rogue, Spy, Whisper | Natural | Shadow Veil extends to 2 rounds. Invisible Sneak Attack +1d6 |
+| Rogue | Natural | Shadow Veil extends to 2 rounds. Invisible Sneak Attack +1d6 |
+| Spy, Whisper | Natural | Shadow Veil extends to 2 rounds. Weapon attacks from Shadow Veil deal +1d6 |
 | Mage, Seeker | Unexpected | Hidden Casting reduction increases to -3. Lowest-Resonance arcane caster possible |
 | Oracle | Divine | Veil-sight visions are clearer and more detailed |
 

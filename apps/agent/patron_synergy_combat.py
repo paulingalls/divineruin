@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import random
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from dice import roll as dice_roll
 from patron_synergy import has_engine_synergy
@@ -18,6 +18,20 @@ MORTAEN_THRESHOLD_SHIELD = "mortaen_threshold_shield"
 MORTAEN_HOLD_THE_CROSSING = "mortaen_hold_the_crossing"
 
 KAELEN_WAR_SONGS = "kaelen_war_songs"
+TWO_ROUND_VEIL = "syrath_two_round_veil"
+VEILED_STRIKE = "syrath_veiled_strike"
+
+VeiledStrike = Literal["sneak_attack", "weapon"]
+
+
+def shadow_veil_rounds(player: dict) -> int:
+    return 2 if has_engine_synergy(player, TWO_ROUND_VEIL) else 1
+
+
+def veiled_strike(player: dict) -> VeiledStrike | None:
+    if has_engine_synergy(player, VEILED_STRIKE):
+        return "sneak_attack" if player["class"] == "rogue" else "weapon"
+    return None
 
 
 def inspire_attack_upgrade(player: dict) -> bool:

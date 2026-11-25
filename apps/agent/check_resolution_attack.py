@@ -250,6 +250,7 @@ def finish_attack(
     sneak_attack_raw_damage = 0
     synergy_damage, synergy_damage_type = 0, None
     synergy_clause_id = None
+    veiled_strike = attacker_data.get("veiled_strike")
     if hit:
         damage_notation = weapon.get("damage", "1d4")
         damage = dice_roll(damage_notation, rng=rng).total if damage_notation != "0" else 0
@@ -264,6 +265,9 @@ def finish_attack(
             or attacker_data.get("sneak_attack_adjacent_ally")
         ):
             count = 1 + (attacker_data.get("level", 1) - 1) // 4
+            if veiled_strike == "sneak_attack":
+                count += 1
+                synergy_clause_id = patron_synergy_combat.VEILED_STRIKE
             sneak_attack_dice = f"{count * (2 if critical else 1)}d6"
             sneak_attack_raw_damage = dice_roll(sneak_attack_dice, rng=rng).total
             damage += sneak_attack_raw_damage
@@ -292,8 +296,12 @@ def finish_attack(
             rider_damage_type = on_hit["damage_type"]
             rider_ignores_resistance = on_hit["ignores_resistance"]
             damage += rider_damage
-        synergy_clause_id = attacker_data.get("encounter_damage_clause")
-        if synergy_clause_id is not None:
+        if veiled_strike == "weapon":
+            synergy_clause_id = patron_synergy_combat.VEILED_STRIKE
+            synergy_damage = dice_roll("2d6" if critical else "1d6", rng=rng).total
+            synergy_damage_type = damage_type
+        elif (encounter_clause := attacker_data.get("encounter_damage_clause")) is not None:
+            synergy_clause_id = encounter_clause
             synergy_damage, synergy_damage_type = 1, damage_type
         elif attacker_data.get("outnumbered_oath"):
             synergy_clause_id = patron_synergy_combat.OATH_OF_VALOR
