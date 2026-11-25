@@ -90,9 +90,12 @@ describe("formatConditionLabel", () => {
 const _typeGuard: ConditionType = "exhausted";
 void _typeGuard;
 
-test("Iron Resolve has its own beneficial display", () => {
-  expect(getConditionDisplay("iron_resolve")).toEqual({
-    label: "Iron Resolve",
+test.each([
+  ["iron_resolve", "Iron Resolve"],
+  ["iron_stance", "Iron Stance"],
+])("%s has a beneficial display", (type, label) => {
+  expect(getConditionDisplay(type)).toEqual({
+    label,
     icon: "shield-plus",
     color: BrandColors.hollow,
   });

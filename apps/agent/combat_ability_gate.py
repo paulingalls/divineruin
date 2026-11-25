@@ -34,6 +34,7 @@ ELECTIVE_ATTACK_RIDERS = {
 
 ELECTIVE_RIDER_ABILITIES = frozenset((*ELECTIVE_ATTACK_RIDERS.values(), CRIPPLING_STRIKE))
 
+IRON_STANCE_ABILITY = "warrior_iron_stance"
 SECOND_WIND = "warrior_second_wind"
 RALLYING_SHOUT = "warrior_rallying_shout"
 

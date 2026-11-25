@@ -202,7 +202,7 @@ class TestActivation:
                 action.update(targets)
             elif ability.id == "warrior_rallying_shout":
                 action["target_id"] = "ally"
-            elif ability.id not in ("warrior_second_wind", "warrior_whirlwind") and (
+            elif ability.id not in ("warrior_second_wind", "warrior_whirlwind", "warrior_iron_stance") and (
                 spell is None or spell.heal is None
             ):
                 action["target_id"] = "goblin_scout_1"

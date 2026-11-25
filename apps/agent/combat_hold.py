@@ -202,41 +202,14 @@ async def pump(
             summaries.append(strike_summary(head, _with_reshape(head, head["completed_condition"])))
             state.held_actions.pop(0)
             continue
-        import choir_encounter
-        from choir_effects import approach
-
         if execution_id is None:
-            aura = None
-            if fate_rolls is not None and session.fate_lock.locked() and state.choir_encounter is not None:
-                aura = PacketRolls(
-                    fate_rolls, head.setdefault("roll_steps", {}), packet_deps["queries"], packet_deps["conn"]
-                ).scope("choir_aura")
-            await choir_encounter.turn_start(
-                session,
-                state,
-                state.get_participant(head["actor_id"]),
-                conn=packet_deps.get("conn"),
-                concentration_break_mod=packet_deps["concentration_break_mod"],
-                progress=aura,
-                sink=packet_deps.get("sink"),
-            )
-            if aura is not None and aura.paused:
-                return summaries
-            from combat_veilrender import turn_start
+            from combat_turn_start import start_held_packet
 
-            field = None
-            if fate_rolls is not None and session.fate_lock.locked():
-                field = PacketRolls(
-                    fate_rolls, head.setdefault("roll_steps", {}), packet_deps["queries"], packet_deps["conn"]
-                ).scope("veilrender")
-            effects = await turn_start(
-                session, state, state.get_participant(head["actor_id"]), **{**packet_deps, "progress": field}
-            )
+            effects = await start_held_packet(session, state, head, fate_rolls, packet_deps)
             if effects is None:
                 return summaries
             if effects:
                 summaries.append({"actor_id": head["actor_id"], "turn_start_effects": effects})
-            approach(state, state.get_participant(head["actor_id"]))
         progress = None
         declaration = _held_declaration(head)
         if declaration.reshape and fate_rolls is not None and (session.fate_lock.locked() or head.get("roll_steps")):

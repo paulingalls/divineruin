@@ -71,7 +71,7 @@ async def _resolve_one_packet(session, state, packet, *, _reshape_prepared=False
                 return {}
         except ReshapeRefused as error:
             return {"actor_id": packet.actor_id, "resolved": False, "reason": str(error)}
-    result = await _resolve_action_packet(session, state, packet, **deps)
+    result = await _resolve_action_packet(session, state, packet, turn_effects=effects, **deps)
     if "reshape_receipts" in steps:
         result["reshape"] = steps["reshape_receipts"]
     if (progress is not None and progress.paused) or (
@@ -111,6 +111,7 @@ async def _resolve_action_packet(
     attack_cursor=None,
     progress=None,
     player_movement=None,
+    turn_effects: list[dict],
 ) -> dict:
     """Resolve a single initiative-ordered ResolutionPacket against ``state``.
 
@@ -150,21 +151,20 @@ async def _resolve_action_packet(
     opportunity_attack = held_head.get("opportunity_attack", False)
     resuming_movement = player_movement is not None and player_movement.route is not None
     if not (resuming_movement or opportunity_attack or "legendary_kind" in held_head):
-        await choir_encounter.turn_start(
+        from combat_turn_start import start_choir_packet
+
+        forced_move = await start_choir_packet(
             session,
             state,
             attacker,
             conn=conn,
             concentration_break_mod=concentration_break_mod,
             sink=sink,
-            progress=progress.scope("choir_aura") if progress is not None else None,
+            progress=progress,
+            effects=turn_effects,
         )
         if progress is not None and progress.paused:
             return {}
-
-        from choir_effects import approach
-
-        forced_move = approach(state, attacker)
     if attacker is None or (attacker.is_fallen and not resuming_movement):
         return {"actor_id": packet.actor_id, "resolved": False, "reason": "actor unavailable"}
     if not resuming_movement and (blocked := cannot_act(attacker.conditions)):

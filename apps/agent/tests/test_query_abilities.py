@@ -145,7 +145,7 @@ class TestQueryAbilities:
                         "rogue_blade_flurry",
                     ):
                         declaration["target_id"] = "foe"
-                    if row["id"] in ("rogue_dirty_trick", "warrior_taunt"):
+                    if row["id"] in ("rogue_dirty_trick", "warrior_taunt", "warrior_iron_stance"):
                         assert row["combat"] is True
                     if row["id"] in ("warrior_precision_strike", "warrior_reckless_assault"):
                         assert row["combat"] is True

@@ -24,6 +24,7 @@ from combat_ability_gate import (
     ELECTIVE_ATTACK_RIDERS,
     ELECTIVE_RIDER_ABILITIES,
     EXPLOIT_WEAKNESS,
+    IRON_STANCE_ABILITY,
     MARSHAL_ORDERS,
     MULTI_TARGET_WEAPON_ABILITIES,
     RALLYING_SHOUT,
@@ -54,6 +55,8 @@ from session_data import CombatState
 def require_targets(
     state: CombatState, actor: CombatParticipant, decl: Declaration, ability: abilities.Ability
 ) -> None:
+    if ability.id == IRON_STANCE_ABILITY and (decl.target_ids or decl.target_id not in (None, actor.id)):
+        raise ValueError("Iron Stance only protects the warrior using it.")
     if ability.id == SECOND_WIND:
         if decl.target_ids or decl.target_id not in (None, actor.id):
             raise ValueError("Second Wind only heals the warrior using it.")
