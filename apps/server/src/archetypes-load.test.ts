@@ -1,3 +1,4 @@
+import weaponFixture from "../../../packages/shared/fixtures/weapon_proficiency.json";
 import { test, expect, describe, afterAll } from "bun:test";
 import {
   parseArchetypeRow,
@@ -5,7 +6,8 @@ import {
   listArchetypes,
   setArchetypes,
 } from "./archetypes.ts";
-import type { Archetype } from "@divineruin/shared";
+import { hasWeaponProficiency, type Archetype, type Item } from "@divineruin/shared";
+import { parseItemRow } from "./items.ts";
 
 const ARCHETYPES_PATH = new URL("../../../content/archetypes.json", import.meta.url);
 
@@ -13,8 +15,7 @@ const ARCHETYPE_COUNT = 18;
 
 // Armor is a naturally closed vocabulary (classes + non-metal qualifiers + the
 // unarmored sentinel); mirrors apps/agent/tests/test_archetypes_content.py
-// ARMOR_VOCAB. Weapon tokens are open-ended weapon ids, checked only for
-// well-formed snake_case.
+// ARMOR_VOCAB.
 const ARMOR_VOCAB = new Set([
   "heavy",
   "medium",
@@ -26,7 +27,6 @@ const ARMOR_VOCAB = new Set([
   "shield_nonmetal",
   "none",
 ]);
-const TOKEN_RE = /^[a-z][a-z_]*$/;
 
 async function loadArchetypesJson(): Promise<Record<string, unknown>[]> {
   const raw: unknown = await Bun.file(ARCHETYPES_PATH).json();
@@ -57,16 +57,12 @@ describe("content/archetypes.json — parseArchetypeRow conformance", () => {
     expect(parsed.starting_skills.num_choices).toBeGreaterThan(0);
   });
 
-  test("armor proficiencies are in the closed vocab; weapon tokens are well-formed", async () => {
+  test("armor proficiencies are in the closed vocab", async () => {
     const rows = await loadArchetypesJson();
     for (const row of rows) {
       const c = parseArchetypeRow(row.id as string, row);
       const badArmor = c.armor_proficiencies.filter((t) => !ARMOR_VOCAB.has(t));
       expect(badArmor, `${c.id} armor_proficiencies out of vocab: ${badArmor.join(", ")}`).toEqual(
-        [],
-      );
-      const badWeapon = c.weapon_proficiencies.filter((t) => !TOKEN_RE.test(t));
-      expect(badWeapon, `${c.id} weapon_proficiencies malformed: ${badWeapon.join(", ")}`).toEqual(
         [],
       );
     }
@@ -245,3 +241,82 @@ describe("parseArchetypeRow — fail-loud validation", () => {
     ).toThrow(/archetypes\[x\]\.starting_skills\.num_choices/);
   });
 });
+
+test.each(Object.entries(weaponFixture.malformed_proficiencies))(
+  "refuses proficiency mutation %s",
+  async (_, mutation) => {
+    const origin = (await loadArchetypesJson()).find((row) => row.id === "warrior")!;
+    const row: Record<string, unknown> = { ...origin, ...mutation.set };
+    for (const key of mutation.delete) delete row[key];
+    expect(() => parseArchetypeRow("bad_archetype", row)).toThrow(
+      "archetypes[bad_archetype].weapon_proficiencies",
+    );
+  },
+);
+
+function weaponForProficiency(item: Item) {
+  const { weapon_category, weapon_range, weapon_kind, properties } = item;
+  if (!weapon_category || !weapon_range || !weapon_kind) {
+    throw new Error(`Missing parsed weapon profile for ${item.id}`);
+  }
+  return { weapon_category, weapon_range, weapon_kind, properties };
+}
+
+test("parsed archetypes and weapons match the complete proficiency table", async () => {
+  const rows = await loadArchetypesJson();
+  const raw: unknown = await Bun.file(
+    new URL("../../../content/items.json", import.meta.url),
+  ).json();
+  if (!Array.isArray(raw)) throw new Error("content/items.json is not an array");
+  const items = raw as Record<string, unknown>[];
+  const weapons = items.filter((row) => row.type === "weapon");
+  expect(rows.map((row) => row.id).toSorted()).toEqual(
+    Object.keys(weaponFixture.proficiency).toSorted(),
+  );
+  const weaponIds = weapons.map((row) => row.id as string).toSorted();
+  expect(weaponIds).toEqual(Object.keys(weaponFixture.profiles).toSorted());
+  const parsedWeapons = weapons.map(
+    (row) =>
+      [
+        row.id as keyof typeof weaponFixture.profiles,
+        weaponForProficiency(parseItemRow(row.id as string, row)),
+      ] as const,
+  );
+  for (const row of rows) {
+    const id = row.id as keyof typeof weaponFixture.proficiency;
+    const { weapon_proficiencies } = parseArchetypeRow(id, row);
+    const expected = weaponFixture.proficiency[id];
+    expect(Object.keys(expected).toSorted()).toEqual(weaponIds);
+    for (const [weaponId, weapon] of parsedWeapons) {
+      expect(hasWeaponProficiency(weapon_proficiencies, weapon), `${id}/${weaponId}`).toBe(
+        expected[weaponId],
+      );
+    }
+  }
+});
+
+test.each(weaponFixture.token_cases)(
+  "matches $token with $weapon ($expected)",
+  async ({ token, weapon, expected }) => {
+    const origin = (await loadArchetypesJson())[0]!;
+    const { weapon_proficiencies } = parseArchetypeRow("token_case", {
+      ...origin,
+      weapon_proficiencies: [token],
+    });
+    const item = parseItemRow("test_weapon", {
+      id: "test_weapon",
+      name: "Test Weapon",
+      type: "weapon",
+      tier: 1,
+      rarity: "common",
+      tags: [],
+      effects: [],
+      weight: 1,
+      value_base: 0,
+      durability_tier: "standard",
+      damage_dice: "1d4",
+      ...weapon,
+    });
+    expect(hasWeaponProficiency(weapon_proficiencies, weaponForProficiency(item))).toBe(expected);
+  },
+);

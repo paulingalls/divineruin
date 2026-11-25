@@ -1,3 +1,4 @@
+import type { WeaponProficiency } from "../weapon-proficiency";
 // Archetype chassis — DB-loaded content shape (M2.1). content/archetypes.json is
 // the single source of truth for the 18 archetype chassis; this type mirrors that
 // JSON row shape (nested hp/resource/starting_skills), NOT the flattened Python
@@ -45,7 +46,7 @@ export interface Archetype {
   resource: ArchetypeResource;
   save_proficiencies: string[];
   armor_proficiencies: string[];
-  weapon_proficiencies: string[];
+  weapon_proficiencies: WeaponProficiency[];
   starting_skills: StartingSkills;
   magic_source: MagicSource | null; // M8; null for pure martials (no magic)
   spell_tier_min_levels: Partial<Record<SpellTier, number>>;

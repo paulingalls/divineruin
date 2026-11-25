@@ -39,7 +39,8 @@ async def archers(reset_db_pool):
                 "name": item["name"],
                 "damage": item["damage_dice"],
                 "damage_type": item["effects"][0]["damage_type"],
-                "properties": [*item["properties"], item["subtype"]],
+                "properties": item["properties"],
+                "ranged": item["weapon_range"] == "ranged",
             }
             await harness.pool.execute(
                 "UPDATE players SET data=$2::jsonb WHERE player_id=$1", actor, json.dumps(player)
@@ -138,6 +139,8 @@ async def test_later_shots_and_next_round(archers):
     encounter["structure_ids"].append(prior_wall)
     encounter["reaction_round"] = 1
     state.round_number = 2
+    # This fixture skips round one; its checkpoint cannot precede the next real round.
+    state.round_checkpoints.clear()
     before = await archers.persist()
     await declare(archers, *(bow(actor, owner) for actor in archers.players))
     with forced_rolls() as (rolled, _):

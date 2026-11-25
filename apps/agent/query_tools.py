@@ -364,6 +364,7 @@ async def _query_inventory_impl(
     session: SessionData = context.userdata
     from combat_item_rider import eligible_items, party_player
     from item_effects import CONSUME_PREFIX, heal_profile
+    from weapon_proficiency import validate_weapon_profile
 
     player_id = target_id or session.acting_player_id
     if target_id and not party_player(session, player_id):
@@ -382,6 +383,7 @@ async def _query_inventory_impl(
     results = []
     for item in items:
         profile = heal_profile(item["id"], item)
+        weapon = validate_weapon_profile(item["id"], item)
         results.append(
             {
                 "name": item.get("name"),
@@ -393,7 +395,7 @@ async def _query_inventory_impl(
                     if profile is not None and not item.get("tainted")
                     else {}
                 ),
-                "subtype": item.get("subtype"),
+                **(weapon if weapon is not None else {"subtype": item.get("subtype")}),
                 "durability_tier": item.get("durability_tier"),
                 "quantity": item.get("slot_info", {}).get("quantity", 1),
                 "tainted": item.get("tainted", False),

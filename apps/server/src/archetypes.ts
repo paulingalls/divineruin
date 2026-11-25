@@ -1,3 +1,4 @@
+import { parseWeaponProficiencies } from "@divineruin/shared";
 import type {
   Archetype,
   ArchetypeHp,
@@ -18,8 +19,7 @@ import { asRecord, parseStringArray } from "./parse-helpers.ts";
 // table (apps/agent/archetypes.py); the archetypes.json row IS the cross-language
 // chassis contract (constraint chassis-row-shape-contract) and each loader owns
 // fail-loud validation. The TS type mirrors the nested JSON row shape; this parser
-// stays structurally symmetric with Python parse_archetype_row (decision
-// ef171c247d46) — armor/weapon closed-vocab lives in the content test, not here.
+// stays structurally symmetric with Python parse_archetype_row.
 
 const HP_CATEGORIES = new Set<HpCategory>(["martial", "primal_divine", "arcane_shadow"]);
 const RESOURCE_PATTERNS = new Set<ResourcePattern>([
@@ -130,7 +130,7 @@ export function parseArchetypeRow(id: string, raw: unknown): Archetype {
     resource,
     save_proficiencies: parseStringArray(data.save_proficiencies, `${ctx}.save_proficiencies`),
     armor_proficiencies: parseStringArray(data.armor_proficiencies, `${ctx}.armor_proficiencies`),
-    weapon_proficiencies: parseStringArray(
+    weapon_proficiencies: parseWeaponProficiencies(
       data.weapon_proficiencies,
       `${ctx}.weapon_proficiencies`,
     ),
