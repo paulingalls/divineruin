@@ -11,13 +11,14 @@ import patron_gateway
 import patron_senses
 import unbound_tools
 import zhael_fate
+import zhael_foretold_words
 from _gods_content import load_gods
 from combat_terrain import resolve_terrain
 from patron_ability_tools import project_abilities
 from patron_combat_edges import COMMUNITY_SHIELD, SCALES_VERDICT, VEILSTEP, VEILSTEP_RANGE_FT, WILDMOTHERS_WRATH
 from patron_favor import get_patron_tier
 from patron_gifts import UNBOUND_ALONE_BONUS, thyra_gift
-from patron_synergy import synergy_for_patron
+from patron_synergy import has_engine_clause, synergy_for_patron
 from patron_zero_hp import DAWNS_EMBRACE, DEATH_WARD
 from session_data import SessionData
 from terrain import is_natural
@@ -112,6 +113,10 @@ async def query_patron(
                 f'Use activate(id="{patron_gateway.GATEWAY}", target_id=<visited location id>).'
             )
 
+    foretold = {}
+    if has_engine_clause(synergy, zhael_foretold_words.CLAUSE):
+        foretold["foretold_words"] = await zhael_foretold_words.project(player_id, session.session_id)
+
     senses = {}
     if patron_id == "mortaen":
         senses["deaths_awareness"] = await patron_senses.deaths_awareness(session, player, queries=queries)
@@ -134,6 +139,7 @@ async def query_patron(
             "abilities": abilities,
             **await ecosystem_cue(session, favor),
             **senses,
+            **foretold,
         }
     )
 

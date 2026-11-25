@@ -431,3 +431,24 @@ test("Zhael's marshal has the registered Moment to Rally clause", () => {
     ],
   });
 });
+
+test("Zhael's bard and diplomat have the registered Foretold Words clause", () => {
+  const matrix = validateGods(catalog).find(
+    (god) => god.god_id === "zhael",
+  )?.layer_4_synergy_matrix;
+  for (const archetype of ["bard", "diplomat"] as const) {
+    expect(matrix?.[archetype]).toEqual({
+      name: "Foretold Words",
+      type: "unexpected",
+      clauses: [
+        {
+          effect:
+            "Social encounters: once per NPC per session, know the exact DC of the next social check before attempting",
+          status: "active",
+          resolution: "engine",
+          implementation_id: "zhael_foretold_words",
+        },
+      ],
+    });
+  }
+});

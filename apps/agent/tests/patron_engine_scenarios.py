@@ -33,6 +33,7 @@ from test_syrath_two_round_veil import SCENARIOS as two_round_veil
 from test_syrath_veiled_strike import SCENARIOS as veiled_strikes
 from test_zhael_fate import SCENARIOS as lucky
 from test_zhael_fate_callers import SCENARIOS as zhael
+from test_zhael_foretold_words import SCENARIOS as foretold_words
 from test_zhael_marshal_rally import SCENARIOS as rally
 from test_zhael_oracle_twice_woven import SCENARIOS as twice_woven
 
@@ -51,6 +52,7 @@ ENGINE_SCENARIOS = {
     **fallen_ally_guard,
     **marshal_death_save,
     **rally,
+    **foretold_words,
     **war_songs,
     **appointed_mercy,
     **renewal,
