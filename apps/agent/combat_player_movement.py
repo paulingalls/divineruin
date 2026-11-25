@@ -62,7 +62,7 @@ class PlayerMovement:
     def route(self) -> dict | None:
         return self.steps.get("movement_route")
 
-    async def move(self, actor: CombatParticipant, declaration: Declaration) -> dict | None:
+    async def move(self, actor: CombatParticipant, declaration: Declaration, *, disengage: bool = False) -> dict | None:
         if self.route is None:
             if moves.ineligible(actor):
                 return moves.apply_move(self.state, actor, declaration)
@@ -81,7 +81,7 @@ class PlayerMovement:
                     "moved_ft": 0,
                     "destination": position(spatial, actor.id),
                 },
-                {"remaining": effective_speed(spatial["speeds"][actor.id], actor.conditions)},
+                {"remaining": effective_speed(spatial["speeds"][actor.id], actor.conditions), "disengage": disengage},
             ):
                 return moves.apply_move(self.state, actor, declaration)
         route = await self._finish(actor)

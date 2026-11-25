@@ -182,6 +182,8 @@ async def second_wind(
 def attack_ability(decl: Declaration) -> str | None:
     if decl.type is DeclarationType.ATTACK and decl.rider in CUNNING_RIDERS:
         return CUNNING_ACTION
+    if decl.type is DeclarationType.RETREAT and decl.rider == "disengage":
+        return CUNNING_ACTION
     if decl.type is DeclarationType.ATTACK and decl.rider == SHIELD_BASH_RIDER:
         return SHIELD_BASH
     if decl.type is DeclarationType.ATTACK and decl.rider == CRIPPLING_STRIKE_RIDER:

@@ -140,10 +140,13 @@ class DefendDecl(BaseModel):
 
 
 class RetreatDecl(BaseModel):
-    """Withdraw from the fight."""
+    """Move away from standing foes, provoking enemy opportunity attacks unless Disengaged."""
 
     kind: Literal["retreat"]
-    actor_id: str = Field(description="The participant declaring this action.")
+    actor_id: str = Field(description="The player or companion declaring this action.")
+    rider: Literal["", "disengage"] = Field(
+        description='Use "" normally, or "disengage" with learned Cunning Action and enough stamina.'
+    )
 
 
 DeclVariant = Union[
@@ -218,7 +221,7 @@ def _raw(decl: DeclVariant) -> dict:
     if isinstance(decl, DefendDecl):
         return {"type": "defend"}
     if isinstance(decl, RetreatDecl):
-        return {"type": "retreat"}
+        return {"type": "retreat", **({"rider": decl.rider} if decl.rider else {})}
     # Not a fallthrough: an unmapped variant that inherited the last branch would reach the engine
     # as some OTHER actor's action, and the round-trip test would pass because both sides read the
     # same wrong type. A new variant fails here instead.

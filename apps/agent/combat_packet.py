@@ -20,6 +20,7 @@ import combat_melee_approach
 import combat_packet_weapon
 import combat_player_ability
 import combat_recharge
+import combat_retreat
 import combat_spatial_declarations
 import combat_voice_rules
 import item_heal
@@ -170,13 +171,19 @@ async def _resolve_action_packet(
         reason = f"{attacker.name} is {blocked[0]} and loses the phase"
         return {"actor_id": packet.actor_id, "resolved": False, "reason": reason}
 
-    if combat_spatial_declarations.is_move(decl) and forced_move is not None:
+    retreating = attacker.is_ally and decl.type is DeclarationType.RETREAT
+    if (combat_spatial_declarations.is_move(decl) or retreating) and forced_move is not None:
         return forced_move
     if combat_spatial_declarations.is_move(decl):
         if player_movement is not None:
             return await player_movement.move(attacker, decl) or {}
         return await thyra_thornwall.resolve_move(
             session, state, attacker, decl, conn=conn, sink=sink, progress=progress
+        )
+
+    if retreating:
+        return await combat_retreat.resolve(
+            session, state, attacker, decl, player_movement, conn=conn, sink=sink, progress=progress, queries=queries
         )
 
     if stale is not None:

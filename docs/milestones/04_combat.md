@@ -105,7 +105,7 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - [x] Critical hit (natural 20) doubles damage dice
 - [x] `request_attack` returns structured result with hit/miss/crit, damage, and dramatic flag The current DM verb is `declare_phase`.
 - [x] the saving throw resolution returns structured result with success/fail and margin
-- [x] Declaration enhancers (Cunning Action, Extra Attack) correctly expand single declarations. Cunning Action doubles the approach allowance with Dash or attempts Stealth after the attack with Hide. Disengage costs 2 stamina and prevents enemy opportunity attacks during that attack declaration’s movement.
+- [x] Declaration enhancers (Cunning Action, Extra Attack) correctly expand single declarations. Cunning Action doubles the approach allowance with Dash or attempts Stealth after the attack with Hide. Disengage costs 2 stamina and prevents enemy opportunity attacks during an Attack or Retreat declaration’s movement.
 - [x] An eligible enemy can spend one opportunity attack per round when a player moves or approaches beyond its reach. The player may react to the blow, then continues from that point if able.
 - [x] All combat math functions are pure with no side effects
 - [x] Tests cover all declaration types, armor categories, and weapon damage ranges
@@ -113,7 +113,7 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
   `warrior_iron_stance`, `rogue_smoke_bomb`, `rogue_shadow_step`, `rogue_vanish`.
 - [ ] rogue_quick_fingers steals, plants or swaps a real item mid-combat
 - [ ] Weapon equips check proficiency once item weapon categories are normalized in both loaders.
-- [ ] A Retreat declaration moves the player through the enemy-opportunity route driver, so it provokes unless Disengaged.
+- [x] A Retreat declaration moves the player through the enemy-opportunity route driver, so it provokes unless Disengaged.
 
 **Key references:**
 - *Game Mechanics Combat — Action Economy*

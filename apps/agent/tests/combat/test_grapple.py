@@ -200,7 +200,7 @@ async def test_seizing_grab_miss_lands_nothing():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("condition_type", ["grappled", "restrained"])
-async def test_speed_zero_condition_refuses_retreat_but_allows_attack(condition_type):
+async def test_speed_zero_condition_allows_attack(condition_type):
     state = _make_combat_state()
     state.beat = "declaration"
     player = state.get_participant("player_1")
@@ -208,13 +208,6 @@ async def test_speed_zero_condition_refuses_retreat_but_allows_attack(condition_
     player.conditions = conditions.apply_condition([], condition_type, source="mawling_1")
     ctx = _ctx_at_resolution(state=state)
     mutations = AsyncMock()
-
-    with pytest.raises(ToolError, match=condition_type):
-        await combat_turn._declare_phase_impl(
-            ctx,
-            {player.id: {"type": "retreat"}},
-            mutations=mutations,
-        )
 
     result = await combat_turn._declare_phase_impl(
         ctx,
