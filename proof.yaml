@@ -33,6 +33,7 @@
       "apps/agent/combat_damage_affinity.py",
       "apps/agent/combat_grapple.py",
       "apps/agent/combat_init_validation.py",
+      "apps/agent/combat_movement_cost.py",
       "apps/agent/combat_spatial.py",
       "apps/agent/condition_bonus.py",
       "apps/agent/condition_catalog.py",

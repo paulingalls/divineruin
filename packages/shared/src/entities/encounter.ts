@@ -360,6 +360,10 @@ export interface SpatialPoint {
 export type SpatialZone =
   | { center_id: string; radius_ft: number }
   | { kind: "silence"; center_id: string; radius_ft: number };
+export type SpatialMovementArea = { kind: string; excluded_actor_ids: string[] } & (
+  | { shape: "sphere"; center: SpatialPoint; radius_ft: number }
+  | { shape: "rectangle"; min: SpatialPoint; max: SpatialPoint }
+);
 
 export interface ScenePlacement {
   party_start: SpatialPoint;
@@ -367,6 +371,7 @@ export interface ScenePlacement {
   actors: Record<string, SpatialPoint>;
   locations: Record<string, SpatialPoint>;
   zones: Record<string, SpatialZone>;
+  movement_areas?: Record<string, SpatialMovementArea>;
 }
 
 function spatialMap(value: unknown): Record<string, unknown> {
@@ -379,18 +384,52 @@ function spatialMap(value: unknown): Record<string, unknown> {
     throw new Error("spatial map requires nonempty IDs");
   return value as Record<string, unknown>;
 }
-function spatialPoint(value: unknown): void {
+function hasFields(row: Record<string, unknown>, fields: string[]): boolean {
+  return (
+    Object.keys(row).length === fields.length && fields.every((key) => Object.hasOwn(row, key))
+  );
+}
+
+function spatialPoint(value: unknown): SpatialPoint {
   const row = spatialMap(value);
-  if (
-    Object.keys(row).sort().join(",") !== "x,y,z" ||
-    Object.values(row).some((v) => typeof v !== "number" || !Number.isFinite(v))
-  )
+  if (!hasFields(row, ["x", "y", "z"]) || Object.values(row).some((v) => !Number.isFinite(v)))
     throw new Error("point requires finite x, y, z");
+  return row as unknown as SpatialPoint;
+}
+
+function validateMovementAreas(value: unknown, actors: Record<string, unknown>): void {
+  const common = ["shape", "kind", "excluded_actor_ids"];
+  for (const entry of Object.values(spatialMap(value))) {
+    const area = spatialMap(entry);
+    if (area.shape === "sphere" && hasFields(area, [...common, "center", "radius_ft"])) {
+      spatialPoint(area.center);
+      const radius = area.radius_ft as number;
+      if (!Number.isFinite(radius) || radius <= 0)
+        throw new Error("movement area radius must be positive and finite");
+    } else if (area.shape === "rectangle" && hasFields(area, [...common, "min", "max"])) {
+      const min = spatialPoint(area.min);
+      const max = spatialPoint(area.max);
+      if (min.x >= max.x || min.y >= max.y || min.z !== max.z)
+        throw new Error("movement area rectangle requires positive extents at one height");
+    } else {
+      throw new Error("invalid movement area shape");
+    }
+    if (typeof area.kind !== "string" || !area.kind.trim())
+      throw new Error("movement area requires a kind");
+    const excluded = area.excluded_actor_ids;
+    if (!Array.isArray(excluded) || new Set(excluded).size !== excluded.length)
+      throw new Error("movement area exclusions must be a list of unique actor IDs");
+    for (const id of excluded)
+      if (typeof id !== "string" || !Object.hasOwn(actors, id))
+        throw new Error("movement area exclusions must name authored enemies");
+  }
 }
 export function validateScenePlacement(encounter: unknown): void {
   const row = spatialMap(encounter);
   const scene = spatialMap(row.scene_placement);
-  if (Object.keys(scene).sort().join(",") !== "actors,companion_start,locations,party_start,zones")
+  const fields = ["actors", "companion_start", "locations", "party_start", "zones"];
+  if (Object.hasOwn(scene, "movement_areas")) fields.push("movement_areas");
+  if (!hasFields(scene, fields))
     throw new Error("scene_placement requires explicit starts, actors, locations and zones");
   spatialPoint(scene.party_start);
   spatialPoint(scene.companion_start);
@@ -405,6 +444,7 @@ export function validateScenePlacement(encounter: unknown): void {
     enemyIds.some((id) => typeof id !== "string" || !Object.hasOwn(actors, id))
   )
     throw new Error("scene must cover every enemy exactly");
+  if (Object.hasOwn(scene, "movement_areas")) validateMovementAreas(scene.movement_areas, actors);
   for (const value of [...Object.values(actors), ...Object.values(locations)]) spatialPoint(value);
   const points = [
     scene.party_start,
