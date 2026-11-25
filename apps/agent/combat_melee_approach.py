@@ -158,8 +158,6 @@ def _record_leg(facts: dict, moved: dict, budget: dict) -> dict:
         "closed_distance": travel > 0,
         **({"left_pit": True} if moved.get("left_pit") else {}),
     }
-    if "hearthfire_route" in moved:
-        result["hearthfire_route"] = moved["hearthfire_route"]
     if "hearthfire_entries" in moved:
         result["hearthfire_entries"] = facts.get("hearthfire_entries", []) + moved["hearthfire_entries"]
     if not moved["resolved"]:
