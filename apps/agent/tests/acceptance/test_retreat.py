@@ -96,6 +96,7 @@ async def test_withdrawal_provokes_once_and_finishes_from_reach_edge(fight: Mawl
         ({"placements": {"bandit": pos(5), "lookout": pos(-2), "third": pos(-3)}}, pos(0), pos(30)),
         ({"placements": {"bandit": pos(3), "lookout": pos(-3)}}, pos(0), pos(-30)),
         ({"placements": {"lookout": pos(-3), "bandit": pos(3)}}, pos(0), pos(-30)),
+        ({"placements": {"third": pos(0, z=2), "bandit": pos(4), "lookout": pos(-4)}}, pos(0), pos(-30)),
     ],
     indirect=["fight"],
 )

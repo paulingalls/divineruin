@@ -33,7 +33,13 @@ def _endpoint(state: CombatState, actor: CombatParticipant, spatial: dict, origi
     dx = origin["x"] - math.fsum(point["x"] for point in foes.values()) / len(foes)
     dy = origin["y"] - math.fsum(point["y"] for point in foes.values()) / len(foes)
     if not (dx or dy):
-        nearest = foes[min(foes, key=lambda foe_id: (distance(origin, foes[foe_id]), foe_id))]
+        # A foe straight overhead gives no ground direction; the nearest foe that does decides.
+        aside = {
+            foe_id: point for foe_id, point in foes.items() if (point["x"], point["y"]) != (origin["x"], origin["y"])
+        }
+        if not aside:
+            return None
+        nearest = aside[min(aside, key=lambda foe_id: (distance(origin, aside[foe_id]), foe_id))]
         dx, dy = origin["x"] - nearest["x"], origin["y"] - nearest["y"]
     length = math.hypot(dx, dy)
     if not length:
