@@ -25,6 +25,7 @@ from combat_ability_gate import (
     SECOND_WIND,
     SHIELD_BASH,
     SINGLE_TARGET_WEAPON_ABILITIES,
+    VANISH,
     WAR_CRY,
     WHIRLWIND,
     declared_ability,
@@ -117,6 +118,7 @@ async def _prevalidate_ability_focus(
             _validate_argument_type(decl)
         elif resolved_ability is not None and resolved_ability[0].id in (
             SECOND_WIND,
+            VANISH,
             SHIELD_BASH,
             CUNNING_ACTION,
             EXPLOIT_WEAKNESS,

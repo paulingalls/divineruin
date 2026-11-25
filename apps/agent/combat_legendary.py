@@ -48,7 +48,13 @@ def bind(actor: CombatParticipant, action_id: str) -> dict:
 
 
 def prepare(
-    state: CombatState, actor: CombatParticipant, action_id: str, target_id: str, reshape: tuple[dict, ...]
+    state: CombatState,
+    actor: CombatParticipant,
+    action_id: str,
+    target_id: str,
+    reshape: tuple[dict, ...],
+    *,
+    concealed: frozenset[str] = frozenset(),
 ) -> None:
     action = bind(actor, action_id)
     cost = action["cost"]
@@ -58,7 +64,7 @@ def prepare(
         if not target_id or reshape:
             raise ValueError(f"{action_id} requires a target and empty reshape.")
         raw = {"type": "attack", "action": action_id, "target_id": target_id}
-        validate_declaration(state, actor.id, resolve_declaration(raw), {})
+        validate_declaration(state, actor.id, resolve_declaration(raw), {}, concealed=concealed)
         target = state.get_participant(target_id)
         if target is None or target_unavailable(target, _find_action(actor, action_id)):
             raise ValueError(f"The target {target_id!r} is unavailable.")

@@ -35,6 +35,7 @@ from combat_enemy_action import resolve_enemy_strike
 from combat_enemy_active import resolve_active
 from combat_packet_gate import _prevalidate_ability_focus as _prevalidate_ability_focus
 from combat_structures import action_has_direct_line, blocked_reason, line_blocker
+from concealment import reveal_attacker
 from condition_restrictions import cannot_act
 from condition_sources import DeliveryRefused
 from declarations import DeclarationType
@@ -459,10 +460,17 @@ async def _resolve_action_packet(
 
     target = state.get_participant(decl.target_id) if decl.target_id else None
     # `action` was resolved once above (the single _find_action for this packet).
-    if target is None:
-        return {"actor_id": packet.actor_id, "resolved": False, "reason": f"target '{decl.target_id}' not found"}
-    if target_unavailable(target, action):
-        return {"actor_id": packet.actor_id, "resolved": False, "reason": f"{target.name} already fell"}
+    if target is None or target_unavailable(target, action):
+        reason = f"target '{decl.target_id}' not found" if target is None else f"{target.name} already fell"
+        summary: dict = {"actor_id": packet.actor_id, "resolved": False, "reason": reason}
+        if (
+            attacker.type == "player"
+            and action is not None
+            and (decl.type is DeclarationType.ATTACK or single_target)
+            and (reveal := await reveal_attacker(attacker.id, conn=conn, queries=queries))
+        ):
+            summary["concealment"] = reveal
+        return summary
     if action is None:
         return {"actor_id": packet.actor_id, "resolved": False, "reason": f"action '{decl.action}' not found"}
 

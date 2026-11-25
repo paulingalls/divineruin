@@ -37,6 +37,7 @@ from combat_hold_actions import (
     _attack_action,
     _held_declaration,
     _opens_windows,
+    concealed_target_reason,
 )
 from combat_hold_actions import (
     _is_wasted as _is_wasted,
@@ -170,6 +171,12 @@ async def pump(
     reacted, reaction_packets = None, []
     if closed is not None and closed["stage"] != MOVEMENT and state.held_actions:
         reacted = state.held_actions[0]
+        reason = await concealed_target_reason(state, reacted, _held_declaration(reacted), packet_deps=packet_deps)
+        if reason is not None:
+            summaries.append(_concealed_summary(reacted, reason))
+            state.held_actions.pop(0)
+            reacted = None
+    if reacted is not None and closed is not None:
         reaction_packets = combat_reaction_effect.close(
             state, reacted, closed, attack_action=_attack_action(state, reacted), contest_rng=contest_rng
         )
@@ -236,6 +243,12 @@ async def pump(
             return summaries
         if head.get("legendary_kind") in ("shift_wall", "reshape"):
             summaries.append(_with_reshape(head, {"actor_id": head["actor_id"], "resolved": True}))
+            state.held_actions.pop(0)
+            continue
+        if head is not reacted and (
+            reason := await concealed_target_reason(state, head, declaration, packet_deps=packet_deps)
+        ):
+            summaries.append(_concealed_summary(head, reason))
             state.held_actions.pop(0)
             continue
         summary_start = len(summaries)
@@ -369,6 +382,12 @@ async def pump(
         _assert_iteration_progress(state, head, summaries, summary_start)
 
     return summaries
+
+
+def _concealed_summary(head: dict, reason: str) -> dict:
+    return strike_summary(
+        head, _with_reshape(head, {"actor_id": head["actor_id"], "resolved": False, "reason": reason})
+    )
 
 
 def _with_reshape(head, summary):

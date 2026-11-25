@@ -144,7 +144,8 @@ async def _resolve_cast(
         generated = echo["resonance_generated"]
 
     concealment_packet = None
-    if concealment.is_concealed(player):
+    combat_spell_attack = combat_state is not None and (spell.combat_damage or {}).get("resolution") == "attack"
+    if concealment.is_concealed(player) and not combat_spell_attack:
         if revalidate_actor:
             session.validate_acting_player(player_id)
         concealment_packet = await concealment.transition(player_id, player, False, ended_by="cast", conn=conn)
