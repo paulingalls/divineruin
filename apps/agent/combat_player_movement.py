@@ -115,7 +115,7 @@ class PlayerMovement:
         return melee.finish(facts, route["target"], route["reach"]) if facts["resolved"] else facts
 
     def _start(self, actor: CombatParticipant, route: dict, facts: dict, budget: dict) -> bool:
-        if moves.in_pit(self.state, actor.id):
+        if budget.get("disengage") or moves.in_pit(self.state, actor.id):
             return False
         exits = _exits(self.state, actor, route["endpoint"])
         if not exits:

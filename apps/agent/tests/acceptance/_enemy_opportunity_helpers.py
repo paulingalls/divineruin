@@ -21,6 +21,9 @@ async def fight(reset_db_pool: str, request: pytest.FixtureRequest) -> AsyncIter
                 await harness.pool.execute(
                     "UPDATE players SET data=data || $2::jsonb WHERE player_id=$1", actor, json.dumps(player)
                 )
+        placements = {"bandit": pos(0), "lookout": pos(25)}
+        if options.get("include_second_bandit"):
+            placements["second_bandit"] = pos(0)
         harness.encounter_id = f"roadside_{uuid4().hex}"
         harness.owns_template = True
         await harness.pool.execute(
@@ -35,12 +38,12 @@ async def fight(reset_db_pool: str, request: pytest.FixtureRequest) -> AsyncIter
                     "recommended_party_level": 6,
                     "enemies": [
                         {"id": enemy, "creature_id": options.get(enemy, "bandit"), "role": "standard"}
-                        for enemy in ("bandit", "lookout")
+                        for enemy in placements
                     ],
                     "scene_placement": {
                         "party_start": pos(3),
                         "companion_start": pos(3),
-                        "actors": {"bandit": pos(0), "lookout": pos(25)},
+                        "actors": placements,
                         "zones": {},
                         "locations": {},
                     },
@@ -48,7 +51,7 @@ async def fight(reset_db_pool: str, request: pytest.FixtureRequest) -> AsyncIter
             ),
         )
         await harness.command("enter_mode", {"mode": "combat", "encounter_id": harness.encounter_id})
-        harness.enemies = ["bandit", "lookout"]
+        harness.enemies = list(placements)
         state = await harness.reload()
         require_spatial(state)["positions"].update({mover: pos(3), ally: pos(-30)})
         await harness.persist()
@@ -70,7 +73,7 @@ async def declare(fight: MawlingHarness, *actions: dict) -> None:
                 *actions,
                 *(
                     {"kind": "defend", "actor_id": actor, "reshape": []}
-                    for actor in (*fight.players, "bandit", "lookout")
+                    for actor in (*fight.players, *fight.enemies)
                     if actor not in actors
                 ),
             ]

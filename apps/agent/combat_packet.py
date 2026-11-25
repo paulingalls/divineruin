@@ -317,7 +317,7 @@ async def _resolve_action_packet(
             else:
                 movement = combat_melee_approach.prepare(state, attacker, target, action, movement_budget)
             if movement.get("attack_resolved") is False:
-                if decl.rider == "dash" and movement.get("movement_spent_ft", 0) > 0:
+                if decl.rider in ("dash", "disengage") and movement.get("movement_spent_ft", 0) > 0:
                     await combat_cunning_action.pay(attacker, queries=queries, conn=conn)
                 return movement
         if replay:

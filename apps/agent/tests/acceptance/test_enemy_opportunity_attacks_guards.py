@@ -2,14 +2,16 @@ from unittest.mock import patch
 
 import pytest
 from acceptance._capstone_helpers import _d20, _damage_die
-from acceptance._enemy_opportunity_helpers import declare, move, resolve_allies, strikes
+from acceptance._enemy_opportunity_helpers import attack, declare, move, resolve_allies, strikes
 from acceptance._enemy_opportunity_helpers import fight as fight
 from acceptance.mawling_harness import MawlingHarness
+from acceptance.test_architect_entomb import favor
 from acceptance.test_architect_fight import pos
 from acceptance.test_combat_wall_lines import wall
 from acceptance.test_opportunity_strike import participant, reconnect
 from acceptance.test_still_anchors import mock_combat_agent_factory as mock_combat_agent_factory
 
+import db_queries
 import reaction_spend
 from combat_spatial import require_spatial
 
@@ -187,3 +189,57 @@ async def test_opportunity_leaves_turn_start_effects_for_the_normal_turn(fight: 
     (regeneration,) = [e for e in effects if e["effect"] == "regeneration"]
     assert regeneration["healed"] == 10
     assert participant(await fight.reload(), "bandit").hp_current == hp + 10
+
+
+async def test_cunning_disengage_requires_ownership(fight: MawlingHarness) -> None:
+    mover = fight.players[0]
+    player = await db_queries.get_player(mover)
+    before = (await fight.reload()).to_dict()
+    result = await fight.command(
+        "declare_phase", {"declarations": [attack(mover, "lookout", "Longsword", rider="disengage")]}, error=True
+    )
+    assert "hasn't learned Cunning Action" in result
+    assert (await fight.reload()).to_dict() == before
+    assert await db_queries.get_player(mover) == player
+
+
+@pytest.mark.parametrize("fight", [{"player": {"class": "rogue"}}], indirect=True)
+async def test_cunning_disengage_survives_fate_reload_and_later_approach(fight: MawlingHarness) -> None:
+    mover = fight.players[0]
+    await favor(fight)
+    before = await db_queries.get_player(mover)
+    assert before is not None
+    state = await fight.reload()
+    rogue = participant(state, mover)
+    rogue.enhancers = ["shield_bash"]
+    rogue.action_pool[0]["reach"] = 10
+    spatial = require_spatial(state)
+    spatial["positions"]["lookout"] = pos(16)
+    spatial["positions"]["bandit"] = pos(2)
+    spatial["speeds"][mover] = 7
+    participant(state, "lookout").hp_current = 100
+    await fight.persist()
+    await declare(fight, attack(mover, "lookout", "Longsword", rider="disengage"))
+
+    with (
+        patch("check_resolution.dice_roll", return_value=_d20(18)) as rolls,
+        patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
+    ):
+        paused = await fight.command("resolve_phase", {})
+        assert (paused["fate_offer"]["roll_kind"], paused["fate_offer"]["roller_id"]) == ("attack", mover)
+        assert not strikes(paused["packets"])
+        assert require_spatial(await fight.reload())["positions"][mover] == pos(6)
+        assert await db_queries.get_player(mover) == before
+        await reconnect(fight)
+        resumed = await fight.command("resolve_phase", {})
+        assert resumed["next"]["waiting_on"] is None
+        assert "fate_offer" not in resumed
+        packets = resumed["packets"]
+    assert not strikes(packets)
+    rolls.assert_called_once()
+    (result,) = (packet for packet in packets if packet["actor_id"] == mover)
+    assert [swing["moved_ft"] for swing in result["attacks"]] == [3, 4]
+    assert result["attacks"][1]["attack_resolved"] is False
+    assert require_spatial(await fight.reload())["positions"][mover] == pos(10)
+    after = await db_queries.get_player(mover)
+    assert after is not None and after["stamina"]["current"] == before["stamina"]["current"] - 2
