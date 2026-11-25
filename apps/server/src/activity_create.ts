@@ -69,6 +69,33 @@ function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+function captureCraftBlessing(rawFavor: unknown) {
+  const favor = parseJsonb<{ patron?: unknown; level?: unknown; max?: unknown } | null | undefined>(
+    rawFavor,
+  );
+  if (favor == null) return undefined;
+  const { patron, level, max } = favor;
+  if (
+    typeof level !== "number" ||
+    typeof max !== "number" ||
+    max <= 0 ||
+    level < 0 ||
+    level > max
+  ) {
+    throw new Error("Invalid divine favor for crafting");
+  }
+  if (patron !== "aelora") return undefined;
+
+  // Match patron_favor.tier_index: favor thresholds round up against the patron's maximum.
+  const tier =
+    level >= Math.ceil((max * 75) / 100)
+      ? "Exalted"
+      : level >= Math.ceil((max * 40) / 100)
+        ? "Devoted"
+        : "Acknowledged";
+  return { id: "aelora_craft_blessing", name: "Craft Blessing", patron, tier };
+}
+
 function makeActivityId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
 }
@@ -233,8 +260,6 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       }
 
       const duration = craftingDurationSeconds(recipe);
-      durationMin = duration.min;
-      durationMax = duration.max;
       materialsToConsume = recipeMaterialIds(recipe);
 
       // Capture the resolution gate inputs (story-005) so resolve_crafting can
@@ -244,12 +269,21 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
       // Python producer (crafting_tools.py) for a byte-identical parameters shape.
       // workspace_access is sorted so the stored JSONB is deterministic.
       const playerRows = await sql<
-        { location_id: string | null; class: string | null; proficiencies: unknown }[]
+        {
+          location_id: string | null;
+          class: string | null;
+          proficiencies: unknown;
+          divine_favor: unknown;
+        }[]
       >`
         SELECT data->>'location_id' AS location_id, data->>'class' AS class,
-               data->'proficiencies' AS proficiencies
+               data->'proficiencies' AS proficiencies, data->'divine_favor' AS divine_favor
         FROM players WHERE player_id = ${playerId}
       `;
+      const blessing = captureCraftBlessing(playerRows[0]?.divine_favor);
+      const durationMultiplier = blessing ? 0.75 : 1;
+      durationMin = duration.min * durationMultiplier;
+      durationMax = duration.max * durationMultiplier;
       const locationId = playerRows[0]?.location_id ?? "unknown";
       archetype = playerRows[0]?.class ?? undefined;
       const parsedProficiencies = parseJsonb<unknown>(playerRows[0]?.proficiencies);
@@ -310,6 +344,7 @@ export async function handleCreateActivity(req: Request, playerId: string): Prom
         workspace_access: workspaceAccess,
         crafting_tier: craftingTier,
         tainted_materials: recipe.tainted_materials,
+        ...(blessing && { craft_blessing: blessing }),
       };
     } else {
       // companion_errand

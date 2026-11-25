@@ -13,6 +13,7 @@ from test_heal_synergies_place import SCENARIOS as place_healing
 from test_kaelen_war_songs import SCENARIOS as war_songs
 from test_marshal_death_save import SCENARIOS as marshal_death_save
 from test_patron_engine_aelora import SCENARIOS as aelora
+from test_patron_engine_aelora_craft import SCENARIOS as aelora_craft
 from test_patron_engine_aelora_shield import SCENARIOS as aelora_shield
 from test_patron_engine_beacon import SCENARIOS as beacon
 from test_patron_engine_dawns_embrace import SCENARIOS as dawns_embrace
@@ -42,6 +43,7 @@ ENGINE_SCENARIOS = {
     **valdris_verdict,
     **wellspring,
     **aelora,
+    **aelora_craft,
     **aelora_shield,
     **beacon,
     **dawns_mercy,

@@ -14,6 +14,7 @@ import veythar_wellspring
 import zhael_fate
 from _gods_content import load_gods
 from combat_terrain import resolve_terrain
+from crafting_tools import CRAFT_BLESSING
 from patron_ability_tools import project_abilities
 from patron_combat_edges import COMMUNITY_SHIELD, SCALES_VERDICT, VEILSTEP, VEILSTEP_RANGE_FT, WILDMOTHERS_WRATH
 from patron_favor import get_patron_tier
@@ -85,6 +86,11 @@ async def query_patron(
                     f'Use activate(id="{veythar_wellspring.ECHO}") to arm Wellspring Echo. '
                     + veythar_wellspring.ARMED_HINT
                 )
+        elif ability["id"] == CRAFT_BLESSING:
+            ability["activation_hint"] = (
+                "Begin a craft normally. Aelora's blessing applies automatically at the start, shortening the "
+                "duration to 75% of normal. A Success has a 25% chance to gain a property from the Exceptional table."
+            )
         elif ability["id"] == DEATH_WARD:
             ability["activation_hint"] = (
                 "Triggers automatically when damage reduces you from above 0 HP to 0 HP. You stay at 1 HP."
