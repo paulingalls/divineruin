@@ -86,6 +86,27 @@ async def attack_sequence(
     )
 
 
+async def _prepare_swing(
+    state, attacker, target, act, reaction_ac_bonus, *, player, queries, conn, strike_mode, faces
+) -> tuple[dict, check_resolution_attack.PreparedAttack]:
+    if player is None:
+        player = await attack_player(attacker, queries=queries, conn=conn)
+    defender = await attack_player(target, queries=queries, conn=conn)
+    attacker_data, target_ac, attack_mod = attack_roll_inputs(
+        attacker,
+        target,
+        state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus,
+        state,
+        act,
+        player=player,
+        defender=defender,
+        veiled_strike=strike_mode,
+    )
+    return attacker_data, check_resolution_attack.prepare_attack(
+        attacker_data, act, target_ac, attack_mod=attack_mod, target_conditions=target.conditions, faces=faces
+    )
+
+
 async def continue_attack(
     session,
     state,
@@ -120,13 +141,15 @@ async def continue_attack(
     # a resumed cursor carries both so a held swing never moves the attacker twice.
     movement = attack_cursor.get("movement", movement or {})
     movement_budget = attack_cursor.get("movement_budget", movement_budget if movement_budget is not None else {})
-    declared_target = target
+    anchor = target
+    swing_targets = attack_cursor.get("swing_targets")
+    shared_faces = attack_cursor.get("shared_faces")
     martial = combat_martial.attack_ability(decl)
 
     def checkpoint() -> None:
         attack_cursor.update(
             actions=actions,
-            target_id=declared_target.id,
+            target_id=anchor.id,
             enemies_remaining=enemies_remaining,
             is_first_attack=is_first_attack,
             summaries=attack_summaries,
@@ -138,6 +161,25 @@ async def continue_attack(
     start = len(attack_summaries)
     interrupted = None
     for index, act in enumerate(actions[start:], start):
+        prepared_data = attack_cursor.get("prepared")
+        swing_steps = progress.steps.get("swing", {}) if progress is not None else {}
+        resumed_swing = "damage_receipt" in swing_steps or "attack_summary" in swing_steps
+        declared_target = anchor
+        if swing_targets is not None:
+            target_id = swing_targets[index]
+            declared_target = state.get_participant(target_id)
+            reason = attack_cursor["skipped_targets"].get(target_id)
+            if (
+                reason is None
+                and prepared_data is None
+                and not resumed_swing
+                and not combat_martial.standing_foe(declared_target)
+            ):
+                reason = f"{declared_target.name if declared_target else target_id} is already down."
+            if reason is not None:
+                attack_summaries.append(combat_martial.skip_swing(target_id, reason))
+                continue
+            assert declared_target is not None
         if index == 0 or act == actions[0]:
             swing_move = movement
         elif "swing_move" in attack_cursor:
@@ -160,16 +202,19 @@ async def continue_attack(
         if martial == DEVASTATING_STRIKE and not any(sub.get("hit") for sub in attack_summaries):
             count = 3 if attacker.level >= 17 else 2 if attacker.level >= 10 else 1
             act = {**act, "devastating_strike_dice": count}
+        # Multi-target swings checked reach and melee line at sequence start; never re-check per swing.
         target, interception = architect_reaction.weapon_target(
-            state, attacker, declared_target, act, attack_cursor, index
+            state, attacker, declared_target, act, attack_cursor, index if swing_targets is None else 0
         )
         if interception.get("resolved") is False:
             attack_summaries.append({**swing_move, **interception})
             break
         swing = progress.scope("swing") if progress is not None else None
-        prepared_data = attack_cursor.get("prepared")
-        resumed_swing = swing is not None and ("damage_receipt" in swing.steps or "attack_summary" in swing.steps)
-        reveal = start == 0 and not attack_summaries and attacker.type == "player" and not resumed_swing
+        reveal = (
+            attacker.type == "player"
+            and not resumed_swing
+            and (not attack_summaries if swing_targets is None else all(sub.get("skipped") for sub in attack_summaries))
+        )
         strike_mode = None
         player = None
         if reveal and prepared_data is None:
@@ -181,38 +226,39 @@ async def continue_attack(
         if prepared_data is not None:
             prepared = check_resolution_attack.PreparedAttack.from_dict(prepared_data)
             attacker_data = attack_cursor["attacker_data"]
-        elif (
-            swing is not None
-            and "damage_receipt" not in swing.steps
-            and "attack_summary" not in swing.steps
-            and attacker.is_ally
-            and (candidates := await zhael_fate.candidates(session, queries=queries, conn=conn)).choices(attacker.id)
-        ):
-            if player is None:
-                player = await attack_player(attacker, queries=queries, conn=conn)
-            defender = await attack_player(target, queries=queries, conn=conn)
-            attacker_data, target_ac, attack_mod = attack_roll_inputs(
-                attacker,
-                target,
-                state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus,
-                state,
-                act,
-                player=player,
-                defender=defender,
-                veiled_strike=strike_mode,
-            )
-            prepared = check_resolution_attack.prepare_attack(
-                attacker_data, act, target_ac, attack_mod=attack_mod, target_conditions=target.conditions
-            )
-            if await swing.phase.hold(
-                session,
-                "attack",
-                attacker.id,
-                prepared.original,
-                prepared.d20,
-                queries=queries,
-                conn=conn,
-                candidates=candidates,
+        elif not resumed_swing:
+            candidates = None
+            if swing is not None and attacker.is_ally:
+                options = await zhael_fate.candidates(session, queries=queries, conn=conn)
+                if options.choices(attacker.id):
+                    candidates = options
+            if shared_faces is not None or candidates is not None:
+                attacker_data, prepared = await _prepare_swing(
+                    state,
+                    attacker,
+                    target,
+                    act,
+                    reaction_ac_bonus,
+                    player=player,
+                    queries=queries,
+                    conn=conn,
+                    strike_mode=strike_mode,
+                    faces=shared_faces,
+                )
+            if (
+                candidates is not None
+                and swing is not None
+                and prepared is not None
+                and await swing.phase.hold(
+                    session,
+                    "attack",
+                    attacker.id,
+                    prepared.original,
+                    prepared.d20,
+                    queries=queries,
+                    conn=conn,
+                    candidates=candidates,
+                )
             ):
                 stored = asdict(prepared)
                 stored["consumed"] = list(prepared.consumed)
@@ -333,6 +379,8 @@ async def continue_attack(
             attack_cursor.pop("reactive_architecture")
         if martial == combat_cunning_action.CUNNING_ACTION and index == 0 and "hit" in sub:
             await combat_cunning_action.pay(attacker, queries=queries, conn=conn)
+        if swing_targets is not None:
+            sub["target_id"] = target.id
         sub.update(swing_move)
         attack_summaries.append(sub)
         attack_cursor.pop("swing_move", None)
@@ -356,14 +404,18 @@ async def continue_attack(
                 member.weapon_used = True
                 if sub["hit"] and sub["critical"] and combat_resolution.is_heavily_armored(target.ac):
                     member.weapon_crit_vs_heavy = True
-        if damage_target_unavailable(declared_target):
+        if swing_targets is None and damage_target_unavailable(declared_target):
             break
 
     # The first attack of the combat has now resolved; flips the combat-scoped flag so a
     # later attack no longer earns the dramatic "first_attack" promotion (story-004).
     state.first_attack_resolved = True
 
-    summary = combat_attack_summary.aggregate(attack_summaries, moved=bool(movement))
+    summary = combat_attack_summary.aggregate(
+        attack_summaries, moved=bool(movement), multi_target=swing_targets is not None
+    )
+    if swing_targets is not None:
+        summary.update(action=decl.action, declaration_type=str(decl.type))
     if concealment_packet is not None:
         summary["concealment"] = concealment_packet
     if interrupted is None and martial == combat_cunning_action.CUNNING_ACTION and "hit" in summary:

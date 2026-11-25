@@ -52,6 +52,18 @@ describe("content/archetype_abilities.json — parseAbilityRow conformance", () 
     expect(trick.cost.stamina).toBe(2);
     expect(load("warrior_precision_strike").cost.stamina).toBe(3);
     expect(load("warrior_reckless_assault").cost.stamina).toBe(2);
+    for (const [id, level, stamina] of [
+      ["warrior_cleaving_blow", 4, 4],
+      ["warrior_whirlwind", 8, 5],
+    ] as const) {
+      expect(load(id)).toMatchObject({
+        id,
+        archetype_id: "warrior",
+        ability_type: "elective",
+        level_requirement: level,
+        cost: { stamina, focus: 0 },
+      });
+    }
   });
 
   test("a fixed-cost ability round-trips its id and nested cost", async () => {

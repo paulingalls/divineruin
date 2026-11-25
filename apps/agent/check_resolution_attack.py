@@ -173,6 +173,8 @@ def prepare_attack(
     rng: random.Random | None = None,
     attack_mod: int = 0,
     target_conditions: list[dict] | tuple = (),
+    *,
+    faces: list[int] | None = None,
 ) -> PreparedAttack:
     # Attacker condition effects (M4.3): Exhausted -1/stack folds into the attack roll,
     # Prone/Blinded etc. impose disadvantage (scope "attack"), Enraged adds +2 damage below.
@@ -208,7 +210,7 @@ def prepare_attack(
     d20 = D20Roll(atk_mod + bonus.total, target_ac, attack_advantage, attack_disadvantage)
     return PreparedAttack(
         d20,
-        d20.roll(rng),
+        d20.roll(rng) if faces is None else d20.evaluate_pair(*faces),
         consumed,
         attacker_data.get("attack_disadvantage_source"),
         war_songs_bonus=bonus.war_songs_bonus,

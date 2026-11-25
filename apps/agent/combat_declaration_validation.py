@@ -19,6 +19,7 @@ from combat_ability_gate import (
     CUNNING_ACTION,
     DEVASTATING_STRIKE,
     ELECTIVE_RIDER_ABILITIES,
+    MULTI_TARGET_WEAPON_ABILITIES,
     SHIELD_BASH,
     WAR_CRY,
     combat_ability,
@@ -186,6 +187,8 @@ def validate_declaration(
             if ability.id == WAR_CRY:
                 if not war_cry_targets(next_state):
                     raise ValueError("War Cry requires a standing foe who can hear.")
+                return
+            if ability.id in MULTI_TARGET_WEAPON_ABILITIES:
                 return
             if ability.id == DEVASTATING_STRIKE:
                 # A weapon strike, not a ranged line: check its target by melee reach to the wall's nearest point.

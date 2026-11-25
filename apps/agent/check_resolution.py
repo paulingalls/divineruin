@@ -167,6 +167,11 @@ class D20Roll:
     def evaluate(self, face: int) -> D20CheckCore:
         return _evaluate_d20(face, self.modifier, self.dc)
 
+    def evaluate_pair(self, first: int, second: int) -> D20CheckCore:
+        if self.advantage == self.disadvantage:
+            return self.evaluate(first)
+        return self.evaluate(max(first, second) if self.advantage else min(first, second))
+
     def roll(self, rng: random.Random | None = None) -> D20CheckCore:
         return _roll_d20_check(
             self.modifier, self.dc, rng=rng, advantage=self.advantage, disadvantage=self.disadvantage

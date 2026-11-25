@@ -38,7 +38,10 @@ ability — action is the EXACT id of a spell or ability the caster knows (for e
 revival, several allies for a spell that blesses a group; leave targets empty for a \
 self-cast. Second Wind uses empty targets. War Cry uses empty targets and reaches every standing foe who can hear. \
 Rallying Shout names one standing ally. \
-Devastating Strike names one foe and uses the main-hand melee weapon. Dirty Trick uses action="rogue_dirty_trick" \
+Devastating Strike names one foe and uses the main-hand melee weapon. \
+Cleaving Blow (action="warrior_cleaving_blow") takes one or two standing foe ids in targets, in strike order. \
+Whirlwind (action="warrior_whirlwind") uses empty targets and strikes every standing foe within main-hand melee reach. \
+Either can use its active variant id. Narrate each swing from attacks, including any skipped foe. Dirty Trick uses action="rogue_dirty_trick" \
 and names one standing foe. \
 Exploit Weakness names one standing foe using action="rogue_exploit_weakness" or its active variant id. \
 The rogue studies that foe this round. Their next qualifying Sneak Attack against it next round \
