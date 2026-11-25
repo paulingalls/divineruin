@@ -102,7 +102,7 @@ def _remember(ids: list[str], participant_id: str) -> None:
 
 
 def record_party_attack(state: CombatState | None, attacker: CombatParticipant, target: CombatParticipant) -> None:
-    if state is None or attacker.is_ally or attacker.is_structure or not target.is_ally:
+    if state is None or attacker.is_ally or not target.is_ally:
         return
     history = state.encounter_facts["party_aggressors"]
     if history is not None:
