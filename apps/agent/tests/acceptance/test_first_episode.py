@@ -80,6 +80,7 @@ async def test_creation_entry_and_prompt(livekit_server, reset_db_pool, tmp_path
     from livekit.agents.llm.utils import build_legacy_openai_schema
 
     async with episode(livekit_server, tmp_path) as run:
+        await until(lambda: run.packets(E.CREATION_CARDS))
         first = run.packets(E.CREATION_CARDS)[0]["cards"]
         assert {card["id"] for card in first} == ALLOWED["class"]
         opening = run.requests[0]
