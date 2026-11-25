@@ -8,7 +8,7 @@ import architect_encounter
 import combat_spatial
 import conditions
 from combat_participant import CombatParticipant
-from combat_structures import WALL_AC, WALL_HP, collapse_wall
+from combat_structures import STRUCTURE_STATS, collapse_wall
 
 if TYPE_CHECKING:
     from combat_state import CombatState
@@ -98,7 +98,8 @@ def land(state: CombatState, owner: CombatParticipant, target: CombatParticipant
     if not any(_sourced(condition, chamber_id) for condition in applied):
         summary["condition_immune"] = "restrained"
         return
-    chamber = CombatParticipant(chamber_id, "Entomb chamber", "structure", 0, WALL_HP, WALL_HP, WALL_AC)
+    ac, hp = STRUCTURE_STATS[None]
+    chamber = CombatParticipant(chamber_id, "Entomb chamber", "structure", 0, hp, hp, ac)
     target.conditions = applied
     state.participants.append(chamber)
     spatial["positions"][chamber_id] = dict(combat_spatial.position(spatial, target.id))

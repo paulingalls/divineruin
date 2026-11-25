@@ -1892,10 +1892,11 @@
       "devoted": {
         "id": "thyra_thornwall",
         "name": "Thornwall",
-        "effect": "Once per long rest, barrier of thorns blocking a passage. 20 HP, 1d6 to passers. 10 minutes",
+        "effect": "In combat, raise a barrier up to 30 feet long and within 30 feet, clear of creatures. AC 19, 20 HP. It blocks movement and melee reach. An enemy it stops takes 1d6 piercing once per turn. Ranged attacks and spells pass through. It lasts until destroyed or combat ends.",
         "recharge": "long_rest",
-        "status": "pending",
-        "resolution": "engine"
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "thyra_thornwall"
       },
       "exalted": {
         "id": "thyra_wildmothers_wrath",

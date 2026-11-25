@@ -26,6 +26,7 @@ import event_types as E
 import reaction_gate
 import reaction_spend
 import reaction_windows
+import thyra_thornwall
 from action_contracts_still import STILL_ZONE_KINDS
 from combat_ability import _find_action
 from combat_attack_roll import build_attack_dice_roll_payload, deserialize_roll
@@ -276,6 +277,11 @@ async def pump(
             if movement is None:
                 return summaries
             if movement.get("attack_resolved") is False:
+                movement = await thyra_thornwall.resolve_held_contact(
+                    session, state, actor, movement, head, fate_rolls=fate_rolls, packet_deps=packet_deps
+                )
+                if movement is None:
+                    return summaries
                 summaries.append(strike_summary(head, _with_reshape(head, movement)))
                 state.held_actions.pop(0)
                 continue

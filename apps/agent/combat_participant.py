@@ -43,6 +43,8 @@ class CombatParticipant:
     choir_suppression: dict | None = None
     still_dormant: bool = False
     choir_silence_exposed: bool = False
+    structure_kind: str | None = None
+    thornwall_damage_round: int | None = None
     choir_movement_round: int | None = None
     damage_affinities: dict[str, list[str]] = field(default_factory=dict)
     resist_nonmagical_physical: bool = False

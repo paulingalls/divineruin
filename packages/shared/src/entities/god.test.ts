@@ -153,6 +153,16 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     implementation_id: walk,
     recharge: "per_session",
   });
+  const thornwall = "thyra_thornwall";
+  expect(
+    validateGods(catalog).find((god) => god.god_id === "thyra")?.layer_3_tier_abilities.devoted,
+  ).toMatchObject({
+    id: thornwall,
+    status: "active",
+    resolution: "engine",
+    implementation_id: thornwall,
+    recharge: "long_rest",
+  });
   const wrath = "thyra_wildmothers_wrath";
   expect(
     validateGods(catalog).find((god) => god.god_id === "thyra")?.layer_3_tier_abilities.exalted,
@@ -205,6 +215,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     gateway,
     walk,
     wrath,
+    thornwall,
     verdict,
     ward,
     embrace,
@@ -216,7 +227,7 @@ test("the actual catalog validates against the exact ten-patron floor", () => {
     ),
   ).toEqual(engine);
   const pending = abilities.filter((a) => !narrated.has(a.id) && !engine.has(a.id));
-  expect(pending).toHaveLength(7);
+  expect(pending).toHaveLength(6);
   for (const ability of abilities.filter((a) => passives.has(a.id))) {
     expect([ability.recharge, ability.implementation_id]).toEqual(["always", ability.id]);
   }

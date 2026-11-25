@@ -13,7 +13,7 @@ from action_contracts_still import STILL_ZONE_KINDS
 from combat_ability import _find_action
 from combat_ability_gate import CUNNING_ACTION, DEVASTATING_STRIKE, SHIELD_BASH, combat_ability, declared_ability
 from combat_action_availability import require_available
-from combat_structures import action_has_direct_line, require_line
+from combat_structures import THORNWALL, action_has_direct_line, blocked_reason, line_blocker, require_line
 from condition_restrictions import cannot_act, declaration_costs, speed_zero
 from declarations import DeclarationType, ManeuverIntent
 from encounter_actions import action_kind
@@ -61,7 +61,8 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
             and target.is_structure
             and architect_encounter.is_owner(next_state, actor.id)
         )
-        if not (self_stand or construct_slam) and target.is_ally == actor.is_ally:
+        strikes_thornwall = declaration.type is DeclarationType.ATTACK and target.structure_kind == THORNWALL
+        if not (self_stand or construct_slam or strikes_thornwall) and target.is_ally == actor.is_ally:
             raise ValueError(
                 f"{actor.name} ({actor.id}) cannot target {target.name} ({target.id}) with {declaration.type}"
             )
@@ -163,9 +164,8 @@ def validate_declaration(next_state, actor_id, declaration, persisted_declaratio
         return
     if spell is not None and spell.combat_damage and spell.combat_damage.get("recipients"):
         return
-    require_line(
-        next_state,
-        actor.id,
-        declaration.target_id,
-        melee=pool_action is not None and combat_melee_approach.is_melee(pool_action),
-    )
+    melee = pool_action is not None and combat_melee_approach.is_melee(pool_action)
+    physical = melee or declaration.type is DeclarationType.MANEUVER
+    wall = line_blocker(next_state, actor.id, declaration.target_id, melee=physical)
+    if wall is not None and (not melee or actor.is_ally or wall.structure_kind != THORNWALL):
+        raise ValueError(blocked_reason(wall))

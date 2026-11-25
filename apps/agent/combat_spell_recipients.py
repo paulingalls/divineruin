@@ -55,6 +55,7 @@ def select(state, caster, declaration, spell, *, require_live=False):
                 target_id=target_id,
                 origin_id=origin_id,
                 effect_origin=True,
+                physical=False,
             )
             is None
         )

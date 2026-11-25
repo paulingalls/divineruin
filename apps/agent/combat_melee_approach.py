@@ -7,7 +7,14 @@ from combat_down import has_damage
 from combat_movement_cost import crosses_low_ceiling, reachable_point
 from combat_spatial import distance, number, position, require_spatial
 from combat_spatial_declarations import apply_move, ineligible
-from combat_structures import blocked_reason, blocking_wall, nearest_wall_point
+from combat_structures import (
+    THORNWALL,
+    blocked_reason,
+    blocking_wall,
+    blocks_path,
+    nearest_wall_point,
+    stop_before_wall,
+)
 from declarations import Declaration, DeclarationType
 from encounter_actions import action_kind
 
@@ -54,8 +61,25 @@ def plan(state, actor, target, action, budget) -> tuple[dict, dict | None]:
         "moved_ft": 0,
         "destination": dict(origin),
     }
-    if wall := blocking_wall(state, spatial, origin, destination, target_id=target.id, origin_id=actor.id):
-        return {**facts, "resolved": False, "attack_resolved": False, "reason": blocked_reason(wall)}, None
+    if wall := blocking_wall(
+        state, spatial, origin, destination, target_id=target.id, origin_id=actor.id, physical=True
+    ):
+        blocked = {**facts, "resolved": False, "attack_resolved": False, "reason": blocked_reason(wall)}
+        if actor.is_ally or wall.structure_kind != THORNWALL or ineligible(actor) is not None:
+            return blocked, None
+        if separation <= reach:
+            return {**blocked, "thornwall_id": wall.id}, None
+        # The strike stays blocked however far the approach gets; contact needs the wall reached.
+        facts.update(thornwall_blocked=wall.id, reason=blocked_reason(wall))
+        # Shorten the route to the wall before any reach exits are computed from its endpoint.
+        endpoint = reachable_point(spatial, actor.id, origin, destination, budget["remaining"])
+        segment = spatial["structures"][wall.id]
+        if blocks_path(origin, endpoint, segment):
+            endpoint = stop_before_wall(origin, endpoint, segment)
+            facts["thornwall_id"] = wall.id
+        if endpoint == origin:
+            return finish(facts, destination, reach), None
+        return facts, {"endpoint": endpoint, "mode": mode, "target": destination, "reach": reach}
     if separation <= reach:
         return facts, None
     reason = ineligible(actor)
@@ -90,7 +114,7 @@ def apply_leg(state, actor, facts: dict, endpoint: dict, mode: str, budget: dict
     travel = facts["moved_ft"] + moved["moved_ft"]
     spent = min(budget["remaining"], moved["movement_spent_ft"])
     budget["remaining"] -= spent
-    return {
+    result = {
         **facts,
         "moved_ft": travel,
         "movement_spent_ft": facts.get("movement_spent_ft", 0) + spent,
@@ -99,9 +123,16 @@ def apply_leg(state, actor, facts: dict, endpoint: dict, mode: str, budget: dict
         "closed_distance": travel > 0,
         **({"left_pit": True} if moved.get("left_pit") else {}),
     }
+    if moved.get("left_pit"):
+        # Climbing out of a pit spends the whole move, so the mover never reaches the Thornwall.
+        result.pop("thornwall_id", None)
+    return result
 
 
 def finish(facts: dict, target: dict, reach: float, reason: str | None = None) -> dict:
+    if "thornwall_blocked" in facts:
+        facts.update(resolved=False, attack_resolved=False)
+        return facts
     remaining = distance(facts["destination"], target)
     facts["attack_resolved"] = reason is None and (remaining <= reach or math.isclose(remaining, reach, rel_tol=1e-12))
     if not facts["attack_resolved"]:

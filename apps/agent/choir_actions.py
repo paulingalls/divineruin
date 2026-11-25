@@ -29,7 +29,10 @@ def require_targets(state, actor, action, declaration):
                 if aim is not None
                 else combat_spatial.inside(origin, combat_spatial.position(spatial, p.id), action["reach"])
             )
-            and blocking_wall(state, spatial, origin, combat_spatial.position(spatial, p.id), target_id=p.id) is None
+            and blocking_wall(
+                state, spatial, origin, combat_spatial.position(spatial, p.id), target_id=p.id, physical=False
+            )
+            is None
         ]
     target = state.get_participant(declaration.target_id)
     if target is None:

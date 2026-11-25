@@ -17,8 +17,8 @@ if TYPE_CHECKING:
 
 Point = dict[str, int | float]
 Vector = tuple[Fraction, Fraction]
-WALL_AC = 19
-WALL_HP = 30
+THORNWALL = "thyra_thornwall"
+STRUCTURE_STATS = {None: (19, 30), THORNWALL: (19, 20)}
 
 
 class Segment(TypedDict):
@@ -40,7 +40,9 @@ def validate_segments(value: object) -> None:
         _segment(segment)
 
 
-def add_wall(state: CombatState, wall_id: str, name: str, start: Point, end: Point) -> CombatParticipant:
+def add_wall(
+    state: CombatState, wall_id: str, name: str, start: Point, end: Point, *, kind: str | None = None
+) -> CombatParticipant:
     spatial = require_spatial(state)
     segment = _segment({"start": start, "end": end})
     if not isinstance(wall_id, str) or not wall_id.strip():
@@ -49,8 +51,16 @@ def add_wall(state: CombatState, wall_id: str, name: str, start: Point, end: Poi
         raise ValueError("structure requires a nonempty name")
     if any(wall_id in spatial[key] for key in ("positions", "locations", "zones")) or wall_id in state.initiative_order:
         raise ValueError(f"Duplicate spatial ID {wall_id!r}")
+    ac, hp = STRUCTURE_STATS[kind]
     wall = CombatParticipant(
-        id=wall_id, name=name, type="structure", initiative=0, hp_current=WALL_HP, hp_max=WALL_HP, ac=WALL_AC
+        id=wall_id,
+        name=name,
+        type="structure",
+        initiative=0,
+        hp_current=hp,
+        hp_max=hp,
+        ac=ac,
+        structure_kind=kind,
     )
     _place_wall(spatial, wall_id, segment)
     state.participants.append(wall)
@@ -90,13 +100,14 @@ def validate_participants(state: CombatState) -> None:
         label = f"{wall.name} ({wall.id})"
         if spatial["speeds"][wall.id] != 0:
             raise ValueError(f"{label}: invalid structure speed")
-        if (wall.ac, wall.hp_max) != (WALL_AC, WALL_HP):
+        stats = STRUCTURE_STATS.get(wall.structure_kind)
+        if stats is None or (wall.ac, wall.hp_max) != stats:
             raise ValueError(f"{label}: invalid structure stats")
         if wall.is_fallen or wall.is_dead:
             if (wall.is_fallen, wall.is_dead, wall.hp_current) != (True, True, 0):
                 raise ValueError(f"{label}: invalid destroyed structure")
         else:
-            if type(wall.hp_current) is not int or not 0 < wall.hp_current <= WALL_HP:
+            if type(wall.hp_current) is not int or not 0 < wall.hp_current <= stats[1]:
                 raise ValueError(f"{label}: invalid live structure HP")
             live_ids.add(wall.id)
     import architect_entomb
@@ -171,11 +182,27 @@ def first_wall_contact(spatial: dict, origin: Point, destination: Point) -> tupl
     if nearest is None:
         return None
     fraction, wall_id = nearest
-    contact: Point = {
+    return wall_id, _interpolate(origin, destination, fraction), fraction
+
+
+def _interpolate(origin: Point, destination: Point, fraction: Fraction) -> Point:
+    return {
         axis: float(Fraction(start) + fraction * (Fraction(destination[axis]) - Fraction(start)))
         for axis, start in origin.items()
     }
-    return wall_id, contact, fraction
+
+
+def stop_before_wall(origin: Point, destination: Point, segment: Segment) -> Point:
+    fraction = _first_contact(origin, destination, segment)
+    if fraction is None:
+        raise ValueError("Movement does not contact the blocking wall")
+    if not fraction:
+        return origin
+    contact = _interpolate(origin, destination, fraction)
+    # The wall includes its edge, so leave the mover on the approach side.
+    while blocks_path(origin, contact, segment):
+        contact = {axis: math.nextafter(value, origin[axis]) for axis, value in contact.items()}
+    return contact
 
 
 def _coords(point: Point) -> tuple[float, float, float]:
@@ -209,21 +236,24 @@ def blocking_wall(
     target_id: str | None = None,
     origin_id: str | None = None,
     effect_origin: bool = False,
+    physical: bool,
 ) -> CombatParticipant | None:
     if chamber := chamber_line_blocker(state, spatial, origin_id, target_id):
         return chamber
     # A wall never blocks a line that starts or ends on it. For an effect (not a mover),
     # that includes every wall the origin point touches: a blast centred on a wall reaches
     # out along it, so movement keeps the strict contact rule.
+    contacts = []
     for wall_id, segment in spatial.get("structures", {}).items():
         if wall_id in (target_id, origin_id) or (effect_origin and touches(origin, segment)):
             continue
-        if blocks_path(origin, destination, segment):
+        if (contact := _first_contact(origin, destination, segment)) is not None:
             wall = state.get_participant(wall_id)
             if wall is None:
                 raise ValueError(f"Unknown structure participant {wall_id!r}")
-            return wall
-    return None
+            if physical or wall.structure_kind != THORNWALL:
+                contacts.append((contact, wall_id, wall))
+    return min(contacts)[2] if contacts else None
 
 
 def nearest_wall_point(origin: Point, segment: Segment) -> Point:
@@ -252,7 +282,7 @@ def line_blocker(
     origin = position(spatial, origin_id)
     segment = spatial.get("structures", {}).get(target_id)
     destination = nearest_wall_point(origin, segment) if melee and segment else position(spatial, target_id)
-    return blocking_wall(state, spatial, origin, destination, target_id=target_id, origin_id=origin_id)
+    return blocking_wall(state, spatial, origin, destination, target_id=target_id, origin_id=origin_id, physical=melee)
 
 
 def blocked_reason(wall: CombatParticipant) -> str:
@@ -270,7 +300,7 @@ def action_has_direct_line(action: dict) -> bool:
     return action.get("type") != "area" and action_kind(action) in ("attack", "charm", "silence", "illusion")
 
 
-def wall_facts(state: CombatState, spatial: dict) -> tuple[list[dict], list[str]]:
+def wall_facts(state: CombatState, spatial: dict, *, only: str | None = None) -> tuple[list[dict], list[str]]:
     segments = spatial.get("structures", {})
     if not segments:
         return [], []
@@ -281,6 +311,8 @@ def wall_facts(state: CombatState, spatial: dict) -> tuple[list[dict], list[str]
     positions = {p.id: position(spatial, p.id) for p in combatants}
     walls, spoken = [], []
     for wall_id, segment in sorted(segments.items()):
+        if only is not None and wall_id != only:
+            continue
         wall = state.get_participant(wall_id)
         if wall is None:
             raise ValueError(f"Unknown structure participant {wall_id!r}")
