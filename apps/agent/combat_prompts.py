@@ -72,8 +72,8 @@ For an action or composite strike with durability_rider, query_info(kind="invent
 When Still facts are present, use the surfaced Interact searches and strike only revealed anchors. Never voice an unrevealed anchor. The Still and its anchors take no actions.
 
 Beat 2 — Resolution. Call resolve_phase. It resolves the PLAYER's and the companions' \
-declarations in initiative order against the combatants' HP — silently — and holds every enemy \
-action back for Beat 3. Produce NO narration yet; wait for it to return the result packets. \
+declarations in initiative order against the combatants' HP — silently — and holds ordinary enemy \
+actions back for Beat 3. Produce NO narration yet; wait for it to return the result packets. \
 resolve_phase is the only source of truth — never improvise hit-or-miss. It ends combat for you \
 on victory (last enemy down) or defeat (player dead); call end_combat yourself only when the \
 player flees, with 'fled' — and it will refuse while enemy actions are still held, so close \

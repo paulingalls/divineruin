@@ -111,6 +111,12 @@ def reopen_declaration(state: CombatState) -> CombatState:
     reopened = copy.deepcopy(state)
     reopened.beat = PhaseBeat.DECLARATION
     reopened.pending_declarations = {}
+    enemies = {p.id for p in reopened.participants if p.type == "enemy"}
+    reopened.reactions_available = {
+        actor_id: spend
+        for actor_id, spend in reopened.reactions_available.items()
+        if actor_id not in enemies or reaction_spend.is_spent(spend)
+    }
     return reopened
 
 

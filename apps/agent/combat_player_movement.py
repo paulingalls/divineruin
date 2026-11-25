@@ -24,7 +24,6 @@ def _melee_actions(state: CombatState, actor: CombatParticipant) -> list[dict]:
         or actor.is_dead
         or actor.hp_current <= 0
         or cannot_act(actor.conditions)
-        or actor.still_dormant
         or reaction_spend.is_spent(state.reactions_available.get(actor.id))
     ):
         return []
