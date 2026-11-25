@@ -80,7 +80,6 @@ LOCATION_ARCH = {
 }
 
 DISCOVER_PLAYER = {
-    "player_id": "player_1",
     "name": "Kael",
     "class": "warrior",
     "level": 1,

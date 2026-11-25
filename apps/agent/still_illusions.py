@@ -109,7 +109,7 @@ async def investigate(session, skill, target, *, queries, mutations, conditions_
             ally_present=session.allies_present_for(player_id),
             natural_terrain=await skill_natural_terrain(session, player, skill, combat_state=working),
             hearing_only=False,
-            first_stay=not companion and await check_first_stay(player, session, skill, conn=conn),
+            first_stay=not companion and await check_first_stay(player, session, skill, player_id=player_id, conn=conn),
         )
         working.still_encounter["illusion"]["seen_through"] = result.success
         if result.consumed_conditions and not companion:

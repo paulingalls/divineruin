@@ -319,7 +319,7 @@ async def search(session, state, actor, declaration, *, queries, conn, progress=
             ally_present=session.allies_present_for(actor.id),
             natural_terrain=await skill_natural_terrain(session, player, skill, combat_state=state),
             hearing_only=skill == "perception",
-            first_stay=await check_first_stay(player, session, skill, conn=conn),
+            first_stay=await check_first_stay(player, session, skill, player_id=actor.id, conn=conn),
         )
 
     result = await progress.skill(session, actor.id, roll) if progress is not None else await roll()

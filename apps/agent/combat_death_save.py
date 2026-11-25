@@ -1,9 +1,4 @@
-"""Death-save combat tool — request_death_save.
-
-Extracted from combat_turn.py (story-004, debt faa6dd19ab64) to bring that file
-back under the 500-line cap. Behavior unchanged; this is the player's 0-HP death
-saving throw (nat-20 revives, three successes stabilize, three failures kill).
-"""
+"""Death saves for fallen players and companions."""
 
 import json
 import logging
@@ -20,10 +15,12 @@ import encounter_facts
 import event_types as E
 import zhael_fate
 from combat_down import revive, sync_companion_consciousness
+from combat_participant import CombatParticipant
 from combat_sound_events import publish_combat_sounds as _publish_sounds
 from combat_support import _require_combat
 from db_errors import db_tool
 from game_events import publish_game_event
+from patron_synergy_combat import MORTAEN_HOLD_THE_CROSSING, marshal_death_save_bonus
 from session_data import CombatState, SessionData
 from tool_support import (
     SOUND_DEATH_SAVE_CRITICAL,
@@ -42,21 +39,15 @@ async def request_death_save(
     context: RunContext[SessionData],
     player_id: str | None = None,
 ) -> str:
-    """Roll a death saving throw for a fallen party member. Call this when someone is at 0 HP and
-    it's their turn (or when prompted). Nat 20 restores 1 HP. Three successes stabilize, three
-    failures mean death. Omit player_id when only one ally is down; when several are, name the one
-    who rolls — each carries their own successes, failures, and patron bonus."""
+    """Roll a death saving throw for a fallen player or companion at 0 HP when prompted.
+    Hollowed echoes never roll. Nat 20 restores 1 HP. Three successes stabilize, three failures
+    mean death. Omit player_id when only one ally is down. When several are down, name who rolls.
+    Each ally carries their own successes, failures, and patron bonus."""
     return await _request_death_save_impl(context, player_id)
 
 
-def _resolve_faller(cs, player_id: str | None):
-    """The participant whose save this is. Enemies never roll — they simply lie there.
-
-    Naming is required once more than one ally is down. The old code looked up session.player_id
-    unconditionally: a fallen NON-primary could never roll (the standing primary failed the
-    is_fallen gate), and when both were down the primary was rolled twice, its counters and HP
-    corrupted while the member actually dying was ignored."""
-    candidates = [p for p in cs.participants if p.type != "enemy" and p.is_fallen and not p.is_dead]
+def _resolve_faller(cs: CombatState, player_id: str | None) -> CombatParticipant:
+    candidates = [p for p in cs.participants if p.is_ally and p.is_fallen and not p.is_dead]
 
     if player_id is not None:
         chosen = cs.get_participant(player_id)
@@ -64,6 +55,8 @@ def _resolve_faller(cs, player_id: str | None):
             raise ToolError(f"No one named {player_id} is in this fight.")
         if chosen.type == "enemy":
             raise ToolError(f"{chosen.name} is an enemy — enemies do not roll death saves.")
+        if chosen.type == "temporary_hollowed":
+            raise ToolError(f"{chosen.name} is a Hollowed echo. Hollowed echoes do not roll death saves.")
         if not chosen.is_fallen or chosen.is_dead:
             raise ToolError(f"{chosen.name} has not fallen. Death saves only apply at 0 HP.")
         return chosen
@@ -117,10 +110,15 @@ async def _roll_death_save(
     # in memory for the next reload to silently lose. Mirrors resolve_phase's contract.
     faller = _resolve_faller(cs, player_id)
 
-    # Mortaen patrons roll death saves at +2 (M4.4 story-004). Read the ROLLER's own patron, not the
-    # primary's — patron_id lives on PartyMember. A companion has no member row and no patron.
     member = session.party.member(faller.id)
-    bonus = creation_deities.patron_death_save_bonus(member.patron_id if member is not None else "none")
+    personal_bonus = creation_deities.patron_death_save_bonus(member.patron_id if member is not None else "none")
+    synergy_bonus = await marshal_death_save_bonus(cs, queries=queries)
+    bonus = personal_bonus + synergy_bonus
+    bonus_receipt = {
+        "bonus": bonus,
+        "synergy_bonus": synergy_bonus,
+        "synergy_clause_id": MORTAEN_HOLD_THE_CROSSING if synergy_bonus else None,
+    }
     successes, failures = faller.death_save_successes, faller.death_save_failures
     faller_id = faller.id
 
@@ -146,7 +144,15 @@ async def _roll_death_save(
                 ):
                     return zhael_fate.cancel(session, "The fallen ally's state changed while the death save was held.")
                 response = await _request_death_save_locked(
-                    session, current, faller_id, kept, mutations, db_mod, queries=queries, resumed=True
+                    session,
+                    current,
+                    faller_id,
+                    kept,
+                    mutations,
+                    db_mod,
+                    queries=queries,
+                    bonus_receipt=bonus_receipt,
+                    resumed=True,
                 )
                 return zhael_fate.Resumed(json.loads(response))
 
@@ -164,10 +170,23 @@ async def _roll_death_save(
             session.fate_offer = offer
             return json.dumps(offer.response())
 
-    return await _request_death_save_locked(session, cs, faller_id, result, mutations, db_mod, queries=queries)
+    return await _request_death_save_locked(
+        session, cs, faller_id, result, mutations, db_mod, queries=queries, bonus_receipt=bonus_receipt
+    )
 
 
-async def _request_death_save_locked(session, cs, faller_id, result, mutations, db_mod, *, queries, resumed=False):
+async def _request_death_save_locked(
+    session,
+    cs,
+    faller_id,
+    result,
+    mutations,
+    db_mod,
+    *,
+    queries,
+    bonus_receipt: dict[str, int | str | None],
+    resumed=False,
+) -> str:
     state = CombatState.from_dict(cs.to_dict())  # working copy; adopted post-commit
     working = state.get_participant(faller_id)
     assert working is not None  # copied from the state we just resolved against
@@ -236,6 +255,7 @@ async def _request_death_save_locked(session, cs, faller_id, result, mutations, 
     session.record_event(f"Death save: d{result.roll}, {outcome}")
 
     response = {
+        **bonus_receipt,
         "roll": result.roll,
         "success": result.success,
         "critical_success": result.critical_success,

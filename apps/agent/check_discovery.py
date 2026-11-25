@@ -270,7 +270,7 @@ async def _resolve_discovery(
         skill_lower,
         dc,
         ally_present=session.allies_present_for(player_id),
-        first_stay=await check_first_stay(player, session, skill_lower, conn=conn),
+        first_stay=await check_first_stay(player, session, skill_lower, player_id=player_id, conn=conn),
         natural_terrain=await skill_natural_terrain(session, player, skill_lower, content_mod=content),
         hearing_only=hearing_only,
     )

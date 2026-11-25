@@ -43,9 +43,9 @@ def combat_end_queries(**overrides) -> MagicMock:
     player participant's row (the XP Resolve locks it FOR UPDATE) and their inventory (weapon
     durability). ``overrides`` shadow either — e.g. an equipped-weapon inventory."""
     queries = MagicMock(
-        get_players_for_update=AsyncMock(side_effect=lambda ids, **kw: {pid: {"player_id": pid} for pid in ids}),
+        get_players_for_update=AsyncMock(side_effect=lambda ids, **kw: {pid: {} for pid in ids}),
         get_active_player_quests=AsyncMock(return_value=[]),
-        get_player=AsyncMock(side_effect=lambda pid, conn=None, for_update=False: {**GUILD_PLAYER, "player_id": pid}),
+        get_player=AsyncMock(side_effect=lambda pid, conn=None, for_update=False: dict(GUILD_PLAYER)),
         get_player_inventory=AsyncMock(return_value=[]),
         get_inventory_snapshot=snapshot_query([]),
     )
@@ -70,11 +70,11 @@ def default_player_row(request, monkeypatch):
     monkeypatch.setattr(
         db_queries,
         "get_players_for_update",
-        AsyncMock(side_effect=lambda ids, **kw: {pid: {"player_id": pid} for pid in ids}),
+        AsyncMock(side_effect=lambda ids, **kw: {pid: {} for pid in ids}),
     )
     monkeypatch.setattr(db_queries, "get_active_player_quests", AsyncMock(return_value=[]))
     monkeypatch.setattr(
         db_queries,
         "get_player",
-        AsyncMock(side_effect=lambda pid, conn=None, for_update=False: {**GUILD_PLAYER, "player_id": pid}),
+        AsyncMock(side_effect=lambda pid, conn=None, for_update=False: dict(GUILD_PLAYER)),
     )

@@ -16,6 +16,7 @@ import {
   withNativeOwnedBackend,
   withPatronProbe,
 } from "../apps/mobile/scripts/verify-patron-abilities";
+import { withCharacterFixture } from "../apps/mobile/scripts/iron-resolve-fixture";
 import { createInventoryProxy } from "../apps/mobile/scripts/verify-http-inventory";
 import { runPreparedLiveMaterial } from "../apps/mobile/scripts/verify-live-material-inventory";
 
@@ -151,6 +152,15 @@ async function runJourneys(
     await requirePassingReport(scope, root, report(flow), flow);
     status.set(flow, "PASS");
   };
+  // Reopening the Expo dev-client URL can crash React Native while the previous screen is mounted.
+  const stopAppBeforeDevClientLaunch = async () => {
+    const child = scope.spawn(["xcrun", "simctl", "terminate", udid, "com.divineruin.app"], {
+      cwd: root,
+      env: environment,
+    });
+    if ((await scope.wait(child.exited)) !== 0)
+      throw new Error("Could not stop the app before reopening the Expo dev client");
+  };
   const flowDir = join(root, "apps/mobile/.maestro");
   const files = (await readdir(flowDir)).filter((name) => name.endsWith(".yaml")).sort();
   if (JSON.stringify(files) !== JSON.stringify([...flows].sort()))
@@ -181,7 +191,12 @@ async function runJourneys(
       maestro("patron-abilities.yaml", { PATRON_ROUTE: route }),
     ),
   );
-  await journey("iron-resolve-hud.yaml");
+  await journey("iron-resolve-hud.yaml", () =>
+    withCharacterFixture(proxy.origin, databaseUrl, (route) =>
+      maestro("iron-resolve-hud.yaml", { ROUTE_URL: route }),
+    ),
+  );
+  await stopAppBeforeDevClientLaunch();
   await proxy.run(scope, databaseUrl, (file, route, after) => {
     if (file !== "http-inventory-refresh.yaml" && file !== "http-inventory-resume.yaml")
       throw new Error(`Unexpected native HTTP inventory flow: ${file}`);
@@ -190,6 +205,7 @@ async function runJourneys(
       await after();
     });
   });
+  await stopAppBeforeDevClientLaunch();
   await journey("live-material-inventory.yaml", () =>
     runPreparedLiveMaterial(scope, results, environment, (variables) =>
       maestro("live-material-inventory.yaml", variables),
