@@ -1,4 +1,4 @@
-"""on_enemy_move and on_spell_cast have no producer and remain refused, not silently treated as supported."""
+"""Match every catalog reaction to the windows the held-action producers open."""
 
 import json
 from unittest.mock import AsyncMock, MagicMock
@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from archetype_abilities_config_fixture import load_fixture_config
 from combat._helpers import _make_combat_state, _own_reaction
+from combat.test_reaction_window_census import movement_state
 from sample_fixtures import make_context
 
 import reaction_spend
@@ -31,24 +32,31 @@ _PRODUCIBLE = {
     ),
 }
 
-NO_PRODUCER = {"on_enemy_move", "on_spell_cast"}
+NO_PRODUCER = {"on_spell_cast"}
 
 
 def _paused_state(shape):
-    stage, kind, target_id, triggers = shape
-    state = _make_combat_state()
+    if shape is None:
+        state = movement_state()
+    else:
+        stage, kind, target_id, triggers = shape
+        state = _make_combat_state()
+        state.open_window = reaction_windows.open_window_for(
+            round_number=1,
+            seq=0,
+            stage=stage,
+            actor_id="goblin_scout_1",
+            target_id=target_id,
+            action_kind=kind,
+            triggers=triggers,
+        )
     state.beat = PhaseBeat.NARRATION
-    state.open_window = reaction_windows.open_window_for(
-        round_number=1,
-        seq=0,
-        stage=stage,
-        actor_id="goblin_scout_1",
-        target_id=target_id,
-        action_kind=kind,
-        triggers=triggers,
-    )
     state.reactions_available = {"player_1": reaction_spend.unspent()}
     return state
+
+
+def _produced_states():
+    return {name: _paused_state(shape) for name, shape in {**_PRODUCIBLE, "movement": None}.items()}
 
 
 async def _queried_reactions():
@@ -78,14 +86,18 @@ async def _queried_reactions():
 @pytest.mark.asyncio
 async def test_every_queried_reaction_window_is_answered_by_a_real_open_window():
     """Match each advertised id to its actual trigger; a constant accepting on_hit would hide other broken windows."""
+    states = _produced_states()
     reachable = {}
     for ability_id, window in (await _queried_reactions()).items():
         if window in NO_PRODUCER:
             continue
-        answered = [name for name, shape in _PRODUCIBLE.items() if window in shape[3]]
+        answered = {
+            name: state
+            for name, state in states.items()
+            if state.open_window is not None and window in state.open_window["triggers"]
+        }
         assert answered, f"{ability_id} advertises {window!r}, which no held action ever opens"
-        for name in answered:
-            state = _paused_state(_PRODUCIBLE[name])
+        for state in answered.values():
             _own_reaction(state, ability_id)
             try:
                 validate_reaction_activation(state, "player_1", ability_id)
@@ -102,11 +114,10 @@ async def test_every_queried_reaction_window_is_answered_by_a_real_open_window()
 @pytest.mark.asyncio
 async def test_a_reaction_whose_window_has_no_producer_is_refused_at_every_window():
     unreachable = {i: w for i, w in (await _queried_reactions()).items() if w in NO_PRODUCER}
-    assert unreachable.keys() == {"warrior_opportunity_strike", "mage_counterspell"}
+    assert unreachable.keys() == {"mage_counterspell"}
 
     for ability_id, window in unreachable.items():
-        for shape in _PRODUCIBLE.values():
-            state = _paused_state(shape)
+        for state in _produced_states().values():
             _own_reaction(state, ability_id)
             with pytest.raises(ValueError, match=window):
                 validate_reaction_activation(state, "player_1", ability_id)
@@ -116,7 +127,10 @@ async def test_a_reaction_whose_window_has_no_producer_is_refused_at_every_windo
 async def test_the_two_window_vocabularies_are_one():
     import abilities
 
-    produced = {trigger for shape in _PRODUCIBLE.values() for trigger in shape[3]}
+    produced = set()
+    for state in _produced_states().values():
+        assert state.open_window is not None
+        produced.update(state.open_window["triggers"])
     consumed = set((await _queried_reactions()).values())
 
     assert produced <= abilities.REACTION_WINDOWS

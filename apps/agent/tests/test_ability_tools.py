@@ -331,7 +331,7 @@ class TestActivation:
         assert reaction_spend.is_spent(ctx.userdata.combat_state.reactions_available["player_1"])
 
     async def test_reaction_outside_combat_activates_ungated(self):
-        """Spy and diplomat reactions must remain usable outside combat."""
+        """Outside combat, reaction activation has no held-action gate."""
         persistence = MagicMock()
         persistence.update_player_resources = AsyncMock()
         player = _player(class_="warrior")

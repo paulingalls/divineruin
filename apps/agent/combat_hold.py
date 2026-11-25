@@ -4,12 +4,9 @@ decision 46 / game_mechanics_combat.md:182-187: the DM narrates each enemy actio
 reaction window, and the engine holds enemy damage until each window closes. Sprint 45 resolved
 every packet in one pass, so the blow was written before the DM spoke. This module is the hold.
 
-Two stages can offer windows on one attack: a PRE-ROLL window
-(on_targeted / on_ally_targeted / on_enemy_action) and a POST-ROLL, PRE-DAMAGE window
-(on_hit / on_ally_hit / on_enemy_miss / on_enemy_action, plus on_condition_imposed on a landed
-grapple). A save-only restraint can offer on_condition_imposed after it takes hold. The
-pause decision uses reaction_gate's activation rules for each candidate stage, per
-gm_combat:131: narration flows when no player can react.
+Movement can pause at a warrior's reach before the roll. Attack windows can
+pause before the roll or between its outcome and damage. A save-only restraint
+can open a window after it takes hold.
 
 The queue is stepped by ``resolve_phase``, one pause per call — no new verb (the open window
 reaches the DM through the result's ``next`` field, ADR 0008 decision 4).
@@ -22,7 +19,7 @@ import architect_actions
 import combat_enhancers
 import combat_hold_conditions
 import combat_marks as combat_marks
-import combat_melee_approach
+import combat_opportunity
 import combat_reaction_contest
 import combat_reaction_effect
 import event_types as E
@@ -47,7 +44,7 @@ from combat_packet import _resolve_one_packet
 from combat_reshape_packet import ReshapeRefused, resolve_reshape
 from encounter_actions import action_kind
 from patron_zero_hp import provisional_ward_verdict
-from reaction_windows import POST_ROLL, PRE_ROLL
+from reaction_windows import MOVEMENT, POST_ROLL, PRE_ROLL
 
 logger = logging.getLogger("divineruin.tools")
 
@@ -169,7 +166,7 @@ async def pump(
     closed, state.open_window = state.open_window, None
     summaries: list[dict] = []
     reacted, reaction_packets = None, []
-    if closed is not None and state.held_actions:
+    if closed is not None and closed["stage"] != MOVEMENT and state.held_actions:
         reacted = state.held_actions[0]
         reaction_packets = combat_reaction_effect.close(
             state, reacted, closed, attack_action=_attack_action(state, reacted), contest_rng=contest_rng
@@ -264,14 +261,18 @@ async def pump(
             state.held_actions.pop(0)
             continue
         summary_start = len(summaries)
-        opens = _opens_windows(state, head)
+        opens = "opportunity_approach" in head or _opens_windows(state, head)
         action = _attack_action(state, head) if opens else None
         window_action = None
         if opens:
             actor = state.get_participant(head["actor_id"])
             window_action = _find_action(actor, declaration.action)
             assert window_action is not None
-            movement = combat_melee_approach.prepare_held(state, head, window_action)
+            movement = await combat_opportunity.prepare_held(
+                session, state, head, window_action, summaries, packet_deps=packet_deps, fate_rolls=fate_rolls
+            )
+            if movement is None:
+                return summaries
             if movement.get("attack_resolved") is False:
                 summaries.append(strike_summary(head, _with_reshape(head, movement)))
                 state.held_actions.pop(0)

@@ -48,13 +48,12 @@ SAVE_ADVANTAGE = {
 }
 
 
-def bound_spends(state, head: dict, stage: str) -> list[dict]:
+def bound_spends(state, head: dict, stage: str, *, window_id: str | None = None) -> list[dict]:
     """Every spend answering this held action at this stage, with each reactor's id.
 
     ``held_seq`` is what makes a reaction change only the blow it was spent against; ``stage``
-    is what stops a pre-roll spend from firing a second time when the post-roll window closes.
-    Matched on the record's own fields rather than on ``window_id`` because ``reaction_spend``
-    deliberately refused to make the id's ``r<n>-<seq>-<stage>`` format a contract.
+    is what stops a pre-roll spend from firing when the post-roll window closes. Movement can
+    open several windows per action, so it also matches the opaque id of the closing window.
 
     A legacy bool upgraded by ``reaction_spend.normalize`` carries ``stage: None`` and so matches
     nothing — "spent, no binding" applies no modifier, exactly as that upgrade documents.
@@ -62,7 +61,10 @@ def bound_spends(state, head: dict, stage: str) -> list[dict]:
     return [
         {"actor_id": actor_id, **entry}
         for actor_id, entry in state.reactions_available.items()
-        if reaction_spend.is_spent(entry) and entry["stage"] == stage and entry["held_seq"] == head["seq"]
+        if reaction_spend.is_spent(entry)
+        and entry["stage"] == stage
+        and entry["held_seq"] == head["seq"]
+        and (stage != reaction_windows.MOVEMENT or entry["window_id"] == window_id)
     ]
 
 
