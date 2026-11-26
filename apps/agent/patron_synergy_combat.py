@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 OATH_OF_VALOR = "kaelen_oath_of_valor"
 SECOND_BEFORE = "zhael_second_before"
 ORENTHEL_GUARDIAN_WARD = "orenthel_guardian_ward"
+ORENTHEL_UNDEAD_WRATH = "orenthel_undead_wrath"
 MORTAEN_THRESHOLD_SHIELD = "mortaen_threshold_shield"
 MORTAEN_HOLD_THE_CROSSING = "mortaen_hold_the_crossing"
 
@@ -69,6 +70,7 @@ def encounter_damage_clause(
         return None
 
     from combat_melee_approach import is_melee
+    from combat_veilrender import living
     from encounter_facts import ZHAEL_THREADED_BLADE
 
     facts = state.encounter_facts
@@ -81,6 +83,15 @@ def encounter_damage_clause(
         and is_melee(action)
     ):
         return ZHAEL_THREADED_BLADE
+    if (
+        has_engine_synergy(player, ORENTHEL_UNDEAD_WRATH)
+        and (target.hollow or target.category == "undead")
+        and any(
+            ally.id != attacker.id and ally.is_ally and living(ally) and 2 * ally.hp_current < ally.hp_max
+            for ally in state.participants
+        )
+    ):
+        return ORENTHEL_UNDEAD_WRATH
     return None
 
 
