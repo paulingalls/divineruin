@@ -21,7 +21,7 @@ CLAUSE = "zhael_foretold_words"
 NPC = SOCIAL["npc_id"]
 OTHER_NPC = "elder_yanna"
 ATTEMPT = {**SOCIAL, "difficulty": "moderate"}
-FORETELL = {**ATTEMPT, "kind": "foretell_social"}
+FORETELL = {key: value for key, value in ATTEMPT.items() if key != "synergy_context"} | {"kind": "foretell_social"}
 
 
 async def follower(world, archetype="bard", *, patron="zhael", fate=False) -> None:

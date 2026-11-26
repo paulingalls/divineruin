@@ -39,6 +39,7 @@ async def _check_skill_run(
     context_description,
     *,
     hearing_only,
+    synergy_context: str = "none",
     queries,
     mutations,
     db_mod,
@@ -84,6 +85,7 @@ async def _check_skill_run(
         first_stay=await check_first_stay(player, session, skill, player_id=player_id, conn=conn),
         natural_terrain=await skill_natural_terrain(session, player, skill),
         hearing_only=hearing_only,
+        synergy_context=synergy_context,
         season=await thyra_seasons.skill_season(player, skill, conn=conn),
     )
 
@@ -98,6 +100,7 @@ async def _check_skill_run(
         difficulty=difficulty,
         context_description=context_description,
         hearing_only=hearing_only,
+        synergy_context=synergy_context,
         queries=queries,
         mutations=mutations,
         db_mod=db_mod,
@@ -137,6 +140,7 @@ async def _finish_skill(
     context_description,
     *,
     hearing_only,
+    synergy_context: str,
     queries,
     mutations,
     db_mod,
@@ -264,6 +268,7 @@ async def _finish_skill(
         "narrative_hint": result.narrative_hint,
         "context": context_description,
         **({"gift_name": result.gift_name} if result.gift_name else {}),
+        **({"context_synergy": result.context_synergy} if result.context_synergy is not None else {}),
     }
     if reroll_dc is None and skill.lower() in KNOWLEDGE_SKILLS:
         from patron_gift_tools import offer
@@ -279,6 +284,7 @@ async def _finish_skill(
                 "difficulty": difficulty,
                 "context_description": context_description,
                 "hearing_only": hearing_only,
+                "synergy_context": synergy_context,
                 "location_id": session.location_id,
             },
             conn=conn,

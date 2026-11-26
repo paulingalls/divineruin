@@ -20,19 +20,29 @@ from __future__ import annotations
 
 from typing import Annotated, Literal, Union
 
-from pydantic import BaseModel, Field, StrictBool, model_validator
+from pydantic import AfterValidator, BaseModel, Field, StrictBool, WithJsonSchema, model_validator
 
 from condition_voice_rules import validate_hearing_check
+from patron_synergy import CONTEXT_TAGS, validate_synergy_context
 
 # "any" is the no-category member: gathering.gathering_skill takes None for general
 # foraging, and an optional field would cost a union slot (ADR 0008 rule 2).
 GatherCategory = Literal["metals", "stone", "gems", "wood", "plant", "herbs", "arcane_components", "any"]
 
 
+SynergyContext = Annotated[
+    str,
+    AfterValidator(validate_synergy_context),
+    WithJsonSchema({"type": "string", "enum": sorted(CONTEXT_TAGS)}),
+    Field(description="An active tag from the patron query matching the narrated moment, or none."),
+]
+
+
 class SkillCheck(BaseModel):
     """The player attempts something risky (climb a wall, recall lore)."""
 
     kind: Literal["skill"]
+    synergy_context: SynergyContext
     skill: str = Field(description="The skill being used, e.g. athletics or arcana.")
     difficulty: str = Field(description="One of trivial, easy, moderate, hard, very_hard, extreme, legendary.")
     context_description: str = Field(description="What the player is attempting, in a short phrase.")
@@ -56,6 +66,7 @@ class SocialCheck(SocialCheckFields):
     """The player tries to sway a specific NPC. Disposition shifts the DC and may change."""
 
     kind: Literal["social"]
+    synergy_context: SynergyContext
 
 
 class ForetellSocialCheck(SocialCheckFields):
@@ -133,9 +144,13 @@ def to_impl_args(roll: CheckVariant) -> tuple[str, dict]:
             "difficulty": roll.difficulty,
             "context_description": roll.context_description,
             "hearing_only": roll.hearing_only,
+            "synergy_context": roll.synergy_context,
         }
     if isinstance(roll, (SocialCheck, ForetellSocialCheck)):
-        return roll.kind, {"npc_id": roll.npc_id, "skill": roll.skill, "difficulty": roll.difficulty}
+        args = {"npc_id": roll.npc_id, "skill": roll.skill, "difficulty": roll.difficulty}
+        if isinstance(roll, SocialCheck):
+            args["synergy_context"] = roll.synergy_context
+        return roll.kind, args
     if isinstance(roll, DiscoverCheck):
         return "discover", {"skill": roll.skill, "target": roll.target, "hearing_only": roll.hearing_only}
     if isinstance(roll, SaveCheck):

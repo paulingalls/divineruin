@@ -69,6 +69,7 @@ async def hide(world, ctx, roll=20, skill="stealth", difficulty="easy"):
             {
                 "roll": {
                     "kind": "skill",
+                    "synergy_context": "none",
                     "skill": skill,
                     "difficulty": difficulty,
                     "context_description": "A watcher might notice",

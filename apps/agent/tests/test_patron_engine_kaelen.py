@@ -266,6 +266,7 @@ async def battle_cry_scenario(world, early_end):
                     "check",
                     roll={
                         "kind": "skill",
+                        "synergy_context": "none",
                         "skill": "athletics",
                         "difficulty": "moderate",
                         "context_description": "Shift a fallen beam",

@@ -154,6 +154,7 @@ def test_exclusions_and_pending_policy(harness):
                 {
                     "roll": {
                         "kind": "skill",
+                        "synergy_context": "none",
                         "skill": "arcana",
                         "difficulty": "extreme",
                         "context_description": "Impossible lore",

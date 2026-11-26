@@ -39,6 +39,7 @@ async def _check(walk: MilestoneWalk, skill: str = "arcana", difficulty: str = "
         {
             "roll": {
                 "kind": "skill",
+                "synergy_context": "none",
                 "skill": skill,
                 "difficulty": difficulty,
                 "hearing_only": False,

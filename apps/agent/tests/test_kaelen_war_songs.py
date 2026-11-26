@@ -134,6 +134,7 @@ async def test_only_kaelen_bard_inspires_attack_upgrade(
         pytest.param(
             {
                 "kind": "skill",
+                "synergy_context": "none",
                 "skill": "athletics",
                 "difficulty": "easy",
                 "context_description": "Lift the gate",
