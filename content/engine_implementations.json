@@ -24,6 +24,7 @@
   "kaelen_battle_cry_of_the_ironhand": "patron_combat_edges:battle_cry",
   "kaelen_kaelens_judgment": "patron_combat_edges:kaelens_judgment",
   "orenthel_beacon": "patron_passives:orenthel_beacon",
+  "orenthel_cleansing_touch": "patron_synergy_heal:for_cast",
   "orenthel_dawns_mercy": "patron_synergy_heal:bonus_components",
   "orenthel_dawns_resilience": "patron_passives:dawns_resilience",
   "orenthel_dawns_embrace": "patron_zero_hp:trigger_dawns_embrace",

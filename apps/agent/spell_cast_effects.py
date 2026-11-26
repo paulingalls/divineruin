@@ -183,6 +183,7 @@ async def _finish_cast(
                 if target_ids is not None:
                     packet["condition_targets"] = voiced
 
+    resonance_updates: dict[str, int] = {}
     if heal_rows is not None:
         if revalidate_actor:
             session.validate_acting_player(player_id)
@@ -191,11 +192,18 @@ async def _finish_cast(
             player,
             heal_rows,
             caster_id=player_id,
-            synergy=for_cast(player, terrain=terrain, first_stay=first_stay, dice_mod=dice_mod),
+            synergy=for_cast(player, spell_id, terrain=terrain, first_stay=first_stay, dice_mod=dice_mod),
             packet=packet,
             conn=conn,
             dice_mod=dice_mod,
+            resonance_updates=resonance_updates,
         )
+        for recipient_id in resonance_updates:
+            events.append(
+                lambda pid=recipient_id: resonance_events_mod.publish_resonance_changed(
+                    session, resonance_track=session.member_state(pid).resonance, caster_id=pid
+                )
+            )
         # Out of combat no WRAP push follows, so each healed recipient's own HUD needs the new HP.
         for recipient_id, hp in combat_spell_heal.hp_updates(player_id, packet).items():
             recipient = player if recipient_id == player_id else heal_rows[recipient_id]
@@ -219,4 +227,5 @@ async def _finish_cast(
         unbound_veil_mastery_spent=mastery_spent,
         terrain=terrain,
         first_stay=first_stay,
+        resonance_updates=resonance_updates,
     )

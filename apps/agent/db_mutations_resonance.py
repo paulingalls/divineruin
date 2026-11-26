@@ -78,6 +78,25 @@ async def update_player_resonance(
     )
 
 
+async def remove_player_resonance(player_id: str, amount: int, *, conn: asyncpg.Connection) -> tuple[int, int]:
+    """Return the amount removed and the remaining total within the caller's transaction."""
+    if not conn.is_in_transaction():
+        raise RuntimeError("Removing Resonance requires the cast transaction")
+    row = await conn.fetchrow(
+        "SELECT data->'resonance'->>'current' AS current FROM players WHERE player_id = $1 FOR UPDATE",
+        player_id,
+    )
+    if row is None:
+        raise ValueError(f"Missing authoritative player {player_id!r}")
+    current = int(row["current"]) if row["current"] is not None else _DEFAULT_RESONANCE
+    removed = min(amount, max(0, current))
+    if removed == 0:
+        return 0, current
+    total = current - removed
+    await update_player_resonance(player_id, total, conn=conn)
+    return removed, total
+
+
 async def update_player_flickering_bonus(
     player_id: str,
     bonus: int,

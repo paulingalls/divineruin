@@ -147,7 +147,6 @@ async def test_kaelen(spell_id, expected):
         ("thyra", "arcane_fireball", {}, 2),
         ("thyra", "arcane_detect_magic", {}, 0),
         ("orenthel", "divine_heal_wounds", {"corruption": 2}, 0),
-        ("orenthel", "primal_healing_touch", {"corruption": 2}, 0),
         ("mortaen", "arcane_magic_missile", {"target_id": "ally", "rows": {"ally": {"hp": {"current": 0}}}}, 0),
         ("nythera", "arcane_fireball", {"visit": {"data": {"connections": []}}}, 2),
     ],

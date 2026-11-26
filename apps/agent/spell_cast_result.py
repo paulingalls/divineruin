@@ -1,7 +1,7 @@
 """Transactional spell result and post-commit events."""
 
 import inspect
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 # Sentinel for CastResult.concentration_spell_id: a non-concentration cast never touches
 # concentration, which must be distinguishable from "end concentration" (None is a valid
@@ -18,9 +18,9 @@ class CastResult:
     The caller syncs these post-commit from this result and then flushes ``events`` (deferred so a
     rollback leaks no client event).
 
-    ``new_resonance`` is the value persisted this cast, or ``None`` when nothing was generated
-    (no resonance write — a cantrip or a floored-to-0 reduction). ``concentration_spell_id`` is the
-    started spell id, or the ``_UNCHANGED`` sentinel when the cast never touched concentration.
+    ``new_resonance`` is the total after generation, or ``None`` when nothing was generated.
+    ``resonance_updates`` holds final recipient totals after healing. ``concentration_spell_id``
+    is the started spell id, or the ``_UNCHANGED`` sentinel when the cast never touched concentration.
     """
 
     packet: dict
@@ -31,6 +31,7 @@ class CastResult:
     unbound_veil_mastery_spent: bool = False
     terrain: str | None = None
     first_stay: bool = False
+    resonance_updates: dict[str, int] = field(default_factory=dict)
 
     async def flush_events(self) -> None:
         """Emit the deferred client events in order. Call ONLY after the caller's tx commits.
