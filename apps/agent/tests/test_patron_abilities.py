@@ -24,9 +24,9 @@ async def test_library_spends_durably_and_requires_long_rest(dev_db_pool):
         await w.connect()
         assert "long rest" in await w.use(LIBRARY, error=True)
         assert await w.state() == before
-        await w.command("rest", {"rest_type": "short"})
+        await w.command("rest", {"rest_type": "short", "use_song_of_rest": False})
         assert next(a for a in await w.abilities() if a["id"] == LIBRARY)["spent"]
-        await w.command("rest", {"rest_type": "long"})
+        await w.command("rest", {"rest_type": "long", "use_song_of_rest": False})
         assert next(a for a in await w.abilities() if a["id"] == LIBRARY)["available"]
         await w.use(LIBRARY)
 
@@ -39,7 +39,7 @@ async def test_weight_of_truth_spends_and_recharges(dev_db_pool, rest_type):
         gift = next(g["layer_1_gift"] for g in load_gods() if g["god_id"] == "valdris")
         assert result["effect"] == gift["effect"] and result["dm_cue"]
         assert "short rest" in await w.use(TRUTH, error=True)
-        await w.command("rest", {"rest_type": rest_type})
+        await w.command("rest", {"rest_type": rest_type, "use_song_of_rest": False})
         assert (await w.row())["patron_gifts"][TRUTH] == {"spent": False}
         await w.use(TRUTH)
 
@@ -143,7 +143,7 @@ async def test_per_session_spend_survives_both_rests(dev_db_pool):
         await w.patch(divine_favor={"patron": "zhael", "level": 100, "max": 100})
         await w.use(ability)
         for rest_type in ("short", "long"):
-            await w.command("rest", {"rest_type": rest_type})
+            await w.command("rest", {"rest_type": rest_type, "use_song_of_rest": False})
             assert (await w.row())["patron_gifts"][ability] == {"spent": True}
             assert "new session" in await w.use(ability, error=True)
 

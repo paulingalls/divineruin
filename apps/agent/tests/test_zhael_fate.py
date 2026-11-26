@@ -49,9 +49,9 @@ async def test_unanswered_reroll_settles_original_before_query(world):
             "check", roll={"kind": "save", "save_type": "wisdom", "dc": 15, "effect_on_fail": "frightened"}
         )
     assert immediate["effect_applied"] == "frightened" and "fate_offer" not in immediate
-    await call("rest", rest_type="short")
+    await call("rest", rest_type="short", use_song_of_rest=False)
     assert (await call("query_info", kind="patron"))["layer_1_gift"]["remaining_uses"] == 0
-    await call("rest", rest_type="long")
+    await call("rest", rest_type="long", use_song_of_rest=False)
     restored = (await call("query_info", kind="patron"))["layer_1_gift"]
     assert restored["available"] and not restored["spent"] and restored["remaining_uses"] == 1
     with patch("check_resolution.dice_roll", return_value=_d20(10)):
@@ -232,10 +232,10 @@ async def lucky_save(world, fate_spent, chose_fate=False):
     assert dice_events(world)[0]["success"] and dice_events(world)[0]["dramatic"]
     snapshots = [e for e in published_payloads(world.ctx.userdata.room) if e["type"] == "patron_abilities_updated"]
     assert len(snapshots) == 1 and lucky_projection(snapshots[0])["state"] == "spent"
-    await call("rest", rest_type="short")
+    await call("rest", rest_type="short", use_song_of_rest=False)
     assert lucky_projection(await call("query_info", kind="patron"))["state"] == "spent"
     assert (await row(world, 0))["patron_gifts"][LUCKY] == SPENT
-    await call("rest", rest_type="long")
+    await call("rest", rest_type="long", use_song_of_rest=False)
     assert lucky_projection(await call("query_info", kind="patron"))["available"]
     assert not (await row(world, 0))["patron_gifts"].get(LUCKY, {}).get("spent")
     with patch("check_resolution.dice_roll", return_value=_d20(1)):

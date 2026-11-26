@@ -101,10 +101,10 @@ async def shield_scenario(
 
 
 async def recharge(world: SimpleNamespace, call: ToolCall, ally: str) -> None:
-    await call("rest", rest_type="short")
+    await call("rest", rest_type="short", use_song_of_rest=False)
     assert (await shield_status(call))["state"] == "spent"
     await refuse(world, call, "spent.*long rest", ally)
-    await call("rest", rest_type="long")
+    await call("rest", rest_type="long", use_song_of_rest=False)
     assert (await shield_status(call))["state"] == "ready"
     assert (await row(world, 1))["temp_hp"] == 0
     assert (await row(world, 0))["patron_gifts"] == {**OTHER_GIFTS, SHIELD: {"spent": False}}

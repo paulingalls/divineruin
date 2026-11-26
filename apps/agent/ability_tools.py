@@ -48,6 +48,7 @@ from combat_ability_gate import (
 from combat_ability_save import requires_hostile_target
 from resource_costs import gate_pool
 from session_data import AuthenticatedActor, SessionData
+from song_of_rest import SONG_OF_REST
 from tool_support import _validate_id
 
 logger = logging.getLogger("divineruin.tools")
@@ -176,6 +177,9 @@ async def _request_ability_activation_unlocked(
         ability = abilities_mod.get_ability(ability_id)
     except ValueError as e:
         raise ToolError(str(e)) from e
+
+    if ability.id == SONG_OF_REST:
+        raise ToolError('Use Song of Rest with rest(rest_type="short", use_song_of_rest=true).')
 
     if requires_hostile_target(ability):
         raise ToolError(f"{ability.name} needs a foe — use it in a fight.")

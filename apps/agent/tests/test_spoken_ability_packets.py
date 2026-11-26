@@ -18,8 +18,11 @@ from conditions import apply_condition
 
 ROWS = json.loads((Path(__file__).resolve().parents[3] / "content/archetype_abilities.json").read_text())
 APPROVED = json.loads((Path(__file__).parent / "fixtures/approved_ability_delivery.json").read_text())
-SPEAKERS = sorted(key for key, policy in APPROVED.items() if policy in {"both", "source", "preparation", "spell"})
-LISTENERS = sorted(key for key, policy in APPROVED.items() if policy in {"both", "hearing"})
+REST_ONLY = {"bard_song_of_rest"}
+SPEAKERS = sorted(
+    key for key in APPROVED.keys() - REST_ONLY if APPROVED[key] in {"both", "source", "preparation", "spell"}
+)
+LISTENERS = sorted(key for key in APPROVED.keys() - REST_ONLY if APPROVED[key] in {"both", "hearing"})
 
 
 async def activate(
@@ -104,7 +107,7 @@ async def test_actual_ooc_packets_require_target_hearing_and_lock_target(ability
         await activate(ability_id, target_deaf=True)
 
 
-@pytest.mark.parametrize("ability_id", sorted(voice.POLICIES))
+@pytest.mark.parametrize("ability_id", sorted(voice.POLICIES.keys() - REST_ONLY))
 @pytest.mark.asyncio
 async def test_existing_eligible_packets_preserve_authored_effect(ability_id):
     if requires_hostile_target(abilities.get_ability(ability_id)):

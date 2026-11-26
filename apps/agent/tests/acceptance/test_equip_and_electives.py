@@ -120,7 +120,7 @@ def test_award_and_select_electives(harness, monkeypatch):
                 ]
             if archetype in {"warrior", "rogue"}:
                 await walk.reload(harness)
-                await call(walk, "rest", rest_type="long")
+                await call(walk, "rest", rest_type="long", use_song_of_rest=False)
                 assert (await call(walk, "query_info", kind="abilities"))["elective_choices"] == offers
             for index, offer in enumerate(offers):
                 option = next(
