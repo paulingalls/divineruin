@@ -8,6 +8,7 @@ import pytest
 from combat._helpers import _make_combat_state
 from livekit.agents.llm import ToolContext, ToolError, is_function_tool, is_raw_function_tool
 from sample_fixtures import make_context
+from voice_condition_fixtures import place_actors
 
 import abilities
 import mentor_variants
@@ -233,6 +234,7 @@ def _two_reactor_window():
         triggers=reaction_windows.post_roll_triggers({}, hit=True),
     )
     state.participants.append(dataclasses.replace(player, id="player_2", reaction_ids=["guardian_intercept"]))
+    place_actors(state)
     state.reactions_available = {"player_1": reaction_spend.unspent(), "player_2": reaction_spend.unspent()}
     assert [reaction["id"] for reaction in reaction_gate.offered_reactions(state)] == [
         "rogue_uncanny_dodge",

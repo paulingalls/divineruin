@@ -9,7 +9,7 @@ import ability_voice_rules
 import combat_melee_approach
 import reaction_spend
 import reaction_windows
-from combat_spatial import distance, position
+from combat_spatial import distance, inside, position, require_spatial
 from combat_structures import blocked_reason, line_blocker
 from communication_voice_rules import DeliveryRefused
 from condition_restrictions import cannot_act
@@ -133,6 +133,22 @@ def _validate_for_window(state: CombatState, actor_id: str, ability_id: str, win
             f"reaction {ability_id!r} fires on {catalog_window!r}, but the open window "
             f"{window['id']!r} offers {window['triggers']}"
         )
+
+    if ability_id == reaction_spend.INTERCEPT:
+        target = state.get_participant(window["target_id"])
+        assert target is not None
+        if not target.is_ally:
+            raise ReactionUnavailable("Intercept protects allies")
+        if target.id == actor_id:
+            raise ReactionUnavailable("Intercept protects another ally")
+        spatial = require_spatial(state)
+        if not inside(position(spatial, actor_id), position(spatial, target.id), 5):
+            raise ReactionUnavailable("Intercept requires being within 5 ft of the struck ally")
+        if any(
+            reaction_spend.intercepts_damage(entry) and entry["window_id"] == window["id"]
+            for entry in state.reactions_available.values()
+        ):
+            raise ReactionUnavailable("This hit was already intercepted")
 
     if catalog_window == reaction_windows.ENEMY_MOVE:
         if window["stage"] != reaction_windows.MOVEMENT:

@@ -68,6 +68,21 @@ def bound_spends(state, head: dict, stage: str, *, window_id: str | None = None)
     ]
 
 
+def intercept_target(state, head: dict) -> CombatParticipant | None:
+    spends = [
+        spend
+        for spend in bound_spends(state, head, reaction_windows.POST_ROLL)
+        if reaction_spend.intercepts_damage(spend)
+    ]
+    if not spends:
+        return None
+    (spend,) = spends
+    target = state.get_participant(spend["actor_id"])
+    if target is None:
+        raise ValueError(f"Intercept names missing guardian {spend['actor_id']!r}")
+    return target
+
+
 def ac_bonus(state, head: dict) -> int:
     """Use live recipient eligibility until the roll freezes its contribution."""
     if head.get("roll") is not None:
@@ -144,6 +159,13 @@ def record_shield_wear(packets: list[dict], state, head: dict, summary: dict) ->
         packet["mechanical_effect"] = "shield_durability"
 
 
+def record_intercept(packets: list[dict], summary: dict) -> None:
+    recipient = summary.get("damage_target_id")
+    for packet in packets:
+        if packet["actor_id"] == recipient and packet["ability_id"] == reaction_spend.INTERCEPT:
+            packet["mechanical_effect"] = "damage_intercepted"
+
+
 def record_save_advantage(packets: list[dict], summary: dict) -> None:
     """Label the reaction from the resolved save: ``close`` runs before the save is rolled."""
     if not summary.get("save_advantage"):
@@ -213,9 +235,6 @@ def _apply(
             return "target_ac_bonus"
         return None
 
-    # on_hit means the reactor was the one HIT. A reactor guarding someone else is
-    # guardian_intercept's shape (on_ally_hit), a different and unwired mechanic — halving an
-    # ally's damage off an on_hit spend would invent one.
     if (
         ability_id in HALVES_DAMAGE
         and head["roll"] is not None

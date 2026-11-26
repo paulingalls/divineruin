@@ -9,6 +9,7 @@ import pytest
 from combat._helpers import _make_combat_state
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_db_mod
+from voice_condition_fixtures import place_actors
 
 import abilities
 import reaction_spend
@@ -38,13 +39,15 @@ def _context():
     state.participants.append(
         dataclasses.replace(first, id="player_2", name="player_2", reaction_ids=["guardian_intercept"])
     )
+    state.participants.append(dataclasses.replace(first, id="player_3", name="Ally", reaction_ids=[]))
+    place_actors(state)
     state.beat = PhaseBeat.NARRATION
     state.held_actions = [
         {
             "seq": 4,
             "actor_id": "goblin_scout_1",
             "initiative": 12,
-            "declaration": {"type": "attack", "action": "Scimitar", "target_id": "player_1"},
+            "declaration": {"type": "attack", "action": "Scimitar", "target_id": "player_3"},
             "roll": None,
             "opened": ["pre_roll", "post_roll"],
         }
@@ -54,7 +57,7 @@ def _context():
         seq=4,
         stage=reaction_windows.POST_ROLL,
         actor_id="goblin_scout_1",
-        target_id="player_1",
+        target_id="player_3",
         action_kind="attack",
         triggers=reaction_windows.post_roll_triggers({}, hit=True),
     )
@@ -127,6 +130,17 @@ async def test_refused_second_speaker_does_not_change_the_first_or_spend_their_r
     ctx = _context()
     rows = {"player_1": _row("player_1"), "player_2": _row("player_2", stamina=0 if failure == "funds" else 10)}
     await _activate(ctx, rows, actor="player_1", generation=3)
+    state = ctx.userdata.combat_state
+    state.held_actions[0]["seq"] = 5
+    state.open_window = reaction_windows.open_window_for(
+        round_number=1,
+        seq=5,
+        stage=reaction_windows.POST_ROLL,
+        actor_id="goblin_scout_1",
+        target_id="player_3",
+        action_kind="attack",
+        triggers=reaction_windows.post_roll_triggers({}, hit=True),
+    )
     if failure == "ownership":
         participant = ctx.userdata.combat_state.get_participant("player_2")
         assert participant is not None

@@ -195,7 +195,9 @@ named by chamber_id. The enemy packet with that chamber_id records the initial r
 the chamber closing once, followed by the escape, and leave the reactor free. \
 The "mechanical_effect" field says what the reaction actually DID: \
 "damage_halved" for a blow they turned into a graze, "target_ac_bonus" for a guard that made the \
-strike go wide, "shield_durability" for a shield that took the wear, "save_advantage" for help \
+strike go wide, "damage_intercepted" when the guardian takes the blow and the struck ally takes no \
+damage from that hit. Read damage_target and the hit’s HP status together to narrate the guardian. \
+"shield_durability" means a shield took the wear, "save_advantage" means help \
 resisting an effect, "command_countered" for a silenced order, "accusation_dismissed" for a charge \
 the patrol doubts, and "action_hesitated" when an Objection costs the enemy its action. A contested \
 social reaction also carries reactor_total and opposer_total: use them to understand the outcome, \

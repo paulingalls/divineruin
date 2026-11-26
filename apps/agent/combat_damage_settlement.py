@@ -24,6 +24,7 @@ async def apply_attack_result(
     effective_ac: int,
     *,
     shield_reaction: str | None = None,
+    damage_target: CombatParticipant | None = None,
     mutations=db_mutations,
     queries=db_queries,
     concentration_break_mod=concentration_break,
@@ -35,10 +36,12 @@ async def apply_attack_result(
 ) -> dict:
     from combat_damage import _apply_damage
 
+    recipient = target if damage_target is None else damage_target
     land_damage = partial(
         _apply_damage,
         session,
         shield_reaction=shield_reaction,
+        rider_target=target,
         publish_roll=publish_roll,
         mutations=mutations,
         queries=queries,
@@ -60,7 +63,7 @@ async def apply_attack_result(
     )
     if progress is None:
         assert attack_result is not None
-        direct = await land_damage(attacker, action, target, attack_result, effective_ac)
+        direct = await land_damage(attacker, action, recipient, attack_result, effective_ac)
         assert direct is not None  # only a fortitude_progress hold pauses
         if (first_hit := _pincer_first_hit(attack_result)) is not None:
             await _settle_pincer(combat_state, attacker, target, direct, first_hit, land_deferred, None)
@@ -76,7 +79,7 @@ async def apply_attack_result(
         response = await land_damage(
             attacker,
             action,
-            target,
+            recipient,
             attack_result,
             effective_ac,
             defer_concentration=True,
@@ -93,12 +96,12 @@ async def apply_attack_result(
             receipt["pincer_first_hit"] = first_hit
         progress.steps["damage_receipt"] = receipt
     response = receipt["response"]
-    if target.type == "player" and not receipt.get("concentration_settled"):
+    if recipient.type == "player" and not receipt.get("concentration_settled"):
         response["concentration_broken"] = await concentration_break_mod.break_concentration_on_damage(
             session,
             response["damage"],
-            incapacitated=target.hp_current <= 0,
-            damaged_player_id=target.id,
+            incapacitated=recipient.hp_current <= 0,
+            damaged_player_id=recipient.id,
             combat_state=combat_state,
             conn=conn,
             progress=progress.scope("concentration"),

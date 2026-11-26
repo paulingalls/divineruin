@@ -201,14 +201,14 @@ async def resolve(
     if progress is not None and progress.paused:
         return {}
     base = receipt["base"]
-    return {
-        **base,
-        "push": receipt["push"],
-        "collision": collision,
-        "target_hp_status": collision["target_hp_status"],
-        "target_fallen": collision["target_fallen"],
-        "concentration_broken": collision["concentration_broken"] or base["concentration_broken"],
-    }
+    if "damage_target_id" not in base:
+        base = {
+            **base,
+            "target_hp_status": collision["target_hp_status"],
+            "target_fallen": collision["target_fallen"],
+            "concentration_broken": collision["concentration_broken"] or base["concentration_broken"],
+        }
+    return {**base, "push": receipt["push"], "collision": collision}
 
 
 def validate_continuations(state: CombatState) -> None:

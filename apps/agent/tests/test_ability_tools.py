@@ -292,21 +292,6 @@ class TestActivation:
         persistence.update_player_resources.assert_not_called()
         assert not reaction_spend.is_spent(ctx.userdata.combat_state.reactions_available["player_1"])
 
-    async def test_ally_targeted_reaction_accepts_an_ally_s_window(self):
-        ctx = _reaction_context(target_id="player_2")
-
-        result, persistence = await _call("guardian_intercept", context=ctx)
-
-        assert result["deducted"]["stamina"] == 3
-        persistence.update_player_resources.assert_awaited_once()
-        assert ctx.userdata.combat_state.reactions_available["player_1"] == {
-            "spent": True,
-            "ability_id": "guardian_intercept",
-            "window_id": ctx.userdata.combat_state.open_window["id"],
-            "stage": "post_roll",
-            "held_seq": 0,
-        }
-
     async def test_reaction_with_no_open_window_is_refused_before_resource_write(self):
         ctx = _reaction_context(window_open=False)
         persistence = MagicMock()

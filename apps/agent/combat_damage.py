@@ -118,6 +118,7 @@ async def _apply_damage(
     effective_ac: int,
     *,
     shield_reaction: str | None = None,
+    rider_target: CombatParticipant | None = None,
     mutations=db_mutations,
     queries=db_queries,
     concentration_break_mod=concentration_break,
@@ -139,6 +140,7 @@ async def _apply_damage(
     import choir_encounter
     import still_encounter
 
+    rider_target = target if rider_target is None else rider_target
     still_encounter.guard_target(combat_state, target.id)
     attack_result = choir_encounter.guard_damage(combat_state, attacker, target, attack_result)
     action, attack_result = combat_damage_affinity.apply(target, action, attack_result, state=combat_state)
@@ -331,27 +333,30 @@ async def _apply_damage(
     # L536-537): two rules, which disagree on a 0-damage blow — hence the nested gates. Hollow
     # zones double. Runs after the resolution's DICE_ROLL so ITEM_DURABILITY_HIT follows the damage.
     durability_results: dict = {}
-    if target.type == "player" and (attack_result.damage > 0 or shield_reaction):
-        inventory = await queries.get_player_inventory(target.id, conn=conn)
-        is_hollow = combat_resolution.is_hollow_zone(session.corruption_level)
-        if attack_result.damage > 0:
-            armor = _find_equipped(inventory, "armor")
-            if armor is not None:
-                durability_results["armor"] = await _accrue_durability(
-                    session, target.id, armor, 1, is_hollow_zone=is_hollow, conn=conn, sink=sink
-                )
-        if shield_reaction:
-            shield = _find_equipped(inventory, "shield")
-            if shield is not None:
-                durability_results["shield"] = await _accrue_durability(
-                    session, target.id, shield, 1, is_hollow_zone=is_hollow, conn=conn, sink=sink
-                )
+    is_hollow = combat_resolution.is_hollow_zone(session.corruption_level)
+    armor_inventory = None
+    if target.type == "player" and attack_result.damage > 0:
+        armor_inventory = await queries.get_player_inventory(target.id, conn=conn)
+        if (armor := _find_equipped(armor_inventory, "armor")) is not None:
+            durability_results["armor"] = await _accrue_durability(
+                session, target.id, armor, 1, is_hollow_zone=is_hollow, conn=conn, sink=sink
+            )
+    if rider_target.type == "player" and shield_reaction:
+        shield_inventory = (
+            armor_inventory
+            if target is rider_target and armor_inventory is not None
+            else await queries.get_player_inventory(rider_target.id, conn=conn)
+        )
+        if (shield := _find_equipped(shield_inventory, "shield")) is not None:
+            durability_results["shield"] = await _accrue_durability(
+                session, rider_target.id, shield, 1, is_hollow_zone=is_hollow, conn=conn, sink=sink
+            )
 
     response = {
         **impact.receipt(gift),
         "attacker": attacker.name,
         "action": action.get("name", ""),
-        "target": target.name,
+        "target": rider_target.name,
         "damage": attack_result.damage,
         "damage_type": attack_result.damage_type,
         "target_hp_status": hp_status,
@@ -364,6 +369,8 @@ async def _apply_damage(
         "context": attack_result.context,
         "target_rose_hollowed": rose_hollowed,
     }
+    if rider_target is not target:
+        response.update(target_id=rider_target.id, damage_target_id=target.id, damage_target=target.name)
     if renewals:
         response["focus_renewals"] = renewals
     if fortitude_outcome:
@@ -381,8 +388,8 @@ async def _apply_damage(
         response["self_healed"] = self_healed
         response["attacker_hp_status"] = combat_resolution.hp_threshold_status(attacker.hp_current, attacker.hp_max)
     if combat_state is not None and not automatic and not defer_concentration:
-        apply_prepared_hit(combat_state, attacker, target, action, response)
-        apply_critical_save(combat_state, attacker, target, action, response)
+        apply_prepared_hit(combat_state, attacker, rider_target, action, response)
+        apply_critical_save(combat_state, attacker, rider_target, action, response)
     if released_from_grapple:
         response["released_from_grapple"] = released_from_grapple
     logger.info(
