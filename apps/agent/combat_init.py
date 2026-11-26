@@ -153,12 +153,15 @@ async def _start_combat_locked(
     (
         participants,
         spatial,
-        initiative_entries,
+        initiative_summary,
+        initiative_awards,
         initiative_order,
         retained_choir,
         retained_still,
         retained_architect,
-    ) = await assemble_participants(session, encounter, encounter_id, member_players, content=content, queries=queries)
+    ) = await assemble_participants(
+        session, encounter, encounter_id, member_players, content=content, queries=queries, initiated_by=initiated_by
+    )
 
     # Carry the encounter's faction onto CombatState so combat_end can attribute the outcome
     # to faction reputation (story-002 inc 5). An explicit encounter `faction` wins; otherwise
@@ -233,11 +236,6 @@ async def _start_combat_locked(
         for name in ENTRY_RESET_FLAGS:
             setattr(member, name, False)
 
-    # Build initiative summary once for event + response
-    initiative_summary = [
-        {"id": e.participant_id, "name": e.name, "roll": e.roll, "total": e.total} for e in initiative_entries
-    ]
-
     # Publish events
     await publish_game_event(
         session.room,
@@ -297,6 +295,8 @@ async def _start_combat_locked(
         parts.append(companion_voice_directive(session.companion))
     # The handoff drops start_combat's tool output from CombatAgent's context, so the roster rides here.
     parts.append(f"Combatants: {json.dumps(response['participants'])}")
+    if initiative_awards:
+        parts.append(f"Initiative bonuses by player: {json.dumps(initiative_awards)}")
 
     if response["architect"]:
         parts.append(f"Architect encounter: {json.dumps(response['architect'])}")

@@ -68,6 +68,12 @@ test("Valdris's warrior has the registered Measured Reprisal clause", () => {
   });
 });
 
+test("Valdris's marshal has the registered Lawful Command clause", () => {
+  const marshal = validateGods(catalog).find((god) => god.god_id === "valdris")
+    ?.layer_4_synergy_matrix.marshal;
+  expect<unknown>(marshal).toEqual(corpus.lawful_command);
+});
+
 test("Orenthel's warrior has the registered Dawnward Strike clause", () => {
   const warrior = validateGods(catalog).find((god) => god.god_id === "orenthel")
     ?.layer_4_synergy_matrix.warrior;

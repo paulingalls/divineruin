@@ -19,7 +19,9 @@ from companion_scaling import companion_attacks_to_action_pool, scale_companion_
 from db_errors import validated_player_conditions
 from encounter_actions import validate_encounter_actions
 from encounter_references import validate_encounter_references
+from patron_location import is_sanctuary_location
 from patron_passives import effective_hp, orenthel_beacon, scholars_ward, tidewalker
+from patron_synergy_combat import LAWFUL_COMMAND_NAME, VALDRIS_LAWFUL_COMMAND, sanctuary_initiative_bonus
 from session_data import CombatParticipant
 
 
@@ -34,12 +36,20 @@ def class_reaction_ids(player_class: str, player_level: int) -> list[str]:
     ]
 
 
-async def assemble_participants(session, encounter, encounter_id, member_players, *, content, queries):
+async def assemble_participants(session, encounter, encounter_id, member_players, *, content, queries, initiated_by):
+    initiative_bonuses = {
+        mid: bonus
+        for mid, row in member_players
+        if (bonus := sanctuary_initiative_bonus(row, initiated_by=initiated_by))
+    }
+    if initiative_bonuses and not await is_sanctuary_location(session.location_id):
+        initiative_bonuses.clear()
     initiative_inputs: list[dict] = [
         {
             "id": mid,
             "name": row.get("name", mid),
             "attributes": row.get("attributes", {}),
+            "initiative_bonus": initiative_bonuses.get(mid, 0),
         }
         for mid, row in member_players
     ]
@@ -228,10 +238,27 @@ async def assemble_participants(session, encounter, encounter_id, member_players
             )
         )
 
+    initiative_awards = {
+        mid: {"id": VALDRIS_LAWFUL_COMMAND, "name": LAWFUL_COMMAND_NAME, "bonus": bonus}
+        for mid, bonus in initiative_bonuses.items()
+    }
+    initiative_summary = []
+    for entry in initiative_entries:
+        receipt: dict[str, object] = {
+            "id": entry.participant_id,
+            "name": entry.name,
+            "roll": entry.roll,
+            "total": entry.total,
+        }
+        if entry.participant_id in initiative_awards:
+            receipt["initiative_bonus"] = initiative_awards[entry.participant_id]
+        initiative_summary.append(receipt)
+
     return (
         participants,
         spatial,
-        initiative_entries,
+        initiative_summary,
+        initiative_awards,
         initiative_order,
         retained_choir,
         retained_still,

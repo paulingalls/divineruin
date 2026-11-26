@@ -23,8 +23,10 @@ from patron_ability_tools import project_abilities
 from patron_combat_edges import COMMUNITY_SHIELD, SCALES_VERDICT, VEILSTEP, VEILSTEP_RANGE_FT, WILDMOTHERS_WRATH
 from patron_favor import get_patron_tier
 from patron_gifts import UNBOUND_ALONE_BONUS, thyra_gift
+from patron_location import is_sanctuary_location
 from patron_passives import TIDEWALKER
 from patron_synergy import has_engine_clause, synergy_for_patron
+from patron_synergy_combat import LAWFUL_COMMAND_NAME, VALDRIS_LAWFUL_COMMAND
 from patron_zero_hp import DAWNS_EMBRACE, DEATH_WARD
 from session_data import SessionData
 from terrain import is_natural
@@ -159,6 +161,20 @@ async def query_patron(
     if has_engine_clause(synergy, zhael_foretold_words.CLAUSE):
         foretold["foretold_words"] = await zhael_foretold_words.project(player_id, session.session_id)
 
+    sanctuary_defense = {}
+    if has_engine_clause(synergy, VALDRIS_LAWFUL_COMMAND):
+        sanctuary_defense["sanctuary_defense"] = {
+            "clause_id": VALDRIS_LAWFUL_COMMAND,
+            "clause_name": LAWFUL_COMMAND_NAME,
+            "location_id": session.location_id,
+            "is_sanctuary": await is_sanctuary_location(session.location_id),
+            "activation_hint": (
+                'Use enter_mode(mode="combat", ..., initiated_by="enemies") when enemies start the fight. '
+                'Lawful Command grants +1 initiative at a sanctuary. Passing "party" or omitting the initiator '
+                "grants no bonus."
+            ),
+        }
+
     senses = {}
     if patron_id == "mortaen":
         senses["deaths_awareness"] = await patron_senses.deaths_awareness(session, player, queries=queries)
@@ -188,6 +204,7 @@ async def query_patron(
             **await ecosystem_cue(session, favor),
             **senses,
             **foretold,
+            **sanctuary_defense,
         }
     )
 

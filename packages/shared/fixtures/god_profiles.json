@@ -11,6 +11,18 @@
     "orenthel",
     "zhael"
   ],
+  "lawful_command": {
+    "name": "Lawful Command",
+    "type": "divine",
+    "clauses": [
+      {
+        "effect": "Gain +1 initiative when defending a publicly declared sanctuary from an aggressor.",
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "valdris_lawful_command"
+      }
+    ]
+  },
   "context_clause": {
     "kind": "context_check",
     "synergy_context": "fixture_context",

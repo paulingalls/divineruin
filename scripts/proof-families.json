@@ -28,6 +28,7 @@
     "tests": [
       "apps/agent/tests/acceptance/test_valdris_party_yield\\.py",
       "apps/agent/tests/acceptance/test_valdris_party_yield_guards\\.py",
+      "apps/agent/tests/acceptance/test_valdris_sanctuary\\.py",
       "apps/agent/tests/acceptance/test_weapon_proficiency_equip\\.py",
       "apps/agent/tests/acceptance/test_nythera_unseen_coast\\.py",
       "apps/agent/tests/acceptance/test_orenthel_guardian_ward\\.py",

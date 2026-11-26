@@ -40,12 +40,13 @@ def roll_initiative(
     """Roll initiative for all participants. Returns sorted descending by total.
 
     Each participant dict must have: id, name, attributes.dexterity (or dexterity).
+    An optional initiative_bonus stacks with the Dexterity modifier.
     """
     entries: list[InitiativeEntry] = []
     for p in participants:
         attrs = p.get("attributes", {})
         dex = attrs.get("dexterity", p.get("dexterity", 10))
-        mod = attribute_modifier(dex)
+        mod = attribute_modifier(dex) + p.get("initiative_bonus", 0)
         result = dice_roll("d20", rng=rng)
         d20 = result.total
         entries.append(

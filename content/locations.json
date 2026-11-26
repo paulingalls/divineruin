@@ -220,7 +220,7 @@
     "region_type": "city",
     "terrain": "city",
     "default_scene": "scene_accord_guild_exploration",
-    "tags": ["guild", "social", "quest_hub", "official"],
+    "tags": ["guild", "social", "quest_hub", "official", "sanctuary"],
     "description": "Heavy oak doors open onto a hall that smells of lamp oil, leather, and old paper. A long counter runs the length of the far wall, clerks behind it processing bounty claims and contract disputes. Notice boards flank both sides, layered deep with postings. Somewhere upstairs, raised voices argue strategy.",
     "atmosphere": "busy, purposeful, undercurrent of worry",
     "key_features": [
@@ -288,7 +288,7 @@
     "region": "sunward_coast",
     "region_type": "city",
     "terrain": "city",
-    "tags": ["religious", "social", "divine", "services"],
+    "tags": ["religious", "social", "divine", "services", "sanctuary"],
     "description": "A wide avenue lined with temples to the four gods. Incense drifts from open doorways. Acolytes sweep steps in the early light. The architecture shifts every few dozen paces \u2014 Veythar's sharp angles giving way to Kaelen's flowing curves, then Aelora's open arches, then Syrath's shadowed alcoves.",
     "atmosphere": "reverent, multi-faith, quietly competitive",
     "key_features": [
