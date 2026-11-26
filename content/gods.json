@@ -2625,8 +2625,9 @@
         "clauses": [
           {
             "effect": "Gain +1 to spell attack rolls in a coastal location you have never visited.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "nythera_saltwind_casting"
           }
         ]
       },
@@ -2953,8 +2954,9 @@
         "clauses": [
           {
             "effect": "Gain +1 damage against undead while an ally within earshot is below half HP.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "orenthel_undead_wrath"
           }
         ]
       },
@@ -2964,8 +2966,9 @@
         "clauses": [
           {
             "effect": "Gain +1 AC while guarding an ally below half HP.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "orenthel_guardian_ward"
           }
         ]
       },

@@ -1,8 +1,18 @@
-"""Shared authoritative map-history fact for Nythera's checks and casts."""
+"""Location and map-history facts for patron effects."""
 
 import json
 
+import asyncpg
+
 import db
+from db_content_queries import get_location
+
+
+async def is_coastal_location(location_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> bool:
+    location = await get_location(location_id, conn=conn)
+    if location is None:
+        raise ValueError(f"Unknown location {location_id!r}")
+    return location["region"] == "sunward_coast"
 
 
 async def first_stay_at_location(player_id: str, location_id: str, *, conn=None) -> bool:
