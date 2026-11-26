@@ -306,3 +306,9 @@ test.each(["rogue", "spy"] as const)(
     });
   },
 );
+
+test("Valdris's guardian has the registered Witness Shield clause", () => {
+  const guardian = validateGods(catalog).find((god) => god.god_id === "valdris")
+    ?.layer_4_synergy_matrix.guardian;
+  expect<unknown>(guardian).toEqual(corpus.witness_shield);
+});

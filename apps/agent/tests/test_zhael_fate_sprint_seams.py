@@ -195,12 +195,15 @@ def test_sneak_attack_is_spent_only_when_its_dice_land(first_face):
         patch("check_resolution.dice_roll", side_effect=[_d20(first_face), _d20(15), _d20(15)]),
         patch("check_resolution_attack.dice_roll", return_value=_damage_die(3)),
     ):
-        first, _ = roll_attack(rogue, plain, foe, combat_state=state, weapon_profile=plain, player={"class": "rogue"})
+        first, _ = roll_attack(
+            rogue, plain, foe, valdris_ac_bonus=0, combat_state=state, weapon_profile=plain, player={"class": "rogue"}
+        )
         assert first.sneak_attack_dice is None and rogue.sneak_attack_round != state.round_number
         earned, _ = roll_attack(
             rogue,
             {**plain, "advantage": True},
             foe,
+            valdris_ac_bonus=0,
             combat_state=state,
             weapon_profile=plain,
             player={"class": "rogue"},

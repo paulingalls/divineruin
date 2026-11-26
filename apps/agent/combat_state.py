@@ -20,6 +20,7 @@ import reaction_windows
 from action_contracts import positive_integer
 from combat_attack_roll import held_reaction_ac
 from combat_participant import CombatParticipant
+from encounter_testimony import Testimony
 
 if TYPE_CHECKING:
     from combat_quick_fingers import Wary
@@ -147,6 +148,7 @@ class CombatState:
 
     quick_fingers_wary: dict[str, dict[str, Wary]] = field(default_factory=dict)
     round_checkpoints: list[dict] = field(default_factory=list)
+    testimony: Testimony | None = None
 
     def get_participant(self, participant_id: str) -> CombatParticipant | None:
         for p in self.participants:
@@ -204,6 +206,11 @@ class CombatState:
             location_id=data.get("location_id", ""),
             terrain=data.get("terrain"),
             faction_id=data.get("faction_id"),
+            testimony=(
+                Testimony.from_dict(data["testimony"], f"combat {data['combat_id']!r}")
+                if data.get("testimony") is not None
+                else None
+            ),
             beat=data.get("beat", "declaration"),
             # A row written before story-017 can carry a REACTION pre-declaration, whose type
             # resolve_declaration no longer knows (see reaction_spend.drop_pre_declared_reactions).

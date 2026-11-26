@@ -208,7 +208,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 
 **Review:** The human approved the final 180-row table on 2026-11-18 (table SHA-256 `5dee713a…`, content SHA-256 `c3238a53…`, commit `903ac541`), closing AC3. The approved table is retained in sprint DATA at `sprints/archetype-synergies/synergy-review.md` with every changed number. Content and design share the approved corrections, including Nythera’s live Animal Handling +1 instead of advantage. Pending clauses are unavailable.
 
-Layer 4 lookup covers 180 pairings and 200 clauses. 97 are active/engine, 85 are active/narrated, and 18 are pending/engine.
+Layer 4 lookup covers 180 pairings and 200 clauses. 98 are active/engine, 85 are active/narrated, and 17 are pending/engine.
 
 Shared Table gives Aelora clerics +1 Religion when blessing a shared meal. Civic Promise gives Aelora paladins +1 Persuasion when negotiating a community’s shared duties. The patron query surfaces the context tags and settled checks name the applied clause.
 
@@ -235,6 +235,8 @@ Absolute Authority raises the Turn Undead/Hollow save DC by 1 for Valdris cleric
 Lawful Command gives Valdris marshals +1 initiative when enemies start combat at a sanctuary. Temple Row and the Accord Guild Hall are tagged sanctuaries. The patron query reports the current location’s status, and the initiative receipt names the bonus. `test_valdris_sanctuary.py` covers registered combat entry, saved initiative and patron discovery. `locations-load.integration.test.ts` checks the tags after a seeded server load.
 
 Measured Reprisal adds 1 damage when a Valdris warrior hits a foe that attacked a yielded ally this encounter, even if the foe missed. A player or companion spends their combat action to yield. The registered combat tools, checkpoint reload and HUD packet handler exercise the surrender state and damage receipt.
+
+Witness Shield gives Valdris guardians +1 AC against attackers named in an encounter’s testimony while its witness is scheduled at the combat location. Elder Yanna names two members of the Cult Cell in Millhaven. The combat entry receipt supplies their names for narration, and attack receipts identify the clause. `test_valdris_witness.py` covers discovery, entry, checkpoint reload, and attacks at Millhaven and its inn.
 
 Saltwind Casting gives Nythera mages +1 to spell attack rolls on their first stay at a Sunward Coast location. The cast receipt names the bonus. `test_nythera_unseen_coast.py` covers eligibility and Fate’s Thread continuation after checkpoint reload.
 

@@ -98,6 +98,7 @@ async def test_movement_areas_seed(movement_area_catalog, tmp_path, monkeypatch)
     valid, stored = movement_area_catalog
     (tmp_path / "encounter_templates.json").write_text(json.dumps(stored.encounters))
     (tmp_path / "creatures.json").write_text(json.dumps(stored.creatures))
+    (tmp_path / "npcs.json").write_bytes((ROOT / "content/npcs.json").read_bytes())
     monkeypatch.setattr(seed_content, "CONTENT_DIR", tmp_path)
     conn = AsyncMock()
     if valid:
@@ -142,3 +143,45 @@ async def test_seed_empty_reference_corpora(corpus, tmp_path, monkeypatch):
     conn = StoredConnection(**{corpus: []})
     errors = await seed_content.validate(conn)
     assert any("nonempty" in error for error in errors), errors
+
+
+@pytest.mark.parametrize(
+    "case",
+    json.loads((ROOT / "packages/shared/fixtures/encounter_testimony.json").read_text()),
+    ids=lambda case: case["name"],
+)
+async def test_testimony_at_seed_boundary(case, tmp_path, monkeypatch):
+    row = {
+        **CASES["valid"][0],
+        "scene_placement": {
+            "party_start": {"x": 0, "y": 0, "z": 0},
+            "companion_start": {"x": 0, "y": 0, "z": 0},
+            "actors": {"one": {"x": 5, "y": 0, "z": 0}},
+            "locations": {},
+            "zones": {},
+        },
+        **case["fields"],
+    }
+    stored = StoredConnection()
+    stored.encounters.append(row)
+    for name in ("creatures", "npcs"):
+        (tmp_path / f"{name}.json").write_bytes((ROOT / "content" / f"{name}.json").read_bytes())
+    (tmp_path / "encounter_templates.json").write_text(json.dumps(stored.encounters))
+    monkeypatch.setattr(seed_content, "CONTENT_DIR", tmp_path)
+    conn = AsyncMock()
+    error = case.get("error")
+    if error:
+        with pytest.raises(seed_content.InvalidContent, match=f"fixture.*{error}"):
+            await seed_content.seed(conn)
+    else:
+        await seed_content.seed(conn)
+    writes = [
+        json.loads(call.args[2])
+        for call in conn.execute.call_args_list
+        if "INSERT INTO encounter_templates" in call.args[0]
+    ]
+    assert writes == ([] if error else stored.encounters)
+    errors = await seed_content.validate(stored)
+    assert len(errors) == bool(error), errors
+    if error:
+        assert "fixture" in errors[0] and error in errors[0]

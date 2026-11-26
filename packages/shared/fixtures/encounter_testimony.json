@@ -1,0 +1,15 @@
+[
+  { "name": "ordinary", "fields": {} },
+  { "name": "valid", "fields": { "witness": "elder_yanna", "accused": ["one"] } },
+  { "name": "unknown-witness", "fields": { "witness": "missing", "accused": ["one"] }, "error": "witness" },
+  { "name": "unknown-accused", "fields": { "witness": "elder_yanna", "accused": ["one", "missing"] }, "error": "accused" },
+  { "name": "species-id", "fields": { "witness": "elder_yanna", "accused": ["hollow_shadeling"] }, "error": "accused" },
+  { "name": "witness-alone", "fields": { "witness": "elder_yanna" }, "error": "accused" },
+  { "name": "accused-alone", "fields": { "accused": ["one"] }, "error": "witness" },
+  { "name": "blank-witness", "fields": { "witness": " ", "accused": ["one"] }, "error": "witness" },
+  { "name": "null-witness", "fields": { "witness": null, "accused": ["one"] }, "error": "witness" },
+  { "name": "empty-accused", "fields": { "witness": "elder_yanna", "accused": [] }, "error": "accused" },
+  { "name": "null-accused", "fields": { "witness": "elder_yanna", "accused": null }, "error": "accused" },
+  { "name": "scalar-accused", "fields": { "witness": "elder_yanna", "accused": "one" }, "error": "accused" },
+  { "name": "bad-accused-entry", "fields": { "witness": "elder_yanna", "accused": ["one", 5] }, "error": "accused" }
+]

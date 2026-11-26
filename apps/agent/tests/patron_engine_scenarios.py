@@ -5,6 +5,7 @@ from acceptance.test_synergy_context import SCENARIOS as context_checks
 from acceptance.test_turn_undead_hollow import SCENARIOS as absolute_authority
 from acceptance.test_valdris_party_yield import SCENARIOS as measured_reprisal
 from acceptance.test_valdris_sanctuary import SCENARIOS as lawful_command
+from acceptance.test_valdris_witness import SCENARIOS as witness_shield
 from combat.test_nythera_tidal_step import SCENARIOS as tidal_step
 from combat.test_synergy_crit_edges import SCENARIOS as crit_edges
 from combat.test_synergy_spell_edges import SCENARIOS as spell_edges
@@ -80,6 +81,7 @@ ENGINE_SCENARIOS = {
     **guardian_ward,
     **dawnward_strike,
     **lawful_command,
+    **witness_shield,
     **measured_reprisal,
     **marshal_death_save,
     **rally,

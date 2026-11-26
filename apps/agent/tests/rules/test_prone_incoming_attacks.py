@@ -59,6 +59,7 @@ def _attack(values, *, ranged=False, attacker_prone=False):
         _participant("attacker", "player", conditions=[_prone()] if attacker_prone else []),
         weapon,
         _participant("target", "enemy", conditions=[_prone()]),
+        valdris_ac_bonus=0,
         resolver=cast(Any, RealResolver(rng)),
         weapon_profile=weapon,
         player={"class": "warrior"},

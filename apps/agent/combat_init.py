@@ -108,10 +108,16 @@ async def _start_combat_locked(
         encounter_id = encounter["id"]
 
     try:
-        validate_encounter_references(encounter)
+        testimony = validate_encounter_references(encounter)
         combat_spatial.validate_scene(encounter)
     except ValueError as error:
         raise ToolError(str(error)) from error
+
+    witness = None
+    if testimony is not None:
+        witness = await content.get_npc(testimony.witness)
+        if witness is None:
+            raise ToolError(f"Encounter {encounter_id!r} has unknown witness {testimony.witness!r}.")
 
     if member_players is None:
         player = await queries.get_player(actor_id)
@@ -163,6 +169,14 @@ async def _start_combat_locked(
         session, encounter, encounter_id, member_players, content=content, queries=queries, initiated_by=initiated_by
     )
 
+    testimony_receipt = None
+    if testimony is not None and witness is not None:
+        names = {p.id: p.name for p in participants}
+        testimony_receipt = {
+            "witness": {"id": testimony.witness, "name": witness["name"]},
+            "accused": [{"id": enemy_id, "name": names[enemy_id]} for enemy_id in testimony.accused],
+        }
+
     # Carry the encounter's faction onto CombatState so combat_end can attribute the outcome
     # to faction reputation (story-002 inc 5). An explicit encounter `faction` wins; otherwise
     # the stance_gate faction (a gated encounter reaching combat resolved hostile). None when
@@ -191,6 +205,7 @@ async def _start_combat_locked(
         location_id=session.location_id,
         terrain=terrain,
         faction_id=combat_faction_id,
+        testimony=testimony,
         spatial=spatial,
     )
 
@@ -274,6 +289,8 @@ async def _start_combat_locked(
         "initiative_order": initiative_summary,
         "participants": _participant_roster(combat_state.participants),
     }
+    if testimony_receipt is not None:
+        response["testimony"] = testimony_receipt
     logger.info("start_combat result: combat_id=%s, %d participants", combat_id, len(participants))
 
     # Record which agent type to return to after combat
@@ -297,6 +314,9 @@ async def _start_combat_locked(
     parts.append(f"Combatants: {json.dumps(response['participants'])}")
     if initiative_awards:
         parts.append(f"Initiative bonuses by player: {json.dumps(initiative_awards)}")
+
+    if testimony_receipt is not None:
+        parts.append(f"Witness testimony (use the Stage for current presence): {json.dumps(testimony_receipt)}")
 
     if response["architect"]:
         parts.append(f"Architect encounter: {json.dumps(response['architect'])}")

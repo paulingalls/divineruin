@@ -1,11 +1,17 @@
 """Authored encounter references shared by seed preflight and combat entry."""
 
+from collections.abc import Collection
+
+from encounter_testimony import Testimony
+
 NAMED_INTEGRATIONS = frozenset({"hollow_choir", "hollow_still", "hollow_architect"})
 REFERENCE_FIELDS = frozenset({"id", "creature_id", "role"})
 REFERENCE_ROLES = frozenset({"minion", "standard", "elite", "boss"})
 
 
-def validate_encounter_references(encounter: dict, creature_ids=None) -> None:
+def validate_encounter_references(
+    encounter: dict, creature_ids=None, *, npc_ids: Collection[str] | None = None
+) -> Testimony | None:
     label = f"encounter {encounter.get('id')!r}"
     level = encounter.get("recommended_party_level")
     if type(level) is not int or not 1 <= level <= 20:
@@ -39,5 +45,15 @@ def validate_encounter_references(encounter: dict, creature_ids=None) -> None:
         if creature_ids is not None and enemy["creature_id"] not in creature_ids:
             raise ValueError(f"{context}: unknown creature_id {enemy['creature_id']!r}")
 
+    testimony = Testimony.from_dict(encounter, label) if "witness" in encounter or "accused" in encounter else None
+    if testimony is not None:
+        if npc_ids is not None and testimony.witness not in npc_ids:
+            raise ValueError(f"{label}: unknown witness {testimony.witness!r}")
+        for enemy_id in testimony.accused:
+            if enemy_id not in seen:
+                raise ValueError(f"{label}: unknown accused enemy id {enemy_id!r}")
+
     if any(enemy["creature_id"] in NAMED_INTEGRATIONS for enemy in enemies) and len(enemies) != 1:
         raise ValueError(f"{label}: a Named integration is solitary and must have one damage/reward owner")
+
+    return testimony
