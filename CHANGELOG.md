@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.81.3
+
+Acceptance tests can rebuild database and Redis clients left bound to an earlier test's event loop. The speaker recap test isolates Redis outcome completion.
+
+Release steps: none.
+
 ## 0.81.2
 
 Combat action economy (Phase 4) and Hollow creatures (Phase 7 M7.3) are recorded as met goals.
