@@ -286,7 +286,15 @@ async def test_later_attack_stays_queued(marshal):
     spatial_record(state)["positions"][foe] = point(17)
     await harness.persist()
     attack = dict(
-        kind="attack", actor_id=ally, action="Longsword", target_id=foe, held_item_id="", rider="", reshape=[]
+        kind="attack",
+        actor_id=ally,
+        action="Longsword",
+        target_id=foe,
+        held_item_id="",
+        rider="",
+        reshape=[],
+        quick_fingers_mode="",
+        quick_fingers_item="",
     )
     await declare(harness, order(harness, point(15)), attack)
     packets = (await harness.command("resolve_phase", {}))["packets"] + await harness.drain()

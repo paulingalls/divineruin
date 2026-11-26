@@ -9,12 +9,13 @@ import combat_spatial
 import condition_voice_rules
 import conditions
 import patron_synergy_combat
+import thyra_seasons
 from archetypes import get_archetype_chassis
 from architect_encounter import cathedral_bonus
 from condition_catalog import INCORPOREAL, STUDIED_WEAKNESS, WAR_CRY_RALLY
 from dramatic import DramaticContext, evaluate_dramatic_context
-from equipment_rules import needs_weapon_profile
-from patron_synergy_combat import VeiledStrike
+from equipment_rules import needs_weapon_profile, resolve_weapon_profile
+from patron_synergy_combat import VeiledStrike, attack_player
 from weapon_proficiency import has_weapon_proficiency
 from world_season import Season
 
@@ -85,7 +86,7 @@ def attack_roll_inputs(
 ):
     """The attacker data, effective AC and to-hit bonus a d20 attack is prepared from.
 
-    Only reads state: a rogue's Sneak Attack allowance is offered here and spent by
+    Consumes a qualifying enemy's wary advantage. Sneak Attack is offered here and spent by
     ``spend_sneak_attack`` after the attack is finished, so a held roll never spends it early."""
     attacker_data = {
         "attributes": attacker.attributes,
@@ -93,6 +94,11 @@ def attack_roll_inputs(
         "conditions": attacker.conditions,
     }
 
+    if combat_state is not None and attacker.type == "enemy" and target.type == "player":
+        from combat_quick_fingers import take_advantage
+
+        if take_advantage(combat_state, attacker, target):
+            attacker_data["quick_fingers_advantage"] = True
     if attacker.is_ally:
         if (rider := combat_order_riders.select(combat_state, attacker.id, target.id)) is not None:
             attacker_data["order_rider"] = rider
@@ -279,3 +285,26 @@ def held_reaction_ac(head: dict) -> int:
             "Rolled held action requires explicit valid reaction AC contribution; reset/reseed old snapshots"
         )
     return contribution
+
+
+async def prepare_player_swing(
+    state, attacker, target, act, reaction_ac_bonus, *, player, queries, conn, strike_mode, faces
+) -> tuple[dict, check_resolution_attack.PreparedAttack]:
+    if player is None:
+        player = await attack_player(attacker, queries=queries, conn=conn)
+    defender = await attack_player(target, queries=queries, conn=conn)
+    attacker_data, target_ac, attack_mod = attack_roll_inputs(
+        attacker,
+        target,
+        state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus,
+        state,
+        act,
+        weapon_profile=await resolve_weapon_profile(attacker.type, act, weapon_attack=True, conn=conn),
+        player=player,
+        defender=defender,
+        season=await thyra_seasons.season_for(player, conn=conn),
+        veiled_strike=strike_mode,
+    )
+    return attacker_data, check_resolution_attack.prepare_attack(
+        attacker_data, act, target_ac, attack_mod=attack_mod, target_conditions=target.conditions, faces=faces
+    )

@@ -151,6 +151,8 @@ async def test_terminal_tool_fight(reset_db_pool, seed):
                             "declarations": [
                                 {
                                     "reshape": [],
+                                    "quick_fingers_mode": "",
+                                    "quick_fingers_item": "",
                                     "kind": "attack",
                                     "actor_id": "veilrender",
                                     "action": "Corruption Pulse",

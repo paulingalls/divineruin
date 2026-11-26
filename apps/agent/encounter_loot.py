@@ -2,7 +2,7 @@
 
 Loot generation combines authored drops, encounter role and the party's best skill tiers.
 Currency uses the enemy's category, tier and role. Both are pure and use the caller's RNG;
-combat_rewards wires them into victory rewards.
+enemy_pockets rolls items at entry and combat_rewards rolls currency at victory.
 
 The Loot Modifier Table and Currency Drop Rules in
 docs/game_mechanics/game_mechanics_encounter_roles.md define the role modifiers.
@@ -138,7 +138,7 @@ def _role_quantity(quantity: int, role: str) -> int:
 
 
 def generate_loot(loot_table: dict, role: str, party_tiers: Mapping[str, SkillTier], rng: random.Random) -> list[dict]:
-    """Roll a defeated enemy's actual drops from its loot table, scaled by encounter role.
+    """Roll an enemy's carried items from its loot table, scaled by encounter role.
 
     Every authored requirement must meet the party's best tier per skill before any roll.
     Authored chance >= 1 skips the chance roll; quantity dice still roll before role scaling.

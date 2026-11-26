@@ -120,13 +120,13 @@ Acceptance bullet 8 requires "Mentor data links correctly to Phase 2 M2.5 abilit
 | whirlwind | No | No | NOT_SHIPPED |
 | iron_stance | No | No | NOT_SHIPPED |
 | dirty_trick | No | No | NOT_SHIPPED |
-| quick_fingers | No | No | NOT_SHIPPED |
+| quick_fingers | `rogue_quick_fingers` via `combat_quick_fingers.resolve` and the registered combat tools | `test_quick_fingers.py` covers the base, Drathian and Keldaran forms | BUILT |
 | smoke_bomb | No | No | NOT_SHIPPED |
 | crippling_strike | No | No | NOT_SHIPPED |
 | shadow_step | No | No | NOT_SHIPPED |
 | exploit_weakness | No | No | NOT_SHIPPED |
 
-All 14 are NOT_SHIPPED. The link target itself (M2.5 abilities) is unbuilt — see `docs/milestones/audit/phase-2-archetypes.md` row M2.5.
+The base Quick Fingers link is verified above. Magpie's Touch and Silk are separate entries in the Rogue mentor audit.
 
 ## Material gaps
 

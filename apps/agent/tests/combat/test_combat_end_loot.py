@@ -1,4 +1,4 @@
-"""Inject exact loot rolls but execute grants against real Postgres; mocks cannot certify stored inventory or gold."""
+"""Supply exact carried drops but execute grants against real Postgres; mocks cannot certify stored inventory or gold."""
 
 from __future__ import annotations
 
@@ -25,7 +25,6 @@ _WORKER = uuid.uuid4().hex[:8]
 _PLAYER_ID = f"s002_combat_end_loot_player_{_WORKER}"
 _ITEM_ID = f"s002_loot_test_residue_{_WORKER}"
 _MATERIAL_ID = f"s002_loot_test_material_{_WORKER}"
-_LOOT_TABLE_ID = "s002_loot_test_table"
 
 
 class FakeRng(random.Random):
@@ -44,26 +43,13 @@ class FakeRng(random.Random):
         return self._chance
 
 
-def _content_stub(material: bool = False) -> MagicMock:
-    """A db_content_queries stand-in whose get_loot_table returns one bespoke table for the known
-    id. get_material_definition is the real query, so a material drop resolves from the seeded
-    materials_catalog row at grant time."""
-
-    async def _get(loot_table_id: str) -> dict | None:
-        if loot_table_id == _LOOT_TABLE_ID:
-            return {
-                "id": _LOOT_TABLE_ID,
-                "drops": [{"item_id": _MATERIAL_ID if material else _ITEM_ID, "chance": 1.0, "quantity": 1}],
-            }
-        return None
-
+def _content_stub() -> MagicMock:
     async def _get_item(item_id: str) -> dict | None:
         if item_id == _ITEM_ID:
             return {"id": _ITEM_ID, "name": "Cured Hide", "description": "Supple.", "rarity": "uncommon"}
         return None
 
     content = MagicMock()
-    content.get_loot_table = AsyncMock(side_effect=_get)
     content.get_item = AsyncMock(side_effect=_get_item)
     content.get_material_definition = AsyncMock(side_effect=db_content_queries.get_material_definition)
     return content
@@ -101,8 +87,8 @@ async def _cleanup(pool) -> None:
     await pool.execute("DELETE FROM materials_catalog WHERE id = $1", _MATERIAL_ID)
 
 
-def _victory_state() -> CombatState:
-    """One defeated humanoid Standard enemy carrying the test loot table; level 5, authored tier 1."""
+def _victory_state(item_id: str) -> CombatState:
+    """One defeated humanoid Standard enemy carrying the test item; level 5, authored tier 1."""
     enemy = CombatParticipant(
         id="s002_loot_enemy",
         name="Test Bandit",
@@ -117,7 +103,7 @@ def _victory_state() -> CombatState:
         is_fallen=True,
         role="standard",
         category="humanoid",
-        loot_table_id=_LOOT_TABLE_ID,
+        carried_items=[{"item_id": item_id, "quantity": 1, "tainted": False}],
     )
     # The player who fought is a participant (as combat_init builds it) — loot/currency key on the
     # player participants, so a realistic victory state must include the primary.
@@ -140,7 +126,7 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool, material):
         await _seed_item(pool)
     try:
         session = SessionData(player_id=_PLAYER_ID, location_id="loc_test", room=None)
-        cs = _victory_state()
+        cs = _victory_state(_MATERIAL_ID if material else _ITEM_ID)
         sink = EventSink()
         async with db.transaction() as conn:
             end_data = await _end_combat_db(
@@ -151,7 +137,7 @@ async def test_victory_grants_role_loot_and_currency(dev_db_pool, material):
                 queries=db_queries,
                 conn=conn,
                 sink=sink,
-                content=_content_stub(material),
+                content=_content_stub(),
                 rng=FakeRng(die=4),
             )
 
@@ -254,7 +240,7 @@ async def test_minion_only_victory_grants_no_currency(dev_db_pool):
             role="minion",
             category="humanoid",  # would carry coin at any other role, but D79 zeroes a Minion
             tier=1,
-            loot_table_id=_LOOT_TABLE_ID,
+            carried_items=[],
         )
         player = CombatParticipant(
             id=_PLAYER_ID, name="Loot Hero", type="player", initiative=15, hp_current=20, hp_max=20, ac=14

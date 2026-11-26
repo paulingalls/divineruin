@@ -528,17 +528,17 @@ Event-driven price fluctuation, three-phase event lifecycle, standard economic e
 
 ---
 
-## game_mechanics/game_mechanics_archetypes.md (1359 lines)
+## game_mechanics/game_mechanics_archetypes.md (1367 lines)
 
 18 archetype profiles with abilities, specializations, and spell acquisition.
 
 | Section | Lines | What's There |
 |---|---|---|
-| Archetype Profiles | 9-418 | Overview of 18 archetypes: Martial(3), Arcane(3), Primal(3), Divine(3), Shadow(3), Support(3) |
-| All Archetype Profiles — Complete (18 of 18) | 419-1150 | Individual stat blocks: HP, armor, skills, passives, actives, reactions, milestones |
-| Core + Elective Ability Model | 1151-1223 | Core (always available) vs Elective (chosen at L4/L8), reaction abilities |
-| Spell Acquisition System — Three Tracks | 1224-1288 | Core spells, Training study cycles, Discovery (scrolls/mentors) |
-| Martial Mentor-Style System | 1289-1359 | Technique variants via NPC mentors, cultural attribution, 2-3 session loops |
+| Archetype Profiles | 9-426 | Overview of 18 archetypes: Martial(3), Arcane(3), Primal(3), Divine(3), Shadow(3), Support(3) |
+| All Archetype Profiles — Complete (18 of 18) | 427-1158 | Individual stat blocks: HP, armor, skills, passives, actives, reactions, milestones |
+| Core + Elective Ability Model | 1159-1231 | Core (always available) vs Elective (chosen at L4/L8), reaction abilities |
+| Spell Acquisition System — Three Tracks | 1232-1296 | Core spells, Training study cycles, Discovery (scrolls/mentors) |
+| Martial Mentor-Style System | 1297-1367 | Technique variants via NPC mentors, cultural attribution, 2-3 session loops |
 
 ---
 
@@ -956,7 +956,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/REMAINING.md (190 lines)
+## milestones/REMAINING.md (189 lines)
 
 ---
 

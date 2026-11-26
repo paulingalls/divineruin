@@ -1,6 +1,7 @@
 """Skill-gated rewards through persisted CombatAgent victory commands."""
 
 import json
+from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
@@ -24,7 +25,7 @@ from session_data import SessionData
 
 
 class LootHarness(MawlingHarness):
-    async def start_loot(self, creature, tiers, count):
+    async def start_loot(self, creature, tiers, count, item_rng=None, *, roles=None):
         self.pool = await db.get_pool()
         self.encounter_id = f"loot_{uuid4().hex}"
         self.owns_template = True
@@ -36,7 +37,7 @@ class LootHarness(MawlingHarness):
                 {
                     "id": f"foe_{i}",
                     "creature_id": creature[i] if isinstance(creature, list) else creature,
-                    "role": "standard",
+                    "role": roles[i] if roles is not None else "standard",
                 }
                 for i in range(count)
             ],
@@ -76,11 +77,22 @@ class LootHarness(MawlingHarness):
         self.model = ScenarioModel([])
         self.session = AgentSession(llm=self.model, max_tool_steps=5, userdata=self.sd)
         await self.session.start(Agent(instructions="Execute the command.", tools=[enter_mode]))
-        result = await self.command("enter_mode", {"mode": "combat", "encounter_id": self.encounter_id})
+        result = await self.enter({"mode": "combat", "encounter_id": self.encounter_id}, item_rng)
         assert isinstance(self.session.current_agent, CombatAgent)
         self.roster = result["participants"]
         self.enemies = [p["id"] for p in self.roster if p["type"] == "enemy"]
-        await self.persist()
+
+    async def enter(self, arguments, item_rng=None):
+        rng_patch = patch("enemy_pockets.Random", return_value=item_rng) if item_rng is not None else nullcontext()
+        with rng_patch:
+            return await self.command("enter_mode", arguments)
+
+    async def manual_victory(self, rng):
+        with (
+            patch("combat_end.random", SimpleNamespace(Random=lambda: rng)),
+            patch("combat_end._build_handoff_agent", return_value=Agent(instructions="Combat complete.")),
+        ):
+            return await self.command("end_combat", {"outcome": "victory"})
 
     async def victory(self, rng):
         async def end(*args, **kwargs):
@@ -132,6 +144,8 @@ class LootHarness(MawlingHarness):
                         "declarations": [
                             {
                                 "reshape": [],
+                                "quick_fingers_mode": "",
+                                "quick_fingers_item": "",
                                 "kind": "attack",
                                 "actor_id": self.players[0],
                                 "action": "Longsword",

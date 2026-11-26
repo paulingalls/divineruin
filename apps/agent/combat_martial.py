@@ -31,6 +31,8 @@ from combat_ability_gate import (
     IRON_STANCE_ABILITY,
     MARSHAL_ORDERS,
     MULTI_TARGET_WEAPON_ABILITIES,
+    QUICK_FINGERS,
+    QUICK_FINGERS_RIDER,
     RALLYING_SHOUT,
     SECOND_WIND,
     SHADOW_STEP,
@@ -355,6 +357,8 @@ def attack_ability(decl: Declaration) -> str | None:
         return SHIELD_BASH
     if decl.type is DeclarationType.ATTACK and decl.rider == CRIPPLING_STRIKE_RIDER:
         return CRIPPLING_STRIKE
+    if decl.type is DeclarationType.ATTACK and decl.rider == QUICK_FINGERS_RIDER:
+        return QUICK_FINGERS
     if (
         decl.type is DeclarationType.ABILITY
         and (resolved := declared_ability(decl.action)) is not None

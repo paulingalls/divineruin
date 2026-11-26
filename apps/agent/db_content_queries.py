@@ -134,14 +134,14 @@ async def get_item(item_id: str, *, conn: asyncpg.Connection | None = None) -> d
     return data
 
 
-async def get_material_definition(material_id: str) -> dict | None:
+async def get_material_definition(material_id: str, *, conn: asyncpg.Connection | None = None) -> dict | None:
     cache_key = f"material_definition:{material_id}"
     cached = await db._cache_get(cache_key)
     if cached is not None:
         return json.loads(cached)
 
-    pool = await db.get_pool()
-    row = await pool.fetchrow("SELECT data FROM materials_catalog WHERE id = $1", material_id)
+    connection = conn or await db.get_pool()
+    row = await connection.fetchrow("SELECT data FROM materials_catalog WHERE id = $1", material_id)
     if row is None:
         return None
 
@@ -240,10 +240,8 @@ async def get_loot_table(loot_table_id: str) -> dict | None:
     """Resolve a loot table by id from the loot_tables catalog (M4.7 story-002).
 
     Static content read from the pool + Redis cache (no conn param), mirroring
-    get_encounter_template. combat_end calls this on victory — inside its teardown tx — to
-    gate the table by party skills and scale drops by enemy role (encounter_loot.generate_loot).
-    Reading from the pool rather than the in-flight tx conn is correct: loot tables are immutable
-    seeded content, independent of the combat-teardown mutations. Returns None for an unknown id."""
+    get_encounter_template. Enemy pockets use these immutable seeded tables when initializing
+    carried items. Returns None for an unknown id."""
     cache_key = f"loot_table:{loot_table_id}"
     cached = await db._cache_get(cache_key)
     if cached is not None:

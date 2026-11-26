@@ -57,7 +57,7 @@ class _CombatQueries:
     def __init__(self, pool):
         self.pool = pool
 
-    async def get_player(self, player_id: str):
+    async def get_player(self, player_id: str, **_kw):
         return await db_queries.get_player(player_id, conn=self.pool)
 
     async def get_players_for_update(self, player_ids: list[str]):

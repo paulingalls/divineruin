@@ -34,6 +34,8 @@ async def attack(maw, actor_id, target_id, action):
             "declarations": [
                 {
                     "reshape": [],
+                    "quick_fingers_mode": "",
+                    "quick_fingers_item": "",
                     "kind": "attack",
                     "actor_id": actor_id,
                     "action": action,
@@ -226,6 +228,8 @@ async def test_resolution_checks_live_conditions_and_exposure(maw, changed):
             "declarations": [
                 {
                     "reshape": [],
+                    "quick_fingers_mode": "",
+                    "quick_fingers_item": "",
                     "kind": "attack",
                     "actor_id": actor.id,
                     "action": actor.action_pool[0]["name"],
@@ -277,6 +281,8 @@ async def test_interrupted_charge_keeps_movement_receipt(maw, interruption):
             "declarations": [
                 {
                     "reshape": [],
+                    "quick_fingers_mode": "",
+                    "quick_fingers_item": "",
                     "kind": "attack",
                     "actor_id": actor.id,
                     "action": "Claw",

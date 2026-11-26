@@ -113,6 +113,8 @@ async def test_martial_roll_reloads_without_rolling_or_charging_again(warriors: 
             {
                 "declarations": [
                     {
+                        "quick_fingers_mode": "",
+                        "quick_fingers_item": "",
                         "kind": "attack",
                         "actor_id": actor,
                         "action": "Longsword",
@@ -208,9 +210,12 @@ async def test_cunning_hide_reloads_after_the_attack(rogue: MawlingHarness) -> N
     assert suspended.held_actions and suspended.held_actions[0]["actor_id"] == foe
     position = combat_spatial.position(combat_spatial.require_spatial(suspended), actor)
     await fresh_session(rogue, suspended)
-    with patch("check_resolution.dice_roll", return_value=_d20(1)):
+    with patch("check_resolution.dice_roll") as hostile_roll:
         packets = await rogue.drain()
+    hostile_roll.assert_not_called()
     assert not any(packet.get("actor_id") == actor for packet in packets)
+    hostile = next(packet for packet in packets if packet["actor_id"] == foe)
+    assert hostile["resolved"] is False and "concealed" in hostile["reason"]
     assert await db_queries.get_player(actor) == after
     state = await rogue.reload()
     target = state.get_participant(foe)

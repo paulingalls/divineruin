@@ -201,17 +201,25 @@ async def _start_combat_locked(
     choir_facts = None
     if combat_state.still_encounter is not None:
         await still_scene.start(
-            session, combat_state, retained_still, mutations=mutations, queries=queries, db_mod=db_mod
+            session, combat_state, retained_still, mutations=mutations, queries=queries, db_mod=db_mod, content=content
         )
     elif combat_state.architect_encounter is not None:
         await architect_scene.start(
-            session, combat_state, retained_architect, mutations=mutations, queries=queries, db_mod=db_mod
+            session,
+            combat_state,
+            retained_architect,
+            mutations=mutations,
+            queries=queries,
+            db_mod=db_mod,
+            content=content,
         )
     elif lost_scout_combat.owns(combat_state):
-        await lost_scout_combat.start(session, combat_state, mutations=mutations, queries=queries, db_mod=db_mod)
+        await lost_scout_combat.start(
+            session, combat_state, mutations=mutations, queries=queries, db_mod=db_mod, content=content
+        )
     else:
         choir_facts = await choir_scene.start(
-            session, combat_state, retained_choir, mutations=mutations, queries=queries, db_mod=db_mod
+            session, combat_state, retained_choir, mutations=mutations, queries=queries, db_mod=db_mod, content=content
         )
     session.combat_state = combat_state
 

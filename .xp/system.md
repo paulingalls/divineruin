@@ -53,7 +53,8 @@ CI uses separate Ubuntu runners; its step timestamps have one-second precision
 | Story land / free-patch Acceptance | Python non-acceptance (`test:python`, eight workers) | 88.571 land | Proof staged `land` selection; keyed proofs reused |
 | Sprint close / free-patch Acceptance | Deterministic acceptance (`test:acceptance`) | 657.676 local | Proof `sprint` selection; keyed proofs reused |
 | Sprint close / free-patch Acceptance | Playwright | 160.286 local | Proof `sprint` selection; keyed proofs reused |
-| Scheduled fresh super | `scripts/super-test.sh`: `proof run --fresh --set super` | About 22 min (195 tasks, Mac Mini, 2026-11-24) | All generated tasks on a dedicated clone of develop, paid approvals empty; installer defines Tuesday/Thursday/Saturday 00:30 (clear of the legacy super run at 02:00); installed on the Mac Mini |
+| Scheduled fresh super | `scripts/super-test.sh`: `proof run --fresh --set super` | About 22 min (195 tasks, Mac Mini, 2026-11-24) | All generated tasks on a dedicated clone of develop, paid approvals empty; installer runs it nightly at 00:30 (clear of the legacy super run at 02:00); installed on the Mac Mini |
+| Weekly acceptance coverage | `proof_coverage_refresh.py refresh` | 707.39 local | 211 deterministic agent acceptance tasks on the free-patch worktree, with coverage.py. The measured cap is 5 cover additions per shared source and family. Scheduled super collects only when the map is due. |
 | Explicit approval | Paid acceptance / speech recognition | Not measured; approval empty | No automatic tier enables it |
 | Setup | Root/e2e frozen Bun graphs, cached browser | 1.470 / 0.441 / 0.505 | Local setup installs both graphs; CI lint installs root/e2e |
 | Setup | Agent/scripts frozen uv graphs | 0.498 / 0.020 | Local setup installs both graphs; CI lint installs agent only |

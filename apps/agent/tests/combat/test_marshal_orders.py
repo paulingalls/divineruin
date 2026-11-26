@@ -347,7 +347,15 @@ async def test_direct_strike_is_wasted_if_earlier_ally_kills_foe(marshal) -> Non
         DIRECT,
         [ally, foe],
         attack=dict(
-            kind="attack", actor_id=ally, action="Longsword", target_id=foe, held_item_id="", rider="", reshape=[]
+            kind="attack",
+            actor_id=ally,
+            action="Longsword",
+            target_id=foe,
+            held_item_id="",
+            rider="",
+            reshape=[],
+            quick_fingers_mode="",
+            quick_fingers_item="",
         ),
     )
     with (

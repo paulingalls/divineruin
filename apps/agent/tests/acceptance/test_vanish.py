@@ -37,8 +37,9 @@ async def walk(reset_db_pool: str):
     try:
         await harness.prepare((8, 8), companion=None, tools=(activate,))
         await harness.pool.execute(
-            """UPDATE players SET data = data || '{"class":"rogue"}' WHERE player_id = $1""",
+            "UPDATE players SET data = data || $2::jsonb WHERE player_id = $1",
             harness.players[0],
+            json.dumps({"class": "rogue", "equipment": {"main_hand": DAGGER}}),
         )
         harness.encounter_id = "bandit_ambush"
         yield harness

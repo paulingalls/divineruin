@@ -68,6 +68,8 @@ async def grapple(maw, target=None):
             "declarations": [
                 {
                     "reshape": [],
+                    "quick_fingers_mode": "",
+                    "quick_fingers_item": "",
                     "kind": "attack",
                     "actor_id": maw.enemies[0],
                     "action": "Lunge",
@@ -251,6 +253,8 @@ async def test_tick_fall_cancels_queued_action(maw, field_dice):
         maw,
         {
             "reshape": [],
+            "quick_fingers_mode": "",
+            "quick_fingers_item": "",
             "kind": "attack",
             "actor_id": target,
             "action": attack_name,
@@ -366,6 +370,8 @@ async def test_public_source_kill_releases_grapple(maw, field_dice):
         maw,
         {
             "reshape": [],
+            "quick_fingers_mode": "",
+            "quick_fingers_item": "",
             "kind": "attack",
             "actor_id": maw.sd.companion.id,
             "action": maw.sd.combat_state.get_participant(maw.sd.companion.id).action_pool[0]["name"],
@@ -404,7 +410,14 @@ async def test_hollowed_rise_cancels_living_ally_intent(maw, field_dice, kind):
     target_hp = maw.sd.combat_state.get_participant(target_id).hp_current
     declaration = {"kind": kind, "actor_id": victim.id, "reshape": []}
     if kind == "attack":
-        declaration.update(action="Shortsword", target_id=target_id, held_item_id="", rider="")
+        declaration.update(
+            action="Shortsword",
+            target_id=target_id,
+            held_item_id="",
+            rider="",
+            quick_fingers_mode="",
+            quick_fingers_item="",
+        )
     await maw.command("declare_phase", {"declarations": [declaration]})
     first = await maw.command("resolve_phase", {})
     tick = next(p for p in first["packets"] if p.get("automatic"))

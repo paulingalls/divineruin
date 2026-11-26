@@ -298,7 +298,7 @@ async def test_damaging_save_lands_once(walk: MawlingHarness) -> None:
         patch("combat_veilrender.dice.roll", return_value=_damage_die(4)),
     ):
         start = receipt(await walk.drain(), actor)["turn_start_effects"][0]
-    assert rolls.call_count == 2, "one plain d20 for the actor, one for the undeclared ally"
+    assert rolls.call_count == len(walk.players)
     assert start["source_id"] == foe and start["damage"] == 2
     assert "iron_stance" not in await condition_types(walk, actor)
 

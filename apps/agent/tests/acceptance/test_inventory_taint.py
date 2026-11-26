@@ -82,7 +82,7 @@ class InventoryHarness(MawlingHarness):
 async def test_victory_preserves_drop_taint(reset_db_pool, creature, skill, seed, item, clean, tainted):
     h = LootHarness()
     try:
-        await h.start_loot(creature, [{skill: "expert"}], 1)
+        await h.start_loot(creature, [{skill: "expert"}], 1, random.Random(seed))
         if tainted:
             await seed_stack(h.pool, h.players[0], item, 2, False)
         await h.victory(random.Random(seed))
@@ -229,7 +229,7 @@ async def test_ordered_pool_keeps_same_id_provenance(reset_db_pool, tmp_path, mo
             )
         catalog.write_text(json.dumps(tables))
         monkeypatch.setattr(creature_schema, "LOOT_CATALOG", catalog)
-        await h.start_loot(creatures, [{}, {}], 3)
+        await h.start_loot(creatures, [{}, {}], 3, random.Random(1))
         await h.victory(random.Random(1))
         for index, expected in enumerate([[(False, 4)], [(True, 2)]]):
             actual = await rows(pool, h.players[index])
