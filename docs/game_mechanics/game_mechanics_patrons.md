@@ -39,11 +39,11 @@ Favor can rise and fall. A player who reaches Exalted and then acts against thei
 
 ### Oath mechanics
 
-Proposed rules for the next implementation sprint. In `content/gods.json`, Breach and Favor-loss lifetime define the first pending Valdris paladin clause (favor loss). Justice at stake defines the second (+2 to d20 rolls). Each gets its own implementation ID. Shared oath mechanism also defines Zhael's pending Promised Hour.
+Rules for the next implementation sprint. In `content/gods.json`, Breach and Favor-loss lifetime define the first pending Valdris paladin clause (favor loss). Justice at stake defines the second (+2 to d20 rolls). Each gets its own implementation ID. Shared oath mechanism also defines Zhael's pending Promised Hour.
 
 #### Breach
 
-**Recommended.** Valdris's Oath of Justice binds all three terms when sworn. The engine evaluates the oath-holder's committed attack against the facts at resolution.
+**Decision.** Valdris's Oath of Justice binds all three terms when sworn. The engine evaluates the oath-holder's committed attack against the facts at resolution.
 
 | Closed term | Fact that breaks the oath |
 |---|---|
@@ -60,7 +60,7 @@ Resolve from the existing Act's actor and target IDs, the pre-attack target stat
 
 #### Justice at stake
 
-**Recommended.** The paladin must currently follow Valdris and have an active Oath of Justice without suppression. An active, unbroken oath satisfies oath-keeping immediately. Requiring a prior fulfilled obligation would require a separate objective record.
+**Decision.** The paladin must currently follow Valdris and have an active Oath of Justice without suppression. An active, unbroken oath satisfies oath-keeping immediately. Requiring a prior fulfilled obligation would require a separate objective record.
 
 | Roll | Qualifying context |
 |---|---|
@@ -78,7 +78,7 @@ Attacks and saves derive their context from combat state and keep their existing
 
 #### Favor-loss lifetime
 
-**Recommended.** A Valdris breach suppresses the holder's Layer 3 favor abilities and the Oath of Justice +2 for the rest of that gameplay session. Layers 1–2 and other Layer 4 clauses remain available. Charging the whole next session would make a late breach cost more than an early one.
+**Decision.** A Valdris breach suppresses the holder's Layer 3 favor abilities and the Oath of Justice +2 for the rest of that gameplay session. Layers 1–2 and other Layer 4 clauses remain available. Charging the whole next session would make a late breach cost more than an early one.
 
 | Boundary | Engine behavior |
 |---|---|
@@ -90,7 +90,7 @@ Reconnects that reuse session state, rests, favor gains, party membership change
 
 #### Shared oath mechanism
 
-**Recommended.** Store the oath ID, owner, patron, closed oath kind, catalog terms, bound entity IDs, status (`active`, `fulfilled`, `broken` or `lapsed`) and the event ID for the latest state change under `players.data.oaths`. Encounter-bound oaths also store encounter and round fields. The engine reads the current oath and committed facts as part of the existing Act's Resolve.
+**Decision.** Store the oath ID, owner, patron, closed oath kind, catalog terms, bound entity IDs, status (`active`, `fulfilled`, `broken` or `lapsed`) and the event ID for the latest state change under `players.data.oaths`. Encounter-bound oaths also store encounter and round fields. The engine reads the current oath and committed facts as part of the existing Act's Resolve.
 
 The proposed Stage surfaces an oath `choice_id`, legal `option` values (`justice` and `timed` for this build), and eligible encounter targets and allies. After the player confirms aloud, the DM uses the existing `select` verb with those IDs. The proposed timed option extends it with `objective_kind`, `target_id` and `last_round`. The engine validates the speaking player's patron and paladin archetype, scope and the offered IDs, then returns the oath ID and accepted terms. Replaying the same selection returns the existing record. A new selection cannot replace an active oath or bypass suppression. Without a registered oath, there is no oath-based reward or breach. The DM reads back the terms and voices the Resolve's outcome.
 
@@ -109,6 +109,8 @@ The engine stamps each save with the encounter and round from its resolving acti
 
 - **On time.** In round 2 the paladin swears to defeat a raider by round 3. The raider still stands when the paladin makes a save in round 3, so the receipt adds +1.
 - **Outside the window.** The raider is still standing when round 4 begins. The oath has lapsed and a round 4 save gets zero, even if the raider is defeated later that round.
+
+Approved by the human (2026-11-26).
 
 ---
 
