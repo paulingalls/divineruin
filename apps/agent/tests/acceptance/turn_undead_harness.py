@@ -24,13 +24,23 @@ def pos(x: float) -> dict:
 
 
 class TurnFight(MawlingHarness):
-    async def ready(self, level: int, *, weapon: dict | None = None) -> None:
+    async def ready(
+        self,
+        level: int,
+        *,
+        weapon: dict | None = None,
+        archetype: str = "cleric",
+        patron: str | None = None,
+        known_spells: tuple[str, ...] = (TURN,),
+    ) -> None:
         await self.prepare(levels=(level,), companion=None, tools=(activate,))
         self.caster = self.players[0]
-        await seed_player_with_pools(self.pool, player_id=self.caster, class_="cleric", known_spells=(TURN,))
+        await seed_player_with_pools(self.pool, player_id=self.caster, class_=archetype, known_spells=known_spells)
         row = await self.player()
         row.update(level=level, hp={"current": 100, "max": 100}, location_id=self.sd.location_id)
         row["attributes"]["wisdom"] = 18
+        if patron is not None:
+            row["divine_favor"] = {"patron": patron, "level": 40, "max": 100}
         if weapon is not None:
             row["equipment"] = {**row.get("equipment", {}), "main_hand": weapon}
         await self.pool.execute("UPDATE players SET data=$2::jsonb WHERE player_id=$1", self.caster, json.dumps(row))
@@ -40,8 +50,17 @@ class TurnFight(MawlingHarness):
         assert row is not None
         return row
 
-    async def enter(self, creatures: dict[str, tuple[str, int]], *, level: int = 4, weapon: dict | None = None) -> None:
-        await self.ready(level, weapon=weapon)
+    async def enter(
+        self,
+        creatures: dict[str, tuple[str, int]],
+        *,
+        level: int = 4,
+        weapon: dict | None = None,
+        archetype: str = "cleric",
+        patron: str | None = None,
+        known_spells: tuple[str, ...] = (TURN,),
+    ) -> None:
+        await self.ready(level, weapon=weapon, archetype=archetype, patron=patron, known_spells=known_spells)
         prefix = uuid4().hex
         self.undead_id = f"turn_undead_{prefix}"
         fixtures = json.loads(

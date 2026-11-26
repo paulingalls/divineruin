@@ -2455,8 +2455,9 @@
         "clauses": [
           {
             "effect": "Turn Undead/Hollow DC +1. Absolute authority against unnatural things",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "valdris_absolute_authority"
           }
         ]
       },
@@ -2466,8 +2467,9 @@
         "clauses": [
           {
             "effect": "Turn Undead/Hollow DC +1. Absolute authority against unnatural things",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "valdris_absolute_authority"
           }
         ]
       },

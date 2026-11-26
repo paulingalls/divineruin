@@ -147,7 +147,7 @@ async def land(
     queries=db_queries,
     sink=None,
 ) -> None:
-    dc = spell_save_dc(caster, "wisdom", packet)
+    dc = spell_save_dc(caster, "wisdom", packet) + packet.get("turn_undead_dc_bonus", {}).get("bonus", 0)
     receipts = progress.steps.setdefault("receipts", {}) if progress is not None else {}
     active = {row["target_id"] for row in delivered}
     absorbed = {row["target_id"] for row in packet.get("absorbed", [])}

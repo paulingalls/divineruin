@@ -33,6 +33,22 @@ test("Orenthel's guardian has the registered Sheltering Light clause", () => {
   ]);
 });
 
+test.each(["cleric", "oracle"] as const)("Valdris's %s has Absolute Authority", (archetype) => {
+  const valdris = validateGods(catalog).find((god) => god.god_id === "valdris");
+  expect(valdris?.layer_4_synergy_matrix[archetype]).toEqual({
+    name: "Absolute Authority",
+    type: "divine",
+    clauses: [
+      {
+        effect: "Turn Undead/Hollow DC +1. Absolute authority against unnatural things",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "valdris_absolute_authority",
+      },
+    ],
+  });
+});
+
 test("Orenthel's warrior has the registered Dawnward Strike clause", () => {
   const warrior = validateGods(catalog).find((god) => god.god_id === "orenthel")
     ?.layer_4_synergy_matrix.warrior;
