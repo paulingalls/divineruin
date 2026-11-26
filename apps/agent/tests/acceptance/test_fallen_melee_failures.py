@@ -60,6 +60,8 @@ async def strike(maw, target, action="Claw", actor=None):
             "declarations": [
                 {
                     "reshape": [],
+                    "quick_fingers_mode": "",
+                    "quick_fingers_item": "",
                     "kind": "attack",
                     "actor_id": actor,
                     "action": action,

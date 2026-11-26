@@ -202,6 +202,8 @@ async def fight(pool, archetype, seed, encounter_id=PATROL, player_level=1, *, p
                     else:
                         declarations.append(
                             AttackDecl(
+                                quick_fingers_mode="",
+                                quick_fingers_item="",
                                 reshape=[],
                                 kind="attack",
                                 actor_id=actor.id,

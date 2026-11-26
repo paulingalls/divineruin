@@ -4,6 +4,7 @@ import json
 from dataclasses import asdict, dataclass, field
 from functools import cache
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import choir_effects
 import combat_reaction_contest
@@ -18,6 +19,9 @@ import reaction_windows
 from action_contracts import positive_integer
 from combat_attack_roll import held_reaction_ac
 from combat_participant import CombatParticipant
+
+if TYPE_CHECKING:
+    from combat_quick_fingers import Wary
 
 
 @cache
@@ -139,6 +143,7 @@ class CombatState:
     spatial: dict | None = None
     encounter_facts: encounter_facts.EncounterFacts = field(default_factory=encounter_facts.empty)
 
+    quick_fingers_wary: dict[str, dict[str, Wary]] = field(default_factory=dict)
     round_checkpoints: list[dict] = field(default_factory=list)
 
     def get_participant(self, participant_id: str) -> CombatParticipant | None:
@@ -206,6 +211,7 @@ class CombatState:
             reactions_available=reactions_available,
             ac_modifiers=data.get("ac_modifiers", {}),
             focus_marks=data.get("focus_marks", {}),
+            quick_fingers_wary=data.get("quick_fingers_wary", {}),
             judgment_rewards=data.get("judgment_rewards", []),
             first_attack_resolved=data.get("first_attack_resolved", False),
             beacon_attacks=data.get("beacon_attacks", {}),

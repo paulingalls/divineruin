@@ -88,6 +88,8 @@ def payload(maw, form, target, item):
         return decl
     return {
         "reshape": [],
+        "quick_fingers_mode": "",
+        "quick_fingers_item": "",
         "kind": "attack",
         "actor_id": maw.enemies[0],
         "action": "Dissolution Maw",

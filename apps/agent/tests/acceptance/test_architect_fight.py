@@ -111,6 +111,8 @@ async def declare_attack(harness, actor, target, action):
             "declarations": [
                 {
                     "reshape": [],
+                    "quick_fingers_mode": "",
+                    "quick_fingers_item": "",
                     "kind": "attack",
                     "actor_id": actor,
                     "target_id": target,

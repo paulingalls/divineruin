@@ -131,6 +131,8 @@ async def test_entomb_surfaces_chamber_and_compresses_at_each_turn_start(fight):
 def strike(actor, target, action):
     return {
         "reshape": [],
+        "quick_fingers_mode": "",
+        "quick_fingers_item": "",
         "kind": "attack",
         "actor_id": actor,
         "target_id": target,

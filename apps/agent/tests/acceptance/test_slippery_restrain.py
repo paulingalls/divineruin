@@ -63,6 +63,8 @@ async def fight(reset_db_pool, monkeypatch: pytest.MonkeyPatch, request: pytest.
 def strike(actor: str, victim: str, action: str) -> dict:
     return {
         "reshape": [],
+        "quick_fingers_mode": "",
+        "quick_fingers_item": "",
         "kind": "attack",
         "actor_id": actor,
         "target_id": victim,

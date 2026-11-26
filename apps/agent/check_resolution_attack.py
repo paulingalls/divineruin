@@ -114,7 +114,8 @@ def attack_modes(attacker_data: dict, weapon: dict, target_conditions=()) -> tup
         or attacker_data.get("attack_disadvantage_source") is not None
     )
     advantage = (
-        weapon.get("advantage") is True
+        attacker_data.get("quick_fingers_advantage") is True
+        or weapon.get("advantage") is True
         or "attack" in effects.advantage_scopes
         or incoming_advantage(target_conditions)
         or incoming_mode_advantage

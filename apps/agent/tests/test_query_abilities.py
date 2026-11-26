@@ -176,6 +176,8 @@ class TestQueryAbilities:
                             "target_id": "foe",
                             "rider": recipe.get("rider") or recipe["riders"][0],
                         }
+                        if modes := recipe.get("quick_fingers_mode"):
+                            declaration["quick_fingers_mode"] = modes[0]
                     if "spell_id" in row:
                         spell = spells.get_spell(row["spell_id"])
                         if spell.combat_damage:

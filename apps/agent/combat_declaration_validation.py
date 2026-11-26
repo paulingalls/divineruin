@@ -10,6 +10,7 @@ import architect_entomb
 import combat_grapple
 import combat_martial
 import combat_melee_approach
+import combat_quick_fingers
 import combat_shadow_step
 import combat_spatial_declarations
 import combat_voice_rules
@@ -20,6 +21,7 @@ from combat_ability_gate import (
     CUNNING_ACTION,
     ELECTIVE_RIDER_ABILITIES,
     MULTI_TARGET_WEAPON_ABILITIES,
+    QUICK_FINGERS,
     SHADOW_STEP,
     SHIELD_BASH,
     SINGLE_TARGET_WEAPON_ABILITIES,
@@ -153,6 +155,10 @@ def validate_declaration(
         raise ValueError(f"Unknown attack rider {declaration.rider!r}.")
     if martial is not None and martial in ELECTIVE_RIDER_ABILITIES and actor.type != "player":
         raise ValueError(f"{actor.name} hasn't learned {abilities.get_ability(martial).name}.")
+    if martial == QUICK_FINGERS:
+        combat_quick_fingers.require_target(
+            next_state.get_participant(declaration.target_id) if declaration.target_id else None, pool_action
+        )
     if martial in (CUNNING_ACTION, SHIELD_BASH):
         ability = abilities.get_ability(martial)
         if actor.type != "player" or not abilities.owns_ability(

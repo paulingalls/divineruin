@@ -32,6 +32,8 @@ def declaration(state, actor, victim, cantrip=None):
             return AbilityDecl(kind="ability", actor_id=actor.id, action=cantrip, targets=[victim.id], argument_type="")
         action = actor.action_pool[0]
     return AttackDecl(
+        quick_fingers_mode="",
+        quick_fingers_item="",
         reshape=[],
         kind="attack",
         actor_id=actor.id,

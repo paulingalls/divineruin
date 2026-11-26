@@ -107,7 +107,16 @@ async def test_still_entry_search_and_weapon_damage(still):
 
 
 def strike(target, *, action="Longsword") -> dict[str, Any]:
-    return dict(reshape=[], kind="attack", action=action, target_id=target, held_item_id="", rider="")
+    return dict(
+        reshape=[],
+        kind="attack",
+        action=action,
+        target_id=target,
+        held_item_id="",
+        rider="",
+        quick_fingers_mode="",
+        quick_fingers_item="",
+    )
 
 
 def spell(action, *targets) -> dict[str, Any]:
