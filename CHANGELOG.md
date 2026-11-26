@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.84.1
+
+Track the remaining game engine, selling and content work with runnable milestone measures. Reconcile previously shipped capabilities, phase totals and the design index.
+
+Release steps: none.
+
 ## 0.84.0
 
 Valdris judges. Turn Undead/Hollow is now a real spell in combat. Nearby undead and Hollow creatures save or flee, and from level 5 it destroys weakened creatures that fail. Valdris clerics and oracles turn at DC +1.
