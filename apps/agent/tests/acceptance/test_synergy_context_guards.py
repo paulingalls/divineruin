@@ -8,6 +8,7 @@ import pytest
 from _unbound_path_fixtures import world as world
 from _zhael_fate_fixtures import game_tools
 from acceptance.test_synergy_context import CIVIC, SHARED, applied, paired, payload, settle_fate, setup_actor
+from acceptance.test_synergy_context import dev_db_pool as dev_db_pool
 
 import patron_synergy
 from activate_tools import activate

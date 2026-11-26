@@ -3,12 +3,14 @@
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import asyncpg
 import pytest
 from _patron_engine_fixtures import configure
 from _unbound_path_fixtures import world as world
 from _zhael_fate_fixtures import game_tools
 from test_aelora_gift import _live_party
 
+import db
 import db_mutations
 from activate_tools import activate
 from check_tools import check
@@ -23,6 +25,11 @@ CIVIC = (
     "Civic Promise",
     "Gain +1 Persuasion when negotiating a community’s shared duties.",
 )
+
+
+@pytest.fixture
+async def dev_db_pool(reset_db_pool: str) -> asyncpg.Pool:
+    return await db.get_pool()
 
 
 def payload(kind: str, skill: str, tag: str = "none") -> dict:
