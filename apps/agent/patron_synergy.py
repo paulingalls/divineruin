@@ -36,11 +36,19 @@ def has_engine_synergy(player: dict, implementation_id: str) -> bool:
 
 
 def has_engine_clause(synergy: dict, implementation_id: str) -> bool:
-    return any(
-        clause["status"] == "active"
-        and clause["resolution"] == "engine"
-        and clause.get("implementation_id") == implementation_id
-        for clause in synergy["clauses"]
+    return _engine_clause(synergy, implementation_id) is not None
+
+
+def _engine_clause(synergy: dict, implementation_id: str) -> dict | None:
+    return next(
+        (
+            clause
+            for clause in synergy["clauses"]
+            if clause["status"] == "active"
+            and clause["resolution"] == "engine"
+            and clause.get("implementation_id") == implementation_id
+        ),
+        None,
     )
 
 
@@ -93,4 +101,27 @@ def context_skill_bonus(player: dict, skill: str, tag: str) -> ContextSynergyRec
                 )
     return ContextSynergyReceipt(
         tag=tag, applied=False, bonus=0, clause_id=None, clause_name=None, effect=None, reason="unheld"
+    )
+
+
+def discovery_skill_bonus(player: dict, skill: str) -> ContextSynergyReceipt | None:
+    if skill != "investigation":
+        return None
+    patron = (player.get("divine_favor") or {}).get("patron")
+    if patron is None:
+        return None
+    row = get_archetype_synergy(player["class"], patron)
+    if row is None:
+        return None
+    clause = _engine_clause(row, "veythar_hidden_knowledge")
+    if clause is None:
+        return None
+    return ContextSynergyReceipt(
+        tag="hidden_information",
+        applied=True,
+        bonus=1,
+        clause_id=clause["implementation_id"],
+        clause_name=row["name"],
+        effect=clause["effect"],
+        reason="applied",
     )

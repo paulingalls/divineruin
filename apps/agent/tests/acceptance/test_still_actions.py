@@ -5,7 +5,9 @@ from unittest.mock import patch
 
 import pytest
 from acceptance._capstone_helpers import _d20, _damage_die
+from acceptance.mawling_harness import MawlingHarness
 from acceptance.seeds import seed_known_spells
+from acceptance.synergy_discovery import RECEIPT, assert_unchanged, catalog_clause
 from acceptance.test_still_anchors import declare, destroy, enter, fresh_session, search_round, spell, strike
 from acceptance.test_still_anchors import mock_combat_agent_factory as mock_combat_agent_factory
 from acceptance.test_still_anchors import still as still
@@ -16,6 +18,7 @@ import db_queries
 import event_types as E
 import spells
 from check_resolution import D20Roll
+from session_data import CompanionState
 
 
 async def reveal_and_wake(still, count=1, *, action="Longsword"):
@@ -200,6 +203,72 @@ async def test_illusion_investigation_updates_only_after_commit(still, monkeypat
     assert (succeeded["total"], succeeded["dc"], succeeded["seen_through"]) == (22, 22, True)
     await fresh_session(still, await still.reload())
     assert (await still.reload()).still_encounter["illusion"]["seen_through"] is True
+
+
+@pytest.mark.parametrize("archetype", ["rogue", "spy"])
+async def test_illusion_applies_hidden_knowledge_to_the_player(still: MawlingHarness, archetype: str) -> None:
+    await prepare_illusion_roller(still, archetype)
+    await reveal_and_wake(still)
+    illusion = still.last_result["still"]["illusion"]
+    assert illusion["target_id"] == still.players[0]
+    with patch("check_resolution.dice_roll", return_value=_d20(17)):
+        with catalog_clause(status="pending"):
+            baseline = await still.command("check", {"roll": illusion["check"]})
+        assert (baseline["roll"], baseline["total"], baseline["dc"], baseline["seen_through"]) == (17, 21, 22, False)
+        assert "context_synergy" not in baseline
+        result = await still.command("check", {"roll": illusion["check"]})
+    saved = (await still.reload()).still_encounter
+    assert saved is not None
+    assert (
+        result["roll"],
+        result["total"],
+        result["dc"],
+        result["seen_through"],
+        saved["illusion"]["seen_through"],
+    ) == (
+        17,
+        22,
+        22,
+        True,
+        True,
+    )
+    assert result["context_synergy"] == RECEIPT
+
+
+async def prepare_illusion_roller(still: MawlingHarness, archetype: str) -> None:
+    await still.pool.execute(
+        "UPDATE players SET data=data || $2::jsonb WHERE player_id=$1",
+        still.players[0],
+        json.dumps(
+            {
+                "class": archetype,
+                "divine_favor": {"patron": "veythar", "level": 40, "max": 100},
+                "attributes": {"intelligence": 18},
+            }
+        ),
+    )
+
+
+async def test_illusion_companion_does_not_inherit_hidden_knowledge(still: MawlingHarness) -> None:
+    await prepare_illusion_roller(still, "rogue")
+    companion_id = "companion_kael"
+    still.sd.companion = CompanionState(id=companion_id, name="Kael", player_level=18)
+    state = await reveal_and_wake(still)
+    for _ in range(sum(p.is_ally for p in state.participants) - 1):
+        if still.last_result["still"]["illusion"]["target_id"] == companion_id:
+            break
+        await declare(still, kind="defend", reshape=[])
+        await still.drain()
+    illusion = still.last_result["still"]["illusion"]
+    assert illusion["target_id"] == companion_id
+    with patch("check_resolution.dice_roll", return_value=_d20(11)):
+        with catalog_clause(status="pending"):
+            baseline = await still.command("check", {"roll": illusion["check"]})
+        assert baseline["roll"] == 11 and not baseline["seen_through"]
+        result = await still.command("check", {"roll": illusion["check"]})
+    assert_unchanged(baseline, result, outcome="seen_through")
+    saved = (await still.reload()).still_encounter
+    assert saved is not None and not saved["illusion"]["seen_through"]
 
 
 async def test_spell_paths_arm_the_resolved_anchor_and_use_typed_and_divine_vulnerability(still, monkeypatch):

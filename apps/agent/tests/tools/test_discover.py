@@ -9,13 +9,13 @@ from livekit.agents.llm import ToolError
 import event_types as E
 from check_discovery import _check_discover_impl
 from tools._discover_fixtures import DISCOVER_PLAYER, _make_discover_mocks, _roll
+from tools._discover_fixtures import mock_discovery_events as mock_discovery_events
 from tools._helpers import _make_context
 
 
 class TestCheckDiscover:
     @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
-    async def test_dice_roll_carries_dramatic_verdict(self, mock_event):
+    async def test_dice_roll_carries_dramatic_verdict(self, mock_discovery_events):
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
         with patch("check_resolution.dice_roll", return_value=_roll(20)):
@@ -23,14 +23,15 @@ class TestCheckDiscover:
                 ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
             )
         dice_payload = next(
-            call.args[2] for call in mock_event.call_args_list if call.args[2].get("roll_type") == "skill_check"
+            call.args[2]
+            for call in mock_discovery_events.call_args_list
+            if call.args[2].get("roll_type") == "skill_check"
         )
         assert dice_payload["dramatic"] is True
         assert dice_payload["context"] == "natural_20"
 
     @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
-    async def test_routine_discover_roll_not_dramatic(self, mock_event):
+    async def test_routine_discover_roll_not_dramatic(self, mock_discovery_events):
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
         with patch("check_resolution.dice_roll", return_value=_roll(15)):
@@ -38,14 +39,15 @@ class TestCheckDiscover:
                 ctx, "perception", "bookshelf", content=content, queries=queries, mutations=mutations
             )
         dice_payload = next(
-            call.args[2] for call in mock_event.call_args_list if call.args[2].get("roll_type") == "skill_check"
+            call.args[2]
+            for call in mock_discovery_events.call_args_list
+            if call.args[2].get("roll_type") == "skill_check"
         )
         assert dice_payload["dramatic"] is False
         assert dice_payload["context"] == ""
 
     @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
-    async def test_failed_discovery(self, mock_event):
+    async def test_failed_discovery(self, mock_discovery_events):
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
         with patch("check_resolution.dice_roll", return_value=_roll(3)):
@@ -59,8 +61,7 @@ class TestCheckDiscover:
         mutations.set_player_flag.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
-    async def test_no_matching_skill_returns_not_found(self, mock_event):
+    async def test_no_matching_skill_returns_not_found(self, mock_discovery_events):
         # A skill with no scoped hidden element is a valid "found nothing", not an error.
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
@@ -70,14 +71,20 @@ class TestCheckDiscover:
             )
         )
         assert result["outcome"] == "not_found"
-        mock_event.assert_awaited_once()
-        assert mock_event.await_args.args[1] == E.DICE_ROLL
-        assert set(mock_event.await_args.args[2]) == {"roll_type", "skill", "roll", "total", "dramatic", "context"}
+        mock_discovery_events.assert_awaited_once()
+        assert mock_discovery_events.await_args.args[1] == E.DICE_ROLL
+        assert set(mock_discovery_events.await_args.args[2]) == {
+            "roll_type",
+            "skill",
+            "roll",
+            "total",
+            "dramatic",
+            "context",
+        }
         mutations.set_player_flag.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
-    async def test_no_candidate_search_is_retryable(self, mock_event):
+    async def test_no_candidate_search_is_retryable(self, mock_discovery_events):
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
         first = json.loads(
@@ -92,8 +99,8 @@ class TestCheckDiscover:
         )
         assert first["outcome"] == "not_found"
         assert second["outcome"] == "not_found"
-        assert mock_event.await_count == 2
-        assert all(call.args[1] == E.DICE_ROLL for call in mock_event.await_args_list)
+        assert mock_discovery_events.await_count == 2
+        assert all(call.args[1] == E.DICE_ROLL for call in mock_discovery_events.await_args_list)
         assert not ctx.userdata.attempted_discoveries
         mutations.set_player_flag.assert_not_called()
 
@@ -123,8 +130,7 @@ class TestCheckDiscover:
             )
 
     @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
-    async def test_repeat_search_finds_nothing_new(self, mock_event):
+    async def test_repeat_search_finds_nothing_new(self, mock_discovery_events):
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
         with patch("check_resolution.dice_roll", return_value=_roll(3)):
@@ -142,8 +148,7 @@ class TestCheckDiscover:
         assert second["outcome"] == "not_found"
 
     @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
-    async def test_reworded_target_cannot_regrind(self, mock_event):
+    async def test_reworded_target_cannot_regrind(self, mock_discovery_events):
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
         with patch("check_resolution.dice_roll", return_value=_roll(3)) as mock_dice:
@@ -160,8 +165,7 @@ class TestCheckDiscover:
         assert result["outcome"] == "not_found"
 
     @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
-    async def test_already_discovered_flag_excludes_candidate(self, mock_event):
+    async def test_already_discovered_flag_excludes_candidate(self, mock_discovery_events):
         player = {**DISCOVER_PLAYER, "flags": {"secret_door.discovered": True}}
         content, queries, mutations = _make_discover_mocks(player=player)
         ctx = _make_context(location_id="test_location")
@@ -171,13 +175,12 @@ class TestCheckDiscover:
             )
         )
         assert result["outcome"] == "not_found"
-        mock_event.assert_awaited_once()
-        assert mock_event.await_args.args[1] == E.DICE_ROLL
+        mock_discovery_events.assert_awaited_once()
+        assert mock_discovery_events.await_args.args[1] == E.DICE_ROLL
         mutations.set_player_flag.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
-    async def test_dice_roll_event_has_no_dc(self, mock_event):
+    async def test_dice_roll_event_has_no_dc(self, mock_discovery_events):
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
         with patch("check_resolution.dice_roll", return_value=_roll(15)):
@@ -186,7 +189,7 @@ class TestCheckDiscover:
             )
         # The success path now publishes DICE_ROLL *and* HIDDEN_REVEALED — assert against
         # the DICE_ROLL event specifically, not whichever fired last.
-        dice_calls = [c for c in mock_event.call_args_list if c[0][1] == E.DICE_ROLL]
+        dice_calls = [c for c in mock_discovery_events.call_args_list if c[0][1] == E.DICE_ROLL]
         assert len(dice_calls) == 1
         assert "dc" not in dice_calls[0][0][2]
 

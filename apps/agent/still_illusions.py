@@ -106,6 +106,7 @@ async def investigate(session, skill, target, *, queries, mutations, conditions_
             condition_voice_rules.roll_data(player, working, target_id),
             skill,
             illusion["dc"],
+            discovery=True,
             ally_present=session.allies_present_for(player_id),
             natural_terrain=await skill_natural_terrain(session, player, skill, combat_state=working),
             hearing_only=False,
@@ -129,5 +130,6 @@ async def investigate(session, skill, target, *, queries, mutations, conditions_
             "total": result.total,
             "dc": result.dc,
             "seen_through": result.success,
+            **({"context_synergy": result.context_synergy} if result.context_synergy is not None else {}),
         }
     )
