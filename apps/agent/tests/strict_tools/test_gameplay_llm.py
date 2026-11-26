@@ -93,7 +93,14 @@ async def test_luna_pilot_emits_every_tool_as_strict(monkeypatch, profile, tools
     if profile == "exploration":
         schema = functions["enter_mode"]["parameters"]
         assert schema["additionalProperties"] is False
-        assert set(schema["required"]) == {"mode", "encounter_id", "encounter_description", "difficulty", "tier"}
+        assert set(schema["required"]) == {
+            "mode",
+            "encounter_id",
+            "encounter_description",
+            "difficulty",
+            "tier",
+            "initiated_by",
+        }
         assert set(schema["properties"]) == set(schema["required"])
         assert schema["properties"]["difficulty"]["type"] == ["string", "null"]
         assert schema["properties"]["tier"]["type"] == ["integer", "null"]
