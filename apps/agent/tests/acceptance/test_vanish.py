@@ -37,10 +37,8 @@ async def walk(reset_db_pool: str):
     try:
         await harness.prepare((8, 8), companion=None, tools=(activate,))
         await harness.pool.execute(
-            "UPDATE players SET data = data || jsonb_build_object('class', 'rogue', 'equipment', "
-            "jsonb_build_object('main_hand', $2::jsonb)) WHERE player_id = $1",
+            """UPDATE players SET data = data || '{"class":"rogue"}' WHERE player_id = $1""",
             harness.players[0],
-            json.dumps(DAGGER),
         )
         harness.encounter_id = "bandit_ambush"
         yield harness
@@ -61,6 +59,12 @@ async def refuse(walk: MawlingHarness, strike: dict, target: str) -> None:
 
 async def test_hide_blocks_targeting_and_allows_redeclaration(walk: MawlingHarness) -> None:
     rogue, ally = walk.players
+    # Rogues are not longsword-proficient; a disadvantaged attack would draw an extra d20.
+    await walk.pool.execute(
+        "UPDATE players SET data = jsonb_set(data, '{equipment,main_hand}', $2::jsonb) WHERE player_id = $1",
+        rogue,
+        json.dumps(DAGGER),
+    )
     foe = await enter_bandit_fight(walk)
     await declare(walk, weapon_attack(rogue, foe, "hide", weapon=DAGGER["name"]))
     with (
