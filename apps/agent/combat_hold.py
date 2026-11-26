@@ -130,6 +130,11 @@ def _replay_resolver(head: dict):
     class _Replay:
         resolve_attack = staticmethod(_resolve)
         mortaen_ac_bonus = attack_result.mortaen_ac_bonus
+        orenthel_ac_bonus = (
+            attack_result.synergy_ac_bonus
+            if attack_result.synergy_ac_clause_id == patron_synergy_combat.SHELTERING_LIGHT
+            else 0
+        )
 
     return _Replay()
 

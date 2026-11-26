@@ -29,6 +29,8 @@
   "orenthel_dawns_resilience": "patron_passives:dawns_resilience",
   "orenthel_dawns_embrace": "patron_zero_hp:trigger_dawns_embrace",
   "orenthel_restoration_surge": "patron_combat_edges:restoration_surge",
+  "orenthel_dawnward_strike": "patron_synergy_combat:encounter_damage_clause",
+  "orenthel_sheltering_light": "patron_synergy_combat:wounded_ally_defense",
   "syrath_veilstep": "patron_combat_edges:veilstep",
   "mortaen_death_ward": "patron_zero_hp:trigger_death_ward",
   "zhael_unravel_fate": "zhael_unravel_fate:activate",
