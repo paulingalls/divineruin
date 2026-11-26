@@ -8,6 +8,38 @@ import pytest
 from _patron_engine_fixtures import configure
 from _unbound_path_fixtures import world as world
 from _zhael_fate_fixtures import game_tools
+from acceptance.synergy_context_clauses import (
+    BATTLE_OMEN,
+    BOUNDARY,
+    CIVIC,
+    COMMERCE,
+    CONVERGING_CLUES,
+    CUSTODY,
+    DECEIT,
+    GREEN_MORNING,
+    GROVE,
+    HARBOR,
+    HEARTH,
+    LAST_SALUTE,
+    MEASURE,
+    MENDER,
+    MERCHANT,
+    NPC,
+    OATHBREAK,
+    PATIENT_GEAR,
+    PEACE_AT_PARTING,
+    RECONCILIATION,
+    REMEMBERED_VISION,
+    SCALES,
+    SEASONAL,
+    SECRET_DEVOTION,
+    SHARED,
+    SHORELINE,
+    UNSPOKEN_VOW,
+    VOYAGER,
+    WITNESSED_OATH,
+    Clause,
+)
 from acceptance.synergy_discovery import SCENARIOS as discovery_scenarios
 from test_aelora_gift import _live_party
 
@@ -17,153 +49,6 @@ from activate_tools import activate
 from check_tools import check
 from query_tools import query_info
 from zhael_fate import FATE
-
-Clause = tuple[str, str, str, str, str | None]
-
-NPC = "guildmaster_torin"
-MERCHANT = "aelora_guildmaster_dara"
-SHARED = (
-    "shared_meal",
-    "aelora_shared_table",
-    "Shared Table",
-    "Gain +1 Religion when blessing a shared meal.",
-    "religion",
-)
-CIVIC = (
-    "community_duties",
-    "aelora_civic_promise",
-    "Civic Promise",
-    "Gain +1 Persuasion when negotiating a community’s shared duties.",
-    "persuasion",
-)
-HEARTH = (
-    "household_omen",
-    "aelora_hearth_omen",
-    "Hearth Omen",
-    "Gain +1 Insight when interpreting a household omen.",
-    "insight",
-)
-COMMERCE = ("commerce", "aelora_commerce_persuasion", "Honest Hustle", "Commerce Persuasion +1.", "persuasion")
-GROVE = (
-    "sacred_grove",
-    "thyra_wild_covenant",
-    "Wild Covenant",
-    "Gain +1 Religion when honoring a sacred grove.",
-    "religion",
-)
-SEASONAL = (
-    "seasonal_omen",
-    "thyra_seasonal_omen",
-    "Seasonal Omen",
-    "Gain +1 Nature when interpreting a seasonal omen.",
-    "nature",
-)
-SHORELINE = (
-    "coast_shelter",
-    "nythera_shoreline_keeper",
-    "Shoreline Keeper",
-    "Gain +1 Survival when finding safe shelter along an unfamiliar coast.",
-    "survival",
-)
-HARBOR = (
-    "port_passage",
-    "nythera_harbor_courtesy",
-    "Harbor Courtesy",
-    "Gain +1 Persuasion when seeking peaceful passage through an unfamiliar port.",
-    "persuasion",
-)
-VOYAGER = (
-    "vessel_repair",
-    "nythera_voyagers_tools",
-    "Voyager's Tools",
-    "Gain +1 to checks to repair a vessel during a journey.",
-    None,
-)
-MENDER = (
-    "sanctuary_repair",
-    "orenthel_menders_dawn",
-    "Mender's Dawn",
-    "Gain +1 to checks to repair equipment for a damaged sanctuary.",
-    None,
-)
-GREEN_MORNING = (
-    "blighted_grove",
-    "orenthel_green_morning",
-    "Green Morning",
-    "Gain +1 Nature when restoring a blighted grove.",
-    "nature",
-)
-RECONCILIATION = (
-    "wounded_enemy_care",
-    "orenthel_reconciliation",
-    "Reconciliation",
-    "Gain +1 Persuasion when negotiating care for wounded enemies.",
-    "persuasion",
-)
-
-WITNESSED_OATH = (
-    "ancient_oath",
-    "veythar_witnessed_oath",
-    "Witnessed Oath",
-    "Gain +1 Religion when interpreting an ancient oath.",
-    "religion",
-)
-REMEMBERED_VISION = (
-    "remembered_vision",
-    "veythar_remembered_vision",
-    "Remembered Vision",
-    "Gain +1 Arcana when interpreting a remembered vision.",
-    "arcana",
-)
-LAST_SALUTE = (
-    "fallen_soldier_rites",
-    "kaelen_last_salute",
-    "Last Salute",
-    "Gain +1 Religion when conducting a fallen soldier’s funeral rites.",
-    "religion",
-)
-BATTLE_OMEN = (
-    "martial_omen",
-    "kaelen_battle_omen",
-    "Battle Omen",
-    "Gain +1 History when interpreting a martial omen.",
-    "history",
-)
-SECRET_DEVOTION = (
-    "concealed_symbol",
-    "syrath_secret_devotion",
-    "Secret Devotion",
-    "Gain +1 Religion when interpreting a concealed devotional symbol.",
-    "religion",
-)
-UNSPOKEN_VOW = (
-    "erased_oath",
-    "syrath_unspoken_vow",
-    "Unspoken Vow",
-    "Gain +1 History when identifying an oath whose patron’s name was erased.",
-    "history",
-)
-PEACE_AT_PARTING = (
-    "burial_return",
-    "mortaen_peace_at_parting",
-    "Peace at Parting",
-    "Gain +1 Persuasion when negotiating the return of a body for burial.",
-    "persuasion",
-)
-PATIENT_GEAR = (
-    "clock_repair",
-    "zhael_patient_gear",
-    "Patient Gear",
-    "Gain +1 to checks to repair a clock or timing mechanism.",
-    None,
-)
-CONVERGING_CLUES = (
-    "foretold_accounts",
-    "zhael_converging_clues",
-    "Converging Clues",
-    "Gain +1 Investigation when comparing two accounts of the same foretold event.",
-    "investigation",
-)
 
 
 @pytest.fixture
@@ -238,7 +123,7 @@ async def context_scenario(
     assert not world.ctx.userdata.ally_present_for(world.ids[0])
     baseline, result = await paired(world, kind, skill, tag, npc_id=npc_id)
     assert result["total"] == baseline["total"] + 1
-    assert baseline["total"] == (12 if skill == "persuasion" else 11)
+    assert baseline["total"] == (12 if skill in ("persuasion", "deception") else 11)
     assert "context_synergy" not in baseline
     assert "gift_name" not in baseline and "gift_name" not in result
     assert result["roll"] == baseline["roll"] == 11
@@ -390,6 +275,41 @@ SCENARIOS = {
         "patron_synergy:context_skill_bonus",
         context_scenario,
         [("zhael", "seeker", "skill", "investigation", CONVERGING_CLUES)],
+    ),
+    "valdris_oathbreak_sight": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [("valdris", "mage", "skill", "arcana", OATHBREAK)],
+    ),
+    "valdris_true_measure": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [("valdris", "artificer", "skill", "investigation", MEASURE)],
+    ),
+    "valdris_chain_of_custody": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [("valdris", "seeker", "skill", "investigation", CUSTODY)],
+    ),
+    "valdris_boundary_law": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [("valdris", "warden", "skill", "survival", BOUNDARY)],
+    ),
+    "valdris_even_scales": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [("valdris", "diplomat", "skill", "persuasion", SCALES)],
+    ),
+    "valdris_just_deceit": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [
+            ("valdris", "rogue", "skill", "deception", DECEIT),
+            ("valdris", "rogue", "social", "deception", DECEIT),
+            ("valdris", "spy", "skill", "deception", DECEIT),
+            ("valdris", "spy", "social", "deception", DECEIT),
+        ],
     ),
 }
 

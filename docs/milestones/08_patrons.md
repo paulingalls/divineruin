@@ -208,7 +208,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 
 **Review:** The human approved the final 180-row table on 2026-11-18 (table SHA-256 `5dee713a…`, content SHA-256 `c3238a53…`, commit `903ac541`), closing AC3. The approved table is retained in sprint DATA at `sprints/archetype-synergies/synergy-review.md` with every changed number. Content and design share the approved corrections, including Nythera’s live Animal Handling +1 instead of advantage. Pending clauses are unavailable.
 
-Layer 4 lookup covers 180 pairings and 200 clauses. 86 are active/engine, 85 are active/narrated, and 29 are pending/engine.
+Layer 4 lookup covers 180 pairings and 200 clauses. 93 are active/engine, 85 are active/narrated, and 22 are pending/engine.
 
 Shared Table gives Aelora clerics +1 Religion when blessing a shared meal. Civic Promise gives Aelora paladins +1 Persuasion when negotiating a community’s shared duties. The patron query surfaces the context tags and settled checks name the applied clause.
 
@@ -223,6 +223,10 @@ Veythar’s Witnessed Oath gives paladins +1 Religion to interpret ancient oaths
 Syrath’s clerics gain +1 Religion for concealed devotional symbols and paladins gain +1 History for oaths whose patron’s name was erased. Mortaen’s diplomats gain +1 Persuasion on skill and social checks to negotiate the return of a body for burial. Zhael’s artificers gain +1 to any skill check to repair clocks or timing mechanisms, and seekers gain +1 Investigation to compare accounts of the same foretold event. The patron query lists all five tags.
 
 Veythar’s Hidden Knowledge gives rogues and spies +1 on Investigation discovery rolls, including Still illusions and Lorekeeper’s Insight discovery rerolls. Skill-mode Investigation uses its usual modifier. The registered engine cases check the journal reveal, and the Still and gift cases check the returned receipt and persisted outcome.
+
+Valdris’s Ordered Testimony gives mages +1 Arcana for magical evidence of a broken oath. Honest Measure gives artificers +1 Investigation for tampered scales or measuring tools. Chain of Evidence gives seekers +1 Investigation to trace evidence ownership in a public hearing. Common Ground gives wardens +1 Survival to trace unlawful incursions into protected land. Fair Terms gives diplomats +1 Persuasion to secure equal terms for opposing petitioners. Truth in Disguise gives rogues and spies +1 Deception for just causes on both skill and social checks.
+
+The registered engine scenarios in `test_patron_synergy_engine.py` exercise all seven Valdris clauses through `check` and verify the tags in `query_info(kind="patron")`. `test_synergy_context_guards.py` covers unheld tags and wrong skills.
 
 Sheltering Light gives a standing Orenthel guardian +1 AC against attack rolls while a standing ally below half HP is within 5 feet. `test_patron_synergy_engine.py` and `test_orenthel_guardian_ward.py` exercise the registered clause, opportunity attacks and held rolls after checkpoint reload. Dawnward Strike adds 1 damage on a hit against a Hollow or undead foe while another standing party ally in the same combat is below half HP. `test_orenthel_undead_wrath.py` and `test_orenthel_undead_wrath_guards.py` cover damage, attack receipts and eligibility after checkpoint reload.
 

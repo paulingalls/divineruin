@@ -20,7 +20,19 @@ from acceptance.synergy_discovery import (
     prepare,
     roll_check,
 )
-from acceptance.test_synergy_context import CIVIC, SHARED, Clause, applied, paired, payload, settle_fate, setup_actor
+from acceptance.test_synergy_context import (
+    CIVIC,
+    DECEIT,
+    MEASURE,
+    OATHBREAK,
+    SHARED,
+    Clause,
+    applied,
+    paired,
+    payload,
+    settle_fate,
+    setup_actor,
+)
 from acceptance.test_synergy_context import dev_db_pool as dev_db_pool
 from test_aelora_gift import _live_party
 
@@ -55,6 +67,9 @@ def rejected(tag: str, clause: Clause | None = None) -> dict:
         pytest.param("aelora", "paladin", "social", "deception", CIVIC[0], CIVIC, id="social-skill"),
         pytest.param("veythar", "cleric", "skill", "religion", SHARED[0], None, id="patron"),
         pytest.param("none", "cleric", "skill", "religion", SHARED[0], None, id="unbound"),
+        pytest.param("valdris", "mage", "skill", "arcana", MEASURE[0], None, id="valdris-unheld"),
+        pytest.param("valdris", "mage", "skill", "investigation", OATHBREAK[0], OATHBREAK, id="valdris-skill"),
+        pytest.param("valdris", "rogue", "social", "persuasion", DECEIT[0], DECEIT, id="valdris-social-skill"),
     ],
 )
 async def test_ineligible_context_leaves_total_unchanged(world, patron, archetype, kind, skill, tag, held):
