@@ -57,7 +57,7 @@ A checklist for adding a row to `content/locations.json`. The schema examples un
 - The id → navigation map in `apps/agent/tests/test_travel_content.py`, for any row with `navigation`.
 - A node in `apps/mobile/src/data/map-layout.ts` for every new location, pinned by `apps/mobile/src/__tests__/map-layout.test.ts`. Give it a display label, display region, and unique coordinates in 0–1000.
 
-**Seed and validate**, from the repository root:
+**Seed and validate** against a local development database from the repository root:
 
 ```sh
 bun run seed

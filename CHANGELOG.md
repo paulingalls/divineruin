@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.83.1
+
+Seeding a remote database now requires `SEED_PRODUCTION=1` for production content or `SEED_PRODUCTION=0` to include fixtures. Local seeding still defaults to fixtures.
+
+Release steps: none.
+
 ## 0.83.0
 
 Syrath’s clerics gain +1 Religion when interpreting concealed devotional symbols. Syrath’s paladins gain +1 History when identifying oaths whose patron’s name was erased. Mortaen’s diplomats gain +1 Persuasion when negotiating the return of a body for burial, on both skill and social checks. Zhael’s artificers gain +1 to any skill check to repair a clock or timing mechanism. Zhael’s seekers gain +1 Investigation when comparing accounts of the same foretold event.

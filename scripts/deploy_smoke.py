@@ -287,7 +287,7 @@ def main():
     created_db = True
     if mode != "migrate":
         authorize()
-        fixture_env = dict(env, DATABASE_URL=fixture_db, REDIS_URL=base_redis)
+        fixture_env = dict(env, DATABASE_URL=fixture_db, REDIS_URL=base_redis, SEED_PRODUCTION="0")
         command(["bun", "--no-env-file", "run", "scripts/migrate.ts"], settings=fixture_env)
         authorize()
         command(

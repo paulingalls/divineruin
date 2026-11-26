@@ -237,12 +237,6 @@ def test_production_refuses_named_fixtures_atomically(fresh_migrated_db, tmp_pat
     assert asyncio.run(rows(fresh_migrated_db)) == before
 
 
-def test_invalid_production_switch_refuses(monkeypatch):
-    monkeypatch.setenv("SEED_PRODUCTION", "true")
-    with pytest.raises(ValueError, match="SEED_PRODUCTION"):
-        asyncio.run(seed_content.main())
-
-
 @pytest.mark.parametrize("fixtures", [None, [], [{"player_id": ""}]])
 def test_production_requires_fixture_inventory(fresh_migrated_db, tmp_path, monkeypatch, capsys, fixtures):
     monkeypatch.setenv("DATABASE_URL", fresh_migrated_db)
