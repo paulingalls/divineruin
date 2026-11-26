@@ -149,7 +149,6 @@ async def test_kaelen(spell_id, expected):
         ("thyra", "arcane_fireball", {}, 2),
         ("thyra", "arcane_detect_magic", {}, 0),
         ("orenthel", "divine_heal_wounds", {"corruption": 2}, 0),
-        ("orenthel", "primal_healing_touch", {"corruption": 2}, 0),
         ("mortaen", "arcane_magic_missile", {"target_id": "ally", "rows": {"ally": {"hp": {"current": 0}}}}, 0),
         ("nythera", "arcane_fireball", {"visit": {"data": {"connections": []}}}, 2),
     ],
@@ -326,7 +325,8 @@ async def test_nythera_arrival_revisit_and_member_history(dev_db_pool):
 )
 async def test_declared_nonprimary_cast_uses_working_targets(patron, spell_id, damage, expected):
     from combat._helpers import _make_combat_state, _resolve_deps
-    from voice_condition_fixtures import place_actors
+    from voice_condition_fixtures import participant, place_actors, spatial_record
+    from weapon_fixtures import SHORTBOW
 
     import combat_turn
     from session_data import CombatParticipant
@@ -338,6 +338,9 @@ async def test_declared_nonprimary_cast_uses_working_targets(patron, spell_id, d
     )
     state.initiative_order = ["player_1", "caster_2", "goblin_scout_1"]
     ctx.userdata.combat_state = place_actors(state)
+    positions = spatial_record(state)["positions"]
+    positions["player_1"]["x"] = positions["caster_2"]["x"] = 25
+    participant(state, "player_1").action_pool = [dict(SHORTBOW)]
     ctx.userdata.member_state("caster_2").resonance.current = 5
     ctx.userdata.patron_id = "orenthel"
     deps = _resolve_deps(damage)
@@ -372,7 +375,7 @@ async def test_declared_nonprimary_cast_uses_working_targets(patron, spell_id, d
     await combat_turn._declare_phase_impl(
         ctx,
         {
-            "player_1": {"type": "attack", "action": "Longsword", "target_id": "goblin_scout_1"},
+            "player_1": {"type": "attack", "action": SHORTBOW["name"], "target_id": "goblin_scout_1"},
             "caster_2": {"type": "ability", "action": spell_id, "target_id": "goblin_scout_1"},
             "goblin_scout_1": {"type": "defend"},
         },

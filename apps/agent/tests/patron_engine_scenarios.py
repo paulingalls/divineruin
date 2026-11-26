@@ -1,6 +1,11 @@
+from acceptance.test_nythera_unseen_coast import SCENARIOS as saltwind_casting
+from acceptance.test_orenthel_guardian_ward import SCENARIOS as guardian_ward
+from acceptance.test_orenthel_undead_wrath import SCENARIOS as dawnward_strike
+from combat.test_nythera_tidal_step import SCENARIOS as tidal_step
 from combat.test_synergy_crit_edges import SCENARIOS as crit_edges
 from combat.test_synergy_spell_edges import SCENARIOS as spell_edges
 from combat.test_synergy_weapon_damage import SCENARIOS as weapon_damage
+from test_cleansing_touch import SCENARIOS as cleansing_touch
 from test_dawns_resilience import SCENARIOS as dawns_resilience
 from test_encounter_facts_damage import SCENARIOS as encounter_facts
 from test_encounter_facts_defense import SCENARIOS as defense
@@ -12,6 +17,8 @@ from test_heal_synergies import SCENARIOS as dawns_mercy
 from test_heal_synergies_place import SCENARIOS as place_healing
 from test_kaelen_war_songs import SCENARIOS as war_songs
 from test_marshal_death_save import SCENARIOS as marshal_death_save
+from test_orenthel_inspire_heal import SCENARIOS as inspire_heal
+from test_orenthel_song_of_rest import SCENARIOS as restoring_song
 from test_patron_engine_aelora import SCENARIOS as aelora
 from test_patron_engine_aelora_craft import SCENARIOS as aelora_craft
 from test_patron_engine_aelora_hearthfire_entry import SCENARIOS as hearthfire
@@ -37,6 +44,7 @@ from test_patron_passives import SCENARIOS as passives
 from test_patron_senses import SCENARIOS as senses
 from test_syrath_two_round_veil import SCENARIOS as two_round_veil
 from test_syrath_veiled_strike import SCENARIOS as veiled_strikes
+from test_veythar_cleric_arcana import SCENARIOS as arcane_revelation
 from test_zhael_fate import SCENARIOS as lucky
 from test_zhael_fate_callers import SCENARIOS as zhael
 from test_zhael_foretold_words import SCENARIOS as foretold_words
@@ -49,18 +57,22 @@ ENGINE_SCENARIOS = {
     **valdris,
     **valdris_verdict,
     **wellspring,
+    **arcane_revelation,
     **aelora,
     **aelora_craft,
     **hearthfire,
     **aelora_shield,
     **beacon,
     **dawns_mercy,
+    **cleansing_touch,
     **place_healing,
     **dawns_resilience,
     **crit_edges,
     **encounter_facts,
     **defense,
     **fallen_ally_guard,
+    **guardian_ward,
+    **dawnward_strike,
     **marshal_death_save,
     **rally,
     **foretold_words,
@@ -75,7 +87,11 @@ ENGINE_SCENARIOS = {
     **dawns_embrace,
     **nythera,
     **tidewalker,
+    **tidal_step,
+    **saltwind_casting,
     **orenthel,
+    **inspire_heal,
+    **restoring_song,
     **syrath,
     **two_round_veil,
     **veiled_strikes,

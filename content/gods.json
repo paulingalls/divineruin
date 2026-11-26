@@ -246,8 +246,9 @@
         "clauses": [
           {
             "effect": "Arcana as bonus starting skill.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "veythar_arcane_revelation"
           },
           {
             "effect": "Divine magic auto-identifies magical effects (no check)",
@@ -1580,7 +1581,7 @@
         "name": "Threshold Shield",
         "clauses": [
           {
-            "effect": "Gain +1 AC while guarding an ally at 0 HP.",
+            "effect": "Gain +1 AC while another party member in this encounter lies at 0 HP and is not yet dead.",
             "status": "active",
             "resolution": "engine",
             "implementation_id": "mortaen_threshold_shield"
@@ -2624,8 +2625,9 @@
         "clauses": [
           {
             "effect": "Gain +1 to spell attack rolls in a coastal location you have never visited.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "nythera_saltwind_casting"
           }
         ]
       },
@@ -2758,9 +2760,10 @@
         "name": "Unmoored Step",
         "clauses": [
           {
-            "effect": "Once per encounter, reposition to any visible unoccupied space without provoking reactions",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "Once per encounter, one of your moves, up to your normal movement, provokes no opportunity attacks",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "nythera_tidal_step"
           }
         ]
       },
@@ -2769,9 +2772,10 @@
         "name": "Unmoored Step",
         "clauses": [
           {
-            "effect": "Once per encounter, reposition to any visible unoccupied space without provoking reactions",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "Once per encounter, one of your moves, up to your normal movement, provokes no opportunity attacks",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "nythera_tidal_step"
           }
         ]
       },
@@ -2950,8 +2954,9 @@
         "clauses": [
           {
             "effect": "Gain +1 damage against undead while an ally within earshot is below half HP.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "orenthel_undead_wrath"
           }
         ]
       },
@@ -2961,8 +2966,9 @@
         "clauses": [
           {
             "effect": "Gain +1 AC while guarding an ally below half HP.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "orenthel_guardian_ward"
           }
         ]
       },
@@ -3117,8 +3123,9 @@
         "clauses": [
           {
             "effect": "Healing Touch also removes 1 Resonance from target. Active party Resonance management",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "orenthel_cleansing_touch"
           }
         ]
       },
@@ -3128,8 +3135,9 @@
         "clauses": [
           {
             "effect": "Healing Touch also removes 1 Resonance from target. Active party Resonance management",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "orenthel_cleansing_touch"
           }
         ]
       },
@@ -3139,13 +3147,15 @@
         "clauses": [
           {
             "effect": "Song of Rest +1d6 HP.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "orenthel_song_of_rest"
           },
           {
             "effect": "Inspire dice can heal instead of buffing rolls",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "orenthel_inspire_heal"
           }
         ]
       }

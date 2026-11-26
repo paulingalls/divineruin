@@ -65,6 +65,8 @@ def attack_fields(attack_result: check_resolution_attack.AttackResult, effective
         synergy_ac_clause_id=attack_result.synergy_ac_clause_id,
         mortaen_ac_bonus=attack_result.mortaen_ac_bonus,
         mortaen_ac_clause_id=attack_result.mortaen_ac_clause_id,
+        orenthel_ac_bonus=attack_result.orenthel_ac_bonus,
+        orenthel_ac_clause_id=attack_result.orenthel_ac_clause_id,
         war_songs_bonus=attack_result.war_songs_bonus,
         war_songs_clause_id=attack_result.war_songs_clause_id,
         consumed_conditions=attack_result.consumed_conditions,

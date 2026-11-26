@@ -112,7 +112,7 @@ class RestWalk(ArcWalk):
         self.events.append(event)
 
     async def command(self, kind):
-        self.model.commands.append(("rest", {"rest_type": kind}))
+        self.model.commands.append(("rest", {"rest_type": kind, "use_song_of_rest": False}))
         self.resting = True
         try:
             with self.sd._bind_authenticated_actor(self.player, 1, self.validator):

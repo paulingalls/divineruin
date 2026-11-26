@@ -373,7 +373,7 @@ async def test_spring_respects_rest_hp_rules(dev_db_pool):
         await walk.patch(divine_favor=THYRA, hp={"current": 3, "max": 20})
         with patch.object(world_season, "current_season", new=AsyncMock(return_value="spring")):
             for rest_type, hp in [("short", 3), ("long", 20)]:
-                await walk.command("rest", {"rest_type": rest_type})
+                await walk.command("rest", {"rest_type": rest_type, "use_song_of_rest": False})
                 assert (await walk.row())["hp"] == {"current": hp, "max": 20}
 
 

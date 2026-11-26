@@ -143,11 +143,11 @@ async def test_immunity_spend_and_long_rest(dev_db_pool, tier):
         await w.connect()
         assert "long rest" in await w.use(IMMUNITY, error=True)
         w.sd.member_state(w.player).unbound_veil_mastery_used = True
-        await w.command("rest", {"rest_type": "short"})
+        await w.command("rest", {"rest_type": "short", "use_song_of_rest": False})
         await hydrate_patron_ability_session(w.sd, w.player, conn=w.pool)
         assert (await w.row())["patron_gifts"][IMMUNITY]["spent"]
         assert w.sd.member_state(w.player).unbound_veil_mastery_used
-        await w.command("rest", {"rest_type": "long"})
+        await w.command("rest", {"rest_type": "long", "use_song_of_rest": False})
         rows = (await w.command("query_info", {"kind": "patron"}))["autonomy"]["milestones"]
         assert next(m for m in rows if m["id"] == IMMUNITY)["spent"] is False
         await w.use(IMMUNITY)

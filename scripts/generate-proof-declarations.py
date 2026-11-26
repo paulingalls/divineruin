@@ -270,6 +270,25 @@ def acceptance_partitions():
 
 
 def main():
+    bun_tasks = json.loads(Path("scripts/proof-bun-tasks.json").read_text())
+    subprocess.run(
+        ["bun", "scripts/proof-bun-ownership.ts"],
+        input=json.dumps(
+            {
+                name: {
+                    "args": shlex.split(task["run"]),
+                    "owned": [
+                        entry["imports-of"]
+                        for entry in task["inputs"]
+                        if isinstance(entry, dict) and "imports-of" in entry
+                    ],
+                }
+                for name, task in bun_tasks.items()
+            }
+        ),
+        text=True,
+        check=True,
+    )
     paths = tracked("apps/agent", "scripts", suffix=".py")
     paths.append("e2e/fixtures/inventory-snapshot.py")
     result = subprocess.run(
@@ -357,7 +376,7 @@ def main():
             }
             acceptance[name] = path
     # Root unkeyed policy must preserve the existing Bun tasks and the full unit key.
-    for name, task in json.loads(Path("scripts/proof-bun-tasks.json").read_text()).items():
+    for name, task in bun_tasks.items():
         tasks[name] = {**task, "keyed": [*sorted(restored), SHARED_KEY]}
         if "apps/agent/.venv" in task.get("links", []):
             prefix, separator, run = task["run"].partition(" && ")

@@ -20,6 +20,7 @@ import db_queries
 def move(actor_id, destination, *, movement_mode="ground", reshape=()):
     return {
         "kind": "move",
+        "nythera_step": False,
         "actor_id": actor_id,
         "destination": destination,
         "movement_mode": movement_mode,

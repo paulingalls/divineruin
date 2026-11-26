@@ -121,6 +121,7 @@ class LootHarness(MawlingHarness):
                                     "reshape": [],
                                     "movement_mode": "ground",
                                     "kind": "move",
+                                    "nythera_step": False,
                                     "actor_id": self.players[0],
                                     "destination": destination,
                                 },

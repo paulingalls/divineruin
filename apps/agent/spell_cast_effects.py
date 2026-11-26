@@ -11,7 +11,8 @@ import temp_hp
 import unbound_tools
 from game_events import publish_game_event
 from party_state import PartyMember
-from patron_synergy_combat import spell_damage_type_override
+from patron_location import is_coastal_location
+from patron_synergy_combat import NYTHERA_SALTWIND_CASTING, saltwind_casting_bonus, spell_damage_type_override
 from patron_synergy_heal import for_cast
 from session_data import SessionData
 from spell_cast_result import CastResult
@@ -106,6 +107,10 @@ async def _finish_cast(
         packet["effect"] = packet["narration_cue"]
     if damage_type := spell_damage_type_override(player, spell_id):
         packet["damage_type_override"] = damage_type
+    if session.in_combat and (spell.combat_damage or {}).get("resolution") == "attack" and first_stay:
+        coastal = await is_coastal_location(session.location_id, conn=conn)
+        if bonus := saltwind_casting_bonus(player, coastal=coastal):
+            packet["spell_attack_bonus"] = {"id": NYTHERA_SALTWIND_CASTING, "name": "Saltwind Casting", "bonus": bonus}
     if wrongdoing is not None:
         packet["wrongdoing"] = wrongdoing
     if concealment_packet is not None:
@@ -190,6 +195,7 @@ async def _finish_cast(
                 if target_ids is not None:
                     packet["condition_targets"] = voiced
 
+    resonance_updates: dict[str, int] = {}
     if heal_rows is not None:
         if revalidate_actor:
             session.validate_acting_player(player_id)
@@ -198,11 +204,18 @@ async def _finish_cast(
             player,
             heal_rows,
             caster_id=player_id,
-            synergy=for_cast(player, terrain=terrain, first_stay=first_stay, dice_mod=dice_mod),
+            synergy=for_cast(player, spell_id, terrain=terrain, first_stay=first_stay, dice_mod=dice_mod),
             packet=packet,
             conn=conn,
             dice_mod=dice_mod,
+            resonance_updates=resonance_updates,
         )
+        for recipient_id in resonance_updates:
+            events.append(
+                lambda pid=recipient_id: resonance_events_mod.publish_resonance_changed(
+                    session, resonance_track=session.member_state(pid).resonance, caster_id=pid
+                )
+            )
         # Out of combat no WRAP push follows, so each healed recipient's own HUD needs the new HP.
         for recipient_id, hp in combat_spell_heal.hp_updates(player_id, packet).items():
             recipient = player if recipient_id == player_id else heal_rows[recipient_id]
@@ -226,4 +239,5 @@ async def _finish_cast(
         unbound_veil_mastery_spent=mastery_spent,
         terrain=terrain,
         first_stay=first_stay,
+        resonance_updates=resonance_updates,
     )

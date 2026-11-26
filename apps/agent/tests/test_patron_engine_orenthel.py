@@ -139,9 +139,9 @@ async def verify_long_rest(world, call, args, actor, target):
     with pytest.raises(ToolError, match=r"spent.*long rest"):
         await call("activate", id=SURGE, **args)
     assert await snapshot(world) == before
-    await call("rest", rest_type="short")
+    await call("rest", rest_type="short", use_song_of_rest=False)
     assert (await row(world, actor))["patron_gifts"][SURGE] == SPENT
-    await call("rest", rest_type="long")
+    await call("rest", rest_type="long", use_song_of_rest=False)
     refreshed = [await row(world, index) for index in range(len(world.ids))]
     assert not refreshed[actor]["patron_gifts"].get(SURGE, {}).get("spent")
     await call("activate", id=SURGE, **args)

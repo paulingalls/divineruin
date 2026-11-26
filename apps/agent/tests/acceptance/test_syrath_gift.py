@@ -204,7 +204,7 @@ async def test_reconnect_rest_and_combat_only(veil, rest_type):
     h.session = AgentSession(llm=h.model, userdata=h.sd)
     await h.session.start(Agent(instructions="Execute the command.", tools=EXPLORATION_TOOLS))
     assert "combat-only" in await h.command("activate", {"id": GIFT}, error=True)
-    await h.command("rest", {"rest_type": rest_type})
+    await h.command("rest", {"rest_type": rest_type, "use_song_of_rest": False})
     assert (await row(h))["patron_gifts"] == {"other": {"x": 1}, GIFT: {"spent": False}}
     assert not (await row(h))["flags"]["concealed"]
     await h.command("enter_mode", {"mode": "combat", "encounter_id": h.encounter_id})

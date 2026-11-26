@@ -27,6 +27,7 @@ from patron_passives import effective_max_hp
 from resonance_events import publish_resonance_changed
 from rest_mechanics import RestType, apply_rest, record_last_rested_settlement, reset_resonance_on_rest
 from session_data import SessionData
+from song_of_rest import Recovery, apply_song_of_rest
 
 
 def _pool_values(player: dict, key: str) -> tuple[int, int]:
@@ -38,14 +39,19 @@ def _pool_values(player: dict, key: str) -> tuple[int, int]:
 
 @function_tool()
 @db_tool
-async def rest(context: RunContext[SessionData], rest_type: RestType) -> str:
+async def rest(context: RunContext[SessionData], rest_type: RestType, use_song_of_rest: bool) -> str:
     """Rest when players choose recovery at a safe inn or tavern; narrate the returned
-    recovery or refusal. short: Stamina refills and Focus recovers to half; HP does not.
+    recovery or refusal. short: Stamina refills and Focus recovers to half.
+    Set use_song_of_rest=true only when the party wants a learned Song of Rest during
+    a short rest. One eligible singer pays Focus after recovery and each resting member
+    who can hear rolls extra healing. Use false for ordinary rests.
     long: HP, Stamina and Focus refill and the settlement becomes the party's anchor.
     Narrate any Hollowed worsening or Wisdom loss listed in hollowed_changes.
     Rest is unavailable during combat or outside a safe rest location. Present,
     co-located party members recover together.
     """
+    if use_song_of_rest and rest_type != "short":
+        raise ToolError("Song of Rest can only be used during a short rest.")
     session = context.userdata
     actor = session.acting_player_id
     owner = session.multiplayer_owner
@@ -67,6 +73,7 @@ async def rest(context: RunContext[SessionData], rest_type: RestType) -> str:
             raise ToolError("It is too dangerous to rest here.")
         anchor = None
         hollowed_changes = []
+        song = None
         async with db.transaction() as conn:
             players = await db_queries.get_players_for_update(member_ids, conn=conn)
             if set(players) != set(member_ids):
@@ -74,14 +81,20 @@ async def rest(context: RunContext[SessionData], rest_type: RestType) -> str:
             if players[actor].get("location_id") != location_id:
                 raise ToolError("You are no longer at this rest location.")
             players = {pid: row for pid, row in players.items() if row.get("location_id") == location_id}
-            recovery = {}
+            recovery: dict[str, Recovery] = {}
+            max_hp: dict[str, int] = {}
             for pid, row in players.items():
                 current_hp, base_max_hp = _pool_values(row, "hp")
-                hp = (current_hp, effective_max_hp(row, base_max_hp))
+                max_hp[pid] = effective_max_hp(row, base_max_hp)
                 resource = get_archetype_chassis(row["class"]).resource
                 stamina = _pool_values(row, "stamina") if "stamina" in row or resource.stamina_formula else None
                 focus = _pool_values(row, "focus") if "focus" in row or resource.focus_formula else None
-                recovery[pid] = apply_rest(rest_type, *(stamina or (None, None)), *(focus or (None, None)), *hp)
+                recovery[pid] = apply_rest(
+                    rest_type, *(stamina or (None, None)), *(focus or (None, None)), current_hp, max_hp[pid]
+                )
+            if use_song_of_rest:
+                remote_ids = [pid for pid in member_ids if pid not in players]
+                song = await apply_song_of_rest(players, recovery, max_hp, remote_ids, conn=conn)
             session.validate_acting_player(actor)
             if rest_type == "long":
                 anchor = await record_last_rested_settlement(list(players), location_id, conn=conn)
@@ -137,5 +150,6 @@ async def rest(context: RunContext[SessionData], rest_type: RestType) -> str:
                 "players": list(players),
                 "settlement_id": anchor,
                 "hollowed_changes": hollowed_changes,
+                **({"song_of_rest": song} if song is not None else {}),
             }
         )

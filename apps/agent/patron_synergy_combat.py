@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Literal
 
 import encounter_facts
@@ -15,8 +16,11 @@ if TYPE_CHECKING:
 
 OATH_OF_VALOR = "kaelen_oath_of_valor"
 SECOND_BEFORE = "zhael_second_before"
+ORENTHEL_GUARDIAN_WARD = "orenthel_guardian_ward"
+ORENTHEL_UNDEAD_WRATH = "orenthel_undead_wrath"
 MORTAEN_THRESHOLD_SHIELD = "mortaen_threshold_shield"
 MORTAEN_HOLD_THE_CROSSING = "mortaen_hold_the_crossing"
+NYTHERA_SALTWIND_CASTING = "nythera_saltwind_casting"
 
 KAELEN_WAR_SONGS = "kaelen_war_songs"
 TWO_ROUND_VEIL = "syrath_two_round_veil"
@@ -68,6 +72,7 @@ def encounter_damage_clause(
         return None
 
     from combat_melee_approach import is_melee
+    from combat_veilrender import living
     from encounter_facts import ZHAEL_THREADED_BLADE
 
     facts = state.encounter_facts
@@ -80,6 +85,15 @@ def encounter_damage_clause(
         and is_melee(action)
     ):
         return ZHAEL_THREADED_BLADE
+    if (
+        has_engine_synergy(player, ORENTHEL_UNDEAD_WRATH)
+        and (target.hollow or target.category == "undead")
+        and any(
+            ally.id != attacker.id and ally.is_ally and living(ally) and 2 * ally.hp_current < ally.hp_max
+            for ally in state.participants
+        )
+    ):
+        return ORENTHEL_UNDEAD_WRATH
     return None
 
 
@@ -113,6 +127,32 @@ def fallen_ally_defense(defender: dict | None, state: CombatState | None, target
     )
 
 
+def wounded_ally_defense(defender: dict | None, state: CombatState | None, target: CombatParticipant) -> int:
+    from combat_spatial import inside, position, require_spatial
+    from combat_veilrender import living
+
+    if (
+        defender is None
+        or state is None
+        or not living(target)
+        or not has_engine_synergy(defender, ORENTHEL_GUARDIAN_WARD)
+    ):
+        return 0
+
+    spatial = require_spatial(state)
+    target_position = position(spatial, target.id)
+    return int(
+        any(
+            ally.id != target.id
+            and ally.is_ally
+            and living(ally)
+            and 2 * ally.hp_current < ally.hp_max
+            and inside(target_position, position(spatial, ally.id), 5)
+            for ally in state.participants
+        )
+    )
+
+
 async def marshal_death_save_bonus(state: CombatState, *, queries) -> int:
     from combat_veilrender import living
 
@@ -125,6 +165,36 @@ async def marshal_death_save_bonus(state: CombatState, *, queries) -> int:
         if has_engine_synergy(player, MORTAEN_HOLD_THE_CROSSING):
             return 1
     return 0
+
+
+async def preflight_tidal_step(state: CombatState, *, get_player: Callable[[str], Awaitable[dict | None]]) -> None:
+    spent = state.encounter_facts["once_spent"].get(encounter_facts.NYTHERA_TIDAL_STEP, ())
+    for actor_id, declaration in state.pending_declarations.items():
+        if not declaration.get("nythera_step"):
+            continue
+        player = await get_player(actor_id)
+        if player is None:
+            raise ValueError(f"Nythera's Unmoored Step: {actor_id} has no player row.")
+        actor = state.get_participant(actor_id)
+        assert actor is not None
+        if actor.type != "player":
+            raise ValueError("Nythera's Unmoored Step requires a player combatant.")
+        if not has_engine_synergy(player, encounter_facts.NYTHERA_TIDAL_STEP):
+            raise ValueError("Nythera's Unmoored Step requires a Nythera skirmisher or rogue.")
+        if actor_id in spent:
+            raise ValueError("Nythera's Unmoored Step is already spent in this encounter.")
+
+
+def spend_tidal_step(state: CombatState, actor_id: str) -> dict[str, str | bool]:
+    spent = state.encounter_facts["once_spent"].setdefault(encounter_facts.NYTHERA_TIDAL_STEP, [])
+    if actor_id in spent:
+        raise RuntimeError(f"Nythera's Unmoored Step was already spent by {actor_id}.")
+    spent.append(actor_id)
+    return {
+        "synergy_clause_id": encounter_facts.NYTHERA_TIDAL_STEP,
+        "nythera_step_spent": True,
+        "dm_cue": "Nythera's Unmoored Step is spent for this encounter.",
+    }
 
 
 async def grant_marshal_rally(
@@ -176,6 +246,10 @@ def expanded_critical(attacker_data: dict, face: int) -> bool:
 
 def spell_attack_bonus(player: dict, target) -> int:
     return int(target.category == "undead" and has_engine_synergy(player, "mortaen_ashen_formula"))
+
+
+def saltwind_casting_bonus(player: dict, *, coastal: bool) -> int:
+    return int(coastal and has_engine_synergy(player, NYTHERA_SALTWIND_CASTING))
 
 
 def spell_damage_type_override(player: dict, spell_id: str) -> str | None:

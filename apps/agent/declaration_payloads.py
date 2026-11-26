@@ -101,7 +101,10 @@ class AbilityDecl(DeclarationPayload):
 
     kind: Literal["ability"]
     actor_id: str = Field(description="The participant declaring this action.")
-    action: str = Field(description='The EXACT id of a spell or ability the actor knows, e.g. "arcane_bolt".')
+    action: str = Field(
+        description='The exact known spell or ability id from query_info. Use "orenthel_inspire_heal" '
+        "for an eligible Orenthel bard healing one ally with Inspire."
+    )
     targets: list[str] = Field(
         description="Who it is aimed at — one id for a single target, several for a multi-target "
         "spell, empty for a self-cast. Mass Heal selects allies automatically; pass an empty list. "
@@ -173,6 +176,9 @@ class MoveDecl(DeclarationPayload):
     destination: Destination
     movement_mode: Literal["ground", "flying"] = Field(
         description="Choose ground for ordinary movement. Flying adds ceiling restrictions and grants no flight capability."
+    )
+    nythera_step: bool = Field(
+        description="True to spend a Nythera skirmisher or rogue's Unmoored Step on this move once per encounter. False for ordinary movement."
     )
     reshape: list[ReshapeSelection] = Field(description=RESHAPE_DESCRIPTION)
 
@@ -304,6 +310,7 @@ def _raw(decl: DeclVariant) -> dict:
             "target_id": decl.actor_id,
             "destination": decl.destination.model_dump(),
             "movement_mode": decl.movement_mode,
+            **({"nythera_step": True} if decl.nythera_step else {}),
         }
     if isinstance(decl, ManeuverDecl):
         return {"type": "maneuver", "target_id": decl.target_id}

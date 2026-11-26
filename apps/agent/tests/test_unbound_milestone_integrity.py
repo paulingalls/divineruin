@@ -60,7 +60,7 @@ async def test_reward_commit_is_atomic(dev_db_pool, operation):
 
         async def run(error=False):
             if operation == "rest":
-                return await w.command("rest", {"rest_type": "long"}, error=error)
+                return await w.command("rest", {"rest_type": "long", "use_song_of_rest": False}, error=error)
             return await w.use(IMMUNITY if operation == "spend" else WISDOM, error=error)
 
         with patch.object(db, "transaction", fail_commit):

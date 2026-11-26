@@ -137,12 +137,25 @@ async def test_rejection_only_recharges_with_a_pending_anchor_attack(still):
     assert not state.held_actions
     assert state.get_participant(player.id).hp_current == player.hp_current
     refusal = await declare(
-        still, kind="move", movement_mode="ground", reshape=[], destination=before_position, error=True
+        still,
+        kind="move",
+        nythera_step=False,
+        movement_mode="ground",
+        reshape=[],
+        destination=before_position,
+        error=True,
     )
     assert "exceeds speed" in refusal
     refusal = await declare(still, actor_id=owner_id, error=True, **strike(player.id, action="Perfect Memory"))
     assert "outside the Still's attack range" in refusal
-    await declare(still, kind="move", movement_mode="ground", reshape=[], destination={**edge, "y": edge["y"] + 1})
+    await declare(
+        still,
+        kind="move",
+        nythera_step=False,
+        movement_mode="ground",
+        reshape=[],
+        destination={**edge, "y": edge["y"] + 1},
+    )
 
 
 async def test_two_party_attacks_replace_the_pending_origin_and_thunder_doubles(reset_db_pool):

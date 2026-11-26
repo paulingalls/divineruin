@@ -48,6 +48,9 @@
         "imports-of": "packages/shared/src/entities/god.test.ts"
       },
       {
+        "imports-of": "packages/shared/src/entities/god-synergy.test.ts"
+      },
+      {
         "imports-of": "packages/shared/src/entities/god_synergy_clauses.test.ts"
       },
       {
@@ -70,6 +73,9 @@
       },
       {
         "imports-of": "packages/shared/src/entities/terrain.test.ts"
+      },
+      {
+        "imports-of": "packages/shared/src/entities/veilrender.test.ts"
       },
       {
         "imports-of": "packages/shared/src/entities/creature-terrains.test.ts"
@@ -114,6 +120,7 @@
       "apps/server/tsconfig.json",
       "apps/server/bunfig.toml",
       { "imports-of": "apps/server/src/rate-limit.test.ts" },
+      { "imports-of": "apps/server/src/error-line.test.ts" },
       {
         "imports-of": "apps/server/src/abilities-load.test.ts"
       },
@@ -373,6 +380,9 @@
         "imports-of": "apps/mobile/src/__tests__/auth-store.test.ts"
       },
       {
+        "imports-of": "apps/mobile/src/__tests__/base-url.test.ts"
+      },
+      {
         "imports-of": "apps/mobile/src/__tests__/cached-image-uri.test.ts"
       },
       {
@@ -428,6 +438,12 @@
       },
       {
         "imports-of": "apps/mobile/src/__tests__/pending-invite-store.test.ts"
+      },
+      {
+        "imports-of": "apps/mobile/src/__tests__/patron-snapshot-order.test.ts"
+      },
+      {
+        "imports-of": "apps/mobile/src/__tests__/temp-hp-wire.test.ts"
       },
       {
         "imports-of": "apps/mobile/src/__tests__/pill-chassis.test.ts"

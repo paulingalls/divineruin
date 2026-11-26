@@ -98,7 +98,7 @@ async def run(args):
             elif name == "activate":
                 await command("activate", {"id": "veythar_lorekeepers_library"})
             elif name in ("short", "long"):
-                await command("rest", {"rest_type": name})
+                await command("rest", {"rest_type": name, "use_song_of_rest": False})
             elif name == "promote":
                 pending = []
                 async with db.transaction() as conn:

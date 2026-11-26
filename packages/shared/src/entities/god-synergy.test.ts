@@ -18,6 +18,53 @@ test("ten complete matrices cover the exact eighteen-archetype roster", () => {
   );
 });
 
+test("Orenthel's guardian has the registered Sheltering Light clause", () => {
+  const guardian = validateGods(catalog).find((god) => god.god_id === "orenthel")
+    ?.layer_4_synergy_matrix.guardian;
+  expect(guardian?.name).toBe("Sheltering Light");
+  expect(guardian?.type).toBe("divine");
+  expect(guardian?.clauses).toEqual([
+    {
+      effect: "Gain +1 AC while guarding an ally below half HP.",
+      status: "active",
+      resolution: "engine",
+      implementation_id: "orenthel_guardian_ward",
+    },
+  ]);
+});
+
+test("Orenthel's warrior has the registered Dawnward Strike clause", () => {
+  const warrior = validateGods(catalog).find((god) => god.god_id === "orenthel")
+    ?.layer_4_synergy_matrix.warrior;
+  expect(warrior?.name).toBe("Dawnward Strike");
+  expect(warrior?.type).toBe("divine");
+  expect(warrior?.clauses).toEqual([
+    {
+      effect: "Gain +1 damage against undead while an ally within earshot is below half HP.",
+      status: "active",
+      resolution: "engine",
+      implementation_id: "orenthel_undead_wrath",
+    },
+  ]);
+});
+
+test("Nythera's mage has the registered Saltwind Casting clause", () => {
+  const mage = validateGods(catalog).find((god) => god.god_id === "nythera")?.layer_4_synergy_matrix
+    .mage;
+  expect(mage).toEqual({
+    name: "Saltwind Casting",
+    type: "divine",
+    clauses: [
+      {
+        effect: "Gain +1 to spell attack rolls in a coastal location you have never visited.",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "nythera_saltwind_casting",
+      },
+    ],
+  });
+});
+
 test("Mortaen's guardian has the registered Threshold Shield clause", () => {
   const guardian = validateGods(catalog).find((god) => god.god_id === "mortaen")
     ?.layer_4_synergy_matrix.guardian;

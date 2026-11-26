@@ -55,12 +55,12 @@ def test_reload_redirect_and_long_rest_deadline(harness):
         assert row["attributes"]["strength"] == 17 and row["attributes"]["wisdom"] == 15
         assert row["attribute_increases"]["4"] == {"allocation": {"wisdom": 2}, "locked": False}
         await walk.reload(harness)
-        short = await walk.command("rest", {"rest_type": "short"})
+        short = await walk.command("rest", {"rest_type": "short", "use_song_of_rest": False})
         assert not short.is_error, short.output
         redirected = await walk.command("select", {"choice_id": choice, "option": "constitution"})
         assert not redirected.is_error, redirected.output
         assert (await walk.row())["hp"] == {"current": 5, "max": 36}
-        long = await walk.command("rest", {"rest_type": "long"})
+        long = await walk.command("rest", {"rest_type": "long", "use_song_of_rest": False})
         assert not long.is_error, long.output
         before = await walk.row()
         assert before["attribute_increases"]["4"]["locked"]
