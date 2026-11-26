@@ -124,7 +124,7 @@ def register_data_packet_collector(
 
     Each enqueued item is a `(payload_bytes, participant_identity)` tuple.
     Returns an `unregister()` callable so tests/fixtures can detach the listener
-    deterministically; teardown via `room.disconnect()` removes it anyway.
+    deterministically.
 
     Topic match is strict equality — substring matches would leak future topics
     sharing the same channel into this collector.
@@ -145,21 +145,8 @@ def register_data_packet_collector(
 
 
 async def aclose_room(room: rtc.Room) -> None:
-    """Disconnect `room` if still connected; swallow errors so teardown is idempotent.
-
-    Catches BaseException so asyncio.CancelledError mid-disconnect during pytest
-    teardown does not escape — that would skip every subsequent aclose_room call
-    in a pair/group, leaking participant slots on the persistent dev container.
-    Cancellation is consciously swallowed here: this helper exists solely for
-    deterministic teardown, and a leaked WebSocket survives every test run.
-    """
-    try:
-        if room.isconnected():
-            await room.disconnect()
-    except BaseException:
-        # Best-effort teardown — connection may already be gone, or pytest may
-        # be cancelling. Either way, swallowing keeps later cleanups running.
-        pass
+    if room.isconnected():
+        await room.disconnect()
 
 
 async def publish_audio_frames(
@@ -248,8 +235,10 @@ async def unpublish_audio(
     source: rtc.AudioSource,
     publication: rtc.LocalTrackPublication,
 ) -> None:
-    await room.local_participant.unpublish_track(publication.sid)
-    await aclose_audio(source)
+    try:
+        await room.local_participant.unpublish_track(publication.sid)
+    finally:
+        await aclose_audio(source)
 
 
 async def wait_for_audio_track(room: rtc.Room, *, identity: str, timeout: float = 15.0) -> rtc.Track:
@@ -294,15 +283,16 @@ async def count_audio_frames(track: rtc.Track, *, timeout: float = 10.0) -> int:
 
 
 async def aclose_audio(source: rtc.AudioSource | None) -> None:
-    """Drop any queued frames and close `source`, swallowing errors like aclose_room.
-
-    Same tolerance and same reason: a raise here (including a CancelledError mid-close)
-    would skip the room teardown that runs alongside it and leak a participant slot.
-    """
     if source is None:
         return
     try:
         source.clear_queue()
+    finally:
         await source.aclose()
-    except BaseException:
-        pass
+
+
+async def cancel_and_await(task: asyncio.Task[None]) -> None:
+    task.cancel()
+    (result,) = await asyncio.gather(task, return_exceptions=True)
+    if isinstance(result, BaseException) and not task.cancelled():
+        raise result

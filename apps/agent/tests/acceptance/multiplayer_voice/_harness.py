@@ -4,6 +4,7 @@ import asyncio
 import re
 import uuid
 from collections.abc import Awaitable, Callable
+from contextlib import AsyncExitStack
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -313,19 +314,13 @@ class MultiplayerVoiceHarness:
                 raise AssertionError(f"unexpected transcript from {identity!r}: {transcript.text!r}")
 
     async def aclose(self) -> None:
-        failure = None
-        try:
+        async with AsyncExitStack() as cleanup:
+            if self._http_context is not None:
+                cleanup.push_async_callback(self._http_context.__aexit__, None, None, None)
+            for room in (self.player_one, self.listener, self.player_two, self.player_three):
+                if room is not None:
+                    cleanup.push_async_callback(aclose_room, room)
+            for source, _track, _publication in reversed(self.audio.values()):
+                cleanup.push_async_callback(aclose_audio, source)
             if self.manager is not None:
                 await self.manager.aclose()
-        except BaseException as exc:
-            failure = exc
-        finally:
-            for source, _track, _publication in tuple(self.audio.values()):
-                await aclose_audio(source)
-            for room in (self.player_three, self.player_two, self.listener, self.player_one):
-                if room is not None:
-                    await aclose_room(room)
-            if self._http_context is not None:
-                await self._http_context.__aexit__(None, None, None)
-        if failure is not None:
-            raise failure
