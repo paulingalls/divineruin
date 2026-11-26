@@ -6,6 +6,34 @@ from combat_structures import blocked_reason, blocking_wall, chamber_line_blocke
 from condition_sources import DeliveryRefused
 
 
+def _line_refusal(state, placement, caster_id: str, origin_id: str, target_id: str) -> str | None:
+    wall = chamber_line_blocker(state, placement, caster_id, target_id) or blocking_wall(
+        state,
+        placement,
+        spatial.position(placement, origin_id),
+        spatial.position(placement, target_id),
+        target_id=target_id,
+        origin_id=origin_id,
+        effect_origin=True,
+        physical=False,
+    )
+    return blocked_reason(wall) if wall is not None else None
+
+
+def caster_radius_refusal(
+    state, placement: dict, caster_id: str, target, radius_ft: int, protected, *, undead_hollow: bool
+) -> str | None:
+    if target.is_fallen or target.is_dead:
+        return "Target is unavailable."
+    if target.id in protected:
+        return "The Still protects this target."
+    if undead_hollow and not (target.hollow or target.category == "undead"):
+        return "Target category is neither undead nor Hollow."
+    if not spatial.inside(spatial.position(placement, caster_id), spatial.position(placement, target.id), radius_ft):
+        return f"Target is beyond {radius_ft} feet."
+    return _line_refusal(state, placement, caster_id, caster_id, target.id)
+
+
 def select(state, caster, declaration, spell, *, require_live=False):
     profile = spell.combat_damage
     ids = list(declaration.target_ids or ([declaration.target_id] if declaration.target_id else []))
@@ -47,21 +75,26 @@ def select(state, caster, declaration, spell, *, require_live=False):
         return spatial.position(placement, target_id)
 
     def clear(origin_id, target_id):
-        return (
-            chamber_line_blocker(state, placement, caster.id, target_id) is None
-            and blocking_wall(
+        return _line_refusal(state, placement, caster.id, origin_id, target_id) is None
+
+    if shape == "caster_radius":
+        if len(ids) > 1:
+            raise ValueError("Too many participant anchors for this area")
+        selected = [
+            {"target_id": target.id}
+            for target in state.participants
+            if caster_radius_refusal(
                 state,
                 placement,
-                pos(origin_id),
-                pos(target_id),
-                target_id=target_id,
-                origin_id=origin_id,
-                effect_origin=True,
-                physical=False,
+                caster.id,
+                target,
+                spec["radius_ft"],
+                protected,
+                undead_hollow=profile.get("restriction") == "undead_hollow",
             )
             is None
-        )
-
+        ]
+        return sorted(selected, key=lambda delivery: delivery["target_id"] != (ids[0] if ids else None))
     if shape == "chain":
         if len(ids) > spec["cap"] or len(ids) != len(set(ids)):
             raise ValueError("Chain recipients must be unique and within the authored cap")
@@ -93,9 +126,7 @@ def select(state, caster, declaration, spell, *, require_live=False):
         point = pos(target.id)
         if profile.get("restriction") == "undead_hollow" and not (target.hollow or target.category == "undead"):
             continue
-        if shape == "caster_radius":
-            covered = spatial.inside(origin, point, spec["radius_ft"]) and clear(caster.id, target.id)
-        elif shape == "line":
+        if shape == "line":
             covered = spatial.in_line(origin, pos(ids[0]), point, spec["length_ft"], spec["width_ft"]) and clear(
                 caster.id, target.id
             )

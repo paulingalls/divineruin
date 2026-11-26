@@ -15,10 +15,11 @@ from dice import roll as dice_roll
 
 def _finish_packet_start(state, actor) -> dict | None:
     from choir_effects import approach
+    from combat_turn_flight import flight_condition
     from condition_catalog import IRON_STANCE
     from conditions import remove_condition
 
-    movement = approach(state, actor)
+    movement = approach(state, actor) if actor is None or flight_condition(actor) is None else None
     if actor is not None:
         actor.conditions = remove_condition(actor.conditions, IRON_STANCE)
     return movement

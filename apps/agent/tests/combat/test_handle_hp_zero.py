@@ -276,7 +276,6 @@ class TestTheDoorIsTheOnlyDoor:
             ("patron_zero_hp.py", "trigger_death_ward"),
             ("still_encounter.py", "after_damage"),
             ("draethar_inner_fire.py", "_inner_fire_locked"),
-            # INSIDE the door — the Hollowed rise, max(1, hp_max // 2), which cannot be 0.
             ("combat_damage.py", "_handle_hp_zero"),
             ("combat_structures.py", "collapse_wall"),
             ("architect_constructs.py", "collapse"),

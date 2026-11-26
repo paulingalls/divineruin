@@ -20,6 +20,7 @@ import combat_hollow_resonance
 import combat_phase
 import combat_spatial
 import combat_spatial_declarations
+import combat_turn_flight
 import combat_wrap
 import combat_wrongdoing
 import concentration_break
@@ -135,7 +136,11 @@ async def _resolve_phase_locked(
                     if packet.declaration.type is not DeclarationType.DEFEND or not packet.declaration.ac_bonus:
                         continue
                     defender = state.get_participant(packet.actor_id)
-                    if defender is not None and not defender.is_fallen:
+                    if (
+                        defender is not None
+                        and not defender.is_fallen
+                        and combat_turn_flight.flight_condition(defender) is None
+                    ):
                         state.ac_modifiers[packet.actor_id] = packet.declaration.ac_bonus
 
                 # Refuse unaffordable abilities before any actor writes HP; recovery reopens declaration.
