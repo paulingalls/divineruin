@@ -17,7 +17,7 @@ SPEC = {
     "hollow_architect": (
         "The Architect",
         20,
-        None,  # The Architect balance benchmark governs HP.
+        205,
         19,
         40,
         (20, 14, 20, 22, 18, 16),
@@ -129,16 +129,15 @@ def assert_loot(table, key):
 
 def assert_pin(row, key):
     name, level, hp, ac, speed, attributes, saves, xp, aura, resonance = SPEC[key]
-    assert (row["name"], row["category"], row["tier"], row["level"], row["ac"], row["speed"]) == (
+    assert (row["name"], row["category"], row["tier"], row["level"], row["hp"], row["ac"], row["speed"]) == (
         name,
         "hollow",
         4,
         level,
+        hp,
         ac,
         speed,
     )
-    if hp is not None:
-        assert row["hp"] == hp
     assert tuple(row["attributes"][stat] for stat in ("STR", "DEX", "CON", "INT", "WIS", "CHA")) == attributes
     assert tuple(row["save_proficiencies"]) == saves
     assert row["xp_reward"] == xp
