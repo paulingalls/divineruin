@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.81.1
+
+Reviewers now require a fault injection's red to come from the game's own output (a receipt, row, packet or event), never from a count the test builds for itself. The sprint hollow-finish retro found the Architect benchmark's rider probe checking its own report.
+
+Release steps: none.
+
 ## 0.81.0
 
 The Hollowing now gets worse if it goes untreated, and it can be cured:
