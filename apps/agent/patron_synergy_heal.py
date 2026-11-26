@@ -1,4 +1,4 @@
-"""Patron bonuses for healing spells."""
+"""Patron effects for healing spells."""
 
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ FINAL_MERCY = "mortaen_final_mercy"
 VERDANT_HEALING = "thyra_verdant_healing"
 TRAVELERS_BLESSING = "nythera_travelers_blessing"
 APPOINTED_MERCY = "zhael_appointed_mercy"
+CLEANSING_TOUCH = "orenthel_cleansing_touch"
 
 
 class HealBonus(TypedDict):
@@ -26,11 +27,18 @@ class HealBonus(TypedDict):
     bonus: int
 
 
-HealSynergy = Callable[[str, int, int], list[HealBonus]]
+class ResonanceRemoval(TypedDict):
+    id: str
+    resonance_removed: int
+
+
+HealComponent = HealBonus | ResonanceRemoval
+HealSynergy = Callable[[str, int, int], list[HealComponent]]
 
 
 def for_cast(
     player: dict,
+    spell_id: str,
     *,
     terrain: str | None,
     first_stay: bool,
@@ -38,25 +46,27 @@ def for_cast(
     round_number: int | None = None,
     dice_mod=dice,
 ) -> HealSynergy:
-    place: list[HealBonus] = []
+    shared: list[HealComponent] = []
+    if spell_id == "primal_healing_touch" and has_engine_synergy(player, CLEANSING_TOUCH):
+        shared.append({"id": CLEANSING_TOUCH, "resonance_removed": 1})
     if has_engine_synergy(player, VERDANT_HEALING):
         if terrain is None:
             raise RuntimeError("Verdant Healing requires resolved cast terrain")
         if is_natural(terrain):
-            place.append({"id": VERDANT_HEALING, "bonus": dice_mod.roll("1d4").total})
+            shared.append({"id": VERDANT_HEALING, "bonus": dice_mod.roll("1d4").total})
     if first_stay and has_engine_synergy(player, TRAVELERS_BLESSING):
-        place.append({"id": TRAVELERS_BLESSING, "bonus": 1})
+        shared.append({"id": TRAVELERS_BLESSING, "bonus": 1})
     savers = set()
     if facts is not None and has_engine_synergy(player, APPOINTED_MERCY):
         savers = {pid for pid, saved_round in facts["death_save_success_round"].items() if saved_round == round_number}
 
-    def bonuses(recipient_id: str, before: int, base: int) -> list[HealBonus]:
-        components = [*place, *bonus_components(player, before, base)]
+    def effects(recipient_id: str, before: int, base: int) -> list[HealComponent]:
+        components = [*shared, *bonus_components(player, before, base)]
         if recipient_id in savers:
             components.append({"id": APPOINTED_MERCY, "bonus": 1})
         return components
 
-    return bonuses
+    return effects
 
 
 def bonus_components(player: dict, hp_before: int, base_heal: int) -> list[HealBonus]:

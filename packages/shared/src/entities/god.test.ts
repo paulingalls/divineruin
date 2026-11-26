@@ -403,3 +403,24 @@ test("Syrath's Shadow Veil duration and strike are registered for rogue, spy and
     ]);
   }
 });
+
+test("Orenthel's Cleansing Touch is registered for druids and beastcallers", () => {
+  const matrix = validateGods(catalog).find(
+    (god) => god.god_id === "orenthel",
+  )?.layer_4_synergy_matrix;
+  for (const archetype of ["druid", "beastcaller"] as const) {
+    expect(matrix?.[archetype]).toEqual({
+      type: "unexpected",
+      name: "Cleansing Touch",
+      clauses: [
+        {
+          effect:
+            "Healing Touch also removes 1 Resonance from target. Active party Resonance management",
+          status: "active",
+          resolution: "engine",
+          implementation_id: "orenthel_cleansing_touch",
+        },
+      ],
+    });
+  }
+});

@@ -1,6 +1,7 @@
 from combat.test_synergy_crit_edges import SCENARIOS as crit_edges
 from combat.test_synergy_spell_edges import SCENARIOS as spell_edges
 from combat.test_synergy_weapon_damage import SCENARIOS as weapon_damage
+from test_cleansing_touch import SCENARIOS as cleansing_touch
 from test_dawns_resilience import SCENARIOS as dawns_resilience
 from test_encounter_facts_damage import SCENARIOS as encounter_facts
 from test_encounter_facts_defense import SCENARIOS as defense
@@ -55,6 +56,7 @@ ENGINE_SCENARIOS = {
     **aelora_shield,
     **beacon,
     **dawns_mercy,
+    **cleansing_touch,
     **place_healing,
     **dawns_resilience,
     **crit_edges,
