@@ -7,7 +7,7 @@ import shlex
 import subprocess
 from pathlib import Path
 
-from proof_coverage_collect import OUTPUT_ENV
+from proof_coverage_map import COLLECTOR, OUTPUT_ENV, load_map
 from proof_family_selection import (
     SHARED_INPUTS,
     SYNTHETIC,
@@ -48,7 +48,6 @@ REGISTERED_TOOL_READERS = {
 }
 SHARED_KEY = "packages/shared/**/*.{ts,tsx,json}"
 PROVIDER_DRIVER = {"scripts/proof_acceptance_stack.py"}
-COLLECTOR = "scripts/proof_coverage_collect.py"
 MARKERS = "acceptance and not real_llm and not openai_real_llm and not live_voice"
 
 
@@ -426,7 +425,9 @@ def main():
     for meta in inventory.values():
         meta["closure"].add("scripts/worktree-docker.sh")
     ordinary_sources = (sources | NON_PYTHON) - SHARED_INPUTS - PROVIDER_DRIVER - {COLLECTOR}
-    assignments = select_sources(inventory, families, ordinary_sources)
+    coverage = load_map()
+    coverage.validate(acceptance.keys(), sources)
+    assignments = select_sources(inventory, families, ordinary_sources, coverage)
     readers = named_readers(inventory, data)
     for name, selected in select_named(inventory, readers).items():
         assignments[name].update(selected)
@@ -438,7 +439,7 @@ def main():
             *tasks[name]["inputs"],
             *sorted(selected | inventory[name]["closure"]),
         ]
-    audit_selection(tasks, inventory, families, ordinary_sources)
+    audit_selection(tasks, inventory, families, ordinary_sources, coverage)
     audit_named(tasks, inventory, readers)
     content_assignments = select_content(inventory, families, content)
     for name, selected in content_assignments.items():
