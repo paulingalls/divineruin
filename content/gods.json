@@ -2296,8 +2296,9 @@
         "clauses": [
           {
             "effect": "Gain +1 damage against a creature that attacked a surrendering ally this encounter.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "valdris_measured_reprisal"
           }
         ]
       },

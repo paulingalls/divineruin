@@ -1,12 +1,15 @@
 import { test, expect, beforeEach } from "bun:test";
 import {
   handleGameEvent,
+  handleGameEventMessage,
   DICE_STINGER_DELAY_MS,
   DICE_ROLL_TTL_MS,
 } from "@/audio/game-event-handler";
+import { getYieldDisplay } from "@/components/hud/yield-display";
 import { characterStore } from "@/stores/character-store";
 import { hudStore } from "@/stores/hud-store";
-import { SAMPLE_CHARACTER, captureTimers, resetStores } from "./use-game-events.helpers";
+import wire from "../../../../packages/shared/fixtures/event_wire.json";
+import { SAMPLE_CHARACTER, captureTimers, encode, resetStores } from "./use-game-events.helpers";
 
 beforeEach(resetStores);
 
@@ -40,6 +43,24 @@ test("combat_ui_update sets combat state in hudStore", () => {
   expect(combat).not.toBeNull();
   expect(combat!.round).toBe(2);
   expect(combat!.combatants).toHaveLength(1);
+});
+
+test("the HUD reflects party yield and its end", () => {
+  const event = wire.events.party_yield_combat;
+  const [ally] = event.combatants;
+  const send = (packet: object) =>
+    handleGameEventMessage({
+      payload: encode(packet),
+      from: { isAgent: true },
+    } as Parameters<typeof handleGameEventMessage>[0]);
+  send(event);
+  const yielded = hudStore.getState().combatState!.combatants[0];
+  expect(yielded.yielded).toBe(true);
+  expect(getYieldDisplay(yielded)).toEqual({ label: "Yielded", icon: "flag-outline" });
+  send({ ...event, combatants: [{ ...ally, yielded: false }] });
+  const standing = hudStore.getState().combatState!.combatants[0];
+  expect(standing.yielded).toBe(false);
+  expect(getYieldDisplay(standing)).toBeNull();
 });
 
 test("combat_ended clears hudStore combat state", () => {
@@ -127,6 +148,7 @@ test("combat_ui_update parseCombatant fails soft when isAlly is missing", () => 
   const c = combat!.combatants[0];
   expect(c.id).toBe("goblin_1");
   expect(c.isAlly).toBe(false);
+  expect(c.yielded).toBe(false);
   expect(c.hpCurrent).toBe(7);
 });
 

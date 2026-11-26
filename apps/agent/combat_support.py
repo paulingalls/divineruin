@@ -9,6 +9,7 @@ import check_resolution_attack
 import combat_grapple
 import combat_resolution
 import combat_wrongdoing
+import combat_yield
 import concentration_break
 import conditions
 import db_mutations
@@ -34,6 +35,7 @@ def _participant_summary(p: CombatParticipant) -> dict:
     return {
         "id": p.id,
         "name": p.name,
+        "yielded": p.yielded,
         "type": p.type,
         "initiative": p.initiative,
         "hp_status": combat_resolution.hp_threshold_status(p.hp_current, p.hp_max),
@@ -150,8 +152,11 @@ async def apply_rolled_attack(
     publish_roll=True,
     progress=None,
 ):
+    steps = progress.steps if progress is not None else {}
     if attack_result is not None:
         combat_wrongdoing.record_attack(combat_state, attacker, target)
+        if not target.is_ally and (receipt := combat_yield.end(attacker)):
+            steps["yield_receipt"] = receipt
     summary = await apply_attack_result(
         session,
         attacker,
@@ -169,6 +174,7 @@ async def apply_rolled_attack(
         publish_roll=publish_roll,
         progress=progress,
     )
+    summary.update(steps.get("yield_receipt", {}))
     if (
         summary.get("hit")
         and reaction_windows.GRAPPLE_PROPERTY in action.get("properties", [])

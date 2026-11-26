@@ -5,6 +5,7 @@ import random
 import architect_entomb
 import combat_grapple
 import combat_voice_rules
+import combat_yield
 import conditions
 import encounter_facts
 from combat_condition_landing import _land_condition_on_one
@@ -57,6 +58,7 @@ def resolve_maneuver(state, attacker, decl, *, rng=None) -> dict:
             "escape_total": total,
             "escape_dc": dc,
             "escape": "escaped" if escaped else "failed",
+            **(combat_yield.end(attacker) if not target.is_ally and not chamber else {}),
         }
     if target.is_fallen:
         return {
@@ -83,6 +85,8 @@ def resolve_maneuver(state, attacker, decl, *, rng=None) -> dict:
         "declaration_type": str(decl.type),
         "target": target.name,
     }
+    if not target.is_ally:
+        summary.update(combat_yield.end(attacker))
     if conditions.has_condition(target.conditions, "prone"):
         return {**summary, "shove": "already_prone"}
 

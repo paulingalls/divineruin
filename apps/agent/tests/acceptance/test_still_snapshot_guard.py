@@ -83,6 +83,7 @@ async def test_dormant_ledger_distinguishes_legacy_and_corrupt_shapes(still, his
     # A snapshot from before party aggression history also predates the rally ledger.
     del prior["snapshot"]["encounter_facts"]["party_aggressors"]
     del prior["snapshot"]["encounter_facts"]["rally_pending"]
+    del prior["snapshot"]["encounter_facts"]["yielded_ally_attackers"]
     if history == "absent":
         del prior["snapshot"]["encounter_facts"]
     else:

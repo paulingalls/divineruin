@@ -31,7 +31,7 @@ MORTAEN = "mortaen_last_vigil"
 ZHAEL = "zhael_threaded_blade"
 GOBLIN, OTHER = "goblin_one", "goblin_two"
 PRIOR = {"ally_downers": [], "attacked": [], "death_save_success_round": {}, "misses": {}, "once_spent": {}}
-EMPTY = {**PRIOR, "party_aggressors": {}, "rally_pending": {}}
+EMPTY = {**PRIOR, "party_aggressors": {}, "rally_pending": {}, "yielded_ally_attackers": []}
 
 
 @contextmanager
@@ -304,6 +304,7 @@ MALFORMED = [
     *INVALID_PRIOR,
     *({**bad, "party_aggressors": {}} for bad in INVALID_PRIOR),
     *({**EMPTY, "party_aggressors": bad} for bad in BAD_MAP),
+    *({**EMPTY, "yielded_ally_attackers": bad} for bad in (None, {}, [1], [" "], ["foe", "foe"])),
 ]
 
 

@@ -62,6 +62,7 @@
   "mortaen_threshold_walk": "patron_combat_edges:threshold_walk",
   "valdris_mark_of_justice": "patron_combat_edges:mark_of_justice",
   "valdris_absolute_authority": "patron_synergy_combat:turn_undead_dc_bonus",
+  "valdris_measured_reprisal": "patron_synergy_combat:encounter_damage_clause",
   "kaelen_warriors_endurance": "patron_passives:warriors_endurance",
   "zhael_bent_probability": "patron_synergy_combat:expanded_critical",
   "mortaen_last_vigil": "patron_synergy_combat:encounter_damage_clause",

@@ -11,6 +11,7 @@ import combat_spell_heal
 import combat_turn_undead
 import combat_veilrender
 import combat_voice_rules
+import combat_yield
 import concealment
 import db_queries
 import spell_casting
@@ -168,6 +169,8 @@ async def _resolve_ability_packet(
         if result.concentration_spell_id is not spell_casting._UNCHANGED:
             caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
         cast_packet = result.packet
+        if spell.hostile:
+            steps["yield_receipt"] = combat_yield.end(attacker)
         if shield_receipts:
             cast_packet["harmonic_shield_saves"] = shield_receipts
         if heal is not None:
@@ -271,6 +274,7 @@ async def _resolve_ability_packet(
         "declaration_type": str(decl.type),
         "action": decl.action,
         "cast": cast_packet,
+        **steps.get("yield_receipt", {}),
     }
     if interception is not None:
         summary["reactive_architecture"] = interception

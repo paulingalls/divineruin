@@ -234,6 +234,7 @@ test("setCombatState sets combat tracker", () => {
         id: "c1",
         name: "Kael",
         isAlly: true,
+        yielded: false,
         hpCurrent: 20,
         hpMax: 30,
         tempHp: 0,

@@ -208,7 +208,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 
 **Review:** The human approved the final 180-row table on 2026-11-18 (table SHA-256 `5dee713a…`, content SHA-256 `c3238a53…`, commit `903ac541`), closing AC3. The approved table is retained in sprint DATA at `sprints/archetype-synergies/synergy-review.md` with every changed number. Content and design share the approved corrections, including Nythera’s live Animal Handling +1 instead of advantage. Pending clauses are unavailable.
 
-Layer 4 lookup covers 180 pairings and 200 clauses. 84 are active/engine, 85 are active/narrated, and 31 are pending/engine.
+Layer 4 lookup covers 180 pairings and 200 clauses. 85 are active/engine, 85 are active/narrated, and 30 are pending/engine.
 
 Shared Table gives Aelora clerics +1 Religion when blessing a shared meal. Civic Promise gives Aelora paladins +1 Persuasion when negotiating a community’s shared duties. The patron query surfaces the context tags and settled checks name the applied clause.
 
@@ -220,11 +220,13 @@ Orenthel’s Mender’s Dawn gives artificers +1 to any skill check to repair eq
 
 Valdris’s Ordered Testimony gives mages +1 Arcana for magical evidence of a broken oath. Honest Measure gives artificers +1 Investigation for tampered scales or measuring tools. Chain of Evidence gives seekers +1 Investigation to trace evidence ownership in a public hearing. Common Ground gives wardens +1 Survival to trace unlawful incursions into protected land. Fair Terms gives diplomats +1 Persuasion to secure equal terms for opposing petitioners. Truth in Disguise gives rogues and spies +1 Deception for just causes on both skill and social checks.
 
-The registered engine scenarios in `test_patron_synergy_engine.py` exercise all seven Valdris clauses through `check` and verify the tags in `query_info(kind="patron")`. `test_synergy_context_guards.py` covers unheld tags and wrong skills.
+The registered engine scenarios in `test_patron_synergy_engine.py` exercise all seven Valdris context clauses through `check` and verify the tags in `query_info(kind="patron")`. `test_synergy_context_guards.py` covers unheld tags and wrong skills.
 
 Sheltering Light gives a standing Orenthel guardian +1 AC against attack rolls while a standing ally below half HP is within 5 feet. `test_patron_synergy_engine.py` and `test_orenthel_guardian_ward.py` exercise the registered clause, opportunity attacks and held rolls after checkpoint reload. Dawnward Strike adds 1 damage on a hit against a Hollow or undead foe while another standing party ally in the same combat is below half HP. `test_orenthel_undead_wrath.py` and `test_orenthel_undead_wrath_guards.py` cover damage, attack receipts and eligibility after checkpoint reload.
 
 Absolute Authority raises the Turn Undead/Hollow save DC by 1 for Valdris clerics and oracles. The patron query lists the active clause, and the cast receipt names the bonus. The registered engine scenarios compare both classes under Valdris and Thyra. `test_turn_undead_hollow.py` covers undead and Hollow saves after checkpoint reload, `test_turn_undead_hollow_guards.py` covers Sacred Flame at its usual DC, and `god-synergy.test.ts` validates both shipped clauses.
+
+Measured Reprisal adds 1 damage when a Valdris warrior hits a foe that attacked a yielded ally this encounter, even if the foe missed. A player or companion spends their combat action to yield. The registered combat tools, checkpoint reload and HUD packet handler exercise the surrender state and damage receipt.
 
 Saltwind Casting gives Nythera mages +1 to spell attack rolls on their first stay at a Sunward Coast location. The cast receipt names the bonus. `test_nythera_unseen_coast.py` covers eligibility and Fate’s Thread continuation after checkpoint reload.
 
