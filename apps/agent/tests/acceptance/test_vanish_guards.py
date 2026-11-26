@@ -20,6 +20,7 @@ from acceptance.test_taunt import fight as fight
 from acceptance.test_taunt import land_taunt
 from acceptance.test_vanish import VANISH, refuse, vanish
 from acceptance.test_vanish import walk as walk
+from weapon_fixtures import DAGGER
 
 import ability_persistence
 import architect_actions
@@ -77,7 +78,7 @@ async def test_shadow_veil_blocks_geometry_strike(walk: MawlingHarness) -> None:
 async def test_shadow_veil_blocks_serenitys_auto_hit(walk: MawlingHarness) -> None:
     rogue, _ = walk.players
     walk.sd.location_id = "ashmark_still"
-    state = await reveal_and_wake(walk, count=2)
+    state = await reveal_and_wake(walk, count=2, action=DAGGER["name"])
     owner = state.still_encounter["owner_id"]
     combat_spatial.place(state, rogue, combat_spatial.position(state.spatial, owner))
     await walk.persist()
@@ -149,7 +150,7 @@ async def test_vanished_attacker_becomes_targetable(walk: MawlingHarness, attack
     weapon = attack_kind.endswith("weapon")
     departed = attack_kind.startswith("departed")
     if weapon:
-        attack = weapon_attack(rogue, foe, "")
+        attack = weapon_attack(rogue, foe, "", weapon=DAGGER["name"])
     else:
         attack = {"kind": "ability", "actor_id": rogue, "action": "arcane_bolt", "targets": [foe], "argument_type": ""}
     actions = [attack]
