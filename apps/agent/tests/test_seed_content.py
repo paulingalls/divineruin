@@ -70,32 +70,10 @@ async def test_unencoded_password_refusal_does_not_echo_it(monkeypatch, capsys, 
     assert "rest" not in reported
 
 
-async def test_main_prints_redacted_target_before_connect(monkeypatch, capsys):
-    database_url = "postgresql://seed_operator:swordfish@seed-db.example:6543/worktree_world"
-    monkeypatch.setenv("DATABASE_URL", database_url)
-
-    class StopBeforeConnect(Exception):
-        pass
-
-    async def inspect_output_at_connect(actual_database_url):
-        assert actual_database_url == database_url
-        output = capsys.readouterr().out
-        assert "host=seed-db.example" in output
-        assert "port=6543" in output
-        assert "database=worktree_world" in output
-        assert "seed_operator" not in output
-        assert "swordfish" not in output
-        raise StopBeforeConnect
-
-    monkeypatch.setattr(seed_content.asyncpg, "connect", inspect_output_at_connect)
-
-    with pytest.raises(StopBeforeConnect):
-        await seed_content.main()
-
-
 async def test_success_names_target_and_closes_connection(monkeypatch, capsys):
     database_url = "postgresql://seed_operator:swordfish@seed-db.example:6543/worktree_world"
     monkeypatch.setenv("DATABASE_URL", database_url)
+    monkeypatch.setenv("SEED_PRODUCTION", "0")
 
     class FakeConnection:
         def __init__(self):

@@ -438,14 +438,19 @@ async def seed_map_progress(conn: asyncpg.Connection) -> None:
 
 async def main() -> None:
     mode = os.environ.get("SEED_PRODUCTION", "")
-    if mode not in ("", "1"):
-        raise ValueError("SEED_PRODUCTION must be empty or 1")
+    if mode not in ("", "1", "0"):
+        raise ValueError("Use SEED_PRODUCTION=1 for production or SEED_PRODUCTION=0 for fixtures. Empty is local only.")
     production = mode == "1"
     print("Seed mode: " + ("production" if production else "default (fixtures enabled)"))
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
         raise RuntimeError("DATABASE_URL must be set to seed content")
     target = database_target(database_url)
+    host = urlsplit(database_url).hostname
+    if not mode and host not in ("localhost", "127.0.0.1", "::1"):
+        raise RuntimeError(
+            f"Refusing to seed remote host {host} without SEED_PRODUCTION=1 (production) or SEED_PRODUCTION=0 (fixtures)"
+        )
     print(f"Target database: {target}")
     conn = await asyncpg.connect(database_url)
 
