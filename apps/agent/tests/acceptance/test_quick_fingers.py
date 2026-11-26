@@ -157,6 +157,18 @@ async def test_steal_refusals_before_rolling(fingers: FingersFight, reason: str)
     assert await fingers.snapshot() == before
 
 
+async def test_temporary_hollowed_has_no_pocket_to_target(fingers: FingersFight):
+    target = await fingers.target()
+    target.type = "temporary_hollowed"
+    target.carried_items = None
+    await fingers.persist()
+    before = await fingers.snapshot()
+    with patch("check_resolution.dice_roll") as roll:
+        assert "standing enemy" in await fingers.declare(fingers.attack("steal"), error=True)
+    roll.assert_not_called()
+    assert await fingers.snapshot() == before
+
+
 @pytest.mark.parametrize("status", ["equipped", "worn", "broken", "full"])
 async def test_plant_equip_and_wear_refusals_before_rolling(fingers: FingersFight, status: str):
     item = "longsword_guild"

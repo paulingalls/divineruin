@@ -50,7 +50,7 @@ def inventory_selector(item_id: str, *, tainted: bool) -> str:
 def require_target(target: CombatParticipant | None, weapon: dict | None) -> None:
     if weapon is None or not combat_melee_approach.is_melee(weapon):
         raise ValueError("Quick Fingers requires an equipped melee weapon.")
-    if not combat_martial.standing_foe(target):
+    if target is None or target.type != "enemy" or not combat_martial.standing_foe(target):
         raise ValueError("Quick Fingers requires a standing enemy.")
 
 
