@@ -415,7 +415,9 @@
   {
     "id": "cult_cell",
     "name": "Cult Cell",
-    "description": "Tallow smoke and a low chant coil out of the chamber. Hooded cultists ring a defaced altar while a fanatic sways in prayer, and at the back a robed leader traces a sigil that makes the air feel thin. They were expecting someone. Not you.",
+    "witness": "elder_yanna",
+    "accused": ["cult_leader", "cultist_1"],
+    "description": "Tallow smoke and a low chant coil out of the chamber. Hooded cultists ring a defaced altar. A fanatic sways in prayer while the leader traces a sigil. Yanna testified that the leader and one of the dagger carriers threatened her at the mill.",
     "difficulty": "hard",
     "enemies": [
       {

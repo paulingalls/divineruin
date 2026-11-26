@@ -185,7 +185,9 @@ async def test_dissolution_typed_damage_and_reaction(trait, halved):
         from combat_action_availability import begin_execution
 
         action = begin_execution(state, actor, actor.action_pool[1], packet.declaration)
-        roll, ac = roll_attack(actor, action, target, resolver=deps()["resolver"], combat_state=state)
+        roll, ac = roll_attack(
+            actor, action, target, valdris_ac_bonus=0, resolver=deps()["resolver"], combat_state=state
+        )
         head = {"roll": serialize_roll(roll, ac)}
         halve(head, target)
         result, ac = deserialize_roll(head["roll"])

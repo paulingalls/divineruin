@@ -93,7 +93,14 @@ async def test_luna_pilot_emits_every_tool_as_strict(monkeypatch, profile, tools
     if profile == "exploration":
         schema = functions["enter_mode"]["parameters"]
         assert schema["additionalProperties"] is False
-        assert set(schema["required"]) == {"mode", "encounter_id", "encounter_description", "difficulty", "tier"}
+        assert set(schema["required"]) == {
+            "mode",
+            "encounter_id",
+            "encounter_description",
+            "difficulty",
+            "tier",
+            "initiated_by",
+        }
         assert set(schema["properties"]) == set(schema["required"])
         assert schema["properties"]["difficulty"]["type"] == ["string", "null"]
         assert schema["properties"]["tier"]["type"] == ["integer", "null"]
@@ -144,7 +151,10 @@ def _assert_reshape_schema(schema):
         "lower_ceiling": {"min", "max"},
     }
     declarations = branches(schema["properties"]["declarations"]["items"])
-    assert len(declarations) == 12
+    assert len(declarations) == 13
+    [surrender] = [declaration for declaration in declarations if kind(declaration) == "yield"]
+    assert set(surrender["required"]) == {"kind", "actor_id"}
+    assert surrender["additionalProperties"] is False
     combined = next(branch for branch in declarations if kind(branch) == "attack_consume")
     discriminator = combined["properties"]["kind"]
     assert discriminator.get("const") == "attack_consume" or discriminator.get("enum") == ["attack_consume"]

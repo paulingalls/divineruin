@@ -2333,8 +2333,9 @@
         "clauses": [
           {
             "effect": "Gain +1 damage against a creature that attacked a surrendering ally this encounter.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "valdris_measured_reprisal"
           }
         ]
       },
@@ -2344,8 +2345,9 @@
         "clauses": [
           {
             "effect": "Gain +1 AC while protecting a witness from an attacker named in their testimony.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "valdris_witness_shield"
           }
         ]
       },
@@ -2490,8 +2492,9 @@
         "clauses": [
           {
             "effect": "Gain +1 initiative when defending a publicly declared sanctuary from an aggressor.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "valdris_lawful_command"
           }
         ]
       },
@@ -2517,8 +2520,9 @@
         "clauses": [
           {
             "effect": "Turn Undead/Hollow DC +1. Absolute authority against unnatural things",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "valdris_absolute_authority"
           }
         ]
       },
@@ -2528,8 +2532,9 @@
         "clauses": [
           {
             "effect": "Turn Undead/Hollow DC +1. Absolute authority against unnatural things",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "valdris_absolute_authority"
           }
         ]
       },

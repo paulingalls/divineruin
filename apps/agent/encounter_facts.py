@@ -36,6 +36,7 @@ class EncounterFacts(TypedDict):
     once_spent: dict[str, list[str]]
     party_aggressors: dict[str, list[str]] | None
     rally_pending: dict[str, str]
+    yielded_ally_attackers: list[str]
 
 
 def empty() -> EncounterFacts:
@@ -47,6 +48,7 @@ def empty() -> EncounterFacts:
         "once_spent": {},
         "party_aggressors": {},
         "rally_pending": {},
+        "yielded_ally_attackers": [],
     }
 
 
@@ -91,9 +93,10 @@ def validate_history(value: object) -> dict[str, list[str]] | None:
 
 def validate(value: object) -> EncounterFacts:
     current = EncounterFacts.__required_keys__
-    previous = current - {"rally_pending"}
+    pre_yield = current - {"yielded_ally_attackers"}
+    previous = pre_yield - {"rally_pending"}
     prior = previous - {"party_aggressors"}
-    if not isinstance(value, dict) or value.keys() not in (current, previous, prior):
+    if not isinstance(value, dict) or value.keys() not in (current, pre_yield, previous, prior):
         raise ValueError(f"encounter_facts requires {', '.join(sorted(prior))} and a supported snapshot shape")
     history = value.get("party_aggressors")
     spent = _id_map(value["once_spent"], "once_spent")
@@ -110,7 +113,15 @@ def validate(value: object) -> EncounterFacts:
         "once_spent": spent,
         "rally_pending": dict(pending),
         "party_aggressors": validate_history(history),
+        "yielded_ally_attackers": _yielded_attackers(value.get("yielded_ally_attackers", [])),
     }
+
+
+def _yielded_attackers(value: object) -> list[str]:
+    ids = _ids(value, "yielded_ally_attackers")
+    if len(ids) != len(set(ids)):
+        raise ValueError("encounter_facts.yielded_ally_attackers requires unique IDs")
+    return ids
 
 
 def pending_rally(state: CombatState | None, ally_id: str) -> tuple[str, ...]:
@@ -162,6 +173,8 @@ def record_party_attack(state: CombatState | None, attacker: CombatParticipant, 
     history = state.encounter_facts["party_aggressors"]
     if history is not None:
         _remember(history.setdefault(attacker.id, []), target.id)
+    if target.yielded:
+        _remember(state.encounter_facts["yielded_ally_attackers"], attacker.id)
 
 
 def party_victims(state: CombatState, hostile_id: str) -> list[str]:

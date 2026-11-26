@@ -108,7 +108,7 @@ class AbilityDecl(DeclarationPayload):
     targets: list[str] = Field(
         description="Who it is aimed at — one id for a single target, several for a multi-target "
         "spell, empty for a self-cast. Mass Heal selects allies automatically; pass an empty list. "
-        "Areas center on named participants; lines and cones aim "
+        "Turn Undead/Hollow selects nearby creatures automatically; pass an empty list. Other areas center on named participants; lines and cones aim "
         "from the caster toward one participant. Meteor Swarm accepts up to four centers. "
         "Chain Lightning names its primary first, then optional arcs. Magic Missile repeats "
         "ids in dart order, or uses one id for every dart. Exploit Weakness names one standing foe."
@@ -200,6 +200,13 @@ class DefendDecl(DeclarationPayload):
     reshape: list[ReshapeSelection] = Field(description=RESHAPE_DESCRIPTION)
 
 
+class YieldDecl(DeclarationPayload):
+    """Spend the player or companion's action to surrender."""
+
+    kind: Literal["yield"]
+    actor_id: str = Field(description="The player or companion declaring this action.")
+
+
 class RetreatDecl(DeclarationPayload):
     """Move away from standing foes, provoking enemy opportunity attacks unless Disengaged."""
 
@@ -223,6 +230,7 @@ DeclVariant = Union[
     RepositionDecl,
     DefendDecl,
     RetreatDecl,
+    YieldDecl,
 ]
 DeclPayload = Annotated[DeclVariant, Field(discriminator="kind")]
 
@@ -239,6 +247,7 @@ DECL_VARIANTS: tuple[type[BaseModel], ...] = (
     RepositionDecl,
     DefendDecl,
     RetreatDecl,
+    YieldDecl,
 )
 
 
@@ -316,6 +325,8 @@ def _raw(decl: DeclVariant) -> dict:
         return {"type": "maneuver", "target_id": decl.target_id}
     if isinstance(decl, DefendDecl):
         return {"type": "defend"}
+    if isinstance(decl, YieldDecl):
+        return {"type": "yield"}
     if isinstance(decl, RetreatDecl):
         return {"type": "retreat", **({"rider": decl.rider} if decl.rider else {})}
     # Not a fallthrough: an unmapped variant that inherited the last branch would reach the engine

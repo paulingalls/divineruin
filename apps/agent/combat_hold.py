@@ -45,6 +45,7 @@ from combat_hold_actions import (
 from combat_multiattack import held_declarations, strike_summary
 from combat_packet import _resolve_one_packet
 from combat_reshape_packet import ReshapeRefused, resolve_reshape
+from combat_turn_flight import is_flight_turn
 from encounter_actions import action_kind
 from patron_zero_hp import provisional_ward_verdict
 from reaction_windows import MOVEMENT, POST_ROLL, PRE_ROLL
@@ -225,7 +226,9 @@ async def pump(
                 fate_rolls, head.setdefault("roll_steps", {}), packet_deps["queries"], packet_deps["conn"]
             )
         try:
-            ready = await resolve_reshape(
+            head_actor = state.get_participant(head["actor_id"])
+            fleeing = head_actor is not None and is_flight_turn(head_actor, head)
+            ready = fleeing or await resolve_reshape(
                 session,
                 state,
                 head["actor_id"],
@@ -253,7 +256,7 @@ async def pump(
             state.held_actions.pop(0)
             continue
         summary_start = len(summaries)
-        opens = "opportunity_approach" in head or _opens_windows(state, head)
+        opens = not fleeing and ("opportunity_approach" in head or _opens_windows(state, head))
         action = _attack_action(state, head) if opens else None
         window_action = None
         if opens:

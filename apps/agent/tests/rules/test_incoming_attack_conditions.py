@@ -75,6 +75,7 @@ def _roll(values, *, target_condition, attacker_conditions=(), weapon=None):
         _participant("attacker", conditions=attacker_conditions),
         action,
         _participant("target", conditions=[_condition(target_condition)]),
+        valdris_ac_bonus=0,
         resolver=cast(Any, RealResolver(rng)),
         weapon_attack=weapon_attack,
         weapon_profile=action if weapon_attack else None,

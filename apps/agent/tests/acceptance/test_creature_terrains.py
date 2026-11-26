@@ -10,6 +10,7 @@ from acceptance.test_creature_catalog import ROOT, seed_content
 def test_seed_rejects_invalid_creature_terrains(fresh_migrated_db, tmp_path, monkeypatch):
     monkeypatch.setattr(seed_content, "CONTENT_DIR", tmp_path)
     (tmp_path / "encounter_templates.json").write_bytes((ROOT / "content/encounter_templates.json").read_bytes())
+    (tmp_path / "npcs.json").write_bytes((ROOT / "content/npcs.json").read_bytes())
     authored = json.loads((ROOT / "content/creatures.json").read_text())
     cases = [
         (None, "terrains: required"),

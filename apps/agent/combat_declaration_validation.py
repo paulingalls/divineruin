@@ -116,6 +116,8 @@ def validate_declaration(
         return
     if blocked := cannot_act(actor.conditions):
         raise ValueError(f"{actor.name} ({actor.id}) is {blocked[0]}; omit that actor and narrate the helplessness")
+    if declaration.type is DeclarationType.YIELD and not actor.is_ally:
+        raise ValueError("Only players and companions can yield.")
     if declaration.type is DeclarationType.RETREAT and (blocked := speed_zero(actor.conditions)):
         raise ValueError(f"{actor.name} ({actor.id}) is {blocked[0]} and cannot retreat")
     if declaration.type in (DeclarationType.ATTACK, DeclarationType.MANEUVER):

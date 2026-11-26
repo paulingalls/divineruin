@@ -12,6 +12,7 @@ from tests.combat.test_start_combat import _THORNWATCH, SAMPLE_PLAYER
 
 _CONTENT = Path(__file__).resolve().parents[4] / "content"
 _ENCOUNTERS = json.loads((_CONTENT / "encounter_templates.json").read_text())
+_NPCS = {row["id"]: row for row in json.loads((_CONTENT / "npcs.json").read_text())}
 
 
 def _encounter(encounter_id: str) -> dict:
@@ -63,6 +64,7 @@ async def test_start_combat_hands_each_command_to_the_dm_as_a_mark_action(
         get_location_terrain=AsyncMock(return_value="forest"),
         get_encounter_template=AsyncMock(return_value=encounter),
         get_faction=AsyncMock(return_value=_THORNWATCH),
+        get_npc=AsyncMock(side_effect=_NPCS.get),
     )
 
     raw = await _start_combat_impl(

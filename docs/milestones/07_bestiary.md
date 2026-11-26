@@ -189,7 +189,7 @@ The Warden's spec block (Encounter Creature Stat Blocks) names `loot_hollow_ward
 - Solo player HP math: profile factors weight budget and DPR (Kael/Lira/Tam 0.75; Sable 0.50), against the 1.75 baseline
 - Environment modifiers: terrain type affects creature selection and combat difficulty
 - Encounters tuned for their difficulty's expected HP/DPR round window (standard 3-5, tough 4-6, boss 5-7)
-- Agent entry: `enter_mode(mode="combat", difficulty="standard"|"tough"|"boss", tier=None)` generates a location-filtered encounter; `encounter_id` selects a mutually exclusive template.
+- Agent entry: `enter_mode(mode="combat", encounter_id="", difficulty="standard"|"tough"|"boss", tier=None)` generates a location-filtered encounter; `encounter_id` selects a mutually exclusive template.
 - Agent catalog reads: `query_info(kind="creature", target_id=None)` returns a creature summary by id, or returns `creatures` for the session region at the party tier and `encounter_templates` eligible by floor-mean party level and every species’ region/terrain, excluding quest/scene bindings. Harvesting runs automatically with victory loot generation at combat end.
 
 **Acceptance criteria:**

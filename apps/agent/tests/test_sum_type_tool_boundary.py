@@ -35,6 +35,7 @@ from activity_tools import begin_activity
 from base_agent import BaseGameAgent
 from check_tools import check
 from combat_turn import declare_phase
+from mode_tools import enter_mode
 from session_data import SessionData
 
 
@@ -56,6 +57,25 @@ def _bind(tool, arguments: dict) -> dict:
     assert isinstance(wrapped, (FunctionTool, RawFunctionTool))
     args, kwargs = prepare_function_arguments(fnc=wrapped, json_arguments=json.dumps(arguments), call_ctx=_call_ctx())
     return dict(inspect.signature(wrapped).bind(*args, **kwargs).arguments)
+
+
+@pytest.mark.parametrize("initiator", ["enemies", "party", None])
+def test_combat_entry_binds_approved_initiators(initiator):
+    bound = _bind(enter_mode, {"mode": "combat", "encounter_id": "ruins_mawling_pair", "initiated_by": initiator})
+    assert bound["initiated_by"] == initiator
+
+
+@pytest.mark.parametrize("initiator", ["unknown", "", 1, True])
+def test_combat_entry_rejects_invalid_initiators(initiator):
+    with pytest.raises(ToolError):
+        _bind(enter_mode, {"mode": "combat", "encounter_id": "ruins_mawling_pair", "initiated_by": initiator})
+
+
+@pytest.mark.parametrize("mode", ["combat", "dispatch", "blacksmith"])
+def test_mode_entry_binds_empty_template_without_initiator(mode):
+    bound = _bind(enter_mode, {"mode": mode, "encounter_id": ""})
+    assert bound["encounter_id"] == ""
+    assert bound.get("initiated_by") is None
 
 
 def test_declare_phase_binds_raw_json_declarations_to_the_engine_dict():

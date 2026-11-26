@@ -15,6 +15,13 @@ async def is_coastal_location(location_id: str, *, conn: asyncpg.Connection | as
     return location["region"] == "sunward_coast"
 
 
+async def is_sanctuary_location(location_id: str, *, conn: asyncpg.Connection | asyncpg.Pool | None = None) -> bool:
+    location = await get_location(location_id, conn=conn)
+    if location is None:
+        raise ValueError(f"Unknown location {location_id!r}")
+    return "sanctuary" in location.get("tags", ())
+
+
 async def first_stay_at_location(player_id: str, location_id: str, *, conn=None) -> bool:
     source = conn if conn is not None else await db.get_pool()
     row = await source.fetchrow(

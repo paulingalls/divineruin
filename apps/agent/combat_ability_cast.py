@@ -8,8 +8,10 @@ import combat_enhancers
 import combat_hollow_resonance
 import combat_spell_damage
 import combat_spell_heal
+import combat_turn_undead
 import combat_veilrender
 import combat_voice_rules
+import combat_yield
 import concealment
 import db_queries
 import spell_casting
@@ -78,25 +80,31 @@ async def _resolve_ability_packet(
 
     spell = spells.get_spell(decl.action)
     cleanses = spell.id == GREATER_RESTORATION
+    turns_undead = spell.id == combat_turn_undead.TURN_UNDEAD
     steps = progress.steps if progress is not None else {}
     shield_receipts = steps.setdefault("harmonic_shield_saves", [])
     shield = progress.scope("shield") if progress is not None else None
     deliveries = None
+    selected = None
     recipient_profile = spell.combat_damage and spell.combat_damage.get("recipients")
     if (
         not cleanses
         and not recipient_profile
+        and not turns_undead
         and "cast_packet" not in steps
         and (wall := line_blocker(state, attacker.id, decl.target_id))
     ):
         return {"actor_id": attacker.id, "resolved": False, "reason": blocked_reason(wall)}
-    if recipient_profile:
+    if recipient_profile or turns_undead:
         # Area recipients are frozen once, then each distinct recipient may redirect the spell (the
         # Choir's shield). A Zhael-held redirect save resumes here without re-selecting or re-rolling.
         selected = steps.get("selected")
         if selected is None:
             try:
-                selected = select(state, attacker, decl, spell)
+                if turns_undead:
+                    selected, steps["turn_refusals"] = combat_turn_undead.select(state, attacker)
+                else:
+                    selected = select(state, attacker, decl, spell)
             except DeliveryRefused as e:
                 return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}
             if progress is not None:
@@ -116,7 +124,11 @@ async def _resolve_ability_packet(
             if redirected is None:
                 return {}
             redirects[target_id] = redirected.target_id
-        deliveries = [{**d, "target_id": redirects[d["target_id"]]} for d in selected]
+        deliveries = [
+            {**d, "target_id": redirects[d["target_id"]]}
+            for d in selected
+            if not turns_undead or redirects[d["target_id"]] == d["target_id"]
+        ]
     elif spell.heal is None and not cleanses:
         decl = await effective_declaration(session, state, attacker, decl, progress=shield, receipts=shield_receipts)
         if decl is None:
@@ -157,6 +169,8 @@ async def _resolve_ability_packet(
         if result.concentration_spell_id is not spell_casting._UNCHANGED:
             caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
         cast_packet = result.packet
+        if spell.hostile:
+            steps["yield_receipt"] = combat_yield.end(attacker)
         if shield_receipts:
             cast_packet["harmonic_shield_saves"] = shield_receipts
         if heal is not None:
@@ -200,7 +214,26 @@ async def _resolve_ability_packet(
     if deliveries is not None:
         absorbed = {receipt["target_id"] for receipt in cast_packet.get("absorbed", [])}
         deliveries = [d for d in deliveries if d["target_id"] not in absorbed]
-    if deliveries is not None or landing is not None:
+    if turns_undead:
+        assert deliveries is not None and selected is not None
+        await combat_turn_undead.land(
+            session,
+            state,
+            attacker,
+            spell,
+            cast_packet,
+            selected,
+            steps["turn_refusals"],
+            steps["redirects"],
+            deliveries,
+            interception,
+            conn=conn,
+            progress=progress.scope("turn_undead") if progress is not None else None,
+            **{key: value for key, value in (damage_deps or {}).items() if key in ("queries", "sink")},
+        )
+        if progress is not None and progress.paused:
+            return {}
+    elif deliveries is not None or landing is not None:
         await combat_spell_damage.land(
             session,
             state,
@@ -241,6 +274,7 @@ async def _resolve_ability_packet(
         "declaration_type": str(decl.type),
         "action": decl.action,
         "cast": cast_packet,
+        **steps.get("yield_receipt", {}),
     }
     if interception is not None:
         summary["reactive_architecture"] = interception

@@ -12,6 +12,7 @@ from combat_down import target_unavailable
 from combat_enemy_action import is_combined_attack_action, is_save_damage_action
 from combat_state import CombatState
 from combat_structures import action_has_direct_line, line_blocker
+from combat_turn_flight import is_flight_turn
 from condition_restrictions import cannot_act
 from condition_sources import DeliveryRefused
 from declarations import Declaration, DeclarationType, resolve_declaration
@@ -30,7 +31,7 @@ async def concealed_target_reason(
     if "execution_receipt" in head:
         return None
     actor = state.get_participant(head["actor_id"])
-    if actor is None or actor.is_ally:
+    if actor is None or actor.is_ally or is_flight_turn(actor, head):
         return None
     for target_id in dict.fromkeys((declaration.target_id, *(declaration.target_ids or ()))):
         target = state.get_participant(target_id) if target_id is not None else None

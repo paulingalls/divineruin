@@ -89,6 +89,7 @@ export function parseCombatant(raw: unknown): Combatant | null {
     id: c.id,
     name: c.name,
     isAlly: typeof c.isAlly === "boolean" ? c.isAlly : false,
+    yielded: c.yielded === true,
     hpCurrent: typeof c.hpCurrent === "number" ? c.hpCurrent : 0,
     hpMax: typeof c.hpMax === "number" ? c.hpMax : 1,
     tempHp: typeof c.tempHp === "number" ? c.tempHp : 0,

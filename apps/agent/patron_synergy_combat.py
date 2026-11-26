@@ -21,12 +21,22 @@ ORENTHEL_UNDEAD_WRATH = "orenthel_undead_wrath"
 MORTAEN_THRESHOLD_SHIELD = "mortaen_threshold_shield"
 MORTAEN_HOLD_THE_CROSSING = "mortaen_hold_the_crossing"
 NYTHERA_SALTWIND_CASTING = "nythera_saltwind_casting"
+VALDRIS_ABSOLUTE_AUTHORITY = "valdris_absolute_authority"
+VALDRIS_MEASURED_REPRISAL = "valdris_measured_reprisal"
+VALDRIS_LAWFUL_COMMAND = "valdris_lawful_command"
+VALDRIS_WITNESS_SHIELD = "valdris_witness_shield"
+LAWFUL_COMMAND_NAME = "Lawful Command"
 
 KAELEN_WAR_SONGS = "kaelen_war_songs"
 TWO_ROUND_VEIL = "syrath_two_round_veil"
 VEILED_STRIKE = "syrath_veiled_strike"
 
 VeiledStrike = Literal["sneak_attack", "weapon"]
+
+
+def sanctuary_initiative_bonus(player: dict, *, initiated_by: str | None) -> int:
+    """Return the initiative bonus this player can earn if the location is a sanctuary."""
+    return int(initiated_by == "enemies" and has_engine_synergy(player, VALDRIS_LAWFUL_COMMAND))
 
 
 def shadow_veil_rounds(player: dict) -> int:
@@ -76,6 +86,8 @@ def encounter_damage_clause(
     from encounter_facts import ZHAEL_THREADED_BLADE
 
     facts = state.encounter_facts
+    if target.id in facts["yielded_ally_attackers"] and has_engine_synergy(player, VALDRIS_MEASURED_REPRISAL):
+        return VALDRIS_MEASURED_REPRISAL
     if target.id in facts["ally_downers"] and has_engine_synergy(player, "mortaen_last_vigil"):
         return "mortaen_last_vigil"
     if (
@@ -95,6 +107,23 @@ def encounter_damage_clause(
     ):
         return ORENTHEL_UNDEAD_WRATH
     return None
+
+
+async def witness_defense(
+    defender: dict | None, state: CombatState | None, attacker: CombatParticipant, *, queries, conn
+) -> int:
+    if (
+        state is None
+        or state.testimony is None
+        or attacker.id not in state.testimony.accused
+        or defender is None
+        or not has_engine_synergy(defender, VALDRIS_WITNESS_SHIELD)
+    ):
+        return 0
+
+    witness = state.testimony.witness
+    present = await queries.get_npcs_at_location(state.location_id, conn=conn)
+    return int(any(npc["id"] == witness for npc in present))
 
 
 def first_attack_defense(defender: dict | None, state: CombatState | None, target: CombatParticipant) -> int:
@@ -256,6 +285,12 @@ def spell_damage_type_override(player: dict, spell_id: str) -> str | None:
     if spell_id == "divine_sacred_flame" and has_engine_synergy(player, "mortaen_threshold_mercy"):
         return "necrotic"
     return None
+
+
+def turn_undead_dc_bonus(player: dict, spell_id: str) -> int:
+    from combat_turn_undead import TURN_UNDEAD
+
+    return int(spell_id == TURN_UNDEAD and has_engine_synergy(player, VALDRIS_ABSOLUTE_AUTHORITY))
 
 
 def critical_rider(attacker_data: dict, critical: bool, *, rng: random.Random | None) -> tuple[int, str | None]:

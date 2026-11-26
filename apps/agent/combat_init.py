@@ -50,6 +50,7 @@ async def _start_combat_impl(
     *,
     difficulty: str = "",
     tier: int | None = None,
+    initiated_by: str | None = None,
     mutations=db_mutations,
     queries=db_queries,
     content=db_content_queries,
@@ -63,6 +64,7 @@ async def _start_combat_impl(
             encounter_description,
             difficulty=difficulty,
             tier=tier,
+            initiated_by=initiated_by,
             mutations=mutations,
             queries=queries,
             content=content,
@@ -77,6 +79,7 @@ async def _start_combat_locked(
     *,
     difficulty: str = "",
     tier: int | None = None,
+    initiated_by: str | None = None,
     mutations=db_mutations,
     queries=db_queries,
     content=db_content_queries,
@@ -105,10 +108,16 @@ async def _start_combat_locked(
         encounter_id = encounter["id"]
 
     try:
-        validate_encounter_references(encounter)
+        testimony = validate_encounter_references(encounter)
         combat_spatial.validate_scene(encounter)
     except ValueError as error:
         raise ToolError(str(error)) from error
+
+    witness = None
+    if testimony is not None:
+        witness = await content.get_npc(testimony.witness)
+        if witness is None:
+            raise ToolError(f"Encounter {encounter_id!r} has unknown witness {testimony.witness!r}.")
 
     if member_players is None:
         player = await queries.get_player(actor_id)
@@ -150,12 +159,23 @@ async def _start_combat_locked(
     (
         participants,
         spatial,
-        initiative_entries,
+        initiative_summary,
+        initiative_awards,
         initiative_order,
         retained_choir,
         retained_still,
         retained_architect,
-    ) = await assemble_participants(session, encounter, encounter_id, member_players, content=content, queries=queries)
+    ) = await assemble_participants(
+        session, encounter, encounter_id, member_players, content=content, queries=queries, initiated_by=initiated_by
+    )
+
+    testimony_receipt = None
+    if testimony is not None and witness is not None:
+        names = {p.id: p.name for p in participants}
+        testimony_receipt = {
+            "witness": {"id": testimony.witness, "name": witness["name"]},
+            "accused": [{"id": enemy_id, "name": names[enemy_id]} for enemy_id in testimony.accused],
+        }
 
     # Carry the encounter's faction onto CombatState so combat_end can attribute the outcome
     # to faction reputation (story-002 inc 5). An explicit encounter `faction` wins; otherwise
@@ -185,6 +205,7 @@ async def _start_combat_locked(
         location_id=session.location_id,
         terrain=terrain,
         faction_id=combat_faction_id,
+        testimony=testimony,
         spatial=spatial,
     )
 
@@ -230,11 +251,6 @@ async def _start_combat_locked(
         for name in ENTRY_RESET_FLAGS:
             setattr(member, name, False)
 
-    # Build initiative summary once for event + response
-    initiative_summary = [
-        {"id": e.participant_id, "name": e.name, "roll": e.roll, "total": e.total} for e in initiative_entries
-    ]
-
     # Publish events
     await publish_game_event(
         session.room,
@@ -273,6 +289,8 @@ async def _start_combat_locked(
         "initiative_order": initiative_summary,
         "participants": _participant_roster(combat_state.participants),
     }
+    if testimony_receipt is not None:
+        response["testimony"] = testimony_receipt
     logger.info("start_combat result: combat_id=%s, %d participants", combat_id, len(participants))
 
     # Record which agent type to return to after combat
@@ -294,6 +312,11 @@ async def _start_combat_locked(
         parts.append(companion_voice_directive(session.companion))
     # The handoff drops start_combat's tool output from CombatAgent's context, so the roster rides here.
     parts.append(f"Combatants: {json.dumps(response['participants'])}")
+    if initiative_awards:
+        parts.append(f"Initiative bonuses by player: {json.dumps(initiative_awards)}")
+
+    if testimony_receipt is not None:
+        parts.append(f"Witness testimony (use the Stage for current presence): {json.dumps(testimony_receipt)}")
 
     if response["architect"]:
         parts.append(f"Architect encounter: {json.dumps(response['architect'])}")
