@@ -48,6 +48,23 @@ test("Orenthel's warrior has the registered Dawnward Strike clause", () => {
   ]);
 });
 
+test("Nythera's mage has the registered Saltwind Casting clause", () => {
+  const mage = validateGods(catalog).find((god) => god.god_id === "nythera")?.layer_4_synergy_matrix
+    .mage;
+  expect(mage).toEqual({
+    name: "Saltwind Casting",
+    type: "divine",
+    clauses: [
+      {
+        effect: "Gain +1 to spell attack rolls in a coastal location you have never visited.",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "nythera_saltwind_casting",
+      },
+    ],
+  });
+});
+
 test("Mortaen's guardian has the registered Threshold Shield clause", () => {
   const guardian = validateGods(catalog).find((god) => god.god_id === "mortaen")
     ?.layer_4_synergy_matrix.guardian;

@@ -2624,8 +2624,9 @@
         "clauses": [
           {
             "effect": "Gain +1 to spell attack rolls in a coastal location you have never visited.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "nythera_saltwind_casting"
           }
         ]
       },

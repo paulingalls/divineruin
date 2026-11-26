@@ -119,6 +119,8 @@ async def _land_one(
         "damage_attribute": profile.get("damage_attribute", False),
     }
     if profile["resolution"] == "attack":
+        if bonus := cast_packet.get("spell_attack_bonus"):
+            action["spell_attack_bonus"] = bonus["bonus"]
         result = await _land_attack(
             session,
             state,

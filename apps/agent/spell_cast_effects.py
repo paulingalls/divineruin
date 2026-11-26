@@ -11,7 +11,8 @@ import temp_hp
 import unbound_tools
 from game_events import publish_game_event
 from party_state import PartyMember
-from patron_synergy_combat import spell_damage_type_override
+from patron_location import is_coastal_location
+from patron_synergy_combat import NYTHERA_SALTWIND_CASTING, saltwind_casting_bonus, spell_damage_type_override
 from patron_synergy_heal import for_cast
 from session_data import SessionData
 from spell_cast_result import CastResult
@@ -99,6 +100,10 @@ async def _finish_cast(
     }
     if damage_type := spell_damage_type_override(player, spell_id):
         packet["damage_type_override"] = damage_type
+    if session.in_combat and (spell.combat_damage or {}).get("resolution") == "attack" and first_stay:
+        coastal = await is_coastal_location(session.location_id, conn=conn)
+        if bonus := saltwind_casting_bonus(player, coastal=coastal):
+            packet["spell_attack_bonus"] = {"id": NYTHERA_SALTWIND_CASTING, "name": "Saltwind Casting", "bonus": bonus}
     if wrongdoing is not None:
         packet["wrongdoing"] = wrongdoing
     if concealment_packet is not None:

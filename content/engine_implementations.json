@@ -16,6 +16,7 @@
   "nythera_tidewalker": "patron_passives:tidewalker",
   "nythera_beyond_the_horizon": "patron_gateway:activate_locked",
   "nythera_uncharted_handling": "patron_gifts:skill_gift",
+  "nythera_saltwind_casting": "patron_synergy_combat:saltwind_casting_bonus",
   "zhael_fates_thread": "zhael_fate:activate",
   "zhael_twice_woven": "zhael_fate:availability",
   "zhael_lucky": "zhael_fate:activate",
