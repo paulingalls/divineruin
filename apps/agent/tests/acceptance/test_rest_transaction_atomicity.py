@@ -13,13 +13,19 @@ import db_mutations_conditions
 def test_second_member_failure_rolls_back_every_member(harness):
     async def check():
         walk = await RestWalk().setup(harness)
+        await walk.seed_infusions()
         original = db_mutations.update_player_hp
         calls = 0
+        first_cleared = None
 
         async def fail_second(*args, **kwargs):
-            nonlocal calls
+            nonlocal calls, first_cleared
             calls += 1
             if calls == 2:
+                first = sorted(walk.ids)[0]
+                first_cleared = not await kwargs["conn"].fetchval(
+                    "SELECT data ? 'weapon_infusions' FROM players WHERE player_id=$1", first
+                )
                 raise RuntimeError("injected second-member write failure")
             await original(*args, **kwargs)
 
@@ -27,6 +33,7 @@ def test_second_member_failure_rolls_back_every_member(harness):
             receipt = await walk.command("long")
         assert receipt.is_error
         assert calls == 2
+        assert first_cleared is True
         assert await walk.rows() == walk.before
         assert all(walk.sd.member_state(pid).resonance.current == 7 for pid in walk.ids)
         assert not walk.events

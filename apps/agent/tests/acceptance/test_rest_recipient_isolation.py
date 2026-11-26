@@ -22,6 +22,7 @@ from event_bus import EventBus
 def test_rest_snapshots_are_private_to_each_owner(harness, livekit_server):
     async def check():
         walk = await RestWalk().setup(harness)
+        infusions = await walk.seed_infusions()
         walk.sd.event_bus = EventBus()
         room_name = "rest-privacy-" + uuid4().hex
         rooms, queues, unregisters = [], [], []
@@ -49,6 +50,12 @@ def test_rest_snapshots_are_private_to_each_owner(harness, livekit_server):
             cast(MagicMock, walk.sd.room).local_participant.publish_data.side_effect = relay
             receipt = await walk.command("long")
             assert not receipt.is_error, receipt.output
+            for index, pid in enumerate(walk.ids):
+                row = await walk.row(pid)
+                if index in (0, 1, 4):
+                    assert "weapon_infusions" not in row
+                else:
+                    assert row["weapon_infusions"] == infusions
             snapshots = [e for e in walk.sd.event_bus.drain() if e.event_type == E.SESSION_INIT]
             assert sorted(e.payload["character"]["player_id"] for e in snapshots) == sorted(
                 [walk.ids[i] for i in (0, 1, 4)]

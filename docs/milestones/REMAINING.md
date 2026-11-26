@@ -13,8 +13,8 @@ Finding the journal grants it and completes the search atomically.
 Artifact choices persist once with their effects.
 Leave now requests a recap before disconnect, with a 15-second home fallback.
 
-**Position: 420 / 587 acceptance criteria — 72%** (the sum of the per-phase
-counts in `README.md`). **167 criteria remain unchecked.** Phases 2, 5, 6 and 10 have all recorded
+**Position: 423 / 587 acceptance criteria — 72%** (the sum of the per-phase
+counts in `README.md`). **164 criteria remain unchecked.** Phases 2, 5, 6 and 10 have all recorded
 criteria checked. Phase 3 is still Partial at 34/34:
 casting infrastructure is exercised, but complete deterministic spell-effect
 coverage is **unverified**. All 87 spell rows carry textual `mechanics`; this
@@ -23,8 +23,8 @@ refresh does not classify every effect's execution path.
 M7.3 exercises the Knight and Veilrender turn and action mechanics, Absorb Magic,
 the Still's anchors, Rejection and zone charm, and the Architect's terrain.
 Stage 2 hallucinations, Stage 3 Wisdom drain and Greater Restoration are exercised.
-The remaining criteria cover native Choir combat, combined Tier 4 behavior
-and magical weapon delivery against the Knight.
+Equipped magical weapons and Infuse Item bypass the Knight’s physical resistance.
+The two remaining criteria cover native Choir combat and combined Tier 4 behavior.
 
 **TODO: complete native Choir audio acceptance.** The saved manifest for
 `mus2471i-cbb68570` records entry, cast-aura, aura-break, search, redirect,
@@ -104,7 +104,7 @@ rewriting those criteria.
 
 The M4.7/M4.8 capstones exercise encounter roles and beneficial conditions;
 Phase 4 records 83/83. Beat-3 natural narration pauses remain unverified here.
-Phase 7 M7.4 is reconciled on 2026-11-06 (`mbp-generated-combat`): generated entry and creature queries use player-derived tiers, active companion profile factors and difficulty-specific HP/DPR windows. The three remaining Phase 7 criteria belong to M7.3; native Choir audio certification remains separate.
+Phase 7 M7.4 is reconciled on 2026-11-06 (`mbp-generated-combat`): generated entry and creature queries use player-derived tiers, active companion profile factors and difficulty-specific HP/DPR windows. The two remaining Phase 7 criteria belong to M7.3; native Choir audio certification remains separate.
 
 The story-111 retired-tool-name guard was deleted in `cb5dd18e`; it no longer
 protects milestone prose. Historical repair narratives are omitted from this
@@ -117,7 +117,7 @@ not schedules or measured implementation costs.
 
 | Phase | Milestones | Open ACs | Dependencies / decisions | Size estimate | Exercised or inventoried substrate |
 |---|---|---|---|---|---|
-| **7 · Bestiary** | 7.3 | 3 | Tier 4 coverage, magical weapon delivery and native Choir certification | ~2 sprints | Every dropped item has an exclusive recipe link or trade marker on its catalog owner. Guaranteed drops and party skill gates exercised through persisted combat victory; roles/budgets/loot exercised through combat; 37 catalog rows, 17 catalog-backed encounter templates referencing 17 ordinary species (18 including Choir); seeded/queryable catalog and Python/TypeScript contracts. Generated entry, persisted resume, victory loot and public creature summaries and party-fit template discovery are exercised. All six categories have persisted victory coverage, including a test-only undead fixture; remaining M7.3 effects stay open. |
+| **7 · Bestiary** | 7.3 | 2 | Combined Tier 4 coverage and native Choir certification | ~2 sprints | Every dropped item has an exclusive recipe link or trade marker on its catalog owner. Guaranteed drops and party skill gates exercised through persisted combat victory; roles/budgets/loot exercised through combat; 37 catalog rows, 17 catalog-backed encounter templates referencing 17 ordinary species (18 including Choir); seeded/queryable catalog and Python/TypeScript contracts. Generated entry, persisted resume, victory loot and public creature summaries and party-fit template discovery are exercised. All six categories have persisted victory coverage, including a test-only undead fixture; remaining M7.3 effects stay open. |
 | **8 · Patrons** | 8.3 AC11 | 1 | M8.2 is complete. M8.3 circumstance producers; Thyra’s “reduced” needs a number. Full patron playability depends on the remaining patron effects and Phase 2 detail. | ~2 sprints | 20-minute persisted deed-journal judgment exercised through real sessions; M8.1 is complete. All ten Layer 1 gifts are live, including Orenthel's Dawn's Resilience on ally healing from spells and items. All ten Layer 2 effects apply on the production cast path. Tier-drop loss whispers; Unbound Veil Clarity, Raw Channeling and Veil Mastery. Favor persists in players.data JSONB (no separate tables). Valdris's Mark of Justice applies source-specific saves through the encounter. M8.2 standing, durable recharge and recipient-scoped, revision-ordered character-sheet snapshots pass Python/TypeScript contracts and the strict native patron-abilities flow; 33/34 ACs are checked (M8.2 complete). Thyra’s Seasonal Attunement reads the shared world season and applies healing, elemental damage and skill bonuses. Aelora’s Craft Blessing reduces both duration bounds to 75% through voice and HTTP, and the saved blessing gives a normal Success a 25% chance of a narrated Exceptional-table property. Aelora’s Community Shield grants another present party player temporary HP through activate in and out of combat and recharges on a long rest. Mortaen’s Death Ward resolves lethal damage automatically and recharges on a long rest. Orenthel’s Dawn’s Embrace catches the first eligible ally’s fall each session. Veythar’s Wellspring Echo waives Focus and doubles modified Resonance for the next completed Focus-costing spell, including casts resumed after a Fate hold. Valdris’s Scale’s Verdict judges a combat foe by its recorded attacks on the party, then damages and stuns a surviving unjust foe or damages the follower on a just ruling. Nythera’s Tidewalker removes the extra movement cost of water, mud and the Architect’s shifting ground through combat moves, approaches, resumed routes and retreats. Low ceilings still slow walking and block flight. Aelora’s Hearthfire creates a fixed sanctuary that heals and protects allies and stops hostile movement on a failed Wisdom save. Zhael’s Unravel Fate rewinds the previous combat round and charges its user 8 Resonance. M8.3 has 180 loaded rows, 53 active engine clauses, 85 active narrated clauses and 62 pending engine clauses. Mortaen’s mage spell-attack bonus is dormant until undead creature content exists. Lookup, type, stacking and Unbound null-query criteria are closed. Magnitude is human-approved; Unbound visibility, action/reaction-free Raw Channeling, Sovereign Mastery, patron exclusion and combined-test criteria are closed. Persisted autonomy/deeds and all three Self-Reliance rewards ship; Divine Immunity resolves by narration. |
 | **9 · Economy** | 9.1–9.10 | 75 | Phase 7 material/creature integration; Phase 5/6 inputs | large | Shared pricing getters/repair costs, reputation-to-stance and committed material inventory boundaries pass. The migrated pricing table exists. No complete economy certification is implied. |
 | **11 · World Loop** | 11.1–11.6 | 46 | D-A–D-E; M11.4 needs Phase 9, M11.6 needs Phase 8 | ~4–6 sprints | Migrated `region_state`, `npc_state`, `world_events_log`, `god_agent_state`, `world_flags`; direct quest world effects; activity-worker reset harness. These do not establish a world scheduler or cascade. |

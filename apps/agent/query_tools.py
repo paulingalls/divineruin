@@ -21,6 +21,7 @@ import db_activity_queries
 import db_content_queries
 import db_queries
 import elective_choices
+import infusion
 import lost_scout_scene
 import query_patron
 import recipe_tools
@@ -210,6 +211,9 @@ async def _query_abilities_impl(
             row["declaration"] = recipe
         elif ability.ability_type != "reaction":
             row["combat"] = combat_ability(ability)
+        if ability.id == infusion.ABILITY_ID:
+            row["effect"] = ability.effect
+            row["infusion"] = infusion.describe(player)
         if ability.ability_type == "reaction":
             row["window"] = ability.window
         if ability.ability_type == "elective":

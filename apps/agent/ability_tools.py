@@ -34,6 +34,7 @@ import db
 import db_mutations
 import db_mutations_conditions
 import db_queries
+import infusion
 import mentor_variants
 import reaction_gate
 import spells
@@ -78,29 +79,31 @@ async def _request_ability_activation_impl(
     session: SessionData = context.userdata
     reaction_actor = session.require_reaction_actor() if ability.ability_type == "reaction" else None
     player_id = reaction_actor.player_id if reaction_actor is not None else session.acting_player_id
-    if session.in_combat and ability.ability_type != "reaction":
-        if recipe := attack_recipe(ability.id):
-            if "quick_fingers_mode" in recipe:
-                raise ToolError(
-                    'Declare a melee attack with rider="quick_fingers" and quick_fingers_mode steal, plant or swap. '
-                    'For plant or swap, use quick_fingers_item from query_info(kind="inventory").'
-                )
-            if "riders" in recipe:
-                riders = " or ".join(f'rider="{rider}"' for rider in recipe["riders"])
-                raise ToolError(f"Declare a weapon attack with {riders}.")
-            weapon = "melee weapon" if ability.id == SHIELD_BASH else "weapon"
-            raise ToolError(f'Declare an attack with the equipped {weapon} and rider="{recipe["rider"]}".')
-        if not combat_ability(ability):
-            raise ToolError(f"{ability.name} has no combat action — it cannot be used in a fight.")
-        declared_id = ability.spell_id or variant_id or ability_id
-        if ability.id == SHADOW_STEP:
-            raise ToolError(
-                f"{ability.name} cannot be activated in combat — declare {declared_id} in the combat phase "
-                "with kind=ability_move and a destination {x,y,z} in feet."
-            )
-        raise ToolError(f"{ability.name} cannot be activated in combat — declare {declared_id} in the combat phase.")
 
     async def activate_unlocked(prepared_spend=None) -> str:
+        if session.in_combat and ability.ability_type != "reaction":
+            if recipe := attack_recipe(ability.id):
+                if "quick_fingers_mode" in recipe:
+                    raise ToolError(
+                        'Declare a melee attack with rider="quick_fingers" and quick_fingers_mode steal, plant or swap. '
+                        'For plant or swap, use quick_fingers_item from query_info(kind="inventory").'
+                    )
+                if "riders" in recipe:
+                    riders = " or ".join(f'rider="{rider}"' for rider in recipe["riders"])
+                    raise ToolError(f"Declare a weapon attack with {riders}.")
+                weapon = "melee weapon" if ability.id == SHIELD_BASH else "weapon"
+                raise ToolError(f'Declare an attack with the equipped {weapon} and rider="{recipe["rider"]}".')
+            if not combat_ability(ability):
+                raise ToolError(f"{ability.name} has no combat action — it cannot be used in a fight.")
+            declared_id = ability.spell_id or variant_id or ability_id
+            if ability.id == SHADOW_STEP:
+                raise ToolError(
+                    f"{ability.name} cannot be activated in combat — declare {declared_id} in the combat phase "
+                    "with kind=ability_move and a destination {x,y,z} in feet."
+                )
+            raise ToolError(
+                f"{ability.name} cannot be activated in combat — declare {declared_id} in the combat phase."
+            )
         return await _request_ability_activation_unlocked(
             context,
             ability_id,
@@ -120,6 +123,9 @@ async def _request_ability_activation_impl(
             prepared_spend=prepared_spend,
         )
 
+    if ability.id == infusion.ABILITY_ID:
+        async with session.combat_state_lock:
+            return await activate_unlocked()
     if ability.ability_type != "reaction":
         return await activate_unlocked()
 
@@ -194,6 +200,7 @@ async def _request_ability_activation_unlocked(
         except ValueError as e:
             raise ToolError(str(e)) from e
 
+    infusion_result = None
     condition_applied: str | None = None  # the produced condition, surfaced on the response post-commit
     condition_targets: list[str] | None = None  # multi-target voiced allies (M4.8 story-017)
 
@@ -279,6 +286,7 @@ async def _request_ability_activation_unlocked(
                 require_rally_target(player_id, target_id, eligible)
             except ValueError as e:
                 raise ToolError(str(e)) from e
+        prepared_infusion = await infusion.prepare(player, conn=conn) if ability.id == infusion.ABILITY_ID else None
         cost = variant.cost if variant is not None else ability.cost
 
         # Gate Stamina then Focus (fail-loud, pure); each returns the post-deduct
@@ -292,6 +300,10 @@ async def _request_ability_activation_unlocked(
         if new_stamina is not None or new_focus is not None:
             session.validate_acting_player(player_id)
             await persistence_mod.update_player_resources(player_id, stamina=new_stamina, focus=new_focus, conn=conn)
+
+        if prepared_infusion is not None:
+            infusions, infusion_result = prepared_infusion
+            await infusion.save(player_id, infusions, conn=conn)
 
         if prepared_spend is not None:
             if not session.combat_state_lock.locked():
@@ -350,6 +362,8 @@ async def _request_ability_activation_unlocked(
         "deducted": {"stamina": cost.stamina, "focus": cost.focus},
         "variable_cost": cost.scaling,
     }
+    if infusion_result is not None:
+        response["infusion"] = infusion_result
     # Cultural attribution exists only for the mentor-taught form.
     if variant is not None:
         response["cultural_attribution"] = variant.cultural_attribution

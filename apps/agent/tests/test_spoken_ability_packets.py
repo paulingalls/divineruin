@@ -1,6 +1,7 @@
 import json
+from contextlib import nullcontext
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from combat._reaction_helpers import _guarded_ally_state
@@ -11,12 +12,16 @@ from voice_condition_fixtures import participant, spatial_record
 import abilities
 import ability_tools
 import ability_voice_rules as voice
+import db_content_queries
+import infusion
 import mentor_variants
 import reaction_windows
 from combat_ability_save import requires_hostile_target
 from conditions import apply_condition
+from creation_classes import CLASSES
 
-ROWS = json.loads((Path(__file__).resolve().parents[3] / "content/archetype_abilities.json").read_text())
+CONTENT = Path(__file__).resolve().parents[3] / "content"
+ROWS = json.loads((CONTENT / "archetype_abilities.json").read_text())
 APPROVED = json.loads((Path(__file__).parent / "fixtures/approved_ability_delivery.json").read_text())
 SPEAKERS = sorted(key for key, policy in APPROVED.items() if policy in {"both", "source", "preparation", "spell"})
 LISTENERS = sorted(key for key, policy in APPROVED.items() if policy in {"both", "hearing"})
@@ -41,6 +46,13 @@ async def activate(
         }
         for pid, deaf in [("player_1", source_deaf), ("player_2", target_deaf)]
     }
+    lookup = nullcontext()
+    if ability_id == infusion.ABILITY_ID:
+        rows["player_1"]["equipment"] = CLASSES["artificer"].starting_equipment
+        warhammer = next(
+            item for item in json.loads((CONTENT / "items.json").read_text()) if item["id"] == "warhammer_common"
+        )
+        lookup = patch.object(db_content_queries, "get_item", AsyncMock(return_value=warhammer))
     if combat:
         state = _guarded_ally_state()
         participant(state, "player_1").conditions = rows["player_1"]["conditions"]
@@ -67,7 +79,7 @@ async def activate(
     )
     mutations = MagicMock(save_many_player_conditions=AsyncMock())
     function = entry or ability_tools._request_ability_activation_impl
-    with ctx.userdata._bind_authenticated_actor("player_1", 1, lambda *_: None):
+    with ctx.userdata._bind_authenticated_actor("player_1", 1, lambda *_: None), lookup:
         try:
             result = await function(
                 ctx,

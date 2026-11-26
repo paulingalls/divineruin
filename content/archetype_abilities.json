@@ -840,8 +840,12 @@
     "name": "Infuse Item",
     "ability_type": "core",
     "level_requirement": 1,
-    "cost": { "stamina": 0, "focus": 2, "scaling": "At L10: +2 instead of +1." },
-    "effect": "Touch a nonmagical weapon/armor: +1 attack/damage or +1 AC until long rest.",
+    "cost": {
+      "stamina": 0,
+      "focus": 2,
+      "scaling": "At artificer level 10, each infusion grants +2 to attack and damage and you can keep three infused weapons."
+    },
+    "effect": "Outside combat, make your equipped nonmagical main-hand weapon magical and give it +1 to attack and damage until your next long rest. Keep one infused weapon, or three at artificer level 10. A new infusion over this limit replaces the oldest.",
     "narration_cue": "Runes flare along the steel and settle into a steady glow."
   },
 
