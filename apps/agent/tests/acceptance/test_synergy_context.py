@@ -18,12 +18,32 @@ from query_tools import query_info
 from zhael_fate import FATE
 
 NPC = "guildmaster_torin"
+MERCHANT = "aelora_guildmaster_dara"
 SHARED = ("shared_meal", "aelora_shared_table", "Shared Table", "Gain +1 Religion when blessing a shared meal.")
 CIVIC = (
     "community_duties",
     "aelora_civic_promise",
     "Civic Promise",
     "Gain +1 Persuasion when negotiating a community’s shared duties.",
+)
+HEARTH = (
+    "household_omen",
+    "aelora_hearth_omen",
+    "Hearth Omen",
+    "Gain +1 Insight when interpreting a household omen.",
+)
+COMMERCE = ("commerce", "aelora_commerce_persuasion", "Honest Hustle", "Commerce Persuasion +1.")
+GROVE = (
+    "sacred_grove",
+    "thyra_wild_covenant",
+    "Wild Covenant",
+    "Gain +1 Religion when honoring a sacred grove.",
+)
+SEASONAL = (
+    "seasonal_omen",
+    "thyra_seasonal_omen",
+    "Seasonal Omen",
+    "Gain +1 Nature when interpreting a seasonal omen.",
 )
 
 
@@ -32,10 +52,10 @@ async def dev_db_pool(reset_db_pool: str) -> asyncpg.Pool:
     return await db.get_pool()
 
 
-def payload(kind: str, skill: str, tag: str = "none") -> dict:
+def payload(kind: str, skill: str, tag: str = "none", *, npc_id: str = NPC) -> dict:
     roll = {"kind": kind, "skill": skill, "difficulty": "easy", "synergy_context": tag}
     if kind == "social":
-        return {**roll, "npc_id": NPC}
+        return {**roll, "npc_id": npc_id}
     return {**roll, "context_description": "Observe the community’s customs", "hearing_only": False}
 
 
@@ -51,14 +71,14 @@ async def setup_actor(world: SimpleNamespace, patron: str, archetype: str, *, in
     )
 
 
-async def paired(world: SimpleNamespace, kind: str, skill: str, tag: str) -> tuple[dict, dict]:
+async def paired(world: SimpleNamespace, kind: str, skill: str, tag: str, *, npc_id: str = NPC) -> tuple[dict, dict]:
     call = game_tools(world.ctx.userdata, check)
     results = []
     for context in ("none", tag):
         if kind == "social":
-            await db_mutations.set_npc_disposition(NPC, world.ids[0], "neutral", "setup")
+            await db_mutations.set_npc_disposition(npc_id, world.ids[0], "neutral", "setup")
         with patch("check_resolution.dice_roll", return_value=SimpleNamespace(total=11)):
-            results.append(await call("check", roll=payload(kind, skill, context)))
+            results.append(await call("check", roll=payload(kind, skill, context, npc_id=npc_id)))
     return results[0], results[1]
 
 
@@ -76,13 +96,22 @@ def applied(clause: tuple[str, str, str, str]) -> dict:
 
 
 async def context_scenario(
-    world: SimpleNamespace, archetype: str, kind: str, skill: str, clause: tuple[str, str, str, str]
+    world: SimpleNamespace,
+    patron: str,
+    archetype: str,
+    kind: str,
+    skill: str,
+    clause: tuple[str, str, str, str],
+    npc_id: str = NPC,
 ) -> None:
     tag, clause_id, _, effect = clause
-    await setup_actor(world, "aelora", archetype)
+    await setup_actor(world, patron, archetype)
     assert not world.ctx.userdata.ally_present_for(world.ids[0])
-    baseline, result = await paired(world, kind, skill, tag)
+    baseline, result = await paired(world, kind, skill, tag, npc_id=npc_id)
     assert result["total"] == baseline["total"] + 1
+    assert baseline["total"] == (12 if skill == "persuasion" else 11)
+    assert "context_synergy" not in baseline
+    assert "gift_name" not in baseline and "gift_name" not in result
     assert result["roll"] == baseline["roll"] == 11
     assert result["dc"] == baseline["dc"]
     assert result["margin"] == baseline["margin"] + 1
@@ -91,23 +120,77 @@ async def context_scenario(
         assert result["modifier"] == baseline["modifier"] + 1
     assert result["context_synergy"] == applied(clause)
     call = game_tools(world.ctx.userdata, query_info)
-    patron = await call("query_info", kind="patron")
-    active = next(row for row in patron["synergy"]["clauses"] if row.get("implementation_id") == clause_id)
-    assert (active["status"], active["synergy_context"], active["effect"]) == ("active", tag, effect)
+    profile = await call("query_info", kind="patron")
+    active = next(row for row in profile["synergy"]["clauses"] if row.get("implementation_id") == clause_id)
+    assert active == {
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": clause_id,
+        "kind": "context_check",
+        "synergy_context": tag,
+        "skill": skill,
+        "bonus": 1,
+        "effect": effect,
+    }
 
 
 SCENARIOS = {
     "aelora_shared_table": (
         "patron_synergy:context_skill_bonus",
         context_scenario,
-        [("cleric", "skill", "religion", SHARED)],
+        [("aelora", "cleric", "skill", "religion", SHARED)],
     ),
     "aelora_civic_promise": (
         "patron_synergy:context_skill_bonus",
         context_scenario,
-        [("paladin", "social", "persuasion", CIVIC)],
+        [("aelora", "paladin", "social", "persuasion", CIVIC)],
+    ),
+    "aelora_hearth_omen": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [("aelora", "oracle", "skill", "insight", HEARTH)],
+    ),
+    "aelora_commerce_persuasion": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [
+            ("aelora", "rogue", "skill", "persuasion", COMMERCE),
+            ("aelora", "rogue", "social", "persuasion", COMMERCE, MERCHANT),
+        ],
+    ),
+    "thyra_wild_covenant": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [("thyra", "paladin", "skill", "religion", GROVE)],
+    ),
+    "thyra_seasonal_omen": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [("thyra", "oracle", "skill", "nature", SEASONAL)],
     ),
 }
+
+
+async def test_household_omen_stacks_with_bond(world: SimpleNamespace) -> None:
+    session = world.ctx.userdata
+    host = world.ids[0]
+    await setup_actor(world, "aelora", "oracle")
+    lifecycle = _live_party(session, *world.ids)
+    try:
+        assert session.allies_present_for(host) == 1
+        with session._bind_authenticated_actor(host, 1, lifecycle.require_authorized):
+            baseline, result = await paired(world, "skill", "insight", HEARTH[0])
+    finally:
+        await lifecycle.aclose()
+
+    assert (baseline["total"], result["total"]) == (12, 13)
+    assert baseline["gift_name"] == result["gift_name"] == "Hearthkeeper's Bond"
+    assert "context_synergy" not in baseline
+    assert result["context_synergy"] == applied(HEARTH)
+    assert result["roll"] == baseline["roll"] == 11
+    assert result["dc"] == baseline["dc"]
+    assert result["margin"] == baseline["margin"] + 1
+    assert result["modifier"] == baseline["modifier"] + 1
 
 
 async def settle_fate(world: SimpleNamespace, kind: str, skill: str, tag: str, keep: str) -> dict:

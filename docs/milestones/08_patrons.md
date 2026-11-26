@@ -208,9 +208,11 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 
 **Review:** The human approved the final 180-row table on 2026-11-18 (table SHA-256 `5dee713a…`, content SHA-256 `c3238a53…`, commit `903ac541`), closing AC3. The approved table is retained in sprint DATA at `sprints/archetype-synergies/synergy-review.md` with every changed number. Content and design share the approved corrections, including Nythera’s live Animal Handling +1 instead of advantage. Pending clauses are unavailable.
 
-Layer 4 lookup covers 180 pairings and 200 clauses. 65 are active/engine, 85 are active/narrated, and 50 are pending/engine.
+Layer 4 lookup covers 180 pairings and 200 clauses. 69 are active/engine, 85 are active/narrated, and 46 are pending/engine.
 
-Shared Table gives Aelora clerics +1 Religion when blessing a shared meal. Civic Promise gives Aelora paladins +1 Persuasion when negotiating a community’s shared duties. The patron query surfaces both tags and settled checks name the applied clause.
+Shared Table gives Aelora clerics +1 Religion when blessing a shared meal. Civic Promise gives Aelora paladins +1 Persuasion when negotiating a community’s shared duties. The patron query surfaces the context tags and settled checks name the applied clause.
+
+Hearth Omen gives Aelora oracles +1 Insight when interpreting a household omen and stacks with Hearthkeeper’s Bond when an ally is present. Honest Hustle gives Aelora rogues +1 Persuasion on commerce skill and social checks. Better fence prices remain pending. Wild Covenant gives Thyra paladins +1 Religion when honoring a sacred grove. Seasonal Omen gives Thyra oracles +1 Nature when interpreting a seasonal omen.
 
 Sheltering Light gives a standing Orenthel guardian +1 AC against attack rolls while a standing ally below half HP is within 5 feet. `test_patron_synergy_engine.py` and `test_orenthel_guardian_ward.py` exercise the registered clause, opportunity attacks and held rolls after checkpoint reload. Dawnward Strike adds 1 damage on a hit against a Hollow or undead foe while another standing party ally in the same combat is below half HP. `test_orenthel_undead_wrath.py` and `test_orenthel_undead_wrath_guards.py` cover damage, attack receipts and eligibility after checkpoint reload.
 
