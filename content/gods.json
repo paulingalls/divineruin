@@ -2329,8 +2329,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Arcana when examining magical evidence of a broken oath.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "valdris_oathbreak_sight",
+            "kind": "context_check",
+            "synergy_context": "broken_oath_evidence",
+            "skill": "arcana",
+            "bonus": 1
           }
         ]
       },
@@ -2340,8 +2345,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Investigation when examining tampered scales or measuring tools.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "valdris_true_measure",
+            "kind": "context_check",
+            "synergy_context": "tampered_measures",
+            "skill": "investigation",
+            "bonus": 1
           }
         ]
       },
@@ -2351,8 +2361,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Investigation when tracing ownership of evidence in a public hearing.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "valdris_chain_of_custody",
+            "kind": "context_check",
+            "synergy_context": "evidence_ownership_hearing",
+            "skill": "investigation",
+            "bonus": 1
           }
         ]
       },
@@ -2384,8 +2399,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Survival when tracing an unlawful incursion into protected land.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "valdris_boundary_law",
+            "kind": "context_check",
+            "synergy_context": "unlawful_incursion",
+            "skill": "survival",
+            "bonus": 1
           }
         ]
       },
@@ -2417,8 +2437,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Persuasion when securing equal terms for opposing petitioners.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "valdris_even_scales",
+            "kind": "context_check",
+            "synergy_context": "equal_terms_petition",
+            "skill": "persuasion",
+            "bonus": 1
           }
         ]
       },
@@ -2479,8 +2504,13 @@
         "clauses": [
           {
             "effect": "Deception for just causes (evidence, infiltration) gains +1. Valdris blesses deception in service of truth",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "valdris_just_deceit",
+            "kind": "context_check",
+            "synergy_context": "just_cause_deception",
+            "skill": "deception",
+            "bonus": 1
           }
         ]
       },
@@ -2490,8 +2520,13 @@
         "clauses": [
           {
             "effect": "Deception for just causes (evidence, infiltration) gains +1. Valdris blesses deception in service of truth",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "valdris_just_deceit",
+            "kind": "context_check",
+            "synergy_context": "just_cause_deception",
+            "skill": "deception",
+            "bonus": 1
           }
         ]
       }
