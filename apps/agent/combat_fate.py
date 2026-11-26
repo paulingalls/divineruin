@@ -29,6 +29,7 @@ from combat_attack_roll import prepare_player_swing, promote_attack, spend_sneak
 from combat_down import damage_target_unavailable
 from combat_item_rider import resolve_rider
 from combat_support import _resolve_attack_packet, apply_rolled_attack
+from equipment_rules import resolve_weapon_profile, with_weapon_magic
 from patron_synergy_combat import attack_player, veiled_strike
 
 
@@ -331,6 +332,8 @@ async def continue_attack(
                 veiled_strike=strike_mode,
             )
         else:
+            profile = await resolve_weapon_profile(attacker.type, act, weapon_attack=True, conn=conn)
+            act = with_weapon_magic(act, profile)
             result = check_resolution_attack.finish_attack(
                 attacker_data,
                 act,

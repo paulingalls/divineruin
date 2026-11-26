@@ -65,3 +65,10 @@ async def resolve_weapon_profile(attacker_type: str, action: dict, *, weapon_att
     if item is None or item.get("type") != "weapon":
         raise ValueError(f"Player weapon attack {name!r} references invalid weapon {item_id!r}")
     return item
+
+
+def with_weapon_magic(action: dict, profile: dict | None) -> dict:
+    if profile is None or profile is action:
+        return action
+    effect = next(effect for effect in profile["effects"] if effect["type"] == "weapon")
+    return {**action, "magical": effect.get("magical", False)}
