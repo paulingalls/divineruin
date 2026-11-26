@@ -189,15 +189,16 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
             state.beat = PhaseBeat.RESOLUTION
             state.ally_continuation = cursor
             return summaries
-        await combat_field_medic.settle(
-            session,
-            state,
-            packets[packet_id],
-            summary,
-            conn=packet_deps["conn"],
-            sink=packet_deps["sink"],
-            queries=packet_deps["queries"],
-        )
+        if summary.get("outcome") != "cancelled":
+            await combat_field_medic.settle(
+                session,
+                state,
+                packets[packet_id],
+                summary,
+                conn=packet_deps["conn"],
+                sink=packet_deps["sink"],
+                queries=packet_deps["queries"],
+            )
         summaries.append(summary)
         cursor["attack"] = {}
         cursor.pop("steps", None)

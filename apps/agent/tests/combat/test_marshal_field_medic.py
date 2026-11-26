@@ -209,6 +209,32 @@ async def test_fate_held_attack_and_item_settle_once_after_reload(fate_fight, ke
     assert await pending(fight) == {}
 
 
+async def test_departed_roller_cancels_both_halves_of_the_held_declaration(fate_fight):
+    fight = fate_fight
+    _, holder, other = fight.players
+    await round_packets(fight, await order(fight))
+    riders = await pending(fight)
+    await declare_round(fight, combined(fight, other))
+    events = inventory_events(fight)
+
+    with patch("check_resolution.dice_roll", return_value=_d20(15)), heal_roll(7):
+        offer = (await fight.command("resolve_phase", {}))["fate_offer"]
+        assert offer["roller_id"] == holder
+        assert (await fight.reload()).ally_continuation["attack"]
+        owner = fight.sd.multiplayer_owner
+        assert owner is not None
+        owner.lifecycle.mark_departed(holder)
+        result = await fight.command(
+            "activate", {"id": "zhael_fates_thread", "offer_id": offer["offer_id"], "keep": "original"}
+        )
+    (packet,) = [p for p in result["packets"] if p["actor_id"] == holder]
+    assert packet["outcome"] == "cancelled"
+    assert await quantity(holder) == 2
+    assert "field_medic" not in packet and inventory_events(fight) == events
+    await assert_health(fight, other, 30)
+    assert await pending(fight) == riders
+
+
 async def test_approach_reaction_window_defers_the_item(marshal):
     fight = await battlefield(marshal)
     source, holder, _ = fight.players
