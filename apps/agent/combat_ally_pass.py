@@ -44,7 +44,6 @@ def cancel_queued_move(state: "CombatState", ally_id: str) -> bool:
             return False
         del state.pending_declarations[ally_id]
         turn[1] = None
-        cursor.setdefault("cancelled_moves", []).append(ally_id)
         return True
     return False
 
@@ -164,9 +163,6 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
                         summaries.append({"actor_id": actor.id, "turn_start_effects": effects})
                 if actor is not None:
                     actor.conditions = remove_condition(actor.conditions, IRON_STANCE)
-                cancelled = cursor.get("cancelled_moves", [])
-                if actor is not None and actor.id in cancelled:
-                    cancelled.remove(actor.id)
                 cursor.pop("steps", None)
                 cursor["turns"].pop(0)
                 continue
