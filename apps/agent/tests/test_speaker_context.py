@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from livekit.agents import AgentSession, llm
 from livekit.agents.voice.events import CloseEvent, CloseReason
+from session_outcome_fixture import isolated_outcome_completion as isolated_outcome_completion
 
 import event_types as E
 import session_outcome

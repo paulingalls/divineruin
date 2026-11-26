@@ -8,6 +8,7 @@ import uuid
 
 import redis.asyncio as aioredis
 from acceptance.test_creature_catalog import ROOT, seed_content
+from db_reset import reset_db_globals
 
 import db
 from db_content_queries import get_location
@@ -33,6 +34,7 @@ def test_production_seed_retires_cached_content(fresh_migrated_db, tmp_path, mon
     first = min(hallucinations, key=lambda row: row["id"])
 
     async def check():
+        await reset_db_globals()
         client = aioredis.from_url(os.environ["REDIS_URL"], decode_responses=True)
         try:
             await seed_content.main()
