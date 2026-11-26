@@ -305,7 +305,7 @@ async def test_gather_tool_no_condition_does_not_persist():
 
 
 @pytest.mark.asyncio
-@patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+@patch("check_discovery_roll.publish_game_event", new_callable=AsyncMock)
 async def test_discover_tool_consumes_and_persists_atomically(_evt):
     from sample_fixtures import make_db_mod
 
@@ -344,7 +344,7 @@ async def test_discover_tool_consumes_and_persists_atomically(_evt):
 
 
 @pytest.mark.asyncio
-@patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+@patch("check_discovery_roll.publish_game_event", new_callable=AsyncMock)
 async def test_discover_tool_no_condition_does_not_persist(_evt):
     from sample_fixtures import make_db_mod
 

@@ -295,8 +295,9 @@
         "clauses": [
           {
             "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "veythar_hidden_knowledge"
           }
         ]
       },
@@ -306,8 +307,9 @@
         "clauses": [
           {
             "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "veythar_hidden_knowledge"
           }
         ]
       },

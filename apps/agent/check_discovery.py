@@ -26,12 +26,12 @@ import db_content_queries
 import db_mutations
 import db_mutations_conditions
 import db_queries
-import event_types as E
 import lost_scout_scene
 import rules_engine
 import still_encounter
 import thyra_seasons
 from action_sound_content import ACTION_SOUND_EXPORTS, publish_action_sound
+from check_discovery_roll import publish_roll, roll_response
 from combat_terrain import skill_natural_terrain
 from condition_consume import consume_beneficial_conditions, serialize_combat_check
 from condition_voice_rules import validate_hearing_check
@@ -51,36 +51,6 @@ logger = logging.getLogger("divineruin.tools")
 
 VALID_SKILLS = set(rules_engine.SKILLS.keys())
 DEFAULT_DISCOVER_DC = 13
-
-
-async def _publish_roll(session: SessionData, result: check_resolution.SkillCheckResult) -> None:
-    await publish_game_event(
-        session.room,
-        E.DICE_ROLL,
-        {
-            "roll_type": "skill_check",
-            "skill": result.skill,
-            "roll": result.roll,
-            "total": result.total,
-            "dramatic": result.dramatic,
-            "context": result.context,
-        },
-        event_bus=session.event_bus,
-    )
-
-
-def _roll_response(result: check_resolution.SkillCheckResult, target: str, outcome: str) -> dict:
-    return {
-        "skill": result.skill,
-        "target": target,
-        "roll": result.roll,
-        "modifier": result.modifier,
-        "total": result.total,
-        "dc": result.dc,
-        "narrative_hint": result.narrative_hint,
-        "outcome": outcome,
-        **({"gift_name": result.gift_name} if result.gift_name else {}),
-    }
 
 
 def _target_matches(target_norm: str, attaches_norm: str) -> bool:
@@ -139,7 +109,7 @@ async def _check_discover_impl(
                 mutations=mutations,
                 conditions_mutations=conditions_mutations,
                 db_mod=db_mod,
-                publish_roll=_publish_roll,
+                publish_roll=publish_roll,
             )
         record = state.still_encounter
         if target in {still_encounter.SEARCH_TARGET, record["owner_id"], *record["anchor_ids"]}:
@@ -268,6 +238,7 @@ async def _resolve_discovery(
         condition_voice_rules.roll_data(player, session.combat_state, player_id),
         skill_lower,
         dc,
+        discovery=True,
         ally_present=session.allies_present_for(player_id),
         first_stay=await check_first_stay(player, session, skill_lower, player_id=player_id, conn=conn),
         natural_terrain=await skill_natural_terrain(session, player, skill_lower, content_mod=content),
@@ -279,7 +250,7 @@ async def _resolve_discovery(
         async def no_effects():
             pass
 
-        return _roll_response(result, target, "automatic_failure"), no_effects, None
+        return roll_response(result, target, "automatic_failure"), no_effects, None
 
     element_id = element["id"] if element else None
     scope = SkillScope.capture(session, player_id)
@@ -382,7 +353,7 @@ async def _finish_discovery(
     locked_quests=None,
 ):
     outcome = "discovered" if result.success and element else "not_found"
-    response = _roll_response(result, target, outcome)
+    response = roll_response(result, target, outcome)
     element_id = element["id"] if element else None
     can_offer = (
         reroll_dc is None
@@ -479,7 +450,7 @@ async def _finish_discovery(
             loc_name = location.get("name", session.location_id)
             session.record_companion_memory(f"Discovered {element.get('description', element_id)} at {loc_name}")
 
-        await _publish_roll(session, result)
+        await publish_roll(session, result)
         for p in pending:
             for event_type, payload in p.events:
                 await publish_game_event(session.room, event_type, payload, event_bus=session.event_bus)

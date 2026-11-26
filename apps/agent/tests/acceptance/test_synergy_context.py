@@ -8,6 +8,7 @@ import pytest
 from _patron_engine_fixtures import configure
 from _unbound_path_fixtures import world as world
 from _zhael_fate_fixtures import game_tools
+from acceptance.synergy_discovery import SCENARIOS as discovery_scenarios
 from test_aelora_gift import _live_party
 
 import db
@@ -263,6 +264,7 @@ async def context_scenario(
 
 
 SCENARIOS = {
+    **discovery_scenarios,
     "aelora_shared_table": (
         "patron_synergy:context_skill_bonus",
         context_scenario,

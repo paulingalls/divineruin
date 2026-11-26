@@ -15,7 +15,7 @@ from conditions import ConditionEffects, get_condition_effects
 from dice import roll as dice_roll
 from dramatic import DramaticContext, evaluate_dramatic_context
 from patron_gifts import skill_gift
-from patron_synergy import ContextSynergyReceipt, context_skill_bonus
+from patron_synergy import ContextSynergyReceipt, context_skill_bonus, discovery_skill_bonus
 from rules_engine import (
     SKILL_TIER_BONUS,
     SKILL_TIER_ORDER,
@@ -312,6 +312,7 @@ def _resolve_skill_check_impl(
     first_stay: bool = False,
     season: Season | None = None,
     synergy_context: str = "none",
+    discovery: bool = False,
 ) -> SkillCheckResult:
     skill_lower = skill.lower()
     if auto_fail_hearing_perception(player_data.get("conditions") or [], skill=skill, hearing_only=hearing_only):
@@ -367,7 +368,11 @@ def _resolve_skill_check_impl(
         )
         bonus += gift_bonus + thyra_seasons.skill_bonus(player_data, season, skill_lower)
         advantage = advantage or gift_advantage
-        context_synergy = context_skill_bonus(player_data, skill_lower, synergy_context)
+        context_synergy = (
+            discovery_skill_bonus(player_data, skill_lower)
+            if discovery
+            else context_skill_bonus(player_data, skill_lower, synergy_context)
+        )
         if context_synergy is not None:
             bonus += context_synergy["bonus"]
 
@@ -440,6 +445,7 @@ def resolve_skill_check_dc(
     first_stay: bool = False,
     season: Season | None = None,
     synergy_context: str = "none",
+    discovery: bool = False,
 ) -> SkillCheckResult:
     """Like resolve_skill_check but accepts a numeric DC directly.
 
@@ -457,6 +463,7 @@ def resolve_skill_check_dc(
         first_stay=first_stay,
         season=season,
         synergy_context=synergy_context,
+        discovery=discovery,
     )
 
 

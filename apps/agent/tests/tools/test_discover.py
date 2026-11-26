@@ -14,7 +14,7 @@ from tools._helpers import _make_context
 
 class TestCheckDiscover:
     @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    @patch("check_discovery_roll.publish_game_event", new_callable=AsyncMock)
     async def test_dice_roll_carries_dramatic_verdict(self, mock_event):
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
@@ -29,7 +29,7 @@ class TestCheckDiscover:
         assert dice_payload["context"] == "natural_20"
 
     @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    @patch("check_discovery_roll.publish_game_event", new_callable=AsyncMock)
     async def test_routine_discover_roll_not_dramatic(self, mock_event):
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
@@ -44,7 +44,7 @@ class TestCheckDiscover:
         assert dice_payload["context"] == ""
 
     @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    @patch("check_discovery_roll.publish_game_event", new_callable=AsyncMock)
     async def test_failed_discovery(self, mock_event):
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
@@ -59,7 +59,7 @@ class TestCheckDiscover:
         mutations.set_player_flag.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    @patch("check_discovery_roll.publish_game_event", new_callable=AsyncMock)
     async def test_no_matching_skill_returns_not_found(self, mock_event):
         # A skill with no scoped hidden element is a valid "found nothing", not an error.
         content, queries, mutations = _make_discover_mocks()
@@ -76,7 +76,7 @@ class TestCheckDiscover:
         mutations.set_player_flag.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    @patch("check_discovery_roll.publish_game_event", new_callable=AsyncMock)
     async def test_no_candidate_search_is_retryable(self, mock_event):
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
@@ -123,7 +123,7 @@ class TestCheckDiscover:
             )
 
     @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    @patch("check_discovery_roll.publish_game_event", new_callable=AsyncMock)
     async def test_repeat_search_finds_nothing_new(self, mock_event):
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
@@ -142,7 +142,7 @@ class TestCheckDiscover:
         assert second["outcome"] == "not_found"
 
     @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    @patch("check_discovery_roll.publish_game_event", new_callable=AsyncMock)
     async def test_reworded_target_cannot_regrind(self, mock_event):
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
@@ -160,7 +160,7 @@ class TestCheckDiscover:
         assert result["outcome"] == "not_found"
 
     @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    @patch("check_discovery_roll.publish_game_event", new_callable=AsyncMock)
     async def test_already_discovered_flag_excludes_candidate(self, mock_event):
         player = {**DISCOVER_PLAYER, "flags": {"secret_door.discovered": True}}
         content, queries, mutations = _make_discover_mocks(player=player)
@@ -176,7 +176,7 @@ class TestCheckDiscover:
         mutations.set_player_flag.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("check_discovery.publish_game_event", new_callable=AsyncMock)
+    @patch("check_discovery_roll.publish_game_event", new_callable=AsyncMock)
     async def test_dice_roll_event_has_no_dc(self, mock_event):
         content, queries, mutations = _make_discover_mocks()
         ctx = _make_context(location_id="test_location")
