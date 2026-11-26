@@ -52,7 +52,7 @@ async def cleanse_hollowed(
     mutations=db_mutations_resurrection,
     conditions_mutations=db_mutations_conditions,
 ) -> bool:
-    """Clear Hollowed and return its Wisdom loss, up to the attribute cap."""
+    """Remove Hollowed and give back its recorded Wisdom loss, never above 20. Returns whether Hollowed was present."""
     active = player.get("conditions") or []
     hollowed = next((row for row in active if row["type"] == "hollowed"), None)
     if hollowed is None:
