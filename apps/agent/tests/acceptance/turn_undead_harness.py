@@ -32,8 +32,9 @@ class TurnFight(MawlingHarness):
         archetype: str = "cleric",
         patron: str | None = None,
         known_spells: tuple[str, ...] = (TURN,),
+        ally: bool = False,
     ) -> None:
-        await self.prepare(levels=(level,), companion=None, tools=(activate,))
+        await self.prepare(levels=(level, level) if ally else (level,), companion=None, tools=(activate,))
         self.caster = self.players[0]
         await seed_player_with_pools(self.pool, player_id=self.caster, class_=archetype, known_spells=known_spells)
         row = await self.player()
@@ -59,8 +60,9 @@ class TurnFight(MawlingHarness):
         archetype: str = "cleric",
         patron: str | None = None,
         known_spells: tuple[str, ...] = (TURN,),
+        ally: bool = False,
     ) -> None:
-        await self.ready(level, weapon=weapon, archetype=archetype, patron=patron, known_spells=known_spells)
+        await self.ready(level, weapon=weapon, archetype=archetype, patron=patron, known_spells=known_spells, ally=ally)
         prefix = uuid4().hex
         self.undead_id = f"turn_undead_{prefix}"
         fixtures = json.loads(
@@ -108,7 +110,9 @@ class TurnFight(MawlingHarness):
         caster = self.actor(self.caster)
         assert caster.level == level and caster.attributes["wisdom"] == 18
         caster.initiative = 40
-        state.initiative_order = [self.caster, *creatures]
+        state.initiative_order = [*self.players, *creatures]
+        for player_id in self.players[1:]:
+            self.actor(player_id).initiative = 30
         for index, (actor, (creature, _)) in enumerate(creatures.items()):
             target = self.actor(actor)
             target.initiative = 20 - index
@@ -149,7 +153,7 @@ class TurnFight(MawlingHarness):
                 "targets": [],
                 "argument_type": "",
             }
-        for actor_id in (self.caster, *self.enemies):
+        for actor_id in (*self.players, *self.enemies):
             if not self.actor(actor_id).is_fallen:
                 roster.setdefault(actor_id, {"kind": "defend", "actor_id": actor_id, "reshape": []})
         await self.command("declare_phase", {"declarations": list(roster.values())})

@@ -5,11 +5,13 @@ from unittest.mock import patch
 
 import pytest
 from acceptance._capstone_helpers import _d20, _damage_die
+from acceptance._enemy_opportunity_helpers import attack
 from acceptance.test_still_anchors import mock_combat_agent_factory as mock_combat_agent_factory
 from acceptance.test_turn_undead_hollow import frightened
 from acceptance.turn_undead_harness import TurnFight, pos
 from acceptance.turn_undead_harness import fight as fight
-from weapon_fixtures import DAGGER
+from test_encounter_facts_damage import dice
+from weapon_fixtures import DAGGER, LONGSWORD
 
 import check_resolution_save
 from combat_spatial import require_spatial
@@ -279,6 +281,19 @@ async def test_turned_defender_loses_defend_bonus(fight: TurnFight) -> None:
     assert strike["hit"] and strike["damage"] > 0
     await fight.reload()
     assert fight.actor("skeleton").hp_current == hp - strike["damage"]
+
+
+async def test_turn_removes_defend_bonus_mid_round(fight: TurnFight) -> None:
+    await fight.enter({"skeleton": ("undead", 4)}, ally=True)
+    striker = fight.players[1]
+    skeleton = fight.actor("skeleton")
+    await fight.declare_turn(attack(striker, skeleton.id, LONGSWORD["name"]), cast=True)
+    with dice(2, 11):
+        packets = (await fight.command("resolve_phase", {}))["packets"]
+    (turned,) = [row for row in fight.cast(packets)["turn_undead"] if row["target_id"] == skeleton.id]
+    assert turned["outcome"] == "frightened"
+    (strike,) = [packet for packet in packets if packet["actor_id"] == striker]
+    assert (strike["attack_total"], strike["target_ac"], strike["hit"]) == (skeleton.ac, skeleton.ac, True)
 
 
 async def test_ordinary_fear_replaces_turn(fight: TurnFight) -> None:
