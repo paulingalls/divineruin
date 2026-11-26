@@ -185,6 +185,14 @@ without certifying paid speech-recognition accuracy.
   `apps/agent/tests/session_lifecycle` in Verify. Those suites mock player rows,
   so a new DB call on the hydration path reds them (sprint-105: story-224's
   focused Verify was green while `test:python` had 5 reds).
+- Combat state that mirrors a DB row, such as the Quick Fingers pocket
+  mirroring inventory, must rewind together with that row under
+  `zhael_unravel_fate`, or Unravel Fate must refuse the rewind. A card adding
+  or moving such a mirror names in Verify a case in
+  `apps/agent/tests/test_zhael_unravel_fate_guards.py` that changes both stores
+  within the rewound round. Sprint quick-fingers shipped the pocket mirror
+  without such a case and silently duplicated items across a rewind
+  (fixed in 419ab22d).
 - Checking a box in `docs/milestones/*.md` also moves the README phase count, the
   REMAINING.md position and `docs/INDEX.md` line ranges (`doc_index.py --write`);
   review checks all three; regenerate the index with `doc_index.py --write`.
@@ -344,6 +352,11 @@ item number, not this section.
 **Handback contract** — what a story owes before it is handed back. Sprint 54
 lost review rounds to both halves of this, five times.
 
+- A negative control's red must come from applying the
+  real effect at the excluded site and seeing the asserted outcome change.
+  Injecting a field or marker, or forcing a roll that saturates the outcome,
+  does not count (sprint orenthel-and-nythera-edges F1/F2, fixed in b71e05f0
+  and 0d54d2db).
 - RUN THE CARD'S `Verify:` AND SAY YOU RAN IT. story-085 was handed back with a
   RED Verify (6 of 7 cases failing) and a tests-only diff — the production fix
   was never written, and nothing in the handback said so. A red Verify is the one
