@@ -1,6 +1,5 @@
 import { expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { existsSync } from "node:fs";
 
 const root = resolve(import.meta.dir, "../../..");
 const required = [
@@ -84,26 +83,4 @@ test("production aggregates empty/whitespace values and explicit mock refusal", 
       );
     }
   }
-});
-test("both environment templates document every server, agent and worker read", async () => {
-  const child = Bun.spawn(
-    [
-      "python3",
-      resolve(root, "scripts/env_inventory.py"),
-      root,
-      ...(existsSync(resolve(root, ".git")) ? [] : ["--snapshot"]),
-    ],
-    {
-      stdout: "pipe",
-      stderr: "pipe",
-    },
-  );
-  const [code, output, errors] = await Promise.all([
-    child.exited,
-    new Response(child.stdout).text(),
-    new Response(child.stderr).text(),
-  ]);
-  expect({ code, errors }).toEqual({ code: 0, errors: "" });
-  const names = JSON.parse(output) as Record<string, string[]>;
-  expect(Object.keys(names).length).toBeGreaterThan(0);
 });

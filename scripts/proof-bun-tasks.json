@@ -286,9 +286,20 @@
       "content/*.json",
       "apps/server/src/**/!(*.test).ts",
       "assets/images/**",
-      { "imports-of": "apps/server/src/config.test.ts" },
+      { "imports-of": "apps/server/src/config.test.ts" }
+    ]
+  },
+  "env-inventory": {
+    "run": "python3 scripts/env_inventory.py . --snapshot",
+    "sets": ["commit", "land"],
+    "inputs": [
       "scripts/env_inventory.py",
+      "apps/server/src/**/*.ts",
+      "!apps/server/src/**/*.test.ts",
+      "!apps/server/src/**/test-fixtures/**",
+      "!apps/server/src/**/{test-env,activities-test-mock}.ts",
       "apps/agent/**/*.py",
+      "!apps/agent/**/{tests,test-fixtures}/**",
       ".env.example",
       "deploy/env.production.example"
     ]
@@ -672,7 +683,7 @@
   },
   "server-inventory-taint": {
     "run": "uv sync --project apps/agent --frozen && bun scripts/proof-db-clone.ts REQUIRE_DB=1 bun --env-file=../../.env test --cwd apps/server src/inventory-taint.integration.test.ts",
-    "sets": ["commit", "land"],
+    "sets": ["land"],
     "links": ["node_modules", ".env", "apps/agent/.venv"],
     "inputs": [
       "$bun-config",
@@ -700,7 +711,7 @@
   },
   "server-purification": {
     "run": "uv sync --project apps/agent --frozen && bun scripts/proof-db-clone.ts REQUIRE_DB=1 bun --env-file=../../.env test --cwd apps/server src/purification.integration.test.ts",
-    "sets": ["commit", "land"],
+    "sets": ["land"],
     "links": ["node_modules", ".env", "apps/agent/.venv"],
     "inputs": [
       "$bun-config",

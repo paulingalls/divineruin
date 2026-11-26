@@ -2,7 +2,10 @@
 
 import ast
 import re
+from functools import cache
 from pathlib import Path
+
+from proof_source_cache import source_ast
 
 SQL_READ = re.compile(r"\b(?:FROM|JOIN)\s+([a-z_]+)", re.IGNORECASE)
 _TABLES = {}
@@ -11,7 +14,7 @@ _TABLES = {}
 def seed_tables():
     """`scripts/seed_content.py` TABLE_MAP: content file name -> seeded table."""
     if not _TABLES:
-        tree = ast.parse(Path("scripts/seed_content.py").read_text())
+        tree = source_ast("scripts/seed_content.py")
         tables = [
             ast.literal_eval(n.value)
             for n in tree.body
@@ -23,14 +26,17 @@ def seed_tables():
     return _TABLES
 
 
+@cache
 def string_literals(path):
-    tree = ast.parse(Path(path).read_text())
-    for node in ast.walk(tree):
+    docstrings, literals = set(), set()
+    for node in ast.walk(source_ast(path)):
         if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)) and (
             ast.get_docstring(node, clean=False) is not None
         ):
-            node.body.pop(0)
-    return {n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)}
+            docstrings.add(node.body[0].value)
+        elif isinstance(node, ast.Constant) and isinstance(node.value, str) and node not in docstrings:
+            literals.add(node.value)
+    return frozenset(literals)
 
 
 def content_literals(path, content):

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from proof_content_sql import content_literals, seed_tables, sql_reads
 from proof_coverage_map import first_reader, ordinary_agent_source, ordinary_candidates
+from proof_source_cache import source_ast, source_text
 
 SHARED_CONTENT = {"content/players.json"}
 SHARED_INPUTS = {"scripts/seed_content.py", "scripts/migrations/**", *SHARED_CONTENT}
@@ -106,7 +107,7 @@ CONTENT_FIXTURES = {
 }
 
 
-def behavioral_closure(entry, graph):
+def behavioral_closure(entry, graph, roots):
     pending, found = [entry], set()
     while pending:
         path = pending.pop()
@@ -116,13 +117,13 @@ def behavioral_closure(entry, graph):
             raise ValueError(f"{entry}: missing behavioral Python root {path}")
         found.add(path)
         pending.extend(set(graph[path]["direct"]) - found)
-        pending.extend(explicit_roots(path, graph) - found)
-    return found
+        pending.extend(roots(path) - found)
+    return frozenset(found)
 
 
 def load_families(content):
     path = "scripts/proof-families.json"
-    rows = json.loads(Path(path).read_text())
+    rows = json.loads(source_text(path))
     if not isinstance(rows, list) or not rows:
         raise ValueError(f"{path}: expected nonempty family list")
     families = {}
@@ -159,26 +160,25 @@ def matches(patterns, path):
     return any(pattern.fullmatch(path) for pattern in patterns)
 
 
-@cache
-def path_loaded(text):
+def path_loaded(tree):
     return any(
         isinstance(n, ast.Call)
         and isinstance(n.func, ast.Attribute)
         and n.func.attr in {"spec_from_file_location", "run_path"}
-        for n in ast.walk(ast.parse(text))
+        for n in ast.walk(tree)
     )
 
 
 def explicit_roots(path, graph):
     local = set()
-    text = Path(path).read_text()
+    tree = source_ast(path)
     if graph[path].get("localReason") and path not in ABSENT_IMPORTS:
         if path == "apps/agent/tests/agent_tool_profiles.py":
             roots = {str(p) for p in Path("apps/agent").glob("*_agent.py")}
         else:
             literals = {
                 node.value
-                for node in ast.walk(ast.parse(text))
+                for node in ast.walk(tree)
                 if isinstance(node, ast.Constant)
                 and isinstance(node.value, str)
                 and re.fullmatch(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*", node.value)
@@ -189,14 +189,14 @@ def explicit_roots(path, graph):
         if not roots:
             raise ValueError(f"{path}: unrooted dynamic import: {graph[path]['localReason']}")
         local.update(roots)
-    if path_loaded(text):
+    if path_loaded(tree):
         if path not in PATH_LOADED:
             raise ValueError(f"{path}: undeclared path-loaded Python root")
         local.update(PATH_LOADED[path])
-    return local
+    return frozenset(local)
 
 
-def runtime_closure(entry, graph):
+def runtime_closure(entry, graph, roots):
     pending = [entry]
     closure = set()
     while pending:
@@ -207,20 +207,22 @@ def runtime_closure(entry, graph):
             raise ValueError(f"{entry}: missing Python root {path}")
         closure.add(path)
         pending.extend(set(graph[path]["closure"]) - closure)
-        pending.extend(explicit_roots(path, graph) - closure)
-    return closure
+        pending.extend(roots(path) - closure)
+    return frozenset(closure)
 
 
 def task_inventory(acceptance, e2e, graph, families):
     inventory = {}
-    runtime_closures = {}
     behavioral, literals = {}, {}
     content = content_inventory()
 
+    @cache
+    def load_roots(path):
+        return explicit_roots(path, graph)
+
+    @cache
     def closure(path):
-        if path not in runtime_closures:
-            runtime_closures[path] = runtime_closure(path, graph)
-        return runtime_closures[path]
+        return runtime_closure(path, graph, load_roots)
 
     @cache
     def read_sql(path):
@@ -252,7 +254,7 @@ def task_inventory(acceptance, e2e, graph, families):
             preferred = full = set()
         if entry in graph:
             if entry not in behavioral:
-                behavioral[entry] = behavioral_closure(entry, graph)
+                behavioral[entry] = behavioral_closure(entry, graph, load_roots)
             for module in behavioral[entry]:
                 if module not in literals:
                     literals[module] = content_literals(module, content)
@@ -266,9 +268,7 @@ def task_inventory(acceptance, e2e, graph, families):
             "path": entry,
             "family": memberships.pop(),
             "preferred": preferred,
-            "direct": (set(graph[entry]["direct"]) - {entry}) | explicit_roots(entry, graph)
-            if entry in graph
-            else set(),
+            "direct": (set(graph[entry]["direct"]) - {entry}) | load_roots(entry) if entry in graph else set(),
             "closure": full,
         }
     if not inventory or not acceptance or any(not inventory[t]["closure"] for t in acceptance):
@@ -410,7 +410,7 @@ def direct_readers(inventory, source):
     marker = DIRECT_MARKERS.get(source)
     if marker is None:
         return set()
-    return {task for task, meta in inventory.items() if marker in Path(meta["path"]).read_text()}
+    return {task for task, meta in inventory.items() if marker in source_text(meta["path"])}
 
 
 def content_readers(inventory, families, content):

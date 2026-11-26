@@ -3,9 +3,11 @@
 import json
 import re
 import subprocess
+from functools import cache
 from pathlib import Path
 
 from proof_family_selection import NON_PYTHON, audit_readers, select_readers
+from proof_source_cache import source_text
 
 DATA_PATTERNS = (
     "apps/agent/tests/acceptance/**/*.feature",
@@ -45,7 +47,7 @@ def data_inventory():
 def named_readers(inventory, paths):
     modules = {m["path"] for m in inventory.values()}
     modules.update(p for m in inventory.values() for p in m["closure"] if p.startswith("apps/agent/tests/"))
-    texts = {p: Path(p).read_text() for p in modules}
+    texts = {p: source_text(p) for p in modules}
     readers = {}
     for source in paths:
         marker = re.compile(r"(?<![\w])" + re.escape(Path(source).name) + r"(?![\w])")
@@ -102,6 +104,10 @@ def audit_named(tasks, inventory, readers):
 
 
 def audit_nonempty(tasks, sources, input_groups, graph):
+    @cache
+    def expand_group(name):
+        return tuple(expand(input_groups[name]))
+
     def expand(items):
         patterns = []
         for item in items:
@@ -109,7 +115,7 @@ def audit_nonempty(tasks, sources, input_groups, graph):
                 entry = item["imports-of"]
                 patterns.extend(graph[entry]["closure"] if entry in graph else [entry])
             elif item.startswith("$"):
-                patterns.extend(expand(input_groups[item[1:]]))
+                patterns.extend(expand_group(item[1:]))
             else:
                 patterns.append(item)
         return patterns
@@ -122,13 +128,30 @@ def audit_nonempty(tasks, sources, input_groups, graph):
             """
         const {tasks, sources} = await Bun.stdin.json();
         const receivers = Object.fromEntries(sources.map(p => [p, []]));
+        const sourcePaths = new Set(sources);
+        const globMatches = new Map();
+        function matching(pattern) {
+            if (/^[A-Za-z0-9_./-]+$/.test(pattern)) {
+                return sourcePaths.has(pattern) ? [pattern] : [];
+            }
+            if (!globMatches.has(pattern)) {
+                const glob = new Bun.Glob(pattern);
+                globMatches.set(pattern, sources.filter(path => glob.match(path)));
+            }
+            return globMatches.get(pattern);
+        }
         for (const [name, task] of Object.entries(tasks)) {
-            const inputs = task.inputs.map(p => [p.startsWith('!'), new Bun.Glob(p.replace(/^!/, ''))]);
-            const keys = task.keyed.map(p => new Bun.Glob(p));
-            for (const path of sources) {
-                let delivered = false;
-                for (const [negative, glob] of inputs) if (glob.match(path)) delivered = !negative;
-                if (delivered && keys.some(g => g.match(path))) receivers[path].push(name);
+            const delivered = new Set();
+            for (const pattern of task.inputs) {
+                const negative = pattern.startsWith('!');
+                for (const path of matching(negative ? pattern.slice(1) : pattern)) {
+                    if (negative) delivered.delete(path);
+                    else delivered.add(path);
+                }
+            }
+            const keyed = new Set(task.keyed.flatMap(matching));
+            for (const path of delivered) {
+                if (keyed.has(path)) receivers[path].push(name);
             }
         }
         console.log(JSON.stringify(receivers));

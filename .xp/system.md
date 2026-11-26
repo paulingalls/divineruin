@@ -16,6 +16,8 @@ REST API, Expo/expo-router mobile client, Bun-SSR web. Bun-native APIs only
 (Bun.serve / Bun.sql / Bun.redis / Bun.file), `bun`/`bunx`, never npx.
 Tests: `bun test` (bun:test) for TS, `pytest` + `pytest-asyncio` for Python.
 Commit fast tier: staged lint via `bash scripts/test-fast.sh`, then Proof lint and staged `commit` selection.
+The environment-template inventory is a Python task in commit. The cross-language
+server purification and inventory-taint suites and their agent inputs belong to land.
 Story Verify runs the card’s focused behavioral checks.
 Story land runs Proof selection for the `land` set (including `commit`) on the merged index. PR CI owns full static
 checks in two lint jobs. Sprint close owns deterministic acceptance and
