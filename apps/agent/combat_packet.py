@@ -25,6 +25,7 @@ import combat_retreat
 import combat_spatial_declarations
 import combat_turn_flight
 import combat_voice_rules
+import combat_yield
 import item_heal
 import spell_casting
 import thyra_thornwall
@@ -231,6 +232,9 @@ async def _resolve_action_packet(
             conn=conn,
             progress=progress.scope("still_search") if progress is not None else None,
         )
+
+    if decl.type is DeclarationType.YIELD:
+        return combat_yield.resolve(attacker)
 
     if decl.type is DeclarationType.DEFEND:
         return {

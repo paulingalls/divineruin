@@ -14,6 +14,7 @@ import { ThemedText } from "@/components/themed-text";
 import { AnimationPresets, BrandColors, FontStyles, Radius, Spacing } from "@/constants/theme";
 import { HUD_ANCHORS } from "@/constants/hud-anchors";
 import { hudStore, type Combatant, type CombatTrackerState } from "@/stores/hud-store";
+import { getYieldDisplay } from "@/components/hud/yield-display";
 import { getConditionDisplay } from "@/components/hud/condition-display";
 
 function CombatantHpBar({
@@ -55,6 +56,7 @@ function CombatantHpBar({
 }
 
 function CombatantRow({ combatant, compact = false }: { combatant: Combatant; compact?: boolean }) {
+  const yieldDisplay = getYieldDisplay(combatant);
   const nameColor = combatant.isAlly ? BrandColors.bone : BrandColors.ember;
 
   if (compact) {
@@ -74,8 +76,17 @@ function CombatantRow({ combatant, compact = false }: { combatant: Combatant; co
         <ThemedText style={[styles.combatantName, { color: nameColor }]} numberOfLines={1}>
           {combatant.name}
         </ThemedText>
-        {combatant.conditions.length > 0 && (
+        {(yieldDisplay || combatant.conditions.length > 0) && (
           <View style={styles.combatantStatuses}>
+            {yieldDisplay && (
+              <MaterialCommunityIcons
+                name={yieldDisplay.icon}
+                accessible
+                accessibilityLabel={yieldDisplay.label}
+                size={12}
+                color={BrandColors.bone}
+              />
+            )}
             {combatant.conditions.map((condition) => {
               const display = getConditionDisplay(condition.type);
               return (

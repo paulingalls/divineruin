@@ -49,6 +49,24 @@ test.each(["cleric", "oracle"] as const)("Valdris's %s has Absolute Authority", 
   });
 });
 
+test("Valdris's warrior has the registered Measured Reprisal clause", () => {
+  const warrior = validateGods(catalog).find((god) => god.god_id === "valdris")
+    ?.layer_4_synergy_matrix.warrior;
+  expect(warrior).toEqual({
+    name: "Measured Reprisal",
+    type: "divine",
+    clauses: [
+      {
+        effect:
+          "Gain +1 damage against a creature that attacked a surrendering ally this encounter.",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "valdris_measured_reprisal",
+      },
+    ],
+  });
+});
+
 test("Orenthel's warrior has the registered Dawnward Strike clause", () => {
   const warrior = validateGods(catalog).find((god) => god.god_id === "orenthel")
     ?.layer_4_synergy_matrix.warrior;

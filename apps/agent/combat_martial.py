@@ -11,6 +11,7 @@ import combat_order_riders
 import combat_recharge
 import combat_spatial
 import combat_spell_heal
+import combat_yield
 import concealment
 import conditions
 import dice
@@ -173,7 +174,9 @@ async def resolve_order(
     allies, foes = order_recipients(state, actor, decl, ability)
     await pay(actor.id, resolved, queries=queries, conn=conn)
     grant = await grant_marshal_rally(state, actor.id, allies[0], queries=queries, conn=conn)
+    yield_receipt = {}
     if ability.id == DIRECT_STRIKE:
+        yield_receipt = combat_yield.end(actor)
         rider = combat_order_riders.grant_direct_strike(state, actor.id, allies[0], foes[0])
     elif ability.id == COORDINATED_ASSAULT:
         rider = combat_order_riders.grant_coordinated_assault(state, actor.id, allies)
@@ -181,7 +184,11 @@ async def resolve_order(
         rider = combat_order_riders.grant_field_medic(state, actor.id, allies[0])
     else:
         raise ValueError(f"No order rider for {ability.id}")
-    return {**order_receipt(actor, decl, resolved, grant, effect_resolution="engine"), "order_rider_grant": rider}
+    return {
+        **order_receipt(actor, decl, resolved, grant, effect_resolution="engine"),
+        "order_rider_grant": rider,
+        **yield_receipt,
+    }
 
 
 def order_receipt(
@@ -275,7 +282,7 @@ async def exploit_weakness(
         return {**summary, "reason": "Exploit Weakness requires one standing foe."}
     variant = await pay(actor.id, resolved, queries=queries, conn=conn)
     actor.conditions = conditions.apply_condition(actor.conditions, STUDIED_WEAKNESS, source=target.id, duration=2)
-    return _with_variant({**summary, "resolved": True, "target_id": target.id}, variant)
+    return _with_variant({**summary, "resolved": True, "target_id": target.id, **combat_yield.end(actor)}, variant)
 
 
 def cripple(state: CombatState, actor: CombatParticipant, target: CombatParticipant, receipt: dict) -> None:

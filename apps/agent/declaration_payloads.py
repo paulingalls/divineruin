@@ -200,6 +200,13 @@ class DefendDecl(DeclarationPayload):
     reshape: list[ReshapeSelection] = Field(description=RESHAPE_DESCRIPTION)
 
 
+class YieldDecl(DeclarationPayload):
+    """Spend the player or companion's action to surrender."""
+
+    kind: Literal["yield"]
+    actor_id: str = Field(description="The player or companion declaring this action.")
+
+
 class RetreatDecl(DeclarationPayload):
     """Move away from standing foes, provoking enemy opportunity attacks unless Disengaged."""
 
@@ -223,6 +230,7 @@ DeclVariant = Union[
     RepositionDecl,
     DefendDecl,
     RetreatDecl,
+    YieldDecl,
 ]
 DeclPayload = Annotated[DeclVariant, Field(discriminator="kind")]
 
@@ -239,6 +247,7 @@ DECL_VARIANTS: tuple[type[BaseModel], ...] = (
     RepositionDecl,
     DefendDecl,
     RetreatDecl,
+    YieldDecl,
 )
 
 
@@ -316,6 +325,8 @@ def _raw(decl: DeclVariant) -> dict:
         return {"type": "maneuver", "target_id": decl.target_id}
     if isinstance(decl, DefendDecl):
         return {"type": "defend"}
+    if isinstance(decl, YieldDecl):
+        return {"type": "yield"}
     if isinstance(decl, RetreatDecl):
         return {"type": "retreat", **({"rider": decl.rider} if decl.rider else {})}
     # Not a fallthrough: an unmapped variant that inherited the last branch would reach the engine

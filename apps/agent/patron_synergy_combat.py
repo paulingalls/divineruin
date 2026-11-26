@@ -22,6 +22,7 @@ MORTAEN_THRESHOLD_SHIELD = "mortaen_threshold_shield"
 MORTAEN_HOLD_THE_CROSSING = "mortaen_hold_the_crossing"
 NYTHERA_SALTWIND_CASTING = "nythera_saltwind_casting"
 VALDRIS_ABSOLUTE_AUTHORITY = "valdris_absolute_authority"
+VALDRIS_MEASURED_REPRISAL = "valdris_measured_reprisal"
 
 KAELEN_WAR_SONGS = "kaelen_war_songs"
 TWO_ROUND_VEIL = "syrath_two_round_veil"
@@ -77,6 +78,8 @@ def encounter_damage_clause(
     from encounter_facts import ZHAEL_THREADED_BLADE
 
     facts = state.encounter_facts
+    if target.id in facts["yielded_ally_attackers"] and has_engine_synergy(player, VALDRIS_MEASURED_REPRISAL):
+        return VALDRIS_MEASURED_REPRISAL
     if target.id in facts["ally_downers"] and has_engine_synergy(player, "mortaen_last_vigil"):
         return "mortaen_last_vigil"
     if (

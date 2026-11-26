@@ -49,6 +49,7 @@ def _project_combatant(p: CombatParticipant, active_id: str | None) -> dict:
         "id": p.id,
         "name": p.name,
         "isAlly": p.is_ally,
+        "yielded": p.yielded,
         "hpCurrent": p.hp_current,
         "hpMax": p.hp_max,
         "tempHp": temp_hp.player_pool(p),

@@ -11,6 +11,7 @@ import ability_persistence
 import combat_ability_save
 import combat_spell_heal
 import combat_voice_rules
+import combat_yield
 import condition_voice_rules
 import db_queries
 import patron_synergy_heal
@@ -109,6 +110,8 @@ async def _resolve_ability_condition_packet(
             ),
             progress=progress.scope(ability.id) if progress is not None else None,
         )
+        if summary.get("condition_results"):
+            summary.update(combat_yield.end(attacker))
         return _with_variant(summary, variant) if summary else {}
 
     combat_voice_rules.guard_declaration(state, attacker, decl)
@@ -177,6 +180,8 @@ async def _resolve_ability_condition_packet(
             _land_condition_on_one,
             progress=progress,
         )
+        if summary.get("resolved"):
+            summary.update(combat_yield.end(attacker))
         return _with_variant(summary, variant)
 
     summary = {
