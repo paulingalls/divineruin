@@ -77,7 +77,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_archetypes.md` (135
 - **Verified-at:** content/anchor fix `0a174ff`, capstone E2E `b8b3030`; final close SHA recorded at sprint-close.
 
 **Open follow-ups:**
-- No server archetype REST endpoint yet — the http_websocket surface proves the server boots + loads all 18; a REST surface lands when a consumer needs it (decision `archetype-rest-surface-deferred`).
+- The authenticated `GET /api/content/archetypes` route serves the class catalog, exercised by `content-catalog-api.test.ts`.
 - `get_skill_proficiencies` choose-N branch is now vestigial (every archetype has `num_choices == len(options)`); either delete it or make the partial-choice mismatch fail loud (debt `30f87f292585`).
 - Acceptance test imports the `EXPECTED_HP`/`EXPECTED_RESOURCE` anchors from sibling unit-test modules; the cleaner home is a shared non-test module (concern `a8a4ba42bebd`).
 
@@ -210,7 +210,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_archetypes.md` (135
 
 > **Status (shipped):** Variant catalog, the 3-cycle mentor training loop, cultural attribution, variant activation, and co-location + mentor-requirement gating are delivered and tested (unit tests + `tests/acceptance/test_mentor_variants.py`, `test_mentor_gating_e2e.py`). AC3 closed by M9 story-004 (2026-09-01): a variant no longer overrides its base. `activate` routes variant ids as a fourth namespace, so the player chooses per activation — base id for the base cost/effect, variant id for the variant's. `set_active_variant` still allows only ONE activatable variant per technique, so a second trained variant makes the first unlocked-but-unusable; supplement is between base and variant, not among variants.
 >
-> Not shipped: nothing surfaces a learned variant's *id* to the DM — `query_info` has no ability/variant kind and the unlock narration carries only the cultural-attribution prose — so the variant namespace is routable but not yet discoverable at the table.
+> The DM discovers learned active variants through `query_info(kind="abilities")`, which returns the `active_variant_id` for combat declarations and activation.
 
 **Key references:**
 - *Game Mechanics Archetypes Doc — Martial Mentor System*

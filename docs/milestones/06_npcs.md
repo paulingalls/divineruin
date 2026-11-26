@@ -263,7 +263,7 @@ See `audit/phase-6-mentors.md` for the full coverage matrix.
 
 <!-- see audit/phase-6-companions.md -->
 
-**Status: DELIVERED (capstone `test_m6_4_companion_chain_capstone.py` passes; 1 AC deferred).** Superseded — the Sprint-005 snapshot below is stale. Shipped: `content/companions.json` (all 4 companions — Kael/Lira/Tam/Sable — with typed `attacks`/`passives`/`actives`/`reactions` buckets, `scaling_rules`, `relationship_unlocks`) + migrations `042_companions.sql` / `043_companion_affinity.sql` + `apps/agent/companion_profiles.py`, `companion_scaling.py` / `hp_scaling.py` (`scale_companion_stats_to_player_level`, HP at hp_factor of player max — 0.75, Sable 0.50), `companion_relationship.py` (5 named tiers New/Warming/Trusted/Bonded/Legendary gating narrative unlocks only). Combat stat block proven relationship-independent through the real `_start_combat_impl` path. The 4 hostile-encounter templates ship in `content/encounter_templates.json`. Deferred (left unchecked): AC2 — Lira and Sable each carry 1 attack, below the stated 2–4 range (intentional support/glass-cannon profiles), so the strict count criterion is not met.
+**Status: DELIVERED (9/9 criteria).** All four profiles have typed attack, passive, active and reaction buckets, and meet their bucket counts. The M6.4 capstone exercises combat initialization, relationship-independent stats and profile-specific HP scaling. Relationship tiers gate narrative unlocks. Combat builds its action pool from profile attacks. [M14.1](14_engine_completeness.md#milestone-141--narrated-only-mechanics-and-voice-certification) tracks execution of companion actives, passives and reactions.
 
 The Sprint-005 audit paragraph below is retained for history only.
 
@@ -283,7 +283,7 @@ The Sprint-005 audit paragraph below is retained for history only.
 **Cross-doc deps:**
 - M6.4 → M6.1: companion stat blocks reuse NPC schema; M6.4 ability-bucket fields not on the schema (story-001 finding).
 - M6.4 → M6.2: 4 hostile encounter templates inherited (story-002 audit owns canonical); story-002 punch list recommends M6.2 as primary owner.
-- M6.4 → Phase 4 Combat: companion-in-combat integrated via `CombatParticipant` + `combat_init.py`; companion ability execution (Hold the Line, Second Wind, Intercept) is the gap.
+- M6.4 → Phase 4 Combat: companion-in-combat integrated via `CombatParticipant` + `combat_init.py`; companion ability execution (Hold the Line, Second Wind, Intercept) is tracked in [M14.1](14_engine_completeness.md#milestone-141--narrated-only-mechanics-and-voice-certification).
 - M6.4 → Phase 7 Bestiary: companion stat blocks inherit from CreatureStatBlock (unshipped).
 - M6.4 → Phase 3 Magic: Sable mage profile references Focus pool + spell catalog.
 - M6.4 → faction system + quest system: Companion Assignment Logic + Companion Progression Milestones consume both.
