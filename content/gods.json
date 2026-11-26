@@ -1361,8 +1361,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Religion when interpreting a concealed devotional symbol.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "syrath_secret_devotion",
+            "kind": "context_check",
+            "synergy_context": "concealed_symbol",
+            "skill": "religion",
+            "bonus": 1
           }
         ]
       },
@@ -1372,8 +1377,13 @@
         "clauses": [
           {
             "effect": "Gain +1 History when identifying an oath whose patron’s name was erased.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "syrath_unspoken_vow",
+            "kind": "context_check",
+            "synergy_context": "erased_oath",
+            "skill": "history",
+            "bonus": 1
           }
         ]
       },
@@ -1735,8 +1745,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Persuasion when negotiating the return of a body for burial.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "mortaen_peace_at_parting",
+            "kind": "context_check",
+            "synergy_context": "burial_return",
+            "skill": "persuasion",
+            "bonus": 1
           }
         ]
       },
@@ -3415,8 +3430,13 @@
         "clauses": [
           {
             "effect": "Gain +1 to checks to repair a clock or timing mechanism.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_patient_gear",
+            "kind": "context_check",
+            "synergy_context": "clock_repair",
+            "skill": null,
+            "bonus": 1
           }
         ]
       },
@@ -3426,8 +3446,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Investigation when comparing two accounts of the same foretold event.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_converging_clues",
+            "kind": "context_check",
+            "synergy_context": "foretold_accounts",
+            "skill": "investigation",
+            "bonus": 1
           }
         ]
       },
