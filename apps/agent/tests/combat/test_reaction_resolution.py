@@ -68,7 +68,7 @@ SHIELD_OF_FAITH = "cleric_shield_of_faith"
 # against fear/charm, not +2 AC (reaction_windows' module docstring names both). Excluded by name
 # so a SEVENTH row appearing in that window is a decision someone made, not an accident.
 COUNTERCHARMS = frozenset({"bard_countercharm", "diplomat_countercharm"})
-UNWIRED_ON_HIT = frozenset({"druid_bark_skin", "warden_bark_skin", "warrior_brace_for_impact"})
+UNWIRED_ON_HIT = frozenset({"warrior_brace_for_impact"})
 
 
 @pytest.mark.asyncio
@@ -122,17 +122,14 @@ async def test_the_reaction_changes_only_the_blow_it_was_spent_against():
 
 def test_the_wired_sets_name_real_catalog_rows_at_the_right_window():
     catalog = load_fixture_config()
-    wired = (
-        combat_reaction_effect.HALVES_DAMAGE
-        | combat_reaction_effect.SHIELD_BEARING
-        | set(combat_reaction_effect.AC_BONUS)
-        | set(combat_reaction_effect.SAVE_ADVANTAGE)
+    wired_on_hit = (
+        combat_reaction_effect.HALVES_DAMAGE | combat_reaction_effect.SHIELD_BEARING | combat_reaction_effect.BARK_SKIN
     )
+    wired = wired_on_hit | set(combat_reaction_effect.AC_BONUS) | set(combat_reaction_effect.SAVE_ADVANTAGE)
     for ability_id in wired:
         assert catalog[ability_id].ability_type == "reaction", ability_id
 
-    assert {catalog[i].window for i in combat_reaction_effect.HALVES_DAMAGE} == {"on_hit"}
-    assert {catalog[i].window for i in combat_reaction_effect.SHIELD_BEARING} == {"on_hit"}
+    assert {catalog[i].window for i in wired_on_hit} == {"on_hit"}
     assert {catalog[i].window for i in combat_reaction_effect.AC_BONUS} == {"on_ally_targeted"}
     assert {catalog[i].window for i in combat_reaction_effect.SAVE_ADVANTAGE} == {"on_ally_targeted"}
     assert set(combat_reaction_effect.SAVE_ADVANTAGE) == COUNTERCHARMS
@@ -142,7 +139,6 @@ def test_the_wired_sets_name_real_catalog_rows_at_the_right_window():
     assert guarding == set(combat_reaction_effect.AC_BONUS) | set(combat_reaction_effect.SAVE_ADVANTAGE)
 
     on_hit = {a.id for a in catalog.values() if a.ability_type == "reaction" and a.window == "on_hit"}
-    wired_on_hit = combat_reaction_effect.HALVES_DAMAGE | combat_reaction_effect.SHIELD_BEARING
     assert not (wired_on_hit & UNWIRED_ON_HIT)
     assert on_hit == wired_on_hit | UNWIRED_ON_HIT
 

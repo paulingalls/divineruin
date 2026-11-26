@@ -170,7 +170,7 @@ Investigation of Stable Audio 3 noise-only outputs and the resolved production p
 
 ---
 
-## audio_sfx_pipeline.md (546 lines)
+## audio_sfx_pipeline.md (549 lines)
 
 Sound-effect generation, asset keys, regeneration, and integration guidance.
 
@@ -180,9 +180,9 @@ Sound-effect generation, asset keys, regeneration, and integration guidance.
 | 2. Service Evaluation | 21-36 | ElevenLabs, Stable Audio 3, AudioGen and procedural synth compared on cost, licensing, quality |
 | 2.5 Existing Divine Ruin Audio Pipeline (prior work — the actual recommended path) | 37-170 | Existing Stable Audio harness; SA3 Small SFX upgrade; one pipeline for all audio |
 | 3. Recommendation | 171-252 | Quality gates the choice; bake-off and SA3-medium spike findings |
-| 4. Keying Scheme (FROZEN CONTRACT for stories 002/003) | 253-392 | sound_id keyed by effect family; 7-key MVP palette; all 87 spells mapped |
-| 5. Regenerate Recipe | 393-507 | Recommended Stable Audio path, ElevenLabs secondary, procedural fallback |
-| 6. Integration Notes for Stories 002/003 | 508-546 | Asset SSOT location, bundling, family coverage matrix |
+| 4. Keying Scheme (FROZEN CONTRACT for stories 002/003) | 253-395 | sound_id keyed by effect family; 7-key MVP palette; all 87 spells mapped |
+| 5. Regenerate Recipe | 396-510 | Recommended Stable Audio path, ElevenLabs secondary, procedural fallback |
+| 6. Integration Notes for Stories 002/003 | 511-549 | Asset SSOT location, bundling, family coverage matrix |
 
 ---
 
@@ -956,7 +956,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/REMAINING.md (199 lines)
+## milestones/REMAINING.md (210 lines)
 
 ---
 

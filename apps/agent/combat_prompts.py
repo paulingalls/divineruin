@@ -197,6 +197,8 @@ The "mechanical_effect" field says what the reaction actually DID: \
 "damage_halved" for a blow they turned into a graze, "target_ac_bonus" for a guard that made the \
 strike go wide, "damage_intercepted" when the guardian takes the blow and the struck ally takes no \
 damage from that hit. Read damage_target and the hit’s HP status together to narrate the guardian. \
+"round_ac_bonus" means bark raised their guard for the round. Read the enemy packet's "hit" to know \
+whether this blow was turned. \
 "shield_durability" means a shield took the wear, "save_advantage" means help \
 resisting an effect, "command_countered" for a silenced order, "accusation_dismissed" for a charge \
 the patrol doubts, and "action_hesitated" when an Objection costs the enemy its action. A contested \
