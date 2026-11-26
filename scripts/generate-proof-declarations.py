@@ -29,6 +29,7 @@ from proof_named_file_readers import (
     select_named,
 )
 from proof_runtime_inputs import CONFIG, LAUNCHES, assign_runtime, calls
+from proof_source_cache import source_ast, source_text
 
 ROOT = Path.cwd()
 TESTS = Path("apps/agent/tests/acceptance")
@@ -65,7 +66,7 @@ def agent_environment(run):
 
 def paid_only(path):
     value = None
-    for node in ast.parse(path.read_text()).body:
+    for node in source_ast(str(path)).body:
         if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "pytestmark" for t in node.targets):
             if value is not None:
                 raise ValueError(f"{path}: unsupported pytestmark reassignment")
@@ -99,7 +100,7 @@ def imports(path):
 
 
 def partitions(path):
-    tree = ast.parse(Path(path).read_text())
+    tree = source_ast(path)
     if Path(path).stem == "test_choir_capstone":
         names = []
         for node in tree.body:
@@ -270,7 +271,7 @@ def acceptance_partitions():
 
 
 def main():
-    bun_tasks = json.loads(Path("scripts/proof-bun-tasks.json").read_text())
+    bun_tasks = json.loads(source_text("scripts/proof-bun-tasks.json"))
     subprocess.run(
         ["bun", "scripts/proof-bun-ownership.ts"],
         input=json.dumps(
@@ -474,7 +475,7 @@ def main():
     audit_nonempty(
         tasks,
         {p for p in sources if p.startswith("apps/agent/tests/")} | NON_PYTHON | data,
-        json.loads(Path("proof.yaml").read_text())["inputs"],
+        json.loads(source_text("proof.yaml"))["inputs"],
         graph,
     )
     unkeyed = restored | content | SHARED_INPUTS | runtime_sources

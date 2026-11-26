@@ -3,13 +3,15 @@
 import ast
 import json
 from collections import Counter
+from copy import deepcopy
 from functools import cache
 from pathlib import Path, PurePosixPath
 
 from proof_family_selection import first_reader
+from proof_source_cache import source_ast, source_text
 
 ACCEPTANCE = "apps/agent/tests/acceptance/"
-LAUNCH_CALLS = json.loads(Path("scripts/proof-launch-calls.json").read_text())
+LAUNCH_CALLS = json.loads(source_text("scripts/proof-launch-calls.json"))
 LAUNCHES = {
     module: sorted({root for site in sites for root in site["roots"]})
     for module, sites in LAUNCH_CALLS.items()
@@ -55,7 +57,7 @@ CONFIG = [
 
 @cache
 def calls(path):
-    nodes = list(ast.walk(ast.parse(Path(path).read_text())))
+    nodes = list(ast.walk(source_ast(path)))
     alias = {a.asname: a.name for n in nodes if isinstance(n, ast.Import) for a in n.names if a.asname}
     names = {f"{n.module}.{a.name}" for n in nodes if isinstance(n, ast.ImportFrom) for a in n.names}
     for n in nodes:
@@ -87,7 +89,7 @@ def target_bindings(call, tree):
 
 @cache
 def launch_sites(path):
-    tree = ast.parse(Path(path).read_text())
+    tree = deepcopy(source_ast(path))
     aliases = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
