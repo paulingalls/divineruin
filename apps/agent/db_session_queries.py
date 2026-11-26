@@ -13,6 +13,7 @@ import db
 import db_activity_queries
 import db_content_queries
 import db_queries
+import rules_engine
 import spell_knowledge
 import spells
 import temp_hp
@@ -108,6 +109,10 @@ async def get_session_init_payload(player_id: str) -> dict:
             player["hp"] = effective_hp(player)
         if player.get("divine_favor") is not None:
             player["divine_favor"] = {**player["divine_favor"], **patron_snapshot["divine_favor"]}
+        arcana_tier = rules_engine._get_skill_tier(player, "arcana")
+        if arcana_tier == "trained" and rules_engine._get_earned_skill_tier(player, "arcana") == "untrained":
+            player["skill_tiers"] = {**player.get("skill_tiers", {}), "arcana": arcana_tier}
+            player["proficiencies"] = [*player.get("proficiencies", []), "arcana"]
     location_id = player.get("location_id", "") if player else ""
 
     location, inventory, quests, map_progress = await asyncio.gather(
