@@ -1,8 +1,9 @@
-"""Core rules engine — character math, resource pools, leveling. Zero IO, zero async."""
+"""Core rules engine — character math, resource pools and leveling."""
 
 from dataclasses import dataclass
 from typing import Literal
 
+import patron_synergy
 from archetypes import PoolFormula, ResourcePattern, get_archetype_chassis
 
 # --- Type aliases ---
@@ -277,8 +278,7 @@ def attribute_modifier(score: int) -> int:
     return (score - 10) // 2
 
 
-def _get_skill_tier(player_data: dict, skill_lower: str) -> SkillTier:
-    """Get the skill tier for a character, with fallback to proficiencies list."""
+def _get_earned_skill_tier(player_data: dict, skill_lower: str) -> SkillTier:
     skill_tiers = player_data.get("skill_tiers", {})
     if skill_lower in skill_tiers:
         return skill_tiers[skill_lower]
@@ -286,6 +286,17 @@ def _get_skill_tier(player_data: dict, skill_lower: str) -> SkillTier:
     if any(p.lower() == skill_lower for p in proficiencies):
         return "trained"
     return "untrained"
+
+
+def _get_skill_tier(player_data: dict, skill_lower: str) -> SkillTier:
+    earned = _get_earned_skill_tier(player_data, skill_lower)
+    if (
+        skill_lower == "arcana"
+        and earned == "untrained"
+        and patron_synergy.has_engine_synergy(player_data, "veythar_arcane_revelation")
+    ):
+        return "trained"
+    return earned
 
 
 def has_iron_constitution(player_data: dict) -> bool:

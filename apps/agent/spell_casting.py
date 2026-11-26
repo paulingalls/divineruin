@@ -112,6 +112,8 @@ async def _cast_spell_impl(
         # session stays pristine and no event fires.
         if result.new_resonance is not None:
             caster.resonance.current = result.new_resonance
+        for pid, total in result.resonance_updates.items():
+            session.member_state(pid).resonance.current = total
         if result.concentration_spell_id is not _UNCHANGED:
             caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
         if result.unbound_veil_mastery_spent:

@@ -79,7 +79,13 @@ async def test_still_entry_search_and_weapon_damage(still):
         (anchors[0], {"kind": "defend", "reshape": []}),
         (
             anchors[0],
-            {"kind": "move", "movement_mode": "ground", "reshape": [], "destination": {"x": 20, "y": 0, "z": 0}},
+            {
+                "kind": "move",
+                "nythera_step": False,
+                "movement_mode": "ground",
+                "reshape": [],
+                "destination": {"x": 20, "y": 0, "z": 0},
+            },
         ),
     ]:
         assert "take no actions" in await declare(still, actor_id=actor_id, error=True, **action)

@@ -10,6 +10,7 @@ from combat_order_riders import DIRECT_STRIKE as DIRECT_STRIKE
 from combat_order_riders import FIELD_MEDIC, SACRIFICE_PLAY
 from communication_voice_rules import can_hear
 from mentor_variants import MentorVariant
+from patron_synergy_heal import INSPIRE, INSPIRE_HEAL
 
 if TYPE_CHECKING:
     from combat_participant import CombatParticipant
@@ -70,6 +71,8 @@ DeclaredAbility = tuple[abilities.Ability, MentorVariant | None]
 def declared_ability(action: str | None) -> DeclaredAbility | None:
     if action is None:
         return None
+    if action == INSPIRE_HEAL:
+        return abilities.get_ability(INSPIRE), None
     try:
         return abilities.get_ability(action), None
     except ValueError:

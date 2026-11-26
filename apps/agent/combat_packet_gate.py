@@ -8,6 +8,7 @@ import character_spells
 import combat_ability_save
 import combat_martial
 import combat_voice_rules
+import patron_synergy_heal
 import spell_knowledge
 import spells
 from combat_ability import (
@@ -82,6 +83,8 @@ async def _prevalidate_ability_focus(
             players_by_id[actor_id] = player
         try:
             combat_voice_rules.guard_declaration(state, actor, decl)
+            if decl.type is DeclarationType.ABILITY and decl.action == patron_synergy_heal.INSPIRE_HEAL:
+                patron_synergy_heal.require_inspire_heal(player)
         except ValueError as e:
             raise ToolError(str(e)) from e
         action = decl.action if decl.type is DeclarationType.ABILITY else combat_martial.attack_ability(decl)

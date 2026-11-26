@@ -145,7 +145,14 @@ async def test_stance_survives_until_own_packet(walk: MawlingHarness, next_actio
     before = await stamina(actor)
     assert "iron_stance" in await condition_types(walk, actor)
 
-    move = {"kind": "move", "actor_id": actor, "reshape": [], "destination": pos(4), "movement_mode": "ground"}
+    move = {
+        "kind": "move",
+        "nythera_step": False,
+        "actor_id": actor,
+        "reshape": [],
+        "destination": pos(4),
+        "movement_mode": "ground",
+    }
     if next_action == "move":
         snapshot = await walk.snapshot()
         await declare(walk, {**move, "destination": pos(400)}, error=True)

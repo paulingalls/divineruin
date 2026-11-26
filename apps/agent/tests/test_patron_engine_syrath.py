@@ -114,7 +114,14 @@ async def step(w: SimpleNamespace, call, *, ability_id: str = VEILSTEP, **kwargs
 
 
 def move(actor: str, destination: dict) -> dict:
-    return {"reshape": [], "movement_mode": "ground", "kind": "move", "actor_id": actor, "destination": destination}
+    return {
+        "reshape": [],
+        "movement_mode": "ground",
+        "kind": "move",
+        "nythera_step": False,
+        "actor_id": actor,
+        "destination": destination,
+    }
 
 
 async def veilstep_full_move(w: SimpleNamespace) -> None:

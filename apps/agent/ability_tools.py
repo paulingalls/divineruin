@@ -27,6 +27,7 @@ import abilities
 import ability_persistence
 import ability_voice_rules
 import combat_hold
+import combat_spell_heal
 import condition_produce
 import condition_voice_rules
 import conditions
@@ -34,9 +35,13 @@ import db
 import db_mutations
 import db_mutations_conditions
 import db_queries
+import dice
+import event_types as E
 import mentor_variants
+import patron_synergy_heal
 import reaction_gate
 import spells
+import temp_hp
 from combat_ability_gate import (
     RALLYING_SHOUT,
     SHADOW_STEP,
@@ -46,8 +51,11 @@ from combat_ability_gate import (
     require_rally_target,
 )
 from combat_ability_save import requires_hostile_target
+from combat_events import isolated_publish
+from game_events import publish_game_event
 from resource_costs import gate_pool
 from session_data import AuthenticatedActor, SessionData
+from song_of_rest import SONG_OF_REST
 from tool_support import _validate_id
 
 logger = logging.getLogger("divineruin.tools")
@@ -70,8 +78,9 @@ async def _request_ability_activation_impl(
     condition_produce_mod=condition_produce,
 ) -> str:
     _validate_id(ability_id, "ability_id")
+    base_id = patron_synergy_heal.INSPIRE if ability_id == patron_synergy_heal.INSPIRE_HEAL else ability_id
     try:
-        ability = abilities_mod.get_ability(ability_id)
+        ability = abilities_mod.get_ability(base_id)
     except ValueError as e:
         raise ToolError(str(e)) from e
 
@@ -176,11 +185,17 @@ async def _request_ability_activation_unlocked(
     session: SessionData = context.userdata
     player_id = session.acting_player_id if player_id is None else player_id
     logger.info("request_ability_activation called: ability=%s player=%s", ability_id, player_id)
+    heal_mode = ability_id == patron_synergy_heal.INSPIRE_HEAL
+    if heal_mode:
+        ability_id = patron_synergy_heal.INSPIRE
 
     try:
         ability = abilities_mod.get_ability(ability_id)
     except ValueError as e:
         raise ToolError(str(e)) from e
+
+    if ability.id == SONG_OF_REST:
+        raise ToolError('Use Song of Rest with rest(rest_type="short", use_song_of_rest=true).')
 
     if requires_hostile_target(ability):
         raise ToolError(f"{ability.name} needs a foe — use it in a fight.")
@@ -201,6 +216,7 @@ async def _request_ability_activation_unlocked(
     # deadlock-safe helper (story-005): pre-lock the caster + any OOC condition-producing targets in
     # ONE ascending-player_id batch — an in-combat call, or a self / companion / no-target activation,
     # locks just the caster.
+    heal_packet: dict = {}
     delivery_policy = ability_voice_rules.policy(ability_id)
     produces_ooc = not session.in_combat and (
         ability.applies_condition is not None
@@ -216,6 +232,11 @@ async def _request_ability_activation_unlocked(
             queries_mod=queries_mod,
             conn=conn,
         )
+        if heal_mode:
+            try:
+                patron_synergy_heal.require_inspire_heal(player)
+            except ValueError as e:
+                raise ToolError(str(e)) from e
         # Own-the-base gate (story-006): reject an ability the player hasn't learned
         # BEFORE any resource deduction. Core/reaction are always-known for the
         # archetype; an elective needs a character_abilities row (queried only then).
@@ -279,6 +300,14 @@ async def _request_ability_activation_unlocked(
                 require_rally_target(player_id, target_id, eligible)
             except ValueError as e:
                 raise ToolError(str(e)) from e
+        if heal_mode:
+            profile = patron_synergy_heal.inspire_heal()
+            try:
+                heal_rows = combat_spell_heal.exploration_recipients(
+                    ability, profile, player_id, player, target_id, target_ids, locked_rows
+                )
+            except ValueError as e:
+                raise ToolError(str(e)) from e
         cost = variant.cost if variant is not None else ability.cost
 
         # Gate Stamina then Focus (fail-loud, pure); each returns the post-deduct
@@ -302,22 +331,20 @@ async def _request_ability_activation_unlocked(
             combat_hold.record_spend(persisted_state, player_id, prepared_spend)
             await db_mutations.save_combat_state(persisted_state.combat_id, persisted_state.to_dict(), conn=conn)
 
-        # Beneficial-condition PRODUCER (M4.8 story-005), out-of-combat half. An ability carrying
-        # applies_condition lands it on the target's players.data SSOT — applied AFTER the resource
-        # gate so a refused (unaffordable) activation produces nothing, and inside this tx so the
-        # write commits atomically with the deduct. The OOC persist is gated on not session.in_combat,
-        # mirroring the spell producer (_resolve_cast): in combat the participant is the SSOT and the
-        # declare_phase ability-condition path owns the apply, so an in-combat call here must NOT write
-        # to players.data. condition_applied is captured here and surfaced on the response AFTER the
-        # block (the response dict is built post-commit). Self-target (no target_id) reuses the
-        # for_update caster row; a non-player target (companion/NPC) has no players.data store, so it
-        # narrates without a write rather than hard-erroring on the missing row. The persist only fires
-        # when the condition actually LANDS (has_condition) — an immunity no-op writes nothing.
-        # Mirrors story-004's spell producer (decision applies-condition-producer-contract).
-        if ability.applies_condition is not None and not session.in_combat:
-            # Route through the shared OOC producer (story-007), which lands on the multi-target list,
-            # the single target_id, or the caster (self) — unifying the OOC ability path with the OOC
-            # spell path. target_ids was already normalized/capped above.
+        if heal_mode:
+            session.validate_acting_player(player_id)
+            results = await combat_spell_heal.land_exploration(
+                profile,
+                player,
+                heal_rows,
+                caster_id=player_id,
+                synergy=None,
+                packet=heal_packet,
+                conn=conn,
+                dice_mod=dice,
+            )
+            combat_spell_heal.inspire_receipt(heal_packet, profile, results)
+        elif ability.applies_condition is not None and not session.in_combat:
             try:
                 session.validate_acting_player(player_id)
                 voiced = await condition_produce_mod.produce_ooc_condition(
@@ -349,7 +376,16 @@ async def _request_ability_activation_unlocked(
         "effect": variant.effect if variant is not None else ability.effect,
         "deducted": {"stamina": cost.stamina, "focus": cost.focus},
         "variable_cost": cost.scaling,
+        **heal_packet,
     }
+    if heal_mode:
+        for pid, hp in combat_spell_heal.hp_updates(player_id, heal_packet).items():
+            recipient = player if pid == player_id else heal_rows[pid]
+            health = {"current": hp["hp_current"], "max": hp["hp_max"], "temp_hp": temp_hp.from_player(recipient)}
+            with isolated_publish("Inspire healing HP"):
+                await publish_game_event(
+                    session.room, E.HP_CHANGED, health, event_bus=session.event_bus, destination_identities=[pid]
+                )
     # Cultural attribution exists only for the mentor-taught form.
     if variant is not None:
         response["cultural_attribution"] = variant.cultural_attribution

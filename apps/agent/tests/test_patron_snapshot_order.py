@@ -39,7 +39,7 @@ async def test_spend_overtakes_initialization_without_losing_its_revision(dev_db
         assert initial["type"] == "session_init" and not initial["abilities"][1]["spent"]
         assert update["patron_revision"] > initial["patron_revision"]
         after = update["patron_revision"]
-        await w.command("rest", {"rest_type": "long"})
+        await w.command("rest", {"rest_type": "long", "use_song_of_rest": False})
         assert events[-1]["patron_revision"] > after
 
 

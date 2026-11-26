@@ -84,7 +84,7 @@ async def apply_skill_practice_advancement(
             player_id,
             training_skill,
             counter_increment,
-            initial_tier=rules_engine._get_skill_tier(player, training_skill.lower()),
+            initial_tier=rules_engine._get_earned_skill_tier(player, training_skill.lower()),
             conn=conn,
             queries=queries,
             mutations=mutations,

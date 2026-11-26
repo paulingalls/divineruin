@@ -22,6 +22,7 @@ import db_content_queries
 import db_queries
 import elective_choices
 import lost_scout_scene
+import patron_synergy_heal
 import query_patron
 import recipe_tools
 import spell_knowledge
@@ -30,6 +31,7 @@ import still_encounter
 import training_tools
 from combat_ability_gate import SHADOW_STEP, attack_recipe, combat_ability
 from db_errors import db_tool
+from patron_synergy import has_engine_synergy
 from session_data import SessionData
 from settlement_generation import generate_settlement_npcs, generate_settlement_roster
 from tool_support import (
@@ -218,6 +220,8 @@ async def _query_abilities_impl(
             if active_variant_id is not None:
                 row["active_variant_id"] = active_variant_id
         results.append(row)
+        if ability.id == patron_synergy_heal.INSPIRE and has_engine_synergy(player, patron_synergy_heal.INSPIRE_HEAL):
+            results.append({**row, "id": patron_synergy_heal.INSPIRE_HEAL, "name": "Inspire (Heal)"})
     spell_rows = []
     for spell_id in sorted(castable_ids):
         try:

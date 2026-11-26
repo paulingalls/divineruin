@@ -207,6 +207,7 @@ class KnightFight(MawlingHarness):
                             "reshape": [],
                             "movement_mode": "ground",
                             "kind": "move",
+                            "nythera_step": False,
                             "actor_id": actor.id,
                             "destination": {k: origin[k] + (destination[k] - origin[k]) * fraction for k in origin},
                         }

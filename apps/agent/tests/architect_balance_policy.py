@@ -127,6 +127,7 @@ def move(
         return None
     return MoveDecl(
         kind="move",
+        nythera_step=False,
         actor_id=actor.id,
         destination=Destination(**endpoint),
         movement_mode="ground",

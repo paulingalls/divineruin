@@ -403,3 +403,82 @@ test("Syrath's Shadow Veil duration and strike are registered for rogue, spy and
     ]);
   }
 });
+
+test("Orenthel's Cleansing Touch is registered for druids and beastcallers", () => {
+  const matrix = validateGods(catalog).find(
+    (god) => god.god_id === "orenthel",
+  )?.layer_4_synergy_matrix;
+  for (const archetype of ["druid", "beastcaller"] as const) {
+    expect(matrix?.[archetype]).toEqual({
+      type: "unexpected",
+      name: "Cleansing Touch",
+      clauses: [
+        {
+          effect:
+            "Healing Touch also removes 1 Resonance from target. Active party Resonance management",
+          status: "active",
+          resolution: "engine",
+          implementation_id: "orenthel_cleansing_touch",
+        },
+      ],
+    });
+  }
+});
+
+test("Nythera's Unmoored Step is active for skirmishers and rogues", () => {
+  const nythera = validateGods(catalog).find((god) => god.god_id === "nythera")!;
+  for (const archetype of ["skirmisher", "rogue"]) {
+    expect(nythera.layer_4_synergy_matrix[archetype]).toEqual({
+      name: "Unmoored Step",
+      type: "unexpected",
+      clauses: [
+        {
+          effect:
+            "Once per encounter, one of your moves, up to your normal movement, provokes no opportunity attacks",
+          status: "active",
+          resolution: "engine",
+          implementation_id: "nythera_tidal_step",
+        },
+      ],
+    });
+  }
+});
+
+test("Veythar's Arcane Revelation grants clerics Arcana training", () => {
+  const veythar = validateGods(catalog).find((god) => god.god_id === "veythar");
+  expect(veythar?.layer_4_synergy_matrix.cleric?.clauses).toEqual([
+    {
+      effect: "Arcana as bonus starting skill.",
+      status: "active",
+      resolution: "engine",
+      implementation_id: "veythar_arcane_revelation",
+    },
+    {
+      effect: "Divine magic auto-identifies magical effects (no check)",
+      status: "active",
+      resolution: "narrated",
+    },
+  ]);
+});
+
+test("Orenthel's Restoring Song enables Song of Rest and Inspire healing", () => {
+  const orenthel = validateGods(catalog).find((god) => god.god_id === "orenthel");
+  expect(orenthel?.layer_4_synergy_matrix.bard).toEqual({
+    type: "divine",
+    name: "Restoring Song",
+    clauses: [
+      {
+        effect: "Song of Rest +1d6 HP.",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "orenthel_song_of_rest",
+      },
+      {
+        effect: "Inspire dice can heal instead of buffing rolls",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "orenthel_inspire_heal",
+      },
+    ],
+  });
+});

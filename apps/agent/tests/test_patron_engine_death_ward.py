@@ -186,9 +186,9 @@ async def test_long_rest_recharges_next_drop(world):
                 'UPDATE players SET data=data || \'{"location_id":"millhaven_inn"}\'::jsonb WHERE player_id=$1', pid
             )
         recover = game_tools(session, rest)
-        assert (await recover("rest", rest_type="short"))["rested"]
+        assert (await recover("rest", rest_type="short", use_song_of_rest=False))["rested"]
         assert (await row(world, 0))["patron_gifts"] == SPENT
-        assert (await recover("rest", rest_type="long"))["rested"]
+        assert (await recover("rest", rest_type="long", use_song_of_rest=False))["rested"]
         assert (await row(world, 0))["patron_gifts"][WARD] == {"spent": False}
         await call("enter_mode", mode="combat", encounter_id="ruins_mawling_pair")
         observed = watch_spend(world)

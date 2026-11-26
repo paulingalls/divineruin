@@ -15,7 +15,7 @@ from combat_spatial import distance, position, require_spatial
 from combat_structures import blocking_wall
 from condition_restrictions import cannot_act, effective_speed
 from declarations import Declaration
-from patron_synergy_combat import attack_player
+from patron_synergy_combat import attack_player, spend_tidal_step
 from session_data import CombatParticipant, CombatState, SessionData
 
 
@@ -65,15 +65,14 @@ class PlayerMovement:
         return self.steps.get("movement_route")
 
     async def move(self, actor: CombatParticipant, declaration: Declaration, *, disengage: bool = False) -> dict | None:
-        if self.route is None:
-            if moves.ineligible(actor):
-                return moves.apply_move(self.state, actor, declaration)
+        disengage = disengage or declaration.nythera_step
+        if self.route is None and not (disengage or moves.ineligible(actor)):
             try:
                 endpoint, _, _, _ = moves.movement_geometry(self.state, actor.id, declaration)
             except moves.MovementRefused as error:
                 return {"actor_id": actor.id, "resolved": False, "reason": str(error)}
             spatial = require_spatial(self.state)
-            if not self._start(
+            self._start(
                 actor,
                 {"endpoint": endpoint, "mode": declaration.movement_mode},
                 {
@@ -83,9 +82,13 @@ class PlayerMovement:
                     "moved_ft": 0,
                     "destination": position(spatial, actor.id),
                 },
-                {"remaining": effective_speed(spatial["speeds"][actor.id], actor.conditions), "disengage": disengage},
-            ):
-                return moves.apply_move(self.state, actor, declaration)
+                {"remaining": effective_speed(spatial["speeds"][actor.id], actor.conditions)},
+            )
+        if self.route is None:
+            result = moves.apply_move(self.state, actor, declaration)
+            if declaration.nythera_step and result["resolved"]:
+                result.update(spend_tidal_step(self.state, actor.id))
+            return result
         route = await self._finish(actor)
         if route is None:
             return None

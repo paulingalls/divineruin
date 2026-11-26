@@ -63,8 +63,8 @@ async def test_rest_entry_and_decay_snapshots_follow_committed_state(dev_db_pool
 
         cast(MagicMock, w.sd.room).local_participant.publish_data.side_effect = sent
         await w.use("veythar_lorekeepers_library")
-        await w.command("rest", {"rest_type": "short"})
-        await w.command("rest", {"rest_type": "long"})
+        await w.command("rest", {"rest_type": "short", "use_song_of_rest": False})
+        await w.command("rest", {"rest_type": "long", "use_song_of_rest": False})
         assert [e["abilities"][1]["state"] for e in events] == ["spent", "spent", "ready"]
         await w.use("veythar_lorekeepers_library")
         now = datetime.now(UTC)

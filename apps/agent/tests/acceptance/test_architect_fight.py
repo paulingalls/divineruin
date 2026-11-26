@@ -366,7 +366,14 @@ async def test_construct_slam_resumes_base_and_collision_saves_once(fight):
         "declare_phase",
         {
             "declarations": [
-                {"reshape": [], "movement_mode": "ground", "kind": "move", "actor_id": player, "destination": pos(5)}
+                {
+                    "reshape": [],
+                    "movement_mode": "ground",
+                    "kind": "move",
+                    "nythera_step": False,
+                    "actor_id": player,
+                    "destination": pos(5),
+                }
             ]
         },
     )

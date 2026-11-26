@@ -110,26 +110,19 @@ async def test_created_and_migrated_speed_limits_movement(spatial_entry, migrate
     state = ctx.userdata.combat_state
     pid = players[0]
     before = deepcopy(state.to_dict())
+    move_fields = {
+        "reshape": [],
+        "movement_mode": "ground",
+        "kind": "move",
+        "nythera_step": False,
+        "actor_id": pid,
+    }
+    too_far = MoveDecl.model_validate({**move_fields, "destination": pos(30.0001)})
     with pytest.raises(ToolError, match="exceeds speed"):
-        await combat_turn.declare_phase(
-            ctx,
-            [
-                MoveDecl.model_validate(
-                    {
-                        "reshape": [],
-                        "movement_mode": "ground",
-                        "kind": "move",
-                        "actor_id": pid,
-                        "destination": pos(30.0001),
-                    }
-                )
-            ],
-        )
+        await combat_turn.declare_phase(ctx, [too_far])
     assert ctx.userdata.combat_state.to_dict() == before
     assert (await persisted(state.combat_id)) == before
-    payload = MoveDecl.model_validate(
-        {"reshape": [], "movement_mode": "ground", "kind": "move", "actor_id": pid, "destination": pos(30)}
-    )
+    payload = MoveDecl.model_validate({**move_fields, "destination": pos(30)})
     with pytest.raises(ToolError, match="more than once"):
         await combat_turn.declare_phase(ctx, [payload, DefendDecl(reshape=[], kind="defend", actor_id=pid)])
     declared = json.loads(await combat_turn.declare_phase(ctx, [payload]))

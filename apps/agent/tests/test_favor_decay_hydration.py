@@ -24,7 +24,7 @@ async def _seed(pool, player_id, favor):
         "INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb) "
         "ON CONFLICT (player_id) DO UPDATE SET data=$2::jsonb",
         player_id,
-        json.dumps({"divine_favor": favor}),
+        json.dumps({"class": "warrior", "divine_favor": favor}),
     )
 
 
@@ -186,7 +186,7 @@ async def test_join_callback_decays_only_joiner(dev_db_pool):
     async def get_player(_identity):
         reads_started.set()
         await release_reads.wait()
-        return {"player_id": joiner_id, "name": "Aric", "divine_favor": favor}
+        return {"player_id": joiner_id, "name": "Aric", "class": "warrior", "divine_favor": favor}
 
     queries.get_player = AsyncMock(side_effect=get_player)
     res = MagicMock()

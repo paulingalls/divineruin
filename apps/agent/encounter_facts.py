@@ -25,6 +25,7 @@ ZHAEL_THREADED_BLADE = "zhael_threaded_blade"
 
 
 ZHAEL_RALLY = "zhael_moment_to_rally"
+NYTHERA_TIDAL_STEP = "nythera_tidal_step"
 
 
 class EncounterFacts(TypedDict):

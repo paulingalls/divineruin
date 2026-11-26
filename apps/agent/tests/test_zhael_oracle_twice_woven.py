@@ -71,12 +71,12 @@ async def twice_woven(world):
     with patch("check_resolution.dice_roll", side_effect=[_d20(face) for face in (12, 18, 12, 12, 18, 12, 12)]):
         await spend(1)
         await call("activate", **await offer(), keep="original")
-        await call("rest", rest_type="short")
+        await call("rest", rest_type="short", use_song_of_rest=False)
         await query(1)
         assert (await row(world, 0))["patron_gifts"][FATE] == {"uses_spent": 1}
         await spend(0)
         assert "fate_offer" not in await call("check", roll=SAVE)
-        await call("rest", rest_type="long")
+        await call("rest", rest_type="long", use_song_of_rest=False)
         assert (await row(world, 0))["patron_gifts"][FATE] == {"uses_spent": 0}
         await query(2)
         await call("activate", **await offer(), keep="original")
