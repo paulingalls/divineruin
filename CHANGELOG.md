@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.80.2
+
+Native iOS verification now removes Xcode build data when it deletes a temporary checkout and clears build data from earlier runs whose workspaces are gone.
+
+Release steps: none.
+
 ## 0.80.1
 
 Proof now rejects undeclared tests in whole-directory Bun tasks and keys the five previously omitted tests, so edits invalidate stale passes.
