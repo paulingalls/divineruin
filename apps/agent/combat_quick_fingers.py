@@ -39,7 +39,6 @@ if TYPE_CHECKING:
 
 
 class Wary(TypedDict):
-    round: int
     attack_pending: bool
 
 
@@ -101,7 +100,7 @@ async def preflight(state: CombatState, *, queries) -> None:
 
 def take_advantage(state: CombatState, attacker: CombatParticipant, target: CombatParticipant) -> bool:
     wary = state.quick_fingers_wary.get(attacker.id, {}).get(target.id)
-    if wary is None or wary["round"] != state.round_number or not wary["attack_pending"]:
+    if wary is None or not wary["attack_pending"]:
         return False
     wary["attack_pending"] = False
     return True
@@ -185,8 +184,7 @@ async def resolve(
     assert mode is not None
     dc = 10 + attribute_modifier(target.attributes.get("wisdom", 10))
     receipt = {"mode": mode, "planted": None, "stolen": None, "total": None, "dc": dc, "success": False, "wary": False}
-    wary = state.quick_fingers_wary.get(target.id, {})
-    already_wary = any(entry["round"] == state.round_number for entry in wary.values())
+    already_wary = bool(state.quick_fingers_wary.get(target.id))
 
     try:
         plant = None
@@ -230,10 +228,7 @@ async def resolve(
             if empty:
                 receipt["reason"] = f"{target.name}'s pouch was empty."
         else:
-            state.quick_fingers_wary.setdefault(target.id, {})[actor.id] = {
-                "round": state.round_number,
-                "attack_pending": True,
-            }
+            state.quick_fingers_wary.setdefault(target.id, {})[actor.id] = {"attack_pending": True}
 
     resolved = declared_ability(QUICK_FINGERS)
     assert resolved is not None

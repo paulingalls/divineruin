@@ -66,7 +66,7 @@ async def test_wary_reload_retry_and_hostile_attack_order(fingers: FingersFight,
     )
 
     saved = await fingers.reload()
-    assert saved.quick_fingers_wary == {enemy.id: {actor: {"round": 1, "attack_pending": True}}}
+    assert saved.quick_fingers_wary == {enemy.id: {actor: {"attack_pending": True}}}
     assert saved.held_actions
     if concealed:
         await db_mutations.set_player_flag(actor, "concealed", True)
