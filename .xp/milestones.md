@@ -6,16 +6,6 @@ Each Measure is one shell line run from the repository root. It prints the
 remaining distance in one line: a cheap read over records or files, never a test
 run.
 
-## Combat action economy (Phase 4)
-Goal: every martial technique a player owns works in a fight, and Retreat provokes like any other move: the open boxes in `docs/milestones/04_combat.md` (human 2026-11-24 chose the martial-electives + retreat sprint).
-Measure: python3 -c 'import re; print("distance=%d" % len(re.findall(r"^- \[ \] ",open("docs/milestones/04_combat.md").read(),re.M)))'
-Candidates: none. Reached 2026-11-25 (distance=0, 83/83) with v0.78.0: sprint quick-fingers (Quick Fingers over enemy pockets) after weapon-proficiency, stance-and-shadow and divineruin2-m3's marshal-order-effects.
-
-## Hollow creatures (Phase 7 M7.3)
-Goal: the corruption aura, resonance-on-death and the Tier 4 Hollow behaviours (Choir, Still, Architect) work in play: `docs/milestones/07_bestiary.md` Milestone 7.3 ACs, including the Hollow edge cases (Execution plan Milestone 33, in progress).
-Measure: python3 -c 'import re; s=open("docs/milestones/07_bestiary.md").read(); b=re.search(r"^### Milestone 7.3 .*?(?=^### |\Z)",s,re.M|re.S).group(0); print("distance=%d" % len(re.findall(r"^- \[ \] ",b,re.M)))'
-Candidates: Architect balance follow-up (human 2026-11-25). Sprint stance-and-shadow's re-tune reached only 175 HP of the 300 spec (13/20 at 175, 11/20 at 180), because the fixed reference party's first-wired-elective picks (`tests/architect_reference_party.py:125`) hold only Shadow Step of the new techniques, and it fired on 1 seed of 20. Options: let the benchmark party pick its strongest electives (for example warrior Iron Stance); lower the Architect's damage toward a 300 HP profile; or both. Changing the party's picks or the 12-win floor is the human's call. Then: re-verify the aura and resonance boxes against `apps/agent/hollow_resonance.py` (Sprint 64 shipped both functions, but their boxes are unchecked; constraint 11). The Still (passive until attacked, damage reflection) and the Architect (terrain manipulation). Tier 3 boss HP and phases (Hollowed Knight, Veilrender). The Elite/Boss Mawling multiattack and the melee-within-5-ft rule from M33's required inputs shipped in v0.30.0; check them off there.
-
 ## Archetype synergies and the Unbound Path (Phase 8 M8.3)
 Goal: Layer 4 archetype synergy bonuses work, and the Unbound Path is a mechanically complete alternative to a patron: `docs/milestones/08_patrons.md` Milestone 8.3 ACs.
 Measure: python3 -c 'import re,json; s=open("docs/milestones/08_patrons.md").read(); b=re.search(r"^### Milestone 8.3 .*?(?=^### |\Z)",s,re.M|re.S).group(0); p=sum(c["status"]=="pending" for g in json.load(open("content/gods.json")) for r in (g["layer_4_synergy_matrix"] or {}).values() for c in r["clauses"]); print("distance=%d" % (len(re.findall(r"^- \[ \] ",b,re.M))+p))'
