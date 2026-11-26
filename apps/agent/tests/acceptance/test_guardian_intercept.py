@@ -16,6 +16,7 @@ from livekit.agents.llm import FunctionCallOutput
 import combat_spatial
 import db
 import db_mutations
+import db_mutations_concentration
 import db_queries
 from combat_structures import THORNWALL, add_wall
 
@@ -23,6 +24,10 @@ INTERCEPT = "guardian_intercept"
 BANDIT = "bandit"
 SWORD = "Short Sword"
 WALL = "thornwall"
+SHIELD = "guardian_retaliating_shield"
+SHIELD_ITEM = "thornveld_guardian_shield"
+ARMOR = "chain_mail"
+SPELL = "arcane_fly"
 
 
 @pytest.fixture
@@ -36,7 +41,7 @@ async def fight(reset_db_pool: str, scenario: str) -> AsyncIterator[MawlingHarne
             harness.players,
             (
                 "guardian",
-                "guardian" if scenario == "self" else "rogue",
+                "guardian" if scenario in ("self", "shield") else "rogue",
                 "guardian" if scenario.startswith("duplicate") else "mage",
             ),
             strict=True,
@@ -46,6 +51,19 @@ async def fight(reset_db_pool: str, scenario: str) -> AsyncIterator[MawlingHarne
                 actor,
                 json.dumps(class_),
             )
+        if scenario == "shield":
+            for actor in (guardian, ally):
+                for item in (SHIELD_ITEM, ARMOR):
+                    await harness.pool.execute(
+                        "INSERT INTO player_inventory (player_id,item_id,data) VALUES ($1,$2,$3::jsonb)",
+                        actor,
+                        item,
+                        '{"equipped":true,"current_hits":25}',
+                    )
+        if scenario == "concentration":
+            for actor in (guardian, ally):
+                harness.sd.member_state(actor).concentration.spell_id = SPELL
+                await db_mutations_concentration.update_player_concentration(actor, SPELL, conn=harness.pool)
         harness.encounter_id = f"intercept_{uuid4().hex}"
         harness.owns_template = True
         enemies = [BANDIT, "lookout"] if followup else [BANDIT]
@@ -108,7 +126,7 @@ async def fight(reset_db_pool: str, scenario: str) -> AsyncIterator[MawlingHarne
         with (
             patch(
                 "check_resolution.dice_roll",
-                side_effect=chain([_d20(17)], repeat(_d20(4 if scenario == "condition" else 17))),
+                side_effect=chain([_d20(17)], repeat(_d20(4 if scenario in ("condition", "concentration") else 17))),
             ),
             patch("check_resolution_attack.dice_roll", return_value=_damage_die(7)),
         ):
@@ -199,3 +217,35 @@ async def test_hit(fight: MawlingHarness, scenario: str, intercept: bool) -> Non
         assert blow["condition_inflicted"] == condition
         assert any(c["type"] == condition and c["source"] == source for c in participant(state, ally).conditions)
         assert all(c["type"] != condition for c in participant(state, guardian).conditions)
+
+
+async def wear(actor: str) -> dict[str, int]:
+    return {i["id"]: i["slot_info"]["current_hits"] for i in await db_queries.get_player_inventory(actor)}
+
+
+@pytest.mark.parametrize("scenario", ["shield"])
+async def test_spent_shield_wears_its_owner(fight: MawlingHarness) -> None:
+    guardian, ally, _ = fight.players
+    window = await opening(fight)
+    assert {INTERCEPT, SHIELD} <= {r["id"] for r in window["reactions"]}
+    for actor, ability in ((ally, SHIELD), (guardian, INTERCEPT)):
+        receipt = await tool_receipt(fight, actor, "activate", {"id": ability})
+        assert not receipt.is_error, receipt.output
+    packets = await fight.drain()
+    assert await wear(ally) == {SHIELD_ITEM: 24, ARMOR: 25}
+    assert await wear(guardian) == {SHIELD_ITEM: 25, ARMOR: 24}
+    (blow,) = blows(packets)
+    assert blow["damage_target_id"] == guardian
+    effects = [p["mechanical_effect"] for p in packets if p["actor_id"] == ally and p.get("ability_id") == SHIELD]
+    assert effects == ["shield_durability"]
+
+
+@pytest.mark.parametrize("scenario", ["concentration"])
+async def test_intercepted_hit_tests_guardian_concentration(fight: MawlingHarness) -> None:
+    guardian, ally, _ = fight.players
+    await opening(fight)
+    assert not (await activate(fight, guardian)).is_error
+    await fight.drain()
+    held = db_mutations_concentration.read_player_concentration
+    assert await held(guardian, conn=fight.pool) == {"spell_id": None}
+    assert await held(ally, conn=fight.pool) == {"spell_id": SPELL}
