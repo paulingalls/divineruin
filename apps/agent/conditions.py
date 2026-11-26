@@ -155,6 +155,8 @@ def apply_condition(
     if existing is not None:
         if condition_type == "charmed":
             existing.pop("choir_melody", None)
+        if condition_type == "frightened":
+            existing.pop("turn_undead", None)
         existing.update(applied)
         return result
 

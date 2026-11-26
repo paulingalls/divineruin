@@ -19,7 +19,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_magic.md` (542L) an
 | M3.3 — Spell Catalog (8 criteria) | 8 | 0 | 0 |
 | M3.4 — Concentration & Racial Resonance (9 criteria) | 9 | 0 | 0 |
 
-**Status: PARTIAL.** The Resonance, Hollow Echo, Veil Ward, casting validation, concentration and racial paths have focused acceptance coverage in `test_m31_resonance_capstone.py`, `test_m32_hollow_echo_veil_ward_capstone.py`, `test_m33_casting_capstone.py`, `test_m34_concentration_racial_capstone.py` and `test_m35_session_persistence_capstone.py`. The 87-spell catalog is queryable; catalog presence does not prove every spell's execution. M33 remains partial: deferred spell effects and world/terrain-dependent mechanics remain open. Choir casting aura and death Resonance use the existing cast and death paths; they do not imply raw corruption generation or completion of every Hollow mechanic.
+**Status: PARTIAL.** The Resonance, Hollow Echo, Veil Ward, casting validation, concentration and racial paths have focused acceptance coverage in `test_m31_resonance_capstone.py`, `test_m32_hollow_echo_veil_ward_capstone.py`, `test_m33_casting_capstone.py`, `test_m34_concentration_racial_capstone.py` and `test_m35_session_persistence_capstone.py`. Turn Undead/Hollow has registered combat coverage for saves, fleeing, destruction, and XP settlement. The 87-spell catalog is queryable; catalog presence does not prove every spell's execution. M33 remains partial: deferred spell effects and world/terrain-dependent mechanics remain open. Choir casting aura and death Resonance use the existing cast and death paths; they do not imply raw corruption generation or completion of every Hollow mechanic.
 
 ### Material gaps
 

@@ -23,6 +23,7 @@ import combat_player_ability
 import combat_recharge
 import combat_retreat
 import combat_spatial_declarations
+import combat_turn_flight
 import combat_voice_rules
 import item_heal
 import spell_casting
@@ -170,6 +171,16 @@ async def _resolve_action_packet(
     if not resuming_movement and (blocked := cannot_act(attacker.conditions)):
         reason = f"{attacker.name} is {blocked[0]} and loses the phase"
         return {"actor_id": packet.actor_id, "resolved": False, "reason": reason}
+
+    if combat_turn_flight.is_flight_turn(attacker, held_head):
+        return await combat_turn_flight.flee(
+            session,
+            state,
+            attacker,
+            conn=conn,
+            sink=sink,
+            progress=progress.scope("turn_flight") if progress is not None else None,
+        )
 
     retreating = attacker.is_ally and decl.type is DeclarationType.RETREAT
     if (combat_spatial_declarations.is_move(decl) or retreating) and forced_move is not None:
