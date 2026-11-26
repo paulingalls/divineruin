@@ -48,6 +48,9 @@
         "imports-of": "packages/shared/src/entities/god.test.ts"
       },
       {
+        "imports-of": "packages/shared/src/entities/god-synergy.test.ts"
+      },
+      {
         "imports-of": "packages/shared/src/entities/god_synergy_clauses.test.ts"
       },
       {

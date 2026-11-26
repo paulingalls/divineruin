@@ -18,6 +18,21 @@ test("ten complete matrices cover the exact eighteen-archetype roster", () => {
   );
 });
 
+test("Orenthel's guardian has the registered Sheltering Light clause", () => {
+  const guardian = validateGods(catalog).find((god) => god.god_id === "orenthel")
+    ?.layer_4_synergy_matrix.guardian;
+  expect(guardian?.name).toBe("Sheltering Light");
+  expect(guardian?.type).toBe("divine");
+  expect(guardian?.clauses).toEqual([
+    {
+      effect: "Gain +1 AC while guarding an ally below half HP.",
+      status: "active",
+      resolution: "engine",
+      implementation_id: "orenthel_guardian_ward",
+    },
+  ]);
+});
+
 test("Mortaen's guardian has the registered Threshold Shield clause", () => {
   const guardian = validateGods(catalog).find((god) => god.god_id === "mortaen")
     ?.layer_4_synergy_matrix.guardian;
