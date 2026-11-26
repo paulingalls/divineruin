@@ -39,7 +39,7 @@ from condition_restrictions import cannot_act
 from condition_sources import DeliveryRefused
 from declarations import DeclarationType
 from encounter_actions import action_kind
-from session_data import SessionData
+from session_data import CombatParticipant, SessionData
 
 
 async def _resolve_one_packet(session, state, packet, *, _reshape_prepared=False, **deps) -> dict:
@@ -103,6 +103,7 @@ async def _resolve_action_packet(
     reaction_ac_bonus: int = 0,
     reaction_save_advantage: bool = False,
     shield_reaction: str | None = None,
+    damage_target: CombatParticipant | None = None,
     grapple_blocked: bool = False,
     mark_cancelled: bool = False,
     publish_roll: bool = True,
@@ -363,6 +364,7 @@ async def _resolve_action_packet(
             sink=sink,
             reaction_ac_bonus=reaction_ac_bonus,
             shield_reaction=shield_reaction,
+            damage_target=damage_target,
             reaction_save_advantage=reaction_save_advantage,
             progress=progress,
             publish_roll=publish_roll,
@@ -415,6 +417,7 @@ async def _resolve_action_packet(
         reaction_ac_bonus=reaction_ac_bonus,
         reaction_save_advantage=reaction_save_advantage,
         shield_reaction=shield_reaction,
+        damage_target=damage_target,
         grapple_blocked=grapple_blocked,
         publish_roll=publish_roll,
         movement=movement,

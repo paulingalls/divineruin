@@ -8,6 +8,7 @@ from archetype_abilities_config_fixture import load_fixture_config
 from combat._helpers import _make_combat_state, _own_reaction
 from combat.test_reaction_window_census import movement_state
 from sample_fixtures import make_context
+from voice_condition_fixtures import place_actors
 
 import reaction_spend
 import reaction_windows
@@ -23,6 +24,7 @@ _PRODUCIBLE = {
     "pre_roll_command": ("pre_roll", "command", "player_1", reaction_windows.pre_roll_triggers({})),
     "pre_roll_accusation": ("pre_roll", "accusation", "player_1", reaction_windows.pre_roll_triggers({})),
     "post_roll_hit": ("post_roll", "attack", "player_1", reaction_windows.post_roll_triggers({}, hit=True)),
+    "post_roll_ally_hit": ("post_roll", "attack", "player_2", reaction_windows.post_roll_triggers({}, hit=True)),
     "post_roll_miss": ("post_roll", "attack", "player_1", reaction_windows.post_roll_triggers({}, hit=False)),
     "post_roll_grapple": (
         "post_roll",
@@ -41,6 +43,8 @@ def _paused_state(shape):
     else:
         stage, kind, target_id, triggers = shape
         state = _make_combat_state()
+        if target_id == "player_2":
+            place_actors(state, target_id)
         state.open_window = reaction_windows.open_window_for(
             round_number=1,
             seq=0,

@@ -367,6 +367,7 @@ async def pump(
         deferred_reactions = head.pop("pending_reaction_packets", [])
         recorded_reactions = reaction_packets if head is reacted else deferred_reactions
         if recorded_reactions:
+            combat_reaction_effect.record_intercept(recorded_reactions, summary)
             combat_reaction_effect.record_shield_wear(recorded_reactions, state, head, summary)
             combat_reaction_effect.record_save_advantage(recorded_reactions, summary)
         summaries.extend(deferred_reactions)
@@ -449,6 +450,7 @@ async def _resolve_held(
         deps["resolver"] = _replay_resolver(head)
     if fate_rolls is not None and (session.fate_lock.locked() or head.get("roll_steps")):
         deps["progress"] = PacketRolls(fate_rolls, head.setdefault("roll_steps", {}), deps["queries"], deps["conn"])
+    damage_target = combat_reaction_effect.intercept_target(state, head)
     summary = await _resolve_one_packet(
         session,
         state,
@@ -462,6 +464,7 @@ async def _resolve_held(
             else None,
         ),
         shield_reaction=combat_reaction_effect.shield_reaction(state, head),
+        damage_target=damage_target,
         grapple_blocked=combat_reaction_effect.grapple_blocked(state, head),
         mark_cancelled=mark_cancelled,
         publish_roll=not head.get("roll_published", False),
@@ -475,6 +478,12 @@ async def _resolve_held(
         _reshape_prepared=True,
         **deps,
     )
+    if (
+        damage_target is not None
+        and (fate_rolls is None or fate_rolls.pending is None)
+        and summary.get("damage_target_id") != damage_target.id
+    ):
+        raise ValueError(f"Intercepted hit did not settle damage on {damage_target.id!r}")
     # A paused (Zhael-held) resolution's summary is discarded by the pump; on resume the movement
     # facts join the finished summary.
     if movement := head.get("melee_approach"):

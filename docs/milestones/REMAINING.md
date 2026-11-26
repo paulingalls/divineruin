@@ -76,6 +76,13 @@ automatic enforcement remains absent.
 open reaction window; the reaction-window census and activation boundary check
 its triggers and legal IDs. This does not certify natural spoken Beat-3 pauses.
 
+**02 · Archetypes — Guardian Intercept.** A guardian within 5 ft of a struck
+ally can take the hit's damage. The remaining designs are Shield Mastery's
+1d8 damage reduction and Warden-Commander's 10-ft range
+([Guardian milestones](../game_mechanics/game_mechanics_archetypes.md#guardian-martial)),
+plus the 15-ft Intercept override and once-per-long-rest Last Wall from
+[Thornridge's Stand](../game_mechanics/game_mechanics_crafting.md#item-catalog).
+
 ## 3. World-loop gaps and bounded evidence
 
 - **Sacred-site ward producer:** the production caller inventory finds the
