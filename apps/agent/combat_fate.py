@@ -332,7 +332,8 @@ async def continue_attack(
                 veiled_strike=strike_mode,
             )
         else:
-            profile = await resolve_weapon_profile(attacker.type, act, weapon_attack=True, conn=conn)
+            player = await attack_player(attacker, queries=queries, conn=conn)
+            profile = await resolve_weapon_profile(attacker.type, act, player=player, weapon_attack=True, conn=conn)
             act = with_weapon_magic(act, profile)
             result = check_resolution_attack.finish_attack(
                 attacker_data,

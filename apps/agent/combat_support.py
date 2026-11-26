@@ -89,7 +89,9 @@ async def _resolve_attack_packet(
     else:
         player = await attack_player(attacker, queries=queries, conn=conn)
         defender = await attack_player(target, queries=queries, conn=conn) if combat_state is not None else None
-        profile = await resolve_weapon_profile(attacker.type, action, weapon_attack=weapon_attack, conn=conn)
+        profile = await resolve_weapon_profile(
+            attacker.type, action, player=player, weapon_attack=weapon_attack, conn=conn
+        )
         action = with_weapon_magic(action, profile)
         attack_result, effective_ac = roll_attack(
             attacker,
