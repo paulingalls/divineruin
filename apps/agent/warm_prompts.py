@@ -7,9 +7,11 @@ from typing import TYPE_CHECKING
 from combat_resolution import hp_threshold_status
 from companion_relationship import effective_tier_rank, tier_name
 from region_types import REGION_CITY, REGION_DUNGEON, REGION_WILDERNESS
+from sanitize import sanitize_for_prompt
 from session_data import CombatState
 
 if TYPE_CHECKING:
+    from hollowed_hallucinations import PlayerHallucination
     from session_data import CompanionState
 
 
@@ -210,6 +212,7 @@ async def build_warm_layer(
     first_episode_phase: bool | int | str | None = None,
     party_member_ids: tuple[str, ...] | None = None,
     quest_decisions: dict[str, dict[str, str]] | None = None,
+    hallucinations: list[PlayerHallucination] | None = None,
 ) -> str:
     import asyncio
 
@@ -364,6 +367,14 @@ async def build_warm_layer(
         if recent_memories:
             companion_lines.append("Recent memories: " + "; ".join(recent_memories))
         sections.append("\n".join(companion_lines))
+
+    for entry in hallucinations or ():
+        name = sanitize_for_prompt(entry["name"])
+        sections.append(
+            f"HOLLOWED HALLUCINATION — {name}\n"
+            f"Only this character senses this. Weave it in once, at a quiet moment, addressed to {name}; "
+            f"do not repeat it each turn. {entry['description']}"
+        )
 
     # Hollow corruption
     if corruption_level > 0:

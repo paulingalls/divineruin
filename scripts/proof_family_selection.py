@@ -63,6 +63,7 @@ CONTENT_LOADERS = {
     "mentor_variants": ("mentor_variants",),
     "pricing": ("pricing_queries",),
     "quality_outcomes": ("quality_outcomes",),
+    "hollowed_hallucinations": ("hollowed_hallucinations",),
     "racial_resonance_bonuses": ("racial_resonance",),
     "recipes": ("recipes",),
     "role_archetypes": ("role_archetypes",),

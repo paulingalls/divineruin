@@ -12,7 +12,6 @@ NOT_ENFORCED: dict[str, dict[str, object]] = {
     "no_approach_source": {"waits_on": "model", "model": "positioning"},
     "reduced_max_hp": {"waits_on": "producer", "carriers": {"wounded": 1}},
     "source_specific_penalty": {"waits_on": "producer", "carriers": {"cursed": 1}},
-    "hallucinations": {"waits_on": "producer", "carriers": {"hollowed": 2}},
     "stat_drain": {"waits_on": "producer", "carriers": {"hollowed": 3}},
 }
 
@@ -43,6 +42,10 @@ def mark_save_penalty(active_conditions: list[dict], originating_participant_id:
     ):
         return -2
     return 0
+
+
+def hallucinations(active_conditions: list[dict]) -> bool:
+    return bool(_carriers(active_conditions, "hallucinations"))
 
 
 def damage_resistance_all(active_conditions: list[dict]) -> bool:
@@ -121,6 +124,7 @@ def attack_consumed_conditions(
 
 
 RESTRICTION_ENFORCERS = {
+    "hallucinations": hallucinations,
     "damage_resistance_all": damage_resistance_all,
     "saving_throw_advantage": saving_throw_advantage,
     "immovable": immovable,

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "borrowed_breath",
+    "description": "Someone breathes in just behind your ear. Their next breath comes from inside your chest."
+  },
+  {
+    "id": "buried_bell",
+    "description": "A bell rings under your feet, muffled by packed earth. The air smells of freshly turned soil."
+  },
+  {
+    "id": "drowned_embers",
+    "description": "Wet wood crackles beside you, and the air smells of cold ash. For a heartbeat, embers glow beneath your fingernails."
+  },
+  {
+    "id": "receding_steps",
+    "description": "Footsteps start at your heels and recede into the distance. With each step, the sound of your own breathing grows fainter."
+  }
+]

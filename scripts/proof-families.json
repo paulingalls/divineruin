@@ -47,6 +47,7 @@
       "content/factions.json",
       "content/gods.json",
       "content/unbound.json",
+      "content/hollowed_hallucinations.json",
       "content/items.json",
       "content/level_progression.json",
       "content/locations.json",
@@ -207,6 +208,7 @@
       "content/creatures.json",
       "content/encounter_templates.json",
       "content/errand_templates.json",
+      "content/hollowed_hallucinations.json",
       "content/items.json",
       "content/locations.json",
       "content/quests.json"
@@ -215,10 +217,10 @@
   {
     "name": "sessions",
     "tests": [
-      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:first_episode(?:_atomicity|_reentry)?|m35_session_persistence_capstone|player_session_persistence|rest_.*|fresh_recap|leave_summary|session_limits|session_room_ownership)\\.py"
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:first_episode(?:_atomicity|_reentry)?|m35_session_persistence_capstone|player_session_persistence|rest_.*|hollowed_progression|fresh_recap|leave_summary|session_limits|session_room_ownership)\\.py"
     ],
     "owns": [
-      "apps/agent/(?:creation[^/]*|onboarding[^/]*|session[^/]*|participant[^/]*|rest[^/]*|first_episode[^/]*|character_creation[^/]*)\\.py"
+      "apps/agent/(?:creation[^/]*|onboarding[^/]*|session[^/]*|participant[^/]*|rest[^/]*|hollowed_(?:hallucinations|progression)|first_episode[^/]*|character_creation[^/]*)\\.py"
     ],
     "reads": [
       "content/archetype_abilities.json",
@@ -231,6 +233,7 @@
       "content/events.json",
       "content/gods.json",
       "content/unbound.json",
+      "content/hollowed_hallucinations.json",
       "content/items.json",
       "content/level_progression.json",
       "content/locations.json",
@@ -270,6 +273,7 @@
       "content/companions.json",
       "content/creatures.json",
       "content/encounter_templates.json",
+      "content/hollowed_hallucinations.json",
       "content/items.json",
       "content/locations.json",
       "content/quests.json",
@@ -357,6 +361,7 @@
       "content/gods.json",
       "content/unbound.json",
       "content/inventory_pools.json",
+      "content/hollowed_hallucinations.json",
       "content/items.json",
       "content/level_progression.json",
       "content/locations.json",

@@ -9,6 +9,7 @@ import ability_persistence
 import db
 import db_content_queries
 import db_mutations
+import db_mutations_conditions
 import db_mutations_travel
 import db_queries
 import db_session_queries
@@ -18,6 +19,7 @@ from archetypes import get_archetype_chassis
 from attribute_increase_persistence import lock_increases
 from db_errors import db_tool
 from game_events import publish_game_event
+from hollowed_progression import advance_hollowed_on_long_rest
 from patron_gift_tools import recharge
 from patron_passives import effective_max_hp
 from resonance_events import publish_resonance_changed
@@ -38,6 +40,7 @@ async def rest(context: RunContext[SessionData], rest_type: RestType) -> str:
     """Rest when players choose recovery at a safe inn or tavern; narrate the returned
     recovery or refusal. short: Stamina refills and Focus recovers to half; HP does not.
     long: HP, Stamina and Focus refill and the settlement becomes the party's anchor.
+    Narrate any Hollowed worsening listed in hollowed_changes.
     Rest is unavailable during combat or outside a safe rest location. Present,
     co-located party members recover together.
     """
@@ -61,6 +64,7 @@ async def rest(context: RunContext[SessionData], rest_type: RestType) -> str:
         if "danger_level" in location and location["danger_level"] != 0:
             raise ToolError("It is too dangerous to rest here.")
         anchor = None
+        hollowed_changes = []
         async with db.transaction() as conn:
             players = await db_queries.get_players_for_update(member_ids, conn=conn)
             if set(players) != set(member_ids):
@@ -92,6 +96,12 @@ async def rest(context: RunContext[SessionData], rest_type: RestType) -> str:
                 await recharge(pid, players[pid], rest_type, conn=conn)
                 if rest_type == "long":
                     await lock_increases(pid, players[pid], conn=conn)
+                    advanced = advance_hollowed_on_long_rest(players[pid].get("conditions"))
+                    if advanced is not None:
+                        await db_mutations_conditions.save_player_conditions(pid, advanced, conn=conn)
+                        hollowed_changes.append(
+                            {"player_id": pid, "name": players[pid]["name"], "from_stage": 1, "to_stage": 2}
+                        )
         for pid in players:
             session.member_state(pid).resonance.current = 0
         for pid in players:
@@ -111,5 +121,6 @@ async def rest(context: RunContext[SessionData], rest_type: RestType) -> str:
                 "location_id": location_id,
                 "players": list(players),
                 "settlement_id": anchor,
+                "hollowed_changes": hollowed_changes,
             }
         )

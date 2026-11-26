@@ -1,5 +1,5 @@
 // Inventory: db_content_queries, recipes, materials, pricing_queries,
-// quality_outcomes and recipe_slots own the content keys; player/session keys stay live.
+// quality_outcomes, hollowed_hallucinations and recipe_slots own content keys.
 const patterns = [
   "location:*",
   "locations:all",
@@ -21,6 +21,7 @@ const patterns = [
   "materials:all",
   "pricing:*",
   "quality_outcome:*",
+  "hollowed_hallucinations:all",
   "recipe_slots:all",
 ];
 const prefix = process.env.CONTENT_CACHE_PREFIX ?? "";

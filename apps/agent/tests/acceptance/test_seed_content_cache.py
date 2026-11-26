@@ -11,6 +11,7 @@ from acceptance.test_creature_catalog import ROOT, seed_content
 
 import db
 from db_content_queries import get_location
+from hollowed_hallucinations import get_hollowed_hallucinations
 
 
 def test_production_seed_retires_cached_content(fresh_migrated_db, tmp_path, monkeypatch):
@@ -27,12 +28,17 @@ def test_production_seed_retires_cached_content(fresh_migrated_db, tmp_path, mon
     locations.append(location)
     path.write_text(json.dumps(locations))
 
+    hallucination_path = tmp_path / "content/hollowed_hallucinations.json"
+    hallucinations = json.loads(hallucination_path.read_text())
+    first = min(hallucinations, key=lambda row: row["id"])
+
     async def check():
         client = aioredis.from_url(os.environ["REDIS_URL"], decode_responses=True)
         try:
             await seed_content.main()
             cached = await get_location(location_id)
             assert cached is not None and cached["description"] == "Before deployment"
+            assert (await get_hollowed_hallucinations())[0] == first
             await db.close_all()
             await client.set(prefix + "session:keep", "live session", ex=60)
             await client.set(prefix + "player:keep", "live player", ex=60)
@@ -40,9 +46,12 @@ def test_production_seed_retires_cached_content(fresh_migrated_db, tmp_path, mon
             await client.set(prefix + "locations:all", "old aggregate", ex=60)
             location["description"] = "After deployment"
             path.write_text(json.dumps(locations))
+            first["description"] = "A distant knock comes from under your skin."
+            hallucination_path.write_text(json.dumps(hallucinations))
             await seed_content.main()
             refreshed = await get_location(location_id)
             assert refreshed is not None and refreshed["description"] == "After deployment"
+            assert (await get_hollowed_hallucinations())[0] == first
             assert await client.get(prefix + "locations:all") is None
             assert await client.get(prefix + "session:keep") == "live session"
             assert await client.get(prefix + "player:keep") == "live player"
