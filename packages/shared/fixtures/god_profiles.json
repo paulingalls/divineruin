@@ -11,6 +11,18 @@
     "orenthel",
     "zhael"
   ],
+  "witness_shield": {
+    "name": "Witness Shield",
+    "type": "divine",
+    "clauses": [
+      {
+        "effect": "Gain +1 AC while protecting a witness from an attacker named in their testimony.",
+        "status": "active",
+        "resolution": "engine",
+        "implementation_id": "valdris_witness_shield"
+      }
+    ]
+  },
   "lawful_command": {
     "name": "Lawful Command",
     "type": "divine",

@@ -24,6 +24,7 @@ NYTHERA_SALTWIND_CASTING = "nythera_saltwind_casting"
 VALDRIS_ABSOLUTE_AUTHORITY = "valdris_absolute_authority"
 VALDRIS_MEASURED_REPRISAL = "valdris_measured_reprisal"
 VALDRIS_LAWFUL_COMMAND = "valdris_lawful_command"
+VALDRIS_WITNESS_SHIELD = "valdris_witness_shield"
 LAWFUL_COMMAND_NAME = "Lawful Command"
 
 KAELEN_WAR_SONGS = "kaelen_war_songs"
@@ -106,6 +107,23 @@ def encounter_damage_clause(
     ):
         return ORENTHEL_UNDEAD_WRATH
     return None
+
+
+async def witness_defense(
+    defender: dict | None, state: CombatState | None, attacker: CombatParticipant, *, queries, conn
+) -> int:
+    if (
+        state is None
+        or state.testimony is None
+        or attacker.id not in state.testimony.accused
+        or defender is None
+        or not has_engine_synergy(defender, VALDRIS_WITNESS_SHIELD)
+    ):
+        return 0
+
+    witness = state.testimony.witness
+    present = await queries.get_npcs_at_location(state.location_id, conn=conn)
+    return int(any(npc["id"] == witness for npc in present))
 
 
 def first_attack_defense(defender: dict | None, state: CombatState | None, target: CombatParticipant) -> int:

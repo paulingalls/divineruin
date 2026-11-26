@@ -27,6 +27,7 @@ def roll_attack(
     action: dict,
     target,
     *,
+    valdris_ac_bonus: int,
     target_ac_bonus: int = 0,
     enemies_remaining: int | None = None,
     is_first_attack_of_combat: bool = False,
@@ -54,6 +55,7 @@ def roll_attack(
         defender=defender,
         mortaen_ac_override=mortaen_ac_override,
         orenthel_ac_override=orenthel_ac_override,
+        valdris_ac_bonus=valdris_ac_bonus,
         veiled_strike=veiled_strike,
         season=season,
     )
@@ -78,6 +80,7 @@ def attack_roll_inputs(
     combat_state,
     action,
     *,
+    valdris_ac_bonus: int = 0,
     weapon_attack=True,
     weapon_profile: dict | None = None,
     player=None,
@@ -196,6 +199,10 @@ def attack_roll_inputs(
     attacker_data["orenthel_ac_bonus"] = orenthel_ac
     if orenthel_ac:
         attacker_data["orenthel_ac_clause_id"] = patron_synergy_combat.ORENTHEL_GUARDIAN_WARD
+    if valdris_ac_bonus:
+        attacker_data.update(
+            valdris_ac_bonus=valdris_ac_bonus, valdris_ac_clause_id=patron_synergy_combat.VALDRIS_WITNESS_SHIELD
+        )
     effective_ac = (
         target.ac
         + target_ac_bonus
@@ -203,6 +210,7 @@ def attack_roll_inputs(
         + synergy_ac
         + mortaen_ac
         + orenthel_ac
+        + valdris_ac_bonus
         + cathedral_bonus(combat_state, target.id)
     )
     if not weapon_attack:

@@ -235,7 +235,9 @@ def _mid_window_state(combat_id: str = "combat_mid_window") -> CombatState:
     enemy = state.get_participant("goblin_scout_1")
     player = state.get_participant("player_1")
     assert enemy is not None and player is not None
-    attack_result, effective_ac = roll_attack(enemy, enemy.action_pool[0], player, resolver=_damage_resolver(3))
+    attack_result, effective_ac = roll_attack(
+        enemy, enemy.action_pool[0], player, valdris_ac_bonus=0, resolver=_damage_resolver(3)
+    )
     state.held_actions = [
         {
             "seq": 0,

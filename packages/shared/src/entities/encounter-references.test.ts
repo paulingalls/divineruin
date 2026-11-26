@@ -15,6 +15,10 @@ const catalog = (await Bun.file(
   new URL("../../../../content/creatures.json", import.meta.url),
 ).json()) as { id: string }[];
 const ids = new Set<string>(catalog.map((row: { id: string }) => row.id));
+const npcCatalog = (await Bun.file(
+  new URL("../../../../content/npcs.json", import.meta.url),
+).json()) as { id: string }[];
+const npcIds = new Set(npcCatalog.map((row) => row.id));
 for (const row of corpus.invalid) {
   test(`shared reference cases ${row.name}`, () => {
     expect(() => validateEncounterReferences(row.encounter, ids)).toThrow(row.field);
@@ -73,7 +77,7 @@ test("all nineteen templates", async () => {
   );
   for (const row of rows) {
     expect(row.enemies.length).toBeGreaterThan(0);
-    validateEncounterReferences(row, ids);
+    validateEncounterReferences(row, ids, npcIds);
     validateScenePlacement(row);
   }
   const architect = rows.find((row) => row.id === "hollow_architect");
@@ -145,3 +149,15 @@ test("EncounterEnemy compiler rejects flat entries and missing required fields",
     rmSync(directory, { recursive: true, force: true });
   }
 }, 30_000);
+
+const testimonyCases = (await Bun.file(
+  new URL("../../fixtures/encounter_testimony.json", import.meta.url),
+).json()) as { name: string; fields: Record<string, unknown>; error?: string }[];
+for (const { name, fields, error } of testimonyCases) {
+  test(`encounter testimony ${name}`, () => {
+    const validate = () =>
+      validateEncounterReferences({ ...corpus.valid[0], ...fields }, ids, npcIds);
+    if (error) expect(validate).toThrow(error);
+    else expect(validate).not.toThrow();
+  });
+}

@@ -85,7 +85,7 @@ def test_rolled_head_rejects_missing_or_corrupt_contribution_at_real_load(contri
     attacker = participant(state, "goblin_scout_1")
     target = participant(state, "player_2")
     result, ac = roll_attack(
-        attacker, attacker.action_pool[0], target, resolver=_damage_resolver(4), combat_state=state
+        attacker, attacker.action_pool[0], target, valdris_ac_bonus=0, resolver=_damage_resolver(4), combat_state=state
     )
     state.held_actions = [
         {

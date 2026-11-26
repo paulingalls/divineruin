@@ -198,6 +198,8 @@ async def seed(conn: asyncpg.Connection, *, production: bool = False, catalog_on
         if not path.exists() or not json.loads(path.read_text()):
             raise InvalidContent(f"{path.name}: expected nonempty reference corpus")
     catalog = {row["id"]: row for row in json.loads(catalog_path.read_text())}
+    npc_path = CONTENT_DIR / "npcs.json"
+    npc_ids = {row["id"] for row in json.loads(npc_path.read_text())} if npc_path.exists() else set()
     for filename, table in TABLE_MAP.items():
         if (production and table == "players") or (catalog_only and table in MUTABLE_SEED_TABLES):
             continue
@@ -225,7 +227,7 @@ async def seed(conn: asyncpg.Connection, *, production: bool = False, catalog_on
         if table == "encounter_templates":
             try:
                 for entity in entities:
-                    validate_encounter_references(entity, catalog)
+                    validate_encounter_references(entity, catalog, npc_ids=npc_ids)
                     validate_scene(entity)
             except ValueError as error:
                 raise InvalidContent(str(error)) from error
@@ -358,7 +360,7 @@ async def validate(conn: asyncpg.Connection) -> list[str]:
     for row in encounter_data_rows:
         data = json.loads(row["data"])
         try:
-            validate_encounter_references(data, catalog)
+            validate_encounter_references(data, catalog, npc_ids=npc_ids)
             validate_scene(data)
         except ValueError as error:
             errors.append(str(error))

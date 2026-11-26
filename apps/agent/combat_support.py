@@ -24,7 +24,7 @@ from combat_condition_landing import _land_condition_on_one
 from combat_damage import apply_attack_result
 from condition_restrictions import cannot_act
 from equipment_rules import resolve_weapon_profile, with_weapon_magic
-from patron_synergy_combat import VeiledStrike, attack_player
+from patron_synergy_combat import VeiledStrike, attack_player, witness_defense
 from session_data import CombatParticipant, CombatState, SessionData
 
 logger = logging.getLogger("divineruin.tools")
@@ -99,6 +99,7 @@ async def _resolve_attack_packet(
             attacker,
             action,
             target,
+            valdris_ac_bonus=await witness_defense(defender, combat_state, attacker, queries=queries, conn=conn),
             target_ac_bonus=target_ac_bonus,
             enemies_remaining=enemies_remaining,
             is_first_attack_of_combat=is_first_attack_of_combat,

@@ -425,6 +425,7 @@ class TestRollThenApply:
             attacker,
             action,
             target,
+            valdris_ac_bonus=0,
             resolver=_fixed_resolver(damage=3, hp_remaining=22),
         )
 
@@ -452,7 +453,9 @@ class TestRollThenApply:
             concentration_break_mod=_break_mod(None),
         )
 
-        result, effective_ac = roll_attack(att_b, action_b, tgt_b, resolver=_fixed_resolver(damage=3, hp_remaining=22))
+        result, effective_ac = roll_attack(
+            att_b, action_b, tgt_b, valdris_ac_bonus=0, resolver=_fixed_resolver(damage=3, hp_remaining=22)
+        )
         split = await apply_attack_result(
             ctx_b.userdata,
             att_b,
@@ -475,7 +478,7 @@ class TestRollThenApply:
         resolver = _fixed_resolver(damage=3, hp_remaining=22)
         rolled = replace(resolver.resolve_attack.return_value, consumed_conditions=("blessed",))
         resolver.resolve_attack = MagicMock(return_value=rolled)
-        result, effective_ac = roll_attack(attacker, action, target, resolver=resolver)
+        result, effective_ac = roll_attack(attacker, action, target, valdris_ac_bonus=0, resolver=resolver)
 
         restored, restored_ac = deserialize_roll(json.loads(json.dumps(serialize_roll(result, effective_ac))))
 
