@@ -17,24 +17,39 @@ from livekit.agents import RunContext
 from livekit.agents.llm import ToolError
 from sample_fixtures import make_context, make_mock_room
 
+import abilities
 import character_spells
 import combat_end
 import concealment
 import db_mutations
 import db_queries
+import elective_choices
 import patron_gift_tools
 import spell_knowledge
 import spells
 from activate_tools import activate
-from combat_ability_gate import IRON_STANCE_ABILITY, SHADOW_STEP, SMOKE_BOMB, VANISH
+from combat_ability_gate import attack_recipe, combat_ability
 from combat_death_save import request_death_save
+from combat_declaration_validation import validate_declaration
 from combat_down import is_terminally_down
+from combat_martial import attack_ability
+from combat_participant import CombatParticipant
+from combat_state import CombatState
 from combat_turn import consume_legendary_action, declare_phase, resolve_phase
 from companion_profiles import get_companion_profile, select_companion_for_archetype
 from companion_scaling import scale_companion_stats_to_player_level
-from condition_restrictions import cannot_act
+from condition_restrictions import cannot_act, required_attack_sources
 from creation_rules import build_character_data
-from declaration_payloads import AbilityDecl, AbilityMoveDecl, AttackDecl, DeclVariant, MultiattackDecl, StrikeSelection
+from declaration_payloads import (
+    AbilityDecl,
+    AbilityMoveDecl,
+    AttackDecl,
+    DeclVariant,
+    MultiattackDecl,
+    StrikeSelection,
+    to_engine_declarations,
+)
+from declarations import resolve_declaration
 from mode_tools import enter_mode
 from patron_gifts import SYRATH_SHADOW_VEIL, syrath_gift
 from progression_tools import _award_xp_core
@@ -248,7 +263,40 @@ async def win_counts(pool, encounter_id=PATROL, player_level=1, *, policy="basic
     return counts, standing
 
 
-ARCHITECT_TECHNIQUES = (IRON_STANCE_ABILITY, VANISH, SMOKE_BOMB, SHADOW_STEP)
+def architect_techniques() -> set[str]:
+    return {
+        ability.id
+        for archetype in ("warrior", "rogue")
+        for tier in elective_choices.TIERS
+        for ability in elective_choices.pool(abilities.get_archetype_abilities(archetype), tier)
+        if combat_ability(ability) or attack_recipe(ability.id) is not None
+    }
+
+
+def declared_technique(declaration: DeclVariant) -> str | None:
+    if isinstance(declaration, (AbilityDecl, AbilityMoveDecl)):
+        return declaration.action
+    if isinstance(declaration, AttackDecl):
+        return attack_ability(resolve_declaration(to_engine_declarations([declaration])[declaration.actor_id]))
+    return None
+
+
+def taunted_attack(
+    state: CombatState, actor: CombatParticipant, declaration: AttackDecl, concealed: frozenset[str]
+) -> AttackDecl:
+    for source in required_attack_sources(actor.conditions):
+        target = state.get_participant(source)
+        assert target is not None, source
+        if target.is_fallen or source == declaration.target_id:
+            continue
+        redirected = declaration.model_copy(update={"target_id": source})
+        raw = to_engine_declarations([redirected])[actor.id]
+        try:
+            validate_declaration(state, actor.id, resolve_declaration(raw), {}, concealed=concealed)
+        except ValueError:
+            continue
+        return redirected
+    return declaration
 
 
 class TechniqueReport(TypedDict):
@@ -261,9 +309,11 @@ async def drive_architect_fight(
     ctx: RunContext[SessionData], loadouts: dict[str, tuple[str, ...]], seed: int
 ) -> tuple[str, int, dict[str, TechniqueReport]]:
     player_ids = tuple(loadouts)
+    tracked = architect_techniques()
+    pending: dict[str, str] = {}
     techniques: dict[str, TechniqueReport] = {
         pid: {
-            "held": [technique for technique in ARCHITECT_TECHNIQUES if technique in loadout],
+            "held": [technique for technique in loadout if technique in tracked],
             "declared": [],
             "resolved": [],
         }
@@ -295,12 +345,19 @@ async def drive_architect_fight(
                     and last_legendary_round != round_number
                     and (
                         target := architect_policy.geometry_target(
-                            state, owner, architect_policy.targets(players, await concealment.concealed_ids(state))
+                            state,
+                            owner,
+                            architect_policy.targets(players, concealed := await concealment.concealed_ids(state)),
                         )
                     )
                     is not None
                 ):
-                    result = await consume_legendary_action(ctx, owner.id, architect_policy.GEOMETRY, target.id, [])
+                    declaration = taunted_attack(
+                        state, owner, architect_policy.attack(owner, target, architect_policy.GEOMETRY), concealed
+                    )
+                    result = await consume_legendary_action(
+                        ctx, owner.id, declaration.action, declaration.target_id, []
+                    )
                     last_legendary_round = round_number
                 elif state.beat == "declaration" and state.legendary_continuation is None:
                     declarations: list[DeclVariant] = []
@@ -322,7 +379,8 @@ async def drive_architect_fight(
                                 result = await activate(ctx, SYRATH_SHADOW_VEIL)
                             assert isinstance(result, str) and json.loads(result)["concealment"]["concealed"], detail
                         declarations.append(declaration)
-                    candidates = architect_policy.targets(players, await concealment.concealed_ids(state))
+                    concealed = await concealment.concealed_ids(state)
+                    candidates = architect_policy.targets(players, concealed)
                     for actor in state.participants:
                         if actor.is_ally or actor.is_structure or actor.is_fallen or cannot_act(actor.conditions):
                             continue
@@ -330,17 +388,18 @@ async def drive_architect_fight(
                             declaration = architect_policy.owner_declaration(state, owner, candidates)
                         else:
                             declaration = architect_policy.construct_declaration(state, actor, candidates)
+                        if isinstance(declaration, AttackDecl):
+                            declaration = taunted_attack(state, actor, declaration, concealed)
                         declarations.append(declaration)
                     logger.debug("%s declarations: %s", detail, declarations)
                     accepted = json.loads(await declare_phase(ctx, declarations))
                     assert accepted["accepted_actors"] == [d.actor_id for d in declarations], detail
+                    pending.clear()
                     for declared in declarations:
-                        if (
-                            declared.actor_id in techniques
-                            and isinstance(declared, (AbilityDecl, AbilityMoveDecl))
-                            and declared.action in ARCHITECT_TECHNIQUES
-                        ):
-                            techniques[declared.actor_id]["declared"].append(declared.action)
+                        if declared.actor_id in techniques and (technique := declared_technique(declared)) in tracked:
+                            assert technique is not None
+                            techniques[declared.actor_id]["declared"].append(technique)
+                            pending[declared.actor_id] = technique
                     continue
                 else:
                     result = await resolve_phase(ctx)
@@ -363,8 +422,11 @@ async def drive_architect_fight(
                     damage[actor_id] += sum(
                         strike.get("damage", 0) for strike in action.get("attacks", [action])
                     ) + action.get("cast", {}).get("damage_result", {}).get("damage", 0)
-                    if action.get("action") in ARCHITECT_TECHNIQUES and action.get("resolved"):
-                        techniques[actor_id]["resolved"].append(action["action"])
+                    if action.get("resolved") and not action.get("opportunity_attack") and actor_id in pending:
+                        technique = pending[actor_id]
+                        if action.get("attack_technique", action.get("action")) == technique:
+                            techniques[actor_id]["resolved"].append(technique)
+                            del pending[actor_id]
                 if action.get("action") == architect_policy.RALLYING_SHOUT and action.get("resolved"):
                     rallied = True
                 logger.debug("%s: %s", detail, action)

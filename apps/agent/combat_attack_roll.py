@@ -14,7 +14,7 @@ from archetypes import get_archetype_chassis
 from architect_encounter import cathedral_bonus
 from condition_catalog import INCORPOREAL, STUDIED_WEAKNESS, WAR_CRY_RALLY
 from dramatic import DramaticContext, evaluate_dramatic_context
-from equipment_rules import needs_weapon_profile, resolve_weapon_profile
+from equipment_rules import needs_weapon_profile, resolve_weapon_profile, with_weapon_magic
 from patron_synergy_combat import VeiledStrike, attack_player
 from weapon_proficiency import has_weapon_proficiency
 from world_season import Season
@@ -307,13 +307,15 @@ async def prepare_player_swing(
     if player is None:
         player = await attack_player(attacker, queries=queries, conn=conn)
     defender = await attack_player(target, queries=queries, conn=conn)
+    profile = await resolve_weapon_profile(attacker.type, act, player=player, weapon_attack=True, conn=conn)
+    act = with_weapon_magic(act, profile)
     attacker_data, target_ac, attack_mod = attack_roll_inputs(
         attacker,
         target,
         state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus,
         state,
         act,
-        weapon_profile=await resolve_weapon_profile(attacker.type, act, weapon_attack=True, conn=conn),
+        weapon_profile=profile,
         player=player,
         defender=defender,
         season=await thyra_seasons.season_for(player, conn=conn),

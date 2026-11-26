@@ -53,6 +53,7 @@ from patron_gifts import SYRATH_SHADOW_VEIL, VEYTHAR_INSIGHT
 from patron_synergy_heal import INSPIRE_HEAL
 from reshape_payloads import WallEndpoints
 from session_data import SessionData
+from spell_condition_cleanse import GREATER_RESTORATION, CleanseCondition
 from thyra_thornwall import GIFT as THORNWALL
 
 logger = logging.getLogger("divineruin.tools")
@@ -84,7 +85,7 @@ async def activate(
     target_ids: list[str] | None = None,
     offer_id: str | None = None,
     keep: zhael_fate.Keep | None = None,
-    condition: SurgeCondition | None = None,
+    condition: SurgeCondition | CleanseCondition | None = None,
     destination: Destination | WallEndpoints | None = None,
 ) -> str | tuple:
     """Activate a capability: cast a spell, use an archetype ability, deploy a Veil Anchor, raise
@@ -124,6 +125,8 @@ async def activate(
     Patron tier ids come from query_info(kind='patron').abilities: spend only when available;
     narrate refusals. 'valdris_weight_of_truth' spends Weight of Truth until a short rest.
 
+    'divine_greater_restoration' targets one party player (omit target_id for self). In combat use declare_phase.
+    With Hollowed present, omit condition to lift it. Otherwise, choose 'charmed' or 'petrified' when both are present.
     For 'orenthel_restoration_surge', select one condition: 'poisoned', 'blinded', 'frightened',
     or 'hollowed' (stage 1 only). Use target_id for a present party member or omit it for self.
     Narrate the touch. The gift costs no Focus and recharges on a long rest.
@@ -182,7 +185,7 @@ async def activate(
         raise ToolError("Veilstep takes a destination point. Omit entity target selectors.")
     if id in zhael_fate.ROLL_ABILITIES:
         if condition is not None:
-            raise ToolError("The condition selector is only for Restoration Surge.")
+            raise ToolError("The condition selector is only for Restoration Surge and Greater Restoration.")
         return await zhael_fate.activate(context.userdata, id, offer_id, keep)
     if offer_id is not None or keep is not None:
         raise ToolError("offer_id is for a held roll; keep belongs to Fate's Thread.")
@@ -258,8 +261,8 @@ async def _activate_impl(
     inner_fire_mod=draethar_inner_fire,
 ) -> str:
     logger.info("activate called: id=%s", id)
-    if condition is not None and id != RESTORATION_SURGE:
-        raise ToolError("The condition selector is only for Restoration Surge.")
+    if condition is not None and id not in (RESTORATION_SURGE, GREATER_RESTORATION):
+        raise ToolError("The condition selector is only for Restoration Surge and Greater Restoration.")
     if id == RESTORATION_SURGE and target_ids is not None:
         raise ToolError("Restoration Surge targets one player. Use target_id or omit it for self.")
     if id.startswith(CONSUME_PREFIX):
@@ -314,7 +317,13 @@ async def _activate_impl(
     if kind == "anchor":
         return await anchor_mod._deploy_veil_anchor_impl(context, id)
     if kind == "spell":
-        return await cast_spell_mod._cast_spell_impl(context, id, target_id=target_id, target_ids=target_ids)
+        return await cast_spell_mod._cast_spell_impl(
+            context,
+            id,
+            target_id=target_id,
+            target_ids=target_ids,
+            **({"condition": condition} if condition is not None else {}),
+        )
     if kind == "variant":
         variant = variants_mod.get_mentor_variant(id)
         result = await ability_mod._request_ability_activation_impl(

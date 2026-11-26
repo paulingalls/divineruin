@@ -12,7 +12,8 @@ import concentration_break
 import conditions
 import encounter_facts
 import event_types as E
-from combat_ability import _attach_riders, _resolve_condition_target
+from combat_ability import _attach_riders
+from combat_condition_target import _resolve_condition_target
 from combat_damage import apply_attack_result
 from combat_damage_results import SaveDamageResult
 from combat_down import damage_target_unavailable, has_damage

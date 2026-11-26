@@ -60,6 +60,12 @@ async def refuse(walk: MawlingHarness, strike: dict, target: str) -> None:
 
 async def test_hide_blocks_targeting_and_allows_redeclaration(walk: MawlingHarness) -> None:
     rogue, ally = walk.players
+    # Rogues are not longsword-proficient; a disadvantaged attack would draw an extra d20.
+    await walk.pool.execute(
+        "UPDATE players SET data = jsonb_set(data, '{equipment,main_hand}', $2::jsonb) WHERE player_id = $1",
+        rogue,
+        json.dumps(DAGGER),
+    )
     foe = await enter_bandit_fight(walk)
     await declare(walk, weapon_attack(rogue, foe, "hide", weapon=DAGGER["name"]))
     with (

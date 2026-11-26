@@ -4,13 +4,14 @@ import json
 from statistics import median
 from unittest.mock import AsyncMock
 
+from architect_reference_party import ELECTIVE_PICKS
 from asyncpg import Pool
 from first_blood_harness import (
     ARCHETYPES,
-    ARCHITECT_TECHNIQUES,
     ARCHITECT_WORKS,
     TechniqueReport,
     architect_party,
+    architect_techniques,
     drive_architect_fight,
 )
 from livekit.agents import RunContext
@@ -22,7 +23,6 @@ import db
 import db_content_queries
 import db_queries
 from architect_encounter import CREATURE_ID
-from combat_ability_gate import SHADOW_STEP
 from creature_catalog import query_creature_by_id
 from mode_tools import enter_mode
 from patron_passives import effective_hp
@@ -44,7 +44,8 @@ async def test_architect_balance(reset_db_pool, monkeypatch):
     assert template["recommended_party_level"] == 20
     assert template["enemies"] == [{"id": "architect", "creature_id": CREATURE_ID, "role": "named"}]
 
-    print(f"Architect techniques tracked: {', '.join(ARCHITECT_TECHNIQUES)}", flush=True)
+    print(f"Architect techniques tracked: {', '.join(sorted(architect_techniques()))}", flush=True)
+    assert {key: set(picks) for key, picks in ELECTIVE_PICKS.items()} == {"warrior": {4, 8}, "rogue": {4, 8}}
     results = {}
     held = set()
     resolved = set()
@@ -53,7 +54,8 @@ async def test_architect_balance(reset_db_pool, monkeypatch):
         outcome, rounds, techniques = await reference_fight(pool, seed, creature)
         results[seed] = outcome, rounds
         print(f"Architect seed {seed:2}: {outcome}, {rounds} rounds, {json.dumps(techniques)}", flush=True)
-        assert SHADOW_STEP in techniques["rogue"]["held"]
+        for archetype, picks in ELECTIVE_PICKS.items():
+            assert set(techniques[archetype]["held"]) == set(picks.values())
         for archetype, report in techniques.items():
             assert set(report["resolved"]) <= set(report["declared"]) <= set(report["held"]), (seed, archetype, report)
             held.update((archetype, technique) for technique in report["held"])
@@ -72,8 +74,9 @@ async def test_architect_balance(reset_db_pool, monkeypatch):
 async def reference_fight(pool: Pool, seed: int, creature: dict) -> tuple[str, int, dict[str, TechniqueReport]]:
     async with architect_party(pool, seed) as (ctx, loadouts):
         player_ids = tuple(loadouts)
-        assert loadouts[player_ids[0]] == ("warrior_cleaving_blow", "warrior_war_cry")
-        assert loadouts[player_ids[2]] == ("rogue_dirty_trick", SHADOW_STEP)
+        for archetype, player_id in zip(ARCHETYPES, player_ids, strict=True):
+            if archetype in ELECTIVE_PICKS:
+                assert loadouts[player_id] == tuple(ELECTIVE_PICKS[archetype][tier] for tier in (4, 8))
         await enter_reference(ctx, player_ids, creature)
         outcome, rounds, report = await drive_architect_fight(ctx, loadouts, seed)
         techniques: dict[str, TechniqueReport] = dict(zip(ARCHETYPES, (report[pid] for pid in player_ids), strict=True))

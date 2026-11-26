@@ -103,7 +103,9 @@ async def _build_scene_context(
 
     return {
         "architect": await architect_scene.facts(session, queries=queries, location_id=location_id, location=location),
-        "choir": await choir_scene.facts(session, queries=queries, location_id=location_id),
+        "choir": await choir_scene.facts(
+            session, queries=queries, content=content, location_id=location_id, location=location
+        ),
         "lost_scout": await lost_scout_scene.facts(session, location_id, queries=queries, content=content),
         "still": await still_scene.facts(session, queries=queries, location_id=location_id, location=location),
         "location": _location_for_narration(location),

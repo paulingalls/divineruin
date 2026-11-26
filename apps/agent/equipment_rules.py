@@ -22,7 +22,7 @@ def loadout_entry(item_id: str, item: dict, archetype: str) -> tuple[str, dict, 
     chassis = get_archetype_chassis(archetype)
     weapon_proficient = None
     if kind == "weapon":
-        effect = next(effect for effect in item["effects"] if effect["type"] == "weapon")
+        effect = weapon_effect(item)
         entry.update(damage=item["damage_dice"], damage_type=effect["damage_type"], properties=item["properties"])
         weapon_proficient = has_weapon_proficiency(chassis.weapon_proficiencies, item)
         if item["weapon_range"] == "ranged":
@@ -50,18 +50,46 @@ def needs_weapon_profile(attacker_type: str, action: dict, *, weapon_attack: boo
     )
 
 
-async def resolve_weapon_profile(attacker_type: str, action: dict, *, weapon_attack: bool, conn) -> dict | None:
+def weapon_item_id(weapon: dict) -> str:
+    name = weapon.get("name")
+    item_id = weapon.get("id", STARTER_ITEM_IDS.get(name))
+    if not isinstance(item_id, str) or not item_id:
+        raise ValueError(f"Player weapon {name!r} has no catalog identity: {item_id!r}")
+    return item_id
+
+
+def weapon_effect(item: dict) -> dict:
+    return next(effect for effect in item["effects"] if effect["type"] == "weapon")
+
+
+async def resolve_weapon_profile(
+    attacker_type: str, action: dict, *, player: dict | None, weapon_attack: bool, conn
+) -> dict | None:
+    from infusion import infusion_rules, records
+
     if not needs_weapon_profile(attacker_type, action, weapon_attack=weapon_attack):
         return None
     if "id" not in action and PROFILE_FIELDS.keys() <= action.keys():
         return action
 
     # Older equipment and combat snapshots omit the catalog profile.
-    name = action.get("name")
-    item_id = action.get("id", STARTER_ITEM_IDS.get(name))
-    if not isinstance(item_id, str) or not item_id:
-        raise ValueError(f"Player weapon attack {name!r} has no catalog identity: {item_id!r}")
+    item_id = weapon_item_id(action)
     item = await db_content_queries.get_item(item_id, conn=conn)
     if item is None or item.get("type") != "weapon":
-        raise ValueError(f"Player weapon attack {name!r} references invalid weapon {item_id!r}")
-    return item
+        raise ValueError(f"Player weapon attack {action.get('name')!r} references invalid weapon {item_id!r}")
+    if player is None or item_id not in records(player):
+        return item
+    bonus, _ = infusion_rules(player["level"])
+    effect = weapon_effect(item)
+    effects = [{**effect, "magical": True} if entry is effect else entry for entry in item["effects"]]
+    return {**item, "effects": effects, "infusion_bonus": bonus}
+
+
+def with_weapon_magic(action: dict, profile: dict | None) -> dict:
+    if profile is None or profile is action:
+        return action
+    return {
+        **action,
+        "magical": weapon_effect(profile).get("magical", False),
+        "infusion_bonus": profile.get("infusion_bonus", 0),
+    }

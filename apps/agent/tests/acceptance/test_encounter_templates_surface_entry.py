@@ -2,13 +2,19 @@
 
 import json
 from unittest.mock import AsyncMock, patch
+from uuid import uuid4
 
 import pytest
 from acceptance.mawling_harness import MawlingHarness
 from sample_fixtures import CONTENT_ROOT, published_payloads
 
+import db_content_queries
+import db_queries
 import event_types as E
+from check_resolution import D20Roll
 from combat_agent import CombatAgent
+from movement_tools import move_player
+from scene_tools import get_active_scene_for_context
 
 
 @pytest.fixture
@@ -77,10 +83,11 @@ async def test_authored_inventory_and_bindings(reset_db_pool):
                     "fragment_shadeling",
                     "hollow_still",
                     "hollow_architect",
+                    "hollow_choir",
                     "hollowed_scout",
                 }
                 unbound = {t["id"] for t in templates} - bound
-                assert {"hollowmoth_swarm", "hollow_weaver_ambush", "hollow_mawling_pack", "hollow_choir"} <= unbound
+                assert {"hollowmoth_swarm", "hollow_weaver_ambush", "hollow_mawling_pack"} <= unbound
                 for template in templates:
                     species = [creatures[e["creature_id"]] for e in template["enemies"]]
                     regions = set.intersection(*(set(c["regions"]) for c in species))
@@ -131,7 +138,7 @@ async def test_authored_inventory_and_bindings(reset_db_pool):
             await h.close()
 
 
-async def test_shipped_boss_discovery(reset_db_pool):
+async def test_shipped_boss_discovery(reset_db_pool, monkeypatch):
     from acceptance._catalog_cutover_helpers import assert_strength
 
     locations = json.loads((CONTENT_ROOT / "content/locations.json").read_text())
@@ -161,6 +168,51 @@ async def test_shipped_boss_discovery(reset_db_pool):
                 )
         finally:
             await h.close()
+
+    monkeypatch.setenv("CONTENT_CACHE_PREFIX", f"choir_discovery_{uuid4().hex}:")
+    h = MawlingHarness()
+    try:
+        await h.prepare((16, 16), companion=None, location=front["id"], tools=(move_player,))
+        origin = await h.command("enter_location", {"location_id": front["id"]})
+        destination = origin["location"]["exits"]["northeast"]["destination"]
+        assert destination == "ashmark_lost_voices"
+        assert "hollow_choir" not in await listed(h)
+        with patch.object(D20Roll, "roll", lambda self, _rng=None: self.evaluate(20)):
+            moved = await h.command(move_player.id, {"destination_id": destination})
+        assert moved["moved"] and moved["location"]["id"] == destination
+        for pid in h.players:
+            player = await db_queries.get_player(pid)
+            assert player is not None and player["location_id"] == destination
+
+        location = await db_content_queries.get_location(destination)
+        assert location is not None
+        description = moved["location"]["description"]
+        assert description == location["description"]
+        assert description.startswith("Voices call from the ash") and 2 <= description.count(".") <= 4
+
+        receipt = await h.command("enter_location", {"location_id": destination})
+        offer = receipt["choir"]
+        assert offer and offer["encounter_id"] == "hollow_choir"
+        template = await db_content_queries.get_encounter_template(offer["encounter_id"])
+        assert template is not None
+        assert offer["recommended_party_size"] == template["recommended_party_size"] == 2
+        assert offer["entry"] == 'enter_mode(mode="combat", encounter_id="hollow_choir")'
+        scene = await db_content_queries.get_scene(location["default_scene"])
+        assert scene is not None
+        active = get_active_scene_for_context({scene["id"]: scene}, [], location)
+        assert active is not None and active == scene
+        assert offer["entry"] in active["instructions"]
+
+        await h.command("enter_mode", {"mode": "combat", "encounter_id": offer["encounter_id"]})
+        assert isinstance(h.session.current_agent, CombatAgent)
+        state = await h.reload()
+        assert (state.location_id, state.encounter_id) == (destination, offer["encounter_id"])
+        assert any(p.creature_id == "hollow_choir" and p.role == "named" for p in state.participants)
+        assert state.choir_encounter is not None and state.choir_encounter["phase"] == "search"
+        starts = [p["encounter_id"] for p in published_payloads(h.sd.room) if p["type"] == E.COMBAT_STARTED]
+        assert offer["encounter_id"] in starts
+    finally:
+        await h.close()
 
 
 @pytest.mark.parametrize("kind", ["smoke", "unknown"])

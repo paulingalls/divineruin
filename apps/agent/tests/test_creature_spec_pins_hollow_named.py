@@ -17,7 +17,7 @@ SPEC = {
     "hollow_architect": (
         "The Architect",
         20,
-        175,
+        205,
         19,
         40,
         (20, 14, 20, 22, 18, 16),

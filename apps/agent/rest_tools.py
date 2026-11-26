@@ -9,15 +9,19 @@ import ability_persistence
 import db
 import db_content_queries
 import db_mutations
+import db_mutations_conditions
 import db_mutations_travel
 import db_queries
 import db_session_queries
 import event_types as E
+import infusion
 import temp_hp
 from archetypes import get_archetype_chassis
 from attribute_increase_persistence import lock_increases
+from conditions import hollowed_stage
 from db_errors import db_tool
 from game_events import publish_game_event
+from hollowed_progression import advance_hollowed_on_long_rest, drain_hollowed_on_long_rest
 from patron_gift_tools import recharge
 from patron_passives import effective_max_hp
 from resonance_events import publish_resonance_changed
@@ -42,6 +46,7 @@ async def rest(context: RunContext[SessionData], rest_type: RestType, use_song_o
     a short rest. One eligible singer pays Focus after recovery and each resting member
     who can hear rolls extra healing. Use false for ordinary rests.
     long: HP, Stamina and Focus refill and the settlement becomes the party's anchor.
+    Narrate any Hollowed worsening or Wisdom loss listed in hollowed_changes.
     Rest is unavailable during combat or outside a safe rest location. Present,
     co-located party members recover together.
     """
@@ -67,6 +72,7 @@ async def rest(context: RunContext[SessionData], rest_type: RestType, use_song_o
         if "danger_level" in location and location["danger_level"] != 0:
             raise ToolError("It is too dangerous to rest here.")
         anchor = None
+        hollowed_changes = []
         song = None
         async with db.transaction() as conn:
             players = await db_queries.get_players_for_update(member_ids, conn=conn)
@@ -96,15 +102,34 @@ async def rest(context: RunContext[SessionData], rest_type: RestType, use_song_o
                 session.validate_acting_player(actor)
                 if hp != players[pid]["hp"]["current"]:
                     await db_mutations.update_player_hp(pid, hp, conn=conn)
-                await ability_persistence.update_player_resources(pid, stamina=stamina, focus=focus, conn=conn)
+                player = players[pid]
+                drain = await drain_hollowed_on_long_rest(pid, player, conn=conn) if rest_type == "long" else None
+                if drain is None:
+                    await ability_persistence.update_player_resources(pid, stamina=stamina, focus=focus, conn=conn)
                 if rest_type == "long":
-                    if temp_hp.from_player(players[pid]):
+                    await infusion.clear(pid, player, conn=conn)
+                    if temp_hp.from_player(player):
                         await db_mutations.update_player_temp_hp(pid, 0, conn=conn)
                     await db_mutations_travel.reset_travel_hours(pid, conn=conn)
                 await reset_resonance_on_rest(pid, conn=conn)
-                await recharge(pid, players[pid], rest_type, conn=conn)
+                await recharge(pid, player, rest_type, conn=conn)
                 if rest_type == "long":
-                    await lock_increases(pid, players[pid], conn=conn)
+                    await lock_increases(pid, player, conn=conn)
+                    active = player.get("conditions")
+                    advanced = advance_hollowed_on_long_rest(active) if drain is None else None
+                    if advanced is not None:
+                        await db_mutations_conditions.save_player_conditions(pid, advanced, conn=conn)
+                    if advanced is not None or drain is not None:
+                        stage = hollowed_stage(active)
+                        hollowed_changes.append(
+                            {
+                                "player_id": pid,
+                                "name": player["name"],
+                                "from_stage": stage,
+                                "to_stage": hollowed_stage(advanced) if advanced is not None else stage,
+                                **(drain or {}),
+                            }
+                        )
         for pid in players:
             session.member_state(pid).resonance.current = 0
         for pid in players:
@@ -124,6 +149,7 @@ async def rest(context: RunContext[SessionData], rest_type: RestType, use_song_o
                 "location_id": location_id,
                 "players": list(players),
                 "settlement_id": anchor,
+                "hollowed_changes": hollowed_changes,
                 **({"song_of_rest": song} if song is not None else {}),
             }
         )

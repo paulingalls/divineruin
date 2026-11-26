@@ -8,7 +8,6 @@ free of IO; persistence lives in db_mutations_resurrection. Hollowed-death + Tem
 story-007.
 """
 
-import conditions as conditions_mod
 import creation_deities
 import db_content_queries
 import db_mutations_conditions
@@ -17,6 +16,7 @@ import db_mutations_resurrection
 from catalog_parse import ATTRIBUTE_KEYS
 from creation_classes import CLASSES
 from death_cost import DeathCost, determine_death_cost
+from hollowed_progression import cleanse_hollowed
 from patron_passives import effective_max_hp
 from starter_zone import get_starter_zone_id
 
@@ -144,7 +144,7 @@ async def trigger_character_death(
 
     Hollowed death (story-007): when the dying character carries a Hollowed condition (any stage),
     the death permanently marks them Hollow-killed (a later divine_revivify is refused) and clears
-    the Hollowed condition — corruption doesn't follow you past Mortaen's threshold. Story-008's
+    the Hollowed condition, restoring Wisdom lost to it. Story-008's
     combat-engine path reaches this same branch when the Temporary Hollowed echo is destroyed.
     """
     player_id = player["player_id"]
@@ -177,16 +177,11 @@ async def trigger_character_death(
     revive_hp = effective_max_hp(player, base_max, override_delta=deltas["maxhp_override_delta"])
     await mutations.revive_player(player_id, anchor, revive_hp, conn=conn)
 
-    # Hollowed death (story-007): mark Hollow-killed + clear the Hollowed condition (purged past
-    # Mortaen's threshold). combat_end persists the participant's conditions BEFORE this runs, so the
-    # cleared list is the authoritative post-death store.
-    player_conditions = player.get("conditions") or []
-    hollow_killed = any(c.get("type") == "hollowed" for c in player_conditions)
+    hollow_killed = await cleanse_hollowed(
+        player_id, player, conn=conn, mutations=mutations, conditions_mutations=conditions_mutations
+    )
     if hollow_killed:
         await mutations.set_hollow_killed(player_id, conn=conn)
-        await conditions_mutations.save_player_conditions(
-            player_id, conditions_mod.remove_condition(player_conditions, "hollowed"), conn=conn
-        )
 
     return {
         "death_count": death_count,

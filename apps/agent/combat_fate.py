@@ -29,6 +29,7 @@ from combat_attack_roll import prepare_player_swing, promote_attack, spend_sneak
 from combat_down import damage_target_unavailable
 from combat_item_rider import resolve_rider
 from combat_support import _resolve_attack_packet, apply_rolled_attack
+from equipment_rules import resolve_weapon_profile, with_weapon_magic
 from patron_synergy_combat import attack_player, veiled_strike
 
 
@@ -61,6 +62,7 @@ async def attack_sequence(
         assert resolved is not None
         variant = await combat_martial.pay(attacker.id, resolved, queries=deps["queries"], conn=deps["conn"])
         attack_cursor["variant_receipt"] = _with_variant({}, variant)
+        attack_cursor["attack_technique"] = martial
     else:
         actions = combat_enhancers.attack_sequence(enhancers, action)
     if martial == DEVASTATING_STRIKE or martial in ELECTIVE_ATTACK_RIDERS.values():
@@ -70,6 +72,7 @@ async def attack_sequence(
         if martial in ELECTIVE_ATTACK_RIDERS.values():
             actions = [{**swing, "advantage": True} for swing in actions]
             attack_cursor["variant_receipt"] = _with_variant({}, variant)
+            attack_cursor["attack_technique"] = martial
             if packet.declaration.rider == RECKLESS_ASSAULT_RIDER:
                 attacker.conditions = conditions.apply_condition(
                     attacker.conditions, RECKLESS_ASSAULT_RIDER, source=martial
@@ -218,6 +221,7 @@ async def continue_attack(
                 return {}
             if quick_fingers.get("refused"):
                 return {**swing_move, "actor_id": attacker.id, "resolved": False, "reason": quick_fingers["reason"]}
+            attack_cursor["attack_technique"] = martial
         if martial == DEVASTATING_STRIKE and not any(sub.get("hit") for sub in attack_summaries):
             count = 3 if attacker.level >= 17 else 2 if attacker.level >= 10 else 1
             act = {**act, "devastating_strike_dice": count}
@@ -302,6 +306,8 @@ async def continue_attack(
             assert resolved is not None
             variant = await combat_martial.pay(attacker.id, resolved, queries=queries, conn=conn)
             attack_cursor["variant_receipt"] = _with_variant({}, variant)
+            if crippling:
+                attack_cursor["attack_technique"] = martial
         stored_summary = swing.steps.get("attack_summary") if swing is not None else None
         if stored_summary is not None:
             sub = stored_summary
@@ -331,6 +337,9 @@ async def continue_attack(
                 veiled_strike=strike_mode,
             )
         else:
+            player = await attack_player(attacker, queries=queries, conn=conn)
+            profile = await resolve_weapon_profile(attacker.type, act, player=player, weapon_attack=True, conn=conn)
+            act = with_weapon_magic(act, profile)
             result = check_resolution_attack.finish_attack(
                 attacker_data,
                 act,
@@ -457,6 +466,8 @@ async def continue_attack(
         summary["turn_start_effects"] = effects
     if "quick_fingers" in attack_cursor:
         summary["quick_fingers"] = attack_cursor["quick_fingers"]
+    if interrupted is None and "hit" in summary and "attack_technique" in attack_cursor:
+        summary["attack_technique"] = attack_cursor["attack_technique"]
     summary.update(attack_cursor.get("variant_receipt", {}))
     summary["actor_id"] = packet.actor_id
     summary["resolved"] = interrupted is None

@@ -17,6 +17,7 @@ from combat_condition_landing import land_condition_on_participants
 from combat_structures import blocked_reason, line_blocker
 from condition_sources import DeliveryRefused
 from session_data import CombatParticipant, SessionData
+from spell_condition_cleanse import GREATER_RESTORATION, CleanseRefused
 
 if TYPE_CHECKING:
     from spell_casting import CastResult
@@ -76,13 +77,15 @@ async def _resolve_ability_packet(
     from combat_spell_recipients import select
 
     spell = spells.get_spell(decl.action)
+    cleanses = spell.id == GREATER_RESTORATION
     steps = progress.steps if progress is not None else {}
     shield_receipts = steps.setdefault("harmonic_shield_saves", [])
     shield = progress.scope("shield") if progress is not None else None
     deliveries = None
     recipient_profile = spell.combat_damage and spell.combat_damage.get("recipients")
     if (
-        not recipient_profile
+        not cleanses
+        and not recipient_profile
         and "cast_packet" not in steps
         and (wall := line_blocker(state, attacker.id, decl.target_id))
     ):
@@ -114,12 +117,14 @@ async def _resolve_ability_packet(
                 return {}
             redirects[target_id] = redirected.target_id
         deliveries = [{**d, "target_id": redirects[d["target_id"]]} for d in selected]
-    elif spell.heal is None:
+    elif spell.heal is None and not cleanses:
         decl = await effective_declaration(session, state, attacker, decl, progress=shield, receipts=shield_receipts)
         if decl is None:
             return {}
-    landing_intent, deliveries, interception = architect_reaction.spell_targets(
-        state, attacker, decl, spell, deliveries, steps
+    landing_intent, deliveries, interception = (
+        (decl, deliveries, None)
+        if cleanses
+        else architect_reaction.spell_targets(state, attacker, decl, spell, deliveries, steps)
     )
     cast_packet = steps.get("cast_packet")
     if cast_packet is None:
@@ -130,17 +135,21 @@ async def _resolve_ability_packet(
                 recipients = combat_spell_heal.combat_recipients(state, attacker, decl, spell, heal)
             except ValueError as e:
                 return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}
-        result = await cast_resolver._resolve_cast(
-            session,
-            decl.action,
-            conn=conn,
-            caster=caster,
-            player=player,
-            combat_state=state,
-            target_id=decl.target_id,
-            target_ids=decl.target_ids,
-            suppress_resonance_changed=True,
-        )
+        try:
+            result = await cast_resolver._resolve_cast(
+                session,
+                decl.action,
+                conn=conn,
+                caster=caster,
+                player=player,
+                combat_state=state,
+                target_id=decl.target_id,
+                target_ids=decl.target_ids,
+                suppress_resonance_changed=True,
+                **({"condition": decl.argument_type} if cleanses and decl.argument_type else {}),
+            )
+        except CleanseRefused as e:
+            return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}
         cast_outcome.results[attacker.id] = result
         if result.new_resonance is not None:
             combat_hollow_resonance.stage_total(state, attacker.id, result.new_resonance)

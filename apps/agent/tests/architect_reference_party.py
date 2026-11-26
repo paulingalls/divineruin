@@ -15,7 +15,7 @@ import db_queries
 import elective_choices
 import spells
 from choice_tools import select
-from combat_ability_gate import combat_ability
+from combat_ability_gate import attack_recipe, combat_ability
 from creation_classes import CLASSES
 from creation_rules import CATEGORY_ATTRIBUTE_ORDER
 from creation_subset import DEFAULT_PATRONS
@@ -36,6 +36,10 @@ EQUIPMENT = {
     "mage": (),
     "rogue": ("hollow_edge_blade", "warded_robes"),
     "cleric": ("hollow_ward_armor",),
+}
+ELECTIVE_PICKS = {
+    "warrior": {4: "warrior_precision_strike", 8: "warrior_iron_stance"},
+    "rogue": {4: "rogue_dirty_trick", 8: "rogue_blade_flurry"},
 }
 SPELL_LOADOUTS = {
     "mage": ("arcane", 3, 13, ("arcane_disintegrate", "arcane_magic_missile")),
@@ -122,7 +126,9 @@ async def choose_techniques(ctx: RunContext[SessionData], archetype: str) -> tup
     selected = []
     for level in elective_choices.TIERS:
         pool = elective_choices.pool(catalog, level)
-        pick = next((a for a in pool if combat_ability(a)), pool[0])
+        pick_id = ELECTIVE_PICKS[archetype][level]
+        pick = next(a for a in pool if a.id == pick_id)
+        assert combat_ability(pick) or attack_recipe(pick_id) is not None, pick_id
         receipt = json.loads(await select(ctx, f"{elective_choices.PREFIX}{level}", pick.id))
         assert receipt["chosen"] == pick.id
         assert await ability_persistence.owns_elective(pid, pick.id)

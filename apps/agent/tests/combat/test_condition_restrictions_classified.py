@@ -57,7 +57,8 @@ def test_only_positioning_may_wait_on_a_model():
 def test_every_enforced_restriction_has_a_production_reader():
     for restriction, reader in RESTRICTION_ENFORCERS.items():
         carriers = [
-            {"type": name} for name, spec in conditions.CONDITION_CATALOG.items() if restriction in spec.restrictions
+            {"type": name, "stage": stage} if name == "hollowed" else {"type": name}
+            for name, stage in _authored_carriers(restriction).items()
         ]
         assert carriers
         contexts = {
@@ -112,6 +113,8 @@ def test_exact_restriction_partition_and_complete_spoken_corpus():
                 "must_target_source",
                 "auto_fail_hearing_perception",
                 "no_spoken_buffs",
+                "hallucinations",
+                "stat_drain",
             }
         )
         == ENFORCED
@@ -123,8 +126,6 @@ def test_exact_restriction_partition_and_complete_spoken_corpus():
         "no_approach_source",
         "reduced_max_hp",
         "source_specific_penalty",
-        "hallucinations",
-        "stat_drain",
     }
     rows = json.loads((Path(__file__).resolve().parents[4] / "content/archetype_abilities.json").read_text())
     assert len(rows) == 145

@@ -961,6 +961,9 @@
     "description": "A low grinding hum rolls across the dead grass. Ash stings your throat, and each footstep crunches on brittle roots. Armor scrapes somewhere ahead, beneath a sound too deep to hear clearly.",
     "atmosphere": "muffled, ash-choked, unrelenting",
     "exits": {
+      "northeast": {
+        "destination": "ashmark_lost_voices"
+      },
       "northwest": {
         "destination": "ashmark_still"
       },
@@ -977,6 +980,32 @@
       "common": [
         "plant_fiber"
       ],
+      "uncommon": [],
+      "rare": []
+    }
+  },
+  {
+    "id": "ashmark_lost_voices",
+    "name": "The Lost Voices",
+    "tier": 2,
+    "district": "ashmark_front",
+    "region": "ashmark",
+    "region_type": "wilderness",
+    "terrain": "grassland",
+    "tags": ["wilderness", "dangerous", "choir"],
+    "description": "Voices call from the ash, each almost familiar. Your name returns in a dozen mouths, half a breath apart. Cold grit settles on your tongue. Broken stones ring a hollow in the dead grass.",
+    "atmosphere": "overlapping familiar voices and cold ash",
+    "exits": {
+      "southwest": {
+        "destination": "ashmark_corrupted_front"
+      }
+    },
+    "default_scene": "scene_ashmark_lost_voices",
+    "danger_level": 3,
+    "recommended_level": 16,
+    "navigation": "unmarked_wilderness",
+    "resource_table": {
+      "common": [],
       "uncommon": [],
       "rare": []
     }

@@ -21,6 +21,7 @@ from bg_speech import COMPANION_IDLE_SECS, PendingSpeech, SpeechPriority
 from bg_whisper_delivery import mark_whisper, named_whisper
 from companion_cue_events import publish_companion_cue
 from companion_prompts import build_companion_cue, is_companion_cue
+from hollowed_hallucinations import HallucinationSelections
 from sanitize import sanitize_for_prompt
 from speaker_context import build_speaker_context
 from speech_delivery import deliver_speech
@@ -63,6 +64,7 @@ class BackgroundProcess:
         self._dwell_generations: dict[str, int | None] = {}
         self._warm_lock = asyncio.Lock()
         self._alignment = AlignmentHeartbeat(session_data)
+        self._hallucinations = HallucinationSelections()
 
     def start(self) -> None:
         self._task = asyncio.create_task(self._run())
@@ -291,11 +293,7 @@ class BackgroundProcess:
         if not self._speech_queue:
             return
 
-        # A fight HOLDS proactive speech. The loop is session-scoped since story-023, so it runs
-        # through combat now, and the DM is mid-beat with the phase loop owning the floor — the
-        # same reason _check_companion_idle and _check_scene_beat_hints refuse to produce here.
-        # Held rather than dropped: an event cue is one-shot, so discarding it loses the
-        # announcement outright, where the idle/hint producers are remade by their own timers.
+        # Combat owns the floor; dropping held one-shot cues would lose their announcements.
         speakable, held = self._speech_queue, []
         if self._sd.in_combat:
             speakable = [s for s in self._speech_queue if s.combat_safe]
@@ -405,7 +403,7 @@ class BackgroundProcess:
             logger.error("Warm layer data fetch failed", exc_info=True)
             return False
 
-        await self._refresh_speakers(quests, training)
+        players = await self._refresh_speakers(quests, training)
 
         try:
             # Update hot context caches on SessionData (read by voice loop, zero I/O)
@@ -417,6 +415,8 @@ class BackgroundProcess:
                 sanitize_for_prompt(n.get("name", n.get("id", "?")), max_len=100) for n in (npcs_raw or [])
             ]
 
+            present = self._sd.present_member_ids
+            hallucinations = await self._hallucinations.for_present_players(players, present, self._sd.location_id)
             base = await build_warm_layer(
                 self._sd.location_id,
                 self._sd.primary_player_id,
@@ -429,8 +429,9 @@ class BackgroundProcess:
                 scene_cache=self._scene_cache or None,
                 training=training or None,
                 first_episode_phase=episode,
-                party_member_ids=self._sd.present_member_ids,
+                party_member_ids=present,
                 quest_decisions=decisions,
+                hallucinations=hallucinations,
             )
         except TRANSIENT_IO_ERRORS:
             logger.error("Warm layer build failed", exc_info=True)
@@ -439,10 +440,11 @@ class BackgroundProcess:
         await self._apply_warm(base)
         return True
 
-    async def _refresh_speakers(self, host_quests: list[dict], host_training: list[dict]) -> None:
+    async def _refresh_speakers(self, host_quests: list[dict], host_training: list[dict]) -> dict[str, dict]:
         member_ids = self._sd.party.member_ids
         current = self._sd.speaker_summaries
         refreshed = {pid: current[pid] for pid in member_ids if pid in current}
+        players = {}
         for pid in member_ids:
             try:
                 player, activities = await asyncio.gather(
@@ -452,6 +454,7 @@ class BackgroundProcess:
                 if player is None:
                     logger.warning("Speaker player %s is missing", pid)
                     continue
+                players[pid] = player
                 if pid == self._sd.primary_player_id:
                     quests, training = host_quests, host_training
                 else:
@@ -464,23 +467,17 @@ class BackgroundProcess:
                 continue
             refreshed[pid] = build_speaker_context(pid, player, quests, activities, training)
         self._sd.speaker_summaries = refreshed
+        return players
 
     async def _apply_warm(self, warm: str) -> None:
-        # Every agent that can hold the floor while this process runs is a BaseGameAgent; one
-        # that is not raises on static_prompt rather than being quietly skipped.
         agent = cast("BaseGameAgent", self._session.current_agent)
-        # The target is half the dedupe key: a handoff hands the floor to an agent whose
-        # instructions carry no warm layer at all, and an unchanged warm string must still
-        # reach it.
+        # A handoff target needs the warm layer even when its text is unchanged.
         if warm == self._last_warm_layer and agent is self._last_target:
             return
 
         self._last_warm_layer = warm
         self._last_target = agent
-        # Keyed on companion IDENTITY, not merely presence: the static layer renders the
-        # assigned companion's own name, tag and profile, so a bool would serve a stale
-        # section if the bound companion ever changed within a session. Keyed on the agent
-        # too: each agent's static half is its own (COMBAT_SYSTEM_PROMPT for a fight).
+        # The static layer embeds the assigned companion's own name, voice tag and profile.
         companion = self._sd.companion
         static_key = (
             type(agent).__name__,

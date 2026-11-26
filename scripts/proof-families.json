@@ -31,11 +31,11 @@
       "apps/agent/tests/acceptance/test_orenthel_guardian_ward\\.py",
       "apps/agent/tests/acceptance/test_orenthel_undead_wrath\\.py",
       "apps/agent/tests/acceptance/test_orenthel_undead_wrath_guards\\.py",
-      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:legendary_resistance(?:_guards|_callers)?|spell_damage_commit|catalog_action_runtime|catalog_combat_translation|creature_flight|catalog_encounter_cutover|zhael_fate_commands|choir_.*|still_.*|architect_.*|slippery_restrain|opportunity_strike(?:_guards)?|retreat|enemy_opportunity_attacks(?:_guards)?|enemy_pockets(?:_fault)?|quick_fingers(?:_fault|_resume|_wary)?|combat_spatial_entry|combat_structures_fight|combat_wall_lines(?:_areas)?|hollow_troops_fight|hollowed_knight_fight|veilrender_fight|veilrender_absorb_commit|fallen_melee_failures|first_blood_atomicity|generated_combat(?:_movement)?|mawling_.*|martial_(?:core_(?:kit|resume)|target_guards)|iron_stance(?:_fate|_expiry)?|self_buff_electives|self_buff_elective_guards|strike_riders(?:_guards)?|cleave_and_whirlwind(?:_guards)?|blade_flurry(?:_guards)?|taunt|war_cry|marshal_war_cry(?:_guards)?|vanish(?:_guards)?|smoke_bomb(?:_guards)?|shadow_step(?:_guards)?|m(?:12|13|41|42|43|44|47|48)_.*)\\.py"
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:legendary_resistance(?:_guards|_callers)?|spell_damage_commit|catalog_action_runtime|catalog_combat_translation|creature_flight|catalog_encounter_cutover|zhael_fate_commands|choir_.*|still_.*|architect_.*|slippery_restrain|opportunity_strike(?:_guards)?|retreat|enemy_opportunity_attacks(?:_guards)?|enemy_pockets(?:_fault)?|quick_fingers(?:_fault|_resume|_wary)?|combat_spatial_entry|combat_structures_fight|combat_wall_lines(?:_areas)?|hollow_troops_fight|hollowed_knight_fight|magical_weapons|infuse_item(?:_guards)?|veilrender_fight|veilrender_absorb_commit|fallen_melee_failures|first_blood_atomicity|generated_combat(?:_movement)?|mawling_.*|martial_(?:core_(?:kit|resume)|target_guards)|iron_stance(?:_fate|_expiry)?|self_buff_electives|self_buff_elective_guards|strike_riders(?:_guards)?|cleave_and_whirlwind(?:_guards)?|blade_flurry(?:_guards)?|taunt|war_cry|marshal_war_cry(?:_guards)?|vanish(?:_guards)?|smoke_bomb(?:_guards)?|shadow_step(?:_guards)?|m(?:12|13|41|42|43|44|47|48)_.*)\\.py"
     ],
     "owns": [
       "apps/agent/(?:combat[^/]*|choir[^/]*|still[^/]*|architect_[^/]*|encounter[^/]*|durability[^/]*|damage[^/]*|death[^/]*|enemy[^/]*|initiative[^/]*|reaction[^/]*|monster[^/]*)\\.py",
-      "apps/agent/(?:spells|declarations|declaration_payloads|reshape_payloads|action_contracts(?:_still)?|creature_combat_effects|check_discovery|condition_sources|background_process|resurrection|db_mutations_resurrection|ability_tools|activate_tools|query_tools|check_resolution_(?:attack|save))\\.py"
+      "apps/agent/(?:spells|declarations|declaration_payloads|reshape_payloads|action_contracts(?:_still)?|creature_combat_effects|check_discovery|condition_sources|background_process|resurrection|db_mutations_resurrection|ability_tools|infusion|activate_tools|query_tools|check_resolution_(?:attack|save))\\.py"
     ],
     "reads": [
       "content/action_sounds.json",
@@ -51,6 +51,7 @@
       "content/factions.json",
       "content/gods.json",
       "content/unbound.json",
+      "content/hollowed_hallucinations.json",
       "content/items.json",
       "content/level_progression.json",
       "content/locations.json",
@@ -65,7 +66,7 @@
   {
     "name": "magic",
     "tests": [
-      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:patron_echo_choice_voice|concentration_persistence|dispel_corruption(?:_atomicity)?|veythar_gift(?:_atomicity)?|syrath_gift(?:_atomicity)?|flickering_bonus_persistence|hollow_resonance_commit|m(?:11|17|24|31|32|33|34)_.*|veil_ward_persistence|voice_condition_commands)\\.py"
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:patron_echo_choice_voice|concentration_persistence|greater_restoration|dispel_corruption(?:_atomicity)?|veythar_gift(?:_atomicity)?|syrath_gift(?:_atomicity)?|flickering_bonus_persistence|hollow_resonance_commit|m(?:11|17|24|31|32|33|34)_.*|veil_ward_persistence|voice_condition_commands)\\.py"
     ],
     "owns": [
       "apps/agent/(?:spell[^/]*|condition[^/]*|concentration[^/]*|patron[^/]*|corruption[^/]*|dispel[^/]*|veil_ward[^/]*|hollow_resonance[^/]*)\\.py"
@@ -211,6 +212,7 @@
       "content/creatures.json",
       "content/encounter_templates.json",
       "content/errand_templates.json",
+      "content/hollowed_hallucinations.json",
       "content/items.json",
       "content/locations.json",
       "content/quests.json"
@@ -219,10 +221,10 @@
   {
     "name": "sessions",
     "tests": [
-      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:first_episode(?:_atomicity|_reentry)?|m35_session_persistence_capstone|player_session_persistence|rest_.*|fresh_recap|leave_summary|session_limits|session_room_ownership)\\.py"
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:first_episode(?:_atomicity|_reentry)?|m35_session_persistence_capstone|player_session_persistence|rest_.*|hollowed_(?:progression|wis_drain)|fresh_recap|leave_summary|session_limits|session_room_ownership)\\.py"
     ],
     "owns": [
-      "apps/agent/(?:creation[^/]*|onboarding[^/]*|session[^/]*|participant[^/]*|rest[^/]*|first_episode[^/]*|character_creation[^/]*)\\.py"
+      "apps/agent/(?:creation[^/]*|onboarding[^/]*|session[^/]*|participant[^/]*|rest[^/]*|hollowed_(?:hallucinations|progression)|first_episode[^/]*|character_creation[^/]*)\\.py"
     ],
     "reads": [
       "content/archetype_abilities.json",
@@ -235,6 +237,7 @@
       "content/events.json",
       "content/gods.json",
       "content/unbound.json",
+      "content/hollowed_hallucinations.json",
       "content/items.json",
       "content/level_progression.json",
       "content/locations.json",
@@ -274,6 +277,7 @@
       "content/companions.json",
       "content/creatures.json",
       "content/encounter_templates.json",
+      "content/hollowed_hallucinations.json",
       "content/items.json",
       "content/locations.json",
       "content/quests.json",
@@ -361,6 +365,7 @@
       "content/gods.json",
       "content/unbound.json",
       "content/inventory_pools.json",
+      "content/hollowed_hallucinations.json",
       "content/items.json",
       "content/level_progression.json",
       "content/locations.json",

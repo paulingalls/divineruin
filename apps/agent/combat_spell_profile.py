@@ -180,6 +180,11 @@ def scaled(profile, key, base, level):
 
 
 def validate_target(state, caster, declaration, spell):
+    from spell_condition_cleanse import GREATER_RESTORATION, combat_target
+
+    if spell.id == GREATER_RESTORATION:
+        combat_target(state, caster.id, declaration.target_id, declaration.target_ids)
+        return
     if (heal := spell.heal) is not None:
         from combat_spell_heal import combat_recipients
 

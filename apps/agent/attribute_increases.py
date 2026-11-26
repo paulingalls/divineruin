@@ -36,12 +36,23 @@ def validate_scores(scores: dict) -> None:
         raise ValueError("Attribute scores must contain six integers from 1 to 20")
 
 
+def recompute_pools(player: dict, *, refill: bool = False) -> dict:
+    modifiers = {key: attribute_modifier(score) for key, score in player["attributes"].items()}
+    pools = calculate_max_pools(player["class"], player["level"], modifiers)
+    patch = {}
+    for name in ("stamina", "focus"):
+        maximum = getattr(pools, name)
+        if name in player and maximum is not None:
+            current = maximum if refill else min(player[name]["current"], maximum)
+            patch[name] = {**player[name], "max": maximum, "current": current}
+    return patch
+
+
 def recompute(player: dict) -> dict:
     scores = player["attributes"]
     validate_scores(scores)
-    modifiers = {k: attribute_modifier(v) for k, v in scores.items()}
-    maximum = calculate_max_hp(player["class"], player["level"], modifiers["constitution"])
-    patch = {
+    maximum = calculate_max_hp(player["class"], player["level"], attribute_modifier(scores["constitution"]))
+    return {
         "attributes": dict(scores),
         "hp": {
             **player["hp"],
@@ -49,13 +60,8 @@ def recompute(player: dict) -> dict:
             "current": min(player["hp"]["current"], effective_max_hp(player, maximum)),
         },
         "ac": calculate_ac(player.get("equipment", {}), scores["dexterity"]),
+        **recompute_pools(player),
     }
-    pools = calculate_max_pools(player["class"], player["level"], modifiers)
-    for name in ("stamina", "focus"):
-        maximum = getattr(pools, name)
-        if name in player and maximum is not None:
-            patch[name] = {**player[name], "max": maximum, "current": min(player[name]["current"], maximum)}
-    return patch
 
 
 def receipt(player_id: str, player: dict, level: str, record: dict) -> dict:

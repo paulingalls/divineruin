@@ -569,6 +569,7 @@
     "description": "A hum carries a familiar voice, then others, each a little wrong and louder.",
     "difficulty": "hard",
     "recommended_party_level": 16,
+    "recommended_party_size": 2,
     "enemies": [
       {
         "id": "choir_zone",

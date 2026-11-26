@@ -74,6 +74,7 @@ export const MAP_LAYOUT: MapLayoutNode[] = [
     region: "Ashmark",
   },
   { id: "ashmark_still", label: "The Still", x: 125, y: 880, region: "Ashmark" },
+  { id: "ashmark_lost_voices", label: "The Lost Voices", x: 215, y: 880, region: "Ashmark" },
   { id: "ashmark_corrupted_front", label: "Ashmark Front", x: 170, y: 920, region: "Ashmark" },
 
   // --- Greyvale Ruins ---

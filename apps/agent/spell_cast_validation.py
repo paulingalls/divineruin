@@ -6,10 +6,12 @@ import cast_modifiers
 import combat_spell_heal
 import combat_voice_rules
 import patron_echo_choice
+import spell_condition_cleanse
 import spell_item_resolution
 import spell_knowledge
 import spells
 import veythar_wellspring
+from declarations import Declaration, DeclarationType
 from party_state import PartyMember
 from resource_costs import gate_pool
 from session_data import CombatState, SessionData
@@ -46,6 +48,7 @@ async def _prepare_cast(
     combat_state: CombatState | None,
     target_id: str | None,
     target_ids: list[str] | None,
+    condition: str | None,
     content_mod,
     spells_mod,
     condition_produce_mod,
@@ -74,8 +77,15 @@ async def _prepare_cast(
     except ValueError as e:
         raise ToolError(str(e)) from e
 
-    if voice_spell.heal is not None and combat_state is None and session.in_combat:
+    is_cleanse = spell_id == spell_condition_cleanse.GREATER_RESTORATION
+    if (voice_spell.heal is not None or is_cleanse) and combat_state is None and session.in_combat:
         raise ToolError(f"{voice_spell.name} is cast in combat with declare_phase")
+    cleanse_target_id = None
+    if is_cleanse:
+        try:
+            cleanse_target_id = spell_condition_cleanse.single_target(player_id, target_id, target_ids)
+        except ValueError as e:
+            raise spell_condition_cleanse.CleanseRefused(str(e)) from e
     heal = voice_spell.heal if combat_state is None else None
     locked_rows: dict[str, dict] | None = None
     if player is None:
@@ -84,7 +94,7 @@ async def _prepare_cast(
             session.party.member_ids if heal is not None and heal["recipients"] == "all_allies" else target_ids
         )
         locked_rows, player = await condition_produce_mod.lock_ooc_caster_and_targets(
-            produces_ooc=produces_ooc or item_target is not None or heal is not None,
+            produces_ooc=produces_ooc or item_target is not None or heal is not None or is_cleanse,
             player_id=player_id,
             target_id=item_target[0] if item_target else target_id,
             target_ids=lock_target_ids,
@@ -117,6 +127,19 @@ async def _prepare_cast(
     except ValueError as e:
         raise ToolError(str(e)) from e
 
+    cleanse = None
+    if cleanse_target_id is not None:
+        if combat_state is None:
+            assert locked_rows is not None
+            cleanse = spell_condition_cleanse.exploration_target(cleanse_target_id, player, locked_rows, condition)
+        else:
+            declaration = Declaration(
+                type=DeclarationType.ABILITY, target_id=cleanse_target_id, argument_type=condition or ""
+            )
+            cleanse = await spell_condition_cleanse.prepare_combat(
+                session, combat_state, player_id, declaration, queries=queries_mod, conn=conn, lock=True
+            )
+
     heal_rows = None
     try:
         if heal is not None:
@@ -130,4 +153,4 @@ async def _prepare_cast(
             target_ids = spells_mod.normalize_target_list(spell, target_id, target_ids)
     except ValueError as e:
         raise ToolError(str(e)) from e
-    return spell, player, target_ids, item_target, locked_rows, heal_rows
+    return spell, player, target_ids, item_target, locked_rows, heal_rows, cleanse

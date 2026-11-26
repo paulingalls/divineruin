@@ -78,6 +78,16 @@ class RestWalk(ArcWalk):
         assert row is not None
         return row
 
+    async def seed_infusions(self) -> dict:
+        infusions = {"club_wooden": {"bonus": 1, "order": 1}}
+        await self.pool.execute(
+            "UPDATE players SET data=jsonb_set(data, '{weapon_infusions}', $2::jsonb) WHERE player_id=ANY($1)",
+            self.ids,
+            json.dumps(infusions),
+        )
+        self.before = await self.rows()
+        return infusions
+
     async def rows(self):
         return {pid: await self.row(pid) for pid in self.ids}
 

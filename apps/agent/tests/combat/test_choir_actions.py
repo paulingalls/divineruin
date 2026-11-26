@@ -235,47 +235,38 @@ async def test_melody_movement_requires_landed_live_charm(immune, damage, source
     assert spatial_record(state)["positions"][target.id]["x"] == (0 if immune or (damage and source == "choir") else 30)
 
 
-async def test_suppression_before_roll_spend():
-    from choir_effects import advance_round, exposure
+async def test_stale_choir_packet_refused_before_roll_or_spend() -> None:
+    from choir_effects import advance_round, inflict_silence
     from combat_action_availability import action_summary
-    from combat_state import CombatState
 
-    state, actor, packet = setup(SCREAM)
+    cacophony = next(
+        action
+        for creature in catalog()
+        if creature["id"] == "hollow_choir"
+        for action in creature["actives"]
+        if action["name"] == "Cacophony"
+    )
+    state, actor, packet = setup(cacophony)
     actor.creature_id = "hollow_choir"
-    spatial_record(state)["zones"]["test"] = {"kind": "silence", "center_id": actor.id, "radius_ft": 30}
-    exposure(state)
-    assert actor.choir_suppression == {"expires_round": 3, "active": True}
-    for _ in range(2):
-        assert action_summary(actor)["executable_actions"][0]["available"] is False
-        state = CombatState.from_dict(state.to_dict())
-        actor = state.participants[1]
-        exposure(state)
-        assert actor.choir_suppression is not None
-        assert actor.choir_suppression["expires_round"] == 3
-    d = deps()
-    d["concentration_break_mod"].break_concentration_on_incapacitation = AsyncMock(return_value=None)
-    result = await _resolve_one_packet(make_context().userdata, state, packet, **d)
-    assert result["resolved"] is False and not d["resolver"].resolve_attack.called
-    zone = spatial_record(state)["zones"].pop("test")
-    exposure(state)
-    assert actor.choir_silence_exposed is False
-    assert not action_summary(actor)["executable_actions"][0]["available"]
-    assert not (await _resolve_one_packet(make_context().userdata, state, packet, **d))["resolved"]
-    spatial_record(state)["zones"]["test"] = zone
-    exposure(state)
-    state.round_number = 3
+    inflict_silence(state, actor, {"radius_ft": 30, "rounds": 3}, packet.declaration)
+    state.round_number += 1
     advance_round(state)
+    assert action_summary(actor)["executable_actions"][0]["reason"] == "suppressed"
+    with (
+        patch(SAVE_ROLL) as saves,
+        patch("combat_enemy_action.dice_roll") as damage,
+    ):
+        result = await _resolve_one_packet(make_context().userdata, state, packet, **deps())
+    assert not result["resolved"] and "suppressed" in result["reason"]
+    saves.assert_not_called()
+    damage.assert_not_called()
+    assert actor.action_ledger["cacophony"]["remaining"] == 1
+
     assert actor.choir_suppression is not None
-    assert actor.choir_suppression["active"] is False
-    exposure(state)
-    assert actor.choir_suppression == {"expires_round": 3, "active": False}
-    assert not action_summary(actor)["executable_actions"][0]["available"]
-    del spatial_record(state)["zones"]["test"]
-    exposure(state)
-    assert action_summary(actor)["executable_actions"][0]["available"]
-    spatial_record(state)["zones"]["test"] = {"kind": "silence", "center_id": actor.id, "radius_ft": 30}
-    exposure(state)
-    assert actor.choir_suppression == {"expires_round": 5, "active": True}
+    state.round_number = actor.choir_suppression["expires_round"]
+    advance_round(state)
+    [action] = action_summary(actor)["executable_actions"]
+    assert not action["available"] and action["reason"] == "silenced"
 
 
 async def test_runtime_effect_roundtrip_validation():

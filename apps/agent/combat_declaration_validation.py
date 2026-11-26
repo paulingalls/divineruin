@@ -199,6 +199,7 @@ def validate_declaration(
     if declaration.type is DeclarationType.ABILITY and actor.type == "player":
         import combat_spell_profile
         import spells
+        from spell_condition_cleanse import GREATER_RESTORATION
 
         assert declaration.action is not None
         try:
@@ -207,6 +208,8 @@ def validate_declaration(
             spell = None
         if spell is not None:
             combat_spell_profile.validate_target(next_state, actor, declaration, spell)
+            if spell.id == GREATER_RESTORATION:
+                return
         resolved_ability = declared_ability(declaration.action)
         if resolved_ability is not None:
             ability, _variant = resolved_ability

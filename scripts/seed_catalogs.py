@@ -18,6 +18,7 @@ PYTHON_CATALOGS = (
     ("npcs", "npcs", "parse_npc_row"),
     ("companions", "companion_profiles", "parse_companion_row"),
     ("training_activity_types", "training_rules", "parse_activity_type_row"),
+    ("hollowed_hallucinations", "hollowed_hallucinations", "parse_hollowed_hallucination_row"),
 )
 SERVER_TABLES = (
     "locations",

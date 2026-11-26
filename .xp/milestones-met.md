@@ -2,7 +2,7 @@
 
 Milestones removed from `milestones.md` once their Measure read distance=0. Each keeps
 its goal and the Candidates that were still listed: follow-ups that a later milestone
-or card may pick up. Met at v0.70.0 (2026-11-25).
+or card may pick up. Met at v0.70.0 (2026-11-25); Patron abilities (Phase 8 M8.2) met at v0.76.0 (2026-11-25).
 
 ## Harvesting and the encounter builder (Phase 7 M7.4)
 Goal: `build_encounter` builds encounters from the catalog, and harvesting enforces skill gates: `docs/milestones/07_bestiary.md` Milestone 7.4 ACs, which unblock Phase 9's material sell values (Execution plan Milestone 34).
@@ -18,3 +18,8 @@ Candidates: (1) Sprint `patron-alignment-heartbeat` (deferred by the human 2026-
 Goal: "for branches, we should add a develop branch. look at how things work in ../legacy especially with versioning" (human 2026-11-16). Sprints and free patches land on `develop`; `main` only fast-forwards to the SHA that was deployed and verified; versions are stamped from `changes/<branch>.md` notes after merge (legacy briefing: /Users/paulingalls/src/projects/legacy-briefing-for-divineruin.md). Switch after sprint greyvale-ruins lands on main (human 2026-11-16).
 Measure: python3 -c 'import subprocess as s,re; c=open(".xp/config.yml").read(); u=[n for n,ok in (("trunk",re.search(r"^trunk: *develop",c,re.M)),("notes",re.search(r"^versioning: *notes",c,re.M)),("develop",s.run(["git","rev-parse","-q","--verify","origin/develop"],capture_output=True).returncode==0),("promote",__import__("os").path.exists("scripts/promote-main.sh"))) if not ok]; print("distance=%d %s" % (len(u)," ".join(u)))'
 Candidates: create `develop` from main at v0.42.0 and make it the GitHub default branch; `.xp/config.yml` `trunk: develop` and `versioning: notes`; `changes/README.md`; `scripts/promote-main.sh` fast-forwards main to the verified deployed SHA (legacy `infra/deploy/release-beta.sh` step 6.5) and is called by the deploy script; tell divineruin2. Skip on day one (legacy judgment): promotion capstone, after-promotion workflow, disposable release worktree; add the ancestry check the first time main is hotfixed.
+
+## Patron abilities (Phase 8 M8.2)
+Goal: every patron's abilities across the three favor tiers, with recharge, can be granted and activated by the DM in play: `docs/milestones/08_patrons.md` Milestone 8.2 ACs.
+Measure: python3 -c 'import json,re; s=open("docs/milestones/08_patrons.md").read(); b=re.search(r"^### Milestone 8.2 .*?(?=^### |\Z)",s,re.M|re.S).group(0); g=json.load(open("content/gods.json")); print("distance=%d pending_engine=%d" % (len(re.findall(r"^- \[ \] ",b,re.M)),sum(a["status"]=="pending" and a["resolution"]=="engine" for p in g for a in p["layer_3_tier_abilities"].values())))'
+Candidates: none. Reached 2026-11-25 (distance=0 pending_engine=0) with sprint aelora-hearthfire and divineruin2-m3's zhael-unravel-fate.

@@ -22,9 +22,9 @@ import dice
 import event_types as E
 from combat_spatial import distance
 from creation_rules import build_character_data
+from inventory_tools import transact
 from progression_tools import _award_xp_core
 from rules_engine import XP_FOR_LEVEL
-from weapon_proficiency import PROFILE_FIELDS
 
 
 async def player_row(pid, *, conn=None):
@@ -49,7 +49,7 @@ class KnightFight(MawlingHarness):
         assert (level, self.template["difficulty"], self.template["recommended_party_size"]) == (14, "hard", 2)
         catalog = {r["id"]: r for r in json.loads((CONTENT_ROOT / "content/creatures.json").read_text())}
         assert_strength(self.template, catalog)
-        await self.prepare((level,) * 4, companion=None)
+        await self.prepare((level,) * 4, companion=None, tools=(transact,))
         self.location = "knight_fight_location"
         await self.pool.execute(
             "INSERT INTO locations(id,data) VALUES($1,$2::jsonb)",
@@ -63,17 +63,6 @@ class KnightFight(MawlingHarness):
                 f"Knight challenger {index}", "human", cls, None, "", created_at=datetime(2026, 11, 18, tzinfo=UTC)
             )
             item_id = {"rogue": "hollow_edge_blade", "cleric": "warhammer_common"}.get(cls, "blade_of_the_ashmark")
-            item = json.loads(await self.pool.fetchval("SELECT data FROM items WHERE id=$1", item_id))
-            effect = next(e for e in item["effects"] if e["type"] == "weapon")
-            row["equipment"]["main_hand"] = {
-                "id": item_id,
-                "name": item["name"],
-                **{field: item[field] for field in PROFILE_FIELDS},
-                "damage": item["damage_dice"],
-                "damage_type": effect["damage_type"],
-                "properties": effect["properties"],
-                "magical": True,
-            }
             row.update(player_id=pid, location_id=self.location)
             await self.pool.execute("UPDATE players SET data=$2::jsonb WHERE player_id=$1", pid, json.dumps(row))
             async with self.pool.acquire() as conn, conn.transaction():
@@ -90,6 +79,11 @@ class KnightFight(MawlingHarness):
                 if key in row:
                     row[key]["current"] = row[key]["max"]
             await self.pool.execute("UPDATE players SET data=$2::jsonb WHERE player_id=$1", pid, json.dumps(row))
+            grant = await self.transact_as(pid, item_id, "exchange", 1)
+            assert grant["action"] == "added"
+            receipt = await self.transact_as(pid, item_id, "equip", 0)
+            assert receipt["action"] == "equipped"
+            assert (await player_row(pid))["equipment"]["main_hand"]["id"] == item_id
         discovery = await self.command("query_info", {"kind": "creature"})
         summary = next(r for r in discovery["encounter_templates"] if r["id"] == self.template["id"])
         assert summary["recommended_party_size"] == 2
@@ -108,6 +102,14 @@ class KnightFight(MawlingHarness):
         self.knight_death_awards = []
         self.destructions = 0
         self.rounds = 0
+
+    async def transact_as(self, actor: str, item_id: str, action: str, delta: int) -> dict:
+        self.model.commands.append(("transact", {"action": action, "item_id": item_id, "delta": delta}))
+        with self.sd._bind_authenticated_actor(actor, 1, lambda *_: None):
+            await self.session.run(user_input="Execute the next command.")
+        receipt = list(self.model.receipts.values())[-1]
+        assert receipt.name == "transact" and not receipt.is_error, receipt.output
+        return json.loads(receipt.output)
 
     async def command(self, name, arguments, **kwargs):
         count = len(self.model.receipts)

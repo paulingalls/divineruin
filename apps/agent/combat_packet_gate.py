@@ -9,6 +9,7 @@ import combat_ability_save
 import combat_martial
 import combat_voice_rules
 import patron_synergy_heal
+import spell_condition_cleanse
 import spell_knowledge
 import spells
 from combat_ability import (
@@ -182,6 +183,8 @@ async def _prevalidate_ability_focus(
                 combat_spell_profile.validate_target(state, actor, decl, spell)
             except ValueError as e:
                 raise ToolError(str(e)) from e
+            if action == spell_condition_cleanse.GREATER_RESTORATION:
+                await spell_condition_cleanse.prepare_combat(session, state, actor_id, decl, queries=queries, conn=conn)
             if spell.applies_condition is not None:
                 combat_ability_save.gate_hostile_condition_targets(state, decl, spell.applies_condition, spell.name)
             # Multi-target cap (M4.8 story-012): reject an over-cap / malformed multi-target spell

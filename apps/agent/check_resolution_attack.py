@@ -112,7 +112,7 @@ def weapon_attribute_modifier(player_data: dict, weapon: dict) -> int:
 
 def attack_modifier(player_data: dict, weapon: dict) -> int:
     level = player_data.get("level", 1)
-    return weapon_attribute_modifier(player_data, weapon) + proficiency_bonus(level)
+    return weapon_attribute_modifier(player_data, weapon) + proficiency_bonus(level) + weapon.get("infusion_bonus", 0)
 
 
 def attack_modes(attacker_data: dict, weapon: dict, target_conditions=()) -> tuple[bool, bool]:
@@ -284,6 +284,7 @@ def finish_attack(
             if critical:
                 damage += dice_roll(damage_notation, rng=rng).total
             damage += thyra_seasons.damage_bonus(attacker_data, season, damage_type)
+            damage += weapon.get("infusion_bonus", 0)
         damage += patron_synergy_combat.weapon_damage_bonus(attacker_data, critical, rng=rng)
         if weapon.get("attack_source") != "catalog" and weapon.get("damage_attribute", True) and damage_notation != "0":
             damage += weapon_attribute_modifier(attacker_data, weapon)
