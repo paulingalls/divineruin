@@ -9,7 +9,7 @@ const items = (await Bun.file(new URL("../../../content/items.json", import.meta
 }[];
 const itemIds = new Set(items.map(({ id }) => id));
 
-const LOCATION_COUNT = 27;
+const LOCATION_COUNT = 28;
 
 async function loadLocationsJson(): Promise<Record<string, unknown>[]> {
   const raw: unknown = await Bun.file(LOCATIONS_PATH).json();

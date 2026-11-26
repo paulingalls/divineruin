@@ -277,6 +277,14 @@
     ]
   },
   {
+    "id": "scene_ashmark_lost_voices",
+    "name": "The Lost Voices",
+    "type": "location",
+    "region_type": "wilderness",
+    "instructions": "Let the familiar voices arrive before describing the hollow. Each voice is slightly wrong. When the party follows them into the hollow, use the scene entry to call enter_mode(mode=\"combat\", encounter_id=\"hollow_choir\").",
+    "beats": []
+  },
+  {
     "id": "scene_ashmark_still",
     "name": "The Still",
     "type": "location",

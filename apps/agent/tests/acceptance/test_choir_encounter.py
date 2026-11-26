@@ -15,6 +15,7 @@ from sample_fixtures import make_context
 
 import combat_end
 import combat_turn
+import db_content_queries
 import db_mutations
 import mode_tools
 
@@ -142,10 +143,11 @@ async def test_choir_real_spell_lands_on_core(started, face, redirect):
 
 
 async def test_choir_core_destroyed_cleans_scene_and_rewards_once(started, monkeypatch):
-    from unittest.mock import AsyncMock
+    from unittest.mock import AsyncMock, MagicMock
 
     import choir_scene
     import combat_hollow_death
+    import combat_init
     import combat_rewards
     import db_queries
 
@@ -182,10 +184,8 @@ async def test_choir_core_destroyed_cleans_scene_and_rewards_once(started, monke
     assert len(rewards.call_args.args[0]) == 2
     scene = await choir_scene.load(ctx.userdata)
     assert scene is not None and scene["status"] == "destroyed"
-    assert await choir_scene.facts(ctx.userdata) is None
-    from unittest.mock import MagicMock
-
-    import combat_init
+    location = await db_content_queries.get_location(ctx.userdata.location_id)
+    assert location is not None and await choir_scene.facts(ctx.userdata, location=location) is None
 
     roll = MagicMock(wraps=combat_init.combat_resolution.roll_initiative)
     monkeypatch.setattr(combat_init.combat_resolution, "roll_initiative", roll)
