@@ -79,7 +79,7 @@ Commit checks staged languages and affected projects, then Proof lint and staged
 
 Rules engine must be exhaustively tested (pure functions, deterministic).
 
-**Run the full Python fast lane via the package script — `bun run test:python` (parallel `-n 8`), not a bare `uv run pytest -m "not acceptance"` (serial).** `bun run test:all` runs both the TS and Python fast lanes. Reserve targeted `cd apps/agent && uv run pytest tests/<path>` for the inner TDD loop; use the script for any full-lane check so you exercise the supported local/manual full-lane command.
+**Run every lane check through Proof, never the `bun run test:*` scripts or a bare lane `pytest`.** `bunx proof run --set land` runs the fast lanes; `--set sprint` adds acceptance and Playwright; `--fresh` revalidates instead of reusing keyed proofs; `--tasks <id> ...` runs named tasks (e.g. `agent-acceptance:test_vanish`). Proof runs tasks in parallel across the machine and records results that later tiers reuse; `test:acceptance:nollm` is one serial pytest process. Export `ALLOW_PAID_TESTS= REQUIRE_REAL_LLM=` empty. Reserve targeted `cd apps/agent && uv run pytest tests/<path>` for the inner TDD loop.
 
 ## Settled Decisions
 
@@ -110,4 +110,4 @@ Free patches run focused card Acceptance at the affected behavior/integration bo
 
 See `.env.example` for the full list.
 
-Manual full lanes remain available through `bun run test:all`, `bun run test:python`, and `bun run test:acceptance`.
+A fresh full check of a merged tree is `bunx proof run --fresh --set sprint`.
