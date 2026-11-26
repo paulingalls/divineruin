@@ -130,6 +130,7 @@ async def roll(h, skill, face=20, *, error=False):
             {
                 "roll": {
                     "kind": "skill",
+                    "synergy_context": "none",
                     "skill": skill,
                     "difficulty": "hard",
                     "context_description": "Recall lore or pass unseen",

@@ -23,6 +23,7 @@ def test_skill_variant_maps_to_the_skill_impl_args():
         SkillCheck(
             hearing_only=False,
             kind="skill",
+            synergy_context="none",
             skill="athletics",
             difficulty="hard",
             context_description="scaling the wall",
@@ -34,15 +35,16 @@ def test_skill_variant_maps_to_the_skill_impl_args():
         "difficulty": "hard",
         "context_description": "scaling the wall",
         "hearing_only": False,
+        "synergy_context": "none",
     }
 
 
 def test_social_variant_maps_to_the_social_impl_args():
     mode, kwargs = to_impl_args(
-        SocialCheck(kind="social", npc_id="npc_kael", skill="persuasion", difficulty="moderate")
+        SocialCheck(kind="social", synergy_context="none", npc_id="npc_kael", skill="persuasion", difficulty="moderate")
     )
     assert mode == "social"
-    assert kwargs == {"npc_id": "npc_kael", "skill": "persuasion", "difficulty": "moderate"}
+    assert kwargs == {"npc_id": "npc_kael", "skill": "persuasion", "difficulty": "moderate", "synergy_context": "none"}
 
 
 def test_discover_variant_maps_to_the_discover_impl_args():
@@ -103,7 +105,16 @@ def test_no_variant_field_is_optional(variant):
 @pytest.mark.parametrize(
     "variant,fields",
     [
-        (SkillCheck, {"kind": "skill", "skill": "perception", "difficulty": "easy", "context_description": "listen"}),
+        (
+            SkillCheck,
+            {
+                "kind": "skill",
+                "synergy_context": "none",
+                "skill": "perception",
+                "difficulty": "easy",
+                "context_description": "listen",
+            },
+        ),
         (DiscoverCheck, {"kind": "discover", "skill": "perception", "target": "door"}),
     ],
 )
@@ -116,7 +127,16 @@ def test_hearing_payload_rejects_nonboolean(variant, fields, value):
 @pytest.mark.parametrize(
     "variant,fields",
     [
-        (SkillCheck, {"kind": "skill", "skill": "perception", "difficulty": "easy", "context_description": "listen"}),
+        (
+            SkillCheck,
+            {
+                "kind": "skill",
+                "synergy_context": "none",
+                "skill": "perception",
+                "difficulty": "easy",
+                "context_description": "listen",
+            },
+        ),
         (DiscoverCheck, {"kind": "discover", "skill": "perception", "target": "door"}),
     ],
 )

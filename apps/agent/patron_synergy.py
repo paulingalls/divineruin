@@ -1,5 +1,7 @@
 """Pure selection of validated, authored archetype enhancements."""
 
+from typing import Literal, TypedDict
+
 from _gods_content import archetype_ids, load_gods
 
 
@@ -39,4 +41,56 @@ def has_engine_clause(synergy: dict, implementation_id: str) -> bool:
         and clause["resolution"] == "engine"
         and clause.get("implementation_id") == implementation_id
         for clause in synergy["clauses"]
+    )
+
+
+class ContextSynergyReceipt(TypedDict):
+    tag: str
+    applied: bool
+    bonus: int
+    clause_id: str | None
+    clause_name: str | None
+    effect: str | None
+    reason: Literal["applied", "unheld", "skill_mismatch"]
+
+
+CONTEXT_TAGS = frozenset(
+    clause["synergy_context"]
+    for god in load_gods()
+    for row in god["layer_4_synergy_matrix"].values()
+    for clause in row["clauses"]
+    if clause.get("kind") == "context_check"
+) | {"none"}
+
+
+def validate_synergy_context(tag: str) -> str:
+    if not isinstance(tag, str) or tag not in CONTEXT_TAGS:
+        raise ValueError(f"Unknown synergy_context: {tag!r}")
+    return tag
+
+
+def context_skill_bonus(player: dict, skill: str, tag: str) -> ContextSynergyReceipt | None:
+    if tag == "none":
+        return None
+    patron = (player.get("divine_favor") or {}).get("patron")
+    row = get_archetype_synergy(player["class"], "none" if patron is None else patron)
+    if row is not None:
+        for clause in row["clauses"]:
+            if (
+                clause.get("synergy_context") == tag
+                and clause["status"] == "active"
+                and clause["resolution"] == "engine"
+            ):
+                applies = clause["skill"] is None or clause["skill"] == skill
+                return ContextSynergyReceipt(
+                    tag=tag,
+                    applied=applies,
+                    bonus=int(clause["bonus"]) if applies else 0,
+                    clause_id=clause["implementation_id"],
+                    clause_name=row["name"],
+                    effect=clause["effect"],
+                    reason="applied" if applies else "skill_mismatch",
+                )
+    return ContextSynergyReceipt(
+        tag=tag, applied=False, bonus=0, clause_id=None, clause_name=None, effect=None, reason="unheld"
     )

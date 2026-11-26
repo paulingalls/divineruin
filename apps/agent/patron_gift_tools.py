@@ -14,6 +14,7 @@ import veythar_wellspring
 from check_skill import _check_skill_run
 from condition_consume import serialize_combat_check
 from patron_gifts import KNOWLEDGE_SKILLS, SYRATH_SHADOW_VEIL, VEYTHAR_INSIGHT, syrath_gift, veythar_gift
+from patron_synergy import validate_synergy_context
 from patron_synergy_combat import TWO_ROUND_VEIL, shadow_veil_rounds
 from quest_progress import lock_discovery_rows
 from skill_check_effects import SkillCheckEffects
@@ -139,6 +140,7 @@ async def activate_insight(context):
                 pending["difficulty"],
                 pending["context_description"],
                 hearing_only=pending["hearing_only"],
+                synergy_context=validate_synergy_context(pending.get("synergy_context", "none")),
                 queries=db_queries,
                 mutations=db_mutations_skill_advancement,
                 db_mod=db,

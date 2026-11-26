@@ -26,10 +26,17 @@ DESTINATION = "greyvale_ruins_exterior"
 INSPIRED = apply_condition([], "inspired")
 JOURNAL = "ruins_journal_fragment"
 DISCOVER = {"kind": "discover", "skill": "investigation", "target": "research station", "hearing_only": False}
-SOCIAL = {"kind": "social", "skill": "persuasion", "npc_id": "guildmaster_torin", "difficulty": "easy"}
+SOCIAL = {
+    "kind": "social",
+    "synergy_context": "none",
+    "skill": "persuasion",
+    "npc_id": "guildmaster_torin",
+    "difficulty": "easy",
+}
 GATHER = {"kind": "gather", "category": "herbs"}
 SKILL = {
     "kind": "skill",
+    "synergy_context": "none",
     "skill": "arcana",
     "difficulty": "moderate",
     "context_description": "Read the old ward",

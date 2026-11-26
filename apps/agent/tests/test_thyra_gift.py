@@ -61,6 +61,7 @@ async def skill_roll(ctx, skill="perception", dice=(2, 18), difficulty="moderate
                 ctx,
                 SkillCheck(
                     kind="skill",
+                    synergy_context="none",
                     skill=skill,
                     difficulty=difficulty,
                     context_description="Observe the woods",

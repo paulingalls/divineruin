@@ -10,7 +10,9 @@ from agent_tool_profiles import AGENT_PROFILE_NAMES, AGENT_TOOL_LISTS
 from livekit.agents.llm import ToolContext
 from tool_schema_walk import SchemaFacts, walk_tool_schema
 
+from _gods_content import load_gods
 from base_agent import BaseGameAgent
+from check_tools import check
 from combat_agent import COMBAT_AGENT_TOOLS
 from dispatch_agent import DISPATCH_TOOLS
 from exploration_agent import EXPLORATION_TOOLS
@@ -93,6 +95,29 @@ def test_agent_union_counts_are_pinned(name, tools):
     facts = _agent_schema_facts(tools)
     spend = {tool: len(f.unions) for tool, f in facts.items() if f.unions}
     assert sum(spend.values()) == EXPECTED_UNION_SPEND[name], f"{name} union spend changed: {spend}"
+
+
+@pytest.mark.parametrize("vendor", ["openai", "anthropic"])
+def test_compiled_check_context_enum_matches_authored_tags(vendor):
+    tags = {"none"} | {
+        clause["synergy_context"]
+        for god in load_gods()
+        for row in god["layer_4_synergy_matrix"].values()
+        for clause in row["clauses"]
+        if clause.get("kind") == "context_check"
+    }
+    [schema] = ToolContext([check]).parse_function_tools(vendor, strict=True)
+    params = schema["function"]["parameters"] if vendor == "openai" else schema["input_schema"]
+    variants = [params["$defs"][branch["$ref"].split("/")[-1]] for branch in params["properties"]["roll"]["anyOf"]]
+    assert {
+        variant["properties"]["kind"]["const"] for variant in variants if "synergy_context" in variant["properties"]
+    } == {"skill", "social"}
+    for variant in variants:
+        if "synergy_context" in variant["properties"]:
+            assert "synergy_context" in variant["required"]
+            field = variant["properties"]["synergy_context"]
+            assert field["type"] == "string"
+            assert set(field["enum"]) == tags
 
 
 def _tracked_python_paths(root: Path) -> list[Path]:

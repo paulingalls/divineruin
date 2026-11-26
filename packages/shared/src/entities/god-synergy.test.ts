@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import corpus from "../../fixtures/god_profiles.json";
 import roster from "../../../../content/archetypes.json";
 import catalog from "../../../../content/gods.json";
-import { validateGods } from "./index";
+import { type GodSynergyClause, validateGods } from "./index";
 
 test("ten complete matrices cover the exact eighteen-archetype roster", () => {
   const gods = validateGods(catalog);
@@ -193,3 +193,175 @@ test("Zhael's bard and diplomat have the registered Foretold Words clause", () =
     });
   }
 });
+
+for (const entry of corpus.context_clause_cases) {
+  test(`context profile: ${entry.id}`, () => {
+    const profile = structuredClone(corpus.valid[0]!.profile);
+    const clause = profile.layer_4_synergy_matrix.cleric.clauses[0]!;
+    const context: Record<string, unknown> = {
+      ...clause,
+      ...corpus.context_clause,
+      ...("set" in entry ? entry.set : {}),
+    };
+    for (const key of "remove" in entry ? (entry.remove ?? []) : []) delete context[key];
+    Object.assign(clause, context);
+    const rows = [profile, ...catalog.slice(1)];
+    if ("field" in entry) {
+      expect(() => validateGods(rows)).toThrow(
+        `veythar.layer_4_synergy_matrix.cleric.clauses[0].${entry.field}:`,
+      );
+    } else {
+      expect(Object.is(validateGods(rows), rows)).toBe(true);
+    }
+  });
+}
+
+test.each([
+  [
+    "aelora",
+    "cleric",
+    "divine",
+    "Shared Table",
+    "shared_meal",
+    "religion",
+    "aelora_shared_table",
+    "Gain +1 Religion when blessing a shared meal.",
+  ],
+  [
+    "aelora",
+    "paladin",
+    "divine",
+    "Civic Promise",
+    "community_duties",
+    "persuasion",
+    "aelora_civic_promise",
+    "Gain +1 Persuasion when negotiating a community’s shared duties.",
+  ],
+  [
+    "aelora",
+    "oracle",
+    "divine",
+    "Hearth Omen",
+    "household_omen",
+    "insight",
+    "aelora_hearth_omen",
+    "Gain +1 Insight when interpreting a household omen.",
+  ],
+  [
+    "aelora",
+    "rogue",
+    "unexpected",
+    "Honest Hustle",
+    "commerce",
+    "persuasion",
+    "aelora_commerce_persuasion",
+    "Commerce Persuasion +1.",
+  ],
+  [
+    "thyra",
+    "paladin",
+    "divine",
+    "Wild Covenant",
+    "sacred_grove",
+    "religion",
+    "thyra_wild_covenant",
+    "Gain +1 Religion when honoring a sacred grove.",
+  ],
+  [
+    "thyra",
+    "oracle",
+    "divine",
+    "Seasonal Omen",
+    "seasonal_omen",
+    "nature",
+    "thyra_seasonal_omen",
+    "Gain +1 Nature when interpreting a seasonal omen.",
+  ],
+  [
+    "nythera",
+    "warden",
+    "divine",
+    "Shoreline Keeper",
+    "coast_shelter",
+    "survival",
+    "nythera_shoreline_keeper",
+    "Gain +1 Survival when finding safe shelter along an unfamiliar coast.",
+  ],
+  [
+    "nythera",
+    "diplomat",
+    "divine",
+    "Harbor Courtesy",
+    "port_passage",
+    "persuasion",
+    "nythera_harbor_courtesy",
+    "Gain +1 Persuasion when seeking peaceful passage through an unfamiliar port.",
+  ],
+  [
+    "nythera",
+    "artificer",
+    "divine",
+    "Voyager's Tools",
+    "vessel_repair",
+    null,
+    "nythera_voyagers_tools",
+    "Gain +1 to checks to repair a vessel during a journey.",
+  ],
+  [
+    "orenthel",
+    "artificer",
+    "divine",
+    "Mender's Dawn",
+    "sanctuary_repair",
+    null,
+    "orenthel_menders_dawn",
+    "Gain +1 to checks to repair equipment for a damaged sanctuary.",
+  ],
+  [
+    "orenthel",
+    "warden",
+    "divine",
+    "Green Morning",
+    "blighted_grove",
+    "nature",
+    "orenthel_green_morning",
+    "Gain +1 Nature when restoring a blighted grove.",
+  ],
+  [
+    "orenthel",
+    "diplomat",
+    "divine",
+    "Reconciliation",
+    "wounded_enemy_care",
+    "persuasion",
+    "orenthel_reconciliation",
+    "Gain +1 Persuasion when negotiating care for wounded enemies.",
+  ],
+] as const)(
+  "%s %s has the registered context clause",
+  (patron, archetype, type, name, tag, skill, implementation, effect) => {
+    const matrix = validateGods(catalog).find(
+      (god) => god.god_id === patron,
+    )?.layer_4_synergy_matrix;
+    const clauses: GodSynergyClause[] = [
+      {
+        effect,
+        kind: "context_check",
+        synergy_context: tag,
+        skill,
+        bonus: 1,
+        status: "active",
+        resolution: "engine",
+        implementation_id: implementation,
+      },
+    ];
+    if (archetype === "rogue") {
+      clauses.push({
+        effect: "Better fence prices. Aelora respects the hustle",
+        status: "pending",
+        resolution: "engine",
+      });
+    }
+    expect(matrix?.[archetype]).toEqual({ name, type, clauses });
+  },
+);
