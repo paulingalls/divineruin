@@ -38,8 +38,6 @@ async def preflight_inspire_heal(state: CombatState, *, get_player: Callable[[st
             continue
         actor = state.get_participant(actor_id)
         assert actor is not None
-        if actor.type != "player":
-            raise ValueError("Inspire healing requires an Orenthel bard.")
         player = await get_player(actor_id)
         if player is None:
             raise ValueError(f"Inspire healing requires a player row for {actor_id}.")
