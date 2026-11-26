@@ -2,7 +2,9 @@ import db
 
 
 async def reset_db_globals() -> None:
-    """Reset shared clients, tolerating close errors from clients bound to another test loop."""
+    """Reset shared clients, tolerating close errors from clients bound to another test loop.
+
+    terminate() drops the pool without scheduling on its dead loop, which close() would do."""
     try:
         await db.close_all()
     except RuntimeError:
