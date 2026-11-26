@@ -3152,8 +3152,9 @@
           },
           {
             "effect": "Inspire dice can heal instead of buffing rolls",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "orenthel_inspire_heal"
           }
         ]
       }

@@ -37,8 +37,9 @@ def test_restoring_song_catalog() -> None:
             },
             {
                 "effect": "Inspire dice can heal instead of buffing rolls",
-                "status": "pending",
+                "status": "active",
                 "resolution": "engine",
+                "implementation_id": "orenthel_inspire_heal",
             },
         ],
     }

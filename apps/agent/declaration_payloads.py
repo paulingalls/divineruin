@@ -78,7 +78,10 @@ class AbilityDecl(BaseModel):
 
     kind: Literal["ability"]
     actor_id: str = Field(description="The participant declaring this action.")
-    action: str = Field(description='The EXACT id of a spell or ability the actor knows, e.g. "arcane_bolt".')
+    action: str = Field(
+        description='The exact known spell or ability id from query_info. Use "orenthel_inspire_heal" '
+        "for an eligible Orenthel bard healing one ally with Inspire."
+    )
     targets: list[str] = Field(
         description="Who it is aimed at — one id for a single target, several for a multi-target "
         "spell, empty for a self-cast. Mass Heal selects allies automatically; pass an empty list. "
