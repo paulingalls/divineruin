@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.81.5
+
+Commit hooks generate Proof declarations faster and check the environment templates directly. Cross-language server purification and inventory-taint tests run at story land.
+
+Release steps: none.
+
 ## 0.81.4
 
 Require combat mirrors to rewind with their database rows or block the rewind, with both stores exercised in Verify. Require negative-control evidence to apply the real effect at the excluded site and change the asserted outcome.
