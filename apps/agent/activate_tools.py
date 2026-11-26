@@ -258,7 +258,7 @@ async def _activate_impl(
 ) -> str:
     logger.info("activate called: id=%s", id)
     if condition is not None and id not in (RESTORATION_SURGE, GREATER_RESTORATION):
-        raise ToolError("The condition selector is only for Restoration Surge.")
+        raise ToolError("The condition selector is only for Restoration Surge and Greater Restoration.")
     if id == RESTORATION_SURGE and target_ids is not None:
         raise ToolError("Restoration Surge targets one player. Use target_id or omit it for self.")
     if id.startswith(CONSUME_PREFIX):
