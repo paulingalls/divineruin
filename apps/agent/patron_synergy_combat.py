@@ -233,7 +233,7 @@ async def restore_guard_stamina(packets: list[dict], *, queries, conn, damage: i
         for packet in packets
         if "restoring_guard" not in packet
         and (
-            (packet["ability_id"] == "warden_bark_skin" and packet["mechanical_effect"] == "round_ac_bonus")
+            packet["mechanical_effect"] == "round_ac_bonus"
             or (packet["mechanical_effect"] == "damage_intercepted" and damage > 0)
         )
     ]
