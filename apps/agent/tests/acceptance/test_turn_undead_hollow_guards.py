@@ -16,6 +16,26 @@ from combat_spatial import require_spatial
 from conditions import apply_condition
 
 
+async def test_absolute_authority_does_not_raise_sacred_flame_dc(fight: TurnFight) -> None:
+    flame = "divine_sacred_flame"
+    await fight.enter({"skeleton": ("undead", 4)}, patron="valdris", known_spells=(flame,))
+    await fight.declare_turn(
+        {"kind": "ability", "actor_id": fight.caster, "action": flame, "targets": ["skeleton"], "argument_type": ""}
+    )
+    with patch("check_resolution.dice_roll", return_value=_d20(13)), patch("dice.roll", return_value=_damage_die(5)):
+        result = await fight.command("resolve_phase", {})
+    cast = next(p["cast"] for p in result["packets"] if p.get("action") == flame)
+    damage = cast["damage_result"]
+    save = damage["save"]
+    assert (save["total"], save["dc"], save["success"], damage["damage"], cast.get("turn_undead_dc_bonus")) == (
+        13,
+        13,
+        True,
+        0,
+        None,
+    )
+
+
 def scripted_saves(rolls: dict[str, int], default: int):
     """Patch each participant's d20 save to its scripted roll."""
     roll_save = check_resolution_save.roll_participant_save

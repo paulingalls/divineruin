@@ -21,6 +21,7 @@ ORENTHEL_UNDEAD_WRATH = "orenthel_undead_wrath"
 MORTAEN_THRESHOLD_SHIELD = "mortaen_threshold_shield"
 MORTAEN_HOLD_THE_CROSSING = "mortaen_hold_the_crossing"
 NYTHERA_SALTWIND_CASTING = "nythera_saltwind_casting"
+VALDRIS_ABSOLUTE_AUTHORITY = "valdris_absolute_authority"
 
 KAELEN_WAR_SONGS = "kaelen_war_songs"
 TWO_ROUND_VEIL = "syrath_two_round_veil"
@@ -256,6 +257,12 @@ def spell_damage_type_override(player: dict, spell_id: str) -> str | None:
     if spell_id == "divine_sacred_flame" and has_engine_synergy(player, "mortaen_threshold_mercy"):
         return "necrotic"
     return None
+
+
+def turn_undead_dc_bonus(player: dict, spell_id: str) -> int:
+    from combat_turn_undead import TURN_UNDEAD
+
+    return int(spell_id == TURN_UNDEAD and has_engine_synergy(player, VALDRIS_ABSOLUTE_AUTHORITY))
 
 
 def critical_rider(attacker_data: dict, critical: bool, *, rng: random.Random | None) -> tuple[int, str | None]:

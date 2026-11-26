@@ -1,21 +1,105 @@
 """Turn Undead/Hollow through exploration, combat and settlement tools."""
 
 from itertools import chain, repeat
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+from _patron_engine_fixtures import configure
+from _zhael_fate_fixtures import defend, game_tools
 from acceptance._capstone_helpers import _d20, _damage_die
 from acceptance.test_still_anchors import mock_combat_agent_factory as mock_combat_agent_factory
 from acceptance.turn_undead_harness import TURN, TurnFight
 from acceptance.turn_undead_harness import fight as fight
+from combat.test_synergy_crit_edges import fight as engine_fight
+from voice_condition_fixtures import participant
 
+import character_spells
 import db_mutations
 from combat_spatial import distance, require_spatial
+from combat_turn import declare_phase, resolve_phase
 from conditions import apply_condition
+from query_tools import query_info
+
+CLAUSE = "valdris_absolute_authority"
+BONUS = {"id": CLAUSE, "name": "Absolute Authority", "bonus": 1}
+
+
+async def absolute_authority_query(world: SimpleNamespace) -> None:
+    call = game_tools(world.ctx.userdata, query_info)
+    assert (await call("query_info", kind="patron"))["synergy"] == {
+        "name": "Absolute Authority",
+        "type": "divine",
+        "clauses": [
+            {
+                "effect": "Turn Undead/Hollow DC +1. Absolute authority against unnatural things",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": CLAUSE,
+            }
+        ],
+    }
+
+
+async def absolute_authority(world: SimpleNamespace, archetype: str) -> None:
+    host = world.ids[0]
+    await character_spells.record_learned(host, TURN, "training", is_prepared=True, conn=world.pool)
+    for patron, dc, success in (("thyra", 13, True), ("valdris", 14, False)):
+        await configure(world, patron, archetype, level=4, focus={"current": 10}, resonance={"current": 0})
+        world.ctx.userdata.resonance.current = 0
+        async with engine_fight(world) as state:
+            caster = participant(state, host)
+            caster.level, caster.archetype_id, caster.attributes["wisdom"] = 4, archetype, 18
+            foe = participant(state, "foe")
+            foe.category, foe.attributes["wisdom"] = "undead", 10
+            call = game_tools(world.ctx.userdata, declare_phase, resolve_phase)
+            strike = {**defend(host), "kind": "ability", "action": TURN, "targets": [], "argument_type": ""}
+            await call("declare_phase", declarations=[strike, defend("foe")])
+            with patch("check_resolution.dice_roll", return_value=_d20(13)):
+                result = await call("resolve_phase")
+            cast = next(p["cast"] for p in result["packets"] if p.get("action") == TURN)
+            (entry,) = cast["turn_undead"]
+            save = entry["save"]
+            assert (save["total"], save["dc"], save["success"], entry["outcome"]) == (
+                13,
+                dc,
+                success,
+                "unaffected" if success else "frightened",
+            )
+            assert cast["turn_undead_dc"] == dc
+            if success:
+                assert "turn_undead_dc_bonus" not in cast
+            else:
+                assert cast["turn_undead_dc_bonus"] == BONUS
+    await absolute_authority_query(world)
+
+
+SCENARIOS = {CLAUSE: ("patron_synergy_combat:turn_undead_dc_bonus", absolute_authority, [("cleric",), ("oracle",)])}
 
 
 def frightened(fight: TurnFight, actor_id: str) -> dict | None:
     return next((c for c in fight.actor(actor_id).conditions if c["type"] == "frightened"), None)
+
+
+@pytest.mark.parametrize("archetype", ["cleric", "oracle"])
+async def test_valdris_turn_dc_after_reload(fight: TurnFight, archetype: str) -> None:
+    await fight.enter({"maw": ("hollow_mawling", 12), "skeleton": ("undead", 4)}, archetype=archetype, patron="valdris")
+    await fight.declare_turn(cast=True)
+    declared = fight.sd.combat_state
+    assert await fight.reload() is not declared
+    with patch("check_resolution.dice_roll", return_value=_d20(13)):
+        result = await fight.command("resolve_phase", {})
+    cast = fight.cast(result["packets"])
+    outcomes = {row["target_id"]: row for row in cast["turn_undead"]}
+    assert set(outcomes) == {"maw", "skeleton"}
+    for entry in outcomes.values():
+        save = entry["save"]
+        assert (save["total"], save["dc"], save["success"], entry["outcome"]) == (13, 14, False, "frightened")
+    assert cast["turn_undead_dc"] == 14 and cast["turn_undead_dc_bonus"] == BONUS
+    await fight.reload()
+    for actor_id in outcomes:
+        condition = frightened(fight, actor_id)
+        assert condition is not None and condition["source"] == fight.caster
 
 
 async def test_turn_saves_and_flight(fight: TurnFight) -> None:

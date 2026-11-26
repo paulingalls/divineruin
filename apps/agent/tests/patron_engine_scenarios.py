@@ -2,6 +2,7 @@ from acceptance.test_nythera_unseen_coast import SCENARIOS as saltwind_casting
 from acceptance.test_orenthel_guardian_ward import SCENARIOS as guardian_ward
 from acceptance.test_orenthel_undead_wrath import SCENARIOS as dawnward_strike
 from acceptance.test_synergy_context import SCENARIOS as context_checks
+from acceptance.test_turn_undead_hollow import SCENARIOS as absolute_authority
 from combat.test_nythera_tidal_step import SCENARIOS as tidal_step
 from combat.test_synergy_crit_edges import SCENARIOS as crit_edges
 from combat.test_synergy_spell_edges import SCENARIOS as spell_edges
@@ -57,6 +58,7 @@ ENGINE_SCENARIOS = {
     **unravel_fate,
     **valdris,
     **valdris_verdict,
+    **absolute_authority,
     **wellspring,
     **arcane_revelation,
     **aelora,
