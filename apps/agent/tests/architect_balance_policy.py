@@ -3,6 +3,8 @@
 from collections.abc import Iterable
 from math import ceil
 
+import architect_elective_policy as electives
+
 import abilities
 import architect_entomb
 import architect_reshape
@@ -266,6 +268,8 @@ def player_declaration(
             and stamina >= abilities.get_ability(RALLYING_SHOUT).cost.stamina
         ):
             return ability(actor, RALLYING_SHOUT, max(allies, key=lambda p: damage[p.id]))
+    if defense := electives.defensive(state, actor, row, loadout):
+        return defense
     if target is owner and separation > reach and (approach := flank(state, actor, owner)):
         if (
             SHADOW_STEP in loadout
@@ -274,6 +278,8 @@ def player_declaration(
         ):
             return step
         return approach
+    if offense := electives.offensive(state, actor, owner, row, loadout):
+        return offense
     if actor.archetype_id == "warrior":
         bash = not target.is_structure and not has_condition(target.conditions, "stunned")
         if bash and separation <= reach and stamina >= abilities.get_ability(SHIELD_BASH).cost.stamina:

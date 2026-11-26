@@ -3356,7 +3356,7 @@
     "tier": 4,
     "description": "A builder of impossible structures that weaponizes its domain.",
     "level": 20,
-    "hp": 175,
+    "hp": 205,
     "ac": 19,
     "speed": 40,
     "attributes": {

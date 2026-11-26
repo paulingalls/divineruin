@@ -569,7 +569,7 @@ Blessed weapons and Turn Undead/Hollow remain source/effect guidance, not damage
 
 > *The most alarming Named. It builds. Deep within the Ashmark, near the Voidmaw — structures that shouldn't exist.*
 
-**Level:** 20 | **HP:** 175 (spec 300) | **AC:** 19 | **Speed:** 40 ft (incorporeal movement — passes through its own structures)
+**Level:** 20 | **HP:** 205 (spec 300) | **AC:** 19 | **Speed:** 40 ft (incorporeal movement — passes through its own structures)
 **STR** 20 (+5) **DEX** 14 (+2) **CON** 20 (+5) **INT** 22 (+6) **WIS** 18 (+4) **CHA** 16 (+3)
 **Save Prof:** INT, CON, WIS, CHA | **XP:** 5000
 
@@ -601,9 +601,10 @@ The level-20 reference warrior, mage, rogue and cleric entered with earned attri
 | Original spec | 300 | 3d10+5 + 2d6 force | 2d8+6 | 4d10 | 3d8 | 0/20 | 17 | 40 |
 | Historical low dice | 300 | 1d6+5 + 1d4 force | 1d2+6 | 1d8 | 1d4 | 12/20 | 22 | 48 |
 | Historical middle dice, original release | 154 | 2d10+5 + 1d6 force | 1d8+6 | 2d10 | 2d8 | 12/20 | 11 | 39 |
-| Current, Shadow Step policy | 175 | 2d10+4 + 1d6 force | 1d8+6 | 2d10 | 2d8 | 13/20 | 12 | 28 |
+| Historical Shadow Step policy | 175 | 2d10+4 + 1d6 force | 1d8+6 | 2d10 | 2d8 | 13/20 | 12 | 28 |
+| Current | 205 | 2d10+4 + 1d6 force | 1d8+6 | 2d10 | 2d8 | 12/20 | 18 | 42 |
 
-The original release used the middle profile for its shorter median fight. After enemy opportunity attacks brought the release profile to 11 wins, reducing Construct Slam by 1 bludgeoning damage restored 12 wins on the same 20 seeds. With the rogue using Shadow Step when a covered flank was available, the 5 HP-step bisection result was 175 HP. The party won 13 of 20 fixed seeds in a median of 12 rounds. The next step, 180 HP, yielded 11 wins.
+The original release used the middle profile for its shorter median fight. After enemy opportunity attacks brought the release profile to 11 wins, reducing Construct Slam by 1 bludgeoning damage restored 12 wins on the same 20 seeds. The warrior took Precision Strike at level 4 and Iron Stance at level 8. The rogue took Dirty Trick at level 4 and Blade Flurry at level 8. With these electives and the current dice, the party won 12 of 20 fixed seeds in a median of 18 rounds at 205 HP (spec 300). This was the highest passing 5 HP step of a full 175–300 HP scan, with a floor of 12 wins out of 20.
 
 **Legendary Actions (3/round, between other creatures' turns):**
 - **Shift Wall (1 action).** Move one wall section up to 30 ft.
