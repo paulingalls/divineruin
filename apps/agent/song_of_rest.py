@@ -9,8 +9,10 @@ import mentor_variants
 from ability_voice_rules import require_ability_delivery
 from communication_voice_rules import DeliveryRefused, can_hear
 from dice import roll
+from patron_synergy import has_engine_synergy
 
 SONG_OF_REST = "bard_song_of_rest"
+ORENTHEL_SONG = "orenthel_song_of_rest"
 
 Recovery = tuple[int | None, int | None, int]
 
@@ -51,6 +53,7 @@ async def apply_song_of_rest(
     else:
         raise ToolError(refusal)
 
+    restoring_song = has_engine_synergy(player, ORENTHEL_SONG)
     healing = []
     skipped = [{"player_id": pid, "reason": "not_at_rest_location"} for pid in remote_ids]
     for pid in resting_ids:
@@ -59,11 +62,19 @@ async def apply_song_of_rest(
             continue
         stamina, focus, before = recovery[pid]
         rolled = roll("1d8").total
-        after = min(max_hp[pid], before + rolled)
+        bonus = roll("1d6").total if restoring_song else 0
+        after = min(max_hp[pid], before + rolled + bonus)
         recovery[pid] = stamina, focus, after
-        healing.append(
-            {"player_id": pid, "roll": rolled, "hp_before": before, "hp_after": after, "healed": after - before}
-        )
+        entry: dict = {
+            "player_id": pid,
+            "roll": rolled,
+            "hp_before": before,
+            "hp_after": after,
+            "healed": after - before,
+        }
+        if restoring_song:
+            entry["synergy_components"] = [{"id": ORENTHEL_SONG, "dice": "1d6", "bonus": bonus}]
+        healing.append(entry)
 
     return {
         "ability_id": SONG_OF_REST,
