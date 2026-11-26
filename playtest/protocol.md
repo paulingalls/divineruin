@@ -11,7 +11,7 @@
 - [ ] Server running: `cd apps/server && bun run src/index.ts`
 - [ ] Mobile app built and running on device (not simulator — need real mic/speaker)
 - [ ] LiveKit server accessible
-- [ ] Database seeded with Greyvale content: `cd apps/server && bun run seed`
+- [ ] Local development database seeded with Greyvale content using `bun run seed` from the repository root.
 - [ ] Redis running
 - [ ] Tester has headphones (required — spatial audio, Hollow effects)
 
