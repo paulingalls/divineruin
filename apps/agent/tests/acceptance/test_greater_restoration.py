@@ -112,7 +112,7 @@ async def test_combat_live_only_hollowed_stays_clear_after_reload_end_and_rest(w
     await walk.register_end()
     with patch("combat_end._build_handoff_agent", return_value=walk.session.current_agent):
         await walk.command("end_combat", {"outcome": "fled"})
-    result = await walk.command("rest", {"rest_type": "long"})
+    result = await walk.command("rest", {"rest_type": "long", "use_song_of_rest": False})
     assert result["hollowed_changes"] == []
     after = await walk.read(target)
     assert all(c["type"] != "hollowed" for c in after["conditions"])

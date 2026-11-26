@@ -84,9 +84,9 @@ async def test_arcane_armory_retains_three_and_evicts_oldest(walk: InfusionWalk)
 async def test_long_rest_expires_infusion(walk: InfusionWalk) -> None:
     await walk.equip(SHORTSWORD, acquire=True)
     await walk.infuse(SHORTSWORD, 1)
-    await walk.command("rest", {"rest_type": "short"})
+    await walk.command("rest", {"rest_type": "short", "use_song_of_rest": False})
     assert (await walk.lookup())["active"] == [{"item_id": SHORTSWORD, "bonus": 1, "equipped": True}]
-    await walk.command("rest", {"rest_type": "long"})
+    await walk.command("rest", {"rest_type": "long", "use_song_of_rest": False})
     assert await walk.infusions() == {}
     assert (await walk.lookup())["active"] == []
     await walk.strike(0)
