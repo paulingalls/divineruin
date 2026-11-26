@@ -1,3 +1,4 @@
+from combat.test_nythera_tidal_step import SCENARIOS as tidal_step
 from combat.test_synergy_crit_edges import SCENARIOS as crit_edges
 from combat.test_synergy_spell_edges import SCENARIOS as spell_edges
 from combat.test_synergy_weapon_damage import SCENARIOS as weapon_damage
@@ -79,6 +80,7 @@ ENGINE_SCENARIOS = {
     **dawns_embrace,
     **nythera,
     **tidewalker,
+    **tidal_step,
     **orenthel,
     **syrath,
     **two_round_veil,

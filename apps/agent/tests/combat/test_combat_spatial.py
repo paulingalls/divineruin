@@ -98,7 +98,12 @@ def test_move_schema_reaches_engine():
     assert "move" in json.dumps(schema)
     assert "destination" in json.dumps(schema)
     payload = MoveDecl(
-        reshape=[], movement_mode="ground", kind="move", actor_id="a", destination=Destination(x=30, y=0, z=0)
+        reshape=[],
+        movement_mode="ground",
+        kind="move",
+        nythera_step=False,
+        actor_id="a",
+        destination=Destination(x=30, y=0, z=0),
     )
     assert to_engine_declarations([payload]) == {"a": {**move(), "movement_mode": "ground"}}
     with pytest.raises(ValueError, match="more than once"):
@@ -262,7 +267,14 @@ def test_move_wire_refuses_invalid_coordinate(value):
 
     with pytest.raises(ValueError):
         MoveDecl.model_validate(
-            {"reshape": [], "movement_mode": "ground", "kind": "move", "actor_id": "a", "destination": pos(value)}
+            {
+                "reshape": [],
+                "movement_mode": "ground",
+                "kind": "move",
+                "nythera_step": False,
+                "actor_id": "a",
+                "destination": pos(value),
+            }
         )
 
 

@@ -150,6 +150,9 @@ class MoveDecl(BaseModel):
     movement_mode: Literal["ground", "flying"] = Field(
         description="Choose ground for ordinary movement. Flying adds ceiling restrictions and grants no flight capability."
     )
+    nythera_step: bool = Field(
+        description="True to spend a Nythera skirmisher or rogue's Unmoored Step on this move once per encounter. False for ordinary movement."
+    )
     reshape: list[ReshapeSelection] = Field(description=RESHAPE_DESCRIPTION)
 
 
@@ -276,6 +279,7 @@ def _raw(decl: DeclVariant) -> dict:
             "target_id": decl.actor_id,
             "destination": decl.destination.model_dump(),
             "movement_mode": decl.movement_mode,
+            **({"nythera_step": True} if decl.nythera_step else {}),
         }
     if isinstance(decl, ManeuverDecl):
         return {"type": "maneuver", "target_id": decl.target_id}

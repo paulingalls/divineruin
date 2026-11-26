@@ -387,7 +387,14 @@ _ENGINE_CASES = [
     InteractDecl(kind="interact", actor_id="a", action="lever"),
     ConsumeDecl(kind="consume", actor_id="a", item_id="healing_potion", target_id=""),
     ManeuverDecl(kind="maneuver", actor_id="a", target_id="goblin_1"),
-    MoveDecl(reshape=[], movement_mode="ground", kind="move", actor_id="a", destination=Destination(x=30, y=0, z=0)),
+    MoveDecl(
+        reshape=[],
+        movement_mode="ground",
+        kind="move",
+        nythera_step=False,
+        actor_id="a",
+        destination=Destination(x=30, y=0, z=0),
+    ),
     DefendDecl(reshape=[], kind="defend", actor_id="a"),
     RetreatDecl(kind="retreat", actor_id="a", rider=""),
 ]
@@ -447,3 +454,21 @@ def test_public_choir_search_preserves_the_owned_sound_target(action):
     assert to_engine_declarations([InteractDecl(kind="interact", actor_id="player", action="open_door")]) == {
         "player": {"type": "interact", "action": "open_door"}
     }
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        {
+            "type": "maneuver",
+            "action": "move",
+            "target_id": "a",
+            "destination": {"x": 2, "y": 0, "z": 0},
+            "nythera_step": "false",
+        },
+        {"type": "defend", "nythera_step": False},
+    ],
+)
+def test_saved_nythera_opt_in_requires_a_move_and_boolean(raw: dict) -> None:
+    with pytest.raises(ValueError, match="nythera_step"):
+        resolve_declaration(raw)

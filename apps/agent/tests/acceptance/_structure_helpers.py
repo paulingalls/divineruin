@@ -27,7 +27,14 @@ async def _reload(ctx: Any) -> CombatState:
 
 def _move(actor_id: str, destination: dict) -> MoveDecl:
     return MoveDecl.model_validate(
-        {"reshape": [], "movement_mode": "ground", "kind": "move", "actor_id": actor_id, "destination": destination}
+        {
+            "reshape": [],
+            "movement_mode": "ground",
+            "kind": "move",
+            "nythera_step": False,
+            "actor_id": actor_id,
+            "destination": destination,
+        }
     )
 
 

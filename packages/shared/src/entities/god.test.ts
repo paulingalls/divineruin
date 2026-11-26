@@ -424,3 +424,22 @@ test("Orenthel's Cleansing Touch is registered for druids and beastcallers", () 
     });
   }
 });
+
+test("Nythera's Unmoored Step is active for skirmishers and rogues", () => {
+  const nythera = validateGods(catalog).find((god) => god.god_id === "nythera")!;
+  for (const archetype of ["skirmisher", "rogue"]) {
+    expect(nythera.layer_4_synergy_matrix[archetype]).toEqual({
+      name: "Unmoored Step",
+      type: "unexpected",
+      clauses: [
+        {
+          effect:
+            "Once per encounter, one of your moves, up to your normal movement, provokes no opportunity attacks",
+          status: "active",
+          resolution: "engine",
+          implementation_id: "nythera_tidal_step",
+        },
+      ],
+    });
+  }
+});

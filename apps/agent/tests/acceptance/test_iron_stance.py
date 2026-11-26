@@ -145,7 +145,14 @@ async def test_stance_survives_until_own_packet(walk: MawlingHarness, next_actio
     before = await stamina(actor)
     assert "iron_stance" in await condition_types(walk, actor)
 
-    move = {"kind": "move", "actor_id": actor, "reshape": [], "destination": pos(4), "movement_mode": "ground"}
+    move = {
+        "kind": "move",
+        "nythera_step": False,
+        "actor_id": actor,
+        "reshape": [],
+        "destination": pos(4),
+        "movement_mode": "ground",
+    }
     if next_action == "move":
         snapshot = await walk.snapshot()
         await declare(walk, {**move, "destination": pos(400)}, error=True)
@@ -277,8 +284,10 @@ async def test_reloaded_stance_advantages_hostile_and_wrap_wisdom_saves(walk: Ma
 @pytest.mark.parametrize("walk", [("hollow_veilrender_boss", "greyvale_wilderness_north")], indirect=True)
 async def test_damaging_save_lands_once(walk: MawlingHarness) -> None:
     await enter(walk)
-    actor = walk.players[0]
+    actor, bystander = walk.players
     foe = await place_foe(walk, "hollow_veilrender")
+    combat_spatial.place(await walk.reload(), bystander, pos(-65))
+    await walk.persist()
     await declare(walk, stance(actor), ability(foe, "Corruption Wave", actor))
     with (
         patch("check_resolution.dice_roll", side_effect=map(_d20, [19, 2, 2])),

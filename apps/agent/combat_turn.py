@@ -18,6 +18,7 @@ import db_mutations
 import db_queries
 import declaration_payloads
 import item_heal
+import patron_synergy_combat
 import still_encounter
 from combat_resolve_phase import _resolve_phase_locked
 from combat_support import _participant_roster, _require_combat
@@ -41,7 +42,10 @@ async def declare_phase(
     ability_move, interact, consume, attack_consume, maneuver, move, reposition, defend or retreat. For a potion, salve or berry,
     declare consume with the holder's actor_id and the queried item_id. Set target_id
     to the ally receiving it or an empty string for the holder. Move names an explicit destination in feet and consumes
-    this phase action, limited to the actor's persisted speed. Only the Architect may include
+    this phase action, limited to the actor's persisted speed. A Nythera skirmisher or rogue can
+    opt in to Unmoored Step once per encounter with nythera_step=true. The move follows normal
+    movement rules and provokes no opportunity attacks. It spends the step when it resolves.
+    Set nythera_step=false for ordinary moves. Only the Architect may include
     Reshape operations, on an attack, move or defend. The sections resolve before the action.
     Use the Architect's live wall ids and remaining Reshape uses from the combat facts.
     Shadow Step uses ability_move with action rogue_shadow_step or its active variant id and a destination
@@ -112,6 +116,7 @@ async def _declare_phase_locked(
         next_state, _adv = combat_phase.advance_combat_phase(cs, declarations=declarations, concealed=concealed)
         await combat_cunning_action.preflight(next_state, queries=queries)
         await combat_martial.preflight_orders(next_state, queries=queries)
+        await patron_synergy_combat.preflight_tidal_step(next_state, get_player=queries.get_player)
         await combat_item_rider.preflight(session, next_state)
         await item_heal.preflight_declarations(session, next_state)
         choir_facts = await choir_encounter.facts(next_state, queries=queries)

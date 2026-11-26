@@ -170,6 +170,7 @@ class TroopFight(MawlingHarness):
                             "reshape": [],
                             "movement_mode": "ground",
                             "kind": "move",
+                            "nythera_step": False,
                             "actor_id": actor.id,
                             "destination": destination,
                         }
