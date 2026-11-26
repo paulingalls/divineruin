@@ -185,7 +185,7 @@ def mock_combat_agent_factory():
 CATEGORY_VICTORIES = [
     ("hollow", "hollow_shadeling", 1, {"hollow_residue_t1": 1}, 0),
     ("beast", "grey_wolf", 9, {"wolf_pelt": 1, "wolf_fangs": 4, "wolf_meat": 2}, 0),
-    ("humanoid", "bandit", 9, {"shortsword_basic": 1}, 4),
+    ("humanoid", "bandit", 9, {"leather_armor_basic": 1, "shortsword_basic": 1}, 4),
     ("construct", "war_golem", 9, {"golem_core": 1, "enchanted_stone": 7, "forged_steel": 2}, 0),
     ("undead", "schema_undead", 9, {"healing_salve": 1}, 0),
     ("elemental", "corrupted_treant", 9, {"ironwood_bark": 4}, 0),
@@ -210,7 +210,12 @@ async def test_every_category_victory_loot(reset_db_pool, category, creature, se
         row = next(case["block"] for case in fixtures["valid"] if case["name"] == "synthetic_undead")
         await pool.execute("INSERT INTO creatures (id,data) VALUES ($1,$2::jsonb)", row["id"], json.dumps(row))
     try:
-        await h.start_loot(creature, [{"crafting": "expert", "survival": "expert", "arcana": "expert"}], 1)
+        await h.start_loot(
+            creature,
+            [{"crafting": "expert", "survival": "expert", "arcana": "expert"}],
+            1,
+            Random(7 if category == "undead" else seed),
+        )
         assert (await h.reload()).participants
         await h.victory(Random(seed))
         records = await pool.fetch("SELECT item_id,data,tainted FROM player_inventory WHERE player_id=$1", h.players[0])

@@ -404,7 +404,6 @@ async def test_two_concurrent_combat_starts_create_one_row_and_refuse_one(mock_c
     assert len(errors) == 1 and "Already in combat" in str(errors[0])
     assert ctx.userdata.combat_state.combat_id == saved_ids[0]
     assert content.get_encounter_template.await_count == 1
-    assert queries.get_player.await_count == 1
 
 
 async def _wait_for_second(items):

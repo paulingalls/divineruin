@@ -86,7 +86,7 @@ async def test_non_primary_members_fetched_in_one_batched_call():
     await _run(ctx, mock_mutations, mock_queries, mock_content)
 
     mock_queries.get_players_for_update.assert_called_once_with(["player_2"])
-    fetched_ids = [call.args[0] for call in mock_queries.get_player.call_args_list]
+    fetched_ids = [call.args[0] for call in mock_queries.get_player.call_args_list if "conn" not in call.kwargs]
     assert "player_2" not in fetched_ids
     assert fetched_ids == ["player_1"]
 

@@ -8,6 +8,9 @@ from typing import TYPE_CHECKING
 
 import asyncpg
 
+import db_content_queries
+import db_queries
+import enemy_pockets
 from action_contracts import positive_integer
 
 if TYPE_CHECKING:
@@ -77,8 +80,12 @@ async def capture(
     conn: asyncpg.Connection,
     mutations,
     entry: bool = False,
+    queries=db_queries,
+    content=db_content_queries,
     session_flags: dict[str, dict[str, bool]] | None = None,
 ) -> None:
+    if entry:
+        await enemy_pockets.initialize(state, conn=conn, queries=queries, content=content)
     flags = (
         session_flags
         if session_flags is not None

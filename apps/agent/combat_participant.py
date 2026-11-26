@@ -83,14 +83,10 @@ class CombatParticipant:
     legendary: dict | None = None
 
     signature_ability: dict | None = None
-    # Loot & currency overlay (M4.7, story-002). ``category`` is the enemy's creature category
-    # (humanoid/beast/hollow_drift/hollow_rend/construct/undead/named) and ``loot_table_id`` points
-    # at its content/loot_tables.json table. combat_init carries both off the template enemy; on
-    # victory _end_combat_db reads them to roll role-scaled loot (generate_loot) and currency
-    # (calculate_currency_drop). Empty-string defaults so players/companions and pre-M4.7 enemy
-    # rows serialize via asdict / fall back on from_dict unchanged (same pattern as the role fields).
     category: str = ""
     loot_table_id: str = ""
+    # None marks an uninitialized enemy pocket. An initialized empty pocket stays empty.
+    carried_items: list[dict] | None = None
     # Authored creature tier (creature_tiers.py bands), read for currency scaling. None on
     # players/companions; CombatState.from_dict refuses a saved row with no tier key.
     tier: int | None = None

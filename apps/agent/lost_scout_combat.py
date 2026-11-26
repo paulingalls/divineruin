@@ -16,7 +16,7 @@ async def locked_record(session, *, queries, conn):
     return scene.read(player)
 
 
-async def start(session, state, *, mutations, queries, db_mod):
+async def start(session, state, *, mutations, queries, db_mod, content=db_content_queries):
     actor_id = session.acting_player_id
     async with db_mod.transaction() as conn:
         record = await locked_record(session, queries=queries, conn=conn)
@@ -25,7 +25,9 @@ async def start(session, state, *, mutations, queries, db_mod):
         session.validate_acting_player(actor_id)
         record["outcome"] = "fought"
         await scene.write(session.primary_player_id, record, mutations=mutations, conn=conn)
-        await combat_round_checkpoint.capture(session, state, conn=conn, mutations=mutations, entry=True)
+        await combat_round_checkpoint.capture(
+            session, state, conn=conn, mutations=mutations, entry=True, queries=queries, content=content
+        )
 
 
 async def residue(session, state, *, mutations, queries, conn):
