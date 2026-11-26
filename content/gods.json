@@ -263,8 +263,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Religion when interpreting an ancient oath.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "veythar_witnessed_oath",
+            "kind": "context_check",
+            "synergy_context": "ancient_oath",
+            "skill": "religion",
+            "bonus": 1
           }
         ]
       },
@@ -274,8 +279,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Arcana when interpreting a remembered vision.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "veythar_remembered_vision",
+            "kind": "context_check",
+            "synergy_context": "remembered_vision",
+            "skill": "arcana",
+            "bonus": 1
           }
         ]
       },
@@ -615,8 +625,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Religion when conducting a fallen soldier’s funeral rites.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "kaelen_last_salute",
+            "kind": "context_check",
+            "synergy_context": "fallen_soldier_rites",
+            "skill": "religion",
+            "bonus": 1
           }
         ]
       },
@@ -638,8 +653,13 @@
         "clauses": [
           {
             "effect": "Gain +1 History when interpreting a martial omen.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "kaelen_battle_omen",
+            "kind": "context_check",
+            "synergy_context": "martial_omen",
+            "skill": "history",
+            "bonus": 1
           }
         ]
       },
