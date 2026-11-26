@@ -1,11 +1,17 @@
 """Exclusions for party surrender and Measured Reprisal."""
 
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import asyncpg
 import pytest
 from _unbound_path_fixtures import world as world
 from _zhael_fate_fixtures import attack
+from acceptance import test_architect_entomb, test_opportunity_strike
+from acceptance.mawling_harness import MawlingHarness
+from acceptance.test_architect_fight import isolated_content_cache as isolated_content_cache
+from acceptance.test_opportunity_strike import MOVER
+from acceptance.test_still_anchors import mock_combat_agent_factory as mock_combat_agent_factory
 from acceptance.test_valdris_party_yield import FACT, ability_action, hud_actor, registered, yield_action
 from livekit.agents.llm import ToolError
 from sample_fixtures import published_payloads
@@ -13,8 +19,12 @@ from test_encounter_facts_damage import GOBLIN, OTHER, fight, goblin_strike
 from voice_condition_fixtures import participant
 
 import character_spells
+import conditions
 import db
 import db_mutations
+
+grapple_fight = test_opportunity_strike.fight
+entomb_fight = test_architect_entomb.fight
 
 
 @pytest.fixture
@@ -90,3 +100,38 @@ async def test_malformed_yield_checkpoint_is_refused(world: SimpleNamespace, bad
         await db_mutations.save_combat_state(f.combat_id, data)
         with pytest.raises(ValueError, match="yielded must be a boolean"):
             await f.reload()
+
+
+async def yielded_escape(fight: MawlingHarness, actor: str, source: str) -> dict:
+    await fight.command("declare_phase", {"declarations": [yield_action(actor)]})
+    with patch("combat_turn_start.dice_roll", return_value=SimpleNamespace(total=1)):
+        await fight.drain()
+    assert participant(await fight.reload(), actor).yielded
+    escape = {"reshape": [], "kind": "maneuver", "actor_id": actor, "target_id": source}
+    await fight.command("declare_phase", {"declarations": [escape]})
+    with (
+        patch("combat_maneuver.random", SimpleNamespace(randint=lambda *_: 1)),
+        patch("combat_turn_start.dice_roll", return_value=SimpleNamespace(total=1)),
+    ):
+        receipt = next(p for p in await fight.drain() if p["actor_id"] == actor)
+    assert receipt["escape"] == "failed"
+    return receipt
+
+
+@pytest.mark.parametrize("grapple_fight", ["hollow_mawling"], indirect=True)
+async def test_failed_grapple_escape_from_a_foe_ends_yield(grapple_fight: MawlingHarness) -> None:
+    warrior = grapple_fight.players[0]
+    state = await grapple_fight.reload()
+    hero = participant(state, warrior)
+    hero.conditions = conditions.apply_condition(hero.conditions, "grappled", source=MOVER)
+    await grapple_fight.persist()
+    receipt = await yielded_escape(grapple_fight, warrior, MOVER)
+    assert (receipt["yield_ended"], receipt["yielded"]) == (True, False) and receipt["dm_cue"]
+    assert not participant(await grapple_fight.reload(), warrior).yielded
+
+
+async def test_failed_entomb_chamber_escape_keeps_yield(entomb_fight: MawlingHarness) -> None:
+    _, victim, chamber = await test_architect_entomb.seal(entomb_fight)
+    receipt = await yielded_escape(entomb_fight, victim, chamber)
+    assert not {"yield_ended", "yielded", "dm_cue"} & receipt.keys()
+    assert participant(await entomb_fight.reload(), victim).yielded

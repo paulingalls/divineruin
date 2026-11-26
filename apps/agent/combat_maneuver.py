@@ -58,7 +58,7 @@ def resolve_maneuver(state, attacker, decl, *, rng=None) -> dict:
             "escape_total": total,
             "escape_dc": dc,
             "escape": "escaped" if escaped else "failed",
-            **(combat_yield.end(attacker) if not target.is_ally else {}),
+            **(combat_yield.end(attacker) if not target.is_ally and not chamber else {}),
         }
     if target.is_fallen:
         return {
