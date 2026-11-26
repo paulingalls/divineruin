@@ -193,3 +193,51 @@ test("Zhael's bard and diplomat have the registered Foretold Words clause", () =
     });
   }
 });
+
+for (const entry of corpus.context_clause_cases) {
+  test(`context profile: ${entry.id}`, () => {
+    const profile = structuredClone(corpus.valid[0]!.profile);
+    const clause = profile.layer_4_synergy_matrix.cleric.clauses[0]!;
+    const context: Record<string, unknown> = {
+      ...clause,
+      ...corpus.context_clause,
+      ...("set" in entry ? entry.set : {}),
+    };
+    for (const key of "remove" in entry ? (entry.remove ?? []) : []) delete context[key];
+    Object.assign(clause, context);
+    const rows = [profile, ...catalog.slice(1)];
+    if ("field" in entry) {
+      expect(() => validateGods(rows)).toThrow(
+        `veythar.layer_4_synergy_matrix.cleric.clauses[0].${entry.field}:`,
+      );
+    } else {
+      expect(Object.is(validateGods(rows), rows)).toBe(true);
+    }
+  });
+}
+
+test.each([
+  ["cleric", "Shared Table", "shared_meal", "religion", "aelora_shared_table"],
+  ["paladin", "Civic Promise", "community_duties", "persuasion", "aelora_civic_promise"],
+])(
+  "Aelora’s %s has the registered context clause",
+  (archetype, name, tag, skill, implementation) => {
+    const matrix = validateGods(catalog).find(
+      (god) => god.god_id === "aelora",
+    )?.layer_4_synergy_matrix;
+    expect(matrix?.[archetype]).toMatchObject({
+      name,
+      clauses: [
+        {
+          kind: "context_check",
+          synergy_context: tag,
+          skill,
+          bonus: 1,
+          status: "active",
+          resolution: "engine",
+          implementation_id: implementation,
+        },
+      ],
+    });
+  },
+);

@@ -15,6 +15,7 @@ from conditions import ConditionEffects, get_condition_effects
 from dice import roll as dice_roll
 from dramatic import DramaticContext, evaluate_dramatic_context
 from patron_gifts import skill_gift
+from patron_synergy import ContextSynergyReceipt, context_skill_bonus
 from rules_engine import (
     SKILL_TIER_BONUS,
     SKILL_TIER_ORDER,
@@ -75,6 +76,7 @@ class SkillCheckResult:
     gift_name: str | None = None
     auto_fail: bool = False
     d20: D20Roll | None = None
+    context_synergy: ContextSynergyReceipt | None = None
 
 
 @dataclass(frozen=True)
@@ -309,6 +311,7 @@ def _resolve_skill_check_impl(
     hearing_only: bool,
     first_stay: bool = False,
     season: Season | None = None,
+    synergy_context: str = "none",
 ) -> SkillCheckResult:
     skill_lower = skill.lower()
     if auto_fail_hearing_perception(player_data.get("conditions") or [], skill=skill, hearing_only=hearing_only):
@@ -357,12 +360,16 @@ def _resolve_skill_check_impl(
         bonus, consumed = rolled.total, rolled.consumed
 
     gift_name = None
+    context_synergy = None
     if not _check_auto_fail(dc, tier):
         gift_bonus, gift_advantage, gift_name = skill_gift(
             player_data, skill_lower, ally_present=ally_present, natural_terrain=natural_terrain, first_stay=first_stay
         )
         bonus += gift_bonus + thyra_seasons.skill_bonus(player_data, season, skill_lower)
         advantage = advantage or gift_advantage
+        context_synergy = context_skill_bonus(player_data, skill_lower, synergy_context)
+        if context_synergy is not None:
+            bonus += context_synergy["bonus"]
 
     check = resolve_check(
         score,
@@ -389,6 +396,7 @@ def _resolve_skill_check_impl(
         consumed_conditions=consumed,
         auto_fail=check.auto_fail,
         gift_name=gift_name,
+        context_synergy=context_synergy,
         d20=check.d20,
     )
 
@@ -404,6 +412,7 @@ def resolve_skill_check(
     hearing_only: bool,
     first_stay: bool = False,
     season: Season | None = None,
+    synergy_context: str = "none",
 ) -> SkillCheckResult:
     return _resolve_skill_check_impl(
         player_data,
@@ -415,6 +424,7 @@ def resolve_skill_check(
         hearing_only=hearing_only,
         first_stay=first_stay,
         season=season,
+        synergy_context=synergy_context,
     )
 
 
@@ -429,6 +439,7 @@ def resolve_skill_check_dc(
     hearing_only: bool,
     first_stay: bool = False,
     season: Season | None = None,
+    synergy_context: str = "none",
 ) -> SkillCheckResult:
     """Like resolve_skill_check but accepts a numeric DC directly.
 
@@ -445,6 +456,7 @@ def resolve_skill_check_dc(
         hearing_only=hearing_only,
         first_stay=first_stay,
         season=season,
+        synergy_context=synergy_context,
     )
 
 

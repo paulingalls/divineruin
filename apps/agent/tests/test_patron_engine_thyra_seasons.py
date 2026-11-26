@@ -77,6 +77,7 @@ async def seasonal_skill(world, season, skill, patron, bonus):
                 "check",
                 roll={
                     "kind": "skill",
+                    "synergy_context": "none",
                     "skill": skill,
                     "difficulty": "moderate",
                     "context_description": "Read the situation",

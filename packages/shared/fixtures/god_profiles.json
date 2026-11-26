@@ -11,6 +11,43 @@
     "orenthel",
     "zhael"
   ],
+  "context_clause": {
+    "kind": "context_check",
+    "synergy_context": "fixture_context",
+    "skill": null,
+    "bonus": 1,
+    "status": "active",
+    "implementation_id": "veythar_arcane_revelation"
+  },
+  "context_clause_cases": [
+    { "id": "restricted", "set": { "skill": "arcana" } },
+    { "id": "unrestricted" },
+    {
+      "id": "missing_tag",
+      "set": { "status": "pending" },
+      "remove": ["synergy_context"],
+      "field": "synergy_context"
+    },
+    { "id": "missing_skill", "remove": ["skill"], "field": "skill" },
+    { "id": "missing_bonus", "remove": ["bonus"], "field": "bonus" },
+    {
+      "id": "missing_mechanics",
+      "remove": ["synergy_context", "skill", "bonus"],
+      "field": "bonus"
+    },
+    { "id": "reserved_tag", "set": { "synergy_context": "none" }, "field": "synergy_context" },
+    {
+      "id": "malformed_tag",
+      "set": { "synergy_context": "Context Tag" },
+      "field": "synergy_context"
+    },
+    { "id": "blank_tag", "set": { "synergy_context": " " }, "field": "synergy_context" },
+    { "id": "invalid_skill", "set": { "skill": false }, "field": "skill" },
+    { "id": "blank_skill", "set": { "skill": "" }, "field": "skill" },
+    { "id": "boolean_bonus", "set": { "bonus": true }, "field": "bonus" },
+    { "id": "zero_bonus", "set": { "bonus": 0 }, "field": "bonus" },
+    { "id": "fractional_bonus", "set": { "bonus": 1.5 }, "field": "bonus" }
+  ],
   "vocabulary": {
     "flickering_damage_dice": {
       "predicates": ["arcane_flickering"],

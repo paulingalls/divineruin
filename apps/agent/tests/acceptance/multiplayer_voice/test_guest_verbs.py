@@ -34,7 +34,18 @@ from travel_tools import travel
 
 CALLS = [
     ("activate", {"id": "warrior_second_wind"}),
-    ("check", {"roll": {"kind": "social", "npc_id": "guildmaster_torin", "skill": "persuasion", "difficulty": "easy"}}),
+    (
+        "check",
+        {
+            "roll": {
+                "kind": "social",
+                "synergy_context": "none",
+                "npc_id": "guildmaster_torin",
+                "skill": "persuasion",
+                "difficulty": "easy",
+            }
+        },
+    ),
     ("query_info", {"kind": "inventory"}),
     ("begin_activity", {"activity": {"kind": "training", "program_id": "combat_basics"}}),
     ("travel", {"destination_id": "greyvale_ruins_exterior", "mode": "scenic"}),

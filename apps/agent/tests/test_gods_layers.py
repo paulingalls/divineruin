@@ -299,6 +299,22 @@ def test_invalid_profiles_reach_loader(case, read_catalog):
     assert f"{case['patron']}.{case['field']}:" in str(error.value)
 
 
+@pytest.mark.parametrize("case", CORPUS["context_clause_cases"], ids=lambda c: c["id"])
+def test_context_profiles_reach_loader(case, read_catalog):
+    profile = copy.deepcopy(CORPUS["valid"][0]["profile"])
+    clause = profile["layer_4_synergy_matrix"]["cleric"]["clauses"][0]
+    clause.update(CORPUS["context_clause"] | case.get("set", {}))
+    for field in case.get("remove", []):
+        del clause[field]
+    rows = with_profile(profile)
+    if "field" in case:
+        with pytest.raises(ValueError) as error:
+            read_catalog(rows)
+        assert f"veythar.layer_4_synergy_matrix.cleric.clauses[0].{case['field']}:" in str(error.value)
+    else:
+        assert read_catalog(rows) == rows
+
+
 @pytest.mark.parametrize("shape", [None, {}, [], [None]])
 def test_invalid_catalog_shape(shape, read_catalog):
     with pytest.raises(ValueError, match=r"gods|god_id"):

@@ -130,6 +130,17 @@ def _layer_1(value: object, path: str) -> None:
     _engine_resolution(gift, path)
 
 
+def _context_clause(clause: dict, path: str) -> None:
+    tag = _text(clause["synergy_context"], f"{path}.synergy_context")
+    if tag == "none" or not re.fullmatch(r"[a-z0-9]+(?:_[a-z0-9]+)*", tag):
+        _fail(f"{path}.synergy_context", "expected snake_case tag other than none")
+    if clause["skill"] is not None:
+        _text(clause["skill"], f"{path}.skill")
+    bonus = clause["bonus"]
+    if type(bonus) not in (int, float) or not bonus > 0 or bonus % 1 != 0:
+        _fail(f"{path}.bonus", "expected positive integer")
+
+
 def _matrix(value: object, path: str) -> None:
     matrix = _object(value, path)
     if matrix.keys() != archetype_ids():
@@ -151,7 +162,13 @@ def _matrix(value: object, path: str) -> None:
         for i, entry in enumerate(row["clauses"]):
             clause_path = f"{row_path}.clauses[{i}]"
             clause = _object(entry, clause_path)
-            _object(clause, clause_path, {"effect", "status", "resolution"} | ({"implementation_id"} & clause.keys()))
+            context = clause.get("kind") == "context_check"
+            fields = {"effect", "status", "resolution"} | ({"implementation_id"} & clause.keys())
+            if context:
+                fields |= {"kind", "synergy_context", "skill", "bonus"}
+            _object(clause, clause_path, fields)
+            if context:
+                _context_clause(clause, clause_path)
             _text(clause["effect"], f"{clause_path}.effect")
             _text(clause["status"], f"{clause_path}.status")
             _text(clause["resolution"], f"{clause_path}.resolution")

@@ -129,6 +129,7 @@ async def test_weapon_exclusions(world: SimpleNamespace, control: str) -> None:
                     "check",
                     roll={
                         "kind": "skill",
+                        "synergy_context": "none",
                         "skill": "stealth",
                         "difficulty": "easy",
                         "context_description": "Hide from the watcher",

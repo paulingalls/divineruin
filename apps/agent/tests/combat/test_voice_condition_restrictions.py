@@ -170,7 +170,14 @@ async def test_public_hearing_and_sight_routes(kind, candidate, monkeypatch):
     monkeypatch.setattr(check_tools.db_mutations, "set_player_flag", AsyncMock())
     ctx = make_context()
     payload = (
-        SkillCheck(kind="skill", skill="perception", difficulty="easy", context_description="listen", hearing_only=True)
+        SkillCheck(
+            kind="skill",
+            synergy_context="none",
+            skill="perception",
+            difficulty="easy",
+            context_description="listen",
+            hearing_only=True,
+        )
         if kind == "skill"
         else DiscoverCheck(kind="discover", skill="perception", target="wall", hearing_only=True)
     )

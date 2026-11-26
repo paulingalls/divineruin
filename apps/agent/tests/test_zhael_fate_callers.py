@@ -91,6 +91,7 @@ async def test_ally_stealth_uses_original_roller_for_concealment_and_advancement
     read_counter = "SELECT use_counter FROM skill_advancement WHERE player_id=$1 AND skill_id='stealth'"
     roll = {
         "kind": "skill",
+        "synergy_context": "none",
         "skill": "stealth",
         "difficulty": "moderate",
         "context_description": "Hide from the guard",
