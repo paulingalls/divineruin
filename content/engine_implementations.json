@@ -14,6 +14,7 @@
   "nythera_horizon_sense": "patron_senses:horizon_sense",
   "nythera_uncharted_senses": "patron_gifts:skill_gift",
   "nythera_tidewalker": "patron_passives:tidewalker",
+  "nythera_tidal_step": "patron_synergy_combat:spend_tidal_step",
   "nythera_beyond_the_horizon": "patron_gateway:activate_locked",
   "nythera_uncharted_handling": "patron_gifts:skill_gift",
   "zhael_fates_thread": "zhael_fate:activate",

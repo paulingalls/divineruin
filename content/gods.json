@@ -2758,9 +2758,10 @@
         "name": "Unmoored Step",
         "clauses": [
           {
-            "effect": "Once per encounter, reposition to any visible unoccupied space without provoking reactions",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "Once per encounter, one of your moves, up to your normal movement, provokes no opportunity attacks",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "nythera_tidal_step"
           }
         ]
       },
@@ -2769,9 +2770,10 @@
         "name": "Unmoored Step",
         "clauses": [
           {
-            "effect": "Once per encounter, reposition to any visible unoccupied space without provoking reactions",
-            "status": "pending",
-            "resolution": "engine"
+            "effect": "Once per encounter, one of your moves, up to your normal movement, provokes no opportunity attacks",
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "nythera_tidal_step"
           }
         ]
       },

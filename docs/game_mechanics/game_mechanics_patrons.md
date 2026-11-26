@@ -302,7 +302,7 @@ When ready, `query_info(kind="patron")` lists visited destinations for Beyond th
 | Archetypes | Synergy Type | Enhancement |
 |---|---|---|
 | Seeker, Spy | Natural | Investigation and Perception +3 in unexplored locations |
-| Skirmisher, Rogue | Unexpected | Once per encounter, reposition to any visible unoccupied space without provoking reactions |
+| Skirmisher, Rogue | Unexpected | Once per encounter, one of your moves, up to your normal movement, provokes no opportunity attacks |
 | Druid, Beastcaller | Divine | Wild creatures in new territory predisposed friendly. Animal Handling +1 in unexplored areas |
 
 ---

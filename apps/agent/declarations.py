@@ -75,6 +75,7 @@ class Declaration:
     reshape: list[dict] | None = None
     movement_mode: str = "ground"
     healing_item: dict[str, str] | None = None
+    nythera_step: bool = False
 
 
 def resolve_declaration(raw: dict) -> Declaration:
@@ -118,6 +119,9 @@ def resolve_declaration(raw: dict) -> Declaration:
     elif decl_type is DeclarationType.MANEUVER and not target_id:
         raise ValueError("maneuver declaration requires a 'target_id'")
     is_move = decl_type is DeclarationType.MANEUVER and action == "move"
+    nythera_step = raw.get("nythera_step", False)
+    if "nythera_step" in raw and (not is_move or not isinstance(nythera_step, bool)):
+        raise ValueError("nythera_step requires a move and a boolean")
     is_reposition = decl_type is DeclarationType.ABILITY and action == REPOSITION
     if is_reposition and raw.get("destination") is None:
         raise ValueError('Declare Reposition with kind="reposition", a target_id, and a destination.')
@@ -160,6 +164,7 @@ def resolve_declaration(raw: dict) -> Declaration:
         type=decl_type,
         reshape=reshape,
         movement_mode=movement_mode,
+        nythera_step=nythera_step,
         strikes=raw.get("strikes"),
         held_item_id=raw.get("held_item_id"),
         healing_item=healing_item,

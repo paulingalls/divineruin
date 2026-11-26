@@ -79,4 +79,11 @@ async def fall(world: SimpleNamespace, index: int, failures: int = 1) -> None:
 
 
 def move(actor_id: str, x: float) -> dict:
-    return {"reshape": [], "movement_mode": "ground", "kind": "move", "actor_id": actor_id, "destination": point(x)}
+    return {
+        "reshape": [],
+        "movement_mode": "ground",
+        "kind": "move",
+        "nythera_step": False,
+        "actor_id": actor_id,
+        "destination": point(x),
+    }

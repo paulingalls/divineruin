@@ -147,6 +147,7 @@ async def play_second_round(fight: Fight, warrior: str, mage: str, rogue: str, m
         {"kind": "consume", "actor_id": rogue, "item_id": "healing_potion_minor", "target_id": rogue},
         {
             "kind": "move",
+            "nythera_step": False,
             "actor_id": mover,
             "movement_mode": "ground",
             "destination": {"x": -10, "y": 0, "z": 0},

@@ -65,7 +65,14 @@ async def fight(reset_db_pool: str, request: pytest.FixtureRequest) -> AsyncIter
 
 
 def move(actor: str, x: float) -> dict:
-    return {"kind": "move", "actor_id": actor, "destination": pos(x), "movement_mode": "ground", "reshape": []}
+    return {
+        "kind": "move",
+        "nythera_step": False,
+        "actor_id": actor,
+        "destination": pos(x),
+        "movement_mode": "ground",
+        "reshape": [],
+    }
 
 
 async def declare(fight: MawlingHarness, *actions: dict) -> None:

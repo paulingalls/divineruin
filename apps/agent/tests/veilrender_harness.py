@@ -16,6 +16,7 @@ def declaration(state, actor, victim, cantrip=None):
             reshape=[],
             movement_mode="ground",
             kind="move",
+            nythera_step=False,
             actor_id=actor.id,
             destination=Destination(**{k: float(origin[k] + (target[k] - origin[k]) * step) for k in origin}),
         )

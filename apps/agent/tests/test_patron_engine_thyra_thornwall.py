@@ -79,6 +79,7 @@ SCENARIOS = {GIFT: ("thyra_thornwall:thornwall", placement, [()])}
 def move(actor, x, y=0):
     return {
         "kind": "move",
+        "nythera_step": False,
         "actor_id": actor,
         "reshape": [],
         "movement_mode": "ground",

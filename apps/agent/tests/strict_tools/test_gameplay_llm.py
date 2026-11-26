@@ -157,8 +157,10 @@ def _assert_reshape_schema(schema):
         assert set(declaration["required"]) == set(properties)
         if kind(declaration) == "move":
             assert set(properties["movement_mode"]["enum"]) == {"ground", "flying"}
+            assert properties["nythera_step"]["type"] == "boolean"
         else:
             assert "movement_mode" not in properties
+            assert "nythera_step" not in properties
         if kind(declaration) in {"attack", "move", "defend"}:
             operations = branches(properties["reshape"]["items"])
             assert len(operations) == len(expected)
