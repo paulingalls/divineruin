@@ -11,6 +11,9 @@
     "e2e/specs/*.e2e.ts"
   ],
   "inputs": {
+    "bun-test-files": [
+      "**/*{.test,.spec,_test,_spec}.{js,jsx,ts,tsx,mjs,cjs,mts,cts}"
+    ],
     "bun-config": [
       "bun.lock",
       "package.json",
@@ -112,6 +115,8 @@
       "scripts/proof-coverage-map.json",
       "scripts/proof-python-closure.ts",
       "scripts/proof-bun-tasks.json",
+      "scripts/proof-bun-ownership.ts",
+      "$bun-test-files",
       "proof.yaml",
       "apps/agent/**/*.py",
       "scripts/**/*.py",
