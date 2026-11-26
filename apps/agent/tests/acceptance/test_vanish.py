@@ -1,5 +1,6 @@
 """Persisted concealment through registered combat tools."""
 
+import json
 from unittest.mock import patch
 
 import pytest
@@ -17,6 +18,7 @@ from acceptance.test_self_buff_electives import (
 )
 from acceptance.test_still_anchors import fresh_session
 from acceptance.test_still_anchors import mock_combat_agent_factory as mock_combat_agent_factory
+from weapon_fixtures import DAGGER
 
 import ability_persistence
 import combat_spatial
@@ -35,8 +37,10 @@ async def walk(reset_db_pool: str):
     try:
         await harness.prepare((8, 8), companion=None, tools=(activate,))
         await harness.pool.execute(
-            """UPDATE players SET data = data || '{"class":"rogue"}' WHERE player_id = $1""",
+            "UPDATE players SET data = data || jsonb_build_object('class', 'rogue', 'equipment', "
+            "jsonb_build_object('main_hand', $2::jsonb)) WHERE player_id = $1",
             harness.players[0],
+            json.dumps(DAGGER),
         )
         harness.encounter_id = "bandit_ambush"
         yield harness
@@ -58,9 +62,9 @@ async def refuse(walk: MawlingHarness, strike: dict, target: str) -> None:
 async def test_hide_blocks_targeting_and_allows_redeclaration(walk: MawlingHarness) -> None:
     rogue, ally = walk.players
     foe = await enter_bandit_fight(walk)
-    await declare(walk, weapon_attack(rogue, foe, "hide"))
+    await declare(walk, weapon_attack(rogue, foe, "hide", weapon=DAGGER["name"]))
     with (
-        patch("check_resolution.dice_roll", return_value=_d20(20)),
+        patch("check_resolution.dice_roll", side_effect=[_d20(15), _d20(20)]),
         patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
     ):
         await walk.drain()
