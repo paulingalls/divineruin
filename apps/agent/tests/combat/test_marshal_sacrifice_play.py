@@ -17,6 +17,7 @@ import abilities
 import combat_order_riders
 import db_mutations_concentration
 from combat_damage_affinity import DAMAGE_TYPES
+from condition_catalog import IRON_STANCE
 
 NAME = "Sacrifice Play"
 HP = 100
@@ -40,6 +41,7 @@ async def arrange_sacrifice(
     if resistant:
         recipient.damage_affinities = {"immune": list(DAMAGE_TYPES), "resistant": [], "vulnerable": []}
         recipient.resist_nonmagical_physical = True
+        recipient.conditions = [{"type": IRON_STANCE}]
     assert state.spatial is not None
     for pid in fight.players:
         state.spatial["positions"][pid] = {"x": 0, "y": 0, "z": 0}
