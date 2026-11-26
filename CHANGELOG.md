@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.80.1
+
+Proof now rejects undeclared tests in whole-directory Bun tasks and keys the five previously omitted tests, so edits invalidate stale passes.
+
+Release steps: none.
+
 ## 0.80.0
 
 Healers and skirmishers get more from their gods.
