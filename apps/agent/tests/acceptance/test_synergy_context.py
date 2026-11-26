@@ -99,6 +99,48 @@ RECONCILIATION = (
     "Gain +1 Persuasion when negotiating care for wounded enemies.",
     "persuasion",
 )
+OATHBREAK = (
+    "broken_oath_evidence",
+    "valdris_oathbreak_sight",
+    "Ordered Testimony",
+    "Gain +1 Arcana when examining magical evidence of a broken oath.",
+    "arcana",
+)
+MEASURE = (
+    "tampered_measures",
+    "valdris_true_measure",
+    "Honest Measure",
+    "Gain +1 Investigation when examining tampered scales or measuring tools.",
+    "investigation",
+)
+CUSTODY = (
+    "evidence_ownership_hearing",
+    "valdris_chain_of_custody",
+    "Chain of Evidence",
+    "Gain +1 Investigation when tracing ownership of evidence in a public hearing.",
+    "investigation",
+)
+BOUNDARY = (
+    "unlawful_incursion",
+    "valdris_boundary_law",
+    "Common Ground",
+    "Gain +1 Survival when tracing an unlawful incursion into protected land.",
+    "survival",
+)
+SCALES = (
+    "equal_terms_petition",
+    "valdris_even_scales",
+    "Fair Terms",
+    "Gain +1 Persuasion when securing equal terms for opposing petitioners.",
+    "persuasion",
+)
+DECEIT = (
+    "just_cause_deception",
+    "valdris_just_deceit",
+    "Truth in Disguise",
+    "Deception for just causes (evidence, infiltration) gains +1. Valdris blesses deception in service of truth",
+    "deception",
+)
 
 
 @pytest.fixture
@@ -163,7 +205,7 @@ async def context_scenario(
     assert not world.ctx.userdata.ally_present_for(world.ids[0])
     baseline, result = await paired(world, kind, skill, tag, npc_id=npc_id)
     assert result["total"] == baseline["total"] + 1
-    assert baseline["total"] == (12 if skill == "persuasion" else 11)
+    assert baseline["total"] == (12 if skill in ("persuasion", "deception") else 11)
     assert "context_synergy" not in baseline
     assert "gift_name" not in baseline and "gift_name" not in result
     assert result["roll"] == baseline["roll"] == 11
@@ -262,6 +304,41 @@ SCENARIOS = {
         [
             ("orenthel", "diplomat", "skill", "persuasion", RECONCILIATION),
             ("orenthel", "diplomat", "social", "persuasion", RECONCILIATION),
+        ],
+    ),
+    "valdris_oathbreak_sight": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [("valdris", "mage", "skill", "arcana", OATHBREAK)],
+    ),
+    "valdris_true_measure": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [("valdris", "artificer", "skill", "investigation", MEASURE)],
+    ),
+    "valdris_chain_of_custody": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [("valdris", "seeker", "skill", "investigation", CUSTODY)],
+    ),
+    "valdris_boundary_law": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [("valdris", "warden", "skill", "survival", BOUNDARY)],
+    ),
+    "valdris_even_scales": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [("valdris", "diplomat", "skill", "persuasion", SCALES)],
+    ),
+    "valdris_just_deceit": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [
+            ("valdris", "rogue", "skill", "deception", DECEIT),
+            ("valdris", "rogue", "social", "deception", DECEIT),
+            ("valdris", "spy", "skill", "deception", DECEIT),
+            ("valdris", "spy", "social", "deception", DECEIT),
         ],
     ),
 }
