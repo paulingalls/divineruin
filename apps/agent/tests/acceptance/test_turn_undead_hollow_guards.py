@@ -1,16 +1,30 @@
 """Turn Undead/Hollow exclusions, expiry and creature spell defenses."""
 
+from copy import deepcopy
 from unittest.mock import patch
 
 import pytest
-from acceptance._capstone_helpers import _d20
+from acceptance._capstone_helpers import _d20, _damage_die
 from acceptance.test_still_anchors import mock_combat_agent_factory as mock_combat_agent_factory
 from acceptance.test_turn_undead_hollow import frightened
-from acceptance.turn_undead_harness import TurnFight
+from acceptance.turn_undead_harness import TurnFight, pos
 from acceptance.turn_undead_harness import fight as fight
+from weapon_fixtures import DAGGER
 
 import check_resolution_save
+from combat_spatial import require_spatial
 from conditions import apply_condition
+
+
+def scripted_saves(rolls: dict[str, int], default: int):
+    """Patch each participant's d20 save to its scripted roll."""
+    roll_save = check_resolution_save.roll_participant_save
+
+    def scripted(target, attribute, dc, effect, **kwargs):
+        with patch("check_resolution.dice_roll", return_value=_d20(rolls.get(target.id, default))):
+            return roll_save(target, attribute, dc, effect, **kwargs)
+
+    return patch("check_resolution_save.roll_participant_save", side_effect=scripted)
 
 
 async def test_save_radius_category_immunity_and_threshold(fight: TurnFight) -> None:
@@ -36,13 +50,7 @@ async def test_save_radius_category_immunity_and_threshold(fight: TurnFight) -> 
         target.conditions = apply_condition([], "temporary_hollowed")
     state = await fight.persist()
     before = {p.id: (p.hp_current, p.conditions) for p in state.participants}
-    roll_save = check_resolution_save.roll_participant_save
-
-    def scripted_save(target, attribute, dc, effect, **kwargs):
-        with patch("check_resolution.dice_roll", return_value=_d20(18 if target.id == "saved" else 2)):
-            return roll_save(target, attribute, dc, effect, **kwargs)
-
-    with patch("check_resolution_save.roll_participant_save", side_effect=scripted_save):
+    with scripted_saves({"saved": 18}, 2):
         packets = await fight.phase(cast=True)
     outcomes = {p["target_id"]: p for p in fight.cast(packets)["turn_undead"]}
     for actor_id, reason in {
@@ -119,3 +127,152 @@ async def test_creature_spell_defenses(fight: TurnFight, creature: str, defense:
     if defense == "Absorb Magic":
         receipt = fight.cast(packets)["absorbed"][0]
         assert receipt["healed"] == 9 and receipt["hp_current"] == old_hp + 9
+
+
+def turn_condition(fight: TurnFight, actor_id: str) -> None:
+    """Land the caster's Turn where the cast cannot reach, as the cast itself writes it."""
+    target = fight.actor(actor_id)
+    target.conditions = apply_condition(target.conditions, "frightened", source=fight.caster, duration=10)
+    condition = frightened(fight, actor_id)
+    assert condition is not None
+    condition["turn_undead"] = {}
+
+
+def move(actor_id: str, x: float) -> dict:
+    return {
+        "kind": "move",
+        "nythera_step": False,
+        "actor_id": actor_id,
+        "destination": pos(x),
+        "movement_mode": "ground",
+        "reshape": [],
+    }
+
+
+async def test_hidden_choir_core(fight: TurnFight) -> None:
+    await fight.enter({"choir": ("hollow_choir", 20)}, level=5)
+    choir = fight.actor("choir")
+    choir.hp_current = 24
+    state = await fight.persist()
+    assert state.choir_encounter is not None and state.choir_encounter["phase"] == "search"
+    before = (choir.hp_current, deepcopy(choir.conditions))
+    # The caster beats Harmonic Shield, so only the hidden-core refusal keeps the Choir out.
+    with scripted_saves({fight.caster: 18}, 2):
+        packets = await fight.phase(cast=True)
+    (hidden,) = fight.cast(packets)["turn_undead"]
+    assert hidden["outcome"] == "unaffected" and "hidden" in hidden["reason"] and "save" not in hidden
+    state = await fight.reload()
+    assert (fight.actor("choir").hp_current, fight.actor("choir").conditions) == before
+    assert state.choir_encounter is not None and state.choir_encounter["phase"] == "search"
+
+
+async def test_melody_thrall_flees_without_approaching(fight: TurnFight) -> None:
+    await fight.enter({"thrall": ("undead", 4), "voice": ("bandit", -20)})
+    thrall = fight.actor("thrall")
+    thrall.conditions = apply_condition([], "charmed", source="voice", duration=10)
+    thrall.conditions[0]["choir_melody"] = True
+    start = dict(require_spatial(await fight.persist())["positions"])
+    with patch("check_resolution.dice_roll", return_value=_d20(2)):
+        packets = await fight.phase(cast=True)
+    (fled,) = [p for p in packets if p["actor_id"] == "thrall" and p.get("fled")]
+    end = require_spatial(await fight.reload())["positions"]["thrall"]
+    assert fled["origin"] == start["thrall"] and fled["destination"] == end
+    assert end["x"] > start["thrall"]["x"]
+
+
+async def test_flight_ignores_concealed_target(fight: TurnFight) -> None:
+    await fight.enter({"skeleton": ("undead", 4)})
+    with patch("check_resolution.dice_roll", return_value=_d20(2)):
+        await fight.phase(cast=True)
+    start = dict(require_spatial(await fight.reload())["positions"])
+    await fight.declare_turn(fight.attack("skeleton"))
+    # The caster vanishes after declarations, as a mid-round concealment would leave it.
+    await fight.pool.execute(
+        """UPDATE players SET data=data || jsonb_build_object('flags',
+        COALESCE(data->'flags','{}'::jsonb) || '{"concealed": true}'::jsonb) WHERE player_id=$1""",
+        fight.caster,
+    )
+    with patch("check_resolution.dice_roll", return_value=_d20(2)):
+        packets = await fight.drain()
+    receipts = [p for p in packets if p["actor_id"] == "skeleton"]
+    (fled,) = [p for p in receipts if p.get("fled")]
+    end = require_spatial(await fight.reload())["positions"]["skeleton"]
+    assert fled["origin"] == start["skeleton"] and fled["destination"] == end
+    assert end["x"] > start["skeleton"]["x"]
+    assert not any("concealed" in str(p.get("reason", "")) for p in receipts)
+
+
+async def test_turned_creature_keeps_opportunity_attack(fight: TurnFight) -> None:
+    await fight.enter({"skeleton": ("undead", 4)})
+    turn_condition(fight, "skeleton")
+    await fight.persist()
+    before = (await fight.player())["hp"]["current"]
+    with (
+        patch("check_resolution.dice_roll", return_value=_d20(18)),
+        patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
+    ):
+        packets = await fight.phase(move(fight.caster, -25))
+    receipts = [p for p in packets if p["actor_id"] == "skeleton"]
+    (strike,) = [p for p in receipts if p.get("opportunity_attack")]
+    assert strike.get("hit") and strike["damage"] > 0 and not strike.get("fled")
+    assert (await fight.player())["hp"]["current"] == before - strike["damage"]
+    assert [p["resolved"] for p in receipts if p.get("fled")] == [True]
+
+
+async def test_turned_architect_keeps_legendary_strike(fight: TurnFight) -> None:
+    await fight.enter({"boss": ("hollow_architect", 20)}, level=5)
+    turn_condition(fight, "boss")
+    await fight.persist()
+    before = (await fight.player())["hp"]["current"]
+    await fight.declare_turn()
+    await fight.command("resolve_phase", {})
+    with (
+        patch("check_resolution.dice_roll", return_value=_d20(18)),
+        patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
+    ):
+        await fight.command(
+            "consume_legendary_action",
+            {"boss_id": "boss", "action_id": "Geometry Strike", "target_id": fight.caster, "reshape": []},
+        )
+        packets = await fight.drain()
+    receipts = [p for p in packets if p["actor_id"] == "boss"]
+    (strike,) = [p for p in receipts if p.get("action") == "Geometry Strike"]
+    assert strike.get("hit") and strike["damage"] > 0 and not strike.get("fled")
+    assert (await fight.player())["hp"]["current"] == before - strike["damage"]
+    assert [p["resolved"] for p in receipts if p.get("fled")] == [True]
+
+
+async def test_turned_defender_loses_defend_bonus(fight: TurnFight) -> None:
+    await fight.enter({"skeleton": ("undead", 4)}, weapon=DAGGER)
+    turn_condition(fight, "skeleton")
+    await fight.persist()
+    target = fight.actor("skeleton")
+    hp = target.hp_current
+    blade = {**fight.attack("skeleton"), "actor_id": fight.caster, "action": DAGGER["name"], "target_id": "skeleton"}
+    with (
+        patch("check_resolution.dice_roll", return_value=_d20(11)),
+        patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
+    ):
+        packets = await fight.phase(blade)
+    (strike,) = [p for p in packets if p["actor_id"] == fight.caster]
+    assert (strike["attack_total"], strike["target_ac"]) == (target.ac, target.ac)
+    assert strike["hit"] and strike["damage"] > 0
+    await fight.reload()
+    assert fight.actor("skeleton").hp_current == hp - strike["damage"]
+
+
+async def test_ordinary_fear_replaces_turn(fight: TurnFight) -> None:
+    await fight.enter({"skeleton": ("undead", 4)})
+    with patch("check_resolution.dice_roll", return_value=_d20(2)):
+        await fight.phase(cast=True)
+    target = fight.actor("skeleton")
+    target.conditions = apply_condition(target.conditions, "frightened", source=fight.caster, duration=10)
+    await fight.persist()
+    with (
+        patch("check_resolution.dice_roll", return_value=_d20(18)),
+        patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
+    ):
+        packets = await fight.phase(fight.attack("skeleton", ranged=True))
+    receipts = [p for p in packets if p["actor_id"] == "skeleton"]
+    assert not any(p.get("fled") for p in receipts)
+    assert any(p.get("hit") and p["damage"] > 0 for p in receipts)
