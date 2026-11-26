@@ -51,7 +51,7 @@ def _is_wasted(state, head: dict) -> bool:
     "already fell" / "loses the phase" summary.
     """
     actor = state.get_participant(head["actor_id"])
-    if actor is None or actor.is_fallen or cannot_act(actor.conditions) or is_flight_turn(actor, head):
+    if actor is None or actor.is_fallen or cannot_act(actor.conditions):
         return True
     declaration = _held_declaration(head)
     try:
