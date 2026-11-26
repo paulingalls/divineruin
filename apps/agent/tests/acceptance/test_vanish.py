@@ -60,7 +60,7 @@ async def test_hide_blocks_targeting_and_allows_redeclaration(walk: MawlingHarne
     foe = await enter_bandit_fight(walk)
     await declare(walk, weapon_attack(rogue, foe, "hide"))
     with (
-        patch("check_resolution.dice_roll", side_effect=[_d20(15), _d20(20)]),
+        patch("check_resolution.dice_roll", return_value=_d20(20)),
         patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
     ):
         await walk.drain()

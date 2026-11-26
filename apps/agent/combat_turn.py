@@ -18,6 +18,7 @@ import db_mutations
 import db_queries
 import declaration_payloads
 import item_heal
+import spell_condition_cleanse
 import still_encounter
 from combat_resolve_phase import _resolve_phase_locked
 from combat_support import _participant_roster, _require_combat
@@ -114,6 +115,7 @@ async def _declare_phase_locked(
         await combat_martial.preflight_orders(next_state, queries=queries)
         await combat_item_rider.preflight(session, next_state)
         await item_heal.preflight_declarations(session, next_state)
+        await spell_condition_cleanse.preflight_declarations(session, next_state, queries=queries)
         choir_facts = await choir_encounter.facts(next_state, queries=queries)
     except ValueError as e:
         raise ToolError(str(e)) from e
