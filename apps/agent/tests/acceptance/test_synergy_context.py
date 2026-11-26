@@ -100,6 +100,35 @@ RECONCILIATION = (
     "persuasion",
 )
 
+WITNESSED_OATH = (
+    "ancient_oath",
+    "veythar_witnessed_oath",
+    "Witnessed Oath",
+    "Gain +1 Religion when interpreting an ancient oath.",
+    "religion",
+)
+REMEMBERED_VISION = (
+    "remembered_vision",
+    "veythar_remembered_vision",
+    "Remembered Vision",
+    "Gain +1 Arcana when interpreting a remembered vision.",
+    "arcana",
+)
+LAST_SALUTE = (
+    "fallen_soldier_rites",
+    "kaelen_last_salute",
+    "Last Salute",
+    "Gain +1 Religion when conducting a fallen soldier’s funeral rites.",
+    "religion",
+)
+BATTLE_OMEN = (
+    "martial_omen",
+    "kaelen_battle_omen",
+    "Battle Omen",
+    "Gain +1 History when interpreting a martial omen.",
+    "history",
+)
+
 
 @pytest.fixture
 async def dev_db_pool(reset_db_pool: str) -> asyncpg.Pool:
@@ -264,18 +293,47 @@ SCENARIOS = {
             ("orenthel", "diplomat", "social", "persuasion", RECONCILIATION),
         ],
     ),
+    "veythar_witnessed_oath": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [("veythar", "paladin", "skill", "religion", WITNESSED_OATH)],
+    ),
+    "veythar_remembered_vision": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [("veythar", "oracle", "skill", "arcana", REMEMBERED_VISION)],
+    ),
+    "kaelen_last_salute": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [("kaelen", "cleric", "skill", "religion", LAST_SALUTE)],
+    ),
+    "kaelen_battle_omen": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [("kaelen", "oracle", "skill", "history", BATTLE_OMEN)],
+    ),
 }
 
 
-async def test_nythera_warden_does_not_hold_orenthel_context(world: SimpleNamespace) -> None:
-    await setup_actor(world, "nythera", "warden")
-    baseline, result = await paired(world, "skill", "survival", "blighted_grove")
+@pytest.mark.parametrize(
+    "patron,archetype,skill,tag",
+    [
+        ("nythera", "warden", "survival", "blighted_grove"),
+        ("kaelen", "oracle", "history", "ancient_oath"),
+    ],
+)
+async def test_foreign_context_is_unheld(
+    world: SimpleNamespace, patron: str, archetype: str, skill: str, tag: str
+) -> None:
+    await setup_actor(world, patron, archetype)
+    baseline, result = await paired(world, "skill", skill, tag)
 
     for field in ("total", "roll", "modifier", "dc", "margin", "outcome"):
         assert result[field] == baseline[field]
     assert "context_synergy" not in baseline
     assert result["context_synergy"] == {
-        "tag": "blighted_grove",
+        "tag": tag,
         "applied": False,
         "bonus": 0,
         "clause_id": None,
