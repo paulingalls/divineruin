@@ -372,7 +372,8 @@ async def build_warm_layer(
         name = sanitize_for_prompt(entry["name"])
         sections.append(
             f"HOLLOWED HALLUCINATION — {name}\n"
-            f"Only this character senses this. Address them directly when narrating it. {entry['description']}"
+            f"Only this character senses this. Weave it in once, at a quiet moment, addressed to {name}; "
+            f"do not repeat it each turn. {entry['description']}"
         )
 
     # Hollow corruption
