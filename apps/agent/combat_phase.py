@@ -341,6 +341,7 @@ def _wrap(state: CombatState) -> WrapOutcome:
     tick_conditions_due: list[dict] = []
     returning: list[CombatParticipant] = []
     for p in state.participants:
+        p.bark_skin_active = False
         ticking = [
             {**c, "duration": c["duration"] + 1}
             if c.get("inflicted_round") == state.round_number and c.get("duration") is not None

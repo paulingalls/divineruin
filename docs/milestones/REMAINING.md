@@ -83,6 +83,17 @@ ally can take the hit's damage. The remaining designs are Shield Mastery's
 plus the 15-ft Intercept override and once-per-long-rest Last Wall from
 [Thornridge's Stand](../game_mechanics/game_mechanics_crafting.md#item-catalog).
 
+**02 · Archetypes — Bark Skin.** The druid and warden reactions raise AC by 2
+against the original roll and through the rest of the round. A natural 20 still
+hits. A hit turned into a miss has already used its post-roll window, so it
+offers no `on_enemy_miss` reaction such as Skirmisher Riposte.
+
+- **Primal Bark Skin spell:** `primal_bark_skin` has no registered reaction
+  producer. An ordinary cast spends Focus and generates Resonance without
+  applying the combat effect.
+- **Thornveld Guardian Shield:** the item has no producer for its designed
+  once-per-long-rest free Bark Skin cast.
+
 ## 3. World-loop gaps and bounded evidence
 
 - **Sacred-site ward producer:** the production caller inventory finds the
