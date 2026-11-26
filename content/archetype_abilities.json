@@ -500,7 +500,7 @@
     "ability_type": "elective",
     "level_requirement": 4,
     "cost": { "stamina": 2, "focus": 0, "scaling": null },
-    "effect": "Sleight of Hand as a quick action. Steal, plant, or swap mid-combat.",
+    "effect": "Before swinging a melee weapon, roll Sleight of Hand against 10 plus the standing foe's Wisdom modifier to steal, plant, or swap a carried item. Costs 2 Stamina.",
     "narration_cue": "A hand darts in and out; something has changed."
   },
   {

@@ -94,6 +94,8 @@ async def test_raw_channeling_preserves_action_and_reaction(dev_db_pool):
                     {"reshape": [], "kind": "defend", "actor_id": w.player},
                     {
                         "reshape": [],
+                        "quick_fingers_mode": "",
+                        "quick_fingers_item": "",
                         "kind": "attack",
                         "actor_id": "enemy",
                         "action": "Scimitar",

@@ -34,6 +34,8 @@ def game_tools(session, *tools, agent=None):
 def attack(actor_id, target_id, action=DAGGER["name"]):
     return {
         "reshape": [],
+        "quick_fingers_mode": "",
+        "quick_fingers_item": "",
         "kind": "attack",
         "actor_id": actor_id,
         "action": action,

@@ -325,6 +325,8 @@ async def test_existing_reaction_window_refuses_a_legendary_spend(fight):
     await declare(
         fight,
         {
+            "quick_fingers_mode": "",
+            "quick_fingers_item": "",
             "kind": "attack",
             "actor_id": owner,
             "target_id": player,
@@ -355,6 +357,8 @@ async def test_fresh_ordinary_fate_checkpoint_refuses_insertion(fight, held_acti
     await set_favor(fight, "zhael", 40)
     if held_action == "attack":
         action = {
+            "quick_fingers_mode": "",
+            "quick_fingers_item": "",
             "kind": "attack",
             "actor_id": owner,
             "target_id": player,

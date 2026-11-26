@@ -104,6 +104,8 @@ async def test_catalog_condition_action_is_invocable_from_the_produced_name():
         mapped = to_engine_declarations(
             [
                 AttackDecl(
+                    quick_fingers_mode="",
+                    quick_fingers_item="",
                     reshape=[],
                     kind="attack",
                     actor_id=enemy.id,
@@ -145,6 +147,8 @@ def test_attack_maps_to_the_engine_attack_shape():
     engine = to_engine_declarations(
         [
             AttackDecl(
+                quick_fingers_mode="",
+                quick_fingers_item="",
                 reshape=[],
                 kind="attack",
                 actor_id="player_1",
@@ -163,6 +167,8 @@ def test_mapped_unknown_attack_action_fails_at_the_engine_boundary():
     engine = to_engine_declarations(
         [
             AttackDecl(
+                quick_fingers_mode="",
+                quick_fingers_item="",
                 reshape=[],
                 kind="attack",
                 actor_id="goblin_scout_1",
@@ -184,6 +190,8 @@ def test_mapped_unknown_attack_action_fails_at_the_engine_boundary():
     "decl",
     [
         AttackDecl(
+            quick_fingers_mode="",
+            quick_fingers_item="",
             reshape=[],
             kind="attack",
             actor_id="goblin_1",
@@ -248,6 +256,8 @@ def test_declare_time_action_check_matches_case_insensitively_like_resolution():
     engine = to_engine_declarations(
         [
             AttackDecl(
+                quick_fingers_mode="",
+                quick_fingers_item="",
                 reshape=[],
                 kind="attack",
                 actor_id="goblin_scout_1",
@@ -269,6 +279,8 @@ def test_an_attack_rider_rides_through_but_an_empty_one_is_dropped():
     with_rider = to_engine_declarations(
         [
             AttackDecl(
+                quick_fingers_mode="",
+                quick_fingers_item="",
                 reshape=[],
                 kind="attack",
                 actor_id="player_1",
@@ -283,6 +295,8 @@ def test_an_attack_rider_rides_through_but_an_empty_one_is_dropped():
     without = to_engine_declarations(
         [
             AttackDecl(
+                quick_fingers_mode="",
+                quick_fingers_item="",
                 reshape=[],
                 kind="attack",
                 actor_id="player_1",
@@ -353,6 +367,8 @@ def test_a_repeated_actor_fails_loud():
             [
                 DefendDecl(reshape=[], kind="defend", actor_id="player_1"),
                 AttackDecl(
+                    quick_fingers_mode="",
+                    quick_fingers_item="",
                     reshape=[],
                     kind="attack",
                     actor_id="player_1",
@@ -372,7 +388,15 @@ def test_variant_kinds_match_the_engine_declaration_types():
 
 _ENGINE_CASES = [
     AttackDecl(
-        reshape=[], kind="attack", actor_id="a", action="Longsword", target_id="goblin_1", held_item_id="", rider=""
+        quick_fingers_mode="",
+        quick_fingers_item="",
+        reshape=[],
+        kind="attack",
+        actor_id="a",
+        action="Longsword",
+        target_id="goblin_1",
+        held_item_id="",
+        rider="",
     ),
     AbilityDecl(kind="ability", actor_id="a", action="arcane_bolt", targets=["goblin_1"], argument_type=""),
     AbilityMoveDecl(

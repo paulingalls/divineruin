@@ -9,10 +9,10 @@ import combat_cunning_action
 import combat_enhancers
 import combat_martial
 import combat_melee_approach
+import combat_quick_fingers
 import combat_resolution
 import concealment
 import conditions
-import thyra_seasons
 import zhael_fate
 from combat_ability import _attach_riders, _with_variant
 from combat_ability_gate import (
@@ -20,15 +20,15 @@ from combat_ability_gate import (
     CRIPPLING_STRIKE,
     DEVASTATING_STRIKE,
     ELECTIVE_ATTACK_RIDERS,
+    QUICK_FINGERS,
     RECKLESS_ASSAULT_RIDER,
     SHIELD_BASH,
     declared_ability,
 )
-from combat_attack_roll import attack_roll_inputs, promote_attack, spend_sneak_attack
+from combat_attack_roll import prepare_player_swing, promote_attack, spend_sneak_attack
 from combat_down import damage_target_unavailable
 from combat_item_rider import resolve_rider
 from combat_support import _resolve_attack_packet, apply_rolled_attack
-from equipment_rules import resolve_weapon_profile
 from patron_synergy_combat import attack_player, veiled_strike
 
 
@@ -93,29 +93,6 @@ async def attack_sequence(
         movement=movement,
         movement_budget=movement_budget,
         **deps,
-    )
-
-
-async def _prepare_swing(
-    state, attacker, target, act, reaction_ac_bonus, *, player, queries, conn, strike_mode, faces
-) -> tuple[dict, check_resolution_attack.PreparedAttack]:
-    if player is None:
-        player = await attack_player(attacker, queries=queries, conn=conn)
-    defender = await attack_player(target, queries=queries, conn=conn)
-    attacker_data, target_ac, attack_mod = attack_roll_inputs(
-        attacker,
-        target,
-        state.ac_modifiers.get(target.id, 0) + reaction_ac_bonus,
-        state,
-        act,
-        weapon_profile=await resolve_weapon_profile(attacker.type, act, weapon_attack=True, conn=conn),
-        player=player,
-        defender=defender,
-        season=await thyra_seasons.season_for(player, conn=conn),
-        veiled_strike=strike_mode,
-    )
-    return attacker_data, check_resolution_attack.prepare_attack(
-        attacker_data, act, target_ac, attack_mod=attack_mod, target_conditions=target.conditions, faces=faces
     )
 
 
@@ -223,6 +200,25 @@ async def continue_attack(
             if not swing_move["resolved"]:
                 interrupted = swing_move
             break
+        if index == 0 and martial == QUICK_FINGERS:
+            quick_fingers = await combat_quick_fingers.resolve(
+                session,
+                state,
+                attacker,
+                declared_target,
+                act,
+                decl,
+                attack_cursor,
+                conn=conn,
+                queries=queries,
+                sink=sink,
+                progress=progress.scope("quick_fingers") if progress is not None else None,
+            )
+            if quick_fingers is None:
+                checkpoint()
+                return {}
+            if quick_fingers.get("refused"):
+                return {**swing_move, "actor_id": attacker.id, "resolved": False, "reason": quick_fingers["reason"]}
         if martial == DEVASTATING_STRIKE and not any(sub.get("hit") for sub in attack_summaries):
             count = 3 if attacker.level >= 17 else 2 if attacker.level >= 10 else 1
             act = {**act, "devastating_strike_dice": count}
@@ -257,7 +253,7 @@ async def continue_attack(
                 if options.choices(attacker.id):
                     candidates = options
             if shared_faces is not None or candidates is not None:
-                attacker_data, prepared = await _prepare_swing(
+                attacker_data, prepared = await prepare_player_swing(
                     state,
                     attacker,
                     target,
@@ -460,6 +456,8 @@ async def continue_attack(
             summary["cunning_action"].update(hidden)
     if effects := attack_cursor.pop("turn_start_effects", None):
         summary["turn_start_effects"] = effects
+    if "quick_fingers" in attack_cursor:
+        summary["quick_fingers"] = attack_cursor["quick_fingers"]
     summary.update(attack_cursor.get("variant_receipt", {}))
     summary["actor_id"] = packet.actor_id
     summary["resolved"] = interrupted is None

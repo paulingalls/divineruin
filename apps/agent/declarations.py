@@ -60,6 +60,8 @@ class Declaration:
     destination: dict | None = None
     ac_bonus: int = 0
     rider: str | None = None
+    quick_fingers_mode: str | None = None
+    quick_fingers_item: str | None = None
     # M15 story-002: the Tier-3 argument category a de_escalate ABILITY makes (one of
     # social_resolution.ARGUMENT_TYPES — reason/emotion/self_interest/threat/bluff/evidence). Carried
     # verbatim here (shape-only); the value is validated at the packet boundary (combat_ability),
@@ -115,6 +117,22 @@ def resolve_declaration(raw: dict) -> Declaration:
             raise ValueError(f"{decl_type} declaration requires an 'action'")
     elif decl_type is DeclarationType.MANEUVER and not target_id:
         raise ValueError("maneuver declaration requires a 'target_id'")
+    from combat_ability_gate import QUICK_FINGERS_MODES, QUICK_FINGERS_RIDER
+
+    mode = raw.get("quick_fingers_mode")
+    item = raw.get("quick_fingers_item")
+    if raw.get("rider") == QUICK_FINGERS_RIDER:
+        if decl_type is not DeclarationType.ATTACK:
+            raise ValueError("Quick Fingers requires a melee attack.")
+        if mode not in QUICK_FINGERS_MODES:
+            raise ValueError("Quick Fingers requires steal, plant or swap.")
+        if mode == "steal":
+            if item:
+                raise ValueError("Quick Fingers steal chooses from the foe's pouch. Leave the item empty.")
+        elif not isinstance(item, str) or not item:
+            raise ValueError("Quick Fingers plant or swap needs one owned inventory selector.")
+    elif mode or item:
+        raise ValueError("Quick Fingers mode and item require the Quick Fingers attack rider.")
     is_move = decl_type is DeclarationType.MANEUVER and action == "move"
     is_shadow_step = False
     if decl_type is DeclarationType.ABILITY and isinstance(action, str):
@@ -155,6 +173,8 @@ def resolve_declaration(raw: dict) -> Declaration:
         target_ids=raw.get("target_ids"),
         ac_bonus=ac_bonus,
         rider=raw.get("rider"),
+        quick_fingers_mode=mode,
+        quick_fingers_item=item,
         argument_type=raw.get("argument_type"),
         maneuver_intent=maneuver_intent,
     )

@@ -144,6 +144,8 @@ class LootHarness(MawlingHarness):
                         "declarations": [
                             {
                                 "reshape": [],
+                                "quick_fingers_mode": "",
+                                "quick_fingers_item": "",
                                 "kind": "attack",
                                 "actor_id": self.players[0],
                                 "action": "Longsword",
