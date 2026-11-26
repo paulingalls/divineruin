@@ -1461,11 +1461,16 @@ there is no fallback encounter. Equal RNG seeds and equal inputs give equal refe
 
 This inventory binds selected encounter species to their delivered combat consumers. The source column is the complete audited catalog object. Resolver bindings name mechanical consumers; deferred rows preserve authored effects that lack one. Narrative abilities do not implicitly execute. The Choir authors Harmonic Shield and uses committed range, area, silence and movement geometry; remaining selected species retain the stated DM-adjudicated limits. Choir bindings below describe delivered mechanics, not completed native capstone evidence. Memory Predator target selection, stolen-voice imitation and Hollow class/veil metadata remain guidance. Raw corruption generation and disabling player microphone input are rejected interpretations.
 
-Conditional non-magical physical resistance on Hollow Knight, War Golem and Deepstone
-Guardian awaits the magical-weapon distinction in story-hollowed-knight-boss. Lightning
-absorption healing on Tidecaller Eel and Thunderbird and Cave Wyrm movement stay deferred;
-their damage immunity/resistance executes. Treant fire vulnerability and physical
-resistance, Dire Bear cold resistance and construct poison/psychic immunities execute.
+The Hollowed Knight, War Golem and Deepstone Guardian halve nonmagical slashing,
+piercing and bludgeoning damage, rounding down. Spells and weapons with the catalog's
+`magical` flag bypass this resistance. Basic attacks, martial techniques and opportunity
+strikes resolve that flag from the weapon's catalog ID, including older saved loadouts
+and prepared rolls resumed after reload.
+
+Lightning absorption healing on Tidecaller Eel and Thunderbird and Cave Wyrm movement
+stay deferred. Their damage immunity and resistance execute. Treant fire vulnerability
+and physical resistance, Dire Bear cold resistance and construct poison and psychic
+immunities execute.
 
 
 | Species | Group | Name | Audited source | Status | Effects / representation | Resolver / scheduled story | Deferred reason | Duplicate of |
@@ -1519,7 +1524,7 @@ resistance, Dire Bear cold resistance and construct poison/psychic immunities ex
 | hollow_knight | actives | Dissolution Strike | {"name":"Dissolution Strike","description":"Next attack adds 3d6 necrotic and ignores resistance. On hit, 5 ft of ground becomes corrupted terrain for 1 minute.","narration_cue":"","recharge":"5-6","audio":null} | deferred | Next attack extra3d6 necrotic; ignore resistance; on-hit5 ft corrupted terrain1 minute | future custom mechanics | No extra damage/resistance override/terrain consumer | none |
 | hollow_knight | actives | Unholy Fortitude | {"name":"Unholy Fortitude","description":"At 0 HP, CON save DC 10. On success drop to 1 HP; DC increases by 5 each time.","narration_cue":"","recharge":"passive trigger","audio":null} | deferred | At0 HP CON DC10 to1 HP; DC escalates5 each use | future custom mechanics | No zero-HP interception or escalating save state | none |
 | hollow_knight | passives | Remnant Tactics | {"name":"Remnant Tactics","description":"Uses combat techniques from former life. Takes Dodge when outnumbered and uses terrain for advantage.","narration_cue":"","recharge":null,"audio":null} | deferred | Dodge outnumbered; terrain advantage decision behavior | future custom mechanics | No dedicated consumer for these authored passive effects | none |
-| hollow_knight | passives | Corrupted Resilience | {"name":"Corrupted Resilience","description":"Resists non-magical slashing, piercing, and bludgeoning. Magical weapons deal full damage.","narration_cue":"","recharge":null,"audio":null} | deferred | Resistance nonmagical slashing/piercing/bludgeoning; magic full damage | future custom mechanics | No dedicated consumer for these authored passive effects | none |
+| hollow_knight | passives | Corrupted Resilience | {"name":"Corrupted Resilience","description":"Resists non-magical slashing, piercing, and bludgeoning. Magical weapons deal full damage.","narration_cue":"","recharge":null,"audio":null} | executable | Resistance halves nonmagical slashing/piercing/bludgeoning. Catalog magical weapons and spells bypass it. | combat_damage_affinity / equipment_rules.resolve_weapon_profile | none | none |
 | hollow_knight | passives | Fragment Voice | {"name":"Fragment Voice","description":"Occasionally speaks from its former life. First time former allies hear this: WIS save DC 12 or Shaken, disadvantage on next attack. Cosmetic thereafter.","narration_cue":"","recharge":null,"audio":null} | deferred | First former-ally contact WIS DC12 Shaken; next attack disadvantage; later cosmetic | future custom mechanics | No dedicated consumer for these authored passive effects | none |
 | hollow_knight | multiattack | 2 attacks with Corrupted Blade | "2 attacks with Corrupted Blade" | deferred | Specified weapon count and composition | future multiattack mechanics | No catalog multiattack consumer | none |
 | hollowed_scout | attacks | Corrupted Blade | {"name":"Corrupted Blade","type":"melee","reach":5,"to_hit":6,"damage":"1d4","damage_type":"slashing","special":null,"audio":"hollowed-scout-corrupted-blade"} | executable | Base 1d4 slashing damage; metadata137 | combat_packet._resolve_one_packet / check_resolution_attack.resolve_attack; producer137 | none | none |
