@@ -25,7 +25,7 @@ async def _best_skill_tiers(state: CombatState, *, conn: asyncpg.Connection, que
             continue
         player = await queries.get_player(participant.id, conn=conn)
         if player is None:
-            continue
+            raise LookupError(f"combat player {participant.id} has no player row")
         for skill, best in tiers.items():
             tier = _get_skill_tier(player, skill)
             if SKILL_TIER_ORDER.index(tier) > SKILL_TIER_ORDER.index(best):
@@ -48,15 +48,13 @@ async def initialize(
 
     pending = [enemy for enemy in enemies.values() if enemy.carried_items is None]
     if pending:
-        tables = {
-            table_id: await content.get_loot_table(table_id)
-            for table_id in dict.fromkeys(enemy.loot_table_id for enemy in pending if enemy.loot_table_id)
-        }
-        tiers = (
-            await _best_skill_tiers(state, conn=conn, queries=queries)
-            if any(table is not None for table in tables.values())
-            else {}
-        )
+        tables = {}
+        for table_id in dict.fromkeys(enemy.loot_table_id for enemy in pending if enemy.loot_table_id):
+            table = await content.get_loot_table(table_id)
+            if table is None:
+                raise LookupError(f"enemy loot table {table_id} is not seeded")
+            tables[table_id] = table
+        tiers = await _best_skill_tiers(state, conn=conn, queries=queries) if tables else {}
         rng = Random()
         for enemy in pending:
             table = tables.get(enemy.loot_table_id)
