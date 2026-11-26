@@ -19,31 +19,83 @@ from zhael_fate import FATE
 
 NPC = "guildmaster_torin"
 MERCHANT = "aelora_guildmaster_dara"
-SHARED = ("shared_meal", "aelora_shared_table", "Shared Table", "Gain +1 Religion when blessing a shared meal.")
+SHARED = (
+    "shared_meal",
+    "aelora_shared_table",
+    "Shared Table",
+    "Gain +1 Religion when blessing a shared meal.",
+    "religion",
+)
 CIVIC = (
     "community_duties",
     "aelora_civic_promise",
     "Civic Promise",
     "Gain +1 Persuasion when negotiating a community’s shared duties.",
+    "persuasion",
 )
 HEARTH = (
     "household_omen",
     "aelora_hearth_omen",
     "Hearth Omen",
     "Gain +1 Insight when interpreting a household omen.",
+    "insight",
 )
-COMMERCE = ("commerce", "aelora_commerce_persuasion", "Honest Hustle", "Commerce Persuasion +1.")
+COMMERCE = ("commerce", "aelora_commerce_persuasion", "Honest Hustle", "Commerce Persuasion +1.", "persuasion")
 GROVE = (
     "sacred_grove",
     "thyra_wild_covenant",
     "Wild Covenant",
     "Gain +1 Religion when honoring a sacred grove.",
+    "religion",
 )
 SEASONAL = (
     "seasonal_omen",
     "thyra_seasonal_omen",
     "Seasonal Omen",
     "Gain +1 Nature when interpreting a seasonal omen.",
+    "nature",
+)
+SHORELINE = (
+    "coast_shelter",
+    "nythera_shoreline_keeper",
+    "Shoreline Keeper",
+    "Gain +1 Survival when finding safe shelter along an unfamiliar coast.",
+    "survival",
+)
+HARBOR = (
+    "port_passage",
+    "nythera_harbor_courtesy",
+    "Harbor Courtesy",
+    "Gain +1 Persuasion when seeking peaceful passage through an unfamiliar port.",
+    "persuasion",
+)
+VOYAGER = (
+    "vessel_repair",
+    "nythera_voyagers_tools",
+    "Voyager's Tools",
+    "Gain +1 to checks to repair a vessel during a journey.",
+    None,
+)
+MENDER = (
+    "sanctuary_repair",
+    "orenthel_menders_dawn",
+    "Mender's Dawn",
+    "Gain +1 to checks to repair equipment for a damaged sanctuary.",
+    None,
+)
+GREEN_MORNING = (
+    "blighted_grove",
+    "orenthel_green_morning",
+    "Green Morning",
+    "Gain +1 Nature when restoring a blighted grove.",
+    "nature",
+)
+RECONCILIATION = (
+    "wounded_enemy_care",
+    "orenthel_reconciliation",
+    "Reconciliation",
+    "Gain +1 Persuasion when negotiating care for wounded enemies.",
+    "persuasion",
 )
 
 
@@ -66,7 +118,7 @@ async def setup_actor(world: SimpleNamespace, patron: str, archetype: str, *, in
         archetype,
         index=index,
         location_id=world.ctx.userdata.location_id,
-        attributes={"charisma": 12, "wisdom": 10, "intelligence": 10},
+        attributes={"charisma": 12, "wisdom": 10, "intelligence": 10, "strength": 10},
         conditions=[],
     )
 
@@ -82,8 +134,8 @@ async def paired(world: SimpleNamespace, kind: str, skill: str, tag: str, *, npc
     return results[0], results[1]
 
 
-def applied(clause: tuple[str, str, str, str]) -> dict:
-    tag, clause_id, name, effect = clause
+def applied(clause: tuple[str, str, str, str] | tuple[str, str, str, str, str | None]) -> dict:
+    tag, clause_id, name, effect = clause[:4]
     return {
         "tag": tag,
         "applied": True,
@@ -101,10 +153,10 @@ async def context_scenario(
     archetype: str,
     kind: str,
     skill: str,
-    clause: tuple[str, str, str, str],
+    clause: tuple[str, str, str, str, str | None],
     npc_id: str = NPC,
 ) -> None:
-    tag, clause_id, _, effect = clause
+    tag, clause_id, _, effect, declared_skill = clause
     await setup_actor(world, patron, archetype)
     assert not world.ctx.userdata.ally_present_for(world.ids[0])
     baseline, result = await paired(world, kind, skill, tag, npc_id=npc_id)
@@ -128,7 +180,7 @@ async def context_scenario(
         "implementation_id": clause_id,
         "kind": "context_check",
         "synergy_context": tag,
-        "skill": skill,
+        "skill": declared_skill,
         "bonus": 1,
         "effect": effect,
     }
@@ -168,7 +220,67 @@ SCENARIOS = {
         context_scenario,
         [("thyra", "oracle", "skill", "nature", SEASONAL)],
     ),
+    "nythera_shoreline_keeper": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [("nythera", "warden", "skill", "survival", SHORELINE)],
+    ),
+    "nythera_harbor_courtesy": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [
+            ("nythera", "diplomat", "skill", "persuasion", HARBOR),
+            ("nythera", "diplomat", "social", "persuasion", HARBOR),
+        ],
+    ),
+    "nythera_voyagers_tools": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [
+            ("nythera", "artificer", "skill", "athletics", VOYAGER),
+            ("nythera", "artificer", "skill", "crafting", VOYAGER),
+        ],
+    ),
+    "orenthel_menders_dawn": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [
+            ("orenthel", "artificer", "skill", "athletics", MENDER),
+            ("orenthel", "artificer", "skill", "crafting", MENDER),
+        ],
+    ),
+    "orenthel_green_morning": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [("orenthel", "warden", "skill", "nature", GREEN_MORNING)],
+    ),
+    "orenthel_reconciliation": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [
+            ("orenthel", "diplomat", "skill", "persuasion", RECONCILIATION),
+            ("orenthel", "diplomat", "social", "persuasion", RECONCILIATION),
+        ],
+    ),
 }
+
+
+async def test_nythera_warden_does_not_hold_orenthel_context(world: SimpleNamespace) -> None:
+    await setup_actor(world, "nythera", "warden")
+    baseline, result = await paired(world, "skill", "survival", "blighted_grove")
+
+    for field in ("total", "roll", "modifier", "dc", "margin", "outcome"):
+        assert result[field] == baseline[field]
+    assert "context_synergy" not in baseline
+    assert result["context_synergy"] == {
+        "tag": "blighted_grove",
+        "applied": False,
+        "bonus": 0,
+        "clause_id": None,
+        "clause_name": None,
+        "effect": None,
+        "reason": "unheld",
+    }
 
 
 async def test_household_omen_stacks_with_bond(world: SimpleNamespace) -> None:
