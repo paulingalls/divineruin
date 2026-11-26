@@ -37,6 +37,81 @@ Favor can rise and fall. A player who reaches Exalted and then acts against thei
 
 ---
 
+### Oath mechanics
+
+Proposed rules for the next implementation sprint. In `content/gods.json`, Breach and Favor-loss lifetime define the first pending Valdris paladin clause (favor loss). Justice at stake defines the second (+2 to d20 rolls). Each gets its own implementation ID. Shared oath mechanism also defines Zhael's pending Promised Hour.
+
+#### Breach
+
+**Recommended.** Valdris's Oath of Justice binds all three terms when sworn. The engine evaluates the oath-holder's committed attack against the facts at resolution.
+
+| Closed term | Fact that breaks the oath |
+|---|---|
+| `strike_first` | The holder makes the first attack between the party and that hostile. `combat_wrongdoing.record_attack` records `first_hostility` as `ally` for that hostile. The build must also attribute that first attack to the actual player because the ledger currently stores only the side. |
+| `strike_surrendered_enemy` | The target is an enemy already recorded as surrendered by `combat_deescalation`. |
+| `strike_yielded_ally` | The target is an ally already recorded as yielded (lands with story-party-yield). |
+
+A voluntary attempt counts on a hit or a miss. An attack resolved while Charmed, or under another catalog condition the engine records as compelling the action, is exempt. A failed check, a missed deadline, or an unrelated action leaves the oath active. Spoken promises outside the term catalog have narrative consequences only.
+
+Resolve from the existing Act's actor and target IDs, the pre-attack target state and the committed attack record. Apply the breach before calculating the attack's oath bonus. Commit the attack, broken status and suppression together. A rejected attack or a replayed event cannot create a breach. The DM supplies the action and target through the existing verb and voices the engine's receipt. A DM-supplied breach tag would put the decision outside the engine.
+
+- **Breach.** The paladin swings first at a hostile bandit with a recorded injustice and misses. The ledger attributes the opening attack to the paladin, so `strike_first` breaks the oath before the swing can get the +2 from the grievance.
+- **Near miss.** The engine resolves an attack against a yielded ally while the paladin is Charmed. The yield fact matches, but the compulsion exemption keeps the oath active.
+
+#### Justice at stake
+
+**Recommended.** The paladin must currently follow Valdris and have an active Oath of Justice without suppression. An active, unbroken oath satisfies oath-keeping immediately. Requiring a prior fulfilled obligation would require a separate objective record.
+
+| Roll | Qualifying context |
+|---|---|
+| Combat weapon and spell attacks | The resolved target is a recorded wrongdoer. |
+| Combat saves, including automatic effect saves | The effect that prompted the save identifies a recorded wrongdoer as its source. Saves with no such source receive zero. |
+| Out-of-combat skill checks, including social and discovery checks | The DM passes `justice_at_stake` through the existing `synergy_context` field. `validate_synergy_context` and `context_skill_bonus` check the closed tag, ownership and applicable skill. The tag conveys the DM's interpretation for this check. The engine does not independently establish its narrative truth. |
+| Other d20 rolls | Initiative, death saves, combat skill checks, out-of-combat attacks and saves, and arbitrary `check(kind="dice")` rolls are outside the qualifying contexts. Damage dice are also excluded. |
+
+In combat, match the exact source or target ID to at least one recorded wrongdoer fact. The producers are `combat_wrongdoing.aggression_facts` from `first_hostility`, `update_npc_disposition` for party `broken_promise` or `injustice` grievance marks, the yielded-ally attacker record (lands with story-party-yield), and the `accused` in present `witness` testimony (lands with story-witness-guardian). The opening `initiated_by` field (`enemies` or `party`, lands with story-sanctuary-initiative) describes the encounter. The creature-specific record determines eligibility.
+
+Attacks and saves derive their context from combat state and keep their existing tool arguments. For all families, add +2 to the kept d20's total after advantage, disadvantage or a reroll, once per final result. Natural 20 and 1 rules still use the die face. A valid but inapplicable context grants zero. Unsupported enum values and IDs that fail validation are errors. A roll receipt records the oath ID when present, the context, the applied modifier and the reason for zero when inapplicable.
+
+- **Qualifies.** A bandit attacks the party first. The paladin adds +2 to a spell attack against that bandit, or to a save caused by that bandit's spell.
+- **Doesn't qualify.** The party strikes a bandit first and the bandit hits back. With no other wrongdoer fact, the paladin gets zero. The `justice_at_stake` tag applies only to out-of-combat checks. The Scales' Verdict can still judge the bandit unjust because it records any attack on the party, including retaliation.
+
+#### Favor-loss lifetime
+
+**Recommended.** A Valdris breach suppresses the holder's Layer 3 favor abilities and the Oath of Justice +2 for the rest of that gameplay session. Layers 1–2 and other Layer 4 clauses remain available. Charging the whole next session would make a late breach cost more than an early one.
+
+| Boundary | Engine behavior |
+|---|---|
+| First breach | Store a marker under the proposed `players.data.oaths` JSONB key with the current `session_count` and breach event ID. No database migration is needed. |
+| Same session | Compare the marker to the persisted `session_count` for ability availability, manual activation and automatic Layer 3 triggers. Already-landed effects such as Mark of Justice expire normally. |
+| Fresh session | Clear the marker at the same boundary that increments `session_count` and runs `session_hydration._recharge_session_abilities`. An agent restart that forces a fresh session clears suppression too. |
+
+Reconnects that reuse session state, rests, favor gains, party membership changes and host handoffs leave the holder's suppression in place. A second breach or duplicate callback leaves the original marker intact. Suppression changes eligibility while favor standing and spent uses retain their usual rules. A broken oath stays broken. The player can swear anew after suppression clears.
+
+#### Shared oath mechanism
+
+**Recommended.** Store the oath ID, owner, patron, closed oath kind, catalog terms, bound entity IDs, status (`active`, `fulfilled`, `broken` or `lapsed`) and the event ID for the latest state change under `players.data.oaths`. Encounter-bound oaths also store encounter and round fields. The engine reads the current oath and committed facts as part of the existing Act's Resolve.
+
+The proposed Stage surfaces an oath `choice_id`, legal `option` values (`justice` and `timed` for this build), and eligible encounter targets and allies. After the player confirms aloud, the DM uses the existing `select` verb with those IDs. The proposed timed option extends it with `objective_kind`, `target_id` and `last_round`. The engine validates the speaking player's patron and paladin archetype, scope and the offered IDs, then returns the oath ID and accepted terms. Replaying the same selection returns the existing record. A new selection cannot replace an active oath or bypass suppression. Without a registered oath, there is no oath-based reward or breach. The DM reads back the terms and voices the Resolve's outcome.
+
+| Patron and oath kind | Catalog and engine facts |
+|---|---|
+| Valdris · `justice` | The three breach terms use the committed attack and encounter facts above. Only Valdris applies favor suppression. |
+| Kaelen · `valor` | Shares the record and evaluation contract when catalog terms are authored. The existing outnumbered weapon damage rider (`kaelen_oath_of_valor`) still uses the living combatant counts. |
+| Orenthel · `mercy` | Shares the record and evaluation contract when catalog terms are authored. Dawn's Mercy (`orenthel_dawns_mercy`) keeps its existing healing modifier. |
+| Zhael · `timed` | Promised Hour uses the encounter's round counter, attack and effect outcomes, and committed HP changes. |
+
+Kaelen and Orenthel gain no breach terms, sanctions or rewards from this build. Implement Valdris and Zhael first.
+
+For Promised Hour, swear during combat. The final round must be at or after the encounter's current `round_number`. The catalog offers `defeat_target` for a living hostile and `keep_ally_standing` for an ally above 0 HP. The first fulfills when the engine records the target's defeat within the window. The second fulfills at the end of the final round if the ally stayed above 0 HP throughout. If that ally reaches 0 HP, the deadline passes unmet, or the encounter ends before fulfillment, the oath lapses without penalty. A world-time window would require a finer clock than the current time-of-day label.
+
+The engine stamps each save with the encounter and round from its resolving action. A save by the oath-holder from registration through the end of the named round, inclusive, earns +1 while the objective is active in that encounter. This includes automatic effect saves. A save before registration or after fulfillment or lapse earns zero. The bonus stacks with other modifiers and applies once to the total of the kept or rerolled save.
+
+- **On time.** In round 2 the paladin swears to defeat a raider by round 3. The raider still stands when the paladin makes a save in round 3, so the receipt adds +1.
+- **Outside the window.** The raider is still standing when round 4 begins. The oath has lapsed and a round 4 save gets zero, even if the raider is defeated later that round.
+
+---
+
 ### Veythar, the Lorekeeper
 
 **Domain:** Knowledge, arcane arts, discovery, memory

@@ -718,7 +718,7 @@ NPC schemas, role archetypes, mentors, settlements, companions.
 
 ---
 
-## game_mechanics/game_mechanics_patrons.md (399 lines)
+## game_mechanics/game_mechanics_patrons.md (474 lines)
 
 10 divine patrons with 4-layer mechanical system.
 
@@ -726,18 +726,19 @@ NPC schemas, role archetypes, mentors, settlements, companions.
 |---|---|---|
 | Architecture | 11-22 | Each divine patron provides four mechanical layers. Any archetype can follow any god, but certain combinations have enhanced effects (Layer 4). |
 | Divine Favor Tiers | 23-39 | Favor thresholds and mechanical effects |
-| Veythar, the Lorekeeper | 40-73 | Knowledge and arcane arts; Lorekeeper's Insight, Arcane Amplification, favor tiers, archetype resonance |
-| Kaelen, the Ironhand | 74-101 | War and valor; Iron Resolve, Martial Focus, favor tiers, archetype resonance |
-| Aelora, the Hearthkeeper | 102-129 | Civilization and crafting; Hearthkeeper's Bond, Shared Burden, favor tiers, archetype resonance |
-| Thyra, the Wildmother | 130-166 | Nature and seasons; Nature's Pulse, Veil Grounding, favor tiers, archetype resonance |
-| Syrath, the Veilwatcher | 167-195 | Shadows and secrets; Shadow Veil, Hidden Casting, favor tiers, archetype resonance |
-| Orenthel, the Dawnbringer | 196-223 | Light and healing; Dawn's Resilience, Purifying Light, favor tiers, archetype resonance |
-| Valdris, the Scalebearer | 224-251 | Justice and truth; Weight of Truth, Ordered Magic, favor tiers, archetype resonance |
-| Mortaen, the Threshold | 252-279 | Death and transition; Death's Awareness, Threshold Magic, favor tiers, archetype resonance |
-| Nythera, the Tidecaller | 280-309 | Sea and exploration; Horizon Sense, Boundary Walker, favor tiers, archetype resonance |
-| Zhael, the Fatespinner | 310-337 | Fate and luck; Fate's Thread, Pattern Weaving, favor tiers, archetype resonance |
-| The Unbound Path (No Patron) | 338-384 | Self-sourced magic; Veil Clarity, Raw Channeling, self-reliance milestones, endgame relevance |
-| Patron System Summary | 385-399 | Patron system mechanics and cross-patron comparison. |
+| Oath mechanics | 40-114 | Engine-defined oath breach, justice contexts, session suppression and shared patron rules |
+| Veythar, the Lorekeeper | 115-148 | Knowledge and arcane arts; Lorekeeper's Insight, Arcane Amplification, favor tiers, archetype resonance |
+| Kaelen, the Ironhand | 149-176 | War and valor; Iron Resolve, Martial Focus, favor tiers, archetype resonance |
+| Aelora, the Hearthkeeper | 177-204 | Civilization and crafting; Hearthkeeper's Bond, Shared Burden, favor tiers, archetype resonance |
+| Thyra, the Wildmother | 205-241 | Nature and seasons; Nature's Pulse, Veil Grounding, favor tiers, archetype resonance |
+| Syrath, the Veilwatcher | 242-270 | Shadows and secrets; Shadow Veil, Hidden Casting, favor tiers, archetype resonance |
+| Orenthel, the Dawnbringer | 271-298 | Light and healing; Dawn's Resilience, Purifying Light, favor tiers, archetype resonance |
+| Valdris, the Scalebearer | 299-326 | Justice and truth; Weight of Truth, Ordered Magic, favor tiers, archetype resonance |
+| Mortaen, the Threshold | 327-354 | Death and transition; Death's Awareness, Threshold Magic, favor tiers, archetype resonance |
+| Nythera, the Tidecaller | 355-384 | Sea and exploration; Horizon Sense, Boundary Walker, favor tiers, archetype resonance |
+| Zhael, the Fatespinner | 385-412 | Fate and luck; Fate's Thread, Pattern Weaving, favor tiers, archetype resonance |
+| The Unbound Path (No Patron) | 413-459 | Self-sourced magic; Veil Clarity, Raw Channeling, self-reliance milestones, endgame relevance |
+| Patron System Summary | 460-474 | Patron system mechanics and cross-patron comparison. |
 
 ---
 
