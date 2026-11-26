@@ -2491,8 +2491,9 @@
         "clauses": [
           {
             "effect": "Gain +1 initiative when defending a publicly declared sanctuary from an aggressor.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "valdris_lawful_command"
           }
         ]
       },

@@ -39,7 +39,9 @@ async def test_generated_entry_resume(
             h.sd.companion.is_present = False
         templates = await h.pool.fetchval("SELECT count(*) FROM encounter_templates")
         with patch("combat_entry.Random", return_value=Random(0)):
-            result = await h.command("enter_mode", {"mode": "combat", "difficulty": difficulty, "tier": tier})
+            result = await h.command(
+                "enter_mode", {"mode": "combat", "encounter_id": "", "difficulty": difficulty, "tier": tier}
+            )
         assert isinstance(h.session.current_agent, CombatAgent)
         state = h.sd.combat_state
         assert state is not None
@@ -105,7 +107,7 @@ async def test_refuses_ambiguous_or_invalid_forms(reset_db_pool, arguments, mess
     try:
         await h.prepare()
         rows = await h.pool.fetchval("SELECT count(*) FROM combat_instances")
-        error = await h.command("enter_mode", {"mode": "combat", **arguments}, error=True)
+        error = await h.command("enter_mode", {"mode": "combat", "encounter_id": "", **arguments}, error=True)
         assert message in error
         assert h.sd.combat_state is None and not isinstance(h.session.current_agent, CombatAgent)
         assert await h.pool.fetchval("SELECT count(*) FROM combat_instances") == rows
@@ -124,7 +126,9 @@ async def test_unresolvable_terrain_starts_nothing(reset_db_pool, terrain, exist
             row = {"id": location_id, "region": "greyvale", "terrain": terrain}
             await h.pool.execute("INSERT INTO locations (id,data) VALUES ($1,$2::jsonb)", location_id, json.dumps(row))
         rows = await h.pool.fetchval("SELECT count(*) FROM combat_instances")
-        error = await h.command("enter_mode", {"mode": "combat", "difficulty": "standard"}, error=True)
+        error = await h.command(
+            "enter_mode", {"mode": "combat", "encounter_id": "", "difficulty": "standard"}, error=True
+        )
         assert location_id in error
         assert ("terrain" if exists else "not found") in error
         assert h.sd.combat_state is None and not isinstance(h.session.current_agent, CombatAgent)
@@ -175,7 +179,7 @@ async def test_generated_victory_uses_saved_loot_tables_and_gates(reset_db_pool,
                 )
         # Keep beast harvesting, Hollow residue and humanoid drops in one generated victory.
         with patch("combat_entry.Random", return_value=Random(29316)):
-            result = await h.enter({"mode": "combat", "difficulty": "standard"}, Random(1))
+            result = await h.enter({"mode": "combat", "encounter_id": "", "difficulty": "standard"}, Random(1))
         h.roster = result["participants"]
         state = await h.reload()
         enemies = [p for p in state.participants if p.type == "enemy"]
@@ -206,7 +210,9 @@ async def test_infeasible_environment_starts_nothing(reset_db_pool):
     try:
         await h.prepare(location="keldaran_southern_pass")
         rows = await h.pool.fetchval("SELECT count(*) FROM combat_instances")
-        error = await h.command("enter_mode", {"mode": "combat", "difficulty": "standard", "tier": 3}, error=True)
+        error = await h.command(
+            "enter_mode", {"mode": "combat", "encounter_id": "", "difficulty": "standard", "tier": 3}, error=True
+        )
         assert "No fit" in error and "keldaran_mountains" in error and "mountain" in error
         assert h.sd.combat_state is None and not isinstance(h.session.current_agent, CombatAgent)
         assert await h.pool.fetchval("SELECT count(*) FROM combat_instances") == rows
@@ -235,7 +241,7 @@ async def test_generated_pool_excludes_scene_only_creatures(reset_db_pool):
             patch("encounter_builder.build_encounter", side_effect=spy),
             patch("combat_entry.Random", return_value=Random(0)),
         ):
-            await h.command("enter_mode", {"mode": "combat", "difficulty": "standard", "tier": 2})
+            await h.command("enter_mode", {"mode": "combat", "encounter_id": "", "difficulty": "standard", "tier": 2})
         catalog, tier, party, environment, difficulty, _ = calls[0]
         assert environment == {"region": "greyvale", "terrain": "forest"}
         assert {row["id"] for row in catalog} & scene_only == set()

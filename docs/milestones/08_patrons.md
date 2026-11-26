@@ -208,7 +208,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 
 **Review:** The human approved the final 180-row table on 2026-11-18 (table SHA-256 `5dee713a…`, content SHA-256 `c3238a53…`, commit `903ac541`), closing AC3. The approved table is retained in sprint DATA at `sprints/archetype-synergies/synergy-review.md` with every changed number. Content and design share the approved corrections, including Nythera’s live Animal Handling +1 instead of advantage. Pending clauses are unavailable.
 
-Layer 4 lookup covers 180 pairings and 200 clauses. 96 are active/engine, 85 are active/narrated, and 19 are pending/engine.
+Layer 4 lookup covers 180 pairings and 200 clauses. 97 are active/engine, 85 are active/narrated, and 18 are pending/engine.
 
 Shared Table gives Aelora clerics +1 Religion when blessing a shared meal. Civic Promise gives Aelora paladins +1 Persuasion when negotiating a community’s shared duties. The patron query surfaces the context tags and settled checks name the applied clause.
 
@@ -231,6 +231,8 @@ The registered engine scenarios in `test_patron_synergy_engine.py` exercise all 
 Sheltering Light gives a standing Orenthel guardian +1 AC against attack rolls while a standing ally below half HP is within 5 feet. `test_patron_synergy_engine.py` and `test_orenthel_guardian_ward.py` exercise the registered clause, opportunity attacks and held rolls after checkpoint reload. Dawnward Strike adds 1 damage on a hit against a Hollow or undead foe while another standing party ally in the same combat is below half HP. `test_orenthel_undead_wrath.py` and `test_orenthel_undead_wrath_guards.py` cover damage, attack receipts and eligibility after checkpoint reload.
 
 Absolute Authority raises the Turn Undead/Hollow save DC by 1 for Valdris clerics and oracles. The patron query lists the active clause, and the cast receipt names the bonus. The registered engine scenarios compare both classes under Valdris and Thyra. `test_turn_undead_hollow.py` covers undead and Hollow saves after checkpoint reload, `test_turn_undead_hollow_guards.py` covers Sacred Flame at its usual DC, and `god-synergy.test.ts` validates both shipped clauses.
+
+Lawful Command gives Valdris marshals +1 initiative when enemies start combat at a sanctuary. Temple Row and the Accord Guild Hall are tagged sanctuaries. The patron query reports the current location’s status, and the initiative receipt names the bonus. `test_valdris_sanctuary.py` covers registered combat entry, saved initiative and patron discovery. `locations-load.integration.test.ts` checks the tags after a seeded server load.
 
 Measured Reprisal adds 1 damage when a Valdris warrior hits a foe that attacked a yielded ally this encounter, even if the foe missed. A player or companion spends their combat action to yield. The registered combat tools, checkpoint reload and HUD packet handler exercise the surrender state and damage receipt.
 

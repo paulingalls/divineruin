@@ -32,7 +32,7 @@ class ParallelStream(llm.LLMStream):
         if model.pending:
             model.pending = False
             calls = [
-                ("enter_mode", {"mode": "combat", "difficulty": "standard"}),
+                ("enter_mode", {"mode": "combat", "encounter_id": "", "difficulty": "standard"}),
                 ("move_player", {"destination_id": "accord_market_square"}),
             ]
             delta = llm.ChoiceDelta(

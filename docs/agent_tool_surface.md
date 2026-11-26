@@ -541,7 +541,7 @@ where the money is. Ranked by expected effect; each is independent of the schema
    exploration verb (two required strings, 0 unions; exploration 13 → 14 tools). The
    forge register moves to Stage content (`scene.instructions`, as ADR-0007 already
    does for every other place) and the Stage lists the smith under `address` and the
-   repairable items under `repair`. `enter_mode("blacksmith")` and `conclude_blacksmith`
+   repairable items under `repair`. `enter_mode(mode="blacksmith", encounter_id="")` and `conclude_blacksmith`
    disappear. Saves two prefix rewrites per forge visit (~8k tokens each at 1.25×,
    roughly $0.02 and two time-to-first-token hits) and one 1k-token prompt to maintain.
    ADR-0004 split it to stay under the tool cap; that reason is gone.

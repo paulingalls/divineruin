@@ -23,12 +23,19 @@ MORTAEN_HOLD_THE_CROSSING = "mortaen_hold_the_crossing"
 NYTHERA_SALTWIND_CASTING = "nythera_saltwind_casting"
 VALDRIS_ABSOLUTE_AUTHORITY = "valdris_absolute_authority"
 VALDRIS_MEASURED_REPRISAL = "valdris_measured_reprisal"
+VALDRIS_LAWFUL_COMMAND = "valdris_lawful_command"
+LAWFUL_COMMAND_NAME = "Lawful Command"
 
 KAELEN_WAR_SONGS = "kaelen_war_songs"
 TWO_ROUND_VEIL = "syrath_two_round_veil"
 VEILED_STRIKE = "syrath_veiled_strike"
 
 VeiledStrike = Literal["sneak_attack", "weapon"]
+
+
+def sanctuary_initiative_bonus(player: dict, *, initiated_by: str | None) -> int:
+    """Return the initiative bonus this player can earn if the location is a sanctuary."""
+    return int(initiated_by == "enemies" and has_engine_synergy(player, VALDRIS_LAWFUL_COMMAND))
 
 
 def shadow_veil_rounds(player: dict) -> int:
