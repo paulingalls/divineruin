@@ -36,6 +36,7 @@ def roll_attack(
     player: dict | None = None,
     defender: dict | None = None,
     mortaen_ac_override: int | None = None,
+    orenthel_ac_override: int | None = None,
     veiled_strike: VeiledStrike | None = None,
     season: Season | None = None,
 ) -> tuple:
@@ -51,6 +52,7 @@ def roll_attack(
         player=player,
         defender=defender,
         mortaen_ac_override=mortaen_ac_override,
+        orenthel_ac_override=orenthel_ac_override,
         veiled_strike=veiled_strike,
         season=season,
     )
@@ -80,6 +82,7 @@ def attack_roll_inputs(
     player=None,
     defender=None,
     mortaen_ac_override: int | None = None,
+    orenthel_ac_override: int | None = None,
     veiled_strike: VeiledStrike | None = None,
     season: Season | None = None,
 ):
@@ -168,9 +171,16 @@ def attack_roll_inputs(
             )
     attacker_data = condition_voice_rules.roll_data(attacker_data, combat_state, attacker.id)
     target_condition_ac = conditions.get_condition_effects(target.conditions).ac_modifier
-    synergy_ac = patron_synergy_combat.first_attack_defense(defender, combat_state, target)
-    if synergy_ac:
-        attacker_data.update(synergy_ac_bonus=synergy_ac, synergy_ac_clause_id=patron_synergy_combat.SECOND_BEFORE)
+    zhael_ac = patron_synergy_combat.first_attack_defense(defender, combat_state, target)
+    orenthel_ac = (
+        orenthel_ac_override
+        if orenthel_ac_override is not None
+        else patron_synergy_combat.wounded_ally_defense(defender, combat_state, target)
+    )
+    if zhael_ac:
+        attacker_data.update(synergy_ac_bonus=zhael_ac, synergy_ac_clause_id=patron_synergy_combat.SECOND_BEFORE)
+    elif orenthel_ac:
+        attacker_data.update(synergy_ac_bonus=orenthel_ac, synergy_ac_clause_id=patron_synergy_combat.SHELTERING_LIGHT)
     mortaen_ac = (
         mortaen_ac_override
         if mortaen_ac_override is not None
@@ -183,7 +193,8 @@ def attack_roll_inputs(
         target.ac
         + target_ac_bonus
         + target_condition_ac
-        + synergy_ac
+        + zhael_ac
+        + orenthel_ac
         + mortaen_ac
         + cathedral_bonus(combat_state, target.id)
     )

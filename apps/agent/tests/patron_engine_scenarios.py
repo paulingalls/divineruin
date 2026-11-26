@@ -38,6 +38,7 @@ from test_patron_passives import SCENARIOS as passives
 from test_patron_senses import SCENARIOS as senses
 from test_syrath_two_round_veil import SCENARIOS as two_round_veil
 from test_syrath_veiled_strike import SCENARIOS as veiled_strikes
+from test_wounded_ward import SCENARIOS as wounded_ward
 from test_zhael_fate import SCENARIOS as lucky
 from test_zhael_fate_callers import SCENARIOS as zhael
 from test_zhael_foretold_words import SCENARIOS as foretold_words
@@ -63,6 +64,7 @@ ENGINE_SCENARIOS = {
     **encounter_facts,
     **defense,
     **fallen_ally_guard,
+    **wounded_ward,
     **marshal_death_save,
     **rally,
     **foretold_words,
