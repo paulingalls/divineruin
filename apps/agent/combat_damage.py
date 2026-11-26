@@ -9,6 +9,7 @@ import combat_damage_affinity
 import combat_grapple
 import combat_hollow_death
 import combat_melee_approach
+import combat_order_riders
 import combat_resolution
 import combat_spatial
 import concentration_break
@@ -21,16 +22,10 @@ import event_types as E
 import temp_hp
 from combat_attack_roll import build_attack_dice_roll_payload
 from combat_damage_events import record_damage_event
-from combat_damage_results import AutomaticDamageResult, SaveDamageResult, attack_fields, freeze_blow, thaw_blow
+from combat_damage_results import AutomaticDamageResult, SaveDamageResult, attack_fields
+from combat_damage_settlement import apply_attack_result as apply_attack_result
 from combat_durability import _accrue_durability, _find_equipped
-from combat_enemy_active import (
-    apply_critical_save,
-    apply_prepared_hit,
-    critical_save_rider,
-    heal,
-    land_critical_save,
-    roll_critical_save,
-)
+from combat_enemy_active import apply_critical_save, apply_prepared_hit, heal
 from combat_events import emit_or_publish
 from combat_fate_rolls import packet_save
 from combat_fortitude import roll_fortitude, try_fortitude
@@ -114,115 +109,6 @@ def _handle_hp_zero(
     return hp_status, False, released
 
 
-async def apply_attack_result(
-    session: SessionData,
-    attacker,
-    action: dict,
-    target,
-    attack_result: check_resolution_attack.AttackResult | SaveDamageResult | AutomaticDamageResult | None,
-    effective_ac: int,
-    *,
-    shield_reaction: str | None = None,
-    mutations=db_mutations,
-    queries=db_queries,
-    concentration_break_mod=concentration_break,
-    combat_state=None,
-    conn=None,
-    sink=None,
-    publish_roll: bool = True,
-    progress=None,
-) -> dict:
-    if progress is None:
-        assert attack_result is not None
-        direct = await _apply_damage(
-            session,
-            attacker,
-            action,
-            target,
-            attack_result,
-            effective_ac,
-            shield_reaction=shield_reaction,
-            mutations=mutations,
-            queries=queries,
-            concentration_break_mod=concentration_break_mod,
-            combat_state=combat_state,
-            conn=conn,
-            sink=sink,
-            publish_roll=publish_roll,
-        )
-        assert direct is not None  # only a fortitude_progress hold pauses
-        return direct
-
-    receipt = progress.steps.get("damage_receipt")
-    if receipt is not None and "pending" in receipt:
-        # A held Unholy Fortitude save paused before HP changed; land the same blow now.
-        action, attack_result, effective_ac = thaw_blow(receipt["pending"])
-        receipt = None
-    if receipt is None:
-        assert attack_result is not None
-        response = await _apply_damage(
-            session,
-            attacker,
-            action,
-            target,
-            attack_result,
-            effective_ac,
-            shield_reaction=shield_reaction,
-            mutations=mutations,
-            queries=queries,
-            concentration_break_mod=concentration_break_mod,
-            combat_state=combat_state,
-            conn=conn,
-            sink=sink,
-            publish_roll=publish_roll,
-            defer_concentration=True,
-            fortitude_progress=progress.scope("fortitude"),
-        )
-        if response is None:
-            # Callers treat a present receipt as "already rolled" and resume without re-rolling.
-            progress.steps["damage_receipt"] = {"pending": freeze_blow(action, attack_result, effective_ac)}
-            return {}
-        if "consumed_conditions" in response:
-            response["consumed_conditions"] = list(response["consumed_conditions"])
-        receipt = {"response": response, "automatic": isinstance(attack_result, AutomaticDamageResult)}
-        progress.steps["damage_receipt"] = receipt
-    response = receipt["response"]
-    if target.type == "player" and not receipt.get("concentration_settled"):
-        response["concentration_broken"] = await concentration_break_mod.break_concentration_on_damage(
-            session,
-            response["damage"],
-            incapacitated=target.hp_current <= 0,
-            damaged_player_id=target.id,
-            combat_state=combat_state,
-            conn=conn,
-            progress=progress.scope("concentration"),
-            receipt=response,
-        )
-        if progress.paused:
-            return {}
-        receipt["concentration_settled"] = True
-    if combat_state is not None and not receipt["automatic"]:
-        rider = critical_save_rider(action, response)
-        save = None
-        if rider is not None:
-            # Fate's Thread reaches the target's on-crit save; it resolves before any rider lands.
-            save = await packet_save(
-                progress.scope("critical_save"),
-                session,
-                target.id,
-                rider["applies_condition"],
-                partial(roll_critical_save, combat_state, attacker, target, rider),
-                state=combat_state,
-            )
-            if save is None:
-                return {}
-        apply_prepared_hit(combat_state, attacker, target, action, response)
-        if save is not None:
-            land_critical_save(combat_state, attacker, target, action, response, rider, save)
-    del progress.steps["damage_receipt"]
-    return response
-
-
 async def _apply_damage(
     session: SessionData,
     attacker,
@@ -272,6 +158,11 @@ async def _apply_damage(
         )
         if fortitude_save is None:
             return None
+    if isinstance(attack_result, check_resolution_attack.AttackResult):
+        for rider in (attack_result.order_rider, attack_result.sacrifice_rider):
+            if rider is not None:
+                assert combat_state is not None
+                combat_order_riders.consume(combat_state, attacker.id, rider)
     automatic = isinstance(attack_result, AutomaticDamageResult)
     save_damage = isinstance(attack_result, (SaveDamageResult, AutomaticDamageResult))
     if save_damage and publish_roll:
@@ -365,6 +256,19 @@ async def _apply_damage(
             await reward_worthy_foe(combat_state, target, queries=queries, conn=conn)
     elif hp_status in ("bloodied", "critical") and (not save_damage or attack_result.damage > 0):
         sounds.append(SOUND_HEARTBEAT)
+
+    if isinstance(attack_result, check_resolution_attack.AttackResult) and attack_result.coordinated_rider is not None:
+        assert combat_state is not None
+        first_hit = None
+        if attack_result.hit and not target.is_fallen:
+            first_hit = combat_order_riders.FirstHit(
+                ally_id=attacker.id,
+                target_id=target.id,
+                damage_type=attack_result.damage_type,
+                magical=bool(action.get("magical")),
+                spell_source=action.get("spell_source"),
+            )
+        combat_order_riders.settle_coordinated(combat_state, attacker.id, attack_result.coordinated_rider, first_hit)
 
     encounter_facts.record_landing(combat_state, attacker, target, attack_result, hp_before)
 
@@ -472,7 +376,7 @@ async def _apply_damage(
         response["death_save_failures"] = target.death_save_failures
     log_outcome = record_damage_event(session, attacker, action, target, attack_result)
     if isinstance(attack_result, check_resolution_attack.AttackResult):
-        response.update(attack_fields(attack_result, effective_ac))
+        response.update(attack_fields(attack_result, effective_ac, action))
     if action.get("self_heal") == "damage_dealt":
         response["self_healed"] = self_healed
         response["attacker_hp_status"] = combat_resolution.hp_threshold_status(attacker.hp_current, attacker.hp_max)

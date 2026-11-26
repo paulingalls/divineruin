@@ -24,6 +24,7 @@ from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, Field
 
+from combat_ability_gate import REPOSITION
 from item_effects import CONSUME_PREFIX
 from reshape_payloads import Destination, ReshapeSelection
 
@@ -118,6 +119,18 @@ class ConsumeDecl(BaseModel):
     target_id: str = Field(description='The ally receiving the item. Empty string ("") for the holder.')
 
 
+class AttackConsumeDecl(BaseModel):
+    """Attack and use one held healing item under an active Field Medic Order."""
+
+    model_config = {"extra": "forbid"}
+    kind: Literal["attack_consume"]
+    actor_id: str = Field(description="The ordered party player holding the healing item.")
+    action: str = Field(description="The exact name of one of the actor's equipped weapons.")
+    target_id: str = Field(description="The participant being struck.")
+    item_id: str = Field(description="The healing item's inventory ID from query_info.")
+    heal_target_id: str = Field(description='The ally receiving the item. Empty string ("") for the holder.')
+
+
 class ManeuverDecl(BaseModel):
     """Shove, grapple or otherwise physically move a target."""
 
@@ -138,6 +151,15 @@ class MoveDecl(BaseModel):
         description="Choose ground for ordinary movement. Flying adds ceiling restrictions and grants no flight capability."
     )
     reshape: list[ReshapeSelection] = Field(description=RESHAPE_DESCRIPTION)
+
+
+class RepositionDecl(BaseModel):
+    """Order a standing ally to move up to 15 feet immediately."""
+
+    kind: Literal["reposition"]
+    actor_id: str = Field(description="The Marshal issuing the order.")
+    target_id: str = Field(description="The standing ally who moves.")
+    destination: Destination
 
 
 class DefendDecl(BaseModel):
@@ -165,8 +187,10 @@ DeclVariant = Union[
     AbilityMoveDecl,
     InteractDecl,
     ConsumeDecl,
+    AttackConsumeDecl,
     ManeuverDecl,
     MoveDecl,
+    RepositionDecl,
     DefendDecl,
     RetreatDecl,
 ]
@@ -179,8 +203,10 @@ DECL_VARIANTS: tuple[type[BaseModel], ...] = (
     AbilityMoveDecl,
     InteractDecl,
     ConsumeDecl,
+    AttackConsumeDecl,
     ManeuverDecl,
     MoveDecl,
+    RepositionDecl,
     DefendDecl,
     RetreatDecl,
 )
@@ -213,6 +239,13 @@ def _raw(decl: DeclVariant) -> dict:
         if decl.argument_type:
             raw["argument_type"] = decl.argument_type
         return raw
+    if isinstance(decl, AttackConsumeDecl):
+        return {
+            "type": "attack",
+            "action": decl.action,
+            "target_id": decl.target_id,
+            "healing_item": {"item_id": decl.item_id, "target_id": decl.heal_target_id or decl.actor_id},
+        }
     if isinstance(decl, ConsumeDecl):
         return {
             "type": "interact",
@@ -229,6 +262,13 @@ def _raw(decl: DeclVariant) -> dict:
         elif decl.action in still_encounter.SEARCH_ACTIONS:
             raw["target_id"] = still_encounter.SEARCH_TARGET
         return raw
+    if isinstance(decl, RepositionDecl):
+        return {
+            "type": "ability",
+            "action": REPOSITION,
+            "target_id": decl.target_id or None,
+            "destination": decl.destination.model_dump(),
+        }
     if isinstance(decl, MoveDecl):
         return {
             "type": "maneuver",

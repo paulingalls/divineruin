@@ -1476,7 +1476,7 @@
     "ability_type": "elective",
     "level_requirement": 4,
     "cost": { "stamina": 0, "focus": 3, "scaling": null },
-    "effect": "Command an ally to use a healing item/ability as a declaration enhancer — they can attack AND heal in the same phase.",
+    "effect": "Command one player ally to attack and use one held healing item in the same phase. The order lasts through the end of the following round.",
     "narration_cue": "'Drink the potion — I'll cover you.'"
   },
   {
