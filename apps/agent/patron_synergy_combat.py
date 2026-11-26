@@ -6,9 +6,10 @@ import random
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Literal
 
+import ability_persistence
 import encounter_facts
 from dice import roll as dice_roll
-from patron_synergy import has_engine_synergy
+from patron_synergy import get_archetype_synergy, has_engine_synergy
 
 if TYPE_CHECKING:
     from combat_participant import CombatParticipant
@@ -22,6 +23,8 @@ MORTAEN_THRESHOLD_SHIELD = "mortaen_threshold_shield"
 MORTAEN_HOLD_THE_CROSSING = "mortaen_hold_the_crossing"
 NYTHERA_SALTWIND_CASTING = "nythera_saltwind_casting"
 
+RESTORING_GUARD = "aelora_restoring_guard"
+RESTORING_GUARD_STAMINA = 2
 KAELEN_WAR_SONGS = "kaelen_war_songs"
 TWO_ROUND_VEIL = "syrath_two_round_veil"
 VEILED_STRIKE = "syrath_veiled_strike"
@@ -222,6 +225,39 @@ async def grant_interceding_rallies(state: CombatState, packets: list[dict], all
             grant = await grant_marshal_rally(state, packet["actor_id"], ally_id, queries=queries, conn=conn)
             if grant is not None:
                 packet["rally_grant"] = grant
+
+
+async def restore_guard_stamina(packets: list[dict], *, queries, conn, damage: int = 0) -> None:
+    eligible = [
+        packet
+        for packet in packets
+        if "restoring_guard" not in packet
+        and (
+            (packet["ability_id"] == "warden_bark_skin" and packet["mechanical_effect"] == "round_ac_bonus")
+            or (packet["mechanical_effect"] == "damage_intercepted" and damage > 0)
+        )
+    ]
+    if not eligible:
+        return
+    players = await queries.get_players_for_update([packet["actor_id"] for packet in eligible], conn=conn)
+    for packet in eligible:
+        actor_id = packet["actor_id"]
+        player = players.get(actor_id)
+        if player is None:
+            raise RuntimeError(f"Restoring Guard actor {actor_id!r} has no player row")
+        if not has_engine_synergy(player, RESTORING_GUARD):
+            continue
+        synergy = get_archetype_synergy(player["class"], player["divine_favor"]["patron"])
+        assert synergy is not None
+        pool = player["stamina"]
+        current = pool["current"]
+        after = min(current + RESTORING_GUARD_STAMINA, pool["max"])
+        await ability_persistence.update_player_resources(actor_id, stamina=after, conn=conn)
+        packet["restoring_guard"] = {
+            "id": RESTORING_GUARD,
+            "name": synergy["name"],
+            "stamina_restored": after - current,
+        }
 
 
 def outnumbered_oath(player: dict, state: CombatState | None, attacker: CombatParticipant) -> bool:

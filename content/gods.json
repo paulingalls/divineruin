@@ -892,8 +892,9 @@
         "clauses": [
           {
             "effect": "Protective reactions restore 2 Stamina",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "aelora_restoring_guard"
           }
         ]
       },
@@ -975,8 +976,9 @@
         "clauses": [
           {
             "effect": "Protective reactions restore 2 Stamina",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "aelora_restoring_guard"
           }
         ]
       },
