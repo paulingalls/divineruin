@@ -266,3 +266,24 @@ test.each(["rogue", "spy"] as const)(
     });
   },
 );
+
+test.each(["guardian", "warden"] as const)(
+  "Aelora %s has an engine Restoring Guard clause",
+  (archetype) => {
+    const matrix = validateGods(catalog).find(
+      (god) => god.god_id === "aelora",
+    )?.layer_4_synergy_matrix;
+    expect(matrix?.[archetype]).toEqual({
+      type: "divine",
+      name: "Restoring Guard",
+      clauses: [
+        {
+          effect: "Protective reactions restore 2 Stamina",
+          status: "active",
+          resolution: "engine",
+          implementation_id: "aelora_restoring_guard",
+        },
+      ],
+    });
+  },
+);

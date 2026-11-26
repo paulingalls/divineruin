@@ -184,6 +184,9 @@ async def pump(
         await patron_synergy_combat.grant_interceding_rallies(
             state, reaction_packets, closed["target_id"], queries=packet_deps["queries"], conn=packet_deps["conn"]
         )
+        await patron_synergy_combat.restore_guard_stamina(
+            reaction_packets, queries=packet_deps["queries"], conn=packet_deps["conn"]
+        )
         summaries.extend(reaction_packets)
         hesitation_reason = combat_reaction_contest.hesitation_reason(reacted)
         if hesitation_reason is not None:
@@ -370,6 +373,10 @@ async def pump(
             combat_reaction_effect.record_intercept(recorded_reactions, summary)
             combat_reaction_effect.record_shield_wear(recorded_reactions, state, head, summary)
             combat_reaction_effect.record_save_advantage(recorded_reactions, summary)
+            damage = summary.get("damage", 0)
+            await patron_synergy_combat.restore_guard_stamina(
+                recorded_reactions, queries=packet_deps["queries"], conn=packet_deps["conn"], damage=damage
+            )
         summaries.extend(deferred_reactions)
         if window_action is not None and (
             candidate := combat_hold_conditions.window_for(state, head, window_action, summary)
