@@ -211,7 +211,7 @@ async def test_cunning_hide_reloads_after_the_attack(rogue: MawlingHarness) -> N
     with patch("check_resolution.dice_roll", return_value=_d20(1)):
         packets = await rogue.drain()
     assert not any(packet.get("actor_id") == actor for packet in packets)
-    assert await db_queries.get_player(actor) == {**after, "temp_hp": 0}
+    assert await db_queries.get_player(actor) == after
     state = await rogue.reload()
     target = state.get_participant(foe)
     assert target is not None and target.hp_current == 91
