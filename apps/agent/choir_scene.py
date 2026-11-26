@@ -154,12 +154,27 @@ async def check_data(session, player, *, queries=db_queries):
     return player
 
 
-async def facts(session, *, queries=db_queries, location_id=None):
+async def facts(
+    session, *, location: dict, queries=db_queries, content=db_content_queries, location_id: str | None = None
+) -> dict | None:
     location_id = location_id or session.location_id
     if session.combat_state is not None and session.combat_state.location_id == location_id:
         return await choir_encounter.facts(session.combat_state, queries=queries)
     record = await load(session, queries=queries, location_id=location_id)
-    if record is None or record["status"] == "destroyed":
+    if record is None:
+        if "choir" not in location.get("tags", []):
+            return None
+        encounter_id = "hollow_choir"
+        template = await content.get_encounter_template(encounter_id)
+        if template is None:
+            raise ValueError(f"Missing Choir encounter template: {encounter_id}")
+        return {
+            "encounter_id": encounter_id,
+            "entry": f'enter_mode(mode="combat", encounter_id="{encounter_id}")',
+            "cue": template["description"],
+            "recommended_party_size": template["recommended_party_size"],
+        }
+    if record["status"] == "destroyed":
         return None
     if record["status"] == "combat":
         raise ValueError("Active Choir combat must be hydrated before scene narration")
