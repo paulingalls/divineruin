@@ -136,13 +136,13 @@ All modifiers apply to the creature's base loot table as defined in `game_mechan
 | **Named** | As written (bespoke tables, already 100%) | As written | As written (bespoke) | Unique items per creature |
 
 Skill requirements are checked before any roll. Every requirement must be met by the
-party's best tier for that skill among the player participants who fought; different
+party's best tier for that skill among the starting player participants. Different
 participants may supply different skills. Ineligible rows consume no RNG.
 Authored chance ≥100% overrides every role's chance modifier, including Minion:
 it skips the chance roll, while quantity still rolls dice and uses the role modifier.
-Role-promoted 100% chances still consume a chance roll. Currency is calculated separately.
-Seeded rewards remain identical to the previous generator when every gate passes and
-no authored guaranteed row is encountered.
+Role-promoted 100% chances still consume a chance roll.
+Item drops roll once at combat entry and stay with each enemy. Victory awards
+the items still carried by defeated enemies and rolls currency separately.
 
 ### Currency Drop Rules
 

@@ -17,6 +17,7 @@ import db_mutations_resonance
 import db_queries
 import dice
 import encounter_facts
+import enemy_pockets
 import event_types as E
 import racial_resonance
 import resonance
@@ -217,6 +218,7 @@ async def resume_inner_fire(session, *, db_mod, queries, mutations, concentratio
     facts = cursor["facts"]
     fate_rolls = PhaseRolls(kept=kept)
     async with scratch_guard(session), db_mod.transaction() as conn:
+        await enemy_pockets.initialize(state, conn=conn, queries=queries)
         facts["concentration_broken"] = await concentration_break_mod.break_concentration_on_damage(
             session,
             facts["fire_damage"],
