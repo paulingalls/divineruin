@@ -1,5 +1,6 @@
 """Turn Undead/Hollow through exploration, combat and settlement tools."""
 
+from itertools import chain, repeat
 from unittest.mock import patch
 
 import pytest
@@ -78,7 +79,8 @@ async def test_destruction_and_victory(fight: TurnFight, immune: bool) -> None:
     state = await fight.persist()
     before = await fight.player()
     await fight.declare_turn(*(fight.attack(enemy) for enemy in enemies), cast=True)
-    with patch("check_resolution.dice_roll", return_value=_d20(2)):
+    rolls = chain(repeat(_d20(2), len(enemies)), repeat(_d20(18)))
+    with patch("check_resolution.dice_roll", side_effect=rolls):
         result = await fight.command("resolve_phase", {})
         cast = fight.cast(result["packets"])
         await fight.reload()
@@ -122,7 +124,7 @@ async def test_second_recipient_resumes_through_fate(fight: TurnFight) -> None:
     await favor(fight)
     before = await fight.player()
     await fight.declare_turn(cast=True)
-    with patch("check_resolution.dice_roll", side_effect=[_d20(2), _d20(3), _d20(20), _d20(2)]):
+    with patch("check_resolution.dice_roll", side_effect=[_d20(2), _d20(3), _d20(20), _d20(18)]):
         first = (await fight.command("resolve_phase", {}))["fate_offer"]
         assert first["roller_id"] == "first"
         next_result = await fight.command(
