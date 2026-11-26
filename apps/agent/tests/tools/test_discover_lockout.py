@@ -4,6 +4,7 @@ import pytest
 
 from check_discovery import _check_discover_impl
 from tools._discover_fixtures import _make_discover_mocks, _roll
+from tools._discover_fixtures import mock_discovery_events as mock_discovery_events
 from tools._helpers import _make_context
 
 
@@ -11,8 +12,7 @@ class TestDiscoverLockoutOrdering:
     """Persist before locking out discovery so a rollback leaves the element retryable."""
 
     @pytest.mark.asyncio
-    @patch("check_discovery_roll.publish_game_event", new_callable=AsyncMock)
-    async def test_persist_failure_leaves_element_reattemptable(self, _evt):
+    async def test_persist_failure_leaves_element_reattemptable(self, mock_discovery_events):
         content, queries, mutations = _make_discover_mocks()
         mutations.set_player_flag = AsyncMock(side_effect=RuntimeError("db down"))
         ctx = _make_context(location_id="test_location")

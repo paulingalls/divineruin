@@ -12,6 +12,7 @@ import combat_packet
 from check_resolution_save import resolve_saving_throw
 from conditions import apply_condition
 from tools._discover_fixtures import LOCATION_WITH_HIDDEN, _roll
+from tools._discover_fixtures import mock_discovery_events as mock_discovery_events
 from tools._helpers import SAMPLE_PLAYER, _ctx_with_bus, _make_context
 
 BLESSED = apply_condition([], "blessed")
@@ -305,8 +306,7 @@ async def test_gather_tool_no_condition_does_not_persist():
 
 
 @pytest.mark.asyncio
-@patch("check_discovery_roll.publish_game_event", new_callable=AsyncMock)
-async def test_discover_tool_consumes_and_persists_atomically(_evt):
+async def test_discover_tool_consumes_and_persists_atomically(mock_discovery_events):
     from sample_fixtures import make_db_mod
 
     from check_discovery import _check_discover_impl
@@ -344,8 +344,7 @@ async def test_discover_tool_consumes_and_persists_atomically(_evt):
 
 
 @pytest.mark.asyncio
-@patch("check_discovery_roll.publish_game_event", new_callable=AsyncMock)
-async def test_discover_tool_no_condition_does_not_persist(_evt):
+async def test_discover_tool_no_condition_does_not_persist(mock_discovery_events):
     from sample_fixtures import make_db_mod
 
     from check_discovery import _check_discover_impl

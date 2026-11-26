@@ -11,6 +11,7 @@ import combat_packet
 import combat_phase
 from combat_phase import ResolutionPacket
 from declarations import resolve_declaration
+from tools._discover_fixtures import mock_discovery_events as mock_discovery_events
 
 
 def charm_state():
@@ -138,7 +139,7 @@ def test_hearing_auto_failure_without_rng_or_bonus(resolver_name, threshold):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("kind", ["skill", "discover"])
 @pytest.mark.parametrize("candidate", [False, True])
-async def test_public_hearing_and_sight_routes(kind, candidate, monkeypatch):
+async def test_public_hearing_and_sight_routes(kind, candidate, monkeypatch, mock_discovery_events):
     database, _ = make_db_mod()
     monkeypatch.setattr("db.transaction", database.transaction)
     monkeypatch.setattr("patron_deeds.record_deed", AsyncMock())
@@ -161,12 +162,9 @@ async def test_public_hearing_and_sight_routes(kind, candidate, monkeypatch):
         check_tools.db_content_queries, "get_location", AsyncMock(return_value={"hidden_elements": hidden})
     )
     monkeypatch.setattr(check_tools.db_content_queries, "get_item", AsyncMock(return_value=None))
-    events = AsyncMock()
-    monkeypatch.setattr(check_tools, "publish_game_event", events)
+    monkeypatch.setattr(check_tools, "publish_game_event", mock_discovery_events)
     import check_discovery
-    import check_discovery_roll
 
-    monkeypatch.setattr(check_discovery_roll, "publish_game_event", events)
     monkeypatch.setattr(check_discovery, "publish_hidden_revealed", AsyncMock())
     monkeypatch.setattr(check_tools.db_mutations, "set_player_flag", AsyncMock())
     ctx = make_context()
@@ -187,7 +185,7 @@ async def test_public_hearing_and_sight_routes(kind, candidate, monkeypatch):
     assert result["outcome"] == "automatic_failure"
     assert "hear" in result["narrative_hint"].lower()
     assert ctx.userdata.attempted_discoveries == set()
-    events.assert_not_awaited()
+    mock_discovery_events.assert_not_awaited()
     mutations.update_skill_advancement.assert_not_awaited()
     # The same public producer must carry false independently, without reading the phrase "listen".
     sight = payload.model_copy(update={"hearing_only": False})
@@ -196,7 +194,7 @@ async def test_public_hearing_and_sight_routes(kind, candidate, monkeypatch):
     visible_result = json.loads(await check_tools.check(ctx, sight))
     assert visible_result["roll"] > 0
     assert visible_result["outcome"] != "automatic_failure"
-    assert events.await_count > 0
+    assert mock_discovery_events.await_count > 0
 
 
 @pytest.mark.asyncio

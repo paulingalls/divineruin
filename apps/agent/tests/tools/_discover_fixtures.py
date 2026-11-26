@@ -1,5 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+
 LOCATION_WITH_HIDDEN = {
     "id": "test_location",
     "name": "Test Location",
@@ -113,3 +115,11 @@ def _roll(total):
     from dice import DiceResult
 
     return DiceResult(notation="d20", rolls=[total], dropped=[], total=total)
+
+
+@pytest.fixture
+def mock_discovery_events(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
+    events = AsyncMock()
+    monkeypatch.setattr("check_discovery.publish_game_event", events)
+    monkeypatch.setattr("check_discovery_roll.publish_game_event", events)
+    return events
