@@ -246,8 +246,9 @@
         "clauses": [
           {
             "effect": "Arcana as bonus starting skill.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "veythar_arcane_revelation"
           },
           {
             "effect": "Divine magic auto-identifies magical effects (no check)",

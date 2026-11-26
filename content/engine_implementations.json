@@ -37,6 +37,7 @@
   "zhael_unravel_fate": "zhael_unravel_fate:activate",
   "valdris_the_scales_verdict": "valdris_verdict:scales_verdict",
   "thyra_seasonal_attunement": "thyra_seasons:skill_bonus",
+  "veythar_arcane_revelation": "rules_engine:_get_skill_tier",
   "thyra_thornwall": "thyra_thornwall:thornwall",
   "thyra_wildmothers_wrath": "thyra_wrath:wildmothers_wrath",
   "mortaen_threshold_walk": "patron_combat_edges:threshold_walk",

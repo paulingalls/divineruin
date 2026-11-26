@@ -443,3 +443,20 @@ test("Nythera's Unmoored Step is active for skirmishers and rogues", () => {
     });
   }
 });
+
+test("Veythar's Arcane Revelation grants clerics Arcana training", () => {
+  const veythar = validateGods(catalog).find((god) => god.god_id === "veythar");
+  expect(veythar?.layer_4_synergy_matrix.cleric?.clauses).toEqual([
+    {
+      effect: "Arcana as bonus starting skill.",
+      status: "active",
+      resolution: "engine",
+      implementation_id: "veythar_arcane_revelation",
+    },
+    {
+      effect: "Divine magic auto-identifies magical effects (no check)",
+      status: "active",
+      resolution: "narrated",
+    },
+  ]);
+});

@@ -271,7 +271,7 @@ async def get_single_skill_advancement(
     conn: asyncpg.Connection | asyncpg.Pool | None = None,
     default_tier: str = "untrained",
 ) -> dict:
-    """Fetch one skill's advancement counters with the effective starting tier.
+    """Fetch one skill's advancement counters with the earned starting tier.
 
     The column default ``untrained`` also represents a tier-less narrative-moment row. In that
     case the caller's proficiency-derived default remains authoritative, matching player hydration.
