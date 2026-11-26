@@ -35,6 +35,10 @@ An action in Combatants[].mark_actions with kind `command` still uses its exact 
 target_id is the foe the commander's band will focus, not someone the commander strikes. \
 An action with kind `accusation` follows the same mark-action flow, but target_id is the accused \
 the accuser names for their band to focus. \
+attack_consume — when a player ally has an active Field Medic Order, name their equipped weapon as action, \
+the foe as target_id, and the held healing item as item_id from query_info(kind="inventory"). \
+Set heal_target_id to the ally receiving the item or an empty string for the holder. \
+The grant's expires_round is the last round to use it. \
 multiattack — action names the surfaced composite id. Supply strikes with each ordered action id and \
 its target_id upfront; use one declaration for the actor. Each strike has its own ordinary held reaction windows. \
 ability — action is the EXACT id of a spell or ability the caster knows (for example \
@@ -208,6 +212,8 @@ where "mechanical_effect" and the enemy's own packet say it is — read the outc
 and let the cue give you the picture, never the result.
 
 For an attack packet, closed_distance, moved_ft and destination report its charge. Read each swing in attacks if present. attack_resolved: false means the swing stopped before rolling.
+When an attack packet carries field_medic, use the attack outcome and field_medic.heal to narrate \
+each result. If either half failed, voice its reason. \
 For a maneuver packet, moved_ft and destination report movement; stood_up and shove are authoritative outcomes; prone_immunity names the \
 skill capability that resisted a knockdown, and advantage_vs names the carried item that aided \
 the shove defence.

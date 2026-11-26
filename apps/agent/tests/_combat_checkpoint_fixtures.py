@@ -20,7 +20,8 @@ def checkpoint_fake_connections(monkeypatch) -> None:
         return await read_party(conn, ids)
 
     async def start_on_connection(session, state, retained, *, mutations, queries, db_mod, content=db_content_queries):
-        if db_mod is db and isinstance(mutations.save_combat_state, Mock):
+        save = mutations.save_combat_state
+        if db_mod is db and isinstance(save, Mock) and save._mock_wraps is None:
             db_mod, _ = make_db_mod()
         if isinstance(content, Mock) and not isinstance(content.get_loot_table, AsyncMock):
             content.get_loot_table = AsyncMock(return_value={"drops": []})

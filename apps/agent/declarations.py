@@ -23,6 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from combat_ability_gate import REPOSITION
 from reshape_payloads import parse_operations
 
 # Defend grants +2 AC until the next phase (gm_combat:105).
@@ -75,6 +76,7 @@ class Declaration:
     held_item_id: str | None = None
     reshape: list[dict] | None = None
     movement_mode: str = "ground"
+    healing_item: dict[str, str] | None = None
 
 
 def resolve_declaration(raw: dict) -> Declaration:
@@ -134,22 +136,33 @@ def resolve_declaration(raw: dict) -> Declaration:
     elif mode or item:
         raise ValueError("Quick Fingers mode and item require the Quick Fingers attack rider.")
     is_move = decl_type is DeclarationType.MANEUVER and action == "move"
+    is_reposition = decl_type is DeclarationType.ABILITY and action == REPOSITION
+    if is_reposition and raw.get("destination") is None:
+        raise ValueError('Declare Reposition with kind="reposition", a target_id, and a destination.')
     is_shadow_step = False
     if decl_type is DeclarationType.ABILITY and isinstance(action, str):
         from combat_ability_gate import SHADOW_STEP, declared_ability
 
         resolved = declared_ability(action)
         is_shadow_step = action == SHADOW_STEP or (resolved is not None and resolved[0].id == SHADOW_STEP)
-    if is_move or is_shadow_step:
+    if is_move or is_reposition or is_shadow_step:
         from combat_spatial import point
 
         point(raw.get("destination"))
     elif "destination" in raw:
-        raise ValueError("destination is only valid for move or Shadow Step")
+        raise ValueError("destination is only valid for move, Reposition or Shadow Step")
     if "held_item_id" in raw and (
         not isinstance(raw["held_item_id"], str) or not raw["held_item_id"] or decl_type is not DeclarationType.ATTACK
     ):
         raise ValueError("held_item_id requires an attack and a nonempty string")
+    healing_item = raw.get("healing_item")
+    if "healing_item" in raw and (
+        decl_type is not DeclarationType.ATTACK
+        or not isinstance(healing_item, dict)
+        or healing_item.keys() != {"item_id", "target_id"}
+        or not all(isinstance(value, str) and value for value in healing_item.values())
+    ):
+        raise ValueError("healing_item requires an attack and nonempty item_id and target_id strings")
     movement_mode = raw.get("movement_mode", "ground")
     if "movement_mode" in raw and (not is_move or movement_mode not in ("ground", "flying")):
         raise ValueError("movement_mode must be ground or flying on a move")
@@ -167,6 +180,7 @@ def resolve_declaration(raw: dict) -> Declaration:
         movement_mode=movement_mode,
         strikes=raw.get("strikes"),
         held_item_id=raw.get("held_item_id"),
+        healing_item=healing_item,
         destination=raw.get("destination"),
         action=action,
         target_id=target_id,

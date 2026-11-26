@@ -7,6 +7,7 @@ import ability_persistence
 import check_resolution
 import check_resolution_save
 import combat_melee_approach
+import combat_order_riders
 import combat_recharge
 import combat_spatial
 import combat_spell_heal
@@ -50,6 +51,7 @@ from combat_condition_landing import _land_condition_on_one
 from combat_down import damage_target_unavailable
 from combat_fate_rolls import PacketRolls, packet_save
 from combat_legendary_resistance import finalize_save, override_fields
+from combat_order_riders import FIELD_MEDIC
 from combat_participant import CombatParticipant
 from combat_structures import blocked_reason, line_blocker
 from condition_catalog import CRIPPLED, STUDIED_WEAKNESS
@@ -128,6 +130,8 @@ def order_recipients(
         if index < len(allies):
             if not target.is_ally:
                 raise DeliveryRefused(f"{ability.name} requires an ally in the command slot.")
+            if ability.id == FIELD_MEDIC and target.type != "player":
+                raise DeliveryRefused(f"{ability.name} requires a player ally.")
             if target_id == actor.id:
                 raise DeliveryRefused(f"{actor.name} cannot command themselves with {ability.name}.")
             if target.hp_current <= 0 or target.is_fallen:
@@ -162,14 +166,34 @@ async def preflight_orders(state: CombatState, *, queries) -> None:
         _gate_ability_condition(player, ability, variant)
 
 
-async def narrated_order(
+async def resolve_order(
     state: CombatState, actor: CombatParticipant, decl: Declaration, resolved: DeclaredAbility, *, conn, queries
+) -> dict:
+    ability = resolved[0]
+    allies, foes = order_recipients(state, actor, decl, ability)
+    await pay(actor.id, resolved, queries=queries, conn=conn)
+    grant = await grant_marshal_rally(state, actor.id, allies[0], queries=queries, conn=conn)
+    if ability.id == DIRECT_STRIKE:
+        rider = combat_order_riders.grant_direct_strike(state, actor.id, allies[0], foes[0])
+    elif ability.id == COORDINATED_ASSAULT:
+        rider = combat_order_riders.grant_coordinated_assault(state, actor.id, allies)
+    elif ability.id == FIELD_MEDIC:
+        rider = combat_order_riders.grant_field_medic(state, actor.id, allies[0])
+    else:
+        raise ValueError(f"No order rider for {ability.id}")
+    return {**order_receipt(actor, decl, resolved, grant, effect_resolution="engine"), "order_rider_grant": rider}
+
+
+def order_receipt(
+    actor: CombatParticipant,
+    decl: Declaration,
+    resolved: DeclaredAbility,
+    grant: dict | None,
+    *,
+    effect_resolution: str,
 ) -> dict:
     ability, variant = resolved
     authored = variant or ability
-    allies, _ = order_recipients(state, actor, decl, ability)
-    await pay(actor.id, resolved, queries=queries, conn=conn)
-    grant = await grant_marshal_rally(state, actor.id, allies[0], queries=queries, conn=conn)
     return {
         **({"rally_grant": grant} if grant is not None else {}),
         "actor_id": actor.id,
@@ -178,7 +202,7 @@ async def narrated_order(
         "action": decl.action,
         "name": ability.name,
         "target_ids": _order_targets(decl),
-        "effect_resolution": "narrated",
+        "effect_resolution": effect_resolution,
         "effect": authored.effect,
         "narration_cue": authored.narration_cue,
         "deducted": {"focus": authored.cost.focus, "stamina": authored.cost.stamina},

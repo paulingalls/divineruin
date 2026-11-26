@@ -39,7 +39,7 @@ async def declare_phase(
     """Open a combat phase by recording every combatant's declared action for this
     round, then call resolve_phase to resolve them. Pass one declaration per acting
     combatant, each naming its actor_id and picked by its kind: attack, ability,
-    ability_move, interact, consume, maneuver, move, defend or retreat. For a potion, salve or berry,
+    ability_move, interact, consume, attack_consume, maneuver, move, reposition, defend or retreat. For a potion, salve or berry,
     declare consume with the holder's actor_id and the queried item_id. Set target_id
     to the ally receiving it or an empty string for the holder. Move names an explicit destination in feet and consumes
     this phase action, limited to the actor's persisted speed. Only the Architect may include
@@ -50,10 +50,13 @@ async def declare_phase(
     nearest point on a wall segment or of a standing structure, or inside smoke. No opportunity attacks
     are provoked, and the rogue finishes concealed.
     Second Wind is an ability with empty targets. Rallying Shout names one standing ally.
-    Marshal orders use ability declarations and name standing allies other than the marshal.
-    Use marshal_direct_strike with [ally, foe], marshal_coordinated_assault with two distinct
-    allies in the requested order, and marshal_reposition, marshal_field_medic_order, and
-    marshal_sacrifice_play with one ally each.
+    Marshal orders name standing allies other than the marshal. For Reposition, use kind="reposition",
+    actor_id for the marshal, target_id for the ally, and destination in feet within 15 feet of the ally.
+    Use ability declarations for marshal_direct_strike with [ally, foe], marshal_coordinated_assault
+    with two distinct allies in the requested order, and marshal_sacrifice_play with one ally.
+    Declare marshal_field_medic_order on one player ally. Once granted, before the end of the
+    following round, that ally can declare attack_consume with an equipped weapon name, attack target_id,
+    healing item_id, and heal_target_id (empty for the holder). An ordinary attack leaves the order pending.
     Devastating Strike is an ability naming one foe. For Shield Bash, declare a melee weapon attack
     with rider="shield_bash". A rogue can set rider="dash" for double approach movement
     or rider="hide" to attempt Stealth after the attack. Use rider="disengage" to avoid enemy opportunity

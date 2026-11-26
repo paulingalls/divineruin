@@ -112,6 +112,11 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - [x] All 16 martial L4/L8 elective techniques work in a fight. Warriors can use `warrior_precision_strike`, `warrior_reckless_assault`, `warrior_taunt`, `warrior_war_cry`, `warrior_cleaving_blow`, `warrior_whirlwind`, `warrior_unstoppable_charge`, `warrior_iron_stance`. Rogues can use `rogue_dirty_trick`, `rogue_crippling_strike`, `rogue_exploit_weakness`, `rogue_blade_flurry`, `rogue_vanish`, `rogue_smoke_bomb`, `rogue_shadow_step`. Marshals can use `marshal_war_cry` to frighten nearby foes who can hear and rally other allies through the round.
 - [x] `rogue_quick_fingers` rides a melee attack and steals, plants or swaps real inventory before the swing. Registered-tool tests cover pocket loot, active mentor costs, wary retaliation, and Fate reloads.
 - [x] Weapon equips check proficiency once item weapon categories are normalized in both loaders. Registered-tool tests cover the spoken equip warning, attack disadvantage, advantage cancellation, and combat reload (`test_weapon_proficiency_equip.py`).
+- [x] Direct Strike gives the named ally advantage and +1d4 damage on their next attack against the named foe, in the engine.
+- [x] Coordinated Assault gives two allies advantage on their next attack, and +1d6 each when both hit the same foe, in the engine.
+- [x] Reposition moves an ally 15 ft at once without provoking reactions, in the engine.
+- [x] Sacrifice Play costs the ally 2d6 untyped damage, and their next attack automatically hits and crits, in the engine.
+- [x] Field Medic Order lets a player ally attack and use a healing item in the same phase, in the engine.
 - [x] A Retreat declaration moves the player through the enemy-opportunity route driver, so it provokes unless Disengaged.
 
 **Key references:**

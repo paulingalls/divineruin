@@ -13,8 +13,8 @@ Finding the journal grants it and completes the search atomically.
 Artifact choices persist once with their effects.
 Leave now requests a recap before disconnect, with a 15-second home fallback.
 
-**Position: 413 / 582 acceptance criteria — 71%** (the sum of the per-phase
-counts in `README.md`). **169 criteria remain unchecked.** Phases 2, 5, 6 and 10 have all recorded
+**Position: 420 / 587 acceptance criteria — 72%** (the sum of the per-phase
+counts in `README.md`). **167 criteria remain unchecked.** Phases 2, 5, 6 and 10 have all recorded
 criteria checked. Phase 3 is still Partial at 34/34:
 casting infrastructure is exercised, but complete deterministic spell-effect
 coverage is **unverified**. All 87 spell rows carry textual `mechanics`; this
@@ -101,7 +101,7 @@ tables versus JSONB backfills. Existing implementations do not authorize
 rewriting those criteria.
 
 The M4.7/M4.8 capstones exercise encounter roles and beneficial conditions;
-Phase 4 records 78/78. Beat-3 natural narration pauses remain unverified here.
+Phase 4 records 83/83. Beat-3 natural narration pauses remain unverified here.
 Phase 7 M7.4 is reconciled on 2026-11-06 (`mbp-generated-combat`): generated entry and creature queries use player-derived tiers, active companion profile factors and difficulty-specific HP/DPR windows. The five remaining Phase 7 criteria belong to M7.3; native Choir audio certification remains separate.
 
 The story-111 retired-tool-name guard was deleted in `cb5dd18e`; it no longer

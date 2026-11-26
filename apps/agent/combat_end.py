@@ -170,6 +170,7 @@ async def _end_combat_db(
     import still_scene
 
     await enemy_pockets.initialize(cs, conn=conn, queries=queries, content=content)
+    cs.order_riders.clear()
     await architect_scene.end(session, cs, outcome, mutations=mutations, queries=queries, conn=conn)
     await still_scene.end(session, cs, outcome, mutations=mutations, queries=queries, conn=conn)
 

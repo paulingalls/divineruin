@@ -1,6 +1,8 @@
 """Player ability packet dispatch inside the phase transaction."""
 
 import combat_martial
+import combat_reposition
+import combat_sacrifice_play
 import combat_shadow_step
 import veythar_wellspring
 from combat_ability import (
@@ -12,6 +14,7 @@ from combat_ability import (
 from combat_ability_gate import (
     EXPLOIT_WEAKNESS,
     MARSHAL_ORDERS,
+    REPOSITION,
     SECOND_WIND,
     SHADOW_STEP,
     SMOKE_BOMB,
@@ -19,6 +22,7 @@ from combat_ability_gate import (
     declared_ability,
 )
 from combat_deescalation import _resolve_deescalation_packet
+from combat_order_riders import SACRIFICE_PLAY
 
 
 async def resolve(
@@ -55,6 +59,20 @@ async def resolve(
     # ability-condition path — deduct its cost and land the condition on the target participant —
     # NOT through _resolve_ability_packet (which casts a spell). Pre-gated in _prevalidate_ability_focus.
     resolved = declared_ability(decl.action)
+    if resolved is not None and resolved[0].id == SACRIFICE_PLAY:
+        return await combat_sacrifice_play.resolve(
+            session,
+            state,
+            attacker,
+            decl,
+            resolved,
+            conn=conn,
+            sink=sink,
+            progress=progress,
+            queries=queries,
+            mutations=mutations,
+            concentration_break_mod=concentration_break_mod,
+        )
     if resolved is not None and resolved[0].id == SHADOW_STEP:
         if player_movement is None:
             raise ValueError("Shadow Step requires player movement")
@@ -69,8 +87,10 @@ async def resolve(
         return await combat_martial.second_wind(
             state, attacker, resolved, conn=conn, queries=queries, mutations=mutations
         )
+    if resolved is not None and resolved[0].id == REPOSITION:
+        return await combat_reposition.resolve(state, attacker, decl, resolved, conn=conn, queries=queries)
     if resolved is not None and resolved[0].id in MARSHAL_ORDERS:
-        return await combat_martial.narrated_order(state, attacker, decl, resolved, conn=conn, queries=queries)
+        return await combat_martial.resolve_order(state, attacker, decl, resolved, conn=conn, queries=queries)
     if resolved is not None and resolved[0].id == EXPLOIT_WEAKNESS:
         return await combat_martial.exploit_weakness(state, attacker, decl, resolved, conn=conn, queries=queries)
     cond_ability = condition_ability(resolved)

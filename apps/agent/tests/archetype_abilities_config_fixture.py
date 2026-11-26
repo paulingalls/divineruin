@@ -25,11 +25,11 @@ def setup_archetype_abilities_config_fixture() -> None:
     set_abilities(load_fixture_config())
 
 
-def marshal_order_targets(foe_id: str) -> dict[str, dict[str, str | list[str]]]:
+def marshal_order_targets(foe_id: str) -> dict[str, dict[str, str | list[str] | dict[str, int]]]:
     return {
         "marshal_direct_strike": {"target_ids": ["ally", foe_id]},
         "marshal_coordinated_assault": {"target_ids": ["ally", "second_ally"]},
-        "marshal_reposition": {"target_id": "ally"},
-        "marshal_field_medic_order": {"target_id": "ally"},
+        "marshal_reposition": {"target_id": "ally", "destination": {"x": 1, "y": 0, "z": 0}},
+        "marshal_field_medic_order": {"target_id": "player_ally"},
         "marshal_sacrifice_play": {"target_id": "ally"},
     }

@@ -3,6 +3,7 @@
 from dataclasses import asdict, dataclass
 
 import check_resolution_attack
+from combat_order_riders import COORDINATED_ASSAULT_NAME, DIRECT_STRIKE_NAME, SACRIFICE_PLAY_NAME
 
 
 @dataclass(frozen=True)
@@ -43,8 +44,8 @@ def thaw_blow(data: dict):
     return data["action"], kinds[data["kind"]](**fields), data["effective_ac"]
 
 
-def attack_fields(attack_result: check_resolution_attack.AttackResult, effective_ac: int) -> dict:
-    fields = dict(
+def attack_fields(attack_result: check_resolution_attack.AttackResult, effective_ac: int, action: dict) -> dict:
+    fields: dict = dict(
         hit=attack_result.hit,
         roll=attack_result.roll,
         attack_total=attack_result.attack_total,
@@ -70,4 +71,26 @@ def attack_fields(attack_result: check_resolution_attack.AttackResult, effective
     )
     if attack_result.attack_disadvantage_source is not None:
         fields["attack_disadvantage_source"] = attack_result.attack_disadvantage_source
+    if attack_result.order_rider is not None:
+        fields["order_rider"] = {
+            "order_id": attack_result.order_rider["order_id"],
+            "name": DIRECT_STRIKE_NAME,
+            "dice": attack_result.order_damage_dice,
+            "raw_damage": attack_result.order_raw_damage,
+        }
+        if attack_result.hit and action.get("bonus_damage") is not None:
+            fields["bonus_damage_source"] = action["name"]
+    if (coordinated := attack_result.coordinated_rider) is not None:
+        order: dict = dict(
+            order_id=coordinated["order_id"], name=COORDINATED_ASSAULT_NAME, source_id=coordinated["source_id"]
+        )
+        if attack_result.pincer_dice is not None:
+            order.update(dice=attack_result.pincer_dice, raw_damage=attack_result.pincer_raw_damage)
+        fields["coordinated_assault"] = order
+    if (sacrifice := attack_result.sacrifice_rider) is not None:
+        fields["sacrifice_play"] = {
+            "order_id": sacrifice["order_id"],
+            "name": SACRIFICE_PLAY_NAME,
+            "source_id": sacrifice["source_id"],
+        }
     return fields

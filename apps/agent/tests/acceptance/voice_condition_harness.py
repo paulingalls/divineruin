@@ -7,7 +7,12 @@ from types import SimpleNamespace
 from typing import cast
 from unittest.mock import AsyncMock, patch
 
-from acceptance._livekit_client import register_data_packet_collector, wait_for_audio_track
+from acceptance._livekit_client import (
+    CleanupStack,
+    cancel_and_await,
+    register_data_packet_collector,
+    wait_for_audio_track,
+)
 from acceptance.multiplayer_voice._harness import PLAYER_TWO_SPEECH
 from acceptance.multiplayer_voice.test_guest_leaves import ToneTTS
 from acceptance.multiplayer_voice.test_host_handoff import LocalSTT
@@ -150,6 +155,7 @@ async def run_voice_commands(harness, sd, model, agent, monkeypatch, *, speaker=
     multiplayer = None
     stream: rtc.AudioStream | None = None
     audio_task = None
+    unregister = None
     received_audio = []
     transcripts = []
     command_stt = CommandSTT()
@@ -170,6 +176,17 @@ async def run_voice_commands(harness, sd, model, agent, monkeypatch, *, speaker=
             if max(abs(sample) for sample in event.frame.data) > 500:
                 received_audio.append(event.frame.duration)
 
+    async def finish_session() -> None:
+        try:
+            await session.aclose()
+        finally:
+            try:
+                if sd.session_end_task is not None:
+                    await sd.session_end_task
+            finally:
+                if sd.multiplayer_close_task is not None:
+                    await sd.multiplayer_close_task
+
     # Session teardown writes a recap; keep its provider call out of this unpaid lane.
     with (
         patch("base_agent._make_tts", return_value=ToneTTS()),
@@ -185,7 +202,7 @@ async def run_voice_commands(harness, sd, model, agent, monkeypatch, *, speaker=
             )
             active_lifecycle = cast(PartyLifecycle, lifecycle)
             assert await active_lifecycle.authorize(guest) is not None
-            register_data_packet_collector(harness.player_two, topic="game_events", queue=events)
+            unregister = register_data_packet_collector(harness.player_two, topic="game_events", queue=events)
             track = await wait_for_audio_track(harness.player_two, identity=harness.listener.local_participant.identity)
             stream = rtc.AudioStream(track)
             audio_task = asyncio.create_task(capture_audio())
@@ -232,17 +249,16 @@ async def run_voice_commands(harness, sd, model, agent, monkeypatch, *, speaker=
                 hud.append(json.loads(data))
             return hud
         finally:
-            if multiplayer is not None:
-                await multiplayer.aclose()
-            if audio_task is not None:
-                audio_task.cancel()
-                await asyncio.gather(audio_task, return_exceptions=True)
-            if stream is not None:
-                await stream.aclose()
-            await session.aclose()
-            for task in (sd.session_end_task, sd.multiplayer_close_task):
-                if task is not None:
-                    await task
-            if lifecycle is not None:
-                await cast(PartyLifecycle, lifecycle).aclose()
-            await harness.aclose()
+            async with CleanupStack() as cleanup:
+                await cleanup.defer_async(harness.aclose)
+                if unregister is not None:
+                    cleanup.defer(unregister)
+                if lifecycle is not None:
+                    await cleanup.defer_async(cast(PartyLifecycle, lifecycle).aclose)
+                await cleanup.defer_async(finish_session)
+                if stream is not None:
+                    await cleanup.defer_async(stream.aclose)
+                if audio_task is not None:
+                    await cleanup.defer_async(cancel_and_await, audio_task)
+                if multiplayer is not None:
+                    await multiplayer.aclose()
