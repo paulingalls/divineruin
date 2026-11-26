@@ -61,6 +61,8 @@ def kael(walk: MawlingHarness) -> CombatParticipant:
 def attack(walk: MawlingHarness, target: str) -> dict:
     foe = bandit(walk)
     return {
+        "quick_fingers_mode": "",
+        "quick_fingers_item": "",
         "kind": "attack",
         "actor_id": foe.id,
         "action": foe.action_pool[0]["name"],
@@ -182,6 +184,8 @@ async def test_taunt_keeps_queued_reshape_and_its_original_target(reset_db_pool:
             defend(target),
             defend(taunter),
             {
+                "quick_fingers_mode": "",
+                "quick_fingers_item": "",
                 "kind": "attack",
                 "actor_id": owner_id,
                 "target_id": target,

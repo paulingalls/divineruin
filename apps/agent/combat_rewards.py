@@ -1,32 +1,10 @@
-"""Combat-end reward passes — ROLL the encounter's spoils, then DISTRIBUTE them across the party.
+"""Collect victory spoils and distribute them in ascending player-id lock order.
 
-Extracted from combat_end.py (decision dcc9c1cc1221): the victory branch had outgrown the file's
-500-line ceiling, and the passes share enough semantics that they belong together rather than
-inlined among the death/condition/ward teardown.
-
-Every pass runs INSIDE the caller's combat-end transaction (the phase tx or end_combat's own) and
-buffers its player-facing events into the caller's ``RewardChannel``, so a rolled-back phase
-un-grants the reward AND drops the unflushed event. Helpers take explicit args — no session or
-module-global reach-through — so the caller owns the transaction and the event lifetime.
-
-Two invariants the passes share; neither may drift:
-
-  - ROLL is fully upstream of DISTRIBUTE. Distribution consumes no RNG, so the roll sequence stays
-    unchanged when every skill gate passes and no authored guaranteed row is encountered.
-  - Every distribution walks ``seat_order`` — ascending player_id. It is both the round-robin order
-    and the FOR UPDATE lock order (deadlock-free SSOT 5da95d657255). On the COMBAT path the caller
-    builds it from the player PARTICIPANTS who fought, so a mid-combat room joiner cannot dilute or
-    steal the haul; ``quest_tools`` reuses ``distribute_xp`` with the stage-eligible party members
-    instead (story-009), which is the right set for a reward nobody had to be present in a fight to
-    earn. The invariant this module owns is the ORDER, not which roster the caller derives. An EMPTY
-    seat_order means no player-life is left
-    to receive anything (a manual end_combat('victory') declared by a risen echo, concern
-    ab4ced4c2110), so each pass skips rather than dividing by zero.
+Reward events buffer in the caller's transaction and publish after commit.
 """
 
 import logging
 import random
-from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -35,10 +13,8 @@ import combat_resolution
 import encounter_loot
 import event_types as E
 import progression_tools
-import rules_engine
 from asset_utils import compute_item_image_url
 from combat_events import EventSink, emit_or_publish
-from rules_engine import SkillTier
 from tool_support import build_item_acquired_payload
 
 if TYPE_CHECKING:
@@ -78,7 +54,7 @@ class XpGrant:
 
 @dataclass
 class EncounterSpoils:
-    """Everything the defeated enemies yielded, rolled but not yet granted to anyone."""
+    """Currency, XP and carried items ready to distribute."""
 
     xp_total: int = 0
     currency_silver: int = 0
@@ -104,40 +80,8 @@ def seat_order_for(participants) -> list[str]:
     return sorted(p.id for p in participants if p.type == "player")
 
 
-async def _roll_enemy_loot(
-    p, rng: random.Random, *, party_tiers: Mapping[str, SkillTier], content
-) -> tuple[int, list[dict]]:
-    """Roll ONE defeated enemy's role-scaled currency + loot drops WITHOUT granting them.
-
-    Returns (silver, drops). Currency is rolled BEFORE loot, preserving the pre-M18 per-enemy RNG
-    consumption order. With every gate met and no authored guaranteed rows, seeded rewards stay
-    identical to the previous generator. The caller distributes the returned drops
-    across the party (M18 story-003), which consumes no RNG. Currency is 0 for a Minion (D79).
-    Untagged/legacy enemies (no category / loot_table_id) are inert — the empty-string defaults mean
-    pre-story-002 content drops nothing rather than crashing."""
-    currency = 0
-    if p.category:
-        if p.tier is None:
-            raise ValueError(f"enemy {p.id} missing authored tier")
-        currency = encounter_loot.calculate_currency_drop(p.category, p.tier, p.role, rng)
-    drops: list[dict] = []
-    if p.loot_table_id:
-        table = await content.get_loot_table(p.loot_table_id)
-        if table is not None:
-            drops = encounter_loot.generate_loot(table, p.role, party_tiers, rng)
-            for drop in drops:
-                drop["tainted"] = table.get("hollow_residue", False)
-    return currency, drops
-
-
-async def roll_encounter_spoils(
-    participants, rng: random.Random, *, party_tiers: Mapping[str, SkillTier], content
-) -> EncounterSpoils:
-    """ROLL pass (M18 story-003): walk the defeated enemies in participant order, rolling each one's
-    currency + loot into a SHARED pool and summing the encounter XP.
-
-    Distribution consumes no RNG. Each enemy's xp_value is already role-scaled at combat init,
-    so calculate_combat_xp only sums — it must not re-apply the role multiplier."""
+async def roll_encounter_spoils(participants, rng: random.Random) -> EncounterSpoils:
+    """Roll currency, sum role-scaled XP, and collect fallen enemies' remaining items."""
     spoils = EncounterSpoils()
     enemy_dicts = []
     for p in participants:
@@ -145,9 +89,13 @@ async def roll_encounter_spoils(
             continue
         enemy_dicts.append({"xp_value": p.xp_value})
         spoils.defeated_enemies.append(p.name)
-        enemy_silver, enemy_drops = await _roll_enemy_loot(p, rng, party_tiers=party_tiers, content=content)
-        spoils.currency_silver += enemy_silver
-        spoils.loot_pool.extend(enemy_drops)
+        if p.category:
+            if p.tier is None:
+                raise ValueError(f"enemy {p.id} missing authored tier")
+            spoils.currency_silver += encounter_loot.calculate_currency_drop(p.category, p.tier, p.role, rng)
+        if p.is_fallen:
+            assert p.carried_items is not None, f"enemy {p.id} has uninitialized carried items"
+            spoils.loot_pool.extend(p.carried_items)
     spoils.xp_total = combat_resolution.calculate_combat_xp(enemy_dicts)
     return spoils
 
@@ -356,28 +304,9 @@ async def grant_victory_rewards(
     conn,
     channel: RewardChannel,
 ) -> VictoryRewards:
-    """The whole victory payout, in the one order that must not drift: ROLL the shared spoils, then
-    hand out items, coin and XP along ``seat_order``.
-
-    The single ROLL is the RNG boundary — every distribution below consumes none, so a seeded run
-    reproduces when every gate passes and no authored guaranteed rows are encountered. XP still runs
-    last so its XP_AWARDED / LEVEL_UP land after the haul on the wire, the order the DM narrates in.
-    Each pass is awaited as its own statement: the sequence is the contract, not an argument list
-    whose evaluation order a cosmetic reorder could silently change.
-
-    Everything runs in the caller's transaction and buffers into ``channel``.
-    """
+    """Pay items, coin and XP in the order the DM narrates them."""
     seat_order = seat_order_for(participants)
-    party_tiers: dict[str, SkillTier] = {skill: "untrained" for skill in rules_engine.SKILLS}
-    for pid in seat_order:
-        player = await queries.get_player(pid, conn=conn)
-        if player is None:
-            continue
-        for skill in party_tiers:
-            tier = rules_engine._get_skill_tier(player, skill)
-            if rules_engine.SKILL_TIER_ORDER.index(tier) > rules_engine.SKILL_TIER_ORDER.index(party_tiers[skill]):
-                party_tiers[skill] = tier
-    spoils = await roll_encounter_spoils(participants, rng, party_tiers=party_tiers, content=content)
+    spoils = await roll_encounter_spoils(participants, rng)
     item_recipients: list[tuple[str, str]] = []
     primary_loot = await distribute_loot(
         spoils.loot_pool,

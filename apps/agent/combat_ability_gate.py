@@ -32,6 +32,9 @@ SHIELD_BASH_RIDER = "shield_bash"
 CRIPPLING_STRIKE = "rogue_crippling_strike"
 CRIPPLING_STRIKE_RIDER = "crippling_strike"
 EXPLOIT_WEAKNESS = "rogue_exploit_weakness"
+QUICK_FINGERS = "rogue_quick_fingers"
+QUICK_FINGERS_RIDER = "quick_fingers"
+QUICK_FINGERS_MODES = ("steal", "plant", "swap")
 CUNNING_ACTION = "rogue_cunning_action"
 CUNNING_RIDERS = ("dash", "hide", "disengage")
 RECKLESS_ASSAULT_RIDER = "reckless_assault"
@@ -40,7 +43,7 @@ ELECTIVE_ATTACK_RIDERS = {
     RECKLESS_ASSAULT_RIDER: "warrior_reckless_assault",
 }
 
-ELECTIVE_RIDER_ABILITIES = frozenset((*ELECTIVE_ATTACK_RIDERS.values(), CRIPPLING_STRIKE))
+ELECTIVE_RIDER_ABILITIES = frozenset((*ELECTIVE_ATTACK_RIDERS.values(), CRIPPLING_STRIKE, QUICK_FINGERS))
 
 IRON_STANCE_ABILITY = "warrior_iron_stance"
 VANISH = "rogue_vanish"
@@ -127,6 +130,14 @@ def attack_recipe(ability_id: str) -> dict[str, str | list[str]] | None:
         return {"kind": "attack", "rider": SHIELD_BASH_RIDER}
     if ability_id == CRIPPLING_STRIKE:
         return {"kind": "attack", "rider": CRIPPLING_STRIKE_RIDER}
+    if ability_id == QUICK_FINGERS:
+        return {
+            "kind": "attack",
+            "rider": QUICK_FINGERS_RIDER,
+            "weapon": "melee",
+            "quick_fingers_mode": list(QUICK_FINGERS_MODES),
+            "quick_fingers_item": "Use an owned inventory selector for plant or swap. Use an empty string for steal.",
+        }
     for rider, elective_id in ELECTIVE_ATTACK_RIDERS.items():
         if ability_id == elective_id:
             return {"kind": "attack", "rider": rider}

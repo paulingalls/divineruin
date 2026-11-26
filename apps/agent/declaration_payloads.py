@@ -22,9 +22,9 @@ from __future__ import annotations
 
 from typing import Annotated, Literal, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
-from combat_ability_gate import REPOSITION
+from combat_ability_gate import QUICK_FINGERS_RIDER, REPOSITION
 from item_effects import CONSUME_PREFIX
 from reshape_payloads import Destination, ReshapeSelection
 
@@ -34,7 +34,24 @@ RESHAPE_DESCRIPTION = (
 )
 
 
-class AttackDecl(BaseModel):
+class DeclarationPayload(BaseModel):
+    @model_validator(mode="before")
+    @classmethod
+    def require_attack_for_quick_fingers(cls, value: object) -> object:
+        if (
+            isinstance(value, dict)
+            and value.get("kind") != "attack"
+            and (
+                value.get("rider") == QUICK_FINGERS_RIDER
+                or value.get("quick_fingers_mode")
+                or value.get("quick_fingers_item")
+            )
+        ):
+            raise ValueError("Quick Fingers requires a melee attack.")
+        return value
+
+
+class AttackDecl(DeclarationPayload):
     """Strike a target with an equipped weapon."""
 
     kind: Literal["attack"]
@@ -51,7 +68,13 @@ class AttackDecl(BaseModel):
         "can use that rider for advantage on every swing of this weapon attack. Reckless Assault also gives attackers "
         "advantage against that warrior until their next declaration. "
         'Use "crippling_strike" to halve a foe\'s speed on hit until the round ends. '
+        'Use "quick_fingers" to steal, plant or swap before a melee attack. '
         "Use an empty string for an ordinary attack."
+    )
+    quick_fingers_mode: str = Field(description='Quick Fingers mode: "steal", "plant", or "swap". Empty otherwise.')
+    quick_fingers_item: str = Field(
+        description='For plant or swap, use the rogue\'s exact quick_fingers_item selector from query_info(kind="inventory"). '
+        "Empty for steal and other attacks."
     )
     reshape: list[ReshapeSelection] = Field(description=RESHAPE_DESCRIPTION)
 
@@ -63,7 +86,7 @@ class StrikeSelection(BaseModel):
     held_item_id: str
 
 
-class MultiattackDecl(BaseModel):
+class MultiattackDecl(DeclarationPayload):
     """One catalog composite; choose all ordered strike targets upfront."""
 
     model_config = {"extra": "forbid"}
@@ -73,7 +96,7 @@ class MultiattackDecl(BaseModel):
     strikes: list[StrikeSelection]
 
 
-class AbilityDecl(BaseModel):
+class AbilityDecl(DeclarationPayload):
     """Cast a spell or use an ability. This is how a caster acts IN COMBAT."""
 
     kind: Literal["ability"]
@@ -96,7 +119,7 @@ class AbilityDecl(BaseModel):
     )
 
 
-class AbilityMoveDecl(BaseModel):
+class AbilityMoveDecl(DeclarationPayload):
     """Use Shadow Step to move to a covered point in feet."""
 
     kind: Literal["ability_move"]
@@ -105,7 +128,7 @@ class AbilityMoveDecl(BaseModel):
     destination: Destination
 
 
-class InteractDecl(BaseModel):
+class InteractDecl(DeclarationPayload):
     """Interact with the scene. For healing items, use consume."""
 
     kind: Literal["interact"]
@@ -113,7 +136,7 @@ class InteractDecl(BaseModel):
     action: str = Field(description="What they interact with.")
 
 
-class ConsumeDecl(BaseModel):
+class ConsumeDecl(DeclarationPayload):
     """Spend the holder's action and one healing item to heal an ally."""
 
     kind: Literal["consume"]
@@ -122,7 +145,7 @@ class ConsumeDecl(BaseModel):
     target_id: str = Field(description='The ally receiving the item. Empty string ("") for the holder.')
 
 
-class AttackConsumeDecl(BaseModel):
+class AttackConsumeDecl(DeclarationPayload):
     """Attack and use one held healing item under an active Field Medic Order."""
 
     model_config = {"extra": "forbid"}
@@ -134,7 +157,7 @@ class AttackConsumeDecl(BaseModel):
     heal_target_id: str = Field(description='The ally receiving the item. Empty string ("") for the holder.')
 
 
-class ManeuverDecl(BaseModel):
+class ManeuverDecl(DeclarationPayload):
     """Shove, grapple or otherwise physically move a target."""
 
     kind: Literal["maneuver"]
@@ -144,7 +167,7 @@ class ManeuverDecl(BaseModel):
     )
 
 
-class MoveDecl(BaseModel):
+class MoveDecl(DeclarationPayload):
     """Move to an explicit point in feet, consuming the phase action."""
 
     kind: Literal["move"]
@@ -159,7 +182,7 @@ class MoveDecl(BaseModel):
     reshape: list[ReshapeSelection] = Field(description=RESHAPE_DESCRIPTION)
 
 
-class RepositionDecl(BaseModel):
+class RepositionDecl(DeclarationPayload):
     """Order a standing ally to move up to 15 feet immediately."""
 
     kind: Literal["reposition"]
@@ -168,7 +191,7 @@ class RepositionDecl(BaseModel):
     destination: Destination
 
 
-class DefendDecl(BaseModel):
+class DefendDecl(DeclarationPayload):
     """Make no attack and gain +2 AC until the next phase."""
 
     kind: Literal["defend"]
@@ -176,7 +199,7 @@ class DefendDecl(BaseModel):
     reshape: list[ReshapeSelection] = Field(description=RESHAPE_DESCRIPTION)
 
 
-class RetreatDecl(BaseModel):
+class RetreatDecl(DeclarationPayload):
     """Move away from standing foes, provoking enemy opportunity attacks unless Disengaged."""
 
     kind: Literal["retreat"]
@@ -231,6 +254,10 @@ def _raw(decl: DeclVariant) -> dict:
             raw["held_item_id"] = decl.held_item_id
         if decl.rider:
             raw["rider"] = decl.rider
+        if decl.quick_fingers_mode:
+            raw["quick_fingers_mode"] = decl.quick_fingers_mode
+        if decl.quick_fingers_item:
+            raw["quick_fingers_item"] = decl.quick_fingers_item
         return raw
     if isinstance(decl, AbilityMoveDecl):
         return {"type": "ability", "action": decl.action, "destination": decl.destination.model_dump()}

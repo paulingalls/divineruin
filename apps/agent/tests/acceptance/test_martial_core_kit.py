@@ -173,15 +173,7 @@ async def test_shield_bash_uses_weapon_then_con_save(
     state = await warriors.reload()
     enemy = state.get_participant(foe)
     assert enemy is not None
-    retaliation = {
-        "kind": "attack",
-        "actor_id": foe,
-        "action": enemy.action_pool[0]["name"],
-        "target_id": actor,
-        "held_item_id": "",
-        "rider": "",
-        "reshape": [],
-    }
+    retaliation = weapon_attack(foe, actor, "", weapon=enemy.action_pool[0]["name"])
     discovery = await warriors.command("query_info", {"kind": "abilities"})
     bash = next(row for row in discovery["abilities"] if row["id"] == "warrior_shield_bash")
     assert bash.get("combat") is not False
@@ -189,14 +181,7 @@ async def test_shield_bash_uses_weapon_then_con_save(
         "declare_phase",
         {
             "declarations": [
-                {
-                    **bash["declaration"],
-                    "actor_id": actor,
-                    "action": "Longsword",
-                    "target_id": foe,
-                    "held_item_id": "",
-                    "reshape": [],
-                },
+                {**weapon_attack(actor, foe, ""), **bash["declaration"]},
                 *([retaliation] if stunned else []),
             ]
         },
@@ -247,6 +232,8 @@ async def test_rally_advantage_is_consumed_by_the_first_attack_roll(warriors: Ma
         {
             "declarations": [
                 {
+                    "quick_fingers_mode": "",
+                    "quick_fingers_item": "",
                     "kind": "attack",
                     "actor_id": ally,
                     "action": "Longsword",
@@ -318,15 +305,7 @@ async def test_shield_bash_respects_legendary_resistance_and_stun_immunity(fight
         "declare_phase",
         {
             "declarations": [
-                {
-                    "kind": "attack",
-                    "actor_id": actor,
-                    "action": "Longsword",
-                    "target_id": foe,
-                    "held_item_id": "",
-                    "rider": "shield_bash",
-                    "reshape": [],
-                },
+                weapon_attack(actor, foe, "shield_bash"),
             ]
         },
     )
@@ -358,15 +337,7 @@ async def test_shield_bash_does_not_roll_a_save_for_a_fallen_foe(warriors: Mawli
         "declare_phase",
         {
             "declarations": [
-                {
-                    "kind": "attack",
-                    "actor_id": actor,
-                    "action": "Longsword",
-                    "target_id": foe,
-                    "held_item_id": "",
-                    "rider": "shield_bash",
-                    "reshape": [],
-                },
+                weapon_attack(actor, foe, "shield_bash"),
             ]
         },
     )
@@ -392,6 +363,8 @@ async def rogue(warriors: MawlingHarness) -> MawlingHarness:
 
 def weapon_attack(actor: str, foe: str, rider: str, *, weapon: str = "Longsword") -> dict:
     return {
+        "quick_fingers_mode": "",
+        "quick_fingers_item": "",
         "kind": "attack",
         "actor_id": actor,
         "target_id": foe,

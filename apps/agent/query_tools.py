@@ -369,6 +369,7 @@ async def _query_inventory_impl(
 ) -> str:
     session: SessionData = context.userdata
     from combat_item_rider import eligible_items, party_player
+    from combat_quick_fingers import inventory_selector
     from item_effects import CONSUME_PREFIX, heal_profile
     from weapon_proficiency import validate_weapon_profile
 
@@ -395,6 +396,7 @@ async def _query_inventory_impl(
                 "name": item.get("name"),
                 "type": item.get("type"),
                 "id": item.get("id"),
+                "quick_fingers_item": inventory_selector(item["id"], tainted=item.get("tainted", False)),
                 "item_target_id": f"item:{player_id}:{item['id']}",
                 **(
                     {"consume_id": f"{CONSUME_PREFIX}{item['id']}"}

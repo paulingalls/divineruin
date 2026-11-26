@@ -65,6 +65,8 @@ def test_declare_phase_binds_raw_json_declarations_to_the_engine_dict():
             "declarations": [
                 {
                     "reshape": [],
+                    "quick_fingers_mode": "",
+                    "quick_fingers_item": "",
                     "kind": "attack",
                     "actor_id": "player_1",
                     "action": "Longsword",

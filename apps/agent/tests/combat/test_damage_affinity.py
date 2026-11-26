@@ -91,6 +91,8 @@ async def declare_weapon(ctx):
         ctx,
         [
             AttackDecl(
+                quick_fingers_mode="",
+                quick_fingers_item="",
                 reshape=[],
                 kind="attack",
                 actor_id=ctx.userdata.player_id,

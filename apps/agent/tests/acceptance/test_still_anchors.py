@@ -14,6 +14,7 @@ import combat_hollow_death
 import combat_rewards
 import db_mutations
 import db_queries
+import encounter_loot
 import event_types as E
 import still_scene
 from combat_agent import CombatAgent
@@ -112,7 +113,16 @@ async def test_still_entry_search_and_weapon_damage(still):
 
 
 def strike(target, *, action="Longsword") -> dict[str, Any]:
-    return dict(reshape=[], kind="attack", action=action, target_id=target, held_item_id="", rider="")
+    return dict(
+        reshape=[],
+        kind="attack",
+        action=action,
+        target_id=target,
+        held_item_id="",
+        rider="",
+        quick_fingers_mode="",
+        quick_fingers_item="",
+    )
 
 
 def spell(action, *targets) -> dict[str, Any]:
@@ -217,9 +227,19 @@ async def test_still_flee_reload_and_settle_once(still):
     )
     await still.pool.execute("INSERT INTO skill_advancement(player_id,skill_id,tier) VALUES($1,'arcana','expert')", pid)
     await seed_known_spells(still.pool, pid, ("arcane_bolt", "arcane_magic_missile"))
-    response, state = await enter(still)
+    with patch.object(encounter_loot, "generate_loot", wraps=encounter_loot.generate_loot) as generate:
+        response, state = await enter(still)
     owner_id = state.still_encounter["owner_id"]
     anchors = state.still_encounter["anchor_ids"]
+    carried = {
+        row["id"]: row["carried_items"]
+        for row in state.round_checkpoints[0]["combat"]["participants"]
+        if row["id"] in [owner_id, *anchors]
+    }
+    assert Counter(call.args[0]["id"] for call in generate.call_args_list)["loot_still_anchor"] == 6
+    assert all(
+        carried[anchor] == [{"item_id": "shard_false_paradise", "quantity": 1, "tainted": True}] for anchor in anchors
+    )
     arcana = next(action for action in response["still"]["search_actions"] if action["skill"] == "arcana")
     before_loot = await inventory(still)
     player = await db_queries.get_player(pid)
@@ -254,7 +274,10 @@ async def test_still_flee_reload_and_settle_once(still):
     assert dormant is not None
     assert dormant["snapshot"]["encounter_facts"]["party_aggressors"] == {owner_id: [follower]}
     await fresh_session(still)
-    _, reentered = await enter(still)
+    with patch.object(encounter_loot, "generate_loot", wraps=encounter_loot.generate_loot) as generate:
+        _, reentered = await enter(still)
+    generate.assert_not_called()
+    assert {id_: reentered.get_participant(id_).carried_items for id_ in carried} == carried
     assert enemy_snapshot(reentered) == enemy_snapshot(saved)
     assert reentered.still_encounter == {**saved.still_encounter, "illusion": None}
     assert reentered.combat_id != saved.combat_id

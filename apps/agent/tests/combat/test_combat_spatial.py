@@ -111,7 +111,15 @@ def test_move_schema_reaches_engine():
             [
                 payload,
                 AttackDecl(
-                    reshape=[], kind="attack", actor_id="a", action="Sword", target_id="b", held_item_id="", rider=""
+                    quick_fingers_mode="",
+                    quick_fingers_item="",
+                    reshape=[],
+                    kind="attack",
+                    actor_id="a",
+                    action="Sword",
+                    target_id="b",
+                    held_item_id="",
+                    rider="",
                 ),
             ]
         )

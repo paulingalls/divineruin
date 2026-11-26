@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.78.1
+
+Proof uses measured agent acceptance coverage to pick the tests that check shared Python changes.
+
+Release steps: After merging, run `bash scripts/super-test-install.sh` from updated develop on the Mac Mini as the scheduler owner. The command is unpaid and writes no production data. The owner needs existing GitHub CLI authentication for weekly map PRs.
+
+The measured representatives would have missed #757. On merge `98ffe31a`, the selected concealed-target reader `test_architect_balance` passed. `test_vanish` and `test_martial_core_resume` failed.
+
+## 0.78.0
+
+Enemies now carry their rolled loot from the start of a fight and keep it across saves; victory awards what defeated enemies still carry. Rogues who learn Quick Fingers can steal, plant or swap a real item just before a melee strike. A failed attempt leaves the foe wary until the round ends, so a second attempt fails and its first attack on that rogue has advantage. Unravel Fate refuses a rewind that would split a Quick Fingers transfer between a fighter's inventory and an enemy's pocket.
+
+Release steps:
+
+- After deploy, run `SEED_PRODUCTION=1 bun run seed` from the deployed checkout with its production environment configured. This writes production content and uses no paid providers.
+
 ## 0.77.0
 
 The Marshal's five orders now work as rules, not just narration. Direct Strike gives an ally advantage and an extra 1d4 on their next attack against the named foe. Coordinated Assault gives two allies advantage, and if both hit the same foe, each adds 1d6. Sacrifice Play costs the ally 2d6 at once, and their next attack automatically hits and crits. Reposition moves an ally up to 15 feet at once, without provoking reactions. Field Medic Order lets a player ally attack and drink or apply a healing item in the same phase. An unused order lasts through the end of the following round and never carries into the next fight.

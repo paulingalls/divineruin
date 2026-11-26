@@ -89,6 +89,8 @@ async def declare_attack(fight: MawlingHarness, *, composite: bool = False) -> N
         }
     else:
         attack = {
+            "quick_fingers_mode": "",
+            "quick_fingers_item": "",
             "kind": "attack",
             "actor_id": MOVER,
             "target_id": target,

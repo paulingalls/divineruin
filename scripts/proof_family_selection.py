@@ -7,6 +7,7 @@ from functools import cache
 from pathlib import Path
 
 from proof_content_sql import content_literals, seed_tables, sql_reads
+from proof_coverage_map import first_reader, ordinary_agent_source, ordinary_candidates
 
 SHARED_CONTENT = {"content/players.json"}
 SHARED_INPUTS = {"scripts/seed_content.py", "scripts/migrations/**", *SHARED_CONTENT}
@@ -310,20 +311,7 @@ def source_readers(inventory, families, source):
     return readers, owners, own
 
 
-def ordinary_candidates(inventory, source, reaching):
-    direct = {t for t in reaching if source in inventory[t]["direct"]}
-    preferred = {t for t in reaching if source in inventory[t]["preferred"]}
-    return direct or preferred or reaching
-
-
-def first_reader(inventory, candidates):
-    return min(
-        candidates,
-        key=lambda t: (len(inventory[t]["closure"]), inventory[t]["path"], t),
-    )
-
-
-def select_sources(inventory, families, sources):
+def select_sources(inventory, families, sources, coverage):
     assignments = {task: set() for task in inventory}
     for source in sorted(sources):
         readers, owners, selected = source_readers(inventory, families, source)
@@ -340,6 +328,8 @@ def select_sources(inventory, families, sources):
                 reaching = readers & members
                 if not shared and (family not in owners or reaching):
                     selected |= reaching
+                elif shared and reaching and ordinary_agent_source(source):
+                    selected |= coverage.select(source, inventory, reaching, selected & members)
                 elif not selected & members:
                     candidates = ordinary_candidates(inventory, source, reaching) or members
                     selected.add(first_reader(inventory, candidates))
@@ -365,7 +355,7 @@ def audit_readers(source, inventory, readers, receiving, required, budget):
                 raise ValueError(f"{source}: family {family}: representative cap exceeded {sorted(selected)}")
 
 
-def audit_selection(tasks, inventory, families, sources):
+def audit_selection(tasks, inventory, families, sources, coverage):
     for source in sorted(sources):
         readers, owners, own = source_readers(inventory, families, source)
         receiving = {t for t in inventory if source in tasks[t]["keyed"] and source in tasks[t]["inputs"]}
@@ -394,7 +384,9 @@ def audit_selection(tasks, inventory, families, sources):
                 raise ValueError(f"orphan {source}: family {family}: missing representative coverage/input")
             if reaching and (extra := selected - reaching):
                 raise ValueError(f"{source}: family {family}: representatives do not reach source: {sorted(extra)}")
-            if len(selected - required) > (0 if required & members else 1):
+            if shared and reaching and ordinary_agent_source(source):
+                coverage.audit(source, family, inventory, reaching, selected, required & members)
+            elif len(selected - required) > (0 if required & members else 1):
                 raise ValueError(f"{source}: family {family}: representative cap exceeded {sorted(selected)}")
 
 

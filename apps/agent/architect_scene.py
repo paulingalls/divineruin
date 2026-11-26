@@ -10,6 +10,7 @@ import architect_entomb
 import architect_reaction
 import combat_round_checkpoint
 import combat_spatial
+import db_content_queries
 import encounter_facts
 from combat_state import CombatState
 
@@ -110,7 +111,9 @@ def restore(state: CombatState, record: dict) -> None:
     architect_encounter.validate(state)
 
 
-async def start(session, state: CombatState, retained: dict | None, *, mutations, queries, db_mod) -> None:
+async def start(
+    session, state: CombatState, retained: dict | None, *, mutations, queries, db_mod, content=db_content_queries
+) -> None:
     async with db_mod.transaction() as conn:
         player = await queries.get_player(session.primary_player_id, conn=conn, for_update=True)
         if read(player, state.location_id) != retained:
@@ -118,7 +121,9 @@ async def start(session, state: CombatState, retained: dict | None, *, mutations
         if retained is not None:
             restore(state, retained)
         await write(session, state, "combat", combat_id=state.combat_id, mutations=mutations, conn=conn)
-        await combat_round_checkpoint.capture(session, state, conn=conn, mutations=mutations, entry=True)
+        await combat_round_checkpoint.capture(
+            session, state, conn=conn, mutations=mutations, entry=True, queries=queries, content=content
+        )
 
 
 async def end(session, state: CombatState, outcome: str, *, mutations, queries, conn) -> None:

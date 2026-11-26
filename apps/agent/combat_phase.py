@@ -167,6 +167,7 @@ def advance_combat_phase(
 
     if state.beat == PhaseBeat.WRAP:
         architect_reaction.expire_walls(next_state)
+        next_state.quick_fingers_wary.clear()
         wrap = _wrap(next_state)
         legendary_available: list[dict] = []
         if not wrap.combat_ended:

@@ -28,6 +28,7 @@ import db_mutations
 import db_mutations_resonance
 import db_queries
 import draethar_inner_fire
+import enemy_pockets
 import event_types as E
 import item_heal
 import lost_scout_combat
@@ -115,15 +116,20 @@ async def _resolve_phase_locked(
     packet_summaries: list[dict] = []
     previous_judgments = len(cs.judgment_rewards)
     async with phase_transaction_with_recovery(session, cs, db_mod=db_mod, mutations=mutations) as conn:
-        if resolving_allies:
-            if cs.ally_continuation is None:
-                # Reopen declaration on malformed persisted actions instead of retrying them forever.
-                try:
-                    state, adv = combat_phase.advance_combat_phase(cs)
-                    combat_spatial_declarations.preflight(state, [(p.actor_id, p.declaration) for p in adv.packets])
-                except ValueError as e:
-                    raise PrevalidationRefusal(ToolError(str(e))) from e
+        adv = None
+        if resolving_allies and cs.ally_continuation is None:
+            # Reopen declaration on malformed persisted actions instead of retrying them forever.
+            try:
+                state, adv = combat_phase.advance_combat_phase(cs)
+                combat_spatial_declarations.preflight(state, [(p.actor_id, p.declaration) for p in adv.packets])
+            except ValueError as e:
+                raise PrevalidationRefusal(ToolError(str(e))) from e
+        else:
+            state = copy.deepcopy(cs)
+        await enemy_pockets.initialize(state, conn=conn, queries=queries)
 
+        if resolving_allies:
+            if adv is not None:
                 # Defend protects the whole phase, including attacks earlier in initiative.
                 for packet in adv.packets:
                     if packet.declaration.type is not DeclarationType.DEFEND or not packet.declaration.ac_bonus:
@@ -152,7 +158,6 @@ async def _resolve_phase_locked(
                 ally_packets, enemy_packets = combat_phase.partition_packets(state, adv.packets)
                 cursor = combat_ally_pass.begin_ally_pass(state, ally_packets, enemy_packets, players_by_id)
             else:
-                state = copy.deepcopy(cs)
                 cursor = state.ally_continuation
                 assert cursor is not None
                 players_by_id = await combat_ally_pass.lock_remaining_players(cursor, queries, conn)
@@ -167,7 +172,6 @@ async def _resolve_phase_locked(
                 packet_deps={**packet_deps, "conn": conn, "sink": sink, "cast_outcome": cast_outcome},
             )
         else:
-            state = copy.deepcopy(cs)
             packet_summaries = await combat_hold.pump(
                 session,
                 state,

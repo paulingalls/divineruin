@@ -69,6 +69,8 @@ class ScoutHarness(MawlingHarness):
     def attack_action(self, *, scout_attacks=False):
         return {
             "reshape": [],
+            "quick_fingers_mode": "",
+            "quick_fingers_item": "",
             "kind": "attack",
             "actor_id": "hollowed_scout_1" if scout_attacks else self.players[0],
             "action": "Corrupted Blade" if scout_attacks else "Longsword",

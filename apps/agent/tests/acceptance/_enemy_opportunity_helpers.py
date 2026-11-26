@@ -94,6 +94,8 @@ async def declare(fight: MawlingHarness, *actions: dict) -> None:
 
 def attack(actor: str, target: str, action: str, *, rider: str = "") -> dict:
     return {
+        "quick_fingers_mode": "",
+        "quick_fingers_item": "",
         "kind": "attack",
         "actor_id": actor,
         "target_id": target,

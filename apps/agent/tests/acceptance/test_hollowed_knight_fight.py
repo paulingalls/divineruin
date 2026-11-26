@@ -257,6 +257,8 @@ class KnightFight(MawlingHarness):
                 else:
                     declaration = {
                         "reshape": [],
+                        "quick_fingers_mode": "",
+                        "quick_fingers_item": "",
                         "kind": "attack",
                         "actor_id": actor.id,
                         "action": action["id"],

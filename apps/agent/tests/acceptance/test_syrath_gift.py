@@ -227,6 +227,8 @@ async def test_attack_reveals_on_ally_commit(veil, face):
             "declarations": [
                 {
                     "reshape": [],
+                    "quick_fingers_mode": "",
+                    "quick_fingers_item": "",
                     "kind": "attack",
                     "actor_id": h.players[0],
                     "action": "Longsword",
@@ -344,6 +346,8 @@ async def test_terminal_wrap_expires_hidden_defender(veil):
             "declarations": [
                 {
                     "reshape": [],
+                    "quick_fingers_mode": "",
+                    "quick_fingers_item": "",
                     "kind": "attack",
                     "actor_id": h.players[1],
                     "action": "Longsword",

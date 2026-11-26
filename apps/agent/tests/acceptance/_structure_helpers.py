@@ -51,5 +51,13 @@ async def _refuses(ctx: Any, declaration: Any, message: str) -> None:
 
 def _strike(actor_id: str, target: str, action: str = "Greataxe") -> AttackDecl:
     return AttackDecl(
-        reshape=[], kind="attack", actor_id=actor_id, action=action, target_id=target, held_item_id="", rider=""
+        quick_fingers_mode="",
+        quick_fingers_item="",
+        reshape=[],
+        kind="attack",
+        actor_id=actor_id,
+        action=action,
+        target_id=target,
+        held_item_id="",
+        rider="",
     )

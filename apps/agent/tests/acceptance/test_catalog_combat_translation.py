@@ -65,7 +65,15 @@ async def declare(ctx, pid, eid, name):
         payload = AbilityDecl(kind="ability", actor_id=eid, action=name, targets=[], argument_type="")
     else:
         payload = AttackDecl(
-            reshape=[], kind="attack", actor_id=eid, action=name, target_id=pid, held_item_id="", rider=""
+            quick_fingers_mode="",
+            quick_fingers_item="",
+            reshape=[],
+            kind="attack",
+            actor_id=eid,
+            action=name,
+            target_id=pid,
+            held_item_id="",
+            rider="",
         )
     response = json.loads(
         await combat_turn.declare_phase(ctx, [DefendDecl(reshape=[], kind="defend", actor_id=pid), payload])
@@ -292,9 +300,19 @@ async def test_command_focus_bonus_reaches_attack(runtime):
         [
             DefendDecl(reshape=[], kind="defend", actor_id=pid),
             AttackDecl(
-                reshape=[], kind="attack", actor_id=eid, action="Rally", target_id=pid, held_item_id="", rider=""
+                quick_fingers_mode="",
+                quick_fingers_item="",
+                reshape=[],
+                kind="attack",
+                actor_id=eid,
+                action="Rally",
+                target_id=pid,
+                held_item_id="",
+                rider="",
             ),
             AttackDecl(
+                quick_fingers_mode="",
+                quick_fingers_item="",
                 reshape=[],
                 kind="attack",
                 actor_id="soldier137",

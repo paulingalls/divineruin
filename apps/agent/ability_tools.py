@@ -89,6 +89,11 @@ async def _request_ability_activation_impl(
     player_id = reaction_actor.player_id if reaction_actor is not None else session.acting_player_id
     if session.in_combat and ability.ability_type != "reaction":
         if recipe := attack_recipe(ability.id):
+            if "quick_fingers_mode" in recipe:
+                raise ToolError(
+                    'Declare a melee attack with rider="quick_fingers" and quick_fingers_mode steal, plant or swap. '
+                    'For plant or swap, use quick_fingers_item from query_info(kind="inventory").'
+                )
             if "riders" in recipe:
                 riders = " or ".join(f'rider="{rider}"' for rider in recipe["riders"])
                 raise ToolError(f"Declare a weapon attack with {riders}.")

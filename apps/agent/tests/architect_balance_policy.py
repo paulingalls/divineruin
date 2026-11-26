@@ -94,6 +94,8 @@ def attack(
     reshape: Iterable[ReshapeSelection] = (),
 ) -> AttackDecl:
     return AttackDecl(
+        quick_fingers_mode="",
+        quick_fingers_item="",
         kind="attack",
         actor_id=actor.id,
         action=action,

@@ -284,13 +284,11 @@ async def test_reloaded_stance_advantages_hostile_and_wrap_wisdom_saves(walk: Ma
 @pytest.mark.parametrize("walk", [("hollow_veilrender_boss", "greyvale_wilderness_north")], indirect=True)
 async def test_damaging_save_lands_once(walk: MawlingHarness) -> None:
     await enter(walk)
-    actor, bystander = walk.players
+    actor = walk.players[0]
     foe = await place_foe(walk, "hollow_veilrender")
-    combat_spatial.place(await walk.reload(), bystander, pos(-65))
-    await walk.persist()
     await declare(walk, stance(actor), ability(foe, "Corruption Wave", actor))
     with (
-        patch("check_resolution.dice_roll", side_effect=map(_d20, [19, 2, 2])),
+        patch("check_resolution.dice_roll", side_effect=map(_d20, [19, 19, 2, 2])),
         patch("combat_enemy_action.dice_roll", return_value=_damage_die(11)),
     ):
         packets = await walk.drain()
@@ -307,7 +305,7 @@ async def test_damaging_save_lands_once(walk: MawlingHarness) -> None:
         patch("combat_veilrender.dice.roll", return_value=_damage_die(4)),
     ):
         start = receipt(await walk.drain(), actor)["turn_start_effects"][0]
-    assert rolls.call_count == 1
+    assert rolls.call_count == len(walk.players)
     assert start["source_id"] == foe and start["damage"] == 2
     assert "iron_stance" not in await condition_types(walk, actor)
 

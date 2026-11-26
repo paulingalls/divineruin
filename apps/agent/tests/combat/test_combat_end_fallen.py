@@ -39,7 +39,7 @@ async def test_victory_stabilizes_fallen_ally_without_mortaen(monkeypatch):
         current_turn_index=0,
         location_id="loc1",
     )
-    _end, mutations, _q, _sink = await _run_victory(session, cs, rng=FakeRng(), drops=[])
+    _end, mutations, _q, _sink = await _run_victory(session, cs, rng=FakeRng())
 
     hp_calls = [(c.args[0], c.args[1]) for c in mutations.update_player_hp.await_args_list]
     assert ("p2", 1) in hp_calls  # fallen ally comes to at 1 HP
@@ -78,7 +78,7 @@ async def test_victory_resurrects_destroyed_echo_primary_only(monkeypatch):
         current_turn_index=0,
         location_id="loc1",
     )
-    end_data, mutations, _q, sink = await _run_victory(session, cs, rng=FakeRng(), drops=[])
+    end_data, mutations, _q, sink = await _run_victory(session, cs, rng=FakeRng())
 
     resurrect.assert_awaited_once()
     assert resurrect.await_args is not None
@@ -129,7 +129,7 @@ async def test_victory_resurrects_death_save_failed_ally_not_stabilized(monkeypa
         current_turn_index=0,
         location_id="loc1",
     )
-    _end, mutations, _q, _sink = await _run_victory(session, cs, rng=FakeRng(), drops=[])
+    _end, mutations, _q, _sink = await _run_victory(session, cs, rng=FakeRng())
 
     resurrect.assert_awaited_once()
     assert resurrect.await_args is not None

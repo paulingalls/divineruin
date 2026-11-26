@@ -312,9 +312,17 @@ Your approach to problem-solving beyond Sneak Attack damage. Can be swapped on l
 | Name | Cost | Effect |
 |---|---|---|
 | Dirty Trick | 2 Stam | Target has disadvantage on next action. The debuffer |
-| Quick Fingers | 2 Stam | Sleight of Hand as quick action (in addition to main). Steal, plant, swap mid-combat |
+| Quick Fingers | 2 Stam | Melee attack rider. Before swinging at a standing foe in reach, roll Sleight of Hand against DC 10 + the foe's Wisdom modifier to steal, plant, or swap. |
 | Smoke Bomb | 3 Stam | 10 ft obscurement cloud. Attacks through have disadvantage. Lasts 1 round |
 | Crippling Strike | 3 Stam | On hit, target speed halved until end of their next turn. The kiting build |
+
+Declare `rider="quick_fingers"` and choose `steal`, `plant`, or `swap`.
+Steal randomly takes one pocket stack with its quantity and taint. Plant
+moves one full-durability, unequipped unit from the named inventory row. Swap
+does both. An empty pouch still costs the attempt and accepts a plant.
+On failure the foe stays wary until round end. Further attempts against it
+automatically fail and still cost the attempt. The foe has advantage on its
+first attack roll against the rogue who failed the check.
 
 #### Elective Technique — Level 8 (choose 1 of 4)
 

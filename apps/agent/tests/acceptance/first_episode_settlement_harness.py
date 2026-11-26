@@ -101,6 +101,8 @@ async def declarations(ctx, *, argue=False):
         else:
             decls.append(
                 AttackDecl(
+                    quick_fingers_mode="",
+                    quick_fingers_item="",
                     reshape=[],
                     kind="attack",
                     actor_id=actor.id,

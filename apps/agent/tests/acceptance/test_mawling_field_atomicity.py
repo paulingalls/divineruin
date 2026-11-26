@@ -31,6 +31,8 @@ async def test_failure_after_state_write_rolls_back_and_retries_once(maw, field_
             "declarations": [
                 {
                     "reshape": [],
+                    "quick_fingers_mode": "",
+                    "quick_fingers_item": "",
                     "kind": "attack",
                     "actor_id": eid,
                     "action": "Lunge",

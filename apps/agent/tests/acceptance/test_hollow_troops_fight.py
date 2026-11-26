@@ -196,7 +196,14 @@ class TroopFight(MawlingHarness):
                         for strike in action["strikes"]
                     ]
                 else:
-                    declaration.update(target_id=target.id, held_item_id="", rider="", reshape=[])
+                    declaration.update(
+                        target_id=target.id,
+                        held_item_id="",
+                        rider="",
+                        reshape=[],
+                        quick_fingers_mode="",
+                        quick_fingers_item="",
+                    )
                 declarations.append(declaration)
             await self.command("declare_phase", {"declarations": declarations})
             await self.drain()

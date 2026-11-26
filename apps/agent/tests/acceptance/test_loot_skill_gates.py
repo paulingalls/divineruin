@@ -24,7 +24,7 @@ def mock_combat_agent_factory():
         (
             "hollowed_scout",
             [{}, {"crafting": "expert"}],
-            9,
+            4,
             1,
             [(0, "rend_shard", 1), (1, "hollow_bone_fragment", 1)],
             0,
@@ -34,7 +34,7 @@ def mock_combat_agent_factory():
         (
             "hollow_mawling",
             [{"crafting": "expert"}],
-            9,
+            4,
             1,
             [(0, "rend_shard", 1), (0, "dissolution_membrane", 1)],
             0,
@@ -45,7 +45,7 @@ def mock_combat_agent_factory():
         (
             "hollow_mawling",
             [{"crafting": "expert"}, {"arcana": "trained"}],
-            9,
+            4,
             1,
             [(0, "rend_shard", 1), (1, "dissolution_membrane", 1)],
             0,
@@ -54,21 +54,25 @@ def mock_combat_agent_factory():
         (
             "hollow_mawling",
             [{"crafting": "master"}, {"arcana": "trained"}],
-            9,
+            4,
             1,
             [(0, "rend_shard", 1), (1, "dissolution_membrane", 1)],
             0,
             2,
         ),
         ("hollowed_scout", [{"crafting": "expert"}], 122, 1, [(0, "rend_shard", 1)], 0, 2),
-        ("hollowed_scout", [{"crafting": "trained"}], 1, 2, [(0, "hollow_bone_fragment", 1)], 8, 1),
+        ("hollowed_scout", [{"crafting": "trained"}], 1, 2, [(0, "hollow_bone_fragment", 1)], 24, 1),
     ],
 )
 async def test_victory_inventory(reset_db_pool, creature, tiers, seed, count, expected, silver, rolls):
     harness = LootHarness()
     outsider = f"loot_outsider_{uuid4().hex}"
     try:
-        await harness.start_loot(creature, tiers, count)
+        item_rng, item_reference = random.Random(seed), random.Random(seed)
+        await harness.start_loot(creature, tiers, count, item_rng)
+        for _ in range(count * rolls):
+            item_reference.random()
+        assert item_rng.getstate() == item_reference.getstate()
         # A room member who did not fight cannot unlock harvesting.
         await seed_player_with_pools(harness.pool, player_id=outsider)
         await harness.pool.execute(
@@ -80,8 +84,6 @@ async def test_victory_inventory(reset_db_pool, creature, tiers, seed, count, ex
             if reference.random() < 0.15:
                 reference.randint(1, 6)
                 reference.randint(1, 6)
-            for _ in range(rolls):
-                reference.random()
         await harness.victory(rng)
         actual = await harness.pool.fetch(
             "SELECT player_id, item_id, (data->>'quantity')::int AS quantity FROM player_inventory "
