@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import corpus from "../../fixtures/god_profiles.json";
 import roster from "../../../../content/archetypes.json";
 import catalog from "../../../../content/gods.json";
-import { validateGods } from "./index";
+import { type GodSynergyClause, validateGods } from "./index";
 
 test("ten complete matrices cover the exact eighteen-archetype roster", () => {
   const gods = validateGods(catalog);
@@ -217,27 +217,91 @@ for (const entry of corpus.context_clause_cases) {
 }
 
 test.each([
-  ["cleric", "Shared Table", "shared_meal", "religion", "aelora_shared_table"],
-  ["paladin", "Civic Promise", "community_duties", "persuasion", "aelora_civic_promise"],
-])(
-  "Aelora’s %s has the registered context clause",
-  (archetype, name, tag, skill, implementation) => {
+  [
+    "aelora",
+    "cleric",
+    "divine",
+    "Shared Table",
+    "shared_meal",
+    "religion",
+    "aelora_shared_table",
+    "Gain +1 Religion when blessing a shared meal.",
+  ],
+  [
+    "aelora",
+    "paladin",
+    "divine",
+    "Civic Promise",
+    "community_duties",
+    "persuasion",
+    "aelora_civic_promise",
+    "Gain +1 Persuasion when negotiating a community’s shared duties.",
+  ],
+  [
+    "aelora",
+    "oracle",
+    "divine",
+    "Hearth Omen",
+    "household_omen",
+    "insight",
+    "aelora_hearth_omen",
+    "Gain +1 Insight when interpreting a household omen.",
+  ],
+  [
+    "aelora",
+    "rogue",
+    "unexpected",
+    "Honest Hustle",
+    "commerce",
+    "persuasion",
+    "aelora_commerce_persuasion",
+    "Commerce Persuasion +1.",
+  ],
+  [
+    "thyra",
+    "paladin",
+    "divine",
+    "Wild Covenant",
+    "sacred_grove",
+    "religion",
+    "thyra_wild_covenant",
+    "Gain +1 Religion when honoring a sacred grove.",
+  ],
+  [
+    "thyra",
+    "oracle",
+    "divine",
+    "Seasonal Omen",
+    "seasonal_omen",
+    "nature",
+    "thyra_seasonal_omen",
+    "Gain +1 Nature when interpreting a seasonal omen.",
+  ],
+] as const)(
+  "%s %s has the registered context clause",
+  (patron, archetype, type, name, tag, skill, implementation, effect) => {
     const matrix = validateGods(catalog).find(
-      (god) => god.god_id === "aelora",
+      (god) => god.god_id === patron,
     )?.layer_4_synergy_matrix;
-    expect(matrix?.[archetype]).toMatchObject({
-      name,
-      clauses: [
-        {
-          kind: "context_check",
-          synergy_context: tag,
-          skill,
-          bonus: 1,
-          status: "active",
-          resolution: "engine",
-          implementation_id: implementation,
-        },
-      ],
-    });
+    const clauses: GodSynergyClause[] = [
+      {
+        effect,
+        kind: "context_check",
+        synergy_context: tag,
+        skill,
+        bonus: 1,
+        status: "active",
+        resolution: "engine",
+        implementation_id: implementation,
+      },
+    ];
+    if (archetype === "rogue") {
+      clauses.push({
+        effect: "Better fence prices. Aelora respects the hustle",
+        status: "pending",
+        resolution: "engine",
+      });
+    }
+    expect(matrix?.[archetype]).toEqual({ name, type, clauses });
   },
 );
