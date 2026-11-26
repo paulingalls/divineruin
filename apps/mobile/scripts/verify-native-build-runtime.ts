@@ -256,29 +256,36 @@ async function removeWorkspace(root: string): Promise<void> {
       throw error;
     },
   );
+  // One unreadable folder must not strand the orphans after it; report every one at the end.
+  const failures: unknown[] = [];
   for (const entry of entries) {
     if (!entry.isDirectory() || !entry.name.startsWith("divineruin-")) continue;
     const folder = join(derivedData, entry.name);
-    const workspace = await capture([
-      "/usr/bin/plutil",
-      "-extract",
-      "WorkspacePath",
-      "raw",
-      "-expect",
-      "string",
-      "-n",
-      "-o",
-      "-",
-      join(folder, "info.plist"),
-    ]);
-    if (!isAbsolute(workspace)) throw new Error(`Invalid WorkspacePath in ${folder}`);
+    await sweepDerivedDataFolder(folder).catch((error: unknown) => failures.push(error));
+  }
+  if (failures.length > 0) throw new AggregateError(failures, "DerivedData sweep left folders");
+}
 
-    try {
-      await stat(workspace);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-      await rm(folder, { recursive: true, force: true });
-    }
+async function sweepDerivedDataFolder(folder: string): Promise<void> {
+  const workspace = await capture([
+    "/usr/bin/plutil",
+    "-extract",
+    "WorkspacePath",
+    "raw",
+    "-expect",
+    "string",
+    "-n",
+    "-o",
+    "-",
+    join(folder, "info.plist"),
+  ]);
+  if (!isAbsolute(workspace)) throw new Error(`Invalid WorkspacePath in ${folder}`);
+
+  try {
+    await stat(workspace);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    await rm(folder, { recursive: true, force: true });
   }
 }
 
