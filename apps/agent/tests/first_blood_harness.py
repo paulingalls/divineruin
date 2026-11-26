@@ -28,7 +28,7 @@ import patron_gift_tools
 import spell_knowledge
 import spells
 from activate_tools import activate
-from combat_ability_gate import BLADE_FLURRY, attack_recipe, combat_ability
+from combat_ability_gate import attack_recipe, combat_ability
 from combat_death_save import request_death_save
 from combat_declaration_validation import validate_declaration
 from combat_down import is_terminally_down
@@ -310,7 +310,7 @@ async def drive_architect_fight(
 ) -> tuple[str, int, dict[str, TechniqueReport]]:
     player_ids = tuple(loadouts)
     tracked = architect_techniques()
-    pending: dict[str, tuple[str, str]] = {}
+    pending: dict[str, str] = {}
     techniques: dict[str, TechniqueReport] = {
         pid: {
             "held": [technique for technique in loadout if technique in tracked],
@@ -399,14 +399,7 @@ async def drive_architect_fight(
                         if declared.actor_id in techniques and (technique := declared_technique(declared)) in tracked:
                             assert technique is not None
                             techniques[declared.actor_id]["declared"].append(technique)
-                            weapon_action = ""
-                            if isinstance(declared, AttackDecl):
-                                weapon_action = declared.action
-                            elif technique == BLADE_FLURRY:
-                                weapon_action = next(
-                                    actor.action_pool[0]["name"] for actor in players if actor.id == declared.actor_id
-                                )
-                            pending[declared.actor_id] = technique, weapon_action
+                            pending[declared.actor_id] = technique
                     continue
                 else:
                     result = await resolve_phase(ctx)
@@ -430,10 +423,8 @@ async def drive_architect_fight(
                         strike.get("damage", 0) for strike in action.get("attacks", [action])
                     ) + action.get("cast", {}).get("damage_result", {}).get("damage", 0)
                     if action.get("resolved") and not action.get("opportunity_attack") and actor_id in pending:
-                        technique, weapon_action = pending[actor_id]
-                        if action.get("action") == technique or (
-                            weapon_action and action.get("action") == weapon_action and "hit" in action
-                        ):
+                        technique = pending[actor_id]
+                        if action.get("attack_technique", action.get("action")) == technique:
                             techniques[actor_id]["resolved"].append(technique)
                             del pending[actor_id]
                 if action.get("action") == architect_policy.RALLYING_SHOUT and action.get("resolved"):
