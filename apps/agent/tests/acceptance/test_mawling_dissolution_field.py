@@ -50,7 +50,10 @@ async def maw(reset_db_pool, request):
     harness = MawlingHarness()
     try:
         options = getattr(request, "param", False)
-        await harness.start(**(options if isinstance(options, dict) else {"companion": options}))
+        if isinstance(options, dict):
+            await harness.start(**options)
+        else:
+            await harness.start(companion=options)
         yield harness
     finally:
         if hasattr(harness, "session"):

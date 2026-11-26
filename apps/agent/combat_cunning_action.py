@@ -86,6 +86,11 @@ async def hide(
         return None
     actor.conditions = conditions.remove_conditions(actor.conditions, result.consumed_conditions)
     hidden = await concealment.transition(
-        actor.id, player, result.success, ended_by=None if result.success else "failed_stealth", conn=conn
+        actor.id,
+        player,
+        result.success,
+        ended_by=None if result.success else "failed_stealth",
+        combat_only=True,
+        conn=conn,
     )
     return {**hidden, "dc": result.dc, "roll": result.roll}

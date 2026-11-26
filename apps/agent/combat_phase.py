@@ -21,8 +21,9 @@ import architect_constructs
 import architect_reaction
 import choir_effects
 import combat_order_riders
+import combat_spatial
 import reaction_spend
-from combat_ability_gate import RECKLESS_ASSAULT_RIDER, WAR_CRY
+from combat_ability_gate import RECKLESS_ASSAULT_RIDER, WAR_CRIES
 from combat_declaration_validation import validate_declaration
 from combat_down import DEATH_SAVE_LIMIT, is_terminally_down
 from condition_catalog import INCORPOREAL
@@ -124,6 +125,7 @@ def advance_combat_phase(
     rng: random.Random | None = None,
     *,
     defer_legendary: bool = False,
+    concealed: frozenset[str] = frozenset(),
 ) -> tuple[CombatState, PhaseAdvance]:
     """Advance the combat phase machine by exactly one beat.
 
@@ -141,7 +143,7 @@ def advance_combat_phase(
         resolved = {actor_id: resolve_declaration(raw) for actor_id, raw in declarations.items()}
         persisted_declarations = copy.deepcopy(declarations)
         for actor_id, declaration in resolved.items():
-            validate_declaration(next_state, actor_id, declaration, persisted_declarations)
+            validate_declaration(next_state, actor_id, declaration, persisted_declarations, concealed=concealed)
         for participant in next_state.participants:
             participant.conditions = remove_conditions(participant.conditions, (RECKLESS_ASSAULT_RIDER,))
         next_state.pending_declarations = persisted_declarations
@@ -169,6 +171,7 @@ def advance_combat_phase(
         legendary_available: list[dict] = []
         if not wrap.combat_ended:
             next_state.round_number += 1
+            combat_spatial.expire_smoke(next_state)
             architect_constructs.expire(next_state)
             choir_effects.advance_round(next_state)
             next_state.current_turn_index = 0
@@ -211,7 +214,13 @@ def _boss_legendaries(state: CombatState) -> list[dict]:
 
 
 def consume_legendary_action(
-    state: CombatState, boss_id: str, *, action_id: str = "", target_id: str = "", reshape: tuple[dict, ...] = ()
+    state: CombatState,
+    boss_id: str,
+    *,
+    action_id: str = "",
+    target_id: str = "",
+    reshape: tuple[dict, ...] = (),
+    concealed: frozenset[str] = frozenset(),
 ) -> CombatState:
     """Return a spent copy, with an authored action queued when one was selected."""
     from combat_legendary import prepare, require_boundary
@@ -228,7 +237,7 @@ def consume_legendary_action(
     if boss.legendary is not None:
         if boss.is_fallen or boss.is_dead or boss.hp_current <= 0:
             raise ValueError(f"{boss.name} is unavailable to take a legendary action")
-        prepare(next_state, boss, action_id, target_id, reshape)
+        prepare(next_state, boss, action_id, target_id, reshape, concealed=concealed)
         return next_state
     if action_id or target_id or reshape:
         raise ValueError("A legacy Boss spend requires empty action_id, target_id, and reshape.")
@@ -341,7 +350,9 @@ def _wrap(state: CombatState) -> WrapOutcome:
         if has_condition(p.conditions, INCORPOREAL) and not has_condition(survivors, INCORPOREAL):
             returning.append(p)
         p.conditions = survivors
-        tick_conditions_due.extend({"actor_id": p.id, **event} for event in save_events if event["source"] != WAR_CRY)
+        tick_conditions_due.extend(
+            {"actor_id": p.id, **event} for event in save_events if event["source"] not in WAR_CRIES
+        )
 
     # The encounter Veil Ward's round clock (M24). Like conditions, the ward lives ON CombatState,
     # so the engine advances it here rather than signalling through WrapOutcome. Decrement first,

@@ -148,7 +148,10 @@ async def test_attack_roll_against_fallen_target_cannot_confirm_pincer(marshal) 
         patch("check_resolution.dice_roll", side_effect=map(_d20, (2, 16))),
         patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)) as dice,
     ):
-        result, _ = combat_attack_roll.roll_attack(attacker, attacker.action_pool[0], target, combat_state=state)
+        action = attacker.action_pool[0]
+        result, _ = combat_attack_roll.roll_attack(
+            attacker, action, target, combat_state=state, weapon_profile=action, player={"class": "warrior"}
+        )
     assert result.hit and result.roll == 16 and result.pincer_dice is None
     dice.assert_called_once()
 

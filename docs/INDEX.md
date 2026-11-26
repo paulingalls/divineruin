@@ -528,34 +528,34 @@ Event-driven price fluctuation, three-phase event lifecycle, standard economic e
 
 ---
 
-## game_mechanics/game_mechanics_archetypes.md (1357 lines)
+## game_mechanics/game_mechanics_archetypes.md (1359 lines)
 
 18 archetype profiles with abilities, specializations, and spell acquisition.
 
 | Section | Lines | What's There |
 |---|---|---|
-| Archetype Profiles | 9-416 | Overview of 18 archetypes: Martial(3), Arcane(3), Primal(3), Divine(3), Shadow(3), Support(3) |
-| All Archetype Profiles — Complete (18 of 18) | 417-1148 | Individual stat blocks: HP, armor, skills, passives, actives, reactions, milestones |
-| Core + Elective Ability Model | 1149-1221 | Core (always available) vs Elective (chosen at L4/L8), reaction abilities |
-| Spell Acquisition System — Three Tracks | 1222-1286 | Core spells, Training study cycles, Discovery (scrolls/mentors) |
-| Martial Mentor-Style System | 1287-1357 | Technique variants via NPC mentors, cultural attribution, 2-3 session loops |
+| Archetype Profiles | 9-418 | Overview of 18 archetypes: Martial(3), Arcane(3), Primal(3), Divine(3), Shadow(3), Support(3) |
+| All Archetype Profiles — Complete (18 of 18) | 419-1150 | Individual stat blocks: HP, armor, skills, passives, actives, reactions, milestones |
+| Core + Elective Ability Model | 1151-1223 | Core (always available) vs Elective (chosen at L4/L8), reaction abilities |
+| Spell Acquisition System — Three Tracks | 1224-1288 | Core spells, Training study cycles, Discovery (scrolls/mentors) |
+| Martial Mentor-Style System | 1289-1359 | Technique variants via NPC mentors, cultural attribution, 2-3 session loops |
 
 ---
 
-## game_mechanics/game_mechanics_bestiary.md (2364 lines)
+## game_mechanics/game_mechanics_bestiary.md (2365 lines)
 
 Creature stat blocks, Hollow and natural creatures, materials, encounters.
 
 | Section | Lines | What's There |
 |---|---|---|
 | Creature Stat Block Schema | 9-145 | Universal template: attributes, attacks, passives, hollow fields, loot_table_id amendment |
-| Hollow Creatures | 146-639 | 9 Hollow entities (Shadeling through The Architect), special mechanics |
-| Natural Creatures | 640-1215 | 19 creatures across 6 regions plus multi-region, Tier 1-3 |
-| Material Catalog Summary | 1216-1262 | Material values and crafting uses for all creature drops |
-| Encounter Building Guidelines | 1263-1454 | Tier-based scaling, solo player math, companion effectiveness |
-| Design Decisions Log (Bestiary) | 1455-1458 | Bestiary decisions (24-29) |
-| Combat Effect Inventory | 1459-1574 |  Audited combat effects, resolver bindings, scheduled contracts and narrative deferrals. |
-| Encounter Creature Stat Blocks | 1575-2364 | Eight encounter-only creatures with complete spec stat blocks, source actions, canonical regions, and audio-first narration |
+| Hollow Creatures | 146-640 | 9 Hollow entities (Shadeling through The Architect), special mechanics |
+| Natural Creatures | 641-1216 | 19 creatures across 6 regions plus multi-region, Tier 1-3 |
+| Material Catalog Summary | 1217-1263 | Material values and crafting uses for all creature drops |
+| Encounter Building Guidelines | 1264-1455 | Tier-based scaling, solo player math, companion effectiveness |
+| Design Decisions Log (Bestiary) | 1456-1459 | Bestiary decisions (24-29) |
+| Combat Effect Inventory | 1460-1575 |  Audited combat effects, resolver bindings, scheduled contracts and narrative deferrals. |
+| Encounter Creature Stat Blocks | 1576-2365 | Eight encounter-only creatures with complete spec stat blocks, source actions, canonical regions, and audio-first narration |
 
 ---
 
@@ -912,7 +912,7 @@ Canonical target for how Divine Ruin rolls out in production: **DigitalOcean, al
 
 ---
 
-## milestones/04_combat.md (317 lines)
+## milestones/04_combat.md (316 lines)
 
 ---
 

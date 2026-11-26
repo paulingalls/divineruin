@@ -288,7 +288,11 @@ async def test_two_followers_cannot_rewind_twice_without_replay_and_keep_both_sp
     point["data"]["patron_gifts"][GIFT]["spent"] = False
     point["data"].pop("temp_hp")
     point["data"].pop("flags", None)
-    veil = {"shadow_veil": {"remaining_rounds": 1, "clause_id": "syrath_shadow_veil"}, "concealed": True}
+    veil = {
+        "shadow_veil": {"remaining_rounds": 1, "clause_id": "syrath_shadow_veil"},
+        "concealed": True,
+        "encounter_concealment": True,
+    }
     await patch_player(
         fight,
         first,

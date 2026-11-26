@@ -99,8 +99,8 @@ def _push(state: CombatState, actor_id: str, target_id: str) -> dict:
             # Point contact blocks subsequent voluntary movement and targeting.
             while combat_structures.blocks_path(origin, destination, wall):
                 destination = {axis: math.nextafter(value, origin[axis]) for axis, value in destination.items()}
-    combat_spatial.place(state, target_id, destination)
-    return {"distance_ft": combat_spatial.distance(origin, destination), "destination": destination, "wall_id": wall_id}
+    movement = combat_spatial.force_place(state, target_id, destination)
+    return {**movement, "wall_id": None if "movement_blocked" in movement else wall_id}
 
 
 async def _automatic_damage(

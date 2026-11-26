@@ -9,6 +9,7 @@ from _zhael_fate_fixtures import defend, game_tools
 from acceptance.seeds import seed_player
 from sample_fixtures import FixedRng, make_context, make_mock_room
 from test_aelora_gift import _live_party
+from weapon_fixtures import LONGSWORD
 
 import character_spells
 import db
@@ -42,23 +43,21 @@ class Fight:
             pid,
             json.dumps(
                 {
-                    "equipment": {
-                        "main_hand": {
-                            "name": "Guild Longsword",
-                            "damage": "1d8",
-                            "damage_type": "slashing",
-                            "properties": [],
-                        }
-                    }
-                    if index == 1
-                    else {},
+                    "equipment": {"main_hand": LONGSWORD} if index == 1 else {},
                     "stamina": {"current": 3 + index, "max": 10},
                     "focus": {"current": index, "max": 10},
                     "temp_hp": index,
                     "resonance": {"current": 3 + index},
                     "concentration": None,
                     "patron_gifts": {"test": {"spent": True}},
-                    "flags": {"ignored": True, **({"shadow_veil": True, "concealed": True} if index == 1 else {})},
+                    "flags": {
+                        "ignored": True,
+                        **(
+                            {"shadow_veil": True, "concealed": True, "encounter_concealment": True}
+                            if index == 1
+                            else {}
+                        ),
+                    },
                 }
             ),
         )
@@ -182,7 +181,9 @@ class Fight:
             raw = json.loads(await self.pool.fetchval("SELECT data FROM players WHERE player_id=$1", pid))
             expected = {key: raw[key] for key in RESTORE_KEYS if key in raw}
             flags = raw.get("flags", {})
-            if captured := {key: flags[key] for key in ("shadow_veil", "concealed") if key in flags}:
+            if captured := {
+                key: flags[key] for key in ("shadow_veil", "concealed", "encounter_concealment") if key in flags
+            }:
                 expected["flags"] = captured
             slots = await self.pool.fetch(
                 "SELECT item_id, tainted, data FROM player_inventory WHERE player_id=$1 ORDER BY item_id, tainted", pid

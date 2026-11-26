@@ -80,9 +80,7 @@ async def test_expiry_preserves_ordinary_hiding(veil, boundary):
     if boundary == "end":
         h.players.reverse()
     state = await h.reload()
-    state.round_number = 3
-    state.round_checkpoints = []
-    await h.persist()
+    next_round = state.round_number + 1
     h.players.reverse()
     try:
         await stealth(h, 20)
@@ -99,10 +97,10 @@ async def test_expiry_preserves_ordinary_hiding(veil, boundary):
         for _ in range(12):
             await h.command("resolve_phase", {})
             current = await h.reload()
-            if current.round_number == 4:
+            if current.round_number == next_round:
                 break
             assert (await row(h))["flags"]["concealed"]
-        assert current.round_number == 4
+        assert current.round_number == next_round
     else:
         state = await h.reload()
         guest = state.get_participant(h.players[0])

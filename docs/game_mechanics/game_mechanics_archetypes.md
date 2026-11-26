@@ -20,6 +20,8 @@ Every archetype is defined by seven mechanical components:
 6. **Reaction Abilities** — Triggered by conditions, tied to combat interrupt mechanic
 7. **Archetype Milestones** — Major power thresholds at levels 5, 10, 15, 20
 
+A character can equip an unproficient weapon, and the DM warns the player when they do. Attacks with that weapon have disadvantage, which cancels with advantage. The proficiency bonus still applies. Every archetype starts with a weapon it is proficient with.
+
 ---
 
 ### Warrior (Martial)

@@ -214,7 +214,13 @@ async def test_salvage_becomes_usable_martial_weapon(dispel):
     assert len(inventory["items"]) == 1
     weapon = inventory["items"][0]
     assert weapon["id"] == "battleaxe_common" and weapon["quantity"] == 5
-    assert weapon["type"] == "weapon" and weapon["subtype"] == "martial melee"
+    assert weapon["type"] == "weapon"
+    assert "subtype" not in weapon
+    assert (weapon["weapon_category"], weapon["weapon_range"], weapon["weapon_kind"]) == (
+        "martial",
+        "melee",
+        "battleaxe",
+    )
     assert weapon["durability_tier"] == "standard"
     assert any(e.get("damage_type") == "slashing" for e in weapon["effects"])
     await h.assert_snapshot(owner)

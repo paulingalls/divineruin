@@ -1,0 +1,1516 @@
+{
+  "profiles": {
+    "shortsword_basic": {
+      "weapon_category": "martial",
+      "weapon_range": "melee",
+      "weapon_kind": "shortsword"
+    },
+    "longsword_guild": {
+      "weapon_category": "martial",
+      "weapon_range": "melee",
+      "weapon_kind": "longsword"
+    },
+    "dagger_balanced": {
+      "weapon_category": "simple",
+      "weapon_range": "melee",
+      "weapon_kind": "dagger"
+    },
+    "mace_common": {
+      "weapon_category": "simple",
+      "weapon_range": "melee",
+      "weapon_kind": "mace"
+    },
+    "lute_common": {
+      "weapon_category": "simple",
+      "weapon_range": "melee",
+      "weapon_kind": "lute"
+    },
+    "hunting_bow": {
+      "weapon_category": "simple",
+      "weapon_range": "ranged",
+      "weapon_kind": "shortbow"
+    },
+    "quarterstaff_oak": {
+      "weapon_category": "simple",
+      "weapon_range": "melee",
+      "weapon_kind": "quarterstaff"
+    },
+    "war_mace": {
+      "weapon_category": "simple",
+      "weapon_range": "melee",
+      "weapon_kind": "mace"
+    },
+    "hollow_edge_blade": {
+      "weapon_category": "martial",
+      "weapon_range": "melee",
+      "weapon_kind": "shortsword"
+    },
+    "rapier_dueling": {
+      "weapon_category": "martial",
+      "weapon_range": "melee",
+      "weapon_kind": "rapier"
+    },
+    "greatsword_war": {
+      "weapon_category": "martial",
+      "weapon_range": "melee",
+      "weapon_kind": "greatsword"
+    },
+    "greataxe_basic": {
+      "weapon_category": "martial",
+      "weapon_range": "melee",
+      "weapon_kind": "greataxe"
+    },
+    "halberd_basic": {
+      "weapon_category": "martial",
+      "weapon_range": "melee",
+      "weapon_kind": "halberd"
+    },
+    "battleaxe_common": {
+      "weapon_category": "martial",
+      "weapon_range": "melee",
+      "weapon_kind": "battleaxe"
+    },
+    "warhammer_common": {
+      "weapon_category": "martial",
+      "weapon_range": "melee",
+      "weapon_kind": "warhammer"
+    },
+    "spear_common": {
+      "weapon_category": "simple",
+      "weapon_range": "melee",
+      "weapon_kind": "spear"
+    },
+    "handaxe_common": {
+      "weapon_category": "simple",
+      "weapon_range": "melee",
+      "weapon_kind": "handaxe"
+    },
+    "shortbow_common": {
+      "weapon_category": "simple",
+      "weapon_range": "ranged",
+      "weapon_kind": "shortbow"
+    },
+    "longbow_common": {
+      "weapon_category": "martial",
+      "weapon_range": "ranged",
+      "weapon_kind": "longbow"
+    },
+    "crossbow_light": {
+      "weapon_category": "simple",
+      "weapon_range": "ranged",
+      "weapon_kind": "light_crossbow"
+    },
+    "crossbow_hand": {
+      "weapon_category": "martial",
+      "weapon_range": "ranged",
+      "weapon_kind": "hand_crossbow"
+    },
+    "crossbow_heavy": {
+      "weapon_category": "martial",
+      "weapon_range": "ranged",
+      "weapon_kind": "heavy_crossbow"
+    },
+    "blade_of_the_ashmark": {
+      "weapon_category": "martial",
+      "weapon_range": "melee",
+      "weapon_kind": "longsword"
+    },
+    "architects_edge": {
+      "weapon_category": "martial",
+      "weapon_range": "melee",
+      "weapon_kind": "longsword"
+    },
+    "club_wooden": {
+      "weapon_category": "simple",
+      "weapon_range": "melee",
+      "weapon_kind": "club"
+    },
+    "spear_stone_tipped": {
+      "weapon_category": "simple",
+      "weapon_range": "melee",
+      "weapon_kind": "spear"
+    },
+    "dagger_bone": {
+      "weapon_category": "simple",
+      "weapon_range": "melee",
+      "weapon_kind": "dagger"
+    },
+    "iron_sword": {
+      "weapon_category": "martial",
+      "weapon_range": "melee",
+      "weapon_kind": "longsword"
+    },
+    "greatsword_steel": {
+      "weapon_category": "martial",
+      "weapon_range": "melee",
+      "weapon_kind": "greatsword"
+    },
+    "wyrmtooth_warblade": {
+      "weapon_category": "martial",
+      "weapon_range": "melee",
+      "weapon_kind": "longsword"
+    },
+    "veil_forged_greatblade": {
+      "weapon_category": "martial",
+      "weapon_range": "melee",
+      "weapon_kind": "greatsword"
+    },
+    "quality_longsword": {
+      "weapon_category": "martial",
+      "weapon_range": "melee",
+      "weapon_kind": "longsword"
+    }
+  },
+  "proficiency": {
+    "warrior": {
+      "shortsword_basic": true,
+      "longsword_guild": true,
+      "dagger_balanced": true,
+      "mace_common": true,
+      "lute_common": true,
+      "hunting_bow": true,
+      "quarterstaff_oak": true,
+      "war_mace": true,
+      "hollow_edge_blade": true,
+      "rapier_dueling": true,
+      "greatsword_war": true,
+      "greataxe_basic": true,
+      "halberd_basic": true,
+      "battleaxe_common": true,
+      "warhammer_common": true,
+      "spear_common": true,
+      "handaxe_common": true,
+      "shortbow_common": true,
+      "longbow_common": true,
+      "crossbow_light": true,
+      "crossbow_hand": true,
+      "crossbow_heavy": true,
+      "blade_of_the_ashmark": true,
+      "architects_edge": true,
+      "club_wooden": true,
+      "spear_stone_tipped": true,
+      "dagger_bone": true,
+      "iron_sword": true,
+      "greatsword_steel": true,
+      "wyrmtooth_warblade": true,
+      "veil_forged_greatblade": true,
+      "quality_longsword": true
+    },
+    "guardian": {
+      "shortsword_basic": true,
+      "longsword_guild": true,
+      "dagger_balanced": true,
+      "mace_common": true,
+      "lute_common": true,
+      "hunting_bow": true,
+      "quarterstaff_oak": true,
+      "war_mace": true,
+      "hollow_edge_blade": true,
+      "rapier_dueling": true,
+      "greatsword_war": true,
+      "greataxe_basic": true,
+      "halberd_basic": true,
+      "battleaxe_common": true,
+      "warhammer_common": true,
+      "spear_common": true,
+      "handaxe_common": true,
+      "shortbow_common": true,
+      "longbow_common": true,
+      "crossbow_light": true,
+      "crossbow_hand": true,
+      "crossbow_heavy": true,
+      "blade_of_the_ashmark": true,
+      "architects_edge": true,
+      "club_wooden": true,
+      "spear_stone_tipped": true,
+      "dagger_bone": true,
+      "iron_sword": true,
+      "greatsword_steel": true,
+      "wyrmtooth_warblade": true,
+      "veil_forged_greatblade": true,
+      "quality_longsword": true
+    },
+    "skirmisher": {
+      "shortsword_basic": true,
+      "longsword_guild": true,
+      "dagger_balanced": true,
+      "mace_common": true,
+      "lute_common": true,
+      "hunting_bow": true,
+      "quarterstaff_oak": true,
+      "war_mace": true,
+      "hollow_edge_blade": true,
+      "rapier_dueling": true,
+      "greatsword_war": true,
+      "greataxe_basic": true,
+      "halberd_basic": true,
+      "battleaxe_common": true,
+      "warhammer_common": true,
+      "spear_common": true,
+      "handaxe_common": true,
+      "shortbow_common": true,
+      "longbow_common": true,
+      "crossbow_light": true,
+      "crossbow_hand": true,
+      "crossbow_heavy": true,
+      "blade_of_the_ashmark": true,
+      "architects_edge": true,
+      "club_wooden": true,
+      "spear_stone_tipped": true,
+      "dagger_bone": true,
+      "iron_sword": true,
+      "greatsword_steel": true,
+      "wyrmtooth_warblade": true,
+      "veil_forged_greatblade": true,
+      "quality_longsword": true
+    },
+    "mage": {
+      "shortsword_basic": false,
+      "longsword_guild": false,
+      "dagger_balanced": true,
+      "mace_common": false,
+      "lute_common": false,
+      "hunting_bow": false,
+      "quarterstaff_oak": true,
+      "war_mace": false,
+      "hollow_edge_blade": false,
+      "rapier_dueling": false,
+      "greatsword_war": false,
+      "greataxe_basic": false,
+      "halberd_basic": false,
+      "battleaxe_common": false,
+      "warhammer_common": false,
+      "spear_common": false,
+      "handaxe_common": false,
+      "shortbow_common": false,
+      "longbow_common": false,
+      "crossbow_light": true,
+      "crossbow_hand": false,
+      "crossbow_heavy": false,
+      "blade_of_the_ashmark": false,
+      "architects_edge": false,
+      "club_wooden": false,
+      "spear_stone_tipped": false,
+      "dagger_bone": true,
+      "iron_sword": false,
+      "greatsword_steel": false,
+      "wyrmtooth_warblade": false,
+      "veil_forged_greatblade": false,
+      "quality_longsword": false
+    },
+    "artificer": {
+      "shortsword_basic": false,
+      "longsword_guild": false,
+      "dagger_balanced": true,
+      "mace_common": true,
+      "lute_common": true,
+      "hunting_bow": true,
+      "quarterstaff_oak": true,
+      "war_mace": true,
+      "hollow_edge_blade": false,
+      "rapier_dueling": false,
+      "greatsword_war": false,
+      "greataxe_basic": false,
+      "halberd_basic": false,
+      "battleaxe_common": false,
+      "warhammer_common": true,
+      "spear_common": true,
+      "handaxe_common": true,
+      "shortbow_common": true,
+      "longbow_common": false,
+      "crossbow_light": true,
+      "crossbow_hand": true,
+      "crossbow_heavy": false,
+      "blade_of_the_ashmark": false,
+      "architects_edge": false,
+      "club_wooden": true,
+      "spear_stone_tipped": true,
+      "dagger_bone": true,
+      "iron_sword": false,
+      "greatsword_steel": false,
+      "wyrmtooth_warblade": false,
+      "veil_forged_greatblade": false,
+      "quality_longsword": false
+    },
+    "seeker": {
+      "shortsword_basic": false,
+      "longsword_guild": false,
+      "dagger_balanced": true,
+      "mace_common": true,
+      "lute_common": true,
+      "hunting_bow": true,
+      "quarterstaff_oak": true,
+      "war_mace": true,
+      "hollow_edge_blade": false,
+      "rapier_dueling": false,
+      "greatsword_war": false,
+      "greataxe_basic": false,
+      "halberd_basic": false,
+      "battleaxe_common": false,
+      "warhammer_common": false,
+      "spear_common": true,
+      "handaxe_common": true,
+      "shortbow_common": true,
+      "longbow_common": false,
+      "crossbow_light": true,
+      "crossbow_hand": true,
+      "crossbow_heavy": false,
+      "blade_of_the_ashmark": false,
+      "architects_edge": false,
+      "club_wooden": true,
+      "spear_stone_tipped": true,
+      "dagger_bone": true,
+      "iron_sword": false,
+      "greatsword_steel": false,
+      "wyrmtooth_warblade": false,
+      "veil_forged_greatblade": false,
+      "quality_longsword": false
+    },
+    "druid": {
+      "shortsword_basic": false,
+      "longsword_guild": false,
+      "dagger_balanced": false,
+      "mace_common": false,
+      "lute_common": false,
+      "hunting_bow": false,
+      "quarterstaff_oak": true,
+      "war_mace": false,
+      "hollow_edge_blade": false,
+      "rapier_dueling": false,
+      "greatsword_war": false,
+      "greataxe_basic": false,
+      "halberd_basic": false,
+      "battleaxe_common": false,
+      "warhammer_common": false,
+      "spear_common": true,
+      "handaxe_common": false,
+      "shortbow_common": false,
+      "longbow_common": false,
+      "crossbow_light": false,
+      "crossbow_hand": false,
+      "crossbow_heavy": false,
+      "blade_of_the_ashmark": false,
+      "architects_edge": false,
+      "club_wooden": false,
+      "spear_stone_tipped": true,
+      "dagger_bone": false,
+      "iron_sword": false,
+      "greatsword_steel": false,
+      "wyrmtooth_warblade": false,
+      "veil_forged_greatblade": false,
+      "quality_longsword": false
+    },
+    "beastcaller": {
+      "shortsword_basic": false,
+      "longsword_guild": false,
+      "dagger_balanced": true,
+      "mace_common": true,
+      "lute_common": true,
+      "hunting_bow": true,
+      "quarterstaff_oak": true,
+      "war_mace": true,
+      "hollow_edge_blade": false,
+      "rapier_dueling": false,
+      "greatsword_war": false,
+      "greataxe_basic": false,
+      "halberd_basic": false,
+      "battleaxe_common": false,
+      "warhammer_common": false,
+      "spear_common": true,
+      "handaxe_common": true,
+      "shortbow_common": true,
+      "longbow_common": false,
+      "crossbow_light": true,
+      "crossbow_hand": false,
+      "crossbow_heavy": false,
+      "blade_of_the_ashmark": false,
+      "architects_edge": false,
+      "club_wooden": true,
+      "spear_stone_tipped": true,
+      "dagger_bone": true,
+      "iron_sword": false,
+      "greatsword_steel": false,
+      "wyrmtooth_warblade": false,
+      "veil_forged_greatblade": false,
+      "quality_longsword": false
+    },
+    "warden": {
+      "shortsword_basic": false,
+      "longsword_guild": false,
+      "dagger_balanced": true,
+      "mace_common": true,
+      "lute_common": true,
+      "hunting_bow": true,
+      "quarterstaff_oak": true,
+      "war_mace": true,
+      "hollow_edge_blade": false,
+      "rapier_dueling": false,
+      "greatsword_war": false,
+      "greataxe_basic": false,
+      "halberd_basic": true,
+      "battleaxe_common": false,
+      "warhammer_common": true,
+      "spear_common": true,
+      "handaxe_common": true,
+      "shortbow_common": true,
+      "longbow_common": false,
+      "crossbow_light": true,
+      "crossbow_hand": false,
+      "crossbow_heavy": false,
+      "blade_of_the_ashmark": false,
+      "architects_edge": false,
+      "club_wooden": true,
+      "spear_stone_tipped": true,
+      "dagger_bone": true,
+      "iron_sword": false,
+      "greatsword_steel": false,
+      "wyrmtooth_warblade": false,
+      "veil_forged_greatblade": false,
+      "quality_longsword": false
+    },
+    "cleric": {
+      "shortsword_basic": false,
+      "longsword_guild": false,
+      "dagger_balanced": false,
+      "mace_common": true,
+      "lute_common": false,
+      "hunting_bow": false,
+      "quarterstaff_oak": false,
+      "war_mace": true,
+      "hollow_edge_blade": false,
+      "rapier_dueling": false,
+      "greatsword_war": false,
+      "greataxe_basic": false,
+      "halberd_basic": false,
+      "battleaxe_common": false,
+      "warhammer_common": true,
+      "spear_common": false,
+      "handaxe_common": false,
+      "shortbow_common": false,
+      "longbow_common": false,
+      "crossbow_light": true,
+      "crossbow_hand": false,
+      "crossbow_heavy": false,
+      "blade_of_the_ashmark": false,
+      "architects_edge": false,
+      "club_wooden": false,
+      "spear_stone_tipped": false,
+      "dagger_bone": false,
+      "iron_sword": false,
+      "greatsword_steel": false,
+      "wyrmtooth_warblade": false,
+      "veil_forged_greatblade": false,
+      "quality_longsword": false
+    },
+    "paladin": {
+      "shortsword_basic": true,
+      "longsword_guild": true,
+      "dagger_balanced": true,
+      "mace_common": true,
+      "lute_common": true,
+      "hunting_bow": true,
+      "quarterstaff_oak": true,
+      "war_mace": true,
+      "hollow_edge_blade": true,
+      "rapier_dueling": true,
+      "greatsword_war": true,
+      "greataxe_basic": true,
+      "halberd_basic": true,
+      "battleaxe_common": true,
+      "warhammer_common": true,
+      "spear_common": true,
+      "handaxe_common": true,
+      "shortbow_common": true,
+      "longbow_common": true,
+      "crossbow_light": true,
+      "crossbow_hand": true,
+      "crossbow_heavy": true,
+      "blade_of_the_ashmark": true,
+      "architects_edge": true,
+      "club_wooden": true,
+      "spear_stone_tipped": true,
+      "dagger_bone": true,
+      "iron_sword": true,
+      "greatsword_steel": true,
+      "wyrmtooth_warblade": true,
+      "veil_forged_greatblade": true,
+      "quality_longsword": true
+    },
+    "oracle": {
+      "shortsword_basic": false,
+      "longsword_guild": false,
+      "dagger_balanced": true,
+      "mace_common": true,
+      "lute_common": true,
+      "hunting_bow": true,
+      "quarterstaff_oak": true,
+      "war_mace": true,
+      "hollow_edge_blade": false,
+      "rapier_dueling": false,
+      "greatsword_war": false,
+      "greataxe_basic": false,
+      "halberd_basic": false,
+      "battleaxe_common": false,
+      "warhammer_common": false,
+      "spear_common": true,
+      "handaxe_common": true,
+      "shortbow_common": true,
+      "longbow_common": false,
+      "crossbow_light": true,
+      "crossbow_hand": false,
+      "crossbow_heavy": false,
+      "blade_of_the_ashmark": false,
+      "architects_edge": false,
+      "club_wooden": true,
+      "spear_stone_tipped": true,
+      "dagger_bone": true,
+      "iron_sword": false,
+      "greatsword_steel": false,
+      "wyrmtooth_warblade": false,
+      "veil_forged_greatblade": false,
+      "quality_longsword": false
+    },
+    "rogue": {
+      "shortsword_basic": true,
+      "longsword_guild": false,
+      "dagger_balanced": true,
+      "mace_common": false,
+      "lute_common": false,
+      "hunting_bow": false,
+      "quarterstaff_oak": false,
+      "war_mace": false,
+      "hollow_edge_blade": true,
+      "rapier_dueling": true,
+      "greatsword_war": false,
+      "greataxe_basic": false,
+      "halberd_basic": false,
+      "battleaxe_common": false,
+      "warhammer_common": false,
+      "spear_common": false,
+      "handaxe_common": true,
+      "shortbow_common": false,
+      "longbow_common": false,
+      "crossbow_light": false,
+      "crossbow_hand": true,
+      "crossbow_heavy": false,
+      "blade_of_the_ashmark": false,
+      "architects_edge": false,
+      "club_wooden": true,
+      "spear_stone_tipped": false,
+      "dagger_bone": true,
+      "iron_sword": false,
+      "greatsword_steel": false,
+      "wyrmtooth_warblade": false,
+      "veil_forged_greatblade": false,
+      "quality_longsword": false
+    },
+    "spy": {
+      "shortsword_basic": true,
+      "longsword_guild": false,
+      "dagger_balanced": true,
+      "mace_common": false,
+      "lute_common": false,
+      "hunting_bow": false,
+      "quarterstaff_oak": false,
+      "war_mace": false,
+      "hollow_edge_blade": true,
+      "rapier_dueling": true,
+      "greatsword_war": false,
+      "greataxe_basic": false,
+      "halberd_basic": false,
+      "battleaxe_common": false,
+      "warhammer_common": false,
+      "spear_common": false,
+      "handaxe_common": true,
+      "shortbow_common": false,
+      "longbow_common": false,
+      "crossbow_light": false,
+      "crossbow_hand": true,
+      "crossbow_heavy": false,
+      "blade_of_the_ashmark": false,
+      "architects_edge": false,
+      "club_wooden": true,
+      "spear_stone_tipped": false,
+      "dagger_bone": true,
+      "iron_sword": false,
+      "greatsword_steel": false,
+      "wyrmtooth_warblade": false,
+      "veil_forged_greatblade": false,
+      "quality_longsword": false
+    },
+    "whisper": {
+      "shortsword_basic": true,
+      "longsword_guild": false,
+      "dagger_balanced": true,
+      "mace_common": false,
+      "lute_common": false,
+      "hunting_bow": false,
+      "quarterstaff_oak": false,
+      "war_mace": false,
+      "hollow_edge_blade": true,
+      "rapier_dueling": false,
+      "greatsword_war": false,
+      "greataxe_basic": false,
+      "halberd_basic": false,
+      "battleaxe_common": false,
+      "warhammer_common": false,
+      "spear_common": false,
+      "handaxe_common": true,
+      "shortbow_common": false,
+      "longbow_common": false,
+      "crossbow_light": false,
+      "crossbow_hand": true,
+      "crossbow_heavy": false,
+      "blade_of_the_ashmark": false,
+      "architects_edge": false,
+      "club_wooden": true,
+      "spear_stone_tipped": false,
+      "dagger_bone": true,
+      "iron_sword": false,
+      "greatsword_steel": false,
+      "wyrmtooth_warblade": false,
+      "veil_forged_greatblade": false,
+      "quality_longsword": false
+    },
+    "bard": {
+      "shortsword_basic": true,
+      "longsword_guild": true,
+      "dagger_balanced": true,
+      "mace_common": false,
+      "lute_common": true,
+      "hunting_bow": false,
+      "quarterstaff_oak": false,
+      "war_mace": false,
+      "hollow_edge_blade": true,
+      "rapier_dueling": true,
+      "greatsword_war": false,
+      "greataxe_basic": false,
+      "halberd_basic": false,
+      "battleaxe_common": false,
+      "warhammer_common": false,
+      "spear_common": false,
+      "handaxe_common": true,
+      "shortbow_common": false,
+      "longbow_common": false,
+      "crossbow_light": false,
+      "crossbow_hand": true,
+      "crossbow_heavy": false,
+      "blade_of_the_ashmark": true,
+      "architects_edge": true,
+      "club_wooden": true,
+      "spear_stone_tipped": false,
+      "dagger_bone": true,
+      "iron_sword": true,
+      "greatsword_steel": false,
+      "wyrmtooth_warblade": true,
+      "veil_forged_greatblade": false,
+      "quality_longsword": true
+    },
+    "diplomat": {
+      "shortsword_basic": false,
+      "longsword_guild": false,
+      "dagger_balanced": true,
+      "mace_common": true,
+      "lute_common": true,
+      "hunting_bow": true,
+      "quarterstaff_oak": true,
+      "war_mace": true,
+      "hollow_edge_blade": false,
+      "rapier_dueling": false,
+      "greatsword_war": false,
+      "greataxe_basic": false,
+      "halberd_basic": false,
+      "battleaxe_common": false,
+      "warhammer_common": false,
+      "spear_common": true,
+      "handaxe_common": true,
+      "shortbow_common": true,
+      "longbow_common": false,
+      "crossbow_light": true,
+      "crossbow_hand": false,
+      "crossbow_heavy": false,
+      "blade_of_the_ashmark": false,
+      "architects_edge": false,
+      "club_wooden": true,
+      "spear_stone_tipped": true,
+      "dagger_bone": true,
+      "iron_sword": false,
+      "greatsword_steel": false,
+      "wyrmtooth_warblade": false,
+      "veil_forged_greatblade": false,
+      "quality_longsword": false
+    },
+    "marshal": {
+      "shortsword_basic": true,
+      "longsword_guild": true,
+      "dagger_balanced": false,
+      "mace_common": false,
+      "lute_common": false,
+      "hunting_bow": true,
+      "quarterstaff_oak": false,
+      "war_mace": false,
+      "hollow_edge_blade": true,
+      "rapier_dueling": true,
+      "greatsword_war": true,
+      "greataxe_basic": true,
+      "halberd_basic": true,
+      "battleaxe_common": true,
+      "warhammer_common": true,
+      "spear_common": false,
+      "handaxe_common": false,
+      "shortbow_common": true,
+      "longbow_common": false,
+      "crossbow_light": true,
+      "crossbow_hand": false,
+      "crossbow_heavy": false,
+      "blade_of_the_ashmark": true,
+      "architects_edge": true,
+      "club_wooden": false,
+      "spear_stone_tipped": false,
+      "dagger_bone": false,
+      "iron_sword": true,
+      "greatsword_steel": true,
+      "wyrmtooth_warblade": true,
+      "veil_forged_greatblade": true,
+      "quality_longsword": true
+    }
+  },
+  "additions": {
+    "artificer": {
+      "token": "warhammer",
+      "weapon": "warhammer_common"
+    },
+    "spy": {
+      "token": "rapier",
+      "weapon": "rapier_dueling"
+    },
+    "bard": {
+      "token": "lute",
+      "weapon": "lute_common"
+    }
+  },
+  "malformed_weapons": {
+    "weapon_category_missing": {
+      "field": "weapon_category",
+      "set": {},
+      "delete": [
+        "weapon_category"
+      ]
+    },
+    "weapon_category_null": {
+      "field": "weapon_category",
+      "set": {
+        "weapon_category": null
+      },
+      "delete": []
+    },
+    "weapon_category_unknown": {
+      "field": "weapon_category",
+      "set": {
+        "weapon_category": "unknown"
+      },
+      "delete": []
+    },
+    "weapon_category_number": {
+      "field": "weapon_category",
+      "set": {
+        "weapon_category": 1
+      },
+      "delete": []
+    },
+    "weapon_category_boolean": {
+      "field": "weapon_category",
+      "set": {
+        "weapon_category": true
+      },
+      "delete": []
+    },
+    "weapon_category_list": {
+      "field": "weapon_category",
+      "set": {
+        "weapon_category": []
+      },
+      "delete": []
+    },
+    "weapon_category_object": {
+      "field": "weapon_category",
+      "set": {
+        "weapon_category": {}
+      },
+      "delete": []
+    },
+    "weapon_range_missing": {
+      "field": "weapon_range",
+      "set": {},
+      "delete": [
+        "weapon_range"
+      ]
+    },
+    "weapon_range_null": {
+      "field": "weapon_range",
+      "set": {
+        "weapon_range": null
+      },
+      "delete": []
+    },
+    "weapon_range_unknown": {
+      "field": "weapon_range",
+      "set": {
+        "weapon_range": "unknown"
+      },
+      "delete": []
+    },
+    "weapon_range_number": {
+      "field": "weapon_range",
+      "set": {
+        "weapon_range": 1
+      },
+      "delete": []
+    },
+    "weapon_range_boolean": {
+      "field": "weapon_range",
+      "set": {
+        "weapon_range": true
+      },
+      "delete": []
+    },
+    "weapon_range_list": {
+      "field": "weapon_range",
+      "set": {
+        "weapon_range": []
+      },
+      "delete": []
+    },
+    "weapon_range_object": {
+      "field": "weapon_range",
+      "set": {
+        "weapon_range": {}
+      },
+      "delete": []
+    },
+    "weapon_kind_missing": {
+      "field": "weapon_kind",
+      "set": {},
+      "delete": [
+        "weapon_kind"
+      ]
+    },
+    "weapon_kind_null": {
+      "field": "weapon_kind",
+      "set": {
+        "weapon_kind": null
+      },
+      "delete": []
+    },
+    "weapon_kind_unknown": {
+      "field": "weapon_kind",
+      "set": {
+        "weapon_kind": "unknown"
+      },
+      "delete": []
+    },
+    "weapon_kind_number": {
+      "field": "weapon_kind",
+      "set": {
+        "weapon_kind": 1
+      },
+      "delete": []
+    },
+    "weapon_kind_boolean": {
+      "field": "weapon_kind",
+      "set": {
+        "weapon_kind": true
+      },
+      "delete": []
+    },
+    "weapon_kind_list": {
+      "field": "weapon_kind",
+      "set": {
+        "weapon_kind": []
+      },
+      "delete": []
+    },
+    "weapon_kind_object": {
+      "field": "weapon_kind",
+      "set": {
+        "weapon_kind": {}
+      },
+      "delete": []
+    }
+  },
+  "malformed_proficiencies": {
+    "missing": {
+      "set": {},
+      "delete": [
+        "weapon_proficiencies"
+      ]
+    },
+    "null": {
+      "set": {
+        "weapon_proficiencies": null
+      },
+      "delete": []
+    },
+    "scalar": {
+      "set": {
+        "weapon_proficiencies": "simple"
+      },
+      "delete": []
+    },
+    "empty": {
+      "set": {
+        "weapon_proficiencies": []
+      },
+      "delete": []
+    },
+    "unknown": {
+      "set": {
+        "weapon_proficiencies": [
+          "unknown_weapon"
+        ]
+      },
+      "delete": []
+    },
+    "valid_then_unknown": {
+      "set": {
+        "weapon_proficiencies": [
+          "simple",
+          "unknown_weapon"
+        ]
+      },
+      "delete": []
+    },
+    "non_string": {
+      "set": {
+        "weapon_proficiencies": [
+          1
+        ]
+      },
+      "delete": []
+    },
+    "mapping": {
+      "set": {
+        "weapon_proficiencies": {
+          "simple": true
+        }
+      },
+      "delete": []
+    }
+  },
+  "token_cases": [
+    {
+      "token": "simple",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "dagger",
+        "properties": []
+      }
+    },
+    {
+      "token": "simple",
+      "expected": false,
+      "weapon": {
+        "weapon_category": "martial",
+        "weapon_range": "melee",
+        "weapon_kind": "dagger",
+        "properties": []
+      }
+    },
+    {
+      "token": "simple_melee",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "dagger",
+        "properties": []
+      }
+    },
+    {
+      "token": "simple_melee",
+      "expected": false,
+      "weapon": {
+        "weapon_category": "martial",
+        "weapon_range": "melee",
+        "weapon_kind": "dagger",
+        "properties": []
+      }
+    },
+    {
+      "token": "simple_melee",
+      "expected": false,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "ranged",
+        "weapon_kind": "dagger",
+        "properties": []
+      }
+    },
+    {
+      "token": "simple_ranged",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "ranged",
+        "weapon_kind": "dagger",
+        "properties": []
+      }
+    },
+    {
+      "token": "simple_ranged",
+      "expected": false,
+      "weapon": {
+        "weapon_category": "martial",
+        "weapon_range": "ranged",
+        "weapon_kind": "dagger",
+        "properties": []
+      }
+    },
+    {
+      "token": "simple_ranged",
+      "expected": false,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "dagger",
+        "properties": []
+      }
+    },
+    {
+      "token": "martial",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "martial",
+        "weapon_range": "melee",
+        "weapon_kind": "dagger",
+        "properties": []
+      }
+    },
+    {
+      "token": "martial",
+      "expected": false,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "dagger",
+        "properties": []
+      }
+    },
+    {
+      "token": "martial_melee",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "martial",
+        "weapon_range": "melee",
+        "weapon_kind": "dagger",
+        "properties": []
+      }
+    },
+    {
+      "token": "martial_melee",
+      "expected": false,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "dagger",
+        "properties": []
+      }
+    },
+    {
+      "token": "martial_melee",
+      "expected": false,
+      "weapon": {
+        "weapon_category": "martial",
+        "weapon_range": "ranged",
+        "weapon_kind": "dagger",
+        "properties": []
+      }
+    },
+    {
+      "token": "martial_ranged",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "martial",
+        "weapon_range": "ranged",
+        "weapon_kind": "dagger",
+        "properties": []
+      }
+    },
+    {
+      "token": "martial_ranged",
+      "expected": false,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "ranged",
+        "weapon_kind": "dagger",
+        "properties": []
+      }
+    },
+    {
+      "token": "martial_ranged",
+      "expected": false,
+      "weapon": {
+        "weapon_category": "martial",
+        "weapon_range": "melee",
+        "weapon_kind": "dagger",
+        "properties": []
+      }
+    },
+    {
+      "token": "martial_polearms",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "martial",
+        "weapon_range": "melee",
+        "weapon_kind": "halberd",
+        "properties": []
+      }
+    },
+    {
+      "token": "martial_polearms",
+      "expected": false,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "halberd",
+        "properties": []
+      }
+    },
+    {
+      "token": "martial_polearms",
+      "expected": false,
+      "weapon": {
+        "weapon_category": "martial",
+        "weapon_range": "melee",
+        "weapon_kind": "dagger",
+        "properties": []
+      }
+    },
+    {
+      "token": "martial_hammers",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "martial",
+        "weapon_range": "melee",
+        "weapon_kind": "warhammer",
+        "properties": []
+      }
+    },
+    {
+      "token": "martial_hammers",
+      "expected": false,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "warhammer",
+        "properties": []
+      }
+    },
+    {
+      "token": "martial_hammers",
+      "expected": false,
+      "weapon": {
+        "weapon_category": "martial",
+        "weapon_range": "melee",
+        "weapon_kind": "dagger",
+        "properties": []
+      }
+    },
+    {
+      "token": "light_weapons",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "dagger",
+        "properties": [
+          "light"
+        ]
+      }
+    },
+    {
+      "token": "light_weapons",
+      "expected": false,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "dagger",
+        "properties": [
+          "finesse"
+        ]
+      }
+    },
+    {
+      "token": "battleaxe",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "battleaxe",
+        "properties": []
+      }
+    },
+    {
+      "token": "club",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "club",
+        "properties": []
+      }
+    },
+    {
+      "token": "dagger",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "dagger",
+        "properties": []
+      }
+    },
+    {
+      "token": "garrote",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "garrote",
+        "properties": []
+      }
+    },
+    {
+      "token": "greataxe",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "greataxe",
+        "properties": []
+      }
+    },
+    {
+      "token": "greatsword",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "greatsword",
+        "properties": []
+      }
+    },
+    {
+      "token": "halberd",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "halberd",
+        "properties": []
+      }
+    },
+    {
+      "token": "hand_crossbow",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "hand_crossbow",
+        "properties": []
+      }
+    },
+    {
+      "token": "handaxe",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "handaxe",
+        "properties": []
+      }
+    },
+    {
+      "token": "heavy_crossbow",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "heavy_crossbow",
+        "properties": []
+      }
+    },
+    {
+      "token": "light_crossbow",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "light_crossbow",
+        "properties": []
+      }
+    },
+    {
+      "token": "longbow",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "longbow",
+        "properties": []
+      }
+    },
+    {
+      "token": "longsword",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "longsword",
+        "properties": []
+      }
+    },
+    {
+      "token": "lute",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "lute",
+        "properties": []
+      }
+    },
+    {
+      "token": "mace",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "mace",
+        "properties": []
+      }
+    },
+    {
+      "token": "quarterstaff",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "quarterstaff",
+        "properties": []
+      }
+    },
+    {
+      "token": "rapier",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "rapier",
+        "properties": []
+      }
+    },
+    {
+      "token": "scimitar",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "scimitar",
+        "properties": []
+      }
+    },
+    {
+      "token": "shortbow",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "shortbow",
+        "properties": []
+      }
+    },
+    {
+      "token": "shortsword",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "shortsword",
+        "properties": []
+      }
+    },
+    {
+      "token": "sling",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "sling",
+        "properties": []
+      }
+    },
+    {
+      "token": "spear",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "spear",
+        "properties": []
+      }
+    },
+    {
+      "token": "tools",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "tools",
+        "properties": []
+      }
+    },
+    {
+      "token": "warhammer",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "warhammer",
+        "properties": []
+      }
+    },
+    {
+      "token": "staff",
+      "expected": true,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "quarterstaff",
+        "properties": []
+      }
+    },
+    {
+      "token": "staff",
+      "expected": false,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "dagger",
+        "properties": []
+      }
+    },
+    {
+      "token": "dagger",
+      "expected": false,
+      "weapon": {
+        "weapon_category": "simple",
+        "weapon_range": "melee",
+        "weapon_kind": "shortsword",
+        "properties": []
+      }
+    }
+  ]
+}

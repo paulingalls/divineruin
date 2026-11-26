@@ -10,6 +10,7 @@ _SCRIPTS_DIR = _REPO_ROOT / "scripts"
 if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
 
+import seed_catalogs  # type: ignore[import-not-found]  # noqa: E402
 import seed_content  # type: ignore[import-not-found]  # noqa: E402
 
 
@@ -125,6 +126,7 @@ async def test_success_names_target_and_closes_connection(monkeypatch, capsys):
     monkeypatch.setattr(seed_content, "seed", seed)
     monkeypatch.setattr(seed_content, "seed_map_progress", seed_map_progress)
     monkeypatch.setattr(seed_content, "validate", validate)
+    monkeypatch.setattr(seed_catalogs, "validate_runtime_catalogs", seed_map_progress)
 
     await seed_content.main()
 

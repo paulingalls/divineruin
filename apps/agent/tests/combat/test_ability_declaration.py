@@ -121,9 +121,9 @@ class TestInCombatAbilityResolution:
         state = _ability_vs_attack_state("s055_plain", "player_1", "enemy_1", "arcane_bolt")
         state.beat = PhaseBeat.DECLARATION
         state.pending_declarations = {}
-        declarations = {"player_1": {"type": "ability", "action": "rogue_vanish"}}
+        declarations = {"player_1": {"type": "ability", "action": "rogue_quick_fingers"}}
 
-        with pytest.raises(ValueError, match=r"rogue_vanish.*not declarable in combat"):
+        with pytest.raises(ValueError, match=r"rogue_quick_fingers.*not declarable in combat"):
             advance_combat_phase(state, declarations)
 
         assert state.beat is PhaseBeat.DECLARATION

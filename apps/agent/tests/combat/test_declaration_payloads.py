@@ -19,6 +19,7 @@ from combat_support import _participant_roster
 from declaration_payloads import (
     DECL_VARIANTS,
     AbilityDecl,
+    AbilityMoveDecl,
     AttackDecl,
     ConsumeDecl,
     DefendDecl,
@@ -366,7 +367,13 @@ def test_a_repeated_actor_fails_loud():
 
 def test_variant_kinds_match_the_engine_declaration_types():
     kinds = {typing.get_args(v.model_fields["kind"].annotation)[0] for v in DECL_VARIANTS}
-    assert kinds == {t.value for t in DeclarationType} | {"move", "consume", "reposition", "attack_consume"}
+    assert kinds == {t.value for t in DeclarationType} | {
+        "move",
+        "consume",
+        "reposition",
+        "attack_consume",
+        "ability_move",
+    }
 
 
 _ENGINE_CASES = [
@@ -374,6 +381,9 @@ _ENGINE_CASES = [
         reshape=[], kind="attack", actor_id="a", action="Longsword", target_id="goblin_1", held_item_id="", rider=""
     ),
     AbilityDecl(kind="ability", actor_id="a", action="arcane_bolt", targets=["goblin_1"], argument_type=""),
+    AbilityMoveDecl(
+        kind="ability_move", actor_id="a", action="rogue_shadow_step", destination=Destination(x=25, y=0, z=0)
+    ),
     InteractDecl(kind="interact", actor_id="a", action="lever"),
     ConsumeDecl(kind="consume", actor_id="a", item_id="healing_potion", target_id=""),
     ManeuverDecl(kind="maneuver", actor_id="a", target_id="goblin_1"),
@@ -386,7 +396,10 @@ _ENGINE_CASES = [
 @pytest.mark.parametrize("payload", _ENGINE_CASES)
 def test_a_fully_specified_variant_satisfies_the_engine_classifier(payload):
     raw = to_engine_declarations([payload])["a"]
-    assert resolve_declaration(raw).type.value == raw["type"]
+    declaration = resolve_declaration(raw)
+    assert declaration.type.value == raw["type"]
+    if isinstance(payload, AbilityMoveDecl):
+        assert declaration.destination == payload.destination.model_dump()
 
 
 def test_declare_phase_schema_advertises_declarations_and_retreat_rider():
@@ -399,8 +412,19 @@ def test_declare_phase_schema_advertises_declarations_and_retreat_rider():
         for branch in declarations
         for kind in [schema["$defs"][branch["$ref"].split("/")[-1]]["properties"]["kind"]]
     }
-    assert kinds == {t.value for t in DeclarationType} | {"move", "consume", "reposition", "attack_consume"}
+    assert kinds == {t.value for t in DeclarationType} | {
+        "move",
+        "consume",
+        "reposition",
+        "attack_consume",
+        "ability_move",
+    }
     assert "trigger" not in json.dumps(schema)
+    step = schema["$defs"]["AbilityMoveDecl"]
+    assert set(step["required"]) == {"actor_id", "kind", "action", "destination"}
+    destination = schema["$defs"][step["properties"]["destination"]["$ref"].split("/")[-1]]
+    assert set(destination["required"]) == {"x", "y", "z"}
+    assert all(field["type"] == "number" for field in destination["properties"].values())
     retreat = schema["$defs"]["RetreatDecl"]
     assert "rider" in retreat["required"]
     assert set(retreat["properties"]["rider"]["enum"]) == {"", "disengage"}

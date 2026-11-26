@@ -20,7 +20,6 @@ import json
 import logging
 
 from catalog_parse import parse_dict, parse_str, parse_str_list
-from lost_scout_scene import report_lines
 from role_archetypes import DISPOSITIONS
 from social_resolution import RESISTANCE_TAGS
 
@@ -37,6 +36,16 @@ def _validate_unique_voice_ids(config: dict[str, dict]) -> None:
         if previous is not None:
             raise ValueError(f"duplicate voice_id {voice_id!r} on NPCs {previous!r} and {npc_id!r}")
         owners[voice_id] = npc_id
+
+
+def lost_scout_report_lines(npc_id: str, npc: dict) -> dict[str, str]:
+    lines = npc.get("lost_scout_reports")
+    if not isinstance(lines, dict) or lines.keys() != {"fought", "fled", "withdrew"}:
+        raise ValueError(f"{npc_id}.lost_scout_reports must have fought, fled and withdrew responses")
+    responses = {outcome: parse_str(line, f"{npc_id}.lost_scout_reports.{outcome}") for outcome, line in lines.items()}
+    if any(not line.strip() for line in responses.values()):
+        raise ValueError(f"{npc_id}.lost_scout_reports has a blank response")
+    return responses
 
 
 def parse_npc_row(npc_id: str, data: dict) -> dict:
@@ -59,7 +68,7 @@ def parse_npc_row(npc_id: str, data: dict) -> dict:
         parse_str_list(data["personality"], f"{npc_id}.personality")
         parse_dict(data["knowledge"], f"{npc_id}.knowledge")
         if "lost_scout_reports" in data:
-            report_lines(npc_id, data)
+            lost_scout_report_lines(npc_id, data)
         parse_dict(data["schedule"], f"{npc_id}.schedule")
         disposition = parse_str(data["default_disposition"], f"{npc_id}.default_disposition")
         if disposition not in DISPOSITIONS:

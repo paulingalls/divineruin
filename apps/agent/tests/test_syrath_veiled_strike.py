@@ -161,7 +161,7 @@ async def test_veiled_spy_spell_attack_has_only_spell_damage(world: SimpleNamesp
         with strike_dice(15) as notations:
             result = await f.call("resolve_phase")
         packet = next(p for p in result["packets"] if p["actor_id"] == f.hero)
-        assert packet["cast"]["concealment"]["ended_by"] == "cast"
+        assert packet["cast"]["concealment"]["ended_by"] == "attack"
         assert "synergy_clause_id" not in packet["cast"]
         assert notations == ["2d6"]
         assert participant(await f.reload(), GOBLIN).hp_current == 46

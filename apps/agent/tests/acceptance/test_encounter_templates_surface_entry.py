@@ -161,3 +161,67 @@ async def test_shipped_boss_discovery(reset_db_pool):
                 )
         finally:
             await h.close()
+
+
+@pytest.mark.parametrize("kind", ["smoke", "unknown"])
+async def test_authored_smoke_at_opportunity_interrupt(reset_db_pool: str, kind: str) -> None:
+    from acceptance._capstone_helpers import _d20, _damage_die
+    from acceptance._enemy_opportunity_helpers import declare, move, resolve_allies, strikes
+    from acceptance.test_architect_fight import pos
+
+    h = MawlingHarness()
+    try:
+        await h.prepare((6,), companion=None)
+        mover = h.players[0]
+        h.encounter_id = f"surface_smoke_{kind}"
+        h.owns_template = True
+        h.enemies = ["bandit"]
+        await put(
+            h.pool,
+            "encounter_templates",
+            h.encounter_id,
+            {
+                "id": h.encounter_id,
+                "name": "Roadside ambush",
+                "description": "A boot scrapes gravel.",
+                "difficulty": "moderate",
+                "recommended_party_level": 6,
+                "enemies": [{"id": "bandit", "creature_id": "bandit", "role": "standard"}],
+                "scene_placement": {
+                    "party_start": pos(-3),
+                    "companion_start": pos(-3),
+                    "actors": {"bandit": pos(0)},
+                    "locations": {"smoke_origin": pos(15)},
+                    "zones": {"cloud": {"kind": kind, "center_id": "smoke_origin", "radius_ft": 10}},
+                },
+            },
+        )
+        command = {"mode": "combat", "encounter_id": h.encounter_id}
+        if kind == "unknown":
+            count = await h.pool.fetchval("SELECT count(*) FROM combat_instances")
+            assert "zone kind" in await h.command("enter_mode", command, error=True)
+            assert h.sd.combat_state is None
+            assert await h.pool.fetchval("SELECT count(*) FROM combat_instances") == count
+            assert all(event["type"] != E.COMBAT_STARTED for event in published_payloads(h.sd.room))
+            return
+
+        await h.command("enter_mode", command)
+        await h.reload()
+        facts = await h.command("query_info", {"kind": "combat"})
+        cloud = facts["zones"]["cloud"]
+        assert cloud["center"] == pos(15) and cloud["name"] == "Smoke cloud" and cloud["members"] == []
+        assert "expires_round" not in cloud
+        await declare(h, move(mover, 27))
+        with (
+            patch("check_resolution.dice_roll", side_effect=map(_d20, [19, 15])) as rolls,
+            patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
+        ):
+            (strike,) = strikes(await resolve_allies(h))
+        assert strike["interrupt_position"] == pos(5)
+        assert rolls.call_count == 2 and strike["roll"] == 15
+        await h.drain()
+        facts = await h.command("query_info", {"kind": "combat"})
+        assert facts["positions"][mover] == pos(27)
+        assert facts["zones"]["cloud"] == cloud
+    finally:
+        await h.close()

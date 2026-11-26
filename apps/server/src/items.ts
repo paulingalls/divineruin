@@ -1,3 +1,4 @@
+import { parseWeaponProfile } from "@divineruin/shared";
 import type { Item, ItemEffect, ItemAttunement } from "@divineruin/shared";
 import { sql } from "./db.ts";
 import { asRecord, parseStringArray } from "./parse-helpers.ts";
@@ -193,7 +194,9 @@ export function parseItemRow(id: string, raw: unknown): Item {
     value_base: data.value_base,
   };
 
-  if (data.subtype !== undefined) {
+  if (item.type === "weapon") {
+    Object.assign(item, parseWeaponProfile(data, ctx));
+  } else if (data.subtype !== undefined) {
     if (typeof data.subtype !== "string") throw new Error(`${ctx}.subtype is not a string`);
     item.subtype = data.subtype;
   }

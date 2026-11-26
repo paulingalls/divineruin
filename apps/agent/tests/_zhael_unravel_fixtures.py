@@ -134,7 +134,9 @@ def assert_restored(fight: Fight, committed: dict, start: dict, actor: str) -> N
             key: expected[key] for key in RESTORE_KEYS & expected.keys()
         }
         assert {
-            key: value for key, value in current.get("flags", {}).items() if key in {"concealed", "shadow_veil"}
+            key: value
+            for key, value in current.get("flags", {}).items()
+            if key in {"concealed", "shadow_veil", "encounter_concealment"}
         } == (expected.get("flags", {}))
         assert_inventory(committed, pid, saved["inventory"])
         member = fight.session.member_state(pid)

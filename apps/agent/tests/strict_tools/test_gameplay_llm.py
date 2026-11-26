@@ -144,12 +144,14 @@ def _assert_reshape_schema(schema):
         "lower_ceiling": {"min", "max"},
     }
     declarations = branches(schema["properties"]["declarations"]["items"])
-    assert len(declarations) == 11
+    assert len(declarations) == 12
     combined = next(branch for branch in declarations if kind(branch) == "attack_consume")
     discriminator = combined["properties"]["kind"]
     assert discriminator.get("const") == "attack_consume" or discriminator.get("enum") == ["attack_consume"]
     assert set(combined["required"]) == {"kind", "actor_id", "action", "target_id", "item_id", "heal_target_id"}
     assert combined["additionalProperties"] is False
+    [shadow_step] = [declaration for declaration in declarations if kind(declaration) == "ability_move"]
+    assert set(shadow_step["required"]) == {"kind", "actor_id", "action", "destination"}
     for declaration in declarations:
         properties = declaration["properties"]
         assert set(declaration["required"]) == set(properties)

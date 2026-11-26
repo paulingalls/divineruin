@@ -10,6 +10,7 @@ from combat.test_damage_affinity import declare_weapon, resolve
 from combat.test_damage_affinity import spell_fight as spell_fight
 from combat.test_spell_damage_lands import load_combat
 from voice_condition_fixtures import participant
+from weapon_fixtures import DAGGER
 
 from creature_combat import translate_creature
 from creature_schema import validate_creature_stat_block
@@ -112,9 +113,7 @@ async def test_direct_blade_critical_save_spends_pending_rally():
 @pytest.mark.parametrize("dtype", ["slashing", "piercing", "bludgeoning"])
 @pytest.mark.parametrize("magical", [False, True])
 async def test_equipment_origin_controls_physical_resistance(catalog_fight, creature, dtype, magical):
-    ctx = await catalog_fight(
-        creature, {"name": "Longsword", "damage": "1d8", "damage_type": dtype, "magical": magical}
-    )
+    ctx = await catalog_fight(creature, {**DAGGER, "damage_type": dtype, "magical": magical})
     state = ctx.userdata.combat_state
     actor = participant(state, ctx.userdata.player_id)
     target = participant(state, "foe")

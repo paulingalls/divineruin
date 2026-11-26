@@ -16,6 +16,7 @@ from types import SimpleNamespace
 from acceptance.seeds import seed_player, seed_player_with_pools
 from combat import _helpers as _combat_helpers
 from voice_condition_fixtures import place_actors
+from weapon_fixtures import DAGGER
 
 import db_mutations
 import db_queries
@@ -23,7 +24,6 @@ import event_types as E
 from combat_init import class_reaction_ids
 from session_data import CombatParticipant, CombatState
 
-_PLAYER_WEAPON = {"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}
 _ENEMY_ACTION = {"name": "Scimitar", "damage": "1d6", "damage_type": "slashing", "properties": ["light"]}
 
 
@@ -55,7 +55,7 @@ def _player(player_id: str, hp: int = 100) -> CombatParticipant:
         hp_current=hp,
         hp_max=hp,
         ac=14,
-        action_pool=[_PLAYER_WEAPON],
+        action_pool=[dict(DAGGER)],
     )
 
 
@@ -123,7 +123,7 @@ async def _start_combat(pool, player_id: str, state: CombatState, ctx, *, player
 async def _declare_attacks(ctx, player_id: str, target_id: str, enemy_ids: list[str]) -> None:
     import combat_turn
 
-    decls = {player_id: {"type": "attack", "action": "Longsword", "target_id": target_id}}
+    decls = {player_id: {"type": "attack", "action": DAGGER["name"], "target_id": target_id}}
     for eid in enemy_ids:
         decls[eid] = {"type": "attack", "action": "Scimitar", "target_id": player_id}
     await combat_turn._declare_phase_impl(ctx, decls)

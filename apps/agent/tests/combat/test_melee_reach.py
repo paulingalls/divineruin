@@ -18,7 +18,9 @@ def mock_combat_agent_factory():
 async def maw(dev_db_pool, request):
     harness = MawlingHarness()
     try:
-        await harness.start(gear=True, companion=True, reactions=getattr(request, "param", False))
+        await harness.start(
+            gear=True, companion=True, reactions=getattr(request, "param", False), class_without_reactions="warrior"
+        )
         yield harness
     finally:
         await harness.close()

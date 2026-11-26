@@ -37,12 +37,14 @@ export const CONDITION_TYPES = [
   "inspired",
   "regenerating",
   "precise_strike",
+  "iron_stance",
   "reckless_assault",
   "crippled",
   "studied_weakness",
   "hollowed",
   "iron_resolve",
   "battle_cry",
+  "war_cry_rally",
   "worthy_foe",
   "mark_of_justice",
   "incorporeal",
@@ -59,6 +61,7 @@ export interface ConditionDisplay {
 // Beneficial conditions take the Veil-teal hollow accent; harmful ones the danger ember;
 // neutral/structural ones the muted ash. Labels are short for a smartwatch-level HUD.
 export const CONDITION_DISPLAY: Record<ConditionType, ConditionDisplay> = {
+  war_cry_rally: { label: "Rallied", icon: "bullhorn", color: BrandColors.hollow },
   battle_cry: { label: "Battle Cry", icon: "bullhorn", color: BrandColors.hollow },
   worthy_foe: { label: "Worthy Foe", icon: "target", color: BrandColors.ember },
   incorporeal: { label: "Incorporeal", icon: "ghost", color: BrandColors.hollow },
@@ -86,6 +89,7 @@ export const CONDITION_DISPLAY: Record<ConditionType, ConditionDisplay> = {
   taunted: { label: "Taunted", icon: "target", color: BrandColors.ember },
   crippled: { label: "Crippled", icon: "walk", color: BrandColors.ember },
   studied_weakness: { label: "Studied Weakness", icon: "target", color: BrandColors.hollow },
+  iron_stance: { label: "Iron Stance", icon: "shield-plus", color: BrandColors.hollow },
   reckless_assault: { label: "Reckless Assault", icon: "target", color: BrandColors.ember },
   precise_strike: { label: "Precise Strike", icon: "target", color: BrandColors.hollow },
   regenerating: { label: "Regenerating", icon: "heart-plus", color: BrandColors.hollow },

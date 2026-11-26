@@ -28,7 +28,7 @@ import spell_knowledge
 import spells
 import still_encounter
 import training_tools
-from combat_ability_gate import attack_recipe, combat_ability
+from combat_ability_gate import SHADOW_STEP, attack_recipe, combat_ability
 from db_errors import db_tool
 from session_data import SessionData
 from settlement_generation import generate_settlement_npcs, generate_settlement_roster
@@ -204,6 +204,8 @@ async def _query_abilities_impl(
         row = {"id": ability.id, "name": ability.name, "ability_type": ability.ability_type}
         if ability.spell_id is not None:
             row["spell_id"] = ability.spell_id
+        elif ability.id == SHADOW_STEP:
+            row["declaration"] = {"kind": "ability_move", "destination": "required {x,y,z} coordinates in feet"}
         elif recipe := attack_recipe(ability.id):
             row["declaration"] = recipe
         elif ability.ability_type != "reaction":
@@ -364,6 +366,7 @@ async def _query_inventory_impl(
     session: SessionData = context.userdata
     from combat_item_rider import eligible_items, party_player
     from item_effects import CONSUME_PREFIX, heal_profile
+    from weapon_proficiency import validate_weapon_profile
 
     player_id = target_id or session.acting_player_id
     if target_id and not party_player(session, player_id):
@@ -382,6 +385,7 @@ async def _query_inventory_impl(
     results = []
     for item in items:
         profile = heal_profile(item["id"], item)
+        weapon = validate_weapon_profile(item["id"], item)
         results.append(
             {
                 "name": item.get("name"),
@@ -393,7 +397,7 @@ async def _query_inventory_impl(
                     if profile is not None and not item.get("tainted")
                     else {}
                 ),
-                "subtype": item.get("subtype"),
+                **(weapon if weapon is not None else {"subtype": item.get("subtype")}),
                 "durability_tier": item.get("durability_tier"),
                 "quantity": item.get("slot_info", {}).get("quantity", 1),
                 "tainted": item.get("tainted", False),

@@ -14,6 +14,7 @@ from test_encounter_facts_damage import GOBLIN, OTHER, fight, goblin_strike
 from test_encounter_facts_heal import save
 from test_encounter_facts_renewal import focus, receipt, renewals, rollback, setup_recipient
 from voice_condition_fixtures import participant, place_actors
+from weapon_fixtures import QUARTERSTAFF
 
 import db_mutations
 from combat_death_save import request_death_save
@@ -121,6 +122,7 @@ async def test_inner_fire_only_renews_on_terminal_self_damage(world: SimpleNames
         )
         await configure(world, "mortaen", "druid", index=1, focus={"current": 3, "max": 10})
         state = f.session.combat_state
+        participant(state, f.ally).action_pool[0] = dict(QUARTERSTAFF)
         caster = participant(state, f.hero)
         projected = effective_hp(await row(world, 0))
         caster.hp_current, caster.hp_max = projected["current"], projected["max"]
@@ -140,6 +142,6 @@ async def test_inner_fire_only_renews_on_terminal_self_damage(world: SimpleNames
                 ("player", 3) if burn == "ordinary" else ("temporary_hollowed", 10)
             )
             assert "focus_renewals" not in result and await focus(world, 1) == 3
-            packets = await f.round(attack(f.ally, GOBLIN))
+            packets = await f.round(attack(f.ally, GOBLIN, QUARTERSTAFF["name"]))
             assert receipt(f.ally, GOBLIN, 3, 5) in renewals(packets)
             assert await focus(world, 1) == 5

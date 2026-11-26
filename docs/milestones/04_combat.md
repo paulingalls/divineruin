@@ -86,7 +86,7 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 **Deliverables:**
 - 6 declaration types: Attack, Ability, Interact, Maneuver, Defend, Retreat
 - Declaration enhancers: Cunning Action (Rogue), Extra Attack (Warrior) expand what one declaration resolves into, not separate actions
-- Attack roll: `d20 + attribute modifier + proficiency bonus` (if weapon-proficient) vs AC
+- Attack roll: `d20 + attribute modifier + proficiency bonus` vs AC. An unproficient weapon attacks at disadvantage.
 - AC calculation by armor type: Unarmored (`10 + DEX`), Light (`12 + DEX`), Medium (`14 + DEX max 2`), Heavy (`16-18, no DEX`)
 - Weapon damage table: `1d4` (dagger) through `1d12` (greataxe) `+ attribute modifier`
 - Player intent interpretation: player speaks freely, DM agent interprets intent and calls appropriate mechanics tools
@@ -99,7 +99,7 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 **Acceptance criteria:**
 - [x] All 6 declaration types are defined with validation rules
 - [x] Only one declaration per actor per phase (enhancers expand resolution, not declaration count)
-- [x] Attack roll correctly applies proficiency bonus when weapon-proficient
+- [x] Weapon attack rolls always apply the proficiency bonus. An unproficient weapon attacks at disadvantage.
 - [x] AC calculation is correct for all armor categories (unarmored, light, medium, heavy)
 - [x] Weapon damage ranges from 1d4 to 1d12 + correct attribute modifier
 - [x] Critical hit (natural 20) doubles damage dice
@@ -109,10 +109,9 @@ See `audit/phase-4-combat.md` for the full 65-item coverage matrix.
 - [x] An eligible enemy can spend one opportunity attack per round when a player moves or approaches beyond its reach. The player may react to the blow, then continues from that point if able.
 - [x] All combat math functions are pure with no side effects
 - [x] Tests cover all declaration types, armor categories, and weapon damage ranges
-- [ ] The 14 martial L4/L8 elective techniques other than Quick Fingers work in a fight. Wired in sprint martial-electives: `warrior_precision_strike`, `warrior_reckless_assault`, `rogue_dirty_trick`, `warrior_taunt`, `warrior_war_cry`, `rogue_crippling_strike`, `rogue_exploit_weakness`, `warrior_cleaving_blow`, `warrior_whirlwind`, `rogue_blade_flurry`. Still refused:
-  `warrior_iron_stance`, `rogue_smoke_bomb`, `rogue_shadow_step`, `rogue_vanish`.
+- [x] The 15 martial L4/L8 elective techniques other than Quick Fingers work in a fight. Warriors can use `warrior_precision_strike`, `warrior_reckless_assault`, `warrior_taunt`, `warrior_war_cry`, `warrior_cleaving_blow`, `warrior_whirlwind`, `warrior_unstoppable_charge`, `warrior_iron_stance`. Rogues can use `rogue_dirty_trick`, `rogue_crippling_strike`, `rogue_exploit_weakness`, `rogue_blade_flurry`, `rogue_vanish`, `rogue_smoke_bomb`, `rogue_shadow_step`. Marshals can use `marshal_war_cry` to frighten nearby foes who can hear and rally other allies through the round.
 - [ ] rogue_quick_fingers steals, plants or swaps a real item mid-combat
-- [ ] Weapon equips check proficiency once item weapon categories are normalized in both loaders.
+- [x] Weapon equips check proficiency once item weapon categories are normalized in both loaders. Registered-tool tests cover the spoken equip warning, attack disadvantage, advantage cancellation, and combat reload (`test_weapon_proficiency_equip.py`).
 - [x] Direct Strike gives the named ally advantage and +1d4 damage on their next attack against the named foe, in the engine.
 - [x] Coordinated Assault gives two allies advantage on their next attack, and +1d6 each when both hit the same foe, in the engine.
 - [x] Reposition moves an ally 15 ft at once without provoking reactions, in the engine.

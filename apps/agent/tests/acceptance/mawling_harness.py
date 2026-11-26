@@ -10,6 +10,7 @@ from acceptance.seeds import seed_player_with_pools
 from acceptance.voice_condition_harness import ScenarioModel
 from livekit.agents import Agent, AgentSession
 from sample_fixtures import make_mock_room
+from weapon_fixtures import LONGSWORD
 
 import db
 import db_mutations
@@ -19,12 +20,21 @@ from combat_agent import CombatAgent
 from mode_tools import enter_mode
 from party_state import PartyMember
 from session_data import CompanionState, SessionData
+from weapon_proficiency import PROFILE_FIELDS
 
 
 class MawlingHarness:
     owns_template = False
 
-    async def start(self, reactions=False, gear=False, companion=False, role: Any = "standard"):
+    async def start(
+        self,
+        reactions=False,
+        gear=False,
+        companion=False,
+        role: Any = "standard",
+        *,
+        class_without_reactions: str = "mage",
+    ):
         self.pool = await db.get_pool()
         await reseed_choir_content(self.pool)
         from adult_mawling_fixture import adult_template
@@ -52,7 +62,7 @@ class MawlingHarness:
                     else "cleric"
                 )
                 if reactions
-                else "mage",
+                else class_without_reactions,
             )
             row = await db_queries.get_player(pid)
             assert row is not None
@@ -82,7 +92,9 @@ class MawlingHarness:
                 assert row is not None
                 row["equipment"] = {
                     "main_hand": {
+                        "id": "shortsword_basic",
                         "name": weapon["name"],
+                        **{field: weapon[field] for field in PROFILE_FIELDS},
                         "damage": weapon["damage_dice"],
                         "damage_type": weapon["effects"][0]["damage_type"],
                         "properties": weapon["properties"],
@@ -121,7 +133,7 @@ class MawlingHarness:
                 location_id=location,
                 gold=0,
                 hp={"current": 100, "max": 100},
-                equipment={"main_hand": {"name": "Longsword", "damage": "1d8", "damage_type": "slashing"}},
+                equipment={"main_hand": LONGSWORD},
             )
             await self.pool.execute("UPDATE players SET data=$2::jsonb WHERE player_id=$1", pid, json.dumps(row))
         self.sd = SessionData(player_id=self.players[0], location_id=location, room=make_mock_room())

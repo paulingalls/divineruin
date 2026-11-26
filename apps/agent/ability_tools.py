@@ -37,7 +37,14 @@ import db_queries
 import mentor_variants
 import reaction_gate
 import spells
-from combat_ability_gate import RALLYING_SHOUT, SHIELD_BASH, attack_recipe, combat_ability, require_rally_target
+from combat_ability_gate import (
+    RALLYING_SHOUT,
+    SHADOW_STEP,
+    SHIELD_BASH,
+    attack_recipe,
+    combat_ability,
+    require_rally_target,
+)
 from combat_ability_save import requires_hostile_target
 from resource_costs import gate_pool
 from session_data import AuthenticatedActor, SessionData
@@ -81,6 +88,11 @@ async def _request_ability_activation_impl(
         if not combat_ability(ability):
             raise ToolError(f"{ability.name} has no combat action — it cannot be used in a fight.")
         declared_id = ability.spell_id or variant_id or ability_id
+        if ability.id == SHADOW_STEP:
+            raise ToolError(
+                f"{ability.name} cannot be activated in combat — declare {declared_id} in the combat phase "
+                "with kind=ability_move and a destination {x,y,z} in feet."
+            )
         raise ToolError(f"{ability.name} cannot be activated in combat — declare {declared_id} in the combat phase.")
 
     async def activate_unlocked(prepared_spend=None) -> str:

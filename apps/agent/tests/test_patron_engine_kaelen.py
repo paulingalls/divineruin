@@ -192,7 +192,10 @@ async def cry_round(world, call, foe_id, expected, *, buffed=False):
     room = session.room
     initial = len(published_payloads(room))
     await call(
-        "declare_phase", declarations=[attack(p.id, foe_id) if p.is_ally else defend(p.id) for p in state.participants]
+        "declare_phase",
+        declarations=[
+            attack(p.id, foe_id, p.action_pool[0]["name"]) if p.is_ally else defend(p.id) for p in state.participants
+        ],
     )
     with (
         patch("check_resolution.dice_roll", return_value=_d20(9)),

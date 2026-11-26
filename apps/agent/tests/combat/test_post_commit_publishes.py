@@ -17,6 +17,7 @@ from combat._helpers import (
 from livekit import rtc
 from sample_fixtures import make_context
 from voice_condition_fixtures import place_actors
+from weapon_fixtures import LONGSWORD
 
 import combat_end
 import combat_events
@@ -31,7 +32,7 @@ from session_data import CombatParticipant, CombatState
 def _two_pc_resolution_state() -> CombatState:
     """Two PCs and one high-HP enemy at the RESOLUTION beat. Nothing dies this phase, so the WRAP
     runs its Resonance decay and the loop stays in combat."""
-    weapon = [{"name": "Longsword", "damage": "1d8", "damage_type": "slashing", "properties": []}]
+    weapon = [dict(LONGSWORD)]
     state = CombatState(
         combat_id="combat_publish_isolation",
         participants=[
@@ -96,7 +97,9 @@ async def test_a_failing_sink_flush_does_not_swallow_the_resonance_pushes():
     queries = MagicMock()
     queries.get_players_for_update = AsyncMock(side_effect=lambda ids, **kw: {pid: {"player_id": pid} for pid in ids})
     queries.get_player_inventory = AsyncMock(return_value=[])
-    queries.get_player = AsyncMock(return_value={"player_id": "player_1", "focus": {"current": 10, "max": 10}})
+    queries.get_player = AsyncMock(
+        return_value={"player_id": "player_1", "class": "warrior", "focus": {"current": 10, "max": 10}}
+    )
     break_mod = MagicMock()
     break_mod.break_concentration_on_damage = AsyncMock(return_value=None)
     resonance_mutations = MagicMock()

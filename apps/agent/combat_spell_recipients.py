@@ -4,7 +4,6 @@ import combat_spatial as spatial
 from combat_spell_profile import scaled
 from combat_structures import blocked_reason, blocking_wall, chamber_line_blocker, require_line
 from condition_sources import DeliveryRefused
-from still_encounter import protected_ids
 
 
 def select(state, caster, declaration, spell, *, require_live=False):
@@ -13,6 +12,9 @@ def select(state, caster, declaration, spell, *, require_live=False):
     spec = profile.get("recipients")
     if spec is None:
         return [{"target_id": target_id} for target_id in ids]
+    # The seed CLI imports validate_spec without gameplay dependencies.
+    from still_encounter import protected_ids
+
     shape = spec["shape"]
     protected = protected_ids(state)
     live = [p for p in state.participants if not p.is_fallen and not p.is_dead and p.id not in protected]

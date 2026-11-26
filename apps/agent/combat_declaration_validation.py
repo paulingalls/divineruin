@@ -11,6 +11,7 @@ import combat_grapple
 import combat_martial
 import combat_melee_approach
 import combat_reposition
+import combat_shadow_step
 import combat_spatial_declarations
 import combat_voice_rules
 import still_encounter
@@ -21,8 +22,10 @@ from combat_ability_gate import (
     ELECTIVE_RIDER_ABILITIES,
     MULTI_TARGET_WEAPON_ABILITIES,
     REPOSITION,
+    SHADOW_STEP,
     SHIELD_BASH,
     SINGLE_TARGET_WEAPON_ABILITIES,
+    WAR_CRIES,
     WAR_CRY,
     combat_ability,
     declared_ability,
@@ -40,7 +43,9 @@ if TYPE_CHECKING:
     from combat_state import CombatState
 
 
-def _require_taunt_target(state: "CombatState", actor: "CombatParticipant", declaration: Declaration) -> None:
+def _require_taunt_target(
+    state: "CombatState", actor: "CombatParticipant", declaration: Declaration, concealed: frozenset[str]
+) -> None:
     targets = declaration.target_ids or [declaration.target_id]
     for source in required_attack_sources(actor.conditions):
         taunter = state.get_participant(source)
@@ -51,7 +56,11 @@ def _require_taunt_target(state: "CombatState", actor: "CombatParticipant", decl
         # Check the retargeted attack against the same rules that would validate its redeclaration.
         try:
             validate_declaration(
-                state, actor.id, replace(declaration, target_id=source, target_ids=None, reshape=None), {}
+                state,
+                actor.id,
+                replace(declaration, target_id=source, target_ids=None, reshape=None),
+                {},
+                concealed=concealed,
             )
         except ValueError:
             continue
@@ -65,6 +74,7 @@ def validate_declaration(
     persisted_declarations: dict,
     *,
     queued: bool = False,
+    concealed: frozenset[str] = frozenset(),
 ) -> None:
     if declaration.reshape:
         from architect_reshape import proposed_state
@@ -85,8 +95,16 @@ def validate_declaration(
         from combat_multiattack import expand_declaration
 
         for child in expand_declaration(actor, declaration):
-            validate_declaration(next_state, actor_id, child, persisted_declarations, queued=queued)
+            validate_declaration(
+                next_state, actor_id, child, persisted_declarations, queued=queued, concealed=concealed
+            )
         return
+    if not actor.is_ally:
+        for target_id in (declaration.target_id, *(declaration.target_ids or ())):
+            if target_id is not None and target_id in concealed:
+                target = next_state.get_participant(target_id)
+                assert target is not None
+                raise ValueError(f"{target.name} ({target_id}) is concealed and cannot be targeted.")
     import choir_encounter
 
     choir_encounter.guard_declaration(next_state, actor_id, declaration)
@@ -135,7 +153,7 @@ def validate_declaration(
             f"available actions: {available}"
         )
     if declaration.type is DeclarationType.ATTACK and not queued:
-        _require_taunt_target(next_state, actor, declaration)
+        _require_taunt_target(next_state, actor, declaration, concealed)
     pool_action = _find_action(actor, declaration.action)
     martial = combat_martial.attack_ability(declaration)
     if declaration.type is DeclarationType.ATTACK and declaration.rider and martial is None:
@@ -194,8 +212,11 @@ def validate_declaration(
                 combat_reposition.validate_route(next_state, actor, declaration, ability)
             else:
                 combat_martial.require_targets(next_state, actor, declaration, ability)
-            if ability.id == WAR_CRY:
-                if not war_cry_targets(next_state):
+            if ability.id == SHADOW_STEP:
+                combat_shadow_step.validate(next_state, actor.id, declaration)
+                return
+            if ability.id in WAR_CRIES:
+                if ability.id == WAR_CRY and not war_cry_targets(next_state, actor, ability.id):
                     raise ValueError("War Cry requires a standing foe who can hear.")
                 return
             if ability.id in MULTI_TARGET_WEAPON_ABILITIES:

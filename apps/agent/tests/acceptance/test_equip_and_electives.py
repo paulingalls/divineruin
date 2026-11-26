@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 from unittest.mock import patch
+from uuid import uuid4
 
 from acceptance._capstone_helpers import _d20, _damage_die
 from acceptance.attribute_increase_walk import IncreaseWalk
@@ -12,6 +13,7 @@ from acceptance.test_still_anchors import mock_combat_agent_factory as mock_comb
 
 import abilities
 import ability_persistence
+import db
 import db_content_queries
 import db_mutations
 import db_mutations_inventory
@@ -47,7 +49,7 @@ COMBAT_BY_ELECTIVE = {
     "marshal_grand_stratagem": False,
     "paladin_zealous_charge": False,
     "rogue_dirty_trick": True,
-    "rogue_shadow_step": False,
+    "rogue_shadow_step": True,
     "skirmisher_hamstring": False,
     "skirmisher_spring_attack": False,
     "spy_poison_craft": False,
@@ -149,9 +151,25 @@ def test_award_and_select_electives(harness, monkeypatch):
     harness.run_sync(check())
 
 
-def test_equip_replaces_owned_gear(harness):
+def test_equip_replaces_owned_gear(harness, monkeypatch):
+    prefix = f"equip_range:{uuid4().hex}:"
+    monkeypatch.setenv("CONTENT_CACHE_PREFIX", prefix)
+
     async def check():
         walk = await IncreaseWalk().setup(harness, tools=[transact, enter_mode])
+        original = await walk.pool.fetchval("SELECT data FROM items WHERE id = 'longsword_guild'")
+        redis = await db.get_redis()
+        key = f"{prefix}item:longsword_guild"
+
+        async def restore_longsword():
+            await walk.pool.execute("UPDATE items SET data = $1::jsonb WHERE id = 'longsword_guild'", original)
+            await redis.delete(key)
+
+        harness.stack.callback(lambda: harness.run_sync(restore_longsword()))
+        await walk.pool.execute(
+            """UPDATE items SET data = data || '{"weapon_range":"ranged"}' WHERE id = 'longsword_guild'"""
+        )
+        await redis.delete(key)
         for item in (
             "dagger_balanced",
             "longsword_guild",
@@ -169,6 +187,8 @@ def test_equip_replaces_owned_gear(harness):
             updated = next(event for event in walk.events if event["type"] == E.INVENTORY_UPDATED)
             assert updated["player_id"] == walk.player
             assert updated["inventory"] == (await db_queries.get_inventory_snapshot(walk.player))["inventory"]
+            if item == "longsword_guild":
+                assert snapshot["character"]["equipment"]["main_hand"]["ranged"] is True
             if item == "half_plate":
                 assert snapshot["character"]["ac"] == 17
             if item == "dagger_balanced":
@@ -191,6 +211,10 @@ def test_equip_replaces_owned_gear(harness):
         ):
             stack = await db_queries.get_inventory_item(walk.player, item)
             assert stack is not None and (stack["quantity"], stack["equipped"]) == (quantity, equipped), item
+
+        inventory = await call(walk, "query_info", kind="inventory")
+        half_plate = next(item for item in inventory["items"] if item["id"] == "half_plate")
+        assert half_plate["subtype"] == "medium"
 
         before_retry = await gear_state(walk)
         await call(walk, "transact", action="equip", item_id="plate_armor", delta=0)

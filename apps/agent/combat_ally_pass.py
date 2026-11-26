@@ -71,6 +71,8 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
     from combat_hold import hold_enemy_packets
     from combat_phase import PhaseBeat, _resolve_packets
     from combat_turn_start import turn_start
+    from condition_catalog import IRON_STANCE
+    from conditions import remove_condition
 
     state.ally_continuation = cursor
     packets = {packet.actor_id: packet for packet in _resolve_packets(state)}
@@ -160,6 +162,8 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
                         return summaries
                     if effects:
                         summaries.append({"actor_id": actor.id, "turn_start_effects": effects})
+                if actor is not None:
+                    actor.conditions = remove_condition(actor.conditions, IRON_STANCE)
                 cancelled = cursor.get("cancelled_moves", [])
                 if actor is not None and actor.id in cancelled:
                     cancelled.remove(actor.id)

@@ -25,7 +25,7 @@ function chargeRow(): Record<string, unknown> {
 }
 
 describe("ability save fields", () => {
-  test("the real warrior save abilities reach the runtime contract", async () => {
+  test("the real martial save abilities reach the runtime contract", async () => {
     const catalog = await rows();
     const saveAbilities = catalog
       .filter((row) => row.save !== undefined)
@@ -49,6 +49,15 @@ describe("ability save fields", () => {
     expect(warCry.save).toBe("wisdom");
     expect(warCry.dc_attribute).toBe("strength");
     expect(warCry.cost.stamina).toBe(5);
+
+    const marshalRow = catalog.find((row) => row.id === "marshal_war_cry");
+    if (!marshalRow) throw new Error("Missing marshal_war_cry");
+    const marshalWarCry = parseAbilityRow("marshal_war_cry", marshalRow);
+    expect(marshalWarCry.applies_condition).toBe("frightened");
+    expect(marshalWarCry.save).toBe("wisdom");
+    expect(marshalWarCry.dc_attribute).toBe("strength");
+    expect(marshalWarCry.cost.stamina).toBe(3);
+    expect(marshalWarCry.level_requirement).toBe(4);
   });
 
   test("unpaired fields fail at the production loader", () => {

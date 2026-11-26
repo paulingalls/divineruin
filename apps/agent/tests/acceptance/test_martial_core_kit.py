@@ -1,5 +1,6 @@
 """Core martial actions through the registered combat and discovery tools."""
 
+import json
 from unittest.mock import patch
 
 import pytest
@@ -9,6 +10,7 @@ from acceptance.test_architect_fight import fight as fight
 from acceptance.test_architect_fight import pos
 from acceptance.test_still_anchors import fresh_session
 from acceptance.test_still_anchors import mock_combat_agent_factory as mock_combat_agent_factory
+from weapon_fixtures import DAGGER
 
 import combat_spatial
 import combat_structures
@@ -381,19 +383,19 @@ async def test_shield_bash_does_not_roll_a_save_for_a_fallen_foe(warriors: Mawli
 @pytest.fixture
 async def rogue(warriors: MawlingHarness) -> MawlingHarness:
     await warriors.pool.execute(
-        """UPDATE players SET data = (data - 'player_id') || '{"class":"rogue"}'
-        WHERE player_id = $1""",
+        "UPDATE players SET data = (data - 'player_id') || $2::jsonb WHERE player_id = $1",
         warriors.players[0],
+        json.dumps({"class": "rogue", "equipment": {"main_hand": DAGGER}}),
     )
     return warriors
 
 
-def weapon_attack(actor: str, foe: str, rider: str) -> dict:
+def weapon_attack(actor: str, foe: str, rider: str, *, weapon: str = "Longsword") -> dict:
     return {
         "kind": "attack",
         "actor_id": actor,
         "target_id": foe,
-        "action": "Longsword",
+        "action": weapon,
         "held_item_id": "",
         "rider": rider,
         "reshape": [],
@@ -415,7 +417,7 @@ async def test_cunning_action(rogue: MawlingHarness, rider: str, face: int) -> N
     if rider == "dash":
         combat_spatial.place(state, foe, {**origin, "x": origin["x"] + speed + 15})
     await rogue.persist()
-    await rogue.command("declare_phase", {"declarations": [weapon_attack(actor, foe, rider)]})
+    await rogue.command("declare_phase", {"declarations": [weapon_attack(actor, foe, rider, weapon=DAGGER["name"])]})
     with (
         patch("check_resolution.dice_roll", side_effect=[_d20(15), _d20(face)] if rider == "hide" else [_d20(face)]),
         patch("check_resolution_attack.dice_roll", return_value=_damage_die(4)),
@@ -433,7 +435,7 @@ async def test_cunning_action(rogue: MawlingHarness, rider: str, face: int) -> N
         assert packet["cunning_action"]["dc"] == 14
         assert packet["cunning_action"]["roll"] == face
         assert player["flags"]["concealed"] == (face == 18)
-        await rogue.command("declare_phase", {"declarations": [weapon_attack(actor, foe, "")]})
+        await rogue.command("declare_phase", {"declarations": [weapon_attack(actor, foe, "", weapon=DAGGER["name"])]})
         with patch("check_resolution.dice_roll", return_value=_d20(1)):
             await rogue.drain()
         player = await db_queries.get_player(actor)
@@ -457,9 +459,9 @@ async def test_cunning_action_refusals(rogue: MawlingHarness) -> None:
     actor = rogue.players[0]
     await enter(rogue)
     foe = await adjacent_foe(rogue)
-    unknown = weapon_attack(actor, foe, "teleport")
+    unknown = weapon_attack(actor, foe, "teleport", weapon=DAGGER["name"])
     assert "rider" in await rogue.command("declare_phase", {"declarations": [unknown]}, error=True)
-    attack = weapon_attack(actor, foe, "dash")
+    attack = weapon_attack(actor, foe, "dash", weapon=DAGGER["name"])
     refusal = await rogue.command("declare_phase", {"declarations": [attack, attack]}, error=True)
     assert actor in refusal
     await rogue.pool.execute(
@@ -468,7 +470,7 @@ async def test_cunning_action_refusals(rogue: MawlingHarness) -> None:
     before = (await rogue.reload()).to_dict()
     before_player = await db_queries.get_player(actor)
     assert before_player is not None and before_player["stamina"]["current"] == 1
-    disengage = weapon_attack(actor, foe, "disengage")
+    disengage = weapon_attack(actor, foe, "disengage", weapon=DAGGER["name"])
     refusal = await rogue.command("declare_phase", {"declarations": [disengage]}, error=True)
     assert "Stamina" in refusal
     assert await db_queries.get_player(actor) == before_player

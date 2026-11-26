@@ -50,7 +50,7 @@ async def test_registered_wrap_keeps_the_last_two_starts(fight: Fight) -> None:
     foe = state.get_participant("mawling_1")
     state.spatial["positions"][host] = state.spatial["positions"][foe.id].copy()
     await fight.declare(
-        {**attack(host, foe.id), "action": "Guild Longsword"},
+        attack(host, foe.id, state.get_participant(host).action_pool[0]["name"]),
         {**defend(guest), "kind": "ability", "action": "arcane_haste", "targets": [guest]},
         *[defend(p.id) for p in state.participants if p.type == "enemy"],
     )
@@ -127,7 +127,7 @@ async def test_retained_entry_owns_a_new_checkpoint(fight: Fight, encounter, loc
         state = fight.session.combat_state
         anchor = state.still_encounter["revealed_ids"][0]
         state.spatial["positions"][host] = state.spatial["positions"][anchor].copy()
-        await fight.declare({**attack(host, anchor), "action": "Guild Longsword"}, defend(guest))
+        await fight.declare(attack(host, anchor, state.get_participant(host).action_pool[0]["name"]), defend(guest))
         await fight.finish_round(3)
     before = await fight.row()
     assert len(before["round_checkpoints"]) == 2
@@ -214,6 +214,8 @@ def _put(row: dict, path: tuple, value) -> None:
         ((0, "players", "actor", "data", "conditions"), []),
         ((0, "players", "actor", "data", "flags"), {"story": True}),
         ((0, "players", "actor", "data", "flags"), {"shadow_veil": True}),
+        ((0, "players", "actor", "data", "flags"), {"encounter_concealment": True}),
+        ((0, "players", "actor", "data", "flags"), {"concealed": True, "encounter_concealment": 1}),
         ((0, "players", "actor", "data", "flags"), []),
         ((0, "players", "actor", "session_flags"), []),
         ((0, "players", "actor", "session_flags"), {}),

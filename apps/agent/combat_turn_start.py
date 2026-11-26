@@ -13,6 +13,73 @@ from condition_restrictions import cannot_act
 from dice import roll as dice_roll
 
 
+def _finish_packet_start(state, actor) -> dict | None:
+    from choir_effects import approach
+    from condition_catalog import IRON_STANCE
+    from conditions import remove_condition
+
+    movement = approach(state, actor)
+    if actor is not None:
+        actor.conditions = remove_condition(actor.conditions, IRON_STANCE)
+    return movement
+
+
+async def start_choir_packet(
+    session, state, actor, *, conn, concentration_break_mod, sink, progress, effects: list[dict]
+) -> dict | None:
+    import choir_encounter
+
+    await choir_encounter.turn_start(
+        session,
+        state,
+        actor,
+        conn=conn,
+        concentration_break_mod=concentration_break_mod,
+        sink=sink,
+        progress=progress.scope("choir_aura") if progress is not None else None,
+    )
+    if progress is not None and progress.paused:
+        return None
+    movement = _finish_packet_start(state, actor)
+    if movement is not None and "movement_blocked" in movement:
+        effects.append({"effect": "choir_approach", **movement})
+        return None
+    return movement
+
+
+async def start_held_packet(session, state, head: dict, fate_rolls, deps: dict) -> list[dict] | None:
+    import choir_encounter
+    import combat_veilrender
+    from combat_fate_rolls import PacketRolls
+
+    actor = state.get_participant(head["actor_id"])
+    progress = (
+        PacketRolls(fate_rolls, head.setdefault("roll_steps", {}), deps["queries"], deps["conn"])
+        if fate_rolls is not None and session.fate_lock.locked()
+        else None
+    )
+    aura = progress.scope("choir_aura") if progress is not None and state.choir_encounter is not None else None
+    await choir_encounter.turn_start(
+        session,
+        state,
+        actor,
+        conn=deps.get("conn"),
+        concentration_break_mod=deps["concentration_break_mod"],
+        progress=aura,
+        sink=deps.get("sink"),
+    )
+    if aura is not None and aura.paused:
+        return None
+    field = progress.scope("veilrender") if progress is not None else None
+    effects = await combat_veilrender.turn_start(session, state, actor, **{**deps, "progress": field})
+    if effects is None:
+        return None
+    movement = _finish_packet_start(state, actor)
+    if movement is not None and "movement_blocked" in movement:
+        effects.append({"effect": "choir_approach", **movement})
+    return effects
+
+
 def validate_turn_start_damage(data):
     for participant in data["participants"]:
         effect = participant.get("turn_start_damage")

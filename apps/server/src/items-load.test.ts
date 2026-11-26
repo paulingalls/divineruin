@@ -1,3 +1,4 @@
+import weaponFixture from "../../../packages/shared/fixtures/weapon_proficiency.json";
 import { test, expect, describe, afterAll } from "bun:test";
 import { parseItemRow, getItem, listItems, setItems } from "./items.ts";
 import type { Item } from "@divineruin/shared";
@@ -226,7 +227,13 @@ describe("parseItemRow — fail-loud validation", () => {
   test("accepts the 4 valid durability tiers", () => {
     for (const t of ["fragile", "standard", "reinforced", "masterwork"]) {
       expect(() =>
-        parseItemRow("x", { ...base, type: "weapon", damage_dice: "1d6", durability_tier: t }),
+        parseItemRow("x", {
+          ...base,
+          type: "weapon",
+          ...weaponFixture.profiles.dagger_balanced,
+          damage_dice: "1d6",
+          durability_tier: t,
+        }),
       ).not.toThrow();
     }
   });
@@ -310,7 +317,12 @@ describe("parseItemRow — fail-loud validation", () => {
 
   test("requires damage_dice on a weapon", () => {
     expect(() =>
-      parseItemRow("x", { ...base, type: "weapon", durability_tier: "standard" }),
+      parseItemRow("x", {
+        ...base,
+        type: "weapon",
+        ...weaponFixture.profiles.dagger_balanced,
+        durability_tier: "standard",
+      }),
     ).toThrow(/damage_dice/);
   });
 
@@ -324,9 +336,14 @@ describe("parseItemRow — fail-loud validation", () => {
   });
 
   test("requires durability_tier on equippable types", () => {
-    expect(() => parseItemRow("x", { ...base, type: "weapon", damage_dice: "1d6" })).toThrow(
-      /durability_tier/,
-    );
+    expect(() =>
+      parseItemRow("x", {
+        ...base,
+        type: "weapon",
+        ...weaponFixture.profiles.dagger_balanced,
+        damage_dice: "1d6",
+      }),
+    ).toThrow(/durability_tier/);
     expect(() => parseItemRow("x", { ...base, type: "tool" })).toThrow(/durability_tier/);
   });
 
@@ -353,3 +370,25 @@ test("magical weapon classification and boolean validation", async () => {
     parseItemRow(row.id as string, { ...row, effects: [{ type: "weapon", magical: "true" }] }),
   ).toThrow("magical");
 });
+
+test("the normalized profiles cover the entire weapon catalog", async () => {
+  const weapons = (await loadItemsJson()).filter((item) => item.type === "weapon");
+  const ids = weapons.map((row) => row.id as string);
+  expect(ids.toSorted()).toEqual(Object.keys(weaponFixture.profiles).toSorted());
+  for (const row of weapons) {
+    const id = row.id as keyof typeof weaponFixture.profiles;
+    expect(row.subtype).toBeUndefined();
+    const parsed = parseItemRow(id, row);
+    expect(parsed).toMatchObject(weaponFixture.profiles[id]);
+  }
+});
+
+test.each(Object.entries(weaponFixture.malformed_weapons))(
+  "refuses weapon mutation %s",
+  async (_, mutation) => {
+    const origin = (await loadItemsJson()).find((row) => row.id === "dagger_balanced")!;
+    const row = { ...origin, ...weaponFixture.profiles.dagger_balanced, ...mutation.set };
+    for (const key of mutation.delete) delete (row as Record<string, unknown>)[key];
+    expect(() => parseItemRow("bad_weapon", row)).toThrow(`items[bad_weapon].${mutation.field}`);
+  },
+);

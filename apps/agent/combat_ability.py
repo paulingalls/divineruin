@@ -21,10 +21,11 @@ import combat_spell_damage
 import combat_spell_heal
 import combat_veilrender
 import combat_voice_rules
+import concealment
 import condition_voice_rules
 import db_queries
 import spell_casting
-from combat_ability_gate import WAR_CRY, DeclaredAbility
+from combat_ability_gate import WAR_CRIES, DeclaredAbility
 from combat_condition_landing import (
     _land_condition_on_one,
     land_condition_on_participant,
@@ -114,7 +115,7 @@ async def _resolve_ability_condition_packet(
         return {"actor_id": attacker.id, "resolved": False, "reason": "no active combat or player"}
 
     ability, variant = resolved
-    if ability.id == WAR_CRY:
+    if ability.id in WAR_CRIES:
         summary = await combat_ability_save.resolve_war_cry(
             session,
             state,
@@ -125,7 +126,7 @@ async def _resolve_ability_condition_packet(
             pay=partial(
                 _deduct_ability_cost, attacker.id, ability, variant, persistence=persistence, queries=queries, conn=conn
             ),
-            progress=progress.scope(WAR_CRY) if progress is not None else None,
+            progress=progress.scope(ability.id) if progress is not None else None,
         )
         return _with_variant(summary, variant) if summary else {}
 
@@ -446,6 +447,14 @@ async def _resolve_ability_packet(
                 if interception is not None
                 else {}
             )
+    if (
+        (spell.combat_damage or {}).get("resolution") == "attack"
+        and "hit" not in cast_packet.get("damage_result", {})
+        and "concealment" not in cast_packet
+    ):
+        queries = (damage_deps or {}).get("queries", db_queries)
+        if reveal := await concealment.reveal_attacker(attacker.id, conn=conn, queries=queries, ended_by="cast"):
+            cast_packet["concealment"] = reveal
     # Beneficial-condition PRODUCER (M4.8 story-004), in-combat half: land the produced condition on the
     # recipients that remain after Absorb Magic. The mutation rides this phase's save_combat_state.
     cond_type = cast_packet.get("condition_applied")

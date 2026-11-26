@@ -2,6 +2,11 @@
 
 import math
 from copy import deepcopy
+from typing import TYPE_CHECKING
+from uuid import uuid4
+
+if TYPE_CHECKING:
+    from combat_state import CombatState
 
 
 def number(value, label, *, nonnegative=False):
@@ -39,7 +44,7 @@ def mapping(value, label):
     return value
 
 
-def validate_maps(positions, locations, zones, *, zone_kinds):
+def validate_maps(positions, locations, zones, *, zone_kinds, allow_smoke_expiry: bool = False):
     for label, points in (("positions", positions), ("locations", locations)):
         for value in mapping(points, label).values():
             point(value)
@@ -47,11 +52,14 @@ def validate_maps(positions, locations, zones, *, zone_kinds):
     for left in points:
         for right in points:
             distance(left, right)
+    zone_keys = [
+        {"center_id", "radius_ft"},
+        {"kind", "center_id", "radius_ft"},
+    ]
+    if allow_smoke_expiry:
+        zone_keys.append({"kind", "center_id", "radius_ft", "expires_round"})
     for zone in mapping(zones, "zones").values():
-        if not isinstance(zone, dict) or set(zone) not in (
-            {"center_id", "radius_ft"},
-            {"kind", "center_id", "radius_ft"},
-        ):
+        if not isinstance(zone, dict) or set(zone) not in zone_keys:
             raise ValueError("zone requires center_id and radius_ft, optionally kind")
         if "kind" in zone and zone["kind"] not in zone_kinds:
             raise ValueError(f"zone kind must be one of {', '.join(zone_kinds)}")
@@ -59,6 +67,10 @@ def validate_maps(positions, locations, zones, *, zone_kinds):
         if not isinstance(center, str) or center not in positions.keys() | locations.keys():
             raise ValueError("unknown zone center")
         number(zone["radius_ft"], "radius", nonnegative=True)
+        if "expires_round" in zone:
+            expiry = zone["expires_round"]
+            if zone["kind"] != "smoke" or type(expiry) is not int or expiry <= 0 or center not in locations:
+                raise ValueError("zone expiry requires smoke with a location center and a positive integer round")
     ids = [*positions, *locations, *zones]
     if len(ids) != len(set(ids)):
         raise ValueError("spatial IDs must be unique")
@@ -75,7 +87,7 @@ def validate_scene(encounter):
     ids = [enemy["id"] for enemy in enemies]
     if len(ids) != len(set(ids)) or set(mapping(scene["actors"], "actors")) != set(ids):
         raise ValueError("scene_placement must cover every enemy exactly")
-    validate_maps(scene["actors"], scene["locations"], scene["zones"], zone_kinds=("silence",))
+    validate_maps(scene["actors"], scene["locations"], scene["zones"], zone_kinds=("silence", "smoke"))
     if "movement_areas" in scene:
         from combat_movement_cost import validate_areas
 
@@ -99,7 +111,13 @@ def validate_spatial(spatial, actor_ids):
     keys = {"positions", "locations", "zones", "speeds"}
     if not isinstance(spatial, dict) or not keys <= set(spatial) <= keys | {"structures", "movement_areas", "chambers"}:
         raise ValueError("invalid persisted spatial record")
-    validate_maps(spatial["positions"], spatial["locations"], spatial["zones"], zone_kinds=("silence", "cathedral"))
+    validate_maps(
+        spatial["positions"],
+        spatial["locations"],
+        spatial["zones"],
+        zone_kinds=("silence", "cathedral", "smoke"),
+        allow_smoke_expiry=True,
+    )
     speeds = mapping(spatial["speeds"], "speeds")
     if set(spatial["positions"]) != set(actor_ids) or set(speeds) != set(actor_ids):
         raise ValueError("spatial record must cover every actor")
@@ -136,6 +154,46 @@ def position(spatial, target_id):
     raise ValueError(f"Unknown position {target_id!r}")
 
 
+def add_smoke(state: "CombatState", actor_id: str) -> str:
+    spatial = require_spatial(state)
+    cloud_id = f"smoke_{uuid4().hex}"
+    center_id = f"{cloud_id}_origin"
+    spatial["locations"][center_id] = position(spatial, actor_id)
+    spatial["zones"][cloud_id] = {
+        "kind": "smoke",
+        "center_id": center_id,
+        "radius_ft": 10,
+        "expires_round": state.round_number + 1,
+    }
+    return cloud_id
+
+
+def expire_smoke(state: "CombatState") -> None:
+    if state.spatial is None:
+        return
+    zones = state.spatial["zones"]
+    expired = [
+        zone_id
+        for zone_id, zone in zones.items()
+        if "expires_round" in zone and zone["expires_round"] <= state.round_number
+    ]
+    expired_centers = {zones.pop(zone_id)["center_id"] for zone_id in expired}
+    for center_id in expired_centers - {zone["center_id"] for zone in zones.values()}:
+        del state.spatial["locations"][center_id]
+
+
+def smoke_obscures(spatial: dict, attacker_id: str, target_id: str) -> bool:
+    for zone in spatial["zones"].values():
+        if zone.get("kind") != "smoke":
+            continue
+        center = position(spatial, zone["center_id"])
+        if inside(position(spatial, attacker_id), center, zone["radius_ft"]) or inside(
+            position(spatial, target_id), center, zone["radius_ft"]
+        ):
+            return True
+    return False
+
+
 def place(state, target_id, destination):
     spatial = require_spatial(state)
     if target_id not in spatial["positions"]:
@@ -152,6 +210,21 @@ def place(state, target_id, destination):
     end_cathedral_after_move(state, target_id)
     exposure(state)
     return dict(spatial["positions"][target_id])
+
+
+def force_place(state, target_id: str, destination: dict) -> dict:
+    from condition_restrictions import immovable
+
+    spatial = require_spatial(state)
+    target = state.get_participant(target_id)
+    if target is None or target_id not in spatial["positions"]:
+        raise ValueError(f"Unknown participant position {target_id!r}")
+    origin = position(spatial, target_id)
+    destination = point(destination)
+    if immovable(target.conditions):
+        return {"destination": origin, "distance_ft": 0, "movement_blocked": "Iron Stance"}
+    destination = place(state, target_id, destination)
+    return {"destination": destination, "distance_ft": distance(origin, destination)}
 
 
 def facts(state, origin_id):
@@ -194,6 +267,13 @@ def facts(state, origin_id):
         },
         "spoken": [f"{key} is {value:g} feet from {origin_id}" for key, value in distances.items() if key != origin_id],
     }
+
+    names = {actor.id: actor.name for actor in state.participants}
+    for zone in zones.values():
+        if zone.get("kind") == "smoke":
+            zone["name"] = "Smoke cloud"
+            members = ", ".join(names[actor_id] for actor_id in zone["members"]) or "no one"
+            result["spoken"].append(f"Smoke cloud, {zone['radius_ft']:g} feet in radius. Inside: {members}.")
 
     if "movement_areas" in spatial:
         result["movement_areas"] = deepcopy(spatial["movement_areas"])
