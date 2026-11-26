@@ -29,7 +29,7 @@ from combat_condition_landing import (
     land_condition_on_participant,
     land_condition_on_participants,
 )
-from combat_down import damage_target_unavailable
+from combat_condition_target import _resolve_condition_target
 from combat_structures import blocked_reason, line_blocker
 from condition_sources import DeliveryRefused
 from mentor_variants import MentorVariant
@@ -214,46 +214,6 @@ def _with_variant(summary: dict, variant: MentorVariant | None) -> dict:
     return summary
 
 
-def _resolve_condition_target(
-    state, attacker: CombatParticipant, decl: Declaration, *, allow_self: bool = True, damage: bool = False
-):
-    """Resolve the single target of a condition-applying declaration.
-
-    Returns ``(target, None)`` for a live target, or ``(None, waste_summary)`` when the target is
-    gone / disallowed — a wasted declaration must never apply the condition or
-    deduct a cost. ``allow_self`` controls the ``target_id is None`` case: True (default) falls back
-    to the caster (a player self-buff); False WASTES it instead — a hostile inflict must never
-    self-target (an ABILITY-declared enemy condition action, which skips ATTACK's target_id
-    validation, would otherwise make the enemy inflict on ITSELF). Shared by the player ability-
-    condition path and the enemy condition-infliction path so the wasted-target contract lives once.
-    ``damage`` permits nonterminal Fallen allies only on the damaging save path."""
-    target = attacker if decl.target_id is None else state.get_participant(decl.target_id)
-    # allow_self=False wastes ANY self-target: the None fallback OR an explicit target_id equal to
-    # the attacker's own id — a hostile inflict must never land on its own caster.
-    if not allow_self and (decl.target_id is None or (target is not None and target.id == attacker.id)):
-        return None, {
-            "actor_id": attacker.id,
-            "resolved": False,
-            "declaration_type": str(decl.type),
-            "reason": "condition action requires a non-self target_id",
-        }
-    if target is None:
-        return None, {
-            "actor_id": attacker.id,
-            "resolved": False,
-            "declaration_type": str(decl.type),
-            "reason": f"target '{decl.target_id}' not found",
-        }
-    if damage_target_unavailable(target) if damage else target.is_fallen:
-        return None, {
-            "actor_id": attacker.id,
-            "resolved": False,
-            "declaration_type": str(decl.type),
-            "reason": f"{target.name} already fell",
-        }
-    return target, None
-
-
 @dataclass
 class AbilityCastOutcome:
     """Side-channel carrying the in-loop ABILITY casts' ``CastResult``s back to the phase loop.
@@ -383,6 +343,7 @@ async def _resolve_ability_packet(
         cast_outcome.results[attacker.id] = result
         if result.new_resonance is not None:
             combat_hollow_resonance.stage_total(state, attacker.id, result.new_resonance)
+        # Later damage in this transaction must check the spell the caster just started concentrating on.
         if result.concentration_spell_id is not spell_casting._UNCHANGED:
             caster.concentration.spell_id = cast("str | None", result.concentration_spell_id)
         cast_packet = result.packet
@@ -406,6 +367,7 @@ async def _resolve_ability_packet(
                 packet=cast_packet,
                 conn=conn,
             )
+        # Veilrender Absorb Magic heals once per cast, so its landing is frozen with the cast packet.
         if deliveries is not None:
             effective_ids = list(dict.fromkeys(d["target_id"] for d in deliveries))
             landing = (
