@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 OATH_OF_VALOR = "kaelen_oath_of_valor"
 SECOND_BEFORE = "zhael_second_before"
+ORENTHEL_GUARDIAN_WARD = "orenthel_guardian_ward"
 MORTAEN_THRESHOLD_SHIELD = "mortaen_threshold_shield"
 MORTAEN_HOLD_THE_CROSSING = "mortaen_hold_the_crossing"
 
@@ -108,6 +109,32 @@ def fallen_ally_defense(defender: dict | None, state: CombatState | None, target
     return int(
         any(
             ally.is_ally and ally.hp_current == 0 and ally.is_fallen and not is_terminally_down(ally)
+            for ally in state.participants
+        )
+    )
+
+
+def wounded_ally_defense(defender: dict | None, state: CombatState | None, target: CombatParticipant) -> int:
+    from combat_spatial import inside, position, require_spatial
+    from combat_veilrender import living
+
+    if (
+        defender is None
+        or state is None
+        or not living(target)
+        or not has_engine_synergy(defender, ORENTHEL_GUARDIAN_WARD)
+    ):
+        return 0
+
+    spatial = require_spatial(state)
+    target_position = position(spatial, target.id)
+    return int(
+        any(
+            ally.id != target.id
+            and ally.is_ally
+            and living(ally)
+            and 2 * ally.hp_current < ally.hp_max
+            and inside(target_position, position(spatial, ally.id), 5)
             for ally in state.participants
         )
     )

@@ -37,6 +37,7 @@ def roll_attack(
     player: dict | None = None,
     defender: dict | None = None,
     mortaen_ac_override: int | None = None,
+    orenthel_ac_override: int | None = None,
     veiled_strike: VeiledStrike | None = None,
     season: Season | None = None,
 ) -> tuple:
@@ -52,6 +53,7 @@ def roll_attack(
         player=player,
         defender=defender,
         mortaen_ac_override=mortaen_ac_override,
+        orenthel_ac_override=orenthel_ac_override,
         veiled_strike=veiled_strike,
         season=season,
     )
@@ -81,6 +83,7 @@ def attack_roll_inputs(
     player=None,
     defender=None,
     mortaen_ac_override: int | None = None,
+    orenthel_ac_override: int | None = None,
     veiled_strike: VeiledStrike | None = None,
     season: Season | None = None,
 ):
@@ -185,12 +188,21 @@ def attack_roll_inputs(
     attacker_data["mortaen_ac_bonus"] = mortaen_ac
     if mortaen_ac:
         attacker_data["mortaen_ac_clause_id"] = patron_synergy_combat.MORTAEN_THRESHOLD_SHIELD
+    orenthel_ac = (
+        orenthel_ac_override
+        if orenthel_ac_override is not None
+        else patron_synergy_combat.wounded_ally_defense(defender, combat_state, target)
+    )
+    attacker_data["orenthel_ac_bonus"] = orenthel_ac
+    if orenthel_ac:
+        attacker_data["orenthel_ac_clause_id"] = patron_synergy_combat.ORENTHEL_GUARDIAN_WARD
     effective_ac = (
         target.ac
         + target_ac_bonus
         + target_condition_ac
         + synergy_ac
         + mortaen_ac
+        + orenthel_ac
         + cathedral_bonus(combat_state, target.id)
     )
     if not weapon_attack and player is not None:
