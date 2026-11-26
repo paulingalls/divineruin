@@ -144,7 +144,10 @@ def _assert_reshape_schema(schema):
         "lower_ceiling": {"min", "max"},
     }
     declarations = branches(schema["properties"]["declarations"]["items"])
-    assert len(declarations) == 12
+    assert len(declarations) == 13
+    [surrender] = [declaration for declaration in declarations if kind(declaration) == "yield"]
+    assert set(surrender["required"]) == {"kind", "actor_id"}
+    assert surrender["additionalProperties"] is False
     combined = next(branch for branch in declarations if kind(branch) == "attack_consume")
     discriminator = combined["properties"]["kind"]
     assert discriminator.get("const") == "attack_consume" or discriminator.get("enum") == ["attack_consume"]
