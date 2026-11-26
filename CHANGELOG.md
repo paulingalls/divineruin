@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.78.1
+
+Proof uses measured agent acceptance coverage to pick the tests that check shared Python changes.
+
+Release steps: After merging, run `bash scripts/super-test-install.sh` from updated develop on the Mac Mini as the scheduler owner. The command is unpaid and writes no production data. The owner needs existing GitHub CLI authentication for weekly map PRs.
+
+The measured representatives would have missed #757. On merge `98ffe31a`, the selected concealed-target reader `test_architect_balance` passed. `test_vanish` and `test_martial_core_resume` failed.
+
 ## 0.78.0
 
 Enemies now carry their rolled loot from the start of a fight and keep it across saves; victory awards what defeated enemies still carry. Rogues who learn Quick Fingers can steal, plant or swap a real item just before a melee strike. A failed attempt leaves the foe wary until the round ends, so a second attempt fails and its first attack on that rogue has advantage. Unravel Fate refuses a rewind that would split a Quick Fingers transfer between a fighter's inventory and an enemy's pocket.
