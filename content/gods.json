@@ -1580,7 +1580,7 @@
         "name": "Threshold Shield",
         "clauses": [
           {
-            "effect": "Gain +1 AC while guarding an ally at 0 HP.",
+            "effect": "Gain +1 AC while another party member in this encounter lies at 0 HP and is not yet dead.",
             "status": "active",
             "resolution": "engine",
             "implementation_id": "mortaen_threshold_shield"
