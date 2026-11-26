@@ -19,6 +19,7 @@ import db_queries
 import declaration_payloads
 import item_heal
 import patron_synergy_combat
+import patron_synergy_heal
 import still_encounter
 from combat_resolve_phase import _resolve_phase_locked
 from combat_support import _participant_roster, _require_combat
@@ -117,6 +118,7 @@ async def _declare_phase_locked(
         await combat_cunning_action.preflight(next_state, queries=queries)
         await combat_martial.preflight_orders(next_state, queries=queries)
         await patron_synergy_combat.preflight_tidal_step(next_state, get_player=queries.get_player)
+        await patron_synergy_heal.preflight_inspire_heal(next_state, get_player=queries.get_player)
         await combat_item_rider.preflight(session, next_state)
         await item_heal.preflight_declarations(session, next_state)
         choir_facts = await choir_encounter.facts(next_state, queries=queries)

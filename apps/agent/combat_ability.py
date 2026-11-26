@@ -9,9 +9,11 @@ from livekit.agents.llm import ToolError
 import abilities
 import ability_persistence
 import combat_ability_save
+import combat_spell_heal
 import combat_voice_rules
 import condition_voice_rules
 import db_queries
+import patron_synergy_heal
 from combat_ability_cast import AbilityCastOutcome as AbilityCastOutcome
 from combat_ability_cast import _attach_riders as _attach_riders
 from combat_ability_cast import _resolve_ability_packet as _resolve_ability_packet
@@ -89,15 +91,7 @@ async def _resolve_ability_condition_packet(
     queries=db_queries,
     progress=None,
 ) -> dict:
-    """Resolve a non-spell condition-applying ABILITY in combat (M4.8 story-005, e.g. bard_inspire).
-
-    Resolve the TARGET participant FIRST: self-target (no target_id) is the caster (always present);
-    a given target_id that's not on the working state, or one already fallen, WASTES the declaration
-    (resolved:False) WITHOUT deducting — you can't buff a target that left or a corpse, and a wasted
-    declaration must never burn the ability's Stamina/Focus (mirrors the attack path's wasted-target
-    guards). Only once a live target is confirmed do we deduct the cost (pre-gated at declare time via
-    _gate_ability_condition) and land applies_condition on it via the shared helper — the mutation
-    rides the phase save_combat_state (no extra write)."""
+    """Settle a condition ability or Inspire heal after delivery and target checks."""
     if state is None or player is None:
         return {"actor_id": attacker.id, "resolved": False, "reason": "no active combat or player"}
 
@@ -122,9 +116,10 @@ async def _resolve_ability_condition_packet(
     # applies_condition is non-None on this path (condition_ability selected it). The source is the
     # base ability id, which differs from decl.action when a mentor variant was declared.
     cond_type = ability.applies_condition
+    heal_mode = decl.action == patron_synergy_heal.INSPIRE_HEAL
     upgrade = False
     if cond_type == "inspired":
-        upgrade = inspire_attack_upgrade(player)
+        upgrade = not heal_mode and inspire_attack_upgrade(player)
         eligible = condition_voice_rules.spoken_buff_targets(
             cond_type, state, attacker.id, decl.target_ids or [decl.target_id or attacker.id]
         )
@@ -161,6 +156,8 @@ async def _resolve_ability_condition_packet(
     if waste is not None:
         return waste
     assert target is not None
+    if heal_mode and not target.is_ally:
+        return {"actor_id": attacker.id, "resolved": False, "reason": "Inspire healing requires an ally."}
 
     steps = progress.steps if progress is not None else {}
     if not steps.get("cost_paid"):
@@ -188,6 +185,13 @@ async def _resolve_ability_condition_packet(
         "declaration_type": str(decl.type),
         "action": ability.id,
     }
+    if heal_mode:
+        profile = patron_synergy_heal.inspire_heal()
+        results = await combat_spell_heal.land(
+            profile, attacker, [target], caster_row=player, synergy=None, packet=summary, conn=conn
+        )
+        combat_spell_heal.inspire_receipt(summary, profile, results)
+        return summary
     if cond_type is not None and land_condition_on_participant(
         state, attacker, decl, cond_type, source=ability.id, packet=summary, inspire_attack_upgrade=upgrade
     ):

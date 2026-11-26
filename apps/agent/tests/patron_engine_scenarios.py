@@ -14,6 +14,7 @@ from test_heal_synergies import SCENARIOS as dawns_mercy
 from test_heal_synergies_place import SCENARIOS as place_healing
 from test_kaelen_war_songs import SCENARIOS as war_songs
 from test_marshal_death_save import SCENARIOS as marshal_death_save
+from test_orenthel_inspire_heal import SCENARIOS as inspire_heal
 from test_orenthel_song_of_rest import SCENARIOS as restoring_song
 from test_patron_engine_aelora import SCENARIOS as aelora
 from test_patron_engine_aelora_craft import SCENARIOS as aelora_craft
@@ -85,6 +86,7 @@ ENGINE_SCENARIOS = {
     **tidewalker,
     **tidal_step,
     **orenthel,
+    **inspire_heal,
     **restoring_song,
     **syrath,
     **two_round_veil,

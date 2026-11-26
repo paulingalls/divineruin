@@ -15,11 +15,12 @@ from combat_down import is_terminally_down, revive
 from combat_enemy_active import heal, healed_hp
 from combat_structures import line_blocker
 from conditions import apply_condition
-from patron_synergy_heal import for_cast
+from patron_synergy_heal import INSPIRE_HEAL, for_cast
 from rules_engine import attribute_modifier
 from spells import normalize_target_list
 
 if TYPE_CHECKING:
+    from abilities import Ability
     from combat_spell_profile import HealProfile
     from declarations import Declaration
     from patron_synergy_heal import HealComponent, HealSynergy
@@ -34,11 +35,16 @@ class HpChange(TypedDict):
     hp_max: int
 
 
+class HealDie(TypedDict):
+    id: str
+    dice: str
+
+
 class HealingResult(HpChange):
     target_id: str
     rolled: int
     modifier: int
-    synergy_components: NotRequired[list[HealComponent]]
+    synergy_components: NotRequired[list[HealComponent] | list[HealDie]]
 
 
 class GiftReceipt(HpChange):
@@ -48,16 +54,16 @@ class GiftReceipt(HpChange):
 
 
 def _explicit_targets(
-    spell: Spell, profile: HealProfile, caster_id: str, target_id: str | None, target_ids: list[str] | None
+    source: Spell | Ability, profile: HealProfile, caster_id: str, target_id: str | None, target_ids: list[str] | None
 ) -> list[str]:
     if profile["recipients"] == "all_allies":
         if target_id is not None or target_ids is not None:
-            raise ValueError(f"{spell.name} selects its allies automatically")
+            raise ValueError(f"{source.name} selects its allies automatically")
         return []
     if target_ids is not None:
         if profile["recipients"] == "single":
-            raise ValueError(f"{spell.name} heals one recipient; use a single target")
-        return normalize_target_list(spell, target_id, target_ids)
+            raise ValueError(f"{source.name} heals one recipient; use a single target")
+        return normalize_target_list(source, target_id, target_ids)
     return [target_id if target_id is not None else caster_id]
 
 
@@ -86,7 +92,7 @@ def combat_ally(state: CombatState, target_id: str, source_name: str) -> CombatP
 
 
 def exploration_recipients(
-    spell: Spell,
+    source: Spell | Ability,
     profile: HealProfile,
     caster_id: str,
     caster: dict,
@@ -94,14 +100,14 @@ def exploration_recipients(
     target_ids: list[str] | None,
     locked_rows: dict[str, dict],
 ) -> dict[str, dict]:
-    targets = _explicit_targets(spell, profile, caster_id, target_id, target_ids)
+    targets = _explicit_targets(source, profile, caster_id, target_id, target_ids)
     location = caster["location_id"]
     present = {pid: row for pid, row in locked_rows.items() if row["location_id"] == location}
     if profile["recipients"] == "all_allies":
         return present
     for tid in targets:
         if tid not in present:
-            raise ValueError(f"{spell.name} requires a present party player: {tid}")
+            raise ValueError(f"{source.name} requires a present party player: {tid}")
     return {tid: present[tid] for tid in targets}
 
 
@@ -160,6 +166,14 @@ def _gift_receipt(
         "hp_current": hp,
         "hp_max": maximum,
     }
+
+
+def inspire_receipt(packet: dict, profile: HealProfile, results: list[HealingResult]) -> None:
+    for result in results:
+        result["synergy_components"] = [{"id": INSPIRE_HEAL, "dice": profile["dice"]}]
+    packet["healing_results"] = results
+    packet["effect"] = "Inspire heals with the bard's Inspire die."
+    packet["narration_cue"] = "Orenthel's warmth rides the bard's voice and eases the wound."
 
 
 def hp_updates(caster_id: str, packet: dict) -> dict[str, HpChange]:

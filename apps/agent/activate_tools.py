@@ -50,6 +50,7 @@ from declaration_payloads import Destination
 from item_effects import CONSUME_PREFIX
 from patron_combat_edges import RESTORATION_SURGE, SCALES_VERDICT, VEILSTEP, WILDMOTHERS_WRATH, SurgeCondition
 from patron_gifts import SYRATH_SHADOW_VEIL, VEYTHAR_INSIGHT
+from patron_synergy_heal import INSPIRE_HEAL
 from reshape_payloads import WallEndpoints
 from session_data import SessionData
 from thyra_thornwall import GIFT as THORNWALL
@@ -92,6 +93,7 @@ async def activate(
     In combat, use declare_phase for non-reaction archetype actions. Shield Bash uses rider="shield_bash"
     on a melee weapon attack. Declare a weapon attack with a Cunning Action rider.
     Query abilities for the actor's available ids and attack riders.
+    An eligible Orenthel bard uses 'orenthel_inspire_heal' with one ally to heal with Inspire.
 
     Pass the id of the thing being activated. For spells, abilities, and learned mentor variants
     this is their content id (e.g. 'arcane_bolt', 'warrior_devastating_strike', or
@@ -211,6 +213,8 @@ async def activate(
 def _resolve_kind(id: str, *, spells_mod, abilities_mod, variants_mod, anchors_mod) -> str:
     """Pure classification: which _impl family this id belongs to. Fails loud before any
     dispatch when the id matches nothing (AC4)."""
+    if id == INSPIRE_HEAL:
+        return "ability"
     if id in _RESERVED:
         return id
     if id in patron_ability_tools.catalog():
@@ -323,11 +327,12 @@ async def _activate_impl(
         if not context.userdata.in_combat:
             await publish_action_sound(context.userdata, "action_ability")
         return result
-    ability = abilities_mod.get_ability(id)
-    if ability.spell_id is not None and not context.userdata.in_combat:
-        return await cast_spell_mod._cast_spell_impl(
-            context, ability.spell_id, target_id=target_id, target_ids=target_ids
-        )
+    if id != INSPIRE_HEAL:
+        ability = abilities_mod.get_ability(id)
+        if ability.spell_id is not None and not context.userdata.in_combat:
+            return await cast_spell_mod._cast_spell_impl(
+                context, ability.spell_id, target_id=target_id, target_ids=target_ids
+            )
     result = await ability_mod._request_ability_activation_impl(context, id, target_id=target_id, target_ids=target_ids)
     if not context.userdata.in_combat:
         await publish_action_sound(context.userdata, "action_ability")
