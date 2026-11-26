@@ -32,8 +32,6 @@
   "orenthel_restoration_surge": "patron_combat_edges:restoration_surge",
   "orenthel_inspire_heal": "patron_synergy_heal:inspire_heal",
   "orenthel_song_of_rest": "song_of_rest:apply_song_of_rest",
-  "orenthel_dawnward_strike": "patron_synergy_combat:encounter_damage_clause",
-  "orenthel_sheltering_light": "patron_synergy_combat:wounded_ally_defense",
   "syrath_veilstep": "patron_combat_edges:veilstep",
   "mortaen_death_ward": "patron_zero_hp:trigger_death_ward",
   "zhael_unravel_fate": "zhael_unravel_fate:activate",

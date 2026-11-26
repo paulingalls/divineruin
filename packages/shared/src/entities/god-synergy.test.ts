@@ -146,28 +146,3 @@ test("Zhael's bard and diplomat have the registered Foretold Words clause", () =
     });
   }
 });
-
-test("Orenthel's guardian and warrior have the registered wounded-ally clauses", () => {
-  const matrix = validateGods(catalog).find(
-    (god) => god.god_id === "orenthel",
-  )?.layer_4_synergy_matrix;
-  const condition =
-    "while another conscious party member in this encounter is above 0 HP and below half their effective maximum HP.";
-  for (const [archetype, name, benefit, implementation_id] of [
-    ["guardian", "Sheltering Light", "Gain +1 AC", "orenthel_sheltering_light"],
-    ["warrior", "Dawnward Strike", "Gain +1 damage against undead", "orenthel_dawnward_strike"],
-  ] as const) {
-    expect(matrix?.[archetype]).toEqual({
-      type: "divine",
-      name,
-      clauses: [
-        {
-          effect: `${benefit} ${condition}`,
-          status: "active",
-          resolution: "engine",
-          implementation_id,
-        },
-      ],
-    });
-  }
-});

@@ -18,8 +18,6 @@ OATH_OF_VALOR = "kaelen_oath_of_valor"
 SECOND_BEFORE = "zhael_second_before"
 MORTAEN_THRESHOLD_SHIELD = "mortaen_threshold_shield"
 MORTAEN_HOLD_THE_CROSSING = "mortaen_hold_the_crossing"
-SHELTERING_LIGHT = "orenthel_sheltering_light"
-DAWNWARD_STRIKE = "orenthel_dawnward_strike"
 
 KAELEN_WAR_SONGS = "kaelen_war_songs"
 TWO_ROUND_VEIL = "syrath_two_round_veil"
@@ -60,15 +58,6 @@ def attack_flags(player: dict) -> dict[str, bool]:
     }
 
 
-def _has_wounded_ally(state: CombatState, actor_id: str) -> bool:
-    from combat_veilrender import living
-
-    return any(
-        ally.id != actor_id and ally.is_ally and living(ally) and 2 * ally.hp_current < ally.hp_max
-        for ally in state.participants
-    )
-
-
 def encounter_damage_clause(
     player: dict,
     state: CombatState | None,
@@ -92,12 +81,6 @@ def encounter_damage_clause(
         and is_melee(action)
     ):
         return ZHAEL_THREADED_BLADE
-    if (
-        target.category == "undead"
-        and has_engine_synergy(player, DAWNWARD_STRIKE)
-        and _has_wounded_ally(state, attacker.id)
-    ):
-        return DAWNWARD_STRIKE
     return None
 
 
@@ -110,12 +93,6 @@ def first_attack_defense(defender: dict | None, state: CombatState | None, targe
     ):
         return 1
     return 0
-
-
-def wounded_ally_defense(defender: dict | None, state: CombatState | None, target: CombatParticipant) -> int:
-    if defender is None or state is None or not has_engine_synergy(defender, SHELTERING_LIGHT):
-        return 0
-    return int(_has_wounded_ally(state, target.id))
 
 
 def fallen_ally_defense(defender: dict | None, state: CombatState | None, target: CombatParticipant) -> int:

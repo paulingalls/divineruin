@@ -2952,10 +2952,9 @@
         "name": "Dawnward Strike",
         "clauses": [
           {
-            "effect": "Gain +1 damage against undead while another conscious party member in this encounter is above 0 HP and below half their effective maximum HP.",
-            "status": "active",
-            "resolution": "engine",
-            "implementation_id": "orenthel_dawnward_strike"
+            "effect": "Gain +1 damage against undead while an ally within earshot is below half HP.",
+            "status": "pending",
+            "resolution": "engine"
           }
         ]
       },
@@ -2964,10 +2963,9 @@
         "name": "Sheltering Light",
         "clauses": [
           {
-            "effect": "Gain +1 AC while another conscious party member in this encounter is above 0 HP and below half their effective maximum HP.",
-            "status": "active",
-            "resolution": "engine",
-            "implementation_id": "orenthel_sheltering_light"
+            "effect": "Gain +1 AC while guarding an ally below half HP.",
+            "status": "pending",
+            "resolution": "engine"
           }
         ]
       },
