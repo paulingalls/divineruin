@@ -14,11 +14,46 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import wave
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
+from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from datetime import timedelta
 from pathlib import Path
+from typing import ParamSpec
 
 from livekit import api, rtc
+
+_CleanupArgs = ParamSpec("_CleanupArgs")
+
+
+class CleanupStack(AsyncExitStack):
+    """Run each cleanup inside the previous failure's exception context."""
+
+    def defer(self, callback: Callable[[], None]) -> None:
+        @contextmanager
+        def cleanup() -> Iterator[None]:
+            try:
+                yield
+            finally:
+                callback()
+
+        self.enter_context(cleanup())
+
+    async def defer_async(
+        self,
+        callback: Callable[_CleanupArgs, Awaitable[object]],
+        /,
+        *args: _CleanupArgs.args,
+        **kwargs: _CleanupArgs.kwargs,
+    ) -> None:
+        @asynccontextmanager
+        async def cleanup() -> AsyncIterator[None]:
+            try:
+                yield
+            finally:
+                await callback(*args, **kwargs)
+
+        await self.enter_async_context(cleanup())
+
 
 # Matches the dev container's defaults (see _livekit.py and conftest.py:92-94).
 DEFAULT_TOKEN_TTL_S = 300

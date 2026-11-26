@@ -3,12 +3,16 @@
 import asyncio
 import json
 import uuid
-from contextlib import AsyncExitStack
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import AsyncMock, patch
 
-from acceptance._livekit_client import cancel_and_await, register_data_packet_collector, wait_for_audio_track
+from acceptance._livekit_client import (
+    CleanupStack,
+    cancel_and_await,
+    register_data_packet_collector,
+    wait_for_audio_track,
+)
 from acceptance.multiplayer_voice._harness import PLAYER_TWO_SPEECH
 from acceptance.multiplayer_voice.test_guest_leaves import ToneTTS
 from acceptance.multiplayer_voice.test_host_handoff import LocalSTT
@@ -245,16 +249,16 @@ async def run_voice_commands(harness, sd, model, agent, monkeypatch, *, speaker=
                 hud.append(json.loads(data))
             return hud
         finally:
-            async with AsyncExitStack() as cleanup:
-                cleanup.push_async_callback(harness.aclose)
+            async with CleanupStack() as cleanup:
+                await cleanup.defer_async(harness.aclose)
                 if unregister is not None:
-                    cleanup.callback(unregister)
+                    cleanup.defer(unregister)
                 if lifecycle is not None:
-                    cleanup.push_async_callback(cast(PartyLifecycle, lifecycle).aclose)
-                cleanup.push_async_callback(finish_session)
+                    await cleanup.defer_async(cast(PartyLifecycle, lifecycle).aclose)
+                await cleanup.defer_async(finish_session)
                 if stream is not None:
-                    cleanup.push_async_callback(stream.aclose)
+                    await cleanup.defer_async(stream.aclose)
                 if audio_task is not None:
-                    cleanup.push_async_callback(cancel_and_await, audio_task)
+                    await cleanup.defer_async(cancel_and_await, audio_task)
                 if multiplayer is not None:
                     await multiplayer.aclose()

@@ -4,12 +4,12 @@ import asyncio
 import re
 import uuid
 from collections.abc import Awaitable, Callable
-from contextlib import AsyncExitStack
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from acceptance._livekit_client import (
+    CleanupStack,
     aclose_audio,
     aclose_room,
     connect_room,
@@ -314,13 +314,13 @@ class MultiplayerVoiceHarness:
                 raise AssertionError(f"unexpected transcript from {identity!r}: {transcript.text!r}")
 
     async def aclose(self) -> None:
-        async with AsyncExitStack() as cleanup:
+        async with CleanupStack() as cleanup:
             if self._http_context is not None:
-                cleanup.push_async_callback(self._http_context.__aexit__, None, None, None)
+                await cleanup.defer_async(self._http_context.__aexit__, None, None, None)
             for room in (self.player_one, self.listener, self.player_two, self.player_three):
                 if room is not None:
-                    cleanup.push_async_callback(aclose_room, room)
+                    await cleanup.defer_async(aclose_room, room)
             for source, _track, _publication in reversed(self.audio.values()):
-                cleanup.push_async_callback(aclose_audio, source)
+                await cleanup.defer_async(aclose_audio, source)
             if self.manager is not None:
                 await self.manager.aclose()

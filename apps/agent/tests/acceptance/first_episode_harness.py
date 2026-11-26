@@ -5,10 +5,11 @@ import json
 import uuid
 import wave
 from collections.abc import Awaitable, Callable
-from contextlib import AsyncExitStack, asynccontextmanager
+from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, patch
 
 from acceptance._livekit_client import (
+    CleanupStack,
     aclose_audio,
     aclose_room,
     cancel_and_await,
@@ -194,10 +195,10 @@ async def episode(
         assert owner is not None
         source, run.source = run.source, None
         old_publication, publication = publication, None
-        async with AsyncExitStack() as cleanup:
-            cleanup.push_async_callback(aclose_room, player)
+        async with CleanupStack() as cleanup:
+            await cleanup.defer_async(aclose_room, player)
             assert source is not None and old_publication is not None
-            cleanup.push_async_callback(unpublish_audio, player, source, old_publication)
+            await cleanup.defer_async(unpublish_audio, player, source, old_publication)
             if unregister is not None:
                 off, unregister = unregister, None
                 off()
@@ -261,19 +262,19 @@ async def episode(
                     assert run.session.current_agent.__class__.__name__ == initial_agent
                 yield run
         finally:
-            async with AsyncExitStack() as cleanup:
+            async with CleanupStack() as cleanup:
                 if not preserve:
-                    cleanup.push_async_callback(delete_saved_player)
-                cleanup.push_async_callback(aclose_room, room)
-                cleanup.push_async_callback(aclose_room, player)
-                cleanup.push_async_callback(aclose_audio, run.source)
+                    await cleanup.defer_async(delete_saved_player)
+                await cleanup.defer_async(aclose_room, room)
+                await cleanup.defer_async(aclose_room, player)
+                await cleanup.defer_async(aclose_audio, run.source)
                 if unregister is not None:
-                    cleanup.callback(unregister)
-                cleanup.push_async_callback(cancel_and_await, receiver)
+                    cleanup.defer(unregister)
+                await cleanup.defer_async(cancel_and_await, receiver)
                 for member, off, task in reversed(added_members):
-                    cleanup.push_async_callback(aclose_room, member)
-                    cleanup.push_async_callback(cancel_and_await, task)
-                    cleanup.callback(off)
+                    await cleanup.defer_async(aclose_room, member)
+                    await cleanup.defer_async(cancel_and_await, task)
+                    cleanup.defer(off)
                 if hasattr(run, "session"):
                     try:
                         try:
