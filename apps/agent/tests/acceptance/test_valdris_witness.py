@@ -28,11 +28,11 @@ TESTIMONY = {
 
 @asynccontextmanager
 async def entered(
-    *, location: str = "millhaven", patron: str = "valdris", archetype: str = "guardian"
+    *, location: str = "millhaven", patron: str = "valdris", archetype: str = "guardian", ally: bool = False
 ) -> AsyncIterator[tuple[MawlingHarness, dict, str]]:
     h = MawlingHarness()
     try:
-        await h.prepare((8,), companion=None, location=location)
+        await h.prepare((8, 8) if ally else (8,), companion=None, location=location)
         await h.pool.execute(
             "UPDATE players SET data=data || $2::jsonb WHERE player_id=$1",
             h.players[0],
@@ -50,7 +50,9 @@ async def entered(
         await h.close()
 
 
-async def strike(h: MawlingHarness, bonus: int, *, enemy: str = ACCUSED, opportunity: bool = False) -> None:
+async def strike(
+    h: MawlingHarness, bonus: int, *, enemy: str = ACCUSED, opportunity: bool = False, fate_follower: str | None = None
+) -> None:
     state = h.sd.combat_state
     assert state is not None
     hero = participant(state, h.players[0])
@@ -70,7 +72,18 @@ async def strike(h: MawlingHarness, bonus: int, *, enemy: str = ACCUSED, opportu
     face = hero.ac - dagger["to_hit"]
     assert 1 < face < 20
     with dice(face):
-        packets = await h.drain()
+        if fate_follower is None:
+            packets = await h.drain()
+        else:
+            await h.command("resolve_phase", {})
+            offer = (await h.command("resolve_phase", {}))["fate_offer"]
+            assert (offer["roll_kind"], offer["roller_id"], offer["eligible_followers"]) == (
+                "attack",
+                enemy,
+                [fate_follower],
+            )
+            kept = await h.command("query_info", {"kind": "patron"})
+            packets = kept["settled_fate"]["packets"] if "settled_fate" in kept else kept["packets"] + await h.drain()
     strikes = [packet for packet in packets if packet.get("actor_id") == enemy and "attack_total" in packet]
     assert len(strikes) == 1, packets
     [packet] = strikes
@@ -108,6 +121,19 @@ SCENARIOS = {CLAUSE: ("patron_synergy_combat:witness_defense", witness_shield, [
 
 async def test_witness_shield(reset_db_pool: str) -> None:
     await witness_shield()
+
+
+async def test_witness_shield_on_fate_held_attack(reset_db_pool: str) -> None:
+    async with entered(ally=True) as (h, _, _):
+        follower = h.players[1]
+        await h.pool.execute(
+            "UPDATE players SET data=data || $2::jsonb WHERE player_id=$1",
+            follower,
+            '{"divine_favor":{"patron":"zhael","level":0,"max":100}}',
+        )
+        lifecycle = SimpleNamespace(is_live=h.players.__contains__)
+        with patch.object(h.sd, "multiplayer_owner", SimpleNamespace(lifecycle=lifecycle)):
+            await strike(h, 1, fate_follower=follower)
 
 
 @pytest.mark.parametrize(
