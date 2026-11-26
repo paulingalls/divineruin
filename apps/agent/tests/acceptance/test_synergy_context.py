@@ -128,6 +128,41 @@ BATTLE_OMEN = (
     "Gain +1 History when interpreting a martial omen.",
     "history",
 )
+SECRET_DEVOTION = (
+    "concealed_symbol",
+    "syrath_secret_devotion",
+    "Secret Devotion",
+    "Gain +1 Religion when interpreting a concealed devotional symbol.",
+    "religion",
+)
+UNSPOKEN_VOW = (
+    "erased_oath",
+    "syrath_unspoken_vow",
+    "Unspoken Vow",
+    "Gain +1 History when identifying an oath whose patron’s name was erased.",
+    "history",
+)
+PEACE_AT_PARTING = (
+    "burial_return",
+    "mortaen_peace_at_parting",
+    "Peace at Parting",
+    "Gain +1 Persuasion when negotiating the return of a body for burial.",
+    "persuasion",
+)
+PATIENT_GEAR = (
+    "clock_repair",
+    "zhael_patient_gear",
+    "Patient Gear",
+    "Gain +1 to checks to repair a clock or timing mechanism.",
+    None,
+)
+CONVERGING_CLUES = (
+    "foretold_accounts",
+    "zhael_converging_clues",
+    "Converging Clues",
+    "Gain +1 Investigation when comparing two accounts of the same foretold event.",
+    "investigation",
+)
 
 
 @pytest.fixture
@@ -142,7 +177,14 @@ def payload(kind: str, skill: str, tag: str = "none", *, npc_id: str = NPC) -> d
     return {**roll, "context_description": "Observe the community’s customs", "hearing_only": False}
 
 
-async def setup_actor(world: SimpleNamespace, patron: str, archetype: str, *, index: int = 0) -> None:
+async def setup_actor(
+    world: SimpleNamespace,
+    patron: str,
+    archetype: str,
+    *,
+    index: int = 0,
+    patron_gifts: dict[str, dict[str, int]] | None = None,
+) -> None:
     await configure(
         world,
         patron,
@@ -150,7 +192,9 @@ async def setup_actor(world: SimpleNamespace, patron: str, archetype: str, *, in
         index=index,
         location_id=world.ctx.userdata.location_id,
         attributes={"charisma": 12, "wisdom": 10, "intelligence": 10, "strength": 10},
+        hp={"current": 20, "max": 20},
         conditions=[],
+        **({"patron_gifts": patron_gifts} if patron_gifts is not None else {}),
     )
 
 
@@ -188,7 +232,8 @@ async def context_scenario(
     npc_id: str = NPC,
 ) -> None:
     tag, clause_id, _, effect, declared_skill = clause
-    await setup_actor(world, patron, archetype)
+    gifts = {FATE: {"uses_spent": 1}} if patron == "zhael" else None
+    await setup_actor(world, patron, archetype, patron_gifts=gifts)
     assert not world.ctx.userdata.ally_present_for(world.ids[0])
     baseline, result = await paired(world, kind, skill, tag, npc_id=npc_id)
     assert result["total"] == baseline["total"] + 1
@@ -312,6 +357,37 @@ SCENARIOS = {
         "patron_synergy:context_skill_bonus",
         context_scenario,
         [("kaelen", "oracle", "skill", "history", BATTLE_OMEN)],
+    ),
+    "syrath_secret_devotion": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [("syrath", "cleric", "skill", "religion", SECRET_DEVOTION)],
+    ),
+    "syrath_unspoken_vow": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [("syrath", "paladin", "skill", "history", UNSPOKEN_VOW)],
+    ),
+    "mortaen_peace_at_parting": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [
+            ("mortaen", "diplomat", "skill", "persuasion", PEACE_AT_PARTING),
+            ("mortaen", "diplomat", "social", "persuasion", PEACE_AT_PARTING),
+        ],
+    ),
+    "zhael_patient_gear": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [
+            ("zhael", "artificer", "skill", "athletics", PATIENT_GEAR),
+            ("zhael", "artificer", "skill", "crafting", PATIENT_GEAR),
+        ],
+    ),
+    "zhael_converging_clues": (
+        "patron_synergy:context_skill_bonus",
+        context_scenario,
+        [("zhael", "seeker", "skill", "investigation", CONVERGING_CLUES)],
     ),
 }
 
