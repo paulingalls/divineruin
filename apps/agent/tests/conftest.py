@@ -17,6 +17,7 @@ from archetype_abilities_config_fixture import setup_archetype_abilities_config_
 from archetype_milestones_config_fixture import setup_archetype_milestones_config_fixture
 from archetypes_config_fixture import setup_archetypes_config_fixture
 from companion_profiles_config_fixture import setup_companion_profiles_config_fixture
+from db_reset import reset_db_globals
 from mentor_variants_config_fixture import setup_mentor_variants_config_fixture
 from npcs_config_fixture import setup_npcs_config_fixture
 from racial_resonance_config_fixture import setup_racial_resonance_config_fixture
@@ -374,24 +375,6 @@ def seed_milestones():
     yield
 
 
-async def _reset_db_pool() -> None:
-    """Close the shared db pool, tolerating one left bound to an already-closed event loop.
-
-    pytest-asyncio gives each test its own loop, but db._pool is a module global that can outlive
-    the loop it was created on — a prior fast-lane test that touched the real pool leaves it stale.
-    Awaiting _pool.close() on a stale pool schedules connection teardown on the dead loop and raises
-    RuntimeError("Event loop is closed") on whichever xdist worker happens to inherit it (an
-    intermittent, distribution-dependent failure). On that case we terminate the pool synchronously
-    (no loop scheduling) and drop the refs so get_pool() rebuilds cleanly on the current loop."""
-    try:
-        await db.close_all()
-    except RuntimeError:
-        if db._pool is not None:
-            db._pool.terminate()
-        db._pool = None
-        db._redis = None
-
-
 @pytest.fixture
 async def dev_db_pool():
     """Point db.get_pool() at the docker-compose dev DB (started by pytest_sessionstart), then
@@ -401,11 +384,11 @@ async def dev_db_pool():
     Shared across all fast-lane real-PG tests (combat persistence/tx-integrity, death round-trip)."""
     prior = os.environ.get("DATABASE_URL")
     os.environ["DATABASE_URL"] = resolve_database_url()
-    await _reset_db_pool()
+    await reset_db_globals()
     try:
         yield await db.get_pool()
     finally:
-        await _reset_db_pool()
+        await reset_db_globals()
         if prior is None:
             os.environ.pop("DATABASE_URL", None)
         else:

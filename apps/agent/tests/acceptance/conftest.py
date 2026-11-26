@@ -29,6 +29,7 @@ from acceptance._postgres_fixtures import (
     postgres_container as postgres_container,
 )
 from acceptance._real_llm import require_real_llm_key
+from db_reset import reset_db_globals
 
 _ACCEPTANCE_DIR = Path(__file__).parent
 
@@ -116,7 +117,7 @@ def harness(migrated_db: str) -> Iterator[SimpleNamespace]:
         return asyncio.run_coroutine_threadsafe(coro, loop).result()
 
     os.environ["DATABASE_URL"] = migrated_db
-    run_sync(db.close_all())
+    run_sync(reset_db_globals())
 
     # `stack` spans the discrete sync BDD steps: a patch or a log handler a Given step installs
     # has to still be in place when a later Then step reads it, which a per-step `with` cannot do.
@@ -146,7 +147,7 @@ async def reset_db_pool(migrated_db: str) -> AsyncIterator[str]:
 
     prior = os.environ.get("DATABASE_URL")
     os.environ["DATABASE_URL"] = migrated_db
-    await db.close_all()
+    await reset_db_globals()
     try:
         yield migrated_db
     finally:
