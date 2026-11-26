@@ -5,6 +5,9 @@ from acceptance.infusion_harness import CLUB, DAGGER, HANDAXE, SHORTSWORD, Infus
 from acceptance.infusion_harness import walk as walk
 from acceptance.test_still_anchors import mock_combat_agent_factory as mock_combat_agent_factory
 
+from db_mutations import update_player_xp
+from rules_engine import XP_FOR_LEVEL
+
 
 @pytest.mark.parametrize(
     ("walk", "bonus", "capacity"), [((4, False, 12), 1, 1), ((10, False, 12), 2, 3)], indirect=["walk"]
@@ -23,6 +26,17 @@ async def test_infusion_reaches_weapon_attack(walk: InfusionWalk, bonus: int, ca
         "active": [{"item_id": SHORTSWORD, "bonus": bonus, "equipped": True}],
     }
     await walk.strike(bonus, mode=mode)
+
+
+@pytest.mark.parametrize("walk", [(9, False, 12)], indirect=True)
+async def test_active_infusion_scales_after_level_up(walk: InfusionWalk) -> None:
+    await walk.equip(SHORTSWORD, acquire=True)
+    await walk.infuse(SHORTSWORD, 1)
+    await update_player_xp(walk.actor, XP_FOR_LEVEL[10], 10, conn=walk.pool)
+    await walk.strike(2)
+    infusion = await walk.lookup()
+    assert infusion["attack_bonus"] == infusion["damage_bonus"] == 2
+    assert infusion["active"] == [{"item_id": SHORTSWORD, "bonus": 2, "equipped": True}]
 
 
 async def test_single_infusion_follows_item_and_replaces_old(walk: InfusionWalk) -> None:
@@ -57,7 +71,7 @@ async def test_arcane_armory_retains_three_and_evicts_oldest(walk: InfusionWalk)
         await walk.strike(2, finish=True)
     await walk.equip(DAGGER, acquire=True)
     await walk.infuse(DAGGER, 2, replaced=SHORTSWORD)
-    assert {item: record["bonus"] for item, record in (await walk.infusions()).items()} == {
+    assert {entry["item_id"]: entry["bonus"] for entry in (await walk.lookup())["active"]} == {
         CLUB: 2,
         HANDAXE: 2,
         DAGGER: 2,

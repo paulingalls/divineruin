@@ -34,7 +34,7 @@ async def prepare(player: dict, *, conn: asyncpg.Connection) -> tuple[dict, dict
     bonus, capacity = infusion_rules(player["level"])
     infusions = records(player).copy()
     order = max((record["order"] for record in infusions.values()), default=0) + 1
-    infusions[item_id] = {"bonus": bonus, "order": order}
+    infusions[item_id] = {"order": order}
     replaced = None
     while len(infusions) > capacity:
         replaced = min(infusions, key=lambda key: infusions[key]["order"])
@@ -74,7 +74,7 @@ def describe(player: dict) -> dict:
         "scope": "own_equipped_nonmagical_main_hand_weapon",
         "capacity": capacity,
         "active": [
-            {"item_id": item_id, "bonus": record["bonus"], "equipped": item_id == equipped_id}
-            for item_id, record in sorted(infusions.items(), key=lambda pair: pair[1]["order"])
+            {"item_id": item_id, "bonus": bonus, "equipped": item_id == equipped_id}
+            for item_id in sorted(infusions, key=lambda key: infusions[key]["order"])
         ],
     }

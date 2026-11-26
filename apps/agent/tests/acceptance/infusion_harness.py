@@ -103,7 +103,7 @@ class InfusionWalk(MawlingHarness):
         }
         assert receipt["infusion"] == expected, receipt["infusion"]
         assert (await self.row())["focus"]["current"] == before - 2
-        assert (await self.infusions())[item]["bonus"] == bonus
+        assert set((await self.infusions())[item]) == {"order"}
 
     async def lookup(self) -> dict:
         result = await self.command("query_info", {"kind": "abilities"})

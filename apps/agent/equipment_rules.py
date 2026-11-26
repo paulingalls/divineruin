@@ -65,7 +65,7 @@ def weapon_effect(item: dict) -> dict:
 async def resolve_weapon_profile(
     attacker_type: str, action: dict, *, player: dict | None, weapon_attack: bool, conn
 ) -> dict | None:
-    from infusion import records
+    from infusion import infusion_rules, records
 
     if not needs_weapon_profile(attacker_type, action, weapon_attack=weapon_attack):
         return None
@@ -77,12 +77,12 @@ async def resolve_weapon_profile(
     item = await db_content_queries.get_item(item_id, conn=conn)
     if item is None or item.get("type") != "weapon":
         raise ValueError(f"Player weapon attack {action.get('name')!r} references invalid weapon {item_id!r}")
-    infusion = records(player).get(item_id) if player is not None else None
-    if infusion is None:
+    if player is None or item_id not in records(player):
         return item
+    bonus, _ = infusion_rules(player["level"])
     effect = weapon_effect(item)
     effects = [{**effect, "magical": True} if entry is effect else entry for entry in item["effects"]]
-    return {**item, "effects": effects, "infusion_bonus": infusion["bonus"]}
+    return {**item, "effects": effects, "infusion_bonus": bonus}
 
 
 def with_weapon_magic(action: dict, profile: dict | None) -> dict:
