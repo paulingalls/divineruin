@@ -51,6 +51,8 @@ async def test_wall_moves_keep_damage_and_change_attack_preparation(fight):
     await fight.persist()
 
     strike = {
+        "quick_fingers_mode": "",
+        "quick_fingers_item": "",
         "kind": "attack",
         "actor_id": owner,
         "target_id": player,
@@ -197,7 +199,14 @@ async def test_defend_with_reshape_guards_against_earlier_attackers(fight):
     combat_spatial.place(state, player, pos(13, 9))
     state.initiative_order = [player, *(p for p in state.initiative_order if p != player)]
     await fight.persist()
-    strike = {"kind": "attack", "actor_id": player, "target_id": owner, "action": "Longsword"}
+    strike = {
+        "quick_fingers_mode": "",
+        "quick_fingers_item": "",
+        "kind": "attack",
+        "actor_id": player,
+        "target_id": owner,
+        "action": "Longsword",
+    }
     reshape = [{"kind": "destroy_wall", "wall_id": south}]
     await fight.command(
         "declare_phase",

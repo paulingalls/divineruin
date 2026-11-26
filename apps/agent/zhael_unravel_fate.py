@@ -85,6 +85,17 @@ def _restore_combat(previous: dict, live: CombatState, roster: set[str]) -> Comb
     return restored
 
 
+def _require_pocket_rewind(restored: CombatState, committed: CombatState) -> None:
+    before, after = (
+        {p.id: p.carried_items for p in state.participants if p.type == "enemy" and p.carried_items}
+        for state in (committed, restored)
+    )
+    if before != after:
+        raise ToolError(
+            "Unravel Fate cannot rewind this round. The enemy pockets changed and some fighters' inventory would stay as it is."
+        )
+
+
 def _rewindable(player: dict) -> dict:
     """The restore-set image a rewind would overwrite; Unravel Fate spends never restore."""
     data = dict(player["data"])
@@ -218,6 +229,10 @@ async def activate(session: SessionData) -> str:
             saved = previous["players"]
             roster = members.keys() & saved.keys()
             restored = _restore_combat(previous["combat"], committed, roster)
+            if saved.keys() - roster or any(
+                p.id not in roster for p in committed.participants if p.type in ("player", "temporary_hollowed")
+            ):
+                _require_pocket_rewind(restored, committed)
             inventory_before = await checkpoints.read_inventory(conn, sorted(roster))
             restored_players = {}
             inventory_ids = set()

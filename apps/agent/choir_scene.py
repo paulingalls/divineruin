@@ -10,6 +10,7 @@ import choir_effects
 import choir_encounter
 import combat_round_checkpoint
 import db
+import db_content_queries
 import db_mutations
 import db_queries
 import encounter_facts
@@ -74,11 +75,15 @@ async def preflight(session, encounter, *, queries):
     return record
 
 
-async def start(session, state, retained, *, mutations=db_mutations, queries=db_queries, db_mod=db):
+async def start(
+    session, state, retained, *, mutations=db_mutations, queries=db_queries, db_mod=db, content=db_content_queries
+):
     source = choir_encounter.owner(state)
     if source is None:
         async with db_mod.transaction() as conn:
-            await combat_round_checkpoint.capture(session, state, conn=conn, mutations=mutations, entry=True)
+            await combat_round_checkpoint.capture(
+                session, state, conn=conn, mutations=mutations, entry=True, queries=queries, content=content
+            )
         return None
     async with db_mod.transaction() as conn:
         player = await queries.get_player(session.primary_player_id, conn=conn, for_update=True)
@@ -104,7 +109,9 @@ async def start(session, state, retained, *, mutations=db_mutations, queries=db_
         await mutations.set_player_flag(
             session.primary_player_id, key(state.location_id), json.dumps(record), conn=conn
         )
-        await combat_round_checkpoint.capture(session, state, conn=conn, mutations=mutations, entry=True)
+        await combat_round_checkpoint.capture(
+            session, state, conn=conn, mutations=mutations, entry=True, queries=queries, content=content
+        )
     return combat_facts
 
 

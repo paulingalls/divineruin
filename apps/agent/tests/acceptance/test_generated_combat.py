@@ -175,7 +175,7 @@ async def test_generated_victory_uses_saved_loot_tables_and_gates(reset_db_pool,
                 )
         # Keep beast harvesting, Hollow residue and humanoid drops in one generated victory.
         with patch("combat_entry.Random", return_value=Random(29316)):
-            result = await h.command("enter_mode", {"mode": "combat", "difficulty": "standard"})
+            result = await h.enter({"mode": "combat", "difficulty": "standard"}, Random(1))
         h.roster = result["participants"]
         state = await h.reload()
         enemies = [p for p in state.participants if p.type == "enemy"]

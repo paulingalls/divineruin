@@ -93,6 +93,8 @@ class FirstBloodWalk(ArcWalk):
                 "declarations": [
                     {
                         "reshape": [],
+                        "quick_fingers_mode": "",
+                        "quick_fingers_item": "",
                         "kind": "attack",
                         "actor_id": self.player,
                         "action": player.action_pool[0]["name"],

@@ -28,6 +28,9 @@ declaration have advantage. Reckless Assault also gives attackers advantage agai
 the next round's declaration beat, even if the warrior cannot act. \
 A rogue who knows Crippling Strike uses rider="crippling_strike" with their weapon Attack. \
 A hit halves the foe's speed until the round ends. \
+A rogue who knows Quick Fingers can set rider="quick_fingers" on a melee Attack. Choose steal, plant, or swap in \
+quick_fingers_mode. For plant or swap, use quick_fingers_item from the rogue's own inventory query. Leave it empty \
+for steal. Leave both fields empty on other attacks. Narrate the sleight before the swing using quick_fingers. \
 An action in Combatants[].mark_actions with kind `command` still uses its exact action name, but \
 target_id is the foe the commander's band will focus, not someone the commander strikes. \
 An action with kind `accusation` follows the same mark-action flow, but target_id is the accused \

@@ -18,13 +18,13 @@ import spells
 from check_resolution import D20Roll
 
 
-async def reveal_and_wake(still, count=1):
+async def reveal_and_wake(still, count=1, *, action="Longsword"):
     response, initial = await enter(still)
     record = initial.still_encounter
     search = response["still"]["search_actions"][0]
     for _ in range(count):
         await search_round(still, search)
-    await declare(still, **strike(record["anchor_ids"][0]))
+    await declare(still, **strike(record["anchor_ids"][0], action=action))
     with patch("check_resolution.dice_roll", return_value=_d20(1)):
         await still.drain()
     return await still.reload()

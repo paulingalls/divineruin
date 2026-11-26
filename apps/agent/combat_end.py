@@ -17,6 +17,7 @@ import db_mutations
 import db_mutations_reputation
 import db_mutations_veil_ward
 import db_queries
+import enemy_pockets
 import event_types as E
 import first_episode
 import patron_deeds
@@ -159,8 +160,7 @@ async def _end_combat_db(
     _end_combat_finish's job, deferred to post-commit so a rollback leaves the session pristine.
     Returns the data finish needs to build the response.
 
-    ``content`` resolves loot tables (db_content_queries by default; injectable for tests);
-    ``rng`` seeds the loot/currency rolls (a fresh system Random by default)."""
+    ``rng`` seeds the currency rolls (a fresh system Random by default)."""
     import architect_encounter
     import architect_scene
     import choir_scene
@@ -169,6 +169,7 @@ async def _end_combat_db(
     import still_encounter
     import still_scene
 
+    await enemy_pockets.initialize(cs, conn=conn, queries=queries, content=content)
     cs.order_riders.clear()
     await architect_scene.end(session, cs, outcome, mutations=mutations, queries=queries, conn=conn)
     await still_scene.end(session, cs, outcome, mutations=mutations, queries=queries, conn=conn)

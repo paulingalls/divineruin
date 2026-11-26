@@ -6,6 +6,7 @@ from livekit.agents.llm import ToolError
 
 import combat_round_checkpoint
 import combat_spatial
+import db_content_queries
 import encounter_facts
 import still_charm
 import still_encounter
@@ -82,7 +83,7 @@ def restore(state, record):
     still_encounter.validate(state)
 
 
-async def start(session, state, retained, *, mutations, queries, db_mod):
+async def start(session, state, retained, *, mutations, queries, db_mod, content=db_content_queries):
     async with db_mod.transaction() as conn:
         player_ids = {session.primary_player_id, *(p.id for p in state.participants if p.type == "player")}
         players = await still_charm.lock_players(sorted(player_ids), queries=queries, conn=conn)
@@ -92,7 +93,9 @@ async def start(session, state, retained, *, mutations, queries, db_mod):
             restore(state, retained)
         still_charm.project(state, state.still_encounter["owner_id"], players)
         await write(session, state, "combat", combat_id=state.combat_id, mutations=mutations, conn=conn)
-        await combat_round_checkpoint.capture(session, state, conn=conn, mutations=mutations, entry=True)
+        await combat_round_checkpoint.capture(
+            session, state, conn=conn, mutations=mutations, entry=True, queries=queries, content=content
+        )
 
 
 async def end(session, state, outcome, *, mutations, queries, conn):

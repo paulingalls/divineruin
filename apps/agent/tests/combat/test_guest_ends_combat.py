@@ -88,7 +88,7 @@ async def test_guest_enters_combat_with_both_members():
     mutations, queries, content = _make_start_combat_mocks()
     ctx = make_context()
     _add_second_member(ctx)
-    queries.get_player = AsyncMock(side_effect=lambda pid: _second_member_row() if pid == "player_2" else None)
+    queries.get_player = AsyncMock(return_value=_second_member_row())
     queries.get_players_for_update = AsyncMock(return_value={"player_1": _second_member_row()})
     with ctx.userdata._bind_authenticated_actor("player_2", 1, lambda *_: None):
         await _start_combat_impl(

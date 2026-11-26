@@ -95,7 +95,7 @@ def _restore_condition_module():
     db_mutations_conditions.save_player_conditions = orig_save
 
 
-async def _run_victory(session, cs, *, rng, drops, gold_by_id=None):
+async def _run_victory(session, cs, *, rng, gold_by_id=None):
     """Drive the victory path with mock DI. Returns (end_data, mutations, queries, sink)."""
     db_mutations_conditions.read_player_conditions = AsyncMock(return_value=[])  # type: ignore[assignment]
     db_mutations_conditions.save_player_conditions = AsyncMock()  # type: ignore[assignment]
@@ -117,28 +117,19 @@ async def _run_victory(session, cs, *, rng, drops, gold_by_id=None):
         queries=queries,
         conn=MagicMock(),
         sink=sink,
-        content=_content_stub(drops),
+        content=_content_stub(),
         pricing=_pricing_stub(),
         rng=rng,
     )
     return end_data, mutations, queries, sink
 
 
-_LOOT_TABLE_ID = "s003_mp_loot_table"
 _SILVER_PER_GOLD = 10
 
 
-def _content_stub(drops: list[dict]) -> MagicMock:
-    async def _get(loot_table_id: str) -> dict | None:
-        return {"id": _LOOT_TABLE_ID, "drops": drops} if loot_table_id == _LOOT_TABLE_ID else None
-
-    async def _get_item(item_id: str) -> dict:
-        # distribute_loot resolves each drop's display row for the ITEM_ACQUIRED payload.
-        return {"id": item_id, "name": item_id.replace("_", " ").title(), "description": "", "rarity": "common"}
-
+def _content_stub() -> MagicMock:
     content = MagicMock()
-    content.get_loot_table = AsyncMock(side_effect=_get)
-    content.get_item = AsyncMock(side_effect=_get_item)
+    content.get_item = AsyncMock(return_value=None)
     content.get_material_definition = AsyncMock(return_value=None)
     return content
 

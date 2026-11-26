@@ -189,6 +189,8 @@ class ChoirCapstoneFlow:
         await self.declare(
             enemy_action={
                 "reshape": [],
+                "quick_fingers_mode": "",
+                "quick_fingers_item": "",
                 "kind": "attack",
                 "actor_id": self.owner,
                 "action": "Dissonant Chord",

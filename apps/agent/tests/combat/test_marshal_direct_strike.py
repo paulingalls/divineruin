@@ -66,7 +66,17 @@ def order(fight: MawlingHarness, foe: str) -> dict:
 
 
 def attack(actor: str, foe: str) -> dict:
-    return dict(kind="attack", actor_id=actor, action="Longsword", target_id=foe, held_item_id="", rider="", reshape=[])
+    return dict(
+        kind="attack",
+        actor_id=actor,
+        action="Longsword",
+        target_id=foe,
+        held_item_id="",
+        rider="",
+        reshape=[],
+        quick_fingers_mode="",
+        quick_fingers_item="",
+    )
 
 
 async def declare_round(fight: MawlingHarness, *actions: dict, error: bool = False) -> dict | str:
