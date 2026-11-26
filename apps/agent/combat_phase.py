@@ -20,6 +20,7 @@ from enum import StrEnum
 import architect_constructs
 import architect_reaction
 import choir_effects
+import combat_order_riders
 import combat_spatial
 import reaction_spend
 from combat_ability_gate import RECKLESS_ASSAULT_RIDER, WAR_CRIES
@@ -335,6 +336,7 @@ def _wrap(state: CombatState) -> WrapOutcome:
     live on SessionData and stay the orchestrator's job. ``state`` here is the deep-copied
     next_state, so this never mutates the caller's input. Surfaces save-to-clear signals in
     ``tick_conditions_due``; the engine never rolls them."""
+    combat_order_riders.expire(state)
     tick_conditions_due: list[dict] = []
     returning: list[CombatParticipant] = []
     for p in state.participants:

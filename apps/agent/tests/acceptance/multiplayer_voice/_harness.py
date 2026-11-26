@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from acceptance._livekit_client import (
+    CleanupStack,
     aclose_audio,
     aclose_room,
     connect_room,
@@ -313,19 +314,13 @@ class MultiplayerVoiceHarness:
                 raise AssertionError(f"unexpected transcript from {identity!r}: {transcript.text!r}")
 
     async def aclose(self) -> None:
-        failure = None
-        try:
+        async with CleanupStack() as cleanup:
+            if self._http_context is not None:
+                await cleanup.defer_async(self._http_context.__aexit__, None, None, None)
+            for room in (self.player_one, self.listener, self.player_two, self.player_three):
+                if room is not None:
+                    await cleanup.defer_async(aclose_room, room)
+            for source, _track, _publication in reversed(self.audio.values()):
+                await cleanup.defer_async(aclose_audio, source)
             if self.manager is not None:
                 await self.manager.aclose()
-        except BaseException as exc:
-            failure = exc
-        finally:
-            for source, _track, _publication in tuple(self.audio.values()):
-                await aclose_audio(source)
-            for room in (self.player_three, self.player_two, self.listener, self.player_one):
-                if room is not None:
-                    await aclose_room(room)
-            if self._http_context is not None:
-                await self._http_context.__aexit__(None, None, None)
-        if failure is not None:
-            raise failure

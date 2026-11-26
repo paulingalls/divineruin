@@ -111,6 +111,8 @@ def apply(target, action, result, *, state=None):
     divine_vulnerable = action.get("spell_source") == "divine" and owner_alias(state, target.id) != target.id
 
     def adjusted(damage, dtype, ignores_resistance=False):
+        if dtype == "untyped":
+            return damage
         conditional = (
             target.resist_nonmagical_physical and not action.get("magical", False) and dtype in PHYSICAL_DAMAGE_TYPES
         )

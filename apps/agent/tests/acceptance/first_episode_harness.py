@@ -9,13 +9,16 @@ from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, patch
 
 from acceptance._livekit_client import (
+    CleanupStack,
     aclose_audio,
     aclose_room,
+    cancel_and_await,
     connect_room,
     create_microphone_track,
     mint_access_token,
     play_audio_frames,
     register_data_packet_collector,
+    unpublish_audio,
 )
 from acceptance.multiplayer_voice._harness import PLAYER_TWO_SPEECH
 from acceptance.multiplayer_voice.test_guest_leaves import ToneTTS
@@ -76,7 +79,7 @@ async def until(predicate):
 
 class Episode:
     session: AgentSession[SessionData]
-    source: rtc.AudioSource
+    source: rtc.AudioSource | None
     reconnect: Callable[[], Awaitable[None]]
     connect_member: Callable[[str], Awaitable[tuple[rtc.Room, list]]]
 
@@ -105,6 +108,7 @@ class Episode:
         self.model.narrated = False
         self.model.commands.append((name, arguments))
         self.stt.epoch += 1
+        assert self.source is not None
         await play_audio_frames(self.source, PLAYER_TWO_SPEECH.frames()[:150])
         await until(lambda: len(self.model.receipts) == len(self.model.commands))
         if self.model.failure:
@@ -154,8 +158,9 @@ async def episode(
     player = await connect(run.player_id)
     room = await connect("episode-agent")
     queue = asyncio.Queue()
-    unregister = register_data_packet_collector(player, topic="game_events", queue=queue)
-    run.source, _track, _publication = await create_microphone_track(
+    unregister: Callable[[], None] | None = register_data_packet_collector(player, topic="game_events", queue=queue)
+    publication: rtc.LocalTrackPublication | None
+    run.source, _track, publication = await create_microphone_track(
         player,
         sample_rate=16000,
         channels=1,
@@ -185,16 +190,24 @@ async def episode(
             events.append((json.loads(payload), sender))
 
     async def reconnect():
-        nonlocal player, unregister
+        nonlocal player, publication, unregister
         owner = run.session.userdata.reconnection_owner
         assert owner is not None
-        unregister()
-        await aclose_audio(run.source)
-        await aclose_room(player)
+        source, run.source = run.source, None
+        old_publication, publication = publication, None
+        async with CleanupStack() as cleanup:
+            await cleanup.defer_async(aclose_room, player)
+            assert source is not None and old_publication is not None
+            await cleanup.defer_async(unpublish_audio, player, source, old_publication)
+            if unregister is not None:
+                off, unregister = unregister, None
+                off()
         await until(lambda: owner.is_disconnected(run.player_id))
         player = await connect(run.player_id)
         unregister = register_data_packet_collector(player, topic="game_events", queue=queue)
-        run.source, _, _ = await create_microphone_track(player, sample_rate=16000, channels=1, name="episode-voice")
+        run.source, _, publication = await create_microphone_track(
+            player, sample_rate=16000, channels=1, name="episode-voice"
+        )
         await until(lambda: not owner.is_disconnected(run.player_id))
 
     added_members = []
@@ -220,6 +233,14 @@ async def episode(
     run.connect_member = connect_member
     run.reconnect = reconnect
     receiver = asyncio.create_task(receive())
+
+    async def delete_saved_player() -> None:
+        pool = await db.get_pool()
+        try:
+            await pool.execute("DELETE FROM companion_relationships WHERE player_id = $1", run.player_id)
+        finally:
+            await pool.execute("DELETE FROM players WHERE player_id = $1", run.player_id)
+
     with (
         patch("agent._make_agent_session", side_effect=run.make_session),
         patch.object(BackgroundProcess, "_queue_speech", capture_speech),
@@ -241,24 +262,26 @@ async def episode(
                     assert run.session.current_agent.__class__.__name__ == initial_agent
                 yield run
         finally:
-            if hasattr(run, "session"):
-                await run.session.aclose()
-                if run.session.userdata.multiplayer_close_task:
-                    await run.session.userdata.multiplayer_close_task
-            if hasattr(run, "session") and run.session.userdata.reconnection_owner:
-                await run.session.userdata.reconnection_owner.aclose()
-            for member, off, task in added_members:
-                off()
-                task.cancel()
-                await asyncio.gather(task, return_exceptions=True)
-                await aclose_room(member)
-            receiver.cancel()
-            await asyncio.gather(receiver, return_exceptions=True)
-            unregister()
-            await aclose_audio(run.source)
-            await aclose_room(player)
-            await aclose_room(room)
-            if not preserve:
-                pool = await db.get_pool()
-                await pool.execute("DELETE FROM companion_relationships WHERE player_id = $1", run.player_id)
-                await pool.execute("DELETE FROM players WHERE player_id = $1", run.player_id)
+            async with CleanupStack() as cleanup:
+                if not preserve:
+                    await cleanup.defer_async(delete_saved_player)
+                await cleanup.defer_async(aclose_room, room)
+                await cleanup.defer_async(aclose_room, player)
+                await cleanup.defer_async(aclose_audio, run.source)
+                if unregister is not None:
+                    cleanup.defer(unregister)
+                await cleanup.defer_async(cancel_and_await, receiver)
+                for member, off, task in reversed(added_members):
+                    await cleanup.defer_async(aclose_room, member)
+                    await cleanup.defer_async(cancel_and_await, task)
+                    cleanup.defer(off)
+                if hasattr(run, "session"):
+                    try:
+                        try:
+                            await run.session.aclose()
+                        finally:
+                            if task := run.session.userdata.multiplayer_close_task:
+                                await task
+                    finally:
+                        if owner := run.session.userdata.reconnection_owner:
+                            await owner.aclose()

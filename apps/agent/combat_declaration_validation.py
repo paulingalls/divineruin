@@ -10,6 +10,7 @@ import architect_entomb
 import combat_grapple
 import combat_martial
 import combat_melee_approach
+import combat_reposition
 import combat_shadow_step
 import combat_spatial_declarations
 import combat_voice_rules
@@ -20,6 +21,7 @@ from combat_ability_gate import (
     CUNNING_ACTION,
     ELECTIVE_RIDER_ABILITIES,
     MULTI_TARGET_WEAPON_ABILITIES,
+    REPOSITION,
     SHADOW_STEP,
     SHIELD_BASH,
     SINGLE_TARGET_WEAPON_ABILITIES,
@@ -30,6 +32,7 @@ from combat_ability_gate import (
     war_cry_targets,
 )
 from combat_action_availability import require_available
+from combat_order_riders import FIELD_MEDIC_NAME, select_field_medic
 from combat_structures import THORNWALL, action_has_direct_line, blocked_reason, line_blocker, require_line
 from condition_restrictions import cannot_act, declaration_costs, required_attack_sources, speed_zero
 from declarations import Declaration, DeclarationType, ManeuverIntent
@@ -83,6 +86,10 @@ def validate_declaration(
         raise ValueError(f"Unknown actor {actor_id!r}; participants: {participant_ids}")
     if actor.is_structure:
         raise ValueError(f"{actor.name} ({actor.id}) is a structure and cannot act")
+    if declaration.healing_item is not None and (
+        actor.type != "player" or select_field_medic(next_state, actor_id) is None
+    ):
+        raise ValueError(f"{actor.name} needs an active {FIELD_MEDIC_NAME} to attack and use a healing item.")
     still_encounter.guard_declaration(next_state, actor_id, declaration)
     if declaration.type is DeclarationType.MULTIATTACK:
         from combat_multiattack import expand_declaration
@@ -201,7 +208,10 @@ def validate_declaration(
                 raise ValueError(f"{declaration.action} is an ability alias; declare {ability.spell_id} in combat")
             if not combat_ability(ability):
                 raise ValueError(f"{declaration.action} is not declarable in combat")
-            combat_martial.require_targets(next_state, actor, declaration, ability)
+            if ability.id == REPOSITION:
+                combat_reposition.validate_route(next_state, actor, declaration, ability)
+            else:
+                combat_martial.require_targets(next_state, actor, declaration, ability)
             if ability.id == SHADOW_STEP:
                 combat_shadow_step.validate(next_state, actor.id, declaration)
                 return

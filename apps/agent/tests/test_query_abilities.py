@@ -106,7 +106,8 @@ class TestQueryAbilities:
         state.participants.append(CombatParticipant("foe", "Foe", "enemy", 5, 100, 100, 10))
         state.participants.append(CombatParticipant("ally", "Ally", "companion", 6, 100, 100, 10))
         state.participants.append(CombatParticipant("second_ally", "Second Ally", "companion", 7, 100, 100, 10))
-        state.initiative_order.extend(("foe", "ally", "second_ally"))
+        state.participants.append(CombatParticipant("player_ally", "Player Ally", "player", 8, 100, 100, 10))
+        state.initiative_order.extend(("foe", "ally", "second_ally", "player_ally"))
         order_targets = marshal_order_targets("foe")
         actor = state.participants[0]
         actor.action_pool = [{"name": "Longsword", "damage": "1d8"}]

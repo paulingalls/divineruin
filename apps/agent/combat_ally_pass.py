@@ -1,10 +1,20 @@
 """Resolve the ally band and persist its place while a declaration is suspended."""
 
+from typing import TYPE_CHECKING
+
 from livekit.agents.llm import ToolError
 
+import combat_field_medic
+import combat_spatial_declarations
 from combat_fate import continue_attack
 from combat_fate_rolls import PacketRolls
 from combat_player_movement import PlayerMovement
+from declarations import resolve_declaration
+
+if TYPE_CHECKING:
+    from combat_participant import CombatParticipant
+    from combat_state import CombatState
+    from session_data import SessionData
 
 
 def begin_ally_pass(state, allies, hostiles, players_by_id):
@@ -20,6 +30,22 @@ def begin_ally_pass(state, allies, hostiles, players_by_id):
         "deescalation_round": state.deescalation_scene.round_counter,
         "attack": {},
     }
+
+
+def cancel_queued_move(state: "CombatState", ally_id: str) -> bool:
+    cursor = state.ally_continuation
+    if cursor is None:
+        return False
+    for turn in cursor["turns"][1:]:
+        if turn[1] != ally_id:
+            continue
+        declaration = resolve_declaration(state.pending_declarations[ally_id])
+        if not combat_spatial_declarations.is_move(declaration):
+            return False
+        del state.pending_declarations[ally_id]
+        turn[1] = None
+        return True
+    return False
 
 
 def held_argument(cursor):
@@ -47,6 +73,7 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
     from condition_catalog import IRON_STANCE
     from conditions import remove_condition
 
+    state.ally_continuation = cursor
     packets = {packet.actor_id: packet for packet in _resolve_packets(state)}
     summaries = []
     while cursor["turns"]:
@@ -127,6 +154,13 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
                 if started is not None:
                     summaries.append(started)
             if packet_id is None:
+                if actor is not None and actor.is_ally:
+                    effects = await _packetless_turn_start(session, state, actor, progress, steps, packet_deps)
+                    if fate_rolls.pending is not None:
+                        state.beat = PhaseBeat.RESOLUTION
+                        return summaries
+                    if effects:
+                        summaries.append({"actor_id": actor.id, "turn_start_effects": effects})
                 if actor is not None:
                     actor.conditions = remove_condition(actor.conditions, IRON_STANCE)
                 cursor.pop("steps", None)
@@ -151,6 +185,16 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
             state.beat = PhaseBeat.RESOLUTION
             state.ally_continuation = cursor
             return summaries
+        if summary.get("outcome") != "cancelled":
+            await combat_field_medic.settle(
+                session,
+                state,
+                packets[packet_id],
+                summary,
+                conn=packet_deps["conn"],
+                sink=packet_deps["sink"],
+                queries=packet_deps["queries"],
+            )
         summaries.append(summary)
         cursor["attack"] = {}
         cursor.pop("steps", None)
@@ -160,3 +204,37 @@ async def run_ally_pass(session, state, cursor, players, *, fate_rolls, resolve_
     state.ally_continuation = None
     state.beat = PhaseBeat.NARRATION
     return summaries
+
+
+async def _packetless_turn_start(
+    session: "SessionData",
+    state: "CombatState",
+    actor: "CombatParticipant",
+    progress: PacketRolls | None,
+    steps: dict,
+    packet_deps: dict,
+) -> list[dict]:
+    import choir_encounter
+    import combat_veilrender
+
+    if "turn_start_effects" not in steps:
+        effects = await combat_veilrender.turn_start(
+            session,
+            state,
+            actor,
+            progress=progress.scope("veilrender") if progress is not None else None,
+            **packet_deps,
+        )
+        if effects is None:
+            return []
+        steps["turn_start_effects"] = effects
+    await choir_encounter.turn_start(
+        session,
+        state,
+        actor,
+        conn=packet_deps["conn"],
+        concentration_break_mod=packet_deps["concentration_break_mod"],
+        sink=packet_deps["sink"],
+        progress=progress.scope("choir_aura") if progress is not None else None,
+    )
+    return steps["turn_start_effects"]

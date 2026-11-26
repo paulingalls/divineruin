@@ -4,6 +4,7 @@ from dataclasses import asdict, replace
 
 import check_resolution_attack
 import combat_marks
+import combat_order_riders
 import combat_spatial
 import condition_voice_rules
 import conditions
@@ -91,6 +92,18 @@ def attack_roll_inputs(
         "level": attacker.level,
         "conditions": attacker.conditions,
     }
+
+    if attacker.is_ally:
+        if (rider := combat_order_riders.select(combat_state, attacker.id, target.id)) is not None:
+            attacker_data["order_rider"] = rider
+        if (sacrifice := combat_order_riders.select_sacrifice(combat_state, attacker.id)) is not None:
+            attacker_data["sacrifice_rider"] = sacrifice
+        if (coordinated := combat_order_riders.select_coordinated(combat_state, attacker.id)) is not None:
+            attacker_data["coordinated_rider"] = coordinated
+            first = coordinated["first_hit"]
+            attacker_data["confirming_pincer"] = (
+                first is not None and first["target_id"] == target.id and not target.is_fallen
+            )
 
     if veiled_strike is not None:
         attacker_data["veiled_strike"] = veiled_strike

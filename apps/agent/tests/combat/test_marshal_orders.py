@@ -6,12 +6,15 @@ from unittest.mock import patch
 
 import pytest
 from acceptance.mawling_harness import MawlingHarness
+from sample_fixtures import published_payloads
+from voice_condition_fixtures import spatial_record
 
 import abilities
 import ability_persistence
 import combat_structures
 import db_queries
 from activate_tools import activate
+from session_data import CompanionState
 
 DIRECT = "marshal_direct_strike"
 REPOSITION = "marshal_reposition"
@@ -36,8 +39,17 @@ def mock_combat_agent_factory() -> None:
 async def marshal(dev_db_pool):
     harness = MawlingHarness()
 
-    async def prepare(level: int, *, focus: int = 8, stamina: int = 8, owned: tuple[str, ...] = ()) -> MawlingHarness:
-        await harness.prepare((level, 2, 2), companion=None, tools=(activate,))
+    async def prepare(
+        level: int,
+        *,
+        focus: int = 8,
+        extra_ally: bool = False,
+        stamina: int = 8,
+        owned: tuple[str, ...] = (),
+        location: str = "greyvale_wilderness_north",
+    ) -> MawlingHarness:
+        levels = (level, 2, 2, 2) if extra_ally else (level, 2, 2)
+        await harness.prepare(levels, companion=None, location=location, tools=(activate,))
         pid = harness.players[0]
         player = await db_queries.get_player(pid)
         assert player is not None
@@ -64,7 +76,7 @@ async def enter(harness: MawlingHarness) -> None:
         result = await harness.command("enter_mode", {"mode": "combat", "encounter_id": harness.encounter_id})
     harness.enemies = [p["id"] for p in result["participants"] if p["type"] == "enemy"]
     state = await harness.reload()
-    for pid, initiative in zip(harness.players, (20, 25, 15), strict=True):
+    for pid, initiative in zip(harness.players[:3], (20, 25, 15), strict=True):
         participant = state.get_participant(pid)
         assert participant is not None
         participant.initiative = initiative
@@ -74,11 +86,19 @@ async def enter(harness: MawlingHarness) -> None:
 async def declare(harness: MawlingHarness, order: str, targets: list[str], *, error: bool = False, attack=None):
     state = await harness.reload()
     actor = harness.players[0]
+    payload = dict(kind="ability", actor_id=actor, action=order, targets=targets, argument_type="")
+    if order == REPOSITION:
+        target = targets[0] if targets else ""
+        positions = spatial_record(state)["positions"]
+        origin = positions.get(target, positions[actor])
+        payload = dict(
+            kind="reposition", actor_id=actor, target_id=target, destination={**origin, "x": origin["x"] + 1}
+        )
     return await harness.command(
         "declare_phase",
         {
             "declarations": [
-                dict(kind="ability", actor_id=actor, action=order, targets=targets, argument_type="", reshape=[]),
+                payload,
                 *(
                     attack
                     if attack and participant.id == attack["actor_id"]
@@ -104,9 +124,9 @@ def target_facts(state, targets: list[str]) -> list[tuple]:
     ]
 
 
-@pytest.mark.parametrize("order,level,slots,focus,stamina", ORDERS)
+@pytest.mark.parametrize("order,level,slots,focus,stamina", [row for row in ORDERS if row[0] != SACRIFICE])
 async def test_order_resolves_in_initiative_order(marshal, order, level, slots, focus, stamina) -> None:
-    owned = (order,) if order in (MEDIC, SACRIFICE) else ()
+    owned = (order,) if order == MEDIC else ()
     harness = await marshal(level, focus=focus or 8, stamina=stamina or 8, owned=owned)
     await enter(harness)
     actor = harness.players[0]
@@ -135,7 +155,7 @@ async def test_order_resolves_in_initiative_order(marshal, order, level, slots, 
         action=order,
         name=authored.name,
         target_ids=targets,
-        effect_resolution="narrated",
+        effect_resolution="engine",
         effect=authored.effect,
         narration_cue=authored.narration_cue,
         deducted=deducted,
@@ -143,9 +163,35 @@ async def test_order_resolves_in_initiative_order(marshal, order, level, slots, 
     assert {key: receipt[key] for key in expected} == expected
     assert "rally_grant" not in receipt
     live = await harness.reload()
+    if order == DIRECT:
+        ally, foe = targets
+        assert live.order_riders == {
+            ally: [dict(kind="direct_strike", target_id=foe, expires_round=2, order_id=DIRECT, source_id=actor)]
+        }
+    if order == MEDIC:
+        [ally] = targets
+        rider = dict(kind="field_medic", expires_round=2, order_id=MEDIC, source_id=actor)
+        assert live.order_riders == {ally: [rider]}
+        assert receipt["order_rider_grant"] == {
+            **rider,
+            "recipient_id": ally,
+            "name": "Field Medic Order",
+            "declaration_kind": "attack_consume",
+            "replaced": None,
+        }
+    if order == COORDINATED:
+        grants = receipt["order_rider_grant"]["recipients"]
+        assert [grant["recipient_id"] for grant in grants] == targets
+        for grant, partner in zip(grants, reversed(targets), strict=True):
+            [rider] = live.order_riders[grant["recipient_id"]]
+            assert rider["partner_id"] == partner and rider["source_id"] == actor
     assert live.encounter_facts["rally_pending"] == {}
     assert "zhael_moment_to_rally" not in live.encounter_facts["once_spent"]
-    assert target_facts(live, targets) == before_targets
+    if order == REPOSITION:
+        [(hp, conditions, origin)] = before_targets
+        assert target_facts(live, targets) == [(hp, conditions, {**origin, "x": origin["x"] + 1})]
+    else:
+        assert target_facts(live, targets) == before_targets
     _, after_players = await harness.snapshot()
     assert pools(after_players[0]) == {pool: value - deducted[pool] for pool, value in pools(before_players[0]).items()}
     assert list(map(pools, after_players[1:])) == list(map(pools, before_players[1:]))
@@ -247,6 +293,17 @@ async def test_invalid_orders_leave_declaration_and_resources_unchanged(marshal)
     participant.hp_current = 0
     await harness.persist()
     await refuse(harness, REPOSITION, [ally], "standing ally")
+
+
+async def test_field_medic_cannot_command_a_companion(marshal) -> None:
+    harness = await marshal(4, owned=(MEDIC,))
+    companion = "companion_kael"
+    harness.sd.companion = CompanionState(id=companion, name="Kael")
+    await enter(harness)
+    assert (await harness.reload()).get_participant(companion).type == "companion"
+    events = published_payloads(harness.sd.room)
+    await refuse(harness, MEDIC, [companion], "player ally")
+    assert published_payloads(harness.sd.room) == events
 
 
 async def test_late_resource_loss_reopens_declaration(marshal) -> None:

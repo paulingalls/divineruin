@@ -12,6 +12,7 @@ from dataclasses import dataclass
 import patron_synergy_combat
 import thyra_seasons
 from check_resolution import D20CheckCore, D20Roll, roll_bonus_dice
+from combat_order_riders import CoordinatedRider, DirectStrikeRider, SacrificePlayRider
 from condition_catalog import STUDIED_WEAKNESS
 from condition_restrictions import (
     attack_consumed_conditions,
@@ -69,6 +70,13 @@ class AttackResult:
     mortaen_ac_clause_id: str | None = None
     war_songs_bonus: int = 0
     war_songs_clause_id: str | None = None
+    order_rider: DirectStrikeRider | None = None
+    order_damage_dice: str | None = None
+    order_raw_damage: int = 0
+    coordinated_rider: CoordinatedRider | None = None
+    pincer_dice: str | None = None
+    pincer_raw_damage: int = 0
+    sacrifice_rider: SacrificePlayRider | None = None
 
 
 def _is_ranged(weapon: dict) -> bool:
@@ -118,6 +126,8 @@ def attack_modes(attacker_data: dict, weapon: dict, target_conditions=()) -> tup
         or "attack" in effects.advantage_scopes
         or incoming_advantage(target_conditions)
         or incoming_mode_advantage
+        or attacker_data.get("order_rider") is not None
+        or attacker_data.get("coordinated_rider") is not None
     )
     return advantage, disadvantage
 
@@ -236,10 +246,12 @@ def finish_attack(
     d20 = core.roll
     attack_total = core.total
     expanded = patron_synergy_combat.expanded_critical(attacker_data, d20)
-    hit = core.success or expanded
+    sacrifice_rider = attacker_data.get("sacrifice_rider")
+    forced_critical = expanded or sacrifice_rider is not None
+    hit = core.success or forced_critical
     critical = (
         core.critical_success
-        or expanded
+        or forced_critical
         or (hit and incoming_melee_autocrit(target_conditions) and not _is_ranged(weapon))
     )
 
@@ -256,6 +268,11 @@ def finish_attack(
     synergy_damage, synergy_damage_type = 0, None
     synergy_clause_id = None
     veiled_strike = attacker_data.get("veiled_strike")
+    order_rider = attacker_data.get("order_rider")
+    order_damage_dice = None
+    order_raw_damage = 0
+    pincer_dice = None
+    pincer_raw_damage = 0
     if hit:
         season = attacker_data.get("season")
         damage_notation = weapon.get("damage", "1d4")
@@ -303,6 +320,14 @@ def finish_attack(
             bonus_damage = dice_roll(authored_bonus["dice"], rng=rng).total
             bonus_damage_type = authored_bonus["damage_type"]
             damage += bonus_damage
+        if order_rider is not None:
+            order_damage_dice = "2d4" if critical else "1d4"
+            order_raw_damage = dice_roll(order_damage_dice, rng=rng).total
+            damage += order_raw_damage
+        if attacker_data.get("confirming_pincer"):
+            pincer_dice = "2d6" if critical else "1d6"
+            pincer_raw_damage = dice_roll(pincer_dice, rng=rng).total
+            damage += pincer_raw_damage
         on_hit = weapon.get("prepared_on_hit")
         if on_hit is not None and "damage" in on_hit:
             rider_damage = dice_roll(on_hit["damage"], rng=rng).total
@@ -356,13 +381,13 @@ def finish_attack(
         damage=damage,
         damage_type=damage_type,
         critical_success=critical,
-        critical_failure=core.critical_failure,
+        critical_failure=core.critical_failure and sacrifice_rider is None,
         target_hp_remaining=new_hp,
         target_killed=killed,
         overkill=overkill,
-        narrative_hint="critical success" if expanded else core.narrative_hint,
-        dramatic=expanded or verdict.dramatic,
-        context="critical_hit" if expanded else verdict.context,
+        narrative_hint="critical success" if forced_critical else core.narrative_hint,
+        dramatic=forced_critical or verdict.dramatic,
+        context="critical_hit" if forced_critical else verdict.context,
         bonus_damage=bonus_damage,
         bonus_damage_type=bonus_damage_type,
         rider_damage=rider_damage,
@@ -381,4 +406,11 @@ def finish_attack(
         mortaen_ac_clause_id=attacker_data.get("mortaen_ac_clause_id"),
         war_songs_bonus=prepared.war_songs_bonus,
         war_songs_clause_id=prepared.war_songs_clause_id,
+        order_rider=order_rider,
+        order_damage_dice=order_damage_dice,
+        order_raw_damage=order_raw_damage,
+        coordinated_rider=attacker_data.get("coordinated_rider"),
+        pincer_dice=pincer_dice,
+        pincer_raw_damage=pincer_raw_damage,
+        sacrifice_rider=sacrifice_rider,
     )

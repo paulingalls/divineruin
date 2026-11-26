@@ -5,6 +5,9 @@ from typing import TYPE_CHECKING
 import abilities
 import combat_spatial
 import mentor_variants
+from combat_order_riders import COORDINATED_ASSAULT as COORDINATED_ASSAULT
+from combat_order_riders import DIRECT_STRIKE as DIRECT_STRIKE
+from combat_order_riders import FIELD_MEDIC, SACRIFICE_PLAY
 from communication_voice_rules import can_hear
 from mentor_variants import MentorVariant
 
@@ -45,15 +48,16 @@ SHADOW_STEP = "rogue_shadow_step"
 SECOND_WIND = "warrior_second_wind"
 RALLYING_SHOUT = "warrior_rallying_shout"
 
-DIRECT_STRIKE = "marshal_direct_strike"
-COORDINATED_ASSAULT = "marshal_coordinated_assault"
+REPOSITION = "marshal_reposition"
+REPOSITION_FEET = 15
+
 MARSHAL_ORDERS = frozenset(
     {
         DIRECT_STRIKE,
-        "marshal_reposition",
+        REPOSITION,
         COORDINATED_ASSAULT,
-        "marshal_field_medic_order",
-        "marshal_sacrifice_play",
+        FIELD_MEDIC,
+        SACRIFICE_PLAY,
     }
 )
 
