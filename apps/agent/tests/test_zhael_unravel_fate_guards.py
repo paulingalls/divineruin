@@ -269,6 +269,34 @@ async def test_joiner_can_rewind_without_rewinding_joiner_or_departed_member(unr
     assert after["players"][restorer]["data"]["resonance"] == checkpoint["players"][restorer]["data"]["resonance"]
 
 
+@pytest.mark.parametrize("departed", [False, True])
+async def test_rewind_with_a_stolen_item_requires_restoring_its_owner(unravel: Fight, departed: bool) -> None:
+    fight = unravel
+    restorer, rogue = fight.ids
+    await opening(fight, 1)
+    state = fight.session.combat_state
+    assert state is not None
+    enemy = next(p for p in state.participants if p.type == "enemy")
+    drop = {"item_id": "wolf_fangs", "quantity": 1, "tainted": False}
+    row = next(p for p in state.round_checkpoints[-1]["combat"]["participants"] if p["id"] == enemy.id)
+    row["carried_items"] = [drop]
+    enemy.carried_items = []
+    await fight.pool.execute(
+        """INSERT INTO player_inventory (player_id,item_id,data) VALUES ($1,$2,'{"quantity":1}')""",
+        rogue,
+        drop["item_id"],
+    )
+    await fight.write_row(state.to_dict())
+    await fight.declare()
+    await fight.finish_round(3)
+    if departed:
+        fight.session.party.members = [fight.session.member_state(restorer)]
+        await assert_refused(fight, "enemy pockets changed")
+    else:
+        await activate(fight)
+        assert_restored(fight, await durable(fight), state.round_checkpoints[-1], restorer)
+
+
 async def test_two_followers_cannot_rewind_twice_without_replay_and_keep_both_spends(unravel) -> None:
     fight = unravel
     first, second = fight.ids
