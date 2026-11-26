@@ -108,10 +108,43 @@ def test_begin_activity_binds_a_raw_json_activity_to_the_impl_kwargs():
 
 
 @pytest.mark.parametrize(
+    "raw",
+    [
+        {
+            "kind": "skill",
+            "skill": "religion",
+            "difficulty": "easy",
+            "context_description": "bless a meal",
+            "hearing_only": False,
+        },
+        {"kind": "social", "skill": "persuasion", "difficulty": "easy", "npc_id": "guildmaster_torin"},
+    ],
+)
+def test_context_enum_binds_known_tags_and_rejects_invalid_metadata(raw):
+    for tag in ("shared_meal", "community_duties", "none"):
+        bound = _bind(check, {"roll": {**raw, "synergy_context": tag}})
+        assert check_payloads.to_impl_args(bound["roll"])[1]["synergy_context"] == tag
+    for invalid in (raw, {**raw, "synergy_context": "unknown_context"}):
+        with pytest.raises(ToolError):
+            _bind(check, {"roll": invalid})
+
+
+@pytest.mark.parametrize(
     "tool,arguments",
     [
         (declare_phase, {"declarations": [{"kind": "sing", "actor_id": "player_1"}]}),
-        (check, {"roll": {"kind": "skill", "skill": "athletics"}}),
+        (
+            check,
+            {
+                "roll": {
+                    "kind": "skill",
+                    "skill": "athletics",
+                    "hearing_only": False,
+                    "synergy_context": "none",
+                    "context_description": "climb a wall",
+                }
+            },
+        ),
         (begin_activity, {"activity": {"kind": "training"}}),
     ],
 )
@@ -125,7 +158,11 @@ def test_an_unknown_kind_or_a_missing_required_field_is_a_self_correctable_tool_
 @pytest.mark.parametrize("hearing", [True, False])
 def test_vendor_boundary_preserves_required_hearing_boolean(kind, hearing):
     raw = {"kind": kind, "skill": "perception", "hearing_only": hearing}
-    raw.update({"difficulty": "easy", "context_description": "inspect"} if kind == "skill" else {"target": "wall"})
+    raw.update(
+        {"difficulty": "easy", "context_description": "inspect", "synergy_context": "none"}
+        if kind == "skill"
+        else {"target": "wall"}
+    )
     bound = _bind(check, {"roll": raw})
     mode, arguments = check_payloads.to_impl_args(bound["roll"])
     assert mode == kind
@@ -136,7 +173,11 @@ def test_vendor_boundary_preserves_required_hearing_boolean(kind, hearing):
 @pytest.mark.parametrize("defect", ["missing", None, 1, "false", "wrong_skill"])
 def test_vendor_boundary_refuses_malformed_hearing_metadata(kind, defect):
     raw = {"kind": kind, "skill": "perception", "hearing_only": defect}
-    raw.update({"difficulty": "easy", "context_description": "inspect"} if kind == "skill" else {"target": "wall"})
+    raw.update(
+        {"difficulty": "easy", "context_description": "inspect", "synergy_context": "none"}
+        if kind == "skill"
+        else {"target": "wall"}
+    )
     if defect == "missing":
         raw.pop("hearing_only")
     if defect == "wrong_skill":

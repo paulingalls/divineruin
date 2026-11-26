@@ -148,6 +148,7 @@ async def stealth(h, face):
             {
                 "roll": {
                     "kind": "skill",
+                    "synergy_context": "none",
                     "skill": "stealth",
                     "difficulty": "easy",
                     "context_description": "Hide from the watcher",

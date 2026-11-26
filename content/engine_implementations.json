@@ -4,6 +4,8 @@
   "kaelen_extra_attack_damage": "patron_synergy_combat:weapon_damage_bonus",
   "aelora_craft_blessing": "async_rules:resolve_crafting",
   "aelora_community_shield": "patron_combat_edges:community_shield",
+  "aelora_shared_table": "patron_synergy:context_skill_bonus",
+  "aelora_civic_promise": "patron_synergy:context_skill_bonus",
   "aelora_hearthfire": "aelora_hearthfire:place",
   "kaelen_oath_of_valor": "patron_synergy_combat:outnumbered_rider",
   "aelora_common_bond": "patron_gifts:skill_gift",

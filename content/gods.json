@@ -964,8 +964,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Religion when blessing a shared meal.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "aelora_shared_table",
+            "kind": "context_check",
+            "synergy_context": "shared_meal",
+            "skill": "religion",
+            "bonus": 1
           }
         ]
       },
@@ -975,8 +980,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Persuasion when negotiating a community’s shared duties.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "aelora_civic_promise",
+            "kind": "context_check",
+            "synergy_context": "community_duties",
+            "skill": "persuasion",
+            "bonus": 1
           }
         ]
       },

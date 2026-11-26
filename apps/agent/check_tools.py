@@ -70,6 +70,9 @@ async def check(
     Stealth check when a watcher might notice, using that watcher's difficulty;
     failure reveals the player. Casting or attacking also ends concealment.
 
+    For skill and social checks, get active synergy_context tags from the patron query.
+    Pass a held tag when its clause matches the narrated moment. Otherwise pass "none".
+
     Narrate the result from narrative_hint / narrative_cue. Follow dm_cue for Fate's Thread
     and Foretold Words. For other checks, never speak raw numbers or DCs."""
     mode, kwargs = check_payloads.to_impl_args(roll)
@@ -89,6 +92,7 @@ async def _check_impl(
     context_description: str = "",
     npc_id: str = "",
     hearing_only: bool = False,
+    synergy_context: str = "none",
     *,
     queries=db_queries,
     mutations=db_mutations,
@@ -102,12 +106,20 @@ async def _check_impl(
             difficulty,
             context_description,
             hearing_only=hearing_only,
+            synergy_context=synergy_context,
             queries=queries,
             mutations=skill_mutations,
         )
     if mode == "social":
         return await _check_social_impl(
-            context, npc_id, skill, difficulty, queries=queries, mutations=mutations, content=content
+            context,
+            npc_id,
+            skill,
+            difficulty,
+            synergy_context=synergy_context,
+            queries=queries,
+            mutations=mutations,
+            content=content,
         )
     if mode == "foretell_social":
         return await foretell(context, npc_id, skill, difficulty, queries=queries, content=content)
@@ -132,6 +144,7 @@ async def _check_skill_impl(
     context_description: str,
     *,
     hearing_only: bool = False,
+    synergy_context: str = "none",
     queries=db_queries,
     mutations=db_mutations_skill_advancement,
     db_mod=db,
@@ -145,6 +158,7 @@ async def _check_skill_impl(
             difficulty,
             context_description,
             hearing_only=hearing_only,
+            synergy_context=synergy_context,
             queries=queries,
             mutations=mutations,
             db_mod=db_mod,

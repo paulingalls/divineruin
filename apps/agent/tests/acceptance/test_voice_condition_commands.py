@@ -53,6 +53,7 @@ def commands(case, host):
         {
             "roll": {
                 "kind": "skill",
+                "synergy_context": "none",
                 "skill": "perception",
                 "difficulty": "easy",
                 "context_description": "look at the wall",
@@ -79,7 +80,15 @@ def commands(case, host):
         return [
             (
                 "check",
-                {"roll": {"kind": "social", "npc_id": "merchant_1", "skill": "persuasion", "difficulty": "easy"}},
+                {
+                    "roll": {
+                        "kind": "social",
+                        "synergy_context": "none",
+                        "npc_id": "merchant_1",
+                        "skill": "persuasion",
+                        "difficulty": "easy",
+                    }
+                },
             ),
             save,
         ]

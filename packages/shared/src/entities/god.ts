@@ -2,12 +2,18 @@ import archetypes from "../../../../content/archetypes.json";
 import implementations from "../../../../content/engine_implementations.json";
 
 export type GodSynergyType = "natural" | "divine" | "unexpected";
-export interface GodSynergyClause {
+interface GodSynergyClauseFields {
   effect: string;
   status: "active" | "pending";
   resolution: "narrated" | "engine";
   implementation_id?: string;
 }
+export type GodSynergyClause = GodSynergyClauseFields &
+  (
+    | { kind?: never }
+    | { kind: "context_check"; synergy_context: string; skill: string | null; bonus: number }
+  );
+
 export interface GodSynergyRow {
   type: GodSynergyType;
   name: string;
@@ -165,6 +171,14 @@ function layer1(value: unknown, path: string): void {
     fail(`${path}.recharge`, "unknown recharge");
   engineResolution(gift, path);
 }
+function contextClause(clause: Record<string, unknown>, path: string): void {
+  const tag = text(clause.synergy_context, `${path}.synergy_context`);
+  if (tag === "none" || tag !== tag.trim() || !/^[a-z0-9]+(?:_[a-z0-9]+)*$/.test(tag))
+    fail(`${path}.synergy_context`, "expected snake_case tag other than none");
+  if (clause.skill !== null) text(clause.skill, `${path}.skill`);
+  if (typeof clause.bonus !== "number" || !Number.isInteger(clause.bonus) || clause.bonus <= 0)
+    fail(`${path}.bonus`, "expected positive integer");
+}
 function matrix(value: unknown, path: string): void {
   const rows = object(value, path);
   if (
@@ -183,12 +197,15 @@ function matrix(value: unknown, path: string): void {
     row.clauses.forEach((entry: unknown, i: number) => {
       const clausePath = `${rowPath}.clauses[${i}]`;
       const clause = object(entry, clausePath);
+      const context = clause.kind === "context_check";
       object(clause, clausePath, [
         "effect",
         "status",
         "resolution",
         ...(Object.hasOwn(clause, "implementation_id") ? ["implementation_id"] : []),
+        ...(context ? ["kind", "bonus", "skill", "synergy_context"] : []),
       ]);
+      if (context) contextClause(clause, clausePath);
       text(clause.effect, `${clausePath}.effect`);
       readiness(clause, clausePath);
     });

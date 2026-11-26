@@ -84,6 +84,7 @@ class GiftWalk(JournalWalk):
                 {
                     "roll": {
                         "kind": "skill",
+                        "synergy_context": "none",
                         "skill": skill,
                         "difficulty": difficulty,
                         "context_description": "Remember the old lore",

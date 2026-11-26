@@ -59,6 +59,7 @@ async def _check_social_impl(
     conditions_mutations=db_mutations_conditions,
     db_mod=db,
     rng: random.Random | None = None,
+    synergy_context: str = "none",
 ) -> str:
     logger.info("check social: npc=%s, skill=%s, difficulty=%s", npc_id, skill, difficulty)
     skill_lower = skill.lower()
@@ -114,6 +115,7 @@ async def _check_social_impl(
         ally_present=session.allies_present_for(player_id),
         natural_terrain=False,
         hearing_only=False,
+        synergy_context=synergy_context,
     )
     scope = SkillScope.capture(session, player_id)
 
@@ -266,6 +268,7 @@ async def _finish_social(
             "new_disposition": outcome.new_disposition,
             **(zhael_foretold_words.CLAUSE_RECEIPT if binding is not None else {}),
             **({"gift_name": roll.gift_name} if roll.gift_name else {}),
+            **({"context_synergy": roll.context_synergy} if roll.context_synergy is not None else {}),
         }
 
     return flush
