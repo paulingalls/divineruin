@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import corpus from "../../fixtures/god_profiles.json";
 import roster from "../../../../content/archetypes.json";
 import catalog from "../../../../content/gods.json";
+import { CONTEXT_ROWS } from "./god-synergy-context-rows";
 import { type GodSynergyClause, validateGods } from "./index";
 
 test("ten complete matrices cover the exact eighteen-archetype roster", () => {
@@ -216,200 +217,8 @@ for (const entry of corpus.context_clause_cases) {
   });
 }
 
-test.each([
-  [
-    "aelora",
-    "cleric",
-    "divine",
-    "Shared Table",
-    "shared_meal",
-    "religion",
-    "aelora_shared_table",
-    "Gain +1 Religion when blessing a shared meal.",
-  ],
-  [
-    "aelora",
-    "paladin",
-    "divine",
-    "Civic Promise",
-    "community_duties",
-    "persuasion",
-    "aelora_civic_promise",
-    "Gain +1 Persuasion when negotiating a community’s shared duties.",
-  ],
-  [
-    "aelora",
-    "oracle",
-    "divine",
-    "Hearth Omen",
-    "household_omen",
-    "insight",
-    "aelora_hearth_omen",
-    "Gain +1 Insight when interpreting a household omen.",
-  ],
-  [
-    "aelora",
-    "rogue",
-    "unexpected",
-    "Honest Hustle",
-    "commerce",
-    "persuasion",
-    "aelora_commerce_persuasion",
-    "Commerce Persuasion +1.",
-  ],
-  [
-    "thyra",
-    "paladin",
-    "divine",
-    "Wild Covenant",
-    "sacred_grove",
-    "religion",
-    "thyra_wild_covenant",
-    "Gain +1 Religion when honoring a sacred grove.",
-  ],
-  [
-    "thyra",
-    "oracle",
-    "divine",
-    "Seasonal Omen",
-    "seasonal_omen",
-    "nature",
-    "thyra_seasonal_omen",
-    "Gain +1 Nature when interpreting a seasonal omen.",
-  ],
-  [
-    "nythera",
-    "warden",
-    "divine",
-    "Shoreline Keeper",
-    "coast_shelter",
-    "survival",
-    "nythera_shoreline_keeper",
-    "Gain +1 Survival when finding safe shelter along an unfamiliar coast.",
-  ],
-  [
-    "nythera",
-    "diplomat",
-    "divine",
-    "Harbor Courtesy",
-    "port_passage",
-    "persuasion",
-    "nythera_harbor_courtesy",
-    "Gain +1 Persuasion when seeking peaceful passage through an unfamiliar port.",
-  ],
-  [
-    "nythera",
-    "artificer",
-    "divine",
-    "Voyager's Tools",
-    "vessel_repair",
-    null,
-    "nythera_voyagers_tools",
-    "Gain +1 to checks to repair a vessel during a journey.",
-  ],
-  [
-    "orenthel",
-    "artificer",
-    "divine",
-    "Mender's Dawn",
-    "sanctuary_repair",
-    null,
-    "orenthel_menders_dawn",
-    "Gain +1 to checks to repair equipment for a damaged sanctuary.",
-  ],
-  [
-    "orenthel",
-    "warden",
-    "divine",
-    "Green Morning",
-    "blighted_grove",
-    "nature",
-    "orenthel_green_morning",
-    "Gain +1 Nature when restoring a blighted grove.",
-  ],
-  [
-    "orenthel",
-    "diplomat",
-    "divine",
-    "Reconciliation",
-    "wounded_enemy_care",
-    "persuasion",
-    "orenthel_reconciliation",
-    "Gain +1 Persuasion when negotiating care for wounded enemies.",
-  ],
-  [
-    "valdris",
-    "mage",
-    "divine",
-    "Ordered Testimony",
-    "broken_oath_evidence",
-    "arcana",
-    "valdris_oathbreak_sight",
-    "Gain +1 Arcana when examining magical evidence of a broken oath.",
-  ],
-  [
-    "valdris",
-    "artificer",
-    "divine",
-    "Honest Measure",
-    "tampered_measures",
-    "investigation",
-    "valdris_true_measure",
-    "Gain +1 Investigation when examining tampered scales or measuring tools.",
-  ],
-  [
-    "valdris",
-    "seeker",
-    "divine",
-    "Chain of Evidence",
-    "evidence_ownership_hearing",
-    "investigation",
-    "valdris_chain_of_custody",
-    "Gain +1 Investigation when tracing ownership of evidence in a public hearing.",
-  ],
-  [
-    "valdris",
-    "warden",
-    "divine",
-    "Common Ground",
-    "unlawful_incursion",
-    "survival",
-    "valdris_boundary_law",
-    "Gain +1 Survival when tracing an unlawful incursion into protected land.",
-  ],
-  [
-    "valdris",
-    "diplomat",
-    "divine",
-    "Fair Terms",
-    "equal_terms_petition",
-    "persuasion",
-    "valdris_even_scales",
-    "Gain +1 Persuasion when securing equal terms for opposing petitioners.",
-  ],
-  [
-    "valdris",
-    "rogue",
-    "unexpected",
-    "Truth in Disguise",
-    "just_cause_deception",
-    "deception",
-    "valdris_just_deceit",
-    "Deception for just causes (evidence, infiltration) gains +1. Valdris blesses deception in service of truth",
-  ],
-  [
-    "valdris",
-    "spy",
-    "unexpected",
-    "Truth in Disguise",
-    "just_cause_deception",
-    "deception",
-    "valdris_just_deceit",
-    "Deception for just causes (evidence, infiltration) gains +1. Valdris blesses deception in service of truth",
-  ],
-] as const)(
-  "%s %s has the registered context clause",
-  (patron, archetype, type, name, tag, skill, implementation, effect) => {
+for (const [patron, archetype, type, name, tag, skill, implementation, effect] of CONTEXT_ROWS) {
+  test(`${patron} ${archetype} has the registered context clause`, () => {
     const matrix = validateGods(catalog).find(
       (god) => god.god_id === patron,
     )?.layer_4_synergy_matrix;
@@ -433,5 +242,27 @@ test.each([
       });
     }
     expect(matrix?.[archetype]).toEqual({ name, type, clauses });
+  });
+}
+
+test.each(["rogue", "spy"] as const)(
+  "Veythar %s has an engine Hidden Knowledge clause",
+  (archetype) => {
+    const matrix = validateGods(catalog).find(
+      (god) => god.god_id === "veythar",
+    )?.layer_4_synergy_matrix;
+    expect(matrix?.[archetype]).toEqual({
+      type: "unexpected",
+      name: "Hidden Knowledge",
+      clauses: [
+        {
+          effect:
+            "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+          status: "active",
+          resolution: "engine",
+          implementation_id: "veythar_hidden_knowledge",
+        },
+      ],
+    });
   },
 );

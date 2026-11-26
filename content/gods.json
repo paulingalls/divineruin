@@ -263,8 +263,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Religion when interpreting an ancient oath.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "veythar_witnessed_oath",
+            "kind": "context_check",
+            "synergy_context": "ancient_oath",
+            "skill": "religion",
+            "bonus": 1
           }
         ]
       },
@@ -274,8 +279,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Arcana when interpreting a remembered vision.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "veythar_remembered_vision",
+            "kind": "context_check",
+            "synergy_context": "remembered_vision",
+            "skill": "arcana",
+            "bonus": 1
           }
         ]
       },
@@ -285,8 +295,9 @@
         "clauses": [
           {
             "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "veythar_hidden_knowledge"
           }
         ]
       },
@@ -296,8 +307,9 @@
         "clauses": [
           {
             "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "veythar_hidden_knowledge"
           }
         ]
       },
@@ -615,8 +627,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Religion when conducting a fallen soldier’s funeral rites.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "kaelen_last_salute",
+            "kind": "context_check",
+            "synergy_context": "fallen_soldier_rites",
+            "skill": "religion",
+            "bonus": 1
           }
         ]
       },
@@ -638,8 +655,13 @@
         "clauses": [
           {
             "effect": "Gain +1 History when interpreting a martial omen.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "kaelen_battle_omen",
+            "kind": "context_check",
+            "synergy_context": "martial_omen",
+            "skill": "history",
+            "bonus": 1
           }
         ]
       },
@@ -1341,8 +1363,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Religion when interpreting a concealed devotional symbol.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "syrath_secret_devotion",
+            "kind": "context_check",
+            "synergy_context": "concealed_symbol",
+            "skill": "religion",
+            "bonus": 1
           }
         ]
       },
@@ -1352,8 +1379,13 @@
         "clauses": [
           {
             "effect": "Gain +1 History when identifying an oath whose patron’s name was erased.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "syrath_unspoken_vow",
+            "kind": "context_check",
+            "synergy_context": "erased_oath",
+            "skill": "history",
+            "bonus": 1
           }
         ]
       },
@@ -1715,8 +1747,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Persuasion when negotiating the return of a body for burial.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "mortaen_peace_at_parting",
+            "kind": "context_check",
+            "synergy_context": "burial_return",
+            "skill": "persuasion",
+            "bonus": 1
           }
         ]
       },
@@ -3430,8 +3467,13 @@
         "clauses": [
           {
             "effect": "Gain +1 to checks to repair a clock or timing mechanism.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_patient_gear",
+            "kind": "context_check",
+            "synergy_context": "clock_repair",
+            "skill": null,
+            "bonus": 1
           }
         ]
       },
@@ -3441,8 +3483,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Investigation when comparing two accounts of the same foretold event.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "zhael_converging_clues",
+            "kind": "context_check",
+            "synergy_context": "foretold_accounts",
+            "skill": "investigation",
+            "bonus": 1
           }
         ]
       },

@@ -316,9 +316,10 @@
             "name": "Hidden Knowledge",
             "clauses": [
               {
-                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
-                "status": "pending",
-                "resolution": "engine"
+                "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "veythar_hidden_knowledge"
               }
             ]
           },
@@ -327,9 +328,10 @@
             "name": "Hidden Knowledge",
             "clauses": [
               {
-                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
-                "status": "pending",
-                "resolution": "engine"
+                "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "veythar_hidden_knowledge"
               }
             ]
           },
@@ -575,9 +577,10 @@
             "name": "Hidden Knowledge",
             "clauses": [
               {
-                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
-                "status": "pending",
-                "resolution": "engine"
+                "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "veythar_hidden_knowledge"
               }
             ]
           },
@@ -586,9 +589,10 @@
             "name": "Hidden Knowledge",
             "clauses": [
               {
-                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
-                "status": "pending",
-                "resolution": "engine"
+                "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "veythar_hidden_knowledge"
               }
             ]
           },
@@ -834,9 +838,10 @@
             "name": "Hidden Knowledge",
             "clauses": [
               {
-                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
-                "status": "pending",
-                "resolution": "engine"
+                "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "veythar_hidden_knowledge"
               }
             ]
           },
@@ -845,9 +850,10 @@
             "name": "Hidden Knowledge",
             "clauses": [
               {
-                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
-                "status": "pending",
-                "resolution": "engine"
+                "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "veythar_hidden_knowledge"
               }
             ]
           },
@@ -1093,9 +1099,10 @@
             "name": "Hidden Knowledge",
             "clauses": [
               {
-                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
-                "status": "pending",
-                "resolution": "engine"
+                "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "veythar_hidden_knowledge"
               }
             ]
           },
@@ -1104,9 +1111,10 @@
             "name": "Hidden Knowledge",
             "clauses": [
               {
-                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
-                "status": "pending",
-                "resolution": "engine"
+                "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "veythar_hidden_knowledge"
               }
             ]
           },
@@ -1355,9 +1363,10 @@
             "name": "Hidden Knowledge",
             "clauses": [
               {
-                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
-                "status": "pending",
-                "resolution": "engine"
+                "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "veythar_hidden_knowledge"
               }
             ]
           },
@@ -1366,9 +1375,10 @@
             "name": "Hidden Knowledge",
             "clauses": [
               {
-                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
-                "status": "pending",
-                "resolution": "engine"
+                "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "veythar_hidden_knowledge"
               }
             ]
           },
@@ -2157,9 +2167,10 @@
             "name": "Hidden Knowledge",
             "clauses": [
               {
-                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
-                "status": "pending",
-                "resolution": "engine"
+                "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "veythar_hidden_knowledge"
               }
             ]
           },
@@ -2168,9 +2179,10 @@
             "name": "Hidden Knowledge",
             "clauses": [
               {
-                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
-                "status": "pending",
-                "resolution": "engine"
+                "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "veythar_hidden_knowledge"
               }
             ]
           },
@@ -2417,9 +2429,10 @@
             "name": "Hidden Knowledge",
             "clauses": [
               {
-                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
-                "status": "pending",
-                "resolution": "engine"
+                "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "veythar_hidden_knowledge"
               }
             ]
           },
@@ -2428,9 +2441,10 @@
             "name": "Hidden Knowledge",
             "clauses": [
               {
-                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
-                "status": "pending",
-                "resolution": "engine"
+                "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "veythar_hidden_knowledge"
               }
             ]
           },
@@ -2677,9 +2691,10 @@
             "name": "Hidden Knowledge",
             "clauses": [
               {
-                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
-                "status": "pending",
-                "resolution": "engine"
+                "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "veythar_hidden_knowledge"
               }
             ]
           },
@@ -2688,9 +2703,10 @@
             "name": "Hidden Knowledge",
             "clauses": [
               {
-                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
-                "status": "pending",
-                "resolution": "engine"
+                "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "veythar_hidden_knowledge"
               }
             ]
           },
@@ -2937,9 +2953,10 @@
             "name": "Hidden Knowledge",
             "clauses": [
               {
-                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
-                "status": "pending",
-                "resolution": "engine"
+                "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "veythar_hidden_knowledge"
               }
             ]
           },
@@ -2948,9 +2965,10 @@
             "name": "Hidden Knowledge",
             "clauses": [
               {
-                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
-                "status": "pending",
-                "resolution": "engine"
+                "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "veythar_hidden_knowledge"
               }
             ]
           },
@@ -3197,9 +3215,10 @@
             "name": "Hidden Knowledge",
             "clauses": [
               {
-                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
-                "status": "pending",
-                "resolution": "engine"
+                "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "veythar_hidden_knowledge"
               }
             ]
           },
@@ -3208,9 +3227,10 @@
             "name": "Hidden Knowledge",
             "clauses": [
               {
-                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
-                "status": "pending",
-                "resolution": "engine"
+                "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "veythar_hidden_knowledge"
               }
             ]
           },
@@ -18197,9 +18217,10 @@
             "name": "Hidden Knowledge",
             "clauses": [
               {
-                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
-                "status": "pending",
-                "resolution": "engine"
+                "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "veythar_hidden_knowledge"
               }
             ]
           },
@@ -18208,9 +18229,10 @@
             "name": "Hidden Knowledge",
             "clauses": [
               {
-                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
-                "status": "pending",
-                "resolution": "engine"
+                "effect": "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "veythar_hidden_knowledge"
               }
             ]
           },
