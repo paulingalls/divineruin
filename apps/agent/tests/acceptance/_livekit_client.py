@@ -26,7 +26,11 @@ _CleanupArgs = ParamSpec("_CleanupArgs")
 
 
 class CleanupStack(AsyncExitStack):
-    """Run each cleanup inside the previous failure's exception context."""
+    """Run each cleanup inside the previous failure's exception context.
+
+    Plain `push_async_callback` callbacks run outside that context, so when two
+    raise, the later one replaces the earlier instead of chaining it.
+    """
 
     def defer(self, callback: Callable[[], None]) -> None:
         @contextmanager
