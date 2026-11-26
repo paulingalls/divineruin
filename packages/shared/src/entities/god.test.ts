@@ -460,3 +460,24 @@ test("Veythar's Arcane Revelation grants clerics Arcana training", () => {
     },
   ]);
 });
+
+test("Orenthel's Restoring Song enables the Song of Rest clause", () => {
+  const orenthel = validateGods(catalog).find((god) => god.god_id === "orenthel");
+  expect(orenthel?.layer_4_synergy_matrix.bard).toEqual({
+    type: "divine",
+    name: "Restoring Song",
+    clauses: [
+      {
+        effect: "Song of Rest +1d6 HP.",
+        status: "active",
+        resolution: "engine",
+        implementation_id: "orenthel_song_of_rest",
+      },
+      {
+        effect: "Inspire dice can heal instead of buffing rolls",
+        status: "pending",
+        resolution: "engine",
+      },
+    ],
+  });
+});

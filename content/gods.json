@@ -3146,8 +3146,9 @@
         "clauses": [
           {
             "effect": "Song of Rest +1d6 HP.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "orenthel_song_of_rest"
           },
           {
             "effect": "Inspire dice can heal instead of buffing rolls",

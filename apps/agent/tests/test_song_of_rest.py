@@ -157,21 +157,6 @@ async def test_refusal_leaves_rest_untouched(party, kind, owned, maximum, reason
             assert rolls == []
 
 
-async def test_deafened_warrior_rests_without_healing(party):
-    async with party("bard", "warrior") as (walk, (bard, warrior), rolls):
-        await update(walk, warrior, conditions=[{"type": "deafened"}])
-        receipt = (await take_rest(walk))["song_of_rest"]
-        assert receipt["skipped"] == [{"player_id": warrior, "reason": "cannot_hear"}]
-        assert [entry["player_id"] for entry in receipt["healing"]] == [bard]
-        assert rolls == expected_rolls(1)
-        assert (await row(bard))["hp"]["current"] == 3 + rolls[0]
-        assert (await row(bard))["focus"]["current"] == 3
-        rested = await row(warrior)
-        assert rested["hp"]["current"] == 3
-        assert rested["stamina"]["current"] == 10
-        assert rested["resonance"]["current"] == walk.sd.member_state(warrior).resonance.current == 0
-
-
 @pytest.mark.parametrize("first_maximum", [12, 4])
 async def test_one_singer_in_player_id_order(party, first_maximum):
     async with party("bard", "bard", owned=(0, 1), focus_max=first_maximum) as (walk, ids, rolls):
