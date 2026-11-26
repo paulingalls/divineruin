@@ -71,5 +71,8 @@ async def resolve(
     if not landing:
         return {}
     payment["landing"] = landing
-    receipt["order_rider_grant"] = combat_order_riders.grant_sacrifice_play(state, actor.id, recipient.id)
+    if recipient.is_ally:
+        receipt["order_rider_grant"] = combat_order_riders.grant_sacrifice_play(state, actor.id, recipient.id)
+    else:
+        receipt["dm_cue"] = f"{recipient.name} became hostile. Sacrifice Play granted no attack bonus."
     return receipt

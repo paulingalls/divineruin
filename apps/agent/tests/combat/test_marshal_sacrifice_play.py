@@ -14,6 +14,7 @@ from combat.test_marshal_orders import mock_combat_agent_factory as mock_combat_
 from test_aelora_gift import _live_party
 
 import abilities
+import combat_order_riders
 import db_mutations_concentration
 from combat_damage_affinity import DAMAGE_TYPES
 
@@ -158,6 +159,29 @@ async def test_fallen_ally_keeps_unused_rider_until_following_wrap(marshal) -> N
     assert not weapon.called
     assert (await fight.reload()).round_number == 3
     assert await pending(fight) == {}
+
+
+async def test_hollowed_echo_neither_gains_nor_uses_an_order_rider(marshal) -> None:
+    fight = await arrange_sacrifice(marshal, health=6)
+    host, ally, other = fight.players
+    state = await fight.reload()
+    required_player(state, ally).conditions = [{"type": "hollowed", "duration": None, "source": "veil", "stage": 2}]
+    combat_order_riders.grant_coordinated_assault(state, host, [ally, other])
+    await fight.persist()
+
+    with patch("dice.roll", return_value=_damage_die(PAYMENT)):
+        packets = await round_packets(fight, sacrifice(fight))
+    assert "order_rider_grant" not in packets[host]
+    assert required_player(await fight.reload(), ally).type == "temporary_hollowed"
+    assert [r["kind"] for r in (await pending(fight))[ally]] == ["coordinated_assault"]
+
+    await declare_round(fight, attack(ally, host))
+    with patch("check_resolution.dice_roll", return_value=_d20(2)) as d20:
+        packets = await fight.drain()
+    d20.assert_called_once()
+    (swing,) = [p for p in packets if p["actor_id"] == ally]
+    assert swing["roll"] == 2 and not swing["hit"]
+    assert "coordinated_assault" not in swing
 
 
 async def test_direct_strike_bonus_doubles_with_sacrifice_play(marshal) -> None:
