@@ -33,6 +33,21 @@ test("Orenthel's guardian has the registered Sheltering Light clause", () => {
   ]);
 });
 
+test("Orenthel's warrior has the registered Dawnward Strike clause", () => {
+  const warrior = validateGods(catalog).find((god) => god.god_id === "orenthel")
+    ?.layer_4_synergy_matrix.warrior;
+  expect(warrior?.name).toBe("Dawnward Strike");
+  expect(warrior?.type).toBe("divine");
+  expect(warrior?.clauses).toEqual([
+    {
+      effect: "Gain +1 damage against undead while an ally within earshot is below half HP.",
+      status: "active",
+      resolution: "engine",
+      implementation_id: "orenthel_undead_wrath",
+    },
+  ]);
+});
+
 test("Mortaen's guardian has the registered Threshold Shield clause", () => {
   const guardian = validateGods(catalog).find((god) => god.god_id === "mortaen")
     ?.layer_4_synergy_matrix.guardian;

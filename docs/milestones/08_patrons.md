@@ -208,7 +208,7 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 
 **Review:** The human approved the final 180-row table on 2026-11-18 (table SHA-256 `5dee713a…`, content SHA-256 `c3238a53…`, commit `903ac541`), closing AC3. The approved table is retained in sprint DATA at `sprints/archetype-synergies/synergy-review.md` with every changed number. Content and design share the approved corrections, including Nythera’s live Animal Handling +1 instead of advantage. Pending clauses are unavailable.
 
-Layer 4 has 54 active engine clauses, 85 active narrated clauses and 61 pending engine clauses across 180 pairings. Sheltering Light gives a standing Orenthel guardian +1 AC against attack rolls while a standing ally below half HP is within 5 feet. `test_patron_synergy_engine.py` and `test_orenthel_guardian_ward.py` exercise the registered clause, opportunity attacks and held rolls after checkpoint reload.
+Layer 4 has 55 active engine clauses, 85 active narrated clauses and 60 pending engine clauses across 180 pairings. Sheltering Light gives a standing Orenthel guardian +1 AC against attack rolls while a standing ally below half HP is within 5 feet. `test_patron_synergy_engine.py` and `test_orenthel_guardian_ward.py` exercise the registered clause, opportunity attacks and held rolls after checkpoint reload. Dawnward Strike adds 1 damage on a hit against a Hollow or undead foe while another standing party ally in the same combat is below half HP. `test_orenthel_undead_wrath.py` and `test_orenthel_undead_wrath_guards.py` cover damage, attack receipts and eligibility after checkpoint reload.
 
 **Key references:**
 - *Game Mechanics Patrons — Archetype Synergies*
