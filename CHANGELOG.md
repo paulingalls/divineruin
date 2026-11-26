@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.81.4
+
+Require combat mirrors to rewind with their database rows or block the rewind, with both stores exercised in Verify. Require negative-control evidence to apply the real effect at the excluded site and change the asserted outcome.
+
+Release steps: none.
+
 ## 0.81.3
 
 Acceptance tests can rebuild database and Redis clients left bound to an earlier test's event loop. The speaker recap test isolates Redis outcome completion.
