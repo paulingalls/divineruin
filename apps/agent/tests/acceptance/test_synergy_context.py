@@ -17,6 +17,8 @@ from check_tools import check
 from query_tools import query_info
 from zhael_fate import FATE
 
+Clause = tuple[str, str, str, str, str | None]
+
 NPC = "guildmaster_torin"
 MERCHANT = "aelora_guildmaster_dara"
 SHARED = (
@@ -134,8 +136,8 @@ async def paired(world: SimpleNamespace, kind: str, skill: str, tag: str, *, npc
     return results[0], results[1]
 
 
-def applied(clause: tuple[str, str, str, str] | tuple[str, str, str, str, str | None]) -> dict:
-    tag, clause_id, name, effect = clause[:4]
+def applied(clause: Clause) -> dict:
+    tag, clause_id, name, effect, _ = clause
     return {
         "tag": tag,
         "applied": True,
@@ -153,7 +155,7 @@ async def context_scenario(
     archetype: str,
     kind: str,
     skill: str,
-    clause: tuple[str, str, str, str, str | None],
+    clause: Clause,
     npc_id: str = NPC,
 ) -> None:
     tag, clause_id, _, effect, declared_skill = clause
