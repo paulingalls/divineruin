@@ -11,6 +11,7 @@ from uuid import uuid4
 import pytest
 from acceptance.rest_walk import RestWalk
 from acceptance.test_creature_catalog import seed_content
+from acceptance.test_hollowed_wis_drain import seed_bearer
 
 import db
 import event_types as E
@@ -38,6 +39,8 @@ def test_long_rest_progression_reaches_current_gameplay_agent(harness: SimpleNam
             absent: [{"type": "hollowed", "stage": 2}],
             unaffected: None,
         }
+        await seed_bearer(walk, host, 12)
+        await seed_bearer(walk, guest, 12)
         for pid, conditions in original.items():
             await patch_player(walk, pid, name=names[pid], conditions=conditions)
 
@@ -50,14 +53,20 @@ def test_long_rest_progression_reaches_current_gameplay_agent(harness: SimpleNam
         background = BackgroundProcess(walk.session, walk.sd)
         harness.stack.callback(lambda: harness.run_sync(background.stop()))
 
-        async def rest(kind: str, changes: list[dict], expected: dict) -> None:
+        async def rest(kind: str, changes: list[dict], expected: dict, guest_wisdom: int = 12) -> None:
             walk.events.clear()
             receipt = await walk.command(kind)
             assert receipt.name == "rest" and not receipt.is_error, receipt.output
             result = json.loads(receipt.output)
             assert result["rested"]
-            assert {pid: row.get("conditions") for pid, row in (await walk.rows()).items()} == expected
-            assert result["hollowed_changes"] == changes
+            rows = await walk.rows()
+            assert {pid: row.get("conditions") for pid, row in rows.items()} == expected
+            assert rows[host]["attributes"]["wisdom"] == 12
+            assert rows[guest]["attributes"]["wisdom"] == guest_wisdom
+            assert [
+                {k: change[k] for k in ("player_id", "name", "from_stage", "to_stage")}
+                for change in result["hollowed_changes"]
+            ] == changes
             snapshots = {
                 event["character"]["player_id"]: event["character"].get("conditions")
                 for event in walk.events
@@ -83,14 +92,26 @@ def test_long_rest_progression_reaches_current_gameplay_agent(harness: SimpleNam
                 assert [entry for entry in descriptions if entry in section] == [description]
             return instructions
 
-        advanced = {**original, host: [{**original[host][0], "stage": 2}, original[host][1]]}
+        def transition(pid: str, before: int, after: int) -> dict:
+            return {"player_id": pid, "name": names[pid], "from_stage": before, "to_stage": after}
+
+        advanced = {
+            **original,
+            host: [{**original[host][0], "stage": 2}, original[host][1]],
+            guest: [{"type": "hollowed", "stage": 3}],
+        }
+        drained = {
+            **advanced,
+            host: [{**original[host][0], "stage": 3}, original[host][1]],
+            guest: [{**advanced[guest][0], "wis_drained": 1}],
+        }
         first, second, third, fourth = descriptions
         with patch("hollowed_hallucinations.choice", side_effect=cycle(catalog)):
             await rebuild({guest: first})
             await rest("short", [], original)
-            await rest("long", [{"player_id": host, "name": names[host], "from_stage": 1, "to_stage": 2}], advanced)
+            await rest("long", [transition(host, 1, 2), transition(guest, 2, 3)], advanced)
             await rebuild({host: second, guest: first})
-            await rest("long", [], advanced)
+            await rest("long", [transition(host, 2, 3), transition(guest, 3, 3)], drained, guest_wisdom=11)
             await rebuild({host: second, guest: first})
             walk.sd.world_time = "evening"
             assert "evening" in await rebuild({host: second, guest: first})

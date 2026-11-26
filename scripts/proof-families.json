@@ -217,7 +217,7 @@
   {
     "name": "sessions",
     "tests": [
-      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:first_episode(?:_atomicity|_reentry)?|m35_session_persistence_capstone|player_session_persistence|rest_.*|hollowed_progression|fresh_recap|leave_summary|session_limits|session_room_ownership)\\.py"
+      "apps/agent/tests/acceptance/(?:multiplayer_voice/)?test_(?:first_episode(?:_atomicity|_reentry)?|m35_session_persistence_capstone|player_session_persistence|rest_.*|hollowed_(?:progression|wis_drain)|fresh_recap|leave_summary|session_limits|session_room_ownership)\\.py"
     ],
     "owns": [
       "apps/agent/(?:creation[^/]*|onboarding[^/]*|session[^/]*|participant[^/]*|rest[^/]*|hollowed_(?:hallucinations|progression)|first_episode[^/]*|character_creation[^/]*)\\.py"

@@ -4,6 +4,7 @@ import asyncio
 from unittest.mock import patch
 
 from acceptance.rest_walk import RestWalk
+from acceptance.test_hollowed_wis_drain import seed_bearer
 
 import db_mutations
 import db_mutations_conditions
@@ -69,7 +70,7 @@ def test_condition_write_failure_rolls_back_long_rest(harness):
     async def check() -> None:
         walk = await RestWalk().setup(harness)
         for pid in walk.ids[:2]:
-            await db_mutations_conditions.save_player_conditions(pid, [{"type": "hollowed", "stage": 1}])
+            await seed_bearer(walk, pid, 12)
         before = await walk.rows()
         original = db_mutations_conditions.save_player_conditions
         calls = 0
@@ -86,6 +87,7 @@ def test_condition_write_failure_rolls_back_long_rest(harness):
         assert receipt.is_error
         assert calls == 2
         assert await walk.rows() == before
+        assert all(walk.sd.member_state(pid).resonance.current == 7 for pid in walk.ids)
         assert not walk.events
 
     harness.run_sync(check())
