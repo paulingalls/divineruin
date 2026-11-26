@@ -164,8 +164,9 @@ async def test_public_hearing_and_sight_routes(kind, candidate, monkeypatch):
     events = AsyncMock()
     monkeypatch.setattr(check_tools, "publish_game_event", events)
     import check_discovery
+    import check_discovery_roll
 
-    monkeypatch.setattr(check_discovery, "publish_game_event", events)
+    monkeypatch.setattr(check_discovery_roll, "publish_game_event", events)
     monkeypatch.setattr(check_discovery, "publish_hidden_revealed", AsyncMock())
     monkeypatch.setattr(check_tools.db_mutations, "set_player_flag", AsyncMock())
     ctx = make_context()

@@ -455,3 +455,25 @@ test.each([
     expect(matrix?.[archetype]).toEqual({ name, type, clauses });
   },
 );
+
+test.each(["rogue", "spy"] as const)(
+  "Veythar %s has an engine Hidden Knowledge clause",
+  (archetype) => {
+    const matrix = validateGods(catalog).find(
+      (god) => god.god_id === "veythar",
+    )?.layer_4_synergy_matrix;
+    expect(matrix?.[archetype]).toEqual({
+      type: "unexpected",
+      name: "Hidden Knowledge",
+      clauses: [
+        {
+          effect:
+            "Investigation checks for hidden information gain +1. The Lorekeeper rewards seekers",
+          status: "active",
+          resolution: "engine",
+          implementation_id: "veythar_hidden_knowledge",
+        },
+      ],
+    });
+  },
+);
