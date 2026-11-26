@@ -206,7 +206,6 @@ async def continue_attack(
                 state,
                 attacker,
                 declared_target,
-                act,
                 decl,
                 attack_cursor,
                 conn=conn,

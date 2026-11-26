@@ -169,7 +169,6 @@ async def resolve(
     state: CombatState,
     actor: CombatParticipant,
     target: CombatParticipant,
-    weapon: dict,
     decl: Declaration,
     cursor: dict,
     *,
@@ -190,9 +189,6 @@ async def resolve(
     already_wary = any(entry["round"] == state.round_number for entry in wary.values())
 
     try:
-        require_target(target, weapon)
-        if reason := combat_martial.reach_refusal(state, actor, target.id, weapon):
-            raise ValueError(reason)
         plant = None
         if decl.quick_fingers_item is not None and not already_wary:
             plant = await _plant_row(actor.id, decl.quick_fingers_item, queries=queries, conn=conn)
