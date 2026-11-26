@@ -166,8 +166,9 @@ async def test_hostile_save_ignores_ward(world: SimpleNamespace) -> None:
             }
         )
         with patch("combat_enemy_action.dice_roll", return_value=_damage_die(5)):
-            packets = await f.round({**attack(GOBLIN, f.hero), "action": "Dust"}, faces=(1,))
+            packets = await f.round({**attack(GOBLIN, f.hero), "action": "Dust"}, faces=(13,))
         packet = next(p for p in packets if p["actor_id"] == GOBLIN)
+        assert packet["save_total"] == 13
         assert (packet["save_dc"], packet["save_success"], packet["damage"]) == (14, False, 5)
         assert {"orenthel_ac_bonus", "orenthel_ac_clause_id"}.isdisjoint(packet)
         assert participant(f.session.combat_state, f.hero).hp_current == hp - 5
