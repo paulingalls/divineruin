@@ -15,6 +15,7 @@ from patron_synergy_combat import spell_damage_type_override
 from patron_synergy_heal import for_cast
 from session_data import SessionData
 from spell_cast_result import CastResult
+from spell_condition_cleanse import Cleanse
 
 
 async def _finish_cast(
@@ -42,6 +43,7 @@ async def _finish_cast(
     purified,
     locked_rows,
     heal_rows,
+    cleanse: Cleanse | None,
     revalidate_actor: bool,
     suppress_resonance_changed: bool,
     resonance,
@@ -97,6 +99,11 @@ async def _finish_cast(
         "resonance_modifiers": modifiers,
         "ward_active": ward_active,
     }
+    if cleanse is not None:
+        if revalidate_actor:
+            session.validate_acting_player(player_id)
+        packet.update(await cleanse.land(conn=conn, queries=queries_mod))
+        packet["effect"] = packet["narration_cue"]
     if damage_type := spell_damage_type_override(player, spell_id):
         packet["damage_type_override"] = damage_type
     if wrongdoing is not None:

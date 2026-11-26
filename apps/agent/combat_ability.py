@@ -1,9 +1,6 @@
-"""In-combat ABILITY (cast) resolution helpers.
+"""Resolve combat ability packets and land their effects."""
 
-Splits the ability-cast concern out of combat_support (story-007): resolving an
-in-combat ABILITY declaration through the shared cast logic, the side-channel that
-carries the cast result back to the phase loop, action lookup, and enhancer-rider
-attachment. Consumed by the phase loop (combat_turn)."""
+from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 from functools import partial
@@ -25,13 +22,14 @@ import concealment
 import condition_voice_rules
 import db_queries
 import spell_casting
+import spells
 from combat_ability_gate import WAR_CRIES, DeclaredAbility
 from combat_condition_landing import (
     _land_condition_on_one,
     land_condition_on_participant,
     land_condition_on_participants,
 )
-from combat_down import damage_target_unavailable
+from combat_condition_target import _resolve_condition_target
 from combat_structures import blocked_reason, line_blocker
 from condition_sources import DeliveryRefused
 from mentor_variants import MentorVariant
@@ -39,6 +37,7 @@ from patron_synergy_combat import inspire_attack_upgrade
 from patron_synergy_heal import for_cast
 from resource_costs import gate_pool
 from session_data import CombatParticipant, SessionData
+from spell_condition_cleanse import GREATER_RESTORATION, CleanseRefused
 
 if TYPE_CHECKING:
     from declarations import Declaration
@@ -64,7 +63,7 @@ def condition_ability(resolved: DeclaredAbility | None) -> DeclaredAbility | Non
 
 def _gate_ability_condition(
     player: dict,
-    ability: "abilities.Ability",
+    ability: abilities.Ability,
     variant: MentorVariant | None = None,
 ) -> None:
     """Declare-time fail-loud gate for a non-spell condition ability (M4.8 story-005): validate the
@@ -92,7 +91,7 @@ async def _deduct_ability_cost(player_id, ability, variant, *, persistence, quer
 async def _resolve_ability_condition_packet(
     session: SessionData,
     attacker: CombatParticipant,
-    decl: "Declaration",
+    decl: Declaration,
     resolved: DeclaredAbility,
     *,
     state,
@@ -215,46 +214,6 @@ def _with_variant(summary: dict, variant: MentorVariant | None) -> dict:
     return summary
 
 
-def _resolve_condition_target(
-    state, attacker: CombatParticipant, decl: "Declaration", *, allow_self: bool = True, damage: bool = False
-):
-    """Resolve the single target of a condition-applying declaration.
-
-    Returns ``(target, None)`` for a live target, or ``(None, waste_summary)`` when the target is
-    gone / disallowed — a wasted declaration must never apply the condition or
-    deduct a cost. ``allow_self`` controls the ``target_id is None`` case: True (default) falls back
-    to the caster (a player self-buff); False WASTES it instead — a hostile inflict must never
-    self-target (an ABILITY-declared enemy condition action, which skips ATTACK's target_id
-    validation, would otherwise make the enemy inflict on ITSELF). Shared by the player ability-
-    condition path and the enemy condition-infliction path so the wasted-target contract lives once.
-    ``damage`` permits nonterminal Fallen allies only on the damaging save path."""
-    target = attacker if decl.target_id is None else state.get_participant(decl.target_id)
-    # allow_self=False wastes ANY self-target: the None fallback OR an explicit target_id equal to
-    # the attacker's own id — a hostile inflict must never land on its own caster.
-    if not allow_self and (decl.target_id is None or (target is not None and target.id == attacker.id)):
-        return None, {
-            "actor_id": attacker.id,
-            "resolved": False,
-            "declaration_type": str(decl.type),
-            "reason": "condition action requires a non-self target_id",
-        }
-    if target is None:
-        return None, {
-            "actor_id": attacker.id,
-            "resolved": False,
-            "declaration_type": str(decl.type),
-            "reason": f"target '{decl.target_id}' not found",
-        }
-    if damage_target_unavailable(target) if damage else target.is_fallen:
-        return None, {
-            "actor_id": attacker.id,
-            "resolved": False,
-            "declaration_type": str(decl.type),
-            "reason": f"{target.name} already fell",
-        }
-    return target, None
-
-
 @dataclass
 class AbilityCastOutcome:
     """Side-channel carrying the in-loop ABILITY casts' ``CastResult``s back to the phase loop.
@@ -265,7 +224,7 @@ class AbilityCastOutcome:
     of which must happen after the phase tx commits (story-007). ``results`` stays empty when no
     ability resolved. Concentration is synced IN-LOOP by ``_resolve_ability_packet`` (not here)."""
 
-    results: dict[str, "CastResult"] = field(default_factory=dict)
+    results: dict[str, CastResult] = field(default_factory=dict)
 
 
 async def _resolve_ability_packet(
@@ -304,18 +263,19 @@ async def _resolve_ability_packet(
     choir_encounter.guard_declaration(state, attacker.id, decl)
     caster = session.member_state(attacker.id)
     combat_voice_rules.guard_declaration(state, attacker, decl)
-    import spells
     from choir_reaction import effective_declaration
     from combat_spell_recipients import select
 
     spell = spells.get_spell(decl.action)
+    cleanses = spell.id == GREATER_RESTORATION
     steps = progress.steps if progress is not None else {}
     shield_receipts = steps.setdefault("harmonic_shield_saves", [])
     shield = progress.scope("shield") if progress is not None else None
     deliveries = None
     recipient_profile = spell.combat_damage and spell.combat_damage.get("recipients")
     if (
-        not recipient_profile
+        not cleanses
+        and not recipient_profile
         and "cast_packet" not in steps
         and (wall := line_blocker(state, attacker.id, decl.target_id))
     ):
@@ -347,12 +307,14 @@ async def _resolve_ability_packet(
                 return {}
             redirects[target_id] = redirected.target_id
         deliveries = [{**d, "target_id": redirects[d["target_id"]]} for d in selected]
-    elif spell.heal is None:
+    elif spell.heal is None and not cleanses:
         decl = await effective_declaration(session, state, attacker, decl, progress=shield, receipts=shield_receipts)
         if decl is None:
             return {}
-    landing_intent, deliveries, interception = architect_reaction.spell_targets(
-        state, attacker, decl, spell, deliveries, steps
+    landing_intent, deliveries, interception = (
+        (decl, deliveries, None)
+        if cleanses
+        else architect_reaction.spell_targets(state, attacker, decl, spell, deliveries, steps)
     )
     cast_packet = steps.get("cast_packet")
     if cast_packet is None:
@@ -363,17 +325,21 @@ async def _resolve_ability_packet(
                 recipients = combat_spell_heal.combat_recipients(state, attacker, decl, spell, heal)
             except ValueError as e:
                 return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}
-        result = await cast_resolver._resolve_cast(
-            session,
-            decl.action,
-            conn=conn,
-            caster=caster,
-            player=player,
-            combat_state=state,
-            target_id=decl.target_id,
-            target_ids=decl.target_ids,
-            suppress_resonance_changed=True,
-        )
+        try:
+            result = await cast_resolver._resolve_cast(
+                session,
+                decl.action,
+                conn=conn,
+                caster=caster,
+                player=player,
+                combat_state=state,
+                target_id=decl.target_id,
+                target_ids=decl.target_ids,
+                suppress_resonance_changed=True,
+                **({"condition": decl.argument_type} if cleanses and decl.argument_type else {}),
+            )
+        except CleanseRefused as e:
+            return {"actor_id": attacker.id, "resolved": False, "reason": str(e)}
         cast_outcome.results[attacker.id] = result
         if result.new_resonance is not None:
             combat_hollow_resonance.stage_total(state, attacker.id, result.new_resonance)

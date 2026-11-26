@@ -2,7 +2,7 @@
 
 import json
 import logging
-from typing import cast
+from typing import TypedDict, cast
 
 from livekit.agents.voice import RunContext
 
@@ -37,12 +37,17 @@ from tool_support import _validate_id
 logger = logging.getLogger("divineruin.tools")
 
 
+class _CastChoice(TypedDict, total=False):
+    condition: str
+
+
 async def _cast_spell_impl(
     context: RunContext[SessionData],
     spell_id: str,
     *,
     target_id: str | None = None,
     target_ids: list[str] | None = None,
+    condition: str | None = None,
     db_mod=db,
     queries_mod=db_queries,
     content_mod=db_content_queries,
@@ -75,6 +80,7 @@ async def _cast_spell_impl(
     caster = session.member_state(player_id)
     logger.info("cast_spell called: spell=%s player=%s", spell_id, player_id)
 
+    choice: _CastChoice = {"condition": condition} if condition is not None else {}
     async with session.combat_state_lock:
         async with db_mod.transaction() as conn:
             result = await _resolve_cast(
@@ -105,6 +111,7 @@ async def _cast_spell_impl(
                 conditions_mutations_mod=conditions_mutations_mod,
                 condition_produce_mod=condition_produce_mod,
                 character_spells_mod=character_spells_mod,
+                **choice,
             )
 
         # Transaction committed cleanly — sync the in-memory SSOT to the persisted values, then release
