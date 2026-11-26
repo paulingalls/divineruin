@@ -311,6 +311,17 @@ item number, not this section.
   guard whole, so one red seemed to cover all of it. A guard with several
   conditions is fault-injected once PER CONDITION: drop each operand on its own,
   and each drop needs its own red.
+- **3 — guard fault injection (product-output red, human 2026-11-26).** In sprint
+  hollow-finish, story-architect-strongest-picks' rider probe
+  (`evidence/baseline-rider.log`) checked that held electives resolved by reading
+  `r["resolved"]` from the same harness report it was meant to validate. A plain
+  weapon swing counted as a landed technique, so with the rider code deleted the
+  probe stayed green. That false green underpinned the Architect's tuned HP, and
+  it survived executor and story review. The sprint review's test-vacuity angle
+  caught it, and `aefe14ec` now counts techniques from the attack receipt. A
+  fault injection's red must come from the product's own output: a receipt, a
+  row, a packet or an event. A count or report the test or harness builds for
+  itself does not qualify.
 - **2 — tests cost what code costs (ratio, human 2026-11-20).** In sprints
   patron-last-stand and wildmothers-wrath, Dawn's Embrace's and Wildmother's
   Wrath's new tests ran about 3x their new production lines, and each story reviewer asked the lead
