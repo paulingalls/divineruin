@@ -9,7 +9,7 @@ run.
 ## Combat action economy (Phase 4)
 Goal: every martial technique a player owns works in a fight, and Retreat provokes like any other move: the open boxes in `docs/milestones/04_combat.md` (human 2026-11-24 chose the martial-electives + retreat sprint).
 Measure: python3 -c 'import re; print("distance=%d" % len(re.findall(r"^- \[ \] ",open("docs/milestones/04_combat.md").read(),re.M)))'
-Candidates: rogue_quick_fingers with real item transfer, meaning enemy inventories that can be stolen from or planted on (its own sprint, human 2026-11-24; divineruin-mini owns it after sprint stance-and-shadow merges). Weapon-equip proficiency once item weapon categories are normalized in both loaders (divineruin-mini's sprint weapon-proficiency). Sprint stance-and-shadow closed the 14-elective box and wired marshal_war_cry.
+Candidates: none. Reached 2026-11-25 (distance=0, 83/83) with v0.78.0: sprint quick-fingers (Quick Fingers over enemy pockets) after weapon-proficiency, stance-and-shadow and divineruin2-m3's marshal-order-effects.
 
 ## Hollow creatures (Phase 7 M7.3)
 Goal: the corruption aura, resonance-on-death and the Tier 4 Hollow behaviours (Choir, Still, Architect) work in play: `docs/milestones/07_bestiary.md` Milestone 7.3 ACs, including the Hollow edge cases (Execution plan Milestone 33, in progress).
