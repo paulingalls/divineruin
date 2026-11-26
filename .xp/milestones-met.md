@@ -2,7 +2,7 @@
 
 Milestones removed from `milestones.md` once their Measure read distance=0. Each keeps
 its goal and the Candidates that were still listed: follow-ups that a later milestone
-or card may pick up. Met at v0.70.0 (2026-11-25); Patron abilities (Phase 8 M8.2) met at v0.76.0 (2026-11-25).
+or card may pick up. Met at v0.70.0 (2026-11-25); Patron abilities (Phase 8 M8.2) met at v0.76.0 (2026-11-25); Combat action economy (Phase 4) met at v0.78.0 (2026-11-25); Hollow creatures (Phase 7 M7.3) met at v0.81.0 (2026-11-26).
 
 ## Harvesting and the encounter builder (Phase 7 M7.4)
 Goal: `build_encounter` builds encounters from the catalog, and harvesting enforces skill gates: `docs/milestones/07_bestiary.md` Milestone 7.4 ACs, which unblock Phase 9's material sell values (Execution plan Milestone 34).
@@ -23,3 +23,13 @@ Candidates: create `develop` from main at v0.42.0 and make it the GitHub default
 Goal: every patron's abilities across the three favor tiers, with recharge, can be granted and activated by the DM in play: `docs/milestones/08_patrons.md` Milestone 8.2 ACs.
 Measure: python3 -c 'import json,re; s=open("docs/milestones/08_patrons.md").read(); b=re.search(r"^### Milestone 8.2 .*?(?=^### |\Z)",s,re.M|re.S).group(0); g=json.load(open("content/gods.json")); print("distance=%d pending_engine=%d" % (len(re.findall(r"^- \[ \] ",b,re.M)),sum(a["status"]=="pending" and a["resolution"]=="engine" for p in g for a in p["layer_3_tier_abilities"].values())))'
 Candidates: none. Reached 2026-11-25 (distance=0 pending_engine=0) with sprint aelora-hearthfire and divineruin2-m3's zhael-unravel-fate.
+
+## Combat action economy (Phase 4)
+Goal: every martial technique a player owns works in a fight, and Retreat provokes like any other move: the open boxes in `docs/milestones/04_combat.md` (human 2026-11-24 chose the martial-electives + retreat sprint).
+Measure: python3 -c 'import re; print("distance=%d" % len(re.findall(r"^- \[ \] ",open("docs/milestones/04_combat.md").read(),re.M)))'
+Candidates: none. Reached 2026-11-25 (distance=0, 83/83) with v0.78.0: sprint quick-fingers (Quick Fingers over enemy pockets) after weapon-proficiency, stance-and-shadow and divineruin2-m3's marshal-order-effects.
+
+## Hollow creatures (Phase 7 M7.3)
+Goal: the corruption aura, resonance-on-death and the Tier 4 Hollow behaviours (Choir, Still, Architect) work in play: `docs/milestones/07_bestiary.md` Milestone 7.3 ACs, including the Hollow edge cases (Execution plan Milestone 33, in progress).
+Measure: python3 -c 'import re; s=open("docs/milestones/07_bestiary.md").read(); b=re.search(r"^### Milestone 7.3 .*?(?=^### |\Z)",s,re.M|re.S).group(0); print("distance=%d" % len(re.findall(r"^- \[ \] ",b,re.M)))'
+Candidates: native Choir audio certification (separate from the M7.3 boxes; `docs/milestones/REMAINING.md` Phase 7 row). The Architect stands at 205 HP of the 300 spec, at the 12/20 floor with the benchmark party's strongest picks (`docs/milestones/07_bestiary.md` note). Reaching 300 means lowering its damage toward a 300 HP profile, which is the human's call. Reached 2026-11-26 (distance=0) with sprint hollow-finish, v0.81.0.
