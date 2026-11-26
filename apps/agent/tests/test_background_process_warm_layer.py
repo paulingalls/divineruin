@@ -121,6 +121,7 @@ class TestWarmLayerRebuild:
                         first_episode_phase=None,
                         party_member_ids=mock_sd.present_member_ids,
                         quest_decisions={},
+                        hallucinations=[],
                     )
                     mock_agent.update_instructions.assert_awaited_once_with("full prompt")
                     assert bp._last_warm_layer == "warm layer content"

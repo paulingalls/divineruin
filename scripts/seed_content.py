@@ -58,6 +58,7 @@ TABLE_MAP = {
     "recipes.json": "recipes",
     "materials_catalog.json": "materials_catalog",
     "quality_outcomes.json": "quality_outcomes",
+    "hollowed_hallucinations.json": "hollowed_hallucinations",
     "pricing.json": "pricing",
     "gathering_nodes.json": "gathering_nodes",
     "creatures.json": "creatures",
