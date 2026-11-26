@@ -19,6 +19,7 @@ ORENTHEL_GUARDIAN_WARD = "orenthel_guardian_ward"
 ORENTHEL_UNDEAD_WRATH = "orenthel_undead_wrath"
 MORTAEN_THRESHOLD_SHIELD = "mortaen_threshold_shield"
 MORTAEN_HOLD_THE_CROSSING = "mortaen_hold_the_crossing"
+NYTHERA_SALTWIND_CASTING = "nythera_saltwind_casting"
 
 KAELEN_WAR_SONGS = "kaelen_war_songs"
 TWO_ROUND_VEIL = "syrath_two_round_veil"
@@ -214,6 +215,10 @@ def expanded_critical(attacker_data: dict, face: int) -> bool:
 
 def spell_attack_bonus(player: dict, target) -> int:
     return int(target.category == "undead" and has_engine_synergy(player, "mortaen_ashen_formula"))
+
+
+def saltwind_casting_bonus(player: dict, *, coastal: bool) -> int:
+    return int(coastal and has_engine_synergy(player, NYTHERA_SALTWIND_CASTING))
 
 
 def spell_damage_type_override(player: dict, spell_id: str) -> str | None:

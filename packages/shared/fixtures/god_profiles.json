@@ -347,6 +347,266 @@
       }
     },
     {
+      "id": "nythera_saltwind_casting",
+      "profile": {
+        "god_id": "veythar",
+        "layer_1_gift": {
+          "id": "veythar_fixture_gift",
+          "name": "Synthetic gift",
+          "effect": "Synthetic effect.",
+          "trigger": "Synthetic trigger.",
+          "status": "active",
+          "recharge": "always"
+        },
+        "layer_2_resonance": {
+          "name": "Synthetic resonance",
+          "effect": "Synthetic condition.",
+          "modifiers": [
+            {
+              "kind": "flickering_damage_dice",
+              "applies_to": "arcane_flickering",
+              "value": 2
+            }
+          ]
+        },
+        "layer_3_tier_abilities": {
+          "acknowledged": {
+            "id": "veythar_fixture_acknowledged",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "active",
+            "resolution": "narrated"
+          },
+          "devoted": {
+            "id": "veythar_fixture_devoted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "engine"
+          },
+          "exalted": {
+            "id": "veythar_fixture_exalted",
+            "name": "Synthetic ability",
+            "effect": "Synthetic effect.",
+            "recharge": "always",
+            "status": "pending",
+            "resolution": "narrated"
+          }
+        },
+        "layer_4_synergy_matrix": {
+          "warrior": {
+            "type": "natural",
+            "name": "Remembered Steel",
+            "clauses": [
+              {
+                "effect": "Hear the forgotten purpose of a battlefield monument when you touch its stone.",
+                "status": "active",
+                "resolution": "narrated"
+              }
+            ]
+          },
+          "guardian": {
+            "type": "natural",
+            "name": "Watchful Memory",
+            "clauses": [
+              {
+                "effect": "Recognize whether an old fortification was built to keep something in or out.",
+                "status": "active",
+                "resolution": "narrated"
+              }
+            ]
+          },
+          "skirmisher": {
+            "type": "unexpected",
+            "name": "Roads Remember",
+            "clauses": [
+              {
+                "effect": "Learn what kind of travelers last used an abandoned military road.",
+                "status": "active",
+                "resolution": "narrated"
+              }
+            ]
+          },
+          "mage": {
+            "type": "divine",
+            "name": "Saltwind Casting",
+            "clauses": [
+              {
+                "effect": "Gain +1 to spell attack rolls in a coastal location you have never visited.",
+                "status": "active",
+                "resolution": "engine",
+                "implementation_id": "nythera_saltwind_casting"
+              }
+            ]
+          },
+          "artificer": {
+            "type": "natural",
+            "name": "Simplest Mysteries",
+            "clauses": [
+              {
+                "effect": "Your arcane cantrips gain Veythar's +2 Flickering bonus damage dice even when you are not Flickering. This replaces, rather than stacks with, the Layer 2 Flickering bonus.",
+                "status": "pending",
+                "resolution": "engine"
+              }
+            ]
+          },
+          "seeker": {
+            "type": "natural",
+            "name": "Simplest Mysteries",
+            "clauses": [
+              {
+                "effect": "Your arcane cantrips gain Veythar's +2 Flickering bonus damage dice even when you are not Flickering. This replaces, rather than stacks with, the Layer 2 Flickering bonus.",
+                "status": "pending",
+                "resolution": "engine"
+              }
+            ]
+          },
+          "druid": {
+            "type": "unexpected",
+            "name": "Rooted History",
+            "clauses": [
+              {
+                "effect": "Hear a fragment of a place\u2019s history from its oldest living tree.",
+                "status": "active",
+                "resolution": "narrated"
+              }
+            ]
+          },
+          "beastcaller": {
+            "type": "unexpected",
+            "name": "Beast Lore",
+            "clauses": [
+              {
+                "effect": "Recognize a local beast\u2019s customary warning call when you first hear it.",
+                "status": "active",
+                "resolution": "narrated"
+              }
+            ]
+          },
+          "warden": {
+            "type": "natural",
+            "name": "Boundary Lore",
+            "clauses": [
+              {
+                "effect": "Sense the original purpose of a weathered boundary marker.",
+                "status": "active",
+                "resolution": "narrated"
+              }
+            ]
+          },
+          "cleric": {
+            "type": "divine",
+            "name": "Arcane Revelation",
+            "clauses": [
+              {
+                "effect": "Arcana as bonus starting skill.",
+                "status": "pending",
+                "resolution": "engine"
+              },
+              {
+                "effect": "Divine magic auto-identifies magical effects (no check)",
+                "status": "active",
+                "resolution": "narrated"
+              }
+            ]
+          },
+          "paladin": {
+            "type": "divine",
+            "name": "Witnessed Oath",
+            "clauses": [
+              {
+                "effect": "Recognize which patron an ancient oath invokes when you hear its words.",
+                "status": "active",
+                "resolution": "narrated"
+              }
+            ]
+          },
+          "oracle": {
+            "type": "divine",
+            "name": "Remembered Vision",
+            "clauses": [
+              {
+                "effect": "Recall the exact spoken words of your most recent vision.",
+                "status": "active",
+                "resolution": "narrated"
+              }
+            ]
+          },
+          "rogue": {
+            "type": "unexpected",
+            "name": "Hidden Knowledge",
+            "clauses": [
+              {
+                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
+                "status": "pending",
+                "resolution": "engine"
+              }
+            ]
+          },
+          "spy": {
+            "type": "unexpected",
+            "name": "Hidden Knowledge",
+            "clauses": [
+              {
+                "effect": "Investigation checks for hidden information gain +2. The Lorekeeper rewards seekers",
+                "status": "pending",
+                "resolution": "engine"
+              }
+            ]
+          },
+          "whisper": {
+            "type": "unexpected",
+            "name": "Echoed Words",
+            "clauses": [
+              {
+                "effect": "Hear the language once spoken around a forgotten inscription.",
+                "status": "active",
+                "resolution": "narrated"
+              }
+            ]
+          },
+          "bard": {
+            "type": "natural",
+            "name": "Lost Refrain",
+            "clauses": [
+              {
+                "effect": "Recall one lost verse associated with a song whose origin you investigate.",
+                "status": "active",
+                "resolution": "narrated"
+              }
+            ]
+          },
+          "diplomat": {
+            "type": "natural",
+            "name": "Customs Remembered",
+            "clauses": [
+              {
+                "effect": "Learn the original meaning of a local greeting before using it in a negotiation.",
+                "status": "active",
+                "resolution": "narrated"
+              }
+            ]
+          },
+          "marshal": {
+            "type": "natural",
+            "name": "Lessons of Command",
+            "clauses": [
+              {
+                "effect": "Recognize the historical tradition behind a formation described to you.",
+                "status": "active",
+                "resolution": "narrated"
+              }
+            ]
+          }
+        },
+        "legacy_note": {
+          "retained": true
+        }
+      }
+    },
+    {
       "id": "orenthel_undead_wrath",
       "profile": {
         "god_id": "veythar",

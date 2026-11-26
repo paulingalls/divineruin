@@ -205,8 +205,10 @@ def attack_roll_inputs(
         + orenthel_ac
         + cathedral_bonus(combat_state, target.id)
     )
-    if not weapon_attack and player is not None:
-        attack_mod += patron_synergy_combat.spell_attack_bonus(player, target)
+    if not weapon_attack:
+        attack_mod += action.get("spell_attack_bonus", 0)
+        if player is not None:
+            attack_mod += patron_synergy_combat.spell_attack_bonus(player, target)
     if combat_state is not None:
         attack_mod += combat_marks.attack_bonus(combat_state, attacker, target)
         if (
