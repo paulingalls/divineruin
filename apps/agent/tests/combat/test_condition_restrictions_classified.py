@@ -114,6 +114,7 @@ def test_exact_restriction_partition_and_complete_spoken_corpus():
                 "auto_fail_hearing_perception",
                 "no_spoken_buffs",
                 "hallucinations",
+                "stat_drain",
             }
         )
         == ENFORCED
@@ -125,7 +126,6 @@ def test_exact_restriction_partition_and_complete_spoken_corpus():
         "no_approach_source",
         "reduced_max_hp",
         "source_specific_penalty",
-        "stat_drain",
     }
     rows = json.loads((Path(__file__).resolve().parents[4] / "content/archetype_abilities.json").read_text())
     assert len(rows) == 145
