@@ -5,14 +5,15 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  readdir,
   readlink,
   rm,
   stat,
   symlink,
 } from "node:fs/promises";
 import { createServer } from "node:net";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { homedir, tmpdir } from "node:os";
+import { dirname, isAbsolute, join } from "node:path";
 
 import {
   createRealGateDeps,
@@ -245,6 +246,42 @@ async function stopMetro(process: OwnedProcess): Promise<void> {
   }
 }
 
+async function removeWorkspace(root: string): Promise<void> {
+  await rm(root, { recursive: true, force: true });
+
+  const derivedData = join(homedir(), "Library/Developer/Xcode/DerivedData");
+  const entries = await readdir(derivedData, { withFileTypes: true }).catch(
+    (error: NodeJS.ErrnoException) => {
+      if (error.code === "ENOENT") return [];
+      throw error;
+    },
+  );
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !entry.name.startsWith("divineruin-")) continue;
+    const folder = join(derivedData, entry.name);
+    const workspace = await capture([
+      "/usr/bin/plutil",
+      "-extract",
+      "WorkspacePath",
+      "raw",
+      "-expect",
+      "string",
+      "-n",
+      "-o",
+      "-",
+      join(folder, "info.plist"),
+    ]);
+    if (!isAbsolute(workspace)) throw new Error(`Invalid WorkspacePath in ${folder}`);
+
+    try {
+      await stat(workspace);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      await rm(folder, { recursive: true, force: true });
+    }
+  }
+}
+
 export function createNativeBuildDeps(repoRoot: string): NativeBuildDeps {
   const ownedDeps = createRealOwnedSimulatorDeps(repoRoot);
   return {
@@ -271,7 +308,7 @@ export function createNativeBuildDeps(repoRoot: string): NativeBuildDeps {
     waitForMetro: (process, port) => waitForMetro(process as OwnedProcess, port),
     runAcceptance: (env) => runGate(createRealGateDeps(env, repoRoot)),
     stopMetro: (process) => stopMetro(process as OwnedProcess),
-    removeWorkspace: (root) => rm(root, { recursive: true, force: true }),
+    removeWorkspace,
   };
 }
 
