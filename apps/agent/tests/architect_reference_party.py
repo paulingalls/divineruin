@@ -83,7 +83,7 @@ async def build_reference_player(archetype: str, player_id: str, destination: st
 
     await db_mutations.update_player_location(player_id, REST_LOCATION)
     ctx.userdata.location_id = REST_LOCATION
-    assert json.loads(await rest(ctx, "long"))["rested"]
+    assert json.loads(await rest(ctx, "long", use_song_of_rest=False))["rested"]
     await db_mutations.update_player_location(player_id, destination)
     return chosen
 

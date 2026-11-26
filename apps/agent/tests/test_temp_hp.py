@@ -209,9 +209,9 @@ async def test_pool_survives_encounters_until_long_rest(world):
         await call("end_combat", outcome="fled")
         session.location_id = "millhaven_inn"
         recover = game_tools(session, rest)
-        await recover("rest", rest_type="short")
+        await recover("rest", rest_type="short", use_song_of_rest=False)
         assert (await row(world, 0))["temp_hp"] == 2
-        await recover("rest", rest_type="long")
+        await recover("rest", rest_type="long", use_song_of_rest=False)
         assert (await row(world, 0))["temp_hp"] == 0
         assert (await row(world, 1))["temp_hp"] == 8
 

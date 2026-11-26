@@ -155,9 +155,9 @@ async def horizon_sense_counts_travel_and_uses_map_progress(world):
     await configure(w, "none", "skirmisher", index=2, location_id=TOWN, travel_hours_since_rest=12)
     session.multiplayer_owner = SimpleNamespace(lifecycle=SimpleNamespace(is_live=lambda _: True))
     with session._bind_authenticated_actor(w.ids[1], 1, lambda *_: None):
-        await call("rest", rest_type="short")
+        await call("rest", rest_type="short", use_song_of_rest=False)
         assert (await row(w))["travel_hours_since_rest"] == 7
-        receipt = await call("rest", rest_type="long")
+        receipt = await call("rest", rest_type="long", use_song_of_rest=False)
     assert set(receipt["players"]) == set(w.ids[:2])
     assert (await row(w))["travel_hours_since_rest"] == 0
     assert (await row(w, 2))["travel_hours_since_rest"] == 12

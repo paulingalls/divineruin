@@ -97,7 +97,7 @@ async def test_long_rest_rolls_back_pool_clear_before_recipient_update(world):
 
         with patch.object(rest_tools, "lock_increases", side_effect=fail):
             with pytest.raises(RuntimeError, match="after rest recovery writes"):
-                await recover("rest", rest_type="long")
+                await recover("rest", rest_type="long", use_song_of_rest=False)
         assert (await row(world, 0), events(world)) == before and active(world) is None
 
         committed = []
@@ -108,5 +108,5 @@ async def test_long_rest_rolls_back_pool_clear_before_recipient_update(world):
                 committed.append((kwargs["destination_identities"], observed["hp"]["current"], observed["temp_hp"]))
 
         session.room.local_participant.publish_data.side_effect = published
-        assert (await recover("rest", rest_type="long"))["rested"]
+        assert (await recover("rest", rest_type="long", use_song_of_rest=False))["rested"]
         assert committed == [([pid], 30, 0)]
