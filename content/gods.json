@@ -2667,8 +2667,13 @@
         "clauses": [
           {
             "effect": "Gain +1 to checks to repair a vessel during a journey.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "nythera_voyagers_tools",
+            "kind": "context_check",
+            "synergy_context": "vessel_repair",
+            "skill": null,
+            "bonus": 1
           }
         ]
       },
@@ -2678,8 +2683,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Survival when finding safe shelter along an unfamiliar coast.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "nythera_shoreline_keeper",
+            "kind": "context_check",
+            "synergy_context": "coast_shelter",
+            "skill": "survival",
+            "bonus": 1
           }
         ]
       },
@@ -2745,8 +2755,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Persuasion when seeking peaceful passage through an unfamiliar port.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "nythera_harbor_courtesy",
+            "kind": "context_check",
+            "synergy_context": "port_passage",
+            "skill": "persuasion",
+            "bonus": 1
           }
         ]
       },
@@ -3030,8 +3045,13 @@
         "clauses": [
           {
             "effect": "Gain +1 to checks to repair equipment for a damaged sanctuary.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "orenthel_menders_dawn",
+            "kind": "context_check",
+            "synergy_context": "sanctuary_repair",
+            "skill": null,
+            "bonus": 1
           }
         ]
       },
@@ -3052,8 +3072,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Nature when restoring a blighted grove.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "orenthel_green_morning",
+            "kind": "context_check",
+            "synergy_context": "blighted_grove",
+            "skill": "nature",
+            "bonus": 1
           }
         ]
       },
@@ -3107,8 +3132,13 @@
         "clauses": [
           {
             "effect": "Gain +1 Persuasion when negotiating care for wounded enemies.",
-            "status": "pending",
-            "resolution": "engine"
+            "status": "active",
+            "resolution": "engine",
+            "implementation_id": "orenthel_reconciliation",
+            "kind": "context_check",
+            "synergy_context": "wounded_enemy_care",
+            "skill": "persuasion",
+            "bonus": 1
           }
         ]
       },
