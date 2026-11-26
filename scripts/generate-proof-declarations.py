@@ -7,6 +7,7 @@ import shlex
 import subprocess
 from pathlib import Path
 
+from proof_coverage_collect import OUTPUT_ENV
 from proof_family_selection import (
     SHARED_INPUTS,
     SYNTHETIC,
@@ -47,6 +48,7 @@ REGISTERED_TOOL_READERS = {
 }
 SHARED_KEY = "packages/shared/**/*.{ts,tsx,json}"
 PROVIDER_DRIVER = {"scripts/proof_acceptance_stack.py"}
+COLLECTOR = "scripts/proof_coverage_collect.py"
 MARKERS = "acceptance and not real_llm and not openai_real_llm and not live_voice"
 
 
@@ -255,6 +257,19 @@ def tracked(*roots: str, suffix: str) -> list[str]:
     )
 
 
+def acceptance_name(path, suffix):
+    return f"agent-acceptance:{Path(path).stem}" + (f":{suffix}" if suffix else "")
+
+
+def acceptance_partitions():
+    tests = [Path(p) for p in tracked(str(TESTS), suffix=".py") if Path(p).name.startswith("test_")]
+    paid = {str(p) for p in tests if paid_only(p)}
+    entries = [str(p) for p in tests if str(p) not in paid]
+    if len({Path(p).stem for p in entries}) != len(entries):
+        raise ValueError("duplicate acceptance stems")
+    return {path: partitions(path) for path in entries}
+
+
 def main():
     paths = tracked("apps/agent", "scripts", suffix=".py")
     paths.append("e2e/fixtures/inventory-snapshot.py")
@@ -272,11 +287,6 @@ def main():
     )
     resolved = json.loads(result.stdout)
     graph = resolved["graph"]
-    tests = [Path(p) for p in tracked(str(TESTS), suffix=".py") if Path(p).name.startswith("test_")]
-    paid = {str(p) for p in tests if paid_only(p)}
-    entries = [str(p) for p in tests if str(p) not in paid]
-    if len({Path(p).stem for p in entries}) != len(entries):
-        raise ValueError("duplicate acceptance stems")
     sources = set(paths) - {"e2e/fixtures/inventory-snapshot.py"}
     data = data_inventory()
     restored = sources | data | NON_PYTHON
@@ -294,7 +304,7 @@ def main():
         for name, task in tasks.items()
     }
     acceptance = {}
-    for path in entries:
+    for path, parts in acceptance_partitions().items():
         conftests = [
             str(p / "conftest.py")
             for p in Path(path).parents
@@ -326,26 +336,26 @@ def main():
         if "apps/agent/tests/agent_tool_profiles.py" in graph[path]["closure"]:
             inputs += [imports(str(p)) for p in sorted(Path("apps/agent").glob("*_agent.py"))]
         task = {
-            "run": agent_environment(
-                f"ALLOW_PAID_TESTS= REQUIRE_REAL_LLM= uv run --frozen --directory apps/agent pytest {path.removeprefix('apps/agent/')} -q -m '{MARKERS}'"
-            ),
+            "env": [OUTPUT_ENV],
             "sets": ["sprint"],
             "needs": ["acceptance-stack"],
             "links": ["node_modules", "apps/agent/.venv"],
             "inputs": inputs,
             "keyed": [p for p in CONFIG if p.startswith("packages/shared/")] if configuration else [],
         }
-        for suffix, selector, expression in partitions(path):
-            part = dict(task)
-            part["run"] = (
-                task["run"].replace(
-                    path.removeprefix("apps/agent/"),
-                    path.removeprefix("apps/agent/") + selector,
-                )
-                + expression
+        for suffix, selector, expression in parts:
+            name = acceptance_name(path, suffix)
+            target = path.removeprefix("apps/agent/") + selector
+            run = (
+                "ALLOW_PAID_TESTS= REQUIRE_REAL_LLM= uv run --frozen --directory apps/agent "
+                f"python ../../{COLLECTOR} {shlex.quote(name)} {shlex.quote(target)} -q -m '{MARKERS}'{expression}"
             )
-            name = f"agent-acceptance:{Path(path).stem}" + (f":{suffix}" if suffix else "")
-            tasks[name] = part
+            tasks[name] = {
+                **task,
+                "run": agent_environment(run),
+                "inputs": [*inputs, COLLECTOR],
+                "keyed": [*task["keyed"], COLLECTOR],
+            }
             acceptance[name] = path
     # Root unkeyed policy must preserve the existing Bun tasks and the full unit key.
     for name, task in json.loads(Path("scripts/proof-bun-tasks.json").read_text()).items():
@@ -415,7 +425,7 @@ def main():
     add_provider_readers(inventory)
     for meta in inventory.values():
         meta["closure"].add("scripts/worktree-docker.sh")
-    ordinary_sources = (sources | NON_PYTHON) - SHARED_INPUTS - PROVIDER_DRIVER
+    ordinary_sources = (sources | NON_PYTHON) - SHARED_INPUTS - PROVIDER_DRIVER - {COLLECTOR}
     assignments = select_sources(inventory, families, ordinary_sources)
     readers = named_readers(inventory, data)
     for name, selected in select_named(inventory, readers).items():
