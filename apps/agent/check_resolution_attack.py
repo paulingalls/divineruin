@@ -68,6 +68,8 @@ class AttackResult:
     synergy_ac_clause_id: str | None = None
     mortaen_ac_bonus: int = 0
     mortaen_ac_clause_id: str | None = None
+    orenthel_ac_bonus: int = 0
+    orenthel_ac_clause_id: str | None = None
     war_songs_bonus: int = 0
     war_songs_clause_id: str | None = None
     order_rider: DirectStrikeRider | None = None
@@ -405,6 +407,8 @@ def finish_attack(
         synergy_ac_clause_id=attacker_data.get("synergy_ac_clause_id"),
         mortaen_ac_bonus=attacker_data.get("mortaen_ac_bonus", 0),
         mortaen_ac_clause_id=attacker_data.get("mortaen_ac_clause_id"),
+        orenthel_ac_bonus=attacker_data.get("orenthel_ac_bonus", 0),
+        orenthel_ac_clause_id=attacker_data.get("orenthel_ac_clause_id"),
         war_songs_bonus=prepared.war_songs_bonus,
         war_songs_clause_id=prepared.war_songs_clause_id,
         order_rider=order_rider,

@@ -206,7 +206,11 @@ Sprint-002 reconciled this milestone against `game_mechanics_patrons.md` (366L) 
 - [x] Tests cover synergy lookup for all combinations, Unbound mechanics, and Layer 4 bonus stacking
   <!-- Evidence (sprint unbound-self-reliance): test_patron_synergy.py covers all 180 lookups; test_patron_synergy_engine.py covers Layer 1–3 composition/stacking; test_unbound_alone_bonus.py covers alone checks; test_unbound_path.py and test_unbound_milestones.py cover registered commands, Echo lifetime and durable rewards. -->
 
-**Review:** The human approved the final 180-row table on 2026-11-18 (table SHA-256 `5dee713a…`, content SHA-256 `c3238a53…`, commit `903ac541`), closing AC3. The approved table is retained in sprint DATA at `sprints/archetype-synergies/synergy-review.md` with every changed number. Content and design share the approved corrections, including Nythera’s live Animal Handling +1 instead of advantage. Veythar’s three Natural rows remain pending on the combat seam. Pending clauses are unavailable.
+**Review:** The human approved the final 180-row table on 2026-11-18 (table SHA-256 `5dee713a…`, content SHA-256 `c3238a53…`, commit `903ac541`), closing AC3. The approved table is retained in sprint DATA at `sprints/archetype-synergies/synergy-review.md` with every changed number. Content and design share the approved corrections, including Nythera’s live Animal Handling +1 instead of advantage. Pending clauses are unavailable.
+
+Layer 4 has 56 active engine clauses, 85 active narrated clauses and 59 pending engine clauses across 180 pairings. Sheltering Light gives a standing Orenthel guardian +1 AC against attack rolls while a standing ally below half HP is within 5 feet. `test_patron_synergy_engine.py` and `test_orenthel_guardian_ward.py` exercise the registered clause, opportunity attacks and held rolls after checkpoint reload. Dawnward Strike adds 1 damage on a hit against a Hollow or undead foe while another standing party ally in the same combat is below half HP. `test_orenthel_undead_wrath.py` and `test_orenthel_undead_wrath_guards.py` cover damage, attack receipts and eligibility after checkpoint reload.
+
+Saltwind Casting gives Nythera mages +1 to spell attack rolls on their first stay at a Sunward Coast location. The cast receipt names the bonus. `test_nythera_unseen_coast.py` covers eligibility and Fate’s Thread continuation after checkpoint reload.
 
 **Key references:**
 - *Game Mechanics Patrons — Archetype Synergies*

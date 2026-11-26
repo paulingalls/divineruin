@@ -15,8 +15,11 @@ if TYPE_CHECKING:
 
 OATH_OF_VALOR = "kaelen_oath_of_valor"
 SECOND_BEFORE = "zhael_second_before"
+ORENTHEL_GUARDIAN_WARD = "orenthel_guardian_ward"
+ORENTHEL_UNDEAD_WRATH = "orenthel_undead_wrath"
 MORTAEN_THRESHOLD_SHIELD = "mortaen_threshold_shield"
 MORTAEN_HOLD_THE_CROSSING = "mortaen_hold_the_crossing"
+NYTHERA_SALTWIND_CASTING = "nythera_saltwind_casting"
 
 KAELEN_WAR_SONGS = "kaelen_war_songs"
 TWO_ROUND_VEIL = "syrath_two_round_veil"
@@ -68,6 +71,7 @@ def encounter_damage_clause(
         return None
 
     from combat_melee_approach import is_melee
+    from combat_veilrender import living
     from encounter_facts import ZHAEL_THREADED_BLADE
 
     facts = state.encounter_facts
@@ -80,6 +84,15 @@ def encounter_damage_clause(
         and is_melee(action)
     ):
         return ZHAEL_THREADED_BLADE
+    if (
+        has_engine_synergy(player, ORENTHEL_UNDEAD_WRATH)
+        and (target.hollow or target.category == "undead")
+        and any(
+            ally.id != attacker.id and ally.is_ally and living(ally) and 2 * ally.hp_current < ally.hp_max
+            for ally in state.participants
+        )
+    ):
+        return ORENTHEL_UNDEAD_WRATH
     return None
 
 
@@ -108,6 +121,32 @@ def fallen_ally_defense(defender: dict | None, state: CombatState | None, target
     return int(
         any(
             ally.is_ally and ally.hp_current == 0 and ally.is_fallen and not is_terminally_down(ally)
+            for ally in state.participants
+        )
+    )
+
+
+def wounded_ally_defense(defender: dict | None, state: CombatState | None, target: CombatParticipant) -> int:
+    from combat_spatial import inside, position, require_spatial
+    from combat_veilrender import living
+
+    if (
+        defender is None
+        or state is None
+        or not living(target)
+        or not has_engine_synergy(defender, ORENTHEL_GUARDIAN_WARD)
+    ):
+        return 0
+
+    spatial = require_spatial(state)
+    target_position = position(spatial, target.id)
+    return int(
+        any(
+            ally.id != target.id
+            and ally.is_ally
+            and living(ally)
+            and 2 * ally.hp_current < ally.hp_max
+            and inside(target_position, position(spatial, ally.id), 5)
             for ally in state.participants
         )
     )
@@ -176,6 +215,10 @@ def expanded_critical(attacker_data: dict, face: int) -> bool:
 
 def spell_attack_bonus(player: dict, target) -> int:
     return int(target.category == "undead" and has_engine_synergy(player, "mortaen_ashen_formula"))
+
+
+def saltwind_casting_bonus(player: dict, *, coastal: bool) -> int:
+    return int(coastal and has_engine_synergy(player, NYTHERA_SALTWIND_CASTING))
 
 
 def spell_damage_type_override(player: dict, spell_id: str) -> str | None:
