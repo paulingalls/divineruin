@@ -91,6 +91,33 @@ describe("content/spells.json — parseSpellRow conformance", () => {
     expect(parsed.focus_cost).toBe(5);
   });
 
+  test("only reaction spells have a reaction window", async () => {
+    const spells = (await loadSpellsJson()).map((row) => parseSpellRow(String(row.id), row));
+    expect(
+      Object.fromEntries(
+        spells
+          .filter((spell) => spell.reaction_window)
+          .map((spell) => [spell.id, spell.reaction_window]),
+      ),
+    ).toEqual({
+      arcane_shield_spell: "on_targeted",
+      primal_bark_skin: "on_hit",
+      divine_shield_of_faith: "on_ally_hit",
+      primal_natures_grasp: "on_enemy_move",
+      arcane_counterspell: "on_spell_cast",
+    });
+  });
+
+  test("rejects a present malformed reaction window", async () => {
+    const [row] = await loadSpellsJson();
+    const id = String(row!.id);
+    for (const reaction_window of ["invented", null, true, 1, [], {}]) {
+      expect(() => parseSpellRow(id, { ...row, reaction_window })).toThrow(
+        `spells[${id}].reaction_window`,
+      );
+    }
+  });
+
   test("the full casting catalog includes the caster core spells", async () => {
     const rows = await loadSpellsJson();
     const names = new Set(rows.map((r) => String(r.name).toLowerCase()));

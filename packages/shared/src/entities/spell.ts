@@ -1,5 +1,6 @@
 // Agent-only casting internals stay excluded until a TypeScript consumer needs them.
 
+import type { ReactionWindow } from "./ability";
 import type { CreatureStatBlock } from "./creature";
 import type { CONDITION_NAMES } from "./encounter";
 import type { Attributes } from "./role_archetype";
@@ -30,6 +31,7 @@ export interface Spell {
   narration_cue: string;
   verbal: boolean;
   hostile: boolean;
+  reaction_window?: ReactionWindow;
   concentration_duration_seconds?: number;
   max_targets?: number;
   save_condition?: SaveConditionProfile;

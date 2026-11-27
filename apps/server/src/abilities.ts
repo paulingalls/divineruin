@@ -1,7 +1,7 @@
 import type { Ability, Cost, AbilityType, ReactionWindow } from "@divineruin/shared";
 import { sql } from "./db.ts";
 import { asRecord } from "./parse-helpers.ts";
-import { getSpell } from "./spells.ts";
+import { getSpell, REACTION_WINDOWS } from "./spells.ts";
 
 // DB-loaded archetype abilities (M2.2). Mirrors archetypes.ts: content/
 // archetype_abilities.json -> archetype_abilities table, loaded at startup, parsed
@@ -22,20 +22,6 @@ const ATTRIBUTE_KEYS = new Set([
   "charisma",
 ]);
 const SAVE_KEYS = new Set([...ATTRIBUTE_KEYS, "str", "dex", "con", "int", "wis", "cha"]);
-
-// Closed vocabulary for a reaction ability's trigger window (story-001), parity with
-// abilities.py's _REACTION_WINDOWS.
-const REACTION_WINDOWS = new Set<ReactionWindow>([
-  "on_hit",
-  "on_ally_hit",
-  "on_targeted",
-  "on_ally_targeted",
-  "on_enemy_miss",
-  "on_enemy_move",
-  "on_condition_imposed",
-  "on_spell_cast",
-  "on_enemy_action",
-]);
 
 // Runtime-loaded abilities, keyed by ability id (populated by loadAbilities at startup).
 let abilities: ReadonlyMap<string, Ability> = new Map();
