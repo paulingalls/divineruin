@@ -97,7 +97,7 @@ async def test_shield_real_cast_transaction_replay(runtime, success):
 
     ctx, pid, eid = await choir(runtime)
     pool = await db.get_pool()
-    await seed_player_with_pools(pool, player_id=pid, class_="cleric", known_spells=("divine_bless",))
+    await seed_player_with_pools(pool, player_id=pid, class_="mage", known_spells=("arcane_magic_missile",))
     import choir_encounter
 
     facts = await choir_encounter.facts(ctx.userdata.combat_state)
@@ -107,7 +107,7 @@ async def test_shield_real_cast_transaction_replay(runtime, success):
     with patch("check_resolution.dice_roll", return_value=_d20(20)):
         await _resolve_round(ctx)
     await combat_turn.declare_phase(
-        ctx, [AbilityDecl(kind="ability", actor_id=pid, action="divine_bless", targets=[eid], argument_type="")]
+        ctx, [AbilityDecl(kind="ability", actor_id=pid, action="arcane_magic_missile", targets=[eid], argument_type="")]
     )
     before = copy.deepcopy(ctx.userdata.combat_state.to_dict())
     player_before = await db_queries.get_player(pid)
@@ -141,8 +141,10 @@ async def test_shield_real_cast_transaction_replay(runtime, success):
     assert sum(call.args[2] == 15 for call in saves.call_args_list) == 1
     state = await reload(ctx)
     target_id = eid if success else pid
-    assert result["packets"][0]["cast"]["target_id"] == target_id
-    assert next(p for p in state.participants if p.id == target_id).conditions[0]["type"] == "blessed"
+    # Bless now targets only allies, so a hostile verbal spell carries the Shield redirect.
+    [hit] = result["packets"][0]["cast"]["damage_results"]
+    assert hit["target_id"] == target_id and hit["damage"] > 0
+    assert next(p for p in state.participants if p.id == target_id).hp_current == hit["target_hp_current"]
     player_after = await db_queries.get_player(pid)
     assert player_before is not None and player_after is not None
     assert player_after["focus"]["current"] == player_before["focus"]["current"] - 2
