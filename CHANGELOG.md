@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.85.3
+
+The mobile app now uses Expo SDK 58 with a refreshed LiveKit native audio stack.
+
+Release steps: none.
+
 ## 0.85.2
 
 Documented the behavior of all 87 catalog spells. The spell ledger identifies 11 engine-resolved spells, 4 narration-owned spells and 72 spells with unfinished mechanics, each linked to its Phase 14 follow-up.
