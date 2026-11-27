@@ -1,4 +1,3 @@
-from collections.abc import Mapping
 from copy import deepcopy
 from unittest.mock import patch
 
@@ -7,9 +6,10 @@ from _zhael_fate_fixtures import attack, defend, game_tools
 from _zhael_unravel_fixtures import (
     GIFT,
     activate,
+    adopt_fresh_context,
     adopt_opening,
+    assert_refused,
     assert_restored,
-    cached,
     discovered,
     durable,
     favor,
@@ -20,11 +20,10 @@ from _zhael_unravel_fixtures import unravel as unravel
 from acceptance._capstone_helpers import _d20, _damage_die
 from combat._round_checkpoint_helpers import Fight
 from livekit.agents.llm import ToolError
-from sample_fixtures import make_context, make_mock_room, published_payloads
+from sample_fixtures import published_payloads
 from test_aelora_gift import _live_party
 
 import event_types as E
-from combat_agent import CombatAgent
 from encounter_roles import EncounterRole
 from exploration_agent import ExplorationAgent
 from session_data import CompanionState
@@ -97,20 +96,6 @@ async def test_refuses_without_changing_the_fight(unravel: Fight, case: str, rea
     elif case == "spent":
         await patch_player(fight, fight.ids[0], patron_gifts={GIFT: {"spent": True}})
     await assert_refused(fight, reason)
-
-
-async def assert_refused(
-    fight: Fight, reason: str, actor: str | None = None, *, selectors: Mapping[str, object] | None = None
-) -> None:
-    before, scratch = await durable(fight), cached(fight)
-    state = fight.session.combat_state
-    offer = fight.session.fate_offer
-    with pytest.raises(ToolError, match=reason):
-        await fight.call("activate", id=GIFT, actor=actor, **(selectors or {}))
-    assert await durable(fight) == before
-    assert fight.session.combat_state is state
-    assert fight.session.fate_offer is offer
-    assert cached(fight) == scratch
 
 
 @pytest.mark.parametrize(
@@ -353,23 +338,6 @@ async def test_two_followers_cannot_rewind_twice_without_replay_and_keep_both_sp
     assert GIFT not in (await durable(fight))["players"][first]["data"]["patron_gifts"]
 
 
-async def adopt_fresh_context(fight, *, same_session: bool = False) -> None:
-    actor = fight.ids[0]
-    previous = fight.session
-    await fight.lifecycle.aclose()
-    fight.session = make_context(
-        actor, previous.location_id, room=make_mock_room(), party_member_ids=fight.ids
-    ).userdata
-    if previous.companion is not None:
-        fight.session.companion = CompanionState(id=previous.companion.id, name=previous.companion.name)
-    if same_session:
-        fight.session.session_id = previous.session_id
-        fight.session.patron_ability_entries = previous.patron_ability_entries.copy()
-    fight.lifecycle = _live_party(fight.session, *fight.ids)
-    fight.tools = game_tools(fight.session, agent=CombatAgent())
-    await fight.reload()
-
-
 async def test_persisted_checkpoint_rewinds_and_new_session_recharges(unravel) -> None:
     fight = unravel
     actor = fight.ids[0]
@@ -479,3 +447,51 @@ async def test_rewind_restores_beast_and_player_pools(unravel: Fight) -> None:
     update = next(e for e in reversed(published_payloads(fight.session.room)) if e["type"] == E.COMBAT_UI_UPDATE)
     projected = next(p for p in update["combatants"] if p["id"] == pid)
     assert (projected["wildShape"]["hpCurrent"], projected["hpCurrent"], projected["tempHp"]) == (11, 30, 5)
+
+
+async def test_unravel_restores_bless_casters_and_saved_conditions(unravel: Fight) -> None:
+    import character_spells
+    from activate_tools import activate as cast
+    from check_tools import check
+    from combat_end import end_combat
+
+    fight = unravel
+    recipient, caster = fight.ids
+    for spell in ("divine_bless", "arcane_detect_magic"):
+        await character_spells.record_learned(caster, spell, "discovery", conn=fight.pool)
+    await fight.invoke(
+        game_tools(fight.session, cast), "activate", actor=caster, id="divine_bless", target_id=recipient
+    )
+    await fight.start()
+    before = await durable(fight)
+    saved_conditions = before["players"][recipient]["data"]["conditions"]
+    assert saved_conditions[0]["sustaining_caster_ids"] == [caster]
+
+    await fight.declare(
+        {"kind": "ability", "actor_id": caster, "action": "arcane_detect_magic", "targets": [], "argument_type": ""},
+        *(defend(p.id) for p in fight.session.combat_state.participants if p.id != caster),
+    )
+    await fight.finish_round(2)
+    released = await durable(fight)
+    assert released["players"][caster]["data"]["concentration"] == {"spell_id": "arcane_detect_magic"}
+    assert released["players"][recipient]["data"]["conditions"] == saved_conditions
+    assert fight.session.combat_state.get_participant(recipient).conditions == []
+
+    assert (await activate(fight))["round"] == 1
+    restored = await durable(fight)
+    assert restored["players"][caster]["data"]["concentration"] == {"spell_id": "divine_bless"}
+    assert restored["players"][recipient]["data"]["conditions"] == saved_conditions
+    assert fight.session.combat_state.get_participant(recipient).conditions == saved_conditions
+    with (
+        patch("check_resolution.dice_roll", return_value=_d20(10)),
+        patch("condition_bonus.dice_roll", return_value=_d20(3)),
+    ):
+        receipt = await fight.invoke(
+            game_tools(fight.session, check),
+            "check",
+            actor=recipient,
+            roll={"kind": "save", "save_type": "wisdom", "dc": 24, "effect_on_fail": "resist"},
+        )
+    assert receipt["total"] == 14
+    await fight.invoke(game_tools(fight.session, end_combat), "end_combat", outcome="fled")
+    assert (await durable(fight))["players"][recipient]["data"]["conditions"] == saved_conditions

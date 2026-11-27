@@ -41,7 +41,7 @@ async def test_victory_reconciles_beneficial_dice_per_member():
     cs = CombatState(
         combat_id="c1",
         participants=[
-            _player_participant("p1", "Kael", [_cond("blessed")]),
+            _player_participant("p1", "Kael", [_cond("inspired")]),
             _player_participant("p2", "Bren", [_cond("inspired")]),
             CombatParticipant(id="g1", name="Goblin", type="enemy", initiative=8, hp_current=0, hp_max=7, ac=13),
         ],
@@ -54,7 +54,7 @@ async def test_victory_reconciles_beneficial_dice_per_member():
     await _run_end_combat_db(session, cs, "victory", save_mock=save)
 
     saved = {call.args[0]: call.args[1] for call in save.await_args_list}
-    assert [c["type"] for c in saved["p1"]] == ["blessed"]
+    assert [c["type"] for c in saved["p1"]] == ["inspired"]
     assert [c["type"] for c in saved["p2"]] == ["inspired"]
 
 
@@ -78,12 +78,12 @@ async def test_victory_drops_consumed_beneficial_die_from_row():
         cs,
         "victory",
         save_mock=save,
-        read_side_effect=lambda pid, conn=None: [_cond("blessed"), _cond("wounded")] if pid == "p1" else [],
+        read_side_effect=lambda pid, conn=None: [_cond("inspired"), _cond("wounded")] if pid == "p1" else [],
     )
 
     saved = {call.args[0]: call.args[1] for call in save.await_args_list}
     p1_types = [c["type"] for c in saved["p1"]]
-    assert "blessed" not in p1_types  # consumed in combat -> dropped from the row, not re-persisted
+    assert "inspired" not in p1_types  # consumed in combat -> dropped from the row, not re-persisted
     assert "wounded" in p1_types  # stored non-buff survives the same reconcile
 
 

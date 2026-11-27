@@ -50,19 +50,13 @@ async def lock_ooc_caster_and_targets(
     target_id: str | None,
     target_ids: list[str] | None,
     party_member_ids: list[str],
+    prior_recipient_ids: tuple[str, ...] = (),
     queries_mod=db_queries,
     conn=None,
 ) -> tuple[dict, dict]:
-    """Acquire the deadlock-safe pre-lock for an OOC condition-producing caster (story-005/008).
-
-    Locks the {caster} UNION {non-caster party targets} in ONE ascending-player_id
-    ``get_players_for_update`` batch — NEVER caster-first (that ordering is debt 361417d1bea5,
-    the deadlock this union lock replaced). ``produces_ooc`` is the caller's own predicate (a
-    condition-producing spell/ability, out of combat); when False no targets are pre-locked
-    (still locks just the caster). Returns ``(locked_rows, caster_row)``; raises ``ToolError``
-    if the caster row doesn't exist."""
+    """Lock the caster, eligible new targets and prior recipients in one ID-ordered batch."""
     ooc_targets = (target_ids or ([target_id] if target_id else [])) if produces_ooc else []
-    lock_ids = sorted({player_id} | {t for t in ooc_targets if t in party_member_ids})
+    lock_ids = sorted({player_id, *prior_recipient_ids} | {t for t in ooc_targets if t in party_member_ids})
     locked_rows = await queries_mod.get_players_for_update(lock_ids, conn=conn)
     player = locked_rows.get(player_id)
     if player is None:
@@ -84,6 +78,7 @@ async def produce_ooc_condition(
     conditions_mod=conditions,
     conditions_mutations_mod=db_mutations_conditions,
     locked_rows: dict[str, dict] | None = None,
+    sustaining_caster_id: str | None = None,
     conn=None,
 ) -> list[str]:
     """Resolve the OOC target list, party-gate each target, and batch-land ``condition``.
@@ -117,7 +112,11 @@ async def produce_ooc_condition(
     rows_by_id = dict(fetched)
     rows_by_id[caster_id] = caster_row
 
-    metadata = {"inspire_attack_upgrade": inspire_attack_upgrade(caster_row)} if condition == "inspired" else {}
+    metadata: dict[str, bool | str] = (
+        {"inspire_attack_upgrade": inspire_attack_upgrade(caster_row)} if condition == "inspired" else {}
+    )
+    if sustaining_caster_id is not None:
+        metadata["sustaining_caster_id"] = sustaining_caster_id
     writes: dict[str, list[dict]] = {}
     voiced: list[str] = []
     for tid in cond_target_ids:

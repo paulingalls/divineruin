@@ -1,16 +1,20 @@
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from copy import deepcopy
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from _zhael_fate_fixtures import game_tools
 from combat._round_checkpoint_helpers import Fight
-from sample_fixtures import FixedRng
+from livekit.agents.llm import ToolError
+from sample_fixtures import FixedRng, make_context, make_mock_room
+from test_aelora_gift import _live_party
 
 import dice
 from combat_agent import CombatAgent
+from session_data import CompanionState
 
 GIFT = "zhael_unravel_fate"
 LOCATION = "greyvale_ruins_inner"
@@ -145,3 +149,34 @@ def assert_restored(fight: Fight, committed: dict, start: dict, actor: str) -> N
         assert member.concentration.spell_id == (expected["concentration"] or {}).get("spell_id")
         assert {flag: getattr(member, flag) for flag in saved["session_flags"]} == saved["session_flags"]
         assert history[0]["players"][pid]["session_flags"] == saved["session_flags"]
+
+
+async def assert_refused(
+    fight: Fight, reason: str, actor: str | None = None, *, selectors: Mapping[str, object] | None = None
+) -> None:
+    before, scratch = await durable(fight), cached(fight)
+    state = fight.session.combat_state
+    offer = fight.session.fate_offer
+    with pytest.raises(ToolError, match=reason):
+        await fight.call("activate", id=GIFT, actor=actor, **(selectors or {}))
+    assert await durable(fight) == before
+    assert fight.session.combat_state is state
+    assert fight.session.fate_offer is offer
+    assert cached(fight) == scratch
+
+
+async def adopt_fresh_context(fight, *, same_session: bool = False) -> None:
+    actor = fight.ids[0]
+    previous = fight.session
+    await fight.lifecycle.aclose()
+    fight.session = make_context(
+        actor, previous.location_id, room=make_mock_room(), party_member_ids=fight.ids
+    ).userdata
+    if previous.companion is not None:
+        fight.session.companion = CompanionState(id=previous.companion.id, name=previous.companion.name)
+    if same_session:
+        fight.session.session_id = previous.session_id
+        fight.session.patron_ability_entries = previous.patron_ability_entries.copy()
+    fight.lifecycle = _live_party(fight.session, *fight.ids)
+    fight.tools = game_tools(fight.session, agent=CombatAgent())
+    await fight.reload()

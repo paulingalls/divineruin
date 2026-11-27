@@ -199,6 +199,7 @@ async def _finish_cast(
                     conditions_mod=conditions_mod,
                     conditions_mutations_mod=conditions_mutations_mod,
                     locked_rows=locked_rows,
+                    sustaining_caster_id=player_id if spell.concentration else None,
                 )
             except ValueError as e:
                 raise ToolError(str(e)) from e

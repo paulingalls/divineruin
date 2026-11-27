@@ -309,7 +309,13 @@ async def _resolve_ability_packet(
     cond_type = cast_packet.get("condition_applied")
     if cond_type and landing is not None:
         voiced = land_condition_on_participants(
-            state, attacker, landing, cond_type, source=landing.action, packet=cast_packet
+            state,
+            attacker,
+            landing,
+            cond_type,
+            source=landing.action,
+            packet=cast_packet,
+            sustaining_caster_id=attacker.id if spell.concentration else None,
         )
         if voiced:
             cast_packet["condition_targets"] = voiced

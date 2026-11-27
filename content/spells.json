@@ -878,7 +878,7 @@
     "source": "divine",
     "spell_tier": "minor",
     "focus_cost": 2,
-    "mechanics": "Up to three allies gain +1d4 on attack rolls and saving throws. Concentration.",
+    "mechanics": "Up to three allies add 1d4 to every attack roll and saving throw while sustained by concentration.",
     "narration_cue": "You speak their names and your patron hears — warmth settling into bones.",
     "resonance_by_source": {
       "divine": 1

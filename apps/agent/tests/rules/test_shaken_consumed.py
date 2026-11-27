@@ -89,7 +89,7 @@ async def test_shaken_is_consumed_after_one_attack_before_the_next_swing():
 
 
 def test_attack_consumption_preserves_bearer_order_and_deduplicates():
-    conditions = apply_condition(apply_condition([], "shaken"), "blessed")
+    conditions = apply_condition(apply_condition([], "shaken"), "inspired")
     rng = ScriptedRng([2, 18, 5])
 
     result = check_resolution_attack.resolve_attack(
@@ -100,4 +100,4 @@ def test_attack_consumption_preserves_bearer_order_and_deduplicates():
         rng=cast(Any, rng),
     )
 
-    assert result.consumed_conditions == ("shaken", "blessed")
+    assert result.consumed_conditions == ("shaken", "inspired")
