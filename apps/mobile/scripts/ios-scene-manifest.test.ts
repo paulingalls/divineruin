@@ -39,11 +39,14 @@ test("prebuilt iOS project declares Expo's scene delegate", async () => {
       UIWindowSceneSessionRoleApplication: [
         {
           UISceneConfigurationName: "Default Configuration",
-          UISceneDelegateClassName: "EXExpoAppSceneDelegate",
+          UISceneDelegateClassName: "$(PRODUCT_MODULE_NAME).SceneDelegate",
         },
       ],
     },
   });
+  expect(await readFile(join(ios, "divineruin/SceneDelegate.swift"), "utf8")).toContain(
+    "class SceneDelegate: ExpoAppSceneDelegate",
+  );
   expect(await readFile(join(ios, "divineruin/AppDelegate.swift"), "utf8")).toContain(
     "class AppDelegate: ExpoAppDelegate, ExpoReactNativeFactoryProvider {",
   );

@@ -1,14 +1,14 @@
+import { SwipeUpTrigger } from "@/session/swipe-up-trigger";
 import { SessionControls } from "@/session/session-controls";
 import { useSessionExit, useSessionLifecycle } from "@/session/session-lifecycle";
 import { useInventoryRefresh } from "@/hooks/use-inventory-refresh";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as Crypto from "expo-crypto";
 import { LiveKitRoom, useConnectionState, useLocalParticipant, useVoiceAssistant } from "@/livekit";
 import { useStore } from "zustand";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 import { Image } from "expo-image";
 import { ThemedText } from "@/components/themed-text";
@@ -27,7 +27,6 @@ import { useGameEvents } from "@/hooks/use-game-events";
 import { useDuckingBridge } from "@/hooks/use-ducking-bridge";
 import { configureAudioSession } from "@/audio/audio-config";
 import { sessionStore } from "@/stores/session-store";
-import { panelStore } from "@/stores/panel-store";
 import { BrandColors, Spacing, Shadows } from "@/constants/theme";
 
 function LoadingShell({ children }: { children: React.ReactNode }) {
@@ -52,26 +51,6 @@ function LoadingShell({ children }: { children: React.ReactNode }) {
 function makeRoomName(): string {
   return `divineruin-${Crypto.randomUUID()}`;
 }
-const SWIPE_UP_THRESHOLD = -50;
-
-function SwipeUpTrigger() {
-  const swipeGesture = useMemo(
-    () =>
-      Gesture.Pan().onEnd((e) => {
-        if (e.translationY < SWIPE_UP_THRESHOLD) {
-          panelStore.getState().openPanel();
-        }
-      }),
-    [],
-  );
-
-  return (
-    <GestureDetector gesture={swipeGesture}>
-      <View style={styles.swipeZone} />
-    </GestureDetector>
-  );
-}
-
 function SessionContent({ onLeave }: { onLeave: () => void }) {
   const connectionState = useConnectionState();
   useVoiceAssistant();
@@ -213,10 +192,6 @@ const styles = StyleSheet.create({
   leaveText: { color: BrandColors.void },
   loadingArt: {
     opacity: 0.4,
-  },
-  swipeZone: {
-    height: 24,
-    width: "100%",
   },
   settingsButton: {
     paddingLeft: Spacing.two,

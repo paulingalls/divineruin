@@ -19,10 +19,7 @@ if (process.env[CONTRACT_CHILD] === "1") {
     useRouter: () => ({ replace: () => {}, back: () => {} }),
     useLocalSearchParams: () => routeParams,
   }));
-  void mock.module("react-native-gesture-handler", () => ({
-    GestureDetector: host,
-    Gesture: { Pan: () => ({ onEnd: () => ({}) }) },
-  }));
+  void mock.module("@/session/swipe-up-trigger", () => ({ SwipeUpTrigger: host }));
   void mock.module("expo-image", () => ({ Image: host }));
   void mock.module("expo-crypto", () => ({ randomUUID: () => "room" }));
   void mock.module("@/livekit", () => ({
