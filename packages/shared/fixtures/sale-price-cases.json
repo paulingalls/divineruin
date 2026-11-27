@@ -1,0 +1,276 @@
+[
+  {
+    "id": "neutral",
+    "item": { "type": "weapon", "rarity": "common", "value_base": 101 },
+    "pool": "grimjaw_weapons",
+    "disposition": "neutral",
+    "kind": "merchant",
+    "expected": { "available": true, "price_sp": 51, "reason": "", "merchant_kind": null }
+  },
+  {
+    "id": "unfriendly_single_round",
+    "item": { "type": "weapon", "rarity": "common", "value_base": 101 },
+    "pool": "grimjaw_weapons",
+    "disposition": "unfriendly",
+    "kind": "merchant",
+    "expected": { "available": true, "price_sp": 45, "reason": "", "merchant_kind": null }
+  },
+  {
+    "id": "friendly",
+    "item": { "type": "weapon", "rarity": "common", "value_base": 101 },
+    "pool": "grimjaw_weapons",
+    "disposition": "friendly",
+    "kind": "merchant",
+    "expected": { "available": true, "price_sp": 56, "reason": "", "merchant_kind": null }
+  },
+  {
+    "id": "trusted",
+    "item": { "type": "weapon", "rarity": "common", "value_base": 101 },
+    "pool": "grimjaw_weapons",
+    "disposition": "trusted",
+    "kind": "merchant",
+    "expected": { "available": true, "price_sp": 61, "reason": "", "merchant_kind": null }
+  },
+  {
+    "id": "half_silver_tie",
+    "item": { "type": "weapon", "rarity": "common", "value_base": 5 },
+    "pool": "grimjaw_weapons",
+    "disposition": "neutral",
+    "kind": "merchant",
+    "expected": { "available": true, "price_sp": 3, "reason": "", "merchant_kind": null }
+  },
+  {
+    "id": "zero_unit",
+    "item": { "type": "weapon", "rarity": "common", "value_base": 1 },
+    "pool": "grimjaw_weapons",
+    "disposition": "unfriendly",
+    "kind": "merchant",
+    "expected": {
+      "available": false,
+      "price_sp": 0,
+      "reason": "priced_to_zero",
+      "merchant_kind": null
+    }
+  },
+  {
+    "id": "zero_base",
+    "item": { "type": "weapon", "rarity": "common", "value_base": 0 },
+    "pool": "grimjaw_weapons",
+    "disposition": "neutral",
+    "kind": "merchant",
+    "expected": {
+      "available": false,
+      "price_sp": 0,
+      "reason": "priced_to_zero",
+      "merchant_kind": null
+    }
+  },
+  {
+    "id": "hostile",
+    "item": { "type": "weapon", "rarity": "common", "value_base": 101 },
+    "pool": "grimjaw_weapons",
+    "disposition": "hostile",
+    "kind": "merchant",
+    "expected": { "available": false, "price_sp": 0, "reason": "hostile", "merchant_kind": null }
+  },
+  {
+    "id": "wrong_type_forge",
+    "item": { "type": "weapon", "rarity": "common", "value_base": 101 },
+    "pool": "temple_supplies",
+    "disposition": "neutral",
+    "kind": "merchant",
+    "expected": {
+      "available": false,
+      "price_sp": 0,
+      "reason": "wrong_type",
+      "merchant_kind": "blacksmith"
+    }
+  },
+  {
+    "id": "wrong_type_temple",
+    "item": { "type": "consumable", "rarity": "rare", "value_base": 101 },
+    "pool": "grimjaw_weapons",
+    "disposition": "neutral",
+    "kind": "merchant",
+    "expected": {
+      "available": false,
+      "price_sp": 0,
+      "reason": "wrong_type",
+      "merchant_kind": "temple"
+    }
+  },
+  {
+    "id": "wrong_rarity",
+    "item": { "type": "material", "rarity": "uncommon", "value_base": 101 },
+    "pool": "market_general",
+    "disposition": "neutral",
+    "kind": "merchant",
+    "expected": {
+      "available": false,
+      "price_sp": 0,
+      "reason": "wrong_rarity",
+      "merchant_kind": null
+    }
+  },
+  {
+    "id": "wrong_rarity_forge",
+    "item": { "type": "weapon", "rarity": "uncommon", "value_base": 101 },
+    "pool": "millhaven_supplies",
+    "disposition": "neutral",
+    "kind": "merchant",
+    "expected": {
+      "available": false,
+      "price_sp": 0,
+      "reason": "wrong_rarity",
+      "merchant_kind": "blacksmith"
+    }
+  },
+  {
+    "id": "no_buyer_type",
+    "item": { "type": "accessory", "rarity": "uncommon", "value_base": 101 },
+    "pool": "temple_supplies",
+    "disposition": "neutral",
+    "kind": "merchant",
+    "expected": { "available": false, "price_sp": 0, "reason": "wrong_type", "merchant_kind": null }
+  },
+  {
+    "id": "buyer_catalog_order",
+    "item": { "type": "accessory", "rarity": "common", "value_base": 101 },
+    "pool": "temple_supplies",
+    "disposition": "neutral",
+    "kind": "merchant",
+    "expected": {
+      "available": false,
+      "price_sp": 0,
+      "reason": "wrong_type",
+      "merchant_kind": "merchant"
+    }
+  },
+  {
+    "id": "quest_type",
+    "item": { "type": "quest_item", "rarity": "common", "value_base": 101 },
+    "pool": "market_general",
+    "disposition": "neutral",
+    "kind": "merchant",
+    "expected": { "available": false, "price_sp": 0, "reason": "quest_item", "merchant_kind": null }
+  },
+  {
+    "id": "quest_only",
+    "item": { "type": "shield", "rarity": "common", "quest_only": true, "value_base": 101 },
+    "pool": "grimjaw_weapons",
+    "disposition": "neutral",
+    "kind": "merchant",
+    "expected": { "available": false, "price_sp": 0, "reason": "quest_item", "merchant_kind": null }
+  },
+  {
+    "id": "missing_base",
+    "item": { "type": "weapon", "rarity": "common" },
+    "pool": "grimjaw_weapons",
+    "disposition": "neutral",
+    "kind": "merchant",
+    "expected": {
+      "available": false,
+      "price_sp": 0,
+      "reason": "no_value_base",
+      "merchant_kind": null
+    }
+  },
+  {
+    "id": "null_base",
+    "item": { "type": "weapon", "rarity": "common", "value_base": null },
+    "pool": "grimjaw_weapons",
+    "disposition": "neutral",
+    "kind": "merchant",
+    "expected": {
+      "available": false,
+      "price_sp": 0,
+      "reason": "no_value_base",
+      "merchant_kind": null
+    }
+  },
+  {
+    "id": "market_accessory",
+    "item": { "type": "accessory", "rarity": "common", "value_base": 101 },
+    "pool": "market_general",
+    "disposition": "neutral",
+    "kind": "merchant",
+    "expected": { "available": true, "price_sp": 51, "reason": "", "merchant_kind": null }
+  },
+  {
+    "id": "millhaven_material",
+    "item": { "type": "material", "rarity": "common", "value_base": 101 },
+    "pool": "millhaven_supplies",
+    "disposition": "neutral",
+    "kind": "merchant",
+    "expected": { "available": true, "price_sp": 51, "reason": "", "merchant_kind": null }
+  },
+  {
+    "id": "forge_armor",
+    "item": { "type": "armor", "rarity": "uncommon", "value_base": 101 },
+    "pool": "grimjaw_weapons",
+    "disposition": "neutral",
+    "kind": "merchant",
+    "expected": { "available": true, "price_sp": 51, "reason": "", "merchant_kind": null }
+  },
+  {
+    "id": "forge_shield",
+    "item": { "type": "shield", "rarity": "rare", "value_base": 101 },
+    "pool": "grimjaw_weapons",
+    "disposition": "neutral",
+    "kind": "merchant",
+    "expected": { "available": true, "price_sp": 51, "reason": "", "merchant_kind": null }
+  },
+  {
+    "id": "forge_ammunition",
+    "item": { "type": "ammunition", "rarity": "legendary", "value_base": 101 },
+    "pool": "grimjaw_weapons",
+    "disposition": "neutral",
+    "kind": "merchant",
+    "expected": { "available": true, "price_sp": 51, "reason": "", "merchant_kind": null }
+  },
+  {
+    "id": "temple_consumable",
+    "item": { "type": "consumable", "rarity": "rare", "value_base": 101 },
+    "pool": "temple_supplies",
+    "disposition": "neutral",
+    "kind": "merchant",
+    "expected": { "available": true, "price_sp": 51, "reason": "", "merchant_kind": null }
+  },
+  {
+    "id": "crafted",
+    "item": { "type": "accessory", "rarity": "uncommon", "value_base": 13 },
+    "pool": null,
+    "disposition": "neutral",
+    "kind": "crafted",
+    "expected": { "available": true, "price_sp": 10, "reason": "", "merchant_kind": null }
+  },
+  {
+    "id": "crafted_zero",
+    "item": { "type": "weapon", "rarity": "common", "value_base": 0 },
+    "pool": null,
+    "disposition": "neutral",
+    "kind": "crafted",
+    "expected": {
+      "available": false,
+      "price_sp": 0,
+      "reason": "priced_to_zero",
+      "merchant_kind": null
+    }
+  },
+  {
+    "id": "crafted_quest_type",
+    "item": { "type": "quest_item", "rarity": "common", "value_base": 101 },
+    "pool": null,
+    "disposition": "neutral",
+    "kind": "crafted",
+    "expected": { "available": false, "price_sp": 0, "reason": "quest_item", "merchant_kind": null }
+  },
+  {
+    "id": "crafted_quest_only",
+    "item": { "type": "shield", "rarity": "common", "quest_only": true, "value_base": 101 },
+    "pool": null,
+    "disposition": "neutral",
+    "kind": "crafted",
+    "expected": { "available": false, "price_sp": 0, "reason": "quest_item", "merchant_kind": null }
+  }
+]

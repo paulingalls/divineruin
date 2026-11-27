@@ -15,6 +15,8 @@ import logging
 import math
 
 import db
+from catalog_parse import parse_dict
+from sale_pricing import SALE_DISPOSITIONS
 
 logger = logging.getLogger("divineruin.db")
 
@@ -35,20 +37,27 @@ def _as_json_number(value: int | float) -> float:
         return math.inf
 
 
+def _validate_multiplier(raw: object, ctx: str, *, positive: bool = False) -> float:
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+        raise ValueError(f"{ctx} must be a number")
+    value = _as_json_number(raw)
+    if not math.isfinite(value):
+        raise ValueError(f"{ctx} must be finite")
+    if value < 0:
+        raise ValueError(f"{ctx} must be >= 0")
+    if positive and value == 0:
+        raise ValueError(f"{ctx} must be > 0")
+    if value > MAX_DISPOSITION_MULTIPLIER:
+        raise ValueError(f"{ctx} {DISPOSITION_MULTIPLIER_CAP_RULE}")
+    scaled = value * 10_000
+    if (positive and scaled < 0.5) or abs(scaled - round(scaled)) >= 1e-9:
+        raise ValueError(f"{ctx} must have at most 4 decimal places")
+    return value
+
+
 def _validate_economy_pricing(data: dict) -> dict:
     for key, value in data["disposition_multipliers"].items():
-        ctx = f"pricing[economy].disposition_multipliers.{key}"
-        if isinstance(value, bool) or not isinstance(value, (int, float)):
-            raise ValueError(f"{ctx} must be a number")
-        value = _as_json_number(value)
-        if not math.isfinite(value):
-            raise ValueError(f"{ctx} must be finite")
-        if value < 0:
-            raise ValueError(f"{ctx} must be >= 0")
-        if value > MAX_DISPOSITION_MULTIPLIER:
-            raise ValueError(f"{ctx} {DISPOSITION_MULTIPLIER_CAP_RULE}")
-        if abs(value * 10_000 - round(value * 10_000)) >= 1e-9:
-            raise ValueError(f"{ctx} must have at most 4 decimal places")
+        _validate_multiplier(value, f"pricing[economy].disposition_multipliers.{key}")
 
     for key, value in data["repair_cost_sp"].items():
         ctx = f"pricing[economy].repair_cost_sp.{key}"
@@ -58,12 +67,19 @@ def _validate_economy_pricing(data: dict) -> dict:
             raise ValueError(f"{ctx} must be an integer")
         if value < 0:
             raise ValueError(f"{ctx} must be >= 0")
+    sale_rate = _validate_multiplier(data.get("sale_rate"), "pricing[economy].sale_rate", positive=True)
+    _validate_multiplier(data.get("crafted_sale_rate"), "pricing[economy].crafted_sale_rate", positive=True)
+    multipliers = parse_dict(data.get("sale_disposition_multipliers"), "pricing[economy].sale_disposition_multipliers")
+    for disposition in SALE_DISPOSITIONS:
+        ctx = f"pricing[economy].sale_disposition_multipliers.{disposition}"
+        multiplier = _validate_multiplier(multipliers.get(disposition), ctx, positive=True)
+        # Keep the composed rate on a whole basis point for both rounding implementations.
+        _validate_multiplier(sale_rate * multiplier, f"{ctx} * sale_rate", positive=True)
     return data
 
 
 async def get_economy_pricing() -> dict:
-    """Return the `economy` pricing row: keys repair_cost_sp (rarity->sp),
-    disposition_multipliers (disposition->factor), silver_per_gold (int).
+    """Return the `economy` pricing row for repair, sales and currency conversion.
 
     Fail loud if the row is absent — every priced tool depends on it, so a missing
     row is a seed/migration misconfiguration, not a runtime-absent lookup.

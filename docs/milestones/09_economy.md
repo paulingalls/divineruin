@@ -257,7 +257,7 @@ Content/spec divergence: spec uses **Thornwatch + Merchant Guild** as worked exa
 
 **Goal:** Implement the three-tier stock model (always-stocked / limited / unique) + 7 spec-named inventory pools + settlement size×personality stock multipliers + daily restock at dawn + merchant gold pool + buyback limits + consignment.
 
-**Inputs:** M9.1 (price tables), M9.2 (pricing engine), M9.5 (faction reputation — affects restock + faction-restricted inventory), Phase 6 M6.1 (NPC schema with `inventory_pool: string | null` — BUILT but unused).
+**Inputs:** M9.1 (price tables), M9.2 (pricing engine), M9.5 (faction reputation — affects restock + faction-restricted inventory), Phase 6 M6.1 (NPC schema with `inventory_pool: string | null`).
 
 **Deliverables:**
 - Three-tier stock model: Tier 1 always-stocked (trivial supplies); Tier 2 limited (refills daily); Tier 3 unique (daily probability check or weekly rotation)
@@ -278,7 +278,7 @@ Content/spec divergence: spec uses **Thornwatch + Merchant Guild** as worked exa
 
 **Acceptance criteria:**
 - [ ] All 7 spec pools ship in `content/inventory_pools.json` with tiered structure + settlement-keyed quantities
-- [ ] `inventory_pool` field populated on every merchant NPC in `content/npcs.json`
+- [x] `inventory_pool` field populated on every merchant NPC in `content/npcs.json`. The lead scoped this criterion to Grimjaw, Selene, Maren and Dara. `apps/agent/tests/test_sale_pricing.py` pins the four bindings. `apps/agent/tests/acceptance/test_seed_atomic.py` exercises both reseed validators.
 - [x] Location.size + Location.personality schema extensions; all settlements in `content/locations.json` populated <!-- verified 2026-09-01: shipped by Phase 6 M6.2 as packages/shared/src/entities/location.ts:81-82 settlement_tier?: SettlementSize + personality?: SettlementPersonality, over the exported SETTLEMENT_SIZE_VALUES / SETTLEMENT_PERSONALITY_VALUES arrays; all 13 settlement locations populated (6 dungeon/wilderness deliberately omit both). Test packages/shared/src/entities/location.test.ts:103-133 (13 pass). NAMING/VOCAB DIVERGENCE from this milestone's spec: field is settlement_tier not size; sizes are hamlet|village|town|city|keldaran_hold (capital deferred, keldaran_hold added); personalities are the 8 M6.2 traits (prosperous/struggling/military/scholarly/corrupt/devout/frontier/refuge) not the 6 economy traits (trade_hub/isolated/cursed absent) -- AC4's 5x6 matrix still needs that reconciliation -->
 - [ ] 5×6 size×personality stock multiplier matrix matches spec for both inventory and gold pool
 - [ ] `merchant_state` table reads/writes for current_inventory + current_gold + buyback_history + consigned_items

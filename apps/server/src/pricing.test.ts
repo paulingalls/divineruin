@@ -1,10 +1,8 @@
+import authoredPricing from "../../../content/pricing.json";
 import { beforeEach, describe, expect, test } from "bun:test";
 
 import {
-  DISPOSITION_MULTIPLIER_CAP_RULE,
-  MAX_DISPOSITION_MULTIPLIER,
   dispositionMultiplier,
-  type EconomyPricing,
   parsePricingRow,
   repairCostSp,
   setPricing,
@@ -12,14 +10,19 @@ import {
   wholeSilver,
 } from "./pricing.ts";
 
-const ECONOMY: EconomyPricing = {
-  repairCostSp: { common: 2, uncommon: 10, rare: 50, legendary: 200 },
-  dispositionMultipliers: { friendly: 0.8, trusted: 0.6 },
-  silverPerGold: 10,
+const SALE = {
+  sale_rate: 0.5,
+  crafted_sale_rate: 0.8,
+  sale_disposition_multipliers: { unfriendly: 0.9, neutral: 1, friendly: 1.1, trusted: 1.2 },
+};
+const BASE = {
+  repair_cost_sp: { common: 2, uncommon: 10, rare: 50, legendary: 200 },
+  disposition_multipliers: { friendly: 0.8, trusted: 0.6 },
+  silver_per_gold: 10,
 };
 
 function parseUnknownJson(text: string): unknown {
-  return JSON.parse(text) as unknown;
+  return { ...SALE, ...(JSON.parse(text) as object) };
 }
 
 // A JSON integer literal past float range: JSON.parse gives Infinity here, while
@@ -29,15 +32,60 @@ const BEYOND_FLOAT_RANGE = `1${"0".repeat(400)}`;
 // parsePricingRow owns shape validation at the load boundary (fail-loud, mirrors
 // parseItemRow). Tested directly so we don't process-globally mock db.ts.
 describe("parsePricingRow (fail-loud)", () => {
-  test("parses a well-formed economy row (snake_case -> camelCase)", () => {
-    expect(
-      parsePricingRow({
-        id: "economy",
-        repair_cost_sp: { common: 2, uncommon: 10, rare: 50, legendary: 200 },
-        disposition_multipliers: { friendly: 0.8, trusted: 0.6 },
-        silver_per_gold: 10,
-      }),
-    ).toEqual(ECONOMY);
+  test("parses the authored economy row", () => {
+    expect(parsePricingRow(authoredPricing[0])).toEqual({
+      repairCostSp: BASE.repair_cost_sp,
+      dispositionMultipliers: BASE.disposition_multipliers,
+      silverPerGold: BASE.silver_per_gold,
+      saleRate: SALE.sale_rate,
+      craftedSaleRate: SALE.crafted_sale_rate,
+      saleDispositionMultipliers: SALE.sale_disposition_multipliers,
+    });
+  });
+
+  const saleFields = [
+    "sale_rate",
+    "crafted_sale_rate",
+    ...Object.keys(SALE.sale_disposition_multipliers).map(
+      (key) => `sale_disposition_multipliers.${key}`,
+    ),
+  ];
+  test.each(
+    saleFields.flatMap((field) =>
+      [undefined, 0, -1, true, "0.5", Infinity, 0.12345].map((value) => [field, value] as const),
+    ),
+  )("refuses sale field %s = %s", (field, value) => {
+    const [key, disposition] = field.split(".");
+    const row = { ...BASE, ...SALE };
+    if (disposition) {
+      Object.assign(row, {
+        sale_disposition_multipliers: {
+          ...SALE.sale_disposition_multipliers,
+          [disposition]: value,
+        },
+      });
+    } else {
+      Object.assign(row, { [key!]: value });
+    }
+    expect(() => parsePricingRow(row)).toThrow(`pricing[economy].${field}`);
+  });
+
+  test("requires the sale disposition record", () => {
+    const { sale_rate, crafted_sale_rate } = SALE;
+    expect(() => parsePricingRow({ ...BASE, sale_rate, crafted_sale_rate })).toThrow(
+      "pricing[economy].sale_disposition_multipliers",
+    );
+  });
+
+  test("rejects a fractional basis point in the composed sale multiplier", () => {
+    const row = {
+      ...BASE,
+      ...SALE,
+      sale_disposition_multipliers: { ...SALE.sale_disposition_multipliers, neutral: 1.0001 },
+    };
+    expect(() => parsePricingRow(row)).toThrow(
+      "pricing[economy].sale_disposition_multipliers.neutral * sale_rate must have at most 4 decimal places",
+    );
   });
 
   test("throws when repair_cost_sp is missing", () => {
@@ -96,7 +144,7 @@ describe("parsePricingRow (fail-loud)", () => {
     [
       "multiplier exceeds conversion cap",
       "1e305",
-      `pricing[economy].disposition_multipliers.friendly ${DISPOSITION_MULTIPLIER_CAP_RULE}`,
+      "pricing[economy].disposition_multipliers.friendly must be <= 1e+304",
     ],
     [
       "multiplier integer beyond float range",
@@ -147,10 +195,6 @@ describe("parsePricingRow (fail-loud)", () => {
     expect(() => parsePricingRow(row)).toThrow(message);
   });
 
-  test("the cap rule text names the cap it enforces", () => {
-    expect(DISPOSITION_MULTIPLIER_CAP_RULE).toBe(`must be <= ${MAX_DISPOSITION_MULTIPLIER}`);
-  });
-
   test.each(["0", "0.0001", "0.8", "1.25", "8e-1", "1e304"])("accepts multiplier %s", (value) => {
     const row = parseUnknownJson(
       `{"repair_cost_sp":{"common":2},"disposition_multipliers":{"friendly":${value}},"silver_per_gold":10}`,
@@ -161,6 +205,7 @@ describe("parsePricingRow (fail-loud)", () => {
   test.each([0, 2])("accepts repair cost %d", (value) => {
     expect(
       parsePricingRow({
+        ...SALE,
         repair_cost_sp: { common: value },
         disposition_multipliers: {},
         silver_per_gold: 10,
@@ -196,7 +241,7 @@ describe("wholeSilver", () => {
 });
 
 describe("getters", () => {
-  beforeEach(() => setPricing(ECONOMY));
+  beforeEach(() => setPricing(parsePricingRow(authoredPricing[0])));
 
   test("repairCostSp returns the rarity cost, undefined for unknown", () => {
     expect(repairCostSp("common")).toBe(2);
