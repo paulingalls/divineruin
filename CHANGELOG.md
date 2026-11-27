@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.89.1
+
+LiveKit acceptance tests now use explicit signing credentials that meet the JWT key length requirement.
+
+Release steps: none.
+
 ## 0.89.0
 
 Spells that inflict conditions now apply them in the engine instead of leaving them to narration. Hold Person paralyzes one humanoid, Power Word Stun stuns a foe at 75 HP or less (and fails quietly above it), Slow takes away an affected creature's quick actions, and Faerie Fire outlines creatures in its cube so attacks against them have advantage. Spark's shock stops its target's reactions until its next turn. Each condition that allows a save repeats it each turn, and two casters cannot share one hold.
