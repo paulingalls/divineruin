@@ -18,6 +18,7 @@
   "orenthel_menders_dawn": "patron_synergy:context_skill_bonus",
   "orenthel_green_morning": "patron_synergy:context_skill_bonus",
   "orenthel_reconciliation": "patron_synergy:context_skill_bonus",
+  "orenthel_mage_warding": "patron_synergy_heal:grant_mage_warding",
   "orenthel_marshal_rally": "patron_synergy_combat:marshal_rally_bonus",
   "veythar_witnessed_oath": "patron_synergy:context_skill_bonus",
   "veythar_hidden_knowledge": "patron_synergy:discovery_skill_bonus",

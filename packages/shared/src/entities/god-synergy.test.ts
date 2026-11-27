@@ -378,3 +378,9 @@ test("Orenthel's Rally at Dawn grants additional temporary HP", () => {
     ?.layer_4_synergy_matrix.marshal;
   expect<unknown>(marshal).toEqual(corpus.rally_at_dawn);
 });
+
+test("Orenthel's Renewing Spark wards recipients of a mage's spell", () => {
+  const mage = validateGods(catalog).find((god) => god.god_id === "orenthel")
+    ?.layer_4_synergy_matrix.mage;
+  expect<unknown>(mage).toEqual(corpus.renewing_spark);
+});

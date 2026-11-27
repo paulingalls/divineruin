@@ -9,6 +9,7 @@ import reaction_spend
 from combat_hold_actions import _attack_action
 from combat_multiattack import strike_summary
 from combat_state import CombatState
+from patron_synergy_heal import grant_mage_warding
 from reaction_windows import POST_ROLL
 
 
@@ -20,12 +21,21 @@ async def close_window(
     reaction_packets = combat_reaction_effect.close(
         state, head, window, attack_action=attack_action, contest_rng=contest_rng
     )
+    queries, conn = packet_deps["queries"], packet_deps["conn"]
+    for packet in reaction_packets:
+        if packet.get("shield_spell_applied"):
+            actor_id = packet["actor_id"]
+            rows = await queries.get_players_for_update([actor_id], conn=conn)
+            actor = state.get_participant(actor_id)
+            assert actor is not None
+            if ward := await grant_mage_warding(
+                rows[actor_id], [actor_id], rows=rows, participants={actor_id: actor}, conn=conn
+            ):
+                packet["mage_warding"] = ward
     await patron_synergy_combat.grant_interceding_rallies(
-        state, reaction_packets, window["target_id"], queries=packet_deps["queries"], conn=packet_deps["conn"]
+        state, reaction_packets, window["target_id"], queries=queries, conn=conn
     )
-    await patron_synergy_combat.restore_guard_stamina(
-        reaction_packets, queries=packet_deps["queries"], conn=packet_deps["conn"]
-    )
+    await patron_synergy_combat.restore_guard_stamina(reaction_packets, queries=queries, conn=conn)
     reaction_packets = combat_reaction_effect.defer_thought_shield(head, reaction_packets)
     hesitation_reason = combat_reaction_contest.hesitation_reason(head)
     if hesitation_reason is not None:
